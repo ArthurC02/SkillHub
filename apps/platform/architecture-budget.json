@@ -12,10 +12,10 @@
       "fields": 14
     },
     "product/operations.Service": {
-      "methods": 34
+      "methods": 32
     },
     "skill/admission.Service": {
-      "methods": 44
+      "methods": 43
     },
     "skill/delivery.Service": {
       "methods": 41,
@@ -26,16 +26,16 @@
       "fields": 19
     },
     "skill/library.Service": {
-      "methods": 36
+      "methods": 35
     },
     "skill/publishing.Service": {
-      "methods": 41
+      "methods": 40
     },
     "trial/design.Service": {
       "methods": 43
     },
     "trial/execution.Service": {
-      "methods": 122,
+      "methods": 117,
       "fields": 22
     },
     "trial/execution.driver": {
@@ -45,7 +45,7 @@
       "fields": 19
     },
     "trial/improvement.Service": {
-      "methods": 60,
+      "methods": 59,
       "fields": 20
     }
   },

@@ -41,11 +41,11 @@ func (s *Service) conclude(
 		Reason: strings.Join(prepared.unpreviewed, "; "),
 		Record: func(ctx context.Context, tx pgx.Tx, run pgtype.UUID, now time.Time) error {
 			if tracksFindings {
-				if err := s.recordFindings(ctx, tx, run, sightings, now); err != nil {
+				if err := recordFindings(ctx, tx, run, sightings, now); err != nil {
 					return err
 				}
 			}
-			return s.recordProposals(ctx, tx, run, prepared.proposals, now)
+			return recordProposals(ctx, tx, run, prepared.proposals, now)
 		},
 	}, nil
 }

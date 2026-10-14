@@ -279,13 +279,13 @@ func (s *Service) scanProvider(ctx context.Context, provider SandboxProvider) er
 func (s *Service) isOrphan(ctx context.Context, entry ProviderRun, observed time.Time) (bool, string) {
 	var attemptID pgtype.UUID
 	if entry.RunAttemptID == "" || attemptID.Scan(entry.RunAttemptID) != nil {
-		return s.orphanByAge(entry, observed, "provider run carries no platform attempt id")
+		return orphanByAge(entry, observed, "provider run carries no platform attempt id")
 	}
 	attempt, err := s.queries().GetRunAttemptForReconcile(ctx, attemptID)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 
-		return s.orphanByAge(entry, observed, "no platform attempt for this sandbox")
+		return orphanByAge(entry, observed, "no platform attempt for this sandbox")
 	case err != nil:
 
 		slog.Error("cannot judge sandbox: attempt lookup failed",
@@ -297,12 +297,12 @@ func (s *Service) isOrphan(ctx context.Context, entry ProviderRun, observed time
 	}
 
 	if attempt.ProviderRunID == nil {
-		return s.orphanByAge(entry, observed, "the attempt never recorded this sandbox's handle")
+		return orphanByAge(entry, observed, "the attempt never recorded this sandbox's handle")
 	}
 	return false, ""
 }
 
-func (s *Service) orphanByAge(entry ProviderRun, observed time.Time, why string) (bool, string) {
+func orphanByAge(entry ProviderRun, observed time.Time, why string) (bool, string) {
 	if entry.CreatedAt == nil {
 		return false, ""
 	}

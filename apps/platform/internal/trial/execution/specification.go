@@ -63,7 +63,7 @@ func refused(reason string, err error) error {
 	return refusal{reason: reason, err: err}
 }
 
-func (s *Service) requireNotAccessRestricted(skill SkillFacts) error {
+func requireNotAccessRestricted(skill SkillFacts) error {
 	reason, err := accessVerdict(skill)
 	if err != nil {
 		return refused(reason, err)
@@ -159,7 +159,7 @@ func runSlotVerdict(active int64) error {
 			ErrRunLimitReached, active, MaxConcurrentRunsPerWorkspace))
 }
 
-func (s *Service) requireRunSlot(ctx context.Context, q *gen.Queries, workspaceID pgtype.UUID) error {
+func requireRunSlot(ctx context.Context, q *gen.Queries, workspaceID pgtype.UUID) error {
 	if err := q.LockWorkspaceRunSlots(ctx, pgconv.UUIDString(workspaceID)); err != nil {
 		return err
 	}

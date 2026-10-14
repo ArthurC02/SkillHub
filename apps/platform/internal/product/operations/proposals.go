@@ -78,7 +78,7 @@ func prepareProposals(ctx context.Context, def Definition, actions []Action, req
 	return prepared, nil
 }
 
-func (s *Service) recordProposals(ctx context.Context, tx pgx.Tx, run pgtype.UUID, proposals []preparedProposal, now time.Time) error {
+func recordProposals(ctx context.Context, tx pgx.Tx, run pgtype.UUID, proposals []preparedProposal, now time.Time) error {
 	if len(proposals) == 0 {
 		return nil
 	}

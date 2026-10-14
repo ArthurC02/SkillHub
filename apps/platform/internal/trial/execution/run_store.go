@@ -258,7 +258,7 @@ func (s *Service) writeCreated(ctx context.Context, w runTx, r *Run, event Statu
 		return err
 	}
 	r.row = row
-	if err := s.recordTransition(ctx, w, row, recordedTransition{
+	if err := recordTransition(ctx, w, row, recordedTransition{
 		reason: event.Reason, action: audit.ActionRunCreate,
 	}); err != nil {
 		return err
@@ -281,7 +281,7 @@ func (s *Service) writeTransition(ctx context.Context, w runTx, r *Run, event St
 		return err
 	}
 	r.row = row
-	if err := s.recordTransition(ctx, w, row, recordedTransition{
+	if err := recordTransition(ctx, w, row, recordedTransition{
 		from: &from, attemptID: event.attemptID, reason: event.Reason, action: audit.ActionRunTransition,
 	}); err != nil {
 		return err
@@ -289,7 +289,7 @@ func (s *Service) writeTransition(ctx context.Context, w runTx, r *Run, event St
 	if err := publishRunEvent(ctx, tx, r, event, event.attemptID); err != nil {
 		return err
 	}
-	if err := s.recordFailureEvent(ctx, w, row, event.failure, event.Reason); err != nil {
+	if err := recordFailureEvent(ctx, w, row, event.failure, event.Reason); err != nil {
 		return err
 	}
 	if !IsTerminal(row.Status) {

@@ -249,7 +249,7 @@ func (s *BatchService) startNextTrial(ctx context.Context, workspaceID pgtype.UU
 		return false, err
 	}
 	if !next.CreatedBy.Valid {
-		return true, s.stopBatch(ctx, q, workspaceID, next.BatchID, stopReasonCreatorGone)
+		return true, stopBatch(ctx, q, workspaceID, next.BatchID, stopReasonCreatorGone)
 	}
 	runID, err := s.Ports.StartRun(ctx, BatchRun{
 		WorkspaceID: workspaceID, Actor: next.CreatedBy, SkillID: next.SkillID,
@@ -260,10 +260,10 @@ func (s *BatchService) startNextTrial(ctx context.Context, workspaceID pgtype.UU
 		return false, nil
 	}
 	if errors.Is(err, ErrTargetGone) {
-		return true, s.stopBatch(ctx, q, workspaceID, next.BatchID, stopReasonTargetGone)
+		return true, stopBatch(ctx, q, workspaceID, next.BatchID, stopReasonTargetGone)
 	}
 	if refused, isRefused := errors.AsType[RunRefusedError](err); isRefused {
-		return true, s.stopBatch(ctx, q, workspaceID, next.BatchID, refused.Reason)
+		return true, stopBatch(ctx, q, workspaceID, next.BatchID, refused.Reason)
 	}
 	if err != nil {
 		return false, err
@@ -280,7 +280,7 @@ func trialOriginKey(item gen.ClaimNextBatchItemRow) string {
 		pgconv.UUIDString(item.BatchID), pgconv.UUIDString(item.TestCaseID), item.Trial, item.SkillWithheld)
 }
 
-func (s *BatchService) stopBatch(ctx context.Context, q *gen.Queries, workspaceID, batchID pgtype.UUID, reason string) error {
+func stopBatch(ctx context.Context, q *gen.Queries, workspaceID, batchID pgtype.UUID, reason string) error {
 	_, err := q.StopEvaluationBatch(ctx, gen.StopEvaluationBatchParams{
 		ID: batchID, WorkspaceID: workspaceID, StopReason: &reason,
 	})

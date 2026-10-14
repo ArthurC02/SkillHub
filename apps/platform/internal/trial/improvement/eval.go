@@ -127,7 +127,7 @@ type modelCall struct {
 	usage         *modelport.ModelUsage
 }
 
-func (s *Service) recordModelUsage(
+func recordModelUsage(
 	ctx context.Context, q *gen.Queries, ref evaluationRef, operation string, call modelCall,
 ) error {
 	usage := call.usage
@@ -455,7 +455,7 @@ func (s *Service) complete(ctx context.Context, m facts.Material, ev gen.Evaluat
 
 	ref := evaluationRef{workspaceID: ev.WorkspaceID, evaluationID: ev.ID, runID: m.Run.ID}
 	call := modelCall{model: v.model, promptVersion: v.promptVersion, usage: v.usage}
-	if err := s.recordModelUsage(ctx, q, ref, "judge", call); err != nil {
+	if err := recordModelUsage(ctx, q, ref, "judge", call); err != nil {
 		return err
 	}
 

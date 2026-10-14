@@ -370,7 +370,7 @@ func bundleVersionsByID(ctx context.Context, q *gen.Queries, ids []pgtype.UUID) 
 	return out, nil
 }
 
-func (s *Service) bundleVersion(ctx context.Context, q *gen.Queries, ws identity.Workspace, name, version string) (BundleVersion, error) {
+func bundleVersion(ctx context.Context, q *gen.Queries, ws identity.Workspace, name, version string) (BundleVersion, error) {
 	var (
 		row gen.GetBundleVersionRow
 		err error
@@ -406,7 +406,7 @@ type bundleRelease struct {
 }
 
 func (s *Service) PublishBundle(ctx context.Context, ws identity.Workspace, bundleName string, in BundlePublishInput) (Publication, error) {
-	bundleVersion, err := s.bundleVersion(ctx, gen.New(s.Pool), ws, bundleName, in.Version)
+	bundleVersion, err := bundleVersion(ctx, gen.New(s.Pool), ws, bundleName, in.Version)
 	if err != nil {
 		return Publication{}, err
 	}
@@ -628,7 +628,7 @@ func (s *Service) OwnBundlePublication(ctx context.Context, ws identity.Workspac
 }
 
 func (s *Service) ExportBundle(ctx context.Context, ws identity.Workspace, bundleName, version string) (Acquisition, error) {
-	bundleVersion, err := s.bundleVersion(ctx, gen.New(s.Pool), ws, bundleName, version)
+	bundleVersion, err := bundleVersion(ctx, gen.New(s.Pool), ws, bundleName, version)
 	if err != nil {
 		return Acquisition{}, err
 	}

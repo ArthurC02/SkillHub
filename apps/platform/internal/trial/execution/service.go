@@ -496,11 +496,11 @@ func (s *Service) requireRunnableSkill(ctx context.Context, p CreateParams) erro
 	if err != nil {
 		return err
 	}
-	return s.requireNotAccessRestricted(skill)
+	return requireNotAccessRestricted(skill)
 }
 
 func (s *Service) reserveRunCapacity(ctx context.Context, tx pgx.Tx, q *gen.Queries, workspaceID pgtype.UUID) error {
-	if err := s.requireRunSlot(ctx, q, workspaceID); err != nil {
+	if err := requireRunSlot(ctx, q, workspaceID); err != nil {
 		return err
 	}
 

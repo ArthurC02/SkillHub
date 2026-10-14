@@ -17,7 +17,7 @@ func TestAPreparedPackageIsAddressedByTheHashOfItsWholeArchive(t *testing.T) {
 	sum := sha256.Sum256(archive)
 	want := hex.EncodeToString(sum[:])
 
-	p, err := (&Service{}).prepare(archive)
+	p, err := prepare(archive)
 
 	if err != nil || p.contentHash != want || p.objectKey != "packages/"+want+".zip" {
 		t.Fatalf("hash=%q key=%q err=%v, want %q and packages/<hash>.zip", p.contentHash, p.objectKey, err, want)
@@ -25,7 +25,7 @@ func TestAPreparedPackageIsAddressedByTheHashOfItsWholeArchive(t *testing.T) {
 }
 
 func TestABlockedPackageIsNeverGivenAnObjectKey(t *testing.T) {
-	p, err := (&Service{}).prepare(zipBytes(t, map[string]string{"README.md": "no skill here"}))
+	p, err := prepare(zipBytes(t, map[string]string{"README.md": "no skill here"}))
 
 	if err != nil || !p.report.Blocked || p.contentHash != "" || p.objectKey != "" {
 		t.Fatalf("blocked=%v hash=%q key=%q err=%v, want a blocked report with no address", p.report.Blocked, p.contentHash, p.objectKey, err)
@@ -43,7 +43,7 @@ func TestAReindexedSkillIsProjectedUnderItsOwnNameAndWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 	archive := zipBytes(t, map[string]string{"SKILL.md": skillMD})
-	pkg, err := (&Service{}).prepare(archive)
+	pkg, err := prepare(archive)
 	if err != nil {
 		t.Fatal(err)
 	}

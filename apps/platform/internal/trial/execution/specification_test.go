@@ -93,14 +93,14 @@ func TestAWorkspaceLeavesOneNodeSlotForAnotherWorkspace(t *testing.T) {
 
 func TestAnAccessRestrictedSkillIsRefusedAndSaysWhichRestriction(t *testing.T) {
 	hold := "a licence review is open"
-	err := (&Service{}).requireNotAccessRestricted(SkillFacts{AccessRestricted: true, AccessRestrictionReason: hold})
+	err := requireNotAccessRestricted(SkillFacts{AccessRestricted: true, AccessRestrictionReason: hold})
 	if got := reasonOf(t, err); got != ReasonAccessRestricted {
 		t.Errorf("reason = %q, want %q", got, ReasonAccessRestricted)
 	}
 	if !strings.Contains(err.Error(), hold) {
 		t.Errorf("the refusal does not name the restriction: %v", err)
 	}
-	if err := (&Service{}).requireNotAccessRestricted(SkillFacts{}); err != nil {
+	if err := requireNotAccessRestricted(SkillFacts{}); err != nil {
 		t.Errorf("a skill under no restriction was refused: %v", err)
 	}
 }

@@ -113,7 +113,7 @@ type findingRecorder struct {
 	agent pgtype.UUID
 }
 
-func (s *Service) recordFindings(ctx context.Context, tx pgx.Tx, run pgtype.UUID, sightings []Sighting, now time.Time) error {
+func recordFindings(ctx context.Context, tx pgx.Tx, run pgtype.UUID, sightings []Sighting, now time.Time) error {
 	q := gen.New(tx)
 	agentID, err := q.GetPlatformAgentRunAgent(ctx, run)
 	if err != nil {

@@ -202,7 +202,7 @@ func (s *Service) Transition(ctx context.Context, command TransitionCommand) (Ru
 	return runView(row), nil
 }
 
-func (s *Service) recordFailureEvent(ctx context.Context, w runTx, run gen.Run, failure FailureClass, reason string) error {
+func recordFailureEvent(ctx context.Context, w runTx, run gen.Run, failure FailureClass, reason string) error {
 	if run.Status != gen.RunStatusFailed && run.Status != gen.RunStatusTimedOut {
 		return nil
 	}
@@ -271,7 +271,7 @@ type recordedTransition struct {
 	action    string
 }
 
-func (s *Service) recordTransition(ctx context.Context, w runTx, run gen.Run, t recordedTransition) error {
+func recordTransition(ctx context.Context, w runTx, run gen.Run, t recordedTransition) error {
 	from, reason := t.from, t.reason
 	reasonPtr := &reason
 	if reason == "" {

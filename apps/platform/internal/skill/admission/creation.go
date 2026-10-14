@@ -49,7 +49,7 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 	if err != nil {
 		return Result{}, err
 	}
-	prepared, err := s.prepare(data)
+	prepared, err := prepare(data)
 	if err != nil || prepared.report.Blocked {
 		return Result{Report: prepared.report}, err
 	}
@@ -205,7 +205,7 @@ func (s *Service) ValidateCreationDraft(ctx context.Context, draft GeneratedSkil
 
 		return CreationDraftCheck{Report: fmt.Sprintf("套件結構無法通過驗證：%v。frontmatter 與 SKILL.md 由 Go 從 name、description、compatibility、allowed_tools 與 body 產生；files 不得包含 SKILL.md，也沒有 license 欄位可填。", err), Blocked: true}, nil
 	}
-	prepared, err := s.prepare(data)
+	prepared, err := prepare(data)
 	if err != nil {
 		return CreationDraftCheck{Blocked: true}, err
 	}

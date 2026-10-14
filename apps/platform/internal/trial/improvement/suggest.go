@@ -69,7 +69,7 @@ func (s *Service) suggest(ctx context.Context, m facts.Material, ev gen.Evaluati
 	}
 	ref := evaluationRef{workspaceID: ev.WorkspaceID, evaluationID: ev.ID, runID: m.Run.ID}
 	call := modelCall{model: resp.Model, promptVersion: resp.PromptVersion, usage: resp.Usage}
-	if err := s.recordModelUsage(ctx, s.queries(), ref, "suggest", call); err != nil {
+	if err := recordModelUsage(ctx, s.queries(), ref, "suggest", call); err != nil {
 		slog.Warn("evaluation suggestion usage not stored",
 			"evaluation_id", pgconv.UUIDString(ev.ID), "error", err)
 

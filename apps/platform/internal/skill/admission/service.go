@@ -248,7 +248,7 @@ func readPackage(data []byte, sourcePath string) (preparedPackage, error) {
 	return p, nil
 }
 
-func (s *Service) prepare(data []byte) (preparedPackage, error) {
+func prepare(data []byte) (preparedPackage, error) {
 	p, err := readPackage(data, "")
 	if err != nil || p.report.Blocked {
 		return p, err
@@ -317,7 +317,7 @@ func (s *Service) importZip(ctx context.Context, ws identity.Workspace, data []b
 }
 
 func (s *Service) importZipWithCommit(ctx context.Context, ws identity.Workspace, data []byte, src sourceMeta, after func(context.Context, pgx.Tx, Result) error) (Result, error) {
-	p, err := s.prepare(data)
+	p, err := prepare(data)
 	if err != nil || p.report.Blocked {
 		return Result{Report: p.report}, err
 	}
@@ -387,7 +387,7 @@ func (s *Service) SaveImprovedVersion(
 }
 
 func (s *Service) saveVersion(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, data []byte, src sourceMeta) (Result, error) {
-	p, err := s.prepare(data)
+	p, err := prepare(data)
 	if err != nil || p.report.Blocked {
 		return Result{Report: p.report}, err
 	}

@@ -135,7 +135,7 @@ func (s *Service) ForkIn(ctx context.Context, tx pgx.Tx, ws identity.Workspace, 
 		return Skill{}, Version{}, err
 	}
 
-	name, err := s.forkName(ctx, tx, ws.ID, src.Name)
+	name, err := forkName(ctx, tx, ws.ID, src.Name)
 	if err != nil {
 		return Skill{}, Version{}, err
 	}
@@ -263,7 +263,7 @@ func (s *Service) Takedown(ctx context.Context, ws identity.Workspace, skillID p
 
 const maxForkAttempts = 10
 
-func (s *Service) forkName(
+func forkName(
 	ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, sourceName string,
 ) (string, error) {
 	base := strings.TrimSuffix(sourceName, "-fork")
