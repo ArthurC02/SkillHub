@@ -1,0 +1,37 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "entrypoint-citations-recite",
+  "status": "draft",
+  "intent": "Keep the composition-root interactions citing current wiring after operator governance moved from catalog into skill/library/governance.",
+  "actor": "coding-agent",
+  "observable_outcome": "verify-evidence reports every composition-root citation current; each interaction states the same fact as before.",
+  "acceptance_criteria": [
+    {
+      "id": "citations-current",
+      "statement": "Every re-cited interaction cites the lines that now hold its wiring."
+    },
+    {
+      "id": "citation-unambiguous",
+      "statement": "registry-packaging-skill-facts cites a span whose text occurs once in the file."
+    },
+    {
+      "id": "wiring-unchanged",
+      "statement": "Every handler and owner read is still wired, governance included."
+    },
+    {
+      "id": "approval-externally-verifiable",
+      "statement": "The approval that makes the records reviewed is checkable outside the package."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/app.go",
+    "apps/platform/internal/entrypoint/wiring/trial.go",
+    "apps/platform/internal/skill/library/governance/service.go"
+  ]
+}
