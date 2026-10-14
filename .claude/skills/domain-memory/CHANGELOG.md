@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.21.5
+
+### Changed
+
+- `references/script-api.md` states what the repository walks skip: dependency, build and version-control directories, paths Git ignores, nested checkouts, symbolic links in snapshots, and fixture directories in `quality-gates`. Only names inside the repository count.
+
 ## 0.21.4
 
 ### Changed
