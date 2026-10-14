@@ -13,6 +13,7 @@ import (
 	testlab "github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	trace "github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/readmodel"
 	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
@@ -60,7 +61,7 @@ func evaluationBatchPorts(runs *run.Service, testlabSvc *testlab.Service, traceS
 			return hash, confirmed, err
 		},
 		ReadChainEnds: func(ctx context.Context, workspaceID pgtype.UUID, runIDs []pgtype.UUID) (map[pgtype.UUID]batch.ChainEnd, error) {
-			ends, err := runs.ChainEnds(ctx, workspaceID, runIDs)
+			ends, err := readmodel.Reader{Pool: runs.Pool}.ChainEnds(ctx, workspaceID, runIDs)
 			out := make(map[pgtype.UUID]batch.ChainEnd, len(ends))
 			for start, end := range ends {
 				out[start] = batch.ChainEnd{

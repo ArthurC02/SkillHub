@@ -9,6 +9,7 @@ import (
 	registry "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	trace "github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/readmodel"
 	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 )
@@ -72,22 +73,23 @@ func runSkillFacts(skill registry.Skill) run.SkillFacts {
 }
 
 func NewTraceService(pool *pgxpool.Pool, signer *trace.Signer, runs *run.Service) *trace.Service {
+	reads := readmodel.Reader{Pool: runs.Pool}
 	return &trace.Service{
 		Pool: pool, Signer: signer,
 		ReadRunState: func(ctx context.Context, workspaceID, runID pgtype.UUID) (trace.RunState, bool, error) {
-			state, found, err := runs.TraceRun(ctx, workspaceID, runID)
+			state, found, err := reads.TraceRun(ctx, workspaceID, runID)
 			return trace.RunState{
 				Status: state.Status, StatusReason: state.StatusReason, Started: state.Started,
 			}, found, err
 		},
 		ReadIngestRunState: func(ctx context.Context, runID pgtype.UUID) (trace.IngestRunState, bool, error) {
-			state, found, err := runs.TraceIngestRun(ctx, runID)
+			state, found, err := reads.TraceIngestRun(ctx, runID)
 			return trace.IngestRunState{
 				ID: state.ID, WorkspaceID: state.WorkspaceID, Status: state.Status, FinishedAt: state.FinishedAt,
 			}, found, err
 		},
 		ReadRunTransitions: func(ctx context.Context, workspaceID, runID pgtype.UUID) ([]trace.RunTransition, error) {
-			rows, err := runs.TraceTransitions(ctx, workspaceID, runID)
+			rows, err := reads.TraceTransitions(ctx, workspaceID, runID)
 			if err != nil {
 				return nil, err
 			}
@@ -101,12 +103,13 @@ func NewTraceService(pool *pgxpool.Pool, signer *trace.Signer, runs *run.Service
 }
 
 func WireEvaluationRunReaders(service *eval.Service, runs *run.Service) {
+	reads := readmodel.Reader{Pool: runs.Pool}
 	service.ReadRunFacts = func(ctx context.Context, workspaceID, runID pgtype.UUID) (facts.Run, bool, error) {
-		evaluated, found, err := runs.EvaluationRun(ctx, workspaceID, runID)
+		evaluated, found, err := reads.EvaluationRun(ctx, workspaceID, runID)
 		return evalRunFacts(evaluated), found, err
 	}
 	service.ReadEvaluationInput = func(ctx context.Context, workspaceID, runID pgtype.UUID) (facts.EvaluationInput, bool, error) {
-		input, found, err := runs.EvaluationInput(ctx, workspaceID, runID)
+		input, found, err := reads.EvaluationInput(ctx, workspaceID, runID)
 		artifacts := make([]facts.Artifact, len(input.Artifacts))
 		for i, artifact := range input.Artifacts {
 			artifacts[i] = facts.Artifact{
@@ -154,7 +157,7 @@ func evalSkillFacts(skill registry.Skill) facts.Skill {
 	}
 }
 
-func evalRunFacts(evaluated run.EvaluationRun) facts.Run {
+func evalRunFacts(evaluated readmodel.EvaluationRun) facts.Run {
 	return facts.Run{
 		ID: evaluated.ID, WorkspaceID: evaluated.WorkspaceID,
 		SkillVersionID: evaluated.SkillVersionID, TestCaseSnapshotID: evaluated.TestCaseSnapshotID,

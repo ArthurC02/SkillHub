@@ -18,6 +18,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/readmodel"
 )
 
 func seedRun(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID string) string {
@@ -489,7 +490,7 @@ func TestEvaluationTraceSelectionIsBoundedAndCanonicallyOrdered(t *testing.T) {
 	traceSvc := &trace.Service{
 		Pool: pool,
 		ReadRunState: func(ctx context.Context, workspaceID, runID pgtype.UUID) (trace.RunState, bool, error) {
-			state, found, err := runs.TraceRun(ctx, workspaceID, runID)
+			state, found, err := readmodel.Reader{Pool: runs.Pool}.TraceRun(ctx, workspaceID, runID)
 			return trace.RunState{Status: state.Status, StatusReason: state.StatusReason}, found, err
 		},
 		ReadRunTransitions: readsTransitionsFrom(runs),
@@ -529,7 +530,7 @@ func TestEvaluationEvidenceKeepsTheEarliestActivationsAndErrorsBeyondTheTail(t *
 	traceSvc := &trace.Service{
 		Pool: pool,
 		ReadRunState: func(ctx context.Context, workspaceID, runID pgtype.UUID) (trace.RunState, bool, error) {
-			state, found, err := runs.TraceRun(ctx, workspaceID, runID)
+			state, found, err := readmodel.Reader{Pool: runs.Pool}.TraceRun(ctx, workspaceID, runID)
 			return trace.RunState{Status: state.Status, StatusReason: state.StatusReason}, found, err
 		},
 		ReadRunTransitions: readsTransitionsFrom(runs),
@@ -983,7 +984,7 @@ func TestTraceIsWorkspaceScoped(t *testing.T) {
 
 func readsTransitionsFrom(runs *run.Service) func(context.Context, pgtype.UUID, pgtype.UUID) ([]trace.RunTransition, error) {
 	return func(ctx context.Context, workspaceID, runID pgtype.UUID) ([]trace.RunTransition, error) {
-		rows, err := runs.TraceTransitions(ctx, workspaceID, runID)
+		rows, err := readmodel.Reader{Pool: runs.Pool}.TraceTransitions(ctx, workspaceID, runID)
 		if err != nil {
 			return nil, err
 		}

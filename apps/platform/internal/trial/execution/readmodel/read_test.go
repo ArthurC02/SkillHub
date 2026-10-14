@@ -1,10 +1,11 @@
-package run
+package readmodel
 
 import (
 	"testing"
 	"time"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -20,8 +21,8 @@ func TestEvaluationRunCarriesTheTerminalVerdict(t *testing.T) {
 		gen.RunStatusCancelled:    true,
 		gen.RunStatusTimedOut:     true,
 	}
-	if len(want) != len(AllStatuses) {
-		t.Fatalf("the table covers %d statuses, the product has %d; a new status needs a verdict here", len(want), len(AllStatuses))
+	if len(want) != len(run.AllStatuses) {
+		t.Fatalf("the table covers %d statuses, the product has %d; a new status needs a verdict here", len(want), len(run.AllStatuses))
 	}
 	for status, terminal := range want {
 		t.Run(string(status), func(t *testing.T) {

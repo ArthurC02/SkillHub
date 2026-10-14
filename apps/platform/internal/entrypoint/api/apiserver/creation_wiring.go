@@ -14,6 +14,7 @@ import (
 
 	"encoding/json"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/readmodel"
 	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 	"github.com/jackc/pgx/v5"
 )
@@ -61,7 +62,7 @@ func wireCreationWrites(s *creation.Service, versions *ingest.Service, runs *run
 		if err != nil {
 			return "", fmt.Errorf("%w: %w", creation.ErrNotFound, err)
 		}
-		r, found, err := runs.EvaluationRun(ctx, ws.ID, id)
+		r, found, err := readmodel.Reader{Pool: runs.Pool}.EvaluationRun(ctx, ws.ID, id)
 		if err != nil {
 			return "", err
 		}

@@ -8,6 +8,7 @@ import (
 
 	registry "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/readmodel"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 )
 
@@ -21,7 +22,7 @@ func TestEvaluationReceivesTheOwnersTerminalVerdict(t *testing.T) {
 		{"running", true, true},
 	} {
 		t.Run(tc.status, func(t *testing.T) {
-			got := evalRunFacts(run.EvaluationRun{Status: tc.status, Terminal: tc.finished, Succeeded: tc.succeeded})
+			got := evalRunFacts(readmodel.EvaluationRun{Status: tc.status, Terminal: tc.finished, Succeeded: tc.succeeded})
 			if got.Terminal != tc.finished {
 				t.Errorf("evaluation sees %s as finished = %v, want %v", tc.status, got.Terminal, tc.finished)
 			}

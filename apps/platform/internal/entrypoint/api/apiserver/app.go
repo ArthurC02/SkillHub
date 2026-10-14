@@ -35,6 +35,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/readmodel"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/checks"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/evalsettings"
@@ -133,7 +134,7 @@ func NewApp(cfg Config) (*App, error) {
 	wireTestLab(testlabSvc, cfg, registrySvc)
 
 	runSvc, traceSvc := newRunServices(cfg, testlabSvc, identitySvc, registrySvc, wiring.NewRunQueue(jobs))
-	funnel.RunBelongsToWorkspace = runSvc.BelongsToWorkspace
+	funnel.RunBelongsToWorkspace = readmodel.Reader{Pool: runSvc.Pool}.BelongsToWorkspace
 
 	evalSvc := &eval.Service{
 		Pool: cfg.Pool, TestLab: testlabSvc, Store: cfg.Store, Versions: versions, Trace: traceSvc,
@@ -358,7 +359,7 @@ func newDeps(cfg Config, app *App, creditSvc *credit.Service, funnel *analytics.
 		Credits: &creditsHandler{
 			Ledger:          &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
 			Identity:        identitySvc,
-			RunsInWorkspace: runSvc.RunsInWorkspace,
+			RunsInWorkspace: readmodel.Reader{Pool: runSvc.Pool}.RunsInWorkspace,
 		},
 		OperatorAudit: &operatorAuditHandler{DB: cfg.Pool},
 		Agents:        &operations.Handler{Svc: &operations.Service{Pool: cfg.Pool}, Actor: sessionActorID},

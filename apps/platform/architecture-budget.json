@@ -1,7 +1,7 @@
 {
   "packages": {
     "entrypoint/wiring": 26,
-    "trial/execution": 32
+    "trial/execution": 31
   },
   "types": {
     "creator/creation.Service": {
@@ -35,7 +35,7 @@
       "methods": 43
     },
     "trial/execution.Service": {
-      "methods": 138,
+      "methods": 129,
       "fields": 22
     },
     "trial/execution.driver": {

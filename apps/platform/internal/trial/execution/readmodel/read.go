@@ -1,4 +1,4 @@
-package run
+package readmodel
 
 import (
 	"context"
@@ -11,19 +11,20 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
-func (s *Service) BelongsToWorkspace(ctx context.Context, workspaceID, runID pgtype.UUID) (bool, error) {
-	return s.queries().RunInWorkspace(ctx, gen.RunInWorkspaceParams{
+func (r Reader) BelongsToWorkspace(ctx context.Context, workspaceID, runID pgtype.UUID) (bool, error) {
+	return r.queries().RunInWorkspace(ctx, gen.RunInWorkspaceParams{
 		ID: runID, WorkspaceID: workspaceID,
 	})
 }
 
-func (s *Service) RunsInWorkspace(ctx context.Context, workspaceID pgtype.UUID, runIDs []pgtype.UUID) ([]pgtype.UUID, error) {
+func (r Reader) RunsInWorkspace(ctx context.Context, workspaceID pgtype.UUID, runIDs []pgtype.UUID) ([]pgtype.UUID, error) {
 	if len(runIDs) == 0 {
 		return nil, nil
 	}
-	return s.queries().RunIDsInWorkspace(ctx, gen.RunIDsInWorkspaceParams{RunIds: runIDs, WorkspaceID: workspaceID})
+	return r.queries().RunIDsInWorkspace(ctx, gen.RunIDsInWorkspaceParams{RunIds: runIDs, WorkspaceID: workspaceID})
 }
 
 type TraceRun struct {
@@ -81,8 +82,8 @@ type EvaluationArtifactAbsence struct {
 	Expired int
 }
 
-func (s *Service) TraceRun(ctx context.Context, workspaceID, runID pgtype.UUID) (TraceRun, bool, error) {
-	row, err := s.queries().GetRun(ctx, gen.GetRunParams{ID: runID, WorkspaceID: workspaceID})
+func (r Reader) TraceRun(ctx context.Context, workspaceID, runID pgtype.UUID) (TraceRun, bool, error) {
+	row, err := r.queries().GetRun(ctx, gen.GetRunParams{ID: runID, WorkspaceID: workspaceID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return TraceRun{}, false, nil
 	}
@@ -94,8 +95,8 @@ func (s *Service) TraceRun(ctx context.Context, workspaceID, runID pgtype.UUID) 
 	}, true, nil
 }
 
-func (s *Service) TraceIngestRun(ctx context.Context, runID pgtype.UUID) (TraceIngestRun, bool, error) {
-	row, err := s.queries().GetRunForTraceIngest(ctx, runID)
+func (r Reader) TraceIngestRun(ctx context.Context, runID pgtype.UUID) (TraceIngestRun, bool, error) {
+	row, err := r.queries().GetRunForTraceIngest(ctx, runID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return TraceIngestRun{}, false, nil
 	}
@@ -112,8 +113,8 @@ func (s *Service) TraceIngestRun(ctx context.Context, runID pgtype.UUID) (TraceI
 	}, true, nil
 }
 
-func (s *Service) TraceTransitions(ctx context.Context, workspaceID, runID pgtype.UUID) ([]TraceTransition, error) {
-	rows, err := s.queries().ListRunStatusTransitions(ctx, gen.ListRunStatusTransitionsParams{
+func (r Reader) TraceTransitions(ctx context.Context, workspaceID, runID pgtype.UUID) ([]TraceTransition, error) {
+	rows, err := r.queries().ListRunStatusTransitions(ctx, gen.ListRunStatusTransitionsParams{
 		RunID: runID, WorkspaceID: workspaceID,
 	})
 	if err != nil {
@@ -126,27 +127,27 @@ func (s *Service) TraceTransitions(ctx context.Context, workspaceID, runID pgtyp
 	return out, nil
 }
 
-func (s *Service) EvaluationRun(ctx context.Context, workspaceID, runID pgtype.UUID) (EvaluationRun, bool, error) {
-	row, err := s.queries().GetRun(ctx, gen.GetRunParams{ID: runID, WorkspaceID: workspaceID})
+func (r Reader) EvaluationRun(ctx context.Context, workspaceID, runID pgtype.UUID) (EvaluationRun, bool, error) {
+	row, err := r.queries().GetRun(ctx, gen.GetRunParams{ID: runID, WorkspaceID: workspaceID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return EvaluationRun{}, false, nil
 	}
 	if err != nil {
 		return EvaluationRun{}, false, err
 	}
-	snapshots, err := s.queries().GetRunSnapshots(ctx, gen.GetRunSnapshotsParams{RunID: runID, WorkspaceID: workspaceID})
+	snapshots, err := r.queries().GetRunSnapshots(ctx, gen.GetRunSnapshotsParams{RunID: runID, WorkspaceID: workspaceID})
 	if err != nil {
 		return EvaluationRun{}, false, err
 	}
 	return evaluationRun(row, snapshots.RuntimeSnapshot), true, nil
 }
 
-func (s *Service) EvaluationInput(ctx context.Context, workspaceID, runID pgtype.UUID) (EvaluationInput, bool, error) {
-	run, found, err := s.EvaluationRun(ctx, workspaceID, runID)
+func (r Reader) EvaluationInput(ctx context.Context, workspaceID, runID pgtype.UUID) (EvaluationInput, bool, error) {
+	run, found, err := r.EvaluationRun(ctx, workspaceID, runID)
 	if err != nil || !found {
 		return EvaluationInput{}, found, err
 	}
-	attempts, err := s.queries().ListRunAttempts(ctx, gen.ListRunAttemptsParams{
+	attempts, err := r.queries().ListRunAttempts(ctx, gen.ListRunAttemptsParams{
 		RunID: runID, WorkspaceID: workspaceID,
 	})
 	if err != nil {
@@ -156,14 +157,14 @@ func (s *Service) EvaluationInput(ctx context.Context, workspaceID, runID pgtype
 	if len(attempts) > 0 {
 		latestAttempt = int(attempts[len(attempts)-1].AttemptNumber)
 	}
-	rows, err := s.queries().ListRunArtifactsWithLifecycle(ctx, gen.ListRunArtifactsWithLifecycleParams{
+	rows, err := r.queries().ListRunArtifactsWithLifecycle(ctx, gen.ListRunArtifactsWithLifecycleParams{
 		RunID: runID, WorkspaceID: workspaceID,
 	})
 	if err != nil {
 		return EvaluationInput{}, false, err
 	}
 	artifacts, absent := evaluationArtifacts(rows, time.Now())
-	earlier, err := s.earlierQuestions(ctx, workspaceID, runID)
+	earlier, err := r.earlierQuestions(ctx, workspaceID, runID)
 	if err != nil {
 		return EvaluationInput{}, false, err
 	}
@@ -176,8 +177,8 @@ func (s *Service) EvaluationInput(ctx context.Context, workspaceID, runID pgtype
 	}, true, nil
 }
 
-func (s *Service) earlierQuestions(ctx context.Context, workspaceID, runID pgtype.UUID) ([]trace.Question, error) {
-	rounds, err := s.queries().ListEarlierQuestions(ctx, gen.ListEarlierQuestionsParams{
+func (r Reader) earlierQuestions(ctx context.Context, workspaceID, runID pgtype.UUID) ([]trace.Question, error) {
+	rounds, err := r.queries().ListEarlierQuestions(ctx, gen.ListEarlierQuestionsParams{
 		RunID: runID, WorkspaceID: workspaceID,
 	})
 	if err != nil {
@@ -222,7 +223,7 @@ func evaluationRun(row gen.Run, runtimeSnapshot []byte) EvaluationRun {
 		ID: row.ID, WorkspaceID: row.WorkspaceID,
 		SkillVersionID: row.SkillVersionID, TestCaseSnapshotID: row.TestCaseSnapshotID,
 		Status: string(row.Status), StatusReason: row.StatusReason, RuntimeSnapshot: runtimeSnapshot,
-		Terminal: IsTerminal(row.Status), Succeeded: row.Status == gen.RunStatusSucceeded,
+		Terminal: run.IsTerminal(row.Status), Succeeded: row.Status == gen.RunStatusSucceeded,
 		StartedAt: timePtr(row.StartedAt), FinishedAt: timePtr(row.FinishedAt), FailureClass: row.FailureClass,
 	}
 }
