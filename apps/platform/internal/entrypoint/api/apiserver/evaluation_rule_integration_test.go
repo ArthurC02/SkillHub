@@ -175,7 +175,8 @@ func TestTheCheckKindsAnEditorCanOfferAreListed(t *testing.T) {
 		got[name] = category
 	}
 	want := map[string]string{
-		"contains_values": "grader", "asks": "grader", "does_not_ask": "grader", "judge": "grader", "prompt_grader": "grader",
+		"contains_values": "grader", "asks": "grader", "does_not_ask": "grader", "max_chars": "grader", "max_sentences": "grader", "calls_tool": "grader", "avoids_tool": "grader",
+		"judge": "grader", "prompt_grader": "grader",
 		"sequence": "composite", "all": "composite", "any": "composite", "if": "composite", "each": "composite",
 	}
 	if len(got) != len(want) {
@@ -260,5 +261,47 @@ func TestAJudgeBehindAPassingGateDecidesTheCriterion(t *testing.T) {
 	r := body.CriterionResults[0]
 	if r.Result != "failed" || r.Source != "model" || len(r.Steps) != 3 {
 		t.Errorf("c1 = %+v, want the judge's failure labelled model with every step recorded", r)
+	}
+}
+
+func TestToolAndLengthChecksAreDecidedFromTheRecordedTrace(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "eval-rule-tools")
+	a.evaluations.Judge = nil
+	criteria := `[
+		{"id":"searched","text":"looks the rate up","source":"user","check":{"kind":"calls_tool","values":["WebSearch"]}},
+		{"id":"no-shell","text":"does not run commands","source":"user","check":{"kind":"avoids_tool","values":["Bash"]}},
+		{"id":"short","text":"answers in at most 12 characters","source":"user","check":{"kind":"max_chars","values":["12"]}}]`
+	cases := []struct {
+		name, tool, output string
+		want               map[string]string
+	}{
+		{"searched without a shell and answered briefly", "WebSearch", "匯率是 31.5。",
+			map[string]string{"searched": "passed", "no-shell": "passed", "short": "passed"}},
+		{"ran a shell instead of searching and answered at length", "Bash", "我用指令算出來匯率大約是 31.5 左右。",
+			map[string]string{"searched": "failed", "no-shell": "failed", "short": "failed"}},
+	}
+	for i, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			skillID := seedSkill(t, pool, c.workspaceID, fmt.Sprintf("tool-ruled-%d", i))
+			runID, _ := seedEvaluatableRunWithCriteria(t, pool, c.workspaceID, skillID, criteria, nil)
+			seedFinalOutput(t, pool, c.workspaceID, runID, tc.output)
+			insertTraceEvents(t, pool, c.workspaceID, runID, 1, []int64{2}, "tool_call",
+				fmt.Sprintf(`{"tool_name":%q,"outcome":"succeeded","duration_ms":12}`, tc.tool))
+
+			if err := a.evaluations.Evaluate(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+				t.Fatalf("evaluate: %v", err)
+			}
+			status, body := c.getEvaluation(t, "/runs/"+runID+"/evaluation")
+			if status != http.StatusOK || body.Status != "completed" || len(body.CriterionResults) != len(tc.want) {
+				t.Fatalf("got %d status=%q results=%+v (%s)", status, body.Status, body.CriterionResults, body.Error)
+			}
+			for _, r := range body.CriterionResults {
+				if r.Source != "rule" || r.Result != tc.want[r.CriterionID] {
+					t.Errorf("criterion %s = %s from %s, want %s from the rule", r.CriterionID, r.Result, r.Source, tc.want[r.CriterionID])
+				}
+			}
+		})
 	}
 }

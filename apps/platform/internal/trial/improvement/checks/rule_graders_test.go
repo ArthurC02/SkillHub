@@ -51,6 +51,12 @@ func ruledMaterial(final string, questions []trace.Question, status string, comp
 	return m
 }
 
+func toolMaterial(calls map[string]int, complete bool) facts.Material {
+	m := ruledMaterial("答完了", nil, "succeeded", complete)
+	m.Summary.ToolCalls.ByName = calls
+	return m
+}
+
 func criterion(id, kind string, values ...string) testlab.Criterion {
 	return testlab.Criterion{ID: id, Text: id, Check: &testlab.Check{Kind: kind, Values: values}}
 }
@@ -84,6 +90,40 @@ func TestEachRuleCheckDecidesFromTheRunsOwnRecords(t *testing.T) {
 			criterion("c", "does_not_ask"), verdict.ResultFailed},
 		{"a pass on incomplete evidence is not recorded as passed", ruledMaterial("訂金 1,200 元", nil, "succeeded", false),
 			criterion("c", "contains_values", "1200"), verdict.ResultUndetermined},
+		{"an answer exactly at the character limit", ruledMaterial("一二三", nil, "succeeded", true),
+			criterion("c", "max_chars", "3"), verdict.ResultPassed},
+		{"an answer one character over the limit", ruledMaterial("一二三", nil, "succeeded", true),
+			criterion("c", "max_chars", "2"), verdict.ResultFailed},
+		{"whitespace does not count toward the character limit", ruledMaterial(" 一 二\n三 ", nil, "succeeded", true),
+			criterion("c", "max_chars", "3"), verdict.ResultPassed},
+		{"a failed run does not meet a character limit", ruledMaterial("", nil, "failed", true),
+			criterion("c", "max_chars", "100"), verdict.ResultFailed},
+		{"a failed run with a short partial output does not meet a character limit", ruledMaterial("一二", nil, "failed", true),
+			criterion("c", "max_chars", "100"), verdict.ResultFailed},
+		{"a run with no final output does not meet a character limit", ruledMaterial("  ", askedAboutChildren, "succeeded", true),
+			criterion("c", "max_chars", "100"), verdict.ResultFailed},
+		{"a stored limit that is not a number is undetermined", ruledMaterial("一二三", nil, "succeeded", true),
+			criterion("c", "max_chars", "三"), verdict.ResultUndetermined},
+		{"an answer exactly at the sentence limit", ruledMaterial("第一句。第二句！", nil, "succeeded", true),
+			criterion("c", "max_sentences", "2"), verdict.ResultPassed},
+		{"an answer one sentence over the limit", ruledMaterial("第一句。第二句！", nil, "succeeded", true),
+			criterion("c", "max_sentences", "1"), verdict.ResultFailed},
+		{"a line break also ends a sentence", ruledMaterial("第一行\n第二行", nil, "succeeded", true),
+			criterion("c", "max_sentences", "1"), verdict.ResultFailed},
+		{"a pass on a sentence limit with incomplete evidence is not recorded as passed", ruledMaterial("一句。", nil, "succeeded", false),
+			criterion("c", "max_sentences", "1"), verdict.ResultUndetermined},
+		{"the run called the named tool", toolMaterial(map[string]int{"WebSearch": 1}, true),
+			criterion("c", "calls_tool", "websearch"), verdict.ResultPassed},
+		{"the run called only one of two named tools", toolMaterial(map[string]int{"WebSearch": 2}, true),
+			criterion("c", "calls_tool", "WebSearch", "Bash"), verdict.ResultFailed},
+		{"the run called no tool when one was required", toolMaterial(nil, true),
+			criterion("c", "calls_tool", "Bash"), verdict.ResultFailed},
+		{"the run avoided the named tool", toolMaterial(map[string]int{"Read": 3}, true),
+			criterion("c", "avoids_tool", "WebSearch"), verdict.ResultPassed},
+		{"the run called a tool it should have avoided", toolMaterial(map[string]int{"Read": 3, "websearch": 1}, true),
+			criterion("c", "avoids_tool", "WebSearch"), verdict.ResultFailed},
+		{"avoiding a tool on incomplete evidence is not recorded as passed", toolMaterial(nil, false),
+			criterion("c", "avoids_tool", "WebSearch"), verdict.ResultUndetermined},
 		{"a fail on incomplete evidence stays failed", ruledMaterial("訂金 1,200 元", nil, "succeeded", false),
 			criterion("c", "contains_values", "999"), verdict.ResultFailed},
 	}
@@ -181,5 +221,29 @@ func TestOnlyARunThatSucceededByAskingWaitsForItsAnswer(t *testing.T) {
 		if got := c.m.AwaitsAnswer(); got != c.want {
 			t.Errorf("%s: awaitsAnswer = %v, want %v", c.name, got, c.want)
 		}
+	}
+}
+
+func TestCountsFollowTheSkillsOwnCheckScript(t *testing.T) {
+	cases := []struct {
+		name, text       string
+		chars, sentences int
+	}{
+		{"empty", "", 0, 0},
+		{"whitespace only", " \n\t", 0, 0},
+		{"one sentence with a full stop", "今天下雨。", 5, 1},
+		{"mixed punctuation", "要帶傘嗎？要!好的。", 10, 3},
+		{"break with no text after it", "一。\n\n二。", 4, 2},
+		{"latin words keep their letters", "ab cd", 4, 1},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := countChars(c.text); got != c.chars {
+				t.Errorf("countChars(%q) = %d, want %d", c.text, got, c.chars)
+			}
+			if got := countSentences(c.text); got != c.sentences {
+				t.Errorf("countSentences(%q) = %d, want %d", c.text, got, c.sentences)
+			}
+		})
 	}
 }

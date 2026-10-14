@@ -400,6 +400,8 @@ type ToolCallSummary struct {
 	TotalMS     int64  `json:"total_duration_ms"`
 	SlowestMS   int64  `json:"slowest_duration_ms"`
 	SlowestName string `json:"slowest_tool,omitempty"`
+
+	ByName map[string]int `json:"-"`
 }
 
 type ErrorSummary struct {

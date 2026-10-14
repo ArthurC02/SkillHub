@@ -55,6 +55,12 @@ func TestToolCallsCountOnlySucceededAsSuccessAndIgnoreDurationsThatAreNotWholeMi
 	if got.Total != 7 || got.Succeeded != 5 || got.Failed != 2 {
 		t.Errorf("counts = %+v, want 7 total, 5 succeeded, 2 failed", got)
 	}
+	if got.ByName["bash"] != 1 || got.ByName["read"] != 1 || len(got.ByName) != 7 {
+		t.Errorf("calls by name = %v, want each of the 7 tools once, failed calls included", got.ByName)
+	}
+	if twice := foldGeneral(repeated(2, rows[0])).summary.ToolCalls; twice.ByName["bash"] != 2 {
+		t.Errorf("calls by name = %v, want bash twice", twice.ByName)
+	}
 	if got.SlowestMS != 999999999999999999 || got.SlowestName != "no-outcome" {
 		t.Errorf("slowest = %s %d", got.SlowestName, got.SlowestMS)
 	}

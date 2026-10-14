@@ -72,6 +72,10 @@ func foldGeneral(rows []gen.ListTraceGeneralFactsRow) generalFold {
 
 func (t *ToolCallSummary) add(name, outcome string, durationMS int64) {
 	t.Total++
+	if t.ByName == nil {
+		t.ByName = map[string]int{}
+	}
+	t.ByName[name]++
 	if outcome == toolCallSucceeded {
 		t.Succeeded++
 	} else {

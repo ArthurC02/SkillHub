@@ -61,8 +61,12 @@ type checkNode interface {
 	evaluate(s checkScope, n testlab.Check, path string) outcome
 }
 
+type valuesValidator interface {
+	validateValues(values []string) error
+}
+
 var checkNodeList = []checkNode{
-	containsValuesNode{}, asksNode{}, doesNotAskNode{}, judgeNode{}, promptGraderNode{},
+	containsValuesNode{}, asksNode{}, doesNotAskNode{}, maxCharsNode{}, maxSentencesNode{}, callsToolNode{}, avoidsToolNode{}, judgeNode{}, promptGraderNode{},
 	sequenceNode{}, allNode{}, anyNode{}, ifNode{}, eachNode{},
 }
 
@@ -108,19 +112,12 @@ func validateNode(c testlab.Check, depth int, count *int) (testlab.Check, error)
 	if !known {
 		return testlab.Check{}, fmt.Errorf("%w: 不認得的檢查方式 %q", ErrInvalidCheck, c.Kind)
 	}
-	k := node.kind()
 	values, err := normalizedValues(c.Values)
 	if err != nil {
 		return testlab.Check{}, err
 	}
-	if !within(len(values), k.Values) {
-		return testlab.Check{}, fmt.Errorf("%w: %s 的值要 %d 到 %d 個", ErrInvalidCheck, c.Kind, k.Values.Min, k.Values.Max)
-	}
-	if !within(len(c.Children), k.Children) {
-		return testlab.Check{}, fmt.Errorf("%w: %s 要 %d 到 %d 個子節點", ErrInvalidCheck, c.Kind, k.Children.Min, k.Children.Max)
-	}
-	if !k.AtLeast && c.AtLeast != 0 || k.AtLeast && (c.AtLeast < 0 || c.AtLeast > len(values)) {
-		return testlab.Check{}, fmt.Errorf("%w: %s 的 at_least 不合法", ErrInvalidCheck, c.Kind)
+	if err := validateShape(node, c, values); err != nil {
+		return testlab.Check{}, err
 	}
 	out := testlab.Check{Kind: c.Kind, Values: values, AtLeast: c.AtLeast}
 	for _, child := range c.Children {
@@ -131,6 +128,25 @@ func validateNode(c testlab.Check, depth int, count *int) (testlab.Check, error)
 		out.Children = append(out.Children, normalized)
 	}
 	return out, nil
+}
+
+func validateShape(node checkNode, c testlab.Check, values []string) error {
+	k := node.kind()
+	if !within(len(values), k.Values) {
+		return fmt.Errorf("%w: %s 的值要 %d 到 %d 個", ErrInvalidCheck, c.Kind, k.Values.Min, k.Values.Max)
+	}
+	if !within(len(c.Children), k.Children) {
+		return fmt.Errorf("%w: %s 要 %d 到 %d 個子節點", ErrInvalidCheck, c.Kind, k.Children.Min, k.Children.Max)
+	}
+	if v, ok := node.(valuesValidator); ok {
+		if err := v.validateValues(values); err != nil {
+			return fmt.Errorf("%w (%s)", err, c.Kind)
+		}
+	}
+	if !k.AtLeast && c.AtLeast != 0 || k.AtLeast && (c.AtLeast < 0 || c.AtLeast > len(values)) {
+		return fmt.Errorf("%w: %s 的 at_least 不合法", ErrInvalidCheck, c.Kind)
+	}
+	return nil
 }
 
 func normalizedValues(raw []string) ([]string, error) {
