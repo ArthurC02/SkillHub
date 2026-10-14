@@ -3,7 +3,7 @@ import { useCatalog } from "../../../skill";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Loading } from "../../../../shared/ui/Loading";
 import { MAX_COMPARE } from "../../../skill";
-import type { PublicSearchResult } from "../../../../core/api/types";
+import type { PublicSearchResult, SearchFilters } from "../../../../core/api/types";
 import { CompareBar } from "./CompareBar";
 import { CatalogSkillCard } from "./CatalogSkillCard";
 import { SearchFacetNotes } from "./SearchFacetNotes";
@@ -71,14 +71,12 @@ export function Catalog({
   query,
   selected,
   onToggle,
-  narrowing,
-  tierFiltered,
+  filters,
 }: {
   query: ReturnType<typeof useCatalog>;
   selected: string[];
   onToggle: (skillId: string) => void;
-  narrowing: boolean;
-  tierFiltered: boolean;
+  filters: SearchFilters;
 }) {
   if (query.isPending) return <Loading what="目錄" />;
   if (query.error)
@@ -94,6 +92,8 @@ export function Catalog({
   if (!query.data) return null;
 
   const { results, total, truncated } = query.data;
+  const narrowing = Object.values(filters).some((value) => value !== undefined);
+  const tierFiltered = filters.tier !== undefined;
   const hasCurated = results.some((hit) => hit.tier.value === "curated");
 
   const card = (hit: PublicSearchResult) => (

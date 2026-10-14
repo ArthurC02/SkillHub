@@ -114,6 +114,9 @@ export function Home() {
     });
   }
 
+  const catalogView = (
+    <Catalog query={catalog} selected={selected} onToggle={toggleSelected} filters={filters} />
+  );
   return (
     <section className={browsing ? "home" : "home home-searching"}>
       <SearchHeroForm
@@ -126,6 +129,9 @@ export function Home() {
         }}
         onSubmit={handleSubmit}
       />
+
+      {!browsing && <SearchReadState query={result} />}
+      {browsing && catalog.error && catalogView}
 
       <CategoryNav
         filters={effectiveFilters}
@@ -147,17 +153,7 @@ export function Home() {
         }
       />
 
-      {browsing && (
-        <Catalog
-          query={catalog}
-          selected={selected}
-          onToggle={toggleSelected}
-          narrowing={Object.values(filters).some((value) => value !== undefined)}
-          tierFiltered={filters.tier !== undefined}
-        />
-      )}
-
-      {!browsing && <SearchReadState query={result} />}
+      {browsing && !catalog.error && catalogView}
 
       {!browsing && data && (
         <SearchResultsSection

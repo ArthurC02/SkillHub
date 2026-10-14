@@ -60,6 +60,15 @@ for (const corrected of [false, true]) {
       failing = true;
       await page.goBack();
       await expect(main.getByRole("alert")).toContainText("暫時無法讀取搜尋結果");
+      await page.evaluate(() => scrollTo(0, 0));
+      await expect(main.getByRole("alert")).toBeInViewport({ ratio: 1 });
+      await expect(main.getByRole("button", { name: "再試一次", exact: true })).toBeInViewport({
+        ratio: 1,
+      });
+      await page.screenshot({
+        path: test.info().outputPath("search-failure-first-screen.png"),
+        fullPage: false,
+      });
       await expect(main.getByRole("region", { name: "搜尋理解", exact: true })).toHaveCount(0);
       await expect(main.locator(".search-results > li")).toHaveCount(0);
       await expect(main.getByText("沒有夠接近的小工具。", { exact: true })).toHaveCount(0);
@@ -96,6 +105,7 @@ test("catalog failure retries its read without resubmitting the unsubmitted sear
   page,
 }) => {
   await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
   let reads = 0;
   await page.route("**/api/skills/catalog?*", (route) => {
     if (new URL(route.request().url()).searchParams.get("limit") !== "100") return route.fallback();
@@ -104,13 +114,18 @@ test("catalog failure retries its read without resubmitting the unsubmitted sear
       ? route.fulfill({ status: 503, json: { error: "service unavailable" } })
       : route.fallback();
   });
-  await page.goto("/");
+  await page.goto("/?category=data");
   await expect(page.getByRole("alert")).toContainText("暫時無法讀取目錄");
+  await page.evaluate(() => scrollTo(0, 0));
+  await expect(page.getByRole("alert")).toBeInViewport({ ratio: 1 });
+  await expect(page.getByRole("button", { name: "再試一次", exact: true })).toBeInViewport({
+    ratio: 1,
+  });
   await page.getByLabel("任務描述", { exact: true }).fill("保留這段任務");
   await page.getByRole("button", { name: "再試一次", exact: true }).click();
-  await expect(page.locator(".catalog-gallery > li")).toHaveCount(3);
+  await expect(page.locator(".catalog-gallery > li")).toHaveCount(1);
   await expect(page.getByLabel("任務描述", { exact: true })).toHaveValue("保留這段任務");
   await expect(page.locator("#catalog-search-heading")).toBeFocused();
   expect(reads).toBe(2);
-  expect(new URL(page.url()).search).toBe("");
+  expect(new URL(page.url()).searchParams.get("category")).toBe("data");
 });
