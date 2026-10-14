@@ -5,18 +5,20 @@ import { SkillWorkspaceNav, useOwnSkills } from "../../skill";
 import { ExistingTestCasesSection } from "./components/ExistingTestCasesSection";
 import { CreateTestCaseForm } from "./components/CreateTestCaseForm";
 import "./TestCaseList.page.css";
+import { canRetainLoadedPage } from "../../../core/api/client";
+import { ReadFailure } from "../../../shared/ui/LoginRequired";
+import { ListFreshness } from "../../../shared/ui/ListFreshness";
 
 export function TestCaseList() {
   const navigate = useNavigate();
   const { skill: filter, version } = useSearch({ from: "/lab/test-cases" });
-  const testCases = useTestCases(filter);
   const skills = useOwnSkills();
   const [skillId, setSkillId] = useState("");
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
-  const rows = testCases.data?.pages.flatMap((page) => page.test_cases) ?? [];
-  const ownedSkill = skills.data?.skills.find((s) => s.skill_id === filter);
-  const notMine = Boolean(filter) && Boolean(skills.data) && !ownedSkill;
+  const ownSkills = skills.error ? undefined : skills.data;
+  const ownedSkill = ownSkills?.skills.find((s) => s.skill_id === filter);
+  const notMine = Boolean(filter) && Boolean(ownSkills) && !ownedSkill;
   const chosenSkill = skillId || ownedSkill?.skill_id || "";
 
   const create = useCreateTestCase();
@@ -36,22 +38,12 @@ export function TestCaseList() {
       {filter && <SkillWorkspaceNav skillId={filter} versionId={version} />}
 
       <div className="test-case-workspace">
-        <section className="test-case-index" aria-labelledby="existing-test-cases-heading">
-          <p className="page-eyebrow">Scenario library · {rows.length}</p>
-          <h2 id="existing-test-cases-heading">既有的測試題</h2>
-          <ExistingTestCasesSection
-            filter={filter}
-            version={version}
-            ownedSkillName={ownedSkill?.name}
-            notMine={notMine}
-            isPending={testCases.isPending}
-            error={testCases.error}
-            rows={rows}
-            hasNextPage={testCases.hasNextPage}
-            isFetchingNextPage={testCases.isFetchingNextPage}
-            onFetchNextPage={() => testCases.fetchNextPage()}
-          />
-        </section>
+        <TestCaseIndex
+          filter={filter}
+          version={version}
+          ownedSkillName={ownedSkill?.name}
+          notMine={notMine}
+        />
 
         <section
           className="test-case-editor"
@@ -59,11 +51,15 @@ export function TestCaseList() {
           aria-labelledby="create-test-case-heading"
         >
           <p className="page-eyebrow">New scenario</p>
-          <h2 id="create-test-case-heading">建立新的測試題</h2>
+          <h2 id="create-test-case-heading" tabIndex={-1}>
+            建立新的測試題
+          </h2>
           <p>先定義要驗證的小工具與任務；建立後再補資料集、驗收條件與 Rubric。</p>
           <CreateTestCaseForm
-            skills={skills.data}
+            skills={ownSkills}
             skillsError={skills.error}
+            retrySkills={() => void skills.refetch()}
+            retryingSkills={skills.isFetching}
             chosenSkill={chosenSkill}
             onSkillChange={setSkillId}
             name={name}
@@ -81,6 +77,69 @@ export function TestCaseList() {
           />
         </section>
       </div>
+    </section>
+  );
+}
+
+function TestCaseIndex({
+  filter,
+  version,
+  ownedSkillName,
+  notMine,
+}: {
+  filter: string | undefined;
+  version: string | undefined;
+  ownedSkillName: string | undefined;
+  notMine: boolean;
+}) {
+  const testCases = useTestCases(filter);
+  const nextPageFailure = canRetainLoadedPage(testCases.error, testCases.isFetchNextPageError);
+  const data = testCases.error && !nextPageFailure ? undefined : testCases.data;
+  const rows = data?.pages.flatMap((page) => page.test_cases) ?? [];
+  return (
+    <section className="test-case-index" aria-labelledby="existing-test-cases-heading">
+      <p className="page-eyebrow">
+        Scenario library · {data ? `已載入 ${rows.length}` : "尚未讀取"}
+      </p>
+      <h2 id="existing-test-cases-heading" tabIndex={-1}>
+        既有的測試題
+      </h2>
+      <ReadFailure
+        error={testCases.error}
+        what="測試題"
+        retry={() => void (nextPageFailure ? testCases.fetchNextPage() : testCases.refetch())}
+        retrying={testCases.isFetching}
+        focusTarget="existing-test-cases-heading"
+      >
+        {nextPageFailure && (
+          <p role="alert">更多測試題讀取失敗；以下僅保留已載入的紀錄，尚未讀完。請再試一次。</p>
+        )}
+      </ReadFailure>
+      {data && !testCases.error && (
+        <ListFreshness
+          inFlight={false}
+          showWhenIdle
+          subject="測試題"
+          updatedAt={testCases.dataUpdatedAt}
+          fetching={testCases.isFetching && !testCases.isFetchingNextPage}
+          refetch={async () => {
+            const result = await testCases.refetch();
+            if (result.error) document.getElementById("existing-test-cases-heading")?.focus();
+          }}
+        />
+      )}
+      <ExistingTestCasesSection
+        filter={filter}
+        version={version}
+        ownedSkillName={ownedSkillName}
+        notMine={notMine}
+        isPending={testCases.isPending}
+        error={nextPageFailure ? null : testCases.error}
+        rows={rows}
+        hasNextPage={testCases.hasNextPage && !testCases.error}
+        isFetchingNextPage={testCases.isFetchingNextPage}
+        onFetchNextPage={() => testCases.fetchNextPage()}
+      />
     </section>
   );
 }

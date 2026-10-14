@@ -28,6 +28,14 @@ export function isLastingReadFailure(error: unknown): boolean {
   return error instanceof ApiError && lastingReadFailures.has(error.status);
 }
 
+export function canRetainLoadedPage(error: unknown, nextPageFailure: boolean): boolean {
+  return (
+    nextPageFailure &&
+    !(error instanceof ApiError && error.status === 401) &&
+    !isLastingReadFailure(error)
+  );
+}
+
 export function serverReason(error: unknown): string | undefined {
   if (!(error instanceof ApiError) || error.status < 400 || error.status >= 500) return undefined;
   if (error.status === 401) return undefined;

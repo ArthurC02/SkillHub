@@ -8,6 +8,8 @@ import { MutationError } from "./MutationError";
 export function CreateTestCaseForm({
   skills,
   skillsError,
+  retrySkills,
+  retryingSkills,
   chosenSkill,
   onSkillChange,
   name,
@@ -19,6 +21,8 @@ export function CreateTestCaseForm({
 }: {
   skills: OwnSkills | undefined;
   skillsError: Error | null;
+  retrySkills: () => void;
+  retryingSkills: boolean;
   chosenSkill: string;
   onSkillChange: (skillId: string) => void;
   name: string;
@@ -29,14 +33,21 @@ export function CreateTestCaseForm({
   onCreated: (testCaseId: string) => void;
 }) {
   const sizeReason = oversizeReason(name, prompt);
+  const skillUnavailable = !skills?.skills.some((skill) => skill.skill_id === chosenSkill);
 
   return (
     <>
-      <ReadFailure error={skillsError} what="你的小工具清單" />
+      <ReadFailure
+        error={skillsError}
+        what="你的小工具清單"
+        retry={retrySkills}
+        retrying={retryingSkills}
+        focusTarget="create-test-case-heading"
+      />
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (oversizeReason(name, prompt)) return;
+          if (oversizeReason(name, prompt) || skillsError || skillUnavailable) return;
           create.mutate(
             { skillId: chosenSkill, name, prompt },
             { onSuccess: (tc) => onCreated(tc.test_case_id) },
@@ -77,33 +88,74 @@ export function CreateTestCaseForm({
           <span className="note">User Prompt 最多 {MAX_PROMPT_CHARS} 個字。</span>
         </p>
         <CreateValidation skillId={chosenSkill} name={name} prompt={prompt} />
+        {(skillsError || (chosenSkill && skillUnavailable)) && (
+          <p className="note" role="status" id="create-skills-why">
+            {skillsError
+              ? "目前無法確認可用的小工具，請先重新讀取清單。"
+              : "選擇的小工具目前不在可用清單裡，請重新選擇。"}
+          </p>
+        )}
         {sizeReason && (
           <p className="note" role="status" id="create-size-why">
             {sizeReason}
           </p>
         )}
-        <button
-          type="submit"
-          className="action"
-          disabled={
-            create.isPending ||
-            chosenSkill === "" ||
-            name.trim() === "" ||
-            prompt.trim() === "" ||
-            sizeReason !== null
-          }
-          aria-describedby={
-            chosenSkill === "" || name.trim() === "" || prompt.trim() === ""
-              ? "create-why"
-              : sizeReason
-                ? "create-size-why"
-                : undefined
-          }
-        >
-          {create.isPending ? "建立中…" : "建立"}
-        </button>
+        <CreateTestCaseButton
+          pending={create.isPending}
+          skillsError={skillsError}
+          skillUnavailable={skillUnavailable}
+          chosenSkill={chosenSkill}
+          name={name}
+          prompt={prompt}
+          sizeReason={sizeReason}
+        />
       </form>
       <MutationError error={create.error} what="測試題" fallback="建立沒有成功，可以再按一次。" />
     </>
+  );
+}
+
+function CreateTestCaseButton({
+  pending,
+  skillsError,
+  skillUnavailable,
+  chosenSkill,
+  name,
+  prompt,
+  sizeReason,
+}: {
+  pending: boolean;
+  skillsError: Error | null;
+  skillUnavailable: boolean;
+  chosenSkill: string;
+  name: string;
+  prompt: string;
+  sizeReason: string | null;
+}) {
+  return (
+    <button
+      type="submit"
+      className="action"
+      disabled={
+        pending ||
+        Boolean(skillsError) ||
+        skillUnavailable ||
+        chosenSkill === "" ||
+        name.trim() === "" ||
+        prompt.trim() === "" ||
+        sizeReason !== null
+      }
+      aria-describedby={
+        skillsError || (chosenSkill && skillUnavailable)
+          ? "create-skills-why"
+          : chosenSkill === "" || name.trim() === "" || prompt.trim() === ""
+            ? "create-why"
+            : sizeReason
+              ? "create-size-why"
+              : undefined
+      }
+    >
+      {pending ? "建立中…" : "建立"}
+    </button>
   );
 }

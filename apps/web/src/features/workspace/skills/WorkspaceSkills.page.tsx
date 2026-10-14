@@ -1,6 +1,7 @@
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
-import { ApiError } from "../../../core/api/client";
+import { ApiError, canRetainLoadedPage } from "../../../core/api/client";
+import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useDeleteSkill, useOwnSkillPages } from "../../skill";
@@ -248,7 +249,9 @@ export function WorkspaceSkills() {
   const [message, setMessage] = useState("");
   const generateExposed = useGenerateEntryPoint();
   const creationExposed = useCreationEntryPoint();
-  const pages = skills.data?.pages ?? [];
+  const nextPageFailure = canRetainLoadedPage(skills.error, skills.isFetchNextPageError);
+  const data = skills.error && !nextPageFailure ? undefined : skills.data;
+  const pages = data?.pages ?? [];
   const rows = Array.from(
     new Map(pages.flatMap((page) => page.skills).map((skill) => [skill.skill_id, skill])).values(),
   );
@@ -260,7 +263,9 @@ export function WorkspaceSkills() {
 
   return (
     <section>
-      <h1>資產庫</h1>
+      <h1 id="workspace-skills-heading" tabIndex={-1}>
+        資產庫
+      </h1>
       {hasSkills && (
         <p className="note" data-role="teaching">
           複製與匯入的都在這裡；公開目錄的不在。
@@ -278,7 +283,11 @@ export function WorkspaceSkills() {
       {isEmpty && <CreateHub generateExposed={generateExposed} creationExposed={creationExposed} />}
 
       {skills.isPending && <Loading what="資產庫內容" />}
-      {!hasSkills && <ReadFailure error={skills.error} what="資產庫內容" />}
+      <SkillsReadStatus
+        skills={skills}
+        nextPageFailure={nextPageFailure}
+        readable={Boolean(data)}
+      />
       {message && <p role="status">{message}</p>}
       {remove.error && (
         <ReadFailure error={remove.error} what="刪除小工具">
@@ -298,7 +307,7 @@ export function WorkspaceSkills() {
         </ul>
       )}
 
-      {hasSkills && (
+      {hasSkills && !skills.error && (
         <SkillListProgress
           shown={rows.length}
           total={total}
@@ -306,11 +315,6 @@ export function WorkspaceSkills() {
           isFetchingNextPage={skills.isFetchingNextPage}
           onFetchNextPage={() => skills.fetchNextPage()}
         />
-      )}
-      {skills.isFetchNextPageError && (
-        <ReadFailure error={skills.error} what="更多資產庫內容">
-          <p role="alert">沒有載入更多；已顯示的 {rows.length} 個仍可使用。可以再按一次。</p>
-        </ReadFailure>
       )}
 
       {hasSkills && (
@@ -343,5 +347,44 @@ export function WorkspaceSkills() {
         </ul>
       </section>
     </section>
+  );
+}
+
+function SkillsReadStatus({
+  skills,
+  nextPageFailure,
+  readable,
+}: {
+  skills: ReturnType<typeof useOwnSkillPages>;
+  nextPageFailure: boolean;
+  readable: boolean;
+}) {
+  return (
+    <>
+      <ReadFailure
+        error={skills.error}
+        what="資產庫內容"
+        retry={() => void (nextPageFailure ? skills.fetchNextPage() : skills.refetch())}
+        retrying={skills.isFetching}
+        focusTarget="workspace-skills-heading"
+      >
+        {nextPageFailure && (
+          <p role="alert">更多資產庫內容讀取失敗；以下僅保留已載入的紀錄，尚未讀完。請再試一次。</p>
+        )}
+      </ReadFailure>
+      {readable && !skills.error && (
+        <ListFreshness
+          inFlight={false}
+          showWhenIdle
+          subject="資產"
+          updatedAt={skills.dataUpdatedAt}
+          fetching={skills.isFetching && !skills.isFetchingNextPage}
+          refetch={async () => {
+            const result = await skills.refetch();
+            if (result.error) document.getElementById("workspace-skills-heading")?.focus();
+          }}
+        />
+      )}
+    </>
   );
 }

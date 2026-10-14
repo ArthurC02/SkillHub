@@ -1,10 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { isLastingReadFailure } from "../../core/api/client";
+import { canRetainLoadedPage } from "../../core/api/client";
 import { useFeatureAvailability } from "../../shared/featureAvailability";
 import { ListFreshness } from "../../shared/ui/ListFreshness";
 import { Loading } from "../../shared/ui/Loading";
 import { ReadFailure } from "../../shared/ui/LoginRequired";
-import { unauthenticated } from "../../shared/ui/LoginRequired.model";
 import { Timestamp } from "../../shared/ui/Timestamp";
 import {
   activityUnavailable,
@@ -48,7 +47,7 @@ const KIND_LABELS: Record<string, string> = {
 
 export function Activity() {
   const activity = useActivity();
-  const recoverableNextPageFailure = canRetainActivityPage(
+  const recoverableNextPageFailure = canRetainLoadedPage(
     activity.error,
     activity.isFetchNextPageError,
   );
@@ -160,10 +159,6 @@ export function Activity() {
       )}
     </section>
   );
-}
-
-function canRetainActivityPage(error: unknown, nextPageFailure: boolean): boolean {
-  return nextPageFailure && !unauthenticated(error) && !isLastingReadFailure(error);
 }
 
 function ActivitySummary({ items, hasMore }: { items: ActivityItem[]; hasMore: boolean }) {

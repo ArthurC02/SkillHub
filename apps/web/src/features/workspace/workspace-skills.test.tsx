@@ -188,7 +188,7 @@ test("the library loads every owner skill page without duplicating the existing 
   expect(button("載入更多")).toBeUndefined();
 });
 
-test("a later library page failure keeps the loaded skills and offers the same action again", async () => {
+test("a later library page failure keeps the loaded skills and offers a focused retry", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
     if (url.endsWith("/me")) return json(ME);
@@ -198,12 +198,15 @@ test("a later library page failure keeps the loaded skills and offers the same a
 
   await render(<WorkspaceSkills />, () => text().includes("已顯示 24 / 25 個小工具"));
   await act(async () => button("載入更多")?.click());
-  await waitFor(() => text().includes("沒有載入更多"));
+  await waitFor(() => container.querySelector("[role=alert]") !== null);
 
   expect(container.querySelectorAll(".skill-card")).toHaveLength(24);
-  expect(text()).toContain("已顯示的 24 個仍可使用");
+  expect(text()).toContain("僅保留已載入的紀錄，尚未讀完");
   expect(text()).not.toContain("temporarily unavailable");
-  expect(button("載入更多")).toBeDefined();
+  expect(button("載入更多")).toBeUndefined();
+  expect(button("再試一次")).toBeDefined();
+  await act(async () => button("再試一次")!.click());
+  expect(document.activeElement?.id).toBe("workspace-skills-heading");
 });
 
 test("a manage menu stays open for a click inside it, and closes on a click outside or Escape", async () => {

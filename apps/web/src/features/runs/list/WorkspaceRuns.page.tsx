@@ -14,31 +14,49 @@ import { RunVerdict } from "../components/RunVerdict";
 import { RunSourceLinks } from "../components/RunSourceLinks";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { IN_FLIGHT_RUN_STATUSES } from "../trace.service";
+import { canRetainLoadedPage } from "../../../core/api/client";
 
 export function WorkspaceRuns() {
   const runs = useRuns();
-  const rows = runs.data?.pages.flatMap((page) => page.runs) ?? [];
+  const nextPageFailure = canRetainLoadedPage(runs.error, runs.isFetchNextPageError);
+  const data = runs.error && !nextPageFailure ? undefined : runs.data;
+  const rows = data?.pages.flatMap((page) => page.runs) ?? [];
 
   return (
     <section>
-      <h1>試跑活動</h1>
+      <h1 id="workspace-runs-heading" tabIndex={-1}>
+        試跑活動
+      </h1>
       <p className="note" data-role="caveat">
         僅收錄試跑；創作、打包、發佈各自保留原物件，可在 <Link to="/activity">活動</Link>
         一起查看。
       </p>
 
       {runs.isPending && <Loading what="試跑活動" />}
-      <ReadFailure error={runs.error} what="試跑活動" />
-      {runs.data && (
+      <ReadFailure
+        error={runs.error}
+        what="試跑活動"
+        retry={() => void (nextPageFailure ? runs.fetchNextPage() : runs.refetch())}
+        retrying={runs.isFetching}
+        focusTarget="workspace-runs-heading"
+      >
+        {nextPageFailure && (
+          <p role="alert">更早的試跑讀取失敗；以下僅保留已載入的紀錄，尚未讀完。請再試一次。</p>
+        )}
+      </ReadFailure>
+      {data && !runs.error && (
         <ListFreshness
           inFlight={rows.some((run) => IN_FLIGHT_RUN_STATUSES.has(run.status))}
           updatedAt={runs.dataUpdatedAt}
           fetching={runs.isFetching && !runs.isFetchingNextPage}
-          refetch={runs.refetch}
+          refetch={async () => {
+            const result = await runs.refetch();
+            if (result.error) document.getElementById("workspace-runs-heading")?.focus();
+          }}
         />
       )}
 
-      {runs.data &&
+      {data &&
         (rows.length === 0 ? (
           <p>
             還沒有做過任何試跑。這裡是空的代表沒有發生過，不是紀錄被清掉了—— 要開始，請從{" "}
@@ -55,7 +73,11 @@ export function WorkspaceRuns() {
                   <h2>{group.title}</h2>
                   <p className="note">{group.note}</p>
                   {groupRows.length === 0 ? (
-                    <p>{group.empty}</p>
+                    <p>
+                      {runs.hasNextPage || nextPageFailure
+                        ? "已載入的紀錄中沒有這類試跑；尚未讀完，無法確認全部紀錄。"
+                        : group.empty}
+                    </p>
                   ) : (
                     <ul className="download-list" data-role="evidence">
                       {groupRows.map((run) => (
@@ -68,7 +90,7 @@ export function WorkspaceRuns() {
             })}
           </>
         ))}
-      {runs.hasNextPage && (
+      {runs.hasNextPage && !runs.error && (
         <button
           type="button"
           disabled={runs.isFetchingNextPage}

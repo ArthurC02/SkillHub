@@ -1,6 +1,5 @@
 import { Loading } from "../../../../shared/ui/Loading";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
-import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Link } from "@tanstack/react-router";
 import type { TestCaseListItem } from "../../testcases.service";
 
@@ -48,7 +47,6 @@ export function ExistingTestCasesSection({
         </p>
       )}
       {isPending && <Loading what="測試題清單" />}
-      <ReadFailure error={error} what="測試題" />
       {!isPending &&
         !error &&
         (rows.length === 0 ? (
