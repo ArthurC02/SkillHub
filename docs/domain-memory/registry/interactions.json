@@ -1919,6 +1919,44 @@
           }
         ]
       }
+    },
+    {
+      "id": "trace-creation-secret-masking",
+      "producer_context": "trace",
+      "consumer_context": "creation",
+      "consistency": "synchronous",
+      "delivery": "composition-root hook",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/entrypoint/wiring/creation_references.go",
+          "lines": {
+            "start": 24,
+            "end": 24
+          },
+          "content_sha256": "sha256:f10e50612e1b725ed3eeb5d21d036530801d752acca475937238b2a7e51fc90d",
+          "excerpt_sha256": "sha256:f2f551b35cc124ff703ca856e7182df14dc7d3f3b801a5276ffa380d93f610e5",
+          "source_kind": "implementation"
+        }
+      ],
+      "status": "reviewed",
+      "review": {
+        "proposal_id": "trace-creation-masking",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-14T17:11:36.342945Z",
+            "scope": "Record creation's use of the trace masker",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "d1b45bfdba30d89c88b6a228ea0e0b93b43347e6",
+              "registry_digest": "sha256:90f9a736bdd815f5cdff9542c8fa69ec3d096f0b216c9e3423c77b6ea4f03c7b"
+            }
+          }
+        ]
+      }
     }
   ]
 }

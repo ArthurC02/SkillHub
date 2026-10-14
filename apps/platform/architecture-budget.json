@@ -69,9 +69,7 @@
     "trial/execution.Service.ClearSightings",
     "trial/execution.Service.GuardArtifactUploadIntentRemoval"
   ],
-  "wiring_edges": [
-    "creation->trace"
-  ],
+  "wiring_edges": [],
   "synonym_uses": [
     "trial/execution.baselineMaxUSD baseline",
     "trial/execution.baselineMeanUSD baseline",

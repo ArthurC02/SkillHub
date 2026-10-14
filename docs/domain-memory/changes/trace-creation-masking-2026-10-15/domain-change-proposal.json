@@ -3,12 +3,12 @@
   "proposal_id": "trace-creation-masking",
   "proposer": "domain-memory-agent",
   "requirement_id": "trace-creation-masking",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-14T17:11:31.409137Z",
   "verified_at": "2026-10-14T17:11:36.675037Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-14T17:11:38.222915Z",
+  "applied_at": "2026-10-14T17:11:38.834798Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "d1b45bfdba30d89c88b6a228ea0e0b93b43347e6",
@@ -95,5 +95,9 @@
         "registry_digest": "sha256:90f9a736bdd815f5cdff9542c8fa69ec3d096f0b216c9e3423c77b6ea4f03c7b"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "26eb8c5b135d60196a071714cead024f1805a57e",
+    "registry_digest": "sha256:d5171e07f8c52fd6aa07588e0612dcec68b005fbb7f2a851176d9ab44acd029b"
+  }
 }

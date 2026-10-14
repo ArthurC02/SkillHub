@@ -7,7 +7,16 @@
     "registry_digest": "sha256:90f9a736bdd815f5cdff9542c8fa69ec3d096f0b216c9e3423c77b6ea4f03c7b"
   },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "26eb8c5b135d60196a071714cead024f1805a57e",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "d1b45bfdba30d89c88b6a228ea0e0b93b43347e6",
+      "registry_digest": "sha256:90f9a736bdd815f5cdff9542c8fa69ec3d096f0b216c9e3423c77b6ea4f03c7b"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "creation-masks-with-trace",
