@@ -1,0 +1,42 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "wiring-collaborations",
+  "status": "draft",
+  "intent": "Record every cross-Context collaboration the composition root wires today, so the wiring-interactions check holds them as reviewed facts instead of a shrink-only baseline.",
+  "actor": "coding-agent",
+  "observable_outcome": "wiring-interactions passes with only creation->trace left in wiring_edges.",
+  "acceptance_criteria": [
+    {
+      "id": "every-edge-recorded",
+      "statement": "Each of the 38 wired collaborations has a reviewed interaction naming its producer, consumer, consistency and delivery."
+    },
+    {
+      "id": "evidence-at-the-wiring",
+      "statement": "Each interaction cites the composition-root line that hands the producer behaviour to the consumer."
+    },
+    {
+      "id": "no-import-opened",
+      "statement": "No dependency policy changes, so no depguard deny entry is lifted."
+    },
+    {
+      "id": "approval-externally-verifiable",
+      "statement": "The approval that makes the records reviewed is checkable outside the package."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/app.go",
+    "apps/platform/internal/entrypoint/api/apiserver/creation_wiring.go",
+    "apps/platform/internal/entrypoint/api/apiserver/credit_wiring.go",
+    "apps/platform/internal/entrypoint/api/apiserver/publishing_wiring.go",
+    "apps/platform/internal/entrypoint/wiring/creation_references.go",
+    "apps/platform/internal/entrypoint/wiring/credit.go",
+    "apps/platform/internal/entrypoint/wiring/exposure.go",
+    "apps/platform/internal/entrypoint/wiring/trial.go"
+  ]
+}

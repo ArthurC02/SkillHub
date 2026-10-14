@@ -1,0 +1,1001 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "wiring-collaborations",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "wiring-collaborations",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-14T00:13:32.373578Z",
+  "verified_at": "2026-10-14T00:15:23.837260Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
+    "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+  },
+  "affected_contexts": [
+    "analytics",
+    "catalog",
+    "creation",
+    "credit",
+    "eval",
+    "identity",
+    "ingest",
+    "packaging",
+    "publishing",
+    "registry",
+    "run",
+    "testlab",
+    "trace"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "identity",
+    "invariant": "A Context reaches another Context only through behaviour the composition root hands it; each such hand-over is a reviewed interaction.",
+    "evidence": [
+      "tools/devctl/wiring_interactions.go:40",
+      "apps/platform/internal/entrypoint/api/apiserver/app.go:210"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged code: 38 synchronous collaborations already wired through the composition root are recorded as interactions; the producer keeps its tables, the consumer receives a fact reader or hook.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/entrypoint/api/apiserver/app.go:210"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "wiring_edges held 39 collaborations the Registry did not know, so a reader of the Registry saw only 12 of the real cross-Context hand-overs."
+    ],
+    "decision": "Record each wired collaboration as an interaction (producer, consumer, synchronous, delivery) citing the wiring line; leave creation->trace in the baseline because its Masker is a string helper due to move out of trace.",
+    "invariants_preserved": [
+      "No code changes.",
+      "No dependency policy changes, so the depguard deny lists are untouched."
+    ],
+    "rejected_alternatives": [
+      "Recording them as allowed dependency policies: in this Registry an allowed policy also lifts the depguard deny entry, which would open Go imports these Contexts are meant not to have."
+    ],
+    "proof_obligations": [
+      "wiring-registered",
+      "guard-unchanged"
+    ],
+    "counterfactual_check": "Drop identity->run from wiring_edges while no interaction records it; TestTheCompositionRootWiresOnlyRegisteredCollaborations must fail naming identity->run at app.go:212."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-analytics-run-ownership",
+        "producer_context": "run",
+        "consumer_context": "analytics",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 135,
+              "end": 135
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:2de68635d4ca3f19b20a1774f542ef343053ff6bb67acf6909e6b883e3202c6d",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "ingest-catalog-source-facts",
+        "producer_context": "ingest",
+        "consumer_context": "catalog",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 309,
+              "end": 309
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:a69b38bed3b031793abded64a95089c13673c5867806ce5eb5a2e122be238d9e",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "publishing-catalog-exposed-skills",
+        "producer_context": "publishing",
+        "consumer_context": "catalog",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/publishing_wiring.go",
+            "lines": {
+              "start": 111,
+              "end": 111
+            },
+            "content_sha256": "sha256:ffcc8f15b7334310b101340841399b77f237dc64e9dbc5cea4053994a5e012aa",
+            "excerpt_sha256": "sha256:fb3f855af670dfea17a417063b197b2bcdb919a7d5f533f9765761b819aa271a",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "catalog-creation-reference-search",
+        "producer_context": "catalog",
+        "consumer_context": "creation",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/creation_references.go",
+            "lines": {
+              "start": 25,
+              "end": 25
+            },
+            "content_sha256": "sha256:f10e50612e1b725ed3eeb5d21d036530801d752acca475937238b2a7e51fc90d",
+            "excerpt_sha256": "sha256:7c372b66ab3d1fe4ae2116b0dadeae160cd39d4730f8e6a613957cf7945d7b76",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "eval-creation-run-feedback",
+        "producer_context": "eval",
+        "consumer_context": "creation",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/creation_wiring.go",
+            "lines": {
+              "start": 74,
+              "end": 74
+            },
+            "content_sha256": "sha256:701c524c6bbbd8fa8c01431289da948eded2d4b9e36b6f9da82824af3eca59fe",
+            "excerpt_sha256": "sha256:082c4fb6b810be580d911946242d746ce5e581a95587f6fea1d4357b17f709e3",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "ingest-creation-draft-validation",
+        "producer_context": "ingest",
+        "consumer_context": "creation",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/creation_references.go",
+            "lines": {
+              "start": 21,
+              "end": 21
+            },
+            "content_sha256": "sha256:f10e50612e1b725ed3eeb5d21d036530801d752acca475937238b2a7e51fc90d",
+            "excerpt_sha256": "sha256:22e756df2a4deb8ecf8a957d926ac20a4ca08d5d8093c38a3538a67d1ec278d1",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "registry-creation-adopt-fork",
+        "producer_context": "registry",
+        "consumer_context": "creation",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/creation_wiring.go",
+            "lines": {
+              "start": 89,
+              "end": 89
+            },
+            "content_sha256": "sha256:701c524c6bbbd8fa8c01431289da948eded2d4b9e36b6f9da82824af3eca59fe",
+            "excerpt_sha256": "sha256:9d58681e1be67a44e6762288aff538a0002b9b7d0f2285bf5f8093d3a50d579d",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-creation-run-feedback",
+        "producer_context": "run",
+        "consumer_context": "creation",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/creation_wiring.go",
+            "lines": {
+              "start": 64,
+              "end": 64
+            },
+            "content_sha256": "sha256:701c524c6bbbd8fa8c01431289da948eded2d4b9e36b6f9da82824af3eca59fe",
+            "excerpt_sha256": "sha256:16d68c0be100fabf0ce6f553599745e25faa6b38520a21191bf13f4e67809c0a",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "testlab-creation-acceptance-test-case",
+        "producer_context": "testlab",
+        "consumer_context": "creation",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/creation_wiring.go",
+            "lines": {
+              "start": 109,
+              "end": 109
+            },
+            "content_sha256": "sha256:701c524c6bbbd8fa8c01431289da948eded2d4b9e36b6f9da82824af3eca59fe",
+            "excerpt_sha256": "sha256:1af6470cceed3798e1b724bcde33a7d328fcf7203a15022581412dc2aac711b7",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "identity-credit-account-state",
+        "producer_context": "identity",
+        "consumer_context": "credit",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/credit.go",
+            "lines": {
+              "start": 35,
+              "end": 35
+            },
+            "content_sha256": "sha256:424da7077db93dcc9879faca2ec24c23fd5888520b296c704a2b3272bf5c4769",
+            "excerpt_sha256": "sha256:558a5333435b99f410a4407d9f50db6640bedbbf4a8420b641d6f12a383f760d",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "registry-eval-version-facts",
+        "producer_context": "registry",
+        "consumer_context": "eval",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/trial.go",
+            "lines": {
+              "start": 130,
+              "end": 130
+            },
+            "content_sha256": "sha256:9410b2e6ceb256d7eaf608c5ce2c538edc91db39d08dce1becd0af2c4a9f6b3b",
+            "excerpt_sha256": "sha256:fdc80dba8cfee50d12d64d5eec1934595e093ea6a586218be97cc08a5e81c456",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "analytics-identity-workspace-purge",
+        "producer_context": "analytics",
+        "consumer_context": "identity",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 210,
+              "end": 210
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:101f269cac55f7df989edf1c7dc2c82040fee75ddce602a015ac897bb9b05068",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "creation-identity-workspace-purge",
+        "producer_context": "creation",
+        "consumer_context": "identity",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 214,
+              "end": 214
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:ea89b07811a7efa9e43358783976b8abcd445f7abeec7a8b1153e022588820fd",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "ingest-identity-workspace-purge",
+        "producer_context": "ingest",
+        "consumer_context": "identity",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 217,
+              "end": 217
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:35fa68a17c790b5d0611f76f22885b12bf1fb3c789707cd36fe5b4ec7bb2cdea",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "packaging-identity-workspace-purge",
+        "producer_context": "packaging",
+        "consumer_context": "identity",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 213,
+              "end": 213
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:70a173d82b2084fc3ef5a8c12d92b0e906fb2377aee147656437a51492fd3066",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "publishing-identity-workspace-purge",
+        "producer_context": "publishing",
+        "consumer_context": "identity",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 215,
+              "end": 215
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:d2f205a22a1246d5467e82a16fd7304a380fed48ca46ba4d2afd1dd2ede232d6",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "registry-identity-workspace-purge",
+        "producer_context": "registry",
+        "consumer_context": "identity",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 216,
+              "end": 216
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:f4912f71c9d9e65eb60e93bfd40c742fd2e7f362d058b3e80449bea40f8f08bc",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-identity-workspace-purge",
+        "producer_context": "run",
+        "consumer_context": "identity",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 212,
+              "end": 212
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:d46152cb58f3e63ae83b091a659644a71bb98edaaa9e641779d94f1cde1b0364",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "testlab-identity-workspace-purge",
+        "producer_context": "testlab",
+        "consumer_context": "identity",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 211,
+              "end": 211
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:1c1fd9c80da744da54ca7a2842316b3c7160e20eb9c631fa6ae9d7adcc0be275",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "catalog-ingest-index-enriched",
+        "producer_context": "catalog",
+        "consumer_context": "ingest",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 326,
+              "end": 326
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:6d18766d44b87b28e7a160d679f08b285c559957eee8c154364c897d4818b8b9",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "eval-packaging-applied-suggestions",
+        "producer_context": "eval",
+        "consumer_context": "packaging",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 289,
+              "end": 289
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:9d1375d862f71c422a5b1f2e1a554f887535e11cf8fe4bf909c1c715950193b7",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "ingest-packaging-source-lineage",
+        "producer_context": "ingest",
+        "consumer_context": "packaging",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 292,
+              "end": 292
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:8255b91a9d3c0926b7c3b39f37e5395da028dadfc0ccc066221fac66ec6dcd7c",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "registry-packaging-skill-facts",
+        "producer_context": "registry",
+        "consumer_context": "packaging",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 454,
+              "end": 454
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:4db207f80dfa302a6e8936a47e7cc598dab2e07e546f5df3312f8c841f5ee246",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "catalog-publishing-search-snapshot",
+        "producer_context": "catalog",
+        "consumer_context": "publishing",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/exposure.go",
+            "lines": {
+              "start": 40,
+              "end": 40
+            },
+            "content_sha256": "sha256:e001c58d0e237c3bf1ce0b592a3685a33b70f91a790279a089744fbd41c0a548",
+            "excerpt_sha256": "sha256:8568484fc8cbac43e0caf7e33effd04a51e112036762d177faeed5292ae73405",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "packaging-publishing-recipient-package",
+        "producer_context": "packaging",
+        "consumer_context": "publishing",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/publishing_wiring.go",
+            "lines": {
+              "start": 43,
+              "end": 43
+            },
+            "content_sha256": "sha256:ffcc8f15b7334310b101340841399b77f237dc64e9dbc5cea4053994a5e012aa",
+            "excerpt_sha256": "sha256:dc7ece5c6ca41fdd278a9a68ee795866f9f3b3e9746adf62c69f665044bbdf67",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "registry-publishing-skill-facts",
+        "producer_context": "registry",
+        "consumer_context": "publishing",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/exposure.go",
+            "lines": {
+              "start": 14,
+              "end": 23
+            },
+            "content_sha256": "sha256:e001c58d0e237c3bf1ce0b592a3685a33b70f91a790279a089744fbd41c0a548",
+            "excerpt_sha256": "sha256:22271b330eb031dba39326c0fbf27cbb8fb1e92a1d875eb3fb84f4aaa6266e00",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "catalog-registry-index-projection",
+        "producer_context": "catalog",
+        "consumer_context": "registry",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 328,
+              "end": 330
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:33d1b4efbccd53ed84846906f4aea9d79e5cc90da265e559fd42498c55bce57c",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "packaging-registry-version-references",
+        "producer_context": "packaging",
+        "consumer_context": "registry",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 204,
+              "end": 204
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:b4c5215f57c9cca83caa1e475d168f9802150dd8ca33e756b6914a35da7b5e73",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "publishing-registry-version-references",
+        "producer_context": "publishing",
+        "consumer_context": "registry",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 205,
+              "end": 205
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:7037d57ed2d2592a8edb3a1773b456d4d78a6096b9890836d7b36df52aba69a4",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-registry-version-references",
+        "producer_context": "run",
+        "consumer_context": "registry",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 203,
+              "end": 203
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:627a19bc1637f2d2ee841e00bb6f806a216432551bed4edd908464352da53e50",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "testlab-registry-skill-references",
+        "producer_context": "testlab",
+        "consumer_context": "registry",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 206,
+              "end": 206
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:9540d7fc0fde98c93bc44f7003339e28665656c3b58d10360b8ab39c069504a8",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "credit-run-ledger",
+        "producer_context": "credit",
+        "consumer_context": "run",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/credit.go",
+            "lines": {
+              "start": 149,
+              "end": 149
+            },
+            "content_sha256": "sha256:424da7077db93dcc9879faca2ec24c23fd5888520b296c704a2b3272bf5c4769",
+            "excerpt_sha256": "sha256:295b167d8c92781e68f0910c046b0f6d2970c446723fd2206101e81ad633bdf1",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "packaging-run-artifact-references",
+        "producer_context": "packaging",
+        "consumer_context": "run",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 271,
+              "end": 271
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:dda0f12bde0342c977643a52a435fbac71a947ae5d5d2e8d80806f0a69c7dec2",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "credit-testlab-spend",
+        "producer_context": "credit",
+        "consumer_context": "testlab",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/credit_wiring.go",
+            "lines": {
+              "start": 91,
+              "end": 103
+            },
+            "content_sha256": "sha256:04e0e3654b9560ad1aa77a64b1483db75290389dd7d82f66c51bb9dc6b783166",
+            "excerpt_sha256": "sha256:2ca06e274a0bf724c3bed9e184aed9344f8ea63179dabae60c8e1d73cdafa99b",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "eval-testlab-check-validation",
+        "producer_context": "eval",
+        "consumer_context": "testlab",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 194,
+              "end": 194
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:942debeb12cc0b98dbe428769a0b5fccaa90e97b32441e3bc3d1a12e8b9814af",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "registry-testlab-skill-facts",
+        "producer_context": "registry",
+        "consumer_context": "testlab",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 252,
+              "end": 252
+            },
+            "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+            "excerpt_sha256": "sha256:b58f51ebe34b9f5198448ae8c9a4d3394f3d4006d033a009bcd161c05ae9893c",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "credit-trace-display-price",
+        "producer_context": "credit",
+        "consumer_context": "trace",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/credit.go",
+            "lines": {
+              "start": 144,
+              "end": 144
+            },
+            "content_sha256": "sha256:424da7077db93dcc9879faca2ec24c23fd5888520b296c704a2b3272bf5c4769",
+            "excerpt_sha256": "sha256:d1ba11fabb1b819974a2688ac06566f1adb9284a5adff0cc0976013ab407cae6",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-trace-run-state",
+        "producer_context": "run",
+        "consumer_context": "trace",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/trial.go",
+            "lines": {
+              "start": 78,
+              "end": 78
+            },
+            "content_sha256": "sha256:9410b2e6ceb256d7eaf608c5ce2c538edc91db39d08dce1becd0af2c4a9f6b3b",
+            "excerpt_sha256": "sha256:9aed896eae03af8b515e59d60a3b44a98b5f908052d3bbd581cee90ddf48ec1f",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-14T00:15:22.987461Z",
+      "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
+        "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+      }
+    }
+  ],
+  "supersedes": null
+}
