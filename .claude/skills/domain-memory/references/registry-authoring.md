@@ -18,6 +18,8 @@ The registry has eleven asset types:
 | Value object | immutable concept and its fields | a JSON payload shape alone |
 | Dependency policy | allowed or prohibited Context collaboration | an import edge alone |
 
+Choose between an Interaction and a Dependency policy by what the code may do, not by how cheap the record is. A host project's tooling may enforce an `allowed` policy as permission for one Context's code to import the other's, so recording a collaboration as allowed can open an import the architecture keeps closed on purpose. A collaboration that avoids an import deliberately is an Interaction: a callback wired at the composition root, an injected dependency, or a published event. Record an `allowed` policy only for a dependency the code may actually take, and a `prohibited` one for a dependency it must never take.
+
 Each entry is `candidate`, `reviewed`, `deprecated`, or `superseded`. A reviewed entry must name an authorized review process or owner. Record version and effective period when the domain asset changes over time; how to record an unknown owner or date is in [registry-schema](registry-schema.md).
 
 Start with the smallest slice that contains a real cross-context behavior: two Contexts, a shared vocabulary term, an invariant, and one interaction. Use the templates as a starting point, not as a claim that every repository needs every asset type.

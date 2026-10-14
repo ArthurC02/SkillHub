@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.21.7
+
+### Changed
+
+- `references/registry-authoring.md` says how to choose between an Interaction and a Dependency policy: a host may enforce an `allowed` policy as permission to import, so a collaboration that avoids an import on purpose, such as a composition-root callback, an injected dependency or an event, is an Interaction.
+
 ## 0.21.6
 
 ### Changed
