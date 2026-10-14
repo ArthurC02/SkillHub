@@ -11,6 +11,50 @@ import {
 } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
+for (const status of [401, 403, 404]) {
+  test(`activity pagination ${status} withholds previously loaded records`, async ({ page }) => {
+    await stubPlatform(page);
+    let firstReads = 0;
+    let nextReads = 0;
+    await page.route("**/me/activity?*", (route) => {
+      if (new URL(route.request().url()).searchParams.has("cursor")) {
+        nextReads += 1;
+        return route.fulfill({
+          status,
+          json: {
+            error:
+              status === 401 ? "not authenticated" : status === 403 ? "forbidden" : "not found",
+          },
+        });
+      }
+      firstReads += 1;
+      return route.fulfill({
+        json: firstReads === 1 ? { ...ACTIVITY, next_cursor: "older-page" } : ACTIVITY,
+      });
+    });
+    await page.goto("/activity");
+    await expect(page.locator(".activity-list > li")).toHaveCount(3);
+    await page.getByRole("button", { name: "載入更多活動" }).click();
+    if (status === 401) {
+      await expect(
+        page.getByRole("status").filter({ hasText: "Workspace 活動需要登入" }),
+      ).toBeVisible();
+      await expect(page.getByRole("button", { name: "再試一次" })).toHaveCount(0);
+    } else {
+      await expect(page.getByRole("alert")).toContainText("暫時無法讀取Workspace 活動");
+    }
+    await expect(page.locator(".activity-list, .activity-summary")).toHaveCount(0);
+    await expect(page.getByText("以下僅保留已載入的紀錄", { exact: false })).toHaveCount(0);
+    if (status !== 401) {
+      await page.getByRole("button", { name: "再試一次" }).click();
+      await expect(page.locator(".activity-list > li")).toHaveCount(3);
+      expect(firstReads).toBe(2);
+      expect(nextReads).toBe(1);
+      await expect(page.locator("#activity-heading")).toBeFocused();
+    }
+  });
+}
+
 const HOME_CREATION = {
   id: "88888888-8888-4888-8888-888888888888",
   revision: 1,
