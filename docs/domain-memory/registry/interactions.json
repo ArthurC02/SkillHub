@@ -246,29 +246,29 @@
         {
           "path": "apps/platform/internal/entrypoint/wiring/trial.go",
           "lines": {
-            "start": 103,
-            "end": 126
+            "start": 105,
+            "end": 129
           },
-          "content_sha256": "sha256:9410b2e6ceb256d7eaf608c5ce2c538edc91db39d08dce1becd0af2c4a9f6b3b",
-          "excerpt_sha256": "sha256:44b6f2013bf1287a619e2552b88c8149d0d56bbcccecbff5e77f62b33e64a2f9",
+          "content_sha256": "sha256:fcb3d3836d4603d4ac9f13041d0d1e3fa06490b4a5637a3abe5a6cdba85ab4a6",
+          "excerpt_sha256": "sha256:f56a446034a5f23c82762a9f3fdec3dd1b10bcf70cb4065d2791ec4015f13694",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -324,11 +324,11 @@
         {
           "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
           "lines": {
-            "start": 45,
-            "end": 87
+            "start": 46,
+            "end": 88
           },
-          "content_sha256": "sha256:0ad02e79d2ed21f4470ab1c5034b7b04f8562c6e076dbfcc21816969f626c6a8",
-          "excerpt_sha256": "sha256:863affc772ec19b2f1544904281617ddd8b91ed4e130beba2aca55329580fe67",
+          "content_sha256": "sha256:538ea16ecc5a7d20c67c434982e6ab8ec62611a01df84fe2ba0245d978c1dfa7",
+          "excerpt_sha256": "sha256:81f47701455768a93e0f9330943c273785dd34ee7ef9af66468493c2ee38f32d",
           "source_kind": "implementation"
         },
         {
@@ -342,25 +342,25 @@
           "source_kind": "implementation"
         }
       ],
+      "status": "reviewed",
       "review": {
-        "proposal_id": "batch-run-outcome-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-11T19:41:24.223707Z",
-            "scope": "Re-cite the six batch records after run began publishing a chain end's success and failure and the batch began naming a gone target itself; no record changes its statement",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "19fa17487d035a369486d8b51034b49974b3d535",
-              "registry_digest": "sha256:2800ebb312b118161afedc0d875cc097a5f524bd59b7c31481dc2ed79e9379f1"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
-      },
-      "status": "reviewed"
+      }
     },
     {
       "id": "eval-batch-standing-verdicts",
@@ -372,33 +372,33 @@
         {
           "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
           "lines": {
-            "start": 24,
-            "end": 43
+            "start": 25,
+            "end": 44
           },
-          "content_sha256": "sha256:0ad02e79d2ed21f4470ab1c5034b7b04f8562c6e076dbfcc21816969f626c6a8",
+          "content_sha256": "sha256:538ea16ecc5a7d20c67c434982e6ab8ec62611a01df84fe2ba0245d978c1dfa7",
           "excerpt_sha256": "sha256:a3de7bd4935a3b482bf5f75698c3ebaeca04830587949b15a59a3b1293b4d600",
           "source_kind": "implementation"
         }
       ],
+      "status": "reviewed",
       "review": {
-        "proposal_id": "batch-run-outcome-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-11T19:41:24.223707Z",
-            "scope": "Re-cite the six batch records after run began publishing a chain end's success and failure and the batch began naming a gone target itself; no record changes its statement",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "19fa17487d035a369486d8b51034b49974b3d535",
-              "registry_digest": "sha256:2800ebb312b118161afedc0d875cc097a5f524bd59b7c31481dc2ed79e9379f1"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
-      },
-      "status": "reviewed"
+      }
     },
     {
       "id": "testlab-batch-snapshot-facts",
@@ -410,33 +410,33 @@
         {
           "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
           "lines": {
-            "start": 73,
-            "end": 78
+            "start": 74,
+            "end": 79
           },
-          "content_sha256": "sha256:0ad02e79d2ed21f4470ab1c5034b7b04f8562c6e076dbfcc21816969f626c6a8",
+          "content_sha256": "sha256:538ea16ecc5a7d20c67c434982e6ab8ec62611a01df84fe2ba0245d978c1dfa7",
           "excerpt_sha256": "sha256:8567f6207d7908c1c98f907701c6db2bff9c5b319372f587eece2b3cb7f4863f",
           "source_kind": "implementation"
         }
       ],
+      "status": "reviewed",
       "review": {
-        "proposal_id": "batch-run-outcome-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-11T19:41:24.223707Z",
-            "scope": "Re-cite the six batch records after run began publishing a chain end's success and failure and the batch began naming a gone target itself; no record changes its statement",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "19fa17487d035a369486d8b51034b49974b3d535",
-              "registry_digest": "sha256:2800ebb312b118161afedc0d875cc097a5f524bd59b7c31481dc2ed79e9379f1"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
-      },
-      "status": "reviewed"
+      }
     },
     {
       "id": "trace-batch-question-count",
@@ -448,33 +448,33 @@
         {
           "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
           "lines": {
-            "start": 74,
-            "end": 77
+            "start": 75,
+            "end": 78
           },
-          "content_sha256": "sha256:0ad02e79d2ed21f4470ab1c5034b7b04f8562c6e076dbfcc21816969f626c6a8",
+          "content_sha256": "sha256:538ea16ecc5a7d20c67c434982e6ab8ec62611a01df84fe2ba0245d978c1dfa7",
           "excerpt_sha256": "sha256:552f303644ead7a30c043aa3a279db7d1f8151546b2384b735ec55f735726801",
           "source_kind": "implementation"
         }
       ],
+      "status": "reviewed",
       "review": {
-        "proposal_id": "batch-run-outcome-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-11T19:41:24.223707Z",
-            "scope": "Re-cite the six batch records after run began publishing a chain end's success and failure and the batch began naming a gone target itself; no record changes its statement",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "19fa17487d035a369486d8b51034b49974b3d535",
-              "registry_digest": "sha256:2800ebb312b118161afedc0d875cc097a5f524bd59b7c31481dc2ed79e9379f1"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
-      },
-      "status": "reviewed"
+      }
     },
     {
       "id": "run-analytics-run-ownership",
@@ -486,29 +486,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 136,
-            "end": 136
+            "start": 137,
+            "end": 137
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
-          "excerpt_sha256": "sha256:2de68635d4ca3f19b20a1774f542ef343053ff6bb67acf6909e6b883e3202c6d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
+          "excerpt_sha256": "sha256:5103c601a41612f03d66be94ea3ec7c7fb43c7a4b3aeb0c9737d7da5899a6adc",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -524,29 +524,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 311,
-            "end": 311
+            "start": 312,
+            "end": 312
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:a69b38bed3b031793abded64a95089c13673c5867806ce5eb5a2e122be238d9e",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -638,29 +638,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/creation_wiring.go",
           "lines": {
-            "start": 74,
-            "end": 74
+            "start": 75,
+            "end": 75
           },
-          "content_sha256": "sha256:701c524c6bbbd8fa8c01431289da948eded2d4b9e36b6f9da82824af3eca59fe",
+          "content_sha256": "sha256:034e3f396f3913c3e341a419f094eb361504440e5f5a4e24d6a3ece7ba6b2ae4",
           "excerpt_sha256": "sha256:082c4fb6b810be580d911946242d746ce5e581a95587f6fea1d4357b17f709e3",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -714,29 +714,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/creation_wiring.go",
           "lines": {
-            "start": 89,
-            "end": 89
+            "start": 90,
+            "end": 90
           },
-          "content_sha256": "sha256:701c524c6bbbd8fa8c01431289da948eded2d4b9e36b6f9da82824af3eca59fe",
+          "content_sha256": "sha256:034e3f396f3913c3e341a419f094eb361504440e5f5a4e24d6a3ece7ba6b2ae4",
           "excerpt_sha256": "sha256:9d58681e1be67a44e6762288aff538a0002b9b7d0f2285bf5f8093d3a50d579d",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -752,29 +752,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/creation_wiring.go",
           "lines": {
-            "start": 64,
-            "end": 64
+            "start": 65,
+            "end": 65
           },
-          "content_sha256": "sha256:701c524c6bbbd8fa8c01431289da948eded2d4b9e36b6f9da82824af3eca59fe",
-          "excerpt_sha256": "sha256:16d68c0be100fabf0ce6f553599745e25faa6b38520a21191bf13f4e67809c0a",
+          "content_sha256": "sha256:034e3f396f3913c3e341a419f094eb361504440e5f5a4e24d6a3ece7ba6b2ae4",
+          "excerpt_sha256": "sha256:8663674594f40c9156ba48cac214a59bb64a1aa9405a169a016cf4b8e4b275fd",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -790,29 +790,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/creation_wiring.go",
           "lines": {
-            "start": 109,
-            "end": 109
+            "start": 110,
+            "end": 110
           },
-          "content_sha256": "sha256:701c524c6bbbd8fa8c01431289da948eded2d4b9e36b6f9da82824af3eca59fe",
+          "content_sha256": "sha256:034e3f396f3913c3e341a419f094eb361504440e5f5a4e24d6a3ece7ba6b2ae4",
           "excerpt_sha256": "sha256:1af6470cceed3798e1b724bcde33a7d328fcf7203a15022581412dc2aac711b7",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -866,29 +866,29 @@
         {
           "path": "apps/platform/internal/entrypoint/wiring/trial.go",
           "lines": {
-            "start": 130,
-            "end": 130
+            "start": 133,
+            "end": 133
           },
-          "content_sha256": "sha256:9410b2e6ceb256d7eaf608c5ce2c538edc91db39d08dce1becd0af2c4a9f6b3b",
+          "content_sha256": "sha256:fcb3d3836d4603d4ac9f13041d0d1e3fa06490b4a5637a3abe5a6cdba85ab4a6",
           "excerpt_sha256": "sha256:fdc80dba8cfee50d12d64d5eec1934595e093ea6a586218be97cc08a5e81c456",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -904,29 +904,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 212,
-            "end": 212
+            "start": 213,
+            "end": 213
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:101f269cac55f7df989edf1c7dc2c82040fee75ddce602a015ac897bb9b05068",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -942,29 +942,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 216,
-            "end": 216
+            "start": 217,
+            "end": 217
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:ea89b07811a7efa9e43358783976b8abcd445f7abeec7a8b1153e022588820fd",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -980,29 +980,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 219,
-            "end": 219
+            "start": 220,
+            "end": 220
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:35fa68a17c790b5d0611f76f22885b12bf1fb3c789707cd36fe5b4ec7bb2cdea",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1018,29 +1018,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 215,
-            "end": 215
+            "start": 216,
+            "end": 216
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:70a173d82b2084fc3ef5a8c12d92b0e906fb2377aee147656437a51492fd3066",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1056,29 +1056,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 217,
-            "end": 217
+            "start": 218,
+            "end": 218
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:d2f205a22a1246d5467e82a16fd7304a380fed48ca46ba4d2afd1dd2ede232d6",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1094,29 +1094,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 218,
-            "end": 218
+            "start": 219,
+            "end": 219
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:f4912f71c9d9e65eb60e93bfd40c742fd2e7f362d058b3e80449bea40f8f08bc",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1132,29 +1132,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 214,
-            "end": 214
+            "start": 215,
+            "end": 215
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:d46152cb58f3e63ae83b091a659644a71bb98edaaa9e641779d94f1cde1b0364",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1170,29 +1170,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 213,
-            "end": 213
+            "start": 214,
+            "end": 214
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:1c1fd9c80da744da54ca7a2842316b3c7160e20eb9c631fa6ae9d7adcc0be275",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1208,29 +1208,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 328,
-            "end": 328
+            "start": 329,
+            "end": 329
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:6d18766d44b87b28e7a160d679f08b285c559957eee8c154364c897d4818b8b9",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1246,29 +1246,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 291,
-            "end": 291
+            "start": 292,
+            "end": 292
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:9d1375d862f71c422a5b1f2e1a554f887535e11cf8fe4bf909c1c715950193b7",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1284,29 +1284,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 294,
-            "end": 294
+            "start": 295,
+            "end": 295
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:8255b91a9d3c0926b7c3b39f37e5395da028dadfc0ccc066221fac66ec6dcd7c",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1322,29 +1322,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 455,
-            "end": 458
+            "start": 456,
+            "end": 459
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:c166a8fb43f2b0d4f415de48b5d5324048c9b19e1d93a9e69023b822dfb2bda7",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1474,29 +1474,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 330,
-            "end": 332
+            "start": 331,
+            "end": 333
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:33d1b4efbccd53ed84846906f4aea9d79e5cc90da265e559fd42498c55bce57c",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1512,29 +1512,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 206,
-            "end": 206
+            "start": 207,
+            "end": 207
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:b4c5215f57c9cca83caa1e475d168f9802150dd8ca33e756b6914a35da7b5e73",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1550,29 +1550,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 207,
-            "end": 207
+            "start": 208,
+            "end": 208
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:7037d57ed2d2592a8edb3a1773b456d4d78a6096b9890836d7b36df52aba69a4",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1588,29 +1588,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 205,
-            "end": 205
+            "start": 206,
+            "end": 206
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:627a19bc1637f2d2ee841e00bb6f806a216432551bed4edd908464352da53e50",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1626,29 +1626,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 208,
-            "end": 208
+            "start": 209,
+            "end": 209
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:9540d7fc0fde98c93bc44f7003339e28665656c3b58d10360b8ab39c069504a8",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1702,29 +1702,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 273,
-            "end": 273
+            "start": 274,
+            "end": 274
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:dda0f12bde0342c977643a52a435fbac71a947ae5d5d2e8d80806f0a69c7dec2",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1778,29 +1778,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 196,
-            "end": 196
+            "start": 197,
+            "end": 197
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:942debeb12cc0b98dbe428769a0b5fccaa90e97b32441e3bc3d1a12e8b9814af",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1816,29 +1816,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 254,
-            "end": 254
+            "start": 255,
+            "end": 255
           },
-          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "content_sha256": "sha256:663778d48d0de6125ce32a4138dccca09b38882cc180c56c7ec3556537593017",
           "excerpt_sha256": "sha256:b58f51ebe34b9f5198448ae8c9a4d3394f3d4006d033a009bcd161c05ae9893c",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "entrypoint-citations-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T01:06:54.189577Z",
-            "scope": "Re-cite composition-root interactions after the governance move",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
-              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -1892,29 +1892,29 @@
         {
           "path": "apps/platform/internal/entrypoint/wiring/trial.go",
           "lines": {
-            "start": 78,
-            "end": 78
+            "start": 80,
+            "end": 80
           },
-          "content_sha256": "sha256:9410b2e6ceb256d7eaf608c5ce2c538edc91db39d08dce1becd0af2c4a9f6b3b",
-          "excerpt_sha256": "sha256:9aed896eae03af8b515e59d60a3b44a98b5f908052d3bbd581cee90ddf48ec1f",
+          "content_sha256": "sha256:fcb3d3836d4603d4ac9f13041d0d1e3fa06490b4a5637a3abe5a6cdba85ab4a6",
+          "excerpt_sha256": "sha256:bd0ca1fe0100764a858c037a25295304fb7a6cebbec3b75cc476a6b3ff072fc0",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]

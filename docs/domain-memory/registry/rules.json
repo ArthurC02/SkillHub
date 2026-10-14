@@ -185,10 +185,10 @@
         {
           "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
           "lines": {
-            "start": 109,
-            "end": 123
+            "start": 110,
+            "end": 124
           },
-          "content_sha256": "sha256:0ad02e79d2ed21f4470ab1c5034b7b04f8562c6e076dbfcc21816969f626c6a8",
+          "content_sha256": "sha256:538ea16ecc5a7d20c67c434982e6ab8ec62611a01df84fe2ba0245d978c1dfa7",
           "excerpt_sha256": "sha256:d5fd29b1dd40a5647cfceda7ad758c7e3139ba3313362c4ab3732ba5d9959dbb",
           "source_kind": "implementation"
         },
@@ -203,25 +203,25 @@
           "source_kind": "decisions"
         }
       ],
+      "status": "reviewed",
       "review": {
-        "proposal_id": "batch-run-outcome-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-11T19:41:24.223707Z",
-            "scope": "Re-cite the six batch records after run began publishing a chain end's success and failure and the batch began naming a gone target itself; no record changes its statement",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "19fa17487d035a369486d8b51034b49974b3d535",
-              "registry_digest": "sha256:2800ebb312b118161afedc0d875cc097a5f524bd59b7c31481dc2ed79e9379f1"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
-      },
-      "status": "reviewed"
+      }
     }
   ]
 }

@@ -3,12 +3,12 @@
   "proposal_id": "run-readmodel-recite",
   "proposer": "domain-memory-agent",
   "requirement_id": "run-readmodel-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-14T16:37:54.904373Z",
   "verified_at": "2026-10-14T16:38:05.417832Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-14T16:43:29.898675Z",
+  "applied_at": "2026-10-14T16:43:30.646509Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
@@ -1032,5 +1032,9 @@
     "entrypoint-citations-recite",
     "eval-judging-recite",
     "wiring-collaborations"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "46e5ea35529124abc1189b80b019cce852ee2aaa",
+    "registry_digest": "sha256:bda4ba9358f58539f3b2da1f511b690f5dfe19437579f85548a249dc65c2cf8e"
+  }
 }

@@ -16,29 +16,29 @@
         {
           "path": "apps/platform/internal/entrypoint/wiring/trial.go",
           "lines": {
-            "start": 16,
-            "end": 35
+            "start": 17,
+            "end": 36
           },
-          "content_sha256": "sha256:9410b2e6ceb256d7eaf608c5ce2c538edc91db39d08dce1becd0af2c4a9f6b3b",
+          "content_sha256": "sha256:fcb3d3836d4603d4ac9f13041d0d1e3fa06490b4a5637a3abe5a6cdba85ab4a6",
           "excerpt_sha256": "sha256:5ebb45f646375d626ddc502f9acf3ce51086ecc092d30a845a2674e52e8d2822",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "eval-judging-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-13T07:59:14.973768Z",
-            "scope": "Re-cite eval-may-use-trace after eval's judge moved into the judging subpackage, and registry-run-facts-v1 after its version copy became runVersionFacts; neither record changes its statement",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "9dc1bb746dec22b2c5e9d75fa0a9dde4a58ac392",
-              "registry_digest": "sha256:9de48a8e4bfd1482a324a9b316f7f602843bc2aca315d95421c4371562c17ac1"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
@@ -336,20 +336,20 @@
         {
           "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
           "lines": {
-            "start": 45,
-            "end": 87
+            "start": 46,
+            "end": 88
           },
-          "content_sha256": "sha256:0ad02e79d2ed21f4470ab1c5034b7b04f8562c6e076dbfcc21816969f626c6a8",
-          "excerpt_sha256": "sha256:863affc772ec19b2f1544904281617ddd8b91ed4e130beba2aca55329580fe67",
+          "content_sha256": "sha256:538ea16ecc5a7d20c67c434982e6ab8ec62611a01df84fe2ba0245d978c1dfa7",
+          "excerpt_sha256": "sha256:81f47701455768a93e0f9330943c273785dd34ee7ef9af66468493c2ee38f32d",
           "source_kind": "implementation"
         },
         {
           "path": "apps/platform/internal/trial/execution/batch_facts.go",
           "lines": {
-            "start": 64,
-            "end": 75
+            "start": 34,
+            "end": 45
           },
-          "content_sha256": "sha256:4b75e3b462abfabd8f05df823c8e36f77c0980ffc0aeda9bec8fa08e3906699d",
+          "content_sha256": "sha256:fcad871d214e920ac615f69d6fc1043f35b65fa1ee351d684fb1c995e714b875",
           "excerpt_sha256": "sha256:c4b8a8c925f6d49224e57170964aca0958132aee6512a1d31443ef0a8b8db1d8",
           "source_kind": "implementation"
         },
@@ -374,25 +374,25 @@
           "source_kind": "decisions"
         }
       ],
+      "status": "reviewed",
       "review": {
-        "proposal_id": "batch-run-outcome-recite",
+        "proposal_id": "run-readmodel-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-11T19:41:24.223707Z",
-            "scope": "Re-cite the six batch records after run began publishing a chain end's success and failure and the batch began naming a gone target itself; no record changes its statement",
+            "approved_at": "2026-10-14T16:38:05.093087Z",
+            "scope": "Re-cite run collaborations after the readmodel split",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "19fa17487d035a369486d8b51034b49974b3d535",
-              "registry_digest": "sha256:2800ebb312b118161afedc0d875cc097a5f524bd59b7c31481dc2ed79e9379f1"
+              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
             }
           }
         ]
-      },
-      "status": "reviewed"
+      }
     }
   ]
 }
