@@ -1,7 +1,6 @@
 import { CriterionCheckValuesItemMaxLength } from "@skillhub/api-client-ts/limits";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import {
   PROMPT_GRADER,
@@ -16,12 +15,18 @@ import {
   type CheckNode,
   type Path,
 } from "../check.model";
-import { useCheckKinds, useGraders, type Grader } from "../evaluation.service";
+import { useGraders, type CheckKinds, type Grader } from "../evaluation.service";
 import { CheckFlow } from "./CheckFlow";
 import { KindPicker } from "./KindPicker";
 import "./CheckEditor.css";
 
-type Palette = { kinds: CheckKind[]; byKind: Map<string, CheckKind>; graders: Grader[] };
+type Palette = {
+  kinds: CheckKind[];
+  byKind: Map<string, CheckKind>;
+  graders: Grader[];
+  gradersReadable: boolean;
+  gradersStatusId: string;
+};
 
 function describe(node: CheckNode, palette: Palette): string {
   const label = palette.byKind.get(node.kind)?.label ?? node.kind;
@@ -39,12 +44,16 @@ function ValuesField({
   node,
   kind,
   graders,
+  gradersReadable,
+  gradersStatusId,
   idBase,
   onChange,
 }: {
   node: CheckNode;
   kind: CheckKind;
   graders: Grader[];
+  gradersReadable: boolean;
+  gradersStatusId: string;
   idBase: string;
   onChange: (values: string[]) => void;
 }) {
@@ -57,6 +66,8 @@ function ValuesField({
         <select
           id={`${idBase}-grader`}
           value={values[0] ?? ""}
+          disabled={!gradersReadable}
+          aria-describedby={!gradersReadable ? gradersStatusId : undefined}
           onChange={(e) => onChange([e.target.value])}
         >
           <option value="">選一個評分器</option>
@@ -144,6 +155,8 @@ function NodeForm({
           node={node}
           kind={kind}
           graders={palette.graders}
+          gradersReadable={palette.gradersReadable}
+          gradersStatusId={palette.gradersStatusId}
           idBase={idBase}
           onChange={(values) => update({ values })}
         />
@@ -246,33 +259,41 @@ function Outline({
 export function CheckEditor({
   value,
   onChange,
+  kinds,
 }: {
   value: CheckNode;
   onChange: (next: CheckNode | null) => void;
+  kinds: CheckKinds;
 }) {
-  const kinds = useCheckKinds();
   const graders = useGraders("workspace");
   const [selected, setSelected] = useState<Path>([]);
-
-  if (kinds.isPending) return <Loading what="檢查方式" />;
-  if (!kinds.data) return <ReadFailure error={kinds.error} what="檢查方式" />;
+  const editorId = useId();
+  const gradersStatusId = `${editorId}-graders`;
 
   const palette: Palette = {
-    kinds: kinds.data.kinds,
-    byKind: new Map(kinds.data.kinds.map((k) => [k.kind, k])),
-    graders: graders.data?.graders ?? [],
+    kinds: kinds.kinds,
+    byKind: new Map(kinds.kinds.map((k) => [k.kind, k])),
+    graders: graders.error ? [] : (graders.data?.graders ?? []),
+    gradersReadable: !graders.isPending && !graders.error,
+    gradersStatusId,
   };
 
   const found = problems(value, palette.kinds, {
-    maxNodes: kinds.data.max_nodes,
-    maxDepth: kinds.data.max_depth,
+    maxNodes: kinds.max_nodes,
+    maxDepth: kinds.max_depth,
   });
   const flagged = new Set(found.keys());
   const current = isPathIn(value, selected) ? selected : [];
   const describeAt = (path: Path) => describe(nodeAt(value, path), palette);
 
   return (
-    <div className="check-editor">
+    <div
+      className="check-editor"
+      id={editorId}
+      tabIndex={-1}
+      role="group"
+      aria-label="檢查節點設計"
+    >
       <CheckFlow
         tree={value}
         describe={describeAt}
@@ -304,7 +325,22 @@ export function CheckEditor({
           onChange={onChange}
           onSelect={setSelected}
         />
-        <ReadFailure error={graders.error} what="評分器" />
+        {graders.isPending && (
+          <p id={gradersStatusId} role="status">
+            評分器版本清單讀取中，暫時不能選擇評分器。
+          </p>
+        )}
+        <ReadFailure
+          error={graders.error}
+          what="評分器"
+          retry={() => void graders.refetch()}
+          retrying={graders.isFetching}
+          focusTarget={editorId}
+        >
+          <p id={gradersStatusId} role="alert">
+            暫時無法讀取評分器，版本選擇暫時不可用。請再試一次。
+          </p>
+        </ReadFailure>
       </div>
     </div>
   );

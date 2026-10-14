@@ -77,7 +77,7 @@ export function useReviseGrader(
 export function useCheckReady(value: CheckNode | null): boolean {
   const kinds = useCheckKinds();
   if (!value) return true;
-  if (!kinds.data) return false;
+  if (kinds.error || !kinds.data) return false;
   const limits = { maxNodes: kinds.data.max_nodes, maxDepth: kinds.data.max_depth };
   return problems(value, kinds.data.kinds, limits).size === 0;
 }

@@ -61,7 +61,11 @@ function Suggestions({
 
 function addBlocker(text: string, checkReady: boolean) {
   if (text.trim() === "") return { id: "criterion-add-why", say: "欄位是空的" };
-  if (!checkReady) return { id: "criterion-check-why", say: "檢查還有節點要修正" };
+  if (!checkReady)
+    return {
+      id: "criterion-check-why",
+      say: "檢查設計尚未確認可用，請查看下方的讀取狀態與節點提示。",
+    };
   return null;
 }
 

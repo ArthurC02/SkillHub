@@ -8,6 +8,8 @@ import { CHECK_KINDS, PLATFORM_GRADER, WORKSPACE_GRADER } from "../../testing/fi
 import { LazyCheckEditor as CheckEditor } from "./components/LazyCheckEditor";
 import { GraderManager } from "./components/GraderManager";
 import type { CheckNode } from "./check.model";
+import { useCheckReady } from "./evaluation.service";
+import { queryKeys } from "../../core/api/queryKeys";
 
 vi.mock("./components/CheckFlow", () => ({ CheckFlow: () => null }));
 vi.mock("@tanstack/react-router", () => ({
@@ -120,6 +122,78 @@ async function renderEditor(initial: CheckNode | null = null) {
   await renderNode(<Harness initial={initial} />);
   await waitFor(() => container.querySelector("[data-loading]") === null);
 }
+
+function ReadyEditor() {
+  const [value, setValue] = useState<CheckNode | null>({
+    kind: "contains_values",
+    values: ["preserved value"],
+  });
+  const ready = useCheckReady(value);
+  return (
+    <>
+      <output data-check-ready>{String(ready)}</output>
+      <CheckEditor value={value} onChange={setValue} />
+    </>
+  );
+}
+
+test("a failed check-kind refresh cannot approve a cached design and retry preserves its values", async () => {
+  await renderNode(<ReadyEditor />);
+  await waitFor(() => container.querySelector("[data-check-ready]")?.textContent === "true");
+  await waitFor(
+    () =>
+      container.querySelector<HTMLInputElement>('[id$="-value-0"]')?.value === "preserved value",
+  );
+  const previousFetch = globalThis.fetch;
+  let failing = true;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/evaluation/check-kinds") && failing)
+      return json({ error: "service unavailable" }, 503);
+    return previousFetch(input, init);
+  });
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.checks.kinds });
+  });
+  await waitFor(() => container.querySelector('[role="alert"]') !== null);
+  expect(container.querySelector("[data-check-ready]")?.textContent).toBe("false");
+  expect(container.querySelector(".check-editor")).toBeNull();
+  failing = false;
+  await act(async () => button("再試一次").click());
+  await waitFor(() => container.querySelector(".check-editor") !== null);
+  expect(container.querySelector<HTMLInputElement>('[id$="-value-0"]')?.value).toBe(
+    "preserved value",
+  );
+  expect(container.querySelector("[data-check-ready]")?.textContent).toBe("true");
+  expect(document.activeElement?.getAttribute("aria-label")).toBe("檢查方式與設計");
+});
+
+test("a failed grader refresh hides stale names without replacing the selected immutable version", async () => {
+  await renderEditor({ kind: "prompt_grader", values: [WORKSPACE_GRADER.version_id] });
+  await waitFor(() => container.textContent!.includes("語氣 v2"));
+  const previousFetch = globalThis.fetch;
+  let failing = true;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/evaluation/graders") && failing)
+      return json({ error: "service unavailable" }, 503);
+    return previousFetch(input, init);
+  });
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.checks.graders("workspace") });
+  });
+  await waitFor(() => container.querySelector('[role="alert"]') !== null);
+  const picker = container.querySelector<HTMLSelectElement>('[id$="-grader"]')!;
+  expect(picker.disabled).toBe(true);
+  expect(picker.value).toBe(WORKSPACE_GRADER.version_id);
+  expect(container.textContent).not.toContain("語氣 v2");
+  expect(
+    container.querySelector(`#${picker.getAttribute("aria-describedby")}`)?.textContent,
+  ).toContain("暫時無法讀取評分器");
+  failing = false;
+  await act(async () => button("再試一次").click());
+  await waitFor(() => !picker.disabled);
+  expect(picker.value).toBe(WORKSPACE_GRADER.version_id);
+  expect(container.textContent).toContain("語氣 v2");
+});
 
 test("an empty composite is flagged, and a child added to it becomes the selected node", async () => {
   await renderEditor();

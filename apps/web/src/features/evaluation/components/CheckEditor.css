@@ -37,6 +37,15 @@
   font-size: 14px;
 }
 
+.check-flow .react-flow__attribution {
+  background: var(--surface);
+  font-size: 14px;
+}
+
+.check-flow .react-flow__attribution a {
+  color: var(--text);
+}
+
 .check-flow .check-flow-node.selected {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-border);

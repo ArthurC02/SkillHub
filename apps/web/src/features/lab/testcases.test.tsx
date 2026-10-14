@@ -447,7 +447,7 @@ test("EVAL-014 a criterion is added with its designed check only once every node
   await waitFor(() => container.textContent!.includes("有空白的值"));
 
   expect(button("新增").disabled).toBe(true);
-  expect(container.textContent).toContain("檢查還有節點要修正");
+  expect(container.textContent).toContain("檢查設計尚未確認可用");
   expect(container.textContent).toContain("有空白的值");
 
   await act(async () =>
