@@ -7,7 +7,16 @@
     "registry_digest": "sha256:bda4ba9358f58539f3b2da1f511b690f5dfe19437579f85548a249dc65c2cf8e"
   },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "c0d2bcb2b98eb86bfa32609a6b8ff0adc98b28da",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "6d3cc02adc18958e4550b0fd7c58d2d491bb0573",
+      "registry_digest": "sha256:bda4ba9358f58539f3b2da1f511b690f5dfe19437579f85548a249dc65c2cf8e"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "redeclaration-keeps-incident",
