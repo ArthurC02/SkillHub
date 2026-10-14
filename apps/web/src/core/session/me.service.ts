@@ -54,7 +54,7 @@ export function useRequestAccountDeletion() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: requestAccountDeletion,
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.me }),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.me }),
   });
 }
 
@@ -62,7 +62,7 @@ export function useCancelAccountDeletion() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: cancelAccountDeletion,
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.me }),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.me }),
   });
 }
 

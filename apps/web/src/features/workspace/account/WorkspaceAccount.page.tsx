@@ -15,7 +15,7 @@ import "./WorkspaceAccount.page.css";
 
 function deletionFailureSentence(error: unknown): string {
   if (error instanceof ApiError && error.status === 409) return "刪除已經不可逆，無法再變更。";
-  return "這個要求沒有記錄成功，可以再按一次。";
+  return "未能取得操作結果，請以最新帳號狀態確認是否需要再操作。";
 }
 
 export function WorkspaceAccount() {
@@ -26,19 +26,11 @@ export function WorkspaceAccount() {
 
   if (me.error) {
     return (
-      <PageReadFailure
-        heading="帳號"
-        error={me.error}
-        what="帳號資料"
-        retry={() => void me.refetch()}
-        retrying={me.isFetching}
-      >
-        {(request.isSuccess || cancel.isSuccess) && (
-          <p role="alert">
-            操作已送出，但最新帳號狀態暫時無法確認。再試一次只重新讀取狀態，不會重複送出操作。
-          </p>
-        )}
-      </PageReadFailure>
+      <AccountReadFailure
+        query={me}
+        accepted={request.isSuccess || cancel.isSuccess}
+        unconfirmed={request.isError || cancel.isError}
+      />
     );
   }
 
@@ -47,6 +39,9 @@ export function WorkspaceAccount() {
       <h1>帳號</h1>
 
       {me.isPending && <Loading what="帳號資料" />}
+      {!me.isPending && (request.isPending || cancel.isPending || me.isFetching) && (
+        <p role="status">正在確認最新帳號狀態…</p>
+      )}
       {message && <p role="status">{message}</p>}
       {request.error && (
         <ReadFailure error={request.error} what="帳號刪除申請">
@@ -89,25 +84,31 @@ export function WorkspaceAccount() {
                 purgeAfter={me.data.purge_after}
                 scope={me.data.deletion_scope}
                 pending={cancel.isPending}
-                onCancel={() =>
+                onCancel={() => {
+                  request.reset();
+                  setMessage("");
                   cancel.mutate(undefined, {
                     onSuccess: () => setMessage("已取消。帳號不會被刪除，資料照舊。"),
-                  })
-                }
+                  });
+                }}
               />
             ) : (
               <p data-role="reason">
+                {!request.isPending && !cancel.isPending && !me.isFetching && (
+                  <span role="status">目前沒有刪除申請。</span>
+                )}
                 <ConfirmDelete
                   scopeId="account-delete-scope"
                   label="刪除我的帳號"
                   confirmLabel="確認開始刪除"
                   pending={request.isPending}
                   onAsk={() => setMessage("")}
-                  onConfirm={() =>
+                  onConfirm={() => {
+                    cancel.reset();
                     request.mutate(undefined, {
                       onSuccess: (result) => setMessage(result.scope),
-                    })
-                  }
+                    });
+                  }}
                   scope={
                     <>
                       這一步<strong>不會立刻刪掉任何東西</strong>
@@ -127,6 +128,35 @@ export function WorkspaceAccount() {
         </>
       )}
     </section>
+  );
+}
+
+function AccountReadFailure({
+  query,
+  accepted,
+  unconfirmed,
+}: {
+  query: ReturnType<typeof useMe>;
+  accepted: boolean;
+  unconfirmed: boolean;
+}) {
+  return (
+    <PageReadFailure
+      heading="帳號"
+      error={query.error}
+      what="帳號資料"
+      retry={() => void query.refetch()}
+      retrying={query.isFetching}
+    >
+      {(accepted || unconfirmed) && (
+        <p role="alert">
+          {unconfirmed
+            ? "未能取得操作結果，最新帳號狀態也暫時無法確認。"
+            : "操作已送出，但最新帳號狀態暫時無法確認。"}
+          再試一次只重新讀取狀態，不會重複送出操作。
+        </p>
+      )}
+    </PageReadFailure>
   );
 }
 

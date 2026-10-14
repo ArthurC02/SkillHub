@@ -991,15 +991,14 @@ test("丙-150 a failed deletion request says the fixed sentence, not the server'
 
   await act(async () => button("刪除我的帳號")?.click());
   await act(async () => button("確認開始刪除")?.click());
-  await waitFor(() => text().includes("這個要求沒有記錄成功"));
+  await waitFor(() => container.querySelector('[role="alert"]') !== null);
 
-  const alert = Array.from(container.querySelectorAll('[role="alert"]')).find((n) =>
-    (n.textContent ?? "").includes("這個要求沒有記錄成功"),
-  );
+  const alert = container.querySelector('[role="alert"]');
   expect(alert, "the failure sentence is not in role=alert").toBeTruthy();
+  expect(alert?.textContent).toBe("未能取得操作結果，請以最新帳號狀態確認是否需要再操作。");
   expect(text()).not.toContain("exploding pants");
   const status = container.querySelector('[role="status"]');
-  expect(status?.textContent ?? "").not.toContain("這個要求沒有記錄成功");
+  expect(status?.textContent ?? "").not.toContain("未能取得操作結果");
 });
 
 test("丙-150 a 409 on cancel (deletion already irreversible) says so, not the server's raw body", async () => {

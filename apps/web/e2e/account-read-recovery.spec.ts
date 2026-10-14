@@ -109,7 +109,8 @@ for (const status of [403, 401]) {
     failing = true;
     await page.goBack();
     await expect(main.getByRole("heading", { name: "帳號", level: 1, exact: true })).toBeVisible();
-    if (status === 401) await expect(main.getByRole("status")).toContainText("帳號資料需要登入");
+    if (status === 401)
+      await expect(main.getByRole("status").filter({ hasText: "帳號資料需要登入" })).toHaveCount(1);
     else await expect(main.getByRole("alert")).toContainText("暫時無法讀取帳號資料");
     await expect(main.locator(".account-profile")).toHaveCount(0);
     await expect(main.locator(".account-danger-zone")).toHaveCount(0);
