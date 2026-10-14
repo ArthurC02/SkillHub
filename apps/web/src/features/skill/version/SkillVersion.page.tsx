@@ -2,7 +2,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { ApiError, canRetainLoadedPage } from "../../../core/api/client";
 import type { SkillVersionSummary } from "../../../core/api/types";
 import { Loading } from "../../../shared/ui/Loading";
-import { ReadFailure } from "../../../shared/ui/LoginRequired";
+import { PageReadFailure, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import {
@@ -35,13 +35,35 @@ export function SkillVersion() {
 
   if (skill.isPending) return <Loading what="這個小工具" />;
   if (skill.error instanceof ApiError && skill.error.status === 410) {
-    return <p role="alert">這個小工具已從目錄下架，內容不再提供。</p>;
+    return (
+      <PageReadFailure heading="版本與發佈" error={skill.error} what="這個小工具">
+        <p role="alert">這個小工具已從目錄下架，內容不再提供。</p>
+      </PageReadFailure>
+    );
   }
-  if (skill.error) return <ReadFailure error={skill.error} what="這個小工具" />;
+  if (skill.error)
+    return (
+      <PageReadFailure
+        heading="版本與發佈"
+        error={skill.error}
+        what="這個小工具"
+        retry={() => void skill.refetch()}
+        retrying={skill.isFetching}
+      />
+    );
   if (!skill.data) return <p role="alert">找不到這個小工具。</p>;
 
   if (versions.isPending) return <Loading what="版本脈絡" />;
-  if (versions.error) return <ReadFailure error={versions.error} what="版本脈絡" />;
+  if (versions.error)
+    return (
+      <PageReadFailure
+        heading="版本與發佈"
+        error={versions.error}
+        what="版本脈絡"
+        retry={() => void versions.refetch()}
+        retrying={versions.isFetching}
+      />
+    );
 
   const list = versions.data?.versions ?? [];
   const selectedIndex = list.findIndex((version) => version.version_id === versionId);

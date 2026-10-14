@@ -47,3 +47,34 @@ export function ReadFailure({
     </>
   );
 }
+
+export function PageReadFailure({
+  heading,
+  error,
+  what,
+  retry,
+  retrying,
+  children,
+}: {
+  heading: string;
+  error: unknown;
+  what: string;
+  retry?: () => void;
+  retrying?: boolean;
+  children?: ReactNode;
+}) {
+  return (
+    <section>
+      <h1>{heading}</h1>
+      <ReadFailure
+        error={error}
+        what={what}
+        retry={retry}
+        retrying={retrying}
+        focusTarget="main-content"
+      >
+        {children}
+      </ReadFailure>
+    </section>
+  );
+}

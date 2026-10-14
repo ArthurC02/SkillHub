@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { useMe } from "../../../core/session/me.service";
 import { AdminNav } from "./AdminNav";
 import { Loading } from "../../../shared/ui/Loading";
-import { ReadFailure } from "../../../shared/ui/LoginRequired";
+import { PageReadFailure } from "../../../shared/ui/LoginRequired";
 import { RouteNotFound } from "../../../shared/ui/RouteNotFound";
 import "./AdminPage.css";
 
@@ -21,7 +21,16 @@ export function AdminPage({
     if (me.data?.operator && !window.location.hash) headingRef.current?.focus();
   }, [me.data?.operator]);
   if (me.isPending) return <Loading what="" />;
-  if (me.error) return <ReadFailure error={me.error} what="後台" />;
+  if (me.error)
+    return (
+      <PageReadFailure
+        heading={heading}
+        error={me.error}
+        what="後台"
+        retry={() => void me.refetch()}
+        retrying={me.isFetching}
+      />
+    );
   if (me.data?.operator !== true) return <RouteNotFound />;
   return (
     <section>

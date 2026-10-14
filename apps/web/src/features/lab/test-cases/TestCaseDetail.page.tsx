@@ -1,5 +1,5 @@
 import { Loading } from "../../../shared/ui/Loading";
-import { ReadFailure } from "../../../shared/ui/LoginRequired";
+import { PageReadFailure, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useState } from "react";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { ApiError, canRetainLoadedPage } from "../../../core/api/client";
@@ -47,12 +47,7 @@ export function TestCaseDetail() {
   }
 
   if (testCase.isPending) return <Loading what="測試題" />;
-  if (testCase.error) {
-    if (testCase.error instanceof ApiError && testCase.error.status === 404) {
-      return <p role="alert">找不到這個測試題。</p>;
-    }
-    return <ReadFailure error={testCase.error} what="測試題" />;
-  }
+  if (testCase.error) return <TestCaseReadFailure query={testCase} />;
 
   const history = readableRunHistory(runs);
   const lastMatchingRun = history.find(
@@ -252,6 +247,21 @@ function TestCaseContext({
         </Link>
       </p>
     </section>
+  );
+}
+
+function TestCaseReadFailure({ query }: { query: ReturnType<typeof useTestCase> }) {
+  const missing = query.error instanceof ApiError && query.error.status === 404;
+  return (
+    <PageReadFailure
+      heading="測試題"
+      error={query.error}
+      what="測試題"
+      retry={missing ? undefined : () => void query.refetch()}
+      retrying={query.isFetching}
+    >
+      {missing ? <p role="alert">找不到這個測試題。</p> : undefined}
+    </PageReadFailure>
   );
 }
 

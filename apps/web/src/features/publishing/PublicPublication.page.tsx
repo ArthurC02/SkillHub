@@ -1,6 +1,6 @@
 import { Link, useParams } from "@tanstack/react-router";
 import { Loading } from "../../shared/ui/Loading";
-import { ReadFailure } from "../../shared/ui/LoginRequired";
+import { PageReadFailure, ReadFailure } from "../../shared/ui/LoginRequired";
 import { Timestamp } from "../../shared/ui/Timestamp";
 import { LabelledBadge } from "../../shared/ui/LabelledBadge";
 import { SOURCE_LABELS } from "../../shared/ui/LicenseBadge.model";
@@ -241,9 +241,22 @@ export function PublicPublication() {
 
   if (publication.isPending) return <Loading what="這個發佈物" />;
   if (publication.error instanceof ApiError && publication.error.status === 404) {
-    return <p role="alert">沒有這個發佈物。</p>;
+    return (
+      <PageReadFailure heading="公開發佈物" error={publication.error} what="這個發佈物">
+        <p role="alert">沒有這個發佈物。</p>
+      </PageReadFailure>
+    );
   }
-  if (publication.error) return <ReadFailure error={publication.error} what="這個發佈物" />;
+  if (publication.error)
+    return (
+      <PageReadFailure
+        heading="公開發佈物"
+        error={publication.error}
+        what="這個發佈物"
+        retry={() => void publication.refetch()}
+        retrying={publication.isFetching}
+      />
+    );
   if (!publication.data) return null;
   if (publication.data.availability.value !== "available") {
     return <UnavailablePublication data={publication.data} />;

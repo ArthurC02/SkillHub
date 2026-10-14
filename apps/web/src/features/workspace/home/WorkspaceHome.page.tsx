@@ -3,8 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useMe } from "../../../core/session/me.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
-import { LoginRequired, ReadFailure } from "../../../shared/ui/LoginRequired";
-import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
+import { PageReadFailure, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import {
   creationStateLabel,
@@ -37,8 +36,16 @@ export function WorkspaceHome() {
   const creationExposed = useCreationEntryPoint();
 
   if (me.isPending) return <Loading what="工作區首頁" />;
-  if (unauthenticated(me.error)) return <LoginRequired what="工作區首頁" />;
-  if (me.error) return <ReadFailure error={me.error} what="工作區首頁" />;
+  if (me.error)
+    return (
+      <PageReadFailure
+        heading="工作台"
+        error={me.error}
+        what="工作區首頁"
+        retry={() => void me.refetch()}
+        retrying={me.isFetching}
+      />
+    );
   if (!me.data) return <p role="alert">目前無法確認這個工作區是誰的。</p>;
 
   return (

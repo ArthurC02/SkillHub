@@ -1,5 +1,5 @@
 import { Loading } from "../../../shared/ui/Loading";
-import { ReadFailure } from "../../../shared/ui/LoginRequired";
+import { PageReadFailure } from "../../../shared/ui/LoginRequired";
 import { Link, useParams } from "@tanstack/react-router";
 import { ApiError } from "../../../core/api/client";
 import { useSkillDetail } from "../skills.service";
@@ -23,14 +23,27 @@ import "./SkillDetail.page.css";
 
 export function SkillDetail() {
   const { skillId } = useParams({ from: "/skills/$skillId" });
-  const { data: skill, isLoading, error } = useSkillDetail(skillId);
+  const { data: skill, isLoading, error, refetch, isFetching } = useSkillDetail(skillId);
   const { data: me } = useMe();
 
   if (isLoading) return <Loading what="這個小工具" />;
   if (error instanceof ApiError && error.status === 410) {
-    return <p role="alert">這個小工具已從目錄下架，內容不再提供。</p>;
+    return (
+      <PageReadFailure heading="小工具總覽" error={error} what="這個小工具">
+        <p role="alert">這個小工具已從目錄下架，內容不再提供。</p>
+      </PageReadFailure>
+    );
   }
-  if (error) return <ReadFailure error={error} what="這個小工具" />;
+  if (error)
+    return (
+      <PageReadFailure
+        heading="小工具總覽"
+        error={error}
+        what="這個小工具"
+        retry={() => void refetch()}
+        retrying={isFetching}
+      />
+    );
   if (!skill) return <p role="alert">找不到這個小工具。</p>;
 
   return (

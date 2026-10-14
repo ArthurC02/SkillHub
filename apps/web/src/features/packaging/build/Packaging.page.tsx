@@ -1,6 +1,6 @@
 import { ApiError } from "../../../core/api/client";
 import { Loading } from "../../../shared/ui/Loading";
-import { ReadFailure } from "../../../shared/ui/LoginRequired";
+import { PageReadFailure } from "../../../shared/ui/LoginRequired";
 import { useState } from "react";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
 import {
@@ -134,8 +134,21 @@ export function Packaging() {
 
   if (skill.isLoading) return <Loading what="這個小工具" />;
   if (skill.error instanceof ApiError && skill.error.status === 410)
-    return <p role="alert">這個小工具已從目錄下架，內容不再提供。</p>;
-  if (skill.error) return <ReadFailure error={skill.error} what="這個小工具" />;
+    return (
+      <PageReadFailure heading="小工具套件" error={skill.error} what="這個小工具">
+        <p role="alert">這個小工具已從目錄下架，內容不再提供。</p>
+      </PageReadFailure>
+    );
+  if (skill.error)
+    return (
+      <PageReadFailure
+        heading="小工具套件"
+        error={skill.error}
+        what="這個小工具"
+        retry={() => void skill.refetch()}
+        retrying={skill.isFetching}
+      />
+    );
   if (!skill.data) return <p role="alert">找不到這個小工具。</p>;
 
   const gate = packagingGate(skill.data);
