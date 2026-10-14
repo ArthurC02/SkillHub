@@ -46,8 +46,10 @@ const KIND_LABELS: Record<string, string> = {
 
 export function Activity() {
   const activity = useActivity();
+  const pages = activity.error && !activity.isFetchNextPageError ? undefined : activity.data;
   const availability = useFeatureAvailability();
-  const items = activity.data?.pages.flatMap((page) => page.items) ?? [];
+  const items = pages?.pages.flatMap((page) => page.items) ?? [];
+  const showItems = Boolean(pages) && (!activity.error || items.length > 0);
   const unavailable = activityUnavailable(activity.error);
   const inProgress = items.some((item) => item.classification === "in_progress");
 
@@ -56,10 +58,14 @@ export function Activity() {
       <header className="activity-hero">
         <div>
           <p className="activity-eyebrow">Workspace activity</p>
-          <h1>活動</h1>
+          <h1 id="activity-heading" tabIndex={-1}>
+            活動
+          </h1>
           <p>把正在執行、等待決定與最近完成的工作放在同一條可信時間線。</p>
         </div>
-        {activity.data && <ActivitySummary items={items} hasMore={activity.hasNextPage} />}
+        {pages && !activity.error && (
+          <ActivitySummary items={items} hasMore={activity.hasNextPage} />
+        )}
       </header>
 
       <p className="note" data-role="caveat">
@@ -67,20 +73,39 @@ export function Activity() {
       </p>
 
       {activity.isPending && <Loading what="Workspace 活動" />}
-      <ReadFailure error={activity.error} what="Workspace 活動">
-        {unavailable && <UnavailableSources sources={unavailable.unavailable_sources} />}
+      <ReadFailure
+        error={activity.error}
+        what="Workspace 活動"
+        retry={() =>
+          void (activity.isFetchNextPageError ? activity.fetchNextPage() : activity.refetch())
+        }
+        retrying={activity.isFetching}
+        focusTarget="activity-heading"
+      >
+        {unavailable ? (
+          <UnavailableSources
+            sources={unavailable.unavailable_sources}
+            nextPage={activity.isFetchNextPageError}
+          />
+        ) : activity.isFetchNextPageError ? (
+          <p role="alert">更早的活動讀取失敗；以下僅保留已載入的紀錄，尚未讀完。請再試一次。</p>
+        ) : null}
       </ReadFailure>
-      {activity.data && (
+      {pages && !activity.error && (
         <ListFreshness
           inFlight={inProgress}
+          showWhenIdle
           updatedAt={activity.dataUpdatedAt}
           fetching={activity.isFetching && !activity.isFetchingNextPage}
-          refetch={activity.refetch}
+          refetch={async () => {
+            const result = await activity.refetch();
+            if (result.error) document.getElementById("activity-heading")?.focus();
+          }}
           subject="工作"
         />
       )}
 
-      {activity.data &&
+      {showItems &&
         (items.length === 0 ? (
           <div className="activity-empty">
             <h2>目前沒有活動</h2>
@@ -118,7 +143,7 @@ export function Activity() {
           </div>
         ))}
 
-      {activity.hasNextPage && (
+      {activity.hasNextPage && !activity.error && (
         <button
           type="button"
           disabled={activity.isFetchingNextPage}
@@ -155,12 +180,19 @@ function ActivitySummary({ items, hasMore }: { items: ActivityItem[]; hasMore: b
   );
 }
 
-function UnavailableSources({ sources }: { sources: ActivitySource[] }) {
+function UnavailableSources({
+  sources,
+  nextPage,
+}: {
+  sources: ActivitySource[];
+  nextPage: boolean;
+}) {
   return (
     <div className="activity-unavailable" role="alert">
       <strong>暫時無法讀取完整活動。</strong>
       <p>
-        未能讀取：{sources.map((source) => SOURCE_LABELS[source]).join("、")}。沒有顯示部分結果。
+        未能讀取：{sources.map((source) => SOURCE_LABELS[source]).join("、")}。
+        {nextPage ? "以下僅保留已載入的紀錄，尚未讀完。請再試一次。" : "沒有顯示部分結果。"}
       </p>
     </div>
   );

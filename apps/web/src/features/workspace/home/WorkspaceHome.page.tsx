@@ -56,16 +56,15 @@ function WorkspaceHomeContent({
   name: string;
   creationExposed: boolean;
 }) {
-  const skills = useOwnSkills();
   const runs = useRuns();
-  const runRows = runs.data?.pages.flatMap((page) => page.runs) ?? [];
+  const runData = runs.error ? undefined : runs.data;
+  const runRows = runData?.pages.flatMap((page) => page.runs) ?? [];
   const attention = runRows.filter(
     (run) => runActivityGroup(run.status, run.evaluation.value) === "needs_attention",
   );
   const active = runRows.filter(
     (run) => runActivityGroup(run.status, run.evaluation.value) === "in_flight",
   );
-  const owned = skills.data?.skills.slice(0, 4) ?? [];
 
   return (
     <section className="workspace-home">
@@ -73,12 +72,20 @@ function WorkspaceHomeContent({
 
       <section className="workspace-home-section workspace-home-attention">
         <header>
-          <h2>需要留意</h2>
+          <h2 id="workspace-attention-heading" tabIndex={-1}>
+            需要留意
+          </h2>
           <p className="note">執行失敗、逾時或仍待判斷的結果會集中在這裡。</p>
         </header>
         {runs.isPending && <Loading what="需要處理的試跑" />}
-        <ReadFailure error={runs.error} what="需要處理的試跑" />
-        {runs.data &&
+        <ReadFailure
+          error={runs.error}
+          what="需要處理的試跑"
+          retry={() => void runs.refetch()}
+          retrying={runs.isFetching}
+          focusTarget="workspace-attention-heading"
+        />
+        {runData &&
           (attention.length === 0 ? (
             <RunEmptyState kind="attention" hasMore={runs.hasNextPage} />
           ) : (
@@ -105,9 +112,17 @@ function WorkspaceHomeContent({
             inFlight={active.length > 0}
             updatedAt={runs.dataUpdatedAt}
             fetching={runs.isFetching}
-            refetch={runs.refetch}
+            refetch={async () => {
+              const result = await runs.refetch();
+              if (result.error) document.getElementById("workspace-attention-heading")?.focus();
+            }}
           />
-          {runs.data &&
+          {runs.error && (
+            <p className="note" data-role="reason">
+              目前無法確認哪些試跑仍在執行；請使用「需要留意」區的「再試一次」。
+            </p>
+          )}
+          {runData &&
             (active.length === 0 ? (
               <RunEmptyState kind="active" hasMore={runs.hasNextPage} />
             ) : (
@@ -125,49 +140,66 @@ function WorkspaceHomeContent({
 
       <PublicationContinuations />
 
-      <section className="workspace-home-section">
-        <header className="workspace-home-section-heading">
-          <div>
-            <h2>你的資產</h2>
-            <p className="note">從一個小工具開始，繼續建構、驗證或發佈。</p>
-          </div>
-          <Link className="action-secondary" to="/library">
-            打開資產庫
-          </Link>
-        </header>
-        {skills.isPending && <Loading what="你的資產" />}
-        <ReadFailure error={skills.error} what="你的資產" />
-        {skills.data &&
-          (owned.length === 0 ? (
-            <div className="workspace-home-empty">
-              <p>資產庫目前是空的。先從 Catalog 找一個，或匯入現成套件。</p>
-              <div className="workspace-home-actions">
-                <Link className="action-secondary" to="/" search={{}}>
-                  探索 Catalog
-                </Link>
-                <Link className="action-secondary" to="/workspace/import">
-                  匯入套件
-                </Link>
-              </div>
+      <WorkspaceAssets />
+    </section>
+  );
+}
+
+function WorkspaceAssets() {
+  const skills = useOwnSkills();
+  const skillData = skills.error ? undefined : skills.data;
+  const owned = skillData?.skills.slice(0, 4) ?? [];
+  return (
+    <section className="workspace-home-section">
+      <header className="workspace-home-section-heading">
+        <div>
+          <h2 id="workspace-assets-heading" tabIndex={-1}>
+            你的資產
+          </h2>
+          <p className="note">從一個小工具開始，繼續建構、驗證或發佈。</p>
+        </div>
+        <Link className="action-secondary" to="/library">
+          打開資產庫
+        </Link>
+      </header>
+      {skills.isPending && <Loading what="你的資產" />}
+      <ReadFailure
+        error={skills.error}
+        what="你的資產"
+        retry={() => void skills.refetch()}
+        retrying={skills.isFetching}
+        focusTarget="workspace-assets-heading"
+      />
+      {skillData &&
+        (owned.length === 0 ? (
+          <div className="workspace-home-empty">
+            <p>資產庫目前是空的。先從 Catalog 找一個，或匯入現成套件。</p>
+            <div className="workspace-home-actions">
+              <Link className="action-secondary" to="/" search={{}}>
+                探索 Catalog
+              </Link>
+              <Link className="action-secondary" to="/workspace/import">
+                匯入套件
+              </Link>
             </div>
-          ) : (
-            <ul className="workspace-home-assets">
-              {owned.map((skill) => (
-                <li key={skill.skill_id}>
-                  <Link to="/skills/$skillId" params={{ skillId: skill.skill_id }}>
-                    <span className="workspace-home-monogram" aria-hidden="true">
-                      {Array.from(skill.name)[0] ?? "?"}
-                    </span>
-                    <span>
-                      <strong>{skill.name}</strong>
-                      <span className="note">{skill.summary}</span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ))}
-      </section>
+          </div>
+        ) : (
+          <ul className="workspace-home-assets">
+            {owned.map((skill) => (
+              <li key={skill.skill_id}>
+                <Link to="/skills/$skillId" params={{ skillId: skill.skill_id }}>
+                  <span className="workspace-home-monogram" aria-hidden="true">
+                    {Array.from(skill.name)[0] ?? "?"}
+                  </span>
+                  <span>
+                    <strong>{skill.name}</strong>
+                    <span className="note">{skill.summary}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ))}
     </section>
   );
 }
@@ -195,13 +227,16 @@ function WorkspaceHomeHero({ name }: { name: string }) {
 
 function PublicationContinuations() {
   const publications = useOwnPublications();
-  const rows = publications.data?.publications.slice(0, 3) ?? [];
+  const data = publications.error ? undefined : publications.data;
+  const rows = data?.publications.slice(0, 3) ?? [];
 
   return (
     <section className="workspace-home-section">
       <header className="workspace-home-section-heading">
         <div>
-          <h2>發佈成果</h2>
+          <h2 id="workspace-publications-heading" tabIndex={-1}>
+            發佈成果
+          </h2>
           <p className="note">延續已建立的 Publication，或回到它目前最新的 Release。</p>
         </div>
         <Link className="action-secondary" to="/workspace/downloads">
@@ -209,8 +244,14 @@ function PublicationContinuations() {
         </Link>
       </header>
       {publications.isPending && <Loading what="發佈成果" />}
-      <ReadFailure error={publications.error} what="發佈成果" />
-      {publications.data &&
+      <ReadFailure
+        error={publications.error}
+        what="發佈成果"
+        retry={() => void publications.refetch()}
+        retrying={publications.isFetching}
+        focusTarget="workspace-publications-heading"
+      />
+      {data &&
         (rows.length === 0 ? (
           <p>目前沒有發佈成果。</p>
         ) : (
@@ -288,19 +329,30 @@ function CreationContinuations() {
   return (
     <section className="workspace-home-section">
       <header>
-        <h2>繼續進行</h2>
+        <h2 id="workspace-creations-heading" tabIndex={-1}>
+          繼續進行
+        </h2>
         <p className="note">回到最近仍可操作的創作會話；草稿還不是已保存的小工具。</p>
       </header>
       <ListFreshness
-        inFlight={working}
+        inFlight={working && !sessions.error}
         updatedAt={sessions.dataUpdatedAt}
         fetching={sessions.isFetching}
-        refetch={sessions.refetch}
+        refetch={async () => {
+          const result = await sessions.refetch();
+          if (result.error) document.getElementById("workspace-creations-heading")?.focus();
+        }}
         subject="創作"
       />
       {sessions.isPending && <Loading what="最近的創作" />}
-      <ReadFailure error={sessions.error} what="最近的創作" />
-      {sessions.data && (
+      <ReadFailure
+        error={sessions.error}
+        what="最近的創作"
+        retry={() => void sessions.refetch()}
+        retrying={sessions.isFetching}
+        focusTarget="workspace-creations-heading"
+      />
+      {sessions.data && !sessions.error && (
         <ul className="workspace-home-list">
           {resumable.map((session) => (
             <CreationItem key={session.id} session={session} />

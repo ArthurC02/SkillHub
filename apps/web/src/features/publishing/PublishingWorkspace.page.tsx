@@ -2,6 +2,7 @@ import { Link, useSearch } from "@tanstack/react-router";
 import { useRef } from "react";
 import { Downloads } from "../packaging";
 import { Loading } from "../../shared/ui/Loading";
+import { ListFreshness } from "../../shared/ui/ListFreshness";
 import { ReadFailure } from "../../shared/ui/LoginRequired";
 import { Timestamp } from "../../shared/ui/Timestamp";
 import { useContinuationFocus } from "../../shared/ui/useContinuationFocus";
@@ -81,7 +82,8 @@ function PublishingWorkspaceMap() {
 
 function PublicationOverview({ selectedPublication }: { selectedPublication?: string }) {
   const overview = useOwnPublications();
-  const publications = overview.data?.publications ?? [];
+  const data = overview.error ? undefined : overview.data;
+  const publications = data?.publications ?? [];
   const selected = publications.find(
     (publication) => `${publication.publisher}/${publication.name}` === selectedPublication,
   );
@@ -90,15 +92,36 @@ function PublicationOverview({ selectedPublication }: { selectedPublication?: st
 
   return (
     <section id="skill-publications" aria-labelledby="publication-overview-title">
-      <h2 id="publication-overview-title">小工具發佈</h2>
+      <h2 id="publication-overview-title" tabIndex={-1}>
+        小工具發佈
+      </h2>
       <p className="note">
         每筆 Publication 都指向一個不可變 Release；Catalog 是否曝光仍由營運者另行審核。
         公開頁會說明目前誰有資格取得；取得者身分與下載次數尚未提供。
       </p>
 
       {overview.isPending && <Loading what="小工具發佈清單" />}
-      <ReadFailure error={overview.error} what="小工具發佈清單" />
-      {overview.data && selectedPublication && !selected && (
+      <ReadFailure
+        error={overview.error}
+        what="小工具發佈清單"
+        retry={() => void overview.refetch()}
+        retrying={overview.isFetching}
+        focusTarget="publication-overview-title"
+      />
+      {data && (
+        <ListFreshness
+          inFlight={false}
+          showWhenIdle
+          updatedAt={overview.dataUpdatedAt}
+          fetching={overview.isFetching}
+          refetch={async () => {
+            const result = await overview.refetch();
+            if (result.error) document.getElementById("publication-overview-title")?.focus();
+          }}
+          subject="發佈"
+        />
+      )}
+      {data && selectedPublication && !selected && (
         <p role="status" className="note">
           這個工作區目前找不到這筆小工具發佈。它可能已不存在，或目前帳號無法檢視。{" "}
           <Link to="/workspace/downloads" search={{}}>
@@ -107,7 +130,7 @@ function PublicationOverview({ selectedPublication }: { selectedPublication?: st
         </p>
       )}
 
-      {overview.data &&
+      {data &&
         (publications.length === 0 ? (
           <p>
             還沒有任何小工具 Publication。先到 <Link to="/library">資產庫</Link>{" "}
