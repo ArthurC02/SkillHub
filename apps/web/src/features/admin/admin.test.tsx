@@ -3167,6 +3167,7 @@ test("a completed exposure decision does not describe the next decision", async 
   await waitFor(has("這筆曝光審核已核准。"));
 
   await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="revoked"]'));
+  await waitFor(() => !has("這筆曝光審核已核准。")());
   expect(has("這筆曝光審核已核准。")()).toBe(false);
 });
 
