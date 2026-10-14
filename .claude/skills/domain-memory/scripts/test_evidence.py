@@ -54,9 +54,9 @@ class EvidenceTest(RegistryTestCase):
             ("past the end, excerpt earlier in the file", {**cited, "lines": {"start": 3, "end": 4}},
              {"cited_lines": {"start": 3, "end": 4}, "status": "shifted", "path": "fact.md",
               "lines": {"start": 2, "end": 3},
-              "reason": "the cited lines are unchanged but now sit elsewhere in fact.md; "
-              "relocate-evidence --from fact.md --to fact.md re-cites them; a reviewed record's update goes "
-              "through a Change Package that lists the printed supersedes"}),
+              "reason": "the cited lines are unchanged but now sit elsewhere in fact.md; this passes "
+              "every check and needs no Change Package of its own; when one next touches the record, "
+              "relocate-evidence --from fact.md --to fact.md re-cites them and prints the supersedes"}),
             ("past the end, excerpt gone", {**cited, "lines": {"start": 3, "end": 5}},
              {"cited_lines": {"start": 3, "end": 5}, "status": "stale", "path": "fact.md",
               "reason": "the cited excerpt is no longer in fact.md; check that the fact still holds, then recite it"}),
@@ -277,6 +277,50 @@ class EvidenceTest(RegistryTestCase):
             [{"start": 1, "end": 1}, {"start": 3, "end": 4}],
             [reference["lines"] for reference in result["registry_updates"][0]["record"]["evidence"]],
         )
+
+    def shifted_and_stale_in_one_record(self) -> dict:
+        (self.repo / "fact.md").write_text("fact\na\nold\n", encoding="utf-8")
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        self.seed("rules.json", [
+            {"id": "both", "contexts": ["orders"], "statement": "S.", "status": "reviewed",
+             "evidence": [citation(self.repo, "fact.md", 1, 1), citation(self.repo, "fact.md", 3, 3)],
+             "review": {"proposal_id": "PRO-1"}},
+            {"id": "shifted", "contexts": ["orders"], "statement": "S.", "status": "reviewed",
+             "evidence": [citation(self.repo, "fact.md", 2, 2)], "review": {"proposal_id": "PRO-2"}},
+        ])
+        (self.repo / "fact.md").write_text("x\nfact\na\nnew\n", encoding="utf-8")
+        return relocate_evidence(self.repo / "memory", self.repo, "fact.md", "fact.md")
+
+    def test_reciting_onto_a_relocation_keeps_its_re_citations_in_one_update(self) -> None:
+        moved = self.shifted_and_stale_in_one_record()
+        self.assertEqual([("both", {"start": 3, "end": 3})], [(p["id"], p["lines"]) for p in moved["unmatched"]])
+        result = recite(self.repo / "memory", self.repo,
+                        Recitation("rules", "both", "fact.md", "4", "fact.md:3-3", moved))
+        self.assertEqual(
+            {"both": [{"start": 2, "end": 2}, {"start": 4, "end": 4}], "shifted": [{"start": 3, "end": 3}]},
+            {update["record"]["id"]: [reference["lines"] for reference in update["record"]["evidence"]]
+             for update in result["registry_updates"]},
+        )
+        self.assertEqual((2, ["PRO-1", "PRO-2"], []),
+                         (len(result["registry_updates"]), result["supersedes"], result["unmatched"]))
+
+    def test_reciting_onto_output_that_lacks_the_record_starts_from_the_registry(self) -> None:
+        moved = self.shifted_and_stale_in_one_record()
+        moved["registry_updates"] = [u for u in moved["registry_updates"] if u["record"]["id"] != "both"]
+        result = recite(self.repo / "memory", self.repo,
+                        Recitation("rules", "both", "fact.md", "4", "fact.md:3-3", moved))
+        both = next(u["record"] for u in result["registry_updates"] if u["record"]["id"] == "both")
+        self.assertEqual([{"start": 1, "end": 1}, {"start": 4, "end": 4}], [r["lines"] for r in both["evidence"]])
+        self.assertEqual(["both", "shifted"], sorted(u["record"]["id"] for u in result["registry_updates"]))
+
+    def test_reciting_onto_output_leaves_a_same_id_record_of_another_asset_alone(self) -> None:
+        moved = self.shifted_and_stale_in_one_record()
+        namesake = {"operation": "upsert", "asset": "contexts", "record": {"id": "both", "evidence": []}}
+        moved["registry_updates"].insert(0, namesake)
+        result = recite(self.repo / "memory", self.repo,
+                        Recitation("rules", "both", "fact.md", "4", "fact.md:3-3", moved))
+        self.assertEqual(namesake, result["registry_updates"][0])
+        self.assertEqual(["contexts", "rules", "rules"], [u["asset"] for u in result["registry_updates"]])
 
     def test_reciting_refuses_an_unknown_record_and_a_malformed_range(self) -> None:
         self.cited_rule("reviewed", (2, 2))

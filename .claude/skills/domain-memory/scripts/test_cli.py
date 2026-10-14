@@ -500,6 +500,17 @@ class CliTest(RegistryTestCase):
         self.assertEqual(["PRO-1"], json.loads(result.stdout)["supersedes"])
         self.assertEqual("", result.stderr)
 
+    def test_reciting_onto_an_earlier_output_file_merges_into_it(self) -> None:
+        self.cited_rule("reviewed", (2, 2))
+        earlier = self.repo / "earlier.json"
+        earlier.write_text(json.dumps({"registry_updates": [], "supersedes": ["PRO-9"], "candidates": []}), encoding="utf-8")
+        result = self.run_cli(
+            "recite", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+            "--asset", "rules", "--id", "rule", "--path", "src/a.py", "--lines", "3", "--onto", str(earlier),
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(["PRO-1", "PRO-9"], json.loads(result.stdout)["supersedes"])
+
     def test_reciting_lines_that_repeat_in_the_file_says_to_widen_them(self) -> None:
         self.cited_rule("reviewed", (2, 2))
         (self.repo / "src" / "a.py").write_text("zero\none\ntwo\ntwo\n", encoding="utf-8")

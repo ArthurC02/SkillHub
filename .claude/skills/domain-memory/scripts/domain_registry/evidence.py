@@ -230,9 +230,9 @@ def _moved_or_stale(excerpt_sha256: str, path_text: str, rows: list[str], length
         "status": "shifted",
         "path": path_text,
         "lines": {"start": starts[0], "end": starts[0] + length - 1},
-        "reason": f"the cited lines are unchanged but now sit elsewhere in {path_text}; "
-        f"relocate-evidence --from {path_text} --to {path_text} re-cites them; a reviewed record's "
-        "update goes through a Change Package that lists the printed supersedes",
+        "reason": f"the cited lines are unchanged but now sit elsewhere in {path_text}; this passes "
+        "every check and needs no Change Package of its own; when one next touches the record, "
+        f"relocate-evidence --from {path_text} --to {path_text} re-cites them and prints the supersedes",
     }
 
 

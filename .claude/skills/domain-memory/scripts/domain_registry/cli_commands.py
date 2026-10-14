@@ -214,7 +214,10 @@ def handle_recite(args: argparse.Namespace) -> int:
     print_json(
         recite(
             args.registry_root.resolve(), repo_root,
-            Recitation(args.asset, args.id, args.path, args.lines, args.replace),
+            Recitation(
+                args.asset, args.id, args.path, args.lines, args.replace,
+                load_json(args.onto.resolve()) if args.onto else None,
+            ),
         )
     )
     _note_repeated(repo_root, citation(repo_root, args.path, *line_range(args.lines)))

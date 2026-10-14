@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.23.0
+
+### Added
+
+- `recite --onto <file>` re-cites a record on top of what an earlier `relocate-evidence` or `recite` printed, and prints that output with the record's entry replaced, the `supersedes` merged and the resolved `unmatched` item dropped. A record with one shifted and one stale citation no longer comes out as two updates where the second overwrites the first.
+
+### Changed
+
+- A `shifted` citation is described as what it always was: it passes every check and needs no Change Package of its own; re-cite it in the next package that touches the record. `AGENTS.md`, `evidence-rules.md` and the `shifted` reason say so.
+
 ## 0.22.0
 
 ### Added

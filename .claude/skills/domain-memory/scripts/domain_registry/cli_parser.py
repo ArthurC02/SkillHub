@@ -96,6 +96,7 @@ def _add_evidence_commands(commands: argparse._SubParsersAction) -> None:
     recite_parser.add_argument("--path", required=True)
     recite_parser.add_argument("--lines", required=True)
     recite_parser.add_argument("--replace")
+    add_path(recite_parser, "--onto", required=False)
 
 
 def _add_record_and_source_commands(commands: argparse._SubParsersAction) -> None:

@@ -67,9 +67,9 @@ Commands that read or change the Registry take `--registry-root <root>`: the dir
 | Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`; a `mentioned` match is prose in a reviewed record, not a term |
 | See which boundaries your change touches | `boundary-impact --base <branch point>`; `unknown` means no Context records an `implementation_path`, so it cannot map files to Contexts |
 | Check the Registry's shape and references | `validate`; it does not check that citations still match the code, which is `verify-evidence` |
-| Check the evidence of files you edited | `verify-evidence --path <file>`; `stale` needs `recite` after you check the fact, `shifted` needs `relocate-evidence --from <file> --to <file>`; give a directory, or `.` for the whole repository, to re-cite every shifted citation under it in one Change Package |
+| Check the evidence of files you edited | `verify-evidence --path <file>`; `stale` needs `recite` after you check the fact. `shifted` passes every check and needs no Change Package of its own: re-cite it with `relocate-evidence --from <file> --to <file>` in the next package that touches the record; a directory, or `.`, covers everything under it |
 | Re-cite after moving code | `relocate-evidence --from <old> --to <new>` |
-| Re-cite after editing code in place | `recite --asset <asset> --id <id> --path <file> --lines <a>-<b>` |
+| Re-cite after editing code in place | `recite --asset <asset> --id <id> --path <file> --lines <a>-<b>`; add `--onto <file>` holding what an earlier `relocate-evidence` or `recite` printed, and the output is that file with this record re-cited in it, so one record never gets two competing updates |
 | Propose a new fact | `cite`, then `upsert-candidate --asset <asset> --record-file <file>`; give `--record-file` once per record |
 | Change a reviewed fact | `init-change-package --requirement-id <id> --proposal-id <id> --proposer <you>`, add `registry_updates`, then `validate-change-package --as-status submitted --repo-root <repo>` before every transition; the lifecycle is in [references/script-api.md](references/script-api.md) |
 | Recover after a crash | `recover-registry-update --repo-root <repo>` |

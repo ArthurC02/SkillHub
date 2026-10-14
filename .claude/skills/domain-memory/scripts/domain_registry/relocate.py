@@ -81,6 +81,34 @@ class Recitation:
     path: str
     lines: str
     replace: str | None = None
+    onto: dict[str, Any] | None = None
+
+
+def _earlier_record(onto: dict[str, Any] | None, asset: str, record_id: str) -> dict[str, Any] | None:
+    proposed = [*(onto or {}).get("registry_updates", []), *(onto or {}).get("candidates", [])]
+    return next(
+        (item["record"] for item in proposed
+         if item.get("asset") == asset and (item.get("record") or {}).get("id") == record_id),
+        None,
+    )
+
+
+def _merged(onto: dict[str, Any], update: dict[str, Any], asset: str, record_id: str, resolved: dict) -> dict[str, Any]:
+    def others(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [item for item in items
+                if not (item.get("asset") == asset and (item.get("record") or {}).get("id") == record_id)]
+
+    return {
+        **onto,
+        "registry_updates": others(onto.get("registry_updates", [])) + update["registry_updates"],
+        "supersedes": sorted({*onto.get("supersedes", []), *update["supersedes"]}),
+        "candidates": others(onto.get("candidates", [])) + update["candidates"],
+        **({"unmatched": [
+            problem for problem in onto["unmatched"]
+            if (problem.get("asset"), problem.get("id"), problem.get("path"), problem.get("lines"))
+            != (asset, record_id, resolved.get("path"), resolved.get("lines"))
+        ]} if "unmatched" in onto else {}),
+    }
 
 
 def recite(root: Path, repo_root: Path, request: Recitation) -> dict[str, Any]:
@@ -92,6 +120,7 @@ def recite(root: Path, repo_root: Path, request: Recitation) -> dict[str, Any]:
     entry = next((item for item in document.get(ASSET_KEYS[name], []) if item.get("id") == record_id), None)
     if entry is None:
         raise ValueError(f"no {asset} record {record_id}")
+    working = _earlier_record(request.onto, asset, record_id) or entry
     old_path, _, old_lines = (old or path).partition(":")
     wanted = line_range(old_lines) if old_lines else None
 
@@ -101,11 +130,11 @@ def recite(root: Path, repo_root: Path, request: Recitation) -> dict[str, Any]:
         spans = reference.get("lines") or {}
         return wanted is None or (spans.get("start"), spans.get("end")) == wanted
 
-    matches = [reference for reference in all_references(entry) if replaced(reference)]
+    matches = [reference for reference in all_references(working) if replaced(reference)]
     if len(matches) != 1:
         cited = sorted(
             f"{reference.get('path')}:{(reference.get('lines') or {}).get('start')}-{(reference.get('lines') or {}).get('end')}"
-            for reference in all_references(entry) if isinstance(reference, dict)
+            for reference in all_references(working) if isinstance(reference, dict)
         )
         raise ValueError(
             f"{asset}/{record_id} has {len(matches)} citations of {old or path}; name the one to replace "
@@ -113,8 +142,11 @@ def recite(root: Path, repo_root: Path, request: Recitation) -> dict[str, Any]:
         )
     start, end = line_range(lines)
     recited = classified(citation(repo_root, path, start, end), source_map_for(root))
-    changed = with_references(entry, lambda reference: recited if reference is matches[0] else reference)
-    return _record_update(name, document, entry, changed)
+    changed = with_references(working, lambda reference: recited if reference is matches[0] else reference)
+    update = _record_update(name, document, entry, changed)
+    if request.onto is None:
+        return update
+    return _merged(request.onto, update, asset, record_id, matches[0])
 
 
 def relocate_evidence(root: Path, repo_root: Path, old: str, new: str) -> dict[str, Any]:
