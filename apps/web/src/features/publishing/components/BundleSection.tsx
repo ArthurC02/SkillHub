@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
+import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
 import { useContinuationFocus } from "../../../shared/ui/useContinuationFocus";
 import { API_BASE_URL } from "../../../core/api/client";
@@ -46,24 +47,26 @@ function useMemberChoices(): {
   choices: MemberChoice[];
   isPending: boolean;
   error: Error | null;
+  retryFailedReads: () => void;
+  fetching: boolean;
 } {
   const ownSkills = useOwnSkills();
   const skillIds = useMemo(
-    () => ownSkills.data?.skills.map((s) => s.skill_id) ?? [],
-    [ownSkills.data],
+    () => (ownSkills.error ? [] : (ownSkills.data?.skills.map((s) => s.skill_id) ?? [])),
+    [ownSkills.data, ownSkills.error],
   );
   const details = useEmbeddedSkillDetails(skillIds);
   const versions = useEmbeddedSkillVersions(skillIds);
 
   const choices: MemberChoice[] = [];
   skillIds.forEach((skillId, i) => {
-    const detail = details[i]?.data;
+    const detail = details[i]?.error ? undefined : details[i]?.data;
     if (!detail) return;
     const value = detail.redistribution?.value;
     choices.push({
       skillId,
       name: detail.name,
-      versions: versions[i]?.data?.versions ?? [],
+      versions: versions[i]?.error ? [] : (versions[i]?.data?.versions ?? []),
       needsAttestation: value === "self_supplied" || value === "generated",
     });
   });
@@ -79,25 +82,44 @@ function useMemberChoices(): {
       details.find((detail) => detail.error)?.error ??
       versions.find((versionList) => versionList.error)?.error ??
       null,
+    fetching:
+      ownSkills.isFetching ||
+      details.some((query) => query.isFetching) ||
+      versions.some((query) => query.isFetching),
+    retryFailedReads: () => {
+      for (const query of [ownSkills, ...details, ...versions]) {
+        if (query.error) void query.refetch();
+      }
+    },
   };
 }
 
 export function BundleSection({ selectedVersion }: { selectedVersion?: string }) {
   const bundles = useOwnBundles();
-  const overview = useOwnBundleOverview(Boolean(bundles.data?.bundles.length));
-  const { choices, isPending: choicesPending, error: choicesError } = useMemberChoices();
+  const readableBundles = bundles.error ? undefined : bundles.data;
+  const overview = useOwnBundleOverview(Boolean(readableBundles?.bundles.length));
+  const {
+    choices,
+    isPending: choicesPending,
+    error: choicesError,
+    retryFailedReads: retryChoices,
+    fetching: choicesFetching,
+  } = useMemberChoices();
   const groupedBundles = useMemo(() => {
     const groups = new Map<string, BundleVersion[]>();
-    for (const bundle of bundles.data?.bundles ?? []) {
+    for (const bundle of readableBundles?.bundles ?? []) {
       const versions = groups.get(bundle.bundle) ?? [];
       versions.push(bundle);
       groups.set(bundle.bundle, versions);
     }
     return Array.from(groups, ([bundle, versions]) => ({ bundle, versions }));
-  }, [bundles.data]);
+  }, [readableBundles]);
   const overviewByBundle = useMemo(
-    () => new Map((overview.data?.bundles ?? []).map((item) => [item.bundle, item])),
-    [overview.data],
+    () =>
+      new Map(
+        (overview.error ? [] : (overview.data?.bundles ?? [])).map((item) => [item.bundle, item]),
+      ),
+    [overview.data, overview.error],
   );
   const needsAttestationOf = useMemo(() => {
     const bySkill = new Map(choices.map((choice) => [choice.skillId, choice.needsAttestation]));
@@ -107,19 +129,59 @@ export function BundleSection({ selectedVersion }: { selectedVersion?: string })
 
   return (
     <section id="bundle-workspace">
-      <h2>Bundle</h2>
+      <h2 id="bundle-workspace-heading" tabIndex={-1}>
+        Bundle
+      </h2>
       <p className="note">
         每個 Bundle 是一個持續營運的產品單位；版本是不可變快照，最新建立版本不一定等於目前公開的
         Release。
       </p>
       {bundles.isPending && <Loading what="Bundle 清單" />}
-      <ReadFailure error={bundles.error} what="Bundle 清單" />
-      {(bundles.data?.bundles.length ?? 0) > 0 && overview.isPending && (
+      <ReadFailure
+        error={bundles.error}
+        what="Bundle 清單"
+        retry={() => void bundles.refetch()}
+        retrying={bundles.isFetching}
+        focusTarget="bundle-workspace-heading"
+      />
+      {(readableBundles?.bundles.length ?? 0) > 0 && overview.isPending && (
         <Loading what="Bundle 發佈概覽" />
       )}
-      <ReadFailure error={overview.error} what="Bundle 發佈概覽" />
+      <ReadFailure
+        error={overview.error}
+        what="Bundle 發佈概覽"
+        retry={() => void overview.refetch()}
+        retrying={overview.isFetching}
+        focusTarget="bundle-workspace-heading"
+      />
+      <ReadFailure
+        error={choicesError}
+        what="可加入 Bundle 的版本"
+        retry={retryChoices}
+        retrying={choicesFetching}
+        focusTarget="bundle-workspace-heading"
+      >
+        <p role="alert" id="bundle-members-read-status">
+          暫時無法讀取可加入 Bundle 的版本。
+        </p>
+      </ReadFailure>
+      {choicesPending && !choicesError && (
+        <p role="status" id="bundle-members-read-status">
+          正在確認可加入 Bundle 的版本…
+        </p>
+      )}
+      {readableBundles && !bundles.error && (
+        <ListFreshness
+          inFlight={false}
+          showWhenIdle
+          subject="Bundle"
+          updatedAt={bundles.dataUpdatedAt}
+          fetching={bundles.isFetching || overview.isFetching}
+          refetch={() => Promise.all([bundles.refetch(), overview.refetch()])}
+        />
+      )}
 
-      {bundles.data &&
+      {readableBundles &&
         (groupedBundles.length === 0 ? (
           <p>目前還沒有 Bundle。先把一組可一起交付的小工具版本固定成第一個 Bundle Version。</p>
         ) : (
@@ -132,6 +194,7 @@ export function BundleSection({ selectedVersion }: { selectedVersion?: string })
                   overview={overviewByBundle.get(bundle)}
                   overviewReady={overview.isSuccess}
                   needsAttestationOf={needsAttestationOf}
+                  memberPolicyKnown={!choicesPending && !choicesError}
                 />
               </li>
             ))}
@@ -154,12 +217,14 @@ function BundleOverviewCard({
   overview,
   overviewReady,
   needsAttestationOf,
+  memberPolicyKnown,
 }: {
   bundle: string;
   versions: BundleVersion[];
   overview?: OwnerBundleSummary;
   overviewReady: boolean;
   needsAttestationOf: (bundle: BundleVersion) => boolean;
+  memberPolicyKnown: boolean;
 }) {
   const delist = useDelistBundle(bundle);
   const latestVersion = versions[0];
@@ -200,6 +265,7 @@ function BundleOverviewCard({
               publication={publication}
               publicationKnown={overviewReady && Boolean(overview)}
               needsAttestation={needsAttestationOf(version)}
+              memberPolicyKnown={memberPolicyKnown}
             />
           </li>
         ))}
@@ -273,12 +339,14 @@ function BundleVersionOperations({
   publication,
   publicationKnown,
   needsAttestation,
+  memberPolicyKnown,
 }: {
   bundle: BundleVersion;
   isLatest: boolean;
   publication?: OwnerBundlePublicationSummary;
   publicationKnown: boolean;
   needsAttestation: boolean;
+  memberPolicyKnown: boolean;
 }) {
   return (
     <div>
@@ -309,6 +377,7 @@ function BundleVersionOperations({
         publication={publication}
         publicationKnown={publicationKnown}
         needsAttestation={needsAttestation}
+        memberPolicyKnown={memberPolicyKnown}
       />
     </div>
   );
@@ -319,11 +388,13 @@ function BundleVersionActions({
   publication,
   publicationKnown,
   needsAttestation,
+  memberPolicyKnown,
 }: {
   bundle: BundleVersion;
   publication?: OwnerBundlePublicationSummary;
   publicationKnown: boolean;
   needsAttestation: boolean;
+  memberPolicyKnown: boolean;
 }) {
   const exportBundle = useExportBundle(bundle.bundle, bundle.version);
   const publish = usePublishBundle(bundle.bundle);
@@ -331,7 +402,9 @@ function BundleVersionActions({
   const disabledReason =
     needsAttestation && !attested ? "發佈前需要確認你有權重新散布所有成員。" : undefined;
   const blockedReason = publicationKnown
-    ? disabledReason
+    ? memberPolicyKnown
+      ? disabledReason
+      : "散布需求尚未確認；請先重新讀取可加入 Bundle 的版本。"
     : "發佈狀態尚未確認；重新整理並成功讀取概覽後才能發佈。";
 
   return (
@@ -462,7 +535,13 @@ function BundleCreationSection({
   return (
     <section aria-label="建立 Bundle">
       <details className="bundle-create" ref={createDetails}>
-        <summary>{hasBundles ? "建立另一個 Bundle" : "建立第一個 Bundle"}</summary>
+        <summary>
+          {bundles.error || bundles.isPending
+            ? "建立 Bundle"
+            : hasBundles
+              ? "建立另一個 Bundle"
+              : "建立第一個 Bundle"}
+        </summary>
         <CreateBundleForm
           choices={choices}
           choicesPending={choicesPending}
@@ -581,7 +660,6 @@ function CreateBundleForm({
       <BundleMemberChoices
         choices={choices}
         choicesPending={choicesPending}
-        choicesError={choicesError}
         choicesReady={choicesReady}
         selectedVersion={selectedVersion}
         continuation={continuation}
@@ -617,7 +695,13 @@ function BundleCreationAction({
         <button
           type="submit"
           disabled={create.isPending || !choicesReady || selectedCount === 0}
-          aria-describedby={selectedCount === 0 ? noMembersId : undefined}
+          aria-describedby={
+            !choicesReady
+              ? "bundle-members-read-status"
+              : selectedCount === 0
+                ? noMembersId
+                : undefined
+          }
         >
           {create.isPending ? "建立中…" : "建立"}
         </button>
@@ -701,7 +785,6 @@ function BundleIdentityFields({
 function BundleMemberChoices({
   choices,
   choicesPending,
-  choicesError,
   choicesReady,
   selectedVersion,
   continuation,
@@ -712,7 +795,6 @@ function BundleMemberChoices({
 }: {
   choices: MemberChoice[];
   choicesPending: boolean;
-  choicesError: Error | null;
   choicesReady: boolean;
   selectedVersion?: string;
   continuation?: ContinuationChoice;
@@ -726,9 +808,6 @@ function BundleMemberChoices({
       <legend>成員版本</legend>
       <p className="note">每個小工具明確選一個不可變版本；平台不會替你改成最新版本。</p>
       {choicesPending && <Loading what="可加入 Bundle 的版本" />}
-      <ReadFailure error={choicesError} what="可加入 Bundle 的版本">
-        <p role="alert">暫時無法讀取可加入 Bundle 的版本。</p>
-      </ReadFailure>
       {choicesReady && selectedVersion && !continuation && (
         <p role="status" className="note">
           無法確認要接續的 Version，因此沒有自動選擇其他版本。

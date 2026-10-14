@@ -8,6 +8,8 @@ export function DeliveryAudience({
   level = 3,
 }: {
   publication: {
+    publisher?: string;
+    name?: string;
     availability?: Labelled;
     acquisition?: PublicationNote;
     exposure?: PublicationNote;
@@ -17,10 +19,19 @@ export function DeliveryAudience({
   const titleId = useId();
   const { availability, acquisition, exposure } = publication;
   const Heading = level === 2 ? "h2" : "h3";
+  const title = exposure ? "公開與取得" : "交付對象";
+  const context =
+    publication.publisher && publication.name
+      ? `${publication.publisher}/${publication.name}`
+      : undefined;
 
   return (
-    <section className="delivery-audience" aria-labelledby={titleId}>
-      <Heading id={titleId}>{exposure ? "公開與取得" : "交付對象"}</Heading>
+    <section
+      className="delivery-audience"
+      aria-labelledby={context ? undefined : titleId}
+      aria-label={context ? `${title}：${context}` : undefined}
+    >
+      <Heading id={titleId}>{title}</Heading>
       <dl className="delivery-audience-grid">
         <div>
           <dt>公開頁面</dt>
