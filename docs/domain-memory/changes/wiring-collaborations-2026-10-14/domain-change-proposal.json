@@ -3,12 +3,12 @@
   "proposal_id": "wiring-collaborations",
   "proposer": "domain-memory-agent",
   "requirement_id": "wiring-collaborations",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-14T00:13:32.373578Z",
   "verified_at": "2026-10-14T00:15:23.837260Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-14T00:15:44.716626Z",
+  "applied_at": "2026-10-14T00:15:46.897216Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
@@ -997,5 +997,9 @@
       }
     }
   ],
-  "supersedes": null
+  "supersedes": null,
+  "applied_registry_revision": {
+    "observed_commit": "7c744228e5aedf309dfcf3410d4dc94532808ab8",
+    "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+  }
 }
