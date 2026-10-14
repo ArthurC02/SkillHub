@@ -1,0 +1,99 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "trace-creation-masking",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "trace-creation-masking",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-14T17:11:31.409137Z",
+  "verified_at": "2026-10-14T17:11:36.675037Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "d1b45bfdba30d89c88b6a228ea0e0b93b43347e6",
+    "registry_digest": "sha256:90f9a736bdd815f5cdff9542c8fa69ec3d096f0b216c9e3423c77b6ea4f03c7b"
+  },
+  "affected_contexts": [
+    "creation",
+    "trace"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "trace",
+    "invariant": "Secret masking rules have one owner, trace; creation applies trace's masker to every page it fetches and message it stores.",
+    "evidence": [
+      "apps/platform/internal/entrypoint/wiring/creation_references.go:24-24"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "creation receives trace's MaskString through the composition root and never imports trace.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/entrypoint/wiring/creation_references.go:24-24"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Creation stores fetched pages and model messages that can carry secrets; a second set of masking rules would drift from trace and its canary."
+    ],
+    "decision": "Keep the masker in trace and record creation's use of it as a composition-root interaction, guarded by a wiring test that redacts a real secret shape.",
+    "invariants_preserved": [
+      "Creation never imports trace.",
+      "One masker, one canary."
+    ],
+    "rejected_alternatives": [
+      "Moving the masker to a foundation package: trace's canary and P1 detector watch that masker, so its rules would leave the Context that answers for them."
+    ],
+    "proof_obligations": [
+      "creation-masks-with-trace"
+    ],
+    "counterfactual_check": "Drop the masker assignment, or hand creation an identity mask; TestCreationRedactsSecretsWithTheTraceMasker must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "trace-creation-secret-masking",
+        "producer_context": "trace",
+        "consumer_context": "creation",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/creation_references.go",
+            "lines": {
+              "start": 24,
+              "end": 24
+            },
+            "content_sha256": "sha256:f10e50612e1b725ed3eeb5d21d036530801d752acca475937238b2a7e51fc90d",
+            "excerpt_sha256": "sha256:f2f551b35cc124ff703ca856e7182df14dc7d3f3b801a5276ffa380d93f610e5",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-14T17:11:36.342945Z",
+      "scope": "Record creation's use of the trace masker",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "d1b45bfdba30d89c88b6a228ea0e0b93b43347e6",
+        "registry_digest": "sha256:90f9a736bdd815f5cdff9542c8fa69ec3d096f0b216c9e3423c77b6ea4f03c7b"
+      }
+    }
+  ]
+}
