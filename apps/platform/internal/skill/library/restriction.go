@@ -10,6 +10,10 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
+const RestrictionLicenseReview = "license-review"
+
+func RestrictionReasons() []string { return []string{RestrictionLicenseReview} }
+
 var ErrEmptyRestriction = errors.New("registry: access restriction must be a non-empty reason code, or nil to lift the hold")
 
 type RestrictionBefore struct {

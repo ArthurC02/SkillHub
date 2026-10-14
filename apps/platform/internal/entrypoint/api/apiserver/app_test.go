@@ -199,7 +199,16 @@ func assertCatalogAndPackagingOwnerReadsWired(t *testing.T, app *App) {
 		search.ReadLiveListingFacts == nil || search.ReadLiveSkills == nil || search.ReadLiveSkillIDs == nil {
 		t.Error("the catalog service is missing owner-scoped Registry or source reads")
 	}
+	assertGovernanceHooksWired(t, app)
 	assertPackagingOwnerReadsWired(t, app)
+}
+
+func assertGovernanceHooksWired(t *testing.T, app *App) {
+	t.Helper()
+	if gov := app.Deps.Governance.Svc; gov.Registry != app.Deps.Registry.Svc ||
+		gov.CatalogWorkspaces == nil || gov.RestrictionNote == nil || gov.RedistributionDisplay == nil {
+		t.Error("the governance service is missing a catalog or identity hook")
+	}
 }
 
 func assertPackagingOwnerReadsWired(t *testing.T, app *App) {

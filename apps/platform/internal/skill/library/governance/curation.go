@@ -1,4 +1,4 @@
-package catalog
+package governance
 
 import (
 	"context"
@@ -114,7 +114,7 @@ func (s *Service) SetCurationTier(
 	}); err != nil {
 		return registry.CurationChange{}, err
 	}
-	if err := s.RefreshListing(ctx, tx, skillID); err != nil {
+	if err := s.refreshListing(ctx, tx, skillID); err != nil {
 		return registry.CurationChange{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {

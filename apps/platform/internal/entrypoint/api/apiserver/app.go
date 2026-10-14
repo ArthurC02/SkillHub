@@ -29,6 +29,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library/governance"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
@@ -182,6 +183,7 @@ func NewApp(cfg Config) (*App, error) {
 	app.Deps = newDeps(cfg, app, creditSvc, funnel)
 	app.Deps.Search = &catalog.Handler{Svc: catalogSvc, Identity: auth.Service}
 	app.Deps.Registry = &registry.Handler{Svc: registrySvc, Identity: auth.Service}
+	app.Deps.Governance = &governance.Handler{Svc: newGovernanceService(cfg.Pool, registrySvc, identitySvc)}
 	app.Deps.TestLab = &testlab.Handler{Svc: testlabSvc, Identity: auth.Service}
 	app.Deps.Publishing = newPublishingHandler(cfg, publishingSvc, auth)
 	app.Deps.ModelBudgets = &modelbudget.Handler{Svc: budgets, Actor: sessionActorID}
@@ -621,4 +623,14 @@ func disclosureFeatures(cfg Config) map[string]bool {
 		f["clean_mode"] = true
 	}
 	return f
+}
+
+func newGovernanceService(pool *pgxpool.Pool, registrySvc *registry.Service, identitySvc *identity.Service) *governance.Service {
+	return &governance.Service{
+		Pool:                  pool,
+		Registry:              registrySvc,
+		CatalogWorkspaces:     identitySvc.CatalogWorkspaceIDs,
+		RestrictionNote:       catalog.RestrictionNote,
+		RedistributionDisplay: catalog.RedistributionDisplay,
+	}
 }

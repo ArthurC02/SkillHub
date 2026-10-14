@@ -515,9 +515,9 @@ func TestOperatorHandlersRefuseWithoutASession(t *testing.T) {
 		body    string
 		handler http.HandlerFunc
 	}{
-		{"SetRestriction", http.MethodPut, `{"reason":"license-review","note":"n"}`, d.Search.SetRestriction},
-		{"ClearRestriction", http.MethodDelete, `{"note":"n"}`, d.Search.ClearRestriction},
-		{"SetRedistribution", http.MethodPut, `{"value":"blocked","note":"n"}`, d.Search.SetRedistribution},
+		{"SetRestriction", http.MethodPut, `{"reason":"license-review","note":"n"}`, d.Governance.SetRestriction},
+		{"ClearRestriction", http.MethodDelete, `{"note":"n"}`, d.Governance.ClearRestriction},
+		{"SetRedistribution", http.MethodPut, `{"value":"blocked","note":"n"}`, d.Governance.SetRedistribution},
 		{"Halts", http.MethodGet, "", d.Runs.Halts},
 		{"DeclareHalt", http.MethodPut, `{"note":"n"}`, d.Runs.DeclareHalt},
 		{"LiftHalt", http.MethodDelete, `{"note":"n"}`, d.Runs.LiftHalt},

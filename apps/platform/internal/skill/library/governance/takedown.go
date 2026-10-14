@@ -1,4 +1,4 @@
-package catalog
+package governance
 
 import (
 	"context"
@@ -80,7 +80,7 @@ func (s *Service) Takedown(ctx context.Context, skillID, actor pgtype.UUID, reas
 		return err
 	}
 
-	if err := RemoveSkillFromIndex(ctx, tx, before.WorkspaceID, skillID); err != nil {
+	if err := s.removeFromIndex(ctx, tx, before.WorkspaceID, skillID); err != nil {
 		return err
 	}
 

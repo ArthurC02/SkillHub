@@ -1,7 +1,6 @@
 {
   "packages": {
     "entrypoint/wiring": 26,
-    "skill/discovery": 26,
     "trial/execution": 32
   },
   "types": {
@@ -23,7 +22,7 @@
       "fields": 18
     },
     "skill/discovery.Service": {
-      "methods": 52,
+      "methods": 46,
       "fields": 19
     },
     "skill/library.Service": {

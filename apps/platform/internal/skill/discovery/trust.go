@@ -75,6 +75,11 @@ func (t SourceTrust) Display() TrustDisplay { return sourceTrustDisplays[t] }
 
 func (l LicenseStatus) Display() TrustDisplay { return licenseStatusDisplays[l] }
 
+func RedistributionDisplay(value string) (label, note string) {
+	d := Redistribution(value).Display()
+	return d.Label, d.Note
+}
+
 func (r Redistribution) Display() TrustDisplay {
 	if d, ok := redistributionDisplays[r]; ok {
 		return d

@@ -1,4 +1,4 @@
-package catalog
+package governance
 
 import (
 	"context"
@@ -17,9 +17,9 @@ import (
 )
 
 var provenanceRedistribution = map[string]string{
-	string(RedistributionSelfSupplied): "self_supplied is not a verdict anyone can assert: it records that this " +
+	string(registry.RedistributionSelfSupplied): "self_supplied is not a verdict anyone can assert: it records that this " +
 		"workspace supplied the bytes, and only the import path can establish that",
-	string(RedistributionGenerated): "generated is not a verdict anyone can assert: it records that the platform " +
+	string(registry.RedistributionGenerated): "generated is not a verdict anyone can assert: it records that the platform " +
 		"wrote these bytes for this workspace, and only the generation path can establish that",
 }
 
@@ -77,12 +77,12 @@ func (h *Handler) SetRedistribution(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	value := Redistribution(strings.TrimSpace(body.Value))
-	display := value.Display()
+	value := strings.TrimSpace(body.Value)
+	label, note := h.Svc.RedistributionDisplay(value)
 
 	httpx.WriteJSON(w, http.StatusOK, redistributionChangeResponse{
 		SkillID: pgconv.UUIDString(skillID), Redistribution: redistributionView{
-			Value: string(value), Label: display.Label, Note: display.Note,
+			Value: value, Label: label, Note: note,
 		},
 		PreviousValue: previous,
 	})
@@ -182,7 +182,7 @@ func redistributionRefusal(refused registry.Refused, value string) error {
 
 func redistributionMetadata(before, after, note string, verified registry.LicenseClaim) map[string]any {
 	m := map[string]any{auditBefore: before, auditAfter: after, auditNote: note}
-	if after == string(RedistributionAllowed) {
+	if after == string(registry.RedistributionAllowed) {
 		m["license_expression"] = verified.Expression
 		m["license_source"] = verified.Source
 	}

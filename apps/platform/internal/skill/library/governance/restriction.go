@@ -1,11 +1,11 @@
-package catalog
+package governance
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
-	"sort"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -100,10 +100,15 @@ func (h *Handler) changeRestriction(w http.ResponseWriter, r *http.Request, reas
 	httpx.WriteJSON(w, http.StatusOK, restrictionChangeResponse{
 		SkillID: pgconv.UUIDString(skillID), AccessRestriction: accessRestriction{
 			Reason: normalizedReason,
-			Note:   restrictionNotes[normalizedReason],
+			Note:   h.Svc.RestrictionNote(normalizedReason),
 		},
 		PreviousReason: previous,
 	})
+}
+
+type accessRestriction struct {
+	Reason string `json:"reason"`
+	Note   string `json:"note"`
 }
 
 type restrictionInputError string
@@ -116,8 +121,8 @@ func (s *Service) SetRestriction(ctx context.Context, skillID, actor pgtype.UUID
 		return nil, restrictionInputError("reason is required")
 	}
 
-	if _, known := restrictionNotes[reason]; !known {
-		return nil, restrictionInputError("unknown reason code; known codes: " + strings.Join(knownRestrictionReasons(), ", "))
+	if !slices.Contains(registry.RestrictionReasons(), reason) {
+		return nil, restrictionInputError("unknown reason code; known codes: " + strings.Join(registry.RestrictionReasons(), ", "))
 	}
 	note, err := validRestrictionNote(note)
 	if err != nil {
@@ -201,13 +206,4 @@ func nullableString(s *string) any {
 		return nil
 	}
 	return *s
-}
-
-func knownRestrictionReasons() []string {
-	out := make([]string, 0, len(restrictionNotes))
-	for code := range restrictionNotes {
-		out = append(out, code)
-	}
-	sort.Strings(out)
-	return out
 }

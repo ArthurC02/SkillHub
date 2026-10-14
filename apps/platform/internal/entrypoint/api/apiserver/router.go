@@ -14,6 +14,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library/governance"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
@@ -33,6 +34,7 @@ type Deps struct {
 	Importer        *ingest.Handler
 	Search          *catalog.Handler
 	Registry        *registry.Handler
+	Governance      *governance.Handler
 	TestLab         *testlab.Handler
 	Runs            *run.Handler
 	Trace           *trace.Handler
@@ -186,13 +188,13 @@ func mountOwnerGovernanceRoutes(mux *http.ServeMux, d Deps) {
 func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	auth := d.Auth
 
-	mux.HandleFunc("PUT /admin/skills/{id}/restriction", auth.RequireOperator(d.Search.SetRestriction))
-	mux.HandleFunc("DELETE /admin/skills/{id}/restriction", auth.RequireOperator(d.Search.ClearRestriction))
+	mux.HandleFunc("PUT /admin/skills/{id}/restriction", auth.RequireOperator(d.Governance.SetRestriction))
+	mux.HandleFunc("DELETE /admin/skills/{id}/restriction", auth.RequireOperator(d.Governance.ClearRestriction))
 
-	mux.HandleFunc("PUT /admin/skills/{id}/redistribution", auth.RequireOperator(d.Search.SetRedistribution))
-	mux.HandleFunc("PUT /admin/skills/{id}/tier", auth.RequireOperator(d.Search.SetCurationTier))
+	mux.HandleFunc("PUT /admin/skills/{id}/redistribution", auth.RequireOperator(d.Governance.SetRedistribution))
+	mux.HandleFunc("PUT /admin/skills/{id}/tier", auth.RequireOperator(d.Governance.SetCurationTier))
 
-	mux.HandleFunc("PUT /admin/skills/{id}/takedown", auth.RequireOperator(d.Search.Takedown))
+	mux.HandleFunc("PUT /admin/skills/{id}/takedown", auth.RequireOperator(d.Governance.Takedown))
 
 	mux.HandleFunc("GET /admin/exposure-reviews", auth.RequireOperator(d.Publishing.ExposureQueue))
 	mux.HandleFunc("GET /admin/publications/{publisher}/{name}/exposure", auth.RequireOperator(d.Publishing.ExposureCase))
@@ -212,7 +214,7 @@ func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 
 	mux.HandleFunc("GET /admin/accounts", auth.RequireOperator(auth.LookupAccount))
 	mux.HandleFunc("GET /admin/rosters", auth.RequireOperator(auth.Rosters))
-	mux.HandleFunc("GET /admin/skills", auth.RequireOperator(d.Search.FindSkillsForGovernance))
+	mux.HandleFunc("GET /admin/skills", auth.RequireOperator(d.Governance.FindSkillsForGovernance))
 	mux.HandleFunc("GET /admin/audit-log", auth.RequireOperator(d.OperatorAudit.List))
 	mux.HandleFunc("GET /admin/model-budgets", auth.RequireOperator(d.ModelBudgets.List))
 	mux.HandleFunc("PUT /admin/model-budgets/{kind}", auth.RequireOperator(d.ModelBudgets.Set))

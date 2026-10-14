@@ -520,8 +520,10 @@ func restrictionOf(s SkillFacts) *accessRestriction {
 	return &accessRestriction{Reason: restriction.Reason(), Note: note}
 }
 
+func RestrictionNote(reason string) string { return restrictionNotes[reason] }
+
 var restrictionNotes = map[string]string{
-	"license-review": "此 Skill 的來源授權正在審查中:在審查結論出來前,平台不提供 " +
+	registry.RestrictionLicenseReview: "此 Skill 的來源授權正在審查中:在審查結論出來前,平台不提供 " +
 		"SKILL.md 全文與套件檔案樹,也不接受在平台上試跑。摘要、限制、依賴、來源與授權資訊照常顯示," +
 		"原文請至上方來源連結所指的位置檢視。這是對授權條款的保守處置,不代表此 Skill 有安全或品質問題。",
 }
