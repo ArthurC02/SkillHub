@@ -160,6 +160,7 @@ test("a failed check-kind refresh cannot approve a cached design and retry prese
   failing = false;
   await act(async () => button("再試一次").click());
   await waitFor(() => container.querySelector(".check-editor") !== null);
+  await waitFor(() => container.querySelector("[data-check-ready]")?.textContent === "true");
   expect(container.querySelector<HTMLInputElement>('[id$="-value-0"]')?.value).toBe(
     "preserved value",
   );
