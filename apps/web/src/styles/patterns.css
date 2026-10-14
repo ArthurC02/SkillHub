@@ -935,6 +935,17 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
 }
 
 @media (max-width: 640px) {
+  .compare-table :is(thead th:first-child, tbody th[scope="row"]) {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--surface);
+  }
+
+  .compare-table thead th:first-child {
+    z-index: 2;
+  }
+
   /* 220px of a 351px viewport is not a row header, it is the whole table. */
   .compare-table th[scope="row"] {
     width: 140px;

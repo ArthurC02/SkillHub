@@ -347,6 +347,29 @@ async function submitNewTestCase(skillId: string) {
   await waitFor(() => navigations.length > 0);
 }
 
+test.each(["", "   "])(
+  "a blank test-case name %j explains the disabled create action",
+  async (name) => {
+    listSearch = { skill: SKILL };
+    stubPlatform();
+    await renderList();
+    await waitFor(() => container.querySelector<HTMLSelectElement>("#tc-skill")?.value === SKILL);
+    await act(async () => setValue(container.querySelector<HTMLInputElement>("#tc-name")!, name));
+    await act(async () =>
+      setValue(container.querySelector<HTMLTextAreaElement>("#tc-prompt")!, "prompt"),
+    );
+    const create = button("建立");
+    expect(create.disabled).toBe(true);
+    expect(create.getAttribute("aria-describedby")).toBe("create-why");
+    expect(container.querySelector("#create-why")?.textContent).toContain("填名稱");
+    await act(async () =>
+      setValue(container.querySelector<HTMLInputElement>("#tc-name")!, "有效名稱"),
+    );
+    expect(create.disabled).toBe(false);
+    expect(container.querySelector("#create-why")).toBeNull();
+  },
+);
+
 test("a disabled prompt save exposes its visible reason to assistive technology", async () => {
   stubPlatform();
   await render();
