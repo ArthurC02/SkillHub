@@ -1,6 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { RUNS, SKILL, VERSION, platformResponse } from "../src/testing/fixtures/platform";
+import {
+  RUNS,
+  SKILL,
+  TEST_CASE,
+  VERSION,
+  platformResponse,
+} from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
 const skills = platformResponse("/skills").body as { skills: Array<Record<string, unknown>> };
@@ -18,6 +24,7 @@ const lists = [
     heading: "workspace-runs-heading",
     empty: "還沒有做過任何試跑",
     pageSize: 50,
+    loadMore: "載入更多",
   },
   {
     name: "assets",
@@ -29,6 +36,7 @@ const lists = [
     heading: "workspace-skills-heading",
     empty: "資產庫還沒有任何小工具",
     pageSize: 24,
+    loadMore: "載入更多",
   },
   {
     name: "test cases",
@@ -40,6 +48,31 @@ const lists = [
     heading: "existing-test-cases-heading",
     empty: "還沒有測試題。",
     pageSize: 50,
+    loadMore: "載入更多",
+  },
+  {
+    name: "history",
+    url: `/lab/test-cases/${TEST_CASE}`,
+    pattern: "**/runs?*",
+    key: "runs",
+    rows: RUNS.runs,
+    selector: ".test-case-history-panel [data-role=evidence] > li",
+    heading: "test-case-history-heading",
+    empty: "尚無執行。",
+    pageSize: 50,
+    loadMore: "載入更多",
+  },
+  {
+    name: "version evidence",
+    url: `/skills/${SKILL}/versions/${VERSION}`,
+    pattern: "**/runs?*",
+    key: "runs",
+    rows: RUNS.runs,
+    selector: "section[aria-labelledby=version-evidence-title] [data-role=evidence] > li",
+    heading: "version-evidence-title",
+    empty: "這個版本還沒有試跑紀錄。",
+    pageSize: 50,
+    loadMore: "載入更多證據",
   },
 ];
 
@@ -73,6 +106,10 @@ for (const list of lists) {
       await expect(page.getByRole("alert")).toContainText("暫時無法讀取");
       await expect(page.locator(list.selector)).toHaveCount(0);
       await expect(page.getByText(list.empty, { exact: false })).toHaveCount(0);
+      if (list.name === "history") {
+        await expect(page.getByText("沿用最近一次試跑紀錄", { exact: true })).toHaveCount(0);
+        await expect(page.getByText("最近使用的 Version 無法確認", { exact: true })).toBeVisible();
+      }
       await expect(page.getByRole("button", { name: "再試一次", exact: true })).toBeVisible();
       await page.getByRole("button", { name: "再試一次", exact: true }).focus();
       await page.keyboard.press("Enter");
@@ -83,6 +120,7 @@ for (const list of lists) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
       );
+      await page.evaluate(() => scrollTo(0, 0));
       await page.screenshot({
         path: testInfo.outputPath(`${list.name}-recovered.png`),
         fullPage: true,
@@ -136,7 +174,7 @@ for (const list of lists) {
         await page.getByLabel("名稱", { exact: true }).fill("未送出的測試題");
         await page.getByLabel("User Prompt", { exact: true }).fill("保留草稿內容");
       }
-      await page.getByRole("button", { name: "載入更多", exact: true }).click();
+      await page.getByRole("button", { name: list.loadMore, exact: true }).click();
       if (status === 401) {
         await expect(page.getByRole("status").filter({ hasText: "需要登入" })).toBeVisible();
         await expect(page.locator(list.selector)).toHaveCount(0);
@@ -148,7 +186,7 @@ for (const list of lists) {
           await expect(page.getByRole("alert")).toContainText("尚未讀完");
           await expect(page.getByText("目前沒有正在執行的試跑。", { exact: true })).toHaveCount(0);
         }
-        await expect(page.getByRole("button", { name: "載入更多", exact: true })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: list.loadMore, exact: true })).toHaveCount(0);
         await page.getByRole("button", { name: "再試一次", exact: true }).click();
         await expect(page.locator(list.selector)).toHaveCount(
           status === 503 ? list.pageSize + 1 : list.rows.length,
@@ -157,7 +195,7 @@ for (const list of lists) {
         expect(nextReads).toBe(status === 503 ? 2 : 1);
         await expect(page.locator(`#${list.heading}`)).toBeFocused();
       }
-      await expect(page.getByRole("button", { name: "載入更多", exact: true })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: list.loadMore, exact: true })).toHaveCount(0);
       if (list.name === "test cases") {
         await expect(page.getByLabel("名稱", { exact: true })).toHaveValue("未送出的測試題");
         await expect(page.getByLabel("User Prompt", { exact: true })).toHaveValue("保留草稿內容");

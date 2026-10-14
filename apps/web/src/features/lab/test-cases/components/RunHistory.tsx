@@ -8,6 +8,7 @@ import { RunVerdict } from "../../../runs";
 import { ListFreshness } from "../../../../shared/ui/ListFreshness";
 import { IN_FLIGHT_RUN_STATUSES } from "../../../runs";
 import { runStatusLabel } from "../../../runs";
+import { canRetainLoadedPage } from "../../../../core/api/client";
 
 export function RunHistory({
   runs,
@@ -16,20 +17,37 @@ export function RunHistory({
   runs: ReturnType<typeof useRuns>;
   history: RunListItem[];
 }) {
+  const nextPageFailure = canRetainLoadedPage(runs.error, runs.isFetchNextPageError);
+  const readable = runs.data && (!runs.error || nextPageFailure);
   return (
     <>
-      <h2>執行歷史</h2>
+      <h2 id="test-case-history-heading" tabIndex={-1}>
+        執行歷史
+      </h2>
       {runs.isPending && <Loading what="執行歷史" />}
-      <ReadFailure error={runs.error} what="執行歷史" />
-      {runs.data && (
+      <ReadFailure
+        error={runs.error}
+        what="執行歷史"
+        retry={() => void (nextPageFailure ? runs.fetchNextPage() : runs.refetch())}
+        retrying={runs.isFetching}
+        focusTarget="test-case-history-heading"
+      >
+        {nextPageFailure && (
+          <p role="alert">更早的執行歷史讀取失敗；以下僅保留已載入的紀錄，尚未讀完。請再試一次。</p>
+        )}
+      </ReadFailure>
+      {readable && !runs.error && (
         <ListFreshness
           inFlight={history.some((run) => IN_FLIGHT_RUN_STATUSES.has(run.status))}
           updatedAt={runs.dataUpdatedAt}
           fetching={runs.isFetching && !runs.isFetchingNextPage}
-          refetch={runs.refetch}
+          refetch={async () => {
+            const result = await runs.refetch();
+            if (result.error) document.getElementById("test-case-history-heading")?.focus();
+          }}
         />
       )}
-      {runs.data &&
+      {readable &&
         (history.length === 0 ? (
           <p>尚無執行。這個測試題還沒有做過任何試跑。</p>
         ) : (
@@ -86,7 +104,7 @@ export function RunHistory({
             ))}
           </ul>
         ))}
-      {runs.hasNextPage && (
+      {runs.hasNextPage && !runs.error && (
         <button
           type="button"
           disabled={runs.isFetchingNextPage}

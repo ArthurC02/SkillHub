@@ -2,7 +2,7 @@ import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useState } from "react";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
-import { ApiError } from "../../../core/api/client";
+import { ApiError, canRetainLoadedPage } from "../../../core/api/client";
 import type { SkillVersionSummary } from "../../../core/api/types";
 import { useTestCase } from "../testcases.service";
 import { useRuns } from "../../runs";
@@ -54,14 +54,14 @@ export function TestCaseDetail() {
     return <ReadFailure error={testCase.error} what="測試題" />;
   }
 
-  const history = runs.data?.pages.flatMap((page) => page.runs) ?? [];
+  const history = readableRunHistory(runs);
   const lastMatchingRun = history.find(
     (run) => run.skill_id === skillId && run.test_case_id === testCaseId,
   );
   const requestedVersion = version ?? lastMatchingRun?.skill_version_id;
-  const selectedVersion = versions.data?.versions?.find(
-    (candidate) => candidate.version_id === requestedVersion,
-  );
+  const selectedVersion = versions.error
+    ? undefined
+    : versions.data?.versions?.find((candidate) => candidate.version_id === requestedVersion);
   const versionSource = version ? "url" : lastMatchingRun ? "run" : "none";
 
   return (
@@ -175,14 +175,17 @@ function TestCaseContext({
       aria-labelledby="test-case-context-title"
       data-role="test-case-context"
     >
-      <h2 id="test-case-context-title">目前驗證脈絡</h2>
+      <h2 id="test-case-context-title" tabIndex={-1}>
+        目前驗證脈絡
+      </h2>
       <dl className="test-case-context-facts">
         <div>
           <dt>小工具</dt>
           <dd>
             <Link to="/skills/$skillId" params={{ skillId }}>
-              {skill.data?.name ??
-                (skill.isPending ? "讀取中…" : skill.error ? "名稱讀取失敗" : "這個小工具")}
+              {skill.error
+                ? "名稱讀取失敗"
+                : (skill.data?.name ?? (skill.isPending ? "讀取中…" : "這個小工具"))}
             </Link>
           </dd>
         </div>
@@ -226,8 +229,20 @@ function TestCaseContext({
           </dd>
         </div>
       </dl>
-      <ReadFailure error={skill.error} what="這個小工具" />
-      <ReadFailure error={versions.error} what="Version 清單" />
+      <ReadFailure
+        error={skill.error}
+        what="這個小工具"
+        retry={() => void skill.refetch()}
+        retrying={skill.isFetching}
+        focusTarget="test-case-context-title"
+      />
+      <ReadFailure
+        error={versions.error}
+        what="Version 清單"
+        retry={() => void versions.refetch()}
+        retrying={versions.isFetching}
+        focusTarget="test-case-context-title"
+      />
       <p className="test-case-context-return">
         <Link
           to="/lab/test-cases"
@@ -238,4 +253,9 @@ function TestCaseContext({
       </p>
     </section>
   );
+}
+
+function readableRunHistory(runs: ReturnType<typeof useRuns>) {
+  if (runs.error && !canRetainLoadedPage(runs.error, runs.isFetchNextPageError)) return [];
+  return runs.data?.pages.flatMap((page) => page.runs) ?? [];
 }

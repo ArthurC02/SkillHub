@@ -1,5 +1,5 @@
 import { Link, useParams } from "@tanstack/react-router";
-import { ApiError } from "../../../core/api/client";
+import { ApiError, canRetainLoadedPage } from "../../../core/api/client";
 import type { SkillVersionSummary } from "../../../core/api/types";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
@@ -114,20 +114,29 @@ export function SkillVersion() {
 
 function VersionDeliverables({ skillId, versionId }: { skillId: string; versionId: string }) {
   const downloads = useDownloads();
+  const data = downloads.error ? undefined : downloads.data;
   const artifacts =
-    downloads.data?.downloads.filter(
+    data?.downloads.filter(
       (artifact) => artifact.skill_id === skillId && artifact.skill_version_id === versionId,
     ) ?? [];
 
   return (
     <section aria-labelledby="version-deliverables-title">
       <p className="note">打包後的保存結果</p>
-      <h2 id="version-deliverables-title">這一版的交付套件</h2>
+      <h2 id="version-deliverables-title" tabIndex={-1}>
+        這一版的交付套件
+      </h2>
       {downloads.isPending && <Loading what="這一版的交付套件" />}
-      <ReadFailure error={downloads.error} what="這一版的交付套件">
+      <ReadFailure
+        error={downloads.error}
+        what="這一版的交付套件"
+        retry={() => void downloads.refetch()}
+        retrying={downloads.isFetching}
+        focusTarget="version-deliverables-title"
+      >
         <p role="alert">暫時無法讀取這一版的交付套件。</p>
       </ReadFailure>
-      {downloads.data &&
+      {data &&
         (artifacts.length === 0 ? (
           <p>這一版還沒有交付套件。完成打包後，套件與保留狀態會留在這裡。</p>
         ) : (
@@ -163,21 +172,30 @@ function VersionDeliverable({ artifact }: { artifact: DownloadArtifact }) {
 
 function VersionCreationContext({ versionId }: { versionId: string }) {
   const { enabled: creationEnabled, sessions } = useCreationSessionsForVersion(versionId);
+  const data = sessions.error ? undefined : sessions.data;
 
   if (!creationEnabled) return null;
 
   return (
     <section aria-labelledby="version-creation-title" className="version-creation-context">
       <p className="note">建立脈絡</p>
-      <h2 id="version-creation-title">Studio 歷程</h2>
+      <h2 id="version-creation-title" tabIndex={-1}>
+        Studio 歷程
+      </h2>
       {sessions.isPending && <Loading what="這個版本的 Studio 歷程" />}
-      <ReadFailure error={sessions.error} what="這個版本的 Studio 歷程" />
-      {sessions.data?.length === 0 && (
+      <ReadFailure
+        error={sessions.error}
+        what="這個版本的 Studio 歷程"
+        retry={() => void sessions.refetch()}
+        retrying={sessions.isFetching}
+        focusTarget="version-creation-title"
+      />
+      {data?.length === 0 && (
         <p>沒有仍可開啟的 Studio 會話；這個版本可能由其他方式建立，或原會話已超過保存期限。</p>
       )}
-      {sessions.data && sessions.data.length > 0 && (
+      {data && data.length > 0 && (
         <ul className="version-creation-list">
-          {sessions.data.map((session) => (
+          {data.map((session) => (
             <li key={session.id}>
               <Link to="/workspace/creations" search={{ session: session.id }}>
                 <strong>{session.snapshot.brief || "未命名的創作會話"}</strong>
@@ -202,25 +220,42 @@ function VersionEvidence({
   versionNumber: number;
 }) {
   const runs = useRuns({ skillVersionId: versionId });
-  const rows = runs.data?.pages.flatMap((page) => page.runs) ?? [];
+  const nextPageFailure = canRetainLoadedPage(runs.error, runs.isFetchNextPageError);
+  const data = runs.error && !nextPageFailure ? undefined : runs.data;
+  const rows = data?.pages.flatMap((page) => page.runs) ?? [];
 
   return (
     <section aria-labelledby="version-evidence-title">
       <p className="note">這一版留下的結果</p>
-      <h2 id="version-evidence-title">驗證證據</h2>
+      <h2 id="version-evidence-title" tabIndex={-1}>
+        驗證證據
+      </h2>
       {runs.isPending && <Loading what="這個版本的試跑證據" />}
-      <ReadFailure error={runs.error} what="這個版本的試跑證據">
-        <p role="alert">暫時無法讀取這個版本的試跑證據。</p>
+      <ReadFailure
+        error={runs.error}
+        what="這個版本的試跑證據"
+        retry={() => void (nextPageFailure ? runs.fetchNextPage() : runs.refetch())}
+        retrying={runs.isFetching}
+        focusTarget="version-evidence-title"
+      >
+        <p role="alert">
+          {nextPageFailure
+            ? "更早的試跑證據讀取失敗；以下僅保留已載入的紀錄，尚未讀完。請再試一次。"
+            : "暫時無法讀取這個版本的試跑證據。"}
+        </p>
       </ReadFailure>
-      {runs.data && (
+      {data && !runs.error && (
         <ListFreshness
           inFlight={rows.some((run) => IN_FLIGHT_RUN_STATUSES.has(run.status))}
           updatedAt={runs.dataUpdatedAt}
           fetching={runs.isFetching && !runs.isFetchingNextPage}
-          refetch={runs.refetch}
+          refetch={async () => {
+            const result = await runs.refetch();
+            if (result.error) document.getElementById("version-evidence-title")?.focus();
+          }}
         />
       )}
-      {runs.data &&
+      {data &&
         (rows.length === 0 ? (
           <p>
             這個版本還沒有試跑紀錄。從{" "}
@@ -236,7 +271,7 @@ function VersionEvidence({
             ))}
           </ul>
         ))}
-      {runs.hasNextPage && (
+      {runs.hasNextPage && !runs.error && (
         <button
           type="button"
           disabled={runs.isFetchingNextPage}
