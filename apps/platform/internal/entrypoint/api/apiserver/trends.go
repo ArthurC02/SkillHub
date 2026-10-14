@@ -10,7 +10,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	analytics "github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
-	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/readmodel"
 )
 
 const isoDate = "2006-01-02"
@@ -23,8 +23,8 @@ const (
 
 type trendsHandler struct {
 	Credits            CreditLedger
-	DailyRuns          func(ctx context.Context, since time.Time) ([]run.RunsOnDay, error)
-	DailyRunWorkspaces func(ctx context.Context, since time.Time) ([]run.RunWorkspacesOnDay, error)
+	DailyRuns          func(ctx context.Context, since time.Time) ([]readmodel.RunsOnDay, error)
+	DailyRunWorkspaces func(ctx context.Context, since time.Time) ([]readmodel.RunWorkspacesOnDay, error)
 	DailyFunnelReach   func(ctx context.Context, since time.Time) ([]analytics.FunnelReach, error)
 	Audit              audit.DBTX
 	Now                func() time.Time

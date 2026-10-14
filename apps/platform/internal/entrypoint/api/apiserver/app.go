@@ -367,8 +367,8 @@ func newDeps(cfg Config, app *App, creditSvc *credit.Service, funnel *analytics.
 		RunSettings:   &run.SettingsHandler{Svc: runSvc, Actor: sessionActorID},
 		Trends: &trendsHandler{
 			Credits:            &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
-			DailyRuns:          runSvc.DailyRuns,
-			DailyRunWorkspaces: runSvc.DailyRunWorkspaces,
+			DailyRuns:          readmodel.Reader{Pool: runSvc.Pool}.DailyRuns,
+			DailyRunWorkspaces: readmodel.Reader{Pool: runSvc.Pool}.DailyRunWorkspaces,
 			DailyFunnelReach:   funnel.DailyFunnelReach,
 			Audit:              cfg.Pool,
 			Now:                time.Now,
