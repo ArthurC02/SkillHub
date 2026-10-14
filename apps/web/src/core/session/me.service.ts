@@ -39,7 +39,13 @@ export function devLogin(user: string) {
 
 export function useDevSignIn() {
   const client = useQueryClient();
-  return useMutation({ mutationFn: devLogin, onSuccess: () => client.clear() });
+  return useMutation({
+    mutationFn: devLogin,
+    onSuccess: () => {
+      client.clear();
+      window.location.reload();
+    },
+  });
 }
 
 export function requestAccountDeletion() {
@@ -72,5 +78,11 @@ export function logout() {
 
 export function useSignOut() {
   const client = useQueryClient();
-  return useMutation({ mutationFn: logout, onSuccess: () => client.clear() });
+  return useMutation({
+    mutationFn: logout,
+    onSuccess: () => {
+      client.clear();
+      window.location.reload();
+    },
+  });
 }
