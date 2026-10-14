@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useCreateTestCase, useTestCases } from "../testcases.service";
-import { SkillWorkspaceNav, useOwnSkills } from "../../skill";
+import { SkillWorkspaceNav, useOwnSkillPages, ownSkillsFromPages } from "../../skill";
 import { ExistingTestCasesSection } from "./components/ExistingTestCasesSection";
 import { CreateTestCaseForm } from "./components/CreateTestCaseForm";
 import "./TestCaseList.page.css";
@@ -12,13 +12,17 @@ import { ListFreshness } from "../../../shared/ui/ListFreshness";
 export function TestCaseList() {
   const navigate = useNavigate();
   const { skill: filter, version } = useSearch({ from: "/lab/test-cases" });
-  const skills = useOwnSkills();
+  const skills = useOwnSkillPages();
   const [skillId, setSkillId] = useState("");
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
-  const ownSkills = skills.error ? undefined : skills.data;
+  const nextSkillPageFailure = canRetainLoadedPage(skills.error, skills.isFetchNextPageError);
+  const ownSkills = ownSkillsFromPages(
+    skills.error && !nextSkillPageFailure ? undefined : skills.data?.pages,
+  );
   const ownedSkill = ownSkills?.skills.find((s) => s.skill_id === filter);
-  const notMine = Boolean(filter) && Boolean(ownSkills) && !ownedSkill;
+  const notMine =
+    Boolean(filter) && Boolean(ownSkills) && !ownedSkill && !skills.hasNextPage && !skills.error;
   const chosenSkill = skillId || ownedSkill?.skill_id || "";
 
   const create = useCreateTestCase();
@@ -58,7 +62,9 @@ export function TestCaseList() {
           <CreateTestCaseForm
             skills={ownSkills}
             skillsError={skills.error}
-            retrySkills={() => void skills.refetch()}
+            retrySkills={() =>
+              void (nextSkillPageFailure ? skills.fetchNextPage() : skills.refetch())
+            }
             retryingSkills={skills.isFetching}
             chosenSkill={chosenSkill}
             onSkillChange={setSkillId}
@@ -75,6 +81,21 @@ export function TestCaseList() {
               })
             }
           />
+          {ownSkills && (
+            <p role="status" className="note">
+              已載入 {ownSkills.skills.length} 個小工具
+              {skills.hasNextPage ? "；尚有更多，不能據此判定某個小工具不屬於你。" : "。"}
+            </p>
+          )}
+          {skills.hasNextPage && !skills.error && (
+            <button
+              type="button"
+              disabled={skills.isFetchingNextPage}
+              onClick={() => void skills.fetchNextPage()}
+            >
+              {skills.isFetchingNextPage ? "載入中…" : "載入更多小工具"}
+            </button>
+          )}
         </section>
       </div>
     </section>

@@ -114,7 +114,7 @@ for (const source of ["skills", "detail", "versions"]) {
     await page.route("**/me/bundles/overview", (route) => route.fulfill({ json: OVERVIEW }));
     const pattern =
       source === "skills"
-        ? "**/skills"
+        ? "**/skills?*"
         : source === "detail"
           ? `**/api/skills/${SKILL}?*`
           : `**/skills/${SKILL}/versions`;

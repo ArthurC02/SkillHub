@@ -211,7 +211,7 @@ for (const cached of [false, true]) {
     await stubPlatform(page);
     let reads = 0;
     let writes = 0;
-    await page.route("**/skills", (route) => {
+    await page.route("**/skills?*", (route) => {
       reads += 1;
       return cached && reads === 1
         ? route.fulfill({ json: { skills: [] } })

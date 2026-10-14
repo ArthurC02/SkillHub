@@ -191,7 +191,7 @@ test("an empty Bundle collection keeps creation available without making the pag
     "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
     "/downloads": { body: { downloads: [] } },
   });
-  await render(<PublishingWorkspace />, () => text().includes("交付紀錄"));
+  await render(<PublishingWorkspace />, () => text().includes("建立第一個 Bundle"));
 
   const createBundle = Array.from(container.querySelectorAll("details")).find(
     (details) => details.querySelector("summary")?.textContent === "建立第一個 Bundle",

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { ApiError } from "../../../core/api/client";
+import { ApiError, canRetainLoadedPage } from "../../../core/api/client";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useGenerateSkill } from "../generate.service";
 import {
@@ -9,7 +9,7 @@ import {
   readGenerateDiagram,
 } from "../generate.model";
 import { isCategorizedFindings } from "../import.service";
-import { useOwnSkills, useSkillSearch } from "../../skill";
+import { useOwnSkillPages, ownSkillsFromPages, useSkillSearch } from "../../skill";
 import type { GenerateDiagram, GenerateRejected } from "../../../core/api/types";
 import { GenerateHistory } from "./components/GenerateHistory";
 import { GenerateInFlight } from "./components/GenerateInFlight";
@@ -294,16 +294,6 @@ export function ReferencePicker({
   }, [query]);
 
   const searching = debounced.length > 0;
-  const search = useSkillSearch(debounced, {}, searching, "reference");
-  const ownSkills = useOwnSkills();
-  const ownMatches = searching
-    ? (ownSkills.data?.skills ?? []).filter(
-        (s) =>
-          s.name.toLowerCase().includes(debounced.toLowerCase()) ||
-          s.summary.toLowerCase().includes(debounced.toLowerCase()),
-      )
-    : [];
-
   const atLimit = references.length >= GENERATE_MAX_REFERENCES;
   const selectedIds = new Set(references.map((r) => r.id));
 
@@ -344,50 +334,143 @@ export function ReferencePicker({
 
       {searching && (
         <>
-          <h3>搜尋結果</h3>
-          {search.isFetching && <p role="status">搜尋中…</p>}
-          <ReadFailure error={search.error} what="參考小工具的搜尋結果" />
-          {!search.isFetching && !search.error && search.data?.results.length === 0 && (
-            <p role="status">目錄裡沒有符合的小工具。</p>
-          )}
-          <ul className="search-results">
-            {(search.data?.results ?? []).map((hit) => (
-              <ReferenceRow
-                key={hit.skill_id}
-                skillId={hit.skill_id}
-                name={hit.name}
-                summary={hit.summary}
-                className="search-result"
-                checked={selectedIds.has(hit.skill_id)}
-                disabled={disabled || (!selectedIds.has(hit.skill_id) && atLimit)}
-                onToggle={() => onToggle(hit.skill_id, hit.name)}
-              />
-            ))}
-          </ul>
-          <h3>資產庫中的小工具</h3>
-          {ownSkills.isPending && <p role="status">載入資產庫中的小工具…</p>}
-          <ReadFailure error={ownSkills.error} what="資產庫中的小工具" />
-          {!ownSkills.isPending &&
-            !ownSkills.error &&
-            ownSkills.data &&
-            ownMatches.length === 0 && <p role="status">資產庫裡沒有符合項目。</p>}
-          <ul className="search-results">
-            {ownMatches.map((s) => (
-              <ReferenceRow
-                key={s.skill_id}
-                skillId={s.skill_id}
-                name={s.name}
-                summary={s.summary}
-                className="download-item"
-                checked={selectedIds.has(s.skill_id)}
-                disabled={disabled || (!selectedIds.has(s.skill_id) && atLimit)}
-                onToggle={() => onToggle(s.skill_id, s.name)}
-              />
-            ))}
-          </ul>
+          <ReferenceSearchResults
+            query={debounced}
+            selectedIds={selectedIds}
+            atLimit={atLimit}
+            disabled={disabled}
+            onToggle={onToggle}
+          />
+          <OwnedReferenceResults
+            query={debounced}
+            selectedIds={selectedIds}
+            atLimit={atLimit}
+            disabled={disabled}
+            onToggle={onToggle}
+          />
         </>
       )}
     </div>
+  );
+}
+
+type ReferenceResultsProps = {
+  query: string;
+  selectedIds: Set<string>;
+  atLimit: boolean;
+  disabled: boolean;
+  onToggle: (id: string, name: string) => void;
+};
+
+function ReferenceSearchResults({
+  query,
+  selectedIds,
+  atLimit,
+  disabled,
+  onToggle,
+}: ReferenceResultsProps) {
+  const search = useSkillSearch(query, {}, true, "reference");
+  return (
+    <>
+      <h3 id="reference-search-heading" tabIndex={-1}>
+        搜尋結果
+      </h3>
+      {search.isFetching && <p role="status">搜尋中…</p>}
+      <ReadFailure
+        error={search.error}
+        what="參考小工具的搜尋結果"
+        retry={() => void search.refetch()}
+        retrying={search.isFetching}
+        focusTarget="reference-search-heading"
+      />
+      {!search.isFetching && !search.error && search.data?.results.length === 0 && (
+        <p role="status">目錄裡沒有符合的小工具。</p>
+      )}
+      <ul className="search-results">
+        {(search.error ? [] : (search.data?.results ?? [])).map((hit) => (
+          <ReferenceRow
+            key={hit.skill_id}
+            skillId={hit.skill_id}
+            name={hit.name}
+            summary={hit.summary}
+            className="search-result"
+            checked={selectedIds.has(hit.skill_id)}
+            disabled={disabled || (!selectedIds.has(hit.skill_id) && atLimit)}
+            onToggle={() => onToggle(hit.skill_id, hit.name)}
+          />
+        ))}
+      </ul>
+    </>
+  );
+}
+
+function OwnedReferenceResults({
+  query,
+  selectedIds,
+  atLimit,
+  disabled,
+  onToggle,
+}: ReferenceResultsProps) {
+  const ownSkills = useOwnSkillPages();
+  const nextPageFailure = canRetainLoadedPage(ownSkills.error, ownSkills.isFetchNextPageError);
+  const own = ownSkillsFromPages(
+    ownSkills.error && !nextPageFailure ? undefined : ownSkills.data?.pages,
+  );
+  const ownMatches = (own?.skills ?? []).filter(
+    (s) =>
+      s.name.toLowerCase().includes(query.toLowerCase()) ||
+      s.summary.toLowerCase().includes(query.toLowerCase()),
+  );
+
+  return (
+    <>
+      <h3 id="reference-assets-heading" tabIndex={-1}>
+        資產庫中的小工具
+      </h3>
+      {ownSkills.isPending && <p role="status">載入資產庫中的小工具…</p>}
+      <ReadFailure
+        error={ownSkills.error}
+        what="資產庫中的小工具"
+        retry={() => void (nextPageFailure ? ownSkills.fetchNextPage() : ownSkills.refetch())}
+        retrying={ownSkills.isFetching}
+        focusTarget="reference-assets-heading"
+      />
+      {!ownSkills.isPending && !ownSkills.error && own && ownMatches.length === 0 && (
+        <p role="status">
+          {ownSkills.hasNextPage
+            ? "已載入的小工具中沒有符合項目；還有其他小工具尚未載入。"
+            : "資產庫裡沒有符合項目。"}
+        </p>
+      )}
+      <ul className="search-results">
+        {ownMatches.map((s) => (
+          <ReferenceRow
+            key={s.skill_id}
+            skillId={s.skill_id}
+            name={s.name}
+            summary={s.summary}
+            className="download-item"
+            checked={selectedIds.has(s.skill_id)}
+            disabled={disabled || (!selectedIds.has(s.skill_id) && atLimit)}
+            onToggle={() => onToggle(s.skill_id, s.name)}
+          />
+        ))}
+      </ul>
+      {own && (
+        <p className="note" role="status">
+          已載入 {own.skills.length} 個小工具{ownSkills.hasNextPage ? "；尚有更多。" : "。"}
+        </p>
+      )}
+      {ownSkills.hasNextPage && !ownSkills.error && (
+        <button
+          type="button"
+          disabled={disabled || ownSkills.isFetchingNextPage}
+          onClick={() => void ownSkills.fetchNextPage()}
+        >
+          {ownSkills.isFetchingNextPage ? "載入中…" : "載入更多小工具"}
+        </button>
+      )}
+    </>
   );
 }
 
