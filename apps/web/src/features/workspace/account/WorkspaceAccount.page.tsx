@@ -1,6 +1,6 @@
 import { Loading } from "../../../shared/ui/Loading";
 import { Timestamp } from "../../../shared/ui/Timestamp";
-import { ReadFailure } from "../../../shared/ui/LoginRequired";
+import { PageReadFailure, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "../../../core/api/client";
@@ -24,12 +24,29 @@ export function WorkspaceAccount() {
   const request = useRequestAccountDeletion();
   const cancel = useCancelAccountDeletion();
 
+  if (me.error) {
+    return (
+      <PageReadFailure
+        heading="帳號"
+        error={me.error}
+        what="帳號資料"
+        retry={() => void me.refetch()}
+        retrying={me.isFetching}
+      >
+        {(request.isSuccess || cancel.isSuccess) && (
+          <p role="alert">
+            操作已送出，但最新帳號狀態暫時無法確認。再試一次只重新讀取狀態，不會重複送出操作。
+          </p>
+        )}
+      </PageReadFailure>
+    );
+  }
+
   return (
     <section className="account-page">
       <h1>帳號</h1>
 
       {me.isPending && <Loading what="帳號資料" />}
-      <ReadFailure error={me.error} what="帳號資料" />
       {message && <p role="status">{message}</p>}
       {request.error && (
         <ReadFailure error={request.error} what="帳號刪除申請">

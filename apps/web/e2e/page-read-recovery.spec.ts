@@ -12,6 +12,13 @@ import { stubPlatform } from "./stub";
 
 const pages = [
   {
+    name: "account",
+    url: "/workspace/account",
+    pattern: "**/me",
+    heading: "帳號",
+    ready: ".account-profile",
+  },
+  {
     name: "skill detail",
     url: `/skills/${SKILL}`,
     pattern: `**/api/skills/${SKILL}`,
