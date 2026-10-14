@@ -22,7 +22,6 @@ CACHE_PATH = ROOT / "embeddings_cache.json"
 ENV_PATH = ROOT.parents[1] / ".env"
 
 EMBED_MODEL = "text-embedding-3-small"
-EMBED_URL = "https://api.openai.com/v1/embeddings"
 EMBED_CHAR_LIMIT = 20000  # model caps at 8191 tokens
 
 K1, B, RRF_K = 1.5, 0.75, 60
@@ -143,16 +142,30 @@ def load_corpus(*, require_enriched: bool = False) -> tuple[list[dict], dict]:
 
 
 
-def api_key() -> str:
-    key = os.environ.get("OPENAI_API_KEY")
-    if not key and ENV_PATH.exists():
+def gateway_setting(name: str) -> str:
+    value = os.environ.get(name, "")
+    if not value and ENV_PATH.exists():
         for line in ENV_PATH.read_text(encoding="utf-8-sig", errors="replace").splitlines():
             n, sep, v = line.partition("=")
-            if sep and n.strip() == "OPENAI_API_KEY":
-                key = v.strip().strip("\"'")
+            if sep and n.strip() == name:
+                value = v.strip().strip("\"'")
                 break
+    return value
+
+
+def embed_url() -> str:
+    base = gateway_setting("LITELLM_BASE_URL")
+    if not base:
+        sys.exit("no model gateway address (LITELLM_BASE_URL) in the environment or .env; use --no-api")
+    return base.rstrip("/") + "/v1/embeddings"
+
+
+def api_key() -> str:
+    key = gateway_setting("LITELLM_API_KEY")
     if not key:
-        sys.exit("no embedding credential in the environment or repo-root .env; use --no-api")
+        sys.exit("no gateway virtual key (LITELLM_API_KEY) in the environment or .env; use --no-api")
+    if key == gateway_setting("LITELLM_MASTER_KEY"):
+        sys.exit("LITELLM_API_KEY is the gateway master key; use a virtual key")
     return key
 
 
@@ -166,7 +179,7 @@ def embed(texts: list[str], *, allow_api: bool = True) -> dict[str, list[float]]
     for i in range(0, len(todo), 16):
         batch = todo[i : i + 16]
         req = urllib.request.Request(
-            EMBED_URL,
+            embed_url(),
             data=json.dumps({"model": EMBED_MODEL, "input": batch}).encode(),
             headers={"Authorization": f"Bearer {api_key()}", "Content-Type": "application/json"},
         )

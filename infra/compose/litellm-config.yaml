@@ -49,6 +49,10 @@ model_list:
       # Function calling on this route is only served with reasoning off.
       reasoning_effort: none
       additional_drop_params: ["thinking"]
+  - model_name: skillhub-content-review
+    litellm_params:
+      model: openai/gpt-5.6-terra
+      api_key: os.environ/OPENAI_API_KEY
   - model_name: skillhub-ops-report
     litellm_params:
       <<: *luna

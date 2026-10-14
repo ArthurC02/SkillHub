@@ -155,7 +155,8 @@ def call_provider(outcomes):
         return io.BytesIO(json.dumps(outcome).encode())
 
     with mock.patch.object(review.urllib.request, "urlopen", urlopen), \
-            mock.patch.object(review.time, "sleep", waits.append):
+            mock.patch.object(review.time, "sleep", waits.append), \
+            mock.patch.dict(review.os.environ, {"LITELLM_BASE_URL": "http://gateway:4000"}):
         try:
             answer = review.provider("chat", {}, "k")
         except RuntimeError as exc:
@@ -199,6 +200,67 @@ def test_a_refusal_the_provider_will_repeat_is_not_retried():
 def test_the_reason_kept_from_a_refusal_is_cut_at_three_hundred_characters():
     answer, _, _ = call_provider([http_error(403, b"x" * 301)])
     assert str(answer) == "provider call failed: " + "x" * 300, answer
+
+
+
+
+@contextlib.contextmanager
+def gateway_env(env_file="", **env):
+    with tempfile.TemporaryDirectory() as folder:
+        Path(folder, ".env").write_text(env_file, encoding="utf-8")
+        with mock.patch.object(review, "REPO", Path(folder)), \
+                mock.patch.dict(review.os.environ, env, clear=True):
+            yield
+
+
+def test_a_model_call_goes_to_the_gateway_and_never_to_a_provider():
+    seen = []
+
+    def urlopen(req, timeout):
+        seen.append(req.full_url)
+        return io.BytesIO(b"{}")
+
+    with gateway_env(LITELLM_BASE_URL="http://gateway:4000/"), \
+            mock.patch.object(review.urllib.request, "urlopen", urlopen):
+        review.provider("chat/completions", {}, "k")
+    assert seen == ["http://gateway:4000/v1/chat/completions"], seen
+
+
+def test_the_gateway_address_is_read_from_the_env_file_when_the_process_has_none():
+    with gateway_env("LITELLM_BASE_URL=http://from-file:4000\n"):
+        assert review.gateway_url() == "http://from-file:4000/v1"
+
+
+def test_no_gateway_address_stops_before_any_call():
+    try:
+        with gateway_env():
+            review.gateway_url()
+    except SystemExit as exc:
+        assert "LITELLM_BASE_URL" in str(exc), exc
+    else:
+        raise AssertionError("gateway_url returned without an address")
+
+
+def test_a_virtual_key_is_used_and_the_master_key_is_refused():
+    with gateway_env(LITELLM_API_KEY="sk-virtual", LITELLM_MASTER_KEY="sk-master"):
+        assert review.load_key() == "sk-virtual"
+    try:
+        with gateway_env(LITELLM_API_KEY="sk-master", LITELLM_MASTER_KEY="sk-master"):
+            review.load_key()
+    except SystemExit as exc:
+        assert "master key" in str(exc), exc
+    else:
+        raise AssertionError("the master key was accepted as the review credential")
+
+
+def test_no_key_at_all_stops():
+    try:
+        with gateway_env():
+            review.load_key()
+    except SystemExit as exc:
+        assert "LITELLM_API_KEY" in str(exc), exc
+    else:
+        raise AssertionError("load_key returned without a key")
 
 
 if __name__ == "__main__":

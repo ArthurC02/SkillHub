@@ -36,9 +36,8 @@ SUMMARIES = HERE / "summaries.json"
 OUT = HERE / "review-results.json"
 DEFAULT_API = os.environ.get("SKILLHUB_API", "http://localhost:8080")
 
-JUDGE_MODEL = "gpt-5.6-terra"
+JUDGE_MODEL = "skillhub-content-review"
 EMBED_MODEL = "text-embedding-3-small"
-PROVIDER_URL = "https://api.openai.com/v1"
 REVIEWER_ID = "automated-review v1"
 PRICE = {"in": 2.00, "out": 12.00, "embed": 0.02}
 
@@ -169,22 +168,36 @@ def term_density(summary: str) -> float:
 
 
 
-def load_key() -> str:
-    """Read OPENAI_API_KEY from the repo-root .env into this process env only."""
-    if not os.environ.get("OPENAI_API_KEY"):
-        env = REPO / ".env"
+def gateway_setting(name: str) -> str:
+    """A model-gateway setting from this process env, else the repo-root .env."""
+    value = os.environ.get(name, "")
+    env = REPO / ".env"
+    if not value and env.exists():
         for line in env.read_text(encoding="utf-8").splitlines():
-            if line.startswith("OPENAI_API_KEY="):
-                os.environ["OPENAI_API_KEY"] = line.split("=", 1)[1].strip()
-    key = os.environ.get("OPENAI_API_KEY")
+            if line.startswith(f"{name}="):
+                value = line.split("=", 1)[1].strip()
+    return value
+
+
+def gateway_url() -> str:
+    base = gateway_setting("LITELLM_BASE_URL")
+    if not base:
+        raise SystemExit("LITELLM_BASE_URL not set and not found in .env; start the model gateway")
+    return base.rstrip("/") + "/v1"
+
+
+def load_key() -> str:
+    key = gateway_setting("LITELLM_API_KEY")
     if not key:
-        raise SystemExit("OPENAI_API_KEY not set and not found in .env")
+        raise SystemExit("LITELLM_API_KEY not set and not found in .env; use a gateway virtual key")
+    if key == gateway_setting("LITELLM_MASTER_KEY"):
+        raise SystemExit("LITELLM_API_KEY is the gateway master key; use a virtual key")
     return key
 
 
 def provider(path: str, body: dict, key: str, timeout: int = 300) -> dict:
     req = urllib.request.Request(
-        f"{PROVIDER_URL}/{path}",
+        f"{gateway_url()}/{path}",
         data=json.dumps(body).encode(),
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
     )
