@@ -25,6 +25,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Health"
+  /readyz:
+    get:
+      operationId: getReadiness
+      summary: Whether this service can take model work
+      description: |
+        Checks configuration only and never calls the gateway. The Go control
+        plane's startup capability table reads it: a valid token and a
+        configured gateway report `ready`; a missing gateway variable reports
+        `not_ready` and names it in `missing`.
+      responses:
+        "200":
+          description: The service answered; `status` says whether it can take work.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Readiness"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          description: |
+            The workload token is not configured (LLM_SERVICE_TOKEN is unset),
+            so this process cannot authenticate its caller.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /embed:
     post:
       operationId: embed
@@ -603,6 +629,21 @@ components:
         status:
           type: string
           enum: [ok]
+    Readiness:
+      type: object
+      required: [status, gateway_configured, missing]
+      properties:
+        status:
+          type: string
+          enum: [ready, not_ready]
+        gateway_configured:
+          type: boolean
+        missing:
+          type: array
+          description: Names of the unset gateway variables; empty when ready.
+          items:
+            type: string
+            enum: [LITELLM_BASE_URL, LITELLM_API_KEY]
     Error:
       type: object
       required: [detail]

@@ -6,6 +6,7 @@ import yaml
 from pydantic import BaseModel
 
 from skillhub_llm.agent import AgentStepResponse
+from skillhub_llm.app import Readiness
 from skillhub_llm.creation import (
     CreationMessage,
     CreationStepRequest,
@@ -36,6 +37,7 @@ MODELS: dict[str, type[BaseModel]] = {
     "ImprovementProposal": ImprovementProposal,
     "JudgeEvidenceRef": JudgeEvidenceRef,
     "JudgeVerdict": JudgeVerdict,
+    "Readiness": Readiness,
     "SearchFilters": SearchFilters,
 }
 

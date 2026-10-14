@@ -38,6 +38,7 @@ var wireTypes = map[string]reflect.Type{
 	"EnrichSkillRequest":            reflect.TypeOf(EnrichSkillRequest{}),
 	"EnrichSkillResponse":           reflect.TypeOf(EnrichSkillResponse{}),
 	"GatewayUsage":                  reflect.TypeOf(GatewayUsage{}),
+	"Readiness":                     reflect.TypeOf(Readiness{}),
 	"GenerateDiagram":               reflect.TypeOf(GenerateDiagram{}),
 	"GenerateReference":             reflect.TypeOf(GenerateReference{}),
 	"GenerateSkillRequest":          reflect.TypeOf(GenerateSkillRequest{}),

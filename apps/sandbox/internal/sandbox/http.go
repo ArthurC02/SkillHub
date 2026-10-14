@@ -21,18 +21,30 @@ type Server struct {
 	Metrics *prometheus.Registry
 }
 
+type route struct {
+	pattern string
+	handler http.HandlerFunc
+}
+
+func (s *Server) routeTable() []route {
+	table := []route{
+		{"GET /capability", s.capability},
+		{"POST /runs", s.createRun},
+		{"GET /runs", s.listRuns},
+		{"GET /runs/{provider_run_id}", s.getRun},
+		{"DELETE /runs/{provider_run_id}", s.destroyRun},
+		{"POST /runs/{provider_run_id}/cancel", s.cancelRun},
+	}
+	if s.Metrics != nil {
+		table = append(table, route{"GET /metrics", MetricsHandler(s.Metrics).ServeHTTP})
+	}
+	return table
+}
+
 func (s *Server) Routes() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /capability", s.auth(s.capability))
-	mux.HandleFunc("POST /runs", s.auth(s.createRun))
-	mux.HandleFunc("GET /runs", s.auth(s.listRuns))
-	mux.HandleFunc("GET /runs/{provider_run_id}", s.auth(s.getRun))
-	mux.HandleFunc("DELETE /runs/{provider_run_id}", s.auth(s.destroyRun))
-	mux.HandleFunc("POST /runs/{provider_run_id}/cancel", s.auth(s.cancelRun))
-
-	if s.Metrics != nil {
-		metrics := MetricsHandler(s.Metrics)
-		mux.HandleFunc("GET /metrics", s.auth(metrics.ServeHTTP))
+	for _, r := range s.routeTable() {
+		mux.HandleFunc(r.pattern, s.auth(r.handler))
 	}
 	return mux
 }

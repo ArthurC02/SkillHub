@@ -40,6 +40,7 @@ from skillhub_llm.app import app
         "AnalyzeSearchIntentResponse",
         "SearchIntent",
         "SearchFilters",
+        "Readiness",
     ],
 )
 def test_runtime_transport_shape_matches_generated_contract(name: str) -> None:
@@ -74,6 +75,24 @@ def _described(spec, response) -> str:
     if ref:
         response = spec["components"]["responses"][ref.rsplit("/", 1)[-1]]
     return response.get("description", "")
+
+
+def _served_operations():
+    for path, operations in app.openapi()["paths"].items():
+        for method in operations:
+            yield f"{method.upper()} {path}"
+
+
+def test_every_route_this_service_serves_is_in_the_contract():
+    declared = {name for name, _ in _operations()}
+    undeclared = sorted(set(_served_operations()) - declared)
+    assert undeclared == [], f"add these to llm-internal.yaml before serving them: {undeclared}"
+
+
+def test_every_operation_in_the_contract_is_served():
+    served = set(_served_operations())
+    unserved = sorted({name for name, _ in _operations()} - served)
+    assert unserved == [], f"the contract declares operations nothing here serves: {unserved}"
 
 
 def test_every_endpoint_that_can_fail_on_the_gateway_declares_both_ways_it_can():

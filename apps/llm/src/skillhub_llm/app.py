@@ -6,7 +6,7 @@ import logging
 import os
 import secrets
 from contextlib import asynccontextmanager
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -110,24 +110,33 @@ def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
+GatewayVariable = Literal["LITELLM_BASE_URL", "LITELLM_API_KEY"]
+
+
+class Readiness(BaseModel):
+    status: Literal["ready", "not_ready"]
+    gateway_configured: bool
+    missing: list[GatewayVariable]
+
+
 @app.get("/readyz", dependencies=[Depends(require_service_token)])
-def readyz() -> dict[str, object]:
+def readyz() -> Readiness:
     """Readiness: is the service token valid and is the gateway configured.
 
     Checks configuration only; it does not call the gateway.
     """
     base_url = os.getenv("LITELLM_BASE_URL", "")
     api_key = os.getenv("LITELLM_API_KEY", "")
-    missing = [
-        name
-        for name, value in (("LITELLM_BASE_URL", base_url), ("LITELLM_API_KEY", api_key))
-        if not value
-    ]
-    return {
-        "status": "ready" if not missing else "not_ready",
-        "gateway_configured": not missing,
-        "missing": missing,
-    }
+    gateway_variables: tuple[tuple[GatewayVariable, str], ...] = (
+        ("LITELLM_BASE_URL", base_url),
+        ("LITELLM_API_KEY", api_key),
+    )
+    missing = [name for name, value in gateway_variables if not value]
+    return Readiness(
+        status="ready" if not missing else "not_ready",
+        gateway_configured=not missing,
+        missing=missing,
+    )
 
 
 class EmbedRequest(BaseModel):

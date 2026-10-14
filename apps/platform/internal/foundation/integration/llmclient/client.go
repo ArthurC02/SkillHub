@@ -89,6 +89,14 @@ type EmbedRequest struct {
 	TimeoutSeconds float64 `json:"timeout_seconds,omitempty"`
 }
 
+type Readiness struct {
+	Status            string   `json:"status"`
+	GatewayConfigured bool     `json:"gateway_configured"`
+	Missing           []string `json:"missing"`
+}
+
+const ReadinessReady = "ready"
+
 type EmbedResponse struct {
 	Embeddings [][]float32 `json:"embeddings"`
 	Model      string      `json:"model"`

@@ -29,6 +29,24 @@ class Health(BaseModel):
     status: Status
 
 
+class Status1(Enum):
+    ready = 'ready'
+    not_ready = 'not_ready'
+
+
+class MissingEnum(Enum):
+    LITELLM_BASE_URL = 'LITELLM_BASE_URL'
+    LITELLM_API_KEY = 'LITELLM_API_KEY'
+
+
+class Readiness(BaseModel):
+    status: Status1
+    gateway_configured: bool
+    missing: list[MissingEnum] = Field(
+        ..., description='Names of the unset gateway variables; empty when ready.'
+    )
+
+
 class Error(BaseModel):
     detail: str
 

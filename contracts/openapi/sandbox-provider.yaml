@@ -291,6 +291,25 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/RunNotFound"
+  /metrics:
+    get:
+      operationId: getProviderMetrics
+      summary: Prometheus metrics for the provider process
+      description: |
+        Served only when the provider was started with a metrics registry;
+        otherwise the path answers 404. The body is the Prometheus text
+        exposition format, read by the observability stack and never by the
+        orchestrator, so no schema of this file describes it.
+      responses:
+        "200":
+          description: Current metric samples.
+          content:
+            text/plain:
+              schema: { type: string }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: This provider was started without a metrics registry.
 
 components:
   securitySchemes:

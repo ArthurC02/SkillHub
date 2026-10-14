@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"io"
 	"log/slog"
 	"net/http"
@@ -276,14 +277,11 @@ func probeLLMService(client *http.Client) func(context.Context) error {
 		default:
 			return fmt.Errorf("apps/llm 的 /readyz 回 %d", resp.StatusCode)
 		}
-		var body struct {
-			Status  string   `json:"status"`
-			Missing []string `json:"missing"`
-		}
+		var body llmclient.Readiness
 		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 			return fmt.Errorf("apps/llm 的 /readyz 回了讀不懂的內容：%w", err)
 		}
-		if body.Status != "ready" {
+		if body.Status != llmclient.ReadinessReady {
 			return fmt.Errorf("apps/llm 起來了但還不能用，它自己缺：%s", strings.Join(body.Missing, "、"))
 		}
 		return nil
