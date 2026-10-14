@@ -12,19 +12,28 @@ import {
 
 export function PublisherSection() {
   const publisher = useOwnPublisher();
+  const headingId = useId();
 
   const notRegistered = publisher.error instanceof ApiError && publisher.error.status === 404;
 
   return (
-    <section>
-      <h2>發佈者名稱</h2>
+    <section aria-labelledby={headingId}>
+      <h2 id={headingId} tabIndex={-1}>
+        發佈者名稱
+      </h2>
 
       {publisher.isPending && <Loading what="發佈者名稱" />}
       {publisher.error && !notRegistered && (
-        <ReadFailure error={publisher.error} what="發佈者名稱" />
+        <ReadFailure
+          error={publisher.error}
+          what="發佈者名稱"
+          retry={() => void publisher.refetch()}
+          retrying={publisher.isFetching}
+          focusTarget={headingId}
+        />
       )}
 
-      {publisher.data ? (
+      {publisher.data && !publisher.error ? (
         <>
           <p>
             {publisher.data.name}（註冊於 <Timestamp at={publisher.data.created_at} />）

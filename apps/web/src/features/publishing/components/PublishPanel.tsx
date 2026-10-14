@@ -39,6 +39,7 @@ export function PublishPanel({
   const [name, setName] = useState(skill.name);
   const [attested, setAttested] = useState(false);
   const nameInputId = useId();
+  const headingId = `${nameInputId}-heading`;
 
   if (!isLoggedIn) {
     return (
@@ -56,12 +57,20 @@ export function PublishPanel({
   const { needsAttestation, disabledReason, cannotSubmit } = publishGateState(skill, attested);
 
   return (
-    <section>
-      <h2>發佈</h2>
+    <section aria-labelledby={headingId}>
+      <h2 id={headingId} tabIndex={-1}>
+        發佈
+      </h2>
 
       {publisher.isPending && <Loading what="發佈者資訊" />}
       {publisher.error && !noPublisherYet && (
-        <ReadFailure error={publisher.error} what="發佈者資訊" />
+        <ReadFailure
+          error={publisher.error}
+          what="發佈者資訊"
+          retry={() => void publisher.refetch()}
+          retrying={publisher.isFetching}
+          focusTarget={headingId}
+        />
       )}
 
       {noPublisherYet ? (
@@ -72,14 +81,20 @@ export function PublishPanel({
           <h3>發佈者名稱</h3>
           <PublisherRegistration />
         </>
-      ) : publisher.data ? (
+      ) : publisher.data && !publisher.error ? (
         <>
           {publication.isPending && <Loading what="發佈狀態" />}
           {publication.error && !notPublishedYet && (
-            <ReadFailure error={publication.error} what="發佈狀態" />
+            <ReadFailure
+              error={publication.error}
+              what="發佈狀態"
+              retry={() => void publication.refetch()}
+              retrying={publication.isFetching}
+              focusTarget={headingId}
+            />
           )}
 
-          {publication.data ? (
+          {publication.data && !publication.error ? (
             <PublishedView
               publication={publication.data}
               needsAttestation={needsAttestation}
