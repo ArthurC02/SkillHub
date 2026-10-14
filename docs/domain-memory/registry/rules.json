@@ -178,8 +178,8 @@
             "start": 259,
             "end": 267
           },
-          "content_sha256": "sha256:75bf880da521824cfa0b1a043df0c267721491c186e1db32ffa42c3f50caa85c",
-          "excerpt_sha256": "sha256:301abb7b3ab46a7ef94f45ac5aa4113d9137377e16c4ef747deddf46a82b625e",
+          "content_sha256": "sha256:b7d27adc90fbdd31cf766b50c9e65f380a6166fb406a25e4ffba45a0c253ad17",
+          "excerpt_sha256": "sha256:e238eec0c0131176e4ec23b7886a601f24f453431a717cc5e2a2f1c04bfc959f",
           "source_kind": "implementation"
         },
         {
@@ -205,19 +205,19 @@
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "run-readmodel-recite",
+        "proposal_id": "receiver-free-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T16:38:05.093087Z",
-            "scope": "Re-cite run collaborations after the readmodel split",
+            "approved_at": "2026-10-14T17:33:50.215879Z",
+            "scope": "Re-cite batch records after stopBatch became a function",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
-              "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
+              "observed_commit": "1a44ab9a46e4c3971b8f910387737fd00ee338de",
+              "registry_digest": "sha256:d5171e07f8c52fd6aa07588e0612dcec68b005fbb7f2a851176d9ab44acd029b"
             }
           }
         ]
