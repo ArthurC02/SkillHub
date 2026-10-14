@@ -10,14 +10,17 @@ import "./SkillFiles.page.css";
 
 export function SkillFiles() {
   const { skillId } = useParams({ from: "/skills/$skillId/files" });
-  const { data, isLoading, error } = useSkillFiles(skillId);
+  const { data: cachedFiles, isLoading, error, refetch, isFetching } = useSkillFiles(skillId);
+  const data = error ? undefined : cachedFiles;
   const skillMdBytes = data?.tree.find((entry) => entry.path === "SKILL.md")?.size;
 
   return (
     <article className="skill-files-page">
       <header className="skill-files-hero">
         <p className="page-eyebrow">Package inspector</p>
-        <h1>SKILL.md 與檔案樹</h1>
+        <h1 id="skill-files-heading" tabIndex={-1}>
+          SKILL.md 與檔案樹
+        </h1>
         <p>在同一個工作區比對套件說明、檔案結構與 Script 風險。</p>
       </header>
       <SkillWorkspaceNav skillId={skillId} versionId={data?.version_id} />
@@ -26,12 +29,17 @@ export function SkillFiles() {
       {error instanceof ApiError && error.status === 410 && (
         <p role="alert">這個小工具已從目錄下架，內容不再提供。</p>
       )}
-      {error instanceof ApiError && error.status === 403 && (
-        <p role="status">這份套件的檔案目前尚未開放查看，可以先回到小工具總覽。</p>
-      )}
-      {!(error instanceof ApiError && (error.status === 410 || error.status === 403)) && (
-        <ReadFailure error={error} what="套件檔案清單">
-          {error instanceof ApiError && error.status === 404 ? (
+      {!(error instanceof ApiError && error.status === 410) && (
+        <ReadFailure
+          error={error}
+          what="套件檔案清單"
+          retry={() => void refetch()}
+          retrying={isFetching}
+          focusTarget="skill-files-heading"
+        >
+          {error instanceof ApiError && error.status === 403 ? (
+            <p role="status">這份套件的檔案目前尚未開放查看，可以先回到小工具總覽。</p>
+          ) : error instanceof ApiError && error.status === 404 ? (
             <p role="alert">找不到這個小工具的檔案清單，它可能還沒有保存的版本。</p>
           ) : error instanceof ApiError && error.status === 503 ? (
             <p role="alert">儲存的套件目前讀不到，稍後再試一次。</p>

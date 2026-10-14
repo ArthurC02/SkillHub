@@ -41,7 +41,9 @@ function PackagingVersionLabel({
   latestVersionNumber?: number;
 }) {
   const versions = useSkillVersions(skillId);
-  const selected = versions.data?.versions.find((item) => item.version_id === versionId);
+  const selected = versions.error
+    ? undefined
+    : versions.data?.versions.find((item) => item.version_id === versionId);
   const versionNumber =
     selected?.version_number ?? (versionId === latestVersionId ? latestVersionNumber : undefined);
 
