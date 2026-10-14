@@ -49,7 +49,13 @@ export function AdvancedMode({ runId, active }: { runId: string; active: boolean
   if (isPending) return <Loading what="原始事件（一頁最多 1,000 筆，資料量大）" />;
   if (error)
     return (
-      <ReadFailure error={error} what="執行紀錄">
+      <ReadFailure
+        error={error}
+        what="執行紀錄"
+        retry={() => void refetch()}
+        retrying={isFetching}
+        focusTarget="run-trace-heading"
+      >
         <p role="alert">無法讀取執行紀錄。</p>
       </ReadFailure>
     );
@@ -94,6 +100,29 @@ export function AdvancedMode({ runId, active }: { runId: string; active: boolean
         </button>
       </nav>
 
+      <TraceStreamStats streams={trace.streams} />
+
+      <h3>事件（已遮罩，依序重建）</h3>
+      <p className="note" data-role="teaching">
+        payload 照原樣顯示。<code>usage</code> 的 <code>cost_usd</code> 是<strong>下界</strong>
+        ，不是帳單金額——權威數字是模型閘道對這次試跑的 per-key 實付。
+      </p>
+      {trace.events.length === 0 ? (
+        <p>尚無事件。</p>
+      ) : (
+        <ol className="trace-events">
+          {trace.events.map((event) => (
+            <TraceEventRow key={event.event_id} event={event} />
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+function TraceStreamStats({ streams }: { streams: TraceAdvanced["streams"] }) {
+  return (
+    <>
       <h3>事件串流</h3>
       <p className="note table-scroll-hint">左右捲動查看全部欄位。</p>
       <div
@@ -106,7 +135,7 @@ export function AdvancedMode({ runId, active }: { runId: string; active: boolean
           <caption>Trace 事件串流統計</caption>
           <TraceStreamHeader />
           <tbody>
-            {trace.streams.map((stream) => (
+            {streams.map((stream) => (
               <tr key={`${stream.attempt}-${stream.emitted_by}`}>
                 <td>{stream.attempt}</td>
                 <td>{stream.emitted_by}</td>
@@ -126,21 +155,6 @@ export function AdvancedMode({ runId, active }: { runId: string; active: boolean
           </tbody>
         </table>
       </div>
-
-      <h3>事件（已遮罩，依序重建）</h3>
-      <p className="note" data-role="teaching">
-        payload 照原樣顯示。<code>usage</code> 的 <code>cost_usd</code> 是<strong>下界</strong>
-        ，不是帳單金額——權威數字是模型閘道對這次試跑的 per-key 實付。
-      </p>
-      {trace.events.length === 0 ? (
-        <p>尚無事件。</p>
-      ) : (
-        <ol className="trace-events">
-          {trace.events.map((event) => (
-            <TraceEventRow key={event.event_id} event={event} />
-          ))}
-        </ol>
-      )}
-    </div>
+    </>
   );
 }

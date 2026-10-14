@@ -4,7 +4,22 @@ import {
   legacyLibraryDestination,
   legacyRunDestination,
   validatePublishingWorkspaceSearch,
+  validateTraceEvents,
 } from "./router";
+
+test.each([
+  [0, "0"],
+  [1000, "1000"],
+  [Number.MAX_SAFE_INTEGER, String(Number.MAX_SAFE_INTEGER)],
+  [-1, undefined],
+  [0.5, undefined],
+  [Number.MAX_SAFE_INTEGER + 1, undefined],
+  ["1000,2000", "1000,2000"],
+  ["bad", undefined],
+  [null, undefined],
+])("Trace cursor %j preserves only valid URL context", (events, expected) => {
+  expect(validateTraceEvents(events)).toBe(expected);
+});
 
 describe("legacy Library links", () => {
   test.each([

@@ -337,16 +337,20 @@ const legacyDatasetUploadRoute = createRoute({
 
 export type RunSearch = { evaluation?: string; events?: string };
 
+export function validateTraceEvents(events: unknown): string | undefined {
+  if (typeof events === "number") {
+    return Number.isSafeInteger(events) && events >= 0 ? String(events) : undefined;
+  }
+  return typeof events === "string" && /^\d+(,\d+)*$/.test(events) ? events : undefined;
+}
+
 const runTraceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/runs/$runId",
   component: lazyRouteComponent(() => import("../features/runs/trace/RunTrace.page"), "RunTrace"),
   validateSearch: (search: Record<string, unknown>): RunSearch => ({
     evaluation: typeof search.evaluation === "string" ? search.evaluation : undefined,
-    events:
-      typeof search.events === "string" && /^\d+(,\d+)*$/.test(search.events)
-        ? search.events
-        : undefined,
+    events: validateTraceEvents(search.events),
   }),
 });
 

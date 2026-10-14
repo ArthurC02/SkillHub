@@ -21,7 +21,13 @@ export function GeneralMode({
   if (isPending) return <Loading what="執行紀錄" />;
   if (error)
     return (
-      <ReadFailure error={error} what="執行紀錄">
+      <ReadFailure
+        error={error}
+        what="執行紀錄"
+        retry={() => void general.refetch()}
+        retrying={general.isFetching}
+        focusTarget="run-trace-heading"
+      >
         <p role="alert">無法讀取執行紀錄。</p>
       </ReadFailure>
     );

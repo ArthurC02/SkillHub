@@ -7,28 +7,37 @@ import { RunArtifactFacts } from "./RunArtifactFacts";
 
 export function RunArtifacts({ runId }: { runId: string }) {
   const artifacts = useRunArtifacts(runId);
+  const readableArtifacts = artifacts.error ? undefined : artifacts.data;
   const [message, setMessage] = useState("");
   const remove = useDeleteRunArtifact(runId);
 
   return (
     <>
-      <h2>這次試跑的產出</h2>
+      <h2 id="run-artifacts-heading" tabIndex={-1}>
+        這次試跑的產出
+      </h2>
       {artifacts.isPending && <Loading what="產出清單" />}
-      <ReadFailure error={artifacts.error} what="產出清單" />
+      <ReadFailure
+        error={artifacts.error}
+        what="產出清單"
+        retry={() => void artifacts.refetch()}
+        retrying={artifacts.isFetching}
+        focusTarget="run-artifacts-heading"
+      />
       <ReadFailure error={remove.error} what="刪除這個產出">
         <p role="alert">沒有刪成，可以再按一次。</p>
       </ReadFailure>
       {message && <p role="status">{message}</p>}
-      {artifacts.data?.truncated && (
+      {readableArtifacts?.truncated && (
         <p className="notice" role="status">
           有些產出未被收集；清單只保留成功收集的檔案。
         </p>
       )}
 
-      {artifacts.data &&
-        (artifacts.data.artifacts.length === 0 ? (
+      {readableArtifacts &&
+        (readableArtifacts.artifacts.length === 0 ? (
           <p>
-            {artifacts.data.truncated
+            {readableArtifacts.truncated
               ? "收集結果為空，無法據此判定這次試跑沒有產生檔案。"
               : "這次試跑沒有留下任何檔案產出。"}
           </p>
@@ -36,11 +45,11 @@ export function RunArtifacts({ runId }: { runId: string }) {
           <>
             <p className="note">
               這些檔案平台都不提供下載連結：每一個都是沙箱的產出，控制平面不打開它。
-              {artifacts.data.artifacts.some((a) => !a.expires_at) &&
+              {readableArtifacts.artifacts.some((a) => !a.expires_at) &&
                 "「尚未定值」是平台還沒有為試跑產出定下保存期限，這不表示它會永久保留。"}
             </p>
             <ul className="download-list">
-              {artifacts.data.artifacts.map((artifact) => (
+              {readableArtifacts.artifacts.map((artifact) => (
                 <li key={artifact.artifact_id} className="download-item">
                   <RunArtifactFacts artifact={artifact} />
                   <p>

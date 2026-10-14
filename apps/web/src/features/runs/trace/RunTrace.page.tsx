@@ -86,45 +86,57 @@ export function RunTrace() {
   const [mode, setMode] = useState<"general" | "advanced">(linkedEvents ? "advanced" : "general");
   const run = useRun(runId);
   const general = useTrace(runId, "general");
+  const readableRun = run.error ? undefined : run.data;
+  const readableTrace = general.error ? undefined : general.data;
 
   return (
     <article className="run-workspace">
       <header className="run-workspace-header">
         <p className="run-eyebrow">驗證與執行</p>
-        <h1>試跑結果</h1>
+        <h1 id="run-heading" tabIndex={-1}>
+          試跑結果
+        </h1>
         <p className="run-identity" data-role="evidence">
           <strong>試跑紀錄 ID：</strong>
           <code>{runId}</code>
         </p>
-        <ReadFailure error={run.error} what="這次試跑" />
-        {run.data && (
+        <ReadFailure
+          error={run.error}
+          what="這次試跑"
+          retry={() => void run.refetch()}
+          retrying={run.isFetching}
+          focusTarget="run-heading"
+        />
+        {readableRun && (
           <>
             <SkillWorkspaceNav
-              skillId={run.data.skill_id}
-              versionId={run.data.skill_version_id}
-              testCaseId={run.data.test_case_id}
+              skillId={readableRun.skill_id}
+              versionId={readableRun.skill_version_id}
+              testCaseId={readableRun.test_case_id}
             />
             <RunSourceContext
-              skillId={run.data.skill_id}
-              versionId={run.data.skill_version_id}
-              testCaseId={run.data.test_case_id}
+              skillId={readableRun.skill_id}
+              versionId={readableRun.skill_version_id}
+              testCaseId={readableRun.test_case_id}
             />
           </>
         )}
       </header>
 
       <section className="run-workspace-panel run-decision" id="run-decision">
-        <EvaluationPanel runId={runId} runStatus={general.data?.status} />
-        {general.data && <InFlight summary={general.data} />}
+        <EvaluationPanel runId={runId} runStatus={readableTrace?.status} />
+        {readableTrace && <InFlight summary={readableTrace} />}
       </section>
 
       <div className="run-workspace-layout">
-        <RunWorkspaceRail runId={runId} status={general.data?.status} />
+        <RunWorkspaceRail runId={runId} status={readableTrace?.status} />
 
         <div className="run-workspace-main">
           <section className="run-workspace-panel" id="run-trace">
             <p className="run-eyebrow">執行證據</p>
-            <h2>執行紀錄</h2>
+            <h2 id="run-trace-heading" tabIndex={-1}>
+              執行紀錄
+            </h2>
             <p className="note" data-role="teaching">
               一般模式是摘要，進階模式是這次試跑的原始事件（已遮罩）——同一份紀錄的兩種詳細度，
               只影響下面這一節。
@@ -151,7 +163,7 @@ export function RunTrace() {
               <AdvancedMode
                 key={runId}
                 runId={runId}
-                active={Boolean(general.data?.status && CANCELLABLE.has(general.data.status))}
+                active={Boolean(readableTrace?.status && CANCELLABLE.has(readableTrace.status))}
               />
             )}
           </section>
