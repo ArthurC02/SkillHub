@@ -1,0 +1,39 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "run-readmodel-recite",
+  "status": "draft",
+  "intent": "Keep run's composition-root collaborations citing current wiring after run's read queries moved into the trial/execution/readmodel subpackage.",
+  "actor": "coding-agent",
+  "observable_outcome": "verify-evidence reports every citation current; each record states the same fact as before, with run still the producer.",
+  "acceptance_criteria": [
+    {
+      "id": "citations-current",
+      "statement": "Every re-cited record cites the lines that now hold its wiring."
+    },
+    {
+      "id": "terminal-verdict-unchanged",
+      "statement": "A Run read through the read model carries the same terminal verdict as the run state machine."
+    },
+    {
+      "id": "eval-receives-verdict",
+      "statement": "Evaluation still receives the terminal verdict the run owner recorded."
+    },
+    {
+      "id": "approval-externally-verifiable",
+      "statement": "The approval that makes the records reviewed is checkable outside the package."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/trial/execution/readmodel/read.go",
+    "apps/platform/internal/entrypoint/wiring/trial.go",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+    "apps/platform/internal/entrypoint/api/apiserver/creation_wiring.go",
+    "apps/platform/internal/entrypoint/api/apiserver/app.go"
+  ]
+}

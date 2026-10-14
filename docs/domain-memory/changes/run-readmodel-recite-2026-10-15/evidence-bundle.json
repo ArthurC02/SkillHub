@@ -1,0 +1,78 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-readmodel-recite",
+  "proposal_id": "run-readmodel-recite",
+  "registry_revision": {
+    "observed_commit": "3bdec1fb5ffdf6e47c0704ad84e514b15fb4632d",
+    "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "readmodel-terminal-verdict",
+    "mutated_protection": "readmodel.evaluationRun deriving Terminal from run.IsTerminal",
+    "failure_evidence": "With Terminal narrowed to succeeded runs only, TestEvaluationRunCarriesTheTerminalVerdict failed on failed, cancelled and timed_out ('terminal false; want terminal true'); restored byte for byte (cmp).",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/trial/execution/readmodel/read.go",
+    "apps/platform/internal/entrypoint/wiring/trial.go",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+    "apps/platform/internal/entrypoint/api/apiserver/creation_wiring.go",
+    "apps/platform/internal/entrypoint/api/apiserver/app.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "package-valid",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py validate-change-package --package-root docs/domain-memory/changes/run-readmodel-recite-2026-10-15 --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:f59ed0f5e58f24af697fc460db7a190345b22c6e6c8a2fdbf184d0f488d61a0f",
+      "finished_at": "2026-10-14T16:37:55.315759Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:78282e4e3d6c0002c5827f251a5d56867dc4b50c025df3f020244e3a411c7aed",
+      "finished_at": "2026-10-14T16:37:55.686803Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py governance-readiness --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:2b6a3a27f1223e6cc1dc91aae0d304d9226040ff5508b5e8d4133a1df04930ec",
+      "finished_at": "2026-10-14T16:37:56.189413Z"
+    },
+    {
+      "obligation_id": "readmodel-terminal-verdict",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestEvaluationRunCarriesTheTerminalVerdict ./internal/trial/execution/readmodel/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:2394ce51506ae167ae4aec6113430c800c09576247149b45a4caac37cb4ebd4a",
+      "finished_at": "2026-10-14T16:37:59.891526Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "eval-receives-terminal-verdict",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestEvaluationReceivesTheOwnersTerminalVerdict ./internal/entrypoint/wiring/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:2751502c9270064f95dd06cf7eebe6a2adb18346671e167c48165f75c8994fc0",
+      "finished_at": "2026-10-14T16:38:04.764565Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

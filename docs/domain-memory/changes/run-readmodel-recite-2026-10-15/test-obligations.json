@@ -1,0 +1,52 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "run-readmodel-recite",
+  "proposal_id": "run-readmodel-recite",
+  "obligations": [
+    {
+      "id": "package-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "The package validates as applied, with current citations.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "registry validate-change-package --repo-root"
+    },
+    {
+      "id": "readmodel-terminal-verdict",
+      "source_type": "acceptance-criterion",
+      "source_id": "terminal-verdict-unchanged",
+      "expected_outcome": "Every run status maps to the terminal verdict of the state machine.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestEvaluationRunCarriesTheTerminalVerdict ./internal/trial/execution/readmodel/"
+    },
+    {
+      "id": "eval-receives-terminal-verdict",
+      "source_type": "acceptance-criterion",
+      "source_id": "eval-receives-verdict",
+      "expected_outcome": "Eval's run facts carry the owner's terminal and success verdict.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestEvaluationReceivesTheOwnersTerminalVerdict ./internal/entrypoint/wiring/"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "approval-path-is-external",
+      "source_type": "acceptance-criterion",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "Governance readiness reports ready.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry governance-readiness"
+    }
+  ]
+}
