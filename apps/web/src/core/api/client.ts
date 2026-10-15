@@ -22,6 +22,19 @@ export class ApiError extends Error {
   }
 }
 
+export class SessionNotReadyError extends Error {
+  constructor() {
+    super("這次操作尚未送出。請先確認頁首的登入狀態，再自行送出。");
+  }
+}
+
+const sessionlessPosts = new Set(["/auth/dev/login", "/auth/logout", "/api/skills/search"]);
+let sessionReadinessCheck: (() => void) | undefined;
+
+export function setSessionReadinessCheck(check: () => void) {
+  sessionReadinessCheck = check;
+}
+
 const lastingReadFailures = new Set([403, 404]);
 
 export function isLastingReadFailure(error: unknown): boolean {
@@ -50,6 +63,13 @@ function errorMessageFromBody(body: unknown, fallback: string): string {
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  if (
+    !["GET", "HEAD", "OPTIONS"].includes(method) &&
+    !(method === "POST" && sessionlessPosts.has(path))
+  ) {
+    sessionReadinessCheck?.();
+  }
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: "include",
     ...init,

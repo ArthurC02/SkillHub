@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
+import { SessionNotReadyError } from "../../core/api/client";
 import { SignInAction } from "./SignIn";
 import { unauthenticated } from "./LoginRequired.model";
 
@@ -27,7 +28,17 @@ export function ReadFailure({
   retrying?: boolean;
   focusTarget?: string;
 }) {
+  const blockedOperation = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (error instanceof SessionNotReadyError) blockedOperation.current?.focus();
+  }, [error]);
   if (!error) return null;
+  if (error instanceof SessionNotReadyError)
+    return (
+      <p ref={blockedOperation} tabIndex={-1} role="alert">
+        {error.message}
+      </p>
+    );
   if (unauthenticated(error)) return <LoginRequired what={what} />;
   return (
     <>

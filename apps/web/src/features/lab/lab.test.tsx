@@ -7,6 +7,7 @@ import { router } from "../../app/router";
 import type { PreflightResponse } from "./lab.service";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 import { preloadEveryPage } from "../../testing/pages";
+import { platformResponse } from "../../testing/fixtures/platform";
 
 beforeAll(preloadEveryPage);
 
@@ -118,6 +119,7 @@ function stubPlatform(
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
     calls.push({ url, body: init?.body as string | undefined });
+    if (url.endsWith("/me")) return json(platformResponse("/me").body);
     if (url.endsWith("/versions")) return json(VERSIONS);
     if (url.includes(`/api/skills/${SKILL}`)) {
       if (skillStatus) return json({ error: "skill failed" }, skillStatus);

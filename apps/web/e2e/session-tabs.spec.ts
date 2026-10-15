@@ -46,7 +46,7 @@ test("logging out in another tab withdraws the previous account when returning t
     page.getByRole("main").getByText("帳號資料需要登入。", { exact: false }),
   ).toBeVisible();
   await expect(page.locator(".app-sidebar-context-name")).not.toContainText("tester");
-  expect(documents).toBe(2);
+  await expect.poll(() => documents).toBe(2);
   await page.screenshot({
     path: test.info().outputPath("returned-account-tab.png"),
     fullPage: true,

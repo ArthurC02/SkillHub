@@ -1,3 +1,13 @@
+.auth-controls {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.auth-session-message {
+  color: inherit;
+  font-size: 14px;
+}
+
 .auth-name {
   max-width: 16rem;
   overflow: hidden;

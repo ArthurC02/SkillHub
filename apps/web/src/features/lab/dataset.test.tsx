@@ -6,6 +6,7 @@ import { queryClient } from "../../core/api/queryClient";
 import { router } from "../../app/router";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 import { preloadEveryPage } from "../../testing/pages";
+import { platformResponse } from "../../testing/fixtures/platform";
 
 beforeAll(preloadEveryPage);
 
@@ -58,6 +59,8 @@ function stubPlatform(limitsStatus = 200) {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
     calls.push(url);
+    if (url.endsWith("/me"))
+      return Promise.resolve(new Response(JSON.stringify(platformResponse("/me").body)));
     if (url.includes("/test-cases/limits")) {
       return Promise.resolve(
         new Response(limitsStatus === 200 ? JSON.stringify(LIMITS) : `{"error":"nope"}`, {
@@ -169,6 +172,8 @@ test("02:TEST-002 without the rules no file can be sent", async () => {
 test("丙-150(e) a 415 upload failure prints the server's own Chinese sentence", async () => {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
+    if (url.endsWith("/me"))
+      return Promise.resolve(new Response(JSON.stringify(platformResponse("/me").body)));
     if (url.includes("/test-cases/limits")) {
       return Promise.resolve(
         new Response(JSON.stringify(LIMITS), {
@@ -214,6 +219,8 @@ test("丙-150(e) a 415 upload failure prints the server's own Chinese sentence",
 test("丙-150(e) a 500 upload failure falls back to the generic retry sentence", async () => {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
+    if (url.endsWith("/me"))
+      return Promise.resolve(new Response(JSON.stringify(platformResponse("/me").body)));
     if (url.includes("/test-cases/limits")) {
       return Promise.resolve(
         new Response(JSON.stringify(LIMITS), {
@@ -259,6 +266,8 @@ test("丙-150(e) a 500 upload failure falls back to the generic retry sentence",
 test("02:TEST-002 changing the 測試題 clears what was uploaded to the previous one", async () => {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
+    if (url.endsWith("/me"))
+      return Promise.resolve(new Response(JSON.stringify(platformResponse("/me").body)));
     if (url.includes("/test-cases/limits")) {
       return Promise.resolve(
         new Response(JSON.stringify(LIMITS), {
