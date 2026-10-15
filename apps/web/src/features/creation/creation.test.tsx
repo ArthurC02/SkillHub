@@ -34,6 +34,8 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("./generate/GenerateSkill", () => ({
   GenerateSkill: () => <div>舊生成入口</div>,
+}));
+vi.mock("./components/ReferencePicker", () => ({
   ReferencePicker: ({ onToggle }: { onToggle: (id: string, name: string) => void }) => (
     <>
       <button onClick={() => onToggle("ref-1", "摘要小工具")}>選擇摘要參考</button>

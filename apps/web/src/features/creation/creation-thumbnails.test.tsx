@@ -11,6 +11,8 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("./generate/GenerateSkill", () => ({
   GenerateSkill: () => null,
+}));
+vi.mock("./components/ReferencePicker", () => ({
   ReferencePicker: () => null,
 }));
 

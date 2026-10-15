@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from "react";
 import type { CreditBalance } from "../../../../core/session/credits.service";
-import { ReferencePicker } from "../../generate/GenerateSkill";
+import { ReferencePicker } from "../../components/ReferencePicker";
 import { MAX_MESSAGE_RUNES, points } from "../create.model";
 
 type Reference = { id: string; name: string };

@@ -4,6 +4,8 @@ export const GENERATE_DIAGRAM_TYPES = ["image/png", "image/jpeg", "image/webp"] 
 
 export const GENERATE_MAX_DIAGRAM_BYTES = 4000000; // one-number: generateMaxDiagramBytes
 
+export const GENERATE_MAX_REFERENCES = 3; // one-number: generateMaxReferences
+
 export function generateDiagramProblem(file: File): string | undefined {
   if (!GENERATE_DIAGRAM_TYPES.includes(file.type as (typeof GENERATE_DIAGRAM_TYPES)[number]))
     return "圖片格式需為 PNG、JPEG 或 WebP。";
