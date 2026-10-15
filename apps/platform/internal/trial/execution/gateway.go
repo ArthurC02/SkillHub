@@ -120,13 +120,6 @@ func (g *Gateway) Issue(
 	})
 }
 
-func (g *Gateway) IssueCreation(ctx context.Context, sessionID, attemptID string, ttl time.Duration) (*ModelGatewayGrant, error) {
-	return g.issue(ctx, virtualKeyTerms{
-		attemptID: attemptID, ttl: ttl, maxBudgetUSD: 0, model: g.model,
-		metadata: map[string]string{"creation_session_id": sessionID, "creation_attempt_id": attemptID},
-	})
-}
-
 type CreationKeyTerms struct {
 	TTL       time.Duration
 	BudgetUSD float64
