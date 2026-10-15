@@ -31,6 +31,10 @@ FINISH_TOOL = "finish"
 RESULT_TAG = "tool_result"
 
 
+MAX_ARGUMENT_CHARS = 4000
+MAX_RESULT_CHARS = 60000
+
+
 class AgentTool(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -43,8 +47,8 @@ class AgentStepRecord(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     tool: str
-    arguments: str = Field(..., max_length=4000)
-    result: str = Field(..., max_length=60000)
+    arguments: str = Field(..., max_length=MAX_ARGUMENT_CHARS)
+    result: str = Field(..., max_length=MAX_RESULT_CHARS)
 
 
 class AgentStepRequest(BaseModel):
@@ -63,7 +67,7 @@ class AgentToolIntent(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     tool: str
-    arguments: str = Field(..., max_length=4000)
+    arguments: str = Field(..., max_length=MAX_ARGUMENT_CHARS)
 
 
 class AgentStepResponse(BaseModel):
@@ -71,7 +75,7 @@ class AgentStepResponse(BaseModel):
 
     outcome: Literal["tool_intent", "final"]
     tool_intent: AgentToolIntent | None = None
-    result: str | None = Field(None, max_length=60000)
+    result: str | None = Field(None, max_length=MAX_RESULT_CHARS)
     model: str
     prompt_version: str
     usage: GatewayUsage | None = None
@@ -155,6 +159,9 @@ def decide(req: AgentStepRequest, completion) -> AgentToolIntent | str:
         raise HTTPException(
             status_code=502, detail="the model's tool arguments are not JSON"
         ) from None
+    limit = MAX_RESULT_CHARS if call.name == FINISH_TOOL else MAX_ARGUMENT_CHARS
+    if len(call.arguments) > limit:
+        raise HTTPException(status_code=502, detail="the model's tool arguments are over the limit")
     if call.name == FINISH_TOOL:
         return call.arguments
     if call.name not in {tool.name for tool in req.tools}:

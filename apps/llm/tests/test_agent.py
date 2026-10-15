@@ -70,6 +70,10 @@ def stub(calls, tool_calls):
     return value
 
 
+def sized(length):
+    return '{"q": "' + "x" * (length - 9) + '"}'
+
+
 def call(name, arguments):
     return SimpleNamespace(function=SimpleNamespace(name=name, arguments=arguments))
 
@@ -129,11 +133,23 @@ def test_earlier_steps_are_replayed_and_their_results_fenced_as_data():
         ([call("drop_database", "{}")], "a tool that was not offered"),
         ([call("maintenance_report", "not json")], "arguments that are not JSON"),
         ([call("finish", "{")], "a result that is not JSON"),
+        ([call("maintenance_report", sized(4001))], "arguments one past the limit"),
+        ([call("finish", sized(60001))], "a result one past the limit"),
     ],
 )
 def test_an_unusable_model_answer_is_a_502(tool_calls, why):
     response, _ = invoke(request(), tool_calls)
     assert response.status_code == 502, why
+
+
+@pytest.mark.parametrize(("tool", "length"), [("maintenance_report", 4000), ("finish", 60000)])
+def test_arguments_at_the_limit_come_back(tool, length):
+    response, _ = invoke(request(), [call(tool, sized(length))])
+    assert response.status_code == 200
+    body = response.json()
+    assert (
+        len(body["tool_intent"]["arguments"] if body["tool_intent"] else body["result"]) == length
+    )
 
 
 def test_an_agent_without_instructions_is_refused_before_any_model_call():
