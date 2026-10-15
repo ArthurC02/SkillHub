@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ApiError } from "../../../../core/api/client";
+import { isWriteResultUnknown } from "../../../../core/api/client";
 import { useGrantCredits } from "../../admin.service";
 import { ActionForm } from "../../components/ActionForm";
 
@@ -17,10 +17,7 @@ export function GrantForm({
   const outOfRange = Number.isInteger(credits) && !Number.isSafeInteger(credits);
   const valid = amount.trim() !== "" && Number.isSafeInteger(credits) && credits !== 0;
   const correction = credits < 0;
-  const uncertain = Boolean(
-    grant.error &&
-    !(grant.error instanceof ApiError && grant.error.status >= 400 && grant.error.status < 500),
-  );
+  const uncertain = Boolean(grant.error && isWriteResultUnknown(grant.error));
   return (
     <>
       <h3>{correction ? "更正點數" : "授予點數"}</h3>
