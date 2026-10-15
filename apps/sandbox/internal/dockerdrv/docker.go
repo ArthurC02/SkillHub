@@ -73,10 +73,13 @@ type Config struct {
 }
 
 type Driver struct {
-	cli  engine
-	cfg  Config
-	held sync.Map
+	cli          engine
+	cfg          Config
+	held         sync.Map
+	afterExitFor time.Duration
 }
+
+const afterExitReadTimeout = 15 * time.Second
 
 type heldAddress struct {
 	runID   string
@@ -98,7 +101,7 @@ func New(cfg Config) (*Driver, error) {
 	if cfg.Network == "" {
 		cfg.Network = networktypes.NetworkNone
 	}
-	return &Driver{cli: cli, cfg: cfg}, nil
+	return &Driver{cli: cli, cfg: cfg, afterExitFor: afterExitReadTimeout}, nil
 }
 
 func (d *Driver) Close() error { return d.cli.Close() }
@@ -242,10 +245,12 @@ func (d *Driver) Wait(ctx context.Context, id string) (sandbox.Outcome, error) {
 			return out, errors.New(st.Error.Message)
 		}
 
-		if insp, err := d.cli.ContainerInspect(context.WithoutCancel(ctx), name(id), client.ContainerInspectOptions{}); err == nil && insp.Container.State != nil {
+		readCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), d.afterExitFor)
+		defer cancel()
+		if insp, err := d.cli.ContainerInspect(readCtx, name(id), client.ContainerInspectOptions{}); err == nil && insp.Container.State != nil {
 			out.OOMKilled = insp.Container.State.OOMKilled
 		}
-		out.Output = d.tail(context.WithoutCancel(ctx), id)
+		out.Output = d.tail(readCtx, id)
 		return out, nil
 	}
 }
