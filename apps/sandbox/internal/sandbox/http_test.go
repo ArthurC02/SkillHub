@@ -766,6 +766,12 @@ func TestARunTheDriverLostTrackOfFailsAsARetryableExecutionError(t *testing.T) {
 		final.Result.Error.Class != "execution" || !final.Result.Error.Retryable {
 		t.Fatalf("result = %+v, want a failed result with a retryable execution error", final.Result)
 	}
+	drv.mu.Lock()
+	_, stopped := drv.stops[run.ProviderRunID]
+	drv.mu.Unlock()
+	if !stopped {
+		t.Fatal("the workload was left running after the driver lost track of it; a retry would run beside it")
+	}
 }
 
 func TestCancelOfAHandleNobodyIssuedIs404(t *testing.T) {

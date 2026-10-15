@@ -491,6 +491,7 @@ func (m *Manager) watch(id string, soft, hard time.Duration) {
 		if err != nil && ctx.Err() == nil {
 			re = &RunError{Class: ClassExecution, Message: "sandbox could not be followed to its end", Retryable: true}
 			m.log.Error("wait failed", "provider_run_id", id, "err", err)
+			m.stopWorkload(id)
 		}
 		m.finish(id, out, re)
 	}()
