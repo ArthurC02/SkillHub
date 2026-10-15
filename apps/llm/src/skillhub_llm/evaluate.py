@@ -22,6 +22,7 @@ from skillhub_llm.gateway import (
     GatewayUsage,
     client,
     completion_usage,
+    failure_label,
     request_metadata,
     served_model,
     within,
@@ -441,7 +442,7 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
         )
         completion = raw.parse()
     except OpenAIError as e:
-        logger.exception("judge-run: gateway call failed")
+        logger.warning("judge-run: gateway call failed (%s)", failure_label(e))
         raise HTTPException(status_code=502, detail="gateway error") from e
 
     try:
@@ -570,7 +571,7 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
         )
         completion = raw.parse()
     except OpenAIError as e:
-        logger.exception("suggest-improvements: gateway call failed")
+        logger.warning("suggest-improvements: gateway call failed (%s)", failure_label(e))
         raise HTTPException(status_code=502, detail="gateway error") from e
 
     try:

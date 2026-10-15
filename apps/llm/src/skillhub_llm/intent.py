@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from typing import Annotated, Literal
 
@@ -11,12 +12,14 @@ from skillhub_llm.gateway import (
     GatewayUsage,
     client,
     completion_usage,
+    failure_label,
     request_metadata,
     served_model,
     within,
 )
 from skillhub_llm.untrusted import data_block_rules, fence, scrub
 
+logger = logging.getLogger("skillhub_llm.intent")
 router = APIRouter()
 INTENT_MODEL = os.getenv("INTENT_MODEL") or "skillhub-intent"
 PROMPT_VERSION = "search-intent/v2"
@@ -151,6 +154,7 @@ async def analyze_intent(req: AnalyzeSearchIntentRequest) -> AnalyzeSearchIntent
         )
         completion = raw.parse()
     except OpenAIError as error:
+        logger.warning("analyze-intent: gateway call failed (%s)", failure_label(error))
         raise HTTPException(status_code=502, detail="gateway error") from error
 
     response = AnalyzeSearchIntentResponse(

@@ -24,6 +24,7 @@ from skillhub_llm.gateway import (
     close_client,
     completion_usage,
     embedding_usage,
+    failure_label,
     key_is_budgeted,
     request_metadata,
     require_budgeted_service_key,
@@ -173,7 +174,7 @@ async def embed(req: EmbedRequest) -> EmbedResponse:
         )
         response = raw.parse()
     except Exception as e:
-        logger.exception("embedding call failed")
+        logger.warning("embedding call failed (%s)", failure_label(e))
         raise HTTPException(status_code=502, detail="gateway error") from e
 
     try:
@@ -288,7 +289,7 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
         )
         response = raw.parse()
     except Exception as e:
-        logger.exception("match-reasons LLM call failed")
+        logger.warning("match-reasons LLM call failed (%s)", failure_label(e))
         raise HTTPException(status_code=502, detail="gateway error") from e
 
     try:
@@ -430,7 +431,7 @@ async def suggest_criteria(req: SuggestCriteriaRequest) -> SuggestCriteriaRespon
         )
         response = raw.parse()
     except Exception as e:
-        logger.exception("suggest-criteria LLM call failed")
+        logger.warning("suggest-criteria LLM call failed (%s)", failure_label(e))
         raise HTTPException(status_code=502, detail="gateway error") from e
 
     try:

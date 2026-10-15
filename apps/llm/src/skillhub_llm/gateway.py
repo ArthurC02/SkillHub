@@ -117,6 +117,12 @@ def within(ceiling: float, requested: float | None) -> float:
     return min(ceiling, requested)
 
 
+def failure_label(error: Exception) -> str:
+    """The error's type and status: its message can echo the prompt back."""
+    status = getattr(error, "status_code", None)
+    return type(error).__name__ if status is None else f"{type(error).__name__} {status}"
+
+
 def client(timeout: float) -> AsyncOpenAI:
     """OpenAI-compatible client for the gateway, with one attempt and one ceiling.
 
