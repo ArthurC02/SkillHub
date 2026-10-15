@@ -130,7 +130,7 @@ var domainVocabularies = []domainVocabulary{
 				"apps/platform/internal/trial/improvement/status.go", "Status"),
 		},
 		readers: []vocabularySource{
-			goConstEnum("apps/platform/internal/creator/creation/evaluation.go", "evaluationStatus"),
+			goConstEnum("apps/platform/internal/creator/creation/feedback/evaluation.go", "evaluationStatus"),
 		},
 	},
 	{
@@ -145,7 +145,7 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "RunComparisonRunsItemEvaluationOverall"),
 		},
 		readers: []vocabularySource{
-			goConstEnum("apps/platform/internal/creator/creation/evaluation.go", "evaluationOverall"),
+			goConstEnum("apps/platform/internal/creator/creation/feedback/evaluation.go", "evaluationOverall"),
 		},
 	},
 	{

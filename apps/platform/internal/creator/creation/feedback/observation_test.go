@@ -1,4 +1,4 @@
-package creation
+package feedback
 
 import (
 	"encoding/json"
@@ -26,8 +26,8 @@ func TestTrialQuestionsPreserveUncertaintyWithoutInventingItsCause(t *testing.T)
 				want += "——" + tc.reason
 			}
 			want += "\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。"
-			if got := trialQuestions(observation); got != want {
-				t.Fatalf("trialQuestions() = %q, want %q", got, want)
+			if got := TrialQuestions(observation); got != want {
+				t.Fatalf("TrialQuestions() = %q, want %q", got, want)
 			}
 		})
 	}
@@ -36,10 +36,10 @@ func TestTrialQuestionsPreserveUncertaintyWithoutInventingItsCause(t *testing.T)
 func TestEvaluationFreeTextKeepsJudgeFieldsInOrder(t *testing.T) {
 	observation := `{"evaluation":{"summary":"summary","criterion_results":[{"text":"criterion one","reason":"first reason"},{"text":"criterion two","reason":"second reason"}],"deterministic_findings":[{"message":"first finding"},{"message":"second finding"}]}}`
 
-	got := evaluationFreeText(observation)
+	got := EvaluationText(observation)
 	want := "summary\nfirst reason\nsecond reason\nfirst finding\nsecond finding"
 	if got != want {
-		t.Fatalf("evaluationFreeText() = %q, want %q", got, want)
+		t.Fatalf("EvaluationText() = %q, want %q", got, want)
 	}
 }
 
@@ -61,17 +61,17 @@ func TestTrialQuestionsQuoteUpTo200CriterionRunesAnd300ReasonRunes(t *testing.T)
 				tc.criterion + `","result":"failed","reason":"` + tc.reason + `"}]}}`
 			want := "這次試跑有條件沒過：\n- 「" + tc.quotedCriterion + "」：沒過——" + tc.quotedReason +
 				"\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。"
-			if got := trialQuestions(observation); got != want {
-				t.Fatalf("trialQuestions() = %q, want %q", got, want)
+			if got := TrialQuestions(observation); got != want {
+				t.Fatalf("TrialQuestions() = %q, want %q", got, want)
 			}
 		})
 	}
 }
 
 func TestToolsNotRequestedDeduplicatesAddedToolsCaseInsensitively(t *testing.T) {
-	got := toolsNotRequested("Read bash", "read BASH Python", "please use bash")
+	got := ToolsNotRequested("Read bash", "read BASH Python", "please use bash")
 	want := []string{"Python"}
 	if len(got) != len(want) || got[0] != want[0] {
-		t.Fatalf("toolsNotRequested() = %v, want %v", got, want)
+		t.Fatalf("ToolsNotRequested() = %v, want %v", got, want)
 	}
 }

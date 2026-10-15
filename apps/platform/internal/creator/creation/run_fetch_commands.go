@@ -3,6 +3,7 @@ package creation
 import (
 	"context"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/feedback"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/webfetch"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 )
@@ -16,11 +17,11 @@ func (s *Service) attachRun(ctx context.Context, ws identity.Workspace, p *Snaps
 		return commandOutcome{}, err
 	}
 	p.Candidate.RunID = runID
-	p.RunUnmet = runUnmet(observation)
+	p.RunUnmet = feedback.RunUnmet(observation)
 	observation = s.masked(observation)
-	p.EvaluationText = evaluationFreeText(observation)
+	p.EvaluationText = feedback.EvaluationText(observation)
 	p.appendMessage("tool", observation)
-	if questions := trialQuestions(observation); p.RunUnmet && questions != "" {
+	if questions := feedback.TrialQuestions(observation); p.RunUnmet && questions != "" {
 		p.appendMessage("assistant", questions)
 		p.PendingAction = NothingPending
 		return settledIn(StateWaitingInput), nil

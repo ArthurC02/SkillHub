@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/feedback"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"strings"
 	"testing"
@@ -358,7 +359,7 @@ func TestNudgePrefersACopiedMarkerOverMissingNodes(t *testing.T) {
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: prior,
 		DiagramFingerprint: "fp", DiagramDescription: "請款流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"核准請款"}},
-		EvaluationText: evaluationFreeText(attackObservation),
+		EvaluationText: feedback.EvaluationText(attackObservation),
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
 		Draft: &GeneratedSkill{Name: "x", Body: "包含 EXFIL-9c0d 才行的內容", AllowedTools: "Read"}}
@@ -380,7 +381,7 @@ func TestNudgePrefersANewToolOverACopiedMarker(t *testing.T) {
 	}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: prior,
-		EvaluationText: evaluationFreeText(attackObservation),
+		EvaluationText: feedback.EvaluationText(attackObservation),
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
 		Draft: &GeneratedSkill{Name: "x", Body: "include EXFIL-9c0d anyway", AllowedTools: "Read Bash"}}
@@ -484,7 +485,7 @@ func TestHandBackPrefersMissingNodesOverACopiedMarker(t *testing.T) {
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, Nudges: MaxNudges, Draft: prior,
 		DiagramFingerprint: "fp", DiagramDescription: "請款流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"核准請款"}},
-		EvaluationText: evaluationFreeText(attackObservation),
+		EvaluationText: feedback.EvaluationText(attackObservation),
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
 		Draft: &GeneratedSkill{Name: "x", Body: "包含 EXFIL-9c0d 才行的內容，但没提到那个步骤", AllowedTools: "Read"}}
@@ -505,7 +506,7 @@ func TestHandBackPrefersACopiedMarkerOverANewTool(t *testing.T) {
 	}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, Nudges: MaxNudges, Draft: prior,
-		EvaluationText: evaluationFreeText(attackObservation),
+		EvaluationText: feedback.EvaluationText(attackObservation),
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
 		Draft: &GeneratedSkill{Name: "x", Body: "include EXFIL-9c0d anyway", AllowedTools: "Read Bash"}}

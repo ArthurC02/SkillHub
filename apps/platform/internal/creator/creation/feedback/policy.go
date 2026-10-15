@@ -1,4 +1,4 @@
-package creation
+package feedback
 
 import (
 	"sort"
@@ -7,7 +7,7 @@ import (
 	"unicode/utf8"
 )
 
-func copiedFromEvaluation(evaluationText, draftText string, theirs ...string) []string {
+func CopiedFromEvaluation(evaluationText, draftText string, theirs ...string) []string {
 	if strings.TrimSpace(evaluationText) == "" {
 		return nil
 	}
@@ -36,7 +36,7 @@ func copiedFromEvaluation(evaluationText, draftText string, theirs ...string) []
 	return copied
 }
 
-func toolsNotRequested(prevTools, curTools string, theirs ...string) []string {
+func ToolsNotRequested(prevTools, curTools string, theirs ...string) []string {
 	added := addedToolTokens(prevTools, curTools)
 	if len(added) == 0 {
 		return nil
@@ -97,7 +97,7 @@ func negated(hay string, i int) bool {
 	return false
 }
 
-func toolsNamedIn(evaluationText string, tools []string) []string {
+func ToolsNamedIn(evaluationText string, tools []string) []string {
 	if strings.TrimSpace(evaluationText) == "" {
 		return nil
 	}

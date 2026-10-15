@@ -1,4 +1,4 @@
-package creation
+package feedback
 
 import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
@@ -13,7 +13,7 @@ const (
 	maxQuotedReasonRunes    = 300
 )
 
-func trialQuestions(observation string) string {
+func TrialQuestions(observation string) string {
 	var o struct {
 		Evaluation struct {
 			Available bool             `json:"evaluation_available"`
@@ -49,7 +49,7 @@ func trialQuestions(observation string) string {
 	return "這次試跑有條件沒過：\n" + strings.Join(lines, "\n") + "\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。"
 }
 
-func evaluationFreeText(observation string) string {
+func EvaluationText(observation string) string {
 	var o struct {
 		Evaluation struct {
 			Summary string `json:"summary"`
@@ -74,7 +74,7 @@ func evaluationFreeText(observation string) string {
 	return strings.Join(parts, "\n")
 }
 
-func runUnmet(observation string) bool {
+func RunUnmet(observation string) bool {
 	var o struct {
 		Evaluation struct {
 			Available bool              `json:"evaluation_available"`
