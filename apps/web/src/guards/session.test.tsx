@@ -16,7 +16,7 @@ import { WorkspaceAccount } from "../features/workspace/account/WorkspaceAccount
 import { WorkspaceSkills } from "../features/workspace/skills/WorkspaceSkills.page";
 import { useSkillVersions } from "../features/skill/skills.service";
 import { useTrace } from "../features/runs/trace.service";
-import { RUN, SKILL, TEST_CASE, platformResponse } from "../testing/fixtures/platform";
+import { ME, RUN, SKILL, TEST_CASE, platformResponse } from "../testing/fixtures/platform";
 import { DEFAULT_WAIT_MS, pollUntil } from "../testing/poll";
 
 let container: HTMLDivElement;
@@ -265,7 +265,7 @@ test("SEC/§2.2 the import screen states the rules it is enforced by, before the
           allowed_hosts: ["example.test", "sources.example.test"],
           note: "",
         })
-      : json({ user_id: "u-1", workspace_id: "ws-1" }),
+      : json(ME),
   );
   await render(<ImportSkill />, () => text().includes("zip 最大"));
 

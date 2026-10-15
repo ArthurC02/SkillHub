@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../../core/api/queryClient";
 import { DatasetUpload } from "./DatasetUpload.page";
 import { pollUntil } from "../../../testing/poll";
+import { ME } from "../../../testing/fixtures/platform";
 
 const TEST_CASE = "11111111-1111-4111-8111-111111111111";
 const SKILL = "22222222-2222-4222-8222-222222222222";
@@ -39,6 +40,7 @@ function platform(totalBytes: number, fileCount: number) {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const path = String(input).replace(/^https?:\/\/[^/]+/, "");
     calls.push(`${init?.method ?? "GET"} ${path}`);
+    if (path === "/me") return json(ME);
     if (path === "/test-cases/limits") {
       return json({
         max_file_bytes: 1_000_000,

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
 import {
+  ME,
   OWN_PUBLICATION,
   OWN_PUBLICATIONS,
   OWN_PUBLISHER,
@@ -135,7 +136,7 @@ function stubVersions(
     calls.push(url);
     const path = url.split("?")[0];
     if (path === "/me") {
-      return json({ features: { creation_skill: creation?.enabled === true } });
+      return json({ ...ME, features: { creation_skill: creation?.enabled === true } });
     }
     if (path === "/creation-sessions") {
       return json(creation?.body ?? [], creation?.status ?? 200);

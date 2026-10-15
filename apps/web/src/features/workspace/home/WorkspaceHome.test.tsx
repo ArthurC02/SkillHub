@@ -1,3 +1,4 @@
+import { ME as SESSION } from "../../../testing/fixtures/platform";
 import { StrictMode, act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -91,10 +92,9 @@ test("workspace home separates decisions, active work, and owned assets from ser
     const url = String(input);
     if (url.endsWith("/me")) {
       return json({
-        user_id: "u-1",
+        ...SESSION,
         email: "tester@example.com",
         display_name: "tester",
-        workspace_id: "ws-1",
         operator: false,
       });
     }
@@ -176,10 +176,9 @@ test.each([
       const url = String(input);
       if (url.endsWith("/me")) {
         return json({
-          user_id: "u-1",
+          ...SESSION,
           email: "tester@example.com",
           display_name: "tester",
-          workspace_id: "ws-1",
           operator: false,
           features,
         });
@@ -209,10 +208,9 @@ test("workspace home does not claim complete 試跑紀錄 coverage when older pa
     const url = String(input);
     if (url.endsWith("/me")) {
       return json({
-        user_id: "u-1",
+        ...SESSION,
         email: "tester@example.com",
         display_name: "tester",
-        workspace_id: "ws-1",
         operator: false,
       });
     }
@@ -245,10 +243,9 @@ test("workspace home resumes exact publication, release, and Catalog exposure co
     const url = String(input);
     if (url.endsWith("/me")) {
       return json({
-        user_id: "u-1",
+        ...SESSION,
         email: "tester@example.com",
         display_name: "tester",
-        workspace_id: "ws-1",
         operator: false,
       });
     }
@@ -320,10 +317,9 @@ test("workspace home keeps a publication read failure distinct from an empty res
     const url = String(input);
     if (url.endsWith("/me")) {
       return json({
-        user_id: "u-1",
+        ...SESSION,
         email: "tester@example.com",
         display_name: "tester",
-        workspace_id: "ws-1",
         operator: false,
       });
     }
@@ -363,10 +359,9 @@ test("workspace home resumes the three most recent actionable creation sessions"
     const url = String(input);
     if (url.endsWith("/me")) {
       return json({
-        user_id: "u-1",
+        ...SESSION,
         email: "tester@example.com",
         display_name: "tester",
-        workspace_id: "ws-1",
         operator: false,
         features: { generate_skill: true, creation_skill: true },
       });
@@ -466,10 +461,9 @@ test("workspace home keeps a creation read failure distinct from an empty contin
     const url = String(input);
     if (url.endsWith("/me")) {
       return json({
-        user_id: "u-1",
+        ...SESSION,
         email: "tester@example.com",
         display_name: "tester",
-        workspace_id: "ws-1",
         operator: false,
         features: { generate_skill: true, creation_skill: true },
       });
@@ -496,10 +490,9 @@ test("workspace home omits the continuation section when the recent session slic
     const url = String(input);
     if (url.endsWith("/me")) {
       return json({
-        user_id: "u-1",
+        ...SESSION,
         email: "tester@example.com",
         display_name: "tester",
-        workspace_id: "ws-1",
         operator: false,
         features: { generate_skill: true, creation_skill: true },
       });
@@ -526,10 +519,9 @@ test("workspace home surfaces a refresh failure after an earlier empty creation 
     const url = String(input);
     if (url.endsWith("/me")) {
       return json({
-        user_id: "u-1",
+        ...SESSION,
         email: "tester@example.com",
         display_name: "tester",
-        workspace_id: "ws-1",
         operator: false,
         features: { generate_skill: true, creation_skill: true },
       });
@@ -565,10 +557,9 @@ test("workspace home removes a creation continuation when its action deadline pa
     const url = String(input);
     if (url.endsWith("/me")) {
       return json({
-        user_id: "u-1",
+        ...SESSION,
         email: "tester@example.com",
         display_name: "tester",
-        workspace_id: "ws-1",
         operator: false,
         features: { generate_skill: true, creation_skill: true },
       });
@@ -606,10 +597,9 @@ test("workspace home without active work does not show a stale refresh control",
     const url = String(input);
     if (url.endsWith("/me")) {
       return json({
-        user_id: "u-1",
+        ...SESSION,
         email: "tester@example.com",
         display_name: "tester",
-        workspace_id: "ws-1",
         operator: false,
       });
     }

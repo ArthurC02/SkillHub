@@ -1,3 +1,4 @@
+import { ME as SESSION } from "../testing/fixtures/platform";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { act } from "react";
@@ -32,10 +33,9 @@ function stubMe(features?: Record<string, boolean>) {
       return Promise.resolve(
         new Response(
           JSON.stringify({
-            user_id: "u-1",
+            ...SESSION,
             email: "t@example.com",
             display_name: "tester",
-            workspace_id: "ws-1",
             deletion_requested_at: null,
             purge_after: null,
             deletion_scope: null,

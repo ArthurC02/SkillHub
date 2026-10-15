@@ -95,8 +95,9 @@ test("a new offline identity starts with its own account state and no previous o
       ? route.fulfill({
           json: {
             ...profile,
-            user_id: actor === "tester" ? profile.user_id : "second-user",
-            workspace_id: actor === "tester" ? profile.workspace_id : "second-workspace",
+            user_id: actor === "tester" ? profile.user_id : "a1111111-1111-4111-8111-111111111111",
+            workspace_id:
+              actor === "tester" ? profile.workspace_id : "a2222222-2222-4222-8222-222222222222",
             display_name: actor,
             email: `${actor}@example.com`,
             ...(cancelled || actor !== "tester"

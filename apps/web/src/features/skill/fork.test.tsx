@@ -6,7 +6,7 @@ import { queryClient } from "../../core/api/queryClient";
 import { SkillDetail } from "./detail/SkillDetail.page";
 import { SkillFiles } from "./files/SkillFiles.page";
 import { ForkAction } from "./detail/components/ForkAction";
-import { SKILL_VERSIONS, skillDetail } from "../../testing/fixtures/platform";
+import { ME, SKILL_VERSIONS, skillDetail } from "../../testing/fixtures/platform";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
@@ -91,7 +91,7 @@ function stubOwner(forkResponse: () => Promise<Response>) {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
     const path = url.split("?")[0];
-    if (path === "/me") return json({ user_id: "u-1", workspace_id: "ws-1" });
+    if (path === "/me") return json(ME);
     if (path.endsWith("/fork") && init?.method === "POST") return forkResponse();
     if (path.endsWith("/versions")) return json(SKILL_VERSIONS);
     if (path.startsWith("/api/skills/")) return json(detailBody());

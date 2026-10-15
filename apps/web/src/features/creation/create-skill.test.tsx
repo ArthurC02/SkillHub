@@ -1,3 +1,4 @@
+import { ME as PROFILE } from "../../testing/fixtures/platform";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -91,10 +92,9 @@ function stubMe(
     if (path === "/me")
       return Promise.resolve(
         json({
-          user_id: "u-1",
+          ...PROFILE,
           email: "t@example.com",
           display_name: "tester",
-          workspace_id: "ws-1",
           deletion_requested_at: null,
           purge_after: null,
           deletion_scope: null,

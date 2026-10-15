@@ -1,3 +1,4 @@
+import { ME as SESSION } from "../../testing/fixtures/platform";
 import { StrictMode, act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -81,8 +82,7 @@ function button(text: string): HTMLButtonElement | undefined {
 
 const text = () => container.textContent ?? "";
 
-const ME = { user_id: "u-1", email: "a@b.c", display_name: "a", workspace_id: "ws-1" };
-
+const ME = { ...SESSION, email: "a@b.c", display_name: "a" };
 const SKILL: OwnSkill = {
   skill_id: "s-1",
   name: "範例小工具",

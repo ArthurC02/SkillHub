@@ -5,7 +5,13 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
 import { SkillDetail } from "./detail/SkillDetail.page";
-import { CATEGORIES, SKILL_VERSIONS, VERSION, skillDetail } from "../../testing/fixtures/platform";
+import {
+  ME,
+  CATEGORIES,
+  SKILL_VERSIONS,
+  VERSION,
+  skillDetail,
+} from "../../testing/fixtures/platform";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
@@ -81,7 +87,7 @@ function stubOwner(detail: Record<string, unknown> = {}) {
       body: init?.body ? JSON.parse(String(init.body)) : undefined,
     });
     const path = url.split("?")[0];
-    if (path === "/me") return json({ user_id: "u-1", workspace_id: "ws-1" });
+    if (path === "/me") return json(ME);
     if (path.endsWith("/category") && init?.method === "PUT") {
       const body = JSON.parse(String(init.body)) as { category: keyof typeof CATEGORIES };
       category = CATEGORIES[body.category] ?? category;
@@ -378,7 +384,7 @@ test("§2.13: 「無權檢視」三處都在，但那段解釋只講一次", asy
     const path = String(input)
       .replace(/^https?:\/\/[^/]+/, "")
       .split("?")[0];
-    if (path === "/me") return json({ user_id: "u-1", workspace_id: "ws-1" });
+    if (path === "/me") return json(ME);
     if (path.endsWith("/versions")) return json({ versions: [] });
     if (path.startsWith("/api/skills/")) return json({ ...detailBody(), version: undefined });
     return json({ error: "not found" }, 404);
@@ -558,7 +564,7 @@ test("05 R-19: 類別儲存結果未確認時不宣稱一定沒有設定成功",
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
     const path = url.split("?")[0];
-    if (path === "/me") return json({ user_id: "u-1", workspace_id: "ws-1" });
+    if (path === "/me") return json(ME);
     if (path.endsWith("/category") && init?.method === "PUT") return json({ error: "boom" }, 500);
     if (path.endsWith("/versions")) return json(SKILL_VERSIONS);
     if (path.startsWith("/api/skills/")) return json(detailBody());

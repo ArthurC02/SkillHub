@@ -9,6 +9,7 @@ import { CreateHub } from "./components/CreateHub";
 import type { CreationSession as Session, CreationSnapshot } from "./creation.service";
 import { useCreationEntryPoint } from "./creation.service";
 import { pollUntil } from "../../testing/poll";
+import { ME } from "../../testing/fixtures/platform";
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
     children,
@@ -2003,7 +2004,7 @@ function EntryPointProbe() {
 function stubMe(features: Record<string, boolean>) {
   vi.stubGlobal(
     "fetch",
-    vi.fn(() => response({ features })),
+    vi.fn(() => response({ ...ME, features })),
   );
 }
 test("⛔ useCreationEntryPoint is false unless /me says creation_skill is exactly true — generate_skill alone", async () => {

@@ -4,7 +4,12 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
-import { CHECK_KINDS, PLATFORM_GRADER, WORKSPACE_GRADER } from "../../testing/fixtures/platform";
+import {
+  ME,
+  CHECK_KINDS,
+  PLATFORM_GRADER,
+  WORKSPACE_GRADER,
+} from "../../testing/fixtures/platform";
 import { LazyCheckEditor as CheckEditor } from "./components/LazyCheckEditor";
 import { GraderManager } from "./components/GraderManager";
 import type { CheckNode } from "./check.model";
@@ -42,7 +47,7 @@ beforeEach(() => {
     calls.push({ url, method, body: init?.body as string | undefined });
     if (method === "POST")
       return refusal ? json({ error: refusal.error }, refusal.status) : json(WORKSPACE_GRADER, 201);
-    if (url === "/me") return json({ operator: true });
+    if (url === "/me") return json({ ...ME, operator: true });
     if (url === "/evaluation/check-kinds") return json(CHECK_KINDS);
     if (url === "/evaluation/graders")
       return json({ graders: [PLATFORM_GRADER, WORKSPACE_GRADER] });

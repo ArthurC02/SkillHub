@@ -6,7 +6,7 @@ import { queryClient } from "../core/api/queryClient";
 import { AuthControls } from "./shell/AuthControls";
 import { ImportSkill } from "../features/creation/import/ImportSkill.page";
 import { CancelRunControl } from "../features/runs/trace/components/CancelRunControl";
-import { IMPORT_LIMITS, platformResponse } from "../testing/fixtures/platform";
+import { ME as SESSION, IMPORT_LIMITS, platformResponse } from "../testing/fixtures/platform";
 import { queryKeys } from "../core/api/queryKeys";
 import { DEFAULT_WAIT_MS, pollUntil } from "../testing/poll";
 
@@ -84,8 +84,7 @@ test("signed-in users can end the session and clear cached workspace data", asyn
     }
     return signedIn
       ? json({
-          user_id: "user-1",
-          workspace_id: "workspace-1",
+          ...SESSION,
           display_name: "Ada",
           email: "ada@example.com",
         })

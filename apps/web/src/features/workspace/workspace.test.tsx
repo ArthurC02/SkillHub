@@ -12,6 +12,7 @@ import { SkillDetail } from "../skill/detail/SkillDetail.page";
 import { ImportSkill } from "../creation/import/ImportSkill.page";
 import { CancelRunControl } from "../runs/trace/components/CancelRunControl";
 import {
+  ME as SESSION,
   IMPORT_LIMITS,
   platformResponse,
   SKILL_VERSIONS,
@@ -671,10 +672,9 @@ function stubOwnSkillsWithFeatures(features?: Record<string, boolean>) {
       .split("?")[0];
     if (path === "/me")
       return json({
-        user_id: "u-1",
+        ...SESSION,
         email: "t@example.com",
         display_name: "tester",
-        workspace_id: "ws-1",
         deletion_requested_at: null,
         purge_after: null,
         deletion_scope: null,
@@ -792,6 +792,7 @@ test("WS-005 deleting a skill says what survives it before anything is destroyed
   const calls: [string, string | undefined][] = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     calls.push([String(input), init?.method]);
+    if (String(input).endsWith("/me")) return json(SESSION);
     if (init?.method === "DELETE") {
       return json({
         deleted: true,
@@ -819,10 +820,9 @@ test("WS-005 deleting a skill says what survives it before anything is destroyed
 });
 
 const ME = {
-  user_id: "u-1",
+  ...SESSION,
   email: "tester@example.com",
   display_name: "tester",
-  workspace_id: "ws-1",
   deletion_requested_at: null,
   purge_after: null,
   deletion_scope: null,
@@ -1035,11 +1035,11 @@ test("設計 §2.6 the workspace UUID is behind a disclosure, not flat beside th
     (d.querySelector("summary")?.textContent ?? "").includes("工作區識別碼"),
   );
   expect(fold, "the workspace id is not behind a disclosure").toBeTruthy();
-  expect(fold!.textContent).toContain("ws-1");
+  expect(fold!.textContent).toContain(SESSION.workspace_id);
   const flat = Array.from(container.querySelectorAll("p"))
     .map((p) => p.textContent ?? "")
     .join("");
-  expect(flat, "the workspace id is flat on the page again").not.toContain("ws-1");
+  expect(flat, "the workspace id is flat on the page again").not.toContain(SESSION.workspace_id);
   expect(text()).toContain("tester@example.com");
 });
 
@@ -1396,10 +1396,9 @@ test("CORE-007 cancelling a deletion request invalidates /me, so the badge goes 
   stubAccountFetch((_input: string, init?: RequestInit) => {
     if (init?.method === "DELETE") return json({ cancelled: true });
     return json({
-      user_id: "u-1",
+      ...SESSION,
       email: "t@example.com",
       display_name: "tester",
-      workspace_id: "ws-1",
       deletion_requested_at: "2026-08-18T00:00:00Z",
       purge_after: "2026-09-17T00:00:00Z",
       deletion_scope: "purging destroys skills, versions, runs and downloads",
@@ -1423,7 +1422,7 @@ function stubDetailAsSignedIn(versions: unknown) {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
     const path = url.split("?")[0];
-    if (path === "/me") return json({ user_id: "u-1", workspace_id: "ws-1" });
+    if (path === "/me") return json({ ...SESSION });
     if (path.endsWith("/versions")) return json(versions);
     if (path.startsWith("/api/skills/")) return json(skillDetail(SKILL, "PDF Summariser"));
     return json({ error: "not found" }, 404);

@@ -7,7 +7,12 @@ import { TestCaseDetail } from "./test-cases/TestCaseDetail.page";
 import { TestCaseList } from "./test-cases/TestCaseList.page";
 import type { TestCase } from "./testcases.service";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
-import { CHECK_KINDS, PLATFORM_GRADER, WORKSPACE_GRADER } from "../../testing/fixtures/platform";
+import {
+  ME,
+  CHECK_KINDS,
+  PLATFORM_GRADER,
+  WORKSPACE_GRADER,
+} from "../../testing/fixtures/platform";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -137,6 +142,7 @@ type PlatformRequest = { url: string; path: string; method: string };
 
 function platformHandlers(over: Overrides, removedRef: { removed: boolean }) {
   return [
+    (req: PlatformRequest) => (req.path === "/me" ? json(ME) : undefined),
     (req: PlatformRequest) =>
       req.path === "/evaluation/check-kinds" ? json(CHECK_KINDS) : undefined,
     (req: PlatformRequest) =>

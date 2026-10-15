@@ -55,6 +55,18 @@ export const ARTIFACT = "44444444-4444-4444-4444-444444444444";
 export const PUBLISHER = "acme-tools";
 export const PUBLICATION = "pdf-summariser";
 
+export const ME: Me = {
+  user_id: "e1111111-1111-4111-8111-111111111111",
+  email: "tester@example.com",
+  display_name: "tester",
+  workspace_id: "e2222222-2222-4222-8222-222222222222",
+  operator: false,
+  deletion_requested_at: "2026-08-17T00:00:00Z",
+  purge_after: "2026-09-16T00:00:00Z",
+  deletion_scope:
+    "帳號、小工具、版本、試跑紀錄、Trace、評估與打包下載會刪除；刪除動作本身的稽核紀錄會保留。",
+};
+
 export const CATEGORIES = {
   documents: {
     value: "documents",
@@ -1590,20 +1602,7 @@ const ROUTES: RouteMatcher[] = [
     path.startsWith("/api/skills/")
       ? ok(skillDetail(path.slice("/api/skills/".length), "PDF Summariser"))
       : undefined,
-  (path) =>
-    path === "/me"
-      ? ok({
-          user_id: "u-1",
-          email: "tester@example.com",
-          display_name: "tester",
-          workspace_id: "ws-1",
-          operator: false,
-          deletion_requested_at: "2026-08-17T00:00:00Z",
-          purge_after: "2026-09-16T00:00:00Z",
-          deletion_scope:
-            "帳號、小工具、版本、試跑紀錄、Trace、評估與打包下載會刪除；刪除動作本身的稽核紀錄會保留。",
-        } satisfies Me)
-      : undefined,
+  (path) => (path === "/me" ? ok({ ...ME }) : undefined),
   (path) => (path === "/me/credits" ? ok({ balance_credits: 120 }) : undefined),
   (path) => (path === "/me/activity" ? ok(ACTIVITY) : undefined),
   (path) =>

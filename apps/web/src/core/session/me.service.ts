@@ -4,10 +4,40 @@ import { ApiError, apiFetch } from "../api/client";
 import { queryKeys } from "../api/queryKeys";
 import type { AccountDeletion, Me } from "../api/types";
 
+export async function getMe(): Promise<Me> {
+  const result = await apiFetch<unknown>("/me");
+  if (!isMe(result)) throw new Error("Invalid session response");
+  return result;
+}
+
+function isMe(value: unknown): value is Me {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const profile = value as Partial<Me>;
+  return (
+    [profile.user_id, profile.workspace_id].every(
+      (id) =>
+        typeof id === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
+    ) &&
+    typeof profile.email === "string" &&
+    typeof profile.display_name === "string" &&
+    typeof profile.operator === "boolean" &&
+    (profile.deletion_scope === null || typeof profile.deletion_scope === "string") &&
+    [profile.deletion_requested_at, profile.purge_after].every(
+      (at) => at === null || (typeof at === "string" && Number.isFinite(Date.parse(at))),
+    ) &&
+    (profile.features === undefined ||
+      (profile.features !== null &&
+        typeof profile.features === "object" &&
+        !Array.isArray(profile.features) &&
+        Object.values(profile.features).every((enabled) => typeof enabled === "boolean")))
+  );
+}
+
 export function useMe() {
   return useQuery({
     queryKey: queryKeys.me,
-    queryFn: () => apiFetch<Me>("/me"),
+    queryFn: getMe,
     refetchOnWindowFocus: true,
   });
 }
@@ -101,7 +131,7 @@ export function useSignOut() {
       try {
         await client.fetchQuery({
           queryKey: queryKeys.me,
-          queryFn: () => apiFetch<Me>("/me"),
+          queryFn: getMe,
           staleTime: 0,
         });
       } catch (error) {

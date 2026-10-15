@@ -5,7 +5,13 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { ImportSkill } from "./import/ImportSkill.page";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
-import { IMPORT_LIMITS, SKILL, SKILL_B, VERSION } from "../../testing/fixtures/platform";
+import {
+  ME as SESSION,
+  IMPORT_LIMITS,
+  SKILL,
+  SKILL_B,
+  VERSION,
+} from "../../testing/fixtures/platform";
 import { queryKeys } from "../../core/api/queryKeys";
 
 let container: HTMLDivElement;
@@ -75,8 +81,7 @@ function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
 
 const text = () => container.textContent ?? "";
 
-const ME = { user_id: "u-1", email: "a@b.c", display_name: "a", workspace_id: "ws-1" };
-
+const ME = { ...SESSION, email: "a@b.c", display_name: "a" };
 test("the import workspace separates source rules from the intake controls", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     const path = String(input);

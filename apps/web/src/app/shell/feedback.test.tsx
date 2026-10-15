@@ -1,3 +1,4 @@
+import { ME as SESSION } from "../../testing/fixtures/platform";
 import { StrictMode, act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -71,10 +72,9 @@ function stubPlatform(status = 204, hold?: Promise<void>) {
       return Promise.resolve(
         new Response(
           JSON.stringify({
-            user_id: "u-1",
+            ...SESSION,
             email: "tester@example.com",
             display_name: "tester",
-            workspace_id: "ws-1",
           }),
           { status: 200, headers: { "Content-Type": "application/json" } },
         ),
