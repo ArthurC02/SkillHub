@@ -2295,6 +2295,29 @@ test("a step arrives on the stream and reaches the screen", async () => {
   expect(box.textContent, "串流推來的狀態沒有更新畫面").toContain("我先讀一下規格。");
 });
 
+test("a late stream frame older than the screen does not roll it back", async () => {
+  const es = stubEventSource();
+  const v = sample({ state: "waiting_input", revision: 7 });
+  v.snapshot.messages = [{ role: "assistant", content: "這是最新的一步。" }];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  await waitFor(() => box.textContent!.includes("這是最新的一步。"));
+  const source = es.open[0];
+
+  const stale = sample({ state: "working", revision: 6 });
+  stale.snapshot.messages = [{ role: "assistant", content: "這是舊的一步。" }];
+  await act(async () => {
+    source.onopen?.();
+    source.onmessage?.({ data: JSON.stringify(stale) });
+  });
+  expect(box.textContent, "較舊的串流幀蓋掉了較新的畫面").toContain("這是最新的一步。");
+  expect(box.textContent).not.toContain("這是舊的一步。");
+});
+
 test("leaving the page closes the stream", async () => {
   const es = stubEventSource();
   const v = sample({ state: "working" });

@@ -222,6 +222,9 @@ export function useCreationLimits() {
   return useQuery({ queryKey: queryKeys.creation.limits, queryFn: getCreationLimits });
 }
 
+const keepNewer = (value: CreationSession) => (old: CreationSession | undefined) =>
+  old && old.revision > value.revision ? old : value;
+
 export function useLiveCreationSession(id: string) {
   const client = useQueryClient();
   const [streaming, setStreaming] = useState(false);
@@ -240,7 +243,7 @@ export function useLiveCreationSession(id: string) {
     if (!id) return;
     return streamCreationSession(
       id,
-      (s) => client.setQueryData(queryKeys.creation.session(id), s),
+      (s) => client.setQueryData<CreationSession>(queryKeys.creation.session(id), keepNewer(s)),
       setStreaming,
     );
   }, [id, client]);
@@ -251,9 +254,7 @@ export function useCreationSessionCache() {
   const client = useQueryClient();
   return {
     remember(value: CreationSession) {
-      client.setQueryData<CreationSession>(queryKeys.creation.session(value.id), (old) =>
-        old && old.revision > value.revision ? old : value,
-      );
+      client.setQueryData<CreationSession>(queryKeys.creation.session(value.id), keepNewer(value));
       void client.invalidateQueries({ queryKey: queryKeys.creation.sessions });
     },
     reload: (id: string) => client.invalidateQueries({ queryKey: queryKeys.creation.session(id) }),
