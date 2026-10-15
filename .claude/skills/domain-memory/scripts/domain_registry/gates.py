@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
 from .sources import (
     discover_ci_tools,
+    file_name,
+    ignored_relatives,
     repository_files,
-    test_locations,
-    without_ignored,
+    test_candidates,
 )
 
 FORMAT = "domain-memory-quality-gates/v1"
@@ -73,7 +74,10 @@ def marker_for(name: str) -> tuple[str, str] | None:
 
 
 def pyproject_gates(path: Path, shown: str) -> list[dict[str, str]]:
-    tables = set(PYPROJECT_TABLE.findall(path.read_text(encoding="utf-8")))
+    try:
+        tables = set(PYPROJECT_TABLE.findall(path.read_text(encoding="utf-8")))
+    except UnicodeDecodeError:
+        return []
     return [
         gate(kind, tool, shown)
         for tool, kind in PYPROJECT_TOOLS.items()
@@ -84,7 +88,9 @@ def pyproject_gates(path: Path, shown: str) -> list[dict[str, str]]:
 def package_gates(path: Path, shown: str) -> list[dict[str, str]]:
     try:
         scripts = json.loads(path.read_text(encoding="utf-8")).get("scripts", {})
-    except (json.JSONDecodeError, AttributeError):
+    except (json.JSONDecodeError, UnicodeDecodeError, AttributeError):
+        return []
+    if not isinstance(scripts, dict):
         return []
     return [
         gate(kind, f"script:{name}", shown)
@@ -99,22 +105,20 @@ CONTENT_READERS = {"pyproject.toml": pyproject_gates, "package.json": package_ga
 
 
 def in_fixture(entry: str) -> bool:
-    return any(part in FIXTURE_DIRECTORIES for part in PurePosixPath(entry).parts)
+    return any(part in FIXTURE_DIRECTORIES for part in entry.split("/"))
 
 
-def candidate_files(root: Path, files: list[str]) -> list[str]:
-    found = []
-    for entry in files:
-        name = PurePosixPath(entry).name
-        if (marker_for(name) or name in CONTENT_READERS) and not in_fixture(entry):
-            found.append(entry)
-    return without_ignored(root, sorted(found))
+def candidate_files(files: list[str]) -> list[str]:
+    return sorted(
+        entry for entry in files
+        if (marker_for(file_name(entry)) or file_name(entry) in CONTENT_READERS) and not in_fixture(entry)
+    )
 
 
-def configured_gates(root: Path, files: list[str]) -> list[dict[str, str]]:
+def configured_gates(root: Path, candidates: list[str]) -> list[dict[str, str]]:
     gates = []
-    for shown in candidate_files(root, files):
-        name = Path(shown).name
+    for shown in candidates:
+        name = file_name(shown)
         marker = marker_for(name)
         if marker:
             gates.append(gate(*marker, shown))
@@ -128,7 +132,9 @@ def quality_gates(repo_root: Path) -> dict[str, Any]:
     if not root.is_dir():
         raise ValueError(f"repository root is not a directory: {repo_root}")
     files = repository_files(root)
-    gates = configured_gates(root, files)
+    candidates, tests = candidate_files(files), test_candidates(files)
+    ignored = ignored_relatives(root, candidates + tests)
+    gates = configured_gates(root, [entry for entry in candidates if entry not in ignored])
     gates.extend(gate("ci", tool, "") for tool in discover_ci_tools(root))
     present = sorted({entry["kind"] for entry in gates})
     return {
@@ -136,6 +142,6 @@ def quality_gates(repo_root: Path) -> dict[str, Any]:
         "gates": gates,
         "kinds_present": present,
         "kinds_missing": [kind for kind in KINDS if kind not in present],
-        "test_files": sum(not in_fixture(entry) for entry in test_locations(root, files)),
+        "test_files": sum(entry not in ignored and not in_fixture(entry) for entry in tests),
         "standard": "configured" if STANDARD_KINDS & set(present) else "none",
     }

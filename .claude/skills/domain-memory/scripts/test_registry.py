@@ -100,6 +100,15 @@ class RegistryTest(RegistryTestCase):
             ("contract consumer", "contracts.json",
              [{"id": "c", "producer_context": "orders", "consumer_contexts": ["ghost"]}],
              "contracts.json:c references unknown consumer context"),
+            ("unknown producer", "interactions.json",
+             [{"id": "i", "producer_context": "ghost", "consumer_context": "orders"}],
+             "interactions.json:i references unknown context"),
+            ("event in unknown context", "events.json", [{"id": "e", "owner_context": "ghost"}],
+             "events.json:e references unknown context"),
+            ("capability in unknown context", "capabilities.json", [{"id": "k", "context": "ghost"}],
+             "capabilities.json:k references unknown context"),
+            ("value object in unknown context", "value-objects.json", [{"id": "v", "context": "ghost"}],
+             "value-objects.json:v references unknown context"),
             ("unknown contract", "interactions.json",
              [{"id": "i", "producer_context": "orders", "consumer_context": "billing", "contract_id": "none"}],
              "interactions.json:i references unknown contract"),
@@ -114,11 +123,6 @@ class RegistryTest(RegistryTestCase):
                     self.seed("contexts.json", [orders, billing])
                 self.seed(name, records)
                 self.assertIn(message, validate(self.repo / "memory", None, False))
-        with self.subTest("candidate where reviewed is required"):
-            for asset, text in pristine.items():
-                (registry / asset).write_text(text, encoding="utf-8")
-            self.seed("contexts.json", [orders])
-            self.assertIn("contexts.json:orders is not reviewed", validate(self.repo / "memory", None, True))
 
     def test_validate_refuses_an_unhashed_citation(self) -> None:
         self.two_line_rule()
@@ -426,15 +430,15 @@ class RegistryTest(RegistryTestCase):
         self.assertTrue(any("cannot satisfy" in error for error in errors), errors)
 
     def test_two_contexts_cannot_claim_the_same_code(self) -> None:
-        errors = self.placed_contexts(("orders", "sales/orders"), ("billing", "sales/orders"))
+        errors = self.placement_errors(("orders", "sales/orders"), ("billing", "sales/orders"))
         self.assertTrue(any("overlaps" in error for error in errors), errors)
 
     def test_a_context_cannot_claim_code_inside_another_context(self) -> None:
-        errors = self.placed_contexts(("sales", "sales"), ("orders", "sales/orders"))
+        errors = self.placement_errors(("sales", "sales"), ("orders", "sales/orders"))
         self.assertTrue(any("overlaps" in error for error in errors), errors)
 
     def test_sibling_paths_that_share_a_name_prefix_do_not_overlap(self) -> None:
-        errors = self.placed_contexts(("orders", "sales/order"), ("ordering", "sales/ordering"))
+        errors = self.placement_errors(("orders", "sales/order"), ("ordering", "sales/ordering"))
         self.assertEqual([error for error in errors if "overlaps" in error], [])
 
     def test_a_context_subdomain_is_a_closed_set(self) -> None:
@@ -488,11 +492,6 @@ class RegistryTest(RegistryTestCase):
             any("requirement_prefixes" in error for error in errors), errors
         )
 
-    def test_a_candidate_record_is_named_by_reviewed_validation(self) -> None:
-        self.two_contexts()
-        errors = validate(self.repo / "memory", self.repo, True)
-        self.assertIn("contexts.json:orders is not reviewed", errors)
-
     def test_a_registry_of_reviewed_records_satisfies_reviewed_validation(self) -> None:
         self.seed(
             "contexts.json",
@@ -507,8 +506,7 @@ class RegistryTest(RegistryTestCase):
                 }
             ],
         )
-        errors = validate(self.repo / "memory", self.repo, True)
-        self.assertEqual([error for error in errors if "not reviewed" in error], [])
+        self.assertEqual([], validate(self.repo / "memory", self.repo, True))
 
     def test_two_contexts_without_registered_collaboration_say_so(self) -> None:
         self.two_contexts()
@@ -597,30 +595,8 @@ class RegistryTest(RegistryTestCase):
             [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}],
         )
         self.assertEqual(validate(self.repo / "memory", None, False), [])
-        errors = validate(self.repo / "memory", None, True)
-        self.assertTrue(
-            any("contexts.json:orders is not reviewed" in error for error in errors)
-        )
-
-    def test_a_reviewed_record_without_evidence_is_rejected(self) -> None:
-        self.seed(
-            "contexts.json",
-            [
-                {
-                    "id": "orders",
-                    "name": "Orders",
-                    "responsibility": "Own orders.",
-                    "status": "reviewed",
-                    "review": {"proposal_id": "p-1"},
-                }
-            ],
-        )
-        errors = validate(self.repo / "memory", None, False)
-        self.assertTrue(
-            any(
-                "contexts.json:orders is reviewed but lacks evidence" in error
-                for error in errors
-            )
+        self.assertEqual(
+            ["contexts.json:orders is not reviewed"], validate(self.repo / "memory", None, True)
         )
 
     def test_a_non_json_contract_is_reported_unverified_instead_of_valid(self) -> None:
@@ -651,8 +627,9 @@ class RegistryTest(RegistryTestCase):
         (secrets / "ci.env").write_text("ghp_" + "a" * 30, encoding="utf-8")
         (secrets / "app.conf").write_text("api_key = " + "b" * 20, encoding="utf-8")
         (secrets / "clean.md").write_text("A token is a word.", encoding="utf-8")
-        found = {finding["kind"] for finding in scan_secrets(secrets)}
-        self.assertEqual(found, {"private-key", "github-token", "generic-secret"})
+        findings = scan_secrets(secrets)
+        self.assertEqual({finding["kind"] for finding in findings}, {"private-key", "github-token", "generic-secret"})
+        self.assertEqual(["app.conf", "ci.env", "key.pem"], sorted(finding["path"] for finding in findings))
 
     def test_a_secret_finding_never_carries_the_secret(self) -> None:
         secrets = self.repo / "leaky"
@@ -880,6 +857,144 @@ class RegistryTest(RegistryTestCase):
             [("rules", "gate", "statement"), ("capabilities", "audit", "rationale")],
             [(match["asset"], match["id"], match["field"]) for match in resolve_terms(self.repo / "memory", "check", None)],
         )
+
+    def test_a_query_that_matches_nothing_finds_nothing(self) -> None:
+        self.two_contexts()
+        self.allow_results(10)
+        self.assertEqual([], lookup(self.repo / "memory", "contexts", "shipping"))
+
+    def test_a_query_matches_regardless_of_letter_case(self) -> None:
+        self.two_contexts()
+        self.allow_results(10)
+        found = lookup(self.repo / "memory", "contexts", "OWN INVOICES")
+        self.assertEqual(["billing"], [entry["id"] for entry in found])
+
+    def test_looking_up_an_unknown_asset_is_refused(self) -> None:
+        with self.assertRaisesRegex(ValueError, "unknown asset: nonsense"):
+            lookup(self.repo / "memory", "nonsense", "")
+
+    def test_a_result_limit_equal_to_the_match_count_returns_every_match(self) -> None:
+        self.two_contexts()
+        self.allow_results(2)
+        found = lookup(self.repo / "memory", "contexts", "")
+        self.assertEqual(["orders", "billing"], [entry["id"] for entry in found])
+
+    def test_without_a_policy_file_the_context_model_is_working_memory(self) -> None:
+        self.two_contexts()
+        (self.repo / "memory" / "domain-memory-policy.json").unlink()
+        model = context_model(self.repo / "memory", "orders")
+        assert model is not None
+        self.assertEqual(("working-memory", "legacy-unverified"), (model["usage"], model["review_mode"]))
+
+    def test_reviewed_validation_without_a_policy_file_cannot_be_satisfied(self) -> None:
+        (self.repo / "memory" / "domain-memory-policy.json").unlink()
+        self.assertEqual(
+            ["local-draft-only Domain Memory cannot satisfy --require-reviewed"],
+            validate(self.repo / "memory", None, True),
+        )
+
+    def test_a_context_model_gathers_each_section_from_the_records_that_name_the_context(self) -> None:
+        self.two_contexts()
+        self.seed("vocabulary.json", [
+            {"id": "order", "name": "Order", "contexts": ["orders"]},
+            {"id": "invoice", "name": "Invoice", "contexts": ["billing"]},
+            {"id": "ledger-entry", "name": "Ledger Entry", "contexts": ["billing", "orders"]},
+        ])
+        self.seed("aggregates.json", [
+            {"id": "order-aggregate", "context": "orders"}, {"id": "invoice-aggregate", "context": "billing"},
+        ])
+        self.seed("rules.json", [
+            {"id": "order-total", "contexts": ["orders"]}, {"id": "invoice-due", "contexts": ["billing"]},
+            {"id": "shared-currency", "contexts": ["billing", "orders"]},
+        ])
+        self.seed("interactions.json", [
+            {"id": "order-billed", "producer_context": "orders", "consumer_context": "billing"},
+            {"id": "invoice-paid", "producer_context": "billing", "consumer_context": "orders"},
+            {"id": "invoice-archived", "producer_context": "billing", "consumer_context": "billing"},
+        ])
+        self.seed("events.json", [
+            {"id": "order-placed", "owner_context": "orders"}, {"id": "invoice-issued", "owner_context": "billing"},
+        ])
+        self.seed("capabilities.json", [
+            {"id": "place-order", "context": "orders"}, {"id": "issue-invoice", "context": "billing"},
+        ])
+        self.seed("value-objects.json", [
+            {"id": "money", "context": "orders"}, {"id": "tax-rate", "context": "billing"},
+        ])
+        model = context_model(self.repo / "memory", "orders")
+        assert model is not None
+        expected = {
+            "vocabulary": ["order", "ledger-entry"],
+            "aggregates": ["order-aggregate"],
+            "rules": ["order-total", "shared-currency"],
+            "interactions": ["order-billed", "invoice-paid"],
+            "events": ["order-placed"],
+            "capabilities": ["place-order"],
+            "value_objects": ["money"],
+        }
+        for section, ids in expected.items():
+            with self.subTest(section):
+                self.assertEqual(ids, [entry["id"] for entry in model[section]])
+        self.assertEqual(
+            ("orders", "constraint", "scm-verified"),
+            (model["context"]["id"], model["usage"], model["review_mode"]),
+        )
+
+    def test_a_registered_contract_makes_a_boundary_known(self) -> None:
+        self.two_contexts()
+        self.seed("contracts.json", [
+            {"id": "order-api", "producer_context": "orders", "consumer_contexts": ["billing"]},
+        ])
+        analysis = boundary_analysis(self.repo / "memory", "orders", "billing")
+        self.assertEqual(
+            ("known", [], ["order-api"]),
+            (analysis["status"], analysis["interactions"], [entry["id"] for entry in analysis["contracts"]]),
+        )
+
+    def test_a_registered_contract_does_not_make_the_reverse_direction_known(self) -> None:
+        self.two_contexts()
+        self.seed("contracts.json", [
+            {"id": "order-api", "producer_context": "orders", "consumer_contexts": ["billing"]},
+        ])
+        analysis = boundary_analysis(self.repo / "memory", "billing", "orders")
+        self.assertEqual(("no_registered_collaboration", []), (analysis["status"], analysis["contracts"]))
+
+    def test_each_asset_level_defect_is_named(self) -> None:
+        registry = self.repo / "memory" / "registry"
+        events = registry / "events.json"
+
+        def break_format(value: dict) -> None:
+            value["format"] = "domain-contexts/v0"
+
+        def break_status(value: dict) -> None:
+            value["status"] = "pending"
+
+        def drop_events_from_manifest(value: dict) -> None:
+            value["artifacts"] = [name for name in value["artifacts"] if name != "events.json"]
+
+        def manifest_without_a_list(value: dict) -> None:
+            value["artifacts"] = "all"
+
+        cases = [
+            ("invalid format", "contexts.json", break_format, ["contexts.json has an invalid format"]),
+            ("invalid status", "contexts.json", break_status, ["contexts.json has an invalid status"]),
+            ("manifest lacks an asset", "manifest.json", drop_events_from_manifest,
+             ["manifest artifacts must list every standard registry asset file"]),
+            ("manifest artifacts not a list", "manifest.json", manifest_without_a_list,
+             ["manifest artifacts must list every standard registry asset file"]),
+        ]
+        pristine = {path.name: path.read_text(encoding="utf-8") for path in registry.iterdir()}
+        for label, name, change, expected in cases:
+            with self.subTest(label):
+                for asset, text in pristine.items():
+                    (registry / asset).write_text(text, encoding="utf-8")
+                self.edit_registry(name, change)
+                self.assertEqual(expected, validate(self.repo / "memory", None, False))
+        with self.subTest("missing asset file"):
+            for asset, text in pristine.items():
+                (registry / asset).write_text(text, encoding="utf-8")
+            events.unlink()
+            self.assertEqual([f"missing asset: {events}"], validate(self.repo / "memory", None, False))
 
 
 if __name__ == "__main__":

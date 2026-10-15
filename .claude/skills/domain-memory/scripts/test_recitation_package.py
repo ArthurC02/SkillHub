@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.changes import validate_change_package
+from domain_registry.evidence import citation
 from domain_registry.recitation_package import _contexts_named_by, recitation_package
 from domain_registry.relocate import Recitation, recite
 from test_support import RegistryTestCase
@@ -20,21 +21,23 @@ class RecitationPackageTest(RegistryTestCase):
         self.cited_rule("reviewed", (2, 2))
         return recite(self.repo / "memory", self.repo, Recitation("rules", "rule", "src/a.py", "3"))
 
-    def package(self, recitation: dict) -> Path:
-        output = self.repo / "changes" / "recite"
-        recitation_package(output, self.repo / "memory", recitation, IDENTIFIERS)
-        return output
-
     def read(self, output: Path, name: str) -> dict:
         return json.loads((output / name).read_text(encoding="utf-8"))
 
     def test_a_recitation_becomes_a_routine_package_ready_to_submit(self) -> None:
         recitation = self.recitation()
-        output = self.package(recitation)
+        output = self.repo / "changes" / "recite"
+        self.assertEqual([], recitation_package(output, self.repo / "memory", recitation, IDENTIFIERS))
         self.assertEqual(
             [], validate_change_package(output, self.repo / "memory", "submitted", self.repo)
         )
         proposal = self.read(output, "domain-change-proposal.json")
+        self.assertEqual(
+            ("pr-recite", "probe", "rq-recite"),
+            (proposal["proposal_id"], proposal["proposer"], proposal["requirement_id"]),
+        )
+        requirement = self.read(output, "requirement-normalization.json")
+        self.assertEqual(("rq-recite", "probe"), (requirement["requirement_id"], requirement["actor"]))
         self.assertEqual(
             ("routine", ["orders"], ["PRO-1"], recitation["registry_updates"], None),
             (proposal["change_classification"], proposal["affected_contexts"], proposal["supersedes"],
@@ -45,7 +48,7 @@ class RecitationPackageTest(RegistryTestCase):
             ("citations-current", "registry_tools.py verify-evidence --path src/a.py"),
             (obligation["source_id"], obligation["check"]),
         )
-        self.assertEqual(["src/a.py"], self.read(output, "requirement-normalization.json")["sources"])
+        self.assertEqual(["src/a.py"], requirement["sources"])
 
     def test_a_recitation_that_is_more_than_a_recitation_is_refused(self) -> None:
         recitation = self.recitation()
@@ -80,6 +83,29 @@ class RecitationPackageTest(RegistryTestCase):
         output = self.repo / "changes" / "recite"
         blank = recitation_package(output, self.repo / "memory", recitation, IDENTIFIERS)
         self.assertEqual(["affected_contexts: none of the updated records names a Context"], blank)
+        self.assertEqual([], self.read(output, "domain-change-proposal.json")["affected_contexts"])
+
+    def test_a_record_citing_several_paths_lists_each_path_once_in_the_source_and_the_check(self) -> None:
+        (self.repo / "src").mkdir()
+        (self.repo / "src" / "a.py").write_text("one\ntwo\nthree\n", encoding="utf-8")
+        (self.repo / "src" / "b.py").write_text("four\nfive\n", encoding="utf-8")
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        rule = {
+            "id": "rule", "contexts": ["orders"], "statement": "S.", "status": "reviewed",
+            "evidence": [
+                citation(self.repo, "src/b.py", 1, 1),
+                citation(self.repo, "src/a.py", 1, 1),
+                citation(self.repo, "src/a.py", 3, 3),
+            ],
+            "review": {"proposal_id": "PRO-1"},
+        }
+        self.seed("rules.json", [rule])
+        recitation = {"registry_updates": [{"operation": "upsert", "asset": "rules", "record": rule}]}
+        output = self.repo / "changes" / "recite"
+        self.assertEqual([], recitation_package(output, self.repo / "memory", recitation, IDENTIFIERS))
+        self.assertEqual(["src/a.py", "src/b.py"], self.read(output, "requirement-normalization.json")["sources"])
+        [obligation] = self.read(output, "test-obligations.json")["obligations"]
+        self.assertEqual("registry_tools.py verify-evidence --path src/a.py --path src/b.py", obligation["check"])
 
     def test_each_record_shape_names_its_contexts(self) -> None:
         cases = [
@@ -101,12 +127,20 @@ class RecitationPackageTest(RegistryTestCase):
         recitation_file.write_text(json.dumps(self.recitation()), encoding="utf-8")
         base = ["init-change-package", "--output", str(self.repo / "changes" / "recite"),
                 "--recitation", str(recitation_file)]
-        complete = ["--registry-root", str(self.repo / "memory"), "--requirement-id", "rq",
-                    "--proposal-id", "pr", "--proposer", "probe"]
-        refused = self.run_cli(*base, *complete[2:])
-        self.assertEqual(1, refused.returncode, refused.stdout)
-        self.assertIn("--recitation needs --registry-root", refused.stdout)
-        created = self.run_cli(*base, *complete)
+        complete = {"--registry-root": str(self.repo / "memory"), "--requirement-id": "rq",
+                    "--proposal-id": "pr", "--proposer": "probe"}
+        refusal = (
+            "--recitation needs --registry-root, --requirement-id, --proposal-id and --proposer, "
+            "so the package is complete when it is written"
+        )
+        for omitted in complete:
+            with self.subTest(omitted=omitted):
+                given = [item for flag, value in complete.items() if flag != omitted for item in (flag, value)]
+                refused = self.run_cli(*base, *given)
+                self.assertEqual(1, refused.returncode, refused.stdout)
+                self.assertIn(refusal, refused.stdout)
+                self.assertFalse((self.repo / "changes").exists())
+        created = self.run_cli(*base, *[item for pair in complete.items() for item in pair])
         self.assertEqual(0, created.returncode, created.stdout + created.stderr)
         self.assertIn("a routine re-citation package", created.stdout)
         self.assertEqual(

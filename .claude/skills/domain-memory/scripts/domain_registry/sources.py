@@ -46,26 +46,29 @@ def discover_ci_tools(root: Path) -> list[str]:
 
 
 def git_ignored(root: Path, candidates: list[Path]) -> set[Path]:
-    if not candidates or not (root / ".git").exists():
-        return set()
     by_relative = {relative(root, path): path for path in candidates}
+    return {by_relative[entry] for entry in ignored_relatives(root, list(by_relative))}
+
+
+def ignored_relatives(root: Path, relatives: list[str]) -> set[str]:
+    if not relatives or not (root / ".git").exists():
+        return set()
     try:
         result = subprocess.run(
             ["git", "-C", str(root), "check-ignore", "-z", "--stdin"],
-            input=chr(0).join(by_relative),
+            input=chr(0).join(relatives),
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="surrogateescape",
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired):
         return set()
     if result.returncode not in (0, 1):
         return set()
-    return {
-        by_relative[entry]
-        for entry in result.stdout.split(chr(0))
-        if entry in by_relative
-    }
+    asked = set(relatives)
+    return {entry for entry in result.stdout.split(chr(0)) if entry in asked}
 
 
 def relative(root: Path, path: Path) -> str:
@@ -84,40 +87,36 @@ def existing_directories(root: Path, candidates: tuple[str, ...]) -> list[str]:
 
 
 def repository_files(root: Path) -> list[str]:
+    top = str(root)
     found = []
-    for directory, children, files in os.walk(root):
-        if directory != str(root) and (".git" in children or ".git" in files):
+    for directory, children, files in os.walk(top):
+        if directory != top and (".git" in children or ".git" in files):
             children[:] = []
             continue
         children[:] = [name for name in children if name not in EXCLUDED_DIRECTORIES]
-        base = Path(directory).relative_to(root).as_posix()
-        prefix = "" if base == "." else f"{base}/"
+        prefix = "" if directory == top else directory[len(top) + 1 :].replace(os.sep, "/") + "/"
         found.extend(prefix + name for name in files)
     return found
 
 
-def without_ignored(root: Path, relatives: list[str]) -> list[str]:
-    ignored = git_ignored(root, [root / entry for entry in relatives])
-    return [entry for entry in relatives if (root / entry) not in ignored]
+def file_name(relative_path: str) -> str:
+    return relative_path.rpartition("/")[2]
 
 
-def instruction_files(root: Path, files: list[str]) -> list[str]:
-    names = {"AGENTS.md", "CLAUDE.md"}
-    return without_ignored(
-        root, sorted(entry for entry in files if PurePosixPath(entry).name in names)
-    )
+INSTRUCTION_FILE_NAMES = {"AGENTS.md", "CLAUDE.md"}
+BOUNDARY_BASES = tuple(f"{base}/" for base in IMPLEMENTATION_ROOTS)
 
 
-def boundary_files(root: Path, files: list[str]) -> list[str]:
-    bases = tuple(f"{base}/" for base in IMPLEMENTATION_ROOTS)
-    return without_ignored(
-        root,
-        sorted(
-            entry
-            for entry in files
-            if entry.startswith(bases) and PurePosixPath(entry).name == "doc.go"
-        ),
-    )
+def _instruction_candidates(files: list[str]) -> list[str]:
+    return sorted(entry for entry in files if file_name(entry) in INSTRUCTION_FILE_NAMES)
+
+
+def _boundary_candidates(files: list[str]) -> list[str]:
+    return sorted(entry for entry in files if entry.startswith(BOUNDARY_BASES) and file_name(entry) == "doc.go")
+
+
+def test_candidates(files: list[str]) -> list[str]:
+    return sorted(entry for entry in files if is_test_file(file_name(entry)))
 
 
 def is_test_file(name: str) -> bool:
@@ -129,23 +128,19 @@ def is_test_file(name: str) -> bool:
     )
 
 
-def test_locations(root: Path, files: list[str]) -> list[str]:
-    return without_ignored(
-        root,
-        sorted(entry for entry in files if is_test_file(PurePosixPath(entry).name)),
-    )
-
-
 def discover_sources(root: Path) -> dict[str, Any]:
     root = root.resolve()
     ci_tools = discover_ci_tools(root)
     files = repository_files(root)
+    candidates = (_instruction_candidates(files), _boundary_candidates(files), test_candidates(files))
+    ignored = ignored_relatives(root, [entry for group in candidates for entry in group])
+    instructions, boundaries, tests = ([entry for entry in group if entry not in ignored] for group in candidates)
     groups = [
         {
             "kind": "repository_instructions",
             "authority": "instructions to coding agents, not a statement of the business domain",
             "caution": "These files exist to steer agents working in this repository. They are rewritten whenever the workflow changes, and a Domain Memory that rests on one loses its evidence when it is. Select them only for a domain fact no other source states, and record the gap.",
-            "paths": instruction_files(root, files),
+            "paths": instructions,
         },
         {
             "kind": "decisions",
@@ -176,7 +171,7 @@ def discover_sources(root: Path) -> dict[str, Any]:
         {
             "kind": "bounded_contexts",
             "authority": "candidate technical boundaries requiring domain review",
-            "paths": boundary_files(root, files),
+            "paths": boundaries,
         },
         {
             "kind": "implementation",
@@ -186,7 +181,7 @@ def discover_sources(root: Path) -> dict[str, Any]:
         {
             "kind": "tests",
             "authority": "evidence that a specific behavior is checked",
-            "paths": test_locations(root, files),
+            "paths": tests,
         },
     ]
     return {
@@ -636,6 +631,8 @@ def run_git(root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
         ["git", "-C", str(root), *arguments],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="surrogateescape",
         check=False,
         timeout=GIT_COMMAND_TIMEOUT_SECONDS,
     )

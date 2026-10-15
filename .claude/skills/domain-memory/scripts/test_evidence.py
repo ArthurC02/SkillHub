@@ -10,6 +10,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.evidence import (
+    all_references,
     citation,
     classify_all,
     digest,
@@ -82,6 +83,89 @@ class EvidenceTest(RegistryTestCase):
              "reason": "rule.md was cited without an excerpt hash; regenerate the citation with cite"},
             result,
         )
+
+    def test_an_unhashed_citation_ending_on_the_last_line_is_unhashed(self) -> None:
+        self.two_line_rule()
+        result = verify({"path": "rule.md", "lines": {"start": 2, "end": 2}}, self.repo)
+        self.assertEqual("unhashed", result["status"])
+
+    def test_an_unhashed_citation_ending_one_line_past_the_last_is_invalid(self) -> None:
+        self.two_line_rule()
+        result = verify({"path": "rule.md", "lines": {"start": 3, "end": 3}}, self.repo)
+        self.assertEqual(
+            ("invalid", "evidence line range exceeds source"), (result["status"], result["reason"])
+        )
+
+    def test_a_line_number_that_is_not_an_integer_is_an_invalid_range(self) -> None:
+        self.two_line_rule()
+        cases = [
+            ("a string start", {"start": "1", "end": 1}),
+            ("a missing start", {"start": None, "end": 1}),
+            ("a string end", {"start": 1, "end": "1"}),
+            ("a missing end", {"start": 1, "end": None}),
+        ]
+        for label, lines in cases:
+            with self.subTest(label):
+                self.assertEqual(
+                    {"status": "invalid", "reason": "evidence line range is invalid"},
+                    verify({"path": "rule.md", "lines": lines}, self.repo),
+                )
+
+    def eight_byte_rule(self) -> None:
+        (self.repo / "rule.md").write_bytes(b"one\ntwo\n")
+
+    def test_a_source_of_exactly_the_evidence_size_limit_is_accepted(self) -> None:
+        self.eight_byte_rule()
+        reference = citation(self.repo, "rule.md", 1, 1)
+        with patch("domain_registry.evidence.MAX_EVIDENCE_BYTES", 8):
+            self.assertEqual("current", verify(reference, self.repo)["status"])
+
+    def test_a_source_one_byte_over_the_evidence_size_limit_is_refused(self) -> None:
+        self.eight_byte_rule()
+        reference = citation(self.repo, "rule.md", 1, 1)
+        with patch("domain_registry.evidence.MAX_EVIDENCE_BYTES", 7):
+            self.assertEqual(
+                {"status": "invalid", "reason": "evidence source exceeds 7 bytes", "path": "rule.md"},
+                verify(reference, self.repo),
+            )
+
+    def test_a_citation_of_a_source_of_exactly_the_evidence_size_limit_is_built(self) -> None:
+        self.eight_byte_rule()
+        with patch("domain_registry.evidence.MAX_EVIDENCE_BYTES", 8):
+            self.assertEqual({"start": 1, "end": 2}, citation(self.repo, "rule.md", 1, 2)["lines"])
+
+    def test_a_citation_of_a_source_one_byte_over_the_evidence_size_limit_is_refused(self) -> None:
+        self.eight_byte_rule()
+        with patch("domain_registry.evidence.MAX_EVIDENCE_BYTES", 7), self.assertRaisesRegex(
+            ValueError, "exceeds 7 bytes"
+        ):
+            citation(self.repo, "rule.md", 1, 2)
+
+    def test_evidence_classification_accepts_nesting_at_the_depth_limit(self) -> None:
+        value: dict[str, Any] = {}
+        nested: dict[str, Any] = value
+        for _ in range(100):
+            child: dict[str, Any] = {}
+            nested["child"] = child
+            nested = child
+        self.assertEqual(value, classify_all(value, {}))
+
+    def evidence_below_nesting(self, levels: int) -> dict[str, Any]:
+        value: dict[str, Any] = {}
+        nested: dict[str, Any] = value
+        for _ in range(levels):
+            child: dict[str, Any] = {}
+            nested["child"] = child
+            nested = child
+        nested["evidence"] = ["deepest"]
+        return value
+
+    def test_listing_references_accepts_a_reference_at_the_depth_limit(self) -> None:
+        self.assertEqual(["deepest"], all_references(self.evidence_below_nesting(98)))
+
+    def test_listing_references_rejects_a_reference_one_level_past_the_depth_limit(self) -> None:
+        with self.assertRaisesRegex(ValueError, "nesting depth 100"):
+            all_references(self.evidence_below_nesting(99))
 
     def test_evidence_classification_rejects_excessive_nesting(self) -> None:
         value: dict[str, Any] = {}
@@ -201,7 +285,6 @@ class EvidenceTest(RegistryTestCase):
             citation(self.repo, "docs/adr/boundaries.md", 3, 2)
 
     def test_a_citation_reaching_outside_the_repository_is_refused(self) -> None:
-        (self.repo.parent / "outside.md").write_text("elsewhere", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "escapes the repository"):
             citation(self.repo, "../outside.md", 1, 1)
 

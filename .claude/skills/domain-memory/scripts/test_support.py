@@ -118,6 +118,8 @@ class RegistryTestCase(unittest.TestCase):
                 "user.name=Test",
                 "-c",
                 "user.email=test@example.com",
+                "-c",
+                "commit.gpgsign=false",
                 "commit",
                 "-qm",
                 "seed",
@@ -138,6 +140,8 @@ class RegistryTestCase(unittest.TestCase):
                 "user.name=Test",
                 "-c",
                 "user.email=test@example.com",
+                "-c",
+                "commit.gpgsign=false",
                 "commit",
                 "-qm",
                 message,
@@ -295,7 +299,7 @@ class RegistryTestCase(unittest.TestCase):
 
     def git(self, *args: str) -> str:
         return subprocess.run(
-            ["git", "-c", "user.name=T", "-c", "user.email=t@example.com", *args],
+            ["git", "-c", "user.name=T", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false", *args],
             cwd=self.repo, capture_output=True, text=True, check=True,
         ).stdout.strip()
 
@@ -553,12 +557,6 @@ class RegistryTestCase(unittest.TestCase):
             proposal["supersedes"] = supersedes
         path.write_text(json.dumps(proposal), encoding="utf-8")
 
-    def reviewed_order_total(self) -> dict:
-        document = json.loads(
-            (self.repo / "memory" / "registry" / "rules.json").read_text(encoding="utf-8")
-        )
-        return document["rules"][0]
-
     def redraft_removal(
         self, package: Path, proposal_id: str, record_id: str, supersedes: str | None
     ) -> None:
@@ -728,10 +726,6 @@ class RegistryTestCase(unittest.TestCase):
                                             "not_same_as": ["order"]}),
         )
 
-    def audit_events(self) -> list[dict]:
-        events = (self.repo / "memory" / "audit" / "events.jsonl").read_text(encoding="utf-8")
-        return [json.loads(line) for line in events.splitlines()]
-
     def nested_sources(self) -> dict:
         (self.repo / "apps" / "svc").mkdir(parents=True, exist_ok=True)
         (self.repo / "apps" / "other.go").write_text("other", encoding="utf-8")
@@ -742,11 +736,11 @@ class RegistryTestCase(unittest.TestCase):
             self.repo, [self.repo / "apps", self.repo / "apps" / "svc" / "doc.go"]
         )
 
-    def retracted_contexts(self) -> list[dict]:
+    def stored_contexts(self) -> list[dict]:
         document = self.repo / "memory" / "registry" / "contexts.json"
         return json.loads(document.read_text(encoding="utf-8"))["contexts"]
 
-    def placed_contexts(self, *placements: tuple[str, str]) -> list[str]:
+    def placement_errors(self, *placements: tuple[str, str]) -> list[str]:
         self.seed(
             "contexts.json",
             [
@@ -767,6 +761,8 @@ class RegistryTestCase(unittest.TestCase):
             cwd=Path(__file__).parent,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            env={**os.environ, "PYTHONIOENCODING": "utf-8"},
             check=False,
         )
 
@@ -796,11 +792,7 @@ class RegistryTestCase(unittest.TestCase):
         )
 
     def stored_policy(self) -> dict:
-        return json.loads(
-            (self.repo / "memory" / "domain-memory-policy.json").read_text(
-                encoding="utf-8"
-            )
-        )
+        return stored_policy_of(self.repo)
 
     def audit_lines(self) -> list[dict]:
         return [

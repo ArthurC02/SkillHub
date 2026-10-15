@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import sys
 import unittest
 from pathlib import Path
@@ -42,6 +41,17 @@ class PolicyTest(RegistryTestCase):
             ("local with an unsigned verifier",
              {"review_mode": "local-draft-only", "review_governance": {**signed, "authorized_signers": []}},
              "local-draft-only policy must not select a review verifier"),
+            ("unknown trigger", {"review_governance": {**sound["review_governance"], "trigger": "carrier-pigeon"}},
+             "policy has invalid review_governance"),
+            ("unknown ci requirement",
+             {"review_governance": {**sound["review_governance"], "ci_requirement": "sometimes"}},
+             "policy has invalid review_governance"),
+            ("source policy is not an object", {"source_policy": "docs"},
+             "policy requires selected source paths and authority"),
+            ("blank selected path", {"source_policy": {**sound["source_policy"], "selected_paths": ["docs", " "]}},
+             "policy requires selected source paths and authority"),
+            ("blank exclude pattern", {"source_policy": {**sound["source_policy"], "exclude": [" "]}},
+             "policy requires include patterns and valid exclude patterns"),
             ("no authority", {"source_policy": {**sound["source_policy"], "authority": " "}},
              "policy requires selected source paths and authority"),
             ("no sources", {"source_policy": {**sound["source_policy"], "selected_paths": []}},
@@ -55,41 +65,20 @@ class PolicyTest(RegistryTestCase):
         for label, change, message in cases:
             with self.subTest(label):
                 self.assertEqual([message], validate_policy({**sound, **change}))
-        with self.subTest("a limit of one"):
-            self.assertEqual([], validate_policy({**sound, "limits": {**sound["limits"], "max_file_count": 1}}))
         with self.subTest("a signed-commit policy that is complete"):
             self.assertEqual([], validate_policy({**sound, "review_governance": signed}))
 
-    def test_a_policy_is_rejected_one_step_past_every_limit(self) -> None:
-        path = self.repo / "memory" / "domain-memory-policy.json"
-        valid = json.loads(path.read_text(encoding="utf-8"))
-        self.assertEqual(validate_policy(valid), [])
-        for key in (
-            "max_file_count",
-            "max_file_bytes",
-            "max_total_bytes",
-            "max_query_results",
-        ):
-            broken = json.loads(json.dumps(valid))
-            broken["limits"][key] = 0
-            self.assertEqual(
-                validate_policy(broken), ["policy has invalid limits"], key
-            )
-
-    def test_a_policy_without_a_named_source_authority_is_rejected(self) -> None:
-        path = self.repo / "memory" / "domain-memory-policy.json"
-        broken = json.loads(path.read_text(encoding="utf-8"))
-        broken["source_policy"]["authority"] = "   "
-        self.assertIn(
-            "policy requires selected source paths and authority",
-            validate_policy(broken),
-        )
-
-    def test_an_unknown_storage_mode_is_rejected(self) -> None:
-        path = self.repo / "memory" / "domain-memory-policy.json"
-        broken = json.loads(path.read_text(encoding="utf-8"))
-        broken["storage_mode"] = "somewhere-else"
-        self.assertIn("policy has an invalid storage_mode", validate_policy(broken))
+    def test_each_limit_accepts_one_and_refuses_zero(self) -> None:
+        sound = stored_policy_of(self.repo)
+        keys = ("max_file_count", "max_file_bytes", "max_total_bytes", "max_query_results")
+        roomy = {key: 5 for key in keys}
+        for key in keys:
+            with self.subTest(f"{key} of one"):
+                self.assertEqual([], validate_policy({**sound, "limits": {**roomy, key: 1}}))
+            with self.subTest(f"{key} of zero"):
+                self.assertEqual(
+                    ["policy has invalid limits"], validate_policy({**sound, "limits": {**roomy, key: 0}})
+                )
 
     def test_an_amendment_whose_final_policy_is_invalid_writes_nothing(self) -> None:
         root = self.repo / "memory"

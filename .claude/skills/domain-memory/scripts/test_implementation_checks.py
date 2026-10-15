@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.counterfactual import SIDECAR_SUFFIX, Mutation, counterfactual
+from domain_registry.cli import main
+from domain_registry.counterfactual import SIDECAR_SUFFIX, Mutation, TestRun, counterfactual
 from domain_registry.gates import KINDS, quality_gates
 from domain_registry.sources import is_test_file
 
@@ -119,6 +123,24 @@ class QualityGatesTest(RepositoryCase):
         self.write("package.json", "{not json")
         self.assertEqual(self.gates(), [])
 
+    def test_a_package_manifest_with_scripts_that_is_not_an_object_is_not_a_gate(self) -> None:
+        self.write("package.json", json.dumps({"scripts": "lint"}))
+        self.assertEqual(self.gates(), [])
+
+    def test_a_package_manifest_that_is_not_an_object_is_not_a_gate(self) -> None:
+        self.write("package.json", "[]")
+        self.assertEqual(self.gates(), [])
+
+    def test_a_package_manifest_that_is_not_utf8_is_not_a_gate(self) -> None:
+        (self.repo / "package.json").write_bytes(
+            b'{"name": "\xa4\x40", "scripts": {"lint": "x"}}'
+        )
+        self.assertEqual(self.gates(), [])
+
+    def test_a_project_manifest_that_is_not_utf8_is_not_a_gate(self) -> None:
+        (self.repo / "pyproject.toml").write_bytes(b"# \xa4\x40\n[tool.ruff]\n")
+        self.assertEqual(self.gates(), [])
+
     def test_a_dependency_directory_is_not_searched(self) -> None:
         self.write("node_modules/pkg/.eslintrc.json", "")
         self.assertEqual(self.gates(), [])
@@ -144,6 +166,17 @@ class QualityGatesTest(RepositoryCase):
         self.write("checkouts/copy/.git", "gitdir: elsewhere\n")
         self.write("checkouts/copy/ruff.toml", "")
         self.assertEqual(self.gates(), [])
+
+    def test_a_nested_checkout_whose_git_is_a_directory_is_not_searched(self) -> None:
+        self.write("checkouts/copy/.git/HEAD", "ref: refs/heads/main\n")
+        self.write("checkouts/copy/ruff.toml", "")
+        self.assertEqual(self.gates(), [])
+
+    def test_tests_in_a_nested_checkout_whose_git_is_a_directory_are_not_counted(self) -> None:
+        self.write("tests/test_app.py", "")
+        self.write("tests/copy/.git/HEAD", "ref: refs/heads/main\n")
+        self.write("tests/copy/test_app.py", "")
+        self.assertEqual(quality_gates(self.repo)["test_files"], 1)
 
     def test_tests_in_a_nested_checkout_are_not_counted(self) -> None:
         self.write("tests/test_app.py", "")
@@ -176,6 +209,48 @@ class QualityGatesTest(RepositoryCase):
         for name, expected in names.items():
             with self.subTest(name):
                 self.assertEqual(is_test_file(name), expected)
+
+
+class GitIgnoredGatesTest(RepositoryCase):
+    def setUp(self) -> None:
+        super().setUp()
+        subprocess.run(["git", "init", "-q"], cwd=self.repo, check=True)
+
+    def ignore(self, *patterns: str) -> None:
+        self.write(".gitignore", "".join(f"{pattern}\n" for pattern in patterns))
+
+    def test_a_git_ignored_configuration_file_is_not_a_gate_and_a_git_ignored_test_is_not_counted(self) -> None:
+        self.ignore("scratch/")
+        self.write("scratch/ruff.toml", "")
+        self.write("scratch/test_x.py", "")
+        self.write("ruff.toml", "")
+        self.write("test_kept.py", "")
+        result = quality_gates(self.repo)
+        self.assertEqual(
+            [{"kind": "lint", "tool": "ruff", "path": "ruff.toml"}], result["gates"]
+        )
+        self.assertEqual(1, result["test_files"])
+
+    def test_a_git_ignored_non_ascii_directory_holds_no_gate_and_no_counted_test(self) -> None:
+        self.ignore("資料/")
+        self.write("資料/ruff.toml", "")
+        self.write("資料/test_x.py", "")
+        self.write("test_kept.py", "")
+        result = quality_gates(self.repo)
+        self.assertEqual(([], 1), (result["gates"], result["test_files"]))
+
+    def test_a_non_ascii_and_a_spaced_configuration_path_are_gates_beside_an_ignored_one(self) -> None:
+        self.ignore("資料/")
+        self.write("資料/mypy.ini", "")
+        self.write("café/ruff.toml", "")
+        self.write("my docs/mypy.ini", "")
+        self.assertEqual(
+            [
+                {"kind": "lint", "tool": "ruff", "path": "café/ruff.toml"},
+                {"kind": "types", "tool": "mypy", "path": "my docs/mypy.ini"},
+            ],
+            quality_gates(self.repo)["gates"],
+        )
 
 
 class CounterfactualTest(RepositoryCase):
@@ -277,7 +352,7 @@ class CommandLineTest(RepositoryCase):
             check=False,
         )
 
-    def counterfactual_exit(self, find: str, replace: str) -> int:
+    def counterfactual_run(self, find: str, replace: str) -> subprocess.CompletedProcess[str]:
         self.write("rule.py", RULE)
         self.write("tests/__init__.py")
         self.write("tests/test_rule.py", RULE_TEST)
@@ -293,19 +368,43 @@ class CommandLineTest(RepositoryCase):
             replace,
             "--test-command",
             RUN_TESTS,
-        ).returncode
+        )
 
     def test_a_killed_rule_exits_zero(self) -> None:
-        self.assertEqual(self.counterfactual_exit("LIMIT = 200", "LIMIT = 201"), 0)
+        completed = self.counterfactual_run("LIMIT = 200", "LIMIT = 201")
+        self.assertEqual((0, "killed"), (completed.returncode, json.loads(completed.stdout)["verdict"]))
 
     def test_a_surviving_rule_exits_one(self) -> None:
-        self.assertEqual(self.counterfactual_exit("CAP = 12", "CAP = 13"), 1)
+        completed = self.counterfactual_run("CAP = 12", "CAP = 13")
+        self.assertEqual((1, "survived"), (completed.returncode, json.loads(completed.stdout)["verdict"]))
+
+    def test_an_inconclusive_run_exits_two(self) -> None:
+        self.write("rule.py", RULE)
+        runs = [TestRun(0, "intact"), TestRun(None, "no result within 1 seconds")]
+        arguments = [
+            "counterfactual", "--repo-root", str(self.repo), "--file", "rule.py",
+            "--find", "LIMIT = 200", "--replace", "LIMIT = 201", "--test-command", "unused",
+        ]
+        output = io.StringIO()
+        with patch("domain_registry.counterfactual.run_tests", side_effect=runs), patch.object(
+            sys, "argv", ["registry_tools", *arguments]
+        ), contextlib.redirect_stdout(output):
+            exit_code = main()
+        self.assertEqual((2, "inconclusive"), (exit_code, json.loads(output.getvalue())["verdict"]))
 
     def test_quality_gates_prints_its_format(self) -> None:
         completed = self.run_tool("quality-gates", "--repo-root", str(self.repo))
         self.assertEqual(completed.returncode, 0)
         self.assertEqual(
             json.loads(completed.stdout)["format"], "domain-memory-quality-gates/v1"
+        )
+
+    def test_quality_gates_prints_the_gates_it_found(self) -> None:
+        self.write("ruff.toml", "")
+        completed = self.run_tool("quality-gates", "--repo-root", str(self.repo))
+        self.assertEqual(
+            [{"kind": "lint", "tool": "ruff", "path": "ruff.toml"}],
+            json.loads(completed.stdout)["gates"],
         )
 
 

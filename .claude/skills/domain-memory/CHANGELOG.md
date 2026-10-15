@@ -2,6 +2,17 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.26.1
+
+### Fixed
+
+- Paths and Git output that are not ASCII are read as UTF-8 whatever the console's code page, so a non-ASCII source path is no longer dropped from discovery or misread as ignored.
+- `quality-gates` skips a `package.json` or `pyproject.toml` that is not UTF-8 instead of crashing, and a `package.json` whose `scripts` is not an object is not reported as a gate.
+
+### Changed
+
+- `readiness` and `quality-gates` ask Git which candidates are ignored in one call instead of one per group, and walk the tree with string paths; both run about a fifth faster with the same output.
+
 ## 0.26.0
 
 ### Added

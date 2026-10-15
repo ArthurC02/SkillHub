@@ -7,10 +7,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+from domain_registry.changes import _changes_behavior as changes_behavior
+from domain_registry.changes import _obligation_errors as obligation_errors
 from domain_registry.changes import _requirement_and_proposal_errors as requirement_and_proposal_errors
 from domain_registry.changes import (
+    EVIDENCE_FILE,
+    PROPOSAL_FILE,
+    as_if_moved_to,
     implementation_design_errors,
     init_change_package,
+    missing_approval_roles,
     validate_change_package,
 )
 from domain_registry.common import RISK_FLAGS
@@ -37,13 +43,16 @@ class ChangesTest(RegistryTestCase):
             ("routine without design", {"change_classification": "routine"}, []),
             ("blank force", {**material, "implementation_design": {**design, "domain_forces": [""]}},
              ["implementation_design requires a valid domain_forces list"]),
-            ("no invariants", {**material, "implementation_design": {**design, "invariants_preserved": "kept"}},
+            ("invariants not a list", {**material, "implementation_design": {**design, "invariants_preserved": "kept"}},
              ["implementation_design requires a valid invariants_preserved list"]),
-            ("no alternatives", {**material, "implementation_design": {**design, "rejected_alternatives": None}},
+            ("alternatives not a list", {**material, "implementation_design": {**design, "rejected_alternatives": None}},
              ["implementation_design requires a valid rejected_alternatives list"]),
+            ("routine with an incomplete design",
+             {"change_classification": "routine", "implementation_design": {**design, "decision": " "}},
+             ["implementation_design requires a completed decision"]),
             ("no decision", {**material, "implementation_design": {**design, "decision": " "}},
              ["implementation_design requires a completed decision"]),
-            ("no obligation ids", {**material, "implementation_design": {**design, "proof_obligations": "OB-1"}},
+            ("proof obligations not a list", {**material, "implementation_design": {**design, "proof_obligations": "OB-1"}},
              ["implementation_design requires proof obligation IDs"]),
             ("unknown obligation", {**material, "implementation_design": {**design, "proof_obligations": ["OB-9"]}},
              ["implementation_design references an unknown proof obligation"]),
@@ -102,6 +111,16 @@ class ChangesTest(RegistryTestCase):
         package = self.repo / "plain"
         init_change_package(package)
         templates = Path(__file__).resolve().parent.parent / "templates"
+        self.assertEqual(
+            [
+                "domain-change-proposal.json",
+                "draft-pr.md",
+                "evidence-bundle.json",
+                "requirement-normalization.json",
+                "test-obligations.json",
+            ],
+            sorted(path.name for path in package.iterdir()),
+        )
         for path in package.iterdir():
             with self.subTest(file=path.name):
                 self.assertEqual((templates / path.name).read_bytes(), path.read_bytes())
@@ -119,18 +138,40 @@ class ChangesTest(RegistryTestCase):
         init_change_package(package, "REQ-7", "PRO-7", "agent-1")
         proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
         self.assertEqual("agent-1", proposal["proposer"])
-        self.assertNotIn(
-            "domain-change-proposal.json requires a completed proposer",
+        self.assertEqual(
+            [
+                "each acceptance criterion requires a completed id and statement",
+                "domain-change-proposal.json requires affected_contexts",
+                "each test obligation requires a completed id",
+                "implementation_design requires a completed decision",
+                "implementation_design requires a counterfactual check",
+                "a material proposal requires at least one proof obligation",
+            ],
             validate_change_package(package, self.repo / "memory"),
         )
 
-    def test_a_fresh_package_is_not_asked_for_test_results_before_they_exist(self) -> None:
+    def test_a_fresh_package_lists_only_what_the_template_leaves_blank(self) -> None:
         package = self.repo / "fresh"
         init_change_package(package)
-        errors = validate_change_package(package, self.repo / "memory", "submitted")
-        self.assertNotIn("each test result requires a passed obligation_id and evidence", errors)
-        self.assertNotIn("a test result references an unknown obligation", errors)
-        self.assertNotIn("an approval requires role, reviewer, approved_at, and scope", errors)
+        blank_template = [
+            "requirement-normalization.json requires a completed requirement_id",
+            "domain-change-proposal.json requires a completed proposal_id",
+            "domain-change-proposal.json requires a completed proposer",
+            "domain-change-proposal.json must reference the requirement_id",
+            "test-obligations.json must reference the requirement_id",
+            "evidence-bundle.json must reference the requirement_id",
+            "test-obligations.json must reference the proposal_id",
+            "evidence-bundle.json must reference the proposal_id",
+            "each acceptance criterion requires a completed id and statement",
+            "domain-change-proposal.json requires affected_contexts",
+            "each test obligation requires a completed id",
+            "implementation_design requires a completed decision",
+            "implementation_design requires a counterfactual check",
+            "a material proposal requires at least one proof obligation",
+        ]
+        for status in ("submitted", "draft"):
+            with self.subTest(status=status):
+                self.assertEqual(blank_template, validate_change_package(package, self.repo / "memory", status))
 
     def test_previewing_approved_lists_every_missing_piece_of_that_stage_at_once(self) -> None:
         package = self.draft_package()
@@ -165,8 +206,24 @@ class ChangesTest(RegistryTestCase):
              "domain-change-proposal.json has invalid approval entry"),
             ("fields", {"domain-change-proposal.json": {"approvals": [{**complete, "scope": ""}]}},
              "an approval requires role, reviewer, approved_at, and scope"),
+            ("blank role", {"domain-change-proposal.json": {"approvals": [{**complete, "role": ""}]}},
+             "an approval requires role, reviewer, approved_at, and scope"),
+            ("blank reviewer", {"domain-change-proposal.json": {"approvals": [{**complete, "reviewer": " "}]}},
+             "an approval requires role, reviewer, approved_at, and scope"),
+            ("blank approved_at", {"domain-change-proposal.json": {"approvals": [{**complete, "approved_at": ""}]}},
+             "an approval requires role, reviewer, approved_at, and scope"),
             ("binding", {"domain-change-proposal.json": {"approvals": [{**complete, "base_registry_revision": other}]}},
              "an approval must bind to the proposal base_registry_revision"),
+            ("rejected approval leaves the role missing",
+             {"domain-change-proposal.json": {"status": "approved", "approvals": [{**complete, "decision": "rejected"}]}},
+             "an approved or applied proposal lacks required approvals: domain-owner"),
+            ("stale-revision approval leaves the role missing",
+             {"domain-change-proposal.json": {"status": "approved", "approvals": [{**complete, "proposal_revision": 2}]}},
+             "an approved or applied proposal lacks required approvals: domain-owner"),
+            ("unbound approval leaves the role missing",
+             {"domain-change-proposal.json": {
+                 "status": "approved", "approvals": [{**complete, "base_registry_revision": other}]}},
+             "an approved or applied proposal lacks required approvals: domain-owner"),
             ("base", {"domain-change-proposal.json": {"status": "submitted"}},
              "a submitted, approved, or applied proposal requires a Registry digest base revision"),
             ("retained", {"domain-change-proposal.json": {"status": "submitted", "base_registry_revision": revision},
@@ -218,8 +275,10 @@ class ChangesTest(RegistryTestCase):
         proposal.pop("implementation_design")
         path.write_text(json.dumps(proposal), encoding="utf-8")
         errors = validate_change_package(package, self.repo / "memory")
-        self.assertTrue(
-            any("requires implementation_design" in error for error in errors)
+        self.assertIn(
+            "a material proposal requires implementation_design with domain forces, decision, invariants, "
+            "alternatives, proof obligations, and counterfactual check",
+            errors,
         )
 
     def test_proof_obligation_must_exist_in_test_obligations(self) -> None:
@@ -433,6 +492,223 @@ class ChangesTest(RegistryTestCase):
             ["registry update for rules needs a record with an id, or a remove with an id"],
             self.update_errors([{"operation": "upsert", "asset": "rules"}]),
         )
+
+    def test_each_test_obligation_defect_is_named(self) -> None:
+        good = {
+            "id": "OB-1", "source_type": "acceptance-criterion", "source_id": "AC-1",
+            "expected_outcome": "Totals hold.", "check": "run it", "status": "executed",
+        }
+        rule_obligation = {**good, "id": "OB-2", "source_type": "rule", "source_id": "order-total"}
+        contract_obligation = {**good, "id": "OB-3", "source_type": "contract", "source_id": "invoice-api"}
+        without_id = {key: value for key, value in good.items() if key != "id"}
+        cases = [
+            ("covered", [good], [], [], [], {"OB-1"}),
+            ("empty list", [], [], [], ["test-obligations.json requires obligations"], set()),
+            ("not an object", [good, 7], [], [], ["each test obligation requires a completed id"], {"OB-1"}),
+            ("missing id", [good, without_id], [], [], ["each test obligation requires a completed id"], {"OB-1"}),
+            ("blank id", [good, {**good, "id": " "}], [], [], ["each test obligation requires a completed id"],
+             {"OB-1"}),
+            ("duplicate id", [good, dict(good)], [], [], ["test-obligations.json contains duplicate obligation id"],
+             {"OB-1"}),
+            ("blank expected_outcome", [{**good, "expected_outcome": " "}], [], [],
+             ["test obligation OB-1 requires expected_outcome and check"], {"OB-1"}),
+            ("blank check", [{**good, "check": ""}], [], [],
+             ["test obligation OB-1 requires expected_outcome and check"], {"OB-1"}),
+            ("invalid status", [{**good, "status": "done"}], [], [],
+             ["test obligation OB-1 has an invalid status"], {"OB-1"}),
+            ("rule lacks an obligation", [good], ["order-total"], [],
+             ["rule order-total lacks a test obligation"], {"OB-1"}),
+            ("rule named only by an invariant obligation",
+             [good, {**rule_obligation, "source_type": "invariant"}], ["order-total"], [],
+             ["rule order-total lacks a test obligation"], {"OB-1", "OB-2"}),
+            ("rule covered", [good, rule_obligation], ["order-total"], [], [], {"OB-1", "OB-2"}),
+            ("contract lacks an obligation", [good], [], ["invoice-api"],
+             ["contract invoice-api lacks a test obligation"], {"OB-1"}),
+            ("contract covered", [good, contract_obligation], [], ["invoice-api"], [], {"OB-1", "OB-3"}),
+        ]
+        for label, records, rule_ids, contract_ids, expected_errors, expected_ids in cases:
+            with self.subTest(label):
+                self.assertEqual(
+                    (expected_errors, expected_ids),
+                    obligation_errors({"obligations": records}, {"AC-1"}, rule_ids, contract_ids),
+                )
+        for label, document in (("no obligations key", {}), ("obligations not a list", {"obligations": "OB-1"})):
+            with self.subTest(label):
+                self.assertEqual(
+                    (["test-obligations.json requires obligations"], set()),
+                    obligation_errors(document, {"AC-1"}, [], []),
+                )
+
+    def test_only_a_complete_current_bound_approval_supplies_its_role(self) -> None:
+        base = {"observed_commit": None, "registry_digest": "sha256:" + "2" * 64}
+        complete = {
+            "role": "domain-owner", "reviewer": "reviewer", "decision": "approved",
+            "approved_at": "2026-10-10T00:00:00Z", "scope": "entire proposal", "proposal_revision": 1,
+        }
+        requirement = {"required_approval_roles": ["domain-owner"]}
+        cases = [
+            ("complete", [complete], []),
+            ("no approvals", [], ["domain-owner"]),
+            ("approvals not a list", "all", ["domain-owner"]),
+            ("not an object", [7], ["domain-owner"]),
+            ("rejected", [{**complete, "decision": "rejected"}], ["domain-owner"]),
+            ("stale revision", [{**complete, "proposal_revision": 2}], ["domain-owner"]),
+            ("unbound", [{**complete, "base_registry_revision": base}], ["domain-owner"]),
+            ("other role", [{**complete, "role": "auditor"}], ["domain-owner"]),
+            ("blank role", [{**complete, "role": " "}], ["domain-owner"]),
+            ("blank reviewer", [{**complete, "reviewer": ""}], ["domain-owner"]),
+            ("blank approved_at", [{**complete, "approved_at": ""}], ["domain-owner"]),
+            ("blank scope", [{**complete, "scope": " "}], ["domain-owner"]),
+        ]
+        for label, approvals, expected in cases:
+            with self.subTest(label):
+                proposal = {"proposal_revision": 1, "base_registry_revision": None, "approvals": approvals}
+                self.assertEqual(expected, missing_approval_roles(requirement, proposal))
+        with self.subTest("two roles, one approved"):
+            proposal = {"proposal_revision": 1, "base_registry_revision": None, "approvals": [complete]}
+            self.assertEqual(
+                ["security"],
+                missing_approval_roles({"required_approval_roles": ["security", "domain-owner"]}, proposal),
+            )
+        with self.subTest("required roles not a list"):
+            proposal = {"proposal_revision": 1, "base_registry_revision": None, "approvals": []}
+            self.assertEqual([], missing_approval_roles({"required_approval_roles": "domain-owner"}, proposal))
+
+    def test_each_source_of_a_behavior_change_is_recognised(self) -> None:
+        cases = [
+            ("rule ids", {"rule_ids": ["order-total"]}, True),
+            ("contract ids", {"contract_ids": ["invoice-api"]}, True),
+            ("rules update", {"registry_updates": [{"asset": "rules"}]}, True),
+            ("contracts update", {"registry_updates": [{"asset": "contracts"}]}, True),
+            ("aggregates update", {"registry_updates": [{"asset": "aggregates"}]}, True),
+            ("vocabulary update", {"registry_updates": [{"asset": "vocabulary"}]}, False),
+            ("no sources", {"rule_ids": [], "contract_ids": [], "registry_updates": []}, False),
+            ("updates not a list", {"registry_updates": "rules"}, False),
+            ("update not an object", {"registry_updates": ["rules"]}, False),
+        ]
+        for label, proposal, expected in cases:
+            with self.subTest(label):
+                self.assertIs(expected, changes_behavior(proposal))
+
+    def verdicts_in(self, package: Path, check: dict | None, status: str, updates: list | None = None) -> list[str]:
+        proposal_path = package / PROPOSAL_FILE
+        proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
+        proposal["status"] = status
+        if updates is not None:
+            proposal["registry_updates"] = updates
+        proposal_path.write_text(json.dumps(proposal), encoding="utf-8")
+        evidence_path = package / EVIDENCE_FILE
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        evidence["counterfactual_check"] = check
+        evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+        return [error for error in validate_change_package(package, None) if "counterfactual" in error]
+
+    def test_each_counterfactual_defect_is_named(self) -> None:
+        passed = {
+            "status": "passed", "obligation_id": "OB-1", "mutated_protection": "Remove the check.",
+            "failure_evidence": "OB-1 failed.", "restored": True,
+        }
+        requires = (
+            "counterfactual_check requires passed status, a known obligation_id, mutated_protection, "
+            "failure_evidence, and restored=true"
+        )
+        cases = [
+            ("complete", "verified", passed, None, []),
+            ("no check recorded", "verified", None, None,
+             ["a material verified proposal requires counterfactual_check evidence"]),
+            ("status not passed", "verified", {**passed, "status": "failed"}, None, [requires]),
+            ("not restored", "verified", {**passed, "restored": False}, None, [requires]),
+            ("restored is not a boolean", "verified", {**passed, "restored": "true"}, None, [requires]),
+            ("unknown obligation_id", "applied", {**passed, "obligation_id": "OB-9"}, None, [requires]),
+            ("blank mutated_protection", "verified", {**passed, "mutated_protection": " "}, None, [requires]),
+            ("blank failure_evidence", "verified", {**passed, "failure_evidence": ""}, None, [requires]),
+            ("not_applicable with a blank reason", "verified", {"status": "not_applicable", "reason": " "},
+             self.vocabulary_update(), ["a not_applicable counterfactual_check requires a reason"]),
+            ("superseded is not asked for one", "superseded", self.UNPLANNED_CHECK, None, []),
+            ("rejected is not asked for one", "rejected", self.UNPLANNED_CHECK, None, []),
+        ]
+        package = self.draft_package()
+        for label, status, check, updates, expected in cases:
+            with self.subTest(label):
+                self.assertEqual(expected, self.verdicts_in(package, check, status, updates))
+
+    def test_a_routine_package_at_verified_needs_no_counterfactual(self) -> None:
+        package = self.draft_package()
+        revision = {"observed_commit": None, "registry_digest": "sha256:" + "0" * 64}
+        proposal_path = package / PROPOSAL_FILE
+        evidence_path = package / EVIDENCE_FILE
+        proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        evidence.update({"registry_revision": revision, "counterfactual_check": None})
+        evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+        cases = [
+            ("material", ["a material verified proposal requires counterfactual_check evidence"]),
+            ("routine", []),
+        ]
+        for classification, expected in cases:
+            with self.subTest(classification):
+                proposal.update({
+                    "change_classification": classification, "status": "verified",
+                    "verified_at": "2026-01-01T00:00:00Z", "base_registry_revision": revision,
+                })
+                proposal_path.write_text(json.dumps(proposal), encoding="utf-8")
+                self.assertEqual(expected, validate_change_package(package, self.repo / "memory"))
+
+    def test_only_a_settled_package_may_name_an_id_the_registry_later_retired(self) -> None:
+        package = self.draft_package()
+        proposal_path = package / PROPOSAL_FILE
+        obligations_path = package / "test-obligations.json"
+        proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
+        obligations = json.loads(obligations_path.read_text(encoding="utf-8"))
+        obligations["obligations"].append({
+            "id": "OB-2", "source_type": "contract", "source_id": "retired-v1",
+            "expected_outcome": "The retired contract still holds.", "check": "test command", "status": "executed",
+        })
+        obligations_path.write_text(json.dumps(obligations), encoding="utf-8")
+        cases = [
+            ("superseded", []),
+            ("rejected", ["domain-change-proposal.json references an unknown registry contract"]),
+            ("draft", ["domain-change-proposal.json references an unknown registry contract"]),
+        ]
+        for status, expected in cases:
+            with self.subTest(status):
+                proposal.update({"status": status, "contract_ids": ["retired-v1"]})
+                proposal_path.write_text(json.dumps(proposal), encoding="utf-8")
+                self.assertEqual(expected, validate_change_package(package, self.repo / "memory"))
+
+    def test_previewing_keeps_a_base_revision_and_timestamps_that_are_already_real(self) -> None:
+        real = {"observed_commit": None, "registry_digest": "sha256:" + "1" * 64}
+        proposal = {
+            "status": "draft", "base_registry_revision": real, "verified_at": "2026-01-01T00:00:00Z",
+            "applied_at": "2026-01-02T00:00:00Z", "applied_registry_revision": real,
+        }
+        for status in ("submitted", "verified", "applied"):
+            with self.subTest(status):
+                moved = as_if_moved_to(status, {PROPOSAL_FILE: proposal, EVIDENCE_FILE: {"registry_revision": real}})
+                self.assertEqual({**proposal, "status": status}, moved[PROPOSAL_FILE])
+                self.assertEqual({"registry_revision": real}, moved[EVIDENCE_FILE])
+
+    def test_previewing_replaces_a_base_revision_and_timestamps_that_are_unusable(self) -> None:
+        stand_in = {"observed_commit": None, "registry_digest": "sha256:" + "0" * 64}
+        proposal = {
+            "status": "draft", "base_registry_revision": {"registry_digest": "sha256:short"},
+            "verified_at": "yesterday", "applied_at": None, "applied_registry_revision": None,
+        }
+        cases = [
+            ("verified", {
+                "status": "verified", "base_registry_revision": stand_in, "verified_at": "1970-01-01T00:00:00Z",
+                "applied_at": None, "applied_registry_revision": None,
+            }),
+            ("applied", {
+                "status": "applied", "base_registry_revision": stand_in, "verified_at": "yesterday",
+                "applied_at": "1970-01-01T00:00:00Z", "applied_registry_revision": stand_in,
+            }),
+        ]
+        for status, expected in cases:
+            with self.subTest(status):
+                moved = as_if_moved_to(status, {PROPOSAL_FILE: proposal, EVIDENCE_FILE: {"registry_revision": None}})
+                self.assertEqual(expected, moved[PROPOSAL_FILE])
+                self.assertEqual({"registry_revision": stand_in}, moved[EVIDENCE_FILE])
 
     def test_validation_refuses_registry_updates_that_are_not_a_list(self) -> None:
         package = self.drafted_with_updates({"operation": "upsert"})

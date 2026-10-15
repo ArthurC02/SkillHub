@@ -167,7 +167,7 @@ class CliTest(RegistryTestCase):
         subprocess.run(["git", "add", "memory"], cwd=self.repo, check=True)
         subprocess.run(
             ["git", "-c", "user.name=T", "-c", "user.email=t@example.com",
-             "commit", "-qm", "unsigned domain memory change"],
+             "-c", "commit.gpgsign=false", "commit", "-qm", "unsigned domain memory change"],
             cwd=self.repo, check=True,
         )
         head = subprocess.run(
@@ -187,6 +187,10 @@ class CliTest(RegistryTestCase):
             check=False,
         )
         self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn(
+            f"Git commit signature is invalid: {head} carries no signature",
+            result.stdout + result.stderr,
+        )
 
     def test_boundary_impact_runs_from_the_command_line(self) -> None:
         self.two_mapped_contexts()
@@ -339,14 +343,17 @@ class CliTest(RegistryTestCase):
         self.assertEqual(result.returncode, 0)
         self.assertEqual(json.loads(result.stdout)["contexts"], 0)
 
+    def file_bytes(self) -> dict[str, bytes]:
+        return {
+            path.relative_to(self.repo).as_posix(): path.read_bytes()
+            for path in self.repo.rglob("*")
+            if path.is_file()
+        }
+
     def test_readiness_command_returns_json_without_writing(self) -> None:
-        before = sorted(
-            path.relative_to(self.repo).as_posix() for path in self.repo.rglob("*")
-        )
+        before = self.file_bytes()
         result = self.run_cli("readiness", "--repo-root", str(self.repo))
-        after = sorted(
-            path.relative_to(self.repo).as_posix() for path in self.repo.rglob("*")
-        )
+        after = self.file_bytes()
         self.assertEqual(result.returncode, 0)
         self.assertEqual(json.loads(result.stdout)["state"], "empty")
         self.assertEqual(before, after)
@@ -399,8 +406,18 @@ class CliTest(RegistryTestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue((destination / "source-map.json").is_file())
-        self.assertTrue((destination / "domain-memory-policy.json").is_file())
         self.assertTrue((destination / "registry" / "contexts.json").is_file())
+        policy = json.loads((destination / "domain-memory-policy.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            ("ignored", "internal", "local-draft-only", "test", ["docs"]),
+            (
+                policy["storage_mode"],
+                policy["data_classification"],
+                policy["review_mode"],
+                policy["source_policy"]["authority"],
+                policy["source_policy"]["selected_paths"],
+            ),
+        )
 
     def test_the_cite_command_reports_the_kind_of_source_the_lines_came_from(
         self,

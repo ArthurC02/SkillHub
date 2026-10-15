@@ -30,8 +30,7 @@ from domain_registry.sources import (
     write_source_map,
 )
 from domain_registry.sources import discover_ci_tools
-from domain_registry.sources import repository_files, source_snapshots
-from domain_registry.sources import test_locations as discovered_test_locations
+from domain_registry.sources import source_snapshots
 from test_support import RegistryTestCase, stored_policy_of
 
 
@@ -126,17 +125,6 @@ class SourcesTest(RegistryTestCase):
         self.assertEqual(
             ["docs"], [entry["path"] for entry in result["changed_sources"]]
         )
-
-    def test_source_verification_rejects_a_path_outside_the_repository(self) -> None:
-        source_map = {
-            "selected_paths": ["../outside"],
-            "source_snapshots": [{"path": "../outside", "file_count": 0}],
-        }
-        path = self.repo / "source-map.json"
-        path.write_text(json.dumps(source_map), encoding="utf-8")
-        result = verify_source_map(self.repo, path)
-        self.assertEqual("invalid", result["status"])
-        self.assertIn("escapes repository", result["reason"])
 
     def test_refining_sources_replaces_the_corpus_and_requires_confirmation(self) -> None:
         source = self.repo / "fact.md"
@@ -327,10 +315,13 @@ class SourcesTest(RegistryTestCase):
 
     def test_a_source_map_the_policy_rejects_is_not_reported_as_moved(self) -> None:
         self.committed_source_map()
-        with self.assertRaisesRegex(ValueError, "does not verify"):
-            confirm_sources(
-                self.repo / "memory", self.repo, "Arthur", stored_policy_of(self.repo)
-            )
+        self.permit_sources()
+        policy = stored_policy_of(self.repo)
+        policy["limits"]["max_file_bytes"] = 1
+        with self.assertRaisesRegex(
+            ValueError, "does not verify.*over max_file_bytes 1: docs/kept.md"
+        ):
+            confirm_sources(self.repo / "memory", self.repo, "Arthur", policy)
 
     def test_the_instruction_files_group_says_it_is_not_a_statement_of_the_domain(
         self,
@@ -448,13 +439,6 @@ class SourcesTest(RegistryTestCase):
                 result = verify_source_map(self.repo, path, chosen)
                 self.assertEqual((status, reason), (result["status"], result["reason"]))
 
-    def test_a_map_without_snapshots_cannot_answer_the_question(self) -> None:
-        path = self.write_record(
-            "source-map.json",
-            {"selected_paths": [], "selection_status": "developer-confirmed"},
-        )
-        self.assertEqual(verify_source_map(self.repo, path)["status"], "unverified")
-
     def test_a_clean_repo_answers_the_probe_without_hashing_anything(self) -> None:
         result = probe_sources(self.repo, self.committed_source_map())
         self.assertEqual(result["status"], "current")
@@ -462,10 +446,14 @@ class SourcesTest(RegistryTestCase):
 
     def test_probe_rechecks_policy_limits_before_using_the_git_fast_path(self) -> None:
         path = self.committed_source_map()
+        self.permit_sources()
         policy = stored_policy_of(self.repo)
         policy["limits"]["max_file_bytes"] = 1
         result = probe_sources(self.repo, path, policy)
-        self.assertEqual(result["status"], "invalid")
+        self.assertEqual(
+            ("invalid", "over max_file_bytes 1: docs/kept.md"),
+            (result["status"], result["reason"]),
+        )
 
     def test_probe_rejects_policy_source_paths_that_differ_from_the_map(self) -> None:
         path = self.committed_source_map()
@@ -501,24 +489,13 @@ class SourcesTest(RegistryTestCase):
         self.commit_all("edit a source")
         result = probe_sources(self.repo, path)
         self.assertEqual(
-            ("hash", [{"path": "docs", "status": "content-changed"}]),
-            (result["checked"], result["content_changed"]),
+            ("hash", "current", [{"path": "docs", "status": "content-changed"}]),
+            (result["checked"], result["status"], result["content_changed"]),
         )
 
     def test_an_uncommitted_source_sends_the_probe_back_to_hashing(self) -> None:
         path = self.committed_source_map()
         (self.repo / "docs" / "kept.md").write_text("edited", encoding="utf-8")
-        result = probe_sources(self.repo, path)
-        self.assertEqual(result["checked"], "hash")
-        self.assertEqual(result["status"], "current")
-        self.assertEqual(
-            ["docs"], [entry["path"] for entry in result["content_changed"]]
-        )
-
-    def test_a_committed_edit_to_a_source_is_reported_as_content_drift(self) -> None:
-        path = self.committed_source_map()
-        (self.repo / "docs" / "kept.md").write_text("edited", encoding="utf-8")
-        self.commit_all("edit a source")
         result = probe_sources(self.repo, path)
         self.assertEqual(result["checked"], "hash")
         self.assertEqual(result["status"], "current")
@@ -597,23 +574,128 @@ class SourcesTest(RegistryTestCase):
             "source_groups": [{"kind": "implementation", "paths": ["apps"]}],
         }
         self.assertEqual(
-            source_kind_for(source_map, "apps/svc/worker.go"), "implementation"
+            source_kind_for(source_map, "apps/svc/preflight.go"), "implementation"
         )
 
-    def test_nested_test_directories_are_reported_without_reclassifying_implementation(
-        self,
-    ) -> None:
-        (self.repo / "apps" / "svc").mkdir(parents=True, exist_ok=True)
-        (self.repo / "apps" / "svc" / "thing_test.go").write_text("x", encoding="utf-8")
-        (self.repo / "apps" / "svc" / "thing.go").write_text("x", encoding="utf-8")
+    def write_files(self, *names: str) -> None:
+        for name in names:
+            path = self.repo / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("x", encoding="utf-8")
+
+    def ignore(self, *patterns: str) -> None:
+        (self.repo / ".gitignore").write_text(
+            "".join(f"{pattern}\n" for pattern in patterns), encoding="utf-8"
+        )
+
+    def test_discovery_lists_nested_test_files_and_leaves_out_a_git_ignored_one(self) -> None:
+        self.write_files(
+            "apps/svc/thing_test.go",
+            "apps/svc/thing.go",
+            "apps/svc/deep/inner_test.go",
+            "apps/svc/skipped_test.go",
+        )
+        self.ignore("skipped_test.go")
         self.assertEqual(
-            discovered_test_locations(self.repo, repository_files(self.repo)),
-            ["apps/svc/thing_test.go"],
+            ["apps/svc/deep/inner_test.go", "apps/svc/thing_test.go"],
+            self.discovery_groups("tests"),
         )
 
-    def test_a_probe_of_an_uninitialized_repository_says_so(self) -> None:
-        result = probe_sources(self.repo, self.repo / "nowhere" / "source-map.json")
-        self.assertEqual(result["status"], "absent")
+    def test_nested_test_files_do_not_reclassify_the_implementation_root(self) -> None:
+        self.write_files("apps/svc/deep/inner_test.go", "apps/svc/thing.go")
+        self.assertEqual(["apps"], self.discovery_groups("implementation"))
+
+    def test_discovery_leaves_out_instruction_files_in_a_git_ignored_non_ascii_directory(self) -> None:
+        self.write_files("AGENTS.md", "資料/AGENTS.md")
+        self.ignore("資料/")
+        self.assertEqual(["AGENTS.md"], self.discovery_groups("repository_instructions"))
+
+    def test_discovery_leaves_out_a_package_doc_in_a_git_ignored_non_ascii_directory(self) -> None:
+        self.write_files("apps/x/doc.go", "apps/x/資料/doc.go")
+        self.ignore("資料/")
+        self.assertEqual(["apps/x/doc.go"], self.discovery_groups("bounded_contexts"))
+
+    def test_discovery_leaves_out_a_test_file_in_a_git_ignored_non_ascii_directory(self) -> None:
+        self.write_files("apps/x/kept_test.go", "apps/x/資料/ignored_test.go")
+        self.ignore("資料/")
+        self.assertEqual(["apps/x/kept_test.go"], self.discovery_groups("tests"))
+
+    def test_discovery_keeps_a_file_whose_name_contains_an_accented_letter(self) -> None:
+        self.write_files("apps/x/café_test.go", "資料/ignored_test.go")
+        self.ignore("資料/")
+        self.assertEqual(["apps/x/café_test.go"], self.discovery_groups("tests"))
+
+    def test_discovery_keeps_a_file_whose_name_contains_a_space(self) -> None:
+        self.write_files("apps/x/my space_test.go", "資料/ignored_test.go")
+        self.ignore("資料/")
+        self.assertEqual(["apps/x/my space_test.go"], self.discovery_groups("tests"))
+
+    def test_discovery_keeps_an_instruction_file_in_a_directory_with_an_accented_letter_and_a_space(self) -> None:
+        self.write_files("café/AGENTS.md", "my docs/CLAUDE.md", "資料/AGENTS.md")
+        self.ignore("資料/")
+        self.assertEqual(
+            ["café/AGENTS.md", "my docs/CLAUDE.md"],
+            self.discovery_groups("repository_instructions"),
+        )
+
+    def test_the_dirty_state_of_a_non_ascii_source_is_read_back_as_git_wrote_it(self) -> None:
+        self.write_files("資料/a.md")
+        self.commit_all("non-ascii source")
+        (self.repo / "資料" / "a.md").write_text("changed", encoding="utf-8")
+        source_map = selected_source_map(self.repo, [self.repo / "資料"])
+        self.assertEqual([" M 資料/a.md"], source_map["git_state"]["dirty_sources"])
+
+    def test_discovery_skips_a_nested_checkout_whose_git_is_a_directory(self) -> None:
+        self.write_files("AGENTS.md", "copy/.git/HEAD", "copy/AGENTS.md")
+        self.assertEqual(["AGENTS.md"], self.discovery_groups("repository_instructions"))
+
+    def test_discovery_skips_a_nested_checkout_whose_git_is_a_file(self) -> None:
+        self.write_files("AGENTS.md", "copy/.git", "copy/AGENTS.md")
+        self.assertEqual(["AGENTS.md"], self.discovery_groups("repository_instructions"))
+
+    def test_discovery_does_not_descend_into_an_excluded_directory(self) -> None:
+        self.write_files("kept/test_kept.py")
+        excluded = [
+            ".git", ".hg", ".svn", ".devctl", "node_modules",
+            ".venv", "vendor", "dist", "build", "generated",
+        ]
+        for name in excluded:
+            with self.subTest(name):
+                self.write_files(f"{name}/test_inside.py")
+                self.assertEqual(["kept/test_kept.py"], self.discovery_groups("tests"))
+
+    def test_the_source_policy_report_accepts_each_limit_at_its_value_and_refuses_one_past_it(self) -> None:
+        five = {f"f{index}.md": 2 for index in range(1, 6)}
+        rows = [
+            ("a file not matching include is not counted", {"a.md": 3, "b.txt": 3}, ["docs/*.md"], {}, 1, []),
+            ("file count at its limit", {"a.md": 1, "b.md": 1}, ["**"], {"max_file_count": 2}, 2, []),
+            ("file count one past its limit", {"a.md": 1, "b.md": 1, "c.md": 1}, ["**"], {"max_file_count": 2}, 3,
+             ["selected sources hold 3 files, over max_file_count 2"]),
+            ("file bytes at its limit", {"a.md": 4}, ["**"], {"max_file_bytes": 4}, 1, []),
+            ("file bytes one past its limit", {"a.md": 5}, ["**"], {"max_file_bytes": 4}, 1,
+             ["over max_file_bytes 4: docs/a.md"]),
+            ("total bytes at its limit", {"a.md": 3, "b.md": 3}, ["**"], {"max_total_bytes": 6}, 2, []),
+            ("total bytes one past its limit", {"a.md": 3, "b.md": 3}, ["**"], {"max_total_bytes": 5}, 2,
+             ["selected sources hold 6 bytes, over max_total_bytes 5"]),
+            ("five oversized files are all named", five, ["**"], {"max_file_bytes": 1}, 5,
+             ["over max_file_bytes 1: docs/f1.md, docs/f2.md, docs/f3.md, docs/f4.md, docs/f5.md"]),
+            ("a sixth oversized file is counted", {**five, "f6.md": 2}, ["**"], {"max_file_bytes": 1}, 6,
+             ["over max_file_bytes 1: docs/f1.md, docs/f2.md, docs/f3.md, docs/f4.md, docs/f5.md, and 1 more"]),
+            ("a seventh oversized file is counted", {**five, "f6.md": 2, "f7.md": 2}, ["**"], {"max_file_bytes": 1}, 7,
+             ["over max_file_bytes 1: docs/f1.md, docs/f2.md, docs/f3.md, docs/f4.md, docs/f5.md, and 2 more"]),
+        ]
+        for label, sizes, include, limits, files, errors in rows:
+            with self.subTest(label), tempfile.TemporaryDirectory() as parent:
+                root = Path(parent).resolve()
+                (root / "docs").mkdir()
+                for name, size in sizes.items():
+                    (root / "docs" / name).write_bytes(b"x" * size)
+                policy = {
+                    "source_policy": {"include": include, "exclude": []},
+                    "limits": {"max_file_count": 100, "max_file_bytes": 1000, "max_total_bytes": 10000} | limits,
+                }
+                report = source_policy_report(root, [root / "docs"], policy)
+                self.assertEqual((files, errors), (report["files"], report["errors"]))
 
     def test_ci_discovery_offers_candidates_without_selecting_governance(self) -> None:
         (self.repo / ".github" / "workflows").mkdir(parents=True)
@@ -646,15 +728,6 @@ class SourcesTest(RegistryTestCase):
         with self.subTest("CI discovered"):
             candidates = discover_sources(self.repo)["governance_candidates"]
             self.assertEqual([], validate_policy(policy_from(candidates)))
-
-    def test_secret_scanner_stops_at_its_resource_budget(self) -> None:
-        secrets = self.repo / "leaky"
-        secrets.mkdir()
-        (secrets / "ci.env").write_text("token = " + "d" * 20, encoding="utf-8")
-        with patch("domain_registry.security.MAX_SCAN_FILES", 0):
-            report = scan_report(secrets)
-        self.assertEqual("incomplete", report["status"])
-        self.assertEqual("resource-limit", report["skipped"][0]["reason"])
 
     def test_a_secret_scan_reports_what_it_read_and_why_it_skipped_the_rest(self) -> None:
         secrets = self.repo / "leaky"
@@ -698,7 +771,10 @@ class SourcesTest(RegistryTestCase):
         with self.subTest("the scan stops at the first file past the budget"), \
                 patch("domain_registry.security.MAX_SCAN_FILES", 0):
             report = scan_report(secrets)
-            self.assertEqual((1, 0), (report["skipped_count"], report["scanned_files"]))
+            self.assertEqual(
+                ("incomplete", 1, 0),
+                (report["status"], report["skipped_count"], report["scanned_files"]),
+            )
         with self.subTest("reported skips are capped but all are counted"), \
                 patch("domain_registry.security.MAX_REPORTED_SKIPS", 1), \
                 patch("domain_registry.security.MAX_FILE_BYTES", 0):
@@ -741,7 +817,44 @@ class SourcesTest(RegistryTestCase):
         result = assess_readiness(self.repo, memory)
         self.assertEqual(result["state"], "dead")
         self.assertEqual(result["confidence"], "medium")
+        self.assertEqual("recover-or-reconfirm", result["next_capability"])
         self.assertTrue(result["blocks"])
+
+    def test_readiness_calls_a_repository_whose_only_test_files_are_git_ignored_empty(self) -> None:
+        self.write_files("ignored_test.go")
+        self.ignore("*_test.go")
+        result = assess_readiness(self.repo)
+        self.assertEqual(("empty", "discover"), (result["state"], result["next_capability"]))
+
+    def test_readiness_sends_a_stale_source_map_back_to_reconfirmation(self) -> None:
+        self.permit_sources()
+        self.write_files("apps/orders/main.py")
+        source_map_path = self.selected_docs()
+        self.assertEqual(["docs"], load_json(source_map_path)["selected_paths"])
+        self.write_files("docs/extra.md")
+        result = assess_readiness(self.repo, self.repo / "memory")
+        self.assertEqual(
+            ("brownfield", "recover-or-reconfirm", {"kind": "registry", "status": "stale"}),
+            (result["state"], result["next_capability"], result["signals"][-2]),
+        )
+        self.assertEqual(
+            ["Domain Memory sources require review before they can guide implementation."],
+            result["blocks"],
+        )
+
+    def test_readiness_reports_a_reviewed_registry_without_records_as_reviewed_empty(self) -> None:
+        self.write_files("apps/orders/main.py")
+        (self.repo / "docs").mkdir()
+        write_source_map(
+            self.repo / "memory" / "source-map.json",
+            selected_source_map(self.repo, [self.repo / "docs"], stored_policy_of(self.repo)),
+        )
+        self.edit_registry("manifest.json", lambda manifest: manifest.update(status="reviewed"))
+        result = assess_readiness(self.repo, self.repo / "memory")
+        self.assertEqual(
+            ({"kind": "registry", "status": "reviewed-empty"}, {"kind": "registry_records", "count": 0}, []),
+            (result["signals"][-2], result["signals"][-1], result["blocks"]),
+        )
 
     def test_readiness_on_a_root_one_level_too_deep_names_the_likely_root(self) -> None:
         self.committed_source_map()

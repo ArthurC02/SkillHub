@@ -15,11 +15,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.attestations import (
     audit_attestations,
+    carried_proposal_errors,
     commit_carries_proposal,
+    github_api_path,
     github_commit_carries_proposal,
     verify_external_scm,
     verify_git_signed_commit,
     verify_scm,
+    verify_scm_value,
 )
 from domain_registry.changes import (
     redraft_change_package,
@@ -45,6 +48,35 @@ from domain_registry.updates import (
     apply_approved_updates,
 )
 from test_support import RegistryTestCase, amend_policy
+
+BASE_REVISION = {"registry_digest": "sha256:" + "0" * 64, "observed_commit": None}
+OTHER_REVISION = {"registry_digest": "sha256:" + "1" * 64, "observed_commit": None}
+OUTSIDE_MESSAGE = "the Change Package must be inside the repository, so the attested commit can carry it"
+ANOTHER_PROPOSAL_MESSAGE = (
+    "Git commit carries another proposal or revision; attest a commit with this "
+    "proposal_id and proposal_revision"
+)
+PULL_REQUEST_URL = "https://github.com/acme/skills/pull/7"
+PULL_ENDPOINT = "https://api.github.com/repos/acme/skills/pulls/7"
+CHECK_RUNS_ENDPOINT = f"https://api.github.com/repos/acme/skills/commits/{'a' * 40}/check-runs"
+
+
+def github_serving(pull: object, reviews: object, checks: object):
+    requested: list[str] = []
+
+    def serve(url: str, token: str) -> object:
+        requested.append(url)
+        if url.endswith("/reviews"):
+            served = reviews
+        elif url.endswith("/check-runs"):
+            served = checks
+        else:
+            served = pull
+        if isinstance(served, Exception):
+            raise served
+        return served
+
+    return serve, requested
 
 
 class ReviewTest(RegistryTestCase):
@@ -111,7 +143,75 @@ class ReviewTest(RegistryTestCase):
         value = json.loads(path.read_text(encoding="utf-8"))
         value["proposal_revision"] = 1
         path.write_text(json.dumps(value), encoding="utf-8")
-        self.assertTrue(verify_scm(path, proposal))
+        self.assertEqual(["SCM attestation proposal revision does not match"], verify_scm(path, proposal))
+
+    def test_each_scm_attestation_defect_is_named(self) -> None:
+        valid = {
+            "provider": "github",
+            "pull_request": "https://github.example/repo/pull/1",
+            "checks_url": "https://github.example/repo/actions/runs/1",
+            "commit": "a" * 40,
+            "status": "approved",
+            "proposal_revision": 1,
+            "base_registry_revision": BASE_REVISION,
+        }
+        proposal = {"proposal_revision": 1, "base_registry_revision": BASE_REVISION}
+
+        def without(key: str) -> dict:
+            return {name: value for name, value in valid.items() if name != key}
+
+        cases = [
+            ("complete", valid, []),
+            ("provider missing", without("provider"),
+             ["SCM attestation requires provider",
+              "SCM attestation provider must be github or git-signed-commit"]),
+            ("commit missing", without("commit"),
+             ["SCM attestation requires commit", "SCM attestation requires a pinned 40-character commit"]),
+            ("status missing", without("status"),
+             ["SCM attestation requires status", "SCM attestation status must be approved"]),
+            ("status pending", {**valid, "status": "pending"}, ["SCM attestation status must be approved"]),
+            ("pull request over http", {**valid, "pull_request": "http://github.example/repo/pull/1"},
+             ["SCM attestation requires an external pull_request URL"]),
+            ("pull request missing", without("pull_request"),
+             ["SCM attestation requires an external pull_request URL"]),
+            ("checks url over ftp", {**valid, "checks_url": "ftp://github.example/runs/1"},
+             ["SCM attestation requires an external checks_url URL"]),
+            ("commit one character short", {**valid, "commit": "a" * 39},
+             ["SCM attestation requires a pinned 40-character commit"]),
+            ("commit one character long", {**valid, "commit": "a" * 41},
+             ["SCM attestation requires a pinned 40-character commit"]),
+            ("commit in capitals", {**valid, "commit": "A" * 40},
+             ["SCM attestation requires a pinned 40-character commit"]),
+            ("commit not hex", {**valid, "commit": "g" * 40},
+             ["SCM attestation requires a pinned 40-character commit"]),
+            ("proposal revision differs", {**valid, "proposal_revision": 2},
+             ["SCM attestation proposal revision does not match"]),
+            ("base registry revision differs", {**valid, "base_registry_revision": OTHER_REVISION},
+             ["SCM attestation Registry revision does not match"]),
+        ]
+        for label, value, expected in cases:
+            with self.subTest(label):
+                self.assertEqual(expected, verify_scm_value(value, proposal))
+
+    def test_a_github_pull_request_url_maps_to_its_api_path(self) -> None:
+        self.assertEqual("repos/acme/skills/pulls/7", github_api_path(PULL_REQUEST_URL))
+
+    def test_each_malformed_github_pull_request_url_is_named(self) -> None:
+        not_github = "SCM attestation pull_request must be a GitHub pull request URL"
+        not_one = "SCM attestation pull_request must identify one pull request"
+        cases = [
+            ("other host", "https://gitlab.com/acme/skills/pull/7", not_github),
+            ("plain http", "http://github.com/acme/skills/pull/7", not_github),
+            ("one segment short", "https://github.com/acme/skills/pull", not_one),
+            ("one segment long", "https://github.com/acme/skills/pull/7/files", not_one),
+            ("an issue, not a pull request", "https://github.com/acme/skills/issues/7", not_one),
+            ("number not numeric", "https://github.com/acme/skills/pull/seven", not_one),
+        ]
+        for label, url, message in cases:
+            with self.subTest(label):
+                with self.assertRaises(ValueError) as refused:
+                    github_api_path(url)
+                self.assertEqual(message, str(refused.exception))
 
     def test_scm_attestation_rejects_a_local_claim_of_review(self) -> None:
         proposal = {"proposal_revision": 1, "base_registry_revision": {"registry_digest": "sha256:" + "0" * 64, "observed_commit": None}}
@@ -122,60 +222,56 @@ class ReviewTest(RegistryTestCase):
         )
 
     def test_external_scm_verification_requires_merged_approved_green_github_pr(self) -> None:
-        attestation = {
-            "provider": "github",
-            "pull_request": "https://github.com/acme/skills/pull/7",
-            "commit": "a" * 40,
-        }
-        responses = [
+        attestation = {"provider": "github", "pull_request": PULL_REQUEST_URL, "commit": "a" * 40}
+        serve, requested = github_serving(
             {"state": "closed", "merged_at": "2026-01-01T00:00:00Z", "head": {"sha": "a" * 40}},
             [{"user": {"login": "reviewer"}, "state": "APPROVED"}],
             {"check_runs": [{"status": "completed", "conclusion": "success"}]},
-        ]
+        )
         with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
-            with patch("domain_registry.attestations.github_json", side_effect=responses):
+            with patch("domain_registry.attestations.github_json", side_effect=serve):
                 self.assertEqual([], verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"))
+        self.assertEqual(
+            [PULL_ENDPOINT, PULL_ENDPOINT + "/reviews", CHECK_RUNS_ENDPOINT], requested
+        )
 
     def test_external_scm_verification_rejects_unsuccessful_checks(self) -> None:
-        attestation = {
-            "provider": "github",
-            "pull_request": "https://github.com/acme/skills/pull/7",
-            "commit": "a" * 40,
-        }
-        responses = [
+        attestation = {"provider": "github", "pull_request": PULL_REQUEST_URL, "commit": "a" * 40}
+        serve, _ = github_serving(
             {"state": "closed", "merged_at": "2026-01-01T00:00:00Z", "head": {"sha": "a" * 40}},
             [{"user": {"login": "reviewer"}, "state": "APPROVED"}],
             {"check_runs": [{"status": "completed", "conclusion": "failure"}]},
-        ]
+        )
         with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
-            with patch("domain_registry.attestations.github_json", side_effect=responses):
+            with patch("domain_registry.attestations.github_json", side_effect=serve):
                 self.assertEqual(
                     ["SCM attested commit has incomplete or unsuccessful checks"],
                     verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"),
                 )
 
     def test_each_external_scm_defect_is_named(self) -> None:
-        attestation = {"provider": "github", "pull_request": "https://github.com/acme/skills/pull/7", "commit": "a" * 40}
+        attestation = {"provider": "github", "pull_request": PULL_REQUEST_URL, "commit": "a" * 40}
         merged = {"state": "closed", "merged_at": "2026-01-01T00:00:00Z", "head": {"sha": "a" * 40}}
         approved = [{"user": {"login": "reviewer"}, "state": "APPROVED"}]
         green = {"check_runs": [{"status": "completed", "conclusion": "success"}]}
         cases = [
-            ("open", [{**merged, "state": "open"}, approved, green], "SCM pull request is not merged"),
-            ("unmerged close", [{**merged, "merged_at": None}, approved, green], "SCM pull request is not merged"),
-            ("other head", [{**merged, "head": {"sha": "b" * 40}}, approved, green],
+            ("open", ({**merged, "state": "open"}, approved, green), "SCM pull request is not merged"),
+            ("unmerged close", ({**merged, "merged_at": None}, approved, green), "SCM pull request is not merged"),
+            ("other head", ({**merged, "head": {"sha": "b" * 40}}, approved, green),
              "SCM pull request head does not match the attested commit"),
-            ("no reviews", [merged, [], green], "SCM pull request has no current approval"),
+            ("no reviews", (merged, [], green), "SCM pull request has no current approval"),
             ("approval withdrawn",
-             [merged, [*approved, {"user": {"login": "reviewer"}, "state": "CHANGES_REQUESTED"}, 7], green],
+             (merged, [*approved, {"user": {"login": "reviewer"}, "state": "CHANGES_REQUESTED"}, 7], green),
              "SCM pull request has no current approval"),
-            ("no checks", [merged, approved, {"check_runs": []}], "SCM attested commit has no check runs"),
-            ("running check", [merged, approved, {"check_runs": [{"status": "in_progress", "conclusion": None}]}],
+            ("no checks", (merged, approved, {"check_runs": []}), "SCM attested commit has no check runs"),
+            ("running check", (merged, approved, {"check_runs": [{"status": "in_progress", "conclusion": None}]}),
              "SCM attested commit has incomplete or unsuccessful checks"),
-            ("unreachable", OSError("network down"), "SCM governance verification failed: network down"),
+            ("unreachable", (OSError("network down"), None, None), "SCM governance verification failed: network down"),
         ]
         with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
             for label, responses, message in cases:
-                with self.subTest(label), patch("domain_registry.attestations.github_json", side_effect=responses):
+                serve, _ = github_serving(*responses)
+                with self.subTest(label), patch("domain_registry.attestations.github_json", side_effect=serve):
                     self.assertEqual([message], verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"))
             with self.subTest("another provider"):
                 self.assertEqual(
@@ -189,14 +285,16 @@ class ReviewTest(RegistryTestCase):
             )
 
     def test_external_scm_verification_can_make_ci_optional(self) -> None:
-        attestation = {"provider": "github", "pull_request": "https://github.com/acme/skills/pull/7", "commit": "a" * 40}
-        responses = [
+        attestation = {"provider": "github", "pull_request": PULL_REQUEST_URL, "commit": "a" * 40}
+        serve, requested = github_serving(
             {"state": "closed", "merged_at": "2026-01-01T00:00:00Z", "head": {"sha": "a" * 40}},
             [{"user": {"login": "reviewer"}, "state": "APPROVED"}],
-        ]
+            OSError("check-runs must not be requested"),
+        )
         with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
-            with patch("domain_registry.attestations.github_json", side_effect=responses):
+            with patch("domain_registry.attestations.github_json", side_effect=serve):
                 self.assertEqual([], verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN", False))
+        self.assertEqual([PULL_ENDPOINT, PULL_ENDPOINT + "/reviews"], requested)
 
     def test_an_attesting_commit_must_carry_this_proposal_revision(self) -> None:
         earlier = subprocess.run(
@@ -212,6 +310,73 @@ class ReviewTest(RegistryTestCase):
             self.repo, carrying, package, {**proposal, "proposal_revision": 2}
         )
         self.assertIn("another proposal or revision", other)
+
+    def test_each_committed_proposal_that_is_not_this_one_is_named(self) -> None:
+        proposal = {"proposal_id": "PRO-1", "proposal_revision": 1}
+        cases = [
+            ("same identity", json.dumps(proposal), []),
+            ("different proposal id", json.dumps({**proposal, "proposal_id": "PRO-2"}), [ANOTHER_PROPOSAL_MESSAGE]),
+            ("different revision", json.dumps({**proposal, "proposal_revision": 2}), [ANOTHER_PROPOSAL_MESSAGE]),
+            ("a list, not an object", "[1, 2]", [ANOTHER_PROPOSAL_MESSAGE]),
+            ("a string, not an object", '"PRO-1"', [ANOTHER_PROPOSAL_MESSAGE]),
+            ("unparseable", "{not json", ["Git commit carries an unreadable domain-change-proposal.json"]),
+        ]
+        for label, committed_text, expected in cases:
+            with self.subTest(label):
+                self.assertEqual(expected, carried_proposal_errors(committed_text, "proposal", proposal))
+
+    def test_a_package_outside_the_repository_cannot_be_carried_by_a_commit(self) -> None:
+        proposal = {"proposal_id": "PRO-1", "proposal_revision": 1}
+        with tempfile.TemporaryDirectory() as elsewhere:
+            self.assertEqual(
+                [OUTSIDE_MESSAGE],
+                commit_carries_proposal(self.repo, "HEAD", Path(elsewhere), proposal),
+            )
+
+    def test_a_package_outside_the_repository_cannot_be_carried_by_a_pull_request(self) -> None:
+        proposal = {"proposal_id": "PRO-1", "proposal_revision": 1}
+        attestation = {"pull_request": PULL_REQUEST_URL, "commit": "c" * 40}
+        with tempfile.TemporaryDirectory() as elsewhere, patch.dict("os.environ", {"GITHUB_TOKEN": ""}):
+            self.assertEqual(
+                [OUTSIDE_MESSAGE],
+                github_commit_carries_proposal(attestation, "GITHUB_TOKEN", self.repo, Path(elsewhere), proposal),
+            )
+
+    def test_a_signed_authorized_commit_that_changes_only_source_code_is_refused(self) -> None:
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            key = init_signing_key(self.repo, "probe@example.com", self.repo / "keys" / "signing-key")
+        commit = self.sign_a_commit_changing("src/x.py")
+        self.assertEqual(
+            ["Git commit does not change Domain Memory files"],
+            verify_git_signed_commit(
+                {"commit": commit}, self.repo, self.repo / "docs" / "domain-memory", key["authorized_signers"]
+            ),
+        )
+
+    def test_a_signed_authorized_commit_that_changes_only_a_sibling_of_the_registry_directory_is_refused(self) -> None:
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            key = init_signing_key(self.repo, "probe@example.com", self.repo / "keys" / "signing-key")
+        commit = self.sign_a_commit_changing("docs/domain-memory-extra/x")
+        self.assertEqual(
+            ["Git commit does not change Domain Memory files"],
+            verify_git_signed_commit(
+                {"commit": commit}, self.repo, self.repo / "docs" / "domain-memory", key["authorized_signers"]
+            ),
+        )
+
+    def sign_a_commit_changing(self, relative: str) -> str:
+        path = self.repo / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(relative, encoding="utf-8")
+        subprocess.run(["git", "add", relative], cwd=self.repo, check=True)
+        subprocess.run(
+            ["git", "-c", "user.name=Probe", "-c", "user.email=probe@example.com",
+             "commit", "-qS", "-m", f"change {relative}"],
+            cwd=self.repo, check=True,
+        )
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True,
+        ).stdout.strip()
 
     def test_attesting_a_signed_commit_that_carries_the_package_lets_it_finalize(self) -> None:
         with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
@@ -353,14 +518,14 @@ class ReviewTest(RegistryTestCase):
         )
 
     def test_the_attestation_audit_does_not_read_a_commit_split_across_lines(self) -> None:
-        self.changed_package("carried", "applied", None)
-        carrying = self.commit_everything("adds the carried package")
+        self.changed_package("unattested", "applied", None)
+        added = self.commit_everything("adds the unattested package")
         self.changed_package("split", "applied", {
-            "provider": "git-signed-commit", "commit": f"{carrying}\n{'f' * 40}",
+            "provider": "git-signed-commit", "commit": f"{added}\n{'f' * 40}",
         })
         findings = audit_attestations(self.repo, self.repo / "changes", "GITHUB_TOKEN")
         self.assertEqual(
-            [("carried", "not carried"), ("split", "unconfirmed")],
+            [("split", "unconfirmed"), ("unattested", "not carried")],
             [(finding["proposal_id"], finding["verdict"]) for finding in findings],
         )
 
@@ -445,14 +610,14 @@ class ReviewTest(RegistryTestCase):
                 github_commit_carries_proposal(attestation, "GITHUB_TOKEN", self.repo, package, proposal),
             )
 
-    def test_finalizing_refuses_a_signed_commit_that_predates_the_change_package(self) -> None:
+    def test_finalizing_refuses_an_attested_commit_that_predates_the_change_package(self) -> None:
         policy_path = self.repo / "memory" / "domain-memory-policy.json"
         policy = json.loads(policy_path.read_text(encoding="utf-8"))
         policy["review_governance"].update(
             verifier="git-signed-commit", trigger="git-push", authorized_signers=["probe@example.com"]
         )
         policy_path.write_text(json.dumps(policy), encoding="utf-8")
-        earlier = self.commit_everything("a signed Domain Memory commit from before")
+        earlier = self.commit_everything("an earlier Domain Memory commit")
         package = self.draft_package()
         submit_proposal(package, self.repo / "memory", self.repo)
         record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
@@ -561,6 +726,54 @@ class ReviewTest(RegistryTestCase):
             )
         self.assertNotIn("PRIVATE KEY", json.dumps(result))
 
+    def test_no_line_of_the_private_key_body_appears_in_the_reported_result(self) -> None:
+        key_file = self.repo / "keys" / "signing-key"
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            result = init_signing_key(self.repo, "probe@example.com", key_file)
+        body = [
+            line for line in key_file.read_text(encoding="utf-8").splitlines()
+            if line and not line.startswith("-----")
+        ]
+        serialized = json.dumps(result)
+        self.assertTrue(body)
+        self.assertEqual([], [line for line in body if line in serialized])
+
+    def test_a_second_call_reuses_the_existing_key(self) -> None:
+        key_file = self.repo / "keys" / "signing-key"
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            first = init_signing_key(self.repo, "probe@example.com", key_file)
+            second = init_signing_key(self.repo, "probe@example.com", key_file)
+        self.assertEqual(
+            ("generated", "reused", first["fingerprint"]),
+            (first["source"], second["source"], second["fingerprint"]),
+        )
+
+    def test_a_blank_principal_is_refused_and_creates_no_key(self) -> None:
+        key_file = self.repo / "keys" / "signing-key"
+        for principal in ("", "   ", None):
+            with self.subTest(principal=principal), patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+                with self.assertRaises(ValueError) as refused:
+                    init_signing_key(self.repo, principal, key_file)
+                self.assertEqual(
+                    "a signing key needs a principal: the identity an approval is attributed to",
+                    str(refused.exception),
+                )
+                self.assertFalse(key_file.exists())
+
+    def test_force_without_the_environment_key_is_refused_and_leaves_the_key_untouched(self) -> None:
+        key_file = self.repo / "keys" / "signing-key"
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            init_signing_key(self.repo, "probe@example.com", key_file)
+            before = key_file.read_bytes()
+            with self.assertRaises(ValueError) as refused:
+                init_signing_key(self.repo, "probe@example.com", key_file, force=True)
+        self.assertEqual(
+            "--force replaces a key from DOMAIN_MEMORY_SIGNING_KEY, and DOMAIN_MEMORY_SIGNING_KEY "
+            f"is not set; delete {key_file} yourself if you mean to discard it",
+            str(refused.exception),
+        )
+        self.assertEqual(before, key_file.read_bytes())
+
     def test_an_ssh_signed_commit_is_authorized_by_principal_or_fingerprint(self) -> None:
         attestation = {"commit": "a" * 40}
         signed = subprocess.CompletedProcess(
@@ -599,7 +812,7 @@ class ReviewTest(RegistryTestCase):
                 ),
             )
 
-    def test_git_signed_commit_requires_authorized_signer_and_domain_memory_change(self) -> None:
+    def test_a_raw_gnupg_signer_is_accepted_when_listed_and_refused_when_not(self) -> None:
         attestation = {"commit": "a" * 40}
         verified = subprocess.CompletedProcess(
             [], 0, "[GNUPG:] VALIDSIG ABCD", ""
@@ -722,8 +935,44 @@ class ReviewTest(RegistryTestCase):
         supersede_proposal(package, "replaced", None)
         (self.repo / "used").mkdir()
         (self.repo / "used" / "note.txt").write_text("kept", encoding="utf-8")
-        with self.assertRaises(FileExistsError):
+        with self.assertRaisesRegex(FileExistsError, "output directory is not empty: "):
             redraft_change_package(package, self.repo / "used", "PRO-2")
+        self.assertEqual(["note.txt"], [entry.name for entry in (self.repo / "used").iterdir()])
+        self.assertEqual("kept", (self.repo / "used" / "note.txt").read_text(encoding="utf-8"))
+
+    def test_redrafting_with_a_blank_proposal_id_is_refused_and_writes_nothing(self) -> None:
+        package = self.draft_package()
+        supersede_proposal(package, "replaced", None)
+        for blank in ("", "   "):
+            with self.subTest(blank=repr(blank)):
+                with self.assertRaisesRegex(ValueError, "^proposal_id must not be blank$"):
+                    redraft_change_package(package, self.repo / "redraft", blank)
+                self.assertFalse((self.repo / "redraft").exists())
+
+    def test_redrafting_an_applied_and_superseded_proposal_resets_every_review_state_field(self) -> None:
+        applied = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        self.approve_and_apply(applied)
+        source = self.proposal_in(applied)
+        source_evidence = json.loads((applied / "evidence-bundle.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            (True, True, True, True, True),
+            (bool(source["approvals"]), source["verified_at"] is not None, source["finalized_at"] is not None,
+             source["applied_at"] is not None, source_evidence["scm_attestation"] is not None),
+        )
+        supersede_proposal(applied, "replaced by a corrected proposal", "PRO-2")
+        redraft = self.repo / "redraft"
+        redraft_change_package(applied, redraft, "PRO-2")
+        proposal = self.proposal_in(redraft)
+        evidence = json.loads((redraft / "evidence-bundle.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            {"status": "draft", "approvals": [], "verified_at": None, "finalized_at": None,
+             "applied_at": None, "scm_attestation": None, "has_applied_registry_revision": False},
+            {"status": proposal["status"], "approvals": proposal["approvals"],
+             "verified_at": proposal["verified_at"], "finalized_at": proposal["finalized_at"],
+             "applied_at": proposal["applied_at"], "scm_attestation": evidence["scm_attestation"],
+             "has_applied_registry_revision": "applied_registry_revision" in proposal},
+        )
 
     def test_a_submitted_package_ends_lines_with_lf_on_every_platform(self) -> None:
         package = self.draft_package()
@@ -761,6 +1010,94 @@ class ReviewTest(RegistryTestCase):
         verify_proposal(package, self.repo / "memory", self.repo)
         proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
         self.assertEqual("verified", proposal["status"])
+
+    def test_the_proposer_cannot_approve_their_own_proposal(self) -> None:
+        package = self.submitted_package()
+        with self.assertRaisesRegex(ValueError, "^the proposer cannot approve the proposal$"):
+            record_approval(package, "domain-owner", "author", "entire proposal", None)
+        self.assertEqual([], self.proposal_in(package)["approvals"])
+
+    def test_a_blank_role_reviewer_or_scope_is_refused(self) -> None:
+        package = self.submitted_package()
+        cases = [
+            ("blank role", ("   ", "reviewer", "entire proposal")),
+            ("blank reviewer", ("domain-owner", "", "entire proposal")),
+            ("blank scope", ("domain-owner", "reviewer", "  ")),
+        ]
+        for label, (role, reviewer, scope) in cases:
+            with self.subTest(label):
+                with self.assertRaisesRegex(ValueError, "^approval requires role, reviewer, and scope$"):
+                    record_approval(package, role, reviewer, scope, None)
+                self.assertEqual([], self.proposal_in(package)["approvals"])
+
+    def test_an_approval_time_that_is_not_iso_is_refused(self) -> None:
+        package = self.submitted_package()
+        for label, approved_at in (("words", "yesterday"), ("impossible date", "2026-13-45T00:00:00Z")):
+            with self.subTest(label):
+                with self.assertRaisesRegex(ValueError, "^approved_at must be an ISO-8601 timestamp$"):
+                    record_approval(package, "domain-owner", "reviewer", "entire proposal", approved_at)
+                self.assertEqual([], self.proposal_in(package)["approvals"])
+
+    def test_the_same_role_cannot_approve_the_same_revision_twice(self) -> None:
+        package = self.submitted_package()
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        recorded = self.proposal_in(package)["approvals"]
+        with self.assertRaisesRegex(ValueError, "^the role already approved this proposal revision$"):
+            record_approval(package, "domain-owner", "second-reviewer", "entire proposal", None)
+        self.assertEqual(recorded, self.proposal_in(package)["approvals"])
+
+    def test_the_same_role_can_approve_a_later_revision(self) -> None:
+        package = self.submitted_package()
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        path = package / "domain-change-proposal.json"
+        proposal = json.loads(path.read_text(encoding="utf-8"))
+        proposal["proposal_revision"] = 2
+        path.write_text(json.dumps(proposal), encoding="utf-8")
+        record_approval(package, "domain-owner", "second-reviewer", "entire proposal", None)
+        self.assertEqual(
+            [("reviewer", 1), ("second-reviewer", 2)],
+            [(entry["reviewer"], entry["proposal_revision"]) for entry in self.proposal_in(package)["approvals"]],
+        )
+
+    def submit_and_approve_after_committing(self, package: Path) -> None:
+        self.commit_everything("draft")
+        submit_proposal(package, self.repo / "memory", self.repo)
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+
+    def another_apply_rewrites_the_proposed_rule(self) -> None:
+        self.edit_registry(
+            "rules.json",
+            lambda value: value["rules"].append(
+                {"id": "order-total", "contexts": ["orders"], "statement": "Another statement.", "evidence": []}
+            ),
+        )
+
+    def test_verifying_after_another_apply_changed_a_record_the_proposal_names_is_stale(self) -> None:
+        package = self.draft_package()
+        self.submit_and_approve_after_committing(package)
+        self.another_apply_rewrites_the_proposed_rule()
+        with self.assertRaises(ValueError) as refused:
+            verify_proposal(package, self.repo / "memory", self.repo)
+        self.assertEqual(
+            "proposal base revision is stale; rebase and obtain fresh approval: "
+            "rules/order-total, which this proposal touches, changed",
+            str(refused.exception),
+        )
+        self.assertEqual("submitted", self.proposal_in(package)["status"])
+
+    def test_finalizing_after_another_apply_changed_a_record_the_proposal_names_is_stale(self) -> None:
+        package = self.draft_package()
+        self.submit_and_approve_after_committing(package)
+        verify_proposal(package, self.repo / "memory", self.repo)
+        self.another_apply_rewrites_the_proposed_rule()
+        with self.assertRaises(ValueError) as refused:
+            finalize_proposal(package, self.repo / "memory", self.repo)
+        self.assertEqual(
+            "proposal base revision is stale; rebase and obtain fresh approval: "
+            "rules/order-total, which this proposal touches, changed",
+            str(refused.exception),
+        )
+        self.assertEqual("verified", self.proposal_in(package)["status"])
 
     def test_an_approval_of_another_revision_does_not_satisfy_verification(self) -> None:
         package = self.draft_package()
@@ -836,6 +1173,7 @@ class ReviewTest(RegistryTestCase):
                 patch("domain_registry.hitl.github_commit_carries_proposal", return_value=[]):
             finalize_proposal(package, self.repo / "memory", self.repo)
         verify_scm.assert_called_once_with(evidence["scm_attestation"], "GITHUB_TOKEN", True)
+        digest_before_apply = registry_digest(self.repo / "memory")
         apply_approved_updates(package, self.repo / "memory", self.repo)
         rules = json.loads(
             (self.repo / "memory" / "registry" / "rules.json").read_text(
@@ -847,7 +1185,14 @@ class ReviewTest(RegistryTestCase):
             (package / "domain-change-proposal.json").read_text(encoding="utf-8")
         )
         self.assertEqual("applied", applied["status"])
-        self.assertIn("registry_digest", applied["applied_registry_revision"])
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True
+        ).stdout.strip()
+        self.assertEqual(
+            {"observed_commit": head, "registry_digest": registry_digest(self.repo / "memory")},
+            applied["applied_registry_revision"],
+        )
+        self.assertNotEqual(digest_before_apply, applied["applied_registry_revision"]["registry_digest"])
         self.assertFalse(
             (self.repo / "memory" / ".domain-registry-reconciliation.json").exists()
         )
