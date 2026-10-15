@@ -1,4 +1,4 @@
-package creation
+package revisionwatch
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
@@ -24,14 +23,6 @@ var ErrTooManyStreams = errors.New("creation: too many open streams")
 
 const pollWaitTicks = 4
 
-type SessionChanges interface {
-	Subscribe(workspace, session pgtype.UUID) (<-chan struct{}, func(), error)
-}
-
-func (s *Service) WatchChanges(ws identity.Workspace, session pgtype.UUID) (<-chan struct{}, func(), error) {
-	return s.Streams.Subscribe(ws.ID, session)
-}
-
 type watchKey struct {
 	workspace [16]byte
 	session   [16]byte
@@ -39,7 +30,7 @@ type watchKey struct {
 
 type revisionReader func(ctx context.Context, workspaces, sessions []pgtype.UUID) ([]gen.CreationSessionRevisionsRow, error)
 
-type RevisionWatch struct {
+type Watch struct {
 	read revisionReader
 	tick time.Duration
 
@@ -52,14 +43,14 @@ type RevisionWatch struct {
 	failing      bool
 }
 
-func NewRevisionWatch(pool *pgxpool.Pool) *RevisionWatch {
-	return newRevisionWatch(func(ctx context.Context, workspaces, sessions []pgtype.UUID) ([]gen.CreationSessionRevisionsRow, error) {
+func New(pool *pgxpool.Pool) *Watch {
+	return newWatch(func(ctx context.Context, workspaces, sessions []pgtype.UUID) ([]gen.CreationSessionRevisionsRow, error) {
 		return gen.New(pool).CreationSessionRevisions(ctx, gen.CreationSessionRevisionsParams{SessionIds: sessions, WorkspaceIds: workspaces})
 	}, watchTick)
 }
 
-func newRevisionWatch(read revisionReader, tick time.Duration) *RevisionWatch {
-	return &RevisionWatch{
+func newWatch(read revisionReader, tick time.Duration) *Watch {
+	return &Watch{
 		read: read, tick: tick,
 		subscribers:  map[watchKey]map[chan struct{}]struct{}{},
 		perWorkspace: map[[16]byte]int{},
@@ -67,7 +58,7 @@ func newRevisionWatch(read revisionReader, tick time.Duration) *RevisionWatch {
 	}
 }
 
-func (w *RevisionWatch) Subscribe(workspace, session pgtype.UUID) (<-chan struct{}, func(), error) {
+func (w *Watch) Subscribe(workspace, session pgtype.UUID) (<-chan struct{}, func(), error) {
 	key := watchKey{workspace: workspace.Bytes, session: session.Bytes}
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -90,7 +81,7 @@ func (w *RevisionWatch) Subscribe(workspace, session pgtype.UUID) (<-chan struct
 	return changed, func() { once.Do(func() { w.unsubscribe(key, changed) }) }, nil
 }
 
-func (w *RevisionWatch) unsubscribe(key watchKey, changed chan struct{}) {
+func (w *Watch) unsubscribe(key watchKey, changed chan struct{}) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	delete(w.subscribers[key], changed)
@@ -105,7 +96,7 @@ func (w *RevisionWatch) unsubscribe(key watchKey, changed chan struct{}) {
 	w.total--
 }
 
-func (w *RevisionWatch) watch() {
+func (w *Watch) watch() {
 	ticker := time.NewTicker(w.tick)
 	defer ticker.Stop()
 	for range ticker.C {
@@ -115,7 +106,7 @@ func (w *RevisionWatch) watch() {
 	}
 }
 
-func (w *RevisionWatch) poll() bool {
+func (w *Watch) poll() bool {
 	keys, ok := w.watchedKeys()
 	if !ok {
 		return false
@@ -140,7 +131,7 @@ func (w *RevisionWatch) poll() bool {
 	return true
 }
 
-func (w *RevisionWatch) watchedKeys() ([]watchKey, bool) {
+func (w *Watch) watchedKeys() ([]watchKey, bool) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.total == 0 {
@@ -156,7 +147,7 @@ func (w *RevisionWatch) watchedKeys() ([]watchKey, bool) {
 
 // A session missing from current was deleted, so its subscribers are told on
 // every tick until they read it, find it gone and close.
-func (w *RevisionWatch) notifyChanged(current map[watchKey]int64) {
+func (w *Watch) notifyChanged(current map[watchKey]int64) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	for key, subscribers := range w.subscribers {
@@ -177,7 +168,7 @@ func (w *RevisionWatch) notifyChanged(current map[watchKey]int64) {
 	}
 }
 
-func (w *RevisionWatch) noteReadOutcome(err error) {
+func (w *Watch) noteReadOutcome(err error) {
 	switch {
 	case err != nil && !w.failing:
 		slog.Warn("creation streams: the revision poll failed; open streams wait for it to recover", "error", err)

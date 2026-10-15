@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/revisionwatch"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
@@ -149,7 +150,7 @@ func NewApp(cfg Config) (*App, error) {
 	versions.Budgets, testlabSvc.Budgets, catalogSvc.Budgets, evalSvc.Budgets = budgets, budgets, budgets, budgets
 	wireCatalogIndexing(catalogSvc, versions, registrySvc)
 
-	creationSvc := &creation.Service{Pool: cfg.Pool, Limits: cfg.CreationLimits, Streams: creation.NewRevisionWatch(cfg.Pool), HandOff: cfg.CreationTransient}
+	creationSvc := &creation.Service{Pool: cfg.Pool, Limits: cfg.CreationLimits, Streams: revisionwatch.New(cfg.Pool), HandOff: cfg.CreationTransient}
 	creationSvc.Insert = wiring.NewCreationQueue(jobs)
 	wireCreationReads(creationSvc, versions, catalogSvc)
 	wireCreationWrites(creationSvc, versions, runSvc, evalSvc)

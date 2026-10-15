@@ -1,4 +1,4 @@
-package creation
+package revisionwatch
 
 import (
 	"bytes"
@@ -95,7 +95,7 @@ func notified(ch <-chan struct{}) bool {
 
 func TestEveryOpenStreamIsWatchedByOneQueryPerTick(t *testing.T) {
 	fake := newFakeRevisions()
-	w := newRevisionWatch(fake.read, time.Millisecond)
+	w := newWatch(fake.read, time.Millisecond)
 	const streams = 50
 	for i := range streams {
 		session := uuidN(byte(i + 1))
@@ -118,7 +118,7 @@ func TestEveryOpenStreamIsWatchedByOneQueryPerTick(t *testing.T) {
 
 func TestOnlyTheSessionThatMovedIsNotified(t *testing.T) {
 	fake := newFakeRevisions()
-	w := newRevisionWatch(fake.read, time.Millisecond)
+	w := newWatch(fake.read, time.Millisecond)
 	moved, still := uuidN(1), uuidN(2)
 	fake.set(moved, 1)
 	fake.set(still, 1)
@@ -143,7 +143,7 @@ func TestOnlyTheSessionThatMovedIsNotified(t *testing.T) {
 
 func TestADeletedSessionIsNotifiedSoItsStreamCanClose(t *testing.T) {
 	fake := newFakeRevisions()
-	w := newRevisionWatch(fake.read, time.Millisecond)
+	w := newWatch(fake.read, time.Millisecond)
 	session := uuidN(1)
 	fake.set(session, 1)
 	ch, stop, _ := w.Subscribe(workspaceN(1), session)
@@ -161,7 +161,7 @@ func TestADeletedSessionIsNotifiedSoItsStreamCanClose(t *testing.T) {
 
 func TestAStreamJoiningASessionAlreadyWatchedLooksOnceRightAway(t *testing.T) {
 	fake := newFakeRevisions()
-	w := newRevisionWatch(fake.read, time.Millisecond)
+	w := newWatch(fake.read, time.Millisecond)
 	session := uuidN(1)
 	fake.set(session, 1)
 	_, stopFirst, _ := w.Subscribe(workspaceN(1), session)
@@ -180,7 +180,7 @@ func TestAStreamJoiningASessionAlreadyWatchedLooksOnceRightAway(t *testing.T) {
 }
 
 func TestAWorkspaceOpensAtMostItsShareOfStreams(t *testing.T) {
-	w := newRevisionWatch(newFakeRevisions().read, time.Hour)
+	w := newWatch(newFakeRevisions().read, time.Hour)
 	ws := workspaceN(1)
 	var stops []func()
 	for i := range MaxStreamsPerWorkspace {
@@ -209,7 +209,7 @@ func TestAWorkspaceOpensAtMostItsShareOfStreams(t *testing.T) {
 }
 
 func TestTheProcessOpensAtMostItsStreamCeiling(t *testing.T) {
-	w := newRevisionWatch(newFakeRevisions().read, time.Hour)
+	w := newWatch(newFakeRevisions().read, time.Hour)
 	for i := range MaxStreamsPerProcess {
 		if _, _, err := w.Subscribe(workspaceN(i), uuidN(1)); err != nil {
 			t.Fatalf("stream %d of %d was refused: %v", i+1, MaxStreamsPerProcess, err)
@@ -222,7 +222,7 @@ func TestTheProcessOpensAtMostItsStreamCeiling(t *testing.T) {
 
 func TestTheWatchStopsQueryingOnceNoStreamIsOpen(t *testing.T) {
 	fake := newFakeRevisions()
-	w := newRevisionWatch(fake.read, time.Millisecond)
+	w := newWatch(fake.read, time.Millisecond)
 	_, stop, _ := w.Subscribe(workspaceN(1), uuidN(1))
 	fake.awaitPolls(t, 2)
 	stop()
@@ -239,7 +239,7 @@ func TestAFailingRevisionPollIsReportedOnceAndItsRecoveryOnce(t *testing.T) {
 	previous := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
 	t.Cleanup(func() { slog.SetDefault(previous) })
-	w := newRevisionWatch(newFakeRevisions().read, time.Hour)
+	w := newWatch(newFakeRevisions().read, time.Hour)
 
 	w.noteReadOutcome(errors.New("pool exhausted"))
 	w.noteReadOutcome(errors.New("pool exhausted"))

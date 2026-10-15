@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/revisionwatch"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
@@ -144,7 +145,7 @@ func (h *creationHandler) creationError(w http.ResponseWriter, err error) {
 	case errors.Is(err, creation.ErrInvalidCommand):
 		code = 422
 		text = "請確認目前步驟需要的輸入與草稿。"
-	case errors.Is(err, creation.ErrTooManyStreams):
+	case errors.Is(err, revisionwatch.ErrTooManyStreams):
 		code = 429
 		text = "即時更新的連線已滿，畫面會改為定時更新。"
 	case errors.Is(err, creation.ErrLimit):

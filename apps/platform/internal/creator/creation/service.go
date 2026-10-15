@@ -263,6 +263,10 @@ type Provenance struct {
 	Brief, Model, PromptVersion, ExistingSkillID string
 	Inputs                                       []byte
 }
+type SessionChanges interface {
+	Subscribe(workspace, session pgtype.UUID) (<-chan struct{}, func(), error)
+}
+
 type Service struct {
 	Pool                 *pgxpool.Pool
 	Limits               Limits
@@ -327,6 +331,10 @@ func view(row gen.CreationSession) (View, error) {
 }
 func expired(at pgtype.Timestamptz) bool { return !at.Time.After(time.Now()) }
 func live(row gen.CreationSession) bool  { return !expired(row.ExpiresAt) }
+func (s *Service) WatchChanges(ws identity.Workspace, session pgtype.UUID) (<-chan struct{}, func(), error) {
+	return s.Streams.Subscribe(ws.ID, session)
+}
+
 func (s *Service) Get(ctx context.Context, ws identity.Workspace, id pgtype.UUID) (View, error) {
 	row, err := gen.New(s.Pool).GetCreationSession(ctx, gen.GetCreationSessionParams{ID: id, WorkspaceID: ws.ID})
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !live(row)) {

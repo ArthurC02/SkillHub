@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/revisionwatch"
 )
 
 func openCreationStream(t *testing.T, c *client, sessionID string) (int, func()) {
@@ -35,17 +35,17 @@ func TestAWorkspaceOpensOnlyItsShareOfCreationStreams(t *testing.T) {
 	}
 	aliceSession, bobSession := start(alice), start(bob)
 
-	for i := range creation.MaxStreamsPerWorkspace {
+	for i := range revisionwatch.MaxStreamsPerWorkspace {
 		status, closeStream := openCreationStream(t, alice, aliceSession)
 		defer closeStream()
 		if status != http.StatusOK {
-			t.Fatalf("stream %d of %d got %d", i+1, creation.MaxStreamsPerWorkspace, status)
+			t.Fatalf("stream %d of %d got %d", i+1, revisionwatch.MaxStreamsPerWorkspace, status)
 		}
 	}
 	status, closeOver := openCreationStream(t, alice, aliceSession)
 	defer closeOver()
 	if status != http.StatusTooManyRequests {
-		t.Fatalf("stream %d got %d, want 429", creation.MaxStreamsPerWorkspace+1, status)
+		t.Fatalf("stream %d got %d, want 429", revisionwatch.MaxStreamsPerWorkspace+1, status)
 	}
 	status, closeBob := openCreationStream(t, bob, bobSession)
 	defer closeBob()
