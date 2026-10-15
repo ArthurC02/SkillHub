@@ -102,8 +102,8 @@ type ResourceLimits struct {
 	MaxOpenFiles         int64        `json:"max_open_files"`
 	WallClockSoftSeconds int          `json:"wall_clock_soft_seconds"`
 	WallClockHardSeconds int          `json:"wall_clock_hard_seconds"`
-	ArtifactTotalBytes   int64        `json:"artifact_total_bytes,omitempty"`
-	ArtifactFileBytes    int64        `json:"artifact_file_bytes,omitempty"`
+	ArtifactTotalBytes   int64        `json:"artifact_total_bytes"`
+	ArtifactFileBytes    int64        `json:"artifact_file_bytes"`
 	TokenBudget          *TokenBudget `json:"token_budget,omitempty"`
 }
 
