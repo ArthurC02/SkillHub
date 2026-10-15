@@ -151,55 +151,77 @@ for (const [amount, action, why, receipt, finalBalance, kind] of [
   });
 }
 
-test("an initial ledger read waits for connectivity without claiming a balance or offering a grant", async ({
-  page,
-}) => {
-  let accountReads = 0;
-  let ledgerReads = 0;
-  let releaseAccount!: () => void;
-  let releaseLedger!: () => void;
-  const accountGate = new Promise<void>((resolve) => {
-    releaseAccount = resolve;
+for (const enlarged of [false, true]) {
+  test(`an initial ledger read waits for connectivity without claiming a balance or offering a grant${enlarged ? " with enlarged header text" : ""}`, async ({
+    page,
+  }) => {
+    let accountReads = 0;
+    let ledgerReads = 0;
+    let releaseAccount!: () => void;
+    let releaseLedger!: () => void;
+    const accountGate = new Promise<void>((resolve) => {
+      releaseAccount = resolve;
+    });
+    const ledgerGate = new Promise<void>((resolve) => {
+      releaseLedger = resolve;
+    });
+    await page.route("**/admin/accounts?email=*", async (route) => {
+      accountReads++;
+      await accountGate;
+      return route.fulfill({ json: ADMIN_ACCOUNT });
+    });
+    await page.route(`**/admin/credits/${ADMIN_ACCOUNT.workspace_id}`, async (route) => {
+      ledgerReads++;
+      await ledgerGate;
+      return route.fulfill({ json: ADMIN_LEDGER });
+    });
+    const writes: string[] = [];
+    page.on("request", (request) => {
+      if (request.method() === "POST") writes.push(request.url());
+    });
+    try {
+      await page.goto("/admin/accounts");
+      if (enlarged) await page.addStyleTag({ content: ".app-title { font-size: 24px }" });
+      await page.getByLabel("Email", { exact: true }).fill("member@example.com");
+      await page.getByRole("button", { name: "查詢", exact: true }).click();
+      await expect.poll(() => accountReads).toBe(1);
+      await setOffline(page, true);
+      releaseAccount();
+      await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+      await expect(page.getByRole("banner").getByRole("status")).toContainText("等待連線");
+      const main = page.getByRole("main");
+      await expect(main.getByRole("status")).toContainText("等待連線以讀取點數");
+      await expect(page.locator("#admin-grant-amount")).toHaveCount(0);
+      await expect(main.getByText("目前餘額", { exact: false })).toHaveCount(0);
+      expect(ledgerReads).toBe(0);
+      const header = await page.getByRole("banner").evaluate((element) => {
+        const title = element.querySelector(".app-title")!;
+        const text = document.createRange();
+        text.selectNodeContents(title);
+        const titleBox = title.getBoundingClientRect();
+        const authBox = element.querySelector("[data-auth-controls]")!.getBoundingClientRect();
+        return {
+          lines: new Set([...text.getClientRects()].map((rect) => rect.top)).size,
+          titleRight: titleBox.right,
+          authLeft: authBox.left,
+          viewport: innerWidth,
+          content: document.documentElement.scrollWidth,
+        };
+      });
+      expect(header.lines).toBe(1);
+      expect(header.titleRight).toBeLessThanOrEqual(header.authLeft);
+      expect(header.content).toBeLessThanOrEqual(header.viewport);
+      await inspectState(page, "credit-initial-paused");
+      await setOffline(page, false);
+      await expect.poll(() => ledgerReads).toBe(1);
+      await expect(main.getByRole("status")).toContainText("載入點數中");
+      releaseLedger();
+      await expect(main.getByText("目前餘額", { exact: false })).toBeVisible();
+      await expect(page.locator("#admin-grant-amount")).toHaveValue("");
+      expect(writes).toEqual([]);
+    } finally {
+      releaseAccount();
+      releaseLedger();
+    }
   });
-  const ledgerGate = new Promise<void>((resolve) => {
-    releaseLedger = resolve;
-  });
-  await page.route("**/admin/accounts?email=*", async (route) => {
-    accountReads++;
-    await accountGate;
-    return route.fulfill({ json: ADMIN_ACCOUNT });
-  });
-  await page.route(`**/admin/credits/${ADMIN_ACCOUNT.workspace_id}`, async (route) => {
-    ledgerReads++;
-    await ledgerGate;
-    return route.fulfill({ json: ADMIN_LEDGER });
-  });
-  const writes: string[] = [];
-  page.on("request", (request) => {
-    if (request.method() === "POST") writes.push(request.url());
-  });
-  try {
-    await page.goto("/admin/accounts");
-    await page.getByLabel("Email", { exact: true }).fill("member@example.com");
-    await page.getByRole("button", { name: "查詢", exact: true }).click();
-    await expect.poll(() => accountReads).toBe(1);
-    await setOffline(page, true);
-    releaseAccount();
-    const main = page.getByRole("main");
-    await expect(main.getByRole("status")).toContainText("等待連線以讀取點數");
-    await expect(page.locator("#admin-grant-amount")).toHaveCount(0);
-    await expect(main.getByText("目前餘額", { exact: false })).toHaveCount(0);
-    expect(ledgerReads).toBe(0);
-    await inspectState(page, "credit-initial-paused");
-    await setOffline(page, false);
-    await expect.poll(() => ledgerReads).toBe(1);
-    await expect(main.getByRole("status")).toContainText("載入點數中");
-    releaseLedger();
-    await expect(main.getByText("目前餘額", { exact: false })).toBeVisible();
-    await expect(page.locator("#admin-grant-amount")).toHaveValue("");
-    expect(writes).toEqual([]);
-  } finally {
-    releaseAccount();
-    releaseLedger();
-  }
-});
+}

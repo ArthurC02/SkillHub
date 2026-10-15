@@ -186,10 +186,41 @@ export function useAccountLookup(email: string) {
   });
 }
 
+export async function getCreditLedger(workspaceId: string): Promise<CreditLedger> {
+  const result = await apiFetch<unknown>(`/admin/credits/${encodeURIComponent(workspaceId)}`);
+  if (!isCreditLedger(result, workspaceId)) throw new Error("Invalid credit ledger response");
+  return result;
+}
+
+function isCreditLedger(value: unknown, workspaceId: string): value is CreditLedger {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const ledger = value as Partial<CreditLedger>;
+  return (
+    typeof ledger.workspace_id === "string" &&
+    ledger.workspace_id.toLowerCase() === workspaceId.toLowerCase() &&
+    Number.isSafeInteger(ledger.balance_credits) &&
+    Array.isArray(ledger.entries) &&
+    ledger.entries.every(isCreditLedgerEntry)
+  );
+}
+
+function isCreditLedgerEntry(value: unknown): value is CreditLedgerEntry {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const entry = value as Partial<CreditLedgerEntry>;
+  return (
+    ["debit", "grant", "topup", "adjustment"].includes(entry.kind ?? "") &&
+    Number.isSafeInteger(entry.delta_credits) &&
+    (entry.ref_type === null || typeof entry.ref_type === "string") &&
+    typeof entry.estimated === "boolean" &&
+    typeof entry.created_at === "string" &&
+    Number.isFinite(Date.parse(entry.created_at))
+  );
+}
+
 export function useCreditLedger(workspaceId: string) {
   return useQuery({
     queryKey: queryKeys.admin.ledger(workspaceId),
-    queryFn: () => apiFetch<CreditLedger>(`/admin/credits/${workspaceId}`),
+    queryFn: () => getCreditLedger(workspaceId),
     enabled: useOperator(),
   });
 }
