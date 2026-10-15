@@ -6,6 +6,45 @@ import type {
   CreationSnapshot,
 } from "../creation.service";
 import type { CommandExtra } from "./create.commands";
+import type { CategorizedFindings, ImportFinding } from "../../../core/api/types";
+import { isCategorizedFindings } from "../import.service";
+
+export type DraftInspection = { findings: CategorizedFindings } | { refusal: string };
+
+function readDraftRefusal(raw: string, blocked: boolean): DraftInspection | undefined {
+  const text = raw.trim();
+  return blocked && text && !text.startsWith("{") && !text.startsWith("[")
+    ? { refusal: raw }
+    : undefined;
+}
+
+export function readDraftInspection(raw: string, blocked: boolean): DraftInspection | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return readDraftRefusal(raw, blocked);
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return undefined;
+  const report = parsed as { blocked?: unknown; findings?: unknown };
+  if (
+    typeof report.blocked !== "boolean" ||
+    report.blocked !== blocked ||
+    (report.findings !== null && !Array.isArray(report.findings))
+  )
+    return undefined;
+  const groups: CategorizedFindings = { errors: [], warnings: [], infos: [] };
+  for (const value of report.findings ?? []) {
+    if (!value || typeof value !== "object") return undefined;
+    const finding = value as ImportFinding;
+    if (finding.severity === "error") groups.errors.push(finding);
+    else if (finding.severity === "warning") groups.warnings.push(finding);
+    else if (finding.severity === "info") groups.infos.push(finding);
+    else return undefined;
+  }
+  const hasErrors = groups.errors.length > 0;
+  return isCategorizedFindings(groups) && hasErrors === blocked ? { findings: groups } : undefined;
+}
 
 export function diagramProblem(file: File): string | undefined {
   if (!["image/png", "image/jpeg", "image/webp"].includes(file.type))

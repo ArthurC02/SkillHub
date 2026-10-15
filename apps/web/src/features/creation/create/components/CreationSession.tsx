@@ -135,6 +135,7 @@ export function CreationSession(props: CreationSessionProps) {
               {session && p && (
                 <SessionFeed
                   session={session}
+                  draftRead={current}
                   thumbs={composer.thumbs}
                   working={working}
                   busy={busy}

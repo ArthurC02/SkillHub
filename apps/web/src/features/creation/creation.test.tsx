@@ -405,7 +405,7 @@ test("a diagram outside the byte range is refused locally, at both ends, and the
 const DRAFT = {
   revision: 1,
   content_hash: "h",
-  validation: "{}",
+  validation: JSON.stringify({ findings: [], blocked: false }),
   blocked: false,
   skill: {
     name: "x",

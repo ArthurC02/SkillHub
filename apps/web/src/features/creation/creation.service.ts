@@ -250,6 +250,11 @@ export function useLiveCreationSession(id: string) {
   return query;
 }
 
+export type CreationSessionRead = Pick<
+  ReturnType<typeof useLiveCreationSession>,
+  "fetchStatus" | "refetch"
+>;
+
 export function useCreationSessionCache() {
   const client = useQueryClient();
   return {

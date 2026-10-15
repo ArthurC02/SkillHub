@@ -1,5 +1,9 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { CreationSession, CreationSnapshot } from "../../creation.service";
+import type {
+  CreationSession,
+  CreationSnapshot,
+  CreationSessionRead,
+} from "../../creation.service";
 import type { RunListItem } from "../../../runs";
 import { buildRoundTimeline } from "../create.model";
 import type { Perform } from "../create.commands";
@@ -21,6 +25,7 @@ type DiagramAnswers = Record<string, string>;
 
 export function SessionFeed({
   session,
+  draftRead,
   thumbs,
   working,
   busy,
@@ -32,6 +37,7 @@ export function SessionFeed({
   onDiagramAnswers,
 }: {
   session: CreationSession;
+  draftRead: CreationSessionRead;
   thumbs: Map<string, string>;
   working: boolean;
   busy: boolean;
@@ -88,6 +94,7 @@ export function SessionFeed({
       )}
       {p.draft && (
         <DraftCard
+          draftRead={draftRead}
           p={p}
           draft={p.draft}
           state={session.state}

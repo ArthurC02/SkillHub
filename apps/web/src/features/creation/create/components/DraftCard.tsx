@@ -1,14 +1,15 @@
 import { Link } from "@tanstack/react-router";
-import type { CreationSnapshot, CreationState } from "../../creation.service";
+import type { CreationSnapshot, CreationState, CreationSessionRead } from "../../creation.service";
 import { runStatusLabel, type RunListItem } from "../../../runs";
 import { Reveal } from "../../../../shared/ui/Reveal";
-import { findRunObservation } from "../create.model";
+import { findRunObservation, readDraftInspection } from "../create.model";
 import type { Perform } from "../create.commands";
 import { DraftFindings } from "./DraftFindings";
 
 export function DraftCard({
   p,
   draft,
+  draftRead,
   state,
   terminal,
   latest,
@@ -17,12 +18,14 @@ export function DraftCard({
 }: {
   p: CreationSnapshot;
   draft: NonNullable<CreationSnapshot["draft"]>;
+  draftRead: CreationSessionRead;
   state: CreationState;
   terminal: boolean;
   latest: RunListItem | null | undefined;
   locked: boolean;
   perform: Perform;
 }) {
+  const inspection = readDraftInspection(draft.validation, draft.blocked);
   const run = p.candidate?.run_id ? findRunObservation(p.messages, p.candidate.run_id) : undefined;
   const runNotPassing =
     !!run && (run.execution_status !== "succeeded" || run.evaluation?.overall !== "met");
@@ -30,8 +33,11 @@ export function DraftCard({
     <section id="creation-draft-decision" tabIndex={-1}>
       <header className="card-header">
         <h4>小工具草稿：{draft.skill.name}</h4>
-        <span className="card-tag" data-tone={draft.blocked ? "danger" : "done"}>
-          {draft.blocked ? "靜態檢查阻擋保存" : "已完成靜態檢查"}
+        <span
+          className="card-tag"
+          data-tone={!inspection ? undefined : draft.blocked ? "danger" : "done"}
+        >
+          {!inspection ? "檢查細節未確認" : draft.blocked ? "靜態檢查阻擋保存" : "已完成靜態檢查"}
         </span>
       </header>
       <p>{draft.skill.description}</p>
@@ -63,10 +69,12 @@ export function DraftCard({
           </pre>
         </details>
       ))}
-      <DraftFindings raw={draft.validation} />
-      <p className="note">
-        {draft.blocked ? "請補充需求後修訂。" : "靜態檢查通過不代表試跑成功。"}
-      </p>
+      <DraftFindings inspection={inspection} read={draftRead} />
+      {inspection && (
+        <p className="note">
+          {draft.blocked ? "請補充需求後修訂。" : "靜態檢查通過不代表試跑成功。"}
+        </p>
+      )}
       {p.candidate && (
         <DraftCandidate
           candidate={p.candidate}
@@ -81,6 +89,7 @@ export function DraftCard({
       )}
       {!terminal && (
         <DraftSaveActions
+          inspectionReady={Boolean(inspection)}
           p={p}
           draft={draft}
           runNotPassing={runNotPassing}
@@ -199,12 +208,14 @@ function LatestRunOffer({
 }
 
 function DraftSaveActions({
+  inspectionReady,
   p,
   draft,
   runNotPassing,
   locked,
   perform,
 }: {
+  inspectionReady: boolean;
   p: CreationSnapshot;
   draft: NonNullable<CreationSnapshot["draft"]>;
   runNotPassing: boolean;
@@ -221,7 +232,8 @@ function DraftSaveActions({
       <div className="card-actions">
         {!p.candidate && p.pending_action !== "confirm_duplicate" && (
           <button
-            disabled={locked || draft.blocked || !draft.content_hash}
+            disabled={!inspectionReady || locked || draft.blocked || !draft.content_hash}
+            aria-describedby={!inspectionReady ? "draft-inspection-unavailable" : undefined}
             onClick={() => void perform("materialize", { content_hash: draft.content_hash })}
           >
             建立私人候選版本
@@ -229,7 +241,8 @@ function DraftSaveActions({
         )}
         <button
           className="action"
-          disabled={locked || draft.blocked || !draft.content_hash}
+          disabled={!inspectionReady || locked || draft.blocked || !draft.content_hash}
+          aria-describedby={!inspectionReady ? "draft-inspection-unavailable" : undefined}
           onClick={() => void perform("finalize", { content_hash: draft.content_hash })}
         >
           確認保存到私人工作區
