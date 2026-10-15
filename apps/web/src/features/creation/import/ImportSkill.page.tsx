@@ -1,10 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { Findings } from "../../../shared/ui/Findings";
 import { LoginRequired, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { useMe } from "../../../core/session/me.service";
-import { ApiError } from "../../../core/api/client";
+import { ApiError, SessionNotReadyError, isWriteResultUnknown } from "../../../core/api/client";
 import {
   isImportResult,
   useImportSkill,
@@ -23,18 +23,29 @@ export function ImportSkill() {
   const [source, setSource] = useState<"url" | "upload">("url");
   const [url, setURL] = useState("");
   const [file, setFile] = useState<File>();
+  const [previousImport, setPreviousImport] = useState<{
+    result?: ImportResult;
+    error?: unknown;
+  }>();
   const mutation = useImportSkill();
   const limits = useSkillImportLimits();
   const rules = limits.isSuccess && limits.fetchStatus === "idle" ? limits.data : undefined;
-  const result = mutation.data;
-  const failure = mutation.error;
-  const rejected =
-    failure instanceof ApiError && isImportResult(failure.body) ? failure.body : undefined;
+  const identityConfirmed = me.isSuccess && me.fetchStatus === "idle";
+  const blockedError = mutation.error instanceof SessionNotReadyError ? mutation.error : undefined;
+  const result = blockedError && previousImport ? previousImport.result : mutation.data;
+  const failure = blockedError && previousImport ? previousImport.error : mutation.error;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!rules || mutation.isPending) return;
-    mutation.mutate(source === "url" ? { url: url.trim() } : { file });
+    if (!rules || !identityConfirmed || mutation.isPending || (source === "upload" && !file))
+      return;
+    mutation.mutate(source === "url" ? { url: url.trim() } : { file }, {
+      onError: (error) => {
+        if (error instanceof SessionNotReadyError) return;
+        setPreviousImport({ error });
+      },
+      onSuccess: (result) => setPreviousImport({ result }),
+    });
   };
 
   return (
@@ -82,37 +93,79 @@ export function ImportSkill() {
               onFileChange={setFile}
               mutation={mutation}
               rulesReady={Boolean(rules)}
+              identityConfirmed={identityConfirmed}
               onSubmit={submit}
             />
           )}
         </section>
       </div>
 
-      {mutation.error && !rejected && (
-        <ReadFailure error={mutation.error} what="匯入小工具">
-          <p role="alert">
-            {mutation.error instanceof ApiError && mutation.error.status === 400
-              ? "這個檔案不是可用的 zip 套件，或網址抓不到內容。"
-              : mutation.error instanceof ApiError && mutation.error.status === 413
-                ? "檔案超過上限。"
-                : "匯入失敗，可以再按一次。"}
-          </p>
-        </ReadFailure>
-      )}
-
-      {rejected && (
-        <section role="alert">
-          <h2>匯入失敗：這個來源沒有一個小工具進得來</h2>
-          <p>
-            這個工作區沒有新增任何小工具，也沒有建立新版本。
-            下面每一則阻擋錯誤都要在來源裡修掉，再重新匯入一次；警告與資訊不擋匯入，一併列在後面。
-          </p>
-          <RefusedList refused={rejected.refused} />
-        </section>
-      )}
+      <ImportFailure error={failure} blockedError={previousImport ? blockedError : undefined} />
 
       {result && <ImportOutcome result={result} />}
     </section>
+  );
+}
+
+function ImportFailure({
+  error,
+  blockedError,
+}: {
+  error: unknown;
+  blockedError?: SessionNotReadyError;
+}) {
+  const message = useRef<HTMLDivElement>(null);
+  const rejected =
+    error instanceof ApiError &&
+    error.status === 422 &&
+    isImportResult(error.body) &&
+    error.body.skills.length === 0
+      ? error.body
+      : undefined;
+  useEffect(() => {
+    message.current?.focus();
+    message.current?.scrollIntoView({ block: "center" });
+  }, [error]);
+  return (
+    <>
+      <ReadFailure error={error} what="匯入小工具">
+        <section className="import-failure">
+          <div ref={message} role="alert" tabIndex={-1} aria-label="匯入結果">
+            {isWriteResultUnknown(error) ? (
+              <>
+                <h2>匯入結果尚未確認</h2>
+                <p>無法確認是否已建立小工具或新版本。請先核對資產庫，再決定是否重新送出。</p>
+                <p>
+                  <Link to="/library" target="_blank" rel="noopener noreferrer">
+                    另開資產庫核對
+                  </Link>
+                </p>
+                <p className="note">重新送出會再次取得目前選擇的來源。</p>
+              </>
+            ) : rejected ? (
+              <>
+                <h2>匯入失敗：這個來源沒有一個小工具進得來</h2>
+                <p>
+                  這個工作區沒有新增任何小工具，也沒有建立新版本。下面每一則阻擋錯誤都要在來源裡修掉，再重新匯入一次；警告與資訊不擋匯入，一併列在後面。
+                </p>
+              </>
+            ) : (
+              <p>
+                {error instanceof ApiError && error.status === 400
+                  ? "這個檔案不是可用的 zip 套件，或網址抓不到內容。"
+                  : error instanceof ApiError && error.status === 413
+                    ? "檔案超過上限。"
+                    : error instanceof ApiError && error.status === 422
+                      ? "這次匯入未被接受，但無法讀取完整檢查細節。請檢查來源後再送出。"
+                      : "匯入失敗，請確認來源與目前權限後再送出。"}
+              </p>
+            )}
+          </div>
+          {rejected && <RefusedList refused={rejected.refused} />}
+        </section>
+      </ReadFailure>
+      <ReadFailure error={blockedError} what="匯入小工具" />
+    </>
   );
 }
 
@@ -124,6 +177,7 @@ function ImportSourceForm({
   onFileChange,
   mutation,
   rulesReady,
+  identityConfirmed,
   onSubmit,
 }: {
   source: "url" | "upload";
@@ -133,6 +187,7 @@ function ImportSourceForm({
   onFileChange: (file: File | undefined) => void;
   mutation: ReturnType<typeof useImportSkill>;
   rulesReady: boolean;
+  identityConfirmed: boolean;
   onSubmit: (event: FormEvent) => void;
 }) {
   return (
@@ -158,6 +213,16 @@ function ImportSourceForm({
           上傳 zip
         </label>
       </fieldset>
+      {!identityConfirmed && (
+        <p id="import-session-unavailable" role="status" className="note">
+          登入狀態尚未確認；請先在頁首確認，再送出匯入。
+        </p>
+      )}
+      {!rulesReady && (
+        <p id="import-rules-unavailable" className="note">
+          匯入限制尚未確認，請先讀取成功後再送出。
+        </p>
+      )}
       {source === "url" ? (
         <p className="field" key="url">
           <label htmlFor="skill-import-url">URL</label>
@@ -184,16 +249,17 @@ function ImportSourceForm({
       <button
         type="submit"
         className="action"
-        disabled={!rulesReady || mutation.isPending}
-        aria-describedby={!rulesReady ? "import-rules-unavailable" : undefined}
+        disabled={!rulesReady || !identityConfirmed || mutation.isPending}
+        aria-describedby={
+          !identityConfirmed
+            ? "import-session-unavailable"
+            : !rulesReady
+              ? "import-rules-unavailable"
+              : undefined
+        }
       >
         {mutation.isPending ? "匯入中…" : "開始匯入"}
       </button>
-      {!rulesReady && (
-        <p id="import-rules-unavailable" className="note">
-          匯入限制尚未確認，請先讀取成功後再送出。
-        </p>
-      )}
       {mutation.isPending && (
         <p role="status" className="note">
           正在取得套件並逐檔用靜態檢查看過它——這一步會自己結束，不需要你再按任何東西。
@@ -324,11 +390,7 @@ function RefusedList({ refused }: { refused: RefusedSkill[] }) {
     <ul>
       {refused.map((one, index) => (
         <li key={`${one.path}-${index}`}>
-          {one.path && (
-            <p>
-              <code>{one.path}</code>
-            </p>
-          )}
+          <h3>{one.path ? <code>{one.path}</code> : "套件根目錄"}</h3>
           <Findings findings={one.findings} level={4} />
         </li>
       ))}

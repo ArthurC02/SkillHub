@@ -34,8 +34,10 @@ const ARTIFACT = "33333333-3333-3333-3333-333333333333";
 
 let container: HTMLDivElement;
 let root: Root;
+const scrollIntoView = HTMLElement.prototype.scrollIntoView;
 
 beforeEach(() => {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
   queryClient.clear();
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -46,6 +48,8 @@ afterEach(async () => {
   await act(async () => queryClient.cancelQueries());
   container.remove();
   vi.unstubAllGlobals();
+  if (scrollIntoView) HTMLElement.prototype.scrollIntoView = scrollIntoView;
+  else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
 });
 
 vi.mock("@tanstack/react-router", () => ({
@@ -1250,60 +1254,75 @@ test("WS-004 a fork invalidates the list it writes to, and does not touch the se
   expect(queryClient.getQueryState(["skills", "search", "pdf"])?.isInvalidated).toBe(false);
 });
 
-test("SKILL-002 an import invalidates the Library, and does not re-run the search", async () => {
-  vi.stubGlobal("fetch", (input: string) => {
-    if (String(input).endsWith("/me")) return json(platformResponse("/me").body);
-    if (String(input).endsWith("/skills/import/limits")) return json(IMPORT_LIMITS);
-    return json(
-      {
-        shape: "skill",
-        skills: [
-          {
-            path: "",
-            skill_id: SKILL,
-            version_id: "v1",
-            version_number: 1,
-            content_hash: "sha256:aaaa",
-            duplicate: false,
-            findings: { errors: [], warnings: [], infos: [] },
-          },
-        ],
-        refused: [],
-        excluded_components: [],
-      },
-      201,
-    );
-  });
-  queryClient.setQueryData(["own-skills"], { skills: [] });
-  queryClient.setQueryData(["skills", "search", "pdf"], { results: [] });
+test.each(["complete", "server", "unreadable", "refused"] as const)(
+  "a %s import invalidates only the Library snapshots that may have changed",
+  async (outcome) => {
+    vi.stubGlobal("fetch", (input: string) => {
+      if (String(input).endsWith("/me")) return json(platformResponse("/me").body);
+      if (String(input).endsWith("/skills/import/limits")) return json(IMPORT_LIMITS);
+      if (outcome === "server") return json({ error: "service unavailable" }, 503);
+      if (outcome === "unreadable") return json(null, 201);
+      if (outcome === "refused") return json({ error: "Unprocessable Entity" }, 422);
+      return json(
+        {
+          shape: "skill",
+          skills: [
+            {
+              path: "",
+              skill_id: SKILL,
+              version_id: "22222222-2222-2222-2222-222222222222",
+              version_number: 1,
+              content_hash: "sha256:aaaa",
+              duplicate: false,
+              findings: { errors: [], warnings: [], infos: [] },
+            },
+          ],
+          refused: [],
+          excluded_components: [],
+        },
+        201,
+      );
+    });
+    queryClient.setQueryData(["own-skills"], { skills: [] });
+    queryClient.setQueryData(["skills", "search", "pdf"], { results: [] });
 
-  await render(
-    <ImportSkill />,
-    () =>
-      button("開始匯入")?.disabled === false &&
-      queryClient.getQueryState(queryKeys.me)?.status === "success",
-  );
-  const input = container.querySelector<HTMLInputElement>('input[type="url"]')!;
-  await act(async () => {
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.bind(
-      input,
+    await render(
+      <ImportSkill />,
+      () =>
+        button("開始匯入")?.disabled === false &&
+        queryClient.getQueryState(queryKeys.me)?.status === "success",
     );
-    setter("https://github.com/example/skill");
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await act(async () => {
-    container
-      .querySelector("form")!
-      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-  });
-  await waitFor(() => text().includes("匯入完成"));
+    const input = container.querySelector<HTMLInputElement>('input[type="url"]')!;
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )!.set!.bind(input);
+      setter("https://github.com/example/skill");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      container
+        .querySelector("form")!
+        .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    await waitFor(() =>
+      text().includes(
+        outcome === "complete"
+          ? "匯入完成"
+          : outcome === "refused"
+            ? "這次匯入未被接受"
+            : "匯入結果尚未確認",
+      ),
+    );
 
-  expect(
-    queryClient.getQueryState(["own-skills"])?.isInvalidated,
-    "an import that does not invalidate the Library leaves it without the skill just added",
-  ).toBe(true);
-  expect(queryClient.getQueryState(["skills", "search", "pdf"])?.isInvalidated).toBe(false);
-});
+    expect(
+      queryClient.getQueryState(["own-skills"])?.isInvalidated,
+      "an import that does not invalidate the Library leaves it without the skill just added",
+    ).toBe(outcome !== "refused");
+    expect(queryClient.getQueryState(["skills", "search", "pdf"])?.isInvalidated).toBe(false);
+  },
+);
 
 test("RUN-005 cancelling a run invalidates its trace and its row, not every trace", async () => {
   vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {

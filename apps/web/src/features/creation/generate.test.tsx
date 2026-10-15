@@ -439,7 +439,13 @@ test("設計 §3 第 9 條：生成失敗底下的發現分組是它的內容，
     failures: [],
     generateRejection: {
       attempts: 1,
-      errors: [{ code: "skill-md-missing", message: "SKILL.md not found at package root" }],
+      errors: [
+        {
+          severity: "error",
+          code: "skill-md-missing",
+          message: "SKILL.md not found at package root",
+        },
+      ],
       warnings: [],
       infos: [],
     },

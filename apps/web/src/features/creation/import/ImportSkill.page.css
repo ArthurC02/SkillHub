@@ -100,7 +100,7 @@
   width: 100%;
 }
 
-.import-page > :is(.notice, section[role="alert"]) {
+.import-page > :is(.notice, section[role="alert"], .import-failure) {
   margin-top: 20px;
 }
 

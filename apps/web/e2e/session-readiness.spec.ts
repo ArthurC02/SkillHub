@@ -1,9 +1,10 @@
 import { setOffline } from "./offline";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { platformResponse, SKILL, VERSION } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 import type { ImportResult } from "../src/core/api/types";
 import AxeBuilder from "@axe-core/playwright";
+import { writeFile } from "node:fs/promises";
 
 const draft = "https://github.com/example/private-draft";
 const limits = {
@@ -32,6 +33,18 @@ const imported = {
   refused: [],
   excluded_components: [],
 } satisfies ImportResult;
+
+async function focusImportURLByKeyboard(page: Page) {
+  const input = page.getByRole("textbox", { name: "URL", exact: true });
+  await page.getByRole("link", { name: "Skill Hub", exact: true }).focus();
+  const controls = await page.locator("a[href], button, input, summary, [tabindex]").count();
+  for (let step = 0; step < controls; step += 1) {
+    await page.keyboard.press("Tab");
+    if (await input.evaluate((element) => element === document.activeElement)) break;
+  }
+  await expect(input).toBeFocused();
+  await expect(input).toBeInViewport({ ratio: 1 });
+}
 
 for (const failure of ["pending", "server", "network", "offline"]) {
   test(`${failure} identity verification blocks import and recovers without replaying the draft`, async ({
@@ -83,19 +96,35 @@ for (const failure of ["pending", "server", "network", "offline"]) {
           page.getByRole("button", { name: "重新確認登入狀態", exact: true }),
         ).toBeVisible();
       await expect(page.locator(".auth-name")).toHaveCount(0);
-      await input.focus();
+      await expect(page.getByRole("button", { name: "開始匯入", exact: true })).toBeDisabled();
+      await focusImportURLByKeyboard(page);
       await page.keyboard.press("Enter");
-      await expect(page.getByRole("main").getByRole("alert")).toHaveText(
-        "這次操作尚未送出。請先確認頁首的登入狀態，再自行送出。",
+      await expect(page.getByRole("button", { name: "開始匯入", exact: true })).toBeDisabled();
+      await expect(
+        page.getByRole("button", { name: "開始匯入", exact: true }),
+      ).toHaveAccessibleDescription("登入狀態尚未確認；請先在頁首確認，再送出匯入。");
+      await expect(input).toBeFocused();
+      await page.screenshot({ path: test.info().outputPath("session-readiness-blocked.png") });
+      await writeFile(
+        test.info().outputPath("import-session-viewport.json"),
+        JSON.stringify(
+          await page.evaluate(() => ({
+            input: document.querySelector("#skill-import-url")!.getBoundingClientRect(),
+            reason: document.querySelector("#import-session-unavailable")!.getBoundingClientRect(),
+            header: document.querySelector(".app-header")!.getBoundingClientRect(),
+            height: innerHeight,
+            scrollY,
+            visualHeight: visualViewport?.height,
+            visualTop: visualViewport?.offsetTop,
+          })),
+        ),
       );
-      await expect(page.getByRole("main").getByRole("alert")).toBeFocused();
-      await expect(page.getByRole("main").getByRole("alert")).toBeInViewport({ ratio: 1 });
+      await expect(page.locator("#import-session-unavailable")).toBeInViewport({ ratio: 1 });
       expect(writes).toBe(0);
       await expect(input).toHaveValue(draft);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
       );
-      await page.screenshot({ path: test.info().outputPath("session-readiness-blocked.png") });
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
       checking = false;
       if (failure === "pending") release();
@@ -168,10 +197,13 @@ test("a changed Workspace after a pending check clears the old draft without imp
       document.dispatchEvent(new Event("visibilitychange", { bubbles: true })),
     );
     await readStarted;
+    await expect(page.getByRole("button", { name: "開始匯入", exact: true })).toBeDisabled();
+    await focusImportURLByKeyboard(page);
     await page.keyboard.press("Enter");
-    await expect(page.getByRole("main").getByRole("alert")).toHaveText(
-      "這次操作尚未送出。請先確認頁首的登入狀態，再自行送出。",
-    );
+    await expect(page.getByRole("button", { name: "開始匯入", exact: true })).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "開始匯入", exact: true }),
+    ).toHaveAccessibleDescription("登入狀態尚未確認；請先在頁首確認，再送出匯入。");
     expect(writes).toBe(0);
     release();
     await expect(input).toHaveValue("");

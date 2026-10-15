@@ -112,8 +112,8 @@ test("URL import sends the source and links the imported version", async () => {
         skills: [
           {
             path: "",
-            skill_id: "skill-1",
-            version_id: "version-1",
+            skill_id: "11111111-1111-4111-8111-111111111111",
+            version_id: "22222222-2222-4222-8222-222222222222",
             version_number: 2,
             content_hash: "abc",
             duplicate: false,
@@ -148,7 +148,10 @@ test("URL import sends the source and links the imported version", async () => {
       .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
   });
   await pollUntil(
-    () => container.querySelector('a[href="/skills/skill-1/versions/version-1"]') !== null,
+    () =>
+      container.querySelector(
+        'a[href="/skills/11111111-1111-4111-8111-111111111111/versions/22222222-2222-4222-8222-222222222222"]',
+      ) !== null,
     () => container.textContent,
     DEFAULT_WAIT_MS,
   );
@@ -156,7 +159,11 @@ test("URL import sends the source and links the imported version", async () => {
   const [, init] = fetchMock.mock.calls.at(-1)!;
   expect(init?.method).toBe("POST");
   expect(init?.body).toBe(JSON.stringify({ url: "https://github.com/example/skill" }));
-  expect(container.querySelector('a[href="/skills/skill-1/versions/version-1"]')).not.toBeNull();
+  expect(
+    container.querySelector(
+      'a[href="/skills/11111111-1111-4111-8111-111111111111/versions/22222222-2222-4222-8222-222222222222"]',
+    ),
+  ).not.toBeNull();
 });
 
 test("a running 試跑紀錄 requires confirmation before cancellation", async () => {

@@ -5,13 +5,15 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { ImportSkill } from "./import/ImportSkill.page";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
-import { IMPORT_LIMITS } from "../../testing/fixtures/platform";
+import { IMPORT_LIMITS, SKILL, SKILL_B, VERSION } from "../../testing/fixtures/platform";
 import { queryKeys } from "../../core/api/queryKeys";
 
 let container: HTMLDivElement;
 let root: Root;
+const scrollIntoView = HTMLElement.prototype.scrollIntoView;
 
 beforeEach(() => {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
   queryClient.clear();
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -21,6 +23,8 @@ afterEach(async () => {
   await act(async () => root?.unmount());
   container.remove();
   vi.unstubAllGlobals();
+  if (scrollIntoView) HTMLElement.prototype.scrollIntoView = scrollIntoView;
+  else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
 });
 
 vi.mock("@tanstack/react-router", () => ({
@@ -28,12 +32,20 @@ vi.mock("@tanstack/react-router", () => ({
     to,
     params,
     children,
+    target,
+    rel,
   }: {
     to: string;
     params?: Record<string, string>;
     children?: unknown;
+    target?: string;
+    rel?: string;
   }) => (
-    <a href={Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to)}>
+    <a
+      href={Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to)}
+      target={target}
+      rel={rel}
+    >
       {children as never}
     </a>
   ),
@@ -186,7 +198,7 @@ test("a 413 (file too large) gets its own sentence", async () => {
   await waitFor(() => text().includes("檔案超過上限。"));
 });
 
-test("an unclassified server error (500) gets the generic retry sentence", async () => {
+test("an unclassified server error keeps the import outcome uncertain and offers a separate Library check", async () => {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const path = typeof input === "string" ? input : String(input);
     if (path.endsWith("/me")) return json(ME);
@@ -196,9 +208,33 @@ test("an unclassified server error (500) gets the generic retry sentence", async
   });
 
   await submitURL();
-  await waitFor(() => text().includes("匯入失敗，可以再按一次。"));
+  await waitFor(() => container.querySelector('[aria-label="匯入結果"]') !== null);
+  expect(text()).toContain("匯入結果尚未確認");
+  expect(container.querySelector('[aria-label="匯入結果"]')).toBe(document.activeElement);
+  expect(container.querySelector('a[href="/library"]')?.getAttribute("target")).toBe("_blank");
+  expect(text()).not.toContain("這個工作區沒有新增任何小工具");
 
   expect(text()).not.toContain("internal error");
+});
+
+test("a zip source without a file does not start an import attempt", async () => {
+  vi.stubGlobal("fetch", (input: string) =>
+    String(input).endsWith("/me") ? json(ME) : json(IMPORT_LIMITS),
+  );
+  await render(
+    <ImportSkill />,
+    () => container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled === false,
+  );
+  await act(async () =>
+    container.querySelectorAll<HTMLInputElement>('input[type="radio"]')[1].click(),
+  );
+  await act(async () => {
+    container
+      .querySelector("form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  expect(queryClient.getMutationCache().getAll()).toHaveLength(0);
+  expect(container.querySelector('[aria-label="匯入結果"]')).toBeNull();
 });
 
 test("04 丙-152: a 422 renders every refused folder's real Chinese finding messages and codes", async () => {
@@ -267,8 +303,8 @@ const PLUGIN_IMPORT = {
   skills: [
     {
       path: "skills/tidy-notes",
-      skill_id: "s-1",
-      version_id: "v-1",
+      skill_id: SKILL,
+      version_id: VERSION,
       version_number: 1,
       content_hash: "h1",
       duplicate: false,
@@ -276,8 +312,8 @@ const PLUGIN_IMPORT = {
     },
     {
       path: "skills/split-csv",
-      skill_id: "s-2",
-      version_id: "v-2",
+      skill_id: SKILL_B,
+      version_id: "99999999-2222-4222-8222-222222222222",
       version_number: 1,
       content_hash: "h2",
       duplicate: false,
@@ -318,7 +354,10 @@ test("a Plugin import hands every imported 小工具 to its exact immutable vers
   expect(text()).toContain("skills/split-csv");
   const links = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href"));
   expect(links, "每個小工具都要連到剛匯入的精確版本，不能退回可能已改變的小工具總覽").toEqual(
-    expect.arrayContaining(["/skills/s-1/versions/v-1", "/skills/s-2/versions/v-2"]),
+    expect.arrayContaining([
+      `/skills/${SKILL}/versions/${VERSION}`,
+      `/skills/${SKILL_B}/versions/99999999-2222-4222-8222-222222222222`,
+    ]),
   );
 });
 
@@ -375,4 +414,29 @@ test("one refused folder does not hide the 小工具s that did come in", async (
   expect(text()).toContain("skills/tidy-notes");
   expect(text()).toContain("skills/broken");
   expect(text()).toContain("skill-md-missing");
+});
+
+test("a refused root package has a named heading before its findings", async () => {
+  stubImport({
+    ...PLUGIN_IMPORT,
+    refused: [
+      {
+        path: "",
+        findings: {
+          errors: [
+            { severity: "error", code: "name-missing", message: "frontmatter 欄位 name 為必填" },
+          ],
+          warnings: [],
+          infos: [],
+        },
+      },
+    ],
+  });
+  await submitURL();
+  await waitFor(() => text().includes("沒進來的小工具"));
+  const rootHeading = Array.from(container.querySelectorAll("h3")).find(
+    (heading) => heading.textContent === "套件根目錄",
+  );
+  expect(rootHeading).toBeDefined();
+  expect(rootHeading?.parentElement?.querySelector("h4")?.textContent).toBe("阻擋錯誤（1）");
 });

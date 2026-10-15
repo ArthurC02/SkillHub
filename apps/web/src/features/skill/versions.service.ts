@@ -4,9 +4,8 @@ import {
   apiFetch,
   isWriteResultUnknown as isVersionUploadResultUnknown,
 } from "../../core/api/client";
-import type { CategorizedFindings, ImportFinding, UploadResult } from "../../core/api/types";
 import { queryKeys } from "../../core/api/queryKeys";
-import { isCategorizedFindings } from "../creation";
+import { isCategorizedFindings, isUploadResult } from "../creation";
 
 export async function saveSkillVersion(skillId: string, file: File) {
   const result = await apiFetch<unknown>(`/skills/${skillId}/versions`, {
@@ -14,7 +13,8 @@ export async function saveSkillVersion(skillId: string, file: File) {
     headers: { "Content-Type": "application/zip" },
     body: file,
   });
-  if (!isUploadResult(result, skillId)) throw new Error("Invalid version upload response");
+  if (!isUploadResult(result) || result.skill_id.toLowerCase() !== skillId.toLowerCase())
+    throw new Error("Invalid version upload response");
   return {
     ...result,
     skill_id: result.skill_id.toLowerCase(),
@@ -22,49 +22,8 @@ export async function saveSkillVersion(skillId: string, file: File) {
   };
 }
 
-function isImportFinding(value: unknown): value is ImportFinding {
-  if (!value || typeof value !== "object") return false;
-  const finding = value as Partial<ImportFinding>;
-  return (
-    ["error", "warning", "info"].includes(finding.severity ?? "") &&
-    typeof finding.code === "string" &&
-    typeof finding.message === "string" &&
-    (finding.path === undefined || typeof finding.path === "string") &&
-    (finding.details === undefined ||
-      (Array.isArray(finding.details) &&
-        finding.details.every((detail) => typeof detail === "string")))
-  );
-}
-
-function isUploadFindings(value: unknown): value is CategorizedFindings {
-  return (
-    isCategorizedFindings(value) &&
-    [value.errors, value.warnings, value.infos].flat().every(isImportFinding)
-  );
-}
-
-function isUploadResult(value: unknown, skillId: string): value is UploadResult {
-  if (!value || typeof value !== "object") return false;
-  const result = value as Partial<UploadResult>;
-  return (
-    [result.skill_id, result.version_id].every(
-      (id) =>
-        typeof id === "string" &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
-    ) &&
-    result.skill_id?.toLowerCase() === skillId.toLowerCase() &&
-    typeof result.version_number === "number" &&
-    Number.isSafeInteger(result.version_number) &&
-    result.version_number > 0 &&
-    typeof result.content_hash === "string" &&
-    result.content_hash.trim().length > 0 &&
-    typeof result.duplicate === "boolean" &&
-    isUploadFindings(result.findings)
-  );
-}
-
 export function readVersionUploadFindings(error: unknown) {
-  return error instanceof ApiError && error.status === 422 && isUploadFindings(error.body)
+  return error instanceof ApiError && error.status === 422 && isCategorizedFindings(error.body)
     ? error.body
     : undefined;
 }
