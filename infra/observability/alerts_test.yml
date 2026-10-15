@@ -1,0 +1,35 @@
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="platform", process="api"}'
+        values: "1x4 _x20"
+      - series: 'up{job="platform", process="worker"}'
+        values: "1x4 0x20"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: PlatformApiDown
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: PlatformWorkerDown
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: PlatformApiDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "platform-api 抓不到，或抓到了但沒有回應"
+              description: "每一個網頁與 API 請求都經過它。series 不存在＝容器不在（dns_sd 找不到名字）， up=0＝容器在但 metrics 端點不回。先 docker compose ps 與 docker compose logs platform-api。"
+      - eval_time: 20m
+        alertname: PlatformWorkerDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "platform-worker 抓不到，或抓到了但沒有回應"
+              description: "它是唯一的佇列消費者：Run、評估、索引增強與清理全部停在佇列裡。 先 docker compose ps 與 docker compose logs platform-worker。"

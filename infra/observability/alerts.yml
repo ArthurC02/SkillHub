@@ -417,6 +417,30 @@ groups:
             **鍵是 IP，代理後面會失準**：TLS 終端前面沒有帶正確 client IP 時整個
             cohort 共用一個 bucket，那是部署期的事（release-checklist），不是這裡。
 
+  - name: skillhub-platform-processes
+    rules:
+      - alert: PlatformApiDown
+        expr: absent(up{job="platform", process="api"} == 1)
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "platform-api 抓不到，或抓到了但沒有回應"
+          description: >-
+            每一個網頁與 API 請求都經過它。series 不存在＝容器不在（dns_sd 找不到名字），
+            up=0＝容器在但 metrics 端點不回。先 docker compose ps 與 docker compose logs platform-api。
+
+      - alert: PlatformWorkerDown
+        expr: absent(up{job="platform", process="worker"} == 1)
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "platform-worker 抓不到，或抓到了但沒有回應"
+          description: >-
+            它是唯一的佇列消費者：Run、評估、索引增強與清理全部停在佇列裡。
+            先 docker compose ps 與 docker compose logs platform-worker。
+
   - name: skillhub-model-gateway
     rules:
       - alert: ModelGatewayDown

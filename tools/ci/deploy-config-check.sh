@@ -168,6 +168,10 @@ docker run --rm --entrypoint promtool \
   -v "$WORK_HOST/prometheus-targets:/etc/prometheus/targets:ro" \
   "$PROMETHEUS" check config /etc/prometheus/prometheus.yml
 
+step "alert rules fire when they should"
+docker run --rm --entrypoint promtool -v "$ROOT/infra/observability:/rules:ro" -w /rules \
+  "$PROMETHEUS" test rules alerts_test.yml
+
 step "node scripts are POSIX sh"
 docker run --rm -v "$ROOT:/repo:ro" -w /repo "$SHELLCHECK" -s sh -S warning \
   infra/deploy/common/install-docker infra/deploy/control-plane/bin/* infra/deploy/gateway/bin/* \

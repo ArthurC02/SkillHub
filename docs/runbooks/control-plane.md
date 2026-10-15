@@ -157,7 +157,7 @@ Alertmanager 把所有告警寄到 `SKILLHUB_ALERT_EMAIL`；`severity=critical` 
 
 | 來源 | 什麼時候響 |
 | --- | --- |
-| `infra/observability/alerts.yml` | 平台自報指標；`skillhub-model-gateway` 群組的 `ModelGatewayDown`（blackbox-exporter 探測閘道健康端點）；`skillhub-database` 群組的 `PostgresDown`、`WalArchiveFailing`、`WalArchiveStalled` |
+| `infra/observability/alerts.yml` | 平台自報指標；`skillhub-platform-processes` 群組的 `PlatformApiDown`、`PlatformWorkerDown`（行程抓不到或不回應；規則測試在 `alerts_test.yml`）；`skillhub-model-gateway` 群組的 `ModelGatewayDown`（blackbox-exporter 探測閘道健康端點）；`skillhub-database` 群組的 `PostgresDown`、`WalArchiveFailing`、`WalArchiveStalled` |
 | `ScheduledJobFailed` | 任何 `skillhub-*` 排程工作（備份、演練、保存期清理）失敗，由 systemd `OnFailure` 直接送進 Alertmanager；`unit` 標籤是失敗的那個 unit，`journalctl -u <unit>` 看原因 |
 
 驗送達：
