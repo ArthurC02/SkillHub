@@ -1,5 +1,12 @@
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
-import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { FeedbackLauncher } from "./shell/FeedbackLauncher";
 import { AuthControls } from "./shell/AuthControls";
 import { CleanModeNotice } from "./shell/CleanModeNotice";
@@ -9,7 +16,7 @@ import { useMe, useSessionBoundary } from "../core/session/me.service";
 import { FeatureAvailabilityProvider } from "../shared/FeatureAvailabilityProvider";
 import "./RootLayout.css";
 
-export function RootLayout() {
+export function RootLayout({ children }: { children: ReactNode }) {
   useSessionBoundary();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
@@ -102,7 +109,7 @@ export function RootLayout() {
           <div className="app-content">
             <main id="main-content" tabIndex={-1}>
               <CleanModeNotice admin={pathname === "/admin" || pathname.startsWith("/admin/")} />
-              <Outlet />
+              {children}
             </main>
             <footer className="app-footer">
               <FeedbackLauncher pathname={pathname} />

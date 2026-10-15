@@ -9,7 +9,7 @@ import { RootLayout } from "./RootLayout";
 import { RouteNotFound } from "../shared/ui/RouteNotFound";
 import type { AgentRuntime, SkillCategory } from "../core/api/types";
 
-const rootRoute = createRootRoute({ component: RootLayout });
+const rootRoute = createRootRoute({ shellComponent: RootLayout });
 
 export type HomeSearch = {
   q?: string;
@@ -600,7 +600,15 @@ const routeTree = rootRoute.addChildren([
 ]);
 
 export function createAppRouter() {
-  return createRouter({ routeTree, defaultNotFoundComponent: RouteNotFound });
+  return createRouter({
+    routeTree,
+    defaultNotFoundComponent: RouteNotFound,
+    defaultPendingComponent: () => (
+      <div role="status" data-loading="">
+        <h1>載入頁面中…</h1>
+      </div>
+    ),
+  });
 }
 
 export const router = createAppRouter();

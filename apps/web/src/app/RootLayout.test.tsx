@@ -1,5 +1,6 @@
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { Outlet } from "@tanstack/react-router";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { useFeatureAvailability } from "../shared/featureAvailability";
 import { RootLayout } from "./RootLayout";
@@ -82,7 +83,9 @@ async function renderShell() {
     root = createRoot(container);
     root.render(
       <StrictMode>
-        <RootLayout />
+        <RootLayout>
+          <Outlet />
+        </RootLayout>
       </StrictMode>,
     );
   });
