@@ -575,15 +575,14 @@ func (s *Service) storeReindexedProjection(ctx context.Context, row PendingEnric
 	if err != nil {
 		return false, err
 	}
+	defer func() { _ = tx.Rollback(ctx) }()
 	current, err := registry.LockCurrentPackage(ctx, tx, registry.Version{
 		ID: row.VersionID, WorkspaceID: row.WorkspaceID, SkillID: row.SkillID, PackageObjectKey: row.PackageObjectKey,
 	})
 	if err != nil || !current {
-		_ = tx.Rollback(ctx)
 		return false, err
 	}
 	if err := s.IndexSkill(ctx, tx, e.projection(row.WorkspaceID, row.SkillID, row.Name)); err != nil {
-		_ = tx.Rollback(ctx)
 		return false, err
 	}
 	if err := tx.Commit(ctx); err != nil {
