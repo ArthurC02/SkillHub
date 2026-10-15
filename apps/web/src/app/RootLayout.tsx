@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { FeedbackLauncher } from "./shell/FeedbackLauncher";
 import { AuthControls } from "./shell/AuthControls";
@@ -16,6 +16,15 @@ export function RootLayout() {
   const generateExposed = useGenerateEntryPoint();
   const creationExposed = useCreationEntryPoint();
   const [query, setQuery] = useState("");
+  const previousPathname = useRef(pathname);
+
+  useLayoutEffect(() => {
+    if (previousPathname.current === pathname) return;
+    previousPathname.current = pathname;
+    if (!window.location.hash) {
+      document.getElementById("main-content")?.focus({ preventScroll: true });
+    }
+  }, [pathname]);
 
   useEffect(() => {
     const main = document.querySelector("#main-content");
