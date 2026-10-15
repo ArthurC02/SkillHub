@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Loading } from "../../../../shared/ui/Loading";
+import { ListFreshness } from "../../../../shared/ui/ListFreshness";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { VersionDiff } from "../../../runs";
@@ -10,15 +11,45 @@ export function VersionHistory({ skillId }: { skillId: string }) {
   const versions = useSkillVersions(skillId);
   const [pair, setPair] = useState<{ from: string; to: string } | null>(null);
 
-  const list = versions.data?.versions ?? [];
+  const confirmed =
+    versions.isSuccess && versions.fetchStatus === "idle" ? versions.data : undefined;
+  const list = confirmed?.versions ?? [];
+  const refresh = () => {
+    void versions.refetch();
+    const heading = document.getElementById("version-history-heading");
+    heading?.focus();
+    heading?.scrollIntoView({ block: "center" });
+  };
 
   return (
-    <section>
-      <h2>版本</h2>
-      {versions.isPending && <Loading what="版本歷史" />}
-      <ReadFailure error={versions.error} what="版本歷史" />
+    <section aria-labelledby="version-history-heading">
+      <h2 id="version-history-heading" tabIndex={-1}>
+        版本
+      </h2>
+      {(versions.isPending || versions.fetchStatus !== "idle") &&
+        (versions.fetchStatus === "paused" ? (
+          <p role="status">等待連線以確認版本歷史；目前無法確認最新版本。</p>
+        ) : (
+          <Loading what="版本歷史" />
+        ))}
+      <ReadFailure
+        error={versions.error}
+        what="版本歷史"
+        retry={refresh}
+        retrying={versions.fetchStatus !== "idle"}
+      />
+      {confirmed && (
+        <ListFreshness
+          inFlight={false}
+          showWhenIdle
+          updatedAt={versions.dataUpdatedAt}
+          fetching={versions.fetchStatus !== "idle"}
+          refetch={refresh}
+          subject="版本"
+        />
+      )}
 
-      {versions.data &&
+      {confirmed &&
         (list.length === 0 ? (
           <p>
             無權檢視——這個工作區看不到這個小工具的版本內容。別人的小工具要複製一份之後才會有屬於你的版本；這不代表它沒有版本。
