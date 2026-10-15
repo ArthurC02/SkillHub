@@ -4,3 +4,7 @@
   gap: 8px;
   max-width: 480px;
 }
+
+.version-upload-result {
+  overflow-wrap: anywhere;
+}

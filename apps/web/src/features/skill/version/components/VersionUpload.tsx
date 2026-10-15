@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "../../../../core/api/client";
 import { isCategorizedFindings } from "../../../creation";
@@ -16,12 +16,34 @@ function versionUploadErrorMessage(error: unknown): string {
   return "上傳沒有成功，可以再按一次。";
 }
 
-export function VersionUpload({ skillId }: { skillId: string }) {
+export function VersionUpload({
+  skillId,
+  versionId,
+  contextConfirmed,
+}: {
+  skillId: string;
+  versionId: string;
+  contextConfirmed: boolean;
+}) {
   const versions = useSkillVersions(skillId);
   const save = useSaveSkillVersion(skillId);
   const [file, setFile] = useState<File>();
+  const resultLink = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    if (save.data) {
+      resultLink.current?.focus();
+      resultLink.current?.scrollIntoView({ block: "center" });
+    }
+  }, [save.data]);
+  const confirmed = contextConfirmed && versions.isSuccess && versions.fetchStatus === "idle";
+  const readStatusId = `version-upload-${skillId}-read-status`;
 
-  if ((versions.data?.versions.length ?? 0) === 0) return null;
+  if (
+    !versions.data?.versions.length ||
+    (!versions.data.versions.some((version) => version.version_id === versionId) &&
+      save.data?.version_id !== versionId)
+  )
+    return null;
 
   return (
     <section>
@@ -44,7 +66,7 @@ export function VersionUpload({ skillId }: { skillId: string }) {
         className="version-upload"
         onSubmit={(event) => {
           event.preventDefault();
-          if (file) save.mutate(file);
+          if (file && confirmed && !save.isPending) save.mutate(file);
         }}
       >
         <label htmlFor="skill-version-file">小工具 zip</label>
@@ -55,10 +77,19 @@ export function VersionUpload({ skillId }: { skillId: string }) {
           accept=".zip,application/zip"
           onChange={(event) => setFile(event.target.files?.[0])}
         />
-        <button type="submit" disabled={save.isPending}>
+        <button
+          type="submit"
+          disabled={save.isPending || !confirmed}
+          aria-describedby={!confirmed ? readStatusId : undefined}
+        >
           {save.isPending ? "上傳中…" : "上傳成新版本"}
         </button>
       </form>
+      {!confirmed && (
+        <p id={readStatusId} role="status">
+          小工具與版本脈絡尚未確認；請先重新讀取，再上傳新版本。
+        </p>
+      )}
       {save.isError &&
         (save.error instanceof ApiError && isCategorizedFindings(save.error.body) ? (
           <section role="alert">
@@ -72,12 +103,14 @@ export function VersionUpload({ skillId }: { skillId: string }) {
         ))}
       {save.isSuccess && (
         <div role="status">
+          <p className="note version-upload-result">這次上傳的檔案：{save.variables?.name}</p>
           <p>
             {save.data.duplicate
               ? `這份內容與現有的 v${save.data.version_number} 完全相同，沒有建立新版本。`
               : `已存成 v${save.data.version_number}。`}
           </p>
           <Link
+            ref={resultLink}
             to="/skills/$skillId/versions/$versionId"
             params={{ skillId: save.data.skill_id, versionId: save.data.version_id }}
           >

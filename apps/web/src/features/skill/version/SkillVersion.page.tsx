@@ -1,6 +1,7 @@
 import { Link, useParams } from "@tanstack/react-router";
-import { ApiError, canRetainLoadedPage } from "../../../core/api/client";
-import type { SkillVersionSummary } from "../../../core/api/types";
+import { ApiError, canRetainLoadedPage, isLastingReadFailure } from "../../../core/api/client";
+import type { SkillDetail, SkillVersionSummary } from "../../../core/api/types";
+import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { Loading } from "../../../shared/ui/Loading";
 import { PageReadFailure, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
@@ -32,7 +33,69 @@ export function SkillVersion() {
   });
   const skill = useSkillDetail(skillId);
   const versions = useSkillVersions(skillId);
+  const list = versions.data?.versions ?? [];
+  const selectedIndex = list.findIndex((version) => version.version_id === versionId);
+  const selected = list[selectedIndex];
+  const context =
+    !skill.error && !versions.error && skill.data && selected
+      ? {
+          skill: skill.data,
+          selected,
+          selectedIndex,
+          list,
+          confirmed: skill.fetchStatus === "idle" && versions.fetchStatus === "idle",
+        }
+      : undefined;
 
+  return (
+    <article className="version-workspace">
+      {context ? (
+        <VersionHeader context={context} skillId={skillId} versionId={versionId} />
+      ) : (
+        <VersionReadStatus skill={skill} versions={versions} skillId={skillId} />
+      )}
+      {(skill.fetchStatus === "paused" || versions.fetchStatus === "paused") && (
+        <p role="status">等待連線以確認小工具與版本脈絡；恢復連線後會繼續讀取。</p>
+      )}
+      <div className="version-workspace-layout">
+        <div className="version-workspace-main">
+          {context && <VersionContent context={context} skillId={skillId} versionId={versionId} />}
+        </div>
+        <VersionRail
+          key={skillId}
+          skillId={skillId}
+          versionId={versionId}
+          versions={context?.list ?? []}
+          showUpload={canRetainVersionUpload(skill, versions)}
+          contextConfirmed={context?.confirmed === true}
+        />
+      </div>
+    </article>
+  );
+}
+
+function canRetainVersionUpload(
+  skill: ReturnType<typeof useSkillDetail>,
+  versions: ReturnType<typeof useSkillVersions>,
+) {
+  const denied = [skill.error, versions.error].some(
+    (error) =>
+      unauthenticated(error) ||
+      isLastingReadFailure(error) ||
+      (error instanceof ApiError && error.status === 410),
+  );
+  return Boolean(skill.data && versions.data?.versions.length && !denied);
+}
+
+function VersionReadStatus({
+  skill,
+  versions,
+  skillId,
+}: {
+  skill: ReturnType<typeof useSkillDetail>;
+  versions: ReturnType<typeof useSkillVersions>;
+  skillId: string;
+}) {
   if (skill.isPending) return <Loading what="這個小工具" />;
   if (skill.error instanceof ApiError && skill.error.status === 410) {
     return (
@@ -48,7 +111,7 @@ export function SkillVersion() {
         error={skill.error}
         what="這個小工具"
         retry={() => void skill.refetch()}
-        retrying={skill.isFetching}
+        retrying={skill.fetchStatus !== "idle"}
       />
     );
   if (!skill.data) return <p role="alert">找不到這個小工具。</p>;
@@ -61,76 +124,97 @@ export function SkillVersion() {
         error={versions.error}
         what="版本脈絡"
         retry={() => void versions.refetch()}
-        retrying={versions.isFetching}
+        retrying={versions.fetchStatus !== "idle"}
       />
     );
 
-  const list = versions.data?.versions ?? [];
-  const selectedIndex = list.findIndex((version) => version.version_id === versionId);
-  const selected = list[selectedIndex];
-
-  if (!selected) {
-    return (
-      <section>
-        <h1>無法開啟這個版本</h1>
-        <p role="alert">
-          {list.length === 0
-            ? "無權檢視——這個工作區看不到這個小工具的版本內容；這不代表它沒有版本。"
-            : "這個版本不屬於目前的小工具，或已不在這個工作區可見的版本清單中。"}
-        </p>
-        <Link to="/skills/$skillId" params={{ skillId }}>
-          回到小工具總覽
-        </Link>
-      </section>
-    );
-  }
-
-  const previous = list[selectedIndex + 1];
-  const gate = packagingGate(skill.data);
-
   return (
-    <article className="version-workspace">
-      <header className="version-workspace-header">
-        <p className="note">不可變版本</p>
-        <h1>
-          {skill.data.name} v{selected.version_number}
-        </h1>
-        <p data-role="skill-current-summary">
-          <strong>小工具目前說明：</strong> {skill.data.summary}
-        </p>
-        <SkillWorkspaceNav skillId={skillId} versionId={versionId} />
-      </header>
+    <section>
+      <h1>無法開啟這個版本</h1>
+      <p role="alert">
+        {versions.data?.versions.length === 0
+          ? "無權檢視——這個工作區看不到這個小工具的版本內容；這不代表它沒有版本。"
+          : "這個版本不屬於目前的小工具，或已不在這個工作區可見的版本清單中。"}
+      </p>
+      <Link to="/skills/$skillId" params={{ skillId }}>
+        回到小工具總覽
+      </Link>
+    </section>
+  );
+}
 
-      <div className="version-workspace-layout">
-        <div className="version-workspace-main">
-          <VersionFacts version={selected} isLatest={selectedIndex === 0} />
-          <VersionActions
-            skillId={skillId}
-            versionId={versionId}
-            versionNumber={selected.version_number}
-            gate={gate}
-          />
-          <VersionCreationContext versionId={versionId} />
-          <VersionEvidence
-            skillId={skillId}
-            versionId={versionId}
-            versionNumber={selected.version_number}
-          />
-          <VersionDeliverables skillId={skillId} versionId={versionId} />
+type VersionContext = {
+  skill: SkillDetail;
+  selected: SkillVersionSummary;
+  selectedIndex: number;
+  list: SkillVersionSummary[];
+  confirmed: boolean;
+};
 
-          {previous && (
-            <section>
-              <h2>與上一版的差異</h2>
-              <VersionDiff url={skillDiffUrl(skillId, previous.version_id, versionId)} />
-            </section>
-          )}
+function VersionHeader({
+  context,
+  skillId,
+  versionId,
+}: {
+  context: VersionContext;
+  skillId: string;
+  versionId: string;
+}) {
+  return (
+    <header className="version-workspace-header">
+      <p className="note">不可變版本</p>
+      <h1>
+        {context.skill.name} v{context.selected.version_number}
+      </h1>
+      <p data-role="skill-current-summary">
+        <strong>小工具目前說明：</strong> {context.skill.summary}
+      </p>
+      <SkillWorkspaceNav skillId={skillId} versionId={versionId} />
+    </header>
+  );
+}
 
-          <PublishPanel skill={skill.data} version={selected} isLoggedIn isOwner />
-        </div>
+function VersionContent({
+  context,
+  skillId,
+  versionId,
+}: {
+  context: VersionContext;
+  skillId: string;
+  versionId: string;
+}) {
+  const { selected, selectedIndex, list, skill } = context;
+  const previous = list[selectedIndex + 1];
+  const gate = packagingGate(skill);
+  return (
+    <>
+      <VersionFacts
+        version={selected}
+        isLatest={context.confirmed ? selectedIndex === 0 : undefined}
+      />
+      <VersionActions
+        skillId={skillId}
+        versionId={versionId}
+        versionNumber={selected.version_number}
+        gate={gate}
+      />
+      <VersionCreationContext versionId={versionId} />
+      <VersionEvidence
+        skillId={skillId}
+        versionId={versionId}
+        versionNumber={selected.version_number}
+      />
+      <VersionDeliverables skillId={skillId} versionId={versionId} />
 
-        <VersionRail skillId={skillId} versionId={versionId} versions={list} />
-      </div>
-    </article>
+      {previous && (
+        <section>
+          <h2>與上一版的差異</h2>
+          <VersionDiff url={skillDiffUrl(skillId, previous.version_id, versionId)} />
+        </section>
+      )}
+
+      <PublishPanel skill={skill} version={selected} isLoggedIn isOwner />
+    </>
   );
 }
 
@@ -350,14 +434,14 @@ function VersionRunRow({ run }: { run: RunListItem }) {
   );
 }
 
-function VersionFacts({ version, isLatest }: { version: SkillVersionSummary; isLatest: boolean }) {
+function VersionFacts({ version, isLatest }: { version: SkillVersionSummary; isLatest?: boolean }) {
   return (
     <section className="version-facts" aria-labelledby="version-facts-title" data-role="evidence">
       <div>
         <p className="note">目前脈絡</p>
         <h2 id="version-facts-title">
           v{version.version_number}
-          {isLatest ? "，最新版本" : "，歷史版本"}
+          {isLatest === undefined ? "，是否最新尚未確認" : isLatest ? "，最新版本" : "，歷史版本"}
         </h2>
       </div>
       <dl>
@@ -438,33 +522,48 @@ function VersionRail({
   skillId,
   versionId,
   versions,
+  showUpload,
+  contextConfirmed,
 }: {
   skillId: string;
   versionId: string;
   versions: SkillVersionSummary[];
+  showUpload: boolean;
+  contextConfirmed: boolean;
 }) {
+  if (versions.length === 0 && !showUpload) return null;
   return (
     <aside className="version-workspace-rail" aria-label="版本選擇與修訂">
       <section>
-        <h2>切換版本</h2>
-        <ol className="version-workspace-list">
-          {versions.map((version) => (
-            <li key={version.version_id}>
-              <Link
-                to="/skills/$skillId/versions/$versionId"
-                params={{ skillId, versionId: version.version_id }}
-                aria-current={version.version_id === versionId ? "page" : undefined}
-              >
-                <strong>v{version.version_number}</strong>
-                <span className="note">
-                  <Timestamp at={version.created_at} />
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ol>
+        <h2>{versions.length ? "切換版本" : "版本修訂"}</h2>
+        {versions.length ? (
+          <ol className="version-workspace-list">
+            {versions.map((version) => (
+              <li key={version.version_id}>
+                <Link
+                  to="/skills/$skillId/versions/$versionId"
+                  params={{ skillId, versionId: version.version_id }}
+                  aria-current={version.version_id === versionId ? "page" : undefined}
+                >
+                  <strong>v{version.version_number}</strong>
+                  <span className="note">
+                    <Timestamp at={version.created_at} />
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="note">小工具與版本脈絡可讀取後，才能切換版本。</p>
+        )}
       </section>
-      <VersionUpload skillId={skillId} />
+      {showUpload && (
+        <VersionUpload
+          skillId={skillId}
+          versionId={versionId}
+          contextConfirmed={contextConfirmed}
+        />
+      )}
     </aside>
   );
 }

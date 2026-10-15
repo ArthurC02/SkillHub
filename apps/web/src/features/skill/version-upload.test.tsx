@@ -1,4 +1,4 @@
-import { StrictMode, act } from "react";
+import { StrictMode, act, type Ref } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -15,23 +15,31 @@ vi.mock("@tanstack/react-router", () => ({
     to,
     params,
     children,
+    ref,
   }: {
     to: string;
     params?: Record<string, string>;
     children: unknown;
+    ref?: Ref<HTMLAnchorElement>;
   }) => {
     const href = Object.entries(params ?? {}).reduce(
       (path, [key, value]) => path.replace(`$${key}`, value),
       to,
     );
-    return <a href={href}>{children as never}</a>;
+    return (
+      <a href={href} ref={ref}>
+        {children as never}
+      </a>
+    );
   },
 }));
 
 let container: HTMLDivElement;
 let root: Root;
+const scrollIntoView = HTMLElement.prototype.scrollIntoView;
 
 beforeEach(() => {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
   queryClient.clear();
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -41,6 +49,8 @@ afterEach(async () => {
   await act(async () => root?.unmount());
   container.remove();
   vi.unstubAllGlobals();
+  if (scrollIntoView) HTMLElement.prototype.scrollIntoView = scrollIntoView;
+  else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
 });
 
 function json(body: unknown, status = 200) {
@@ -55,7 +65,7 @@ async function render() {
     root.render(
       <StrictMode>
         <QueryClientProvider client={queryClient}>
-          <VersionUpload skillId={SKILL} />
+          <VersionUpload skillId={SKILL} versionId={VERSION} contextConfirmed />
         </QueryClientProvider>
       </StrictMode>,
     );

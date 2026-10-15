@@ -30,7 +30,7 @@ const pages = [
     url: `/skills/${SKILL}/versions/${VERSION}`,
     pattern: `**/skills/${SKILL}/versions`,
     heading: "版本與發佈",
-    ready: ".version-workspace",
+    ready: ".version-facts",
   },
   {
     name: "test case",

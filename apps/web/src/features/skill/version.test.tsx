@@ -9,6 +9,7 @@ import {
   OWN_PUBLICATIONS,
   OWN_PUBLISHER,
   SKILL,
+  SKILL_B,
   SKILL_VERSIONS,
   VERSION,
   VERSION_DIFF,
@@ -20,6 +21,8 @@ import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 let container: HTMLDivElement;
 let root: Root;
 let routeVersion = VERSION;
+let routeSkill = SKILL;
+const scrollIntoView = HTMLElement.prototype.scrollIntoView;
 
 const RUN_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const TEST_CASE_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -53,10 +56,12 @@ vi.mock("@tanstack/react-router", () => ({
       </a>
     );
   },
-  useParams: () => ({ skillId: SKILL, versionId: routeVersion }),
+  useParams: () => ({ skillId: routeSkill, versionId: routeVersion }),
 }));
 
 beforeEach(() => {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+  routeSkill = SKILL;
   routeVersion = VERSION;
   queryClient.clear();
   container = document.createElement("div");
@@ -67,6 +72,8 @@ afterEach(async () => {
   await act(async () => root?.unmount());
   container.remove();
   vi.unstubAllGlobals();
+  if (scrollIntoView) HTMLElement.prototype.scrollIntoView = scrollIntoView;
+  else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
 });
 
 function json(body: unknown, status = 200) {
@@ -424,4 +431,109 @@ test("a creation-context read failure is not presented as no retained session", 
 
   expect(text()).toContain("這個版本的 Studio 歷程");
   expect(text()).not.toContain("沒有仍可開啟的 Studio 會話");
+});
+
+async function selectVersionFile() {
+  const input = container.querySelector<HTMLInputElement>("#skill-version-file")!;
+  Object.defineProperty(input, "files", {
+    configurable: true,
+    value: [new File(["private bytes"], "private.zip", { type: "application/zip" })],
+  });
+  await act(async () => input.dispatchEvent(new Event("change", { bubbles: true })));
+}
+
+test("a cached different skill receives a fresh upload controller", async () => {
+  stubVersions();
+  await render(() => container.querySelector("#skill-version-file") !== null);
+  await selectVersionFile();
+  const nextVersion = "abcdef01-2345-4789-abcd-0123456789ab";
+  const nextSkill = {
+    ...skillDetail(SKILL_B, "Other tool"),
+    version: { ...SKILL_VERSIONS.versions[0], version_id: nextVersion },
+  };
+  const nextVersions = { versions: [{ ...SKILL_VERSIONS.versions[0], version_id: nextVersion }] };
+  queryClient.setQueryData(queryKeys.skills.detail(SKILL_B), nextSkill);
+  queryClient.setQueryData(queryKeys.skills.versions(SKILL_B), nextVersions);
+  const previousFetch = globalThis.fetch;
+  const release: Array<() => void> = [];
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const path = String(input).split("?")[0];
+    if (path === `/api/skills/${SKILL_B}` || path === `/skills/${SKILL_B}/versions`)
+      return new Promise<Response>((resolve) =>
+        release.push(() =>
+          resolve(
+            new Response(JSON.stringify(path.endsWith("/versions") ? nextVersions : nextSkill), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+          ),
+        ),
+      );
+    return previousFetch(input, init);
+  });
+  try {
+    routeSkill = SKILL_B;
+    routeVersion = nextVersion;
+    await act(async () =>
+      root.render(
+        <StrictMode>
+          <QueryClientProvider client={queryClient}>
+            <SkillVersion />
+          </QueryClientProvider>
+        </StrictMode>,
+      ),
+    );
+    await waitFor(() => text().includes("Other tool v2"));
+    expect(container.querySelector<HTMLInputElement>("#skill-version-file")?.files?.length).toBe(0);
+  } finally {
+    await act(async () => release.forEach((complete) => complete()));
+  }
+});
+
+test("losing the visible version list discards the local file before access is restored", async () => {
+  stubVersions();
+  let owned = true;
+  const posts: string[] = [];
+  const previousFetch = globalThis.fetch;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith(`/skills/${SKILL}/versions`)) {
+      if (init?.method === "POST") {
+        posts.push((init.body as File).name);
+        return json(
+          {
+            skill_id: SKILL,
+            version_id: VERSION,
+            version_number: 2,
+            content_hash: "sha256:bbbb",
+            duplicate: true,
+            findings: { errors: [], warnings: [], infos: [] },
+          },
+          201,
+        );
+      }
+      return json(owned ? SKILL_VERSIONS : { versions: [] });
+    }
+    return previousFetch(input, init);
+  });
+  await render(() => container.querySelector("#skill-version-file") !== null);
+  await selectVersionFile();
+  owned = false;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.skills.versions(SKILL) });
+  });
+  await waitFor(() => text().includes("無權檢視"));
+  expect(container.querySelector("#skill-version-file")).toBeNull();
+  owned = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.skills.versions(SKILL) });
+  });
+  await waitFor(() => container.querySelector("#skill-version-file") !== null);
+  expect(container.querySelector<HTMLInputElement>("#skill-version-file")?.files?.length).toBe(0);
+  await act(async () => {
+    container
+      .querySelector(".version-upload")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  await waitFor(() => queryClient.isMutating() === 0);
+  expect(posts).toEqual([]);
 });

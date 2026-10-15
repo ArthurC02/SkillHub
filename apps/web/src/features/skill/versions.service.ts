@@ -15,6 +15,8 @@ export function useSaveSkillVersion(skillId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (file: File) => saveSkillVersion(skillId, file),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.skills.detail(skillId) }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.skills.detail(skillId) });
+    },
   });
 }
