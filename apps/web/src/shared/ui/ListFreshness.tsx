@@ -5,6 +5,7 @@ export function ListFreshness({
   showWhenIdle = false,
   updatedAt,
   fetching,
+  paused = false,
   refetch,
   subject = "試跑",
   pollSeconds,
@@ -13,6 +14,7 @@ export function ListFreshness({
   showWhenIdle?: boolean;
   updatedAt: number;
   fetching: boolean;
+  paused?: boolean;
   refetch: () => unknown;
   subject?: string;
   pollSeconds?: number;
@@ -24,8 +26,8 @@ export function ListFreshness({
         ? `有${subject}還在進行中；${pollSeconds ? `每 ${pollSeconds} 秒自動更新；` : ""}`
         : ""}
       這份{subject}清單上次取得於 <Timestamp at={new Date(updatedAt).toISOString()} relative />。{" "}
-      <button type="button" disabled={fetching} onClick={() => void refetch()}>
-        {fetching ? "重新整理中…" : "重新整理"}
+      <button type="button" disabled={fetching || paused} onClick={() => void refetch()}>
+        {paused ? "等待連線…" : fetching ? "重新整理中…" : "重新整理"}
       </button>
     </p>
   );

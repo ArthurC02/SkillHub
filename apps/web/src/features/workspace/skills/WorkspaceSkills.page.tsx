@@ -258,7 +258,7 @@ export function WorkspaceSkills() {
   const lastPage = pages[pages.length - 1];
   const total = Math.max(rows.length, lastPage?.total ?? 0);
   const hasSkills = rows.length > 0;
-  const isEmpty = skills.isSuccess && !hasSkills;
+  const isEmpty = skills.isSuccess && skills.fetchStatus === "idle" && !hasSkills;
   useMenuDismiss();
 
   return (
@@ -274,7 +274,7 @@ export function WorkspaceSkills() {
 
       {isEmpty && (
         <>
-          <p>資產庫還沒有任何小工具——這是一份空清單，不是讀取失敗。</p>
+          <p role="status">資產庫還沒有任何小工具——這是一份空清單，不是讀取失敗。</p>
           <p className="note" data-role="teaching">
             匯入現成套件、從 Catalog 複製一份，或在開放時從 Studio 開始創作。
           </p>
@@ -282,11 +282,11 @@ export function WorkspaceSkills() {
       )}
       {isEmpty && <CreateHub generateExposed={generateExposed} creationExposed={creationExposed} />}
 
-      {skills.isPending && <Loading what="資產庫內容" />}
       <SkillsReadStatus
         skills={skills}
         nextPageFailure={nextPageFailure}
         readable={Boolean(data)}
+        empty={!hasSkills}
       />
       {message && <p role="status">{message}</p>}
       {remove.error && (
@@ -354,18 +354,25 @@ function SkillsReadStatus({
   skills,
   nextPageFailure,
   readable,
+  empty,
 }: {
   skills: ReturnType<typeof useOwnSkillPages>;
   nextPageFailure: boolean;
   readable: boolean;
+  empty: boolean;
 }) {
+  const paused = skills.fetchStatus === "paused";
+  const busy = skills.fetchStatus !== "idle";
   return (
     <>
+      {(skills.isPending || paused || (readable && empty && busy)) && (
+        <Loading what="資產庫內容" paused={paused} />
+      )}
       <ReadFailure
         error={skills.error}
         what="資產庫內容"
         retry={() => void (nextPageFailure ? skills.fetchNextPage() : skills.refetch())}
-        retrying={skills.isFetching}
+        retrying={busy}
         focusTarget="workspace-skills-heading"
       >
         {nextPageFailure && (
@@ -379,6 +386,7 @@ function SkillsReadStatus({
           subject="資產"
           updatedAt={skills.dataUpdatedAt}
           fetching={skills.isFetching && !skills.isFetchingNextPage}
+          paused={paused}
           refetch={async () => {
             const result = await skills.refetch();
             if (result.error) document.getElementById("workspace-skills-heading")?.focus();

@@ -43,12 +43,18 @@ function CatalogHeader({
 
 function CatalogEmptyState({ narrowing }: { narrowing: boolean }) {
   if (narrowing) {
-    return <p>沒有小工具符合目前的篩選條件；這不是讀取失敗。清掉篩選條件可查看完整目錄。</p>;
+    return (
+      <p role="status">
+        沒有小工具符合目前的篩選條件；這不是讀取失敗。清掉篩選條件可查看完整目錄。
+      </p>
+    );
   }
 
   return (
     <div className="empty-catalog">
-      <p className="empty-catalog-lede">目錄裡還沒有任何東西。</p>
+      <p className="empty-catalog-lede" role="status">
+        目錄裡還沒有任何東西。
+      </p>
       <p>
         這不是讀取失敗，也不是你沒有權限——是
         <strong>這個部署還沒有匯入過任何小工具</strong>。
@@ -77,16 +83,21 @@ export function Catalog({
   onToggle: (skillId: string) => void;
   filters: SearchFilters;
 }) {
-  if (query.isPending) return <Loading what="目錄" />;
+  const paused = query.fetchStatus === "paused";
+  const busy = query.fetchStatus !== "idle";
+  if (query.isPending) return <Loading what="目錄" paused={paused} />;
   if (query.error)
     return (
-      <ReadFailure
-        error={query.error}
-        what="目錄"
-        retry={() => void query.refetch()}
-        retrying={query.isFetching}
-        focusTarget="catalog-search-heading"
-      />
+      <>
+        <ReadFailure
+          error={query.error}
+          what="目錄"
+          retry={() => void query.refetch()}
+          retrying={busy}
+          focusTarget="catalog-search-heading"
+        />
+        {paused && <Loading what="目錄" paused />}
+      </>
     );
   if (!query.data) return null;
 
@@ -114,7 +125,11 @@ export function Catalog({
         hasCurated={hasCurated}
       />
       {results.length === 0 ? (
-        <CatalogEmptyState narrowing={narrowing} />
+        busy ? (
+          <Loading what="目錄" paused={paused} />
+        ) : (
+          <CatalogEmptyState narrowing={narrowing} />
+        )
       ) : (
         <>
           {truncated && (

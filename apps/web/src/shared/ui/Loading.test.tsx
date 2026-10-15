@@ -27,3 +27,19 @@ test("loading keeps its status label and exposes a decorative three-line skeleto
   await act(async () => root.unmount());
   container.remove();
 });
+
+test("a paused read names the connection wait without animating work", async () => {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => root.render(<Loading what="目錄" paused />));
+    const status = container.querySelector<HTMLElement>('[role="status"]')!;
+    expect(status.textContent).toBe("等待連線以讀取目錄；恢復連線後會繼續讀取。");
+    expect(status.hasAttribute("data-loading")).toBe(true);
+    expect(status.querySelector(".loading-skeleton")).toBeNull();
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+  }
+});

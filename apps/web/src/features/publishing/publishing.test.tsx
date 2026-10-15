@@ -743,7 +743,7 @@ test("a successful owner read names a missing continuation target without select
 
   await render(<PublishingWorkspace />, () => text().includes("目前找不到這筆交付紀錄"));
 
-  expect(container.querySelector('[role="status"]')?.textContent).toContain(
+  expect(container.querySelector('#delivery-history [role="status"]')?.textContent).toContain(
     "目前找不到這筆交付紀錄",
   );
   expect(container.querySelector('[aria-current="location"]')).toBeNull();

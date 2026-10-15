@@ -84,6 +84,7 @@ function PublicationOverview({ selectedPublication }: { selectedPublication?: st
   const overview = useOwnPublications();
   const data = overview.error ? undefined : overview.data;
   const publications = data?.publications ?? [];
+  const busy = overview.fetchStatus !== "idle";
   const selected = publications.find(
     (publication) => `${publication.publisher}/${publication.name}` === selectedPublication,
   );
@@ -100,28 +101,8 @@ function PublicationOverview({ selectedPublication }: { selectedPublication?: st
         公開頁會說明目前誰有資格取得；取得者身分與下載次數尚未提供。
       </p>
 
-      {overview.isPending && <Loading what="小工具發佈清單" />}
-      <ReadFailure
-        error={overview.error}
-        what="小工具發佈清單"
-        retry={() => void overview.refetch()}
-        retrying={overview.isFetching}
-        focusTarget="publication-overview-title"
-      />
-      {data && (
-        <ListFreshness
-          inFlight={false}
-          showWhenIdle
-          updatedAt={overview.dataUpdatedAt}
-          fetching={overview.isFetching}
-          refetch={async () => {
-            const result = await overview.refetch();
-            if (result.error) document.getElementById("publication-overview-title")?.focus();
-          }}
-          subject="發佈"
-        />
-      )}
-      {data && selectedPublication && !selected && (
+      <PublicationReadStatus overview={overview} empty={publications.length === 0} />
+      {data && selectedPublication && !selected && !busy && (
         <p role="status" className="note">
           這個工作區目前找不到這筆小工具發佈。它可能已不存在，或目前帳號無法檢視。{" "}
           <Link to="/workspace/downloads" search={{}}>
@@ -132,10 +113,12 @@ function PublicationOverview({ selectedPublication }: { selectedPublication?: st
 
       {data &&
         (publications.length === 0 ? (
-          <p>
-            還沒有任何小工具 Publication。先到 <Link to="/library">資產庫</Link>{" "}
-            選一個精確版本開始。
-          </p>
+          !busy && (
+            <p role="status">
+              還沒有任何小工具 Publication。先到 <Link to="/library">資產庫</Link>{" "}
+              選一個精確版本開始。
+            </p>
+          )
         ) : (
           <ul className="download-list" data-role="evidence">
             {publications.map((publication) => {
@@ -195,5 +178,45 @@ function PublicationOverview({ selectedPublication }: { selectedPublication?: st
           </ul>
         ))}
     </section>
+  );
+}
+
+function PublicationReadStatus({
+  overview,
+  empty,
+}: {
+  overview: ReturnType<typeof useOwnPublications>;
+  empty: boolean;
+}) {
+  const data = overview.error ? undefined : overview.data;
+  const paused = overview.fetchStatus === "paused";
+  const busy = overview.fetchStatus !== "idle";
+  return (
+    <>
+      {(overview.isPending || paused || (data && empty && busy)) && (
+        <Loading what="小工具發佈清單" paused={paused} />
+      )}
+      <ReadFailure
+        error={overview.error}
+        what="小工具發佈清單"
+        retry={() => void overview.refetch()}
+        retrying={busy}
+        focusTarget="publication-overview-title"
+      />
+      {data && (
+        <ListFreshness
+          inFlight={false}
+          showWhenIdle
+          updatedAt={overview.dataUpdatedAt}
+          fetching={overview.isFetching}
+          paused={paused}
+          refetch={async () => {
+            const result = await overview.refetch();
+            if (result.error) document.getElementById("publication-overview-title")?.focus();
+          }}
+          subject="發佈"
+        />
+      )}
+    </>
   );
 }
