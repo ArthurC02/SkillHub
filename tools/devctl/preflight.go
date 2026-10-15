@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -46,14 +47,11 @@ func preflight(root string, args []string, in io.Reader, out io.Writer) error {
 		return err
 	}
 	for _, rangeSpec := range ranges {
-		format, warnings, err := formatProblems(root, rangeSpec)
+		committed, err := committedProblems(root, rangeSpec, out)
 		if err != nil {
 			return err
 		}
-		for _, warning := range warnings {
-			fmt.Fprintln(out, statusWarn, warning)
-		}
-		problems = append(problems, format...)
+		problems = append(problems, committed...)
 	}
 	if !hook {
 		if err := automationCheck(root, out); err != nil {
@@ -69,6 +67,21 @@ func preflight(root string, args []string, in io.Reader, out io.Writer) error {
 	}
 	fmt.Fprintf(out, "preflight: %s clean\n", strings.Join(ranges, ", "))
 	return nil
+}
+
+func committedProblems(root, rangeSpec string, out io.Writer) ([]string, error) {
+	format, warnings, err := formatProblems(root, rangeSpec)
+	if err != nil {
+		return nil, err
+	}
+	for _, warning := range warnings {
+		fmt.Fprintln(out, statusWarn, warning)
+	}
+	comments, err := committedCommentProblems(root, rangeSpec)
+	if err != nil {
+		return nil, err
+	}
+	return append(format, comments...), nil
 }
 
 func unpushedRange(root string) string {
@@ -139,6 +152,29 @@ func formatProblems(root, rangeSpec string) (problems, warnings []string, err er
 		}
 	}
 	return problems, warnings, nil
+}
+
+func committedCommentProblems(root, rangeSpec string) ([]string, error) {
+	names, err := gitOutput(root, "diff", "--name-only", "--diff-filter=ACMR", rangeSpec)
+	if err != nil {
+		return nil, err
+	}
+	end := rangeEnd(rangeSpec)
+	var problems []string
+	for _, file := range lines(names) {
+		prefixes, ok := commentPrefixesFor(path.Base(file))
+		if !ok || !commentBudgetCovers(file) {
+			continue
+		}
+		blob, err := gitOutput(root, "show", end+":"+file)
+		if err != nil {
+			return nil, err
+		}
+		if found := commentViolationsIn([]byte(blob), prefixes); len(found) > 0 {
+			problems = append(problems, commentBudgetProblem(file, len(found)))
+		}
+	}
+	return problems, nil
 }
 
 func formatterFor(root, file string) (formatter, bool) {

@@ -217,3 +217,60 @@ func runIn(t *testing.T, dir, name string, args ...string) string {
 	}
 	return string(output)
 }
+
+const overlongGoComment = "package x\n\n// one\n// two\n// three\n// four\nfunc F() {}\n"
+
+func TestPreflightChecksTheCommentBudgetOfTheCommittedBytes(t *testing.T) {
+	t.Parallel()
+	repo := newGitRepo(t)
+	repo.commit(t, map[string]string{"README.md": "x\n", runtimeDockerfile: ""})
+	base := repo.head(t)
+
+	repo.commit(t, map[string]string{"apps/platform/x/doc.go": "package x\n"})
+	writeAt(t, repo.root, "apps/platform/x/doc.go", overlongGoComment)
+	repo.git(t, "add", "--", "apps/platform/x/doc.go")
+	if problems, err := committedCommentProblems(repo.root, base+"..HEAD"); err != nil || len(problems) != 0 {
+		t.Fatalf("someone else's working copy failed a clean commit: %v %v", problems, err)
+	}
+
+	repo.commit(t, map[string]string{"apps/platform/x/doc.go": overlongGoComment, "docs/x.go": overlongGoComment})
+	var out strings.Builder
+	pushed := "refs/heads/main " + repo.head(t) + " refs/heads/main " + base + "\n"
+	err := preflight(repo.root, []string{"--hook"}, strings.NewReader(pushed), &out)
+	if err == nil || strings.Count(out.String(), "comment-budget:") != 1 ||
+		!strings.Contains(out.String(), "comment-budget: apps/platform/x/doc.go has 1 comments to remove") {
+		t.Fatalf("an over-long committed comment passed the push, or a file outside the budget was checked: %v\n%s", err, out.String())
+	}
+}
+
+func TestCommentBudgetCoversExactlyTheFilesTheTreeScanReads(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	files := []string{
+		"x.go", "apps/platform/x.go", "apps/web/node_modules/p/x.go", "apps/.cache/x.go",
+		"tools/devctl/testdata/x.go", ".github/workflows/x.go", ".github/x.go", "docs/x.go", "packages/a/gen/x.go",
+	}
+	var covered []string
+	for _, file := range files {
+		writeAt(t, root, file, overlongGoComment)
+		if commentBudgetCovers(file) {
+			covered = append(covered, file)
+		}
+	}
+	violations, err := commentViolationsByFile(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var scanned []string
+	for file := range violations {
+		scanned = append(scanned, file)
+	}
+	sort.Strings(covered)
+	sort.Strings(scanned)
+	if want := ".github/workflows/x.go apps/platform/x.go x.go"; strings.Join(covered, " ") != want {
+		t.Fatalf("commentBudgetCovers %v, want %s", covered, want)
+	}
+	if strings.Join(covered, " ") != strings.Join(scanned, " ") {
+		t.Fatalf("commentBudgetCovers %v, the tree scan read %v", covered, scanned)
+	}
+}

@@ -53,9 +53,7 @@ func commentBudgetProblems(root string) []string {
 	}
 	var problems []string
 	for path, found := range violations {
-		problems = append(problems, fmt.Sprintf(
-			"comment-budget: %s has %d comments to remove; see `%s %s` and AGENTS.md 慣例",
-			path, len(found), commentLintHint, path))
+		problems = append(problems, commentBudgetProblem(path, len(found)))
 	}
 	sort.Strings(problems)
 	return problems
@@ -146,13 +144,42 @@ func (s commentScan) inspect(path, name string) error {
 	if err != nil {
 		return err
 	}
-	if generatedFileHeader.Match(src[:min(len(src), generatedHeaderScanBytes)]) {
-		return nil
-	}
-	if found := commentViolations(string(src), prefixes); len(found) > 0 {
+	if found := commentViolationsIn(src, prefixes); len(found) > 0 {
 		s.violations[harnessRelative(s.root, path)] = found
 	}
 	return nil
+}
+
+func commentViolationsIn(src []byte, prefixes []string) []commentViolation {
+	if generatedFileHeader.Match(src[:min(len(src), generatedHeaderScanBytes)]) {
+		return nil
+	}
+	return commentViolations(string(src), prefixes)
+}
+
+func commentBudgetProblem(path string, count int) string {
+	return fmt.Sprintf("comment-budget: %s has %d comments to remove; see `%s %s` and AGENTS.md 慣例",
+		path, count, commentLintHint, path)
+}
+
+func commentBudgetCovers(relative string) bool {
+	if !strings.Contains(relative, "/") {
+		return true
+	}
+	for _, top := range commentSourceRoots {
+		rest, ok := strings.CutPrefix(relative, top+"/")
+		if !ok {
+			continue
+		}
+		dirs := strings.Split(rest, "/")
+		for _, dir := range dirs[:len(dirs)-1] {
+			if commentSkippedDirs[dir] || strings.HasPrefix(dir, ".") {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 func commentPrefixesFor(name string) ([]string, bool) {
