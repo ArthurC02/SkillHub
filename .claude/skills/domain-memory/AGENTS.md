@@ -82,6 +82,7 @@ The two re-cite commands print `registry_updates` and `supersedes` for a Change 
 - Replacing or removing a reviewed record needs `supersedes` to list the proposal that reviewed it, which is `review.proposal_id` on the record. A package that replaces several takes a list.
 - A submitted proposal cannot be edited. Use `supersede-proposal --reason`, then `redraft-proposal`. A redraft keeps the design but not the test results, so record them again.
 - Cite lines whose text occurs once in the file. A citation whose text repeats elsewhere in the file goes `stale` at the next edit, because nothing can tell the copies apart. `cite` and `recite` print a NOTE when that happens; widen the span to the enclosing block.
+- Once a commit is signed or attested, it must reach the remote unchanged. Take in upstream work with a merge (`git pull --no-rebase`), not a rebase: a rebase rewrites the commit without its signature, and an attestation naming it then names a commit that no longer exists.
 - Never write a citation by hand. Hand-made line splitting verifies as `stale`, and a missing digest as `unhashed`.
 - Errors print `ERROR: <reason>` on stdout and exit non-zero. The reason names the fix, so read it before trying anything else.
 

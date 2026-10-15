@@ -118,6 +118,18 @@ def _git(repo_root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _invalid_signature(repo_root: Path, commit: str) -> str:
+    header = _git(repo_root, "cat-file", "commit", commit).stdout.partition("\n\n")[0]
+    if "\ngpgsig" in header:
+        return f"Git commit signature is invalid: {commit} is signed, but the signature does not verify"
+    return (
+        f"Git commit signature is invalid: {commit} carries no signature. A rebase, amend or "
+        "cherry-pick writes new commits unsigned unless told to sign; take in upstream work with a "
+        "merge (git pull --no-rebase), which keeps signed and attested commits as they are, and "
+        "an attestation naming a commit that was rewritten has to be made again"
+    )
+
+
 def verify_git_signed_commit(
     value: dict[str, Any], repo_root: Path, registry_root: Path, authorized_signers: list[str]
 ) -> list[str]:
@@ -126,7 +138,7 @@ def verify_git_signed_commit(
         return ["Git commit attestation requires a commit"]
     verified = _git(repo_root, "verify-commit", "--raw", commit)
     if verified.returncode != 0:
-        return ["Git commit signature is invalid"]
+        return [_invalid_signature(repo_root, commit)]
     output = verified.stdout + verified.stderr
     signers = set(re.findall(r"VALIDSIG ([0-9A-F]+)", output))
     signers.update(re.findall(r'Good "git" signature for (\S+)', output))

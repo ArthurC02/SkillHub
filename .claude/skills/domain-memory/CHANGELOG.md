@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.25.1
+
+### Fixed
+
+- A commit whose signature does not verify is named, and the reason says which case it is: a commit that carries no signature, as a rebase, amend or cherry-pick leaves it, is told to take in upstream work with a merge, which keeps signed and attested commits; a signed commit whose signature fails says so. Before, both read only "Git commit signature is invalid". `AGENTS.md` adds the merge-not-rebase rule to the mistakes that cost a redo.
+
 ## 0.25.0
 
 ### Added

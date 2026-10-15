@@ -498,6 +498,22 @@ class ReviewTest(RegistryTestCase):
                     ),
                 )
 
+    def test_a_rejected_commit_says_whether_it_lost_its_signature_or_fails_to_verify(self) -> None:
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            init_signing_key(self.repo, "probe@example.com", self.repo / "keys" / "signing-key")
+        registry_root = self.repo / "docs" / "domain-memory"
+        signed = self.sign_a_domain_memory_commit("signed")
+        (registry_root / "note.txt").write_text("unsigned", encoding="utf-8")
+        unsigned = self.commit_everything("unsigned")
+        [lost] = verify_git_signed_commit({"commit": unsigned}, self.repo, registry_root, ["probe@example.com"])
+        self.assertIn(f"Git commit signature is invalid: {unsigned} carries no signature", lost)
+        self.assertIn("git pull --no-rebase", lost)
+        subprocess.run(["git", "config", "--unset", "gpg.ssh.allowedSignersFile"], cwd=self.repo, check=True)
+        self.assertEqual(
+            [f"Git commit signature is invalid: {signed} is signed, but the signature does not verify"],
+            verify_git_signed_commit({"commit": signed}, self.repo, registry_root, ["probe@example.com"]),
+        )
+
     def test_the_same_key_rebuilds_from_the_environment(self) -> None:
         with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
             first = init_signing_key(
