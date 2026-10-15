@@ -1155,8 +1155,11 @@ def _bounded_challenges(drafts: list[ChallengeDraft]) -> list[ChallengeCase]:
 
 
 async def _write_challenges(
-    req: CreationStepRequest, d: CreationDecision, gateway_key: str
-) -> tuple[list[ChallengeCase], GatewayUsage | None]:
+    req: CreationStepRequest,
+    d: CreationDecision,
+    gateway_key: str,
+    usages: list[GatewayUsage | None],
+) -> list[ChallengeCase]:
     proposal = json.dumps(
         {
             "brief": d.brief or req.brief,
@@ -1178,9 +1181,9 @@ async def _write_challenges(
         ),
     )
     completion = raw.parse()
-    usage = completion_usage(completion, raw.headers)
+    usages.append(completion_usage(completion, raw.headers))
     found = ChallengeSet.model_validate_json(completion.choices[0].message.content or "")
-    return _bounded_challenges(found.cases), usage
+    return _bounded_challenges(found.cases)
 
 
 def _challenge_node(gateway_key: str):
@@ -1188,16 +1191,19 @@ def _challenge_node(gateway_key: str):
         req, d = state["request"], state["decision"]
         if d.outcome != "confirm_brief":
             return {}
+        usages: list[GatewayUsage | None] = []
+        update: dict = {}
         try:
-            cases, usage = await _write_challenges(req, d, gateway_key)
+            update["challenge_cases"] = await _write_challenges(req, d, gateway_key, usages)
         except MODEL_OUTPUT_ERRORS as exc:
             logger.warning(
                 "creation challenge cases skipped (%s) session=%s",
                 type(exc).__name__,
                 req.session_id,
             )
-            return {}
-        return {"challenge_cases": cases, "usage": _add_usage(state.get("usage"), usage)}
+        if usages:
+            update["usage"] = _add_usage(state.get("usage"), usages[0])
+        return update
 
     return challenge
 

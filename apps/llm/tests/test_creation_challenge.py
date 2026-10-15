@@ -81,6 +81,9 @@ def test_an_unusable_challenge_reply_leaves_the_brief_to_confirm_without_cases()
     assert body["brief"] == BRIEF
     assert body["challenge_cases"] == []
     assert len(calls) == 2
+    assert body["usage"]["prompt_tokens"] == 20
+    assert body["usage"]["completion_tokens"] == 10
+    assert body["usage"]["cost_usd"] == 0.002
 
 
 def test_only_a_brief_to_confirm_asks_for_challenge_cases():
