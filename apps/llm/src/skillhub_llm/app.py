@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from skillhub_llm.agent import router as agent_router
 from skillhub_llm.creation import router as creation_router
+from skillhub_llm.disconnect import CancelWhenCallerLeaves
 from skillhub_llm.enrich import router as enrich_router
 from skillhub_llm.evaluate import router as evaluate_router
 from skillhub_llm.gateway import (
@@ -70,6 +71,7 @@ app = FastAPI(
 )
 protected = [Depends(require_service_token)]
 budgeted = [Depends(require_service_token), Depends(require_budgeted_service_key)]
+app.add_middleware(CancelWhenCallerLeaves)
 app.include_router(enrich_router, dependencies=budgeted)
 app.include_router(evaluate_router, dependencies=budgeted)
 app.include_router(generate_router, dependencies=budgeted)
