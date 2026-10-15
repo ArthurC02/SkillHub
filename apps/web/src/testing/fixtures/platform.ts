@@ -42,6 +42,7 @@ import type {
 import type { DownloadArtifact } from "../../features/packaging/packaging.service";
 import type { ActivityPage } from "../../features/activity/activity.service";
 import type { CheckKinds, Grader } from "../../features/evaluation/evaluation.service";
+import type { SkillImportLimits } from "../../features/creation/import.service";
 
 export const SKILL = "11111111-1111-1111-1111-111111111111";
 export const SKILL_B = "aaaaaaaa-2222-2222-2222-222222222222";
@@ -559,6 +560,17 @@ export const PREFLIGHT = {
     },
   },
 };
+
+export const IMPORT_LIMITS = {
+  allowed_hosts: ["github.com"],
+  max_zip_bytes: 10485760,
+  max_unpacked_bytes: 104857600,
+  max_files: 100,
+  max_file_bytes: 1048576,
+  max_path_depth: 8,
+  max_skills_per_import: 20,
+  note: "",
+} satisfies SkillImportLimits;
 
 export const LIMITS = {
   max_file_bytes: 25 << 20,
@@ -1615,6 +1627,7 @@ const ROUTES: RouteMatcher[] = [
   (path) => (path === "/runs" ? ok(RUNS) : undefined),
   (path) => (path.endsWith("/artifacts") ? ok(RUN_ARTIFACTS) : undefined),
   (path) => (path === "/test-cases/limits" ? ok(LIMITS) : undefined),
+  (path) => (path === "/skills/import/limits" ? ok(IMPORT_LIMITS) : undefined),
   (path) =>
     path.endsWith("/datasets")
       ? ok({

@@ -59,6 +59,10 @@ export interface SkillImportLimits {
 export function useSkillImportLimits() {
   return useQuery({
     queryKey: queryKeys.skills.importLimits,
-    queryFn: () => apiFetch<SkillImportLimits>("/skills/import/limits"),
+    queryFn: async () => {
+      const limits = await apiFetch<SkillImportLimits>("/skills/import/limits");
+      if (!Array.isArray(limits?.allowed_hosts)) throw new Error("Invalid import limits");
+      return limits;
+    },
   });
 }

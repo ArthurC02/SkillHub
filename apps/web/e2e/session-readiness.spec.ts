@@ -69,6 +69,7 @@ for (const failure of ["pending", "server", "network", "offline"]) {
       await expect(page.locator(".auth-name")).toHaveText("tester");
       const input = page.getByRole("textbox", { name: "URL", exact: true });
       await input.fill(draft);
+      await expect(page.getByRole("button", { name: "開始匯入", exact: true })).toBeEnabled();
       checking = true;
       if (failure === "offline") await context.setOffline(true);
       await page.evaluate(() =>
@@ -161,6 +162,7 @@ test("a changed Workspace after a pending check clears the old draft without imp
     await expect(page.locator(".auth-name")).toHaveText("tester");
     const input = page.getByRole("textbox", { name: "URL", exact: true });
     await input.fill(draft);
+    await expect(page.getByRole("button", { name: "開始匯入", exact: true })).toBeEnabled();
     checking = true;
     await page.evaluate(() =>
       document.dispatchEvent(new Event("visibilitychange", { bubbles: true })),

@@ -25,7 +25,7 @@ export function ImportSkill() {
   const [file, setFile] = useState<File>();
   const mutation = useImportSkill();
   const limits = useSkillImportLimits();
-  const rules = Array.isArray(limits.data?.allowed_hosts) ? limits.data : undefined;
+  const rules = limits.isSuccess && limits.fetchStatus === "idle" ? limits.data : undefined;
   const result = mutation.data;
   const failure = mutation.error;
   const rejected =
@@ -33,6 +33,7 @@ export function ImportSkill() {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (!rules || mutation.isPending) return;
     mutation.mutate(source === "url" ? { url: url.trim() } : { file });
   };
 
@@ -47,8 +48,24 @@ export function ImportSkill() {
       <div className="import-workspace">
         <section className="import-rules" aria-labelledby="import-rules-title">
           <p className="page-eyebrow">Static inspection</p>
-          <h2 id="import-rules-title">匯入前檢查</h2>
+          <h2 id="import-rules-title" tabIndex={-1}>
+            匯入前檢查
+          </h2>
           <p>套件只會做靜態檢查；匯入期間不執行其中的 Script。</p>
+          {limits.fetchStatus !== "idle" && (
+            <p role="status">
+              {limits.fetchStatus === "paused" ? "等待連線以讀取匯入限制…" : "正在讀取匯入限制…"}
+            </p>
+          )}
+          <ReadFailure
+            error={limits.error}
+            what="匯入限制"
+            retry={() => void limits.refetch()}
+            retrying={limits.fetchStatus !== "idle"}
+            focusTarget="import-rules-title"
+          >
+            <p role="alert">無法讀取匯入限制。請重新讀取後再送出。</p>
+          </ReadFailure>
           <ImportRules rules={rules} />
         </section>
         <section className="import-source" aria-labelledby="import-source-title">
@@ -64,6 +81,7 @@ export function ImportSkill() {
               onURLChange={setURL}
               onFileChange={setFile}
               mutation={mutation}
+              rulesReady={Boolean(rules)}
               onSubmit={submit}
             />
           )}
@@ -105,6 +123,7 @@ function ImportSourceForm({
   onURLChange,
   onFileChange,
   mutation,
+  rulesReady,
   onSubmit,
 }: {
   source: "url" | "upload";
@@ -113,6 +132,7 @@ function ImportSourceForm({
   onURLChange: (url: string) => void;
   onFileChange: (file: File | undefined) => void;
   mutation: ReturnType<typeof useImportSkill>;
+  rulesReady: boolean;
   onSubmit: (event: FormEvent) => void;
 }) {
   return (
@@ -161,9 +181,19 @@ function ImportSourceForm({
           />
         </p>
       )}
-      <button type="submit" className="action" disabled={mutation.isPending}>
+      <button
+        type="submit"
+        className="action"
+        disabled={!rulesReady || mutation.isPending}
+        aria-describedby={!rulesReady ? "import-rules-unavailable" : undefined}
+      >
         {mutation.isPending ? "匯入中…" : "開始匯入"}
       </button>
+      {!rulesReady && (
+        <p id="import-rules-unavailable" className="note">
+          匯入限制尚未確認，請先讀取成功後再送出。
+        </p>
+      )}
       {mutation.isPending && (
         <p role="status" className="note">
           正在取得套件並逐檔用靜態檢查看過它——這一步會自己結束，不需要你再按任何東西。
@@ -178,12 +208,9 @@ function ImportSourceForm({
 function ImportRules({ rules }: { rules: SkillImportLimits | undefined }) {
   return (
     <ul className="note">
-      <li>
-        來源限 {rules ? rules.allowed_hosts.join("、") : "GitHub（PDM-002 的首批來源）"}
-        ，其他網域一律拒絕。
-      </li>
+      {rules && <li>來源限 {rules.allowed_hosts.join("、")}，其他網域一律拒絕。</li>}
       <li>網址必須是 https，而且不得帶帳號密碼、查詢字串或錨點。</li>
-      {rules ? (
+      {rules && (
         <>
           <li>
             zip 最大 {mb(rules.max_zip_bytes)}，解壓後總量最大 {mb(rules.max_unpacked_bytes)}；最多{" "}
@@ -195,8 +222,6 @@ function ImportRules({ rules }: { rules: SkillImportLimits | undefined }) {
             Skill（被拒的不算），超過就整批不匯入。
           </li>
         </>
-      ) : (
-        <li>正在讀這個部署的大小上限…</li>
       )}
       <li>
         zip 的最上層（或單一頂層資料夾）可以是一個 Skill（有 <code>SKILL.md</code>）、一個 Agent

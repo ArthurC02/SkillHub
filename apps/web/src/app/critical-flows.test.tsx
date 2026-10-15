@@ -6,6 +6,9 @@ import { queryClient } from "../core/api/queryClient";
 import { AuthControls } from "./shell/AuthControls";
 import { ImportSkill } from "../features/creation/import/ImportSkill.page";
 import { CancelRunControl } from "../features/runs/trace/components/CancelRunControl";
+import { IMPORT_LIMITS, platformResponse } from "../testing/fixtures/platform";
+import { queryKeys } from "../core/api/queryKeys";
+import { DEFAULT_WAIT_MS, pollUntil } from "../testing/poll";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -104,8 +107,10 @@ test("signed-in users can end the session and clear cached workspace data", asyn
 });
 
 test("URL import sends the source and links the imported version", async () => {
-  const fetchMock = vi.fn((_url: string | URL | Request, init?: RequestInit) =>
-    json(
+  const fetchMock = vi.fn((url: string | URL | Request, init?: RequestInit) => {
+    if (String(url).endsWith("/me")) return json(platformResponse("/me").body);
+    if (String(url).endsWith("/skills/import/limits")) return json(IMPORT_LIMITS);
+    return json(
       {
         shape: "skill",
         skills: [
@@ -123,10 +128,15 @@ test("URL import sends the source and links the imported version", async () => {
         excluded_components: [],
       },
       init?.method === "POST" ? 201 : 200,
-    ),
-  );
+    );
+  });
   vi.stubGlobal("fetch", fetchMock);
-  await render(<ImportSkill />, () => container.querySelector("form") !== null);
+  await render(
+    <ImportSkill />,
+    () =>
+      container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled === false &&
+      queryClient.getQueryState(queryKeys.me)?.status === "success",
+  );
 
   const input = container.querySelector<HTMLInputElement>("#skill-import-url")!;
   await act(async () => {
@@ -141,7 +151,11 @@ test("URL import sends the source and links the imported version", async () => {
       .querySelector("form")!
       .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
   });
-  await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+  await pollUntil(
+    () => container.querySelector('a[href="/skills/skill-1/versions/version-1"]') !== null,
+    () => container.textContent,
+    DEFAULT_WAIT_MS,
+  );
 
   const [, init] = fetchMock.mock.calls.at(-1)!;
   expect(init?.method).toBe("POST");

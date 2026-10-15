@@ -12,6 +12,8 @@ import { SkillDetail } from "../skill/detail/SkillDetail.page";
 import { ImportSkill } from "../creation/import/ImportSkill.page";
 import { CancelRunControl } from "../runs/trace/components/CancelRunControl";
 import {
+  IMPORT_LIMITS,
+  platformResponse,
   SKILL_VERSIONS,
   VERSION,
   VERSION_DIFF,
@@ -22,6 +24,7 @@ import { BundleSection } from "../publishing";
 import { AnalyticsEventsSection } from "./policy/components/AnalyticsEventsSection";
 import type { DataRetentionPolicy } from "../../core/api/types";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { queryKeys } from "../../core/api/queryKeys";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
 const TEST_CASE = "55555555-5555-5555-5555-555555555555";
@@ -1236,8 +1239,10 @@ test("WS-004 a fork invalidates the list it writes to, and does not touch the se
 });
 
 test("SKILL-002 an import invalidates the Library, and does not re-run the search", async () => {
-  vi.stubGlobal("fetch", () =>
-    json(
+  vi.stubGlobal("fetch", (input: string) => {
+    if (String(input).endsWith("/me")) return json(platformResponse("/me").body);
+    if (String(input).endsWith("/skills/import/limits")) return json(IMPORT_LIMITS);
+    return json(
       {
         shape: "skill",
         skills: [
@@ -1255,12 +1260,17 @@ test("SKILL-002 an import invalidates the Library, and does not re-run the searc
         excluded_components: [],
       },
       201,
-    ),
-  );
+    );
+  });
   queryClient.setQueryData(["own-skills"], { skills: [] });
   queryClient.setQueryData(["skills", "search", "pdf"], { results: [] });
 
-  await render(<ImportSkill />, () => text().includes("匯入小工具"));
+  await render(
+    <ImportSkill />,
+    () =>
+      button("開始匯入")?.disabled === false &&
+      queryClient.getQueryState(queryKeys.me)?.status === "success",
+  );
   const input = container.querySelector<HTMLInputElement>('input[type="url"]')!;
   await act(async () => {
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.bind(

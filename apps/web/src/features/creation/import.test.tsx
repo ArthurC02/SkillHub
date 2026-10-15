@@ -1,10 +1,12 @@
 import { StrictMode, act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { ImportSkill } from "./import/ImportSkill.page";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { IMPORT_LIMITS } from "../../testing/fixtures/platform";
+import { queryKeys } from "../../core/api/queryKeys";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -67,6 +69,7 @@ test("the import workspace separates source rules from the intake controls", asy
   vi.stubGlobal("fetch", (input: string) => {
     const path = String(input);
     if (path.endsWith("/me")) return json(ME);
+    if (path.endsWith("/skills/import/limits")) return json(IMPORT_LIMITS);
     return json({ error: "not found" }, 404);
   });
   await render(<ImportSkill />, () => text().includes("開始匯入"));
@@ -77,8 +80,56 @@ test("the import workspace separates source rules from the intake controls", asy
   expect(workspace!.querySelector(":scope > .import-source")).not.toBeNull();
 });
 
+test("a failed rules reread hides cached deployment limits and prevents imports", async () => {
+  queryClient.setQueryData(queryKeys.skills.importLimits, IMPORT_LIMITS);
+  const writes = vi.fn();
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/me")) return json(ME);
+    if (init?.method === "POST") writes();
+    return json({ error: "service unavailable" }, 503);
+  });
+  await render(<ImportSkill />, () => text().includes("無法讀取匯入限制"));
+  expect(text()).not.toContain("zip 最大 10 MB");
+  expect(text()).not.toContain("來源限 github.com");
+  expect(text()).not.toContain("正在讀取匯入限制…");
+  expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
+  await act(async () => {
+    container
+      .querySelector("form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  expect(writes).not.toHaveBeenCalled();
+});
+
+test("a paused rules reread withholds cached limits and explains the connection wait", async () => {
+  queryClient.setQueryData(queryKeys.me, ME);
+  queryClient.setQueryData(queryKeys.skills.importLimits, IMPORT_LIMITS);
+  vi.stubGlobal("fetch", vi.fn());
+  onlineManager.setOnline(false);
+  try {
+    await render(
+      <ImportSkill />,
+      () => queryClient.getQueryState(queryKeys.skills.importLimits)?.fetchStatus === "paused",
+    );
+    expect(text()).not.toContain("zip 最大 10 MB");
+    expect(text()).toContain("等待連線以讀取匯入限制…");
+    expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(
+      true,
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  } finally {
+    await queryClient.cancelQueries();
+    onlineManager.setOnline(true);
+  }
+});
+
 async function submitURL(url = "https://github.com/example/skill") {
-  await render(<ImportSkill />, () => text().includes("匯入小工具"));
+  await render(
+    <ImportSkill />,
+    () =>
+      container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled === false &&
+      queryClient.getQueryState(queryKeys.me)?.status === "success",
+  );
   const input = container.querySelector<HTMLInputElement>('input[type="url"]')!;
   await act(async () => {
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.bind(
@@ -98,6 +149,7 @@ test("04 丙-150(a): a session that expired mid-import says 需要登入, not th
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const path = typeof input === "string" ? input : String(input);
     if (path.endsWith("/me")) return json(ME);
+    if (path.endsWith("/skills/import/limits")) return json(IMPORT_LIMITS);
     if (init?.method === "POST") return json({ error: "not authenticated" }, 401);
     return json({ error: "not found" }, 404);
   });
@@ -112,6 +164,7 @@ test("04 丙-150(a): a 400 (bad zip / unreachable URL) gets the page's own sente
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const path = typeof input === "string" ? input : String(input);
     if (path.endsWith("/me")) return json(ME);
+    if (path.endsWith("/skills/import/limits")) return json(IMPORT_LIMITS);
     if (init?.method === "POST") return json({ error: "bad request" }, 400);
     return json({ error: "not found" }, 404);
   });
@@ -124,6 +177,7 @@ test("a 413 (file too large) gets its own sentence", async () => {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const path = typeof input === "string" ? input : String(input);
     if (path.endsWith("/me")) return json(ME);
+    if (path.endsWith("/skills/import/limits")) return json(IMPORT_LIMITS);
     if (init?.method === "POST") return json({ error: "payload too large" }, 413);
     return json({ error: "not found" }, 404);
   });
@@ -136,6 +190,7 @@ test("an unclassified server error (500) gets the generic retry sentence", async
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const path = typeof input === "string" ? input : String(input);
     if (path.endsWith("/me")) return json(ME);
+    if (path.endsWith("/skills/import/limits")) return json(IMPORT_LIMITS);
     if (init?.method === "POST") return json({ error: "internal error" }, 500);
     return json({ error: "not found" }, 404);
   });
@@ -150,6 +205,7 @@ test("04 丙-152: a 422 renders every refused folder's real Chinese finding mess
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const path = typeof input === "string" ? input : String(input);
     if (path.endsWith("/me")) return json(ME);
+    if (path.endsWith("/skills/import/limits")) return json(IMPORT_LIMITS);
     if (init?.method === "POST")
       return json(
         {
@@ -243,6 +299,7 @@ function stubImport(body: unknown) {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const path = typeof input === "string" ? input : String(input);
     if (path.endsWith("/me")) return json(ME);
+    if (path.endsWith("/skills/import/limits")) return json(IMPORT_LIMITS);
     if (init?.method === "POST") return json(body, 201);
     return json({ error: "not found" }, 404);
   });
