@@ -19,10 +19,10 @@ const (
 	sourceMapFile     = domainMemoryRoot + "/source-map.json"
 )
 
-var failingEvidence = map[string]bool{"stale": true, "unhashed": true, "missing": true, "invalid": true}
+var passingEvidence = map[string]bool{"current": true, "shifted": true, "legacy-unverified": true}
 
 type evidenceReport struct {
-	Results []struct {
+	Results *[]struct {
 		Asset      string `json:"asset"`
 		ID         string `json:"id"`
 		Path       string `json:"path"`
@@ -61,12 +61,19 @@ func committedEvidenceProblems(root, rangeSpec string) (problems, warnings []str
 		}
 		return nil, []string{fmt.Sprintf("Domain Memory evidence skipped (%s); CI still checks it", reason)}, nil
 	}
-	for _, result := range report.Results {
-		if failingEvidence[result.Status] {
+	for _, result := range *report.Results {
+		if !passingEvidence[result.Status] {
+			location := result.Path
+			if result.CitedLines.Start > 0 {
+				location = fmt.Sprintf("%s:%d-%d", result.Path, result.CitedLines.Start, result.CitedLines.End)
+			}
 			problems = append(problems, fmt.Sprintf(
-				"Domain Memory evidence: %s/%s cites %s:%d-%d, which is %s as committed; check the fact still holds, then re-cite it (verify-evidence --path %s)",
-				result.Asset, result.ID, result.Path, result.CitedLines.Start, result.CitedLines.End, result.Status, result.Path))
+				"Domain Memory evidence: %s/%s cites %s, which is %s as committed; check the fact still holds, then re-cite it (verify-evidence --path %s)",
+				result.Asset, result.ID, location, result.Status, result.Path))
 		}
+	}
+	if len(problems) == 0 && runErr != nil {
+		problems = append(problems, fmt.Sprintf("Domain Memory evidence: verify-evidence failed on the committed bytes (%v); run it with --path on the files you changed", runErr))
 	}
 	return problems, nil, nil
 }
@@ -74,55 +81,80 @@ func committedEvidenceProblems(root, rangeSpec string) (problems, warnings []str
 func parsedEvidenceReport(output string) (evidenceReport, bool) {
 	var report evidenceReport
 	start := strings.Index(output, "{")
-	return report, start >= 0 && json.Unmarshal([]byte(output[start:]), &report) == nil
+	return report, start >= 0 && json.Unmarshal([]byte(output[start:]), &report) == nil && report.Results != nil
 }
 
 func citedChanges(root, rangeSpec, end string) ([]string, error) {
-	if !committedPathExists(root, end, registryDirectory) {
-		return nil, nil
+	hasRegistry, err := committedPathExists(root, end, registryDirectory)
+	if err != nil || !hasRegistry {
+		return nil, err
 	}
-	registry, err := committedRegistryText(root, end)
+	citedPaths, err := committedCitedPaths(root, end)
 	if err != nil {
 		return nil, err
 	}
-	changed, err := gitOutput(root, "diff", "--name-only", rangeSpec)
+	changed, err := gitOutput(root, "-c", "core.quotepath=false", "diff", "--name-only", "--no-renames", rangeSpec)
 	if err != nil {
 		return nil, err
 	}
 	var cited []string
 	for _, file := range lines(changed) {
-		if strings.Contains(registry, `"path": "`+file+`"`) {
+		if citedPaths[file] {
 			cited = append(cited, file)
 		}
 	}
 	return cited, nil
 }
 
-func committedPathExists(root, commit, path string) bool {
-	_, err := gitOutput(root, "cat-file", "-e", commit+":"+path)
-	return err == nil
+func committedPathExists(root, commit, path string) (bool, error) {
+	listing, err := gitOutput(root, "ls-tree", "--name-only", commit, "--", path)
+	return strings.TrimSpace(listing) != "", err
 }
 
-func committedRegistryText(root, commit string) (string, error) {
-	listing, err := gitOutput(root, "ls-tree", "--name-only", commit+":"+registryDirectory)
+func committedCitedPaths(root, commit string) (map[string]bool, error) {
+	listing, err := gitOutput(root, "-c", "core.quotepath=false", "ls-tree", "--name-only", commit+":"+registryDirectory)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	var text strings.Builder
+	paths := map[string]bool{}
 	for _, name := range lines(listing) {
 		body, err := gitOutput(root, "show", commit+":"+registryDirectory+"/"+name)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		text.WriteString(body)
+		var document any
+		if err := json.Unmarshal([]byte(body), &document); err != nil {
+			return nil, fmt.Errorf("%s/%s at %s is not JSON: %w", registryDirectory, name, commit, err)
+		}
+		collectCitedPaths(document, paths)
 	}
-	return text.String(), nil
+	return paths, nil
+}
+
+func collectCitedPaths(value any, paths map[string]bool) {
+	switch node := value.(type) {
+	case map[string]any:
+		for key, child := range node {
+			if references, ok := child.([]any); ok && key == "evidence" {
+				addCitationPaths(references, paths)
+			}
+			collectCitedPaths(child, paths)
+		}
+	case []any:
+		for _, child := range node {
+			collectCitedPaths(child, paths)
+		}
+	}
 }
 
 func extractCommitted(root, commit, target string, paths []string) error {
 	present := []string{}
 	for _, path := range paths {
-		if committedPathExists(root, commit, path) {
+		exists, err := committedPathExists(root, commit, path)
+		if err != nil {
+			return err
+		}
+		if exists {
 			present = append(present, path)
 		}
 	}
@@ -163,4 +195,13 @@ func writeArchived(target, name string, body io.Reader) error {
 		return err
 	}
 	return os.WriteFile(destination, content, 0o644)
+}
+
+func addCitationPaths(references []any, paths map[string]bool) {
+	for _, reference := range references {
+		citation, _ := reference.(map[string]any)
+		if path, ok := citation["path"].(string); ok {
+			paths[path] = true
+		}
+	}
 }

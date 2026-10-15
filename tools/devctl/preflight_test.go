@@ -274,3 +274,60 @@ func TestCommentBudgetCoversExactlyTheFilesTheTreeScanReads(t *testing.T) {
 		t.Fatalf("commentBudgetCovers %v, the tree scan read %v", covered, scanned)
 	}
 }
+
+func TestFormatChecksThePushedCommitWhenItIsNotCheckedOut(t *testing.T) {
+	t.Parallel()
+	if _, err := exec.LookPath("gofmt"); err != nil {
+		t.Fatal("gofmt ships with Go and is required for this test")
+	}
+	repo := newGitRepo(t)
+	repo.commit(t, map[string]string{"README.md": "x\n"})
+	base := repo.head(t)
+	repo.commit(t, map[string]string{"apps/platform/x.go": unformattedGo})
+	pushed := repo.head(t)
+	repo.git(t, "checkout", "-q", "--detach", base)
+	problems, _, err := formatProblems(repo.root, base+".."+pushed)
+	if err != nil || len(problems) != 1 || !strings.Contains(problems[0], "apps/platform/x.go is not gofmt-formatted") {
+		t.Fatalf("the pushed commit was not the one checked: %v %v", problems, err)
+	}
+}
+
+func TestCommentBudgetChecksThePushedCommitWhenItIsNotCheckedOut(t *testing.T) {
+	t.Parallel()
+	repo := newGitRepo(t)
+	repo.commit(t, map[string]string{"README.md": "x\n"})
+	base := repo.head(t)
+	repo.commit(t, map[string]string{"apps/platform/x/doc.go": overlongGoComment})
+	pushed := repo.head(t)
+	repo.git(t, "checkout", "-q", "--detach", base)
+	problems, err := committedCommentProblems(repo.root, base+".."+pushed)
+	want := "comment-budget: apps/platform/x/doc.go has 1 comments to remove; see `go -C tools/devctl run . comment-lint apps/platform/x/doc.go` and AGENTS.md 慣例"
+	if err != nil || len(problems) != 1 || problems[0] != want {
+		t.Fatalf("the pushed commit was not the one checked: %v %v", problems, err)
+	}
+}
+
+func TestCommentBudgetSkipsFilesDeletedInTheRange(t *testing.T) {
+	t.Parallel()
+	repo := newGitRepo(t)
+	repo.commit(t, map[string]string{"apps/platform/x/doc.go": overlongGoComment})
+	base := repo.head(t)
+	repo.git(t, "rm", "-q", "--", "apps/platform/x/doc.go")
+	repo.git(t, "commit", "-q", "-m", "delete")
+	problems, err := committedCommentProblems(repo.root, base+"..HEAD")
+	if err != nil || len(problems) != 0 {
+		t.Fatalf("a deleted file was checked: %v %v", problems, err)
+	}
+}
+
+func TestAnUnavailableFormatterWarnsOnceAndBlocksNothing(t *testing.T) {
+	t.Parallel()
+	repo := newGitRepo(t)
+	repo.commit(t, map[string]string{"README.md": "x\n"})
+	base := repo.head(t)
+	repo.commit(t, map[string]string{"apps/web/src/a.ts": "export const a=1\n", "apps/web/src/b.ts": "export const b=2\n"})
+	problems, warnings, err := formatProblems(repo.root, base+"..HEAD")
+	if err != nil || len(problems) != 0 || len(warnings) != 1 || !strings.HasPrefix(warnings[0], "prettier skipped (formatter unavailable: ") {
+		t.Fatalf("an unavailable formatter did not warn exactly once: %v %v %v", problems, warnings, err)
+	}
+}

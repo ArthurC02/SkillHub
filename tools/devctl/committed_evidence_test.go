@@ -3,12 +3,20 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func evidenceRepo(t *testing.T) (gitRepo, string) {
 	t.Helper()
+	return evidenceRepoCiting(t, "src/a.py", "rule = 1\nother = 2\n", false)
+}
+
+func evidenceRepoCiting(t *testing.T, citedPath, content string, withoutHash bool) (gitRepo, string) {
+	t.Helper()
+	t.Setenv("PYTHONUTF8", "1")
 	real, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -18,8 +26,9 @@ func evidenceRepo(t *testing.T) (gitRepo, string) {
 	domainMemoryTool = func(_ string, args ...string) (string, error) { return original(real, args...) }
 
 	repo := newGitRepo(t)
-	writeAt(t, repo.root, "src/a.py", "rule = 1\nother = 2\n")
-	cited, err := domainMemoryTool(repo.root, "cite", "--repo-root", repo.root, "--path", "src/a.py", "--start", "1", "--end", "1")
+	repo.git(t, "config", "core.autocrlf", "true")
+	writeAt(t, repo.root, citedPath, content)
+	cited, err := domainMemoryTool(repo.root, "cite", "--repo-root", repo.root, "--path", citedPath, "--start", "1", "--end", "1")
 	if err != nil {
 		t.Fatalf("cite: %v\n%s", err, cited)
 	}
@@ -28,13 +37,16 @@ func evidenceRepo(t *testing.T) (gitRepo, string) {
 	if err := json.Unmarshal([]byte("{"+body), &citation); err != nil {
 		t.Fatalf("cite printed %q: %v", cited, err)
 	}
+	if withoutHash {
+		delete(citation, "excerpt_sha256")
+	}
 	rules, err := json.MarshalIndent(map[string]any{"rules": []any{map[string]any{
 		"id": "rule", "statement": "S.", "status": "reviewed", "evidence": []any{citation},
 	}}}, "", "  ")
 	if err != nil {
 		t.Fatal(err)
 	}
-	files := map[string]string{"src/a.py": "rule = 1\nother = 2\n", "docs/domain-memory/registry/rules.json": string(rules) + "\n", runtimeDockerfile: ""}
+	files := map[string]string{citedPath: content, "docs/domain-memory/registry/rules.json": string(rules) + "\n", runtimeDockerfile: ""}
 	for name, key := range map[string]string{
 		"contexts": "contexts", "vocabulary": "terms", "aggregates": "aggregates", "contracts": "contracts",
 		"interactions": "interactions", "decisions": "decisions", "events": "events", "capabilities": "capabilities",
@@ -48,7 +60,12 @@ func evidenceRepo(t *testing.T) (gitRepo, string) {
 
 func pushProblems(t *testing.T, repo gitRepo, base string) []string {
 	t.Helper()
-	problems, warnings, err := committedEvidenceProblems(repo.root, base+"..HEAD")
+	return rangeProblems(t, repo, base+"..HEAD")
+}
+
+func rangeProblems(t *testing.T, repo gitRepo, rangeSpec string) []string {
+	t.Helper()
+	problems, warnings, err := committedEvidenceProblems(repo.root, rangeSpec)
 	if err != nil || len(warnings) != 0 {
 		t.Fatalf("the evidence check did not run: %v %v", err, warnings)
 	}
@@ -108,5 +125,172 @@ func TestThePrePushHookStopsAStaleCitation(t *testing.T) {
 	pushed := "refs/heads/main " + repo.head(t) + " refs/heads/main " + base + "\n"
 	if err := preflight(repo.root, []string{"--hook"}, strings.NewReader(pushed), &out); err == nil || !strings.Contains(out.String(), "which is stale as committed") {
 		t.Fatalf("the hook passed a stale citation: %v\n%s", err, out.String())
+	}
+}
+
+const currentReport = `{"results":[{"asset":"rules","id":"rule","path":"src/a.py","status":"current","cited_lines":{"start":1,"end":1}}]}`
+
+func stubEvidenceTool(output string, err error) {
+	domainMemoryTool = func(string, ...string) (string, error) { return output, err }
+}
+
+func editCitedLine(t *testing.T, repo gitRepo) {
+	t.Helper()
+	repo.commit(t, map[string]string{"src/a.py": "rule = 3\nother = 2\n"})
+}
+
+func TestAPushedCommitThatIsNotCheckedOutIsStoppedAsStale(t *testing.T) {
+	repo, base := evidenceRepo(t)
+	editCitedLine(t, repo)
+	pushed := repo.head(t)
+	repo.git(t, "checkout", "-q", "--detach", base)
+	problems := rangeProblems(t, repo, base+".."+pushed)
+	if len(problems) != 1 || !strings.Contains(problems[0], "rules/rule cites src/a.py:1-1, which is stale as committed") {
+		t.Fatalf("the pushed commit was not the one checked: %v", problems)
+	}
+}
+
+func TestPushingTheRenameOfACitedFileIsStoppedAsMissing(t *testing.T) {
+	repo, base := evidenceRepo(t)
+	repo.git(t, "mv", "src/a.py", "src/b.py")
+	repo.git(t, "commit", "-q", "-m", "rename")
+	problems := pushProblems(t, repo, base)
+	if len(problems) != 1 || !strings.Contains(problems[0], "rules/rule cites src/a.py, which is missing as committed") {
+		t.Fatalf("renaming a cited file passed the push: %v", problems)
+	}
+}
+
+func TestPushingAnEditToACitedLineInANonASCIIPathIsStoppedAsStale(t *testing.T) {
+	repo, base := evidenceRepoCiting(t, "docs/文件.md", "規則 = 1\n其他 = 2\n", false)
+	repo.commit(t, map[string]string{"docs/文件.md": "規則 = 3\n其他 = 2\n"})
+	problems := pushProblems(t, repo, base)
+	if len(problems) != 1 || !strings.Contains(problems[0], "rules/rule cites docs/文件.md:1-1, which is stale as committed") {
+		t.Fatalf("an edit to a cited non-ASCII path passed the push: %v", problems)
+	}
+}
+
+func TestPushingALineInsertedAboveACitedLinePasses(t *testing.T) {
+	repo, base := evidenceRepo(t)
+	repo.commit(t, map[string]string{"src/a.py": "new = 0\nrule = 1\nother = 2\n"})
+	if problems := pushProblems(t, repo, base); len(problems) != 0 {
+		t.Fatalf("a shifted citation failed the push: %v", problems)
+	}
+}
+
+func TestPushingAnEditToAFileCitedWithoutAHashIsStoppedAsUnhashed(t *testing.T) {
+	repo, base := evidenceRepoCiting(t, "src/a.py", "rule = 1\nother = 2\n", true)
+	repo.commit(t, map[string]string{"src/a.py": "rule = 1\nother = 3\n"})
+	problems := pushProblems(t, repo, base)
+	if len(problems) != 1 || !strings.Contains(problems[0], "rules/rule cites src/a.py:1-1, which is unhashed as committed") {
+		t.Fatalf("an unhashed citation passed the push: %v", problems)
+	}
+}
+
+func TestAnUnknownEvidenceStatusIsAProblem(t *testing.T) {
+	repo, base := evidenceRepo(t)
+	editCitedLine(t, repo)
+	stubEvidenceTool(`{"results":[{"asset":"rules","id":"rule","path":"src/a.py","status":"unreadable","cited_lines":{"start":1,"end":1}}]}`, nil)
+	problems, warnings, err := committedEvidenceProblems(repo.root, base+"..HEAD")
+	want := "Domain Memory evidence: rules/rule cites src/a.py:1-1, which is unreadable as committed; check the fact still holds, then re-cite it (verify-evidence --path src/a.py)"
+	if err != nil || len(warnings) != 0 || len(problems) != 1 || problems[0] != want {
+		t.Fatalf("an unknown status was not a problem: %v %v %v", problems, warnings, err)
+	}
+}
+
+func TestAReportWithoutResultsWarnsInsteadOfPassing(t *testing.T) {
+	repo, base := evidenceRepo(t)
+	editCitedLine(t, repo)
+	stubEvidenceTool("{}", nil)
+	problems, warnings, err := committedEvidenceProblems(repo.root, base+"..HEAD")
+	if err != nil || len(problems) != 0 || len(warnings) != 1 || warnings[0] != "Domain Memory evidence skipped ({}); CI still checks it" {
+		t.Fatalf("a report without results did not warn: %v %v %v", problems, warnings, err)
+	}
+}
+
+func TestAToolThatFailsWithOnlyCurrentResultsIsAProblem(t *testing.T) {
+	repo, base := evidenceRepo(t)
+	editCitedLine(t, repo)
+	stubEvidenceTool(currentReport, errors.New("exit status 1"))
+	problems, warnings, err := committedEvidenceProblems(repo.root, base+"..HEAD")
+	want := "Domain Memory evidence: verify-evidence failed on the committed bytes (exit status 1); run it with --path on the files you changed"
+	if err != nil || len(warnings) != 0 || len(problems) != 1 || problems[0] != want {
+		t.Fatalf("a failing tool with only current results passed: %v %v %v", problems, warnings, err)
+	}
+}
+
+func TestAToolThatPassesWithOnlyCurrentResultsIsClean(t *testing.T) {
+	repo, base := evidenceRepo(t)
+	editCitedLine(t, repo)
+	stubEvidenceTool(currentReport, nil)
+	problems, warnings, err := committedEvidenceProblems(repo.root, base+"..HEAD")
+	if err != nil || len(warnings) != 0 || len(problems) != 0 {
+		t.Fatalf("a passing tool was not clean: %v %v %v", problems, warnings, err)
+	}
+}
+
+func TestARangeWhoseEndHasNoRegistryHasNoProblemsAndNoWarnings(t *testing.T) {
+	repo := newGitRepo(t)
+	repo.commit(t, map[string]string{"README.md": "a\n"})
+	base := repo.head(t)
+	repo.commit(t, map[string]string{"README.md": "b\n"})
+	problems, warnings, err := committedEvidenceProblems(repo.root, base+"..HEAD")
+	if err != nil || len(problems) != 0 || len(warnings) != 0 {
+		t.Fatalf("a repository without a registry was checked: %v %v %v", problems, warnings, err)
+	}
+}
+
+func TestARangeNamingAShaThatDoesNotExistIsAnError(t *testing.T) {
+	repo, base := evidenceRepo(t)
+	_, _, err := committedEvidenceProblems(repo.root, base+".."+strings.Repeat("1", 40))
+	if err == nil || !strings.Contains(err.Error(), "ls-tree") {
+		t.Fatalf("a git failure was read as no registry: %v", err)
+	}
+}
+
+func TestARegistryFileThatIsNotJSONIsAnError(t *testing.T) {
+	repo, base := evidenceRepo(t)
+	repo.commit(t, map[string]string{"docs/domain-memory/registry/rules.json": "not json"})
+	_, _, err := committedEvidenceProblems(repo.root, base+"..HEAD")
+	if err == nil || !strings.Contains(err.Error(), "rules.json at ") || !strings.Contains(err.Error(), " is not JSON") {
+		t.Fatalf("an unparsable registry file was skipped: %v", err)
+	}
+}
+
+func TestAWarningFromTheEvidenceToolIsPrintedByThePrePushHook(t *testing.T) {
+	repo, base := evidenceRepo(t)
+	editCitedLine(t, repo)
+	stubEvidenceTool("", errors.New("uv: not found"))
+	var out strings.Builder
+	pushed := "refs/heads/main " + repo.head(t) + " refs/heads/main " + base + "\n"
+	err := preflight(repo.root, []string{"--hook"}, strings.NewReader(pushed), &out)
+	if err != nil || !strings.Contains(out.String(), "WARN Domain Memory evidence skipped (uv: not found); CI still checks it\n") {
+		t.Fatalf("the hook did not print the warning: %v\n%s", err, out.String())
+	}
+}
+
+func TestAnArchiveEntryThatLeavesTheSnapshotIsRefused(t *testing.T) {
+	target := t.TempDir()
+	err := writeArchived(target, "../x", strings.NewReader("y"))
+	if err == nil || err.Error() != "git archive entry escapes the snapshot: ../x" {
+		t.Fatalf("a path outside the snapshot was written: %v", err)
+	}
+}
+
+func TestAnArchiveEntryInASiblingDirectoryWithTheSamePrefixIsRefused(t *testing.T) {
+	target := t.TempDir()
+	name := "../" + filepath.Base(target) + "x/f"
+	if err := writeArchived(target, name, strings.NewReader("y")); err == nil {
+		t.Fatalf("a sibling directory sharing the snapshot's name prefix was written: %s", name)
+	}
+}
+
+func TestAnArchiveEntryInsideTheSnapshotIsWritten(t *testing.T) {
+	target := t.TempDir()
+	if err := writeArchived(target, "docs/a.txt", strings.NewReader("body")); err != nil {
+		t.Fatal(err)
+	}
+	written, err := os.ReadFile(filepath.Join(target, "docs", "a.txt"))
+	if err != nil || string(written) != "body" {
+		t.Fatalf("the entry was not written: %q %v", written, err)
 	}
 }
