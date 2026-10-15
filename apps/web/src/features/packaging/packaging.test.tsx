@@ -834,11 +834,12 @@ test("§2.4 不能下載的那一列，在連結原本的位置說出是哪一�
   ).toHaveLength(0);
 });
 
-test("WS-002 an empty history says nothing was ever downloaded, not that records were cleared", async () => {
+test("WS-002 an empty package list describes current availability and offers a next step", async () => {
   vi.stubGlobal("fetch", () => json({ downloads: [] }));
-  await render(<Downloads />, () => text().includes("還沒有打包過任何套件"));
+  await render(<Downloads />, () => text().includes("目前沒有可顯示的套件"));
 
-  expect(text()).toContain("不是紀錄被清掉了");
+  expect(text()).toContain("要打包，先從 資產庫 選擇版本。");
+  expect(text()).not.toContain("還沒有打包過");
   expect(container.querySelector(".badge-expired")).toBeNull();
 });
 

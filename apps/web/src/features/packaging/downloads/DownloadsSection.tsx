@@ -24,6 +24,7 @@ export function Downloads({
 }) {
   const downloads = useDownloads();
   const readableDownloads = downloads.error ? undefined : downloads.data;
+  const busy = downloads.fetchStatus !== "idle";
   const [message, setMessage] = useState("");
   const remove = useDeleteDownload();
   const Heading = embedded ? "h2" : "h1";
@@ -43,15 +44,8 @@ export function Downloads({
         這個工作區打包過的套件，新的在上面。到期的仍然列在這裡並標示已過期——那與「沒有這一筆」是兩個不同的答案。
       </p>
 
-      {downloads.isPending && <Loading what="下載紀錄" />}
-      <ReadFailure
-        error={downloads.error}
-        what="下載紀錄"
-        retry={() => void downloads.refetch()}
-        retrying={downloads.isFetching}
-        focusTarget={headingId}
-      />
-      {readableDownloads && selectedArtifact && !selected && (
+      <DownloadReadStatus downloads={downloads} headingId={headingId} />
+      {readableDownloads && selectedArtifact && !selected && !busy && (
         <p role="status" className="note">
           這個工作區目前找不到這筆交付紀錄。它可能已刪除，或目前帳號無法檢視。{" "}
           <Link to="/workspace/downloads" search={{}}>
@@ -66,10 +60,11 @@ export function Downloads({
 
       {readableDownloads &&
         (readableDownloads.downloads.length === 0 ? (
-          <p>
-            還沒有打包過任何套件。這裡是空的，代表你還沒有打包過東西，不是紀錄被清掉了。
-            要打包，先從 <Link to="/library">資產庫</Link> 挑一個。
-          </p>
+          !busy && (
+            <p role="status">
+              目前沒有可顯示的套件。要打包，先從 <Link to="/library">資產庫</Link> 選擇版本。
+            </p>
+          )
         ) : (
           <>
             <ul className="download-list" data-role="evidence">
@@ -121,6 +116,32 @@ export function Downloads({
           </>
         ))}
     </section>
+  );
+}
+
+function DownloadReadStatus({
+  downloads,
+  headingId,
+}: {
+  downloads: ReturnType<typeof useDownloads>;
+  headingId: string;
+}) {
+  const data = downloads.error ? undefined : downloads.data;
+  const paused = downloads.fetchStatus === "paused";
+  const busy = downloads.fetchStatus !== "idle";
+  return (
+    <>
+      {(downloads.isPending || paused || (data?.downloads.length === 0 && busy)) && (
+        <Loading what="下載紀錄" paused={paused} />
+      )}
+      <ReadFailure
+        error={downloads.error}
+        what="下載紀錄"
+        retry={() => void downloads.refetch()}
+        retrying={busy}
+        focusTarget={headingId}
+      />
+    </>
   );
 }
 

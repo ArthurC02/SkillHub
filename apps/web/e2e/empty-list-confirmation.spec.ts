@@ -9,6 +9,8 @@ import {
   SKILL,
   VERSION,
   TEST_CASE,
+  ARTIFACT,
+  ARTIFACT_ROW,
 } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
@@ -104,6 +106,19 @@ const lists = [
     scope: 'section[aria-labelledby="version-evidence-title"]',
     refresh: false,
   },
+  {
+    name: "downloads",
+    url: "/workspace/downloads",
+    path: "/downloads",
+    pattern: "**/downloads",
+    key: "downloads",
+    empty: "目前沒有可顯示的套件",
+    what: "下載紀錄",
+    selector: "#delivery-history .download-list > li",
+    heading: "delivery-history-heading",
+    scope: "#delivery-history",
+    refresh: false,
+  },
 ];
 
 async function verifyLayout(page: Page, state: string) {
@@ -115,7 +130,7 @@ async function verifyLayout(page: Page, state: string) {
   for (const review of result.incomplete) {
     expect(review.id).toBe("color-contrast");
     for (const node of review.nodes) {
-      expect(node.html).toContain('aria-hidden="true"');
+      expect(node.html, JSON.stringify(node)).toContain('aria-hidden="true"');
       expect(node.target).toHaveLength(1);
       expect(node.target[0]).toMatch(
         /(?:\.door-mono|\.skill-mono|\.skill-menu-caret|\.skill-card-validation > span)/,
@@ -146,6 +161,7 @@ for (const list of lists) {
       const rows = original[list.key] as unknown[];
       expect(rows.length).toBeGreaterThan(0);
       await page.route(list.pattern, async (route) => {
+        if (route.request().resourceType() === "document") return route.fallback();
         const countRead =
           list.name !== "Catalog" ||
           new URL(route.request().url()).searchParams.get("limit") === "100";
@@ -226,6 +242,7 @@ for (const list of lists) {
     await page.setViewportSize({ width: 375, height: 900 });
     let reads = 0;
     await page.route(list.pattern, (route) => {
+      if (route.request().resourceType() === "document") return route.fallback();
       if (
         list.name !== "Catalog" ||
         new URL(route.request().url()).searchParams.get("limit") === "100"
@@ -270,6 +287,7 @@ for (const list of lists) {
     await page.setViewportSize({ width: 375, height: 900 });
     let reads = 0;
     await page.route(list.pattern, (route) => {
+      if (route.request().resourceType() === "document") return route.fallback();
       const countRead =
         list.name !== "Catalog" ||
         new URL(route.request().url()).searchParams.get("limit") === "100";
@@ -379,6 +397,76 @@ test("a selected publication is not declared missing while its empty snapshot is
     expect(new URL(page.url()).searchParams.get("publication")).toBe(`${PUBLISHER}/${PUBLICATION}`);
     expect(reads).toBe(2);
     await verifyLayout(page, "selected-confirmed");
+  } finally {
+    release();
+  }
+});
+
+test("deleting the last visible package does not claim that no packaging ever occurred", async ({
+  page,
+}) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let deletes = 0;
+  let reads = 0;
+  await page.route("**/downloads", (route) => {
+    if (route.request().resourceType() === "document") return route.fallback();
+    reads += 1;
+    return route.fulfill({ json: { downloads: deletes ? [] : [ARTIFACT_ROW] } });
+  });
+  await page.route(`**/downloads/${ARTIFACT}`, (route) => {
+    expect(route.request().method()).toBe("DELETE");
+    deletes += 1;
+    return route.fulfill({ status: 204 });
+  });
+  await page.goto("/workspace/downloads");
+  const scope = page.locator("#delivery-history");
+  await expect(scope.locator(".download-list > li")).toHaveCount(1);
+  await scope.getByRole("button", { name: "刪除", exact: true }).click();
+  await expect(scope.getByRole("button", { name: "確認刪除", exact: true })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(scope.getByRole("status").filter({ hasText: "已刪除" })).toBeVisible();
+  await expect(scope).not.toContainText("還沒有打包過");
+  await expect(scope.getByRole("status").filter({ hasText: "目前沒有可顯示的套件" })).toBeVisible();
+  expect(deletes).toBe(1);
+  expect(reads).toBe(2);
+  await verifyLayout(page, "deleted-last-package");
+});
+
+test("a selected package is not declared missing during an empty snapshot reread", async ({
+  page,
+}) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let reads = 0;
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/downloads", async (route) => {
+    if (route.request().resourceType() === "document") return route.fallback();
+    reads += 1;
+    if (reads === 1) return route.fulfill({ json: { downloads: [] } });
+    await gate;
+    return route.fulfill({ json: { downloads: [ARTIFACT_ROW] } });
+  });
+  const scope = page.locator("#delivery-history");
+  const missing = scope.getByRole("status").filter({ hasText: "目前找不到這筆交付紀錄" });
+  try {
+    await page.goto(`/workspace/downloads?artifact=${ARTIFACT}`);
+    await expect(missing).toBeVisible();
+    await page.locator('a[href="/policy"]').first().click();
+    await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toBeVisible();
+    await page.goBack();
+    await expect.poll(() => reads).toBe(2);
+    await expect(missing).toHaveCount(0);
+    await expect(scope.getByRole("status").filter({ hasText: "載入下載紀錄中" })).toBeVisible();
+    release();
+    await expect(scope.locator('[aria-current="location"]')).toBeFocused();
+    await expect(missing).toHaveCount(0);
+    expect(new URL(page.url()).searchParams.get("artifact")).toBe(ARTIFACT);
+    expect(reads).toBe(2);
+    await verifyLayout(page, "package-confirmed");
   } finally {
     release();
   }

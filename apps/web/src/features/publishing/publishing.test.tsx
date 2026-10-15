@@ -155,7 +155,7 @@ test("the publishing space brings identity, Bundles, and delivery records into o
     "/downloads": { body: { downloads: [] } },
   });
 
-  await render(<PublishingWorkspace />, () => text().includes("還沒有打包過任何套件"));
+  await render(<PublishingWorkspace />, () => text().includes("目前沒有可顯示的套件"));
 
   expect(container.querySelector("h1")?.textContent).toBe("發佈與交付");
   const workspaceMap = container.querySelector('nav[aria-label="發佈工作區導覽"]');

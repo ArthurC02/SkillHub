@@ -55,13 +55,10 @@ function CatalogEmptyState({ narrowing }: { narrowing: boolean }) {
       <p className="empty-catalog-lede" role="status">
         目錄裡還沒有任何東西。
       </p>
-      <p>
-        這不是讀取失敗，也不是你沒有權限——是
-        <strong>這個部署還沒有匯入過任何小工具</strong>。
-      </p>
+      <p>先把現成套件匯入自己的資產庫，再開始驗證或修改。</p>
       <p>
         <Link className="empty-catalog-cta" to="/workspace/import">
-          匯入第一個小工具
+          匯入小工具
         </Link>
       </p>
       <p className="note" data-role="teaching">

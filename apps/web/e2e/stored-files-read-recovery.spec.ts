@@ -32,7 +32,7 @@ const lists = [
     pattern: "**/downloads",
     section: "#delivery-history",
     items: ".download-list > .download-item",
-    empty: "還沒有打包過任何套件。",
+    empty: "目前沒有可顯示的套件。",
     body: DOWNLOADS,
     emptyBody: { downloads: [] },
     heading: "delivery-history-heading",

@@ -631,9 +631,9 @@ test("DISC-006: an empty catalog is distinct from a failed catalog read", async 
     await router.navigate({ to: "/", search: {} });
   });
   await waitFor(() => container.textContent?.includes("目錄裡還沒有任何東西") ?? false);
-  expect(container.textContent).toContain("這不是讀取失敗");
-  expect(container.textContent).toContain("也不是你沒有權限");
-  expect(container.textContent).toContain("還沒有匯入過任何小工具");
+  expect(container.textContent).toContain("先把現成套件匯入自己的資產庫");
+  expect(container.textContent).not.toContain("還沒有匯入過任何小工具");
+  expect(container.querySelector('[role="alert"]')).toBeNull();
   expect(container.textContent).not.toContain("清掉篩選條件");
   await act(async () => root.unmount());
   queryClient.clear();
