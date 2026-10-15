@@ -11,6 +11,12 @@ import { EvaluatingNotice } from "./components/EvaluatingNotice";
 import { NotEvaluatedNotice } from "./components/NotEvaluatedNotice";
 import { RevisionPicker } from "./components/RevisionPicker";
 
+function focusEvaluationHeading() {
+  const heading = document.getElementById("evaluation-heading");
+  heading?.focus();
+  heading?.scrollIntoView({ block: "center" });
+}
+
 function EvaluationReadState({
   query,
   state,
@@ -20,12 +26,29 @@ function EvaluationReadState({
   state: ReturnType<typeof evaluationPanelState>;
   revision?: string;
 }) {
+  const stopped = query.pendingPollStopped || query.initialPollStopped;
+  const retrying = query.fetchStatus !== "idle";
+  const reread = () => {
+    void query.refetch();
+    focusEvaluationHeading();
+  };
   return (
     <>
-      {(query.isPending || (query.error && query.isFetching)) && !state.evaluating && (
+      {(query.isPending || query.error) && query.isFetching && !state.evaluating && (
         <Loading what="評估結果" />
       )}
-      {state.evaluating && <EvaluatingNotice pendingPollStopped={query.pendingPollStopped} />}
+      {query.fetchStatus === "paused" && (
+        <p role="status">等待連線以確認評估結果；恢復連線後會繼續讀取。</p>
+      )}
+      {state.evaluating && (
+        <EvaluatingNotice
+          pendingPollStopped={query.pendingPollStopped}
+          updatedAt={query.dataUpdatedAt}
+        />
+      )}
+      {query.pendingPollStopped && !state.evaluating && (
+        <p role="status">已停止自動確認評估結果。請重新確認目前狀態。</p>
+      )}
       {state.notEvaluated && !revision && !state.evaluating && (
         <NotEvaluatedNotice showPollingNote={state.awaiting} stoppedAsking={state.stoppedAsking} />
       )}
@@ -33,10 +56,14 @@ function EvaluationReadState({
         <ReadFailure
           error={query.isFetching ? undefined : query.error}
           what={revision ? "這份歷史評估" : "評估結果"}
-          retry={() => void query.refetch()}
-          retrying={query.isFetching}
-          focusTarget="evaluation-heading"
+          retry={stopped ? undefined : reread}
+          retrying={retrying}
         />
+      )}
+      {stopped && (
+        <button type="button" disabled={retrying} onClick={reread}>
+          {retrying ? "重新讀取中…" : "重新確認評估結果"}
+        </button>
       )}
     </>
   );
@@ -53,7 +80,7 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
     revision,
     error: evaluation.error,
     errorUpdateCount: evaluation.errorUpdateCount,
-    dataStatus: report?.status,
+    dataStatus: evaluation.data?.status,
     pending: evaluation.isPending,
   });
   const revisions = useEvaluationRevisions(runId, state.asksHistory);
@@ -62,7 +89,7 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
       to: "/runs/$runId",
       params: { runId },
       search: (prev) => ({ ...prev, evaluation: evaluationId }),
-    }).then(() => document.getElementById("evaluation-heading")?.focus());
+    }).then(focusEvaluationHeading);
 
   return (
     <section>
@@ -83,10 +110,15 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
       <ReadFailure
         error={revisions.error}
         what="歷史評估版本"
-        retry={() => void revisions.refetch()}
-        retrying={revisions.isFetching}
-        focusTarget="evaluation-heading"
+        retry={() => {
+          void revisions.refetch();
+          focusEvaluationHeading();
+        }}
+        retrying={revisions.fetchStatus !== "idle"}
       />
+      {revisions.fetchStatus === "paused" && (
+        <p role="status">等待連線以確認歷史評估版本；恢復連線後會繼續讀取。</p>
+      )}
 
       {revisions.data && !revisions.error && revisions.data.revisions.length > 1 && (
         <RevisionPicker

@@ -179,6 +179,12 @@ export const EVALUATION_POLL_MAX_404 = 20;
 
 export const EVALUATION_POLL_MAX_PENDING = 100;
 
+function evaluationReadCount(
+  state: { dataUpdateCount: number; errorUpdateCount: number } | undefined,
+) {
+  return (state?.dataUpdateCount ?? 0) + (state?.errorUpdateCount ?? 0);
+}
+
 export function useEvaluation(runId: string, revision?: string, awaitCurrent = false) {
   const client = useQueryClient();
   const key = queryKeys.evaluation.revision(runId, revision);
@@ -188,11 +194,15 @@ export function useEvaluation(runId: string, revision?: string, awaitCurrent = f
     enabled: runId.length > 0,
     refetchInterval: (query) => {
       if (revision || !awaitCurrent) return false;
-      if (query.state.data?.status === "pending") {
-        if (isLastingReadFailure(query.state.error)) return false;
-        return query.state.dataUpdateCount < EVALUATION_POLL_MAX_PENDING ? 3000 : false;
-      }
       const error = query.state.error;
+      if (
+        error instanceof ApiError &&
+        (error.status === 401 || (query.state.data && isLastingReadFailure(error)))
+      )
+        return false;
+      if (query.state.data?.status === "pending") {
+        return evaluationReadCount(query.state) < EVALUATION_POLL_MAX_PENDING ? 3000 : false;
+      }
       if (!(error instanceof ApiError) || error.status !== 404) return false;
       return query.state.errorUpdateCount < EVALUATION_POLL_MAX_404 ? 3000 : false;
     },
@@ -205,8 +215,13 @@ export function useEvaluation(runId: string, revision?: string, awaitCurrent = f
     !revision &&
     awaitCurrent &&
     query.data?.status === "pending" &&
-    (client.getQueryState(key)?.dataUpdateCount ?? 0) >= EVALUATION_POLL_MAX_PENDING;
-  return { ...query, pendingPollStopped };
+    evaluationReadCount(client.getQueryState(key)) >= EVALUATION_POLL_MAX_PENDING;
+  const initialPollStopped =
+    !revision &&
+    awaitCurrent &&
+    query.data === undefined &&
+    query.errorUpdateCount >= EVALUATION_POLL_MAX_404;
+  return { ...query, pendingPollStopped, initialPollStopped };
 }
 
 function useRevisionsFollowCurrent(runId: string, current: string | undefined) {

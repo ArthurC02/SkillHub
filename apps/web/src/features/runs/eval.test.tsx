@@ -3,6 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
+import { queryKeys } from "../../core/api/queryKeys";
 import { EvaluationPanel } from "./evaluation/EvaluationPanel";
 import { RunVerdict } from "./components/RunVerdict";
 import type { Evaluation, ImprovementSuggestion, SuggestionDiff } from "./evaluation.service";
@@ -10,6 +11,7 @@ import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 let container: HTMLDivElement;
 let root: Root;
+const scrollIntoView = HTMLElement.prototype.scrollIntoView;
 
 function json(body: unknown, status = 200) {
   return Promise.resolve(
@@ -18,6 +20,8 @@ function json(body: unknown, status = 200) {
 }
 
 beforeEach(() => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  HTMLElement.prototype.scrollIntoView = vi.fn();
   queryClient.clear();
   setSearch({});
   navigations.length = 0;
@@ -30,6 +34,8 @@ afterEach(async () => {
   vi.useRealTimers();
   container.remove();
   vi.unstubAllGlobals();
+  if (scrollIntoView) HTMLElement.prototype.scrollIntoView = scrollIntoView;
+  else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
 });
 
 test("a terminal run polls evaluation from 404 through pending to completed", async () => {
@@ -84,42 +90,137 @@ test("a terminal run polls evaluation from 404 through pending to completed", as
   expect(calls).toBe(3);
 });
 
-test("a pending evaluation stops polling once its read is refused", async () => {
-  vi.useFakeTimers();
-  let calls = 0;
-  const json = (body: unknown, status = 200) =>
-    Promise.resolve(
-      new Response(JSON.stringify(body), {
-        status,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-  vi.stubGlobal("fetch", (input: string) => {
-    const url = String(input);
-    if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
-    if (url.includes("/evaluation")) {
-      calls++;
-      if (calls === 1) return json({ ...evaluation, status: "pending", overall: "undetermined" });
-      return json({ error: "forbidden" }, 403);
-    }
-    return json({ error: "not found" }, 404);
-  });
+test.each([
+  [401, "not authenticated", "評估結果需要登入。"],
+  [403, "forbidden", "暫時無法讀取評估結果"],
+  [404, "not found", "暫時無法讀取評估結果"],
+] as const)(
+  "a pending evaluation stops polling after HTTP %s without inventing absence",
+  async (status, error, message) => {
+    vi.useFakeTimers();
+    let calls = 0;
+    const json = (body: unknown, status = 200) =>
+      Promise.resolve(
+        new Response(JSON.stringify(body), {
+          status,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    vi.stubGlobal("fetch", (input: string) => {
+      const url = String(input);
+      if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
+      if (url.includes("/evaluation")) {
+        calls++;
+        if (calls === 1) return json({ ...evaluation, status: "pending", overall: "undetermined" });
+        return json({ error }, status);
+      }
+      return json({ error: "not found" }, 404);
+    });
 
-  await act(async () => {
-    root = createRoot(container);
-    root.render(
-      <QueryClientProvider client={queryClient}>
-        <EvaluationPanel runId={RUN} runStatus="succeeded" />
-      </QueryClientProvider>,
-    );
-    await vi.advanceTimersByTimeAsync(0);
-  });
-  await act(async () => vi.advanceTimersByTimeAsync(3000));
-  expect(calls).toBe(2);
+    await act(async () => {
+      root = createRoot(container);
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <EvaluationPanel runId={RUN} runStatus="succeeded" />
+        </QueryClientProvider>,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await act(async () => vi.advanceTimersByTimeAsync(3000));
+    expect(calls).toBe(2);
 
-  await act(async () => vi.advanceTimersByTimeAsync(3000 * 5));
-  expect(calls).toBe(2);
-});
+    await act(async () => vi.advanceTimersByTimeAsync(3000 * 5));
+    expect(calls).toBe(2);
+    expect(container.textContent).toContain(message);
+    expect(container.textContent).not.toContain("未評估");
+    expect(container.textContent).not.toContain("每 3 秒");
+  },
+);
+
+test.each(["repeated failures", "mixed pending reads and failures"])(
+  "a pending evaluation bounds %s and can be reread manually",
+  async (scenario) => {
+    vi.useFakeTimers();
+    let calls = 0;
+    let ready = false;
+    vi.stubGlobal("fetch", (input: string) => {
+      const url = String(input);
+      if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
+      if (url.includes("/evaluation")) {
+        calls++;
+        if (ready) return json(evaluation);
+        if (calls === 1 || (scenario === "mixed pending reads and failures" && calls % 2 === 1))
+          return json({ ...evaluation, status: "pending", overall: "undetermined" });
+        return json({ error: "service unavailable" }, 503);
+      }
+      return json({ error: "not found" }, 404);
+    });
+    await act(async () => {
+      root = createRoot(container);
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <EvaluationPanel runId={RUN} runStatus="succeeded" />
+        </QueryClientProvider>,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await act(async () => vi.advanceTimersByTimeAsync(3000 * 98));
+    expect(calls).toBe(99);
+    expect(container.textContent).not.toContain("已停止自動確認評估結果");
+    await act(async () => vi.advanceTimersByTimeAsync(3000));
+    expect(calls).toBe(100);
+    await act(async () => vi.advanceTimersByTimeAsync(3000 * 200));
+    expect(calls).toBe(100);
+    expect(container.textContent).toContain("已停止自動確認評估結果");
+    expect(container.textContent).not.toContain("狀態都還是「進行中」");
+    ready = true;
+    const retry = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "重新確認評估結果",
+    );
+    expect(retry).toBeDefined();
+    await act(async () => {
+      retry!.click();
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    expect(calls).toBe(101);
+    expect(container.textContent).toContain("任務判定：未符合");
+    expect(container.textContent).not.toContain("已停止自動確認評估結果");
+    await act(async () => vi.advanceTimersByTimeAsync(3000 * 5));
+    expect(calls).toBe(101);
+  },
+);
+
+test.each(["completed", "failed"] as const)(
+  "a previously %s evaluation does not become absent or restart polling after 404",
+  async (status) => {
+    vi.useFakeTimers();
+    queryClient.setQueryData(queryKeys.evaluation.revision(RUN, undefined), {
+      ...evaluation,
+      status,
+    });
+    let calls = 0;
+    vi.stubGlobal("fetch", (input: string) => {
+      if (String(input).includes("/evaluation/revisions")) return json({ revisions: [] });
+      if (String(input).endsWith(`/runs/${RUN}/evaluation`)) calls++;
+      return json({ error: "not found" }, 404);
+    });
+    await act(async () => {
+      root = createRoot(container);
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <EvaluationPanel runId={RUN} runStatus="succeeded" />
+        </QueryClientProvider>,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    expect(container.textContent).toContain("暫時無法讀取評估結果");
+    expect(container.textContent).not.toContain("未評估");
+    await act(async () => vi.advanceTimersByTimeAsync(3000 * 5));
+    expect(calls).toBe(1);
+  },
+);
 
 type LinkProps = {
   to: string;
@@ -438,10 +539,11 @@ test("§2.12 a judge still running is 進行中, not a verdict — and says you 
   const text = container.textContent ?? "";
   expect(text).toContain("評估進行中");
   expect(text).not.toContain("任務判定：");
-  expect(text).toContain("會自己完成");
-  expect(text).toContain("可以關掉這一頁（平台在跑，不是你的瀏覽器）");
+  expect(text).toContain("平台自動處理判定");
+  expect(text).toContain("關閉此頁不會取消平台上的評估");
   expect(text).not.toContain("evaluate_run");
-  expect(text).toContain("沒有進度可以報");
+  expect(text).toContain("沒有可顯示的中間進度");
+  expect(container.querySelector(".notice time")).not.toBeNull();
   expect(text).not.toContain("未評估");
 });
 
@@ -698,12 +800,13 @@ test("EVAL-001 an old run with no evaluation stops being asked about, and says s
   expect(calls).toBe(20);
 
   expect(container.textContent).toContain("未評估");
-  expect(container.textContent).toContain("已經停止再查");
+  expect(container.textContent).toContain("已停止自動確認評估結果");
   expect(container.textContent).not.toContain("結果會自己出現在這裡");
 });
 
 test("EVAL-001 a judge that never finishes stops being polled, and the promise stops with it", async () => {
   vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-10-15T00:00:00.000Z"));
   let calls = 0;
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
@@ -727,10 +830,17 @@ test("EVAL-001 a judge that never finishes stops being polled, and the promise s
   await act(async () => vi.advanceTimersByTimeAsync(0));
   expect(calls).toBe(1);
   expect(container.textContent).toContain("每 3 秒自己查一次");
+  expect(container.querySelector(".notice time")?.getAttribute("datetime")).toBe(
+    "2026-10-15T00:00:00.000Z",
+  );
 
   await act(async () => vi.advanceTimersByTimeAsync(3000 * 98));
+  await act(async () => vi.advanceTimersByTimeAsync(1));
   expect(calls).toBe(99);
   expect(container.textContent).toContain("每 3 秒自己查一次");
+  expect(container.querySelector(".notice time")?.getAttribute("datetime")).toBe(
+    "2026-10-15T00:04:54.000Z",
+  );
 
   await act(async () => vi.advanceTimersByTimeAsync(3000));
   expect(calls).toBe(100);
@@ -738,8 +848,11 @@ test("EVAL-001 a judge that never finishes stops being polled, and the promise s
   await act(async () => vi.advanceTimersByTimeAsync(3000 * 200));
   expect(calls).toBe(100);
 
-  expect(container.textContent).toContain("評估進行中");
-  expect(container.textContent).toContain("已經停止再查");
+  expect(container.textContent).toContain("尚未確認完成判定");
+  expect(container.textContent).toContain("已停止自動確認評估結果");
+  expect(container.querySelector(".notice time")?.getAttribute("datetime")).toBe(
+    "2026-10-15T00:04:57.000Z",
+  );
   expect(container.textContent).not.toContain("每 3 秒自己查一次");
   expect(container.textContent).not.toContain("會自己完成");
 });

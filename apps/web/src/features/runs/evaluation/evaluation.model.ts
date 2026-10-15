@@ -28,9 +28,10 @@ export function evaluationPanelState(query: {
   pending: boolean;
 }): EvaluationPanelState {
   const awaiting = query.runStatus === "succeeded" || query.runStatus === "failed";
-  const notEvaluated = query.error instanceof ApiError && query.error.status === 404;
+  const notEvaluated =
+    query.dataStatus === undefined && query.error instanceof ApiError && query.error.status === 404;
   const stoppedAsking = notEvaluated && query.errorUpdateCount >= EVALUATION_POLL_MAX_404;
-  const evaluating = !query.revision && query.dataStatus === "pending";
+  const evaluating = !query.revision && !query.error && query.dataStatus === "pending";
   const asksHistory = !query.pending && !(notEvaluated && !query.revision);
   return { awaiting, notEvaluated, stoppedAsking, evaluating, asksHistory };
 }
