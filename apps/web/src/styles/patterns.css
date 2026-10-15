@@ -57,10 +57,7 @@ code,
   min-height: 40px;
   box-sizing: border-box;
   text-decoration: none;
-  transition:
-    background-color var(--dur-fast) var(--ease),
-    border-color var(--dur-fast) var(--ease),
-    color var(--dur-fast) var(--ease);
+  transition: border-color var(--dur-fast) var(--ease);
 }
 
 /* The fill cannot change on hover without either dropping --on-cta under 4.5:1

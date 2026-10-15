@@ -8,6 +8,21 @@ import "./TestCaseList.page.css";
 import { canRetainLoadedPage } from "../../../core/api/client";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
+import { Loading } from "../../../shared/ui/Loading";
+
+function canConfirmMissingSkill(
+  skills: ReturnType<typeof useOwnSkillPages>,
+  filter: string | undefined,
+  found: boolean,
+) {
+  return (
+    Boolean(filter) &&
+    skills.isSuccess &&
+    skills.fetchStatus === "idle" &&
+    !skills.hasNextPage &&
+    !found
+  );
+}
 
 export function TestCaseList() {
   const navigate = useNavigate();
@@ -21,8 +36,9 @@ export function TestCaseList() {
     skills.error && !nextSkillPageFailure ? undefined : skills.data?.pages,
   );
   const ownedSkill = ownSkills?.skills.find((s) => s.skill_id === filter);
-  const notMine =
-    Boolean(filter) && Boolean(ownSkills) && !ownedSkill && !skills.hasNextPage && !skills.error;
+  const skillsPaused = skills.fetchStatus === "paused";
+  const skillsBusy = skills.fetchStatus !== "idle";
+  const notMine = canConfirmMissingSkill(skills, filter, Boolean(ownedSkill));
   const chosenSkill = skillId || ownedSkill?.skill_id || "";
 
   const create = useCreateTestCase();
@@ -59,13 +75,16 @@ export function TestCaseList() {
             建立新的測試題
           </h2>
           <p>先定義要驗證的小工具與任務；建立後再補資料集、驗收條件與 Rubric。</p>
+          {(skills.isPending || skillsPaused || (ownSkills?.skills.length === 0 && skillsBusy)) && (
+            <Loading what="你的小工具清單" paused={skillsPaused} />
+          )}
           <CreateTestCaseForm
             skills={ownSkills}
             skillsError={skills.error}
             retrySkills={() =>
               void (nextSkillPageFailure ? skills.fetchNextPage() : skills.refetch())
             }
-            retryingSkills={skills.isFetching}
+            retryingSkills={skillsBusy}
             chosenSkill={chosenSkill}
             onSkillChange={setSkillId}
             name={name}
