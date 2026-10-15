@@ -32,9 +32,10 @@ const imported = {
   excluded_components: [],
 } satisfies ImportResult;
 
-for (const failure of ["pending", "server", "network"]) {
+for (const failure of ["pending", "server", "network", "offline"]) {
   test(`${failure} identity verification blocks import and recovers without replaying the draft`, async ({
     page,
+    context,
   }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 900 });
@@ -69,14 +70,18 @@ for (const failure of ["pending", "server", "network"]) {
       const input = page.getByRole("textbox", { name: "URL", exact: true });
       await input.fill(draft);
       checking = true;
+      if (failure === "offline") await context.setOffline(true);
       await page.evaluate(() =>
         document.dispatchEvent(new Event("visibilitychange", { bubbles: true })),
       );
       if (failure === "pending") await readStarted;
+      else if (failure === "offline")
+        await expect(page.getByText("等待連線以確認登入狀態…", { exact: true })).toBeVisible();
       else
         await expect(
           page.getByRole("button", { name: "重新確認登入狀態", exact: true }),
         ).toBeVisible();
+      await expect(page.locator(".auth-name")).toHaveCount(0);
       await input.focus();
       await page.keyboard.press("Enter");
       await expect(page.getByRole("main").getByRole("alert")).toHaveText(
@@ -93,11 +98,13 @@ for (const failure of ["pending", "server", "network"]) {
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
       checking = false;
       if (failure === "pending") release();
+      else if (failure === "offline") await context.setOffline(false);
       else {
         await page.getByRole("button", { name: "重新確認登入狀態", exact: true }).click();
         await expect(page.getByRole("main")).toBeFocused();
       }
       await expect(page.getByText("正在確認登入狀態…", { exact: true })).toHaveCount(0);
+      await expect(page.locator(".auth-name")).toHaveText("tester");
       await expect(page.getByRole("button", { name: "重新確認登入狀態", exact: true })).toHaveCount(
         0,
       );
@@ -108,6 +115,7 @@ for (const failure of ["pending", "server", "network"]) {
       expect(writes).toBe(1);
     } finally {
       release();
+      await context.setOffline(false);
     }
   });
 }

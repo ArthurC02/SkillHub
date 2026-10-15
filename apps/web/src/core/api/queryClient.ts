@@ -5,6 +5,7 @@ import type { Me } from "./types";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
+    mutations: { networkMode: "always" },
     queries: {
       retry: false,
       refetchOnWindowFocus: false,

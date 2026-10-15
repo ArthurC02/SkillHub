@@ -25,9 +25,13 @@ export function AuthControls() {
 
   return (
     <div className="auth-controls" data-auth-controls>
-      {me.isSuccess && !me.isFetching && <span className="auth-name">{me.data.display_name}</span>}
+      {me.isSuccess && me.fetchStatus === "idle" && (
+        <span className="auth-name">{me.data.display_name}</span>
+      )}
       <SessionStatus me={me} logoutUnconfirmed={signOut.isError} />
-      {me.isSuccess && !me.isFetching && me.data.operator && <Link to="/admin">後台</Link>}
+      {me.isSuccess && me.fetchStatus === "idle" && me.data.operator && (
+        <Link to="/admin">後台</Link>
+      )}
       <button type="button" disabled={signOut.isPending} onClick={() => signOut.mutate()}>
         登出
       </button>
@@ -42,10 +46,10 @@ function SessionStatus({
   me: ReturnType<typeof useMe>;
   logoutUnconfirmed: boolean;
 }) {
-  if (me.isFetching)
+  if (me.fetchStatus !== "idle")
     return (
       <span className="auth-session-message" role="status">
-        正在確認登入狀態…
+        {me.fetchStatus === "paused" ? "等待連線以確認登入狀態…" : "正在確認登入狀態…"}
       </span>
     );
   const message = logoutUnconfirmed
