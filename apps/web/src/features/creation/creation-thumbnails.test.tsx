@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { CreationSession } from "./create/components/CreationSession";
 import type { CreationSession as Session } from "./creation.service";
+import { pollUntil } from "../../testing/poll";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
@@ -77,12 +78,8 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-async function waitFor(fn: () => boolean) {
-  const until = Date.now() + 2500;
-  while (!fn()) {
-    if (Date.now() > until) throw Error(box.textContent ?? "timeout");
-    await act(async () => new Promise((r) => setTimeout(r, 5)));
-  }
+function waitFor(fn: () => boolean) {
+  return pollUntil(fn, () => box.textContent, 2500);
 }
 
 async function sendDiagram() {

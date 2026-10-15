@@ -11,6 +11,7 @@ import {
   VERSION,
   platformResponse,
 } from "../../../testing/fixtures/platform";
+import { pollUntil } from "../../../testing/poll";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -66,13 +67,13 @@ async function renderPreflight() {
       </StrictMode>,
     );
   });
-  const deadline = Date.now() + 2000;
-  while (Date.now() < deadline) {
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-    if (queryClient.isFetching() === 0 && container.querySelector('[data-role="evidence"]')) break;
-  }
+  await pollUntil(
+    () =>
+      queryClient.isFetching() === 0 && container.querySelector('[data-role="evidence"]') !== null,
+    () => container.textContent,
+    2000,
+    { flushBeforeFirstCheck: true },
+  );
   return container.textContent ?? "";
 }
 

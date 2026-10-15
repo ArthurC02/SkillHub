@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../../core/api/queryClient";
 import { queryKeys } from "../../../core/api/queryKeys";
 import { WorkspaceHome } from "./WorkspaceHome.page";
+import { pollUntil } from "../../../testing/poll";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -634,13 +635,6 @@ test("workspace home without active work does not show a stale refresh control",
   ).toBeUndefined();
 });
 
-async function waitFor(done: () => boolean) {
-  const deadline = Date.now() + 2000;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`wait timed out: ${container.textContent}`);
+function waitFor(done: () => boolean) {
+  return pollUntil(done, () => container.textContent, 2000);
 }

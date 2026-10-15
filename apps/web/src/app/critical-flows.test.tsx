@@ -62,11 +62,7 @@ async function render(node: ReactNode, settled: () => boolean) {
       </StrictMode>,
     );
   });
-  const deadline = Date.now() + 2000;
-  while (!settled()) {
-    if (Date.now() > deadline) throw new Error(`render timeout: ${container.textContent}`);
-    await act(async () => new Promise((resolve) => setTimeout(resolve, 5)));
-  }
+  await pollUntil(settled, () => container.textContent, 2000);
 }
 
 test("anonymous visitors get a working GitHub login entry", async () => {

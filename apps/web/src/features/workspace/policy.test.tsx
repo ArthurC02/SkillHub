@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { DataPolicy } from "./policy/DataPolicy.page";
+import { pollUntil } from "../../testing/poll";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -41,14 +42,7 @@ async function render(node: ReactNode, settled: () => boolean) {
       </StrictMode>,
     );
   });
-  const deadline = Date.now() + 2000;
-  while (Date.now() < deadline) {
-    if (settled()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`timed out; DOM was: ${container.textContent}`);
+  await pollUntil(settled, () => container.textContent, 2000);
 }
 
 const text = () => container.textContent ?? "";

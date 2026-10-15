@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { FeatureAvailabilityProvider } from "../../shared/FeatureAvailabilityProvider";
 import { Activity } from "./Activity.page";
+import { pollUntil } from "../../testing/poll";
 
 const flags = vi.hoisted(() => ({ creation: false, generate: false }));
 
@@ -219,13 +220,6 @@ test("activity keeps an unknown item visible without inventing a continuation", 
   expect(container.textContent).toContain("目前沒有可用的續作入口");
 });
 
-async function waitFor(done: () => boolean) {
-  const deadline = Date.now() + 2000;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`wait timed out: ${container.textContent}`);
+function waitFor(done: () => boolean) {
+  return pollUntil(done, () => container.textContent, 2000);
 }

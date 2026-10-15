@@ -8,6 +8,7 @@ import { CreationSession } from "./create/components/CreationSession";
 import { CreateHub } from "./components/CreateHub";
 import type { CreationSession as Session, CreationSnapshot } from "./creation.service";
 import { useCreationEntryPoint } from "./creation.service";
+import { pollUntil } from "../../testing/poll";
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
     children,
@@ -127,12 +128,8 @@ afterEach(async () => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
-async function waitFor(fn: () => boolean) {
-  const until = Date.now() + 2500;
-  while (!fn()) {
-    if (Date.now() > until) throw Error(box.textContent ?? "timeout");
-    await act(async () => new Promise((r) => setTimeout(r, 5)));
-  }
+function waitFor(fn: () => boolean) {
+  return pollUntil(fn, () => box.textContent, 2500);
 }
 async function render(node: ReactNode = <CreationSession />) {
   await act(async () => {
