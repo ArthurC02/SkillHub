@@ -1025,7 +1025,13 @@ test("a completed credit grant needs a changed draft before another submission",
   );
   await page.route("**/admin/credits/f2222222-2222-4222-8222-222222222222/grants", (route) => {
     grants += 1;
-    return route.fulfill({ json: { balance_credits: 170, amount_credits: 50 } });
+    return route.fulfill({
+      json: {
+        workspace_id: ADMIN_LEDGER.workspace_id,
+        balance_credits: 170,
+        amount_credits: 50,
+      },
+    });
   });
   await page.goto("/admin/accounts");
   await page.getByLabel("Email").fill("member@example.com");

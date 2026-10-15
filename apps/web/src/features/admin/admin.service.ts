@@ -225,14 +225,46 @@ export function useCreditLedger(workspaceId: string) {
   });
 }
 
+type CreditGrantResult = {
+  workspace_id: string;
+  balance_credits: number;
+  amount_credits: number;
+};
+
+export async function grantCredits(
+  workspaceId: string,
+  body: { amount_credits: number; reason: string; idempotency_key: string },
+): Promise<CreditGrantResult> {
+  const result = await apiFetch<unknown>(
+    `/admin/credits/${encodeURIComponent(workspaceId)}/grants`,
+    send("POST", body),
+  );
+  if (!isCreditGrantResult(result, workspaceId, body.amount_credits))
+    throw new Error("Invalid credit grant response");
+  return result;
+}
+
+function isCreditGrantResult(
+  value: unknown,
+  workspaceId: string,
+  amount: number,
+): value is CreditGrantResult {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const result = value as Partial<CreditGrantResult>;
+  return (
+    typeof result.workspace_id === "string" &&
+    result.workspace_id.toLowerCase() === workspaceId.toLowerCase() &&
+    Number.isSafeInteger(result.balance_credits) &&
+    Number.isSafeInteger(result.amount_credits) &&
+    result.amount_credits === amount
+  );
+}
+
 export function useGrantCredits(workspaceId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { amount_credits: number; reason: string; idempotency_key: string }) =>
-      apiFetch<{ balance_credits: number; amount_credits: number }>(
-        `/admin/credits/${workspaceId}/grants`,
-        send("POST", body),
-      ),
+      grantCredits(workspaceId, body),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.ledger(workspaceId) }),
   });

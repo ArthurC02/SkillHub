@@ -14,7 +14,8 @@ export function GrantForm({
   const [amount, setAmount] = useState("");
   const submissionKey = useRef(crypto.randomUUID());
   const credits = Number(amount);
-  const valid = amount.trim() !== "" && Number.isInteger(credits) && credits !== 0;
+  const outOfRange = Number.isInteger(credits) && !Number.isSafeInteger(credits);
+  const valid = amount.trim() !== "" && Number.isSafeInteger(credits) && credits !== 0;
   const correction = credits < 0;
   const uncertain = Boolean(
     grant.error &&
@@ -33,7 +34,9 @@ export function GrantForm({
         blockedReason={
           !ledgerReady
             ? `要等最新餘額讀取完成，才可${correction ? "更正" : "授予"}點數。`
-            : undefined
+            : outOfRange
+              ? "點數超出可精確計算的範圍，請調整金額。"
+              : undefined
         }
         done={
           grant.data &&
