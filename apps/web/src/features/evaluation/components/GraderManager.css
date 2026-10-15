@@ -1,3 +1,7 @@
 .grader-instructions {
   white-space: pre-wrap;
 }
+
+.grader-list[hidden] {
+  display: none;
+}

@@ -2,7 +2,7 @@ import { Loading } from "../../../shared/ui/Loading";
 import { PageReadFailure, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useState } from "react";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
-import { ApiError, canRetainLoadedPage } from "../../../core/api/client";
+import { ApiError, canRetainLoadedPage, isTransientReadFailure } from "../../../core/api/client";
 import type { SkillVersionSummary } from "../../../core/api/types";
 import { useTestCase } from "../testcases.service";
 import { useRuns } from "../../runs";
@@ -47,7 +47,7 @@ export function TestCaseDetail() {
   }
 
   if (testCase.isPending) return <Loading what="測試題" />;
-  if (!testCase.data || (testCase.error && !canPreserveEditor(testCase)))
+  if (!testCase.data || (testCase.error && !isTransientReadFailure(testCase.error)))
     return <TestCaseReadFailure query={testCase} />;
 
   const history = readableRunHistory(runs);
@@ -256,17 +256,6 @@ function TestCaseContext({
         </Link>
       </p>
     </section>
-  );
-}
-
-function canPreserveEditor(query: ReturnType<typeof useTestCase>) {
-  return Boolean(
-    query.data &&
-    query.error &&
-    (!(query.error instanceof ApiError) ||
-      query.error.status >= 500 ||
-      query.error.status === 408 ||
-      query.error.status === 429),
   );
 }
 

@@ -46,6 +46,16 @@ export function isLastingReadFailure(error: unknown): boolean {
   return error instanceof ApiError && lastingReadFailures.has(error.status);
 }
 
+export function isTransientReadFailure(error: unknown): boolean {
+  return Boolean(
+    error &&
+    (!(error instanceof ApiError) ||
+      error.status >= 500 ||
+      error.status === 408 ||
+      error.status === 429),
+  );
+}
+
 export function canRetainLoadedPage(error: unknown, nextPageFailure: boolean): boolean {
   return (
     nextPageFailure &&

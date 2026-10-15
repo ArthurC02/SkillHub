@@ -3,7 +3,7 @@ import {
   EvaluationGraderRevisionInstructionsMaxLength,
 } from "@skillhub/api-client-ts/limits";
 import { useEffect, useRef, useState } from "react";
-import { ApiError } from "../../../core/api/client";
+import { ApiError, isTransientReadFailure } from "../../../core/api/client";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
@@ -303,11 +303,15 @@ export function GraderManager({ scope }: { scope: GraderScope }) {
         />
       )}
       {graders.data &&
-        !graders.error &&
+        (!graders.error || isTransientReadFailure(graders.error)) &&
         (graders.data.graders.length === 0 ? (
-          !busy && <p role="status">還沒有評分器。</p>
+          !graders.error && !busy && <p role="status">還沒有評分器。</p>
         ) : (
-          <ul className="criterion-list">
+          <ul
+            className="criterion-list grader-list"
+            hidden={Boolean(graders.error)}
+            inert={Boolean(graders.error)}
+          >
             {graders.data.graders.map((g) => (
               <GraderItem
                 key={g.id}
