@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { RootLayout } from "./RootLayout";
 import { RouteNotFound } from "../shared/ui/RouteNotFound";
+import { RouteError } from "../shared/ui/RouteError";
 import type { AgentRuntime, SkillCategory } from "../core/api/types";
 
 const rootRoute = createRootRoute({ shellComponent: RootLayout });
@@ -603,6 +604,7 @@ export function createAppRouter() {
   return createRouter({
     routeTree,
     defaultNotFoundComponent: RouteNotFound,
+    defaultErrorComponent: RouteError,
     defaultPendingComponent: () => (
       <div role="status" data-loading="">
         <h1>載入頁面中…</h1>
