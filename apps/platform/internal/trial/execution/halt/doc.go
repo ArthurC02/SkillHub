@@ -1,6 +1,4 @@
-// Package halt keeps the dispatch halt ledger: which target dispatch stopped
-// for, who stopped it and why, and when it lifts. An incident is never
-// downgraded by a capacity pause and never lifts itself. Its Detector declares
-// halts on its own: leaked sandboxes past a threshold, a masker that stopped
-// redacting, a P-02 probe breach, and a stalled orphan reconciler.
+// Package halt keeps the dispatch halt ledger and its detectors: which target
+// dispatch stopped for and why, when it lifts, and the conditions that stop it
+// on their own. An incident is never downgraded and never lifts itself.
 package halt
