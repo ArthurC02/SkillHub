@@ -126,7 +126,7 @@ class GenerateSkillRequest(BaseModel):
         max_length=4000,  # one-number: generateMaxTaskRunes
     )
     diagram: GenerateDiagram | None = None
-    references: list[GenerateReference] = Field(default_factory=list)
+    references: list[GenerateReference] = Field(default_factory=list, max_length=MAX_REFERENCES)
     timeout_seconds: float | None = Field(None, gt=0)
 
     @field_validator("task_description")
@@ -140,12 +140,10 @@ class GenerateSkillRequest(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def _one_input_and_a_reference_cap(self) -> GenerateSkillRequest:
-        """The caller refuses both of these first; this is the backstop."""
+    def _one_input(self) -> GenerateSkillRequest:
+        """The caller refuses this first; this is the backstop."""
         if self.task_description is None and self.diagram is None:
             raise ValueError("task_description or diagram is required")
-        if len(self.references) > MAX_REFERENCES:
-            raise ValueError(f"references: at most {MAX_REFERENCES} allowed")
         return self
 
 

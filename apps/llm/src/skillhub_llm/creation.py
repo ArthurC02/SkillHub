@@ -177,22 +177,25 @@ class DiagramInterpretation(BaseModel):
     uncertainties: list[str]
 
 
+DIAGRAM_ITEM_MAX_CHARS = 2000
+
+DiagramItem = Annotated[str, Field(max_length=DIAGRAM_ITEM_MAX_CHARS)]
+
+
 class DiagramUncertainty(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: str
-    question: str
-    answer: str | None
+    question: DiagramItem
+    answer: DiagramItem | None
 
 
 class ConfirmedDiagramInterpretation(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    nodes: list[str] = Field(..., min_length=1, max_length=64)
-    conditions: list[str] = Field(..., max_length=64)
-    branches: list[str] = Field(..., max_length=128)
+    nodes: list[DiagramItem] = Field(..., min_length=1, max_length=64)
+    conditions: list[DiagramItem] = Field(..., max_length=64)
+    branches: list[DiagramItem] = Field(..., max_length=128)
     uncertainties: list[DiagramUncertainty] = Field(..., max_length=64)
 
-
-DIAGRAM_ITEM_MAX_CHARS = 2000
 
 JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 FENCED_JSON_OBJECT = re.compile(r"(?:```\w*\s*)?\{.*\}(?:\s*```)?", re.DOTALL)
