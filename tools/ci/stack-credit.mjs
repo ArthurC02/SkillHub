@@ -280,9 +280,8 @@ try {
         response.request().method() === "PUT",
     ),
     page
-      .locator("#skill-category")
-      .locator("xpath=ancestor::section")
-      .locator('button[type="button"]')
+      .getByRole("region", { name: "類別", exact: true })
+      .getByRole("button", { name: "儲存", exact: true })
       .click(),
   ]).then(([response]) => response);
   const categorized =
