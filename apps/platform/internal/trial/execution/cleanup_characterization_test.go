@@ -120,14 +120,3 @@ func TestEveryReleaseFailureIsNamedInOrder(t *testing.T) {
 		})
 	}
 }
-
-func TestAnOrphanCountAtTheThresholdBreachesIt(t *testing.T) {
-	for _, tc := range []struct {
-		persistent, threshold int64
-		want                  bool
-	}{{1, 2, false}, {2, 2, true}, {3, 2, true}} {
-		if got := (orphanCount{persistent: tc.persistent, threshold: tc.threshold}).breached(); got != tc.want {
-			t.Errorf("%d persistent against %d: breached = %v, want %v", tc.persistent, tc.threshold, got, tc.want)
-		}
-	}
-}

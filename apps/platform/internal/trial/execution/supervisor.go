@@ -65,10 +65,10 @@ func (s *Service) Supervise(ctx context.Context) error {
 		}
 	}
 
-	s.detectMaskerCanaryFailed(ctx)
-	s.detectMaskingStopped(ctx)
-
-	s.detectP02Breach(ctx)
+	detector := s.detector()
+	detector.DetectMaskerCanaryFailed(ctx)
+	detector.DetectMaskingStopped(ctx)
+	detector.DetectP02Breach(ctx)
 
 	return errors.Join(errs...)
 }

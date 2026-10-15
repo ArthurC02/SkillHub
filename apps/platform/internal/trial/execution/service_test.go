@@ -136,12 +136,6 @@ func TestDeleteArtifactRefusesWithoutOwnerCounter(t *testing.T) {
 	}
 }
 
-func TestMaskingActivityRefusesWithoutTraceService(t *testing.T) {
-	if _, err := (&Service{}).maskingActivity(t.Context(), time.Now(), time.Now()); err == nil {
-		t.Error("masking activity succeeded without Trace owner service")
-	}
-}
-
 func TestPermissionSummaryRefusesWithoutRegistryRead(t *testing.T) {
 	id := gen.Workspace{}.ID
 	_, err := (&Service{TestLab: &testlab.Service{}}).PermissionSummaryFor(t.Context(), id, id, id, id)
