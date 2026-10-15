@@ -1,7 +1,7 @@
 import type { Labelled } from "../../core/api/types";
 import type { RunStatus } from "./trace.service";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "../../core/api/client";
+import { ApiError, SessionNotReadyError, apiFetch } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 
 export type Run = {
@@ -64,16 +64,41 @@ export function useCancelRun(runId: string) {
   });
 }
 
+export async function continueRun(runId: string, answers: string[]) {
+  const next = await apiFetch<unknown>(`/runs/${runId}/continuations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ answers }),
+  });
+  if (
+    !next ||
+    typeof next !== "object" ||
+    !("run_id" in next) ||
+    typeof next.run_id !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(next.run_id) ||
+    next.run_id.toLowerCase() === runId.toLowerCase()
+  )
+    throw new Error("Invalid continuation Run response");
+  return { run_id: next.run_id };
+}
+
+export function isContinuationResultUnknown(error: unknown): boolean {
+  if (error instanceof SessionNotReadyError) return false;
+  return !(error instanceof ApiError) || error.status >= 500;
+}
+
 export function useContinueRun(runId: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (answers: string[]) =>
-      apiFetch<Run>(`/runs/${runId}/continuations`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers }),
-      }),
-    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.trace.run(runId) }),
+    mutationFn: (answers: string[]) => continueRun(runId, answers),
+    onSettled: (_result, error) => {
+      void client.invalidateQueries({ queryKey: queryKeys.trace.run(runId) });
+      if (!error || isContinuationResultUnknown(error)) {
+        void client.invalidateQueries({ queryKey: queryKeys.runs.lists });
+        void client.invalidateQueries({ queryKey: queryKeys.activity });
+        void client.invalidateQueries({ queryKey: queryKeys.credits });
+      }
+    },
   });
 }
 

@@ -112,7 +112,9 @@ for (const mode of ["一般模式", "進階模式"]) {
       await expect(inputs.nth(1)).toHaveValue("保留最新的一筆");
       await expect(inputs.nth(1)).toBeEditable();
       await expect(submit).toBeDisabled();
-      await expect(region.getByRole("alert")).toHaveText("這段對話已經到回答輪數的上限。");
+      await expect(region.getByRole("alert")).toHaveText(
+        "回答未被接受。這段對話已經到回答輪數的上限。",
+      );
       await inputs.nth(1).fill("更新後的理由");
       const retry = region.getByRole("button", { name: "重新確認問題", exact: true });
       await retry.focus();

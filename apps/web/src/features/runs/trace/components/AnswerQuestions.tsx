@@ -1,13 +1,11 @@
 import { ContinueRunBodyAnswersItemMaxLength } from "@skillhub/api-client-ts/limits";
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ReadFailure } from "../../../../shared/ui/LoginRequired";
-import { useContinueRun } from "../../runs.service";
+import { isContinuationResultUnknown, useContinueRun } from "../../runs.service";
 import type { TraceSummary } from "../../trace.service";
+import { ContinuationFailure } from "./ContinuationFailure";
 
 const characterCount = (text: string) => [...text].length;
-
-const failureMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 export function AnswerQuestions({
   runId,
@@ -25,6 +23,7 @@ export function AnswerQuestions({
   const [answers, setAnswers] = useState<string[]>(() => questions.map(() => ""));
   const navigate = useNavigate();
   const continuation = useContinueRun(runId);
+  const unknown = Boolean(continuation.error) && isContinuationResultUnknown(continuation.error);
   const trimmed = answers.map((answer) => answer.trim());
   const blank = trimmed.some((answer) => answer === "");
   const tooLong = trimmed.some(
@@ -34,7 +33,7 @@ export function AnswerQuestions({
 
   const setAnswer = (index: number, value: string) => {
     setAnswers((current) => current.map((answer, i) => (i === index ? value : answer)));
-    continuation.reset();
+    if (!unknown) continuation.reset();
   };
 
   return (
@@ -86,7 +85,11 @@ export function AnswerQuestions({
           disabled={blocked || continuation.isPending}
           aria-describedby={blocked ? `answer-questions-${runId}-why` : undefined}
         >
-          {continuation.isPending ? "送出中…" : "送出回答並繼續試跑"}
+          {continuation.isPending
+            ? "送出中…"
+            : unknown
+              ? "核對後仍要重新送出回答"
+              : "送出回答並繼續試跑"}
         </button>
         {blocked && (
           <p
@@ -115,11 +118,7 @@ export function AnswerQuestions({
             重新確認問題
           </button>
         )}
-        {continuation.error && (
-          <ReadFailure error={continuation.error} what="送出回答">
-            <p role="alert">{failureMessage(continuation.error)}</p>
-          </ReadFailure>
-        )}
+        <ContinuationFailure error={continuation.error} />
       </form>
     </section>
   );

@@ -3,14 +3,17 @@ import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider, focusManager } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
+import { queryKeys } from "../../core/api/queryKeys";
 import { RunTrace } from "./trace/RunTrace.page";
 import type { TraceAdvanced, TraceSummary } from "./trace.service";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 let container: HTMLDivElement;
 let root: Root;
+const scrollIntoView = HTMLElement.prototype.scrollIntoView;
 
 beforeEach(() => {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
   queryClient.clear();
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -20,6 +23,8 @@ afterEach(async () => {
   await act(async () => root?.unmount());
   container.remove();
   vi.unstubAllGlobals();
+  if (scrollIntoView) HTMLElement.prototype.scrollIntoView = scrollIntoView;
+  else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
 });
 
 const navigations: { to?: string; params?: unknown }[] = [];
@@ -822,6 +827,37 @@ const asking: TraceSummary = {
   ],
 };
 
+test.each([
+  { name: "confirmed", status: 201, body: { run_id: NEXT_RUN_ID }, invalidate: true },
+  { name: "server error", status: 503, body: { error: "service unavailable" }, invalidate: true },
+  { name: "incomplete receipt", status: 201, body: {}, invalidate: true },
+  {
+    name: "refused",
+    status: 422,
+    body: { error: "這段對話已經到回答輪數的上限。" },
+    invalidate: false,
+  },
+])(
+  "a $name continuation invalidates only the affected read models",
+  async ({ status, body, invalidate }) => {
+    stubTrace(asking, advanced);
+    stubContinuation({ status, body });
+    const affected = [queryKeys.runs.list(), queryKeys.activity, queryKeys.credits];
+    const unrelated = queryKeys.trace.page("other-run", "general", 0);
+    for (const key of [...affected, unrelated]) queryClient.setQueryData(key, { retained: true });
+    await render();
+    await fill(`#answer-${RUN_ID}-0`, "Sheet2");
+    await fill(`#answer-${RUN_ID}-1`, "最新");
+    await act(async () => submitButton()!.click());
+    await waitFor(
+      () => navigations.length > 0 || container.querySelector('[role="alert"]') !== null,
+    );
+    for (const key of affected)
+      expect(queryClient.getQueryState(key)?.isInvalidated, JSON.stringify(key)).toBe(invalidate);
+    expect(queryClient.getQueryState(unrelated)?.isInvalidated).toBe(false);
+  },
+);
+
 function stubContinuation(reply: { status: number; body: unknown }) {
   const posts: { url: string; body: unknown }[] = [];
   const underlying = globalThis.fetch;
@@ -978,7 +1014,10 @@ test.each([
     await fill(`#answer-${RUN_ID}-0`, "Sheet1");
     await fill(`#answer-${RUN_ID}-1`, "第一筆");
     await act(async () => submitButton()!.click());
-    await waitFor(() => container.querySelector('[role="alert"]')?.textContent === message);
+    await waitFor(
+      () => container.querySelector('[role="alert"]')?.textContent?.includes(message) === true,
+    );
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe(`回答未被接受。${message}`);
 
     expect(navigations).toEqual([]);
     expect(container.querySelector("form")).not.toBeNull();
