@@ -609,9 +609,7 @@ func (m *Manager) Cancel(ctx context.Context, id string) (ProviderRun, error) {
 			cancelStart()
 		}
 		m.log.Info("cancel requested", "provider_run_id", id)
-		if err := m.drv.Stop(ctx, id, m.cfg.CancelGrace); err != nil {
-			m.log.Error("cancel stop failed", "provider_run_id", id, "err", err)
-		}
+		m.stopWorkload(id)
 	}
 	return run, nil
 }

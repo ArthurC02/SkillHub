@@ -32,6 +32,7 @@ type fakeDriver struct {
 	startEntered      chan struct{}
 	startRelease      chan struct{}
 	removeDeadlines   []bool
+	stopCtxErrs       map[string]error
 	readTraceFailures int
 	isolation         sandbox.IsolationStrength
 	dedicated         bool
@@ -100,9 +101,13 @@ func (f *fakeDriver) Wait(ctx context.Context, id string) (sandbox.Outcome, erro
 	}
 }
 
-func (f *fakeDriver) Stop(_ context.Context, id string, grace time.Duration) error {
+func (f *fakeDriver) Stop(ctx context.Context, id string, grace time.Duration) error {
 	f.mu.Lock()
 	f.stops[id] = grace
+	if f.stopCtxErrs == nil {
+		f.stopCtxErrs = map[string]error{}
+	}
+	f.stopCtxErrs[id] = ctx.Err()
 	ch := f.release[id]
 	f.mu.Unlock()
 	select {
@@ -343,6 +348,26 @@ func TestCancelRunningRunReachesCancelled(t *testing.T) {
 	}
 	if final.Result == nil || final.Result.Status != sandbox.ResultCancelled {
 		t.Errorf("result after cancel = %+v, want status cancelled", final.Result)
+	}
+}
+
+func TestACancelWhoseCallerHungUpStillStopsTheWorkload(t *testing.T) {
+	drv := newFakeDriver()
+	m := newManager(drv)
+	h := (&sandbox.Server{M: m, Token: testToken}).Routes()
+	_, run := do(t, h, "POST", "/runs", runRequest(), testToken)
+
+	hungUp, hangUp := context.WithCancel(context.Background())
+	hangUp()
+	if _, err := m.Cancel(hungUp, run.ProviderRunID); err != nil {
+		t.Fatalf("Cancel: %v", err)
+	}
+
+	drv.mu.Lock()
+	stopErr, stopped := drv.stopCtxErrs[run.ProviderRunID]
+	drv.mu.Unlock()
+	if !stopped || stopErr != nil {
+		t.Fatalf("stop reached the driver=%v with ctx err %v, want a live stop independent of the caller", stopped, stopErr)
 	}
 }
 
