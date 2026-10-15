@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import re
+import threading
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -810,6 +811,25 @@ def test_a_step_that_cannot_finish_answers_and_cancels_the_gateway_call(
         assert cancelled.is_set()
 
     asyncio.run(scenario())
+
+
+def test_a_step_that_fails_at_once_still_answers():
+    async def fail_at_once(*_, **__):
+        raise HTTPException(status_code=502, detail="creation model returned unusable output")
+
+    answered = []
+
+    def post():
+        answered.append(client.post("/v1/creation/step", headers=HEADERS, json=request()))
+
+    with patch.object(creation, "_graph", lambda _: SimpleNamespace(ainvoke=fail_at_once)):
+        for _ in range(20):
+            caller = threading.Thread(target=post, daemon=True)
+            caller.start()
+            caller.join(timeout=5)
+            assert not caller.is_alive(), "the request never answered after its step failed"
+
+    assert [r.status_code for r in answered] == [502] * 20
 
 
 def test_a_gateway_failure_is_502_with_a_fixed_detail():

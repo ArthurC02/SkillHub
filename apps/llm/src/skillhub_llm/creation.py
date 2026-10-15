@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import json
 import logging
@@ -18,6 +17,7 @@ from langsmith import tracing_context
 from openai import OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from skillhub_llm.disconnect import answer_unless_disconnected
 from skillhub_llm.gateway import (
     GatewayUsage,
     client,
@@ -1425,31 +1425,16 @@ async def creation_step(
 ) -> CreationStepResponse:
     await require_budgeted_key(x_creation_gateway_key)
 
-    async def disconnected():
-        while not await request.is_disconnected():
-            await asyncio.sleep(0.1)
-
     # LangGraph traces node inputs by default when tracing env vars are set;
     # this request carries private text and images, so tracing stays off.
     with tracing_context(enabled=False):
-        work = asyncio.create_task(
+        state = await answer_unless_disconnected(
+            request,
             _graph(x_creation_gateway_key).ainvoke(
                 {"request": req}, config={"recursion_limit": 10, "callbacks": []}
-            )
+            ),
+            timeout_seconds=req.timeout_seconds,
+            disconnected_detail="creation request disconnected",
+            timeout_detail="creation step timed out",
         )
-        disconnect = asyncio.create_task(disconnected())
-        try:
-            async with asyncio.timeout(req.timeout_seconds):
-                done, _ = await asyncio.wait(
-                    {work, disconnect}, return_when=asyncio.FIRST_COMPLETED
-                )
-                if work not in done:
-                    raise HTTPException(status_code=499, detail="creation request disconnected")
-                return work.result()["response"]
-        except TimeoutError:
-            raise HTTPException(status_code=502, detail="creation step timed out") from None
-        finally:
-            for task in (work, disconnect):
-                if not task.done():
-                    task.cancel()
-            await asyncio.gather(work, disconnect, return_exceptions=True)
+    return state["response"]

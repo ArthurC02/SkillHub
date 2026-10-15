@@ -6,7 +6,6 @@ this module only turns the steps so far into the model's next decision.
 
 from __future__ import annotations
 
-import asyncio
 import json
 from typing import Literal
 
@@ -15,6 +14,7 @@ from openai import APIError
 from pydantic import BaseModel, ConfigDict, Field
 
 from skillhub_llm.agents import INSTRUCTIONS, AgentInstructions
+from skillhub_llm.disconnect import answer_unless_disconnected
 from skillhub_llm.gateway import (
     GatewayUsage,
     client,
@@ -204,26 +204,10 @@ async def agent_step(
     if instructions is None:
         raise HTTPException(status_code=422, detail=f"no instructions for agent {req.agent!r}")
 
-    finished = asyncio.Event()
-
-    async def disconnected():
-        # is_disconnected() can swallow a cancellation, so the loop also watches a flag.
-        while not finished.is_set() and not await request.is_disconnected():
-            await asyncio.sleep(0.1)
-
-    work = asyncio.create_task(_step(req, instructions, x_agent_gateway_key))
-    disconnect = asyncio.create_task(disconnected())
-    try:
-        async with asyncio.timeout(req.timeout_seconds):
-            done, _ = await asyncio.wait({work, disconnect}, return_when=asyncio.FIRST_COMPLETED)
-            if work not in done:
-                raise HTTPException(status_code=499, detail="agent step request disconnected")
-            return work.result()
-    except TimeoutError:
-        raise HTTPException(status_code=502, detail="agent step timed out") from None
-    finally:
-        finished.set()
-        for task in (work, disconnect):
-            if not task.done():
-                task.cancel()
-        await asyncio.gather(work, disconnect, return_exceptions=True)
+    return await answer_unless_disconnected(
+        request,
+        _step(req, instructions, x_agent_gateway_key),
+        timeout_seconds=req.timeout_seconds,
+        disconnected_detail="agent step request disconnected",
+        timeout_detail="agent step timed out",
+    )
