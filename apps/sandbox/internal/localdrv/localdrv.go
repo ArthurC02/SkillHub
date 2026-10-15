@@ -286,8 +286,7 @@ func (d *Driver) Remove(ctx context.Context, id string) error {
 	case <-time.After(5 * time.Second):
 
 	}
-	_ = os.RemoveAll(filepath.Dir(r.workDir))
-	return nil
+	return d.removeResidue(id)
 }
 
 func (d *Driver) Adopt(ctx context.Context) ([]sandbox.Adopted, error) {
