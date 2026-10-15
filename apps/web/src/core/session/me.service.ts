@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { ApiError, apiFetch } from "../api/client";
 import { queryKeys } from "../api/queryKeys";
 import type { AccountDeletion, Me } from "../api/types";
@@ -7,7 +8,23 @@ export function useMe() {
   return useQuery({
     queryKey: queryKeys.me,
     queryFn: () => apiFetch<Me>("/me"),
+    refetchOnWindowFocus: true,
   });
+}
+
+export function useSessionBoundary() {
+  const client = useQueryClient();
+  const me = useMe();
+  const previousIdentity = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (!me.isSuccess && !(me.error instanceof ApiError && me.error.status === 401)) return;
+    const identity = me.isSuccess ? `${me.data.user_id}/${me.data.workspace_id}` : null;
+    if (previousIdentity.current !== undefined && previousIdentity.current !== identity) {
+      client.clear();
+      window.location.reload();
+    }
+    previousIdentity.current = identity;
+  }, [client, me.data, me.isSuccess, me.error]);
 }
 
 declare global {

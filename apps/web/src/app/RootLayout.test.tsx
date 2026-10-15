@@ -38,6 +38,7 @@ vi.mock("../features/creation", () => ({
 
 vi.mock("../core/session/me.service", () => ({
   useMe: () => ({ data: { display_name: "tester" } }),
+  useSessionBoundary: () => undefined,
 }));
 
 vi.mock("./shell/AuthControls", () => ({

@@ -5,11 +5,12 @@ import { AuthControls } from "./shell/AuthControls";
 import { CleanModeNotice } from "./shell/CleanModeNotice";
 import { NavScrollCue } from "../shared/ui/NavScrollCue";
 import { useCreationEntryPoint, useGenerateEntryPoint } from "../features/creation";
-import { useMe } from "../core/session/me.service";
+import { useMe, useSessionBoundary } from "../core/session/me.service";
 import { FeatureAvailabilityProvider } from "../shared/FeatureAvailabilityProvider";
 import "./RootLayout.css";
 
 export function RootLayout() {
+  useSessionBoundary();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const me = useMe();
