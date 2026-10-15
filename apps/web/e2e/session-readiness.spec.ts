@@ -1,3 +1,4 @@
+import { setOffline } from "./offline";
 import { expect, test } from "@playwright/test";
 import { platformResponse, SKILL, VERSION } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
@@ -35,7 +36,6 @@ const imported = {
 for (const failure of ["pending", "server", "network", "offline"]) {
   test(`${failure} identity verification blocks import and recovers without replaying the draft`, async ({
     page,
-    context,
   }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 900 });
@@ -71,7 +71,7 @@ for (const failure of ["pending", "server", "network", "offline"]) {
       await input.fill(draft);
       await expect(page.getByRole("button", { name: "開始匯入", exact: true })).toBeEnabled();
       checking = true;
-      if (failure === "offline") await context.setOffline(true);
+      if (failure === "offline") await setOffline(page, true);
       await page.evaluate(() =>
         document.dispatchEvent(new Event("visibilitychange", { bubbles: true })),
       );
@@ -99,7 +99,7 @@ for (const failure of ["pending", "server", "network", "offline"]) {
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
       checking = false;
       if (failure === "pending") release();
-      else if (failure === "offline") await context.setOffline(false);
+      else if (failure === "offline") await setOffline(page, false);
       else {
         await page.getByRole("button", { name: "重新確認登入狀態", exact: true }).click();
         await expect(page.getByRole("main")).toBeFocused();
@@ -116,7 +116,7 @@ for (const failure of ["pending", "server", "network", "offline"]) {
       expect(writes).toBe(1);
     } finally {
       release();
-      await context.setOffline(false);
+      await setOffline(page, false);
     }
   });
 }

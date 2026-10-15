@@ -1,3 +1,4 @@
+import { setOffline } from "./offline";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { TEST_CASE, VERSION } from "../src/testing/fixtures/platform";
@@ -32,7 +33,6 @@ for (const owner of ["rules", "usage"]) {
   for (const phase of ["pending", "offline"]) {
     test(`cached dataset ${owner} in ${phase} waits for fresh allowance and preserves the chosen file`, async ({
       page,
-      context,
     }) => {
       await stubPlatform(page);
       await page.setViewportSize({ width: 375, height: 900 });
@@ -88,7 +88,7 @@ for (const owner of ["rules", "usage"]) {
           page.getByRole("heading", { name: "資料保存政策", exact: true }),
         ).toBeVisible();
         checking = true;
-        if (phase === "offline") await context.setOffline(true);
+        if (phase === "offline") await setOffline(page, true);
         await page.goBack();
         if (phase === "pending") await readStarted;
         const why = page.locator("#upload-read-why");
@@ -112,7 +112,7 @@ for (const owner of ["rules", "usage"]) {
         await expect(why).toBeInViewport({ ratio: 1 });
         await page.screenshot({ path: test.info().outputPath("dataset-readiness.png") });
         expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-        if (phase === "offline") await context.setOffline(false);
+        if (phase === "offline") await setOffline(page, false);
         else release();
         await expect(upload).toBeEnabled();
         await expect(file).toHaveValue(/rows\.csv$/);
@@ -141,7 +141,7 @@ for (const owner of ["rules", "usage"]) {
         );
       } finally {
         release();
-        await context.setOffline(false);
+        await setOffline(page, false);
       }
     });
   }

@@ -1,3 +1,4 @@
+import { setOffline } from "./offline";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { IMPORT_LIMITS, SKILL, VERSION } from "../src/testing/fixtures/platform";
@@ -142,7 +143,6 @@ test("pending import limits keep an editable draft without submitting it", async
 
 test("an offline return withholds cached import limits until the paused read resumes", async ({
   page,
-  context,
 }) => {
   await stubPlatform(page);
   await page.setViewportSize({ width: 375, height: 900 });
@@ -158,7 +158,7 @@ test("an offline return withholds cached import limits until the paused read res
   await expect(page.getByRole("heading", { name: "匯入小工具", exact: true })).toHaveCount(0);
   await expect(page.locator("main h1")).toBeVisible();
   try {
-    await context.setOffline(true);
+    await setOffline(page, true);
     await page.goBack();
     await expect(rules.getByRole("status")).toHaveText("等待連線以讀取匯入限制…");
     await expect(rules).not.toContainText("zip 最大 10 MB");
@@ -166,7 +166,7 @@ test("an offline return withholds cached import limits until the paused read res
     await input.fill(draft);
     await expect(page.getByRole("button", { name: "開始匯入", exact: true })).toBeDisabled();
     expect(writes).toBe(0);
-    await context.setOffline(false);
+    await setOffline(page, false);
     await expect(rules).toContainText("zip 最大 10 MB");
     await expect(page.locator(".auth-name")).toHaveText("tester");
     await expect(page.getByRole("button", { name: "開始匯入", exact: true })).toBeEnabled();
@@ -176,6 +176,6 @@ test("an offline return withholds cached import limits until the paused read res
     await expect(page.getByRole("status").filter({ hasText: "匯入完成" })).toBeVisible();
     expect(writes).toBe(1);
   } finally {
-    await context.setOffline(false);
+    await setOffline(page, false);
   }
 });

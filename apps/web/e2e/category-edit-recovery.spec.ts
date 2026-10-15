@@ -1,3 +1,4 @@
+import { setOffline } from "./offline";
 import AxeBuilder from "@axe-core/playwright";
 import { writeFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
@@ -210,7 +211,6 @@ for (const status of [401, 403, 404, 410]) {
 for (const source of ["skill", "versions"]) {
   test(`a category receipt and next choice survive a failed ${source} reread and offline recovery`, async ({
     page,
-    context,
   }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 900 });
@@ -277,7 +277,7 @@ for (const source of ["skill", "versions"]) {
       );
       expect(writes).toEqual([{ category: "writing" }]);
       await verifyLayout(page, "read-failed");
-      await context.setOffline(true);
+      await setOffline(page, true);
       await page.getByRole("button", { name: "重新確認編輯條件", exact: true }).focus();
       await page.keyboard.press("Enter");
       await expect(page.getByRole("button", { name: "重新確認中…", exact: true })).toBeDisabled();
@@ -287,7 +287,7 @@ for (const source of ["skill", "versions"]) {
       await expect(choice).toHaveValue("data");
       await expect(page.locator("#main-content")).toBeFocused();
       recovered = true;
-      await context.setOffline(false);
+      await setOffline(page, false);
       await expect(page.getByRole("button", { name: "儲存", exact: true })).toBeEnabled();
       await expect(choice).toHaveValue("data");
       await expect(page.locator("header .badge-row")).toContainText("寫作");
@@ -295,7 +295,7 @@ for (const source of ["skill", "versions"]) {
       await verifyLayout(page, "recovered");
     } finally {
       release();
-      await context.setOffline(false);
+      await setOffline(page, false);
     }
   });
 }

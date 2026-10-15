@@ -1,3 +1,4 @@
+import { setOffline } from "./offline";
 import AxeBuilder from "@axe-core/playwright";
 import { writeFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
@@ -32,7 +33,6 @@ for (const [scenario, limit, firstLabel, announcement] of [
 ] as const) {
   test(`evaluation polling bounds ${scenario} and recovers through a queued manual read`, async ({
     page,
-    context,
   }) => {
     await page.clock.install();
     await stubPlatform(page);
@@ -80,7 +80,7 @@ for (const [scenario, limit, firstLabel, announcement] of [
         path: test.info().outputPath("evaluation-poll-stopped.png"),
         fullPage: true,
       });
-      await context.setOffline(true);
+      await setOffline(page, true);
       await retry.focus();
       await page.keyboard.press("Enter");
       await expect(panel.getByRole("button", { name: "重新讀取中…", exact: true })).toBeDisabled();
@@ -97,7 +97,7 @@ for (const [scenario, limit, firstLabel, announcement] of [
       expect(reads).toBe(limit);
       if (scenario === "pending") await expect(timestamp).toHaveAttribute("datetime", observedAt!);
       recovered = true;
-      await context.setOffline(false);
+      await setOffline(page, false);
       await expect(panel.locator(".verdict")).toHaveText("任務判定：未符合");
       await expect(retry).toHaveCount(0);
       await expect(panel).not.toContainText("已停止自動確認評估結果");
@@ -106,14 +106,13 @@ for (const [scenario, limit, firstLabel, announcement] of [
       expect(reads).toBe(limit + 1);
       await verifyEvaluationLayout(page, "recovered");
     } finally {
-      await context.setOffline(false);
+      await setOffline(page, false);
     }
   });
 }
 
 test("an offline evaluation history reread preserves the current verdict and feedback draft", async ({
   page,
-  context,
 }) => {
   await page.clock.install();
   await stubPlatform(page);
@@ -143,7 +142,7 @@ test("an offline evaluation history reread preserves the current verdict and fee
     await expect(panel.getByRole("alert")).toContainText("歷史評估版本");
     const comment = page.locator("#feedback-comment");
     await comment.fill("unsent review");
-    await context.setOffline(true);
+    await setOffline(page, true);
     await panel.getByRole("button", { name: "再試一次", exact: true }).focus();
     await page.keyboard.press("Enter");
     await expect(panel.getByRole("button", { name: "重新讀取中…", exact: true })).toBeDisabled();
@@ -155,7 +154,7 @@ test("an offline evaluation history reread preserves the current verdict and fee
     await expect(comment).toHaveValue("unsent review");
     expect(reads).toBe(2);
     recovered = true;
-    await context.setOffline(false);
+    await setOffline(page, false);
     await expect(page.getByLabel("評估版本", { exact: true })).toBeVisible();
     await expect(panel.getByRole("alert")).toHaveCount(0);
     await expect(comment).toHaveValue("unsent review");
@@ -163,7 +162,7 @@ test("an offline evaluation history reread preserves the current verdict and fee
     expect(evaluationReads).toBe(2);
     await verifyEvaluationLayout(page, "history-recovered");
   } finally {
-    await context.setOffline(false);
+    await setOffline(page, false);
   }
 });
 

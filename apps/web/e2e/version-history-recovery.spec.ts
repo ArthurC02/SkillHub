@@ -1,3 +1,4 @@
+import { setOffline } from "./offline";
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { SKILL, SKILL_VERSIONS } from "../src/testing/fixtures/platform";
@@ -99,7 +100,6 @@ for (const [cached, empty] of [
 for (const mode of ["pending", "offline"] as const) {
   test(`a cached version history in ${mode} waits for a current snapshot without declaring latest`, async ({
     page,
-    context,
   }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 900 });
@@ -123,7 +123,7 @@ for (const mode of ["pending", "offline"] as const) {
       const history = page.getByRole("region", { name: "版本", exact: true });
       await expect(history.getByText("共 2 版，最新 v2", { exact: false })).toBeVisible();
       checking = true;
-      if (mode === "offline") await context.setOffline(true);
+      if (mode === "offline") await setOffline(page, true);
       await history.getByRole("button", { name: "重新整理", exact: true }).click();
       await expect(history.getByRole("status")).toHaveText(
         mode === "offline" ? "等待連線以確認版本歷史；目前無法確認最新版本。" : "載入版本歷史中…",
@@ -133,7 +133,7 @@ for (const mode of ["pending", "offline"] as const) {
       await expect(history.getByText("無權檢視", { exact: false })).toHaveCount(0);
       await verifyVisibleFocus(page);
       expect(reads).toBe(mode === "offline" ? 1 : 2);
-      if (mode === "offline") await context.setOffline(false);
+      if (mode === "offline") await setOffline(page, false);
       await expect.poll(() => reads).toBe(2);
       release();
       await expect(history.getByText("共 3 版，最新 v3", { exact: false })).toBeVisible();
@@ -142,7 +142,7 @@ for (const mode of ["pending", "offline"] as const) {
       expect(writes).toEqual([]);
     } finally {
       release();
-      await context.setOffline(false);
+      await setOffline(page, false);
     }
   });
 }

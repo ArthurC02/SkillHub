@@ -1,3 +1,4 @@
+import { setOffline } from "./offline";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type Locator } from "@playwright/test";
 import { SKILL, VERSION, SKILL_VERSIONS, platformResponse } from "../src/testing/fixtures/platform";
@@ -48,7 +49,6 @@ async function verifyNextFile(input: Locator) {
 for (const source of ["skill", "versions"]) {
   test(`a confirmed version upload survives a failed ${source} reread and retains its next file through offline recovery`, async ({
     page,
-    context,
   }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 900 });
@@ -134,7 +134,7 @@ for (const source of ["skill", "versions"]) {
       await expect(input).toBeVisible();
       await verifyNextFile(input);
       recovered = true;
-      await context.setOffline(true);
+      await setOffline(page, true);
       await page.getByRole("button", { name: "再試一次", exact: true }).focus();
       await page.keyboard.press("Enter");
       await expect(page.getByRole("button", { name: /^(再試一次|重新讀取中…)$/ })).toBeDisabled();
@@ -149,7 +149,7 @@ for (const source of ["skill", "versions"]) {
           return { name: file?.name, size: file?.size };
         }),
       ).toEqual({ name: "next.zip", size: 10 });
-      await context.setOffline(false);
+      await setOffline(page, false);
       await expect(
         page.getByRole("heading", { name: "PDF Summariser v3", exact: true }),
       ).toBeVisible();
@@ -160,7 +160,7 @@ for (const source of ["skill", "versions"]) {
       expect(posts).toBe(1);
     } finally {
       release();
-      await context.setOffline(false);
+      await setOffline(page, false);
     }
   });
 }

@@ -1,3 +1,4 @@
+import { setOffline } from "./offline";
 import AxeBuilder from "@axe-core/playwright";
 import { writeFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
@@ -20,7 +21,6 @@ for (const offline of [false, true]) {
   for (const absent of [false, true]) {
     test(`test-case ownership waits for a ${offline ? "paused" : "fetching"} empty snapshot read that confirms ${absent ? "absence" : "ownership"}`, async ({
       page,
-      context,
     }) => {
       await stubPlatform(page);
       await page.setViewportSize({ width: 375, height: 900 });
@@ -53,7 +53,7 @@ for (const offline of [false, true]) {
         await expect(
           page.getByRole("heading", { name: "資料保存政策", exact: true }),
         ).toBeVisible();
-        await context.setOffline(offline);
+        await setOffline(page, offline);
         await page.goBack();
         if (!offline) await expect.poll(() => reads).toBe(2);
         await expect(missing).toHaveCount(0);
@@ -66,7 +66,7 @@ for (const offline of [false, true]) {
         await editor.getByLabel("User Prompt", { exact: true }).fill("keep this task");
         await expect(editor.getByRole("button", { name: "建立", exact: true })).toBeDisabled();
         await verifyLayout(page, "unconfirmed");
-        await context.setOffline(false);
+        await setOffline(page, false);
         await expect.poll(() => reads).toBe(2);
         release();
         await expect(editor.locator("[data-loading]")).toHaveCount(0);
@@ -89,7 +89,7 @@ for (const offline of [false, true]) {
         await verifyLayout(page, "confirmed");
       } finally {
         release();
-        await context.setOffline(false);
+        await setOffline(page, false);
       }
     });
   }
@@ -97,7 +97,6 @@ for (const offline of [false, true]) {
 
 test("a paused test-case cached owner retry keeps its draft and waits before confirming ownership", async ({
   page,
-  context,
 }) => {
   await stubPlatform(page);
   await page.setViewportSize({ width: 375, height: 900 });
@@ -120,7 +119,7 @@ test("a paused test-case cached owner retry keeps its draft and waits before con
     await expect(editor.getByRole("alert")).toBeVisible();
     await editor.getByLabel("名稱", { exact: true }).fill("retry draft");
     await editor.getByLabel("User Prompt", { exact: true }).fill("keep retry task");
-    await context.setOffline(true);
+    await setOffline(page, true);
     await editor.getByRole("button", { name: "再試一次", exact: true }).focus();
     await page.keyboard.press("Enter");
     await expect(editor.getByRole("button", { name: "重新讀取中…", exact: true })).toBeDisabled();
@@ -131,7 +130,7 @@ test("a paused test-case cached owner retry keeps its draft and waits before con
     await expect(page.getByText("這個小工具不在你的工作區", { exact: false })).toHaveCount(0);
     expect(reads).toBe(2);
     await verifyLayout(page, "retry-paused");
-    await context.setOffline(false);
+    await setOffline(page, false);
     await expect(editor.getByLabel("小工具", { exact: true })).toHaveValue(SKILL);
     await expect(editor.getByRole("alert")).toHaveCount(0);
     await expect(editor.getByLabel("名稱", { exact: true })).toHaveValue("retry draft");
@@ -139,6 +138,6 @@ test("a paused test-case cached owner retry keeps its draft and waits before con
     expect(reads).toBe(3);
     await verifyLayout(page, "retry-confirmed");
   } finally {
-    await context.setOffline(false);
+    await setOffline(page, false);
   }
 });

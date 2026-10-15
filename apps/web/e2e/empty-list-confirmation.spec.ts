@@ -1,3 +1,4 @@
+import { setOffline } from "./offline";
 import AxeBuilder from "@axe-core/playwright";
 import { writeFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
@@ -174,7 +175,6 @@ for (const list of lists) {
   for (const stillEmpty of [false, true]) {
     test(`${list.name} confirms a cached empty list through a failed reread and offline recovery to ${stillEmpty ? "empty" : "populated"}`, async ({
       page,
-      context,
     }) => {
       await stubPlatform(page);
       await page.setViewportSize({ width: 375, height: 900 });
@@ -231,7 +231,7 @@ for (const list of lists) {
           scope.getByRole("alert").filter({ hasText: `暫時無法讀取${list.what}` }),
         ).toBeVisible();
         await expect(page.getByText(list.empty, { exact: false })).toHaveCount(0);
-        await context.setOffline(true);
+        await setOffline(page, true);
         await scope.getByRole("button", { name: "再試一次", exact: true }).focus();
         await page.keyboard.press("Enter");
         await expect(
@@ -243,7 +243,7 @@ for (const list of lists) {
         await expect(page.getByText(list.empty, { exact: false })).toHaveCount(0);
         expect(reads).toBe(2);
         await verifyLayout(page, "paused");
-        await context.setOffline(false);
+        await setOffline(page, false);
         if (stillEmpty)
           await expect(scope.getByRole("status").filter({ hasText: list.empty })).toBeVisible();
         else await expect(page.locator(list.selector)).toHaveCount(1);
@@ -253,7 +253,7 @@ for (const list of lists) {
         await verifyLayout(page, "confirmed");
       } finally {
         release();
-        await context.setOffline(false);
+        await setOffline(page, false);
       }
     });
   }
@@ -262,7 +262,6 @@ for (const list of lists) {
 for (const list of lists) {
   test(`${list.name} waits for connectivity before reconfirming its cached empty snapshot`, async ({
     page,
-    context,
   }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 900 });
@@ -281,7 +280,7 @@ for (const list of lists) {
       await expect(page.getByText(list.empty, { exact: false })).toBeVisible();
       await page.locator('a[href="/policy"]').first().click();
       await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toBeVisible();
-      await context.setOffline(true);
+      await setOffline(page, true);
       await page.goBack();
       const scope = page.locator(list.scope);
       const waiting = scope.getByRole("status").filter({ hasText: `等待連線以讀取${list.what}` });
@@ -295,19 +294,18 @@ for (const list of lists) {
       }
       expect(reads).toBe(1);
       await verifyLayout(page, "cached-paused");
-      await context.setOffline(false);
+      await setOffline(page, false);
       await expect(scope.getByRole("status").filter({ hasText: list.empty })).toBeVisible();
       await expect(waiting).toHaveCount(0);
       expect(reads).toBe(2);
       await verifyLayout(page, "cached-confirmed");
     } finally {
-      await context.setOffline(false);
+      await setOffline(page, false);
     }
   });
 
   test(`${list.name} resumes an initially missing read after an offline retry without claiming emptiness`, async ({
     page,
-    context,
   }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 900 });
@@ -328,7 +326,7 @@ for (const list of lists) {
       await expect(
         scope.getByRole("alert").filter({ hasText: `暫時無法讀取${list.what}` }),
       ).toBeVisible();
-      await context.setOffline(true);
+      await setOffline(page, true);
       await scope.getByRole("button", { name: "再試一次", exact: true }).focus();
       await page.keyboard.press("Enter");
       const waiting = scope.getByRole("status").filter({ hasText: `等待連線以讀取${list.what}` });
@@ -338,13 +336,13 @@ for (const list of lists) {
       await expect(page.getByText(list.empty, { exact: false })).toHaveCount(0);
       expect(reads).toBe(1);
       await verifyLayout(page, "initial-paused");
-      await context.setOffline(false);
+      await setOffline(page, false);
       await expect(scope.getByRole("status").filter({ hasText: list.empty })).toBeVisible();
       await expect(scope.getByRole("alert")).toHaveCount(0);
       expect(reads).toBe(2);
       await verifyLayout(page, "initial-confirmed");
     } finally {
-      await context.setOffline(false);
+      await setOffline(page, false);
     }
   });
 }
