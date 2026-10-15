@@ -169,6 +169,34 @@ test("02:TEST-002 without the rules no file can be sent", async () => {
   );
 });
 
+test.each([401, 503])(
+  "an unconfirmed identity with status %s disables dataset uploads",
+  async (status) => {
+    stubPlatform();
+    const fetch = globalThis.fetch;
+    vi.stubGlobal("fetch", (input: string, init?: RequestInit) =>
+      String(input).endsWith("/me")
+        ? Promise.resolve(
+            new Response(
+              JSON.stringify({
+                error: status === 401 ? "not authenticated" : "service unavailable",
+              }),
+              { status },
+            ),
+          )
+        : fetch(input, init),
+    );
+    await renderUpload();
+    const send = uploadButton();
+    expect(send.disabled).toBe(true);
+    expect(send.getAttribute("aria-describedby")).toBe("upload-session-why");
+    expect(container.querySelector("#upload-session-why")?.textContent).toBe(
+      "登入狀態尚未確認；請先在頁首確認，再上傳測試資料。",
+    );
+    expect(container.querySelector("input[type=file]")).not.toBeNull();
+  },
+);
+
 test("丙-150(e) a 415 upload failure prints the server's own Chinese sentence", async () => {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);

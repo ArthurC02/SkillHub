@@ -2,10 +2,12 @@ import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { useRef, useState } from "react";
-import { ApiError } from "../../../core/api/client";
+import { ApiError, SessionNotReadyError } from "../../../core/api/client";
+import { useMe } from "../../../core/session/me.service";
 import {
   useDatasetLimits,
   useUploadDataset,
+  isWriteResultUnknown,
   type Dataset,
   type DatasetLimits,
 } from "../lab.service";
@@ -17,6 +19,11 @@ import { SkillWorkspaceNav } from "../../skill";
 import "./DatasetUpload.page.css";
 
 type UploadSearch = { version?: string };
+type DatasetUploadFailure = {
+  error: unknown;
+  fileName?: string;
+  blockedError?: SessionNotReadyError;
+};
 
 export function DatasetUpload() {
   const { testCaseId } = useParams({ from: "/lab/test-cases/$testCaseId/datasets" });
@@ -144,8 +151,12 @@ function DatasetIntake({
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState("");
   const [uploaded, setUploaded] = useState<Dataset[]>([]);
+  const [unknownUpload, setUnknownUpload] = useState<DatasetUploadFailure>();
+  const me = useMe();
   const upload = useUploadDataset(testCaseId);
+  const identityConfirmed = me.isSuccess && me.fetchStatus === "idle";
   const readUnavailable = !limits || !used;
+  const failedUpload = readUploadFailure(upload, unknownUpload);
 
   return (
     <>
@@ -168,12 +179,23 @@ function DatasetIntake({
                 : "目前無法確認上傳規則或已用容量；請先重試讀取。"}
           </p>
         )}
+        {!identityConfirmed && (
+          <p id="upload-session-why" role="status" className="note">
+            登入狀態尚未確認；請先在頁首確認，再上傳測試資料。
+          </p>
+        )}
         <button
           type="button"
-          disabled={upload.isPending || readUnavailable}
-          aria-describedby={readUnavailable ? "upload-read-why" : undefined}
+          disabled={upload.isPending || readUnavailable || !identityConfirmed}
+          aria-describedby={
+            !identityConfirmed
+              ? "upload-session-why"
+              : readUnavailable
+                ? "upload-read-why"
+                : undefined
+          }
           onClick={() => {
-            if (!limits || !used) return;
+            if (!limits || !used || !identityConfirmed || upload.isPending) return;
             const file = fileInput.current?.files?.[0];
             if (!file) {
               setMessage("請先選擇一個檔案。");
@@ -185,7 +207,14 @@ function DatasetIntake({
               return;
             }
             upload.mutate(file, {
+              onError: (error) => {
+                if (error instanceof SessionNotReadyError) return;
+                setUnknownUpload(
+                  isWriteResultUnknown(error) ? { error, fileName: file.name } : undefined,
+                );
+              },
               onSuccess: (d) => {
+                setUnknownUpload(undefined);
                 setUploaded((prev) => [...prev, d]);
                 setMessage("");
                 if (fileInput.current?.files?.[0] === file) fileInput.current.value = "";
@@ -198,8 +227,9 @@ function DatasetIntake({
       </section>
       {message && <p role="alert">{message}</p>}
       <UploadFailure
-        error={upload.error}
-        fileName={upload.variables?.name}
+        error={failedUpload.error}
+        fileName={failedUpload.fileName}
+        blockedError={failedUpload.blockedError}
         datasets={datasets}
         onRetryRead={onRetryRead}
         reading={reading}
@@ -218,4 +248,13 @@ function DatasetIntake({
       )}
     </>
   );
+}
+
+function readUploadFailure(
+  upload: ReturnType<typeof useUploadDataset>,
+  previous?: DatasetUploadFailure,
+): DatasetUploadFailure {
+  return upload.error instanceof SessionNotReadyError && previous
+    ? { ...previous, blockedError: upload.error }
+    : { error: upload.error, fileName: upload.variables?.name };
 }
