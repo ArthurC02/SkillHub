@@ -155,6 +155,7 @@ test("a failed check-kind refresh cannot approve a cached design and retry prese
     await queryClient.invalidateQueries({ queryKey: queryKeys.checks.kinds });
   });
   await waitFor(() => container.querySelector('[role="alert"]') !== null);
+  await waitFor(() => container.querySelector("[data-check-ready]")?.textContent === "false");
   expect(container.querySelector("[data-check-ready]")?.textContent).toBe("false");
   expect(container.querySelector(".check-editor")).toBeNull();
   failing = false;

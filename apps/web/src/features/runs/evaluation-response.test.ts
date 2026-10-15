@@ -1,6 +1,10 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { apiFetch, ApiError, SessionNotReadyError } from "../../core/api/client";
-import { createVersionFromSuggestions, isApplyResultUnknown } from "./evaluation.service";
+import {
+  createVersionFromSuggestions,
+  isApplyResultUnknown,
+  readRejectedSuggestions,
+} from "./evaluation.service";
 
 vi.mock("../../core/api/client", async (original) => ({
   ...(await original<typeof import("../../core/api/client")>()),
@@ -81,4 +85,54 @@ test.each<[string, Error, boolean]>([
   ["session not confirmed", new SessionNotReadyError(), false],
 ])("%s has the expected uncertainty classification", (_name, error, unknown) => {
   expect(isApplyResultUnknown(error)).toBe(unknown);
+});
+
+test.each([
+  "path_out_of_bounds",
+  "target_changed",
+  "validation_blocked",
+  "access_restricted",
+  "diff_unavailable",
+])("a complete %s refusal retains its identity and explanation", (reason) => {
+  const rejected = [{ suggestion_id: "s1", blocked_reason: reason, message: "無法套用。" }];
+  expect(readRejectedSuggestions({ rejected_suggestions: rejected })).toEqual(rejected);
+});
+
+test("an empty refusal list remains an empty observation", () => {
+  expect(readRejectedSuggestions({ rejected_suggestions: [] })).toEqual([]);
+});
+
+test.each([
+  ["null body", null],
+  ["primitive body", "refused"],
+  ["absent reasons", {}],
+  ["object reasons", { rejected_suggestions: { length: 1 } }],
+  ["null reason", { rejected_suggestions: [null] }],
+  [
+    "missing identity",
+    { rejected_suggestions: [{ blocked_reason: "target_changed", message: "無法套用。" }] },
+  ],
+  [
+    "missing explanation",
+    { rejected_suggestions: [{ suggestion_id: "s1", blocked_reason: "target_changed" }] },
+  ],
+  [
+    "unknown reason",
+    {
+      rejected_suggestions: [
+        { suggestion_id: "s1", blocked_reason: "future", message: "無法套用。" },
+      ],
+    },
+  ],
+  [
+    "partly corrupt reasons",
+    {
+      rejected_suggestions: [
+        { suggestion_id: "s1", blocked_reason: "target_changed", message: "無法套用。" },
+        null,
+      ],
+    },
+  ],
+])("%s cannot be presented as a complete refusal list", (_name, body) => {
+  expect(readRejectedSuggestions(body)).toBeUndefined();
 });

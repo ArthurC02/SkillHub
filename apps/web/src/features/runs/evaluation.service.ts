@@ -319,6 +319,12 @@ function isRejectedSuggestion(value: unknown): value is RejectedSuggestion {
   );
 }
 
+export function readRejectedSuggestions(body: unknown): RejectedSuggestion[] | undefined {
+  if (!body || typeof body !== "object" || !("rejected_suggestions" in body)) return undefined;
+  const rejected = body.rejected_suggestions;
+  return Array.isArray(rejected) && rejected.every(isRejectedSuggestion) ? rejected : undefined;
+}
+
 function isAppliedVersion(value: unknown): value is VersionFromSuggestions {
   if (!value || typeof value !== "object") return false;
   const result = value as Partial<VersionFromSuggestions>;
