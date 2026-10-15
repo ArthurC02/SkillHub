@@ -1,0 +1,248 @@
+import AxeBuilder from "@axe-core/playwright";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
+import { expect, test } from "@playwright/test";
+import { SKILL, VERSION, SKILL_VERSIONS, platformResponse } from "../src/testing/fixtures/platform";
+import { stubPlatform } from "./stub";
+
+const CREATED = "abcdef01-2345-4789-abcd-0123456789ab";
+const SECOND = "abcdef02-2345-4789-abcd-0123456789ab";
+const RECEIPT = {
+  skill_id: SKILL,
+  version_id: CREATED,
+  version_number: 3,
+  content_hash: "sha256:three",
+  duplicate: false,
+  findings: { errors: [], warnings: [], infos: [] },
+};
+const FINDINGS = {
+  errors: [{ severity: "error", code: "name-missing", message: "frontmatter 欄位 name 為必填" }],
+  warnings: [],
+  infos: [],
+};
+const OUTCOMES = [
+  { name: "null receipt", status: 201, body: null },
+  { name: "incomplete receipt", status: 201, body: {} },
+  { name: "another skill receipt", status: 201, body: { ...RECEIPT, skill_id: CREATED } },
+  { name: "server error with validation-shaped details", status: 503, body: FINDINGS },
+  { name: "lost connection", status: 0, body: null },
+];
+
+function uploadReceiver(outcome: (typeof OUTCOMES)[number], posts: string[]) {
+  return createServer(async (request, response) => {
+    const headers = {
+      "Access-Control-Allow-Origin": request.headers.origin ?? "http://localhost:4173",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Headers": "accept, content-type",
+      "Content-Type": "application/json",
+    };
+    if (request.method === "OPTIONS") {
+      response.writeHead(204, headers).end();
+      return;
+    }
+    const chunks: Buffer[] = [];
+    for await (const chunk of request) chunks.push(Buffer.from(chunk));
+    posts.push(Buffer.concat(chunks).toString("utf8"));
+    if (posts.length > 1) {
+      response.writeHead(201, headers).end(
+        JSON.stringify({
+          ...RECEIPT,
+          version_id: SECOND,
+          version_number: 4,
+          content_hash: "sha256:four",
+        }),
+      );
+    } else if (outcome.status) {
+      response.writeHead(outcome.status, headers).end(JSON.stringify(outcome.body));
+    } else {
+      response.writeHead(201, { ...headers, "Content-Length": "100" });
+      response.write("{", () => response.destroy());
+    }
+  });
+}
+
+function currentVersions(number: number) {
+  return {
+    versions: [
+      ...(number === 4
+        ? [
+            {
+              version_id: SECOND,
+              version_number: 4,
+              content_hash: "sha256:four",
+              created_at: "2026-10-15T01:00:00Z",
+            },
+          ]
+        : []),
+      {
+        version_id: CREATED,
+        version_number: 3,
+        content_hash: "sha256:three",
+        created_at: "2026-10-15T00:00:00Z",
+      },
+      ...SKILL_VERSIONS.versions,
+    ],
+  };
+}
+
+for (const outcome of OUTCOMES) {
+  test(`version upload retains an unknown outcome after ${outcome.name} and requires an explicit resend`, async ({
+    page,
+    context,
+  }) => {
+    const posts: string[] = [];
+    let recovered = false;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const receiver = uploadReceiver(outcome, posts);
+    await new Promise<void>((resolve, reject) => {
+      receiver.once("error", reject);
+      receiver.listen(0, "127.0.0.1", resolve);
+    });
+    const endpoint = `http://127.0.0.1:${(receiver.address() as AddressInfo).port}/versions`;
+    await context.route("**/*", async (route, request) => {
+      if (request.url().startsWith(endpoint)) return route.continue();
+      if (["document", "stylesheet", "script", "font"].includes(request.resourceType()))
+        return route.continue();
+      if (new URL(request.url()).pathname === `/skills/${SKILL}/versions`) {
+        if (request.method() === "POST") {
+          return route.continue({ url: endpoint });
+        }
+        if (posts.length) {
+          await gate;
+          return route.fulfill(
+            recovered
+              ? { json: currentVersions(posts.length > 1 ? 4 : 3) }
+              : { status: 503, json: { error: "service unavailable" } },
+          );
+        }
+      }
+      const response = platformResponse(request.url());
+      return route.fulfill({ status: response.status, json: response.body });
+    });
+    try {
+      await page.setViewportSize({ width: 375, height: 900 });
+      await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
+      await expect(page.locator(".auth-name")).toHaveText("tester");
+      const input = page.getByLabel("小工具 zip", { exact: true });
+      await input.setInputFiles({
+        name: "first.zip",
+        mimeType: "application/zip",
+        buffer: Buffer.from("first bytes"),
+      });
+      await page.getByRole("button", { name: "上傳成新版本", exact: true }).click();
+      const failure = page.getByRole("alert", { name: "上傳新版本結果", exact: true });
+      await expect(failure).toContainText("無法確認這份檔案是否已存成新版本");
+      await expect(failure).toBeFocused();
+      const position = await failure.evaluate((element) => ({
+        top: element.getBoundingClientRect().top,
+        header: document.querySelector(".app-header")!.getBoundingClientRect().bottom,
+      }));
+      expect(position.top).toBeGreaterThanOrEqual(position.header);
+      const resend = page.getByRole("button", { name: "重新送出上傳", exact: true });
+      await expect(resend).toBeDisabled();
+      await input.setInputFiles({
+        name: "next.zip",
+        mimeType: "application/zip",
+        buffer: Buffer.from("next bytes"),
+      });
+      await input.focus();
+      release();
+      await expect(
+        page.getByRole("alert").filter({ hasText: "暫時無法讀取版本脈絡" }),
+      ).toBeVisible();
+      await expect(input).toBeFocused();
+      await expect(failure).toContainText("這次送出的檔案：first.zip");
+      await expect(failure).not.toContainText("上傳被擋下");
+      expect(posts).toEqual(["first bytes"]);
+      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      await page.screenshot({ path: test.info().outputPath("version-upload-unknown.png") });
+      recovered = true;
+      await page.getByRole("button", { name: "再試一次", exact: true }).click();
+      await expect(
+        page.getByRole("heading", { name: "PDF Summariser v2", exact: true }),
+      ).toBeVisible();
+      await expect(resend).toBeEnabled();
+      await expect(failure).toContainText("無法確認");
+      const history = page.getByRole("link", { name: "另開版本與發佈", exact: true });
+      await expect(history).toHaveAttribute("target", "_blank");
+      await expect(history).toHaveAttribute("href", `/skills/${SKILL}/versions/${VERSION}`);
+      const [popup] = await Promise.all([context.waitForEvent("page"), history.click()]);
+      await expect(
+        popup.locator(".version-workspace-list").getByRole("link", { name: /^v3/ }),
+      ).toBeVisible();
+      await popup.close();
+      expect(
+        await input.evaluate(async (element) => {
+          const file = (element as HTMLInputElement).files?.[0];
+          return { name: file?.name, content: file ? await file.text() : undefined };
+        }),
+      ).toEqual({ name: "next.zip", content: "next bytes" });
+      expect(posts).toEqual(["first bytes"]);
+      await resend.click();
+      await expect(page.getByRole("status").filter({ hasText: "已存成 v4" })).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: "開啟 v4 並繼續驗證", exact: true }),
+      ).toHaveAttribute("href", `/skills/${SKILL}/versions/${SECOND}`);
+      await expect(failure).toHaveCount(0);
+      expect(posts).toEqual(["first bytes", "next bytes"]);
+    } finally {
+      release();
+      receiver.closeAllConnections();
+      await new Promise<void>((resolve) => receiver.close(() => resolve()));
+    }
+  });
+}
+
+for (const refusal of [
+  {
+    name: "oversized file",
+    status: 413,
+    body: { error: "request body too large" },
+    message: "檔案超過上限，請縮小套件再上傳。",
+  },
+  {
+    name: "valid validation details",
+    status: 422,
+    body: FINDINGS,
+    message: "frontmatter 欄位 name 為必填",
+  },
+  {
+    name: "unreadable validation details",
+    status: 422,
+    body: { ...FINDINGS, errors: [null] },
+    message: "套件未通過驗證，但無法讀取檢查細節",
+  },
+]) {
+  test(`a version upload with ${refusal.name} preserves the confirmed refusal`, async ({
+    page,
+  }) => {
+    await stubPlatform(page);
+    let posts = 0;
+    await page.route(`**/skills/${SKILL}/versions`, (route) => {
+      if (route.request().method() !== "POST") return route.fallback();
+      posts += 1;
+      return route.fulfill({ status: refusal.status, json: refusal.body });
+    });
+    await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
+    await expect(page.locator(".auth-name")).toHaveText("tester");
+    await page.getByLabel("小工具 zip", { exact: true }).setInputFiles({
+      name: "rejected.zip",
+      mimeType: "application/zip",
+      buffer: Buffer.from("rejected bytes"),
+    });
+    await page.getByRole("button", { name: "上傳成新版本", exact: true }).click();
+    const failure = page.getByRole("alert", { name: "上傳新版本結果", exact: true });
+    await expect(failure).toContainText(refusal.message);
+    await expect(failure).toBeFocused();
+    await expect(failure).not.toContainText("無法確認");
+    await expect(page.getByRole("link", { name: "另開版本與發佈", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "上傳成新版本", exact: true })).toBeEnabled();
+    expect(posts).toBe(1);
+  });
+}

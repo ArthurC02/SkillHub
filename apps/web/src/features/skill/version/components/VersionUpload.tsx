@@ -1,20 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ApiError } from "../../../../core/api/client";
-import { isCategorizedFindings } from "../../../creation";
-import { Findings } from "../../../../shared/ui/Findings";
-import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { useSkillVersions } from "../../skills.service";
-import { useSaveSkillVersion } from "../../versions.service";
+import { isVersionUploadResultUnknown, useSaveSkillVersion } from "../../versions.service";
+import { VersionUploadFailure } from "./VersionUploadFailure";
 import "./VersionUpload.css";
-
-function versionUploadErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    if (error.status === 413) return "檔案超過上限，請縮小套件再上傳。";
-    if (error.status === 404) return "找不到這個小工具，它可能已被刪除。";
-  }
-  return "上傳沒有成功，可以再按一次。";
-}
 
 export function VersionUpload({
   skillId,
@@ -82,7 +71,11 @@ export function VersionUpload({
           disabled={save.isPending || !confirmed}
           aria-describedby={!confirmed ? readStatusId : undefined}
         >
-          {save.isPending ? "上傳中…" : "上傳成新版本"}
+          {save.isPending
+            ? "上傳中…"
+            : save.isError && isVersionUploadResultUnknown(save.error)
+              ? "重新送出上傳"
+              : "上傳成新版本"}
         </button>
       </form>
       {!confirmed && (
@@ -90,17 +83,14 @@ export function VersionUpload({
           小工具與版本脈絡尚未確認；請先重新讀取，再上傳新版本。
         </p>
       )}
-      {save.isError &&
-        (save.error instanceof ApiError && isCategorizedFindings(save.error.body) ? (
-          <section role="alert">
-            <p>上傳被擋下：套件沒有通過驗證。</p>
-            <Findings findings={save.error.body} level={4} />
-          </section>
-        ) : (
-          <ReadFailure error={save.error} what="上傳新版本">
-            <p role="alert">{versionUploadErrorMessage(save.error)}</p>
-          </ReadFailure>
-        ))}
+      {save.isError && (
+        <VersionUploadFailure
+          error={save.error}
+          fileName={save.variables?.name}
+          skillId={skillId}
+          versionId={versionId}
+        />
+      )}
       {save.isSuccess && (
         <div role="status">
           <p className="note version-upload-result">這次上傳的檔案：{save.variables?.name}</p>
