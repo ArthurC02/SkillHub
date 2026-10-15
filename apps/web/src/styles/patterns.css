@@ -544,6 +544,7 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
   padding: 8px 12px;
   text-align: left;
   vertical-align: top;
+  overflow-wrap: anywhere;
 }
 
 .compare-table th[scope="row"] {

@@ -74,7 +74,11 @@ export function RootLayout() {
         </header>
         <div className="app-frame">
           <aside className="app-sidebar">
-            <div className="app-sidebar-context app-sidebar-label" aria-label="目前 Workspace">
+            <div
+              className="app-sidebar-context app-sidebar-label"
+              role="group"
+              aria-label="目前 Workspace"
+            >
               <span>Workspace</span>
               <span className="app-sidebar-context-name">
                 {me.data?.display_name ?? "Skill Hub"}
