@@ -36,9 +36,7 @@ export function UploadRulesFacts({
           </p>
         ) : (
           <p className="note">
-            {usageFailed
-              ? "已用容量讀取失敗，剩餘容量目前無法確認。"
-              : "正在讀這個測試題已經用掉多少…"}
+            {usageFailed ? "已用容量讀取失敗，剩餘容量目前無法確認。" : "剩餘容量尚未確認。"}
           </p>
         )}
       </dd>

@@ -61,8 +61,8 @@ export function DatasetUpload() {
 function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?: string }) {
   const limits = useDatasetLimits();
   const stored = useTestCaseDatasets(testCase.test_case_id);
-  const rules = limits.error ? undefined : limits.data;
-  const storedData = stored.error ? undefined : stored.data;
+  const rules = limits.isSuccess && limits.fetchStatus === "idle" ? limits.data : undefined;
+  const storedData = stored.isSuccess && stored.fetchStatus === "idle" ? stored.data : undefined;
   const used: TestCaseUsage | undefined = storedData && {
     fileCount: storedData.datasets.length,
     totalBytes: storedData.total_bytes,
@@ -89,7 +89,7 @@ function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?
         error={limits.error}
         what="上傳規則"
         retry={() => void limits.refetch()}
-        retrying={limits.isFetching}
+        retrying={limits.fetchStatus !== "idle"}
         focusTarget="dataset-heading"
       >
         <p role="alert">暫時無法讀取上傳規則；規則恢復前不會送出檔案。</p>
@@ -98,7 +98,7 @@ function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?
         error={stored.error}
         what="測試資料已用容量"
         retry={() => void stored.refetch()}
-        retrying={stored.isFetching}
+        retrying={stored.fetchStatus !== "idle"}
         focusTarget="dataset-heading"
       />
       {rules && (
@@ -116,7 +116,8 @@ function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?
         testCaseId={testCase.test_case_id}
         limits={rules}
         used={used}
-        waiting={limits.isPending || stored.isPending}
+        waiting={limits.isPending || stored.isPending || limits.isFetching || stored.isFetching}
+        paused={limits.fetchStatus === "paused" || stored.fetchStatus === "paused"}
       />
     </>
   );
@@ -127,11 +128,13 @@ function DatasetIntake({
   limits,
   used,
   waiting,
+  paused,
 }: {
   testCaseId: string;
   limits: DatasetLimits | undefined;
   used: TestCaseUsage | undefined;
   waiting: boolean;
+  paused: boolean;
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState("");
@@ -153,9 +156,11 @@ function DatasetIntake({
         </div>
         {readUnavailable && (
           <p id="upload-read-why" role="status" className="note">
-            {waiting
-              ? "正在確認上傳規則與已用容量；確認後才能上傳。"
-              : "目前無法確認上傳規則或已用容量；請先重試讀取。"}
+            {paused
+              ? "等待連線以確認上傳規則與已用容量；確認後才能上傳。"
+              : waiting
+                ? "正在確認上傳規則與已用容量；確認後才能上傳。"
+                : "目前無法確認上傳規則或已用容量；請先重試讀取。"}
           </p>
         )}
         <button
@@ -178,7 +183,7 @@ function DatasetIntake({
               onSuccess: (d) => {
                 setUploaded((prev) => [...prev, d]);
                 setMessage("");
-                if (fileInput.current) fileInput.current.value = "";
+                if (fileInput.current?.files?.[0] === file) fileInput.current.value = "";
               },
             });
           }}

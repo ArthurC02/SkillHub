@@ -57,10 +57,11 @@ test("shows the retention window the server reported", async () => {
   expect(text()).toContain("上傳後保存 30 天");
 });
 
-test("says it is still reading usage when the usage query has not settled", async () => {
+test("withholds the remaining allowance when usage is unconfirmed", async () => {
   await mount(<UploadRulesFacts limits={LIMITS} used={undefined} testCase="tc-1" />);
 
-  expect(text()).toContain("正在讀這個測試題已經用掉多少");
+  expect(text()).toContain("剩餘容量尚未確認。");
+  expect(text()).not.toContain("還可以再上傳");
 });
 
 test("shows remaining budget, computed from the limit minus what is already used", async () => {
