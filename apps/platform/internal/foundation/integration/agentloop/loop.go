@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
@@ -200,7 +202,10 @@ func (r *Runner) remainingBudgetUSD(ctx context.Context, agent Agent) (float64, 
 func (r *Runner) revoke(ctx context.Context, runID string) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), settleTimeout)
 	defer cancel()
-	_ = r.RevokeKey(ctx, runID)
+	if err := r.RevokeKey(ctx, runID); err != nil {
+		metrics.GatewayRevokeFailed.Inc()
+		slog.Warn("agentloop: the run's gateway key stays usable until it expires", "run_id", runID, "error", err)
+	}
 }
 
 func (r *Runner) finish(ctx context.Context, report Report, status Status, reason string, result json.RawMessage) (Report, error) {

@@ -9,6 +9,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 )
 
 type memoryJournal struct {
@@ -131,4 +134,38 @@ func TestASpentCapEndsTheRunBeforeAnyStep(t *testing.T) {
 	if report.Status != Incomplete || report.Reason != reasonSpendCap {
 		t.Fatalf("report = %+v, want incomplete for the spent cap", report)
 	}
+}
+
+func TestAKeyThatCouldNotBeRevokedIsCountedAndTheRunStillEnds(t *testing.T) {
+	journal := &memoryJournal{}
+	runner := finishing(journal)
+	runner.RevokeKey = func(context.Context, string) error { return errors.New("gateway unreachable") }
+	before := failedRevocations(t)
+
+	report, err := runner.Run(context.Background(), Agent{Name: "a"}, nil, oneStep)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Status != Completed {
+		t.Fatalf("report = %+v, want the run completed despite the failed revocation", report)
+	}
+	if got := failedRevocations(t) - before; got != 1 {
+		t.Fatalf("failed revocations counted = %v, want 1", got)
+	}
+}
+
+func failedRevocations(t *testing.T) float64 {
+	t.Helper()
+	_ = metrics.GatewayRevokeFailed
+	families, err := prometheus.DefaultGatherer.Gather()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, family := range families {
+		if family.GetName() == "skillhub_gateway_revoke_failed_total" {
+			return family.GetMetric()[0].GetCounter().GetValue()
+		}
+	}
+	t.Fatal("the failed-revocation counter is not registered")
+	return 0
 }
