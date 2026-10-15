@@ -3,12 +3,12 @@
   "proposal_id": "exposure-narrowing-recite",
   "proposer": "domain-memory-agent",
   "requirement_id": "exposure-narrowing-recite",
-  "status": "submitted",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-15T16:09:23.757768Z",
-  "verified_at": null,
-  "finalized_at": null,
-  "applied_at": null,
+  "verified_at": "2026-10-15T16:09:25.958248Z",
+  "finalized_at": "2026-10-15T16:09:26.703953Z",
+  "applied_at": "2026-10-15T16:09:27.663521Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "498b1e61e07b2083a3065e31c1097c3ab892fd30",
@@ -99,5 +99,9 @@
   ],
   "supersedes": [
     "wiring-collaborations"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "445da10451c3e394301e5af48ebdbbdc88c3be82",
+    "registry_digest": "sha256:877fabd3c7df276a631eeb74c93355b1f209558df9c7cd117f09bedeeb7f6e6c"
+  }
 }

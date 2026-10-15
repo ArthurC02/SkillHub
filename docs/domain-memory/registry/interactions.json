@@ -565,26 +565,26 @@
             "start": 111,
             "end": 111
           },
-          "content_sha256": "sha256:ffcc8f15b7334310b101340841399b77f237dc64e9dbc5cea4053994a5e012aa",
-          "excerpt_sha256": "sha256:fb3f855af670dfea17a417063b197b2bcdb919a7d5f533f9765761b819aa271a",
+          "content_sha256": "sha256:18fd72db5b8c974d548d1a7ea40efb2b387fa1c74f9df02e4bead9d2d63d5e43",
+          "excerpt_sha256": "sha256:2ea7fb1b4b9252bf74217f7f8ada3eec285e99fb605f332fddf0dd42ba95863e",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "exposure-narrowing-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-15T16:09:24.089929Z",
+            "scope": "Re-cite the publishing-to-catalog exposure interaction after ExposedSkills gained an optional skill filter; the collaboration is unchanged",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "498b1e61e07b2083a3065e31c1097c3ab892fd30",
+              "registry_digest": "sha256:7a2a2955a37281a77a94ed372e591cd4e0fd57100f4f941ff1966bf9fc35302d"
             }
           }
         ]
