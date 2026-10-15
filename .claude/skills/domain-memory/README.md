@@ -25,6 +25,7 @@ The suite takes several minutes. While working on one area, run its file from `s
 | `audit.py` | The hash-chained `audit/events.jsonl` and its manifest |
 | `evidence.py` | Building a citation (`cite`) and judging one (`current`, `shifted`, `stale` and the rest) |
 | `relocate.py` | Re-citing moved or edited evidence |
+| `recitation_package.py` | Writing a Change Package for a re-citation |
 | `sources.py` | Walking the repository, the source map and its snapshots, the source policy |
 | `readiness.py`, `gates.py`, `impact.py`, `security.py` | Read-only reports: readiness, quality gates, boundary impact, secret scan |
 | `policy.py` | The policy file: defaults, validation, amendments |

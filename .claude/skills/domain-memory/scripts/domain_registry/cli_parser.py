@@ -30,16 +30,22 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
-    init_parser = commands.add_parser("init")
-    add_path(init_parser, "--output")
-    migrate_parser = commands.add_parser("migrate-registry")
-    add_path(migrate_parser, "--registry-root")
+def _add_change_package_init(commands: argparse._SubParsersAction) -> None:
     package_init_parser = commands.add_parser("init-change-package")
     add_path(package_init_parser, "--output")
     package_init_parser.add_argument("--requirement-id")
     package_init_parser.add_argument("--proposal-id")
     package_init_parser.add_argument("--proposer")
+    add_path(package_init_parser, "--recitation", required=False)
+    add_path(package_init_parser, "--registry-root", required=False)
+
+
+def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
+    init_parser = commands.add_parser("init")
+    add_path(init_parser, "--output")
+    migrate_parser = commands.add_parser("migrate-registry")
+    add_path(migrate_parser, "--registry-root")
+    _add_change_package_init(commands)
     redraft_parser = commands.add_parser("redraft-proposal")
     add_path(redraft_parser, "--package-root")
     add_path(redraft_parser, "--output")

@@ -37,6 +37,7 @@ from .policy import (
     write_policy,
 )
 from .readiness import assess_readiness
+from .recitation_package import recitation_package
 from .impact import boundary_impact
 from .relocate import Recitation, line_range, recite, relocate_evidence
 from .registry import (
@@ -124,6 +125,8 @@ def handle_init(args: argparse.Namespace) -> int:
 
 
 def handle_init_change_package(args: argparse.Namespace) -> int:
+    if args.recitation is not None:
+        return _init_recitation_package(args)
     init_change_package(args.output.resolve(), args.requirement_id, args.proposal_id, args.proposer)
     missing = [
         flag for flag, value in (
@@ -136,6 +139,22 @@ def handle_init_change_package(args: argparse.Namespace) -> int:
             f"Created {args.output}. Still blank: {', '.join(missing)}; validate-change-package "
             "refuses the package until they are filled, so pass them here next time or fill them now."
         )
+    return 0
+
+
+def _init_recitation_package(args: argparse.Namespace) -> int:
+    identifiers = (args.requirement_id, args.proposal_id, args.proposer)
+    if args.registry_root is None or None in identifiers:
+        raise ValueError(
+            "--recitation needs --registry-root, --requirement-id, --proposal-id and --proposer, "
+            "so the package is complete when it is written"
+        )
+    blank = recitation_package(
+        args.output.resolve(), args.registry_root.resolve(), load_json(args.recitation.resolve()), identifiers
+    )
+    print(f"Created {args.output}: a routine re-citation package; submit it, record its one test result, then review it.")
+    if blank:
+        print(f"Still blank: {'; '.join(blank)}; fill it before submit-proposal.")
     return 0
 
 

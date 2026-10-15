@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.26.0
+
+### Added
+
+- `init-change-package --recitation <file>` turns what `recite` or `relocate-evidence` printed into a complete routine Change Package: the updates and supersedes, the Contexts the records name, a requirement that every citation is current, and one obligation checked by `verify-evidence`. It refuses anything beyond a re-citation, so a package it writes never claims less than it changes. A pure citation refresh no longer means filling the templates by hand.
+
 ## 0.25.1
 
 ### Fixed
