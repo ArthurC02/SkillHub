@@ -19,6 +19,7 @@ from domain_registry.attestations import (
     commit_carries_proposal,
     github_api_path,
     github_commit_carries_proposal,
+    next_page_url,
     verify_external_scm,
     verify_git_signed_commit,
     verify_scm,
@@ -64,17 +65,28 @@ CHECK_RUNS_ENDPOINT = f"https://api.github.com/repos/acme/skills/commits/{'a' * 
 def github_serving(pull: object, reviews: object, checks: object):
     requested: list[str] = []
 
-    def serve(url: str, token: str) -> object:
-        requested.append(url)
-        if url.endswith("/reviews"):
+    def serve(url: str, token: str) -> tuple[object, None]:
+        endpoint = url.partition("?")[0]
+        requested.append(endpoint)
+        if endpoint.endswith("/reviews"):
             served = reviews
-        elif url.endswith("/check-runs"):
+        elif endpoint.endswith("/check-runs"):
             served = checks
         else:
             served = pull
         if isinstance(served, Exception):
             raise served
-        return served
+        return served, None
+
+    return serve, requested
+
+
+def github_paging(pages: dict[str, tuple[object, str | None]]):
+    requested: list[str] = []
+
+    def serve(url: str, token: str) -> tuple[object, str | None]:
+        requested.append(url)
+        return pages[url]
 
     return serve, requested
 
@@ -229,7 +241,7 @@ class ReviewTest(RegistryTestCase):
             {"check_runs": [{"status": "completed", "conclusion": "success"}]},
         )
         with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
-            with patch("domain_registry.attestations.github_json", side_effect=serve):
+            with patch("domain_registry.attestations.github_page", side_effect=serve):
                 self.assertEqual([], verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"))
         self.assertEqual(
             [PULL_ENDPOINT, PULL_ENDPOINT + "/reviews", CHECK_RUNS_ENDPOINT], requested
@@ -243,7 +255,7 @@ class ReviewTest(RegistryTestCase):
             {"check_runs": [{"status": "completed", "conclusion": "failure"}]},
         )
         with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
-            with patch("domain_registry.attestations.github_json", side_effect=serve):
+            with patch("domain_registry.attestations.github_page", side_effect=serve):
                 self.assertEqual(
                     ["SCM attested commit has incomplete or unsuccessful checks"],
                     verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"),
@@ -271,7 +283,7 @@ class ReviewTest(RegistryTestCase):
         with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
             for label, responses, message in cases:
                 serve, _ = github_serving(*responses)
-                with self.subTest(label), patch("domain_registry.attestations.github_json", side_effect=serve):
+                with self.subTest(label), patch("domain_registry.attestations.github_page", side_effect=serve):
                     self.assertEqual([message], verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"))
             with self.subTest("another provider"):
                 self.assertEqual(
@@ -284,6 +296,53 @@ class ReviewTest(RegistryTestCase):
                 verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"),
             )
 
+    def test_reviews_and_check_runs_are_read_past_the_first_page(self) -> None:
+        attestation = {"provider": "github", "pull_request": PULL_REQUEST_URL, "commit": "a" * 40}
+        reviews = PULL_ENDPOINT + "/reviews?per_page=100"
+        checks = CHECK_RUNS_ENDPOINT + "?per_page=100"
+        approved = [{"user": {"login": "reviewer"}, "state": "APPROVED"}]
+        withdrawn = [{"user": {"login": "reviewer"}, "state": "CHANGES_REQUESTED"}]
+        green = {"check_runs": [{"status": "completed", "conclusion": "success"}]}
+        red = {"check_runs": [{"status": "completed", "conclusion": "failure"}]}
+        merged = ({"state": "closed", "merged_at": "2026-01-01T00:00:00Z", "head": {"sha": "a" * 40}}, None)
+        cases = [
+            ("approval withdrawn on page two", {
+                PULL_ENDPOINT: merged,
+                reviews: (approved, reviews + "&page=2"),
+                reviews + "&page=2": (withdrawn, None),
+                checks: (green, None),
+            }, "SCM pull request has no current approval"),
+            ("failed check on page two", {
+                PULL_ENDPOINT: merged,
+                reviews: (approved, None),
+                checks: (green, checks + "&page=2"),
+                checks + "&page=2": (red, None),
+            }, "SCM attested commit has incomplete or unsuccessful checks"),
+            ("a page that is not a list", {
+                PULL_ENDPOINT: merged,
+                reviews: ({"message": "rate limited"}, None),
+            }, f"SCM governance verification failed: the provider returned no list at {PULL_ENDPOINT}/reviews"),
+        ]
+        with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
+            for label, pages, message in cases:
+                serve, requested = github_paging(pages)
+                with self.subTest(label), patch("domain_registry.attestations.github_page", side_effect=serve):
+                    self.assertEqual([message], verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"))
+                    self.assertEqual(list(pages), requested)
+
+    def test_the_next_page_is_taken_from_the_link_header(self) -> None:
+        cases = [
+            ("next and last", '<https://api.github.com/x?page=2>; rel="next", <https://api.github.com/x?page=5>; rel="last"',
+             "https://api.github.com/x?page=2"),
+            ("next listed after prev", '<https://api.github.com/x?page=1>; rel="prev", <https://api.github.com/x?page=3>; rel="next"',
+             "https://api.github.com/x?page=3"),
+            ("last page", '<https://api.github.com/x?page=1>; rel="prev", <https://api.github.com/x?page=1>; rel="first"', None),
+            ("no header", None, None),
+        ]
+        for label, header, expected in cases:
+            with self.subTest(label):
+                self.assertEqual(expected, next_page_url(header))
+
     def test_external_scm_verification_can_make_ci_optional(self) -> None:
         attestation = {"provider": "github", "pull_request": PULL_REQUEST_URL, "commit": "a" * 40}
         serve, requested = github_serving(
@@ -292,7 +351,7 @@ class ReviewTest(RegistryTestCase):
             OSError("check-runs must not be requested"),
         )
         with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
-            with patch("domain_registry.attestations.github_json", side_effect=serve):
+            with patch("domain_registry.attestations.github_page", side_effect=serve):
                 self.assertEqual([], verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN", False))
         self.assertEqual([PULL_ENDPOINT, PULL_ENDPOINT + "/reviews"], requested)
 
@@ -674,9 +733,23 @@ class ReviewTest(RegistryTestCase):
         self.assertIn(f"Git commit signature is invalid: {unsigned} carries no signature", lost)
         self.assertIn("git pull --no-rebase", lost)
         subprocess.run(["git", "config", "--unset", "gpg.ssh.allowedSignersFile"], cwd=self.repo, check=True)
+        [failing] = verify_git_signed_commit({"commit": signed}, self.repo, registry_root, ["probe@example.com"])
+        self.assertRegex(
+            failing,
+            rf"^Git commit signature is invalid: {signed} is signed, but the signature does not verify \(.*allowedSignersFile.*\)$",
+        )
+
+    def test_a_signature_program_that_cannot_run_is_reported_as_not_checked(self) -> None:
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            init_signing_key(self.repo, "probe@example.com", self.repo / "keys" / "signing-key")
+        signed = self.sign_a_domain_memory_commit("signed")
+        subprocess.run(["git", "config", "gpg.ssh.program", "no-such-keygen"], cwd=self.repo, check=True)
         self.assertEqual(
-            [f"Git commit signature is invalid: {signed} is signed, but the signature does not verify"],
-            verify_git_signed_commit({"commit": signed}, self.repo, registry_root, ["probe@example.com"]),
+            ["Git commit signature was not checked: cannot spawn no-such-keygen: No such file or directory. "
+             "Install the signing program, or point gpg.ssh.program or gpg.program at it, and verify again"],
+            verify_git_signed_commit(
+                {"commit": signed}, self.repo, self.repo / "docs" / "domain-memory", ["probe@example.com"]
+            ),
         )
 
     def test_the_same_key_rebuilds_from_the_environment(self) -> None:

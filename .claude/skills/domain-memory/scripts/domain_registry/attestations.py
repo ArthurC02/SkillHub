@@ -25,7 +25,7 @@ def github_api_path(pull_request: str) -> str:
     return f"repos/{parts[0]}/{parts[1]}/pulls/{parts[3]}"
 
 
-def github_json(url: str, token: str) -> Any:
+def github_page(url: str, token: str) -> tuple[Any, str | None]:
     from urllib.request import Request, urlopen
 
     request = Request(
@@ -37,20 +37,42 @@ def github_json(url: str, token: str) -> Any:
         },
     )
     with urlopen(request, timeout=15) as response:
-        return json.loads(response.read().decode("utf-8"))
+        body = json.loads(response.read().decode("utf-8"))
+        return body, next_page_url(response.headers.get("Link"))
+
+
+def next_page_url(link_header: str | None) -> str | None:
+    match = re.search(r'<([^>]+)>;\s*rel="next"', link_header or "")
+    return match.group(1) if match else None
+
+
+def github_json(url: str, token: str) -> Any:
+    return github_page(url, token)[0]
+
+
+def github_list(url: str, token: str, items_key: str | None = None) -> list[Any]:
+    items: list[Any] = []
+    page_url: str | None = f"{url}?per_page=100"
+    while page_url:
+        body, page_url = github_page(page_url, token)
+        page = body.get(items_key) if items_key and isinstance(body, dict) else body
+        if not isinstance(page, list):
+            raise ValueError(f"the provider returned no list at {url}")
+        items.extend(page)
+    return items
 
 
 def _pull_request_state(
     value: dict[str, Any], token: str, require_checks: bool  # noqa: FBT001
-) -> tuple[Any, Any, Any]:
+) -> tuple[Any, list[Any], list[Any] | None]:
     endpoint = github_api_path(str(value.get("pull_request", "")))
     api = "https://api.github.com/"
     base = api + endpoint
     repository = "/".join(endpoint.split("/")[:3])
     pull = github_json(base, token)
-    reviews = github_json(base + "/reviews", token)
+    reviews = github_list(base + "/reviews", token)
     checks = (
-        github_json(f"{api}{repository}/commits/{value['commit']}/check-runs", token)
+        github_list(f"{api}{repository}/commits/{value['commit']}/check-runs", token, "check_runs")
         if require_checks
         else None
     )
@@ -65,9 +87,9 @@ def _pull_request_error(pull: Any, commit: Any) -> str | None:
     return None
 
 
-def _has_current_approval(reviews: Any) -> bool:
+def _has_current_approval(reviews: list[Any]) -> bool:
     latest_reviews: dict[str, str] = {}
-    for review in reviews if isinstance(reviews, list) else []:
+    for review in reviews:
         if not isinstance(review, dict):
             continue
         user = review.get("user", {}).get("login")
@@ -77,9 +99,8 @@ def _has_current_approval(reviews: Any) -> bool:
     return "APPROVED" in latest_reviews.values()
 
 
-def _checks_error(checks: Any) -> str | None:
-    check_runs = checks.get("check_runs") if isinstance(checks, dict) else None
-    if not isinstance(check_runs, list) or not check_runs:
+def _checks_error(check_runs: list[Any] | None) -> str | None:
+    if not check_runs:
         return "SCM attested commit has no check runs"
     if any(
         not isinstance(run, dict)
@@ -118,10 +139,18 @@ def _git(repo_root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _invalid_signature(repo_root: Path, commit: str) -> str:
+def _invalid_signature(repo_root: Path, commit: str, verifier_stderr: str) -> str:
+    reasons = [line.removeprefix("error: ") for line in verifier_stderr.splitlines() if line.strip()]
+    unrunnable = next((reason for reason in reasons if reason.startswith("cannot spawn ")), None)
+    if unrunnable:
+        return (
+            f"Git commit signature was not checked: {unrunnable}. Install the signing program, "
+            "or point gpg.ssh.program or gpg.program at it, and verify again"
+        )
     header = _git(repo_root, "cat-file", "commit", commit).stdout.partition("\n\n")[0]
     if "\ngpgsig" in header:
-        return f"Git commit signature is invalid: {commit} is signed, but the signature does not verify"
+        reason = f" ({reasons[-1]})" if reasons else ""
+        return f"Git commit signature is invalid: {commit} is signed, but the signature does not verify{reason}"
     return (
         f"Git commit signature is invalid: {commit} carries no signature. A rebase, amend or "
         "cherry-pick writes new commits unsigned unless told to sign; take in upstream work with a "
@@ -138,7 +167,7 @@ def verify_git_signed_commit(
         return ["Git commit attestation requires a commit"]
     verified = _git(repo_root, "verify-commit", "--raw", commit)
     if verified.returncode != 0:
-        return [_invalid_signature(repo_root, commit)]
+        return [_invalid_signature(repo_root, commit, verified.stderr)]
     output = verified.stdout + verified.stderr
     signers = set(re.findall(r"VALIDSIG ([0-9A-F]+)", output))
     signers.update(re.findall(r'Good "git" signature for (\S+)', output))

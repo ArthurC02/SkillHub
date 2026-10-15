@@ -2,6 +2,17 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.27.0
+
+### Changed
+
+- A material proposal's `implementation_design` needs at least one entry in `domain_forces`, `invariants_preserved` and `rejected_alternatives`, as it already needed one proof obligation. An empty list used to count as complete, so a design with no forces and no alternative considered passed. A routine proposal may still leave them empty.
+
+### Fixed
+
+- External SCM verification reads every page of a pull request's reviews and of a commit's check runs, following the `Link` header 100 at a time. Before, it read only the first page, so an approval withdrawn later in a long review, or a failing check past the first page, went unseen. A page that is not a list is reported as a failed verification.
+- A signature that could not be checked because the signing program would not start (`cannot spawn ssh-keygen`) is reported as not checked, with how to point Git at the program, instead of as a signature that does not verify. A signature that does not verify now carries Git's reason.
+
 ## 0.26.1
 
 ### Fixed

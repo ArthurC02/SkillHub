@@ -245,6 +245,8 @@ def _design_field_errors(
         values = design.get(field)
         if not completed_identifiers(values):
             errors.append(f"implementation_design requires a valid {field} list")
+        elif classification == "material" and not values:
+            errors.append(f"a material proposal requires at least one entry in {field}")
     if not completed_identifier(design.get("decision")):
         errors.append("implementation_design requires a completed decision")
     proof_obligations = design.get("proof_obligations")
