@@ -133,15 +133,22 @@ export function useUploadDataset(testCaseId: string) {
   return useMutation({
     mutationFn: (file: File) => uploadDataset(testCaseId, file),
     onSettled: (_result, error) => {
-      if (!error || isUploadResultUnknown(error))
+      if (!error || isWriteResultUnknown(error))
         void client.invalidateQueries({ queryKey: queryKeys.testCases.datasets(testCaseId) });
     },
   });
 }
 
-export function isUploadResultUnknown(error: unknown): boolean {
+export function isWriteResultUnknown(error: unknown): boolean {
   if (error instanceof SessionNotReadyError) return false;
+  if (error instanceof RunNotStartedError) return false;
   return !(error instanceof ApiError) || error.status >= 500;
+}
+
+export class RunNotStartedError extends Error {
+  constructor(cause: unknown) {
+    super("Run start not sent", { cause });
+  }
 }
 
 export interface RunCreated {
@@ -190,13 +197,13 @@ export function confirmPreflight(
   );
 }
 
-export function startRun(
+export async function startRun(
   skillId: string,
   versionId: string,
   testCaseId: string,
   confirmedSummaryHash: string,
 ) {
-  return apiFetch<RunCreated>(`/skills/${skillId}/runs`, {
+  const result = await apiFetch<unknown>(`/skills/${skillId}/runs`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -205,13 +212,28 @@ export function startRun(
       confirmed_summary_hash: confirmedSummaryHash,
     }),
   });
+  if (!isRunCreated(result)) throw new Error("Invalid run response");
+  return result;
+}
+
+function isRunCreated(value: unknown): value is RunCreated {
+  if (!value || typeof value !== "object") return false;
+  const run = value as Partial<RunCreated>;
+  return [run.run_id, run.status, run.provider].every(
+    (field) => typeof field === "string" && field.trim().length > 0,
+  );
 }
 
 export function useConfirmAndStartRun(skillId: string, versionId: string, testCaseId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (summaryHash: string) => {
-      await confirmPreflight(skillId, versionId, testCaseId, summaryHash);
+      try {
+        await confirmPreflight(skillId, versionId, testCaseId, summaryHash);
+      } catch (error) {
+        if (isWriteResultUnknown(error)) throw new RunNotStartedError(error);
+        throw error;
+      }
       return startRun(skillId, versionId, testCaseId, summaryHash);
     },
     onSuccess: () => {

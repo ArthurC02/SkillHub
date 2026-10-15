@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { uploadErrorSentence, uploadRefusal } from "./upload.model";
 import type { DatasetLimits } from "../lab.service";
-import { isUploadResultUnknown } from "../lab.service";
+import { isWriteResultUnknown } from "../lab.service";
 import { ApiError, SessionNotReadyError } from "../../../core/api/client";
 
 const LIMITS: DatasetLimits = {
@@ -67,7 +67,7 @@ test.each<[string, Error]>([
   ["first server error", new ApiError(500, "internal error")],
   ["unavailable server", new ApiError(503, "service unavailable")],
 ])("%s leaves the upload outcome unknown", (_name, error) => {
-  expect(isUploadResultUnknown(error)).toBe(true);
+  expect(isWriteResultUnknown(error)).toBe(true);
   expect(uploadErrorSentence(error)).toBe(
     "無法確認上傳結果。請先核對下方最新檔案清單，再決定是否重試。",
   );
@@ -79,12 +79,12 @@ test.each<[number, string]>([
   [499, "上傳沒有成功，可以再按一次。"],
 ])("HTTP %i is a reported refusal rather than an unknown result", (status, message) => {
   const error = new ApiError(status, "request refused");
-  expect(isUploadResultUnknown(error)).toBe(false);
+  expect(isWriteResultUnknown(error)).toBe(false);
   expect(uploadErrorSentence(error)).toBe(message);
 });
 
 test("a blocked session operation is known not to have been sent", () => {
   const error = new SessionNotReadyError();
-  expect(isUploadResultUnknown(error)).toBe(false);
+  expect(isWriteResultUnknown(error)).toBe(false);
   expect(uploadErrorSentence(error)).toBe("這次操作尚未送出。請先確認頁首的登入狀態，再自行送出。");
 });

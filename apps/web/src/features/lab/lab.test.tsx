@@ -593,14 +593,16 @@ test("04 丙-144 a 403 on run-start says no invite, not the raw server message",
   expect(text()).not.toContain("closed beta");
 });
 
-test("04 丙-143 a 503 on run-start says try again, not the raw server message", async () => {
+test("a 503 on run-start leaves the outcome unconfirmed without exposing the server message", async () => {
   const platform = stubPlatform();
   platform.failRunWith(503, { error: "sandbox pool temporarily unavailable" });
   await renderLab();
 
   await clickConfirm();
 
-  await waitFor(() => text().includes("再按一次"));
+  await waitFor(() => container.querySelector('.preflight-body [role="alert"]') !== null);
+  expect(text()).toContain("無法確認試跑是否已開始。");
+  expect(text()).not.toContain("這次試跑沒有開始");
   expect(text()).not.toContain("temporarily unavailable");
 });
 

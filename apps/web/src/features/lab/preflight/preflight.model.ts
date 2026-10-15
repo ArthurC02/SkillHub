@@ -1,7 +1,12 @@
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { bytes } from "../../../shared/format";
-import { ApiError } from "../../../core/api/client";
-import type { PreflightResponse, PreflightSummary } from "../lab.service";
+import { ApiError, SessionNotReadyError } from "../../../core/api/client";
+import {
+  RunNotStartedError,
+  isWriteResultUnknown,
+  type PreflightResponse,
+  type PreflightSummary,
+} from "../lab.service";
 
 export function ceiling(n: number | undefined): string {
   return limit(n, bytes);
@@ -41,6 +46,11 @@ export const BLOCKED_SENTENCE: Record<NonNullable<PreflightResponse["blocked"]>,
 
 export function startFailureSentence(err: unknown): string {
   if (!err) return "";
+  if (err instanceof SessionNotReadyError) return err.message;
+  if (err instanceof RunNotStartedError)
+    return "權限確認未完成，尚未送出開始試跑要求。請重試權限確認。";
+  if (isWriteResultUnknown(err))
+    return "無法確認試跑是否已開始。請先查看試跑紀錄，再決定是否重新送出；再次送出可能建立另一筆試跑並使用額度。";
   if (err instanceof ApiError && err.status === 422) {
     return err.message
       ? `這次試跑沒有開始：${err.message}`
@@ -48,9 +58,6 @@ export function startFailureSentence(err: unknown): string {
   }
   if (err instanceof ApiError && err.status === 403) {
     return "這個帳號還沒有封測邀請，所以試跑沒有開始。想試的話，用頁尾的「回報問題」選「我想要的東西，這裡沒有」告訴我們你想做什麼。";
-  }
-  if (err instanceof ApiError && err.status === 503) {
-    return "執行環境暫時無法使用，這次試跑沒有開始。可以直接再按一次，不需要重新確認權限。";
   }
   if (err instanceof ApiError && err.status === 404) {
     return "找不到這個小工具版本或測試題，可能已被刪除。";

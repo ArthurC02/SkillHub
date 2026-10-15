@@ -1,4 +1,4 @@
-import { isUploadResultUnknown, type DatasetLimits } from "../lab.service";
+import { isWriteResultUnknown, type DatasetLimits } from "../lab.service";
 import { ApiError, SessionNotReadyError } from "../../../core/api/client";
 
 export function roundedBytes(n: number): string {
@@ -14,7 +14,7 @@ export interface TestCaseUsage {
 
 export function uploadErrorSentence(error: unknown): string {
   if (error instanceof SessionNotReadyError) return error.message;
-  if (!(error instanceof ApiError) || isUploadResultUnknown(error))
+  if (!(error instanceof ApiError) || isWriteResultUnknown(error))
     return "無法確認上傳結果。請先核對下方最新檔案清單，再決定是否重試。";
   const { status, message } = error;
   if ([400, 413, 415].includes(status) && /[\u3400-\u9fff]/u.test(message)) return message;

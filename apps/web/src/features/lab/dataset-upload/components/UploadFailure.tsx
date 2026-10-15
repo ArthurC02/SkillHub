@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
-import { isUploadResultUnknown, type Dataset } from "../../lab.service";
+import { isWriteResultUnknown, type Dataset } from "../../lab.service";
 import { roundedBytes, uploadErrorSentence } from "../upload.model";
 import "./UploadFailure.css";
 
@@ -17,7 +17,7 @@ export function UploadFailure({
   onRetryRead: () => void;
   reading: boolean;
 }) {
-  const unknown = Boolean(error) && isUploadResultUnknown(error);
+  const unknown = Boolean(error) && isWriteResultUnknown(error);
   const message = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     if (unknown) message.current?.focus();

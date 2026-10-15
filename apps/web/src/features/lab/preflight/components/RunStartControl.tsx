@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
-import { unauthenticated } from "../../../../shared/ui/LoginRequired.model";
+import { isWriteResultUnknown } from "../../lab.service";
 import type { useConfirmAndStartRun } from "../../lab.service";
 import type { PreflightResponse } from "../../lab.service";
 import { BLOCKED_SENTENCE, startFailureSentence } from "../preflight.model";
@@ -20,15 +20,28 @@ export function RunStartControl({
   const runId = start.data?.run_id ?? "";
   const message = startFailureSentence(start.error);
   const resultLink = useRef<HTMLAnchorElement>(null);
+  const failure = useRef<HTMLParagraphElement>(null);
+  const unknown = Boolean(start.error) && isWriteResultUnknown(start.error);
 
   useEffect(() => {
     if (runId) resultLink.current?.focus();
   }, [runId]);
+  useEffect(() => {
+    if (unknown) failure.current?.focus();
+  }, [start.error, unknown]);
 
   return (
     <>
-      {unauthenticated(start.error) && <ReadFailure error={start.error} what="試跑紀錄" />}
-      {message && <p role="alert">{message}</p>}
+      <ReadFailure error={start.error} what="試跑紀錄">
+        <p ref={failure} role="alert" tabIndex={-1}>
+          {message}
+        </p>
+      </ReadFailure>
+      {unknown && (
+        <p>
+          <Link to="/workspace/runs">查看試跑紀錄</Link>
+        </p>
+      )}
 
       {runId ? (
         <>
@@ -63,7 +76,11 @@ export function RunStartControl({
             disabled={start.isPending}
             onClick={() => start.mutate(hash)}
           >
-            {start.isPending ? "開始中…" : "我確認以上權限,開始試跑"}
+            {start.isPending
+              ? "開始中…"
+              : unknown
+                ? "核對後仍要再次開始試跑"
+                : "我確認以上權限,開始試跑"}
           </button>
         </>
       )}
