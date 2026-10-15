@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
@@ -103,13 +104,9 @@ func wireCostRecording(svc *credit.Service, search *catalog.Service, versions *i
 	}
 }
 
-func wireGenerateCredit(
-	target *ingest.Service,
-	svc *credit.Service,
-	owner func(ctx context.Context, workspaceID pgtype.UUID) (pgtype.UUID, error),
-) {
-	target.CreditCanStart = func(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
-		userID, err := owner(ctx, workspaceID)
+func wireGenerateCredit(target *ingest.Service, svc *credit.Service, owners *identity.Service, pool *pgxpool.Pool) {
+	target.Billing.CanStart = func(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+		userID, err := owners.WorkspaceOwner(ctx, workspaceID)
 		if err != nil {
 			return false, err
 		}
@@ -119,6 +116,32 @@ func wireGenerateCredit(
 		}
 		return check.OK, nil
 	}
+	target.Billing.Charge = func(ctx context.Context, charge ingest.GenerationCharge) error {
+		return pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
+			userID, err := owners.WorkspaceOwnerIn(ctx, tx, charge.WorkspaceID)
+			if err != nil {
+				return err
+			}
+			_, err = svc.Charge(ctx, tx, generationChargeInput(charge, userID))
+			return err
+		})
+	}
+}
+
+func generationChargeInput(charge ingest.GenerationCharge, userID pgtype.UUID) credit.ChargeInput {
+	in := credit.ChargeInput{
+		Kind:  credit.KindGenerate,
+		Model: charge.Model, PromptVersion: charge.PromptVersion,
+		UserID: userID, WorkspaceID: charge.WorkspaceID, IdempotencyKey: charge.IdempotencyKey,
+	}
+	if u := charge.Usage; u != nil {
+		in.PromptTokens, in.CompletionTokens = u.PromptTokens, u.CompletionTokens
+		if usd := u.ReportedCostUSD(); usd != nil {
+			micros, _ := credit.BillableMicros(*usd)
+			in.UsdMicros = &micros
+		}
+	}
+	return in
 }
 
 func (l *creditLedger) Ledger(ctx context.Context, workspaceID, operatorID pgtype.UUID) (credit.Ledger, error) {

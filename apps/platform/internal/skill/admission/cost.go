@@ -47,3 +47,31 @@ func (s *Service) recordCost(ctx context.Context, kind credit.CostKind, workspac
 		slog.Warn("ingest: model call cost not recorded", "kind", kind, "error", err)
 	}
 }
+
+type GenerateBilling struct {
+	CanStart func(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
+	Charge   func(ctx context.Context, charge GenerationCharge) error
+}
+
+type GenerationCharge struct {
+	WorkspaceID    pgtype.UUID
+	IdempotencyKey string
+	Model          string
+	PromptVersion  string
+	Usage          *ModelUsage
+}
+
+func deliveredCharge(job generation, draft *GeneratedDraft) GenerationCharge {
+	return GenerationCharge{
+		WorkspaceID: job.ws.ID, IdempotencyKey: string(credit.KindGenerate) + ":" + job.requestID,
+		Model: draft.Model, PromptVersion: draft.PromptVersion, Usage: draft.Usage,
+	}
+}
+
+func (b GenerateBilling) charge(ctx context.Context, charge GenerationCharge) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), costRecordTimeout)
+	defer cancel()
+	if err := b.Charge(ctx, charge); err != nil {
+		slog.Error("ingest: generation not charged", "idempotency_key", charge.IdempotencyKey, "error", err)
+	}
+}

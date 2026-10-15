@@ -153,6 +153,86 @@ func TestGenerationRetriesExactlyOnce(t *testing.T) {
 	}
 }
 
+func generateLedger(t *testing.T, pool *pgxpool.Pool, c *client) (debits []int64, generateCostEvents int, balance int64) {
+	t.Helper()
+	ctx := context.Background()
+	user := mustUUID(t, c.userID)
+	rows, err := pool.Query(ctx, `
+		SELECT e.delta_credits FROM credit_entries e
+		JOIN cost_events ce ON ce.id = e.cost_event_id
+		WHERE e.user_id = $1 AND e.kind = 'debit' AND NOT e.estimated AND ce.kind = 'generate'`, user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var delta int64
+		if err := rows.Scan(&delta); err != nil {
+			t.Fatal(err)
+		}
+		debits = append(debits, delta)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM cost_events WHERE kind = 'generate' AND workspace_id = $1`,
+		mustUUID(t, c.workspaceID)).Scan(&generateCostEvents); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT balance_credits FROM credit_accounts WHERE user_id = $1", user).Scan(&balance); err != nil {
+		t.Fatal(err)
+	}
+	return debits, generateCostEvents, balance
+}
+
+func TestAGenerationIsDebitedOnceForTheAttemptThatDelivered(t *testing.T) {
+	pool := requireDB(t)
+	bad := generatedSkill("charged-retry", "# 內容\n")
+	bad["files"] = []any{map[string]any{"path": "../../evil.sh", "content": "echo hi\n"}}
+	stub := newGenerateStub(t, bad, generatedSkill("charged-retry", "# 內容\n\n1. 做這件事。\n"))
+	a := newAPIWithLLM(t, pool, stub.URL)
+	c := a.login(t, "gen-charged")
+
+	if _, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c),
+		ingest.GenerateInput{TaskDescription: "把 PDF 轉成純文字。"}); err != nil {
+		t.Fatalf("GenerateSkill: %v", err)
+	}
+
+	debits, costEvents, balance := generateLedger(t, pool, c)
+	if len(debits) != 1 || debits[0] != -16 {
+		t.Fatalf("generate debits = %v, want one of -16 ($0.0123 × 1.3 at $0.001 per credit, rounded up)", debits)
+	}
+	if costEvents != 2 {
+		t.Errorf("generate cost events = %d, want 2: the platform paid for the retried call too", costEvents)
+	}
+	if balance != betaGrantCredits-16 {
+		t.Errorf("balance = %d, want %d", balance, betaGrantCredits-16)
+	}
+}
+
+func TestAGenerationThatDeliversNothingIsNotDebited(t *testing.T) {
+	pool := requireDB(t)
+	leaky := generatedSkill("leaky-charge", "# 設定\n\n照 setup.sh 執行。\n")
+	leaky["files"] = []any{map[string]any{"path": "setup.sh", "content": "export AWS_ACCESS_KEY_ID=AKIA0123456789ABCDEF\n"}}
+	stub := newGenerateStub(t, leaky)
+	a := newAPIWithLLM(t, pool, stub.URL)
+	c := a.login(t, "gen-uncharged")
+
+	res, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c),
+		ingest.GenerateInput{TaskDescription: "幫我設定 AWS 憑證。"})
+	if err != nil || !res.Report.Blocked {
+		t.Fatalf("GenerateSkill: blocked=%v err=%v, want a blocked result", res.Report.Blocked, err)
+	}
+
+	debits, costEvents, balance := generateLedger(t, pool, c)
+	if len(debits) != 0 || balance != betaGrantCredits {
+		t.Errorf("debits = %v, balance = %d, want none and %d", debits, balance, betaGrantCredits)
+	}
+	if costEvents != 1 {
+		t.Errorf("generate cost events = %d, want 1: the platform's spend is still recorded", costEvents)
+	}
+}
+
 func TestPossibleSecretIsNotRetriedEndToEnd(t *testing.T) {
 	pool := requireDB(t)
 	leaky := generatedSkill("leaky-setup", "# 設定\n\n照 setup.sh 執行。\n")

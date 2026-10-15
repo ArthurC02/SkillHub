@@ -60,7 +60,7 @@ type Service struct {
 
 	Credit CostRecorder
 
-	CreditCanStart func(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
+	Billing GenerateBilling
 
 	GenerateQuota policy.QuotaLimits
 

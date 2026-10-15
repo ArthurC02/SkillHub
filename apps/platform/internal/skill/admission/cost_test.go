@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 )
 
 type fakeLedger struct {
@@ -121,52 +122,57 @@ func TestALedgerFailureDoesNotDegradeTheEnrichment(t *testing.T) {
 	}
 }
 
-func TestEachGenerationCallRecordsItsOwnCostEvent(t *testing.T) {
-	const body = `{"skill":{"name":"a","description":"b","body":"c"},` +
-		`"model":"gen-model","prompt_version":"generate/v3",` +
-		`"usage":{"prompt_tokens":1200,"completion_tokens":800,"cost_usd":0.0045,"cost_source":"gateway"}}`
-	ledger := &fakeLedger{}
-	svc := gatewayReturning(t, body)
-	svc.Credit = ledger
-	ws := mustUUIDForTest(t, "22222222-2222-2222-2222-222222222222")
-
-	for range 2 {
-		if _, err := svc.generateOnce(context.Background(), ws, "把掃描的單據整理成表格。", nil, nil); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if got := ledger.kinds(); len(got) != 2 || got[0] != credit.KindGenerate || got[1] != credit.KindGenerate {
-		t.Fatalf("cost event kinds = %v, want two %q", got, credit.KindGenerate)
-	}
-	e := ledger.events[0]
-
-	if e.UsdMicros != 4500 || e.Estimated {
-		t.Errorf("usd_micros = %d estimated = %v, want 4500 / false", e.UsdMicros, e.Estimated)
-	}
-	if e.Model != "gen-model" || e.PromptVersion != "generate/v3" || e.WorkspaceID != ws {
-		t.Errorf("provenance = %q/%q/%v", e.Model, e.PromptVersion, e.WorkspaceID)
-	}
-	if ledger.events[0].IdempotencyKey == ledger.events[1].IdempotencyKey {
-		t.Error("both attempts used the same idempotency key")
+func pricedDraft() *GeneratedDraft {
+	cost := 0.0045
+	return &GeneratedDraft{
+		Model: "gen-model", PromptVersion: "generate/v3",
+		Usage: &ModelUsage{PromptTokens: 1200, CompletionTokens: 800, CostUSD: &cost, CostReported: true},
 	}
 }
 
-func TestGenerationCostEventCarriesNoTaskDescription(t *testing.T) {
-	const secret = "an-unannounced-internal-project-name"
-	ledger := &fakeLedger{}
-	svc := gatewayReturning(t, `{"skill":{"name":"a","description":"b","body":"c"},"model":"m","prompt_version":"v"}`)
-	svc.Credit = ledger
+func TestTheDeliveredGenerationIsChargedOnceUnderItsRequest(t *testing.T) {
+	ws := mustUUIDForTest(t, "22222222-2222-2222-2222-222222222222")
+	job := generation{ws: identity.Workspace{ID: ws}, requestID: "request-7"}
 
-	if _, err := svc.generateOnce(context.Background(), pgtype.UUID{},
-		"請幫我做一個處理 "+secret+" 報表的工具。", nil, nil); err != nil {
-		t.Fatal(err)
+	c := deliveredCharge(job, pricedDraft())
+
+	if c.IdempotencyKey != "generate:request-7" {
+		t.Errorf("idempotency key = %q, want the request's own", c.IdempotencyKey)
 	}
-	blob, err := json.Marshal(ledger.events)
+	if c.WorkspaceID != ws || c.Model != "gen-model" || c.PromptVersion != "generate/v3" {
+		t.Errorf("charge = %+v, want the workspace and the gateway's model", c)
+	}
+	if c.Usage.ReportedCostUSD() == nil || *c.Usage.ReportedCostUSD() != 0.0045 {
+		t.Errorf("charge usage = %+v, want the gateway's reported cost", c.Usage)
+	}
+}
+
+func TestADeliveredGenerationIsChargedEvenAfterTheCallerGaveUp(t *testing.T) {
+	var chargeCtxErr error
+	charged := false
+	billing := GenerateBilling{Charge: func(ctx context.Context, _ GenerationCharge) error {
+		charged, chargeCtxErr = true, ctx.Err()
+		return nil
+	}}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	billing.charge(ctx, GenerationCharge{IdempotencyKey: "generate:request-1"})
+
+	if !charged || chargeCtxErr != nil {
+		t.Errorf("charged=%v ctx err=%v; the delivered generation would go unbilled", charged, chargeCtxErr)
+	}
+}
+
+func TestGenerationChargeCarriesNoTaskDescription(t *testing.T) {
+	const secret = "an-unannounced-internal-project-name"
+	job := generation{task: "請幫我做一個處理 " + secret + " 報表的工具。", requestID: "request-1"}
+
+	blob, err := json.Marshal(deliveredCharge(job, pricedDraft()))
 	if err != nil {
-		t.Fatalf("marshal cost events: %v", err)
+		t.Fatalf("marshal charge: %v", err)
 	}
 	if strings.Contains(string(blob), secret) {
-		t.Errorf("the task description reached the cost ledger: %s", blob)
+		t.Errorf("the task description reached the charge: %s", blob)
 	}
 }

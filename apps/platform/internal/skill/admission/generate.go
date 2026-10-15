@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"gopkg.in/yaml.v3"
@@ -177,7 +178,10 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, in G
 	}
 	defer s.releaseGenerateSlot(ctx, ws.ID, lease)
 
-	job := generation{ws: ws, task: task, in: in, references: references, inputsJSON: generationInputsJSON}
+	job := generation{
+		ws: ws, task: task, in: in, references: references, inputsJSON: generationInputsJSON,
+		requestID: uuid.NewString(),
+	}
 	if err := s.admitGeneration(ctx, job); err != nil {
 		return GenerateResult{}, err
 	}
@@ -244,10 +248,10 @@ func (s *Service) admitGeneration(ctx context.Context, job generation) error {
 		})
 		return err
 	}
-	if s.CreditCanStart == nil {
+	if s.Billing.CanStart == nil {
 		return nil
 	}
-	ok, err := s.CreditCanStart(ctx, job.ws.ID)
+	ok, err := s.Billing.CanStart(ctx, job.ws.ID)
 	if err != nil {
 		return err
 	}
@@ -278,10 +282,11 @@ type generation struct {
 	in         GenerateInput
 	references []ReferenceSkill
 	inputsJSON []byte
+	requestID  string
 }
 
 func (s *Service) generateAttempt(ctx context.Context, job generation, out *GenerateResult) (bool, error) {
-	gen, err := s.generateOnce(ctx, job.ws.ID, job.task, job.in.Diagram, job.references)
+	gen, err := s.generateOnce(ctx, job)
 	if err != nil {
 		slog.Warn("generate: gateway call failed", "attempt", out.Attempts, "error", err)
 		s.auditGenerateFailure(ctx, job, *out, map[string]any{
@@ -290,6 +295,14 @@ func (s *Service) generateAttempt(ctx context.Context, job generation, out *Gene
 		})
 		return true, err
 	}
+	delivered := false
+	defer func() {
+		if delivered && s.Billing.Charge != nil {
+			s.Billing.charge(ctx, deliveredCharge(job, gen))
+			return
+		}
+		s.recordCost(ctx, credit.KindGenerate, job.ws.ID, modelCall{gen.Model, gen.PromptVersion, gen.Usage})
+	}()
 	out.Model, out.PromptVersion = gen.Model, gen.PromptVersion
 	out.addUsage(gen.Usage)
 
@@ -309,6 +322,7 @@ func (s *Service) generateAttempt(ctx context.Context, job generation, out *Gene
 	}
 	out.Result = res
 	if !res.Report.Blocked {
+		delivered = true
 		return true, nil
 	}
 	if !shouldRetry(out.Attempts, res.Report) {
@@ -348,21 +362,16 @@ const generateTimeout = 130 * time.Second
 // GenerateBudget names this call for an operator and bounds what they may set.
 var GenerateBudget = modelbudget.Endpoint{Kind: "generate-skill", Deadline: generateTimeout}
 
-func (s *Service) generateOnce(
-	ctx context.Context, workspaceID pgtype.UUID, task string,
-	diagram *GenerateDiagram, references []ReferenceSkill,
-) (*GeneratedDraft, error) {
+func (s *Service) generateOnce(ctx context.Context, job generation) (*GeneratedDraft, error) {
 	callCtx, cancel := context.WithTimeout(ctx, generateTimeout)
 	defer cancel()
 	resp, err := s.LLM.GenerateSkill(callCtx, GenerateRequest{
-		TaskDescription: task, Diagram: diagram, References: references,
+		TaskDescription: job.task, Diagram: job.in.Diagram, References: job.references,
 		Within: s.Budgets.Within(ctx, GenerateBudget),
 	})
 	if err != nil {
 		return nil, err
 	}
-
-	s.recordCost(ctx, credit.KindGenerate, workspaceID, modelCall{resp.Model, resp.PromptVersion, resp.Usage})
 	return resp, nil
 }
 

@@ -259,10 +259,10 @@ func TestAGenerationWaitingOnTheSlotIsNotJudgedAgainstTheAllowanceBeforeItHoldsI
 	running := &Service{Pool: pool}
 	creditAsked := false
 	waiting := &Service{Pool: pool, LLM: ModelOrNone(&llmclient.Client{}),
-		CreditCanStart: func(context.Context, pgtype.UUID) (bool, error) {
+		Billing: GenerateBilling{CanStart: func(context.Context, pgtype.UUID) (bool, error) {
 			creditAsked = true
 			return false, nil
-		}}
+		}}}
 
 	lease, held := mustHold(t, running, ws.ID)
 	if !held {
@@ -405,7 +405,7 @@ func TestAGenerationRecordsTheCostTheGatewayReported(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := gatewayReturning(t, "{"+skill+tc.usage+"}")
-			resp, err := svc.generateOnce(context.Background(), pgtype.UUID{}, "把掃描的單據整理成表格。", nil, nil)
+			resp, err := svc.generateOnce(context.Background(), generation{task: "把掃描的單據整理成表格。"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -484,7 +484,7 @@ func TestDiagramOnlyReachesTheGatewayWithAnEmptyTaskDescription(t *testing.T) {
 	svc, captured := requestCapturingStub(t, skillResp)
 
 	diagram := &GenerateDiagram{MediaType: "image/png", Data: []byte("not really a png, just bytes")}
-	if _, err := svc.generateOnce(context.Background(), pgtype.UUID{}, "", diagram, nil); err != nil {
+	if _, err := svc.generateOnce(context.Background(), generation{in: GenerateInput{Diagram: diagram}}); err != nil {
 		t.Fatalf("generateOnce: %v", err)
 	}
 
@@ -721,8 +721,8 @@ func assertReferenceSkillMDReachesGatewayRequest(t *testing.T, ref ReferenceSkil
 	t.Helper()
 	const skillResp = `{"skill":{"name":"a","description":"b","body":"c"},"model":"m","prompt_version":"v"}`
 	fakeSvc, captured := requestCapturingStub(t, skillResp)
-	if _, err := fakeSvc.generateOnce(context.Background(), pgtype.UUID{}, "抽出重點。", nil,
-		[]ReferenceSkill{ref}); err != nil {
+	if _, err := fakeSvc.generateOnce(context.Background(),
+		generation{task: "抽出重點。", references: []ReferenceSkill{ref}}); err != nil {
 		t.Fatalf("generateOnce: %v", err)
 	}
 	var sent struct {

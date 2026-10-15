@@ -32,7 +32,7 @@ func TestARefusedGenerationRecordsTheShapeOfWhatWasAskedAgainstTheCaller(t *test
 				pgconv.UUIDString(skillID): {ID: skillID, SkillID: skillID, WorkspaceID: ws.ID, PackageObjectKey: objectKey},
 			},
 		},
-		CreditCanStart: func(context.Context, pgtype.UUID) (bool, error) { return false, nil },
+		Billing: GenerateBilling{CanStart: func(context.Context, pgtype.UUID) (bool, error) { return false, nil }},
 	}
 	const task = "  把掃描的單據整理成表格。  "
 
