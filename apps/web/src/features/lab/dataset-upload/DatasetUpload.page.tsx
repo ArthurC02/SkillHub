@@ -10,13 +10,9 @@ import {
   type DatasetLimits,
 } from "../lab.service";
 import { useTestCase, useTestCaseDatasets, type TestCase } from "../testcases.service";
-import {
-  roundedBytes,
-  uploadErrorSentence,
-  uploadRefusal,
-  type TestCaseUsage,
-} from "./upload.model";
+import { roundedBytes, uploadRefusal, type TestCaseUsage } from "./upload.model";
 import { UploadRulesFacts } from "./components/UploadRulesFacts";
+import { UploadFailure } from "./components/UploadFailure";
 import { SkillWorkspaceNav } from "../../skill";
 import "./DatasetUpload.page.css";
 
@@ -116,6 +112,9 @@ function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?
         testCaseId={testCase.test_case_id}
         limits={rules}
         used={used}
+        datasets={storedData?.datasets}
+        onRetryRead={() => void stored.refetch()}
+        reading={stored.fetchStatus !== "idle"}
         waiting={limits.isPending || stored.isPending || limits.isFetching || stored.isFetching}
         paused={limits.fetchStatus === "paused" || stored.fetchStatus === "paused"}
       />
@@ -127,12 +126,18 @@ function DatasetIntake({
   testCaseId,
   limits,
   used,
+  datasets,
+  onRetryRead,
+  reading,
   waiting,
   paused,
 }: {
   testCaseId: string;
   limits: DatasetLimits | undefined;
   used: TestCaseUsage | undefined;
+  datasets: Dataset[] | undefined;
+  onRetryRead: () => void;
+  reading: boolean;
   waiting: boolean;
   paused: boolean;
 }) {
@@ -192,13 +197,13 @@ function DatasetIntake({
         </button>
       </section>
       {message && <p role="alert">{message}</p>}
-      <ReadFailure error={upload.error} what="上傳">
-        <p role="alert">
-          {upload.error instanceof ApiError
-            ? uploadErrorSentence(upload.error.status, upload.error.message)
-            : "上傳沒有成功，請檢查檔案類型與大小後再試一次。"}
-        </p>
-      </ReadFailure>
+      <UploadFailure
+        error={upload.error}
+        fileName={upload.variables?.name}
+        datasets={datasets}
+        onRetryRead={onRetryRead}
+        reading={reading}
+      />
       {uploaded.length > 0 && (
         <section className="dataset-upload-success" role="status" aria-label="上傳完成">
           <h2>已加入的測試資料</h2>

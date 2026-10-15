@@ -216,7 +216,7 @@ test("丙-150(e) a 415 upload failure prints the server's own Chinese sentence",
   expect(container.textContent).not.toContain("上傳沒有成功");
 });
 
-test("丙-150(e) a 500 upload failure falls back to the generic retry sentence", async () => {
+test("a server upload error reports an unconfirmed outcome", async () => {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
     if (url.endsWith("/me"))
@@ -258,8 +258,9 @@ test("丙-150(e) a 500 upload failure falls back to the generic retry sentence",
   const file = new File(["bogus"], "a.txt", { type: "text/plain" });
   Object.defineProperty(input, "files", { value: [file], configurable: true });
   await act(async () => uploadButton().click());
-  await waitFor(() => (container.textContent ?? "").includes("上傳沒有成功，可以再按一次。"));
+  await waitFor(() => container.querySelector('[aria-label="上傳結果"]') !== null);
 
+  expect(container.textContent).toContain("無法確認上傳結果。");
   expect(container.textContent).not.toContain("internal error, do not show this");
 });
 
@@ -278,10 +279,20 @@ test("02:TEST-002 changing the 測試題 clears what was uploaded to the previou
     }
     if (init?.method === "POST") {
       return Promise.resolve(
-        new Response(JSON.stringify({ dataset_id: "d-1", file_name: "a.csv", size_bytes: 10 }), {
-          status: 201,
-          headers: { "Content-Type": "application/json" },
-        }),
+        new Response(
+          JSON.stringify({
+            dataset_id: "d-1",
+            file_name: "a.csv",
+            size_bytes: 10,
+            content_type: "text/csv",
+            content_hash: "a".repeat(64),
+            expires_at: "2026-11-15T00:00:00Z",
+          }),
+          {
+            status: 201,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
       );
     }
     const match = url.match(/\/test-cases\/([^/?]+)$/);

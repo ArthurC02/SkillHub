@@ -1,6 +1,8 @@
 import { expect, test } from "vitest";
 import { uploadErrorSentence, uploadRefusal } from "./upload.model";
 import type { DatasetLimits } from "../lab.service";
+import { isUploadResultUnknown } from "../lab.service";
+import { ApiError, SessionNotReadyError } from "../../../core/api/client";
 
 const LIMITS: DatasetLimits = {
   max_file_bytes: 1000,
@@ -50,11 +52,39 @@ test("the per-file limit is answered before the count, so the reason names the r
 });
 
 test("a localised upload refusal keeps the actionable server sentence", () => {
-  expect(uploadErrorSentence(415, "不支援這種檔案類型")).toBe("不支援這種檔案類型");
+  expect(uploadErrorSentence(new ApiError(415, "不支援這種檔案類型"))).toBe("不支援這種檔案類型");
 });
 
 test("an English upload refusal is replaced with a local retry sentence", () => {
-  expect(uploadErrorSentence(415, "unsupported media type")).toBe(
+  expect(uploadErrorSentence(new ApiError(415, "unsupported media type"))).toBe(
     "上傳沒有成功，請檢查檔案類型與大小後再試一次。",
   );
+});
+
+test.each<[string, Error]>([
+  ["lost response", new TypeError("Failed to fetch")],
+  ["unreadable response", new SyntaxError("Unexpected end of JSON input")],
+  ["first server error", new ApiError(500, "internal error")],
+  ["unavailable server", new ApiError(503, "service unavailable")],
+])("%s leaves the upload outcome unknown", (_name, error) => {
+  expect(isUploadResultUnknown(error)).toBe(true);
+  expect(uploadErrorSentence(error)).toBe(
+    "無法確認上傳結果。請先核對下方最新檔案清單，再決定是否重試。",
+  );
+});
+
+test.each<[number, string]>([
+  [400, "上傳沒有成功，請檢查檔案類型與大小後再試一次。"],
+  [401, "上傳沒有成功，可以再按一次。"],
+  [499, "上傳沒有成功，可以再按一次。"],
+])("HTTP %i is a reported refusal rather than an unknown result", (status, message) => {
+  const error = new ApiError(status, "request refused");
+  expect(isUploadResultUnknown(error)).toBe(false);
+  expect(uploadErrorSentence(error)).toBe(message);
+});
+
+test("a blocked session operation is known not to have been sent", () => {
+  const error = new SessionNotReadyError();
+  expect(isUploadResultUnknown(error)).toBe(false);
+  expect(uploadErrorSentence(error)).toBe("這次操作尚未送出。請先確認頁首的登入狀態，再自行送出。");
 });

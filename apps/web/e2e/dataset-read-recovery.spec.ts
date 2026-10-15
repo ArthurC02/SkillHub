@@ -36,6 +36,9 @@ for (const owner of ["rules", "usage"]) {
               dataset_id: "11111111-1111-4111-8111-111111111111",
               file_name: "rows.csv",
               size_bytes: 1000,
+              content_type: "text/csv",
+              content_hash: "a".repeat(64),
+              expires_at: "2026-11-15T00:00:00Z",
             },
           });
         }

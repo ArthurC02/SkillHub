@@ -65,6 +65,9 @@ function platform(totalBytes: number, fileCount: number) {
         dataset_id: "uploaded-dataset",
         file_name: "rows.csv",
         size_bytes: 400,
+        content_type: "text/csv",
+        content_hash: "a".repeat(64),
+        expires_at: "2026-11-15T00:00:00Z",
       });
     }
     if (path === `/test-cases/${TEST_CASE}/datasets`) {

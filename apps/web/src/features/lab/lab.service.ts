@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, apiFetch } from "../../core/api/client";
+import { ApiError, SessionNotReadyError, apiFetch } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 
 export interface PreflightDataset {
@@ -99,21 +99,49 @@ export interface Dataset {
   expires_at: string;
 }
 
-export function uploadDataset(testCaseId: string, file: File) {
+export async function uploadDataset(testCaseId: string, file: File) {
   const form = new FormData();
   form.append("file", file);
   // No Content-Type header: the browser sets the multipart boundary itself.
-  return apiFetch<Dataset>(`/test-cases/${testCaseId}/datasets`, { method: "POST", body: form });
+  const result = await apiFetch<unknown>(`/test-cases/${testCaseId}/datasets`, {
+    method: "POST",
+    body: form,
+  });
+  if (!isDataset(result)) throw new Error("Invalid dataset response");
+  return result;
+}
+
+function isDataset(value: unknown): value is Dataset {
+  if (!value || typeof value !== "object") return false;
+  const dataset = value as Partial<Dataset>;
+  return (
+    [
+      dataset.dataset_id,
+      dataset.file_name,
+      dataset.content_type,
+      dataset.content_hash,
+      dataset.expires_at,
+    ].every((field) => typeof field === "string" && field.trim().length > 0) &&
+    typeof dataset.size_bytes === "number" &&
+    Number.isSafeInteger(dataset.size_bytes) &&
+    dataset.size_bytes >= 0
+  );
 }
 
 export function useUploadDataset(testCaseId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (file: File) => uploadDataset(testCaseId, file),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: queryKeys.testCases.datasets(testCaseId) });
+    onSettled: (_result, error) => {
+      if (!error || isUploadResultUnknown(error))
+        void client.invalidateQueries({ queryKey: queryKeys.testCases.datasets(testCaseId) });
     },
   });
+}
+
+export function isUploadResultUnknown(error: unknown): boolean {
+  if (error instanceof SessionNotReadyError) return false;
+  return !(error instanceof ApiError) || error.status >= 500;
 }
 
 export interface RunCreated {
