@@ -109,7 +109,6 @@ export const queryKeys = {
     publicPublication: (publisher: string, name: string) => ["publication", publisher, name],
     bundles: ["bundles"],
     bundleOverview: ["bundles", "overview"],
-    ownBundlePublication: (bundle: string) => ["bundles", bundle, "publication"],
   },
   checks: {
     all: ["checks"],

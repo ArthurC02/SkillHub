@@ -305,14 +305,6 @@ export function useExportBundle(bundle: string, version: string) {
   });
 }
 
-export function useOwnBundlePublication(bundle: string, enabled = true) {
-  return useQuery({
-    queryKey: queryKeys.publishing.ownBundlePublication(bundle),
-    queryFn: () => apiFetch<Publication>(`/me/bundles/${bundle}/publication`),
-    enabled: bundle.length > 0 && enabled,
-  });
-}
-
 export interface PublishBundleRequest {
   name?: string;
   version?: string;
@@ -329,9 +321,6 @@ export function usePublishBundle(bundle: string) {
         body: JSON.stringify({ name, version, rights_attested: rightsAttested }),
       }),
     onSuccess: () => {
-      void client.invalidateQueries({
-        queryKey: queryKeys.publishing.ownBundlePublication(bundle),
-      });
       void client.invalidateQueries({ queryKey: queryKeys.publishing.bundleOverview });
     },
   });
@@ -343,9 +332,6 @@ export function useDelistBundle(bundle: string) {
     mutationFn: () =>
       apiFetch<Publication>(`/me/bundles/${bundle}/publication`, { method: "DELETE" }),
     onSuccess: () => {
-      void client.invalidateQueries({
-        queryKey: queryKeys.publishing.ownBundlePublication(bundle),
-      });
       void client.invalidateQueries({ queryKey: queryKeys.publishing.bundleOverview });
     },
   });
