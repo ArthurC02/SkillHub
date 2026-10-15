@@ -108,17 +108,17 @@ SHIPPED_FILES_RULE = (
 DATA_TAG = "untrusted_creation_snapshot"
 REFERENCE_TAG = "untrusted_reference_skill"
 TOOL_TAG = "untrusted_tool_observation"
-TEXT_MAX_CHARS = 20000
-MAX_ACCEPTANCE_CRITERIA = 12
-CRITERION_MAX_CHARS = 500
-SAMPLE_INPUT_MAX_CHARS = 4000
-TOOL_QUERY_MAX_CHARS = 4000
-SEARCH_REWRITE_MAX_CHARS = 200
-MAX_SEARCH_REWRITES = 3
+TEXT_MAX_CHARS = 20000  # one-number: creationMaxTextRunes
+MAX_ACCEPTANCE_CRITERIA = 12  # one-number: creationMaxAcceptanceCriteria
+CRITERION_MAX_CHARS = 500  # one-number: creationMaxCriterionRunes
+SAMPLE_INPUT_MAX_CHARS = 4000  # one-number: creationMaxSampleInputRunes
+TOOL_QUERY_MAX_CHARS = 4000  # one-number: creationMaxToolQueryChars
+SEARCH_REWRITE_MAX_CHARS = 200  # one-number: creationMaxSearchRewriteChars
+MAX_SEARCH_REWRITES = 3  # one-number: creationMaxSearchRewrites
 DIAGNOSIS_MAX_TOKENS = 4000
-MAX_CHALLENGE_CASES = 3
-MAX_CHALLENGE_CRITERIA = 4
-CHALLENGE_NAME_MAX_CHARS = 60
+MAX_CHALLENGE_CASES = 3  # one-number: creationMaxChallengeCases
+MAX_CHALLENGE_CRITERIA = 4  # one-number: creationMaxChallengeCriteria
+CHALLENGE_NAME_MAX_CHARS = 60  # one-number: creationMaxChallengeNameRunes
 CHALLENGE_MAX_TOKENS = 4000
 MODEL_OUTPUT_ERRORS = (
     OpenAIError,
@@ -177,7 +177,8 @@ class DiagramInterpretation(BaseModel):
     uncertainties: list[str]
 
 
-DIAGRAM_ITEM_MAX_CHARS = 2000
+DIAGRAM_ITEM_MAX_CHARS = 2000  # one-number: creationMaxDiagramItemRunes
+MAX_DIAGRAM_ITEMS = 64  # one-number: creationMaxDiagramItems
 
 DiagramItem = Annotated[str, Field(max_length=DIAGRAM_ITEM_MAX_CHARS)]
 
@@ -191,10 +192,10 @@ class DiagramUncertainty(BaseModel):
 
 class ConfirmedDiagramInterpretation(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    nodes: list[DiagramItem] = Field(..., min_length=1, max_length=64)
-    conditions: list[DiagramItem] = Field(..., max_length=64)
-    branches: list[DiagramItem] = Field(..., max_length=128)
-    uncertainties: list[DiagramUncertainty] = Field(..., max_length=64)
+    nodes: list[DiagramItem] = Field(..., min_length=1, max_length=MAX_DIAGRAM_ITEMS)
+    conditions: list[DiagramItem] = Field(..., max_length=MAX_DIAGRAM_ITEMS)
+    branches: list[DiagramItem] = Field(..., max_length=MAX_DIAGRAM_ITEMS * 2)
+    uncertainties: list[DiagramUncertainty] = Field(..., max_length=MAX_DIAGRAM_ITEMS)
 
 
 JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)

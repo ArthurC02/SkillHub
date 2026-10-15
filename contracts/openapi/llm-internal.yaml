@@ -2147,14 +2147,14 @@ components:
           enum: [search_catalog, search_knowledge, validate_draft, fetch_url]
         query:
           type: string
-          maxLength: 4000
+          maxLength: 4000  # one-number: creationMaxToolQueryChars
           description: For search_catalog the keywords, for search_knowledge a sentence describing the task (semantic, cross-language; Go embeds it); for fetch_url one http(s) URL. Go asks the person before connecting and returns the page text as a tool observation; a refused or blocked site is reported, not retried (05 R-47).
         queries:
           type: [array, "null"]
-          maxItems: 3
+          maxItems: 3  # one-number: creationMaxSearchRewrites
           items:
             type: string
-            maxLength: 200
+            maxLength: 200  # one-number: creationMaxSearchRewriteChars
           description: For the two search kinds, up to three rewrites of the intent (a synonym, the other language, one distinctive term). Go runs the hybrid retrieval for the query and every rewrite and fuses the rankings (reciprocal rank) before the person sees the candidates; at most two empty rounds per session, then the model drafts without a reference.
     CreationDiagramUncertainty:
       type: object
@@ -2178,8 +2178,8 @@ components:
         nodes:
           type: array
           minItems: 1
-          maxItems: 64
-          items: {type: string, maxLength: 2000}
+          maxItems: 64  # one-number: creationMaxDiagramItems
+          items: {type: string, maxLength: 2000}  # one-number: creationMaxDiagramItemRunes
         conditions:
           type: array
           maxItems: 64
@@ -2233,23 +2233,23 @@ components:
             $ref: '#/components/schemas/CreationMessage'
         brief:
           type: string
-          maxLength: 20000
+          maxLength: 20000  # one-number: creationMaxTextRunes
         acceptance_criteria:
           type: array
-          maxItems: 12
+          maxItems: 12  # one-number: creationMaxAcceptanceCriteria
           items:
             type: string
-            maxLength: 500
+            maxLength: 500  # one-number: creationMaxCriterionRunes
           description: Observable acceptance sentences confirmed together with the brief; empty until the model proposes them. Go turns the confirmed list into a Test Case at materialize (05 R-46).
         sample_input:
           type: string
-          maxLength: 4000
+          maxLength: 4000  # one-number: creationMaxSampleInputRunes
           description: One realistic, complete example of what a user would hand the Skill (the content itself, not a description of it), proposed and confirmed with the brief. It becomes the prompt of the Test Case the criteria are judged against; without it the trial run has nothing to work on and every criterion comes back undetermined. Empty until the model proposes it.
         brief_confirmed:
           type: boolean
         challenge_cases:
           type: array
-          maxItems: 3
+          maxItems: 3  # one-number: creationMaxChallengeCases
           items:
             $ref: '#/components/schemas/CreationChallengeCase'
           description: The challenge cases confirmed together with the brief. Go turns each into its own Test Case at materialize, so the trial also runs inputs the creator did not hand over.
@@ -2355,7 +2355,7 @@ components:
         name:
           type: string
           minLength: 1
-          maxLength: 60
+          maxLength: 60  # one-number: creationMaxChallengeNameRunes
         prompt:
           type: string
           minLength: 1
@@ -2363,7 +2363,7 @@ components:
         criteria:
           type: array
           minItems: 1
-          maxItems: 4
+          maxItems: 4  # one-number: creationMaxChallengeCriteria
           items:
             type: string
             minLength: 1

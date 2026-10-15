@@ -5,7 +5,10 @@ import (
 	"unicode/utf8"
 )
 
-const maxDiagramItems = 64
+const (
+	maxDiagramItems     = 64   // one-number: creationMaxDiagramItems
+	maxDiagramItemRunes = 2000 // one-number: creationMaxDiagramItemRunes
+)
 
 type DiagramUncertainty struct {
 	ID       string `json:"id"`
@@ -94,7 +97,7 @@ func validDiagramAnswer(value string) bool {
 }
 
 func validDiagramText(value string) bool {
-	return strings.TrimSpace(value) != "" && utf8.RuneCountInString(value) <= 2000
+	return strings.TrimSpace(value) != "" && utf8.RuneCountInString(value) <= maxDiagramItemRunes
 }
 
 func allDiagramUncertaintiesAnswered(value *DiagramInterpretation) bool {

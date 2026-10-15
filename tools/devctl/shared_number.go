@@ -29,7 +29,19 @@ type sharedNumberSite struct {
 
 var sharedNumberRoster = []string{
 
+	"creationMaxAcceptanceCriteria",
+	"creationMaxChallengeCases",
+	"creationMaxChallengeCriteria",
+	"creationMaxChallengeNameRunes",
+	"creationMaxCriterionRunes",
 	"creationMaxDiagramBytes",
+	"creationMaxDiagramItemRunes",
+	"creationMaxDiagramItems",
+	"creationMaxSampleInputRunes",
+	"creationMaxSearchRewriteChars",
+	"creationMaxSearchRewrites",
+	"creationMaxTextRunes",
+	"creationMaxToolQueryChars",
 	"embeddingDimensions",
 	"excerptLimit",
 	"generateFailureLimit",

@@ -50,24 +50,24 @@ const (
 
 	MaxMessages = 98
 
-	MaxTextRunes = 20000
+	MaxTextRunes = 20000 // one-number: creationMaxTextRunes
 
 	MaxDiagramBytes = 4_000_000 // one-number: creationMaxDiagramBytes
 
-	MaxAcceptanceCriteria = 12
+	MaxAcceptanceCriteria = 12 // one-number: creationMaxAcceptanceCriteria
 
-	MaxSampleInputRunes = 4000
+	MaxSampleInputRunes = 4000 // one-number: creationMaxSampleInputRunes
 
-	MaxChallengeCases     = 3
-	MaxChallengeCriteria  = 4
-	MaxChallengeNameRunes = 60
+	MaxChallengeCases     = 3  // one-number: creationMaxChallengeCases
+	MaxChallengeCriteria  = 4  // one-number: creationMaxChallengeCriteria
+	MaxChallengeNameRunes = 60 // one-number: creationMaxChallengeNameRunes
 
 	MaxNudges = 2
 
 	MaxBlockedRepeats = 2
 
 	MaxSearchRounds   = 2
-	MaxCriterionRunes = 500
+	MaxCriterionRunes = 500 // one-number: creationMaxCriterionRunes
 )
 
 type Limits struct {
