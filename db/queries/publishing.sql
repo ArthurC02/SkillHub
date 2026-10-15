@@ -221,6 +221,7 @@ LEFT JOIN LATERAL (
 ) rv ON true
 WHERE p.skill_id IS NOT NULL
   AND (sqlc.narg(publication_id)::uuid IS NULL OR p.id = sqlc.narg(publication_id))
+  AND (sqlc.narg(skill_id)::uuid IS NULL OR p.skill_id = sqlc.narg(skill_id))
 ORDER BY r.released_at, p.id;
 
 -- name: LockPublicationByAddress :one

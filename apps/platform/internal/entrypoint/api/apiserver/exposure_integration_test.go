@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	gen "github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
 )
 
@@ -582,5 +583,28 @@ func TestAnExposedGeneratedSkillKeepsItsAuthorsPromptToItsAuthor(t *testing.T) {
 	}
 	if got := source(w.author); got["task_description"] != "my private brief" {
 		t.Errorf("the author's own detail after exposure = %v, want the brief still there", got)
+	}
+}
+
+func TestExposureStatesNarrowedToASkillReadOnlyThatSkill(t *testing.T) {
+	w := newExposureWorld(t, "narrowed")
+	skill := mustUUID(t, w.skillID)
+	q := gen.New(w.pool)
+
+	rows, err := q.ListExposureStates(context.Background(), gen.ListExposureStatesParams{SkillID: skill})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].SkillID != skill {
+		t.Fatalf("states narrowed to the skill = %d rows, want exactly its own publication", len(rows))
+	}
+	other, err := q.ListExposureStates(context.Background(), gen.ListExposureStatesParams{
+		SkillID: mustUUID(t, "00000000-0000-0000-0000-00000000dead"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(other) != 0 {
+		t.Errorf("states narrowed to an unpublished skill = %d rows, want none", len(other))
 	}
 }

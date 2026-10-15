@@ -173,8 +173,8 @@ func ownerExposureStateOf(row gen.ListWorkspaceSkillPublicationsRow) ExposureSta
 	}
 }
 
-func exposureStates(ctx context.Context, q *gen.Queries, publicationID pgtype.UUID) ([]ExposureState, error) {
-	rows, err := q.ListExposureStates(ctx, publicationID)
+func exposureStates(ctx context.Context, q *gen.Queries, of gen.ListExposureStatesParams) ([]ExposureState, error) {
+	rows, err := q.ListExposureStates(ctx, of)
 	if err != nil {
 		return nil, err
 	}
@@ -257,8 +257,8 @@ func (s *Service) catalogExposure(ctx context.Context, state ExposureState) (Cat
 	return CatalogExposure{State: CatalogListed}, nil
 }
 
-func (s *Service) ExposedSkills(ctx context.Context) ([]Exposure, error) {
-	states, err := exposureStates(ctx, gen.New(s.Pool), pgtype.UUID{})
+func (s *Service) ExposedSkills(ctx context.Context, skillID pgtype.UUID) ([]Exposure, error) {
+	states, err := exposureStates(ctx, gen.New(s.Pool), gen.ListExposureStatesParams{SkillID: skillID})
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +324,7 @@ func (s *Service) exposedFor(ctx context.Context, state ExposureState, skill Ski
 }
 
 func (s *Service) ExposureQueue(ctx context.Context) ([]ExposureState, error) {
-	states, err := exposureStates(ctx, gen.New(s.Pool), pgtype.UUID{})
+	states, err := exposureStates(ctx, gen.New(s.Pool), gen.ListExposureStatesParams{})
 	if err != nil {
 		return nil, err
 	}
@@ -360,7 +360,7 @@ func (s *Service) ExposureCase(ctx context.Context, publisher, name string) (Exp
 	if err != nil {
 		return ExposureCase{}, false, err
 	}
-	states, err := exposureStates(ctx, q, row.ID)
+	states, err := exposureStates(ctx, q, gen.ListExposureStatesParams{PublicationID: row.ID})
 	if err != nil || len(states) == 0 {
 		return ExposureCase{}, false, err
 	}
@@ -464,7 +464,7 @@ func currentExposure(ctx context.Context, q *gen.Queries, publisher, name string
 	if err != nil {
 		return ExposureState{}, err
 	}
-	states, err := exposureStates(ctx, q, row.ID)
+	states, err := exposureStates(ctx, q, gen.ListExposureStatesParams{PublicationID: row.ID})
 	if err != nil {
 		return ExposureState{}, err
 	}
@@ -487,7 +487,7 @@ func lockCurrentExposure(ctx context.Context, q *gen.Queries, publisher, name st
 	if err != nil {
 		return pgtype.UUID{}, ExposureState{}, err
 	}
-	states, err := exposureStates(ctx, q, publicationID)
+	states, err := exposureStates(ctx, q, gen.ListExposureStatesParams{PublicationID: publicationID})
 	if err != nil {
 		return pgtype.UUID{}, ExposureState{}, err
 	}

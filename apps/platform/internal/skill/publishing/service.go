@@ -556,7 +556,7 @@ func (s *Service) PublicPublication(ctx context.Context, publisherName, name str
 	if out.Availability != AvailabilityAvailable {
 		return out, true, nil
 	}
-	states, err := exposureStates(ctx, q, row.ID)
+	states, err := exposureStates(ctx, q, gen.ListExposureStatesParams{PublicationID: row.ID})
 	if err != nil || len(states) == 0 {
 		return out, err == nil, err
 	}

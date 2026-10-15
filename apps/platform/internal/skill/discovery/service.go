@@ -44,7 +44,7 @@ type Service struct {
 	ReadSourceSiblings func(ctx context.Context, workspaceID pgtype.UUID, packageObjectKey string, excludedSkillID pgtype.UUID) ([]SourceSiblingFacts, error)
 
 	CatalogWorkspaces func(ctx context.Context, db gen.DBTX) ([]pgtype.UUID, error)
-	ExposedSkills     func(context.Context) ([]ExposedSkill, error)
+	ExposedSkills     func(ctx context.Context, skillID pgtype.UUID) ([]ExposedSkill, error)
 
 	LLM            Model
 	IntentAnalyzer IntentAnalyzer

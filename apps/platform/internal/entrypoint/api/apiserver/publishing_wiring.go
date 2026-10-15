@@ -107,8 +107,8 @@ func describeRedistribution(value string) (label, note string) {
 
 func wireExposure(catalogSvc *catalog.Service, publishingSvc *publishing.Service) {
 	publishingSvc.ReadSearchSnapshot = wiring.SearchSnapshotReader(catalogSvc)
-	catalogSvc.ExposedSkills = func(ctx context.Context) ([]catalog.ExposedSkill, error) {
-		exposed, err := publishingSvc.ExposedSkills(ctx)
+	catalogSvc.ExposedSkills = func(ctx context.Context, skillID pgtype.UUID) ([]catalog.ExposedSkill, error) {
+		exposed, err := publishingSvc.ExposedSkills(ctx, skillID)
 		if err != nil {
 			return nil, err
 		}

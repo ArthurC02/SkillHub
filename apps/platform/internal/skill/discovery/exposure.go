@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -52,7 +53,7 @@ func (s *Service) publicScope(ctx context.Context) (publicScope, error) {
 	if s.ExposedSkills == nil {
 		return scope, nil
 	}
-	exposed, err := s.ExposedSkills(ctx)
+	exposed, err := s.ExposedSkills(ctx, pgtype.UUID{})
 	if err != nil {
 		return publicScope{}, err
 	}
@@ -81,14 +82,18 @@ func (s *Service) SearchSnapshotOf(ctx context.Context, skillID pgtype.UUID) (Se
 }
 
 func (s *Service) exposedSkill(ctx context.Context, id pgtype.UUID) (SkillFacts, bool, error) {
-	scope, err := s.publicScope(ctx)
+	if s.ExposedSkills == nil {
+		return SkillFacts{}, false, nil
+	}
+	candidates, err := s.ExposedSkills(ctx, id)
 	if err != nil {
 		return SkillFacts{}, false, err
 	}
-	exposed, ok := scope.exposed[id]
-	if !ok {
+	i := slices.IndexFunc(candidates, func(e ExposedSkill) bool { return e.SkillID == id })
+	if i < 0 {
 		return SkillFacts{}, false, nil
 	}
+	exposed := candidates[i]
 	snapshot, found, err := s.SearchSnapshotOf(ctx, id)
 	if err != nil || !found || snapshot.VersionID != exposed.VersionID || snapshot.Digest != exposed.SnapshotDigest {
 		return SkillFacts{}, false, err

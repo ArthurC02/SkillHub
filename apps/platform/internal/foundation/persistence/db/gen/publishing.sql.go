@@ -645,8 +645,14 @@ LEFT JOIN LATERAL (
 ) rv ON true
 WHERE p.skill_id IS NOT NULL
   AND ($1::uuid IS NULL OR p.id = $1)
+  AND ($2::uuid IS NULL OR p.skill_id = $2)
 ORDER BY r.released_at, p.id
 `
+
+type ListExposureStatesParams struct {
+	PublicationID pgtype.UUID
+	SkillID       pgtype.UUID
+}
 
 type ListExposureStatesRow struct {
 	PublicationID          pgtype.UUID
@@ -666,8 +672,8 @@ type ListExposureStatesRow struct {
 	ReviewedSnapshotDigest string
 }
 
-func (q *Queries) ListExposureStates(ctx context.Context, publicationID pgtype.UUID) ([]ListExposureStatesRow, error) {
-	rows, err := q.db.Query(ctx, listExposureStates, publicationID)
+func (q *Queries) ListExposureStates(ctx context.Context, arg ListExposureStatesParams) ([]ListExposureStatesRow, error) {
+	rows, err := q.db.Query(ctx, listExposureStates, arg.PublicationID, arg.SkillID)
 	if err != nil {
 		return nil, err
 	}
