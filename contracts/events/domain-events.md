@@ -132,7 +132,7 @@
 | 7 | `event_version` 硬編碼、`event_type` 值域未封閉 | ✅ 已關閉 |
 
 1. **無 retention → 已關閉。** publisher 每輪 pass 先刪 `published_at` 早於 `Worker.PublishedRetention`（預設 7 天）的列，`0035` 補了對應的 partial index。每輪都刪而不是「有成功批次才刪」——閒置系統一樣有上週的列要丟。dead-lettered 的列排除在外（見下一項）。這張表是傳輸緩衝，不是歷史；要留 400 天的是 `audit_events`。
-2. **無 poison／DLQ → 已關閉，但是最小版。** `0035` 加 `delivery_attempts`／`dead_lettered_at`；deliver 失敗時在 publisher 的交易之外遞增計數（跟著失敗一起 rollback 的計數永遠到不了門檻），達 `Worker.MaxDeliveryAttempts`（預設 10）即寫入 `dead_lettered_at`、`slog.Error` 並遞增 `skillhub_outbox_dead_lettered_total{event_type}`。被隔離的列從 `ListUnpublishedOutboxEvents` 排除，**head-of-line 阻塞就此解除**。
+2. **無 poison／DLQ → 已關閉，但是最小版。** `0035` 加 `delivery_attempts`／`dead_lettered_at`；deliver 失敗時在 publisher 的交易之外遞增計數（跟著失敗一起 rollback 的計數永遠到不了門檻），達 `Worker.MaxDeliveryAttempts`（預設 10）即寫入 `dead_lettered_at`、`slog.Error` 並遞增 `skillhub_outbox_dead_lettered_total{event_type}`。被隔離的列從 `ClaimOutboxEventsForDelivery` 排除，**head-of-line 阻塞就此解除**。
    **殘餘限制（誠實記錄，不是待辦掩飾）**：(a) 隔離就是隔離——**沒有重放工具、沒有 DLQ 介面**，被隔離的事件由人處理，平台不會自行決定它不重要，所以列**不刪**（retention 也排除）；(b) [Run 編排與非同步工作流程](../../docs/adr/README.md#run-編排與非同步工作流程)說的「告警」在本批只到 metric 為止，watch 它的 Prometheus rule 屬 O11Y-PROMTOOL-001，不在本批。
 3. **`causation_id` 只填一半 → 已關閉，用規則修正而不是補值。** 盤點結論是「一律填」本來就寫錯了：`run.queued` 是 genesis 事件、沒有先行成因，cleanup 的成因是 River job 而 job id 不是 UUID。硬造一個 attempt id 去填欄位是假資料，而且會連帶破壞 cleanup job 的合流（理由寫在 §2）。**規則改為：有 UUID 型別直接成因者一律填，NULL 只允許 §2 列舉的兩種情形。** 狀態轉移族有 attempt 時填 attempt id，還沒有 attempt 的轉移屬 §2 例外 1。
 4. **`aggregate_type` 借用 `audit.ResourceRun` → 已關閉。** 改用 `outbox.AggregateRun`。值仍是 `"run"`，但兩個命名空間不再共用一個常數，任一邊改名不會拖動另一邊。
@@ -147,4 +147,4 @@
 - **consumer 不得讀、不得依賴**。看到 `delivery_attempts = 3` 不代表領域上發生過三次任何事；那只代表某個 consumer 前兩次沒收下。冪等鍵永遠是 `event_id`（§4 規則 6）。
 - **一輪 publish pass** = 先跑 retention DELETE → 取一批未發布且未隔離的列（`(occurred_at, event_id)` 排序，上限 200）→ 逐則 deliver → 成功的前綴一次標記 published。失敗即停在該則，其後的列留到下輪。
 - **at-least-once 不變**：事件先交付、後標記，中間崩潰會重送。任何時候都不會「標記了但沒送」。
-- 同時只有一個 publisher 在跑（`pg_try_advisory_lock`）。這不是效能設計，是避免兩個健康的 worker 對同一批未發布快照各送一次。
+- 每輪 pass 以 `ClaimOutboxEventsForDelivery` 認領要送的列：把 `next_delivery_at` 推後一段租期（`FOR UPDATE SKIP LOCKED`），重疊的另一輪看不到這些列，不會對同一批未發布事件各送一次。沒輪到的列在 pass 結束前釋放租期；pass 中途崩潰則等租期過後重送。`pg_try_advisory_lock` 只序列化每輪開頭的清理與認領，投遞期間不持有。

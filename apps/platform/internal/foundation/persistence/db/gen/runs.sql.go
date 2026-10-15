@@ -47,6 +47,59 @@ func (q *Queries) AccountPurgeReady(ctx context.Context, arg AccountPurgeReadyPa
 	return not_exists, err
 }
 
+const claimOutboxEventsForDelivery = `-- name: ClaimOutboxEventsForDelivery :many
+UPDATE outbox_events SET next_delivery_at = now() + $1::interval
+WHERE event_id IN (
+    SELECT event_id FROM outbox_events
+    WHERE published_at IS NULL AND dead_lettered_at IS NULL
+      AND (next_delivery_at IS NULL OR next_delivery_at <= now())
+    ORDER BY occurred_at, event_id
+    LIMIT $2
+    FOR UPDATE SKIP LOCKED
+)
+RETURNING event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at, next_delivery_at
+`
+
+type ClaimOutboxEventsForDeliveryParams struct {
+	Lease     pgtype.Interval
+	BatchSize int32
+}
+
+func (q *Queries) ClaimOutboxEventsForDelivery(ctx context.Context, arg ClaimOutboxEventsForDeliveryParams) ([]OutboxEvent, error) {
+	rows, err := q.db.Query(ctx, claimOutboxEventsForDelivery, arg.Lease, arg.BatchSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OutboxEvent
+	for rows.Next() {
+		var i OutboxEvent
+		if err := rows.Scan(
+			&i.EventID,
+			&i.EventType,
+			&i.EventVersion,
+			&i.OccurredAt,
+			&i.CorrelationID,
+			&i.CausationID,
+			&i.WorkspaceID,
+			&i.AggregateType,
+			&i.AggregateID,
+			&i.Payload,
+			&i.PublishedAt,
+			&i.DeliveryAttempts,
+			&i.DeadLetteredAt,
+			&i.NextDeliveryAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const clearAttemptProviderUnreachable = `-- name: ClearAttemptProviderUnreachable :exec
 UPDATE run_attempts SET provider_unreachable_since = NULL
 WHERE id = $1 AND workspace_id = $2 AND provider_unreachable_since IS NOT NULL
@@ -1343,49 +1396,6 @@ func (q *Queries) ListUnfinishedRuns(ctx context.Context, batchSize int32) ([]Ru
 	return items, nil
 }
 
-const listUnpublishedOutboxEvents = `-- name: ListUnpublishedOutboxEvents :many
-SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at, next_delivery_at FROM outbox_events
-WHERE published_at IS NULL AND dead_lettered_at IS NULL
-  AND (next_delivery_at IS NULL OR next_delivery_at <= now())
-ORDER BY occurred_at, event_id
-LIMIT $1
-`
-
-func (q *Queries) ListUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error) {
-	rows, err := q.db.Query(ctx, listUnpublishedOutboxEvents, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []OutboxEvent
-	for rows.Next() {
-		var i OutboxEvent
-		if err := rows.Scan(
-			&i.EventID,
-			&i.EventType,
-			&i.EventVersion,
-			&i.OccurredAt,
-			&i.CorrelationID,
-			&i.CausationID,
-			&i.WorkspaceID,
-			&i.AggregateType,
-			&i.AggregateID,
-			&i.Payload,
-			&i.PublishedAt,
-			&i.DeliveryAttempts,
-			&i.DeadLetteredAt,
-			&i.NextDeliveryAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listWorkspaceRuns = `-- name: ListWorkspaceRuns :many
 SELECT r.id, r.status, r.status_reason, r.provider, r.failure_class,
        r.cleanup_status, r.skill_version_id, r.test_case_snapshot_id,
@@ -1636,6 +1646,16 @@ func (q *Queries) RecordOutboxDeliveryFailure(ctx context.Context, arg RecordOut
 	var delivery_attempts int32
 	err := row.Scan(&delivery_attempts)
 	return delivery_attempts, err
+}
+
+const releaseOutboxEventLeases = `-- name: ReleaseOutboxEventLeases :exec
+UPDATE outbox_events SET next_delivery_at = NULL
+WHERE event_id = ANY($1::uuid[]) AND published_at IS NULL
+`
+
+func (q *Queries) ReleaseOutboxEventLeases(ctx context.Context, eventIds []pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, releaseOutboxEventLeases, eventIds)
+	return err
 }
 
 const rememberRunArtifactUploadIntent = `-- name: RememberRunArtifactUploadIntent :exec

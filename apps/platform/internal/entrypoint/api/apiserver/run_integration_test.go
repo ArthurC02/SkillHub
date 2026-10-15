@@ -906,11 +906,9 @@ func outboxEventsOfWorkspaces(t *testing.T, pool *pgxpool.Pool, workspaceIDs ...
 
 func unpublishedCount(t *testing.T, pool *pgxpool.Pool) int {
 	t.Helper()
-	events, err := gen.New(pool).ListUnpublishedOutboxEvents(context.Background(), 10000)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return len(events)
+	return countRow(t, pool, `SELECT count(*) FROM outbox_events
+		WHERE published_at IS NULL AND dead_lettered_at IS NULL
+		  AND (next_delivery_at IS NULL OR next_delivery_at <= now())`)
 }
 
 func uuidText(u pgtype.UUID) string {

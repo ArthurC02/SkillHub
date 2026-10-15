@@ -175,12 +175,21 @@ INSERT INTO outbox_events (
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
--- name: ListUnpublishedOutboxEvents :many
-SELECT * FROM outbox_events
-WHERE published_at IS NULL AND dead_lettered_at IS NULL
-  AND (next_delivery_at IS NULL OR next_delivery_at <= now())
-ORDER BY occurred_at, event_id
-LIMIT $1;
+-- name: ClaimOutboxEventsForDelivery :many
+UPDATE outbox_events SET next_delivery_at = now() + @lease::interval
+WHERE event_id IN (
+    SELECT event_id FROM outbox_events
+    WHERE published_at IS NULL AND dead_lettered_at IS NULL
+      AND (next_delivery_at IS NULL OR next_delivery_at <= now())
+    ORDER BY occurred_at, event_id
+    LIMIT @batch_size
+    FOR UPDATE SKIP LOCKED
+)
+RETURNING *;
+
+-- name: ReleaseOutboxEventLeases :exec
+UPDATE outbox_events SET next_delivery_at = NULL
+WHERE event_id = ANY(@event_ids::uuid[]) AND published_at IS NULL;
 
 -- name: RecordOutboxDeliveryFailure :one
 UPDATE outbox_events SET

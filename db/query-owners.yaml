@@ -101,7 +101,8 @@ queries:
   MarkRunOutputPurged: run
 
   InsertOutboxEvent: outbox
-  ListUnpublishedOutboxEvents: outbox
+  ClaimOutboxEventsForDelivery: outbox
+  ReleaseOutboxEventLeases: outbox
   RecordOutboxDeliveryFailure: outbox
   DeadLetterOutboxEvent: outbox
   DeleteOutboxEventsPublishedBefore: outbox
@@ -414,7 +415,8 @@ scope:
   ListSkillsWithTestCases: user
   ListSnapshottedTestCases: user
   ListStalledCreationSessions: user
-  ListUnpublishedOutboxEvents: user
+  ClaimOutboxEventsForDelivery: user
+  ReleaseOutboxEventLeases: user
   MarkAccountPurgeStarted: user
   MarkDatasetCleanupIntentPurged: user
   MarkDatasetObjectLost: user

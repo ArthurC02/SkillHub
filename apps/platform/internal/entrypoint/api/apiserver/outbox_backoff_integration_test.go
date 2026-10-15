@@ -284,3 +284,49 @@ func TestASuccessfulDeliveryResetsTheRunOfFailures(t *testing.T) {
 		t.Error("the healthy event between the failures was not published")
 	}
 }
+
+func TestAnEventBeingDeliveredIsNotDeliveredAgainByAnOverlappingPass(t *testing.T) {
+	pool := requireDB(t)
+	f := newFixture(t, newAPI(t, pool), pool, "alice-outbox-overlap")
+	ws := mustUUID(t, f.workspaceID)
+	agg := newAggregateID(t, pool)
+	event := insertPendingOutboxEvent(t, pool, ws, agg, "1990-01-01T00:00:00Z")
+
+	entered, release := make(chan struct{}), make(chan struct{})
+	slow := &outbox.Worker{Pool: pool, Deliver: func(_ context.Context, e outbox.Event) error {
+		if e.EventID == event {
+			close(entered)
+			<-release
+		}
+		return nil
+	}}
+	firstPass := make(chan error, 1)
+	go func() {
+		_, err := slow.Publish(context.Background())
+		firstPass <- err
+	}()
+	<-entered
+
+	var redelivered int
+	overlapping := &outbox.Worker{Pool: pool, Deliver: func(_ context.Context, e outbox.Event) error {
+		if e.EventID == event {
+			redelivered++
+		}
+		return nil
+	}}
+	_, overlapErr := overlapping.Publish(context.Background())
+	close(release)
+	if err := <-firstPass; err != nil {
+		t.Fatalf("first pass: %v", err)
+	}
+
+	if overlapErr != nil {
+		t.Fatalf("overlapping pass: %v", overlapErr)
+	}
+	if redelivered != 0 {
+		t.Fatalf("the overlapping pass delivered the event %d times while the first pass still held it", redelivered)
+	}
+	if _, published, _, _ := outboxState(t, pool, event); !published {
+		t.Error("the event the first pass delivered was not marked published")
+	}
+}

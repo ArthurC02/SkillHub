@@ -1,10 +1,13 @@
 package outbox
 
 import (
+	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -33,6 +36,8 @@ const (
 	MaxConsecutiveFailuresPerPass = 5
 
 	publishBatch = 200
+
+	deliveryLease = 2 * time.Minute
 )
 
 type PublishArgs struct{}
@@ -86,10 +91,11 @@ func (w *Worker) Publish(ctx context.Context) (int, error) {
 	var failure error
 	consecutiveFailures := 0
 	ids := make([]pgtype.UUID, 0, len(events))
-	for _, event := range events {
+	for i, event := range events {
 		owned := eventFromRow(event)
 		if err := deliver(ctx, owned); err != nil {
 			if recordErr := w.recordFailure(ctx, q, owned, err); recordErr != nil {
+				releaseLeases(ctx, q, events[i+1:])
 				return w.markPublished(ctx, q, ids, recordErr)
 			}
 			if failure == nil {
@@ -97,6 +103,7 @@ func (w *Worker) Publish(ctx context.Context) (int, error) {
 			}
 			consecutiveFailures++
 			if consecutiveFailures >= MaxConsecutiveFailuresPerPass {
+				releaseLeases(ctx, q, events[i+1:])
 				break
 			}
 			continue
@@ -105,6 +112,19 @@ func (w *Worker) Publish(ctx context.Context) (int, error) {
 		ids = append(ids, event.EventID)
 	}
 	return w.markPublished(ctx, q, ids, failure)
+}
+
+func releaseLeases(ctx context.Context, q *gen.Queries, untried []gen.OutboxEvent) {
+	if len(untried) == 0 {
+		return
+	}
+	ids := make([]pgtype.UUID, len(untried))
+	for i, event := range untried {
+		ids[i] = event.EventID
+	}
+	if err := q.ReleaseOutboxEventLeases(context.WithoutCancel(ctx), ids); err != nil {
+		slog.Warn("outbox: untried events stay leased until the lease expires", "events", len(ids), "error", err)
+	}
 }
 
 func (w *Worker) markPublished(ctx context.Context, q *gen.Queries, ids []pgtype.UUID, failure error) (int, error) {
@@ -151,7 +171,14 @@ func (w *Worker) claim(ctx context.Context) ([]gen.OutboxEvent, error) {
 		return nil, err
 	}
 
-	return q.ListUnpublishedOutboxEvents(ctx, publishBatch)
+	events, err := q.ClaimOutboxEventsForDelivery(ctx, gen.ClaimOutboxEventsForDeliveryParams{
+		Lease:     pgconv.Interval(deliveryLease),
+		BatchSize: publishBatch,
+	})
+	slices.SortFunc(events, func(a, b gen.OutboxEvent) int {
+		return cmp.Or(a.OccurredAt.Time.Compare(b.OccurredAt.Time), bytes.Compare(a.EventID.Bytes[:], b.EventID.Bytes[:]))
+	})
+	return events, err
 }
 
 func (w *Worker) delivery() (Handler, error) {
