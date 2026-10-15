@@ -1,13 +1,17 @@
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
+import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
+import { isLastingReadFailure } from "../../../core/api/client";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { useRun } from "../runs.service";
 import { InFlight } from "./components/InFlight";
-import { useTrace } from "../trace.service";
+import { useTrace, type TraceSummary } from "../trace.service";
 import { EvaluationPanel } from "../evaluation/EvaluationPanel";
 import { CANCELLABLE, CancelRunControl } from "./components/CancelRunControl";
 import { RunArtifacts } from "./components/RunArtifacts";
 import { GeneralMode } from "./components/GeneralMode";
+import { AnswerQuestions } from "./components/AnswerQuestions";
 import { AdvancedMode } from "./components/AdvancedMode";
 import { SkillWorkspaceNav } from "../../skill";
 import "./RunTrace.page.css";
@@ -80,6 +84,18 @@ function RunWorkspaceRail({ runId, status }: { runId: string; status?: string })
   );
 }
 
+function retainedQuestions(runId: string, query: UseQueryResult<TraceSummary>) {
+  const data = query.data;
+  if (
+    data?.run_id !== runId ||
+    data.status !== "succeeded" ||
+    unauthenticated(query.error) ||
+    isLastingReadFailure(query.error)
+  )
+    return undefined;
+  return data.questions;
+}
+
 export function RunTrace() {
   const { runId } = useParams({ from: "/runs/$runId" });
   const { events: linkedEvents } = useSearch({ strict: false }) as { events?: string };
@@ -88,6 +104,7 @@ export function RunTrace() {
   const general = useTrace(runId, "general");
   const readableRun = run.error ? undefined : run.data;
   const readableTrace = general.error ? undefined : general.data;
+  const questions = retainedQuestions(runId, general);
 
   return (
     <article className="run-workspace">
@@ -137,6 +154,16 @@ export function RunTrace() {
             <h2 id="run-trace-heading" tabIndex={-1}>
               執行紀錄
             </h2>
+            {questions?.length ? (
+              <AnswerQuestions
+                key={runId}
+                runId={runId}
+                questions={questions}
+                readConfirmed={general.isSuccess && general.fetchStatus === "idle"}
+                checking={general.fetchStatus !== "idle"}
+                onRetryRead={() => void general.refetch()}
+              />
+            ) : null}
             <p className="note" data-role="teaching">
               一般模式是摘要，進階模式是這次試跑的原始事件（已遮罩）——同一份紀錄的兩種詳細度，
               只影響下面這一節。

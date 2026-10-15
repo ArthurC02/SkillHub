@@ -12,9 +12,15 @@ const failureMessage = (error: unknown) => (error instanceof Error ? error.messa
 export function AnswerQuestions({
   runId,
   questions,
+  readConfirmed,
+  checking,
+  onRetryRead,
 }: {
   runId: string;
   questions: NonNullable<TraceSummary["questions"]>;
+  readConfirmed: boolean;
+  checking: boolean;
+  onRetryRead: () => void;
 }) {
   const [answers, setAnswers] = useState<string[]>(() => questions.map(() => ""));
   const navigate = useNavigate();
@@ -24,7 +30,7 @@ export function AnswerQuestions({
   const tooLong = trimmed.some(
     (answer) => characterCount(answer) > ContinueRunBodyAnswersItemMaxLength,
   );
-  const blocked = blank || tooLong;
+  const blocked = !readConfirmed || blank || tooLong;
 
   const setAnswer = (index: number, value: string) => {
     setAnswers((current) => current.map((answer, i) => (i === index ? value : answer)));
@@ -33,7 +39,9 @@ export function AnswerQuestions({
 
   return (
     <section aria-labelledby={`answer-questions-${runId}`}>
-      <h3 id={`answer-questions-${runId}`}>這次試跑需要你回答</h3>
+      <h3 id={`answer-questions-${runId}`} tabIndex={-1}>
+        這次試跑需要你回答
+      </h3>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -81,11 +89,31 @@ export function AnswerQuestions({
           {continuation.isPending ? "送出中…" : "送出回答並繼續試跑"}
         </button>
         {blocked && (
-          <p id={`answer-questions-${runId}-why`} className="note">
-            {blank
-              ? "「送出回答並繼續試跑」要等每一題都回答。"
-              : `每個回答最多 ${ContinueRunBodyAnswersItemMaxLength} 個字。`}
+          <p
+            id={`answer-questions-${runId}-why`}
+            className="note"
+            role={!readConfirmed ? "status" : undefined}
+          >
+            {!readConfirmed
+              ? "原始問題尚未確認；已保留先前的問題與你的回答。請先重新確認問題。"
+              : blank
+                ? "「送出回答並繼續試跑」要等每一題都回答。"
+                : `每個回答最多 ${ContinueRunBodyAnswersItemMaxLength} 個字。`}
           </p>
+        )}
+        {!readConfirmed && (
+          <button
+            type="button"
+            disabled={checking}
+            onClick={() => {
+              onRetryRead();
+              const heading = document.getElementById(`answer-questions-${runId}`);
+              heading?.focus();
+              heading?.scrollIntoView({ block: "center" });
+            }}
+          >
+            重新確認問題
+          </button>
         )}
         {continuation.error && (
           <ReadFailure error={continuation.error} what="送出回答">

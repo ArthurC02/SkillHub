@@ -7,7 +7,6 @@ import { runStatusLabel } from "../../runs.model";
 import { IncompleteNotice } from "./IncompleteNotice";
 import { FailureClass } from "./FailureClass";
 import { RunCleanupStatus } from "./RunCleanupStatus";
-import { AnswerQuestions } from "./AnswerQuestions";
 import { Reveal } from "../../../../shared/ui/Reveal";
 
 export function GeneralMode({
@@ -47,9 +46,6 @@ export function GeneralMode({
       </p>
       <FailureClass runId={runId} status={trace.status} />
       <RunCleanupStatus runId={runId} />
-      {trace.questions?.length ? (
-        <AnswerQuestions runId={runId} questions={trace.questions} />
-      ) : null}
 
       <h3>進度</h3>
       <ol data-role="evidence">
