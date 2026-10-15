@@ -1,10 +1,12 @@
 package dockerdrv_test
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
 	"log/slog"
+	"net"
 	"slices"
 	"strings"
 	"sync"
@@ -160,5 +162,45 @@ func TestAnEngineThatStopsAnsweringAfterTheRunEndsDoesNotHoldWaitForever(t *test
 		}
 	case <-time.After(30 * time.Second):
 		t.Fatal("Wait never returned after the run ended: the slot stays held while the engine hangs")
+	}
+}
+
+type silentExecEngine struct {
+	dockerdrv.Engine
+}
+
+func (silentExecEngine) ExecAttach(_ context.Context, _ string, _ client.ExecAttachOptions) (client.ExecAttachResult, error) {
+	ours, _ := net.Pipe()
+	return client.ExecAttachResult{HijackedResponse: client.HijackedResponse{Conn: ours, Reader: bufio.NewReader(ours)}}, nil
+}
+
+func TestAStartWhoseExecNeverAnswersReturnsWhenItsContextEnds(t *testing.T) {
+	newDriver(t)
+	d, err := dockerdrv.New(dockerdrv.Config{
+		Image:       testImage(),
+		Network:     "none",
+		UID:         65532,
+		GID:         65532,
+		AllowDevCmd: true,
+		Runtime:     testRuntime(),
+		ExtraLabels: map[string]string{testLabel: "1"},
+		Log:         slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil)),
+	})
+	if err != nil {
+		t.Fatalf("driver: %v", err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	dockerdrv.WrapEngine(d, func(e dockerdrv.Engine) dockerdrv.Engine { return silentExecEngine{Engine: e} })
+	id := handle(t)
+	t.Cleanup(func() { _ = d.Remove(context.Background(), id) })
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	started := make(chan error, 1)
+	go func() { started <- d.Start(ctx, id, testRequest("sleep 30")) }()
+	select {
+	case <-started:
+	case <-time.After(30 * time.Second):
+		t.Fatal("Start never returned after its context ended: a silent exec holds the caller forever")
 	}
 }

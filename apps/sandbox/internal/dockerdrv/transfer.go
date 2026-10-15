@@ -231,6 +231,7 @@ func (d *Driver) execOnce(ctx context.Context, id string, cmd []string, stdin []
 		return err
 	}
 	defer attached.Close()
+	defer context.AfterFunc(ctx, attached.Close)()
 
 	if stdin != nil {
 		if _, err := attached.Conn.Write(stdin); err != nil {
