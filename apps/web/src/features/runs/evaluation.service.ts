@@ -1,6 +1,12 @@
 import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, SessionNotReadyError, apiFetch, internalAPIPath } from "../../core/api/client";
+import {
+  ApiError,
+  SessionNotReadyError,
+  apiFetch,
+  internalAPIPath,
+  isLastingReadFailure,
+} from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 
 export type EvaluationVerdict = "met" | "partially_met" | "not_met" | "undetermined";
@@ -183,6 +189,7 @@ export function useEvaluation(runId: string, revision?: string, awaitCurrent = f
     refetchInterval: (query) => {
       if (revision || !awaitCurrent) return false;
       if (query.state.data?.status === "pending") {
+        if (isLastingReadFailure(query.state.error)) return false;
         return query.state.dataUpdateCount < EVALUATION_POLL_MAX_PENDING ? 3000 : false;
       }
       const error = query.state.error;

@@ -84,6 +84,43 @@ test("a terminal run polls evaluation from 404 through pending to completed", as
   expect(calls).toBe(3);
 });
 
+test("a pending evaluation stops polling once its read is refused", async () => {
+  vi.useFakeTimers();
+  let calls = 0;
+  const json = (body: unknown, status = 200) =>
+    Promise.resolve(
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
+    if (url.includes("/evaluation")) {
+      calls++;
+      if (calls === 1) return json({ ...evaluation, status: "pending", overall: "undetermined" });
+      return json({ error: "forbidden" }, 403);
+    }
+    return json({ error: "not found" }, 404);
+  });
+
+  await act(async () => {
+    root = createRoot(container);
+    root.render(
+      <QueryClientProvider client={queryClient}>
+        <EvaluationPanel runId={RUN} runStatus="succeeded" />
+      </QueryClientProvider>,
+    );
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  await act(async () => vi.advanceTimersByTimeAsync(3000));
+  expect(calls).toBe(2);
+
+  await act(async () => vi.advanceTimersByTimeAsync(3000 * 5));
+  expect(calls).toBe(2);
+});
+
 type LinkProps = {
   to: string;
   params?: Record<string, string>;
