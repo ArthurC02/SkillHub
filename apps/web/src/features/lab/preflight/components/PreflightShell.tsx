@@ -27,7 +27,9 @@ export function PreflightShell({
     <section className="preflight-page">
       <header className="preflight-header">
         <p className="page-eyebrow">試跑前確認</p>
-        <h1>執行前權限確認</h1>
+        <h1 id="preflight-heading" tabIndex={-1}>
+          執行前權限確認
+        </h1>
         <p>在建立試跑紀錄之前，先核對版本、可接觸的資料、工具與資源上限。</p>
       </header>
       <SkillWorkspaceNav
@@ -54,8 +56,20 @@ export function PreflightShell({
           <SkillVersionPicker skillId={skill} value={version} onPick={onPick} />
         )}
       </section>
-      {skillInfo.error && <ReadFailure error={skillInfo.error} what="這個小工具" />}
-      {testCaseInfo.error && <ReadFailure error={testCaseInfo.error} what="測試題" />}
+      <ReadFailure
+        error={skillInfo.error}
+        what="這個小工具"
+        retry={() => void skillInfo.refetch()}
+        retrying={skillInfo.fetchStatus !== "idle"}
+        focusTarget="preflight-heading"
+      />
+      <ReadFailure
+        error={testCaseInfo.error}
+        what="測試題"
+        retry={() => void testCaseInfo.refetch()}
+        retrying={testCaseInfo.fetchStatus !== "idle"}
+        focusTarget="preflight-heading"
+      />
       {criteria === 0 && (
         <p className="note">
           這個測試題沒有驗收條件，所以這次試跑不會產生逐條判定。試跑本身照常執行。

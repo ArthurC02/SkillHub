@@ -131,7 +131,13 @@ function Preflight({ skill, linkedVersion, testCase, against }: PreflightProps) 
   if (preflight.error) {
     return (
       <PreflightShell {...shellProps}>
-        <ReadFailure error={preflight.error} what="權限摘要" />
+        <ReadFailure
+          error={preflight.error}
+          what="權限摘要"
+          retry={() => void preflight.refetch()}
+          retrying={preflight.fetchStatus !== "idle"}
+          focusTarget="preflight-heading"
+        />
       </PreflightShell>
     );
   }
