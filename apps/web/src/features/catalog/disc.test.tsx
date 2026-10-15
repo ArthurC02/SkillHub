@@ -1228,7 +1228,7 @@ function stubSearchAndDetails(
           JSON.stringify({
             versions: [
               {
-                version_id: "v1",
+                version_id: "22222222-2222-2222-2222-222222222222",
                 version_number: 1,
                 content_hash: "sha256:aa",
                 created_at: "2026-08-01T00:00:00Z",
@@ -1866,7 +1866,7 @@ test("SEC-007: the redistribution verdict shows all three states and only `allow
       name: `Redistribution ${c.value}`,
       redistribution: { value: c.value, label: c.label, note: `${c.value} 的說明。` },
       version: {
-        version_id: "v1",
+        version_id: "22222222-2222-2222-2222-222222222222",
         version_number: 1,
         content_hash: "sha256:aa",
         created_at: "2026-08-01T00:00:00Z",

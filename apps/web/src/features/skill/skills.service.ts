@@ -18,6 +18,7 @@ import type {
   SkillDeletion,
   SkillDetail,
   SkillFiles,
+  SkillVersionSummary,
   SkillVersions,
 } from "../../core/api/types";
 
@@ -156,8 +157,39 @@ export function useSkillFiles(skillId: string) {
   });
 }
 
-export function getSkillVersions(skillId: string) {
-  return apiFetch<SkillVersions>(`/skills/${skillId}/versions`);
+function isVersionSummary(value: unknown): value is SkillVersionSummary {
+  if (!value || typeof value !== "object") return false;
+  const version = value as Partial<SkillVersionSummary>;
+  return (
+    typeof version.version_id === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(version.version_id) &&
+    typeof version.version_number === "number" &&
+    Number.isSafeInteger(version.version_number) &&
+    version.version_number > 0 &&
+    typeof version.content_hash === "string" &&
+    version.content_hash.trim().length > 0 &&
+    typeof version.created_at === "string" &&
+    Number.isFinite(Date.parse(version.created_at))
+  );
+}
+
+function isVersionList(value: unknown): value is SkillVersions {
+  if (!value || typeof value !== "object") return false;
+  const versions = (value as Partial<SkillVersions>).versions;
+  if (!Array.isArray(versions) || !versions.every(isVersionSummary)) return false;
+  return (
+    new Set(versions.map((version) => version.version_id.toLowerCase())).size === versions.length &&
+    versions.every(
+      (version, index) =>
+        index === 0 || versions[index - 1].version_number > version.version_number,
+    )
+  );
+}
+
+export async function getSkillVersions(skillId: string) {
+  const result = await apiFetch<unknown>(`/skills/${skillId}/versions`);
+  if (!isVersionList(result)) throw new Error("Invalid skill version list response");
+  return result;
 }
 
 export function useSkillVersions(skillId: string) {
