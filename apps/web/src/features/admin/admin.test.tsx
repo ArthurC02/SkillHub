@@ -518,15 +518,18 @@ test("OPS-002: an email nobody has is named as such, not reported as a broken re
 
 test("OPS-002: editing the email hides the prior account until the new lookup completes", async () => {
   stub(true, (path, _method, url) =>
-    path === "/admin/credits/ws-3"
-      ? { body: { ...ADMIN_LEDGER, workspace_id: "ws-3" }, status: 200 }
+    path === "/admin/credits/f3333333-3333-4333-8333-333333333333"
+      ? {
+          body: { ...ADMIN_LEDGER, workspace_id: "f3333333-3333-4333-8333-333333333333" },
+          status: 200,
+        }
       : path === "/admin/accounts" && url.includes("other%40example.com")
         ? {
             body: {
               ...ADMIN_ACCOUNT,
               email: "other@example.com",
               display_name: "封測者乙",
-              workspace_id: "ws-3",
+              workspace_id: "f3333333-3333-4333-8333-333333333333",
             },
             status: 200,
           }
@@ -600,7 +603,7 @@ test("OPS-002: a first lookup failure offers retry without inventing an account"
 test("OPS-003: a failed ledger reread hides stale balance and blocks a grant until retry", async () => {
   let reads = 0;
   stub(true, (path) => {
-    if (path !== "/admin/credits/ws-2") return undefined;
+    if (path !== "/admin/credits/f2222222-2222-4222-8222-222222222222") return undefined;
     reads += 1;
     return reads === 2
       ? { body: { error: "service unavailable" }, status: 503 }
@@ -613,7 +616,9 @@ test("OPS-003: a failed ledger reread hides stale balance and blocks a grant unt
   expect(button("授予").disabled).toBe(false);
 
   await act(async () => {
-    await queryClient.refetchQueries({ queryKey: queryKeys.admin.ledger("ws-2") });
+    await queryClient.refetchQueries({
+      queryKey: queryKeys.admin.ledger("f2222222-2222-4222-8222-222222222222"),
+    });
   });
   await waitFor(has("暫時無法讀取點數"));
   expect(has("目前餘額")()).toBe(false);
@@ -634,7 +639,7 @@ test("OPS-003: a failed ledger reread hides stale balance and blocks a grant unt
 test("OPS-003: a first ledger read failure offers retry without a grant form", async () => {
   let reads = 0;
   stub(true, (path) => {
-    if (path !== "/admin/credits/ws-2") return undefined;
+    if (path !== "/admin/credits/f2222222-2222-4222-8222-222222222222") return undefined;
     reads += 1;
     return reads === 1
       ? { body: { error: "service unavailable" }, status: 503 }
@@ -653,8 +658,15 @@ test("OPS-003: a first ledger read failure offers retry without a grant form", a
 
 test("OPS-003: a grant waits for a non-zero whole amount and a reason, then posts both and reloads the ledger", async () => {
   stub(true, (path, method) =>
-    method === "POST" && path === "/admin/credits/ws-2/grants"
-      ? { body: { workspace_id: "ws-2", balance_credits: 170, amount_credits: 50 }, status: 200 }
+    method === "POST" && path === "/admin/credits/f2222222-2222-4222-8222-222222222222/grants"
+      ? {
+          body: {
+            workspace_id: "f2222222-2222-4222-8222-222222222222",
+            balance_credits: 170,
+            amount_credits: 50,
+          },
+          status: 200,
+        }
       : undefined,
   );
   await lookUp("member@example.com");
@@ -670,7 +682,8 @@ test("OPS-003: a grant waits for a non-zero whole amount and a reason, then post
   await type("#admin-grant-amount", "50");
   expect(grant().disabled).toBe(false);
 
-  const ledgerReads = () => calls.filter((c) => c.url === "/admin/credits/ws-2").length;
+  const ledgerReads = () =>
+    calls.filter((c) => c.url === "/admin/credits/f2222222-2222-4222-8222-222222222222").length;
   const before = ledgerReads();
   await click(grant());
   await waitFor(has("已授予 50 點，餘額現在是 170 點。"));
@@ -686,8 +699,15 @@ test("OPS-003: a grant waits for a non-zero whole amount and a reason, then post
 
 test("OPS-003: a negative correction says it deducts credits before and after submission", async () => {
   stub(true, (path, method) =>
-    method === "POST" && path === "/admin/credits/ws-2/grants"
-      ? { body: { workspace_id: "ws-2", balance_credits: 90, amount_credits: -30 }, status: 200 }
+    method === "POST" && path === "/admin/credits/f2222222-2222-4222-8222-222222222222/grants"
+      ? {
+          body: {
+            workspace_id: "f2222222-2222-4222-8222-222222222222",
+            balance_credits: 90,
+            amount_credits: -30,
+          },
+          status: 200,
+        }
       : undefined,
   );
   await lookUp("member@example.com");
@@ -712,7 +732,14 @@ test("OPS-003: a failed grant retries with one key, but a completed draft cannot
     attempt += 1;
     return attempt === 1
       ? { body: { error: "grant failed" }, status: 500 }
-      : { body: { workspace_id: "ws-2", balance_credits: 60, amount_credits: 10 }, status: 200 };
+      : {
+          body: {
+            workspace_id: "f2222222-2222-4222-8222-222222222222",
+            balance_credits: 60,
+            amount_credits: 10,
+          },
+          status: 200,
+        };
   });
   await lookUp("member@example.com");
   await waitFor(has("授予點數"));
@@ -1055,7 +1082,7 @@ test("OPS-004: editing a governance query hides the prior skill and actions unti
     ...ADMIN_SKILLS.skills[0],
     skill_id: "cccccccc-4444-4444-4444-444444444444",
     name: "Other Tool",
-    workspace_id: "ws-3",
+    workspace_id: "f3333333-3333-4333-8333-333333333333",
   };
   stub(true, (path, _method, url) =>
     path === "/admin/skills" && url.includes("q=other")
@@ -1956,7 +1983,7 @@ test("OPS-004: a name matching several skills lists a way to pick each and offer
               {
                 ...ADMIN_SKILLS.skills[0],
                 skill_id: "cccccccc-4444-4444-4444-444444444444",
-                workspace_id: "ws-3",
+                workspace_id: "f3333333-3333-4333-8333-333333333333",
               },
             ],
           },
@@ -2470,7 +2497,7 @@ test("OPS-006: the audit log names actions in words and folds the metadata", asy
     Array.from(table.querySelectorAll('tbody th[scope="row"]')).map((th) => th.textContent),
   ).toEqual(["授予點數", "查詢帳號"]);
   expect(table.tBodies[0].rows[0].querySelector('[data-label="對象"]')?.textContent).toContain(
-    "工作區：ws-2",
+    "工作區：f2222222-2222-4222-8222-222222222222",
   );
   expect(field("td details summary").textContent).toBe("3 項");
   expect(field("td details").textContent).toContain("beta reward");

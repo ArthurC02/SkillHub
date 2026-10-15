@@ -748,7 +748,7 @@ async function verifyAuditContextOnPhone(page: Page) {
 
   const target = page.locator('tbody tr:first-child [data-label="對象"]');
   await expect(target.getByText("工作區：", { exact: false })).toBeVisible();
-  await expect(target.getByText("ws-2")).toBeVisible();
+  await expect(target.getByText("f2222222-2222-4222-8222-222222222222")).toBeVisible();
   await expect(page.getByRole("button", { name: "重新整理", exact: true })).toBeVisible();
 }
 
@@ -949,13 +949,15 @@ test("admin account lookup keeps a grant tied to the submitted email on a phone"
               ...ADMIN_ACCOUNT,
               email: "other@example.com",
               display_name: "封測者乙",
-              workspace_id: "ws-3",
+              workspace_id: "f3333333-3333-4333-8333-333333333333",
             }
           : ADMIN_ACCOUNT,
     });
   });
-  await page.route("**/admin/credits/ws-3", (route) =>
-    route.fulfill({ json: { ...ADMIN_LEDGER, workspace_id: "ws-3" } }),
+  await page.route("**/admin/credits/f3333333-3333-4333-8333-333333333333", (route) =>
+    route.fulfill({
+      json: { ...ADMIN_LEDGER, workspace_id: "f3333333-3333-4333-8333-333333333333" },
+    }),
   );
 
   await page.goto("/admin/accounts");
@@ -987,7 +989,9 @@ test("admin account lookup keeps a grant tied to the submitted email on a phone"
     fullPage: true,
   });
   await page.getByText("帳號識別資料與建立時間").click();
-  await expect(page.getByText("ws-3", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("f3333333-3333-4333-8333-333333333333", { exact: true }),
+  ).toBeVisible();
   const width = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,
     scroll: document.documentElement.scrollWidth,
@@ -1001,7 +1005,7 @@ test("a completed credit grant needs a changed draft before another submission",
   await stubPlatform(page);
   await page.setViewportSize({ width: 375, height: 900 });
   let grants = 0;
-  await page.route("**/admin/credits/ws-2", (route) =>
+  await page.route("**/admin/credits/f2222222-2222-4222-8222-222222222222", (route) =>
     route.fulfill({
       json: {
         ...ADMIN_LEDGER,
@@ -1019,7 +1023,7 @@ test("a completed credit grant needs a changed draft before another submission",
       },
     }),
   );
-  await page.route("**/admin/credits/ws-2/grants", (route) => {
+  await page.route("**/admin/credits/f2222222-2222-4222-8222-222222222222/grants", (route) => {
     grants += 1;
     return route.fulfill({ json: { balance_credits: 170, amount_credits: 50 } });
   });
@@ -1048,7 +1052,7 @@ test("an uncertain admin grant explains verification before retry on a phone", a
 }, testInfo) => {
   await stubPlatform(page);
   await page.setViewportSize({ width: 375, height: 900 });
-  await page.route("**/admin/credits/ws-2/grants", (route) =>
+  await page.route("**/admin/credits/f2222222-2222-4222-8222-222222222222/grants", (route) =>
     route.fulfill({ status: 500, json: { error: "grant failed" } }),
   );
   await page.goto("/admin/accounts");
@@ -1094,7 +1098,7 @@ test("admin governance keeps actions tied to the submitted search on a phone", a
             ...ADMIN_SKILLS.skills[0],
             skill_id: SKILL_B,
             name: "Other Tool",
-            workspace_id: "ws-3",
+            workspace_id: "f3333333-3333-4333-8333-333333333333",
           },
         ],
       },

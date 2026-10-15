@@ -585,9 +585,13 @@ test("a refreshed model timeout replaces a stale editable draft on a phone", asy
 test("a credit correction describes its deduction on a phone", async ({ page }) => {
   await stubPlatform(page);
   await page.setViewportSize({ width: 375, height: 900 });
-  await page.route("**/admin/credits/ws-2/grants", (route) =>
+  await page.route("**/admin/credits/f2222222-2222-4222-8222-222222222222/grants", (route) =>
     route.fulfill({
-      json: { workspace_id: "ws-2", balance_credits: 90, amount_credits: -30 },
+      json: {
+        workspace_id: "f2222222-2222-4222-8222-222222222222",
+        balance_credits: 90,
+        amount_credits: -30,
+      },
     }),
   );
   await page.goto("/admin/accounts");

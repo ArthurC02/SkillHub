@@ -152,10 +152,36 @@ function send(method: string, body: unknown): RequestInit {
   return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
 
+export async function lookupAccount(email: string): Promise<AccountLookup> {
+  const result = await apiFetch<unknown>(`/admin/accounts?email=${encodeURIComponent(email)}`);
+  if (!isAccountLookup(result)) throw new Error("Invalid account lookup response");
+  return result;
+}
+
+function isAccountLookup(value: unknown): value is AccountLookup {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const account = value as Partial<AccountLookup>;
+  return (
+    [account.user_id, account.workspace_id].every(
+      (id) =>
+        typeof id === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
+    ) &&
+    typeof account.email === "string" &&
+    typeof account.display_name === "string" &&
+    typeof account.in_beta_allowlist === "boolean" &&
+    typeof account.created_at === "string" &&
+    Number.isFinite(Date.parse(account.created_at)) &&
+    (account.deletion_requested_at === null ||
+      (typeof account.deletion_requested_at === "string" &&
+        Number.isFinite(Date.parse(account.deletion_requested_at))))
+  );
+}
+
 export function useAccountLookup(email: string) {
   return useQuery({
     queryKey: queryKeys.admin.account(email),
-    queryFn: () => apiFetch<AccountLookup>(`/admin/accounts?email=${encodeURIComponent(email)}`),
+    queryFn: () => lookupAccount(email),
     enabled: useOperator() && email !== "",
   });
 }

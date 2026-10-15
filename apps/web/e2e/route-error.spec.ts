@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
-import { ADMIN_ACCOUNT, ME } from "../src/testing/fixtures/platform";
+import { ME } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
 for (const [failure, recovery] of [
@@ -76,57 +76,3 @@ for (const [failure, recovery] of [
     expect(writes).toEqual([]);
   });
 }
-
-test("an invalid read response supports readable reload recovery without replaying the lookup", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 375, height: 667 });
-  await stubPlatform(page);
-  await page.route("**/me", (route) => route.fulfill({ json: { ...ME, operator: true } }));
-  const writes: string[] = [];
-  page.on("request", (request) => {
-    if (request.method() === "POST") writes.push(request.url());
-  });
-  let reads = 0;
-  await page.route("**/admin/accounts?email=*", (route) => {
-    reads += 1;
-    return route.fulfill({
-      json:
-        reads === 1
-          ? { ...ADMIN_ACCOUNT, display_name: { "route-private-error-detail": "unreadable" } }
-          : ADMIN_ACCOUNT,
-    });
-  });
-  await page.goto("/admin/accounts#main-content");
-  await page.getByLabel("Email", { exact: true }).fill("tester@example.com");
-  await page.getByRole("button", { name: "查詢", exact: true }).click();
-  const main = page.getByRole("main");
-  await expect(
-    main.getByRole("heading", { level: 1, name: "這一頁暫時無法顯示", exact: true }),
-  ).toBeVisible();
-  await expect(page.locator("body")).not.toContainText("route-private-error-detail");
-  const reload = main.getByRole("button", { name: "重新載入頁面", exact: true });
-  await expect(reload).toHaveAccessibleDescription("重新載入會清除尚未送出的內容。");
-  const report = await new AxeBuilder({ page }).analyze();
-  await writeFile(test.info().outputPath("route-error-a11y.json"), JSON.stringify(report));
-  expect(report.violations).toEqual([]);
-  expect(report.incomplete).toEqual([]);
-  await reload.focus();
-  await page.keyboard.press("Enter");
-  await expect(
-    main.getByRole("heading", { level: 1, name: "帳號與點數", exact: true }),
-  ).toBeVisible();
-  await expect(page.getByLabel("Email", { exact: true })).toHaveValue("");
-  expect(reads).toBe(1);
-  expect(writes).toEqual([]);
-  expect(new URL(page.url()).pathname + new URL(page.url()).hash).toBe(
-    "/admin/accounts#main-content",
-  );
-  await page.getByLabel("Email", { exact: true }).fill("tester@example.com");
-  await page.getByRole("button", { name: "查詢", exact: true }).click();
-  await expect(
-    main.getByRole("heading", { level: 2, name: ADMIN_ACCOUNT.display_name, exact: true }),
-  ).toBeVisible();
-  expect(reads).toBe(2);
-  expect(writes).toEqual([]);
-});

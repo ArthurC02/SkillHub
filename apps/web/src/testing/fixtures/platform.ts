@@ -1015,17 +1015,17 @@ export const VERSION_DIFF = {
 };
 
 export const ADMIN_ACCOUNT = {
-  user_id: "u-2",
+  user_id: "f1111111-1111-4111-8111-111111111111",
   email: "member@example.com",
   display_name: "封測者甲",
-  workspace_id: "ws-2",
+  workspace_id: "f2222222-2222-4222-8222-222222222222",
   created_at: "2026-08-20T00:00:00Z",
   deletion_requested_at: null,
   in_beta_allowlist: true,
 } satisfies AccountLookup;
 
 export const ADMIN_LEDGER = {
-  workspace_id: "ws-2",
+  workspace_id: "f2222222-2222-4222-8222-222222222222",
   balance_credits: 120,
   entries: [
     {
@@ -1049,7 +1049,7 @@ export const ADMIN_SKILLS = {
   skills: [
     {
       skill_id: SKILL,
-      workspace_id: "ws-2",
+      workspace_id: "f2222222-2222-4222-8222-222222222222",
       name: "PDF Summariser",
       access_restriction: null,
       redistribution: "unknown",
@@ -1142,8 +1142,8 @@ export const ADMIN_AUDIT_LOG = {
       actor_agent_id: null,
       action: "credit.grant",
       resource_type: "credit_entry",
-      resource_id: "u-2",
-      workspace_id: "ws-2",
+      resource_id: "f1111111-1111-4111-8111-111111111111",
+      workspace_id: "f2222222-2222-4222-8222-222222222222",
       occurred_at: "2026-09-10T08:00:00Z",
       metadata: { kind: "grant", credits: 150, reason: "beta reward" },
     },
@@ -1153,8 +1153,8 @@ export const ADMIN_AUDIT_LOG = {
       actor_agent_id: null,
       action: "account.lookup",
       resource_type: "account",
-      resource_id: "u-2",
-      workspace_id: "ws-2",
+      resource_id: "f1111111-1111-4111-8111-111111111111",
+      workspace_id: "f2222222-2222-4222-8222-222222222222",
       occurred_at: "2026-09-10T07:59:00Z",
       metadata: {},
     },
