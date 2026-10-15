@@ -8,32 +8,37 @@ import { GrantForm } from "./GrantForm";
 
 export function CreditPanel({ workspaceId }: { workspaceId: string }) {
   const ledger = useCreditLedger(workspaceId);
+  const reading = ledger.fetchStatus !== "idle";
+  const paused = ledger.fetchStatus === "paused";
+  const reread = () => {
+    void ledger.refetch();
+    document.getElementById("admin-credit-heading")?.focus();
+  };
   return (
     <>
-      <h2>點數</h2>
-      {ledger.isPending && <Loading what="點數" />}
+      <h2 id="admin-credit-heading" tabIndex={-1}>
+        點數
+      </h2>
+      {(ledger.isPending || reading) && <Loading what="點數" paused={paused} />}
       <ReadFailure error={ledger.error} what="點數">
         <p role="alert">
           暫時無法讀取點數。{ledger.data ? "先前載入的餘額與分錄已隱藏。" : "請稍後再試。"}
         </p>
-        <button type="button" disabled={ledger.isFetching} onClick={() => void ledger.refetch()}>
-          {ledger.isFetching ? "重新讀取中…" : "再試一次"}
+        <button type="button" disabled={reading} onClick={reread}>
+          再試一次
         </button>
       </ReadFailure>
       {ledger.data && !ledger.error && (
         <>
           <p>
-            目前餘額 <strong>{ledger.data.balance_credits}</strong> 點
+            {reading ? "上次讀取的餘額" : "目前餘額"} <strong>{ledger.data.balance_credits}</strong>{" "}
+            點
           </p>
           <p className="note">
             餘額與分錄上次取得於{" "}
             <Timestamp at={new Date(ledger.dataUpdatedAt).toISOString()} relative />。{" "}
-            <button
-              type="button"
-              disabled={ledger.isFetching}
-              onClick={() => void ledger.refetch()}
-            >
-              {ledger.isFetching ? "重新整理中…" : "重新整理點數"}
+            <button type="button" disabled={reading} onClick={reread}>
+              重新整理點數
             </button>
           </p>
           {ledger.data.entries.length === 0 ? (
@@ -77,7 +82,7 @@ export function CreditPanel({ workspaceId }: { workspaceId: string }) {
         </>
       )}
       {ledger.data && (
-        <GrantForm workspaceId={workspaceId} ledgerReady={!ledger.error && !ledger.isFetching} />
+        <GrantForm workspaceId={workspaceId} ledgerReady={!ledger.error && !reading} />
       )}
     </>
   );
