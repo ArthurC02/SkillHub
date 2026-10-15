@@ -4,7 +4,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { VersionUpload } from "./version/components/VersionUpload";
-import { SKILL_VERSIONS } from "../../testing/fixtures/platform";
+import { SKILL_VERSIONS, platformResponse } from "../../testing/fixtures/platform";
+import { queryKeys } from "../../core/api/queryKeys";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
@@ -83,6 +84,7 @@ function stubOwner(uploadResponse: () => Promise<Response>) {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
     const path = url.split("?")[0];
+    if (path === "/me") return json(platformResponse("/me").body);
     if (path.endsWith("/versions") && init?.method === "POST") return uploadResponse();
     if (path.endsWith("/versions")) return json(SKILL_VERSIONS);
     return json({ error: "not found" }, 404);
@@ -90,6 +92,9 @@ function stubOwner(uploadResponse: () => Promise<Response>) {
 }
 
 async function submitUpload() {
+  await waitFor(
+    () => container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled === false,
+  );
   const input = container.querySelector<HTMLInputElement>("#skill-version-file")!;
   const file = new File(["zip bytes"], "skill.zip", { type: "application/zip" });
   Object.defineProperty(input, "files", { value: [file] });
@@ -101,6 +106,38 @@ async function submitUpload() {
     form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
   });
 }
+
+test.each([401, 503])(
+  "an unconfirmed identity %s keeps version uploads blocked",
+  async (status) => {
+    let writes = 0;
+    stubOwner(() => {
+      writes += 1;
+      return json({ error: "not submitted" }, 500);
+    });
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", (input: string, init?: RequestInit) =>
+      String(input).endsWith("/me")
+        ? json({ error: "identity unavailable" }, status)
+        : originalFetch(input, init),
+    );
+    await render();
+    await waitFor(() => queryClient.getQueryState(queryKeys.me)?.status === "error");
+    expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(
+      true,
+    );
+    expect(text()).toContain("登入狀態尚未確認；請先在頁首確認，再上傳新版本。");
+    const input = container.querySelector<HTMLInputElement>("#skill-version-file")!;
+    Object.defineProperty(input, "files", { value: [new File(["draft"], "draft.zip")] });
+    await act(async () => input.dispatchEvent(new Event("change", { bubbles: true })));
+    await act(async () =>
+      container
+        .querySelector("form")!
+        .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
+    );
+    expect(writes).toBe(0);
+  },
+);
 
 test("丙-151: 422 兩條 finding 的中文訊息都渲染，且不出現 Unprocessable Entity", async () => {
   stubOwner(() =>

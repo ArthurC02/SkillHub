@@ -1,7 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { createServer } from "node:http";
+import { writeFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { SKILL, VERSION, SKILL_VERSIONS, platformResponse } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
@@ -85,6 +86,53 @@ function currentVersions(number: number) {
   };
 }
 
+async function holdSessionRead(page: Page) {
+  let checking = false;
+  let started!: () => void;
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/me", async (route) => {
+    if (checking) {
+      started();
+      await gate;
+    }
+    return route.fulfill({ json: platformResponse("/me").body });
+  });
+  return {
+    pending,
+    start: () => {
+      checking = true;
+    },
+    restore: () => {
+      checking = false;
+      release();
+    },
+  };
+}
+
+async function openUploadedVersionHistory(page: Page) {
+  const history = page.getByRole("link", { name: "另開版本與發佈", exact: true });
+  await expect(history).toHaveAttribute("target", "_blank");
+  await expect(history).toHaveAttribute("href", `/skills/${SKILL}/versions/${VERSION}`);
+  const [popup] = await Promise.all([page.context().waitForEvent("page"), history.click()]);
+  await expect(
+    popup.locator(".version-workspace-list").getByRole("link", { name: /^v3/ }),
+  ).toBeVisible();
+  return popup;
+}
+
+async function selectedFile(input: Locator) {
+  return input.evaluate(async (element) => {
+    const file = (element as HTMLInputElement).files?.[0];
+    return { name: file?.name, content: file ? await file.text() : undefined };
+  });
+}
+
 for (const outcome of OUTCOMES) {
   test(`version upload retains an unknown outcome after ${outcome.name} and requires an explicit resend`, async ({
     page,
@@ -92,6 +140,7 @@ for (const outcome of OUTCOMES) {
   }) => {
     const posts: string[] = [];
     let recovered = false;
+    const session = await holdSessionRead(page);
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -169,20 +218,26 @@ for (const outcome of OUTCOMES) {
       ).toBeVisible();
       await expect(resend).toBeEnabled();
       await expect(failure).toContainText("無法確認");
-      const history = page.getByRole("link", { name: "另開版本與發佈", exact: true });
-      await expect(history).toHaveAttribute("target", "_blank");
-      await expect(history).toHaveAttribute("href", `/skills/${SKILL}/versions/${VERSION}`);
-      const [popup] = await Promise.all([context.waitForEvent("page"), history.click()]);
-      await expect(
-        popup.locator(".version-workspace-list").getByRole("link", { name: /^v3/ }),
-      ).toBeVisible();
+      const popup = await openUploadedVersionHistory(page);
+      session.start();
       await popup.close();
-      expect(
-        await input.evaluate(async (element) => {
-          const file = (element as HTMLInputElement).files?.[0];
-          return { name: file?.name, content: file ? await file.text() : undefined };
-        }),
-      ).toEqual({ name: "next.zip", content: "next bytes" });
+      await page.evaluate(() =>
+        document.dispatchEvent(new Event("visibilitychange", { bubbles: true })),
+      );
+      await session.pending;
+      await expect(page.getByText("正在確認登入狀態…", { exact: true })).toBeVisible();
+      await input.evaluate((element) => (element as HTMLInputElement).form!.requestSubmit());
+      await expect(failure).toContainText("無法確認這份檔案是否已存成新版本");
+      await expect(failure).toContainText("這次送出的檔案：first.zip");
+      await expect(resend).toBeDisabled();
+      await expect(resend).toHaveAccessibleDescription(
+        "登入狀態尚未確認；請先在頁首確認，再上傳新版本。",
+      );
+      expect(posts).toEqual(["first bytes"]);
+      session.restore();
+      await expect(page.locator(".auth-name")).toHaveText("tester");
+      await expect(resend).toBeEnabled();
+      expect(await selectedFile(input)).toEqual({ name: "next.zip", content: "next bytes" });
       expect(posts).toEqual(["first bytes"]);
       await resend.click();
       await expect(page.getByRole("status").filter({ hasText: "已存成 v4" })).toBeVisible();
@@ -193,11 +248,93 @@ for (const outcome of OUTCOMES) {
       expect(posts).toEqual(["first bytes", "next bytes"]);
     } finally {
       release();
+      session.restore();
       receiver.closeAllConnections();
       await new Promise<void>((resolve) => receiver.close(() => resolve()));
     }
   });
 }
+
+test("an identity check starting in the submit turn preserves the preceding unknown upload", async ({
+  page,
+}) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let posts = 0;
+  const session = await holdSessionRead(page);
+  await page.route(`**/skills/${SKILL}/versions`, (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    posts += 1;
+    return route.fulfill({ status: 201, json: posts === 1 ? null : RECEIPT });
+  });
+  try {
+    await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
+    const input = page.getByLabel("小工具 zip", { exact: true });
+    await input.setInputFiles({
+      name: "first.zip",
+      mimeType: "application/zip",
+      buffer: Buffer.from("first"),
+    });
+    await page.getByRole("button", { name: "上傳成新版本", exact: true }).click();
+    const failure = page.getByRole("alert", { name: "上傳新版本結果", exact: true });
+    await expect(failure).toContainText("無法確認這份檔案是否已存成新版本");
+    const resend = page.getByRole("button", { name: "重新送出上傳", exact: true });
+    await expect(resend).toBeEnabled();
+    await input.setInputFiles({
+      name: "next.zip",
+      mimeType: "application/zip",
+      buffer: Buffer.from("next"),
+    });
+    session.start();
+    await page.evaluate(async () => {
+      document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      document.querySelector<HTMLFormElement>(".version-upload")!.requestSubmit();
+    });
+    await session.pending;
+    await expect(page.getByText("正在確認登入狀態…", { exact: true })).toBeVisible();
+    await expect(
+      page
+        .getByRole("alert")
+        .filter({ hasText: "這次操作尚未送出。請先確認頁首的登入狀態，再自行送出。" }),
+    ).toBeFocused();
+    await expect(failure).toContainText("無法確認這份檔案是否已存成新版本");
+    await expect(failure).toContainText("這次送出的檔案：first.zip");
+    await expect(resend).toBeDisabled();
+    expect(posts).toBe(1);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const report = await new AxeBuilder({ page })
+      .include(".version-upload")
+      .include('[role="alert"]')
+      .analyze();
+    const path = test.info().outputPath("pending-accessibility.json");
+    await writeFile(path, JSON.stringify(report));
+    await test.info().attach("pending-accessibility", { path, contentType: "application/json" });
+    expect(report.violations).toEqual([]);
+    expect(report.incomplete).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await page.screenshot({
+      path: test.info().outputPath("upload-session-pending-phone.png"),
+      fullPage: true,
+    });
+    await failure.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: test.info().outputPath("upload-session-feedback-phone.png") });
+    session.restore();
+    await expect(resend).toBeEnabled();
+    expect(posts).toBe(1);
+    await resend.click();
+    await expect(page.getByRole("status").filter({ hasText: "已存成 v3" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "開啟 v3 並繼續驗證", exact: true })).toBeFocused();
+    await expect(failure).toHaveCount(0);
+    expect(posts).toBe(2);
+  } finally {
+    session.restore();
+  }
+});
 
 for (const refusal of [
   {
