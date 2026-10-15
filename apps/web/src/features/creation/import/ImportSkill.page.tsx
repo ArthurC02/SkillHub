@@ -362,12 +362,8 @@ function ImportOutcome({ result }: { result: ImportResult }) {
 function SkillOutcome({ skill }: { skill: ImportedSkill }) {
   return (
     <>
+      <h3>{skill.path ? <code>{skill.path}</code> : "套件根目錄"}</h3>
       <p>
-        {skill.path && (
-          <>
-            <code>{skill.path}</code>{" "}
-          </>
-        )}
         {skill.duplicate ? "相同內容已存在，沿用既有版本。" : "新版本已建立。"}版本 #
         {skill.version_number}{" "}
         <Link
@@ -376,6 +372,10 @@ function SkillOutcome({ skill }: { skill: ImportedSkill }) {
         >
           開啟 v{skill.version_number} 並繼續驗證
         </Link>
+      </p>
+      <p className="risk-counts">
+        靜態檢查：阻擋錯誤 {skill.findings.errors.length}／警告 {skill.findings.warnings.length}
+        ／資訊 {skill.findings.infos.length}
       </p>
       <details>
         <summary>靜態檢查結果</summary>
