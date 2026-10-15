@@ -1,8 +1,25 @@
 import { ApiError } from "../../../../core/api/client";
-import type { RejectedSuggestion } from "../../evaluation.service";
+import { Link } from "@tanstack/react-router";
+import { isApplyResultUnknown, type RejectedSuggestion } from "../../evaluation.service";
 import { BLOCKED_REASON_LABEL } from "../evaluation.model";
 
-export function ApplyFailureBody({ error }: { error: unknown }) {
+export function ApplyFailureBody({ error, skillId }: { error: unknown; skillId?: string }) {
+  if (isApplyResultUnknown(error))
+    return (
+      <>
+        <p>無法確認是否已建立新版本。請先核對版本清單與建議套用狀態，再決定是否重試。</p>
+        {skillId && (
+          <p>
+            <Link to="/skills/$skillId" params={{ skillId }}>
+              核對小工具版本
+            </Link>
+          </p>
+        )}
+        <p className="note">
+          建議與版本的關聯可能稍後才更新；尚未回報套用版本，不代表沒有建立版本。
+        </p>
+      </>
+    );
   if (!(error instanceof ApiError)) return <p>套用失敗，可以再按一次。</p>;
   if (error.status === 422) {
     const body = error.body as { rejected_suggestions?: RejectedSuggestion[] } | undefined;
@@ -20,11 +37,6 @@ export function ApplyFailureBody({ error }: { error: unknown }) {
           </ul>
         )}
       </>
-    );
-  }
-  if (error.status === 500) {
-    return (
-      <p>套用失敗。如果版本清單裡已經出現新版本，它可以用，只是「由哪些建議產生」的紀錄沒寫成。</p>
     );
   }
   return <p>套用失敗，可以再按一次。</p>;

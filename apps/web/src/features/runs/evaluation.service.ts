@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, apiFetch, internalAPIPath } from "../../core/api/client";
+import { ApiError, SessionNotReadyError, apiFetch, internalAPIPath } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 
 export type EvaluationVerdict = "met" | "partially_met" | "not_met" | "undetermined";
@@ -284,16 +284,61 @@ export function useDecideSuggestion(runId: string) {
   });
 }
 
-export function createVersionFromSuggestions(
+export async function createVersionFromSuggestions(
   skillId: string,
   evaluationId: string,
   suggestionIds: string[],
 ) {
-  return apiFetch<VersionFromSuggestions>(`/skills/${skillId}/versions/from-suggestions`, {
+  const result = await apiFetch<unknown>(`/skills/${skillId}/versions/from-suggestions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ evaluation_id: evaluationId, suggestion_ids: suggestionIds }),
   });
+  if (!isAppliedVersion(result)) throw new Error("Invalid applied version response");
+  return result;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isRejectedSuggestion(value: unknown): value is RejectedSuggestion {
+  if (!value || typeof value !== "object") return false;
+  const rejected = value as Partial<RejectedSuggestion>;
+  return (
+    isNonEmptyString(rejected.suggestion_id) &&
+    isNonEmptyString(rejected.message) &&
+    typeof rejected.blocked_reason === "string" &&
+    [
+      "path_out_of_bounds",
+      "target_changed",
+      "validation_blocked",
+      "access_restricted",
+      "diff_unavailable",
+    ].includes(rejected.blocked_reason)
+  );
+}
+
+function isAppliedVersion(value: unknown): value is VersionFromSuggestions {
+  if (!value || typeof value !== "object") return false;
+  const result = value as Partial<VersionFromSuggestions>;
+  return (
+    [result.skill_id, result.version_id, result.content_hash].every(isNonEmptyString) &&
+    typeof result.version_number === "number" &&
+    Number.isSafeInteger(result.version_number) &&
+    result.version_number > 0 &&
+    typeof result.duplicate === "boolean" &&
+    Array.isArray(result.applied_suggestion_ids) &&
+    result.applied_suggestion_ids.length > 0 &&
+    result.applied_suggestion_ids.every(isNonEmptyString) &&
+    Array.isArray(result.rejected_suggestions) &&
+    result.rejected_suggestions.every(isRejectedSuggestion)
+  );
+}
+
+export function isApplyResultUnknown(error: unknown): boolean {
+  if (error instanceof SessionNotReadyError) return false;
+  return !(error instanceof ApiError) || error.status >= 500;
 }
 
 export function useApplySuggestions(runId: string) {
@@ -322,6 +367,12 @@ export function useApplySuggestions(runId: string) {
           },
       );
       return client.invalidateQueries({ queryKey: queryKeys.skills.versions(created.skill_id) });
+    },
+    onError: (error, request) => {
+      if (isApplyResultUnknown(error)) {
+        void client.invalidateQueries({ queryKey: queryKeys.evaluation.suggestions(runId) });
+        void client.invalidateQueries({ queryKey: queryKeys.skills.versions(request.skillId) });
+      }
     },
   });
 }

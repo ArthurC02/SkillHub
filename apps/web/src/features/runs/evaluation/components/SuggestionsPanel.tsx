@@ -1,12 +1,23 @@
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { ApiError } from "../../../../core/api/client";
-import { useApplySuggestions, useRunSuggestions } from "../../evaluation.service";
+import { useEffect, useRef } from "react";
+import {
+  isApplyResultUnknown,
+  useApplySuggestions,
+  useRunSuggestions,
+} from "../../evaluation.service";
 import { useRun } from "../../runs.service";
 import { MatchLegend } from "./MatchLegend";
 import { ApplyFailureBody } from "./ApplyFailureBody";
 import { SuggestionItem } from "./SuggestionItem";
 import { AppliedResult } from "./AppliedResult";
+
+function focusSuggestions() {
+  const heading = document.getElementById("suggestions-heading");
+  heading?.focus();
+  heading?.scrollIntoView({ block: "center" });
+}
 
 export function SuggestionsPanel({ runId, evaluationId }: { runId: string; evaluationId: string }) {
   const suggestions = useRunSuggestions(runId);
@@ -15,7 +26,69 @@ export function SuggestionsPanel({ runId, evaluationId }: { runId: string; evalu
   const apply = useApplySuggestions(runId);
   const applied = apply.data;
   const error = apply.error;
+  const unknown = Boolean(error) && isApplyResultUnknown(error);
+  const failure = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (unknown) failure.current?.focus();
+  }, [error, unknown]);
+  if (
+    suggestions.error instanceof ApiError &&
+    suggestions.error.status === 404 &&
+    !error &&
+    !applied
+  )
+    return null;
 
+  return (
+    <section aria-labelledby="suggestions-heading">
+      <h3 id="suggestions-heading" tabIndex={-1}>
+        改善建議
+      </h3>
+      <SuggestionsContent
+        suggestions={suggestions}
+        runId={runId}
+        evaluationId={evaluationId}
+        skillId={skillId}
+        apply={apply}
+        unknown={unknown}
+      />
+      <ReadFailure error={error} what="建立新版本">
+        <div ref={failure} role="alert" tabIndex={-1} aria-label="建立版本結果">
+          <ApplyFailureBody error={error} skillId={apply.variables?.skillId} />
+        </div>
+      </ReadFailure>
+      {unknown && (
+        <button
+          type="button"
+          disabled={suggestions.fetchStatus !== "idle"}
+          onClick={() => {
+            void suggestions.refetch();
+            focusSuggestions();
+          }}
+        >
+          重新確認建議套用狀態
+        </button>
+      )}
+      {applied && <AppliedResult result={applied} testCaseId={run?.test_case_id} runId={runId} />}
+    </section>
+  );
+}
+
+function SuggestionsContent({
+  suggestions,
+  runId,
+  evaluationId,
+  skillId,
+  apply,
+  unknown,
+}: {
+  suggestions: ReturnType<typeof useRunSuggestions>;
+  runId: string;
+  evaluationId: string;
+  skillId: string | undefined;
+  apply: ReturnType<typeof useApplySuggestions>;
+  unknown: boolean;
+}) {
   const notFound = suggestions.error instanceof ApiError && suggestions.error.status === 404;
   if (suggestions.isPending) return <Loading what="改善建議" />;
   if (notFound) return null;
@@ -24,7 +97,10 @@ export function SuggestionsPanel({ runId, evaluationId }: { runId: string; evalu
       <ReadFailure
         error={suggestions.error}
         what="改善建議"
-        retry={() => void suggestions.refetch()}
+        retry={() => {
+          void suggestions.refetch();
+          focusSuggestions();
+        }}
         retrying={suggestions.isFetching}
       />
     );
@@ -33,7 +109,6 @@ export function SuggestionsPanel({ runId, evaluationId }: { runId: string; evalu
   if (suggestions.data.evaluation_id !== evaluationId) {
     return (
       <section>
-        <h3>改善建議</h3>
         <p className="notice notice-warning" role="status">
           取得的改善建議屬於另一份評估，不能作為這份判定的改善依據。可重新讀取，或回到目前的判定。
         </p>
@@ -51,8 +126,7 @@ export function SuggestionsPanel({ runId, evaluationId }: { runId: string; evalu
   const accepted = suggestions.data.suggestions.filter((s) => s.decision === "accepted");
 
   return (
-    <section>
-      <h3>改善建議</h3>
+    <>
       {suggestions.data.suggestions.length === 0 ? (
         <p>這份評估沒有產生改善建議。</p>
       ) : (
@@ -75,7 +149,15 @@ export function SuggestionsPanel({ runId, evaluationId }: { runId: string; evalu
           </p>
           <button
             type="button"
-            disabled={!skillId || accepted.length === 0 || apply.isPending}
+            disabled={
+              !skillId ||
+              accepted.length === 0 ||
+              apply.isPending ||
+              suggestions.fetchStatus !== "idle"
+            }
+            aria-describedby={
+              suggestions.fetchStatus !== "idle" ? "suggestions-refresh-note" : undefined
+            }
             onClick={() =>
               apply.mutate({
                 skillId: skillId as string,
@@ -84,18 +166,16 @@ export function SuggestionsPanel({ runId, evaluationId }: { runId: string; evalu
               })
             }
           >
-            以已接受的 {accepted.length} 項建議建立新版本
+            {unknown ? "核對後仍" : ""}以已接受的 {accepted.length} 項建議建立新版本
           </button>
+          {suggestions.fetchStatus !== "idle" && (
+            <p id="suggestions-refresh-note" role="status" className="note">
+              改善建議清單尚未確認；確認後才能建立版本。
+            </p>
+          )}
           {!skillId && <p className="note">正在讀取這次試跑屬於哪個小工具…</p>}
         </div>
       )}
-
-      <ReadFailure error={error} what="建立新版本">
-        <div role="alert">
-          <ApplyFailureBody error={error} />
-        </div>
-      </ReadFailure>
-      {applied && <AppliedResult result={applied} testCaseId={run?.test_case_id} runId={runId} />}
-    </section>
+    </>
   );
 }
