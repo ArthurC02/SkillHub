@@ -86,11 +86,16 @@ for (const entry of pages) {
         : route.fulfill({ json: entry.name === "admin" ? { ...body, operator: true } : body });
     });
     await page.goto(entry.url);
+    const content = page.getByRole("main");
     await expect(
       page.getByRole("heading", { name: entry.heading, level: 1, exact: true }),
     ).toBeVisible();
-    await expect(page.getByRole("alert")).toContainText("暫時無法讀取");
-    await expect(page.getByRole("button", { name: "再試一次", exact: true })).toBeVisible();
+    await expect(content.getByRole("alert")).toContainText("暫時無法讀取");
+    await expect(content.getByRole("button", { name: "再試一次", exact: true })).toBeVisible();
+    if (entry.pattern === "**/me")
+      await expect(page.getByRole("banner").getByRole("alert")).toHaveText(
+        "登入狀態暫時無法確認。",
+      );
     if (entry.name === "packaging")
       await page.screenshot({
         path: testInfo.outputPath("page-read-failed-phone.png"),
@@ -98,10 +103,10 @@ for (const entry of pages) {
       });
     const before = reads;
     failing = false;
-    await page.getByRole("button", { name: "再試一次", exact: true }).focus();
+    await content.getByRole("button", { name: "再試一次", exact: true }).focus();
     await page.keyboard.press("Enter");
     await expect(page.locator(entry.ready)).toBeVisible();
-    await expect(page.getByRole("alert").filter({ hasText: "暫時無法讀取" })).toHaveCount(0);
+    await expect(content.getByRole("alert").filter({ hasText: "暫時無法讀取" })).toHaveCount(0);
     if (entry.name === "admin") await expect(page.locator(".admin-page-heading")).toBeFocused();
     else await expect(page.getByRole("main")).toBeFocused();
     expect(reads).toBeGreaterThan(before);
