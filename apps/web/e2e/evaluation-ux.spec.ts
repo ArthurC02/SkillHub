@@ -326,7 +326,9 @@ for (const scope of ["workspace", "platform"] as const) {
     await expect(result).toContainText(`已儲存「${grader.name}」v${scope === "workspace" ? 3 : 2}`);
     await expect(result).toBeFocused();
     await expect(page.getByRole("alert")).toContainText("暫時無法讀取評分器");
-    await expect(instructions).toHaveCount(0);
+    await expect(instructions).toBeHidden();
+    await expect(page.locator(".grader-list")).toHaveAttribute("inert", "");
+    await expect(page.getByRole("button", { name: "存成新版本", exact: true })).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath(`${scope}-grader-reread-failed-phone.png`) });
     unavailable = false;
     await page.getByRole("button", { name: "再試一次" }).focus();
@@ -339,8 +341,7 @@ for (const scope of ["workspace", "platform"] as const) {
     ).toBeVisible();
     await expect(page.locator("#grader-list-heading")).toBeFocused();
     await expect(result).toBeVisible();
-    await edit.focus();
-    await page.keyboard.press("Enter");
+    await expect(instructions).toBeVisible();
     await expect(instructions).toHaveValue("必須友善且簡短");
     await expect(page.locator(`#grader-${grader.id}-reason`)).toHaveValue("");
     await page.locator(`#grader-${grader.id}-reason`).fill("new unsent reason");
