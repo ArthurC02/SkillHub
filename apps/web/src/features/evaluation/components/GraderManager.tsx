@@ -246,6 +246,8 @@ function CreateGrader({ scope, onCompleted, onDraftChange }: GraderActions) {
 
 export function GraderManager({ scope }: { scope: GraderScope }) {
   const graders = useGraders(scope);
+  const paused = graders.fetchStatus === "paused";
+  const busy = graders.fetchStatus !== "idle";
   const [completed, setCompleted] = useState<Grader>();
   const result = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
@@ -279,12 +281,14 @@ export function GraderManager({ scope }: { scope: GraderScope }) {
       <p className="note">
         每次修改都存成新版本；驗收條件的檢查記的是當時選的版本，之後改評分器不會改變已經設計好的判定。
       </p>
-      {graders.isPending && <Loading what="評分器" />}
+      {(graders.isPending || paused || (graders.data?.graders.length === 0 && busy)) && (
+        <Loading what="評分器" paused={paused} />
+      )}
       <ReadFailure
         error={graders.error}
         what="評分器"
         retry={() => void graders.refetch()}
-        retrying={graders.isFetching}
+        retrying={busy}
         focusTarget="grader-list-heading"
       />
       {graders.data && !graders.error && (
@@ -293,6 +297,7 @@ export function GraderManager({ scope }: { scope: GraderScope }) {
           showWhenIdle
           updatedAt={graders.dataUpdatedAt}
           fetching={graders.isFetching}
+          paused={paused}
           refetch={graders.refetch}
           subject="評分器"
         />
@@ -300,7 +305,7 @@ export function GraderManager({ scope }: { scope: GraderScope }) {
       {graders.data &&
         !graders.error &&
         (graders.data.graders.length === 0 ? (
-          <p>還沒有評分器。</p>
+          !busy && <p role="status">還沒有評分器。</p>
         ) : (
           <ul className="criterion-list">
             {graders.data.graders.map((g) => (

@@ -119,9 +119,36 @@ const lists = [
     scope: "#delivery-history",
     refresh: false,
   },
+  {
+    name: "workspace graders",
+    url: "/lab/graders",
+    path: "/evaluation/graders",
+    pattern: "**/evaluation/graders",
+    key: "graders",
+    empty: "還沒有評分器。",
+    what: "評分器",
+    selector: ".criterion-list > li",
+    heading: "grader-list-heading",
+    scope: "main",
+    refresh: true,
+  },
+  {
+    name: "platform graders",
+    url: "/admin/graders",
+    path: "/admin/evaluation/graders",
+    pattern: "**/admin/evaluation/graders",
+    key: "graders",
+    empty: "還沒有評分器。",
+    what: "評分器",
+    selector: ".criterion-list > li",
+    heading: "grader-list-heading",
+    scope: "main",
+    refresh: true,
+  },
 ];
 
 async function verifyLayout(page: Page, state: string) {
+  await page.evaluate(() => window.scrollTo(0, 0));
   const result = await new AxeBuilder({ page }).analyze();
   const path = test.info().outputPath(`${state}-accessibility.json`);
   await writeFile(path, JSON.stringify(result));
@@ -140,7 +167,6 @@ async function verifyLayout(page: Page, state: string) {
     }
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: test.info().outputPath(`${state}.png`), fullPage: true });
 }
 
