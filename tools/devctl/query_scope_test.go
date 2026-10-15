@@ -37,6 +37,14 @@ func TestLacksWorkspaceCondition(t *testing.T) {
 		{"jsonb containment operator", "SELECT count(*) FROM runs WHERE meta @> '{}'::jsonb;", false},
 		{"advisory lock that touches no table", "SELECT pg_advisory_xact_lock(hashtextextended(@lock_key::text, 0));", false},
 		{"write without workspace", "UPDATE users SET display_name = @name WHERE id = @id;", true},
+		{"workspace only in the select list", "SELECT id, workspace_id FROM runs WHERE id = $1;", true},
+		{"workspace only counted", "SELECT count(DISTINCT workspace_id) FROM runs WHERE created_at >= @since;", true},
+		{"workspace only returned by a write", "UPDATE runs SET seen = true WHERE id = @id RETURNING workspace_id;", true},
+		{"workspace parameter matched against the workspace key", "SELECT owner_user_id FROM workspaces w WHERE w.id = sqlc.arg(workspace_id)::uuid;", false},
+		{"workspace compared on the right", "SELECT * FROM skills s WHERE @owner = s.workspace_id;", false},
+		{"workspace in a tuple comparison", "SELECT * FROM skills WHERE (id, workspace_id) = ($1, $2);", false},
+		{"workspace in a list", "SELECT * FROM skills WHERE workspace_id IN (SELECT id FROM workspaces WHERE owner_user_id = $1);", false},
+		{"insert that sets the workspace", "INSERT INTO skills (workspace_id, name) VALUES ($1, $2);", false},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()

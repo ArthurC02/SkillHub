@@ -459,6 +459,26 @@ scope:
   ListSourcePaths: worker
   ListOutboxEventsByTypeAfter: worker
 
+  CountFunnelReachByDay: operator
+  CountRunWorkspacesByDay: operator
+  FindSkillsForGovernance: operator
+  FindLiveUserByEmail: operator
+  ListForkedFromVersions: scoped-upstream
+  GetPublicPublication: platform-wide
+  ListExposureStates: platform-wide
+  ListStalePendingEvaluations: worker
+  ListSourcesToCheck: worker
+  ListArtifactsClaimingObject: worker
+  ListArtifactsPastRetention: worker
+  ListDatasetCleanupIntents: worker
+  ListDatasetsClaimingObject: worker
+  ListDatasetsPastRetention: worker
+  ListDownloadCleanupIntents: worker
+  ListRunOutputsPastRetention: worker
+  GetRunAttemptForReconcile: worker
+  ListRunArtifactUploadIntents: worker
+  ListPendingEnrichment: worker
+  GetRunForTraceIngest: worker
 allow:
 
 read_allow:

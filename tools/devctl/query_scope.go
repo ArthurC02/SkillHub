@@ -14,9 +14,14 @@ var declarableScopes = []string{"user", "operator", "worker", "content-addressed
 
 var sqlParameterPattern = regexp.MustCompile(`\$\d+|(?:^|[^@\w])@[A-Z_][A-Z0-9_]*|\bSQLC\.(?:N?ARG|SLICE)\s*\(`)
 
+var workspaceConditionPattern = regexp.MustCompile(
+	`\bWORKSPACE_ID\s*(?:\)\s*)?(?:=|<>|!=|\bIN\b|\bIS\b)` +
+		`|(?:=|<>|!=)\s*(?:[A-Z_][A-Z0-9_]*\.|@|SQLC\.N?ARG\s*\(\s*)?WORKSPACE_ID\b` +
+		`|\bINSERT\s+INTO\s+[A-Z_][A-Z0-9_]*\s*\([^)]*\bWORKSPACE_ID\b`)
+
 func lacksWorkspaceCondition(body string) bool {
 	normalized := normalizeSQL(body)
-	return sqlParameterPattern.MatchString(normalized) && !strings.Contains(normalized, "WORKSPACE_ID") &&
+	return sqlParameterPattern.MatchString(normalized) && !workspaceConditionPattern.MatchString(normalized) &&
 		len(referencedTables(body)) > 0
 }
 
