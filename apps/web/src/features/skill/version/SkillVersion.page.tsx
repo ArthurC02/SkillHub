@@ -329,6 +329,8 @@ function VersionEvidence({
   const nextPageFailure = canRetainLoadedPage(runs.error, runs.isFetchNextPageError);
   const data = runs.error && !nextPageFailure ? undefined : runs.data;
   const rows = data?.pages.flatMap((page) => page.runs) ?? [];
+  const paused = runs.fetchStatus === "paused";
+  const busy = runs.fetchStatus !== "idle";
 
   return (
     <section aria-labelledby="version-evidence-title">
@@ -336,12 +338,14 @@ function VersionEvidence({
       <h2 id="version-evidence-title" tabIndex={-1}>
         驗證證據
       </h2>
-      {runs.isPending && <Loading what="這個版本的試跑證據" />}
+      {(runs.isPending || paused || (data && rows.length === 0 && busy)) && (
+        <Loading what="這個版本的試跑證據" paused={paused} />
+      )}
       <ReadFailure
         error={runs.error}
         what="這個版本的試跑證據"
         retry={() => void (nextPageFailure ? runs.fetchNextPage() : runs.refetch())}
-        retrying={runs.isFetching}
+        retrying={busy}
         focusTarget="version-evidence-title"
       >
         <p role="alert">
@@ -355,6 +359,7 @@ function VersionEvidence({
           inFlight={rows.some((run) => IN_FLIGHT_RUN_STATUSES.has(run.status))}
           updatedAt={runs.dataUpdatedAt}
           fetching={runs.isFetching && !runs.isFetchingNextPage}
+          paused={paused}
           refetch={async () => {
             const result = await runs.refetch();
             if (result.error) document.getElementById("version-evidence-title")?.focus();
@@ -363,13 +368,15 @@ function VersionEvidence({
       )}
       {data &&
         (rows.length === 0 ? (
-          <p>
-            這個版本還沒有試跑紀錄。從{" "}
-            <Link to="/lab/test-cases" search={{ skill: skillId, version: versionId }}>
-              驗證 v{versionNumber}
-            </Link>
-            開始留下第一筆證據。
-          </p>
+          !busy && (
+            <p role="status">
+              這個版本還沒有試跑紀錄。從{" "}
+              <Link to="/lab/test-cases" search={{ skill: skillId, version: versionId }}>
+                驗證 v{versionNumber}
+              </Link>
+              開始留下第一筆證據。
+            </p>
+          )
         ) : (
           <ul className="download-list" data-role="evidence">
             {rows.map((run) => (

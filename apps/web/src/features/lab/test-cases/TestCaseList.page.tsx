@@ -117,6 +117,7 @@ function TestCaseIndex({
   const nextPageFailure = canRetainLoadedPage(testCases.error, testCases.isFetchNextPageError);
   const data = testCases.error && !nextPageFailure ? undefined : testCases.data;
   const rows = data?.pages.flatMap((page) => page.test_cases) ?? [];
+  const busy = testCases.fetchStatus !== "idle";
   return (
     <section className="test-case-index" aria-labelledby="existing-test-cases-heading">
       <p className="page-eyebrow">
@@ -129,7 +130,7 @@ function TestCaseIndex({
         error={testCases.error}
         what="測試題"
         retry={() => void (nextPageFailure ? testCases.fetchNextPage() : testCases.refetch())}
-        retrying={testCases.isFetching}
+        retrying={busy}
         focusTarget="existing-test-cases-heading"
       >
         {nextPageFailure && (
@@ -143,6 +144,7 @@ function TestCaseIndex({
           subject="測試題"
           updatedAt={testCases.dataUpdatedAt}
           fetching={testCases.isFetching && !testCases.isFetchingNextPage}
+          paused={testCases.fetchStatus === "paused"}
           refetch={async () => {
             const result = await testCases.refetch();
             if (result.error) document.getElementById("existing-test-cases-heading")?.focus();
@@ -155,6 +157,7 @@ function TestCaseIndex({
         ownedSkillName={ownedSkillName}
         notMine={notMine}
         isPending={testCases.isPending}
+        fetchStatus={testCases.fetchStatus}
         error={nextPageFailure ? null : testCases.error}
         rows={rows}
         hasNextPage={testCases.hasNextPage && !testCases.error}

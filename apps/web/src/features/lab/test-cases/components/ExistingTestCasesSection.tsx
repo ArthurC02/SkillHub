@@ -2,6 +2,7 @@ import { Loading } from "../../../../shared/ui/Loading";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { Link } from "@tanstack/react-router";
 import type { TestCaseListItem } from "../../testcases.service";
+import type { FetchStatus } from "@tanstack/react-query";
 
 export function ExistingTestCasesSection({
   filter,
@@ -9,6 +10,7 @@ export function ExistingTestCasesSection({
   ownedSkillName,
   notMine,
   isPending,
+  fetchStatus,
   error,
   rows,
   hasNextPage,
@@ -20,12 +22,15 @@ export function ExistingTestCasesSection({
   ownedSkillName: string | undefined;
   notMine: boolean;
   isPending: boolean;
+  fetchStatus: FetchStatus;
   error: Error | null;
   rows: TestCaseListItem[];
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   onFetchNextPage: () => void;
 }) {
+  const paused = fetchStatus === "paused";
+  const busy = fetchStatus !== "idle";
   return (
     <>
       {filter && (
@@ -46,12 +51,14 @@ export function ExistingTestCasesSection({
           ，才會有屬於你的版本可以建立測試題。
         </p>
       )}
-      {isPending && <Loading what="測試題清單" />}
+      {(isPending || paused || (!error && rows.length === 0 && busy)) && (
+        <Loading what="測試題" paused={paused} />
+      )}
       {!isPending &&
         !error &&
         (rows.length === 0 ? (
-          notMine ? null : (
-            <p>{filter ? "這個小工具還沒有測試題。" : "還沒有測試題。"}</p>
+          notMine || busy ? null : (
+            <p role="status">{filter ? "這個小工具還沒有測試題。" : "還沒有測試題。"}</p>
           )
         ) : (
           <ul className="search-results" data-role="evidence">

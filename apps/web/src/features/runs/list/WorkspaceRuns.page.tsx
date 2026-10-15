@@ -21,6 +21,8 @@ export function WorkspaceRuns() {
   const nextPageFailure = canRetainLoadedPage(runs.error, runs.isFetchNextPageError);
   const data = runs.error && !nextPageFailure ? undefined : runs.data;
   const rows = data?.pages.flatMap((page) => page.runs) ?? [];
+  const paused = runs.fetchStatus === "paused";
+  const busy = runs.fetchStatus !== "idle";
 
   return (
     <section>
@@ -32,12 +34,14 @@ export function WorkspaceRuns() {
         一起查看。
       </p>
 
-      {runs.isPending && <Loading what="試跑活動" />}
+      {(runs.isPending || paused || (data && rows.length === 0 && busy)) && (
+        <Loading what="試跑活動" paused={paused} />
+      )}
       <ReadFailure
         error={runs.error}
         what="試跑活動"
         retry={() => void (nextPageFailure ? runs.fetchNextPage() : runs.refetch())}
-        retrying={runs.isFetching}
+        retrying={busy}
         focusTarget="workspace-runs-heading"
       >
         {nextPageFailure && (
@@ -49,6 +53,7 @@ export function WorkspaceRuns() {
           inFlight={rows.some((run) => IN_FLIGHT_RUN_STATUSES.has(run.status))}
           updatedAt={runs.dataUpdatedAt}
           fetching={runs.isFetching && !runs.isFetchingNextPage}
+          paused={paused}
           refetch={async () => {
             const result = await runs.refetch();
             if (result.error) document.getElementById("workspace-runs-heading")?.focus();
@@ -58,10 +63,12 @@ export function WorkspaceRuns() {
 
       {data &&
         (rows.length === 0 ? (
-          <p>
-            還沒有做過任何試跑。這裡是空的代表沒有發生過，不是紀錄被清掉了—— 要開始，請從{" "}
-            <Link to="/lab/test-cases">測試題</Link> 建立一個再試跑。
-          </p>
+          !busy && (
+            <p role="status">
+              還沒有做過任何試跑。這裡是空的代表沒有發生過，不是紀錄被清掉了—— 要開始，請從{" "}
+              <Link to="/lab/test-cases">測試題</Link> 建立一個再試跑。
+            </p>
+          )
         ) : (
           <>
             {ACTIVITY_GROUPS.map((group) => {

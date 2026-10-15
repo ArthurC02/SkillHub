@@ -6,6 +6,9 @@ import {
   PUBLISHER,
   PUBLICATION,
   OWN_PUBLICATIONS,
+  SKILL,
+  VERSION,
+  TEST_CASE,
 } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
@@ -20,6 +23,8 @@ const lists = [
     what: "資產庫內容",
     selector: ".skill-grid > li",
     heading: "workspace-skills-heading",
+    scope: "main",
+    refresh: true,
   },
   {
     name: "publications",
@@ -31,6 +36,8 @@ const lists = [
     what: "小工具發佈清單",
     selector: "#skill-publications .download-list > li",
     heading: "publication-overview-title",
+    scope: "#skill-publications",
+    refresh: true,
   },
   {
     name: "Catalog",
@@ -42,6 +49,60 @@ const lists = [
     what: "目錄",
     selector: ".catalog-skill-card",
     heading: "catalog-search-heading",
+    scope: "main",
+    refresh: false,
+  },
+  {
+    name: "runs",
+    url: "/workspace/runs",
+    path: "/runs",
+    pattern: "**/runs?*",
+    key: "runs",
+    empty: "還沒有做過任何試跑",
+    what: "試跑活動",
+    selector: "main [data-role=evidence] > li",
+    heading: "workspace-runs-heading",
+    scope: "main",
+    refresh: false,
+  },
+  {
+    name: "test cases",
+    url: "/lab/test-cases",
+    path: "/test-cases",
+    pattern: "**/test-cases?*",
+    key: "test_cases",
+    empty: "還沒有測試題。",
+    what: "測試題",
+    selector: ".test-case-index [data-role=evidence] > li",
+    heading: "existing-test-cases-heading",
+    scope: ".test-case-index",
+    refresh: true,
+  },
+  {
+    name: "history",
+    url: `/lab/test-cases/${TEST_CASE}`,
+    path: "/runs",
+    pattern: "**/runs?*",
+    key: "runs",
+    empty: "尚無執行。",
+    what: "執行歷史",
+    selector: ".test-case-history-panel [data-role=evidence] > li",
+    heading: "test-case-history-heading",
+    scope: ".test-case-history-panel",
+    refresh: false,
+  },
+  {
+    name: "version evidence",
+    url: `/skills/${SKILL}/versions/${VERSION}`,
+    path: "/runs",
+    pattern: "**/runs?*",
+    key: "runs",
+    empty: "這個版本還沒有試跑紀錄。",
+    what: "這個版本的試跑證據",
+    selector: 'section[aria-labelledby="version-evidence-title"] [data-role=evidence] > li',
+    heading: "version-evidence-title",
+    scope: 'section[aria-labelledby="version-evidence-title"]',
+    refresh: false,
   },
 ];
 
@@ -64,6 +125,7 @@ async function verifyLayout(page: Page, state: string) {
     }
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: test.info().outputPath(`${state}.png`), fullPage: true });
 }
 
@@ -112,12 +174,12 @@ for (const list of lists) {
         ).toBeVisible();
         await page.goBack();
         await expect.poll(() => reads).toBe(2);
-        const scope = page.locator(list.name === "publications" ? "#skill-publications" : "main");
+        const scope = page.locator(list.scope);
         await expect(page.getByText(list.empty, { exact: false })).toHaveCount(0);
         await expect(
           scope.getByRole("status").filter({ hasText: `載入${list.what}中` }),
         ).toBeVisible();
-        if (list.name !== "Catalog")
+        if (list.refresh)
           await expect(
             scope.getByRole("button", { name: "重新整理中…", exact: true }),
           ).toBeDisabled();
@@ -178,12 +240,12 @@ for (const list of lists) {
       await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toBeVisible();
       await context.setOffline(true);
       await page.goBack();
-      const scope = page.locator(list.name === "publications" ? "#skill-publications" : "main");
+      const scope = page.locator(list.scope);
       const waiting = scope.getByRole("status").filter({ hasText: `等待連線以讀取${list.what}` });
       await expect(waiting).toBeVisible();
       await expect(waiting.locator(".loading-skeleton")).toHaveCount(0);
       await expect(page.getByText(list.empty, { exact: false })).toHaveCount(0);
-      if (list.name !== "Catalog") {
+      if (list.refresh) {
         const refresh = scope.getByRole("button", { name: "等待連線…", exact: true });
         await expect(refresh).toBeDisabled();
         await refresh.evaluate((element) => (element as HTMLButtonElement).click());
@@ -218,7 +280,7 @@ for (const list of lists) {
     });
     try {
       await page.goto(list.url);
-      const scope = page.locator(list.name === "publications" ? "#skill-publications" : "main");
+      const scope = page.locator(list.scope);
       await expect(
         scope.getByRole("alert").filter({ hasText: `暫時無法讀取${list.what}` }),
       ).toBeVisible();
