@@ -604,7 +604,17 @@ def verify_source_map(
         "selection_status": selection_status,
         "changed_sources": changed,
         "content_changed": drifted,
+        "discovered_but_gone": _discovered_but_gone(root, source_map),
     }
+
+
+def _discovered_but_gone(root: Path, source_map: dict[str, Any]) -> list[str]:
+    return sorted(
+        path
+        for group in source_map.get("source_groups", [])
+        for path in group.get("paths", [])
+        if not (root / path).exists()
+    )
 
 
 def write_source_map(path: Path, source_map: dict[str, Any]) -> None:

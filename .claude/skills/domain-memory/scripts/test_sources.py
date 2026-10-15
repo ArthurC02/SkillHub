@@ -65,6 +65,18 @@ class SourcesTest(RegistryTestCase):
             ["docs"], [entry["path"] for entry in result["content_changed"]]
         )
 
+    def test_a_discovered_file_that_is_gone_is_listed_without_moving_the_selection(self) -> None:
+        (self.repo / "tests").mkdir()
+        (self.repo / "tests" / "test_kept.py").write_text("kept\n", encoding="utf-8")
+        (self.repo / "tests" / "test_gone.py").write_text("gone\n", encoding="utf-8")
+        source_map_path = self.selected_docs()
+        (self.repo / "tests" / "test_gone.py").unlink()
+        result = verify_source_map(self.repo, source_map_path)
+        self.assertEqual(
+            ("current", ["tests/test_gone.py"]),
+            (result["status"], result["discovered_but_gone"]),
+        )
+
     def test_a_file_added_under_a_selected_source_moves_the_selection(self) -> None:
         source_map_path = self.selected_docs()
         (self.repo / "docs" / "extra.md").write_text("second\n", encoding="utf-8")

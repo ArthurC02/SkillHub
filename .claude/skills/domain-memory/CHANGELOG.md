@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.25.0
+
+### Added
+
+- `verify-sources` reports `discovered_but_gone`: entries of the stored discovery listing that no longer exist. The listing only tags citations with a source kind and never decides the status, so a renamed test file no longer sits in it looking like evidence while the map reads `current`.
+
 ## 0.24.0
 
 ### Changed
