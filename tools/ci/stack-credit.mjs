@@ -128,7 +128,12 @@ try {
           `/skills/${forkSourceSkill.skill_id}/fork` &&
         response.request().method() === "POST",
     ),
-    page.locator(".detail-rail button[type=button]").first().click(),
+    page
+      .getByRole("button", {
+        name: "以這個小工具為起點建立我自己的",
+        exact: true,
+      })
+      .click(),
   ]).then(([response]) => response);
   const forked = await forkResponse.json().catch(() => ({}));
   const forkVersions =

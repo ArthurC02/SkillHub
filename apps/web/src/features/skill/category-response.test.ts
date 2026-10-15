@@ -41,3 +41,11 @@ test("category storage does not confirm an empty success response", async () => 
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
   await expect(setSkillCategory(SKILL, "writing")).rejects.toThrow("Invalid category response");
 });
+
+test("category storage does not confirm a non-UUID receipt even when it matches the request", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(new Response(JSON.stringify({ ...RECEIPT, skill_id: "invalid" }))),
+  );
+  await expect(setSkillCategory("invalid", "writing")).rejects.toThrow("Invalid category response");
+});

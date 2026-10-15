@@ -1219,7 +1219,19 @@ test("WS-004 a package nobody downloaded says so instead of loading an empty lis
 });
 
 test("WS-004 a fork invalidates the list it writes to, and does not touch the search key", async () => {
-  vi.stubGlobal("fetch", () => json({ skill_id: "forked-1", version_id: "v1" }, 201));
+  vi.stubGlobal("fetch", () =>
+    json(
+      {
+        skill_id: "abcdef01-2345-4789-abcd-0123456789ab",
+        version_id: "abcdef02-2345-4789-abcd-0123456789ab",
+        version_number: 1,
+        name: "fork",
+        summary: "",
+        redistribution: "allowed",
+      },
+      201,
+    ),
+  );
 
   queryClient.setQueryData(["own-skills"], { skills: [] });
   queryClient.setQueryData(["skills", "search", "pdf"], { results: [] });

@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import type { CorrectedSearchRequest, SetSkillCategoryRequest } from "@skillhub/api-client-ts";
-import { SessionNotReadyError, apiFetch } from "../../core/api/client";
+import { SessionNotReadyError, apiFetch, isWriteResultUnknown } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import { readSearchCorrection } from "../../core/api/searchIntent";
 import type {
@@ -15,6 +15,7 @@ import type {
   OwnSkills,
   PublicSearchResponse,
   SearchFilters,
+  Skill,
   SkillDeletion,
   SkillDetail,
   SkillFiles,
@@ -250,15 +251,51 @@ export function useDeleteSkill() {
   });
 }
 
-export function forkSkill(skillId: string) {
-  return apiFetch<ForkedSkill>(`/skills/${skillId}/fork`, { method: "POST" });
+function isSkillReceipt(value: unknown): value is Skill {
+  if (!value || typeof value !== "object") return false;
+  const receipt = value as Partial<Skill>;
+  return (
+    typeof receipt.skill_id === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(receipt.skill_id) &&
+    typeof receipt.name === "string" &&
+    typeof receipt.summary === "string" &&
+    ["allowed", "blocked", "unknown", "self_supplied", "generated"].includes(
+      receipt.redistribution ?? "",
+    )
+  );
+}
+
+function isForkReceipt(value: unknown): value is ForkedSkill {
+  if (!isSkillReceipt(value)) return false;
+  const receipt = value as Partial<ForkedSkill>;
+  return (
+    typeof receipt.version_id === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(receipt.version_id) &&
+    typeof receipt.version_number === "number" &&
+    Number.isSafeInteger(receipt.version_number) &&
+    receipt.version_number > 0
+  );
+}
+
+export async function forkSkill(skillId: string) {
+  const result = await apiFetch<unknown>(`/skills/${skillId}/fork`, { method: "POST" });
+  if (!isForkReceipt(result)) throw new Error("Invalid fork response");
+  return {
+    ...result,
+    skill_id: result.skill_id.toLowerCase(),
+    version_id: result.version_id.toLowerCase(),
+  };
 }
 
 export function useForkSkill() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: forkSkill,
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.skills.own }),
+    onSettled: (_, error) => {
+      if (!error || isWriteResultUnknown(error)) {
+        void client.invalidateQueries({ queryKey: queryKeys.skills.own });
+      }
+    },
   });
 }
 
@@ -270,18 +307,7 @@ export async function setSkillCategory(skillId: string, category: SkillCategoryC
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ category }),
   });
-  if (!result || typeof result !== "object") throw new Error("Invalid category response");
-  const receipt = result as Record<string, unknown>;
-  if (
-    typeof receipt.skill_id !== "string" ||
-    receipt.skill_id.toLowerCase() !== skillId.toLowerCase() ||
-    typeof receipt.name !== "string" ||
-    typeof receipt.summary !== "string" ||
-    typeof receipt.redistribution !== "string" ||
-    !["allowed", "blocked", "unknown", "self_supplied", "generated"].includes(
-      receipt.redistribution,
-    )
-  )
+  if (!isSkillReceipt(result) || result.skill_id.toLowerCase() !== skillId.toLowerCase())
     throw new Error("Invalid category response");
   return result;
 }

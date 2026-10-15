@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { SkillDetail } from "./detail/SkillDetail.page";
 import { SkillFiles } from "./files/SkillFiles.page";
+import { ForkAction } from "./detail/components/ForkAction";
 import { SKILL_VERSIONS, skillDetail } from "../../testing/fixtures/platform";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
@@ -12,8 +13,14 @@ const SKILL = "11111111-1111-1111-1111-111111111111";
 
 let container: HTMLDivElement;
 let root: Root;
+const originalScroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
 
 beforeEach(() => {
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+    configurable: true,
+    value: vi.fn(),
+  });
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   queryClient.clear();
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -23,6 +30,9 @@ afterEach(async () => {
   await act(async () => root?.unmount());
   container.remove();
   vi.unstubAllGlobals();
+  if (originalScroll)
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", originalScroll);
+  else Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
 });
 
 vi.mock("@tanstack/react-router", () => ({
@@ -146,13 +156,13 @@ test("丙-150: 複製一份 409（同名）印「你的工作區已經有同名�
   expect(recovery?.getAttribute("href")).toBe("/library");
 });
 
-test("丙-150: 複製一份 500 等其他狀態印通用的重試句", async () => {
+test("複製一份收到伺服器錯誤時保留結果的不確定性", async () => {
   stubOwner(() => json({ error: "internal error" }, 500));
   await render(<SkillDetail />, settledAsOwner);
   await clickFork();
-  await waitFor(() => text().includes("複製沒有成功"));
+  await waitFor(() => container.querySelector('[role="alert"]') !== null);
 
-  expect(text()).toContain("複製沒有成功，可以再按一次。");
+  expect(text()).toContain("尚未確認是否已複製到你的工作區。");
 });
 
 test("a successful 複製一份 hands off to the exact created version and cannot be submitted twice", async () => {
@@ -160,9 +170,11 @@ test("a successful 複製一份 hands off to the exact created version and canno
     json(
       {
         ...detailBody(),
-        skill_id: "fork-1",
+        summary: "",
+        redistribution: "allowed",
+        skill_id: "abcdef01-2345-4789-abcd-0123456789ab",
         name: "PDF Summariser 副本",
-        version_id: "fork-version-1",
+        version_id: "abcdef02-2345-4789-abcd-0123456789ab",
         version_number: 1,
       },
       201,
@@ -175,12 +187,61 @@ test("a successful 複製一份 hands off to the exact created version and canno
   const next = Array.from(container.querySelectorAll("a")).find((link) =>
     link.textContent?.includes("開啟 PDF Summariser 副本 v1"),
   );
-  expect(next?.getAttribute("href")).toBe("/skills/fork-1/versions/fork-version-1");
+  expect(next?.getAttribute("href")).toBe(
+    "/skills/abcdef01-2345-4789-abcd-0123456789ab/versions/abcdef02-2345-4789-abcd-0123456789ab",
+  );
   const completed = Array.from(container.querySelectorAll("button")).find(
     (item) => item.textContent === "已建立自己的版本",
   );
   expect(completed?.disabled).toBe(true);
 });
+
+for (const change of ["another skill", "signed-out return"]) {
+  test(`a ${change} clears the previous private fork receipt in the same mounted view`, async () => {
+    stubOwner(() =>
+      json(
+        {
+          skill_id: "abcdef01-2345-4789-abcd-0123456789ab",
+          version_id: "abcdef02-2345-4789-abcd-0123456789ab",
+          version_number: 1,
+          name: "PDF Summariser-fork",
+          summary: "",
+          redistribution: "allowed",
+        },
+        201,
+      ),
+    );
+    await render(
+      <ForkAction skillId={SKILL} isLoggedIn available />,
+      () => forkButton() !== undefined,
+    );
+    await clickFork();
+    await waitFor(() => container.querySelector('[role="status"]') !== null);
+    expect(text()).toContain("已複製到你的工作區");
+    const replace = async (skillId: string, isLoggedIn: boolean) =>
+      act(async () =>
+        root.render(
+          <StrictMode>
+            <QueryClientProvider client={queryClient}>
+              <ForkAction skillId={skillId} isLoggedIn={isLoggedIn} available />
+            </QueryClientProvider>
+          </StrictMode>,
+        ),
+      );
+    if (change === "signed-out return") {
+      await replace(SKILL, false);
+      expect(text()).toContain("登入後即可把這個小工具複製到你的工作區");
+      expect(text()).not.toContain("已複製到你的工作區");
+    }
+    await replace(
+      change === "another skill" ? "33333333-3333-3333-3333-333333333333" : SKILL,
+      true,
+    );
+    expect(forkButton()?.disabled).toBe(false);
+    expect(text()).not.toContain("已複製到你的工作區");
+    expect(container.querySelector('a[href*="abcdef01-2345-4789-abcd-0123456789ab"]')).toBeNull();
+  });
+}
 
 test("丙-149/150: SkillFiles 讀取 503 印「儲存的套件目前讀不到，稍後再試一次。」", async () => {
   vi.stubGlobal("fetch", (input: string) => {

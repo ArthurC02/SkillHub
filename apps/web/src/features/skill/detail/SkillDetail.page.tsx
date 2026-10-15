@@ -27,6 +27,9 @@ export function SkillDetail() {
   const detail = useSkillDetail(skillId);
   const { data: me } = useMe();
   const skill = detail.error ? undefined : detail.data;
+  const retainFork = !(
+    detail.error instanceof ApiError && [401, 403, 404, 410].includes(detail.error.status)
+  );
   return (
     <article className="skill-detail">
       {skill ? (
@@ -41,7 +44,24 @@ export function SkillDetail() {
       {detail.data && (
         <div className="detail-layout">
           <aside className="detail-rail" aria-label="這個小工具的操作">
-            {skill && <SkillDetailActions skillId={skillId} skill={skill} isLoggedIn={!!me} />}
+            {skill && <TrialEntry skillId={skillId} isLoggedIn={!!me} />}
+            {retainFork && (
+              <section>
+                <h2>複製一份到你的工作區</h2>
+                <ForkAction
+                  skillId={skillId}
+                  isLoggedIn={!!me}
+                  available={Boolean(skill) && detail.fetchStatus === "idle"}
+                />
+              </section>
+            )}
+            {skill?.version && !skill.access_restriction && (
+              <nav>
+                <Link to="/skills/$skillId/files" params={{ skillId }}>
+                  查看 SKILL.md 與檔案樹（進階模式）
+                </Link>
+              </nav>
+            )}
             <CategoryEditor skillId={skillId} skill={detail} />
           </aside>
           {skill && <SkillDetailFacts skillId={skillId} skill={skill} isLoggedIn={!!me} />}
@@ -106,27 +126,6 @@ function SkillDetailHeader({
       {refreshing && <p role="status">小工具資訊正在重新確認，以下為上次讀到的內容。</p>}
       <SkillWorkspaceNav skillId={skillId} versionId={skill.version?.version_id} />
     </header>
-  );
-}
-
-function SkillDetailActions({ skillId, skill, isLoggedIn }: SkillDetailContent) {
-  return (
-    <>
-      <TrialEntry skillId={skillId} isLoggedIn={isLoggedIn} />
-
-      <section>
-        <h2>複製一份到你的工作區</h2>
-        <ForkAction skillId={skillId} isLoggedIn={isLoggedIn} />
-      </section>
-
-      {skill.version && !skill.access_restriction && (
-        <nav>
-          <Link to="/skills/$skillId/files" params={{ skillId }}>
-            查看 SKILL.md 與檔案樹（進階模式）
-          </Link>
-        </nav>
-      )}
-    </>
   );
 }
 
