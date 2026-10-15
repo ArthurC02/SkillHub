@@ -3,6 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
+import { queryKeys } from "../../core/api/queryKeys";
 import { SkillDetail } from "./detail/SkillDetail.page";
 import { CATEGORIES, SKILL_VERSIONS, VERSION, skillDetail } from "../../testing/fixtures/platform";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
@@ -13,6 +14,7 @@ let container: HTMLDivElement;
 let root: Root;
 
 beforeEach(() => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   queryClient.clear();
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -446,6 +448,55 @@ function selectValue(select: HTMLSelectElement, value: string) {
   select.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
+test("類別尚未編輯時跟隨新的伺服器資訊，開始編輯後保留自己的選擇", async () => {
+  stubOwner();
+  await render(<SkillDetail />, settledAsOwner);
+  const select = container.querySelector<HTMLSelectElement>("#skill-category")!;
+  await act(async () =>
+    queryClient.setQueryData(queryKeys.skills.detail(SKILL), {
+      ...detailBody(),
+      category: { value: "writing", label: "寫作", note: "由擁有者設定。" },
+    }),
+  );
+  await waitFor(() => container.querySelector("header .badge-row")!.textContent!.includes("寫作"));
+  expect(select.value).toBe("writing");
+  await act(async () => selectValue(select, "data"));
+  await act(async () =>
+    queryClient.setQueryData(queryKeys.skills.detail(SKILL), {
+      ...detailBody(),
+      category: { value: "unassigned", label: "尚未定值", note: "尚未定值。" },
+    }),
+  );
+  await waitFor(() =>
+    container.querySelector("header .badge-row")!.textContent!.includes("尚未定值"),
+  );
+  expect(select.value).toBe("data");
+});
+
+test("無法辨識最近的類別時要求明確選擇，不將未知值送給伺服器", async () => {
+  const calls = stubOwner();
+  await render(<SkillDetail />, settledAsOwner);
+  await act(async () =>
+    queryClient.setQueryData(queryKeys.skills.detail(SKILL), {
+      ...detailBody(),
+      category: { value: "future", label: "新類別", note: "由擁有者設定。" },
+    }),
+  );
+  await waitFor(() =>
+    container.querySelector("header .badge-row")!.textContent!.includes("新類別"),
+  );
+  const select = container.querySelector<HTMLSelectElement>("#skill-category")!;
+  expect(select.value).toBe("");
+  const form = select.closest("form")!;
+  expect(form.querySelector("button")!.disabled).toBe(true);
+  await act(async () =>
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
+  );
+  expect(calls.filter((call) => call.method === "PUT")).toEqual([]);
+  await act(async () => selectValue(select, "unassigned"));
+  expect(form.querySelector("button")!.disabled).toBe(false);
+});
+
 test("05 R-19: 擁有者看得到類別選單，四個選項齊全，送出後畫面更新", async () => {
   const calls = stubOwner();
   await render(<SkillDetail />, settledAsOwner);
@@ -465,7 +516,7 @@ test("05 R-19: 擁有者看得到類別選單，四個選項齊全，送出後�
       .find((b) => (b.textContent ?? "").includes("儲存"))!
       .click(),
   );
-  await waitFor(() => text().includes("類別已更新。"));
+  await waitFor(() => text().includes("類別已更新為「寫作」。"));
 
   expect(calls).toContainEqual({
     url: `/skills/${SKILL}/category`,
@@ -481,7 +532,29 @@ test("05 R-19: 非擁有者看不到類別選單", async () => {
   expect(container.querySelector("#skill-category")).toBeNull();
 });
 
-test("05 R-19: 類別儲存失敗時顯示可以再按一次，而不是類別已更新", async () => {
+test("登入狀態尚未確認時保留類別選擇，未送出儲存，也不觸發資料重讀", async () => {
+  const calls = stubOwner();
+  await render(<SkillDetail />, settledAsOwner);
+  const select = container.querySelector<HTMLSelectElement>("#skill-category")!;
+  await act(async () => selectValue(select, "writing"));
+  const reads = calls.filter((call) => call.method === "GET").length;
+  await act(async () =>
+    queryClient
+      .getQueryCache()
+      .find({ queryKey: queryKeys.me })!
+      .setState({ fetchStatus: "paused" }),
+  );
+  await act(async () => select.closest("form")!.querySelector("button")!.click());
+  await waitFor(() => container.querySelector('[role="alert"]') !== null);
+  expect(container.querySelector('[role="alert"]')!.textContent).toBe(
+    "這次操作尚未送出。請先確認頁首的登入狀態，再自行送出。",
+  );
+  expect(select.value).toBe("writing");
+  expect(calls.filter((call) => call.method === "PUT")).toEqual([]);
+  expect(calls.filter((call) => call.method === "GET")).toHaveLength(reads);
+});
+
+test("05 R-19: 類別儲存結果未確認時不宣稱一定沒有設定成功", async () => {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
     const path = url.split("?")[0];
@@ -500,10 +573,10 @@ test("05 R-19: 類別儲存失敗時顯示可以再按一次，而不是類別�
       .find((b) => (b.textContent ?? "").includes("儲存"))!
       .click(),
   );
-  await waitFor(() => text().includes("類別沒有設定成功，可以再按一次。"));
+  await waitFor(() => container.querySelector('[role="alert"]') !== null);
 
   expect(container.querySelector('[role="alert"]')?.textContent).toBe(
-    "類別沒有設定成功，可以再按一次。",
+    "尚未確認「寫作」類別是否已儲存。請先重新確認編輯條件，再決定是否重新儲存目前選擇。",
   );
-  expect(text()).not.toContain("類別已更新。");
+  expect(text()).not.toContain("類別已更新為「寫作」。");
 });

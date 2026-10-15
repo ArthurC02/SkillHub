@@ -32,6 +32,10 @@
   box-shadow: var(--shadow-rest);
 }
 
+.detail-rail:empty {
+  display: none;
+}
+
 .detail-main > section:not(.notice),
 .detail-main > details {
   min-width: 0;

@@ -1,3 +1,4 @@
+import type { SkillDetail as SkillDetailData } from "../../../core/api/types";
 import { Loading } from "../../../shared/ui/Loading";
 import { PageReadFailure } from "../../../shared/ui/LoginRequired";
 import { Link, useParams } from "@tanstack/react-router";
@@ -23,10 +24,42 @@ import "./SkillDetail.page.css";
 
 export function SkillDetail() {
   const { skillId } = useParams({ from: "/skills/$skillId" });
-  const { data: skill, isLoading, error, refetch, isFetching } = useSkillDetail(skillId);
+  const detail = useSkillDetail(skillId);
   const { data: me } = useMe();
+  const skill = detail.error ? undefined : detail.data;
+  return (
+    <article className="skill-detail">
+      {skill ? (
+        <SkillDetailHeader
+          skillId={skillId}
+          skill={skill}
+          refreshing={detail.fetchStatus !== "idle"}
+        />
+      ) : (
+        <SkillDetailReadState detail={detail} />
+      )}
+      {detail.data && (
+        <div className="detail-layout">
+          <aside className="detail-rail" aria-label="這個小工具的操作">
+            {skill && <SkillDetailActions skillId={skillId} skill={skill} isLoggedIn={!!me} />}
+            <CategoryEditor skillId={skillId} skill={detail} />
+          </aside>
+          {skill && <SkillDetailFacts skillId={skillId} skill={skill} isLoggedIn={!!me} />}
+        </div>
+      )}
+    </article>
+  );
+}
 
-  if (isLoading) return <Loading what="這個小工具" />;
+function SkillDetailReadState({ detail }: { detail: ReturnType<typeof useSkillDetail> }) {
+  const { data: skill, isLoading, isPending, error, refetch, fetchStatus } = detail;
+  if (isLoading || isPending)
+    return (
+      <section>
+        <h1>小工具總覽</h1>
+        <Loading what="這個小工具" />
+      </section>
+    );
   if (error instanceof ApiError && error.status === 410) {
     return (
       <PageReadFailure heading="小工具總覽" error={error} what="這個小工具">
@@ -41,94 +74,112 @@ export function SkillDetail() {
         error={error}
         what="這個小工具"
         retry={() => void refetch()}
-        retrying={isFetching}
+        retrying={fetchStatus !== "idle"}
       />
     );
-  if (!skill) return <p role="alert">找不到這個小工具。</p>;
+  if (!skill)
+    return (
+      <section>
+        <h1>小工具總覽</h1>
+        <p role="alert">找不到這個小工具。</p>
+      </section>
+    );
+  return null;
+}
 
+type SkillDetailContent = { skillId: string; skill: SkillDetailData; isLoggedIn: boolean };
+
+function SkillDetailHeader({
+  skillId,
+  skill,
+  refreshing,
+}: Omit<SkillDetailContent, "isLoggedIn"> & { refreshing: boolean }) {
   return (
-    <article className="skill-detail">
-      <header className="detail-answer">
-        <h1>{skill.name}</h1>
-        <p>{skill.summary}</p>
-        <div className="badge-row">
-          <LabelledBadge kind="category" value={skill.category} />
-          <LabelledBadge kind="tier" value={skill.tier} />
-          {skill.source && <LabelledBadge kind="trust" value={skill.source.trust} />}
-        </div>
-        <SkillWorkspaceNav skillId={skillId} versionId={skill.version?.version_id} />
-      </header>
-
-      <div className="detail-layout">
-        <aside className="detail-rail" aria-label="這個小工具的操作">
-          <TrialEntry skillId={skillId} isLoggedIn={!!me} />
-
-          <section>
-            <h2>複製一份到你的工作區</h2>
-            <ForkAction skillId={skillId} isLoggedIn={!!me} />
-          </section>
-
-          {skill.version && !skill.access_restriction && (
-            <nav>
-              <Link to="/skills/$skillId/files" params={{ skillId }}>
-                查看 SKILL.md 與檔案樹（進階模式）
-              </Link>
-            </nav>
-          )}
-
-          <CategoryEditor skillId={skillId} category={skill.category} />
-        </aside>
-
-        <div className="detail-main">
-          {skill.access_restriction && (
-            <section className="notice notice-danger" role="status">
-              <h2>授權審查中,部分功能已關閉</h2>
-              <p>{skill.access_restriction.note}</p>
-            </section>
-          )}
-
-          <div className="verdict-grid" data-role="evidence">
-            <section>
-              <h2>風險揭露</h2>
-              <RiskIndicator risk={skill.risk} />
-            </section>
-
-            <Redistribution skill={skill} isLoggedIn={!!me} />
-
-            <section>
-              <h2>相容性</h2>
-              <CompatibilityStatus compatibility={skill.compatibility} />
-            </section>
-
-            <section>
-              <h2>套件宣告可用的工具</h2>
-              <AllowedToolsSection
-                allowedTools={skill.allowed_tools}
-                scanStatus={skill.risk.scan_status}
-              />
-            </section>
-          </div>
-
-          <section>
-            <h2>它能做什麼</h2>
-            <Enrichment enrichment={skill.enrichment} />
-            <Limitations limitations={skill.limitations} />
-          </section>
-
-          {skill.redistribution?.value === "generated" && (
-            <GeneratedNotice skillId={skill.skill_id} versionId={skill.version?.version_id} />
-          )}
-
-          <section>
-            <h2>它從哪裡來</h2>
-            <SkillProvenanceSection skill={skill} />
-          </section>
-
-          <VersionHistory skillId={skillId} />
-
-          <SkillIdentifiers skill={skill} />
-        </div>
+    <header className="detail-answer">
+      <h1>{skill.name}</h1>
+      <p>{skill.summary}</p>
+      <div className="badge-row">
+        <LabelledBadge kind="category" value={skill.category} />
+        <LabelledBadge kind="tier" value={skill.tier} />
+        {skill.source && <LabelledBadge kind="trust" value={skill.source.trust} />}
       </div>
-    </article>
+      {refreshing && <p role="status">小工具資訊正在重新確認，以下為上次讀到的內容。</p>}
+      <SkillWorkspaceNav skillId={skillId} versionId={skill.version?.version_id} />
+    </header>
+  );
+}
+
+function SkillDetailActions({ skillId, skill, isLoggedIn }: SkillDetailContent) {
+  return (
+    <>
+      <TrialEntry skillId={skillId} isLoggedIn={isLoggedIn} />
+
+      <section>
+        <h2>複製一份到你的工作區</h2>
+        <ForkAction skillId={skillId} isLoggedIn={isLoggedIn} />
+      </section>
+
+      {skill.version && !skill.access_restriction && (
+        <nav>
+          <Link to="/skills/$skillId/files" params={{ skillId }}>
+            查看 SKILL.md 與檔案樹（進階模式）
+          </Link>
+        </nav>
+      )}
+    </>
+  );
+}
+
+function SkillDetailFacts({ skillId, skill, isLoggedIn }: SkillDetailContent) {
+  return (
+    <div className="detail-main">
+      {skill.access_restriction && (
+        <section className="notice notice-danger" role="status">
+          <h2>授權審查中,部分功能已關閉</h2>
+          <p>{skill.access_restriction.note}</p>
+        </section>
+      )}
+
+      <div className="verdict-grid" data-role="evidence">
+        <section>
+          <h2>風險揭露</h2>
+          <RiskIndicator risk={skill.risk} />
+        </section>
+
+        <Redistribution skill={skill} isLoggedIn={isLoggedIn} />
+
+        <section>
+          <h2>相容性</h2>
+          <CompatibilityStatus compatibility={skill.compatibility} />
+        </section>
+
+        <section>
+          <h2>套件宣告可用的工具</h2>
+          <AllowedToolsSection
+            allowedTools={skill.allowed_tools}
+            scanStatus={skill.risk.scan_status}
+          />
+        </section>
+      </div>
+
+      <section>
+        <h2>它能做什麼</h2>
+        <Enrichment enrichment={skill.enrichment} />
+        <Limitations limitations={skill.limitations} />
+      </section>
+
+      {skill.redistribution?.value === "generated" && (
+        <GeneratedNotice skillId={skill.skill_id} versionId={skill.version?.version_id} />
+      )}
+
+      <section>
+        <h2>它從哪裡來</h2>
+        <SkillProvenanceSection skill={skill} />
+      </section>
+
+      <VersionHistory skillId={skillId} />
+
+      <SkillIdentifiers skill={skill} />
+    </div>
   );
 }

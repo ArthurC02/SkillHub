@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ApiError,
-  SessionNotReadyError,
+  isWriteResultUnknown as isApplyResultUnknown,
   apiFetch,
   internalAPIPath,
   isLastingReadFailure,
@@ -364,10 +364,7 @@ function isAppliedVersion(value: unknown): value is VersionFromSuggestions {
   );
 }
 
-export function isApplyResultUnknown(error: unknown): boolean {
-  if (error instanceof SessionNotReadyError) return false;
-  return !(error instanceof ApiError) || error.status >= 500;
-}
+export { isWriteResultUnknown as isApplyResultUnknown } from "../../core/api/client";
 
 export function useApplySuggestions(runId: string) {
   const client = useQueryClient();

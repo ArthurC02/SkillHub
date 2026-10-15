@@ -1,7 +1,11 @@
 import type { Labelled } from "../../core/api/types";
 import type { RunStatus } from "./trace.service";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, SessionNotReadyError, apiFetch } from "../../core/api/client";
+import {
+  apiFetch,
+  isWriteResultUnknown as isContinuationResultUnknown,
+} from "../../core/api/client";
+export { isWriteResultUnknown as isContinuationResultUnknown } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 
 export type Run = {
@@ -80,11 +84,6 @@ export async function continueRun(runId: string, answers: string[]) {
   )
     throw new Error("Invalid continuation Run response");
   return { run_id: next.run_id };
-}
-
-export function isContinuationResultUnknown(error: unknown): boolean {
-  if (error instanceof SessionNotReadyError) return false;
-  return !(error instanceof ApiError) || error.status >= 500;
 }
 
 export function useContinueRun(runId: string) {

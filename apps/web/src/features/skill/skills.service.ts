@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import type { CorrectedSearchRequest, SetSkillCategoryRequest } from "@skillhub/api-client-ts";
-import { apiFetch } from "../../core/api/client";
+import { SessionNotReadyError, apiFetch } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import { readSearchCorrection } from "../../core/api/searchIntent";
 import type {
@@ -264,18 +264,35 @@ export function useForkSkill() {
 
 export type SkillCategoryChoice = SetSkillCategoryRequest["category"];
 
-export function setSkillCategory(skillId: string, category: SkillCategoryChoice) {
-  return apiFetch<unknown>(`/skills/${skillId}/category`, {
+export async function setSkillCategory(skillId: string, category: SkillCategoryChoice) {
+  const result = await apiFetch<unknown>(`/skills/${skillId}/category`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ category }),
   });
+  if (!result || typeof result !== "object") throw new Error("Invalid category response");
+  const receipt = result as Record<string, unknown>;
+  if (
+    typeof receipt.skill_id !== "string" ||
+    receipt.skill_id.toLowerCase() !== skillId.toLowerCase() ||
+    typeof receipt.name !== "string" ||
+    typeof receipt.summary !== "string" ||
+    typeof receipt.redistribution !== "string" ||
+    !["allowed", "blocked", "unknown", "self_supplied", "generated"].includes(
+      receipt.redistribution,
+    )
+  )
+    throw new Error("Invalid category response");
+  return result;
 }
 
 export function useSetSkillCategory(skillId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (category: SkillCategoryChoice) => setSkillCategory(skillId, category),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.skills.detail(skillId) }),
+    onSettled: (_, error) => {
+      if (error instanceof SessionNotReadyError) return;
+      void client.invalidateQueries({ queryKey: queryKeys.skills.detail(skillId) });
+    },
   });
 }

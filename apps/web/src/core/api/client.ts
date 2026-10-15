@@ -28,6 +28,11 @@ export class SessionNotReadyError extends Error {
   }
 }
 
+export function isWriteResultUnknown(error: unknown): boolean {
+  if (error instanceof SessionNotReadyError) return false;
+  return !(error instanceof ApiError) || error.status >= 500;
+}
+
 const sessionlessPosts = new Set(["/auth/dev/login", "/auth/logout", "/api/skills/search"]);
 let sessionReadinessCheck: (() => void) | undefined;
 

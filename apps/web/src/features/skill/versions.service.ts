@@ -1,5 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ApiError, SessionNotReadyError, apiFetch } from "../../core/api/client";
+import {
+  ApiError,
+  apiFetch,
+  isWriteResultUnknown as isVersionUploadResultUnknown,
+} from "../../core/api/client";
 import type { CategorizedFindings, ImportFinding, UploadResult } from "../../core/api/types";
 import { queryKeys } from "../../core/api/queryKeys";
 import { isCategorizedFindings } from "../creation";
@@ -65,10 +69,7 @@ export function readVersionUploadFindings(error: unknown) {
     : undefined;
 }
 
-export function isVersionUploadResultUnknown(error: unknown) {
-  if (error instanceof SessionNotReadyError) return false;
-  return !(error instanceof ApiError) || error.status >= 500;
-}
+export { isWriteResultUnknown as isVersionUploadResultUnknown } from "../../core/api/client";
 
 export function useSaveSkillVersion(skillId: string) {
   const client = useQueryClient();

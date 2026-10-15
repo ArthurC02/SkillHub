@@ -23,7 +23,7 @@ const pages = [
     url: `/skills/${SKILL}`,
     pattern: `**/api/skills/${SKILL}`,
     heading: "小工具總覽",
-    ready: ".skill-detail",
+    ready: ".detail-answer",
   },
   {
     name: "version context",
