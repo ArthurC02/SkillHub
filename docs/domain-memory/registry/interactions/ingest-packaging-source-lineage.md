@@ -5,9 +5,9 @@ consistency: synchronous
 delivery: composition-root fact reader
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-14T16:38:05.093087Z"
+    at: "2026-10-16T16:45:42.836437Z"
 sources:
-  - resource: "apps/platform/internal/entrypoint/api/apiserver/app.go#L295-295"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/app.go#L297-297"
     excerpt_sha256: "sha256:8255b91a9d3c0926b7c3b39f37e5395da028dadfc0ccc066221fac66ec6dcd7c"
 ---
 # Relations
