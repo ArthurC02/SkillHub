@@ -70,7 +70,7 @@ func vocabularySynonymProblems(root string) []string {
 }
 
 func reviewedSynonymTerms(root string) ([]vocabularyTerm, error) {
-	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(vocabularyFile)))
+	data, err := registryAsset(root, "vocabulary")
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", vocabularyFile, err)
 	}

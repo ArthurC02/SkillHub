@@ -12,6 +12,7 @@ import (
 const devctlMainArgs = "DEVCTL_CHARACTERIZATION_MAIN_ARGS"
 
 func TestMain(m *testing.M) {
+	registryAsset = fixtureRegistryAsset
 	if raw, ok := os.LookupEnv(devctlMainArgs); ok {
 		var args []string
 		if err := json.Unmarshal([]byte(raw), &args); err != nil {

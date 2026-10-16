@@ -27,6 +27,14 @@ from .evidence import (
     with_references,
 )
 from .policy import query_result_limit, review_mode
+from .store import (
+    MANIFEST,
+    document_path,
+    has_document,
+    has_registry,
+    read_document,
+    write_document,
+)
 
 STANDARD_FILES = (*ASSET_KEYS, "manifest.json")
 ABSENCE_ASSETS = {
@@ -66,7 +74,7 @@ def migrate_registry(root: Path) -> list[str]:
 
 
 def asset_records(root: Path, name: str) -> list[dict[str, Any]]:
-    value = load_json(registry_dir(root) / name).get(ASSET_KEYS[name])
+    value = read_document(root, name).get(ASSET_KEYS[name])
     if not isinstance(value, list) or not all(
         isinstance(record, dict) for record in value
     ):
@@ -80,9 +88,8 @@ def _load_registry_assets(
     records: dict[str, list[dict[str, Any]]] = {}
     errors: list[str] = []
     for name in ASSET_KEYS:
-        path = registry_dir(root) / name
-        if not path.is_file():
-            errors.append(f"missing asset: {path}")
+        if not has_document(root, name):
+            errors.append(f"missing asset: {document_path(root, name)}")
             continue
         try:
             records[name] = asset_records(root, name)
@@ -130,7 +137,7 @@ def _validate_asset_records(
 ) -> list[str]:
     errors: list[str] = []
     for name, entries in records.items():
-        asset = load_json(registry_dir(root) / name)
+        asset = read_document(root, name)
         errors.extend(_asset_header_errors(name, asset, entries))
         for entry in entries:
             status = record_status(name.removesuffix(".json"), asset, entry)
@@ -318,13 +325,13 @@ def _validate_evidence(
 
 
 def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list[str]:  # noqa: FBT001
-    manifest_path = registry_dir(root) / "manifest.json"
-    if not manifest_path.is_file():
+    if not has_registry(root):
+        manifest_path = document_path(root, MANIFEST)
         return [f"missing manifest: {manifest_path}{one_level_too_deep_hint(manifest_path)}"]
     errors: list[str] = []
     if require_reviewed and review_mode(root) != "scm-verified":
         errors.append("local-draft-only Domain Memory cannot satisfy --require-reviewed")
-    manifest = load_json(manifest_path)
+    manifest = read_document(root, MANIFEST)
     artifacts = manifest.get("artifacts")
     if not isinstance(artifacts, list) or not set(ASSET_KEYS).issubset(artifacts):
         errors.append("manifest artifacts must list every standard registry asset file")
@@ -444,7 +451,7 @@ def verify_evidence(root: Path, repo_root: Path, paths: list[str] | None = None)
 
 
 def migrate_evidence(root: Path, repo_root: Path) -> int:
-    from .transaction import mutate_registry, write_json
+    from .transaction import mutate_registry
 
     migrated = 0
     source_map = source_map_for(root)
@@ -460,8 +467,7 @@ def migrate_evidence(root: Path, repo_root: Path) -> int:
 
     def mutate(staging: Path) -> None:
         for name in ASSET_KEYS:
-            path = registry_dir(staging) / name
-            write_json(path, transform(load_json(path)))
+            write_document(staging, name, transform(read_document(staging, name)))
 
     mutate_registry(
         root,
@@ -519,7 +525,7 @@ def evidence_gaps(root: Path) -> list[dict[str, Any]]:
     source_map = source_map_for(root)
     gaps = []
     for name in sorted(ASSET_KEYS):
-        if not (registry_dir(root) / name).is_file():
+        if not has_document(root, name):
             continue
         for record in asset_records(root, name):
             if not is_reviewed(record):
@@ -628,7 +634,7 @@ def resolve_terms(root: Path, query: str, context: str | None) -> list[dict[str,
 
 
 def _reviewed_entries(root: Path, name: str) -> list[dict[str, Any]]:
-    document = load_json(registry_dir(root) / name)
+    document = read_document(root, name)
     asset = name.removesuffix(".json")
     return [
         entry for entry in document.get(ASSET_KEYS[name], [])
@@ -645,7 +651,7 @@ def prose_mentions(root: Path, needle: str) -> list[dict[str, Any]]:
         {"match_kind": "mentioned", "authoritative": False, "asset": name.removesuffix(".json"),
          "id": entry.get("id"), "field": field}
         for name in sorted(ASSET_KEYS)
-        if (registry_dir(root) / name).is_file()
+        if has_document(root, name)
         for entry in _reviewed_entries(root, name)
         for field, value in entry.items()
         if field not in ("id", "status", "review_status") and isinstance(value, str) and word.search(value.casefold())

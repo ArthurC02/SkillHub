@@ -356,6 +356,20 @@ class CliTest(RegistryTestCase):
         self.assertNotIn("Traceback", result.stdout + result.stderr)
         self.assertTrue(result.stdout.startswith("ERROR: "), result.stdout)
 
+    def test_export_prints_every_asset_document_by_asset_name(self) -> None:
+        rule = {"id": "order-total", "statement": "An order total is never negative.", "status": "candidate"}
+        self.seed("rules.json", [rule])
+        result = self.run_cli("export", "--registry-root", str(self.repo / "memory"))
+        self.assertEqual(0, result.returncode, result.stdout)
+        exported = json.loads(result.stdout)
+        self.assertEqual(
+            {"contexts", "vocabulary", "aggregates", "rules", "contracts", "interactions", "decisions",
+             "events", "capabilities", "value-objects", "dependency-policies"},
+            set(exported),
+        )
+        self.assertEqual([rule], exported["rules"]["rules"])
+        self.assertEqual("domain-rules/v1", exported["rules"]["format"])
+
     def test_the_module_entry_point_runs_the_command_instead_of_exiting_quietly(
         self,
     ) -> None:

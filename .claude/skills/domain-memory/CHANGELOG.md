@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.28.0
+
+### Added
+
+- `export --registry-root <root>` prints every asset document as one JSON object keyed by asset name (`contexts`, `rules`, `dependency-policies`, ...), each in the shape the asset's document has today. Tools outside the plugin read the Registry through it instead of opening its files, so the on-disk layout can change without breaking them.
+
 ## 0.27.2
 
 ### Fixed

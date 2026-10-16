@@ -9,11 +9,11 @@ from typing import Any
 from .common import (
     MAX_JSON_BYTES,
     load_json,
-    registry_dir,
     reject_duplicate_keys,
     utc_now,
     write_json,
 )
+from .store import has_registry
 
 MANIFEST_FORMAT = "domain-memory-audit/v1"
 
@@ -144,7 +144,7 @@ def _manifest_error(root: Path, events: int, head: str | None) -> str | None:
 
 
 def verify(root: Path) -> dict[str, Any]:
-    if not (registry_dir(root) / "manifest.json").is_file():
+    if not has_registry(root):
         return _invalid(
             f"no Domain Memory Registry at {root}; point --registry-root at the directory "
             "that holds registry/manifest.json"

@@ -375,7 +375,7 @@ func stripYAMLComments(text string) string {
 }
 
 func reviewedDependencyPermissions(root string, problems []string) (map[string]map[string]bool, int, []string) {
-	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(dependencyPoliciesFile)))
+	data, err := registryAsset(root, "dependency-policies")
 	if err != nil {
 		return nil, 0, append(problems, fmt.Sprintf("depguard-deny: %s: %v", dependencyPoliciesFile, err))
 	}

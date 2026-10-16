@@ -112,7 +112,7 @@ func unregisteredEdgeProblems(edges map[contextEdge]string, registered func(cont
 }
 
 func reviewedInteractions(root string) (map[contextEdge]bool, error) {
-	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(interactionsFile)))
+	data, err := registryAsset(root, "interactions")
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", interactionsFile, err)
 	}

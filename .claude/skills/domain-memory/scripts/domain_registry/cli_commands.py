@@ -9,7 +9,7 @@ from pathlib import Path
 from .attestations import audit_attestations, verify_scm
 from .audit import verify as verify_audit
 from .changes import init_change_package, redraft_change_package, validate_change_package
-from .common import load_json
+from .common import ASSET_KEYS, load_json
 from .contracts import validate_schema
 from .counterfactual import Mutation, counterfactual
 from .evidence import citation, classified, repeated_note, source_map_for
@@ -55,6 +55,7 @@ from .registry import (
 )
 from .security import scan_report
 from .signing import init_signing_key
+from .store import read_document
 from .sources import (
     adjusted_selection,
     confirm_sources,
@@ -195,6 +196,12 @@ def handle_resolve_terms(args: argparse.Namespace) -> int:
         for query in args.query
         for match in resolve_terms(root, query, args.context)
     ])
+    return 0
+
+
+def handle_export(args: argparse.Namespace) -> int:
+    root = args.registry_root.resolve()
+    print_json({name.removesuffix(".json"): read_document(root, name) for name in ASSET_KEYS})
     return 0
 
 
@@ -726,6 +733,7 @@ HANDLERS = {
     "redraft-proposal": handle_redraft_proposal,
     "validate": handle_validate,
     "coverage": handle_coverage,
+    "export": handle_export,
     "lookup": handle_lookup,
     "migrate-registry": handle_migrate_registry,
     "resolve-terms": handle_resolve_terms,

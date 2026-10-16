@@ -104,7 +104,7 @@ func architectureIdentities(root string) (map[string]packageIdentity, []string) 
 	var problems []string
 	var entries []identityEntry
 
-	reviewed, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(registryContextsFile)))
+	reviewed, err := registryAsset(root, "contexts")
 	if err != nil {
 		return nil, []string{fmt.Sprintf("%s: %v", registryContextsFile, err)}
 	}

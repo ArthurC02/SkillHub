@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .common import ASSET_KEYS, load_json, record_status, registry_dir
+from .common import ASSET_KEYS, record_status
 from .evidence import (
     WIDEN_TO_UNIQUE,
     all_references,
@@ -13,6 +13,7 @@ from .evidence import (
     verify,
     with_references,
 )
+from .store import read_document
 
 
 @dataclass
@@ -116,7 +117,7 @@ def recite(root: Path, repo_root: Path, request: Recitation) -> dict[str, Any]:
         request.asset, request.record_id, request.path, request.lines, request.replace
     )
     name = f"{asset}.json"
-    document = load_json(registry_dir(root) / name)
+    document = read_document(root, name)
     entry = next((item for item in document.get(ASSET_KEYS[name], []) if item.get("id") == record_id), None)
     if entry is None:
         raise ValueError(f"no {asset} record {record_id}")
@@ -153,7 +154,7 @@ def relocate_evidence(root: Path, repo_root: Path, old: str, new: str) -> dict[s
     relocation = Relocation(repo_root, old, new, source_map_for(root))
     updates, candidates, supersedes = [], [], set()
     for name in ASSET_KEYS:
-        document = load_json(registry_dir(root) / name)
+        document = read_document(root, name)
         for entry in document.get(ASSET_KEYS[name], []):
             unmatched_before = len(relocation.unmatched)
             moved = relocation.moved(entry)

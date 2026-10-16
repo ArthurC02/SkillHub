@@ -2,14 +2,19 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .changes import PROPOSAL_FILE, ParsedUpdate, parsed_update, superseded_ids, validate_change_package
+from .changes import (
+    PROPOSAL_FILE,
+    ParsedUpdate,
+    parsed_update,
+    superseded_ids,
+    validate_change_package,
+)
 from .common import (
     ASSET_KEYS,
     completed_identifier,
     iso_timestamp,
     load_json,
     record_status,
-    registry_dir,
     reject_duplicate_keys,
     review_field,
     utc_now,
@@ -21,6 +26,7 @@ from .revision import (
     require_current_registry_revision,
     valid_registry_revision,
 )
+from .store import read_document, write_document
 from .transaction import mutate_registry, write_json
 
 
@@ -133,13 +139,12 @@ def demote_local_reviews(registry_root: Path, repo_root: Path) -> None:
 
     def mutate(staging: Path) -> None:
         for name, key in ASSET_KEYS.items():
-            path = registry_dir(staging) / name
-            document = load_json(path)
+            document = read_document(staging, name)
             document["status"] = "candidate"
             for record in document[key]:
                 record.pop("review", None)
                 record[review_field(name.removesuffix(".json"))] = "candidate"
-            write_json(path, document)
+            write_document(staging, name, document)
 
     mutate_registry(
         registry_root, repo_root, mutate,
@@ -187,8 +192,7 @@ def upsert_candidate(
     outside: list[str] = []
 
     def mutate(staging: Path) -> None:
-        path = registry_dir(staging) / name
-        document = load_json(path)
+        document = read_document(staging, name)
         records = document[ASSET_KEYS[name]]
         for record in batch:
             existing = find_record(records, record["id"])
@@ -199,7 +203,7 @@ def upsert_candidate(
             candidate.pop("review", None)
             candidate[review_field(asset)] = "candidate"
             put_record(records, existing, candidate)
-        write_json(path, document)
+        write_document(staging, name, document)
 
     identity = (
         {"record_id": batch[0]["id"]}
@@ -225,8 +229,7 @@ def retract_candidate(
         )
 
     def mutate(staging: Path) -> None:
-        path = registry_dir(staging) / name
-        document = load_json(path)
+        document = read_document(staging, name)
         records = document[ASSET_KEYS[name]]
         existing = find_record(records, record_id)
         if existing is None:
@@ -237,7 +240,7 @@ def retract_candidate(
                 "is withdrawn through a superseding proposal"
             )
         records.remove(existing)
-        write_json(path, document)
+        write_document(staging, name, document)
 
     mutate_registry(
         root,
@@ -337,11 +340,11 @@ def apply_approved_updates(
         documents: dict[str, dict[str, Any]] = {}
         for update in map(parsed_update, updates):
             document = documents.setdefault(
-                update.document_name, load_json(registry_dir(staging) / update.document_name)
+                update.document_name, read_document(staging, update.document_name)
             )
             _apply_update(update, document, proposal, source_map)
         for name, document in documents.items():
-            write_json(registry_dir(staging) / name, document)
+            write_document(staging, name, document)
 
     base_revision = proposal.get("base_registry_revision")
     if not valid_registry_revision(base_revision):
@@ -387,7 +390,7 @@ def promote_candidate(
             "redraft-proposal into a new package, and promote into that draft"
         )
     name = asset_file_name(asset)
-    document = load_json(registry_dir(registry_root) / name)
+    document = read_document(registry_root, name)
     record = find_record(document[ASSET_KEYS[name]], record_id)
     if record is None:
         raise ValueError(

@@ -3,9 +3,10 @@ from itertools import combinations
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from .common import ASSET_KEYS, load_json, registry_dir
+from .common import ASSET_KEYS
 from .evidence import all_references
 from .sources import run_git
+from .store import read_document
 
 COLLABORATION_ENDS = {
     "interactions.json": lambda entry: [(entry.get("producer_context"), entry.get("consumer_context"))],
@@ -29,7 +30,7 @@ def changed_paths(repo_root: Path, base: str) -> list[str]:
 
 
 def _records_with_status(root: Path, name: str) -> list[dict[str, Any]]:
-    document = load_json(registry_dir(root) / name)
+    document = read_document(root, name)
     default = document.get("status")
     return [{**entry, "status": entry.get("status", default)} for entry in document.get(ASSET_KEYS[name], [])]
 
