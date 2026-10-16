@@ -7,7 +7,16 @@
     "registry_digest": "sha256:b1eea3ac6f6543d1fdb501be91abb8eec235bac1f6678ed2a0095ffc3d2903f3"
   },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "c8682de5750d8876ce97135b4d2f78d08e082520",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "09d9fa14280cf528cb986fbe37dff3d1e7cb118b",
+      "registry_digest": "sha256:b1eea3ac6f6543d1fdb501be91abb8eec235bac1f6678ed2a0095ffc3d2903f3"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "steps-wired",

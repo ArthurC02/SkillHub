@@ -3,12 +3,12 @@
   "proposal_id": "purge-interactions-cite-steps",
   "proposer": "domain-memory-agent",
   "requirement_id": "purge-interactions-cite-steps",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-16T22:47:56.452482Z",
   "verified_at": "2026-10-16T22:48:02.755358Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-16T22:48:20.352344Z",
+  "applied_at": "2026-10-16T22:48:22.878526Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "09d9fa14280cf528cb986fbe37dff3d1e7cb118b",
@@ -390,5 +390,9 @@
   "supersedes": [
     "grader-purge",
     "platform-shifted-recite"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "c8682de5750d8876ce97135b4d2f78d08e082520",
+    "registry_digest": "sha256:ccf13a151f0f5c540ec3f8fbddfe03522b7816d75def41357525030e77d2fc88"
+  }
 }
