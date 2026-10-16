@@ -94,14 +94,17 @@ def _pair(
     if reading.context_paths:
         contexts = [context_of(first, reading.context_paths), context_of(second, reading.context_paths)]
         pair["contexts"] = contexts
-        pair["explained_by"] = _explanations(contexts, reading.collaborations)
+        unmapped = [module for module, context in zip((first, second), contexts, strict=True) if context is None]
+        if unmapped:
+            pair["explained_by"] = None
+            pair["unmapped"] = unmapped
+        else:
+            pair["explained_by"] = _explanations(contexts, reading.collaborations)
     return pair
 
 
-def _explanations(contexts: list[str | None], collaborations: dict[frozenset[str], list[str]]) -> list[str]:
+def _explanations(contexts: list[str], collaborations: dict[frozenset[str], list[str]]) -> list[str]:
     one, other = contexts
-    if one is None or other is None:
-        return []
     if one == other:
         return [f"contexts/{one}"]
     return sorted(collaborations.get(frozenset((one, other)), []))

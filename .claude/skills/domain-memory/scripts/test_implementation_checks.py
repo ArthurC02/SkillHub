@@ -426,8 +426,15 @@ class CounterfactualTest(RepositoryCase):
     def test_an_expected_pattern_decides_even_when_the_code_does_not_build(self) -> None:
         self.assertEqual("killed", self.break_rule("LIMIT = 200", "LIMIT = (", expect="SyntaxError")["verdict"])
 
-    def test_a_killed_rule_gives_no_reason(self) -> None:
-        self.assertNotIn("reason", self.break_rule("LIMIT = 200", "LIMIT = 201"))
+    def test_every_verdict_gives_its_reason(self) -> None:
+        for find, replace, options, reason in (
+            ("LIMIT = 200", "LIMIT = 201", {}, "the tests failed once the protection was broken"),
+            ("LIMIT = 200", "LIMIT = 201", {"expect": "AssertionError"},
+             "the tests failed with output matching --expect AssertionError"),
+            ("CAP = 12", "CAP = 13", {}, "the tests still pass with the protection broken"),
+        ):
+            with self.subTest(reason):
+                self.assertEqual(reason, self.break_rule(find, replace, **options)["reason"])
 
     def test_a_failure_matching_the_expected_pattern_is_killed(self) -> None:
         result = self.break_rule("LIMIT = 200", "LIMIT = 201", expect="AssertionError")

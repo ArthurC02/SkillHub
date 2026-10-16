@@ -173,6 +173,20 @@ class ScopeTest(unittest.TestCase):
         result = compare_registries(registry(contexts=[ORDERS, BILLING]), registry(contexts=[ORDERS]), ["billing", "orders"])
         self.assertEqual({"contexts": ["billing", "orders"], "without_candidate": ["billing"]}, result["scope"])
 
+    def test_a_scope_leaves_out_candidate_records_of_contexts_paired_with_nothing_in_it(self) -> None:
+        gold = registry(contexts=[ORDERS, BILLING], rules=[{"id": "order-rule", "contexts": ["orders"]}])
+        candidate = registry(contexts=[ORDERS, BILLING],
+                             rules=[{"id": "order-rule", "contexts": ["orders"]}, {"id": "bill-rule", "contexts": ["billing"]}])
+        result = compare_registries(gold, candidate, ["orders"])
+        self.assertEqual((1, 1, []), (result["assets"]["contexts"]["candidate"], result["assets"]["rules"]["candidate"],
+                                      result["assets"]["rules"]["extra"]))
+
+    def test_a_scope_no_candidate_context_pairs_with_has_no_attempted_score(self) -> None:
+        gold = registry(contexts=[ORDERS, BILLING], rules=[{"id": "bill-rule", "contexts": ["billing"]}])
+        candidate = registry(contexts=[ORDERS], rules=[{"id": "order-rule", "contexts": ["orders"]}])
+        self.assertEqual({"precision": None, "recall": None, "f1": None},
+                         compare_registries(gold, candidate, ["billing"])["overall_attempted"])
+
     def test_an_unscoped_comparison_reports_no_scope(self) -> None:
         self.assertNotIn("scope", compare_registries(registry(contexts=[ORDERS]), registry(contexts=[ORDERS])))
 
@@ -187,9 +201,18 @@ class CopiedEvidenceTest(unittest.TestCase):
         evidence = [{"path": "src/orders/a.py", "excerpt_sha256": "1" * 64}, {"path": "src/orders/b.py", "excerpt_sha256": "2" * 64}]
         self.assertTrue(self.pair(evidence, list(reversed(evidence)))["copied_evidence"])
 
-    def test_a_pair_sharing_only_some_excerpts_is_not_flagged(self) -> None:
+    def test_a_pair_whose_excerpts_one_side_trimmed_is_flagged(self) -> None:
+        kept = {"path": "src/orders/a.py", "excerpt_sha256": "1" * 64}
+        trimmed = {"path": "src/orders/b.py", "excerpt_sha256": "2" * 64}
+        for gold, candidate in (([kept], [kept, trimmed]), ([kept, trimmed], [kept])):
+            with self.subTest(gold=len(gold)):
+                self.assertTrue(self.pair(gold, candidate)["copied_evidence"])
+
+    def test_a_pair_where_each_side_cites_an_excerpt_the_other_lacks_is_not_flagged(self) -> None:
         shared = {"path": "src/orders/a.py", "excerpt_sha256": "1" * 64}
-        self.assertNotIn("copied_evidence", self.pair([shared], [shared, {"path": "src/orders/b.py", "excerpt_sha256": "2" * 64}]))
+        gold_only = {"path": "src/orders/b.py", "excerpt_sha256": "2" * 64}
+        candidate_only = {"path": "src/orders/c.py", "excerpt_sha256": "3" * 64}
+        self.assertNotIn("copied_evidence", self.pair([shared, gold_only], [shared, candidate_only]))
 
     def test_a_pair_without_hashed_excerpts_is_not_flagged(self) -> None:
         self.assertNotIn("copied_evidence", self.pair(cited("src/orders/a.py"), cited("src/orders/a.py")))
@@ -214,9 +237,9 @@ class ScoreTest(unittest.TestCase):
         candidate = registry(contexts=[ORDERS], rules=[{"id": "other"}])
         self.assertEqual({"precision": 0.5, "recall": 0.5, "f1": 0.5}, compare_registries(gold, candidate)["overall"])
 
-    def test_the_attempted_score_leaves_out_assets_the_candidate_never_extracted(self) -> None:
+    def test_the_attempted_score_leaves_out_assets_either_registry_never_extracted(self) -> None:
         gold = registry(contexts=[ORDERS], rules=[{"id": "r"}], events=[{"id": "e"}])
-        candidate = registry(contexts=[ORDERS], rules=[{"id": "other"}])
+        candidate = registry(contexts=[ORDERS], rules=[{"id": "other"}], vocabulary=[{"id": "t"}])
         self.assertEqual({"precision": 0.5, "recall": 0.5, "f1": 0.5}, compare_registries(gold, candidate)["overall_attempted"])
 
 

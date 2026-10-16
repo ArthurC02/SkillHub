@@ -166,21 +166,21 @@ def run_broken(
         restore(target, original, sidecar)
 
 
-def verdict_of(broken_run: TestRun, expect: str | None = None) -> tuple[str, str | None]:
+def verdict_of(broken_run: TestRun, expect: str | None = None) -> tuple[str, str]:
     if broken_run.timed_out:
         return "inconclusive", "the tests gave no result in time"
     if broken_run.passed:
-        return "survived", None
+        return "survived", "the tests still pass with the protection broken"
     if expect is not None:
         if re.search(expect, broken_run.output):
-            return "killed", None
+            return "killed", f"the tests failed with output matching --expect {expect}"
         return "inconclusive", f"the failure does not match --expect {expect}"
     if BUILD_FAILURE.search(broken_run.output):
         return "inconclusive", (
             "the broken code did not build, so no test judged it; break the protection so it still builds, "
             "or pass --expect with the assertion the failure must show"
         )
-    return "killed", None
+    return "killed", "the tests failed once the protection was broken"
 
 
 def _one_line(text: str) -> str:
@@ -229,7 +229,7 @@ def counterfactual(repo_root: Path, mutation: Mutation, proof: Proof) -> dict[st
         "mutated_protection": {"from": mutation.find, "to": mutation.replace},
         "test_command": proof.test_command,
         "verdict": verdict,
-        **({"reason": reason} if reason else {}),
+        "reason": reason,
         "failing_evidence": broken_run.output[-OUTPUT_TAIL:],
         "restoration_result": {"restored": restored, "content_sha256": digest(original)},
     }

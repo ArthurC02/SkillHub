@@ -2,6 +2,15 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.36.0
+
+### Changed
+
+- `change-coupling` reports `explained_by: null` and names the `unmapped` module when a module lies in no Context, so an empty `explained_by` always means coupling the Registry does not account for.
+- `compare-registry --context` counts only candidate records of the candidate Contexts paired with the scoped ones, and `overall_attempted` leaves out assets either Registry holds no records of, so it is `null` when nothing in scope was extracted.
+- `copied_evidence` also marks a pair when one side's cited excerpts are all among the other's, the shape a harvest that dropped a citation leaves.
+- Every `counterfactual` verdict carries a `reason`.
+
 ## 0.35.0
 
 ### Added

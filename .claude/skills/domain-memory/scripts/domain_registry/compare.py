@@ -41,12 +41,15 @@ def compare_registries(
         gold_records = _within(gold_records, set(contexts))
     candidate_records = _records_by_asset(candidate)
     matched_contexts = _matched("contexts", gold_records["contexts"], candidate_records["contexts"], {})
+    if contexts:
+        candidate_records = _within(candidate_records, {pair["candidate"] for pair in matched_contexts["matched"]})
+        matched_contexts = _matched("contexts", gold_records["contexts"], candidate_records["contexts"], {})
     context_of = {pair["candidate"]: pair["gold"] for pair in matched_contexts["matched"]}
     assets = {"contexts": matched_contexts}
     for asset in gold_records:
         if asset != "contexts":
             assets[asset] = _matched(asset, gold_records[asset], candidate_records[asset], context_of)
-    attempted = [result for result in assets.values() if result["candidate"]]
+    attempted = [result for result in assets.values() if result["candidate"] and result["gold"]]
     report = {"assets": assets, "overall": _overall(assets.values()), "overall_attempted": _overall(attempted)}
     if contexts:
         paired = {pair["gold"] for pair in matched_contexts["matched"]}
@@ -241,8 +244,8 @@ def _citations(record: dict[str, Any]) -> list[Citation]:
 
 
 def _same_excerpts(gold: dict[str, Any], candidate: dict[str, Any]) -> bool:
-    excerpts = _excerpts(gold)
-    return bool(excerpts) and excerpts == _excerpts(candidate)
+    one, other = _excerpts(gold), _excerpts(candidate)
+    return bool(one and other) and (one <= other or other <= one)
 
 
 def _excerpts(record: dict[str, Any]) -> set[tuple[str, str]]:

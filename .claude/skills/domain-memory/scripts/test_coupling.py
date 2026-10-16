@@ -104,11 +104,14 @@ class ChangeCouplingTest(RegistryTestCase):
             (result["skipped_sweeping_commits"], result["pairs"]),
         )
 
-    def explained(self, context_paths: dict[str, str], collaborations: dict | None = None) -> list[str]:
+    def coupled(self, context_paths: dict[str, str], collaborations: dict | None = None) -> dict:
         self.change("src/a/x.py", "src/b/y.py")
         self.change("src/a/x.py", "src/b/y.py")
         reading = CouplingReading(context_paths=context_paths, collaborations=collaborations or {})
-        return change_coupling(self.repo, ["src"], 1, LOW, reading)["pairs"][0]["explained_by"]
+        return change_coupling(self.repo, ["src"], 1, LOW, reading)["pairs"][0]
+
+    def explained(self, context_paths: dict[str, str], collaborations: dict | None = None) -> list[str] | None:
+        return self.coupled(context_paths, collaborations)["explained_by"]
 
     def test_a_pair_between_registered_collaborators_is_explained_by_their_records(self) -> None:
         collaborations = {frozenset(("alpha", "beta")): ["interactions/b-to-a", "contracts/a-api"]}
@@ -122,8 +125,14 @@ class ChangeCouplingTest(RegistryTestCase):
         collaborations = {frozenset(("alpha", "gamma")): ["interactions/a-to-c"]}
         self.assertEqual([], self.explained({"alpha": "src/a", "beta": "src/b"}, collaborations))
 
-    def test_a_pair_of_modules_outside_every_context_is_unexplained(self) -> None:
-        self.assertEqual([], self.explained({"gamma": "lib"}))
+    def test_a_pair_with_a_module_outside_every_context_cannot_be_explained_and_names_it(self) -> None:
+        for context_paths, unmapped in (({"alpha": "src/a"}, ["src/b"]), ({"gamma": "lib"}, ["src/a", "src/b"])):
+            with self.subTest(unmapped):
+                pair = self.coupled(context_paths)
+                self.assertEqual((None, unmapped), (pair["explained_by"], pair["unmapped"]))
+
+    def test_a_pair_inside_contexts_names_no_unmapped_module(self) -> None:
+        self.assertNotIn("unmapped", self.coupled({"alpha": "src/a", "beta": "src/b"}))
 
     def test_without_contexts_a_pair_names_none(self) -> None:
         self.change("src/a/x.py", "src/b/y.py")
