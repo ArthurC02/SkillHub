@@ -1,8 +1,32 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import { EVALUATION, ME, RUN } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
+
+test.use({ trace: "retain-on-failure" });
+
+function unreadableReceipts(helpful: boolean): Record<string, unknown> {
+  return {
+    "null receipt": null,
+    "incomplete receipt": {},
+    "missing feedback": { ...EVALUATION, feedback: undefined },
+    "opposite choice": {
+      ...EVALUATION,
+      feedback: { ...EVALUATION.feedback, helpful: !helpful, comment: "這份判定需要補充證據" },
+    },
+    "different comment": { ...EVALUATION, feedback: { ...EVALUATION.feedback, helpful } },
+  };
+}
+
+async function inspectFeedback(page: Page, alert: Locator) {
+  const report = await new AxeBuilder({ page }).analyze();
+  await writeFile(test.info().outputPath("feedback-outcome-a11y.json"), JSON.stringify(report));
+  expect(report.violations).toEqual([]);
+  expect(report.incomplete).toEqual([]);
+  await alert.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: test.info().outputPath("feedback-outcome-viewport.png") });
+}
 
 for (const [fault, helpful, unknown] of [
   ["server error", true, true],
@@ -11,11 +35,17 @@ for (const [fault, helpful, unknown] of [
   ["rejected input", false, false],
   ["missing verdict", true, false],
   ["pending session", false, false],
+  ["null receipt", true, true],
+  ["incomplete receipt", false, true],
+  ["missing feedback", true, true],
+  ["opposite choice", false, true],
+  ["different comment", true, true],
 ] as const) {
   test(`feedback with ${fault} preserves the draft and reports its actual submission certainty`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 375, height: 812 });
+    await page.emulateMedia({ colorScheme: helpful ? "light" : "dark" });
     await stubPlatform(page);
     let holdSession = false;
     let sessionReads = 0;
@@ -42,6 +72,8 @@ for (const [fault, helpful, unknown] of [
         saved = { ...intent, submitted_at: "2026-10-16T00:00:00Z" };
       }
       if (writes.length === 1 && fault !== "pending session") {
+        const receipts = unreadableReceipts(helpful);
+        if (Object.hasOwn(receipts, fault)) return route.fulfill({ json: receipts[fault] });
         if (fault === "lost reply") return route.abort("failed");
         if (fault === "truncated reply") {
           return route.fulfill({ status: 200, contentType: "application/json", body: "{" });
@@ -55,6 +87,7 @@ for (const [fault, helpful, unknown] of [
     });
     try {
       await page.goto(`/runs/${RUN}`);
+      await expect(page.locator(".auth-name")).toHaveText("tester");
       const comment = page.locator("#feedback-comment");
       await comment.fill("這份判定需要補充證據");
       const main = page.getByRole("main");
@@ -88,12 +121,7 @@ for (const [fault, helpful, unknown] of [
       expect(reads).toBe(1);
       if (unknown) expect(saved).toMatchObject({ helpful, comment: "這份判定需要補充證據" });
       else expect(saved).toBeUndefined();
-      const report = await new AxeBuilder({ page }).analyze();
-      await writeFile(test.info().outputPath("feedback-outcome-a11y.json"), JSON.stringify(report));
-      expect(report.violations).toEqual([]);
-      expect(report.incomplete).toEqual([]);
-      await alert.scrollIntoViewIfNeeded();
-      await page.screenshot({ path: test.info().outputPath("feedback-outcome-viewport.png") });
+      await inspectFeedback(page, alert);
       holdSession = false;
       release();
       await expect(page.getByRole("banner").getByRole("status")).toHaveCount(0);

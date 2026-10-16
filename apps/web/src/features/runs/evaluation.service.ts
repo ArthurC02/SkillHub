@@ -260,12 +260,19 @@ export function useEvaluationRevisions(runId: string, evaluated: boolean) {
   });
 }
 
-export function setEvaluationFeedback(runId: string, helpful: boolean, comment: string) {
-  return apiFetch<Evaluation>(`/runs/${runId}/evaluation/feedback`, {
+export async function setEvaluationFeedback(runId: string, helpful: boolean, comment: string) {
+  const result = await apiFetch<unknown>(`/runs/${runId}/evaluation/feedback`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ helpful, comment }),
   });
+  if (
+    !isEvaluationResponse(result, runId) ||
+    result.feedback?.helpful !== helpful ||
+    (result.feedback?.comment ?? "") !== comment
+  )
+    throw new Error("Invalid evaluation feedback response");
+  return result;
 }
 
 export function useEvaluationFeedback(runId: string) {

@@ -6,6 +6,8 @@ import { ADMIN_ACCOUNT, ADMIN_LEDGER, ME } from "../src/testing/fixtures/platfor
 import { setOffline } from "./offline";
 import { stubPlatform } from "./stub";
 
+test.use({ trace: "retain-on-failure" });
+
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await stubPlatform(page);
@@ -84,6 +86,9 @@ for (const [amount, action, why, receipt, finalBalance, kind] of [
       await page.goto("/admin/accounts");
       await page.getByLabel("Email", { exact: true }).fill("member@example.com");
       await page.getByRole("button", { name: "查詢", exact: true }).click();
+      await expect(
+        page.getByRole("heading", { name: ADMIN_ACCOUNT.display_name, exact: true }),
+      ).toBeVisible();
       await page.locator("#admin-grant-amount").fill(String(amount));
       await page.locator("#admin-grant-note").fill("確認本次點數異動");
       const main = page.getByRole("main");

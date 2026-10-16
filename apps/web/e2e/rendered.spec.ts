@@ -34,6 +34,8 @@ import {
 import { PHONE_ROUTES, ROUTES } from "./routes";
 import { stubPlatform } from "./stub";
 
+const lookupTest = test.extend({ trace: "retain-on-failure" });
+
 async function stubCreationContinuations(page: Page) {
   await stubPlatform(page);
   await page.route("**/me", async (route) => {
@@ -935,69 +937,70 @@ test("an Agent owner remains visible without widening the phone page", async ({ 
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
 });
 
-test("admin account lookup keeps a grant tied to the submitted email on a phone", async ({
-  page,
-}, testInfo) => {
-  await stubPlatform(page);
-  await page.setViewportSize({ width: 375, height: 900 });
-  await page.route("**/admin/accounts?*", async (route) => {
-    const requested = new URL(route.request().url()).searchParams.get("email");
-    await route.fulfill({
-      json:
-        requested === "other@example.com"
-          ? {
-              ...ADMIN_ACCOUNT,
-              email: "other@example.com",
-              display_name: "封測者乙",
-              workspace_id: "f3333333-3333-4333-8333-333333333333",
-            }
-          : ADMIN_ACCOUNT,
+lookupTest(
+  "admin account lookup keeps a grant tied to the submitted email on a phone",
+  async ({ page }, testInfo) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 375, height: 900 });
+    await page.route("**/admin/accounts?*", async (route) => {
+      const requested = new URL(route.request().url()).searchParams.get("email");
+      await route.fulfill({
+        json:
+          requested === "other@example.com"
+            ? {
+                ...ADMIN_ACCOUNT,
+                email: "other@example.com",
+                display_name: "封測者乙",
+                workspace_id: "f3333333-3333-4333-8333-333333333333",
+              }
+            : ADMIN_ACCOUNT,
+      });
     });
-  });
-  await page.route("**/admin/credits/f3333333-3333-4333-8333-333333333333", (route) =>
-    route.fulfill({
-      json: { ...ADMIN_LEDGER, workspace_id: "f3333333-3333-4333-8333-333333333333" },
-    }),
-  );
+    await page.route("**/admin/credits/f3333333-3333-4333-8333-333333333333", (route) =>
+      route.fulfill({
+        json: { ...ADMIN_LEDGER, workspace_id: "f3333333-3333-4333-8333-333333333333" },
+      }),
+    );
 
-  await page.goto("/admin/accounts");
-  const email = page.getByLabel("Email");
-  await email.fill("member@example.com");
-  await page.getByRole("button", { name: "查詢", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "封測者甲" })).toBeVisible();
-  await page.locator("#admin-grant-amount").fill("50");
-  await page.locator("#admin-grant-note").fill("first account");
-  await expect(page.getByRole("button", { name: "授予", exact: true })).toBeEnabled();
+    await page.goto("/admin/accounts");
+    const email = page.getByLabel("Email");
+    await email.fill("member@example.com");
+    await page.getByRole("button", { name: "查詢", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "封測者甲" })).toBeVisible();
+    await page.locator("#admin-grant-amount").fill("50");
+    await page.locator("#admin-grant-note").fill("first account");
+    await expect(page.getByRole("button", { name: "授予", exact: true })).toBeEnabled();
 
-  await email.fill("other@example.com");
-  await expect(page.getByText("Email 已變更；按「查詢」載入新帳號。")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "封測者甲" })).toHaveCount(0);
-  await expect(page.locator("#admin-grant-amount")).toHaveCount(0);
-  await page.screenshot({
-    path: testInfo.outputPath("admin-account-new-query-phone.png"),
-    fullPage: true,
-  });
+    await email.fill("other@example.com");
+    await expect(page.getByText("Email 已變更；按「查詢」載入新帳號。")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "封測者甲" })).toHaveCount(0);
+    await expect(page.locator("#admin-grant-amount")).toHaveCount(0);
+    await page.screenshot({
+      path: testInfo.outputPath("admin-account-new-query-phone.png"),
+      fullPage: true,
+    });
 
-  await page.getByRole("button", { name: "查詢", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "封測者乙" })).toBeFocused();
-  await expect(page.locator("#admin-grant-amount")).toHaveValue("");
-  await expect(page.locator("#admin-grant-note")).toHaveValue("");
-  await expect(page.getByRole("button", { name: "授予", exact: true })).toBeDisabled();
-  await expect(page.getByText("目前餘額", { exact: false })).toBeInViewport({ ratio: 1 });
-  await page.screenshot({
-    path: testInfo.outputPath("admin-account-result-phone.png"),
-    fullPage: true,
-  });
-  await page.getByText("帳號識別資料與建立時間").click();
-  await expect(
-    page.getByText("f3333333-3333-4333-8333-333333333333", { exact: true }),
-  ).toBeVisible();
-  const width = await page.evaluate(() => ({
-    client: document.documentElement.clientWidth,
-    scroll: document.documentElement.scrollWidth,
-  }));
-  expect(width.scroll).toBeLessThanOrEqual(width.client);
-});
+    await page.getByRole("button", { name: "查詢", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "封測者乙" })).toBeFocused();
+    await expect(page.locator("#admin-grant-amount")).toHaveValue("");
+    await expect(page.locator("#admin-grant-note")).toHaveValue("");
+    await expect(page.getByRole("button", { name: "授予", exact: true })).toBeDisabled();
+    await expect(page.getByText("目前餘額", { exact: false })).toBeInViewport({ ratio: 1 });
+    await page.screenshot({
+      path: testInfo.outputPath("admin-account-result-phone.png"),
+      fullPage: true,
+    });
+    await page.getByText("帳號識別資料與建立時間").click();
+    await expect(
+      page.getByText("f3333333-3333-4333-8333-333333333333", { exact: true }),
+    ).toBeVisible();
+    const width = await page.evaluate(() => ({
+      client: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth,
+    }));
+    expect(width.scroll).toBeLessThanOrEqual(width.client);
+  },
+);
 
 test("a completed credit grant needs a changed draft before another submission", async ({
   page,
