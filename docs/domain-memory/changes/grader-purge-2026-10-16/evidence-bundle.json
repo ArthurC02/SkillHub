@@ -1,0 +1,76 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "grader-purge",
+  "proposal_id": "grader-purge",
+  "registry_revision": {
+    "observed_commit": "bd5cf030e84ca8cf592ef1bc9bf3109aa8b18342",
+    "registry_digest": "sha256:877fabd3c7df276a631eeb74c93355b1f209558df9c7cd117f09bedeeb7f6e6c"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "purge-removes-graders",
+    "mutated_protection": "the eval purge step",
+    "failure_evidence": "Without the step, TestAccountPurgeRemovesTheWorkspacesGradersAndKeepsPlatformOnes failed: 1 of the deleted workspace's graders survived the purge; 2 versions of the deleted workspace's grader survived the purge.",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/app.go",
+    "apps/platform/internal/creator/workspace/purge.go",
+    "apps/platform/internal/trial/improvement/graders/graders.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "purge-removes-graders",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestAccountPurgeRemovesTheWorkspacesGradersAndKeepsPlatformOnes ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:8be69f85298ae037f930b51799b579a74fb0316a9286bc409902a969b07643f6",
+      "finished_at": "2026-10-16T03:13:39.872661Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "purge-keeps-platform-graders",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestAccountPurgeRemovesTheWorkspacesGradersAndKeepsPlatformOnes ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:a31f671237d259f8d38bd5e69cb80270e7e43e66b68f0331d42ef280f9bb1f97",
+      "finished_at": "2026-10-16T03:13:49.249093Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:813acfb1b56b1f323a22bc5f402892c7324d5514326d5bd17d53c271c9201dc0",
+      "finished_at": "2026-10-16T03:13:49.740170Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py governance-readiness --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:2b6a3a27f1223e6cc1dc91aae0d304d9226040ff5508b5e8d4133a1df04930ec",
+      "finished_at": "2026-10-16T03:13:50.249144Z"
+    },
+    {
+      "obligation_id": "package-valid",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py validate-change-package --package-root docs/domain-memory/changes/grader-purge-2026-10-16 --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:f59ed0f5e58f24af697fc460db7a190345b22c6e6c8a2fdbf184d0f488d61a0f",
+      "finished_at": "2026-10-16T03:13:50.849062Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

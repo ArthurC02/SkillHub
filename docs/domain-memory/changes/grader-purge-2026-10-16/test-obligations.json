@@ -1,0 +1,52 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "grader-purge",
+  "proposal_id": "grader-purge",
+  "obligations": [
+    {
+      "id": "package-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "workspace-graders-removed",
+      "expected_outcome": "The package validates with current citations.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "registry validate-change-package --repo-root"
+    },
+    {
+      "id": "purge-removes-graders",
+      "source_type": "acceptance-criterion",
+      "source_id": "workspace-graders-removed",
+      "expected_outcome": "No grader or version of the purged workspace remains; the platform grader keeps its version.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestAccountPurgeRemovesTheWorkspacesGradersAndKeepsPlatformOnes ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "purge-keeps-platform-graders",
+      "source_type": "acceptance-criterion",
+      "source_id": "platform-graders-kept",
+      "expected_outcome": "The platform grader keeps its version after another account's purge.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestAccountPurgeRemovesTheWorkspacesGradersAndKeepsPlatformOnes ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "approval-path-is-external",
+      "source_type": "acceptance-criterion",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "Governance readiness reports ready.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry governance-readiness"
+    }
+  ]
+}
