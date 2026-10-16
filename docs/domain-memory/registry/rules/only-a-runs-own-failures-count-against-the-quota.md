@@ -1,10 +1,13 @@
 ---
 type: Business Rule
-status: draft
+status: stable
 owner: run-execution
 version: unknown
 effective_from: unknown
 effective_until: unknown
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-16T17:15:48.986336Z"
 sources:
   - resource: "apps/platform/internal/trial/execution/quota.go#L18-26"
     excerpt_sha256: "sha256:470051c4203e4f15d916f3e8a79a2f7d8090ead7abfa7a7140dfac908255d62c"

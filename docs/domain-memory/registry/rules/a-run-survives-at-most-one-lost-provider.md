@@ -1,10 +1,13 @@
 ---
 type: Business Rule
-status: draft
+status: stable
 owner: run-execution
 version: unknown
 effective_from: unknown
 effective_until: unknown
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-16T17:15:48.986336Z"
 sources:
   - resource: "apps/platform/internal/trial/execution/reassign.go#L16-22"
     excerpt_sha256: "sha256:1be38a39e42fa2076af3d3eabadf3fbc9e0360105df4c9963295ff559cf2f4a2"

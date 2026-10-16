@@ -1,10 +1,13 @@
 ---
 type: Business Rule
-status: draft
+status: stable
 owner: run-execution
 version: unknown
 effective_from: unknown
 effective_until: unknown
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-16T17:15:48.986336Z"
 sources:
   - resource: "apps/platform/internal/trial/execution/specification.go#L20-20"
     excerpt_sha256: "sha256:41b96ca1fe2bfcab4d81c3b6dc64ee813a085c582b4a546c5842c4c05467fe24"

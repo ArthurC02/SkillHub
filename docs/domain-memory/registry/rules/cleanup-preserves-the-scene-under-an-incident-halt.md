@@ -1,10 +1,13 @@
 ---
 type: Business Rule
-status: draft
+status: stable
 owner: run-execution
 version: unknown
 effective_from: unknown
 effective_until: unknown
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-16T17:15:48.986336Z"
 sources:
   - resource: "apps/platform/internal/trial/execution/cleanup.go#L65-73"
     excerpt_sha256: "sha256:3df07a2ab978833f6417331bc349f4762679b51702218c56b41937d769561b5a"

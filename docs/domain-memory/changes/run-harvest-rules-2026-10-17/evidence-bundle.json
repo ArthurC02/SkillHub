@@ -7,7 +7,16 @@
     "registry_digest": "sha256:64d98013c3a640a179c9cd39d9b037d5e9292664718ac0334a63e248460cfb2b"
   },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "f1b4401c78366741d30c639a3062fba3f0120c2e",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "2632d51a6ff8746028756b00844587791a76c63b",
+      "registry_digest": "sha256:64d98013c3a640a179c9cd39d9b037d5e9292664718ac0334a63e248460cfb2b"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "rule-cleanup-preserves-the-scene-under-an-incident-halt",
