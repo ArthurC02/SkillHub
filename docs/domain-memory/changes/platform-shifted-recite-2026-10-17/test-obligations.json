@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "platform-shifted-recite",
+  "proposal_id": "platform-shifted-recite",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "registry_tools.py verify-evidence --path apps/platform/internal/entrypoint/api/apiserver/app.go --path apps/platform/internal/entrypoint/api/apiserver/credit_wiring.go --path apps/platform/internal/entrypoint/wiring/evaluation_batches.go --path apps/platform/internal/trial/execution/batch_facts.go --path apps/platform/internal/trial/execution/service.go --path docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md"
+    }
+  ]
+}

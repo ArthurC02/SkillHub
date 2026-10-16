@@ -1,0 +1,28 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "platform-shifted-recite",
+  "proposal_id": "platform-shifted-recite",
+  "registry_revision": {
+    "observed_commit": "84b52a638414e168ecfe24472d49d12f04f7075e",
+    "registry_digest": "sha256:dc825b84560d22bdb5847089de768d45d03d09b6f6bcad498a19f90003fcd7ef"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --path apps/platform/internal/entrypoint/api/apiserver/app.go --path apps/platform/internal/entrypoint/api/apiserver/credit_wiring.go --path apps/platform/internal/entrypoint/wiring/evaluation_batches.go --path apps/platform/internal/trial/execution/batch_facts.go --path apps/platform/internal/trial/execution/service.go --path docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:6d404ffce9e339da3ab293b06d8998a0b1afcddf8b23d76e064c50488b77e4ff",
+      "finished_at": "2026-10-16T16:45:28.787891Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
