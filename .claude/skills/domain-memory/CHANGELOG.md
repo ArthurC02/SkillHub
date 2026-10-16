@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.33.1
+
+### Fixed
+
+- `validate`, `verify-evidence` and `change-coupling` run in about half the time on a large Registry or history, and `compare-registry` in about a third, with the same output. A command now reads each cited file and works out each record's names, Contexts and cited paths once, and finds a citation's source kind by looking up its parent directories instead of scanning every source.
+- `scan-secrets`, `discover-sources` and `verify-sources` skip excluded directories instead of walking through them, and `scan-secrets` reports a symbolic link it skips. Findings come in directory-walk order.
+
 ## 0.33.0
 
 ### Added

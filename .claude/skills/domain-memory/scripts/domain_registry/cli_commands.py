@@ -9,7 +9,7 @@ from pathlib import Path
 from .attestations import audit_attestations, verify_scm
 from .audit import verify as verify_audit
 from .changes import init_change_package, redraft_change_package, validate_change_package
-from .common import ASSET_KEYS, load_json
+from .common import ASSET_KEYS, PROPOSAL_FILE, load_json
 from .compare import compare_registries
 from .coupling import CouplingLimits, change_coupling
 from .contracts import validate_schema
@@ -605,7 +605,7 @@ def handle_validate_contract(args: argparse.Namespace) -> int:
 
 
 def handle_verify_scm_attestation(args: argparse.Namespace) -> int:
-    proposal = load_json(args.package_root.resolve() / "domain-change-proposal.json")
+    proposal = load_json(args.package_root.resolve() / PROPOSAL_FILE)
     errors = verify_scm(args.attestation.resolve(), proposal)
     return report_errors(errors, "SCM attestation is valid.")
 

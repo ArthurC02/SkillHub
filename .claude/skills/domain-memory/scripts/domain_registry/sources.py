@@ -2,7 +2,7 @@ import fnmatch
 import hashlib
 import os
 import subprocess
-from collections.abc import Iterable
+from collections.abc import Callable, Iterator
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -208,6 +208,12 @@ def policy_matches(path: str, include: list[str], exclude: list[str]) -> bool:
     return included and not excluded
 
 
+def _files_under(directory: Path) -> Iterator[Path]:
+    for parent, children, files in os.walk(directory):
+        children[:] = [name for name in children if name not in EXCLUDED_DIRECTORIES]
+        yield from (Path(parent, name) for name in files)
+
+
 def source_files(
     root: Path, selected_paths: list[Path], policy: dict[str, Any] | None = None
 ) -> list[Path]:
@@ -226,7 +232,7 @@ def source_files(
             continue
         roots.append(resolved)
     for resolved in roots:
-        candidates = [resolved] if resolved.is_file() else resolved.rglob("*")
+        candidates = [resolved] if resolved.is_file() else _files_under(resolved)
         for candidate in candidates:
             if candidate.is_file() and not candidate.is_symlink():
                 relative_path = relative(root, candidate)
@@ -338,31 +344,31 @@ def source_kinds(source_map: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def longest_source_containing(paths: Iterable[str], cited_path: str) -> str:
-    return max(
-        (
-            path
-            for path in paths
-            if cited_path == path or cited_path.startswith(path + "/")
-        ),
-        key=len,
-        default="",
-    )
+def source_kind_index(source_map: dict[str, Any]) -> Callable[[str], str]:
+    kinds = source_map.get("source_kinds") or source_kinds(source_map)
+    group_kinds: dict[str, Any] = {}
+    for group in source_map.get("source_groups", []):
+        for path in group.get("paths", []):
+            group_kinds.setdefault(path, group.get("kind", "unclassified"))
+
+    def kind_of(cited_path: str) -> str:
+        owners = _containing_paths(cited_path)
+        owner = next((path for path in owners if path in kinds), None)
+        if owner is not None and kinds[owner] != "unclassified":
+            return kinds[owner]
+        kind = next((group_kinds[path] for path in owners if path in group_kinds), "unclassified")
+        return kind if isinstance(kind, str) else "unclassified"
+
+    return kind_of
+
+
+def _containing_paths(path: str) -> list[str]:
+    parts = path.split("/")
+    return [owner for size in range(len(parts), 0, -1) if (owner := "/".join(parts[:size]))]
 
 
 def source_kind_for(source_map: dict[str, Any], cited_path: str) -> str:
-    kinds = source_map.get("source_kinds") or source_kinds(source_map)
-    owner = longest_source_containing(kinds, cited_path)
-    if owner and kinds[owner] != "unclassified":
-        return kinds[owner]
-    owner = ""
-    kind = "unclassified"
-    for group in source_map.get("source_groups", []):
-        group_owner = longest_source_containing(group.get("paths", []), cited_path)
-        if len(group_owner) > len(owner):
-            owner = group_owner
-            kind = group.get("kind", "unclassified")
-    return kind if isinstance(kind, str) else "unclassified"
+    return source_kind_index(source_map)(cited_path)
 
 
 def selected_source_map(

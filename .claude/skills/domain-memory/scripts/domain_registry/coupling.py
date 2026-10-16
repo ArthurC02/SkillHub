@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import subprocess
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import cache
 from itertools import combinations
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -24,18 +26,12 @@ def change_coupling(
     repo_root: Path, roots: list[str], depth: int, since: str | None, limits: CouplingLimits
 ) -> dict[str, Any]:
     commits = _commits(repo_root, since)
-    large = [files for files in commits if len(files) > limits.max_changeset]
+    kept = [files for files in commits if len(files) <= limits.max_changeset]
+    module_for = _existing_module_finder(repo_root, roots, depth)
     revisions: Counter[str] = Counter()
     shared: Counter[tuple[str, str]] = Counter()
-    existing: dict[str, bool] = {}
-    for files in commits:
-        if len(files) > limits.max_changeset:
-            continue
-        modules = sorted({
-            module for path in files
-            if (module := module_of(path, roots, depth))
-            and existing.setdefault(module, (repo_root / module).is_dir())
-        })
+    for files in kept:
+        modules = sorted({module for path in files if (module := module_for(path))})
         revisions.update(modules)
         shared.update(combinations(modules, 2))
     pairs = [
@@ -47,13 +43,24 @@ def change_coupling(
     ]
     return {
         "commits": len(commits),
-        "skipped_large_commits": len(large),
+        "skipped_large_commits": len(commits) - len(kept),
         "modules": [{"module": module, "revisions": count} for module, count in sorted(revisions.items())],
         "pairs": sorted(
             (pair for pair in pairs if pair["degree"] >= limits.min_degree),
             key=lambda pair: (-pair["degree"], -pair["shared"], pair["modules"]),
         ),
     }
+
+
+def _existing_module_finder(repo_root: Path, roots: list[str], depth: int) -> Callable[[str], str | None]:
+    exists = cache(lambda module: (repo_root / module).is_dir())
+
+    @cache
+    def module_for(path: str) -> str | None:
+        module = module_of(path, roots, depth)
+        return module if module and exists(module) else None
+
+    return module_for
 
 
 def module_of(path: str, roots: list[str], depth: int) -> str | None:

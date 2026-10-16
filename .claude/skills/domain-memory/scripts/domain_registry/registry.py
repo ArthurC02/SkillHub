@@ -1,6 +1,7 @@
 import json
 import re
 import shutil
+from collections import Counter
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -18,10 +19,10 @@ from .common import (
 )
 from .evidence import (
     all_references,
-    classified,
+    classifier,
     migrate_legacy,
     source_map_for,
-    verify,
+    verifier,
     with_references,
     without_derived_keys,
 )
@@ -123,7 +124,11 @@ def _copy_missing_templates(target: Path) -> list[str]:
 
 
 def asset_records(root: Path, name: str) -> list[dict[str, Any]]:
-    value = read_document(root, name).get(ASSET_KEYS[name])
+    return _records_of(name, read_document(root, name))
+
+
+def _records_of(name: str, document: dict[str, Any]) -> list[dict[str, Any]]:
+    value = document.get(ASSET_KEYS[name])
     if not isinstance(value, list) or not all(
         isinstance(record, dict) for record in value
     ):
@@ -133,18 +138,21 @@ def asset_records(root: Path, name: str) -> list[dict[str, Any]]:
 
 def _load_registry_assets(
     root: Path,
-) -> tuple[dict[str, list[dict[str, Any]]], list[str]]:
+) -> tuple[dict[str, list[dict[str, Any]]], dict[str, dict[str, Any]], list[str]]:
     records: dict[str, list[dict[str, Any]]] = {}
+    documents: dict[str, dict[str, Any]] = {}
     errors: list[str] = []
     for name in ASSET_KEYS:
         if not has_document(root, name):
             errors.append(f"missing asset: {document_path(root, name)}")
             continue
         try:
-            records[name] = asset_records(root, name)
+            document = read_document(root, name)
+            records[name] = _records_of(name, document)
+            documents[name] = document
         except ValueError as error:
             errors.append(str(error))
-    return records, errors
+    return records, documents, errors
 
 
 def _asset_header_errors(name: str, asset: dict[str, Any], entries: list[dict[str, Any]]) -> list[str]:
@@ -182,13 +190,13 @@ def _entry_status_errors(
 
 
 def _validate_asset_records(
-    root: Path,
+    documents: dict[str, dict[str, Any]],
     records: dict[str, list[dict[str, Any]]],
     require_reviewed: bool,  # noqa: FBT001
 ) -> list[str]:
     errors: list[str] = []
     for name, entries in records.items():
-        asset = read_document(root, name)
+        asset = documents[name]
         errors.extend(_asset_header_errors(name, asset, entries))
         for entry in entries:
             status = record_status(name.removesuffix(".json"), asset, entry)
@@ -367,7 +375,8 @@ def _validate_evidence(
 ) -> list[str]:
     if repo_root is None:
         return []
-    results = (verify(reference, repo_root) for reference in all_references(records))
+    check = verifier(repo_root)
+    results = (check(reference) for reference in all_references(records))
     return [
         f"evidence {result['status']}: {result.get('reason', result.get('path'))}"
         for result in results
@@ -386,9 +395,9 @@ def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list
     artifacts = manifest.get("artifacts")
     if not isinstance(artifacts, list) or not set(ASSET_KEYS).issubset(artifacts):
         errors.append("manifest artifacts must list every standard registry asset file")
-    records, load_errors = _load_registry_assets(root)
+    records, documents, load_errors = _load_registry_assets(root)
     errors.extend(load_errors)
-    errors.extend(_validate_asset_records(root, records, require_reviewed))
+    errors.extend(_validate_asset_records(documents, records, require_reviewed))
     errors.extend(cross_reference_errors(records))
     errors.extend(_validate_evidence(records, repo_root))
     return errors
@@ -474,28 +483,24 @@ EVIDENCE_STATUSES = ("current", "shifted", "stale", "unhashed", "missing", "inva
 def verify_evidence(root: Path, repo_root: Path, paths: list[str] | None = None) -> dict[str, Any]:
     source_map = source_map_for(root)
     paths = [PurePosixPath(Path(path).as_posix()).as_posix() for path in paths] if paths else None
+    wanted = set(paths or ())
+    classify, check = classifier(source_map), verifier(repo_root)
     results = [
-        {"asset": name.removesuffix(".json"), "id": entry.get("id"),
-         **verify(classified(reference, source_map), repo_root)}
+        {"asset": name.removesuffix(".json"), "id": entry.get("id"), **check(classify(reference))}
         for name in ASSET_KEYS
         for entry in asset_records(root, name)
         for reference in all_references(entry)
-        if not paths or (isinstance(reference, dict) and reference.get("path") in paths)
+        if not paths or (isinstance(reference, dict) and reference.get("path") in wanted)
     ]
-    summary: dict[str, Any] = {
-        status: sum(item["status"] == status for item in results) for status in EVIDENCE_STATUSES
-    }
-    kinds = sorted({item["source_kind"] for item in results if "source_kind" in item})
-    summary["by_source_kind"] = {
-        kind: sum(item.get("source_kind") == kind for item in results) for kind in kinds
-    }
+    statuses = Counter(item["status"] for item in results)
+    summary: dict[str, Any] = {status: statuses[status] for status in EVIDENCE_STATUSES}
+    kinds = Counter(item["source_kind"] for item in results if "source_kind" in item)
+    summary["by_source_kind"] = {kind: kinds[kind] for kind in sorted(kinds)}
     report: dict[str, Any] = {"results": results, "summary": summary}
     if paths:
+        citations = Counter(item.get("path") for item in results)
         report["paths"] = {
-            path: {
-                "citations": sum(item.get("path") == path for item in results),
-                "exists": (repo_root / path).is_file(),
-            }
+            path: {"citations": citations[path], "exists": (repo_root / path).is_file()}
             for path in paths
         }
     return report

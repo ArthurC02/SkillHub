@@ -10,7 +10,7 @@ from .attestations import (
     verify_external_scm,
     verify_git_signed_commit,
 )
-from .common import completed_identifier, iso_timestamp, load_json, utc_now, write_json
+from .common import EVIDENCE_FILE, PROPOSAL_FILE, completed_identifier, iso_timestamp, load_json, utc_now, write_json
 from .counterfactual import OUTPUT_TAIL
 from .evidence import digest
 from .policy import approved_command_profiles, review_governance
@@ -18,7 +18,7 @@ from .revision import current_registry_revision, require_current_registry_revisi
 
 
 def proposal_path(root: Path) -> Path:
-    return root / "domain-change-proposal.json"
+    return root / PROPOSAL_FILE
 
 
 def submit_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
@@ -29,7 +29,7 @@ def submit_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
         raise ValueError("a proposal requires a proposer before submission")
     revision = current_registry_revision(registry_root, repo_root)
     proposal["base_registry_revision"] = revision
-    evidence_path = root / "evidence-bundle.json"
+    evidence_path = root / EVIDENCE_FILE
     evidence = load_json(evidence_path)
     evidence["registry_revision"] = revision
     errors = validate_change_package(root, None)
@@ -119,7 +119,7 @@ def verify_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
         for entry in obligations
         if isinstance(entry, dict) and completed_identifier(entry.get("id"))
     }
-    evidence = load_json(root / "evidence-bundle.json")
+    evidence = load_json(root / EVIDENCE_FILE)
     errors = test_attestation_errors(evidence, obligation_ids, registry_root)
     if errors:
         raise ValueError("proposal lacks verified test evidence: " + "; ".join(errors))
@@ -195,7 +195,7 @@ def record_test_result(
     }
     if run.cwd is not None:
         result["working_directory"] = working_directory.relative_to(repo_root.resolve()).as_posix()
-    evidence_path = root / "evidence-bundle.json"
+    evidence_path = root / EVIDENCE_FILE
     evidence = load_json(evidence_path)
     kept = [
         entry for entry in evidence.get("test_results", [])
@@ -227,7 +227,7 @@ def attest_signed_commit(root: Path, registry_root: Path, repo_root: Path, commi
     ) or commit_carries_proposal(repo_root, full, root, proposal)
     if errors:
         raise ValueError("the commit cannot attest this proposal: " + "; ".join(errors))
-    evidence_path = root / "evidence-bundle.json"
+    evidence_path = root / EVIDENCE_FILE
     evidence = load_json(evidence_path)
     evidence["scm_attestation"] = {
         "provider": "git-signed-commit",
@@ -270,7 +270,7 @@ def finalize_proposal(
     if proposal.get("status") != "verified":
         raise ValueError("only a verified proposal may be finalized")
     require_current_registry_revision(proposal, registry_root, repo_root)
-    evidence = load_json(root / "evidence-bundle.json")
+    evidence = load_json(root / EVIDENCE_FILE)
     attestation = evidence.get("scm_attestation")
     governance = review_governance(registry_root)
     if not isinstance(attestation, dict):

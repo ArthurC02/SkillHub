@@ -87,16 +87,19 @@ def registry_digest(root: Path) -> str:
 
 
 def current_registry_revision(root: Path, repo_root: Path) -> dict[str, str | None]:
+    return {
+        "observed_commit": git_commit(repo_root.resolve()),
+        "registry_digest": _digest_inside(root, repo_root),
+    }
+
+
+def _digest_inside(root: Path, repo_root: Path) -> str:
     resolved_root = root.resolve()
-    resolved_repo = repo_root.resolve()
     try:
-        resolved_root.relative_to(resolved_repo)
+        resolved_root.relative_to(repo_root.resolve())
     except ValueError as error:
         raise ValueError("registry root must be inside repo root") from error
-    return {
-        "observed_commit": git_commit(resolved_repo),
-        "registry_digest": registry_digest(resolved_root),
-    }
+    return registry_digest(resolved_root)
 
 
 def valid_digest(value: Any) -> bool:
@@ -221,7 +224,7 @@ def require_current_registry_revision(
         raise ValueError(
             "proposal requires a Git commit and Registry digest base revision"
         )
-    actual = current_registry_revision(root, repo_root)["registry_digest"]
+    actual = _digest_inside(root, repo_root)
     if expected["registry_digest"] == actual:
         return actual
     changed = _changed_since_base(proposal, root, repo_root, expected)

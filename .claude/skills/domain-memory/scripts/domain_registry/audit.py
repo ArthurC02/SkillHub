@@ -80,24 +80,9 @@ def append_locked(root: Path, event: dict[str, Any]) -> None:
     existing = verify(root)
     if existing["status"] != "valid":
         raise ValueError(f"audit log is invalid: {existing['reason']}")
-    manifest_path = audit_manifest_path(root)
-    if manifest_path.is_file():
-        manifest = load_json(manifest_path)
-        if (
-            manifest.get("format") != MANIFEST_FORMAT
-            or not isinstance(manifest.get("events"), int)
-            or manifest["events"] < 0
-        ):
-            raise ValueError("audit manifest is invalid")
-        sequence = manifest["events"] + 1
-        previous = manifest.get("head_sha256")
-    else:
-        events = read_events(root)
-        sequence = len(events) + 1
-        previous = events[-1].get("event_sha256") if events else None
     value = {
-        "sequence": sequence,
-        "previous_event_sha256": previous,
+        "sequence": existing["events"] + 1,
+        "previous_event_sha256": existing["head_sha256"],
         "recorded_at": utc_now(),
         **event,
     }

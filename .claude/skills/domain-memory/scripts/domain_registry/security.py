@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -57,13 +58,25 @@ class Scan:
 
 
 def _scannable_files(root: Path, scan: Scan):
-    for path in root.rglob("*"):
-        if UNSCANNED_DIRECTORIES.intersection(path.relative_to(root).parts):
-            continue
-        if path.is_symlink():
-            scan.skip(path, "symlink")
-        elif path.is_file():
-            yield path
+    for directory, children, files in os.walk(root):
+        here = Path(directory)
+        kept = []
+        for name in children:
+            if name in UNSCANNED_DIRECTORIES:
+                continue
+            if (here / name).is_symlink():
+                scan.skip(here / name, "symlink")
+            else:
+                kept.append(name)
+        children[:] = kept
+        for name in files:
+            path = here / name
+            if name in UNSCANNED_DIRECTORIES:
+                continue
+            if path.is_symlink():
+                scan.skip(path, "symlink")
+            elif path.is_file():
+                yield path
 
 
 def scan_report(root: Path) -> dict[str, object]:

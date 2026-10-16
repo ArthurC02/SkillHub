@@ -8,6 +8,8 @@ from .common import (
     ASSET_KEYS,
     CHANGE_CLASSIFICATIONS,
     CHANGE_PACKAGE_FILES,
+    EVIDENCE_FILE,
+    PROPOSAL_FILE,
     CHANGE_PACKAGE_FORMATS,
     OBLIGATION_SOURCE_TYPES,
     OBLIGATION_STATUSES,
@@ -20,7 +22,7 @@ from .common import (
     write_json,
 )
 from .policy import approved_command_profiles
-from .evidence import all_references, verify
+from .evidence import all_references, verifier
 from .registry import asset_records, cross_reference_errors
 from .revision import DIGEST_HEX_LENGTH, DIGEST_PREFIX, valid_digest, valid_registry_revision
 
@@ -28,8 +30,6 @@ SUBMITTED_OR_LATER = {"submitted", "verified", "approved", "applied"}
 VERIFIED_OR_LATER = {"verified", "approved", "applied"}
 APPROVED_OR_LATER = {"approved", "applied"}
 PREVIEW_STATUSES = ("submitted", "verified", "approved", "applied")
-PROPOSAL_FILE = "domain-change-proposal.json"
-EVIDENCE_FILE = "evidence-bundle.json"
 STAND_IN_REVISION = {"observed_commit": None, "registry_digest": DIGEST_PREFIX + "0" * DIGEST_HEX_LENGTH}
 STAND_IN_TIME = "1970-01-01T00:00:00Z"
 
@@ -378,9 +378,13 @@ def _counts_as_approval(approval: Any, proposal: dict[str, Any]) -> bool:
         and approval.get("decision") == "approved"
         and approval.get("proposal_revision") == proposal.get("proposal_revision")
         and approval.get("base_registry_revision") == proposal.get("base_registry_revision")
-        and all(
-            completed_identifier(approval.get(field)) for field in ("role", "reviewer", "scope")
-        )
+        and _signed_in_full(approval)
+    )
+
+
+def _signed_in_full(approval: dict[str, Any]) -> bool:
+    return bool(
+        all(completed_identifier(approval.get(field)) for field in ("role", "reviewer", "scope"))
         and iso_timestamp(approval.get("approved_at"))
     )
 
@@ -401,14 +405,7 @@ def _approval_entry_error(approval: Any, revision: Any, base_revision: Any) -> s
         return "domain-change-proposal.json has invalid approval entry"
     if approval.get("decision") != "approved" or approval.get("proposal_revision") != revision:
         return None
-    if not all(
-        (
-            completed_identifier(approval.get("role")),
-            completed_identifier(approval.get("reviewer")),
-            iso_timestamp(approval.get("approved_at")),
-            completed_identifier(approval.get("scope")),
-        )
-    ):
+    if not _signed_in_full(approval):
         return "an approval requires role, reviewer, approved_at, and scope"
     if approval.get("base_registry_revision") != base_revision:
         return "an approval must bind to the proposal base_registry_revision"
@@ -494,9 +491,8 @@ def _evidence_result_errors(
     return errors
 
 
-def _registry_reference_errors(registry_root: Path, proposal: dict[str, Any]) -> list[str]:
+def _registry_reference_errors(staged: dict[str, list[dict[str, Any]]], proposal: dict[str, Any]) -> list[str]:
     errors: list[str] = []
-    staged = staged_records(registry_root, proposal)
     for asset, kind, referenced in (
         ("contexts.json", "context", proposal.get("affected_contexts")),
         ("rules.json", "rule", proposal.get("rule_ids", [])),
@@ -512,7 +508,7 @@ def _registry_reference_errors(registry_root: Path, proposal: dict[str, Any]) ->
 
 def _identity_errors(documents: dict[str, dict[str, Any]]) -> list[str]:
     requirement = documents["requirement-normalization.json"]
-    proposal = documents["domain-change-proposal.json"]
+    proposal = documents[PROPOSAL_FILE]
     errors = [
         f"{name} has an invalid format"
         for name, document in documents.items()
@@ -667,13 +663,15 @@ def validate_change_package(
         else:
             errors.extend(verify_scm_value(attestation, proposal))
     if registry_root is not None and status not in SETTLED_STATUSES:
-        errors.extend(_registry_reference_errors(registry_root, proposal))
-        errors.extend(staged_registry_errors(registry_root, proposal, repo_root))
+        current = {name: asset_records(registry_root, name) for name in ASSET_KEYS}
+        staged = _staged(current, proposal)
+        errors.extend(_registry_reference_errors(staged, proposal))
+        errors.extend(_staged_registry_errors(current, staged, proposal, repo_root))
     return errors
 
 
-def staged_records(registry_root: Path, proposal: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
-    records = {name: list(asset_records(registry_root, name)) for name in ASSET_KEYS}
+def _staged(current: dict[str, list[dict[str, Any]]], proposal: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    records = {name: list(entries) for name, entries in current.items()}
     updates = proposal.get("registry_updates")
     for raw in updates if isinstance(updates, list) else []:
         try:
@@ -687,13 +685,16 @@ def staged_records(registry_root: Path, proposal: dict[str, Any]) -> dict[str, l
     return records
 
 
-def staged_registry_errors(
-    registry_root: Path, proposal: dict[str, Any], repo_root: Path | None
+def _staged_registry_errors(
+    current: dict[str, list[dict[str, Any]]],
+    staged: dict[str, list[dict[str, Any]]],
+    proposal: dict[str, Any],
+    repo_root: Path | None,
 ) -> list[str]:
-    before = set(cross_reference_errors({name: asset_records(registry_root, name) for name in ASSET_KEYS}))
+    before = set(cross_reference_errors(current))
     errors = [
         f"once applied: {error}"
-        for error in cross_reference_errors(staged_records(registry_root, proposal))
+        for error in cross_reference_errors(staged)
         if error not in before
     ]
     if repo_root is not None:
@@ -704,11 +705,12 @@ def staged_registry_errors(
 def _updated_evidence_errors(proposal: dict[str, Any], repo_root: Path) -> list[str]:
     updates = proposal.get("registry_updates")
     errors = []
+    check = verifier(repo_root)
     for raw in updates if isinstance(updates, list) else []:
         if not isinstance(raw, dict) or not isinstance(raw.get("record"), dict):
             continue
         for reference in all_references(raw["record"]):
-            result = verify(reference, repo_root)
+            result = check(reference)
             if result["status"] != "current":
                 errors.append(
                     f"registry update {raw.get('asset')}/{raw['record'].get('id')} cites evidence that is "

@@ -1,14 +1,16 @@
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from .audit import reviewing_proposals
-from .common import ASSET_KEYS, record_status
+from .common import ASSET_KEYS, record_status, updates_record
 from .evidence import (
     WIDEN_TO_UNIQUE,
     all_references,
     citation,
     classified,
+    classifier,
     excerpt_starts,
     source_map_for,
     verify,
@@ -22,7 +24,7 @@ class Relocation:
     repo_root: Path
     old: str
     new: str
-    source_map: dict[str, Any]
+    classify: Callable[[Any], Any]
     unmatched: list[dict[str, Any]] = field(default_factory=list)
 
     def target(self, path: str) -> str | None:
@@ -54,7 +56,7 @@ class Relocation:
             return reference
         recited = citation(self.repo_root, target, starts[0], starts[0] + length - 1)
         kept = {key: value for key, value in reference.items() if key != "source_kind"}
-        return classified({**kept, **recited}, self.source_map)
+        return self.classify({**kept, **recited})
 
 
 def _record_update(
@@ -92,7 +94,7 @@ def _earlier_record(onto: dict[str, Any] | None, asset: str, record_id: str) -> 
     proposed = [*(onto or {}).get("registry_updates", []), *(onto or {}).get("candidates", [])]
     return next(
         (item["record"] for item in proposed
-         if item.get("asset") == asset and (item.get("record") or {}).get("id") == record_id),
+         if updates_record(item, asset, record_id)),
         None,
     )
 
@@ -100,7 +102,7 @@ def _earlier_record(onto: dict[str, Any] | None, asset: str, record_id: str) -> 
 def _merged(onto: dict[str, Any], update: dict[str, Any], asset: str, record_id: str, resolved: dict) -> dict[str, Any]:
     def others(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return [item for item in items
-                if not (item.get("asset") == asset and (item.get("record") or {}).get("id") == record_id)]
+                if not updates_record(item, asset, record_id)]
 
     return {
         **onto,
@@ -154,7 +156,7 @@ def recite(root: Path, repo_root: Path, request: Recitation) -> dict[str, Any]:
 
 
 def relocate_evidence(root: Path, repo_root: Path, old: str, new: str) -> dict[str, Any]:
-    relocation = Relocation(repo_root, old, new, source_map_for(root))
+    relocation = Relocation(repo_root, old, new, classifier(source_map_for(root)))
     reviewing = reviewing_proposals(root)
     updates, candidates, supersedes = [], [], set()
     for name in ASSET_KEYS:

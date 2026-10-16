@@ -109,7 +109,7 @@ def decode(asset: str, record_id: str, text: str) -> dict[str, Any]:
             raise ValueError(f"a {asset} concept has no prose field; move its text into a frontmatter field")
         record[PROSE_FIELDS[asset]] = prose
     for key, value in front.items():
-        if key in ("type", "title", "status", "registry_status", "decision_status", "sources"):
+        if key in RESERVED_KEYS:
             continue
         record[key] = value
     record.update(relations)

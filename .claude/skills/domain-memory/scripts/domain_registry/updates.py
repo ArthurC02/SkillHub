@@ -4,7 +4,6 @@ from typing import Any
 
 from .audit import read_events, reviewing_proposals
 from .changes import (
-    PROPOSAL_FILE,
     ParsedUpdate,
     parsed_update,
     superseded_ids,
@@ -12,10 +11,12 @@ from .changes import (
 )
 from .common import (
     ASSET_KEYS,
+    PROPOSAL_FILE,
     completed_identifier,
     iso_timestamp,
     load_json,
     record_status,
+    updates_record,
     reject_duplicate_keys,
     review_field,
     utc_now,
@@ -26,7 +27,6 @@ from .policy import review_mode
 from .revision import (
     current_registry_revision,
     require_current_registry_revision,
-    valid_registry_revision,
 )
 from .store import read_document, write_document
 from .transaction import mutate_registry, write_json
@@ -74,7 +74,7 @@ def reconcile_pending_update(registry_root: Path, repo_root: Path) -> str | None
         raise ValueError(
             "registry reconciliation marker points outside the repository"
         ) from error
-    proposal_path = package_root / "domain-change-proposal.json"
+    proposal_path = package_root / PROPOSAL_FILE
     proposal = load_json(proposal_path)
     if proposal.get("proposal_id") != proposal_id:
         raise ValueError("registry reconciliation marker does not match its proposal")
@@ -315,7 +315,7 @@ def _finalized_proposal(package_root: Path, registry_root: Path) -> dict[str, An
     errors = validate_change_package(package_root, registry_root)
     if errors:
         raise ValueError("change package is invalid: " + "; ".join(errors))
-    proposal = load_json(package_root / "domain-change-proposal.json")
+    proposal = load_json(package_root / PROPOSAL_FILE)
     if proposal.get("status") != "approved" or not iso_timestamp(
         proposal.get("finalized_at")
     ):
@@ -336,21 +336,19 @@ def apply_approved_updates(
         raise ValueError("approved proposal has no registry_updates")
     source_map = source_map_for(registry_root)
     reviewing = reviewing_proposals(registry_root)
-    touched = sorted({f"{update.asset}/{update.record_id}" for update in map(parsed_update, updates)})
+    parsed = [parsed_update(update) for update in updates]
+    touched = sorted({f"{update.asset}/{update.record_id}" for update in parsed})
 
     def mutate(staging: Path) -> None:
         documents: dict[str, dict[str, Any]] = {}
-        for update in map(parsed_update, updates):
-            document = documents.setdefault(
-                update.document_name, read_document(staging, update.document_name)
-            )
-            _apply_update(update, document, proposal, source_map, reviewing)
+        for update in parsed:
+            if update.document_name not in documents:
+                documents[update.document_name] = read_document(staging, update.document_name)
+            _apply_update(update, documents[update.document_name], proposal, source_map, reviewing)
         for name, document in documents.items():
             write_document(staging, name, document)
 
-    base_revision = proposal.get("base_registry_revision")
-    if not valid_registry_revision(base_revision):
-        raise ValueError("approved proposal has an invalid base Registry revision")
+    base_revision = proposal["base_registry_revision"]
     relative_package = package_root.resolve().relative_to(repo_root.resolve())
     write_json(
         reconciliation_path(registry_root),
@@ -378,7 +376,7 @@ def apply_approved_updates(
         if not _was_applied(registry_root, proposal["proposal_id"]):
             reconciliation_path(registry_root).unlink(missing_ok=True)
         raise
-    mark_applied(package_root / "domain-change-proposal.json", proposal, registry_root, repo_root)
+    mark_applied(package_root / PROPOSAL_FILE, proposal, registry_root, repo_root)
     reconciliation_path(registry_root).unlink(missing_ok=True)
 
 def promote_candidate(
@@ -413,7 +411,7 @@ def promote_candidate(
     updates = [
         entry
         for entry in proposal.get("registry_updates", [])
-        if not (entry.get("asset") == asset and (entry.get("record") or {}).get("id") == record_id)
+        if not updates_record(entry, asset, record_id)
     ]
     proposal["registry_updates"] = [*updates, update]
     write_json(path, proposal)

@@ -9,6 +9,7 @@ import { ListFreshness } from "../../../../shared/ui/ListFreshness";
 import { IN_FLIGHT_RUN_STATUSES } from "../../../runs";
 import { runStatusLabel } from "../../../runs";
 import { canRetainLoadedPage } from "../../../../core/api/client";
+import { usePaginationFocus } from "../../../../shared/ui/usePaginationFocus";
 
 export function RunHistory({
   runs,
@@ -21,9 +22,10 @@ export function RunHistory({
   const readable = runs.data && (!runs.error || nextPageFailure);
   const paused = runs.fetchStatus === "paused";
   const busy = runs.fetchStatus !== "idle";
+  const { bindTarget, headingRef, loadMore, row } = usePaginationFocus(runs, history);
   return (
     <>
-      <h2 id="test-case-history-heading" tabIndex={-1}>
+      <h2 id="test-case-history-heading" tabIndex={-1} ref={headingRef}>
         執行歷史
       </h2>
       {(runs.isPending || paused || (readable && history.length === 0 && busy)) && (
@@ -58,7 +60,12 @@ export function RunHistory({
         ) : (
           <ul className="download-list" data-role="evidence">
             {history.map((run) => (
-              <li key={run.run_id} className="download-item">
+              <li
+                key={run.run_id}
+                className="download-item"
+                ref={run === row ? bindTarget : undefined}
+                tabIndex={run === row ? -1 : undefined}
+              >
                 <p>
                   <Link to="/runs/$runId" params={{ runId: run.run_id }}>
                     <Timestamp at={run.created_at} />
@@ -111,9 +118,10 @@ export function RunHistory({
         ))}
       {runs.hasNextPage && !runs.error && (
         <button
+          ref={bindTarget}
           type="button"
           disabled={runs.isFetchingNextPage}
-          onClick={() => runs.fetchNextPage()}
+          onClick={loadMore}
         >
           {runs.isFetchingNextPage ? "載入中…" : "載入更多"}
         </button>
