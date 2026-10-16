@@ -441,15 +441,24 @@ func (d *Driver) tail(ctx context.Context, id string) string {
 		return ""
 	}
 	defer rc.Close()
-	var buf bytes.Buffer
-	if _, err := stdcopy.StdCopy(&buf, &buf, io.LimitReader(rc, logTailBytes*2)); err != nil && buf.Len() == 0 {
+	last := &lastBytes{limit: logTailBytes}
+	if _, err := stdcopy.StdCopy(last, last, rc); err != nil && len(last.kept) == 0 {
 		return ""
 	}
-	s := buf.String()
-	if len(s) > logTailBytes {
-		s = s[len(s)-logTailBytes:]
+	return strings.TrimSpace(string(last.kept))
+}
+
+type lastBytes struct {
+	kept  []byte
+	limit int
+}
+
+func (l *lastBytes) Write(p []byte) (int, error) {
+	l.kept = append(l.kept, p...)
+	if over := len(l.kept) - l.limit; over > 0 {
+		l.kept = l.kept[over:]
 	}
-	return strings.TrimSpace(s)
+	return len(p), nil
 }
 
 func devCmd(req sandbox.RunRequest) ([]string, bool) {

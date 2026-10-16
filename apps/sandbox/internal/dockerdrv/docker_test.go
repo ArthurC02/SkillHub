@@ -257,6 +257,17 @@ func assertResourceCeilings(t *testing.T, hc *container.HostConfig, lim sandbox.
 	}
 }
 
+func TestTheOutputTailKeepsTheLastLineAfterALongOne(t *testing.T) {
+	d, _ := newDriver(t)
+	_, out := startProbe(t, d, testRequest(`head -c 100000 /dev/zero | tr '\0' x; echo; echo the-last-line`))
+	if !strings.HasSuffix(out.Output, "the-last-line") {
+		t.Errorf("output tail ends %q, want the workload's last line", out.Output[max(0, len(out.Output)-40):])
+	}
+	if len(out.Output) > 32<<10 {
+		t.Errorf("output tail is %d bytes, want at most %d", len(out.Output), 32<<10)
+	}
+}
+
 func TestPidsLimitStopsAForkBomb(t *testing.T) {
 	d, _ := newDriver(t)
 	const (
