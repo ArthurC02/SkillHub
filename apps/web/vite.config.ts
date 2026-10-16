@@ -16,6 +16,9 @@ function buildId(): string {
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    modulePreload: false,
+  },
   define: { "import.meta.env.VITE_BUILD_ID": JSON.stringify(buildId()) },
   test: {
     environment: "jsdom",
