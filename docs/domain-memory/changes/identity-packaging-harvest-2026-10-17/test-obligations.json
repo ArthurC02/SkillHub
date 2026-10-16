@@ -1,0 +1,205 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "identity-packaging-harvest",
+  "proposal_id": "identity-packaging-harvest",
+  "obligations": [
+    {
+      "id": "criterion-one-live-account-per-email",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-one-live-account-per-email",
+      "expected_outcome": "Emails are compared trimmed and lower-cased, so a live account's email cannot be taken again.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestAnEmailIsStoredAndLookedUpInOneCanonicalForm ./internal/creator/workspace/"
+    },
+    {
+      "id": "rule-one-live-account-per-email",
+      "source_type": "rule",
+      "source_id": "one-live-account-per-email",
+      "expected_outcome": "Emails are compared trimmed and lower-cased, so a live account's email cannot be taken again.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestAnEmailIsStoredAndLookedUpInOneCanonicalForm ./internal/creator/workspace/"
+    },
+    {
+      "id": "criterion-deletion-request-starts-30-day-grace-and-is-idempotent",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-deletion-request-starts-30-day-grace-and-is-idempotent",
+      "expected_outcome": "A repeated deletion request keeps its original time.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestADeletionRequestStampsOnlyAFreshRequestAndNeitherChangeReachesAPurgingOrDeletedAccount ./internal/creator/workspace/"
+    },
+    {
+      "id": "rule-deletion-request-starts-30-day-grace-and-is-idempotent",
+      "source_type": "rule",
+      "source_id": "deletion-request-starts-30-day-grace-and-is-idempotent",
+      "expected_outcome": "A repeated deletion request keeps its original time.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestADeletionRequestStampsOnlyAFreshRequestAndNeitherChangeReachesAPurgingOrDeletedAccount ./internal/creator/workspace/"
+    },
+    {
+      "id": "criterion-deletion-irreversible-once-purge-starts",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-deletion-irreversible-once-purge-starts",
+      "expected_outcome": "A deletion request on a purging account is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestADeletionRequestStampsOnlyAFreshRequestAndNeitherChangeReachesAPurgingOrDeletedAccount ./internal/creator/workspace/"
+    },
+    {
+      "id": "rule-deletion-irreversible-once-purge-starts",
+      "source_type": "rule",
+      "source_id": "deletion-irreversible-once-purge-starts",
+      "expected_outcome": "A deletion request on a purging account is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestADeletionRequestStampsOnlyAFreshRequestAndNeitherChangeReachesAPurgingOrDeletedAccount ./internal/creator/workspace/"
+    },
+    {
+      "id": "criterion-purge-waits-for-grace-and-quiet-workspace",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-purge-waits-for-grace-and-quiet-workspace",
+      "expected_outcome": "An account with a Run still cleaning up is deferred, not purged.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestAccountPurgeWaitsForRunCleanupAndFindsUnreportedAttemptBytes ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-purge-waits-for-grace-and-quiet-workspace",
+      "source_type": "rule",
+      "source_id": "purge-waits-for-grace-and-quiet-workspace",
+      "expected_outcome": "An account with a Run still cleaning up is deferred, not purged.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestAccountPurgeWaitsForRunCleanupAndFindsUnreportedAttemptBytes ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "criterion-purge-removes-files-before-rows",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-purge-removes-files-before-rows",
+      "expected_outcome": "A purge whose file removal fails changes no row.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestAPurgeWhoseObjectCannotBeRemovedStopsBeforeAnyRowChanges ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-purge-removes-files-before-rows",
+      "source_type": "rule",
+      "source_id": "purge-removes-files-before-rows",
+      "expected_outcome": "A purge whose file removal fails changes no row.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestAPurgeWhoseObjectCannotBeRemovedStopsBeforeAnyRowChanges ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "criterion-taken-down-or-held-skill-is-not-packaged",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-taken-down-or-held-skill-is-not-packaged",
+      "expected_outcome": "A taken-down Skill is refused as taken_down whatever else is true of it.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestATakenDownSkillIsRefusedWhateverElseIsTrueOfIt ./internal/skill/delivery/"
+    },
+    {
+      "id": "rule-taken-down-or-held-skill-is-not-packaged",
+      "source_type": "rule",
+      "source_id": "taken-down-or-held-skill-is-not-packaged",
+      "expected_outcome": "A taken-down Skill is refused as taken_down whatever else is true of it.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestATakenDownSkillIsRefusedWhateverElseIsTrueOfIt ./internal/skill/delivery/"
+    },
+    {
+      "id": "criterion-only-redistributable-content-is-packaged",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-only-redistributable-content-is-packaged",
+      "expected_outcome": "An unknown redistribution value is refused as license_unknown.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestTheDownloadGateAnswersEveryRedistributionValue ./internal/skill/delivery/"
+    },
+    {
+      "id": "rule-only-redistributable-content-is-packaged",
+      "source_type": "rule",
+      "source_id": "only-redistributable-content-is-packaged",
+      "expected_outcome": "An unknown redistribution value is refused as license_unknown.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestTheDownloadGateAnswersEveryRedistributionValue ./internal/skill/delivery/"
+    },
+    {
+      "id": "criterion-availability-is-rechecked-at-every-download",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-availability-is-rechecked-at-every-download",
+      "expected_outcome": "A hold applied after packaging makes the content route answer 404.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestALicensingHoldAppliedAfterPackagingStopsTheDownload ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-availability-is-rechecked-at-every-download",
+      "source_type": "rule",
+      "source_id": "availability-is-rechecked-at-every-download",
+      "expected_outcome": "A hold applied after packaging makes the content route answer 404.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestALicensingHoldAppliedAfterPackagingStopsTheDownload ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "criterion-credential-and-vcs-files-never-travel",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-credential-and-vcs-files-never-travel",
+      "expected_outcome": "Credential files are excluded as credential_file.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestBuildAndVersionControlResidueNeverTravels ./internal/skill/delivery/"
+    },
+    {
+      "id": "rule-credential-and-vcs-files-never-travel",
+      "source_type": "rule",
+      "source_id": "credential-and-vcs-files-never-travel",
+      "expected_outcome": "Credential files are excluded as credential_file.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestBuildAndVersionControlResidueNeverTravels ./internal/skill/delivery/"
+    },
+    {
+      "id": "criterion-a-plugin-package-is-blocked-by-any-blocked-member",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-plugin-package-is-blocked-by-any-blocked-member",
+      "expected_outcome": "A bundle with a non-redistributable member is refused with 422 naming it.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestABundleWithAMemberWhoseLicenseCannotBeRedistributedIsRefusedAndNamesIt ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-plugin-package-is-blocked-by-any-blocked-member",
+      "source_type": "rule",
+      "source_id": "a-plugin-package-is-blocked-by-any-blocked-member",
+      "expected_outcome": "A bundle with a non-redistributable member is refused with 422 naming it.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestABundleWithAMemberWhoseLicenseCannotBeRedistributedIsRefusedAndNamesIt ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "package-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "The package validates with current citations.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "registry validate-change-package --repo-root"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry verify-audit"
+    }
+  ]
+}

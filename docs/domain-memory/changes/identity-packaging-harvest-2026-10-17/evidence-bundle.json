@@ -1,0 +1,251 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "identity-packaging-harvest",
+  "proposal_id": "identity-packaging-harvest",
+  "registry_revision": {
+    "observed_commit": "a0186eeb9c42ccb03f47508816d15db78d478977",
+    "registry_digest": "sha256:538fc74219acbe48a88a98c00f18e8d5b2c1dc7339fb9c4e62753a300c149344"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "rule-availability-is-rechecked-at-every-download",
+    "mutated_protection": "the release gate in DownloadContent",
+    "failure_evidence": "registry counterfactual: killed; download_integration_test.go:743: content under a access_restriction hold: got 200, want 404. the lower-casing in normalizedEmail: account_test.go:72: normalizedEmail(\"Alice@Example.COM\") = \"Alice@Example.COM\", want \"alice@example.com\"; the fresh-request check in requestDeletion: account_test.go:60: a repeated request keeps its time and attempt; the standing check in requestDeletion: account_test.go:57: a request once purging started: error = <nil>, want account deletion is already in progress; the quiescence check in claimAccountPurge: governance_integration_test.go:403: active run purge = 1, <nil>; want a quiet deferral; the store.Remove error return in removeAccountObjects: account_purge_characterization_test.go:128: purged 1 (err <nil>), want 0 and the store's failure; the TakenDown check in gate: packaging_test.go:624: gate({... TakenDown:true Redistribution:allowed}) reason = \"\", want taken_down; the default branch of redistributionGate: packaging_test.go:588: gateFlags(false, \"unknown\") reason = \"\", want \"license_unknown\"; the isCredentialFile check in travels: packaging_test.go:232: fixtures/home/.git-credentials reported as \"\", want \"credential_file\"; the BlockedReason stop in the plugin member loop: bundle_integration_test.go:533: export with a blocked member: 500, want 422 not_redistributable naming the member",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/creator/workspace/account.go",
+    "apps/platform/internal/creator/workspace/service.go",
+    "apps/platform/internal/creator/workspace/purge.go",
+    "apps/platform/internal/skill/delivery/packaging.go",
+    "apps/platform/internal/skill/delivery/download.go",
+    "apps/platform/internal/skill/delivery/export.go",
+    "apps/platform/internal/skill/delivery/plugin.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "criterion-one-live-account-per-email",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestAnEmailIsStoredAndLookedUpInOneCanonicalForm ./internal/creator/workspace/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e14ef5b3a2aea37f8f3047562718dbcecc59091d8f8cb0373250c2a790e79866",
+      "finished_at": "2026-10-16T17:53:05.486178Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-one-live-account-per-email",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestAnEmailIsStoredAndLookedUpInOneCanonicalForm ./internal/creator/workspace/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4eebab57c19d70229e160fae0bca940b1bf5aaa0f88b378e9a18dc8c3918098d",
+      "finished_at": "2026-10-16T17:53:11.518482Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "criterion-deletion-request-starts-30-day-grace-and-is-idempotent",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestADeletionRequestStampsOnlyAFreshRequestAndNeitherChangeReachesAPurgingOrDeletedAccount ./internal/creator/workspace/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:6ebe2a027792d667a9047b04d7a889751f3dcfa366fe0e4dc4ff5fe0d485f997",
+      "finished_at": "2026-10-16T17:53:18.696952Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-deletion-request-starts-30-day-grace-and-is-idempotent",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestADeletionRequestStampsOnlyAFreshRequestAndNeitherChangeReachesAPurgingOrDeletedAccount ./internal/creator/workspace/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:5117a3ba08fc9a23ec6dd06d9e0d9ca7d3f34eb84268beaa44c873a41a451798",
+      "finished_at": "2026-10-16T17:53:27.910290Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "criterion-deletion-irreversible-once-purge-starts",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestADeletionRequestStampsOnlyAFreshRequestAndNeitherChangeReachesAPurgingOrDeletedAccount ./internal/creator/workspace/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:afe141ede0b6a6978d86b1d1ef55c12682fe23c57a15fb8218b2aa876e33f8f3",
+      "finished_at": "2026-10-16T17:53:34.591929Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-deletion-irreversible-once-purge-starts",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestADeletionRequestStampsOnlyAFreshRequestAndNeitherChangeReachesAPurgingOrDeletedAccount ./internal/creator/workspace/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:9ea65898ca3864db22c7f3e335b2ea952d9ff0d53d2ca8d646a550177b753b09",
+      "finished_at": "2026-10-16T17:53:39.869387Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "criterion-purge-waits-for-grace-and-quiet-workspace",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestAccountPurgeWaitsForRunCleanupAndFindsUnreportedAttemptBytes ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:d77403d823af4b7644a8c3548f0e6ddc99ca10ba02ed8e18efd7ddebad92e0d5",
+      "finished_at": "2026-10-16T17:53:52.781635Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-purge-waits-for-grace-and-quiet-workspace",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestAccountPurgeWaitsForRunCleanupAndFindsUnreportedAttemptBytes ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:85d80a2c1b572d21a72513b848341ad48895401472187a75a04862419d320b25",
+      "finished_at": "2026-10-16T17:54:02.195000Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "criterion-purge-removes-files-before-rows",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestAPurgeWhoseObjectCannotBeRemovedStopsBeforeAnyRowChanges ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:64ebc21e41092122b5b6c564c5df306269b777b55422cf2797e6fff07e4e5237",
+      "finished_at": "2026-10-16T17:54:12.894492Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-purge-removes-files-before-rows",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestAPurgeWhoseObjectCannotBeRemovedStopsBeforeAnyRowChanges ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e1aaf895cb0f6278aa3cfa7ccaa581900e3c06ff1245b09cc53ffa2fbf94ef5f",
+      "finished_at": "2026-10-16T17:54:20.793769Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "criterion-taken-down-or-held-skill-is-not-packaged",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestATakenDownSkillIsRefusedWhateverElseIsTrueOfIt ./internal/skill/delivery/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:21d5ce2497d9ef4d8ca5bd7c3071bc74610b0ab2080ffbd5b5599f5cba37a2bd",
+      "finished_at": "2026-10-16T17:54:26.399240Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-taken-down-or-held-skill-is-not-packaged",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestATakenDownSkillIsRefusedWhateverElseIsTrueOfIt ./internal/skill/delivery/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:d9afd580aff634abe5d5e7b47c46855aa535f316484e92beb50092ce585fbcf5",
+      "finished_at": "2026-10-16T17:54:38.753915Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "criterion-only-redistributable-content-is-packaged",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestTheDownloadGateAnswersEveryRedistributionValue ./internal/skill/delivery/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:88aa0f2cc925a726ca61d3292ac15c2e204d35bd23f4780ba93fa2fe7974213d",
+      "finished_at": "2026-10-16T17:54:47.573926Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-only-redistributable-content-is-packaged",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestTheDownloadGateAnswersEveryRedistributionValue ./internal/skill/delivery/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:cdbf96ecc280cc4e6738636af02e681ccdf053f16791afa563d3a229b3b080a5",
+      "finished_at": "2026-10-16T17:55:06.126617Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "criterion-availability-is-rechecked-at-every-download",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestALicensingHoldAppliedAfterPackagingStopsTheDownload ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:705371d45b1e7b8ca6f06f35cd2b4dea02d6296b2bfe5a6d8af0698844f55263",
+      "finished_at": "2026-10-16T17:56:00.994145Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-availability-is-rechecked-at-every-download",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestALicensingHoldAppliedAfterPackagingStopsTheDownload ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b14745110211290ff2c75e7934f4f0db883193834d9be7b23273ff77f7a83451",
+      "finished_at": "2026-10-16T17:56:47.807778Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "criterion-credential-and-vcs-files-never-travel",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestBuildAndVersionControlResidueNeverTravels ./internal/skill/delivery/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:29106bb8411a8a48f70099af73303469af756ed106264c34be5cd1b8a808958b",
+      "finished_at": "2026-10-16T17:56:56.800477Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-credential-and-vcs-files-never-travel",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestBuildAndVersionControlResidueNeverTravels ./internal/skill/delivery/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:09f8579fa88b2742e80f3fdb1dc2cce89a6edc36803a98d23eb6bada560a886f",
+      "finished_at": "2026-10-16T17:57:03.390654Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "criterion-a-plugin-package-is-blocked-by-any-blocked-member",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestABundleWithAMemberWhoseLicenseCannotBeRedistributedIsRefusedAndNamesIt ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:54327df02795fb458e43ab06ed100351fd1da0af6613edea1f8185023e7a45f7",
+      "finished_at": "2026-10-16T17:57:23.989708Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-plugin-package-is-blocked-by-any-blocked-member",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestABundleWithAMemberWhoseLicenseCannotBeRedistributedIsRefusedAndNamesIt ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e01646443c1fc2275b9629bc11dcd87761b41d38e9ec43fa61a7a9b0e0f996c0",
+      "finished_at": "2026-10-16T17:57:40.853776Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:976f3689c676263079b3f822a7855bf7c8a5ace6f99c5b13315c9a10b84cb8d7",
+      "finished_at": "2026-10-16T17:57:41.784805Z"
+    },
+    {
+      "obligation_id": "package-valid",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py validate-change-package --package-root docs/domain-memory/changes/identity-packaging-harvest-2026-10-17 --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:f59ed0f5e58f24af697fc460db7a190345b22c6e6c8a2fdbf184d0f488d61a0f",
+      "finished_at": "2026-10-16T17:57:43.060691Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

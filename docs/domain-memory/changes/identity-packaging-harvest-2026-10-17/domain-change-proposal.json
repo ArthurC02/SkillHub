@@ -1,0 +1,494 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "identity-packaging-harvest",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "identity-packaging-harvest",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-16T17:57:55.864984Z",
+  "verified_at": "2026-10-16T17:57:56.717411Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "a0186eeb9c42ccb03f47508816d15db78d478977",
+    "registry_digest": "sha256:538fc74219acbe48a88a98c00f18e8d5b2c1dc7339fb9c4e62753a300c149344"
+  },
+  "affected_contexts": [
+    "identity",
+    "packaging"
+  ],
+  "rule_ids": [
+    "one-live-account-per-email",
+    "deletion-request-starts-30-day-grace-and-is-idempotent",
+    "deletion-irreversible-once-purge-starts",
+    "purge-waits-for-grace-and-quiet-workspace",
+    "purge-removes-files-before-rows",
+    "taken-down-or-held-skill-is-not-packaged",
+    "only-redistributable-content-is-packaged",
+    "availability-is-rechecked-at-every-download",
+    "credential-and-vcs-files-never-travel",
+    "a-plugin-package-is-blocked-by-any-blocked-member"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "identity",
+    "invariant": "Identity alone decides an account's lifecycle and its purge; packaging alone decides what a package may carry and when it may be served.",
+    "evidence": [
+      "apps/platform/internal/creator/workspace/account.go:41-57",
+      "apps/platform/internal/skill/delivery/packaging.go:306-336"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: packaging reads skill facts through its existing fact readers; identity runs owners' purge hooks.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/creator/workspace/purge.go:205-225",
+      "apps/platform/internal/skill/delivery/download.go:204-215"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Blind extractions of the identity and packaging packages found these enforced behaviors; the reviewed Registry held one identity rule and no packaging rule."
+    ],
+    "decision": "Record the ten behaviors as reviewed rules citing the enforcing code; no code change.",
+    "invariants_preserved": [
+      "Account purge is all-or-nothing across owners."
+    ],
+    "rejected_alternatives": [
+      "Recording every extracted rule: the remaining candidates restate a mechanism (hashing, audit in the same transaction, OAuth state) rather than a rule a product owner would name, or need their own review."
+    ],
+    "proof_obligations": [
+      "criterion-one-live-account-per-email",
+      "rule-one-live-account-per-email",
+      "criterion-deletion-request-starts-30-day-grace-and-is-idempotent",
+      "rule-deletion-request-starts-30-day-grace-and-is-idempotent",
+      "criterion-deletion-irreversible-once-purge-starts",
+      "rule-deletion-irreversible-once-purge-starts",
+      "criterion-purge-waits-for-grace-and-quiet-workspace",
+      "rule-purge-waits-for-grace-and-quiet-workspace",
+      "criterion-purge-removes-files-before-rows",
+      "rule-purge-removes-files-before-rows",
+      "criterion-taken-down-or-held-skill-is-not-packaged",
+      "rule-taken-down-or-held-skill-is-not-packaged",
+      "criterion-only-redistributable-content-is-packaged",
+      "rule-only-redistributable-content-is-packaged",
+      "criterion-availability-is-rechecked-at-every-download",
+      "rule-availability-is-rechecked-at-every-download",
+      "criterion-credential-and-vcs-files-never-travel",
+      "rule-credential-and-vcs-files-never-travel",
+      "criterion-a-plugin-package-is-blocked-by-any-blocked-member",
+      "rule-a-plugin-package-is-blocked-by-any-blocked-member"
+    ],
+    "counterfactual_check": "Break each rule's enforcing line; its named test must fail on an assertion, not on the build."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "one-live-account-per-email",
+        "statement": "Two live accounts never share an email: emails are compared after trimming and lower-casing, a sign-up whose email belongs to a live account is refused, and an email held only by a deleted account can be used again.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "Signing up as ' Alice@Example.COM ' while alice@example.com belongs to a live account is refused as email-taken (HTTP 409).",
+          "Signing up with the email of an account that is already deleted succeeds and yields a session."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/account.go",
+            "lines": {
+              "start": 59,
+              "end": 61
+            },
+            "excerpt_sha256": "sha256:a3bc73b95a85ac3220605a631f5a6a58741106dab883c4539b3ed0424c045d84"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/service.go",
+            "lines": {
+              "start": 197,
+              "end": 206
+            },
+            "excerpt_sha256": "sha256:f0faa6d0e7ace9070133c48e727de6d0ed2e179adc560f0f95d0d5db7e91f646"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/signup_integration_test.go",
+            "lines": {
+              "start": 70,
+              "end": 93
+            },
+            "excerpt_sha256": "sha256:e7a14bc510df45d790bb87a03107f79a00d271e91c4413000cceb3e691d6edcc"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/http.go",
+            "lines": {
+              "start": 590,
+              "end": 600
+            },
+            "excerpt_sha256": "sha256:4bec91ea7625b1777382abf7b06318eb74ea928f17d40d962c29391ce039eb25"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "deletion-request-starts-30-day-grace-and-is-idempotent",
+        "statement": "Requesting account deletion starts a 30-day grace period during which the Account stays fully usable; asking again keeps the original request time instead of extending the wait, and cancelling clears the request and is harmless when nothing is pending.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "A second DELETE /me keeps the first deletion_requested_at and the same purge_after.",
+          "POST /me/deletion/cancel with nothing pending answers 200 with deletion_requested_at null.",
+          "A fresh request after a cancel starts a new clock with no purge attempt on record."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/service.go",
+            "lines": {
+              "start": 326,
+              "end": 336
+            },
+            "excerpt_sha256": "sha256:b1e8edde038cda98195cb6498b6aeb6fdf655c1b6a27bceb053934db679cba77"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/account.go",
+            "lines": {
+              "start": 41,
+              "end": 57
+            },
+            "excerpt_sha256": "sha256:8ff1053d6d1caa19b5c0fe2476c207a4fb6a2d5b54a35f1561008d99f11d8808"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/account_test.go",
+            "lines": {
+              "start": 34,
+              "end": 63
+            },
+            "excerpt_sha256": "sha256:c10ecde98da22afc1a1f47357f055a4302fe11bcce8c696fb637999ab8a1525c"
+          },
+          {
+            "path": "contracts/openapi/public.yaml",
+            "lines": {
+              "start": 195,
+              "end": 208
+            },
+            "excerpt_sha256": "sha256:cbdf684053ba1daf32836bbeb0309454cad0c581e5541945e39a3992744ecf53"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "deletion-irreversible-once-purge-starts",
+        "statement": "Once an Account has started purging or is deleted, deletion can neither be requested nor cancelled; the user is told it is irreversible (HTTP 409).",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "Cancelling a deletion whose purge has started answers 409 'deletion is already irreversible'.",
+          "Requesting deletion for an already deleted Account answers 409."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/account.go",
+            "lines": {
+              "start": 41,
+              "end": 57
+            },
+            "excerpt_sha256": "sha256:8ff1053d6d1caa19b5c0fe2476c207a4fb6a2d5b54a35f1561008d99f11d8808"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/http.go",
+            "lines": {
+              "start": 550,
+              "end": 580
+            },
+            "excerpt_sha256": "sha256:694854a88d93cbfe6e3d820134e8fa46b0b7d9c256c54ffdf28c526e0271e58b"
+          },
+          {
+            "path": "contracts/openapi/public.yaml",
+            "lines": {
+              "start": 222,
+              "end": 229
+            },
+            "excerpt_sha256": "sha256:c0d734698f112f6a5b072328448d3e936105fd071bf5acf81d324c030b5725a0"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "purge-waits-for-grace-and-quiet-workspace",
+        "statement": "An account purge starts only when the deletion request is older than the 30-day grace at the moment of claiming and every Run in each of the Account's workspaces has finished cleanup; otherwise the purge is deferred (not failed) and retried by a later sweep.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "A request made now is not claimed by a sweep whose cutoff is 30 days ago; the Account does not start purging.",
+          "An Account with a Run still cleaning up its sandbox is skipped this sweep without an error."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 205,
+              "end": 225
+            },
+            "excerpt_sha256": "sha256:c4b66529e4c8621f1fd079b3d377ca3c6eb2786f42c93bc3b4e125ddb0371cea"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 114,
+              "end": 143
+            },
+            "excerpt_sha256": "sha256:415ad8fb85def327b8a13513fca2077fe13a06d6d77137b9f782cc1b096fbee2"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge_grace_integration_test.go",
+            "lines": {
+              "start": 15,
+              "end": 46
+            },
+            "excerpt_sha256": "sha256:ce16089656ce432c4662d7f0e9c79995d1a4a7bd0e66e3a4808e35e21dcd706e"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "purge-removes-files-before-rows",
+        "statement": "An account's stored files are removed before its database rows are erased, and the rows are erased in one transaction, so a failure leaves rows pointing at missing files that the next sweep can finish, never a file that no row names.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "If the object store fails mid-purge, the account stays claimed and the next sweep retries the deletion."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 227,
+              "end": 243
+            },
+            "excerpt_sha256": "sha256:2803a6487fe5c552688adbe604e5788c961d9bd4051cf1c7124b6c81c992ec83"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 145,
+              "end": 176
+            },
+            "excerpt_sha256": "sha256:660bc6617bfbc7095caa073c849c93e68fe2718cba55af30a679b19d50caaf5d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "taken-down-or-held-skill-is-not-packaged",
+        "statement": "A Skill that the platform has taken down, or whose content is held for an unresolved license question, cannot be built into a package; the refusal names taken_down or license_hold.",
+        "owner": "skill-packaging",
+        "version": "1",
+        "effective_from": "unknown",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "A taken-down Skill: building any version answers blocked_reason taken_down.",
+          "A Skill with access_restricted set and not taken down: blocked_reason license_hold.",
+          "A Skill that is both taken down and restricted reports taken_down, because the taken-down check runs first."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/packaging.go",
+            "lines": {
+              "start": 306,
+              "end": 316
+            },
+            "excerpt_sha256": "sha256:c4d142e9ef53b8137e2256042130849453bfa1ca7a771920b2b0dd33e0c5b45d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-redistributable-content-is-packaged",
+        "statement": "Only a Skill whose redistribution verdict is allowed, self_supplied or generated may be packaged; blocked gives not_redistributable and every other value, including an empty one, is treated as license_unknown.",
+        "owner": "skill-packaging",
+        "version": "1",
+        "effective_from": "unknown",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "redistribution = allowed, self_supplied or generated: the build proceeds.",
+          "redistribution = blocked: refused as not_redistributable.",
+          "redistribution = '' or an unrecognised string: refused as license_unknown, unconfirmed license counts as not allowed."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/packaging.go",
+            "lines": {
+              "start": 318,
+              "end": 336
+            },
+            "excerpt_sha256": "sha256:9952ba0b34a11eb51db88d64f7a13399d531b68c14a488ca1331848d6622cab2"
+          },
+          {
+            "path": "docs/adr/ADR-007-packaging-license-provenance-and-redistribution.md",
+            "lines": {
+              "start": 54,
+              "end": 60
+            },
+            "excerpt_sha256": "sha256:1b0006fa5933a886673e33699c6644e8c808c4b511baf7344a7c9e10c1d678e5"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "availability-is-rechecked-at-every-download",
+        "statement": "A stored package is served only while the Skill is still releasable: a taken-down, held or non-redistributable Skill makes its already built packages unavailable for download and shows them as withheld in the list.",
+        "owner": "skill-packaging",
+        "version": "1",
+        "effective_from": "unknown",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "A package built yesterday, then the Skill is taken down: the content route answers not found and the list shows serve_state withheld.",
+          "A plugin package is withheld if any of its member Skill Versions is held, taken down or not redistributable."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/download.go",
+            "lines": {
+              "start": 208,
+              "end": 213
+            },
+            "excerpt_sha256": "sha256:3921f2feaca8a3c98c9f662b9a56005332ae665be7e00034e1192e795c52ab6f"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/packaging.go",
+            "lines": {
+              "start": 997,
+              "end": 1010
+            },
+            "excerpt_sha256": "sha256:f62289177ebc15e1b203887af0068e6be773c63b43cae072b7630b31c67a3831"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "credential-and-vcs-files-never-travel",
+        "statement": "A package never carries version-control or tool-cache directories, credential files, non-regular files or paths that escape the package root; each is listed as an excluded file with its reason.",
+        "owner": "skill-packaging",
+        "version": "1",
+        "effective_from": "unknown",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          ".git/, node_modules/, .ssh/ and .kube/ directories are dropped (excluded_dir).",
+          ".env and .env.production are dropped (credential_file), but .env.example, .env.sample and .env.template travel.",
+          "A symlink or a path with a backslash or drive letter is dropped (not_a_regular_file, unsafe_path)."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/export.go",
+            "lines": {
+              "start": 28,
+              "end": 37
+            },
+            "excerpt_sha256": "sha256:144ac89c6b055019a6757a4461b7305f2c8c0ad656dc2ce6d87cf63a63ef3d0f"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/export.go",
+            "lines": {
+              "start": 76,
+              "end": 109
+            },
+            "excerpt_sha256": "sha256:3675b017b98d8b9bbc2a8e93a9cde1fde82156532962433fd8de84acd5835901"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-plugin-package-is-blocked-by-any-blocked-member",
+        "statement": "A plugin package of several Skill Versions is built only if every member passes the same release checks as a single Skill; the first blocked member stops it and is named in the refusal.",
+        "owner": "skill-packaging",
+        "version": "1",
+        "effective_from": "unknown",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "Two members, the second taken down: no plugin is built and the message starts with the second member's name.",
+          "Every member releasable: a zip with plugin.json and skills/<name>/ folders is built and its shape is re-read before it is stored."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/plugin.go",
+            "lines": {
+              "start": 92,
+              "end": 101
+            },
+            "excerpt_sha256": "sha256:d2183a3f4e3b72d329a357d34901e649bd6d33f468589f38e9b4e9228007540b"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/plugin.go",
+            "lines": {
+              "start": 144,
+              "end": 154
+            },
+            "excerpt_sha256": "sha256:e3b8ff470f3a70d10ec51b54844764941dc2a8cf11953c786d8a24e8de279b63"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-16T17:57:56.233858Z",
+      "scope": "Record ten enforced rules found by blind extraction: five account-lifecycle rules (one live account per email, deletion grace, irreversible once purging, purge waits for grace and quiet workspaces, files before rows) and five packaging rules (taken down or held, only redistributable content, recheck at download, credential files never travel, a blocked member blocks a plugin)",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "a0186eeb9c42ccb03f47508816d15db78d478977",
+        "registry_digest": "sha256:538fc74219acbe48a88a98c00f18e8d5b2c1dc7339fb9c4e62753a300c149344"
+      }
+    }
+  ]
+}

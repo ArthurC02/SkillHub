@@ -1,0 +1,69 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "identity-packaging-harvest",
+  "status": "draft",
+  "intent": "Record as reviewed rules ten account-lifecycle and packaging behaviors that the code enforces and tests but the Registry did not hold.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context identity and get-context packaging return the rules as reviewed, each citing the enforcing code.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-one-live-account-per-email",
+      "statement": "Emails are compared trimmed and lower-cased, so a live account's email cannot be taken again."
+    },
+    {
+      "id": "enforced-deletion-request-starts-30-day-grace-and-is-idempotent",
+      "statement": "A repeated deletion request keeps its original time."
+    },
+    {
+      "id": "enforced-deletion-irreversible-once-purge-starts",
+      "statement": "A deletion request on a purging account is refused."
+    },
+    {
+      "id": "enforced-purge-waits-for-grace-and-quiet-workspace",
+      "statement": "An account with a Run still cleaning up is deferred, not purged."
+    },
+    {
+      "id": "enforced-purge-removes-files-before-rows",
+      "statement": "A purge whose file removal fails changes no row."
+    },
+    {
+      "id": "enforced-taken-down-or-held-skill-is-not-packaged",
+      "statement": "A taken-down Skill is refused as taken_down whatever else is true of it."
+    },
+    {
+      "id": "enforced-only-redistributable-content-is-packaged",
+      "statement": "An unknown redistribution value is refused as license_unknown."
+    },
+    {
+      "id": "enforced-availability-is-rechecked-at-every-download",
+      "statement": "A hold applied after packaging makes the content route answer 404."
+    },
+    {
+      "id": "enforced-credential-and-vcs-files-never-travel",
+      "statement": "Credential files are excluded as credential_file."
+    },
+    {
+      "id": "enforced-a-plugin-package-is-blocked-by-any-blocked-member",
+      "statement": "A bundle with a non-redistributable member is refused with 422 naming it."
+    },
+    {
+      "id": "approval-externally-verifiable",
+      "statement": "The approval that makes the records reviewed is checkable outside the package."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/creator/workspace/account.go",
+    "apps/platform/internal/creator/workspace/service.go",
+    "apps/platform/internal/creator/workspace/purge.go",
+    "apps/platform/internal/skill/delivery/packaging.go",
+    "apps/platform/internal/skill/delivery/download.go",
+    "apps/platform/internal/skill/delivery/export.go",
+    "apps/platform/internal/skill/delivery/plugin.go"
+  ]
+}
