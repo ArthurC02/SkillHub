@@ -1,6 +1,7 @@
 import type {
   Evaluation,
   EvaluationRevision,
+  RunComparison,
   RunSuggestions,
   SuggestionDiff,
 } from "./evaluation.service";
@@ -100,6 +101,89 @@ function isCost(value: unknown): boolean {
     (value.evaluation_credits === null || Number.isSafeInteger(value.evaluation_credits)) &&
     isMember(value.source, ["gateway", "estimated", "unreported"]) &&
     isText(value.note)
+  );
+}
+
+function isComparisonEvaluation(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isText(value.evaluation_id) &&
+    value.evaluation_id.trim().length > 0 &&
+    isMember(value.status, ["pending", "completed", "failed"]) &&
+    isMember(value.overall, ["met", "partially_met", "not_met", "undetermined"]) &&
+    isCost(value.cost)
+  );
+}
+
+function isComparisonRunCost(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    (value.credits === null || Number.isSafeInteger(value.credits)) &&
+    value.is_lower_bound === true &&
+    isText(value.authoritative_source)
+  );
+}
+
+function isComparisonSide(value: unknown, runId: string): boolean {
+  if (!isRecord(value)) return false;
+  return (
+    isText(value.run_id) &&
+    value.run_id.toLowerCase() === runId.toLowerCase() &&
+    isText(value.skill_id) &&
+    value.skill_id.trim().length > 0 &&
+    isText(value.skill_version_id) &&
+    value.skill_version_id.trim().length > 0 &&
+    isOptionalText(value.test_case_id) &&
+    isText(value.status) &&
+    (value.evaluation === undefined || isComparisonEvaluation(value.evaluation)) &&
+    isOptionalText(value.final_output) &&
+    (value.duration_ms === undefined || Number.isSafeInteger(value.duration_ms)) &&
+    typeof value.inputs_available === "boolean" &&
+    isComparisonRunCost(value.cost) &&
+    (value.errors === undefined ||
+      (Array.isArray(value.errors) &&
+        value.errors.every(
+          (error) =>
+            isRecord(error) &&
+            isOptionalText(error.category) &&
+            isOptionalText(error.code) &&
+            isOptionalText(error.message),
+        )))
+  );
+}
+
+function isComparisonCriterion(value: unknown, runIds: string[]): boolean {
+  return (
+    isRecord(value) &&
+    isText(value.criterion_id) &&
+    isText(value.text) &&
+    Array.isArray(value.results) &&
+    value.results.length === 2 &&
+    value.results.every(
+      (result, index) =>
+        isRecord(result) &&
+        isText(result.run_id) &&
+        result.run_id.toLowerCase() === runIds[index].toLowerCase() &&
+        (result.result === null || isMember(result.result, ["passed", "failed", "undetermined"])) &&
+        (result.source === undefined || isMember(result.source, ["rule", "model", "user"])),
+    )
+  );
+}
+
+export function isRunComparisonResponse(
+  value: unknown,
+  runId: string,
+  against: string,
+): value is RunComparison {
+  const runIds = [runId, against];
+  return (
+    isRecord(value) &&
+    Array.isArray(value.runs) &&
+    value.runs.length === 2 &&
+    value.runs.every((side, index) => isComparisonSide(side, runIds[index])) &&
+    Array.isArray(value.criterion_matrix) &&
+    value.criterion_matrix.every((row) => isComparisonCriterion(row, runIds)) &&
+    isOptionalText(value.version_diff_url)
   );
 }
 
