@@ -157,9 +157,9 @@ func TestADeliveredGenerationIsChargedEvenAfterTheCallerGaveUp(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	billing.charge(ctx, GenerationCharge{IdempotencyKey: "generate:request-1"})
+	reported := billing.charged(ctx, GenerationCharge{IdempotencyKey: "generate:request-1"})
 
-	if !charged || chargeCtxErr != nil {
+	if !charged || !reported || chargeCtxErr != nil {
 		t.Errorf("charged=%v ctx err=%v; the delivered generation would go unbilled", charged, chargeCtxErr)
 	}
 }

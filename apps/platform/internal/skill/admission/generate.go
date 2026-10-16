@@ -297,8 +297,7 @@ func (s *Service) generateAttempt(ctx context.Context, job generation, out *Gene
 	}
 	delivered := false
 	defer func() {
-		if delivered && s.Billing.Charge != nil {
-			s.Billing.charge(ctx, deliveredCharge(job, gen))
+		if delivered && s.Billing.Charge != nil && s.Billing.charged(ctx, deliveredCharge(job, gen)) {
 			return
 		}
 		s.recordCost(ctx, credit.KindGenerate, job.ws.ID, modelCall{gen.Model, gen.PromptVersion, gen.Usage})

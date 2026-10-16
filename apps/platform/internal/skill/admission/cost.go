@@ -68,10 +68,12 @@ func deliveredCharge(job generation, draft *GeneratedDraft) GenerationCharge {
 	}
 }
 
-func (b GenerateBilling) charge(ctx context.Context, charge GenerationCharge) {
+func (b GenerateBilling) charged(ctx context.Context, charge GenerationCharge) bool {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), costRecordTimeout)
 	defer cancel()
 	if err := b.Charge(ctx, charge); err != nil {
-		slog.Error("ingest: generation not charged", "idempotency_key", charge.IdempotencyKey, "error", err)
+		slog.Error("ingest: generation not charged; recording its cost alone", "idempotency_key", charge.IdempotencyKey, "error", err)
+		return false
 	}
+	return true
 }

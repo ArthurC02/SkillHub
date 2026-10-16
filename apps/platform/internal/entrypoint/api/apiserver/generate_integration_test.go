@@ -210,6 +210,29 @@ func TestAGenerationIsDebitedOnceForTheAttemptThatDelivered(t *testing.T) {
 	}
 }
 
+func TestAGenerationWhoseChargeFailsStillRecordsItsCost(t *testing.T) {
+	pool := requireDB(t)
+	stub := newGenerateStub(t, generatedSkill("charge-failed", "# 內容\n\n1. 做這件事。\n"))
+	a := newAPIWithLLM(t, pool, stub.URL)
+	c := a.login(t, "gen-charge-failed")
+	a.versions.Billing.Charge = func(context.Context, ingest.GenerationCharge) error {
+		return errors.New("the ledger connection dropped")
+	}
+
+	if _, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c),
+		ingest.GenerateInput{TaskDescription: "把 PDF 轉成純文字。"}); err != nil {
+		t.Fatalf("GenerateSkill: %v", err)
+	}
+
+	debits, costEvents, balance := generateLedger(t, pool, c)
+	if len(debits) != 0 || balance != betaGrantCredits {
+		t.Errorf("debits = %v, balance = %d, want none and %d", debits, balance, betaGrantCredits)
+	}
+	if costEvents != 1 {
+		t.Errorf("generate cost events = %d, want 1: a delivered generation whose charge failed left no record of its spend", costEvents)
+	}
+}
+
 func TestAGenerationThatDeliversNothingIsNotDebited(t *testing.T) {
 	pool := requireDB(t)
 	leaky := generatedSkill("leaky-charge", "# 設定\n\n照 setup.sh 執行。\n")
