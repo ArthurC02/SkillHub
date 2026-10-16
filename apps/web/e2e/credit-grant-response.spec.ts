@@ -12,6 +12,39 @@ test.beforeEach(async ({ page }) => {
   await stubPlatform(page);
   await page.route("**/me", (route) => route.fulfill({ json: { ...ME, operator: true } }));
   await page.addInitScript(() => {
+    const interactions: unknown[] = [];
+    Reflect.set(window, "accountInteractions", interactions);
+    for (const type of [
+      "pointerdown",
+      "pointerup",
+      "mousedown",
+      "mouseup",
+      "click",
+      "focusin",
+      "focusout",
+    ]) {
+      document.addEventListener(
+        type,
+        (event) => {
+          const target = event.target;
+          if (target instanceof HTMLElement) {
+            interactions.push({
+              type,
+              time: event.timeStamp,
+              tag: target.tagName,
+              id: target.id,
+              x: "clientX" in event ? event.clientX : undefined,
+              y: "clientY" in event ? event.clientY : undefined,
+              activeTag: document.activeElement?.tagName,
+              activeId: document.activeElement?.id,
+              focused: document.hasFocus(),
+              trusted: event.isTrusted,
+            });
+          }
+        },
+        { capture: true, passive: true },
+      );
+    }
     document.addEventListener(
       "invalid",
       (event) => {
@@ -67,6 +100,8 @@ test.afterEach(async ({ page }, info) => {
       activeId: document.activeElement?.id,
       activeTag: document.activeElement?.tagName,
       focused: document.hasFocus(),
+      viewport: { width: innerWidth, height: innerHeight, scale: window.visualViewport?.scale },
+      interactions: Reflect.get(window, "accountInteractions"),
       scrollY,
       inputBounds: input?.getBoundingClientRect().toJSON(),
       buttonBounds: input?.form
