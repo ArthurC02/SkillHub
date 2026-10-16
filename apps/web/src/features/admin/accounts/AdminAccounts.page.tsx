@@ -23,7 +23,8 @@ export function AdminAccounts() {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          const requested = draft.trim();
+          const requested = String(new FormData(event.currentTarget).get("email") ?? "").trim();
+          setDraft(requested);
           if (requested === email && requested !== "") {
             void account.refetch();
           } else {
@@ -35,6 +36,7 @@ export function AdminAccounts() {
           <label htmlFor="admin-account-email">Email</label>
           <input
             id="admin-account-email"
+            name="email"
             type="email"
             required
             value={draft}
