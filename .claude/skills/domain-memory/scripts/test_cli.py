@@ -438,17 +438,17 @@ class CliTest(RegistryTestCase):
         self.assertEqual(["Candidate record created.", "Candidate record updated."],
                          [self.upsert_term(term).stdout.strip() for _ in range(2)])
 
-    def test_upsert_candidate_notes_a_record_citing_exactly_the_evidence_of_another(self) -> None:
-        (self.repo / "fact.md").write_text("orders\nlines\n", encoding="utf-8")
-        same = [citation(self.repo, "fact.md", 1, 1)]
-        order = {"id": "order", "name": "Order", "contexts": ["orders"], "evidence": same}
+    def test_upsert_candidate_notes_a_record_whose_excerpts_are_within_another_records(self) -> None:
+        (self.repo / "fact.md").write_text("orders\nlines\ntotals\n", encoding="utf-8")
+        first, second, third = (citation(self.repo, "fact.md", line, line) for line in (1, 2, 3))
+        order = {"id": "order", "name": "Order", "contexts": ["orders"], "evidence": [first]}
         again = [self.upsert_term(order).stderr.strip() for _ in range(2)]
-        noted = self.upsert_term({"id": "purchase", "name": "Purchase", "contexts": ["orders"], "evidence": same})
-        apart = self.upsert_term({"id": "line", "name": "Line", "contexts": ["orders"],
-                                  "evidence": [*same, citation(self.repo, "fact.md", 2, 2)]})
+        wider = self.upsert_term({"id": "purchase", "name": "Purchase", "contexts": ["orders"], "evidence": [first, second]})
+        overlapping = self.upsert_term({"id": "line", "name": "Line", "contexts": ["orders"], "evidence": [second, third]})
         self.assertEqual(
-            (["", ""], "NOTE: cites exactly the evidence of vocabulary/order; it may be a duplicate of that record.", ""),
-            (again, noted.stderr.strip(), apart.stderr.strip()),
+            (["", ""], "NOTE: its cited excerpts are all among those of vocabulary/order, or theirs among its; "
+             "it may be a duplicate of that record.", ""),
+            (again, wider.stderr.strip(), overlapping.stderr.strip()),
         )
 
     def test_readiness_command_returns_json_without_writing(self) -> None:

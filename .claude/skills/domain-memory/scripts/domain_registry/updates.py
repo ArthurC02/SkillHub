@@ -22,7 +22,7 @@ from .common import (
     review_field,
     utc_now,
 )
-from .evidence import cited_excerpts, classify_all, hash_all, source_map_for, unclassified_paths
+from .evidence import classify_all, hash_all, one_cites_within_the_other, source_map_for, unclassified_paths
 from .okf import contexts_named_by, verified_by
 from .policy import review_mode
 from .revision import (
@@ -190,6 +190,40 @@ class Upserted:
     outside: list[str] = field(default_factory=list)
     created: int = 0
     same_evidence: list[str] = field(default_factory=list)
+    skipped_reviewed: list[str] = field(default_factory=list)
+
+    def reset(self) -> None:
+        self.created = 0
+        self.outside.clear()
+        self.same_evidence.clear()
+        self.skipped_reviewed.clear()
+
+
+@dataclass(frozen=True)
+class Staging:
+    source_map: Any
+    skip_reviewed: bool = False
+
+
+def stage_candidates(
+    document: dict[str, Any], asset: str, batch: list[dict[str, Any]], staging: Staging, result: Upserted
+) -> None:
+    records = document[ASSET_KEYS[asset_file_name(asset)]]
+    for record in batch:
+        existing = find_record(records, record["id"])
+        if is_reviewed(asset, document, existing):
+            if not staging.skip_reviewed:
+                raise ValueError(f"cannot overwrite reviewed record: {record['id']}")
+            result.skipped_reviewed.append(f"{asset}/{record['id']}")
+            continue
+        result.created += existing is None
+        result.same_evidence.extend(_citing_the_same_excerpts(asset, records, record))
+        candidate = classify_all(dict(record), staging.source_map)
+        result.outside.extend(unclassified_paths(candidate))
+        candidate.pop("review", None)
+        candidate.pop("verified", None)
+        candidate[review_field(asset)] = "candidate"
+        put_record(records, existing, candidate)
 
 
 def upsert_candidate(
@@ -201,25 +235,11 @@ def upsert_candidate(
         batch = [hash_all(record, repo_root) for record in batch]
     source_map = source_map_for(root)
     result = Upserted()
-    outside = result.outside
 
     def mutate(staging: Path) -> None:
+        result.reset()
         document = read_document(staging, name)
-        records = document[ASSET_KEYS[name]]
-        result.created = 0
-        result.same_evidence.clear()
-        for record in batch:
-            existing = find_record(records, record["id"])
-            if is_reviewed(asset, document, existing):
-                raise ValueError(f"cannot overwrite reviewed record: {record['id']}")
-            result.created += existing is None
-            result.same_evidence.extend(_citing_the_same_excerpts(asset, records, record))
-            candidate = classify_all(dict(record), source_map)
-            outside.extend(unclassified_paths(candidate))
-            candidate.pop("review", None)
-            candidate.pop("verified", None)
-            candidate[review_field(asset)] = "candidate"
-            put_record(records, existing, candidate)
+        stage_candidates(document, asset, batch, Staging(source_map), result)
         write_document(staging, name, document)
 
     identity = (
@@ -233,16 +253,15 @@ def upsert_candidate(
         mutate,
         audit_event=lambda: {"operation": "upsert-candidate", "asset": asset, **identity},
     )
-    result.outside = sorted(set(outside))
+    result.outside = sorted(set(result.outside))
     return result
 
 
 def _citing_the_same_excerpts(asset: str, records: list[dict[str, Any]], record: dict[str, Any]) -> list[str]:
-    excerpts = cited_excerpts(record)
     return [
         f"{asset}/{other.get('id')}"
         for other in records
-        if excerpts and other.get("id") != record["id"] and cited_excerpts(other) == excerpts
+        if other.get("id") != record["id"] and one_cites_within_the_other(record, other)
     ]
 
 

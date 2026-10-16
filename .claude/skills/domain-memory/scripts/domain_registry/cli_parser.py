@@ -33,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
     for add_commands in (
         _add_registry_commands, _add_evidence_commands, _add_record_and_source_commands, _add_governance_commands,
         _add_review_governance_commands, _add_proposal_commands, _add_proposal_check_commands,
-        _add_history_commands,
+        _add_history_commands, _add_harvest_command,
     ):
         add_commands(commands)
     return parser
@@ -60,6 +60,16 @@ def _add_export_commands(commands: argparse._SubParsersAction) -> None:
     add_path(compare_parser, "--repo-root", required=False)
     compare_parser.add_argument("--gold-commit")
     compare_parser.add_argument("--context", action="append", default=[])
+
+
+def _add_harvest_command(commands: argparse._SubParsersAction) -> None:
+    harvest_parser = commands.add_parser("harvest-candidates")
+    add_path(harvest_parser, "--registry-root")
+    add_path(harvest_parser, "--repo-root")
+    add_path(harvest_parser, "--from-root")
+    harvest_parser.add_argument(
+        "--context-map", action="append", default=[], help="repeatable CANDIDATE=GOLD, over the pairing found by path or name"
+    )
 
 
 def _add_history_commands(commands: argparse._SubParsersAction) -> None:
@@ -277,6 +287,8 @@ def _add_review_governance_commands(commands: argparse._SubParsersAction) -> Non
     add_path(governance_parser, "--repo-root")
     audit_parser = commands.add_parser("verify-audit")
     add_path(audit_parser, "--registry-root")
+    add_path(audit_parser, "--changes-root", required=False)
+    audit_parser.add_argument("--against")
 
 
 def _add_proposal_commands(commands: argparse._SubParsersAction) -> None:

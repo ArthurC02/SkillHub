@@ -8,11 +8,13 @@ from typing import Any
 
 from .common import (
     MAX_JSON_BYTES,
+    PROPOSAL_FILE,
     load_json,
     reject_duplicate_keys,
     utc_now,
     write_json,
 )
+from .sources import run_git
 from .store import has_registry
 
 MANIFEST_FORMAT = "domain-memory-audit/v1"
@@ -153,3 +155,46 @@ def verify(root: Path) -> dict[str, Any]:
     if error:
         return _invalid(error)
     return {"status": "valid", "events": len(events), "head_sha256": head}
+
+
+def anchor_error(root: Path, changes_root: Path | None, against: str | None) -> str | None:
+    if changes_root is not None:
+        missing = _applied_without_event(root, changes_root)
+        if missing:
+            return "applied proposals have no apply-approved-updates event in the audit log: " + ", ".join(missing)
+    return _committed_prefix_error(root, against) if against is not None else None
+
+
+def _applied_without_event(root: Path, changes_root: Path) -> list[str]:
+    applied = {
+        event.get("proposal_id") for event in read_events(root) if event.get("operation") == "apply-approved-updates"
+    }
+    missing = []
+    for package in sorted(path for path in changes_root.iterdir() if (path / PROPOSAL_FILE).is_file()):
+        proposal = load_json(package / PROPOSAL_FILE)
+        was_applied = "applied" in (proposal.get("status"), proposal.get("superseded_from_status"))
+        if was_applied and proposal.get("proposal_id") not in applied:
+            missing.append(f"{package.name} ({proposal.get('proposal_id')})")
+    return missing
+
+
+def _committed_prefix_error(root: Path, against: str) -> str | None:
+    top = run_git(root, "rev-parse", "--show-toplevel")
+    if top.returncode or run_git(root, "rev-parse", "--verify", "--quiet", f"{against}^{{commit}}").returncode:
+        raise ValueError(f"git cannot resolve {against} from {root}")
+    shown = Path(top.stdout.strip()).resolve()
+    committed = run_git(shown, "show", f"{against}:{audit_manifest_path(root).resolve().relative_to(shown).as_posix()}")
+    if committed.returncode:
+        return None
+    try:
+        manifest = json.loads(committed.stdout)
+    except json.JSONDecodeError:
+        return f"the audit manifest committed at {against} is not valid JSON"
+    count, head = manifest.get("events"), manifest.get("head_sha256")
+    events = read_events(root)
+    if not isinstance(count, int) or count > len(events) or (count and events[count - 1].get("event_sha256") != head):
+        return (
+            f"the audit log does not extend the one committed at {against} ({count} events, head {head}); "
+            "events were removed or rewritten since"
+        )
+    return None

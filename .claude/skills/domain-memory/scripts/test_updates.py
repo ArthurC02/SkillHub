@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from domain_registry.audit import read_events as read_audit_events
 from domain_registry.audit import event_digest as audit_event_digest
 from domain_registry.audit import reviewing_proposals
+from domain_registry.audit import anchor_error
 from domain_registry.audit import verify as verify_audit
 from domain_registry.evidence import (
     citation,
@@ -57,7 +58,7 @@ from domain_registry.store import (
     read_document,
     write_document,
 )
-from test_support import VERIFIED, RegistryTestCase, append_audit, amend_policy, snapshot_of_files, use_json_layout
+from test_support import VERIFIED, RegistryTestCase, append_audit, amend_policy, applied_by, snapshot_of_files, use_json_layout
 
 
 class UpdatesTest(RegistryTestCase):
@@ -241,6 +242,79 @@ class UpdatesTest(RegistryTestCase):
         result = verify_audit(self.repo / "nowhere")
         self.assertEqual("invalid", result["status"])
         self.assertIn("no Domain Memory Registry", result["reason"])
+
+    def packages(self, **statuses: dict) -> Path:
+        changes = self.repo / "changes"
+        for name, fields in statuses.items():
+            (changes / name).mkdir(parents=True)
+            (changes / name / "domain-change-proposal.json").write_text(
+                json.dumps({"proposal_id": name.upper(), **fields}), encoding="utf-8")
+        return changes
+
+    def test_an_applied_proposal_without_its_apply_event_makes_the_audit_invalid(self) -> None:
+        root = self.repo / "memory"
+        applied_by(root, "KEPT")
+        changes = self.packages(kept={"status": "applied"}, lost={"status": "applied"},
+                                replaced={"status": "superseded", "superseded_from_status": "applied"},
+                                draft={"status": "draft"})
+        self.assertEqual(
+            "applied proposals have no apply-approved-updates event in the audit log: lost (LOST), replaced (REPLACED)",
+            anchor_error(root, changes, None),
+        )
+
+    def test_every_applied_proposal_with_its_apply_event_anchors_the_audit(self) -> None:
+        root = self.repo / "memory"
+        applied_by(root, "KEPT")
+        self.assertIsNone(anchor_error(root, self.packages(kept={"status": "applied"}, draft={"status": "draft"}), None))
+
+    def test_verify_audit_checks_the_anchors_it_is_given_from_the_command_line(self) -> None:
+        root = self.repo / "memory"
+        changes = self.packages(lost={"status": "applied"})
+        anchored = self.run_cli("verify-audit", "--registry-root", str(root), "--changes-root", str(changes))
+        unresolved = self.run_cli("verify-audit", "--registry-root", str(root), "--against", "no-such-ref")
+        self.assertEqual(
+            (1, "applied proposals have no apply-approved-updates event in the audit log: lost (LOST)", 1,
+             "ERROR: git cannot resolve no-such-ref from"),
+            (anchored.returncode, json.loads(anchored.stdout)["reason"], unresolved.returncode,
+             unresolved.stdout.strip().split(" from ")[0] + " from"),
+        )
+
+    def committed_log(self, count: int) -> Path:
+        root = self.repo / "memory"
+        for number in range(count):
+            append_audit(root, {"operation": f"step-{number}"})
+        self.commit_all("audit")
+        return root
+
+    def test_a_log_truncated_consistently_since_a_commit_does_not_extend_it(self) -> None:
+        root = self.committed_log(3)
+        events_file, manifest_file = root / "audit" / "events.jsonl", root / "audit" / "manifest.json"
+        kept = events_file.read_text(encoding="utf-8").splitlines()[:2]
+        events_file.write_text("".join(f"{line}\n" for line in kept), encoding="utf-8")
+        manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+        manifest.update(events=2, head_sha256=json.loads(kept[-1])["event_sha256"])
+        manifest_file.write_text(json.dumps(manifest), encoding="utf-8")
+        self.assertEqual("valid", verify_audit(root)["status"])
+        self.assertRegex(anchor_error(root, None, "HEAD"), "^the audit log does not extend the one committed at HEAD [(]3 events")
+
+    def test_a_log_rewritten_since_a_commit_does_not_extend_it(self) -> None:
+        root = self.committed_log(2)
+        events_file = root / "audit" / "events.jsonl"
+        events_file.unlink()
+        (root / "audit" / "manifest.json").unlink()
+        for operation in ("other-0", "other-1", "other-2"):
+            append_audit(root, {"operation": operation})
+        self.assertRegex(anchor_error(root, None, "HEAD"), "^the audit log does not extend the one committed at HEAD")
+
+    def test_a_log_grown_since_a_commit_extends_it(self) -> None:
+        root = self.committed_log(2)
+        append_audit(root, {"operation": "later"})
+        self.assertIsNone(anchor_error(root, None, "HEAD"))
+
+    def test_a_revision_git_cannot_resolve_is_an_error(self) -> None:
+        root = self.committed_log(1)
+        with self.assertRaisesRegex(ValueError, "^git cannot resolve no-such-ref from "):
+            anchor_error(root, None, "no-such-ref")
 
     def test_audit_chain_detects_tampering(self) -> None:
         append_audit(self.repo / "memory", {"operation": "first"})

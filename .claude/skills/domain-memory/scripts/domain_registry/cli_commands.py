@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from .attestations import audit_attestations, verify_scm
+from .audit import anchor_error
 from .audit import verify as verify_audit
 from .changes import init_change_package, list_proposals, redraft_change_package, validate_change_package
 from .common import ASSET_KEYS, PROPOSAL_FILE, load_json
@@ -40,6 +41,7 @@ from .policy import (
 )
 from .readiness import assess_readiness
 from .recitation_package import recitation_package
+from .harvest import harvest_candidates
 from .impact import boundary_impact, registered_collaborations
 from .relocate import Recitation, line_range, recite, relocate_evidence
 from .registry import (
@@ -397,8 +399,8 @@ def handle_upsert_candidate(args: argparse.Namespace) -> int:
     outside = upserted.outside
     if upserted.same_evidence:
         print(
-            "NOTE: cites exactly the evidence of " + ", ".join(upserted.same_evidence)
-            + "; it may be a duplicate of that record.",
+            "NOTE: its cited excerpts are all among those of " + ", ".join(upserted.same_evidence)
+            + ", or theirs among its; it may be a duplicate of that record.",
             file=sys.stderr,
         )
     if outside:
@@ -409,6 +411,26 @@ def handle_upsert_candidate(args: argparse.Namespace) -> int:
             "evidence when that file moves. "
             + OUTSIDE_SOURCES_CONSEQUENCE
         )
+    return 0
+
+
+def handle_harvest_candidates(args: argparse.Namespace) -> int:
+    context_map = {}
+    for entry in args.context_map:
+        candidate, separator, gold = entry.partition("=")
+        if not (separator and candidate.strip() and gold.strip()):
+            raise ValueError(f"--context-map takes CANDIDATE=GOLD, got {entry}")
+        context_map[candidate.strip()] = gold.strip()
+    report = harvest_candidates(
+        args.registry_root.resolve(), args.repo_root.resolve(), args.from_root.resolve(), context_map
+    )
+    print_json(report)
+    if report["possible_duplicates"]:
+        print("NOTE: some harvested records cite within the evidence of " + ", ".join(report["possible_duplicates"])
+              + "; check that they are not duplicates.", file=sys.stderr)
+    if report["outside_sources"]:
+        print("NOTE: harvested records rest on files the confirmed source map does not cover: "
+              + ", ".join(report["outside_sources"]) + ". " + OUTSIDE_SOURCES_CONSEQUENCE, file=sys.stderr)
     return 0
 
 
@@ -694,7 +716,13 @@ def handle_governance_readiness(args: argparse.Namespace) -> int:
 
 
 def handle_verify_audit(args: argparse.Namespace) -> int:
-    result = verify_audit(args.registry_root.resolve())
+    root = args.registry_root.resolve()
+    result = verify_audit(root)
+    if result["status"] == "valid":
+        changes_root = args.changes_root.resolve() if args.changes_root else None
+        reason = anchor_error(root, changes_root, args.against)
+        if reason:
+            result = {"status": "invalid", "reason": reason}
     print_json(result, indent=None)
     return 0 if result["status"] == "valid" else 1
 
@@ -847,6 +875,7 @@ HANDLERS = {
     "recite": handle_recite,
     "cite": handle_cite,
     "upsert-candidate": handle_upsert_candidate,
+    "harvest-candidates": handle_harvest_candidates,
     "retract-candidate": handle_retract_candidate,
     "promote-candidate": handle_promote_candidate,
     "apply-approved-updates": handle_apply_approved_updates,

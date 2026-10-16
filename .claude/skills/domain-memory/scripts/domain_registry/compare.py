@@ -6,7 +6,7 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from .common import ASSET_KEYS
-from .evidence import all_references, cited_excerpts
+from .evidence import all_references, one_cites_within_the_other
 from .okf import contexts_named_by
 
 PAIRED_ASSETS = {
@@ -113,7 +113,7 @@ def _matched(
         taken_candidates.add(index)
         taken_gold.add(gold_index)
         pair = {"candidate": candidate[index]["id"], "gold": gold[gold_index]["id"], "by": SCORE_LABELS[score[0]]}
-        if asset != "contexts" and _same_excerpts(gold[gold_index], candidate[index]):
+        if asset != "contexts" and one_cites_within_the_other(gold[gold_index], candidate[index]):
             pair["copied_evidence"] = True
         matched.append(pair)
     missed = [gold_index for gold_index in range(len(gold)) if gold_index not in taken_gold]
@@ -249,11 +249,6 @@ def _citations(record: dict[str, Any]) -> list[Citation]:
             number = int(line) if line.isdigit() else 0
             citations.append((path, number, number if line.isdigit() else -1))
     return citations
-
-
-def _same_excerpts(gold: dict[str, Any], candidate: dict[str, Any]) -> bool:
-    one, other = cited_excerpts(gold), cited_excerpts(candidate)
-    return bool(one and other) and (one <= other or other <= one)
 
 
 def _shared_files(gold: list[Citation], candidate: list[Citation]) -> set[str]:

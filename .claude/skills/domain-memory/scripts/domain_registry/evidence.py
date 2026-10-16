@@ -301,6 +301,11 @@ def cited_excerpts(record: dict[str, Any]) -> set[tuple[str, str]]:
     }
 
 
+def one_cites_within_the_other(one: dict[str, Any], other: dict[str, Any]) -> bool:
+    mine, theirs = cited_excerpts(one), cited_excerpts(other)
+    return bool(mine and theirs) and (mine <= theirs or theirs <= mine)
+
+
 def all_references(value: Any, depth: int = 0) -> list[Any]:
     if depth > MAX_NESTING_DEPTH:
         raise ValueError(f"evidence document exceeds nesting depth {MAX_NESTING_DEPTH}")
