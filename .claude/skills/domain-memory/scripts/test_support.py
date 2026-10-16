@@ -139,9 +139,8 @@ class RegistryTestCase(unittest.TestCase):
             encoding="utf-8",
         )
         subprocess.run(["git", "init", "-q"], cwd=self.repo, check=True)
-        subprocess.run(
-            ["git", "config", "core.autocrlf", "false"], cwd=self.repo, check=True
-        )
+        for key, value in (("core.autocrlf", "false"), ("gc.auto", "0"), ("maintenance.auto", "false")):
+            subprocess.run(["git", "config", key, value], cwd=self.repo, check=True)
         subprocess.run(["git", "add", "."], cwd=self.repo, check=True)
         subprocess.run(
             [

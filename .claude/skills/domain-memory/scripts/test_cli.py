@@ -345,7 +345,7 @@ class CliTest(RegistryTestCase):
             "upsert-candidate", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
             "--asset", "rules", "--record-file", str(missing),
         )
-        self.assertEqual((1, f"ERROR: no such record file: {missing}"), (result.returncode, result.stdout.strip()))
+        self.assertEqual((1, f"ERROR: no such record file: {missing.resolve()}"), (result.returncode, result.stdout.strip()))
 
     def test_the_probe_on_a_root_one_level_too_deep_names_the_likely_root(self) -> None:
         self.committed_source_map()
