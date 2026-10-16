@@ -11,6 +11,7 @@ import { queryKeys } from "../../core/api/queryKeys";
 import {
   isEvaluationResponse,
   isEvaluationRevisionsResponse,
+  isRunComparisonResponse,
   isRunSuggestionsResponse,
   isSuggestionDiffResponse,
 } from "./evaluation-response.model";
@@ -458,11 +459,19 @@ export function useApplySuggestions(runId: string) {
   });
 }
 
+export async function getRunComparison(runId: string, against: string): Promise<RunComparison> {
+  const result = await apiFetch<unknown>(
+    `/runs/${encodeURIComponent(runId)}/comparison?against=${encodeURIComponent(against)}`,
+  );
+  if (!isRunComparisonResponse(result, runId, against))
+    throw new Error("Invalid run comparison response");
+  return result;
+}
+
 export function useRunComparison(runId: string, against: string) {
   return useQuery({
     queryKey: queryKeys.evaluation.comparison(runId, against),
-    queryFn: () =>
-      apiFetch<RunComparison>(`/runs/${runId}/comparison?against=${encodeURIComponent(against)}`),
+    queryFn: () => getRunComparison(runId, against),
     enabled: runId.length > 0 && against.length > 0,
   });
 }
