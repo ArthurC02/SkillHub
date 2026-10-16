@@ -241,6 +241,7 @@ export function CompareCandidatesPicker({
         <label htmlFor="against">要比較的另一個試跑紀錄 ID</label>{" "}
         <input
           id="against"
+          required
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
           size={40}
@@ -248,8 +249,7 @@ export function CompareCandidatesPicker({
         />{" "}
         <button type="submit">比較</button>
         <p className="note">
-          {(candidates.length > 0 ? "從上面選一個同一個測試題的試跑紀錄，或" : "") +
-            "輸入另一筆試跑紀錄的 ID 後開始比較。別的測試題或別的小工具的試跑紀錄也可以。"}
+          輸入另一筆試跑紀錄的 ID 後開始比較。別的測試題或別的小工具的試跑紀錄也可以。
         </p>
       </form>
     </>
