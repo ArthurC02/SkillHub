@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-16T16:32:08.394666Z"
 sources:
   - resource: "apps/platform/internal/trial/execution/reassign.go#L73-77"
     excerpt_sha256: "sha256:9a952ee3fef2b37747a2894803666dbb6775e370c1c9a17611bc0248289b34e8"

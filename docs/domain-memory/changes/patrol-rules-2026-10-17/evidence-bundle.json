@@ -7,13 +7,22 @@
     "registry_digest": "sha256:b93fee700ade6c94fa889bc019ccf88a77cda36aea83c16bcdf32d8b487f9033"
   },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "0eb44c4a78bf5d2f9334b50e7e8999c30052ec2e",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "a4fd3f9431f5150a3d119ac1cf7ebd41c6e35ea0",
+      "registry_digest": "sha256:b93fee700ade6c94fa889bc019ccf88a77cda36aea83c16bcdf32d8b487f9033"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "purge-refuses-missing-step",
     "mutated_protection": "the step.purge nil check in requirePurgeSteps",
-    "failing_evidence": "registry counterfactual: killed; purge_steps_test.go:54: purge without packaging = <nil>, want a refusal naming it. The step.list and WorkspaceQuiescent checks, the revokeLostKey call and both live-attempt timeout branches were each killed the same way by their obligations' tests.",
-    "restored": true
+    "restored": true,
+    "failure_evidence": "registry counterfactual: killed; purge_steps_test.go:54: purge without packaging = <nil>, want a refusal naming it. The step.list and WorkspaceQuiescent checks, the revokeLostKey call and both live-attempt timeout branches were each killed the same way by their obligations' tests."
   },
   "sources": [
     "apps/platform/internal/creator/workspace/purge.go",

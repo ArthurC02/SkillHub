@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-16T16:32:08.394666Z"
 sources:
   - resource: "apps/platform/internal/creator/workspace/purge.go#L47-63"
     excerpt_sha256: "sha256:d588cbf6256bba6e28af204b6b7465dbf9cd229c111fe73349df0f3a5f3b4f15"

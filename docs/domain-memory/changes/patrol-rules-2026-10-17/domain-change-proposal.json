@@ -3,12 +3,12 @@
   "proposal_id": "patrol-rules",
   "proposer": "domain-memory-agent",
   "requirement_id": "patrol-rules",
-  "status": "submitted",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-16T16:32:07.529090Z",
-  "verified_at": null,
-  "finalized_at": null,
-  "applied_at": null,
+  "verified_at": "2026-10-16T16:32:44.958371Z",
+  "finalized_at": "2026-10-16T16:32:56.768336Z",
+  "applied_at": "2026-10-16T16:32:59.692902Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "a4fd3f9431f5150a3d119ac1cf7ebd41c6e35ea0",
@@ -184,5 +184,9 @@
         "registry_digest": "sha256:b93fee700ade6c94fa889bc019ccf88a77cda36aea83c16bcdf32d8b487f9033"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "0eb44c4a78bf5d2f9334b50e7e8999c30052ec2e",
+    "registry_digest": "sha256:dc825b84560d22bdb5847089de768d45d03d09b6f6bcad498a19f90003fcd7ef"
+  }
 }
