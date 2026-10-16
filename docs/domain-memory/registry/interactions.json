@@ -1957,6 +1957,44 @@
           }
         ]
       }
+    },
+    {
+      "id": "eval-identity-workspace-purge",
+      "producer_context": "eval",
+      "consumer_context": "identity",
+      "consistency": "synchronous",
+      "delivery": "composition-root hook inside the caller's transaction",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+          "lines": {
+            "start": 219,
+            "end": 219
+          },
+          "content_sha256": "sha256:af9cb37c41764feb5814ccac1aca91d7dc5305cd783a893328319032f3b1a253",
+          "excerpt_sha256": "sha256:875e512562f8552c6e2fe2e0c217a9d4a27edbebffd97420dd9e08bb452b1473",
+          "source_kind": "implementation"
+        }
+      ],
+      "status": "reviewed",
+      "review": {
+        "proposal_id": "grader-purge",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-16T03:13:57.144861Z",
+            "scope": "Record eval's workspace purge hook for identity's account purge, so a deleted account's graders are removed as the retention declaration promised",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "bd5cf030e84ca8cf592ef1bc9bf3109aa8b18342",
+              "registry_digest": "sha256:877fabd3c7df276a631eeb74c93355b1f209558df9c7cd117f09bedeeb7f6e6c"
+            }
+          }
+        ]
+      }
     }
   ]
 }

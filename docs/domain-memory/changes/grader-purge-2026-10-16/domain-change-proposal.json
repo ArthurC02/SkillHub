@@ -3,12 +3,12 @@
   "proposal_id": "grader-purge",
   "proposer": "domain-memory-agent",
   "requirement_id": "grader-purge",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-16T03:13:56.836573Z",
   "verified_at": "2026-10-16T03:13:57.505128Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-16T03:14:06.712716Z",
+  "applied_at": "2026-10-16T03:14:07.837676Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "bd5cf030e84ca8cf592ef1bc9bf3109aa8b18342",
@@ -97,5 +97,9 @@
         "registry_digest": "sha256:877fabd3c7df276a631eeb74c93355b1f209558df9c7cd117f09bedeeb7f6e6c"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "323a66c0b4ceebb1e1a1ffab3a8991fd872f2c4f",
+    "registry_digest": "sha256:439689be34268e84f6afaabb2c7192c935fea4ec75ad16687d2152a9d8de83e7"
+  }
 }

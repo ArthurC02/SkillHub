@@ -7,7 +7,16 @@
     "registry_digest": "sha256:877fabd3c7df276a631eeb74c93355b1f209558df9c7cd117f09bedeeb7f6e6c"
   },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "323a66c0b4ceebb1e1a1ffab3a8991fd872f2c4f",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "bd5cf030e84ca8cf592ef1bc9bf3109aa8b18342",
+      "registry_digest": "sha256:877fabd3c7df276a631eeb74c93355b1f209558df9c7cd117f09bedeeb7f6e6c"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "purge-removes-graders",
