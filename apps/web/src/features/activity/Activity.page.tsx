@@ -1,12 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { useRef, useState } from "react";
 import { canRetainLoadedPage } from "../../core/api/client";
 import { useFeatureAvailability } from "../../shared/featureAvailability";
 import { ListFreshness } from "../../shared/ui/ListFreshness";
 import { Loading } from "../../shared/ui/Loading";
 import { ReadFailure } from "../../shared/ui/LoginRequired";
 import { Timestamp } from "../../shared/ui/Timestamp";
-import { useContinuationFocus } from "../../shared/ui/useContinuationFocus";
+import { usePaginationFocus } from "../../shared/ui/usePaginationFocus";
 import {
   activityUnavailable,
   useActivity,
@@ -61,14 +60,19 @@ export function Activity() {
   const showItems =
     Boolean(pages) && (!activity.error || items.length > 0) && (!busy || items.length > 0);
   const inProgress = items.some((item) => item.classification === "in_progress");
-  const { loadMore, bindTarget, row: continuationRow } = useActivityPagination(activity, items);
+  const {
+    loadMore,
+    bindTarget,
+    headingRef,
+    row: continuationRow,
+  } = usePaginationFocus(activity, items);
 
   return (
     <section className="activity-page">
       <header className="activity-hero">
         <div>
           <p className="activity-eyebrow">Workspace activity</p>
-          <h1 id="activity-heading" tabIndex={-1} ref={activity.error ? bindTarget : undefined}>
+          <h1 id="activity-heading" tabIndex={-1} ref={headingRef}>
             活動
           </h1>
           <p>把正在執行、等待決定與最近完成的工作放在同一條可信時間線。</p>
@@ -141,33 +145,6 @@ export function Activity() {
       )}
     </section>
   );
-}
-
-function useActivityPagination(activity: ReturnType<typeof useActivity>, items: ActivityItem[]) {
-  const [request, setRequest] = useState({ sequence: 0, pageCount: 0, itemCount: 0 });
-  const target = useRef<HTMLElement>(null);
-  const available =
-    request.sequence > 0 &&
-    activity.fetchStatus === "idle" &&
-    Boolean(activity.error || (activity.data?.pages.length ?? 0) > request.pageCount);
-  useContinuationFocus(request.sequence ? String(request.sequence) : undefined, available, target);
-  return {
-    loadMore: () => {
-      setRequest((previous) => ({
-        sequence: previous.sequence + 1,
-        pageCount: activity.data?.pages.length ?? 0,
-        itemCount: items.length,
-      }));
-      void activity.fetchNextPage();
-    },
-    bindTarget: (element: HTMLElement | null) => {
-      target.current = element;
-    },
-    row:
-      request.sequence > 0 && !activity.hasNextPage && !activity.error
-        ? (items[request.itemCount] ?? items.at(-1))
-        : undefined,
-  };
 }
 
 function ActivityReadStatus({

@@ -2,6 +2,7 @@ import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { ApiError, canRetainLoadedPage } from "../../../core/api/client";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
+import { usePaginationFocus } from "../../../shared/ui/usePaginationFocus";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useDeleteSkill, useOwnSkillPages } from "../../skill";
@@ -108,13 +109,20 @@ function SkillCard({
   skill,
   remove,
   onMessage,
+  focusRef,
 }: {
   skill: OwnSkill;
   remove: ReturnType<typeof useDeleteSkill>;
   onMessage: (message: string) => void;
+  focusRef?: (element: HTMLLIElement | null) => void;
 }) {
   return (
-    <li className="search-result skill-card" data-tone={toneOf(skill.skill_id)}>
+    <li
+      className="search-result skill-card"
+      data-tone={toneOf(skill.skill_id)}
+      ref={focusRef}
+      tabIndex={focusRef ? -1 : undefined}
+    >
       <Link className="skill-card-link" to="/skills/$skillId" params={{ skillId: skill.skill_id }}>
         <span className="skill-cover" aria-hidden="true" />
         <span className="skill-card-head">
@@ -222,12 +230,16 @@ function SkillListProgress({
   hasNextPage,
   isFetchingNextPage,
   onFetchNextPage,
+  paused,
+  buttonRef,
 }: {
   shown: number;
   total: number;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   onFetchNextPage: () => void;
+  paused: boolean;
+  buttonRef: (element: HTMLButtonElement | null) => void;
 }) {
   return (
     <div className="skill-list-progress">
@@ -235,8 +247,13 @@ function SkillListProgress({
         已顯示 {shown} / {total} 個小工具
       </p>
       {hasNextPage && (
-        <button type="button" disabled={isFetchingNextPage} onClick={onFetchNextPage}>
-          {isFetchingNextPage ? "載入中…" : "載入更多"}
+        <button
+          type="button"
+          disabled={isFetchingNextPage || paused}
+          ref={buttonRef}
+          onClick={onFetchNextPage}
+        >
+          {paused ? "等待連線…" : isFetchingNextPage ? "載入中…" : "載入更多"}
         </button>
       )}
     </div>
@@ -259,11 +276,17 @@ export function WorkspaceSkills() {
   const total = Math.max(rows.length, lastPage?.total ?? 0);
   const hasSkills = rows.length > 0;
   const isEmpty = skills.isSuccess && skills.fetchStatus === "idle" && !hasSkills;
+  const {
+    loadMore,
+    bindTarget,
+    headingRef,
+    row: continuationRow,
+  } = usePaginationFocus(skills, rows);
   useMenuDismiss();
 
   return (
     <section>
-      <h1 id="workspace-skills-heading" tabIndex={-1}>
+      <h1 id="workspace-skills-heading" tabIndex={-1} ref={headingRef}>
         資產庫
       </h1>
       {hasSkills && (
@@ -302,7 +325,13 @@ export function WorkspaceSkills() {
       {hasSkills && (
         <ul data-role="evidence" className="search-results skill-grid">
           {rows.map((s) => (
-            <SkillCard key={s.skill_id} skill={s} remove={remove} onMessage={setMessage} />
+            <SkillCard
+              key={s.skill_id}
+              skill={s}
+              remove={remove}
+              onMessage={setMessage}
+              focusRef={s === continuationRow ? bindTarget : undefined}
+            />
           ))}
         </ul>
       )}
@@ -313,7 +342,9 @@ export function WorkspaceSkills() {
           total={total}
           hasNextPage={skills.hasNextPage}
           isFetchingNextPage={skills.isFetchingNextPage}
-          onFetchNextPage={() => skills.fetchNextPage()}
+          onFetchNextPage={loadMore}
+          paused={skills.fetchStatus === "paused"}
+          buttonRef={bindTarget}
         />
       )}
 

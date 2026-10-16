@@ -15,6 +15,12 @@ import { RunSourceLinks } from "../components/RunSourceLinks";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { IN_FLIGHT_RUN_STATUSES } from "../trace.service";
 import { canRetainLoadedPage } from "../../../core/api/client";
+import { usePaginationFocus } from "../../../shared/ui/usePaginationFocus";
+
+function loadMoreLabel(fetching: boolean, paused: boolean) {
+  if (paused) return "等待連線…";
+  return fetching ? "載入中…" : "載入更多";
+}
 
 export function WorkspaceRuns() {
   const runs = useRuns();
@@ -23,10 +29,11 @@ export function WorkspaceRuns() {
   const rows = data?.pages.flatMap((page) => page.runs) ?? [];
   const paused = runs.fetchStatus === "paused";
   const busy = runs.fetchStatus !== "idle";
+  const { loadMore, bindTarget, headingRef, row: continuationRow } = usePaginationFocus(runs, rows);
 
   return (
     <section>
-      <h1 id="workspace-runs-heading" tabIndex={-1}>
+      <h1 id="workspace-runs-heading" tabIndex={-1} ref={headingRef}>
         試跑活動
       </h1>
       <p className="note" data-role="caveat">
@@ -88,7 +95,12 @@ export function WorkspaceRuns() {
                   ) : (
                     <ul className="download-list" data-role="evidence">
                       {groupRows.map((run) => (
-                        <RunRow key={run.run_id} run={run} action={group.action(run)} />
+                        <RunRow
+                          key={run.run_id}
+                          run={run}
+                          action={group.action(run)}
+                          focusRef={run === continuationRow ? bindTarget : undefined}
+                        />
                       ))}
                     </ul>
                   )}
@@ -100,10 +112,11 @@ export function WorkspaceRuns() {
       {runs.hasNextPage && !runs.error && (
         <button
           type="button"
-          disabled={runs.isFetchingNextPage}
-          onClick={() => runs.fetchNextPage()}
+          disabled={runs.isFetchingNextPage || paused}
+          ref={bindTarget}
+          onClick={loadMore}
         >
-          {runs.isFetchingNextPage ? "載入中…" : "載入更多"}
+          {loadMoreLabel(runs.isFetchingNextPage, paused)}
         </button>
       )}
       <p className="note">
@@ -145,9 +158,17 @@ const ACTIVITY_GROUPS: Array<{
   },
 ];
 
-function RunRow({ run, action }: { run: RunListItem; action: string }) {
+function RunRow({
+  run,
+  action,
+  focusRef,
+}: {
+  run: RunListItem;
+  action: string;
+  focusRef?: (element: HTMLLIElement | null) => void;
+}) {
   return (
-    <li className="download-item">
+    <li className="download-item" ref={focusRef} tabIndex={focusRef ? -1 : undefined}>
       <p>
         <RunSourceLinks run={run} />｜
         <Link to="/runs/$runId" params={{ runId: run.run_id }}>
