@@ -134,11 +134,12 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
 
       {!report && runStatus && <ExecutionState runStatus={runStatus} />}
 
-      {report?.status === "completed" && (
+      {evaluation.data?.status === "completed" && (
         <SuggestionsPanel
-          key={`suggestions:${report.evaluation_id}`}
+          key={`suggestions:${evaluation.data.evaluation_id}`}
           runId={runId}
-          evaluationId={report.evaluation_id}
+          evaluationId={evaluation.data.evaluation_id}
+          readable={!evaluation.error}
         />
       )}
 

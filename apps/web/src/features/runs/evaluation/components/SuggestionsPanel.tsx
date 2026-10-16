@@ -20,7 +20,15 @@ function focusSuggestions() {
   heading?.scrollIntoView({ block: "center" });
 }
 
-export function SuggestionsPanel({ runId, evaluationId }: { runId: string; evaluationId: string }) {
+export function SuggestionsPanel({
+  runId,
+  evaluationId,
+  readable,
+}: {
+  runId: string;
+  evaluationId: string;
+  readable: boolean;
+}) {
   const suggestions = useRunSuggestions(runId);
   const run = useRun(runId).data;
   const skillId = run?.skill_id;
@@ -41,8 +49,9 @@ export function SuggestionsPanel({ runId, evaluationId }: { runId: string; evalu
   };
   const failure = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (unknown) failure.current?.focus();
-  }, [error, unknown]);
+    if (readable && unknown) failure.current?.focus();
+  }, [error, unknown, readable]);
+  if (!readable) return null;
   if (
     suggestions.error instanceof ApiError &&
     suggestions.error.status === 404 &&

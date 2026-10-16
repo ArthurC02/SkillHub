@@ -43,7 +43,7 @@ async function decisionOutage(
     const first = id === "s2" && writes.filter((write) => write.id === "s2").length === 1;
     if (first) await gate;
     if (first && outcome === "refused") {
-      await route.fulfill({ status: 400, json: { error: "這次決定被拒絕，請重新核對建議。" } });
+      await route.fulfill({ status: 404, json: { error: "suggestion not found" } });
     } else {
       const item = items.find((candidate) => candidate.suggestion_id === id)!;
       item.decision = intent.decision;
@@ -119,7 +119,7 @@ for (const [outcome, choice] of [
         await expect(alert).toContainText(
           outcome === "unknown"
             ? `尚未確認「${choice === "accepted" ? "接受" : "拒絕"}」是否已記錄`
-            : "這次決定被拒絕，請重新核對建議。",
+            : "suggestion not found",
         );
         await expect(alert).toBeFocused();
         await inspectDecisionState(page, alert);
