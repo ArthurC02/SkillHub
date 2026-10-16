@@ -2,6 +2,17 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.43.0
+
+### Added
+
+- `get-context --summary` gives each record as its id, status and one line, and every Context model lists `rules_bound_through_collaborations`, rules of other Contexts citing a file one of its interactions or contracts cites.
+
+### Changed
+
+- `lookup` falls back from the query as written to every word of it, in any order and in another form of the word, then to the records holding most of its words, and says on stderr when it did, or that finding nothing is not proof that no constraint applies.
+- `resolve-terms` finds a mention holding every word of a multi-word query, lists rules and contracts first among mentions, and notes when the result limit cut matches or a matching term hid rules that mention the query.
+
 ## 0.42.2
 
 ### Fixed

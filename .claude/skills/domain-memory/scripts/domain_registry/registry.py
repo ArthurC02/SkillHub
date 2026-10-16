@@ -642,15 +642,51 @@ def coverage(root: Path) -> dict[str, Any]:
 
 
 def lookup(root: Path, asset: str, query: str) -> list[dict[str, Any]]:
+    return ranked_lookup(root, asset, query)[0]
+
+
+def ranked_lookup(root: Path, asset: str, query: str) -> tuple[list[dict[str, Any]], str]:
     name = f"{asset}.json"
     if name not in ASSET_KEYS:
         raise ValueError(f"unknown asset: {asset}")
+    entries, limit = asset_records(root, name), query_result_limit(root)
     needle = query.casefold()
-    return [
-        entry
-        for entry in asset_records(root, name)
-        if needle in json.dumps(entry, ensure_ascii=False).casefold()
-    ][: query_result_limit(root)]
+    phrase = [entry for entry in entries if needle in json.dumps(entry, ensure_ascii=False).casefold()]
+    if phrase:
+        return phrase[:limit], "phrase"
+    wanted = word_stems(query)
+    shared = [(len(wanted & word_stems(" ".join(_strings(entry)))), entry) for entry in entries]
+    every = [entry for count, entry in shared if wanted and count == len(wanted)]
+    if every:
+        return every[:limit], "all-words"
+    some = [entry for count, entry in sorted(shared, key=lambda pair: -pair[0]) if count]
+    return some[:limit], "some-words" if some else "none"
+
+
+SUFFIXES = ("ations", "ation", "ings", "ing", "ency", "ence", "ents", "ent", "ions", "ion", "ed", "es", "s", "e", "y")
+MIN_STEM_LENGTH = 3
+
+
+def word_stems(text: str) -> set[str]:
+    return {_stem(word) for word in re.findall(r"[a-z0-9]+", text.casefold())}
+
+
+def _stem(word: str) -> str:
+    return next(
+        (word[: -len(suffix)] for suffix in SUFFIXES
+         if word.endswith(suffix) and len(word) - len(suffix) >= MIN_STEM_LENGTH),
+        word,
+    )
+
+
+def _strings(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [text for child in value.values() for text in _strings(child)]
+    if isinstance(value, list):
+        return [text for child in value for text in _strings(child)]
+    return []
 
 
 def record_by_id(root: Path, asset: str, identifier: str) -> dict[str, Any] | None:
@@ -683,6 +719,12 @@ def _match_kind(term: dict[str, Any], needle: str) -> str | None:
 def resolve_terms(
     root: Path, query: str, context: str | None, *, with_mentions: bool = False
 ) -> list[dict[str, Any]]:
+    return every_resolved_term(root, query, context, with_mentions=with_mentions)[: query_result_limit(root)]
+
+
+def every_resolved_term(
+    root: Path, query: str, context: str | None, *, with_mentions: bool = False
+) -> list[dict[str, Any]]:
     needle = query.casefold()
     matches = []
     for term in asset_records(root, "vocabulary.json"):
@@ -693,13 +735,13 @@ def resolve_terms(
             matches.append({**term, "match_kind": kind})
     matches.sort(key=lambda match: MATCH_KINDS.index(match["match_kind"]))
     if matches and not with_mentions:
-        return matches[: query_result_limit(root)]
+        return matches
     matched = {match["id"] for match in matches}
     mentions = [
         mention for mention in prose_mentions(root, needle)
         if mention["asset"] != "vocabulary" or mention["id"] not in matched
     ]
-    return (matches + mentions)[: query_result_limit(root)]
+    return matches + mentions
 
 
 def _reviewed_entries(root: Path, name: str) -> list[dict[str, Any]]:
@@ -713,10 +755,13 @@ def _reviewed_entries(root: Path, name: str) -> list[dict[str, Any]]:
 
 DEFINING_FIELDS = ("id", "name", "responsibility", "statement", "definition", "description")
 UNSEARCHED_FIELDS = ("status", "review_status")
+CONSTRAINT_ASSETS = ("rules", "contracts")
 
 
 def prose_mentions(root: Path, needle: str) -> list[dict[str, Any]]:
-    word = re.compile(rf"\b{re.escape(needle)}(?:e?s)?\b")
+    wanted = word_stems(needle)
+    if not wanted:
+        return []
     mentions = [
         {"match_kind": "mentioned", "authoritative": False, "asset": name.removesuffix(".json"),
          "id": entry.get("id"), "field": field}
@@ -724,9 +769,12 @@ def prose_mentions(root: Path, needle: str) -> list[dict[str, Any]]:
         if has_document(root, name)
         for entry in _reviewed_entries(root, name)
         for field, value in entry.items()
-        if field not in UNSEARCHED_FIELDS and any(word.search(text.casefold()) for text in _searchable(field, value))
+        if field not in UNSEARCHED_FIELDS and any(wanted <= word_stems(text) for text in _searchable(field, value))
     ]
-    return sorted(mentions, key=lambda mention: mention["field"] not in DEFINING_FIELDS)
+    return sorted(
+        mentions,
+        key=lambda mention: (mention["field"] not in DEFINING_FIELDS, mention["asset"] not in CONSTRAINT_ASSETS),
+    )
 
 
 def _searchable(field: str, value: Any) -> list[str]:
@@ -787,7 +835,51 @@ def context_model(root: Path, identifier: str) -> dict[str, Any] | None:
         "value_objects": _records_where(
             root, "value-objects.json", lambda entry: entry.get("context") == identifier
         ),
+        "rules_bound_through_collaborations": _bound_rules(root, identifier, contracts),
     }
+
+
+def _bound_rules(root: Path, identifier: str, contracts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    collaborations = [
+        (f"contracts/{entry.get('id')}", entry) for entry in contracts
+        if identifier == entry.get("producer_context") or identifier in entry.get("consumer_contexts", [])
+    ] + [
+        (f"interactions/{entry.get('id')}", entry) for entry in asset_records(root, "interactions.json")
+        if identifier in {entry.get("producer_context"), entry.get("consumer_context")}
+    ]
+    bound = []
+    for rule in asset_records(root, "rules.json"):
+        if identifier in rule.get("contexts", []):
+            continue
+        cited = _cited_paths(rule)
+        via = [name for name, entry in collaborations if cited & _cited_paths(entry)]
+        if via:
+            bound.append({"rule": rule.get("id"), "contexts": rule.get("contexts", []), "statement": rule.get("statement"),
+                          "via": via})
+    return bound
+
+
+def _cited_paths(record: dict[str, Any]) -> set[str]:
+    return {
+        reference["path"] for reference in all_references(record)
+        if isinstance(reference, dict) and isinstance(reference.get("path"), str)
+    }
+
+
+SUMMARY_FIELDS = ("statement", "definition", "responsibility", "description", "name")
+
+
+def context_summary(model: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: [_summarized(entry) for entry in value] if isinstance(value, list) and key != "rules_bound_through_collaborations"
+        else _summarized(value) if key == "context" else value
+        for key, value in model.items()
+    }
+
+
+def _summarized(entry: dict[str, Any]) -> dict[str, Any]:
+    summary = next((entry[field] for field in SUMMARY_FIELDS if isinstance(entry.get(field), str)), None)
+    return {"id": entry.get("id"), "status": entry.get("status", entry.get("review_status")), "summary": summary}
 
 
 def boundary_analysis(root: Path, source: str, target: str) -> dict[str, Any]:

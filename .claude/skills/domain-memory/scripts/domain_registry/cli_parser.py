@@ -118,6 +118,7 @@ def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
     context_parser = commands.add_parser("get-context")
     add_path(context_parser, "--registry-root")
     context_parser.add_argument("--id", required=True)
+    context_parser.add_argument("--summary", action="store_true", help="ids and one line each, without evidence")
     record_parser = commands.add_parser("get-record")
     add_path(record_parser, "--registry-root")
     add_asset(record_parser)

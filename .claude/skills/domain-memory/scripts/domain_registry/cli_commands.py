@@ -36,6 +36,7 @@ from .policy import (
     amend_policy_fields,
     existing_policy,
     policy_path,
+    query_result_limit,
     validate_policy,
     write_policy,
 )
@@ -45,16 +46,20 @@ from .harvest import harvest_candidates
 from .impact import boundary_impact, registered_collaborations
 from .relocate import Recitation, line_range, recite, relocate_evidence
 from .registry import (
+    CONSTRAINT_ASSETS,
+    MATCH_KINDS,
     asset_records,
     boundary_analysis,
     context_model,
+    context_summary,
     coverage,
+    every_resolved_term,
     init_registry,
-    lookup,
     migrate_evidence,
     migrate_registry,
+    prose_mentions,
+    ranked_lookup,
     record_by_id,
-    resolve_terms,
     validate,
     verify_evidence,
 )
@@ -179,7 +184,15 @@ def handle_validate(args: argparse.Namespace) -> int:
 
 
 def handle_lookup(args: argparse.Namespace) -> int:
-    print_json(lookup(args.registry_root.resolve(), args.asset, args.query))
+    found, how = ranked_lookup(args.registry_root.resolve(), args.asset, args.query)
+    print_json(found)
+    notes = {
+        "some-words": f"no {args.asset} record holds every word of \"{args.query}\"; these hold some of them, most first.",
+        "none": f"no {args.asset} record mentions \"{args.query}\" or any of its words. That is not proof that no "
+                "constraint applies: read get-context for the Context you are changing, or look up another asset.",
+    }
+    if how in notes:
+        print("NOTE: " + notes[how], file=sys.stderr)
     return 0
 
 
@@ -196,11 +209,19 @@ def handle_demote_local_reviews(args: argparse.Namespace) -> int:
 
 def handle_resolve_terms(args: argparse.Namespace) -> int:
     root = args.registry_root.resolve()
-    print_json([
-        {**match, "query": query}
-        for query in args.query
-        for match in resolve_terms(root, query, args.context, with_mentions=args.with_mentions)
-    ])
+    limit = query_result_limit(root)
+    found = {query: every_resolved_term(root, query, args.context, with_mentions=args.with_mentions) for query in args.query}
+    print_json([{**match, "query": query} for query, matches in found.items() for match in matches[:limit]])
+    for query, matches in found.items():
+        if len(matches) > limit:
+            print(f"NOTE: \"{query}\" has {len(matches)} matches; the first {limit} are shown, rules and contracts "
+                  "first among mentions.", file=sys.stderr)
+        constraints = [] if args.with_mentions else [
+            mention for mention in prose_mentions(root, query) if mention["asset"] in CONSTRAINT_ASSETS
+        ]
+        if any(match.get("match_kind") in MATCH_KINDS for match in matches) and constraints:
+            print(f"NOTE: {len({(item['asset'], item['id']) for item in constraints})} reviewed rules or contracts "
+                  f"mention \"{query}\"; pass --with-mentions to list them.", file=sys.stderr)
     return 0
 
 
@@ -249,7 +270,7 @@ def handle_get_context(args: argparse.Namespace) -> int:
     result = context_model(args.registry_root.resolve(), args.id)
     if result is None:
         raise ValueError(f"context not found: {args.id}")
-    print_json(result)
+    print_json(context_summary(result) if args.summary else result)
     return 0
 
 

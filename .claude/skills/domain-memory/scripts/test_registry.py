@@ -18,6 +18,8 @@ from domain_registry.registry import (
     coverage,
     lookup,
     migrate_evidence,
+    ranked_lookup,
+    word_stems,
     migrate_registry,
     record_by_id,
     resolve_terms,
@@ -908,6 +910,85 @@ class RegistryTest(RegistryTestCase):
             [("rules", "gate", "statement"), ("capabilities", "audit", "rationale")],
             [(match["asset"], match["id"], match["field"]) for match in resolve_terms(self.repo / "memory", "check", None)],
         )
+
+    def runs_rules(self) -> None:
+        self.allow_results(10)
+        self.seed("rules.json", [
+            {"id": "one-trial", "contexts": ["run"], "statement": "A workspace runs one trial at a time; concurrency is refused.",
+             "status": "reviewed"},
+            {"id": "licensed", "contexts": ["packaging"], "statement": "A package carries its license.", "status": "reviewed"},
+            {"id": "taken-down", "contexts": ["packaging"], "statement": "A skill taken down is not served.", "status": "reviewed"},
+        ])
+
+    def found(self, query: str) -> tuple[list[str], str]:
+        entries, how = ranked_lookup(self.repo / "memory", "rules", query)
+        return [entry["id"] for entry in entries], how
+
+    def test_a_query_whose_words_appear_apart_and_in_another_form_finds_the_record(self) -> None:
+        self.runs_rules()
+        for query, expected in (("concurrent runs", ["one-trial"]), ("licensing", ["licensed"])):
+            with self.subTest(query):
+                self.assertEqual((expected, "all-words"), self.found(query))
+
+    def test_a_query_no_record_holds_whole_lists_the_records_holding_most_of_its_words(self) -> None:
+        self.runs_rules()
+        self.assertEqual((["taken-down", "licensed"], "some-words"), self.found("package taken down download"))
+
+    def test_a_query_matching_a_phrase_lists_only_records_holding_the_phrase(self) -> None:
+        self.runs_rules()
+        self.assertEqual((["taken-down"], "phrase"), self.found("taken down"))
+
+    def test_a_query_none_of_whose_words_appear_says_so(self) -> None:
+        self.runs_rules()
+        self.assertEqual(([], "none"), self.found("invoices"))
+
+    def test_word_stems_join_forms_of_a_word_but_not_a_longer_word(self) -> None:
+        self.assertEqual(
+            (word_stems("concurrency"), word_stems("licensing"), word_stems("deleted"), word_stems("runs"), {"precheck"}),
+            (word_stems("concurrent"), word_stems("license"), word_stems("deletion"), word_stems("run"), word_stems("precheck")),
+        )
+
+    def test_word_stems_keep_a_short_word_whole(self) -> None:
+        self.assertEqual({"ring", "bed"}, word_stems("ring bed"))
+
+    def test_a_multi_word_query_finds_a_rule_mentioning_every_word(self) -> None:
+        self.runs_rules()
+        self.seed("interactions.json", [{"id": "run-retry", "status": "reviewed"}])
+        self.assertEqual(
+            [("rules", "one-trial", "statement")],
+            [(match["asset"], match["id"], match["field"]) for match in resolve_terms(self.repo / "memory", "concurrent runs", None)],
+        )
+
+    def test_mentions_in_rules_come_before_mentions_in_other_assets(self) -> None:
+        self.allow_results(10)
+        self.seed("interactions.json", [{"id": "eval-workspace-purge", "status": "reviewed"}])
+        self.seed("rules.json", [{"id": "purge-runs-every-step", "contexts": ["identity"], "statement": "x", "status": "reviewed"}])
+        self.assertEqual(
+            [("rules", "purge-runs-every-step"), ("interactions", "eval-workspace-purge")],
+            [(match["asset"], match["id"]) for match in resolve_terms(self.repo / "memory", "purge", None)],
+        )
+
+    def bound(self, rule_paths: list[str]) -> list[dict]:
+        def cite(path: str) -> list[dict]:
+            return [{"path": path, "lines": {"start": 1, "end": 1}}]
+
+        self.seed("contexts.json", [{"id": "eval", "name": "Eval"}, {"id": "identity", "name": "Identity"}])
+        self.seed("interactions.json", [{"id": "eval-identity-purge", "producer_context": "identity",
+                                         "consumer_context": "eval", "evidence": cite("purge/hooks.go")}])
+        self.seed("rules.json", [
+            {"id": f"rule-{number}", "contexts": [context], "statement": f"Rule {number}.", "evidence": cite(path)}
+            for number, (context, path) in enumerate([("eval", "purge/hooks.go"), *(("identity", path) for path in rule_paths)])
+        ])
+        return context_model(self.repo / "memory", "eval")["rules_bound_through_collaborations"]
+
+    def test_a_rule_of_another_context_citing_a_collaborations_evidence_binds_this_context(self) -> None:
+        self.assertEqual(
+            [{"rule": "rule-1", "contexts": ["identity"], "statement": "Rule 1.", "via": ["interactions/eval-identity-purge"]}],
+            self.bound(["purge/hooks.go", "identity/email.go"]),
+        )
+
+    def test_a_rule_of_another_context_citing_other_files_does_not_bind_this_context(self) -> None:
+        self.assertEqual([], self.bound(["identity/email.go"]))
 
     def test_a_query_that_matches_nothing_finds_nothing(self) -> None:
         self.two_contexts()

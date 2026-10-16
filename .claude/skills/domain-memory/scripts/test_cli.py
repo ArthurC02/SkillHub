@@ -451,6 +451,55 @@ class CliTest(RegistryTestCase):
             (again, wider.stderr.strip(), overlapping.stderr.strip()),
         )
 
+    def lookup_note(self, query: str) -> str:
+        self.allow_results(10)
+        self.seed("rules.json", [{"id": "one-trial", "contexts": ["run"], "statement": "A workspace runs one trial.",
+                                  "status": "reviewed"}])
+        return self.run_cli("lookup", "--registry-root", str(self.repo / "memory"), "--asset", "rules",
+                            "--query", query).stderr.strip()
+
+    def test_lookup_notes_a_query_only_partly_held(self) -> None:
+        self.assertEqual('NOTE: no rules record holds every word of "workspace concurrency"; these hold some of them, '
+                         "most first.", self.lookup_note("workspace concurrency"))
+
+    def test_lookup_notes_that_finding_nothing_is_not_proof_of_no_constraint(self) -> None:
+        self.assertRegex(self.lookup_note("invoices"), '^NOTE: no rules record mentions "invoices" or any of its words. '
+                         "That is not proof that no constraint applies")
+
+    def test_lookup_finding_every_word_adds_no_note(self) -> None:
+        self.assertEqual("", self.lookup_note("trial workspace"))
+
+    def resolve_notes(self, limit: int, *, term: bool) -> str:
+        self.allow_results(limit)
+        if term:
+            self.seed("vocabulary.json", [{"id": "purge", "name": "Purge", "contexts": ["identity"], "status": "reviewed"}])
+        self.seed("rules.json", [{"id": "purge-runs-every-step", "contexts": ["identity"], "statement": "x", "status": "reviewed"}])
+        self.seed("interactions.json", [{"id": "eval-workspace-purge", "status": "reviewed"}])
+        return self.run_cli("resolve-terms", "--registry-root", str(self.repo / "memory"), "--query", "purge").stderr.strip()
+
+    def test_resolve_terms_notes_mentions_cut_by_the_result_limit(self) -> None:
+        self.assertEqual('NOTE: "purge" has 2 matches; the first 1 are shown, rules and contracts first among mentions.',
+                         self.resolve_notes(1, term=False))
+
+    def test_resolve_terms_holding_exactly_the_result_limit_adds_no_note(self) -> None:
+        self.assertEqual("", self.resolve_notes(2, term=False))
+
+    def test_resolve_terms_notes_rules_that_a_matching_term_hides(self) -> None:
+        self.assertEqual('NOTE: 1 reviewed rules or contracts mention "purge"; pass --with-mentions to list them.',
+                         self.resolve_notes(10, term=True))
+
+    def test_get_context_summary_gives_one_line_per_record_without_evidence(self) -> None:
+        self.seed("contexts.json", [{"id": "run", "name": "Run", "responsibility": "Runs trials."}])
+        self.seed("rules.json", [{"id": "one-trial", "contexts": ["run"], "statement": "One trial at a time.", "status": "reviewed",
+                                  "evidence": [{"path": "run.go", "lines": {"start": 1, "end": 1}}]}])
+        summary = json.loads(self.run_cli("get-context", "--registry-root", str(self.repo / "memory"), "--id", "run",
+                                          "--summary").stdout)
+        self.assertEqual(
+            ({"id": "run", "status": None, "summary": "Runs trials."},
+             [{"id": "one-trial", "status": "reviewed", "summary": "One trial at a time."}]),
+            (summary["context"], summary["rules"]),
+        )
+
     def test_readiness_command_returns_json_without_writing(self) -> None:
         before = self.file_bytes()
         result = self.run_cli("readiness", "--repo-root", str(self.repo))
