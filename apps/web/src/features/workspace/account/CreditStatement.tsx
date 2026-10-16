@@ -3,6 +3,7 @@ import { Loading } from "../../../shared/ui/Loading";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { canRetainLoadedPage } from "../../../core/api/client";
+import { usePaginationFocus } from "../../../shared/ui/usePaginationFocus";
 import {
   useCreditStatement,
   useCredits,
@@ -20,9 +21,18 @@ export function CreditStatement() {
   const data = statement.error && !nextPageFailure ? undefined : statement.data;
   const pages = data?.pages ?? [];
   const entries = pages.flatMap((page) => page.entries);
+  const {
+    loadMore,
+    bindTarget,
+    headingRef,
+    row: continuationRow,
+  } = usePaginationFocus(statement, entries);
 
   return (
     <>
+      <h2 id="account-credits-heading" tabIndex={-1} ref={headingRef}>
+        點數與花費
+      </h2>
       <section aria-label="點數餘額">
         {credits.isPending && <Loading what="點數餘額" />}
         <ReadFailure
@@ -64,7 +74,11 @@ export function CreditStatement() {
           ) : (
             <ul className="download-list" data-role="evidence">
               {entries.map((entry) => (
-                <StatementRow key={entry.id} entry={entry} />
+                <StatementRow
+                  key={entry.id}
+                  entry={entry}
+                  focusRef={entry === continuationRow ? bindTarget : undefined}
+                />
               ))}
             </ul>
           ))}
@@ -73,7 +87,8 @@ export function CreditStatement() {
           <button
             type="button"
             disabled={statement.isFetchingNextPage}
-            onClick={() => statement.fetchNextPage()}
+            ref={bindTarget}
+            onClick={loadMore}
           >
             {statement.isFetchingNextPage ? "載入中…" : "載入更早的紀錄"}
           </button>
@@ -83,9 +98,15 @@ export function CreditStatement() {
   );
 }
 
-function StatementRow({ entry }: { entry: CreditStatementEntry }) {
+function StatementRow({
+  entry,
+  focusRef,
+}: {
+  entry: CreditStatementEntry;
+  focusRef?: (element: HTMLLIElement | null) => void;
+}) {
   return (
-    <li className="download-item">
+    <li className="download-item" ref={focusRef} tabIndex={focusRef ? -1 : undefined}>
       <p>
         {entry.run_id ? (
           <Link to="/runs/$runId" params={{ runId: entry.run_id }}>

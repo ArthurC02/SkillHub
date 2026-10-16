@@ -69,9 +69,6 @@ export function WorkspaceAccount() {
 
           <div className="account-settings-grid">
             <section className="account-panel">
-              <h2 id="account-credits-heading" tabIndex={-1}>
-                點數與花費
-              </h2>
               <CreditStatement />
             </section>
           </div>
