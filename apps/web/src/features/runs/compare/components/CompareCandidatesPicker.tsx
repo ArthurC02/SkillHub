@@ -20,6 +20,8 @@ type CandidateListProps = {
   hasMoreCandidates: boolean;
   loadingMoreCandidates: boolean;
   onLoadMoreCandidates: () => void;
+  continuationRef?: (element: HTMLButtonElement | null) => void;
+  continuationRunId?: string;
   versionsPending: boolean;
   versionsError: Error | null;
   onRetryVersions: () => void;
@@ -39,6 +41,8 @@ function CandidateList({
   hasMoreCandidates,
   loadingMoreCandidates,
   onLoadMoreCandidates,
+  continuationRef,
+  continuationRunId,
   versionsPending,
   versionsError,
   onRetryVersions,
@@ -121,6 +125,7 @@ function CandidateList({
               <p>
                 <button
                   type="button"
+                  ref={run.run_id === continuationRunId ? continuationRef : undefined}
                   aria-label={`以 ${accessibleVersion}、建立於 ${formatAt(run.created_at)} 的試跑比較，試跑紀錄 ID ${run.run_id}`}
                   onClick={() => onPick(run.run_id)}
                 >
@@ -132,7 +137,12 @@ function CandidateList({
         })}
       </ul>
       {hasMoreCandidates && (
-        <button type="button" disabled={loadingMoreCandidates} onClick={onLoadMoreCandidates}>
+        <button
+          type="button"
+          disabled={loadingMoreCandidates}
+          onClick={onLoadMoreCandidates}
+          ref={continuationRef}
+        >
           {loadingMoreCandidates ? "載入中…" : "載入更早的試跑紀錄"}
         </button>
       )}
@@ -152,6 +162,8 @@ export function CompareCandidatesPicker({
   hasMoreCandidates,
   loadingMoreCandidates,
   onLoadMoreCandidates,
+  continuationRef,
+  continuationRunId,
   versionsPending,
   versionsError,
   onRetryVersions,
@@ -177,6 +189,8 @@ export function CompareCandidatesPicker({
         hasMoreCandidates={hasMoreCandidates}
         loadingMoreCandidates={loadingMoreCandidates}
         onLoadMoreCandidates={onLoadMoreCandidates}
+        continuationRef={continuationRef}
+        continuationRunId={continuationRunId}
         versionsPending={versionsPending}
         versionsError={versionsError}
         onRetryVersions={onRetryVersions}

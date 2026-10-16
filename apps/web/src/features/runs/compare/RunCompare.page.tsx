@@ -10,6 +10,7 @@ import { ComparisonLead } from "./components/ComparisonLead";
 import { ComparisonTables } from "./components/ComparisonTables";
 import { CompareCandidatesPicker } from "./components/CompareCandidatesPicker";
 import { SkillWorkspaceNav, useSkillVersions } from "../../skill";
+import { usePaginationFocus } from "../../../shared/ui/usePaginationFocus";
 
 export function RunCompare() {
   const { runId } = useParams({ from: "/runs/$runId/compare" });
@@ -32,6 +33,12 @@ export function RunCompare() {
   const candidates = testCaseId
     ? (siblings.data?.pages.flatMap((p) => p.runs) ?? []).filter((r) => r.run_id !== runId)
     : [];
+  const {
+    loadMore,
+    bindTarget,
+    headingRef,
+    row: continuationRun,
+  } = usePaginationFocus(siblings, candidates);
 
   const pick = (id: string) => {
     void navigate({ to: "/runs/$runId/compare", params: { runId }, search: { against: id } });
@@ -50,7 +57,9 @@ export function RunCompare() {
       candidates={candidates}
       hasMoreCandidates={siblings.hasNextPage}
       loadingMoreCandidates={siblings.isFetchingNextPage}
-      onLoadMoreCandidates={() => void siblings.fetchNextPage()}
+      onLoadMoreCandidates={loadMore}
+      continuationRef={bindTarget}
+      continuationRunId={continuationRun?.run_id}
       versionsPending={versions.isPending}
       versionsError={versions.error}
       onRetryVersions={() => void versions.refetch()}
@@ -63,7 +72,7 @@ export function RunCompare() {
 
   return (
     <section>
-      <h1 id="run-comparison-heading" tabIndex={-1}>
+      <h1 id="run-comparison-heading" tabIndex={-1} ref={headingRef}>
         試跑比較
       </h1>
       {self.data && (
