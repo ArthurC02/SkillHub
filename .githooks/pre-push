@@ -12,7 +12,11 @@ python_for_tool() {
   return 1
 }
 py=''
-if [ -x "$existing" ]; then
+if [ -e "$existing" ]; then
+  if [ ! -x "$existing" ]; then
+    echo "domain-memory pre-push: the chained hook $existing is not executable, so it would not run; make it executable (chmod +x) or delete it" >&2
+    exit 1
+  fi
   printf '%s\n' "$refs" | "$existing" "$@" || exit 1
 fi
 printf '%s\n' "$refs" | while read local_ref local_sha remote_ref remote_sha; do

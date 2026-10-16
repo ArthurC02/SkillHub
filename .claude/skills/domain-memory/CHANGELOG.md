@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.27.2
+
+### Fixed
+
+- The installed pre-push hook stops the push when the hook it chains to (`pre-push.domain-memory-existing`) exists but is not executable, and says how to fix it. Before, it skipped that hook without a word, so a checkout, archive or sync tool that dropped the executable bit turned off whatever checks the earlier hook ran. Hooks installed before this release keep the old text until they are installed again.
+
 ## 0.27.1
 
 ### Fixed

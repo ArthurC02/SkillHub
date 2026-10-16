@@ -192,6 +192,26 @@ class CliTest(RegistryTestCase):
             result.stdout + result.stderr,
         )
 
+    def test_a_chained_hook_that_is_not_executable_stops_the_push(self) -> None:
+        hooks = self.repo / ".git" / "hooks"
+        hooks.mkdir(parents=True, exist_ok=True)
+        with open(hooks / "pre-push", "w", encoding="utf-8", newline="\n") as handle:
+            handle.write("exit 0\n")
+        (hooks / "pre-push").chmod(0o644)
+        hook = install_pre_push_hook(
+            self.repo / "memory", self.repo, Path(__file__).resolve().parent / "registry_tools.py"
+        )
+        result = subprocess.run(
+            ["sh", str(hook), "origin", "https://example.com/repo.git"],
+            cwd=self.repo, input="", capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn(
+            "domain-memory pre-push: the chained hook .git/hooks/pre-push.domain-memory-existing is not "
+            "executable, so it would not run; make it executable (chmod +x) or delete it",
+            result.stderr,
+        )
+
     def test_boundary_impact_runs_from_the_command_line(self) -> None:
         self.two_mapped_contexts()
         (self.repo / "src/billing/invoice.py").write_text("v2\n", encoding="utf-8")
