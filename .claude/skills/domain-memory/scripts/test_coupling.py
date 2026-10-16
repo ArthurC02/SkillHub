@@ -104,6 +104,16 @@ class ChangeCouplingTest(RegistryTestCase):
             (result["skipped_sweeping_commits"], result["pairs"]),
         )
 
+    def test_with_contexts_only_modules_a_context_owns_count_toward_the_maximum(self) -> None:
+        for _ in range(2):
+            self.change("src/a/x.py", "src/b/y.py", "src/wiring/w.py")
+        reading = CouplingReading(context_paths={"alpha": "src/a", "beta": "src/b"})
+        result = change_coupling(self.repo, ["src"], 1, CouplingLimits(2, 2, 0, 30, max_modules=2), reading)
+        self.assertEqual(
+            (0, [["src/a", "src/b"], ["src/a", "src/wiring"], ["src/b", "src/wiring"]]),
+            (result["skipped_sweeping_commits"], [pair["modules"] for pair in result["pairs"]]),
+        )
+
     def coupled(self, context_paths: dict[str, str], collaborations: dict | None = None) -> dict:
         self.change("src/a/x.py", "src/b/y.py")
         self.change("src/a/x.py", "src/b/y.py")

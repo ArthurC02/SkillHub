@@ -189,6 +189,15 @@ class ScopeTest(unittest.TestCase):
         self.assertEqual({"matched": 0, "gold": 0, "candidate": 0, "precision": None, "recall": None, "f1": None},
                          compare_registries(gold, candidate, ["billing"])["overall_attempted"])
 
+    def test_a_scoped_interaction_with_a_context_outside_the_scope_still_matches(self) -> None:
+        gold = registry(contexts=[ORDERS, BILLING], interactions=[
+            {"id": "orders-bill", "producer_context": "billing", "consumer_context": "orders"}])
+        renamed = registry(contexts=[{**ORDERS, "id": "sales"}, BILLING], interactions=[
+            {"id": "sales-bill", "producer_context": "billing", "consumer_context": "sales"}])
+        for name, candidate in (("identical", gold), ("renamed", renamed)):
+            with self.subTest(name):
+                self.assertEqual(1.0, compare_registries(gold, candidate, ["orders"])["assets"]["interactions"]["f1"])
+
     def test_an_unscoped_comparison_reports_no_scope(self) -> None:
         self.assertNotIn("scope", compare_registries(registry(contexts=[ORDERS]), registry(contexts=[ORDERS])))
 

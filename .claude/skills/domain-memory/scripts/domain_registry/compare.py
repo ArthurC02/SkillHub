@@ -33,18 +33,16 @@ Citation = tuple[str, int, int]
 def compare_registries(
     gold: dict[str, Any], candidate: dict[str, Any], contexts: list[str] | None = None
 ) -> dict[str, Any]:
-    gold_records = _records_by_asset(gold)
+    gold_records, candidate_records = _records_by_asset(gold), _records_by_asset(candidate)
+    matched_contexts = _matched("contexts", gold_records["contexts"], candidate_records["contexts"], {})
+    context_of = {pair["candidate"]: pair["gold"] for pair in matched_contexts["matched"]}
     if contexts:
         unknown = sorted(set(contexts) - {record["id"] for record in gold_records["contexts"]})
         if unknown:
             raise ValueError(f"no Context {', '.join(unknown)} in the gold Registry")
         gold_records = _within(gold_records, set(contexts))
-    candidate_records = _records_by_asset(candidate)
-    matched_contexts = _matched("contexts", gold_records["contexts"], candidate_records["contexts"], {})
-    if contexts:
-        candidate_records = _within(candidate_records, {pair["candidate"] for pair in matched_contexts["matched"]})
+        candidate_records = _within(candidate_records, {pair for pair, paired in context_of.items() if paired in contexts})
         matched_contexts = _matched("contexts", gold_records["contexts"], candidate_records["contexts"], {})
-    context_of = {pair["candidate"]: pair["gold"] for pair in matched_contexts["matched"]}
     assets = {"contexts": matched_contexts}
     for asset in gold_records:
         if asset != "contexts":

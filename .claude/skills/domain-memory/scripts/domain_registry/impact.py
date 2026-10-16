@@ -1,4 +1,6 @@
+import re
 import subprocess
+import sys
 from collections.abc import Callable
 from itertools import combinations
 from pathlib import Path, PurePosixPath
@@ -18,7 +20,11 @@ COLLABORATION_ENDS = {
 }
 
 
-def changed_paths(repo_root: Path, base: str) -> list[str]:
+HUNK = re.compile(r"^@@ -\S+ \+(\d+)(?:,(\d+))? @@")
+WHOLE_FILE = [(1, sys.maxsize)]
+
+
+def _changes(repo_root: Path, base: str) -> tuple[set[str], set[str]]:
     try:
         changed = run_git(repo_root, "diff", "--name-only", "-z", base, "--")
         untracked = run_git(repo_root, "ls-files", "--others", "--exclude-standard", "-z")
@@ -27,7 +33,59 @@ def changed_paths(repo_root: Path, base: str) -> list[str]:
     for result in (changed, untracked):
         if result.returncode != 0:
             raise ValueError(f"git could not list the changes since {base}: {result.stderr.strip()}")
-    return sorted({path for path in (changed.stdout + untracked.stdout).split("\0") if path})
+    return ({path for path in changed.stdout.split("\0") if path}, {path for path in untracked.stdout.split("\0") if path})
+
+
+def _hunks(repo_root: Path, base: str, paths: list[str]) -> dict[str, list[tuple[int, int]]]:
+    if not paths:
+        return {}
+    try:
+        result = run_git(repo_root, "--literal-pathspecs", "-c", "core.quotepath=false", "diff", "-U0", "--no-color",
+                         "--no-ext-diff", base, "--", *paths)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise ValueError(f"git could not read the changes since {base}: {error}") from error
+    if result.returncode != 0:
+        raise ValueError(f"git could not read the changes since {base}: {result.stderr.strip()}")
+    hunks: dict[str, list[tuple[int, int]]] = {}
+    current = None
+    for line in result.stdout.splitlines():
+        if line.startswith("+++ "):
+            current = line.removeprefix("+++ b/") if line.startswith("+++ b/") else None
+        elif current is not None and (match := HUNK.match(line)):
+            start, count = int(match[1]), int(match[2] or 1)
+            hunks.setdefault(current, []).append((start, start + count - 1))
+    return hunks
+
+
+def _cited_ranges(entry: dict[str, Any]) -> list[tuple[str, int, int]]:
+    return [
+        (reference["path"], lines["start"], lines["end"])
+        for reference in all_references(entry)
+        if isinstance(reference, dict) and isinstance(reference.get("path"), str)
+        and isinstance(lines := reference.get("lines"), dict)
+        and isinstance(lines.get("start"), int) and isinstance(lines.get("end"), int)
+    ]
+
+
+def _evidence_overlapping(
+    records: dict[str, list[dict[str, Any]]], hunks: dict[str, list[tuple[int, int]]]
+) -> list[dict[str, Any]]:
+    touched = []
+    for name in COLLABORATION_ENDS:
+        for entry in records[name]:
+            overlapping = sorted({
+                f"{path}:{start}-{end}"
+                for path, start, end in _cited_ranges(entry)
+                if any(start <= last and first <= end for first, last in hunks.get(path, []))
+            })
+            if overlapping:
+                touched.append({
+                    "asset": name.removesuffix(".json"),
+                    "id": entry.get("id"),
+                    "status": entry.get("status"),
+                    "touched_evidence": overlapping,
+                })
+    return touched
 
 
 def _records_with_status(root: Path, name: str) -> list[dict[str, Any]]:
@@ -109,7 +167,8 @@ def _verdict(pairs: list[dict[str, Any]], evidence: list[dict[str, Any]], *, map
 
 
 def boundary_impact(root: Path, repo_root: Path, base: str) -> dict[str, Any]:
-    paths = changed_paths(repo_root, base)
+    tracked, untracked = _changes(repo_root, base)
+    paths = sorted(tracked | untracked)
     contexts = _records_with_status(root, "contexts.json")
     mapped = any(isinstance(context.get("implementation_path"), str) for context in contexts)
     touched = _touched_contexts(contexts, paths)
@@ -120,6 +179,8 @@ def boundary_impact(root: Path, repo_root: Path, base: str) -> dict[str, Any]:
         for one, other in combinations(sorted(touched), 2)
     ]
     evidence = _evidence_touched(records, set(paths), verifier(repo_root))
+    cited = {path for entries in records.values() for entry in entries for path, _, _ in _cited_ranges(entry)}
+    hunks = _hunks(repo_root, base, sorted(cited & tracked)) | dict.fromkeys(cited & untracked, WHOLE_FILE)
     owned = {path for files in touched.values() for path in files}
     outside = [path for path in paths if path not in owned]
     return {
@@ -130,6 +191,7 @@ def boundary_impact(root: Path, repo_root: Path, base: str) -> dict[str, Any]:
         "contexts_touched": touched,
         "co_changed_pairs": pairs,
         "boundary_evidence_changed": evidence,
+        "boundary_evidence_touched": _evidence_overlapping(records, hunks),
         "outside_every_context": outside,
         "cited_outside_contexts": _cited(root, set(outside)),
     }

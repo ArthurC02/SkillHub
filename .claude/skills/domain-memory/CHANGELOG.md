@@ -2,6 +2,17 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.46.0
+
+### Added
+
+- `boundary-impact` lists in `boundary_evidence_touched` the interactions, contracts and dependency policies whose cited lines overlap a line the change added or rewrote.
+
+### Fixed
+
+- `compare-registry --context` pairs every Context before scoping, so an interaction or dependency policy between a scoped Context and one outside the scope is matched instead of counted as both missed and extra.
+- `change-coupling --max-modules` with `--registry-root` counts only modules a Context owns, so feature commits that also touch wiring or generated code are no longer skipped as sweeps.
+
 ## 0.45.1
 
 ### Fixed

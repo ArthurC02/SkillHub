@@ -57,7 +57,7 @@ def change_coupling(
     sweeping = 0
     for commit in kept:
         modules = sorted({module for path in commit.files if (module := module_for(path))})
-        if limits.max_modules is not None and len(modules) > limits.max_modules:
+        if limits.max_modules is not None and len(_counted(modules, reading)) > limits.max_modules:
             sweeping += 1
             continue
         revisions.update(modules)
@@ -80,6 +80,12 @@ def change_coupling(
             key=lambda pair: (-pair["degree"], -pair["shared"], pair["modules"]),
         ),
     }
+
+
+def _counted(modules: list[str], reading: CouplingReading) -> list[str]:
+    if not reading.context_paths:
+        return modules
+    return [module for module in modules if context_of(module, reading.context_paths)]
 
 
 def _pair(

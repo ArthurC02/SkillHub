@@ -245,6 +245,31 @@ class SourcesTest(RegistryTestCase):
         ])
         self.assertEqual("boundary-evidence-changed", self.change("src/orders/port.py")["verdict"])
 
+    def touched(self, cited: str, start: int, appended: bytes, prepended: bytes = b"") -> list[dict]:
+        self.two_mapped_contexts(interactions=[
+            {"id": "orders-bill", "producer_context": "orders", "consumer_context": "billing",
+             "evidence": [{"path": cited, "lines": {"start": start, "end": start}}]},
+        ])
+        target = self.repo / cited
+        target.write_bytes(prepended + (target.read_bytes() if target.exists() else b"") + appended)
+        return boundary_impact(self.repo / "memory", self.repo, "HEAD")["boundary_evidence_touched"]
+
+    def test_a_cited_line_the_change_added_is_touched_evidence(self) -> None:
+        self.assertEqual(
+            [{"asset": "interactions", "id": "orders-bill", "status": "candidate",
+              "touched_evidence": ["src/orders/port.py:2-2"]}],
+            self.touched("src/orders/port.py", 2, b"added\n"),
+        )
+
+    def test_a_cited_line_before_the_changed_lines_is_not_touched(self) -> None:
+        self.assertEqual([], self.touched("src/orders/port.py", 1, b"added\n"))
+
+    def test_a_cited_line_after_the_changed_lines_is_not_touched(self) -> None:
+        self.assertEqual([], self.touched("src/orders/port.py", 2, b"", prepended=b"added\n"))
+
+    def test_a_cited_line_of_an_untracked_file_is_touched(self) -> None:
+        self.assertEqual(["src/orders/new.py:1-1"], self.touched("src/orders/new.py", 1, b"new\n")[0]["touched_evidence"])
+
     def test_a_change_inside_one_context_crosses_no_boundary(self) -> None:
         self.two_mapped_contexts()
         impact = self.change("src/orders/port.py", "README.md")
