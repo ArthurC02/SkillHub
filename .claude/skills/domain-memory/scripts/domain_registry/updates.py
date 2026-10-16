@@ -22,7 +22,7 @@ from .common import (
     review_field,
     utc_now,
 )
-from .evidence import classify_all, hash_all, one_cites_within_the_other, source_map_for, unclassified_paths
+from .evidence import cited_excerpts, classify_all, hash_all, one_cites_within_the_other, source_map_for, unclassified_paths
 from .okf import contexts_named_by, verified_by
 from .policy import review_mode
 from .revision import (
@@ -191,18 +191,21 @@ class Upserted:
     created: int = 0
     same_evidence: list[str] = field(default_factory=list)
     skipped_reviewed: list[str] = field(default_factory=list)
+    skipped_duplicate: list[dict[str, str]] = field(default_factory=list)
 
     def reset(self) -> None:
         self.created = 0
         self.outside.clear()
         self.same_evidence.clear()
         self.skipped_reviewed.clear()
+        self.skipped_duplicate.clear()
 
 
 @dataclass(frozen=True)
 class Staging:
     source_map: Any
     skip_reviewed: bool = False
+    skip_duplicates: bool = False
 
 
 def stage_candidates(
@@ -215,6 +218,10 @@ def stage_candidates(
             if not staging.skip_reviewed:
                 raise ValueError(f"cannot overwrite reviewed record: {record['id']}")
             result.skipped_reviewed.append(f"{asset}/{record['id']}")
+            continue
+        copied = _reviewed_copy(asset, document, records, record) if staging.skip_duplicates else None
+        if copied:
+            result.skipped_duplicate.append({"record": f"{asset}/{record['id']}", "duplicates": copied})
             continue
         result.created += existing is None
         result.same_evidence.extend(_citing_the_same_excerpts(asset, records, record))
@@ -255,6 +262,17 @@ def upsert_candidate(
     )
     result.outside = sorted(set(result.outside))
     return result
+
+
+def _reviewed_copy(
+    asset: str, document: dict[str, Any], records: list[dict[str, Any]], record: dict[str, Any]
+) -> str | None:
+    excerpts = cited_excerpts(record)
+    return next(
+        (f"{asset}/{other.get('id')}" for other in records
+         if excerpts and is_reviewed(asset, document, other) and cited_excerpts(other) == excerpts),
+        None,
+    )
 
 
 def _citing_the_same_excerpts(asset: str, records: list[dict[str, Any]], record: dict[str, Any]) -> list[str]:

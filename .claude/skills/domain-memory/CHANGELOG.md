@@ -2,6 +2,20 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.42.0
+
+### Added
+
+- `harvest-candidates` lists every Context pairing in `context_pairs` with how it paired, names a Context sharing an id here without sharing its path in `context_id_collisions`, and skips a record citing exactly a reviewed record's excerpts as `skipped_duplicate` unless `--keep-duplicates`.
+
+### Changed
+
+- `verify-audit --against` fails when no audit manifest is committed at that revision instead of passing with nothing compared.
+
+### Fixed
+
+- A Registry update whose directory swap Windows refused for a moment, after the Registry had been moved aside, left no Registry and a journal whose recovery deleted the moved copy. Every rename in an update now retries a refused replace, a swap that still fails puts the Registry back at once, and recovery restores a Registry missing after a prepared swap instead of discarding the only copy.
+
 ## 0.41.0
 
 ### Added

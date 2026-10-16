@@ -70,6 +70,7 @@ def _add_harvest_command(commands: argparse._SubParsersAction) -> None:
     harvest_parser.add_argument(
         "--context-map", action="append", default=[], help="repeatable CANDIDATE=GOLD, over the pairing found by path or name"
     )
+    harvest_parser.add_argument("--keep-duplicates", action="store_true")
 
 
 def _add_history_commands(commands: argparse._SubParsersAction) -> None:

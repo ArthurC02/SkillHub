@@ -422,9 +422,14 @@ def handle_harvest_candidates(args: argparse.Namespace) -> int:
             raise ValueError(f"--context-map takes CANDIDATE=GOLD, got {entry}")
         context_map[candidate.strip()] = gold.strip()
     report = harvest_candidates(
-        args.registry_root.resolve(), args.repo_root.resolve(), args.from_root.resolve(), context_map
+        args.registry_root.resolve(), args.repo_root.resolve(), args.from_root.resolve(), context_map,
+        keep_duplicates=args.keep_duplicates,
     )
     print_json(report)
+    if report["context_id_collisions"]:
+        print("NOTE: " + ", ".join(report["context_id_collisions"]) + " pair with the Context of the same id here only by "
+              "that id, not by implementation_path, so their records attach to it; pass --context-map if they are another.",
+              file=sys.stderr)
     if report["possible_duplicates"]:
         print("NOTE: some harvested records cite within the evidence of " + ", ".join(report["possible_duplicates"])
               + "; check that they are not duplicates.", file=sys.stderr)

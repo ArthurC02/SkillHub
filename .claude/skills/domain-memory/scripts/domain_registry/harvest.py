@@ -12,14 +12,18 @@ from .transaction import mutate_registry
 from .updates import Staging, Upserted, stage_candidates
 
 
-def harvest_candidates(root: Path, repo_root: Path, from_root: Path, context_map: dict[str, str]) -> dict[str, Any]:
-    scratch = _registry(from_root)
-    paired = {
-        pair["candidate"]: pair["gold"]
-        for pair in compare_registries(_registry(root), scratch)["assets"]["contexts"]["matched"]
-        if pair["candidate"] != pair["gold"]
+def harvest_candidates(
+    root: Path, repo_root: Path, from_root: Path, context_map: dict[str, str], *, keep_duplicates: bool = False
+) -> dict[str, Any]:
+    scratch, gold = _registry(from_root), _registry(root)
+    pairs = {
+        pair["candidate"]: pair
+        for pair in compare_registries(gold, scratch)["assets"]["contexts"]["matched"]
     }
-    paired.update(context_map)
+    pairs.update({
+        candidate: {"candidate": candidate, "gold": given, "by": "given"} for candidate, given in context_map.items()
+    })
+    paired = {candidate: pair["gold"] for candidate, pair in pairs.items() if candidate != pair["gold"]}
     batches = {
         asset: [
             hash_all(_renamed(record, paired), repo_root)
@@ -28,7 +32,7 @@ def harvest_candidates(root: Path, repo_root: Path, from_root: Path, context_map
         ]
         for asset, key, document in _documents(scratch)
     }
-    staging = Staging(source_map_for(root), skip_reviewed=True)
+    staging = Staging(source_map_for(root), skip_reviewed=True, skip_duplicates=not keep_duplicates)
     result = Upserted()
 
     def mutate(staged: Path) -> None:
@@ -40,18 +44,24 @@ def harvest_candidates(root: Path, repo_root: Path, from_root: Path, context_map
                 write_document(staged, f"{asset}.json", document)
 
     def harvested() -> list[str]:
+        skipped = {*result.skipped_reviewed, *(entry["record"] for entry in result.skipped_duplicate)}
         return [
             f"{asset}/{record['id']}" for asset, batch in batches.items() for record in batch
-            if f"{asset}/{record['id']}" not in result.skipped_reviewed
+            if f"{asset}/{record['id']}" not in skipped
         ]
 
     mutate_registry(root, repo_root, mutate, audit_event=lambda: {"operation": "harvest-candidates", "records": harvested()})
     return {
         "context_map": dict(sorted(paired.items())),
+        "context_pairs": [pairs[candidate] for candidate in sorted(pairs)],
+        "context_id_collisions": sorted(
+            candidate for candidate, pair in pairs.items() if pair["by"] == "name" and candidate == pair["gold"]
+        ),
         "harvested": harvested(),
         "created": result.created,
         "updated": len(harvested()) - result.created,
         "skipped_reviewed": result.skipped_reviewed,
+        "skipped_duplicate": result.skipped_duplicate,
         "outside_sources": sorted(set(result.outside)),
         "possible_duplicates": sorted(set(result.same_evidence)),
     }

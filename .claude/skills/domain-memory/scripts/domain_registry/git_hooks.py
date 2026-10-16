@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 
 from .attestations import verify_git_signed_commit
+from .common import replace_path
 from .policy import review_governance, review_mode
 
 HOOK_MARKER = "domain-memory-pre-push"
@@ -66,7 +67,7 @@ def install_pre_push_hook(registry_root: Path, repo_root: Path, script: Path) ->
     if hook.exists() and HOOK_MARKER not in hook.read_text(encoding="utf-8"):
         if backup.exists():
             raise ValueError("existing Domain Memory pre-push hook backup already exists")
-        hook.replace(backup)
+        replace_path(hook, backup)
     script_text = (
         "#!/bin/sh\n"
         f"# {HOOK_MARKER}\n"

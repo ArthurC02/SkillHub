@@ -97,10 +97,44 @@ class HarvestTest(RegistryTestCase):
              next(rule["statement"] for rule in asset_records(self.repo / "memory", "rules.json") if rule["id"] == "kept")),
         )
 
-    def test_a_harvested_record_citing_within_a_gold_records_evidence_is_named(self) -> None:
+    def test_a_harvested_record_citing_more_than_a_gold_records_evidence_is_written_and_named(self) -> None:
+        self.extract(rules=[{"id": "positive", "contexts": ["orders"], "statement": "Totals are positive.",
+                             "evidence": [citation(self.repo, "src/orders/total.py", 1, 1),
+                                          citation(self.repo, "src/orders/total.py", 2, 2)]}])
+        report = self.harvest()
+        self.assertEqual((["rules/positive"], ["rules/kept"]), (report["harvested"], report["possible_duplicates"]))
+
+    def copy_of_the_reviewed_rule(self) -> None:
         self.extract(rules=[{"id": "positive", "contexts": ["orders"], "statement": "Totals are positive.",
                              "evidence": [citation(self.repo, "src/orders/total.py", 1, 1)]}])
-        self.assertEqual(["rules/kept"], self.harvest()["possible_duplicates"])
+
+    def test_a_record_citing_exactly_a_reviewed_records_evidence_is_skipped(self) -> None:
+        self.copy_of_the_reviewed_rule()
+        report = self.harvest()
+        self.assertEqual(
+            ([], [{"record": "rules/positive", "duplicates": "rules/kept"}], ["kept"]),
+            (report["harvested"], report["skipped_duplicate"],
+             [rule["id"] for rule in asset_records(self.repo / "memory", "rules.json")]),
+        )
+
+    def test_a_copy_of_a_reviewed_record_is_written_when_duplicates_are_kept(self) -> None:
+        self.copy_of_the_reviewed_rule()
+        report = harvest_candidates(self.repo / "memory", self.repo, self.scratch, {}, keep_duplicates=True)
+        self.assertEqual((["rules/positive"], []), (report["harvested"], report["skipped_duplicate"]))
+
+    def test_every_context_pair_is_listed_with_how_it_paired(self) -> None:
+        self.extract(contexts=[ORDERS, {"id": "commerce", "name": "Commerce", "responsibility": "Trade."}])
+        self.assertEqual(
+            [{"candidate": "commerce", "gold": "orders", "by": "given"},
+             {"candidate": "orders", "gold": "orders", "by": "path"}],
+            self.harvest({"commerce": "orders"})["context_pairs"],
+        )
+
+    def test_a_context_sharing_an_id_at_another_path_is_named(self) -> None:
+        for path, collisions in (("src/orders/", []), ("src/shipping", ["orders"])):
+            with self.subTest(path):
+                self.extract(contexts=[{"id": "orders", "name": "Shipping", "responsibility": "Ship.", "implementation_path": path}])
+                self.assertEqual(collisions, self.harvest()["context_id_collisions"])
 
     def test_the_command_refuses_a_pairing_not_written_candidate_equals_gold(self) -> None:
         result = self.run_cli("harvest-candidates", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),

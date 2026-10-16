@@ -15,6 +15,7 @@ from .common import (
     MAX_JSON_BYTES,
     registry_dir,
     reject_duplicate_keys,
+    replace_path,
     write_json,
     writer_lock,
 )
@@ -88,7 +89,7 @@ def _recover_legacy(transaction: InterruptedTransaction) -> None:
         if target.exists():
             remove_tree(transaction.backup)
         else:
-            transaction.backup.replace(target)
+            replace_path(transaction.backup, target)
     transaction.discard()
 
 
@@ -107,9 +108,16 @@ def _recover_installed(transaction: InterruptedTransaction) -> None:
         raise ValueError("registry transaction requires manual reconciliation")
     target = registry_dir(transaction.root)
     if target.exists():
-        target.replace(registry_dir(transaction.staging))
-    transaction.backup.replace(target)
+        replace_path(target, registry_dir(transaction.staging))
+    replace_path(transaction.backup, target)
     transaction.journal.unlink(missing_ok=True)
+
+
+def _recover_prepared(transaction: InterruptedTransaction) -> None:
+    target = registry_dir(transaction.root)
+    if not target.exists() and transaction.backup.exists():
+        replace_path(transaction.backup, target)
+    transaction.discard()
 
 
 def _require_reconciliation(_transaction: InterruptedTransaction) -> None:
@@ -117,7 +125,7 @@ def _require_reconciliation(_transaction: InterruptedTransaction) -> None:
 
 
 RECOVERY_BY_PHASE: dict[str, Callable[[InterruptedTransaction], None]] = {
-    "prepared": InterruptedTransaction.discard,
+    "prepared": _recover_prepared,
     "installed": _recover_installed,
     "audited": InterruptedTransaction.discard,
     "reconciliation-required": _require_reconciliation,
@@ -188,8 +196,8 @@ def mutate_registry(
                     "expected_digest": expected_digest,
                 },
             )
-            registry_dir(root).replace(backup)
-            staging_registry.replace(registry_dir(root))
+            replace_path(registry_dir(root), backup)
+            _install(staging_registry, root, backup, journal)
             journal_value = load_journal(journal)
             journal_value["phase"] = "installed"
             write_json(journal, journal_value)
@@ -201,8 +209,8 @@ def mutate_registry(
                     event["operation_id"] = operation
                     append_locked(root, event)
                 except Exception:
-                    registry_dir(root).replace(staging_registry)
-                    backup.replace(registry_dir(root))
+                    replace_path(registry_dir(root), staging_registry)
+                    replace_path(backup, registry_dir(root))
                     journal.unlink(missing_ok=True)
                     raise
                 journal_value["phase"] = "audited"
@@ -214,6 +222,15 @@ def mutate_registry(
             if staging.exists():
                 remove_tree(staging)
             raise
+
+
+def _install(staging_registry: Path, root: Path, backup: Path, journal: Path) -> None:
+    try:
+        replace_path(staging_registry, registry_dir(root))
+    except OSError:
+        replace_path(backup, registry_dir(root))
+        journal.unlink(missing_ok=True)
+        raise
 
 
 def load_journal(path: Path) -> dict[str, Any]:

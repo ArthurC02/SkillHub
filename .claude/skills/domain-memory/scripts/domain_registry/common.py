@@ -51,17 +51,20 @@ def write_json(path: Path, value: dict) -> None:
         output.write(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
         output.flush()
         os.fsync(output.fileno())
-    _replace(temporary, path)
+    try:
+        replace_path(temporary, path)
+    except PermissionError:
+        temporary.unlink(missing_ok=True)
+        raise
 
 
-def _replace(temporary: Path, path: Path) -> None:
+def replace_path(source: Path, target: Path) -> None:
     for delay in (*REPLACE_DELAYS_SECONDS, None):
         try:
-            temporary.replace(path)
+            source.replace(target)
             break
         except PermissionError:
             if delay is None:
-                temporary.unlink(missing_ok=True)
                 raise
             time.sleep(delay)
 

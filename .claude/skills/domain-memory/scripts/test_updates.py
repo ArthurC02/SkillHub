@@ -311,6 +311,17 @@ class UpdatesTest(RegistryTestCase):
         append_audit(root, {"operation": "later"})
         self.assertIsNone(anchor_error(root, None, "HEAD"))
 
+    def test_a_revision_without_a_committed_manifest_anchors_nothing(self) -> None:
+        root = self.repo / "memory"
+        (self.repo / "README.md").write_text("before the registry\n", encoding="utf-8")
+        self.git("add", "README.md")
+        self.git("commit", "-qm", "before")
+        append_audit(root, {"operation": "later"})
+        self.assertEqual(
+            "no audit manifest committed at HEAD:memory/audit/manifest.json, so nothing anchors the log",
+            anchor_error(root, None, "HEAD"),
+        )
+
     def test_a_revision_git_cannot_resolve_is_an_error(self) -> None:
         root = self.committed_log(1)
         with self.assertRaisesRegex(ValueError, "^git cannot resolve no-such-ref from "):
@@ -535,6 +546,36 @@ class UpdatesTest(RegistryTestCase):
         )
         with self.assertRaisesRegex(ValueError, "manual reconciliation"):
             recover_interrupted_update(root, False)
+
+    def test_a_registry_swap_refused_by_windows_restores_the_registry_in_place(self) -> None:
+        before = read_document(self.repo / "memory", "contexts.json")
+        record = self.write_record("context.json", {"id": "orders", "name": "Orders", "responsibility": "Own orders."})
+        replace = Path.replace
+
+        def refuse_installing(source: Path, target: Path) -> Path:
+            if source.name == "registry" and source.parent.name.startswith(".domain-registry-stage-"):
+                raise PermissionError(5, "Access is denied")
+            return replace(source, target)
+
+        with patch.object(Path, "replace", autospec=True, side_effect=refuse_installing), \
+                patch("domain_registry.common.time.sleep"), self.assertRaises(PermissionError):
+            upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
+        self.assertEqual(
+            (before, False, []),
+            (read_document(self.repo / "memory", "contexts.json"),
+             transaction_path(self.repo / "memory").exists(),
+             sorted(path.name for path in (self.repo / "memory").glob(".domain-registry-*"))),
+        )
+
+    def test_recovery_restores_the_backup_when_a_prepared_swap_left_no_registry(self) -> None:
+        original = document_path(self.repo / "memory", MANIFEST).read_bytes()
+        root, backup, _ = self.interrupted_transaction("prepared")
+        remove_tree(root / "registry")
+        recover_interrupted_update(root, False)
+        self.assertEqual(
+            (original, False, False),
+            (document_path(root, MANIFEST).read_bytes(), backup.exists(), transaction_path(root).exists()),
+        )
 
     def test_recovery_discards_a_prepared_transaction_and_keeps_the_registry(self) -> None:
         self.assert_recovery_discards_and_keeps_the_registry("prepared")

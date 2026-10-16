@@ -183,9 +183,10 @@ def _committed_prefix_error(root: Path, against: str) -> str | None:
     if top.returncode or run_git(root, "rev-parse", "--verify", "--quiet", f"{against}^{{commit}}").returncode:
         raise ValueError(f"git cannot resolve {against} from {root}")
     shown = Path(top.stdout.strip()).resolve()
-    committed = run_git(shown, "show", f"{against}:{audit_manifest_path(root).resolve().relative_to(shown).as_posix()}")
+    manifest_path = audit_manifest_path(root).resolve().relative_to(shown).as_posix()
+    committed = run_git(shown, "show", f"{against}:{manifest_path}")
     if committed.returncode:
-        return None
+        return f"no audit manifest committed at {against}:{manifest_path}, so nothing anchors the log"
     try:
         manifest = json.loads(committed.stdout)
     except json.JSONDecodeError:
