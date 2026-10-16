@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { writeFile } from "node:fs/promises";
 import { RUN, SKILL } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
@@ -35,7 +36,9 @@ for (const [name, rejected] of [
       if (reads === 1)
         return route.fulfill({ status: 503, json: { error: "service unavailable" } });
       await gate;
-      return route.fulfill({ json: { applicable: false, blocked_reason: "target_changed" } });
+      return route.fulfill({
+        json: { target_path: "SKILL.md", applicable: false, blocked_reason: "target_changed" },
+      });
     });
     try {
       await page.goto(`/runs/${RUN}`);
@@ -72,7 +75,10 @@ for (const [name, rejected] of [
       expect(writes).toBe(1);
       expect(reads).toBe(2);
       expect(new URL(page.url()).pathname).toBe(`/runs/${RUN}`);
-      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+      const report = await new AxeBuilder({ page }).analyze();
+      await writeFile(test.info().outputPath("apply-refusal-a11y.json"), JSON.stringify(report));
+      expect(report.violations).toEqual([]);
+      expect(report.incomplete).toEqual([]);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
       );

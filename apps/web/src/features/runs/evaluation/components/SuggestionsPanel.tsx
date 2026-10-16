@@ -6,11 +6,12 @@ import {
   isApplyResultUnknown,
   useApplySuggestions,
   useRunSuggestions,
+  type ImprovementSuggestion,
 } from "../../evaluation.service";
 import { useRun } from "../../runs.service";
 import { MatchLegend } from "./MatchLegend";
 import { ApplyFailureBody } from "./ApplyFailureBody";
-import { SuggestionItem } from "./SuggestionItem";
+import { SuggestionItem, type SuggestionDecisionState } from "./SuggestionItem";
 import { AppliedResult } from "./AppliedResult";
 
 function focusSuggestions() {
@@ -27,12 +28,14 @@ export function SuggestionsPanel({ runId, evaluationId }: { runId: string; evalu
   const applied = apply.data;
   const error = apply.error;
   const unknown = Boolean(error) && isApplyResultUnknown(error);
-  const [unsettledDecisions, setUnsettledDecisions] = useState(new Set<string>());
-  const setDecisionUnsettled = (id: string, unsettled: boolean) => {
-    setUnsettledDecisions((previous) => {
-      const next = new Set(previous);
-      if (unsettled) next.add(id);
-      else next.delete(id);
+  const [decisionStates, setDecisionStates] = useState(
+    () => new Map<string, SuggestionDecisionState>(),
+  );
+  const setDecisionState = (id: string, state?: SuggestionDecisionState) => {
+    setDecisionStates((previous) => {
+      const next = new Map(previous);
+      if (state) next.set(id.toLowerCase(), state);
+      else next.delete(id.toLowerCase());
       return next;
     });
   };
@@ -60,8 +63,8 @@ export function SuggestionsPanel({ runId, evaluationId }: { runId: string; evalu
         skillId={skillId}
         apply={apply}
         unknown={unknown}
-        decisionsUnsettled={unsettledDecisions.size > 0}
-        onDecisionUnsettled={setDecisionUnsettled}
+        decisionStates={decisionStates}
+        onDecisionStateChange={setDecisionState}
       />
       <ReadFailure error={error} what="建立新版本">
         <div ref={failure} role="alert" tabIndex={-1} aria-label="建立版本結果">
@@ -85,6 +88,37 @@ export function SuggestionsPanel({ runId, evaluationId }: { runId: string; evalu
   );
 }
 
+function SuggestionsList({
+  items,
+  runId,
+  decisionStates,
+  onDecisionStateChange,
+}: {
+  items: ImprovementSuggestion[];
+  runId: string;
+  decisionStates: ReadonlyMap<string, SuggestionDecisionState>;
+  onDecisionStateChange: (id: string, state?: SuggestionDecisionState) => void;
+}) {
+  if (items.length === 0) return <p>這份評估沒有產生改善建議。</p>;
+  return (
+    <>
+      <p className="note">「預期影響」是模型的預測，不是量測結果。</p>
+      <MatchLegend evidence={items.flatMap((suggestion) => suggestion.evidence)} />
+      <ul className="suggestion-list">
+        {items.map((suggestion) => (
+          <SuggestionItem
+            key={suggestion.suggestion_id.toLowerCase()}
+            suggestion={suggestion}
+            runId={runId}
+            decisionState={decisionStates.get(suggestion.suggestion_id.toLowerCase())}
+            onDecisionStateChange={onDecisionStateChange}
+          />
+        ))}
+      </ul>
+    </>
+  );
+}
+
 function SuggestionsContent({
   suggestions,
   runId,
@@ -92,8 +126,8 @@ function SuggestionsContent({
   skillId,
   apply,
   unknown,
-  decisionsUnsettled,
-  onDecisionUnsettled,
+  decisionStates,
+  onDecisionStateChange,
 }: {
   suggestions: ReturnType<typeof useRunSuggestions>;
   runId: string;
@@ -101,9 +135,12 @@ function SuggestionsContent({
   skillId: string | undefined;
   apply: ReturnType<typeof useApplySuggestions>;
   unknown: boolean;
-  decisionsUnsettled: boolean;
-  onDecisionUnsettled: (id: string, unsettled: boolean) => void;
+  decisionStates: ReadonlyMap<string, SuggestionDecisionState>;
+  onDecisionStateChange: (id: string, state?: SuggestionDecisionState) => void;
 }) {
+  const decisionsUnsettled = [...decisionStates.values()].some(
+    (state) => state.pending || state.unconfirmed,
+  );
   const notFound = suggestions.error instanceof ApiError && suggestions.error.status === 404;
   if (suggestions.isPending) return <Loading what="改善建議" />;
   if (notFound) return null;
@@ -142,24 +179,12 @@ function SuggestionsContent({
 
   return (
     <>
-      {suggestions.data.suggestions.length === 0 ? (
-        <p>這份評估沒有產生改善建議。</p>
-      ) : (
-        <>
-          <p className="note">「預期影響」是模型的預測，不是量測結果。</p>
-          <MatchLegend evidence={suggestions.data.suggestions.flatMap((s) => s.evidence)} />
-          <ul className="suggestion-list">
-            {suggestions.data.suggestions.map((s) => (
-              <SuggestionItem
-                key={s.suggestion_id}
-                suggestion={s}
-                runId={runId}
-                onDecisionUnsettled={onDecisionUnsettled}
-              />
-            ))}
-          </ul>
-        </>
-      )}
+      <SuggestionsList
+        items={suggestions.data.suggestions}
+        runId={runId}
+        decisionStates={decisionStates}
+        onDecisionStateChange={onDecisionStateChange}
+      />
 
       {suggestions.data.suggestions.length > 0 && (
         <div>

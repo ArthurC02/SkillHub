@@ -7,7 +7,16 @@ import { SUGGESTION_CATEGORY_LABEL } from "../evaluation.model";
 import { EvidenceList } from "./EvidenceList";
 import { SuggestionDiffView } from "./SuggestionDiffView";
 
-type UnconfirmedDecision = { error: unknown; decision: "accepted" | "rejected" };
+const DECISION_LABEL = { accepted: "已接受", rejected: "已拒絕", pending: "尚未決定" };
+
+type DecisionChoice = "accepted" | "rejected";
+type UnconfirmedDecision = { error: unknown; decision: DecisionChoice };
+
+export type SuggestionDecisionState = {
+  pending?: DecisionChoice;
+  error?: unknown;
+  unconfirmed?: UnconfirmedDecision;
+};
 
 function DecisionFailure({
   error,
@@ -45,29 +54,33 @@ function DecisionFailure({
 export function SuggestionItem({
   suggestion,
   runId,
-  onDecisionUnsettled,
+  decisionState,
+  onDecisionStateChange,
 }: {
   suggestion: ImprovementSuggestion;
   runId: string;
-  onDecisionUnsettled: (id: string, unsettled: boolean) => void;
+  decisionState?: SuggestionDecisionState;
+  onDecisionStateChange: (id: string, state?: SuggestionDecisionState) => void;
 }) {
   const [showDiff, setShowDiff] = useState(false);
-  const [unconfirmed, setUnconfirmed] = useState<UnconfirmedDecision>();
+  const unconfirmed = decisionState?.unconfirmed;
   const decide = useDecideSuggestion(runId, {
     onError: (error, decision) => {
-      if (isWriteResultUnknown(error)) setUnconfirmed({ error, decision });
-      if (!isWriteResultUnknown(error) && !unconfirmed)
-        onDecisionUnsettled(suggestion.suggestion_id, false);
+      onDecisionStateChange(suggestion.suggestion_id, {
+        error,
+        unconfirmed: isWriteResultUnknown(error) ? { error, decision } : unconfirmed,
+      });
     },
     onConfirmed: () => {
-      setUnconfirmed(undefined);
-      onDecisionUnsettled(suggestion.suggestion_id, false);
+      onDecisionStateChange(suggestion.suggestion_id);
     },
   });
-  const error = decide.error;
-  const pendingDecision = decide.isPending ? decide.variables?.decision : undefined;
-  const choose = (decision: "accepted" | "rejected") => {
-    onDecisionUnsettled(suggestion.suggestion_id, true);
+  const error = decisionState?.error;
+  const pendingDecision =
+    decisionState?.pending ?? (decide.isPending ? decide.variables?.decision : undefined);
+  const pending = pendingDecision !== undefined;
+  const choose = (decision: DecisionChoice) => {
+    onDecisionStateChange(suggestion.suggestion_id, { pending: decision, unconfirmed });
     decide.mutate({ suggestionId: suggestion.suggestion_id, decision });
   };
 
@@ -88,7 +101,7 @@ export function SuggestionItem({
         <button
           type="button"
           aria-pressed={suggestion.decision === "accepted"}
-          disabled={decide.isPending}
+          disabled={pending}
           onClick={() => choose("accepted")}
         >
           {pendingDecision === "accepted" ? "接受中…" : "接受"}
@@ -96,7 +109,7 @@ export function SuggestionItem({
         <button
           type="button"
           aria-pressed={suggestion.decision === "rejected"}
-          disabled={decide.isPending || Boolean(suggestion.applied_skill_version_id)}
+          disabled={pending || Boolean(suggestion.applied_skill_version_id)}
           aria-describedby={
             suggestion.applied_skill_version_id
               ? `reject-note-${suggestion.suggestion_id}`
@@ -109,13 +122,7 @@ export function SuggestionItem({
         <span className="note" role={pendingDecision ? "status" : undefined}>
           {pendingDecision
             ? `處理中：正在${pendingDecision === "accepted" ? "接受" : "拒絕"}…`
-            : `${unconfirmed ? "上次讀取" : "目前"}：${
-                suggestion.decision === "accepted"
-                  ? "已接受"
-                  : suggestion.decision === "rejected"
-                    ? "已拒絕"
-                    : "尚未決定"
-              }`}
+            : `${unconfirmed ? "上次讀取" : "目前"}：${DECISION_LABEL[suggestion.decision]}`}
           {suggestion.applied_skill_version_id ? "（已套用於新版本）" : ""}
         </span>
         {suggestion.applied_skill_version_id && (
