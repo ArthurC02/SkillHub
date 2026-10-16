@@ -6,6 +6,7 @@ Use the Plugin layout when the host supports a Plugin containing multiple Skills
 domain-memory/
 ├── AGENTS.md
 ├── .claude-plugin/plugin.json
+├── skills/domain-memory-extract/SKILL.md
 ├── skills/domain-memory-read/SKILL.md
 ├── skills/domain-memory-design/SKILL.md
 ├── skills/domain-memory-maintain/SKILL.md
@@ -13,7 +14,7 @@ domain-memory/
 └── skills/domain-memory-implementation-hygiene/SKILL.md
 ```
 
-The Plugin is the complete Domain Memory capability. Its manifest points to `./skills/`, and the five Skill directories share the references, templates, and scripts at the Plugin root. A plugin install exposes exactly those five Skills, not the Plugin-root `SKILL.md`, so the router page and its readiness-first instruction never reach the host. [Host integration](host-integration.md) says what a host must do to keep that step.
+The Plugin is the complete Domain Memory capability. Its manifest points to `./skills/`, and the six Skill directories share the references, templates, and scripts at the Plugin root. A plugin install exposes exactly those six Skills, not the Plugin-root `SKILL.md`, so the router page and its readiness-first instruction never reach the host. [Host integration](host-integration.md) says what a host must do to keep that step.
 
 The manifest carries packaging identity only: `name`, `version`, `description`, `author`, `keywords`, and the component pointers. Presentation and catalogue fields belong to the host or the marketplace entry, not here; a host ignores unknown fields, so anything it does not define is silent drift rather than configuration.
 

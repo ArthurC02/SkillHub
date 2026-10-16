@@ -25,6 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
     for add_commands in (
         _add_registry_commands, _add_evidence_commands, _add_record_and_source_commands, _add_governance_commands,
         _add_review_governance_commands, _add_proposal_commands, _add_proposal_check_commands,
+        _add_history_commands,
     ):
         add_commands(commands)
     return parser
@@ -50,6 +51,16 @@ def _add_export_commands(commands: argparse._SubParsersAction) -> None:
     add_path(compare_parser, "--candidate-root")
     add_path(compare_parser, "--repo-root", required=False)
     compare_parser.add_argument("--gold-commit")
+
+
+def _add_history_commands(commands: argparse._SubParsersAction) -> None:
+    coupling_parser = commands.add_parser("change-coupling")
+    add_path(coupling_parser, "--repo-root")
+    coupling_parser.add_argument("--root", action="append", default=[])
+    coupling_parser.add_argument("--depth", type=int, default=2)
+    coupling_parser.add_argument("--since")
+    for option, default in (("--min-revisions", 5), ("--min-shared", 5), ("--min-degree", 30), ("--max-changeset", 30)):
+        coupling_parser.add_argument(option, type=int, default=default)
 
 
 def _add_registry_commands(commands: argparse._SubParsersAction) -> None:

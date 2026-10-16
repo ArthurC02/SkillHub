@@ -6,7 +6,7 @@ A plugin install and a direct Skill read of the Plugin root are different entry 
 
 The host chooses execution. It may assign the four lifecycle capabilities to separate agents when it supports delegation, or run them in one agent in this order:
 
-1. `domain-memory-read` before implementation.
+1. `domain-memory-read` before implementation, after `domain-memory-extract` when the Registry has not yet learned the requirement or the code it is about.
 2. `domain-memory-design` when the change affects a boundary, contract, invariant, event, or material business rule.
 3. `domain-memory-review` before handing the implementation off, and again after implementation when the result is material.
 4. `domain-memory-maintain` after implementation or source drift.

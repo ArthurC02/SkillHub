@@ -2,6 +2,17 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.33.0
+
+### Added
+
+- The `domain-memory-extract` Skill turns a requirement, existing code, or a requirement change or refactoring into Registry candidates. It decides each element by its DDD definition, extracts language before boundaries and boundaries before tactical facts, and keeps how a finding was made out of the record. [Extraction](references/extraction.md) has the definitions and the three entries.
+- `change-coupling --repo-root <repo>` reports which modules change together in the history, with the shared commits and degree of each pair, as one signal for where Bounded Contexts lie. It works from Git alone, in any language.
+
+### Fixed
+
+- [Evidence rules](references/evidence-rules.md) no longer describes the source kind and whole-file digest that citations stopped storing in 0.31.0.
+
 ## 0.32.0
 
 ### Added

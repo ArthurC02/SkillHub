@@ -11,6 +11,7 @@ from .audit import verify as verify_audit
 from .changes import init_change_package, redraft_change_package, validate_change_package
 from .common import ASSET_KEYS, load_json
 from .compare import compare_registries
+from .coupling import CouplingLimits, change_coupling
 from .contracts import validate_schema
 from .counterfactual import Mutation, counterfactual
 from .evidence import citation, classified, repeated_note, source_map_for
@@ -237,6 +238,14 @@ def handle_get_record(args: argparse.Namespace) -> int:
     if result is None:
         raise ValueError(f"{args.asset} record not found: {args.id}")
     print_json(result)
+    return 0
+
+
+def handle_change_coupling(args: argparse.Namespace) -> int:
+    if args.depth < 1:
+        raise ValueError("change-coupling --depth must be at least 1")
+    limits = CouplingLimits(args.min_revisions, args.min_shared, args.min_degree, args.max_changeset)
+    print_json(change_coupling(args.repo_root.resolve(), args.root or ["."], args.depth, args.since, limits))
     return 0
 
 
@@ -761,6 +770,7 @@ HANDLERS = {
     "get-record": handle_get_record,
     "analyze-boundary": handle_analyze_boundary,
     "boundary-impact": handle_boundary_impact,
+    "change-coupling": handle_change_coupling,
     "relocate-evidence": handle_relocate_evidence,
     "recite": handle_recite,
     "cite": handle_cite,
