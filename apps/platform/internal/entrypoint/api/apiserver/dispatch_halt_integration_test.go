@@ -130,6 +130,28 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 	}
 }
 
+func TestAnIncidentHaltOnOneProviderPreservesTheSceneItHolds(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	fake, svc := haltHarness(t, a, pool)
+	f := newFixture(t, a, pool, "alice-provider-halt")
+	operator := a.login(t, "operator-provider-halt")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	sc := haltScene{pool: pool, fake: fake, svc: svc, f: f, operator: operator, ws: mustUUID(t, f.workspaceID)}
+	finished := sc.succeededRunHoldingOneSandbox(t)
+
+	if code, body := operatorCall(t, operator, http.MethodPut, "/admin/dispatch/halt",
+		`{"note":"escape suspicion on this node","provider":"fake_sandbox"}`); code != http.StatusOK {
+		t.Fatalf("operator PUT /admin/dispatch/halt for one provider: got %d (%v)", code, body)
+	}
+	if err := svc.CleanRun(context.Background(), sc.ws, mustUUID(t, finished.RunID)); err != nil {
+		t.Fatalf("cleanup under a provider halt returned an error: %v", err)
+	}
+	if fake.Destroys() != 0 || fake.Live() != 1 {
+		t.Errorf("cleanup destroyed the halted provider's sandbox: destroys=%d live=%d", fake.Destroys(), fake.Live())
+	}
+}
+
 type haltScene struct {
 	pool     *pgxpool.Pool
 	fake     *providertest.Fake
