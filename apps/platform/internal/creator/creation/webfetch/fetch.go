@@ -9,11 +9,13 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 )
 
@@ -52,8 +54,8 @@ func ValidateURL(raw string) (string, error) {
 }
 
 func publicIP(ip net.IP) bool {
-	return !ip.IsLoopback() && !ip.IsPrivate() && !ip.IsLinkLocalUnicast() && !ip.IsLinkLocalMulticast() &&
-		!ip.IsMulticast() && !ip.IsUnspecified()
+	addr, ok := netip.AddrFromSlice(ip)
+	return ok && !httpx.NotPublic(addr)
 }
 
 type Fetcher struct {

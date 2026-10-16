@@ -13,7 +13,7 @@ import (
 )
 
 func TestValidateFetchURLRefusesWhatMustNeverBeAsked(t *testing.T) {
-	for _, raw := range []string{"ftp://example.com/x", "file:///etc/passwd", "http://user:pw@example.com/", "http://127.0.0.1/", "http://10.1.2.3/", "http://[::1]/", "http://169.254.169.254/latest/meta-data", "example.com/no-scheme", ""} {
+	for _, raw := range []string{"ftp://example.com/x", "file:///etc/passwd", "http://user:pw@example.com/", "http://127.0.0.1/", "http://10.1.2.3/", "http://[::1]/", "http://169.254.169.254/latest/meta-data", "http://100.100.100.200/latest/meta-data", "http://0.1.2.3/", "http://255.255.255.255/", "example.com/no-scheme", ""} {
 		if _, err := ValidateURL(raw); err == nil {
 			t.Fatalf("%q was accepted", raw)
 		}

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
@@ -46,32 +47,6 @@ type nothingAtAddress struct{ error }
 
 func (n nothingAtAddress) Unwrap() error { return n.error }
 
-var alwaysBlocked = []netip.Prefix{
-	netip.MustParsePrefix("100.64.0.0/10"),
-	netip.MustParsePrefix("0.0.0.0/8"),
-	netip.MustParsePrefix("255.255.255.255/32"),
-}
-
-func blockedInDev(ip netip.Addr) bool {
-	ip = ip.Unmap()
-	if !ip.IsValid() || ip.IsUnspecified() ||
-		ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
-		ip.IsInterfaceLocalMulticast() || ip.IsMulticast() {
-		return true
-	}
-	for _, p := range alwaysBlocked {
-		if p.Contains(ip) {
-			return true
-		}
-	}
-	return false
-}
-
-func blockedStrict(ip netip.Addr) bool {
-	ip = ip.Unmap()
-	return blockedInDev(ip) || ip.IsLoopback() || ip.IsPrivate()
-}
-
 func newClient(blocked func(netip.Addr) bool) *http.Client {
 	d := &net.Dialer{
 		Timeout:   connectTimeout,
@@ -98,8 +73,8 @@ func newClient(blocked func(netip.Addr) bool) *http.Client {
 }
 
 var (
-	strictClient = newClient(blockedStrict)
-	devClient    = newClient(blockedInDev)
+	strictClient = newClient(httpx.NotPublic)
+	devClient    = newClient(httpx.NeverFetchable)
 )
 
 func (f *URLFetcher) AllowedHosts() []string {
