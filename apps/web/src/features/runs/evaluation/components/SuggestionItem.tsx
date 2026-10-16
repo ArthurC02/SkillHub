@@ -39,7 +39,7 @@ function DecisionFailure({
         <p ref={feedback} tabIndex={-1} role="alert">
           {isWriteResultUnknown(failure)
             ? `尚未確認${choice}是否已記錄。清單仍顯示上次讀取的決定。再次選擇會重新送出，並取代目前決定。`
-            : (serverReason(failure) ?? "這個決定被拒絕。請重新讀取目前判定後再試。")}
+            : `這個決定被拒絕。${serverReason(failure) ?? "請重新讀取目前判定後再試。"}`}
         </p>
       </ReadFailure>
       {unconfirmed && error !== unconfirmed.error && (

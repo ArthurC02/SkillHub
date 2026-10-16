@@ -122,6 +122,7 @@ for (const [outcome, choice] of [
             : "suggestion not found",
         );
         await expect(alert).toBeFocused();
+        if (outcome === "refused") await expect(alert).toContainText("這個決定被拒絕");
         await inspectDecisionState(page, alert);
         if (outcome === "unknown") {
           await expect(apply).toBeDisabled();
