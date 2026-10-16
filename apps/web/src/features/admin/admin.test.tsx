@@ -400,9 +400,9 @@ test("OPS-001: a failed operator check names the read failure instead of a missi
     path === "/me" ? { body: { error: "service unavailable" }, status: 503 } : undefined,
   );
   await mountAt("/admin");
-  await waitFor(has("暫時無法讀取後台。請重新整理，或稍後再試。"));
+  await waitFor(has("暫時無法讀取後台。請再試一次，或稍後再試。"));
   expect(field<HTMLElement>('main [role="alert"]').textContent).toBe(
-    "暫時無法讀取後台。請重新整理，或稍後再試。",
+    "暫時無法讀取後台。請再試一次，或稍後再試。",
   );
   expect(has("service unavailable")()).toBe(false);
   expect(has("這一頁現在不存在")()).toBe(false);
@@ -3954,7 +3954,7 @@ test.each(["stale", "unavailable"])(
     expect(container.querySelector("#admin-finding-note")).toBeNull();
     expect(document.activeElement).toBe(field<HTMLElement>("#admin-finding-result"));
     if (refresh === "unavailable") {
-      await waitFor(has("暫時無法讀取這件事。請重新整理，或稍後再試。"));
+      await waitFor(has("暫時無法讀取這件事。請再試一次，或稍後再試。"));
       expect(button("再試一次")).toBeDefined();
       expect(field<HTMLElement>("#admin-finding-result").textContent).toContain(
         ADMIN_AGENT_FINDING.finding.title,

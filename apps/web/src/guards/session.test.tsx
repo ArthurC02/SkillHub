@@ -130,7 +130,7 @@ test("IA-6 ReadFailure keeps a 500 actionable without exposing its raw message",
     <ReadFailure error={new ApiError(500, "database connection refused")} what="下載紀錄" />,
     () => text().length > 0,
   );
-  expect(text()).toBe("暫時無法讀取下載紀錄。請重新整理，或稍後再試。");
+  expect(text()).toBe("暫時無法讀取下載紀錄。請再試一次，或稍後再試。");
   expect(text()).not.toContain("database connection refused");
   expect(container.querySelector("[role=alert]")).not.toBeNull();
   expect(text()).not.toContain("需要登入");

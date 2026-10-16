@@ -42,7 +42,7 @@ export function ReadFailure({
   if (unauthenticated(error)) return <LoginRequired what={what} />;
   return (
     <>
-      {children || <p role="alert">暫時無法讀取{what}。請重新整理，或稍後再試。</p>}
+      {children || <p role="alert">暫時無法讀取{what}。請再試一次，或稍後再試。</p>}
       {retry && (
         <button
           type="button"
