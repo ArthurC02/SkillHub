@@ -31,33 +31,46 @@ function ActorCell({ event }: { event: OperatorAuditEvent }) {
 }
 
 function auditPageState(log: ReturnType<typeof useOperatorAuditLog>) {
+  const paused = log.fetchStatus === "paused";
   const nextPageError =
     log.isFetchNextPageError &&
     !(log.error instanceof ApiError && log.error.status >= 400 && log.error.status < 500);
   return {
+    paused,
+    busy: log.fetchStatus !== "idle",
     nextPageError,
     showRows: log.data && (!log.error || nextPageError),
     blockingError: nextPageError ? null : log.error,
-    loadMoreLabel: log.isFetchingNextPage ? "載入中…" : nextPageError ? "重試載入更多" : "載入更多",
+    loadMoreLabel: paused
+      ? "等待連線…"
+      : log.isFetchingNextPage
+        ? "載入中…"
+        : nextPageError
+          ? "重試載入更多"
+          : "載入更多",
   };
 }
 
 export function AdminAuditLog() {
   const log = useOperatorAuditLog();
   const rows = log.data?.pages.flatMap((page) => page.events) ?? [];
-  const { nextPageError, showRows, blockingError, loadMoreLabel } = auditPageState(log);
+  const { paused, busy, nextPageError, showRows, blockingError, loadMoreLabel } =
+    auditPageState(log);
   const { loadMore, bindTarget, headingRef, row: continuationRow } = usePaginationFocus(log, rows);
 
   return (
     <AdminPage heading="動作紀錄" headingRef={nextPageError ? undefined : headingRef}>
-      {log.isPending && <Loading what="動作紀錄" />}
-      <ReadFailure error={blockingError} what="動作紀錄">
+      {(log.isPending || paused) && <Loading what="動作紀錄" paused={paused} />}
+      <ReadFailure
+        error={blockingError}
+        what="動作紀錄"
+        retry={() => void log.refetch()}
+        retrying={busy}
+        focusTarget="main-content"
+      >
         <p role="alert">
           暫時無法讀取動作紀錄。{log.data ? "先前載入的內容已隱藏。" : "請稍後再試。"}
         </p>
-        <button type="button" disabled={log.isFetching} onClick={() => void log.refetch()}>
-          {log.isFetching ? "重新讀取中…" : "再試一次"}
-        </button>
       </ReadFailure>
       {showRows && (
         <ListFreshness
@@ -65,6 +78,7 @@ export function AdminAuditLog() {
           showWhenIdle
           updatedAt={log.dataUpdatedAt}
           fetching={log.isFetching}
+          paused={paused}
           refetch={log.refetch}
           subject="動作紀錄"
         />
@@ -129,7 +143,7 @@ export function AdminAuditLog() {
         ))}
       {nextPageError && <p role="alert">後續紀錄暫時無法讀取；已載入的紀錄仍可查看。</p>}
       {log.hasNextPage && showRows && (
-        <button type="button" disabled={log.isFetchingNextPage} ref={bindTarget} onClick={loadMore}>
+        <button type="button" disabled={busy} ref={bindTarget} onClick={loadMore}>
           {loadMoreLabel}
         </button>
       )}

@@ -21,6 +21,15 @@ const VIEWS: { status?: ClosedView; label: string; counts: FindingStatus[] }[] =
   { status: "dismissed", label: FINDING_STATUS.dismissed, counts: ["dismissed"] },
 ];
 
+function findingLoadMoreLabel(
+  findings: ReturnType<typeof usePlatformAgentFindings>,
+  nextPageError: boolean,
+) {
+  if (findings.fetchStatus === "paused") return "等待連線…";
+  if (findings.isFetchingNextPage) return "載入中…";
+  return nextPageError ? "重試載入更多待辦" : "載入更多待辦";
+}
+
 function FindingRow({
   finding,
   focusRef,
@@ -61,6 +70,8 @@ function FindingRow({
 
 export function FindingInbox({ status }: { status?: ClosedView }) {
   const findings = usePlatformAgentFindings(status);
+  const paused = findings.fetchStatus === "paused";
+  const busy = findings.fetchStatus !== "idle";
   const nextPageError = canKeepLoadedFindings(findings.error, findings.isFetchNextPageError);
   const blockingError = nextPageError ? null : findings.error;
   const showRows = findings.data && !blockingError;
@@ -91,12 +102,12 @@ export function FindingInbox({ status }: { status?: ClosedView }) {
           </Link>
         ))}
       </nav>
-      {findings.isPending && <Loading what="待辦" />}
+      {(findings.isPending || paused) && <Loading what="待辦" paused={paused} />}
       <ReadFailure
         error={blockingError}
         what="待辦"
         retry={() => void findings.refetch()}
-        retrying={findings.isFetching}
+        retrying={busy}
         focusTarget="admin-agent-findings-heading"
       />
       {showRows && (
@@ -105,6 +116,7 @@ export function FindingInbox({ status }: { status?: ClosedView }) {
           showWhenIdle
           updatedAt={findings.dataUpdatedAt}
           fetching={findings.isFetching}
+          paused={paused}
           refetch={findings.refetch}
           subject="待辦"
         />
@@ -128,17 +140,8 @@ export function FindingInbox({ status }: { status?: ClosedView }) {
       )}
       {nextPageError && <p role="alert">後續待辦暫時無法讀取；已載入的待辦仍可查看。</p>}
       {showRows && findings.hasNextPage && (
-        <button
-          ref={bindTarget}
-          type="button"
-          disabled={findings.isFetchingNextPage}
-          onClick={loadMore}
-        >
-          {findings.isFetchingNextPage
-            ? "載入中…"
-            : nextPageError
-              ? "重試載入更多待辦"
-              : "載入更多待辦"}
+        <button ref={bindTarget} type="button" disabled={busy} onClick={loadMore}>
+          {findingLoadMoreLabel(findings, nextPageError)}
         </button>
       )}
     </>

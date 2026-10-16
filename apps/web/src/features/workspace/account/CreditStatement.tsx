@@ -14,9 +14,18 @@ function signedCredits(delta: number): string {
   return delta > 0 ? `+${delta}` : String(delta);
 }
 
+function statementLoadMoreLabel(statement: ReturnType<typeof useCreditStatement>) {
+  if (statement.fetchStatus === "paused") return "等待連線…";
+  return statement.isFetchingNextPage ? "載入中…" : "載入更早的紀錄";
+}
+
 export function CreditStatement() {
   const credits = useCredits();
   const statement = useCreditStatement();
+  const creditsPaused = credits.fetchStatus === "paused";
+  const creditsBusy = credits.fetchStatus !== "idle";
+  const statementPaused = statement.fetchStatus === "paused";
+  const statementBusy = statement.fetchStatus !== "idle";
   const nextPageFailure = canRetainLoadedPage(statement.error, statement.isFetchNextPageError);
   const data = statement.error && !nextPageFailure ? undefined : statement.data;
   const pages = data?.pages ?? [];
@@ -34,12 +43,12 @@ export function CreditStatement() {
         點數與花費
       </h2>
       <section aria-label="點數餘額">
-        {credits.isPending && <Loading what="點數餘額" />}
+        {(credits.isPending || creditsPaused) && <Loading what="點數餘額" paused={creditsPaused} />}
         <ReadFailure
           error={credits.error}
           what="點數餘額"
           retry={() => void credits.refetch()}
-          retrying={credits.isFetching}
+          retrying={creditsBusy}
           focusTarget="account-credits-heading"
         />
         {credits.data && !credits.error && (
@@ -50,12 +59,14 @@ export function CreditStatement() {
       </section>
 
       <section aria-label="點數紀錄">
-        {statement.isPending && <Loading what="點數紀錄" />}
+        {(statement.isPending || statementPaused) && (
+          <Loading what="點數紀錄" paused={statementPaused} />
+        )}
         <ReadFailure
           error={statement.error}
           what="點數紀錄"
           retry={() => void (nextPageFailure ? statement.fetchNextPage() : statement.refetch())}
-          retrying={statement.isFetching}
+          retrying={statementBusy}
           focusTarget="account-credits-heading"
         >
           {nextPageFailure && (
@@ -84,13 +95,8 @@ export function CreditStatement() {
           ))}
         {pages[0]?.note && <p className="note">{pages[0].note}</p>}
         {statement.hasNextPage && !statement.error && (
-          <button
-            type="button"
-            disabled={statement.isFetchingNextPage}
-            ref={bindTarget}
-            onClick={loadMore}
-          >
-            {statement.isFetchingNextPage ? "載入中…" : "載入更早的紀錄"}
+          <button type="button" disabled={statementBusy} ref={bindTarget} onClick={loadMore}>
+            {statementLoadMoreLabel(statement)}
           </button>
         )}
       </section>
