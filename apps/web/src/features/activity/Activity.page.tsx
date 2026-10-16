@@ -54,8 +54,10 @@ export function Activity() {
   const pages = activity.error && !recoverableNextPageFailure ? undefined : activity.data;
   const availability = useFeatureAvailability();
   const items = pages?.pages.flatMap((page) => page.items) ?? [];
-  const showItems = Boolean(pages) && (!activity.error || items.length > 0);
-  const unavailable = activityUnavailable(activity.error);
+  const paused = activity.fetchStatus === "paused";
+  const busy = activity.fetchStatus !== "idle";
+  const showItems =
+    Boolean(pages) && (!activity.error || items.length > 0) && (!busy || items.length > 0);
   const inProgress = items.some((item) => item.classification === "in_progress");
 
   return (
@@ -68,7 +70,7 @@ export function Activity() {
           </h1>
           <p>把正在執行、等待決定與最近完成的工作放在同一條可信時間線。</p>
         </div>
-        {pages && !activity.error && (
+        {pages && !activity.error && (!busy || items.length > 0) && (
           <ActivitySummary items={items} hasMore={activity.hasNextPage} />
         )}
       </header>
@@ -77,38 +79,13 @@ export function Activity() {
         這裡合併五個來源，但不取代各物件的完整證據；狀態與時間都由原本的 owner 提供。
       </p>
 
-      {activity.isPending && <Loading what="Workspace 活動" />}
-      <ReadFailure
-        error={activity.error}
-        what="Workspace 活動"
-        retry={() =>
-          void (recoverableNextPageFailure ? activity.fetchNextPage() : activity.refetch())
-        }
-        retrying={activity.isFetching}
-        focusTarget="activity-heading"
-      >
-        {unavailable ? (
-          <UnavailableSources
-            sources={unavailable.unavailable_sources}
-            nextPage={recoverableNextPageFailure}
-          />
-        ) : recoverableNextPageFailure ? (
-          <p role="alert">更早的活動讀取失敗；以下僅保留已載入的紀錄，尚未讀完。請再試一次。</p>
-        ) : null}
-      </ReadFailure>
-      {pages && !activity.error && (
-        <ListFreshness
-          inFlight={inProgress}
-          showWhenIdle
-          updatedAt={activity.dataUpdatedAt}
-          fetching={activity.isFetching && !activity.isFetchingNextPage}
-          refetch={async () => {
-            const result = await activity.refetch();
-            if (result.error) document.getElementById("activity-heading")?.focus();
-          }}
-          subject="工作"
-        />
-      )}
+      <ActivityReadStatus
+        activity={activity}
+        readable={Boolean(pages)}
+        empty={items.length === 0}
+        inProgress={inProgress}
+        nextPageFailure={recoverableNextPageFailure}
+      />
 
       {showItems &&
         (items.length === 0 ? (
@@ -151,13 +128,68 @@ export function Activity() {
       {activity.hasNextPage && !activity.error && (
         <button
           type="button"
-          disabled={activity.isFetchingNextPage}
+          disabled={activity.isFetchingNextPage || paused}
           onClick={() => void activity.fetchNextPage()}
         >
-          {activity.isFetchingNextPage ? "載入中…" : "載入更多活動"}
+          {paused ? "等待連線…" : activity.isFetchingNextPage ? "載入中…" : "載入更多活動"}
         </button>
       )}
     </section>
+  );
+}
+
+function ActivityReadStatus({
+  activity,
+  readable,
+  empty,
+  inProgress,
+  nextPageFailure,
+}: {
+  activity: ReturnType<typeof useActivity>;
+  readable: boolean;
+  empty: boolean;
+  inProgress: boolean;
+  nextPageFailure: boolean;
+}) {
+  const paused = activity.fetchStatus === "paused";
+  const busy = activity.fetchStatus !== "idle";
+  const unavailable = activityUnavailable(activity.error);
+  return (
+    <>
+      {(activity.isPending || paused || (readable && empty && busy)) && (
+        <Loading what="Workspace 活動" paused={paused} />
+      )}
+      <ReadFailure
+        error={activity.error}
+        what="Workspace 活動"
+        retry={() => void (nextPageFailure ? activity.fetchNextPage() : activity.refetch())}
+        retrying={busy}
+        focusTarget="activity-heading"
+      >
+        {unavailable ? (
+          <UnavailableSources
+            sources={unavailable.unavailable_sources}
+            nextPage={nextPageFailure}
+          />
+        ) : nextPageFailure ? (
+          <p role="alert">更早的活動讀取失敗；以下僅保留已載入的紀錄，尚未讀完。請再試一次。</p>
+        ) : null}
+      </ReadFailure>
+      {readable && !activity.error && (
+        <ListFreshness
+          inFlight={inProgress}
+          showWhenIdle
+          updatedAt={activity.dataUpdatedAt}
+          fetching={activity.isFetching && !activity.isFetchingNextPage}
+          paused={paused}
+          refetch={async () => {
+            const result = await activity.refetch();
+            if (result.error) document.getElementById("activity-heading")?.focus();
+          }}
+          subject="工作"
+        />
+      )}
+    </>
   );
 }
 
