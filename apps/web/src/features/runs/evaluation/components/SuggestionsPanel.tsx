@@ -1,7 +1,7 @@
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { ApiError } from "../../../../core/api/client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   isApplyResultUnknown,
   useApplySuggestions,
@@ -27,6 +27,15 @@ export function SuggestionsPanel({ runId, evaluationId }: { runId: string; evalu
   const applied = apply.data;
   const error = apply.error;
   const unknown = Boolean(error) && isApplyResultUnknown(error);
+  const [unsettledDecisions, setUnsettledDecisions] = useState(new Set<string>());
+  const setDecisionUnsettled = (id: string, unsettled: boolean) => {
+    setUnsettledDecisions((previous) => {
+      const next = new Set(previous);
+      if (unsettled) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
   const failure = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (unknown) failure.current?.focus();
@@ -51,6 +60,8 @@ export function SuggestionsPanel({ runId, evaluationId }: { runId: string; evalu
         skillId={skillId}
         apply={apply}
         unknown={unknown}
+        decisionsUnsettled={unsettledDecisions.size > 0}
+        onDecisionUnsettled={setDecisionUnsettled}
       />
       <ReadFailure error={error} what="建立新版本">
         <div ref={failure} role="alert" tabIndex={-1} aria-label="建立版本結果">
@@ -81,6 +92,8 @@ function SuggestionsContent({
   skillId,
   apply,
   unknown,
+  decisionsUnsettled,
+  onDecisionUnsettled,
 }: {
   suggestions: ReturnType<typeof useRunSuggestions>;
   runId: string;
@@ -88,6 +101,8 @@ function SuggestionsContent({
   skillId: string | undefined;
   apply: ReturnType<typeof useApplySuggestions>;
   unknown: boolean;
+  decisionsUnsettled: boolean;
+  onDecisionUnsettled: (id: string, unsettled: boolean) => void;
 }) {
   const notFound = suggestions.error instanceof ApiError && suggestions.error.status === 404;
   if (suggestions.isPending) return <Loading what="改善建議" />;
@@ -135,7 +150,12 @@ function SuggestionsContent({
           <MatchLegend evidence={suggestions.data.suggestions.flatMap((s) => s.evidence)} />
           <ul className="suggestion-list">
             {suggestions.data.suggestions.map((s) => (
-              <SuggestionItem key={s.suggestion_id} suggestion={s} runId={runId} />
+              <SuggestionItem
+                key={s.suggestion_id}
+                suggestion={s}
+                runId={runId}
+                onDecisionUnsettled={onDecisionUnsettled}
+              />
             ))}
           </ul>
         </>
@@ -152,11 +172,16 @@ function SuggestionsContent({
             disabled={
               !skillId ||
               accepted.length === 0 ||
+              decisionsUnsettled ||
               apply.isPending ||
               suggestions.fetchStatus !== "idle"
             }
             aria-describedby={
-              suggestions.fetchStatus !== "idle" ? "suggestions-refresh-note" : undefined
+              decisionsUnsettled
+                ? "suggestion-decisions-note"
+                : suggestions.fetchStatus !== "idle"
+                  ? "suggestions-refresh-note"
+                  : undefined
             }
             onClick={() =>
               apply.mutate({
@@ -168,6 +193,11 @@ function SuggestionsContent({
           >
             {unknown ? "核對後仍" : ""}以已接受的 {accepted.length} 項建議建立新版本
           </button>
+          {decisionsUnsettled && (
+            <p id="suggestion-decisions-note" role="status" className="note">
+              改善建議的決定尚未確認；請等待目前操作完成，或重新送出未確認的決定後，再建立版本。
+            </p>
+          )}
           {suggestions.fetchStatus !== "idle" && (
             <p id="suggestions-refresh-note" role="status" className="note">
               改善建議清單尚未確認；確認後才能建立版本。

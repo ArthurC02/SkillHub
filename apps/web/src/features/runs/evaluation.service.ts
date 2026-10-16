@@ -302,12 +302,23 @@ export function useSuggestionDiff(suggestionId: string, enabled: boolean) {
   });
 }
 
-export function decideSuggestion(suggestionId: string, decision: "accepted" | "rejected") {
-  return apiFetch<ImprovementSuggestion>(`/suggestions/${suggestionId}/decision`, {
+export async function decideSuggestion(suggestionId: string, decision: "accepted" | "rejected") {
+  const result = await apiFetch<unknown>(`/suggestions/${suggestionId}/decision`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ decision }),
   });
+  if (
+    typeof result !== "object" ||
+    result === null ||
+    !("suggestion_id" in result) ||
+    typeof result.suggestion_id !== "string" ||
+    result.suggestion_id.toLowerCase() !== suggestionId.toLowerCase() ||
+    !("decision" in result) ||
+    result.decision !== decision
+  )
+    throw new Error("Invalid decision response");
+  return result;
 }
 
 export function useDecideSuggestion(runId: string) {
