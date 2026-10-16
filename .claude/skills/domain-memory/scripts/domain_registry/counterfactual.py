@@ -25,6 +25,14 @@ BUILD_FAILURE = re.compile(
     r"declared and not used|imported and not used|\[build failed\]|syntax error|SyntaxError|"
     r"IndentationError|could not compile|error TS\d+|COMPILATION ERROR|error: cannot find symbol"
 )
+FAILURE_LINE = re.compile(r"^\s*(--- FAIL|FAIL:|ERROR:|FAILED|panic:)")
+MAX_FAILURE_LINES = 20
+
+
+def failure_evidence(output: str) -> str:
+    tail = output[-OUTPUT_TAIL:]
+    failures = [line for line in output[:-OUTPUT_TAIL].splitlines() if FAILURE_LINE.match(line)]
+    return "\n".join([*failures[:MAX_FAILURE_LINES], "...", tail]) if failures else tail
 
 
 @dataclass(frozen=True)
@@ -233,7 +241,7 @@ def counterfactual(repo_root: Path, mutation: Mutation, proof: Proof) -> dict[st
         "test_command": proof.test_command,
         "verdict": verdict,
         "reason": reason,
-        "failing_evidence": broken_run.output[-OUTPUT_TAIL:],
+        "failure_evidence": failure_evidence(broken_run.output),
         "restoration_result": {"restored": restored, "content_sha256": digest(original)},
     }
     if verdict == "killed" and restored:
@@ -241,7 +249,7 @@ def counterfactual(repo_root: Path, mutation: Mutation, proof: Proof) -> dict[st
             "status": "passed",
             "obligation_id": proof.obligation_id or OBLIGATION_PLACEHOLDER,
             "mutated_protection": f"{shown}:{line}: {_one_line(mutation.find)} -> {_one_line(mutation.replace)}",
-            "failure_evidence": broken_run.output[-OUTPUT_TAIL:],
+            "failure_evidence": failure_evidence(broken_run.output),
             "restored": True,
         }
     return result

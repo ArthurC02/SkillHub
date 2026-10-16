@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import unittest
@@ -17,6 +18,7 @@ from domain_registry.evidence import (
     digest,
 )
 from domain_registry.git_hooks import governance_readiness, install_pre_push_hook
+from domain_registry.hitl import record_approval
 from domain_registry.registry import (
     asset_records,
 )
@@ -840,6 +842,27 @@ class CliTest(RegistryTestCase):
             "Change package has everything submitted requires, apart from the approvals, which are given only once it is submitted.",
             result.stdout.strip(),
         )
+
+    def test_a_preview_of_an_approved_package_does_not_say_approvals_are_missing(self) -> None:
+        package = self.submitted_package()
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        result = self.run_cli(
+            "validate-change-package", "--package-root", str(package), "--registry-root", str(self.repo / "memory"),
+            "--as-status", "submitted",
+        )
+        self.assertEqual("Change package has everything submitted requires.", result.stdout.strip())
+
+    def test_json_piped_from_a_console_in_another_code_page_is_utf8(self) -> None:
+        self.seed("contexts.json", [{"id": "testlab", "name": "Testlab", "responsibility": "Owns drafts\uff0ctheir prompts."}])
+        result = subprocess.run(
+            [sys.executable, "-m", "domain_registry.cli", "get-context", "--registry-root", str(self.repo / "memory"),
+             "--id", "testlab"],
+            cwd=Path(__file__).parent,
+            capture_output=True,
+            env={**os.environ, "PYTHONIOENCODING": "cp950"},
+            check=False,
+        )
+        self.assertEqual("Owns drafts\uff0ctheir prompts.", json.loads(result.stdout.decode("utf-8"))["context"]["responsibility"])
 
     def test_a_valid_package_with_updates_prints_only_its_verdict(self) -> None:
         self.assertEqual(["Change package is valid."], self.validated_package(updates=True))

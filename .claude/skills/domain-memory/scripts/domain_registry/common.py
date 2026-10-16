@@ -82,6 +82,7 @@ def updates_record(update: Any, asset: str, record_id: Any) -> bool:
 
 
 PROPOSAL_FILE = "domain-change-proposal.json"
+REQUIREMENT_FILE = "requirement-normalization.json"
 EVIDENCE_FILE = "evidence-bundle.json"
 
 CHANGE_PACKAGE_FILES = (

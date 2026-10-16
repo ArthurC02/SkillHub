@@ -59,7 +59,13 @@ class RecitationPackageTest(RegistryTestCase):
         cases = [
             ("a changed statement", {**recitation, "registry_updates": [
                 {**update, "record": {**update["record"], "statement": "Other."}}]},
-             "rules/rule changes more than its citations"),
+             "rules/rule changes more than its citations: statement"),
+            ("a field added empty", {**recitation, "registry_updates": [
+                {**update, "record": {**update["record"], "notes": None}}]},
+             "rules/rule changes more than its citations: notes"),
+            ("an added citation", {**recitation, "registry_updates": [
+                {**update, "record": {**update["record"], "evidence": [*update["record"]["evidence"], "src/a.py:1"]}}]},
+             "rules/rule adds 1 citation\\(s\\) and changes nothing else"),
             ("a removal", {**recitation, "registry_updates": [{"operation": "remove", "asset": "rules", "id": "rule"}]},
              "rules/rule is removed, which is more than a re-citation"),
             ("a record the Registry lacks", {**recitation, "registry_updates": [

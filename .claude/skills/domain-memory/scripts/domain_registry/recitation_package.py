@@ -82,13 +82,28 @@ def _evidence_only_updates(registry_root: Path, recitation: dict[str, Any]) -> l
             (entry for entry in asset_records(registry_root, update.document_name) if entry.get("id") == update.record_id),
             {},
         )
-        if _without_evidence(current) != _without_evidence(update.record):
+        fields = _changed_fields(current, update.record)
+        if fields:
+            added = len(all_references(update.record)) - len(all_references(current))
             raise ValueError(
-                f"{update.asset}/{update.record_id} changes more than its citations; "
+                f"{update.asset}/{update.record_id} {_beyond_recitation(fields, added)}; "
                 "write that Change Package with init-change-package instead"
             )
         updates.append((update.asset, update.record))
     return updates
+
+
+def _changed_fields(current: dict[str, Any], record: dict[str, Any]) -> list[str]:
+    before, after = _without_evidence(current), _without_evidence(record)
+    return sorted(key for key in before.keys() | after.keys() if key not in before or key not in after or before[key] != after[key])
+
+
+def _beyond_recitation(fields: list[str], added: int) -> str:
+    if fields == ["evidence"] and added:
+        how = f"adds {added}" if added > 0 else f"drops {-added}"
+        return (f"{how} citation(s) and changes nothing else; a re-citation package only moves the citations a record "
+                "already has, so adding or dropping one is a change of claim")
+    return "changes more than its citations: " + ", ".join(fields)
 
 
 def _without_evidence(record: dict[str, Any]) -> Any:

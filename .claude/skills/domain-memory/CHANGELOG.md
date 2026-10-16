@@ -2,6 +2,15 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.45.0
+
+### Changed
+
+- Every command writes UTF-8 to stdout and stderr, also when piped on a Windows console whose code page is not UTF-8, so a consumer reading JSON as UTF-8 no longer fails on a Registry holding non-ASCII text.
+- `counterfactual` names its evidence `failure_evidence` at the top level as in `counterfactual_check`, in place of `failing_evidence`, and starts it with the output's failure lines, such as `--- FAIL:` or `panic:`, before the last part of the output.
+- `init-change-package --recitation` says when a record adds or drops a citation and changes nothing else, and otherwise names the fields it changes.
+- `validate-change-package --as-status submitted` or `verified` notes that approvals are not checked only when the package still lacks one.
+
 ## 0.44.0
 
 ### Changed

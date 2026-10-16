@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from domain_registry.cli import main
 from domain_registry import counterfactual as counterfactual_module
 from domain_registry.counterfactual import (
+    OUTPUT_TAIL,
     RESTORE_DELAYS_SECONDS,
     SIDECAR_SUFFIX,
     Mutation,
@@ -23,6 +24,7 @@ from domain_registry.counterfactual import (
     TestRun,
     counterfactual,
     decoded,
+    failure_evidence,
     verdict_of,
 )
 from domain_registry.gates import KINDS, quality_gates
@@ -321,7 +323,7 @@ class CounterfactualTest(RepositoryCase):
         result = self.break_rule("LIMIT = 200", "LIMIT = 201")
         self.assertEqual(result["verdict"], "killed")
         self.assertEqual(result["line"], 1)
-        self.assertIn("FAILED", result["failing_evidence"])
+        self.assertIn("FAILED", result["failure_evidence"])
         self.assertTrue(result["restoration_result"]["restored"])
         self.assert_untouched()
 
@@ -488,7 +490,7 @@ class CounterfactualTest(RepositoryCase):
                 "status": "passed",
                 "obligation_id": "limit-refused",
                 "mutated_protection": "rule.py:1: LIMIT = 200 -> LIMIT = 201",
-                "failure_evidence": result["failing_evidence"],
+                "failure_evidence": result["failure_evidence"],
                 "restored": True,
             },
             result["counterfactual_check"],
@@ -519,6 +521,17 @@ class VerdictTest(unittest.TestCase):
         ):
             with self.subTest(output):
                 self.assertEqual(verdict, verdict_of(TestRun(1, output))[0])
+
+
+class FailureEvidenceTest(unittest.TestCase):
+    def test_failure_lines_before_the_tail_come_first(self) -> None:
+        frames = "".join(f"frame {number}\n" for number in range(400))
+        output = "=== RUN   TestPurge\n--- FAIL: TestPurge (0.00s)\npanic: nil pointer\n" + frames
+        self.assertEqual("--- FAIL: TestPurge (0.00s)\npanic: nil pointer\n...\n" + output[-OUTPUT_TAIL:], failure_evidence(output))
+
+    def test_output_that_fits_is_kept_whole(self) -> None:
+        output = "--- FAIL: TestPurge (0.00s)\n" + "x" * (OUTPUT_TAIL - 30)
+        self.assertEqual(output, failure_evidence(output))
 
 
 class DecodedOutputTest(unittest.TestCase):
@@ -580,7 +593,7 @@ class CommandLineTest(RepositoryCase):
             exit_code = main()
         self.assertEqual((2, "inconclusive"), (exit_code, json.loads(output.getvalue())["verdict"]))
 
-    def test_an_error_the_console_cannot_encode_is_still_printed(self) -> None:
+    def test_an_error_on_a_console_in_another_code_page_is_printed_in_utf8(self) -> None:
         completed = subprocess.run(
             [sys.executable, str(TOOLS), "counterfactual", "--repo-root", str(self.repo),
              "--file", "\U0001F600.py", "--find", "a", "--replace", "b", "--test-command", "unused"],
@@ -589,7 +602,7 @@ class CommandLineTest(RepositoryCase):
             check=False,
         )
         self.assertEqual(
-            (1, b"ERROR: file does not exist: \\U0001f600.py"),
+            (1, "ERROR: file does not exist: \U0001F600.py".encode()),
             (completed.returncode, completed.stdout.strip()),
         )
 

@@ -8,7 +8,7 @@ from .cli_parser import build_parser
 def main() -> int:
     for stream in (sys.stdout, sys.stderr):
         if isinstance(stream, io.TextIOWrapper):
-            stream.reconfigure(errors="backslashreplace")
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
     try:
         return execute(build_parser().parse_args())
     except (ValueError, OSError) as error:

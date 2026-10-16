@@ -9,8 +9,14 @@ from pathlib import Path
 from .attestations import audit_attestations, verify_scm
 from .audit import anchor_error
 from .audit import verify as verify_audit
-from .changes import init_change_package, list_proposals, redraft_change_package, validate_change_package
-from .common import ASSET_KEYS, PROPOSAL_FILE, load_json
+from .changes import (
+    init_change_package,
+    list_proposals,
+    missing_approval_roles,
+    redraft_change_package,
+    validate_change_package,
+)
+from .common import ASSET_KEYS, PROPOSAL_FILE, REQUIREMENT_FILE, load_json
 from .compare import compare_registries
 from .coupling import CouplingLimits, CouplingReading, change_coupling
 from .contracts import validate_schema
@@ -832,8 +838,10 @@ def handle_finalize_proposal(args: argparse.Namespace) -> int:
     return 0
 
 
-def _unchecked_at(status: str) -> str:
-    if status in ("submitted", "verified"):
+def _unchecked_at(status: str, package_root: Path) -> str:
+    if status in ("submitted", "verified") and missing_approval_roles(
+        load_json(package_root / REQUIREMENT_FILE), load_json(package_root / PROPOSAL_FILE)
+    ):
         return ", apart from the approvals, which are given only once it is submitted"
     return ""
 
@@ -855,7 +863,8 @@ def handle_validate_change_package(args: argparse.Namespace) -> int:
         if not exit_code and not load_json(args.package_root / PROPOSAL_FILE).get("registry_updates"):
             print("NOTE: this package changes no Registry record; add the updates it is for, or supersede it.")
         return exit_code
-    return report_errors(errors, f"Change package has everything {args.as_status} requires{_unchecked_at(args.as_status)}.")
+    unchecked = "" if errors else _unchecked_at(args.as_status, args.package_root)
+    return report_errors(errors, f"Change package has everything {args.as_status} requires{unchecked}.")
 
 
 def handle_coverage(args: argparse.Namespace) -> int:
