@@ -170,7 +170,10 @@ def verdict_of(broken_run: TestRun, expect: str | None = None) -> tuple[str, str
     if broken_run.timed_out:
         return "inconclusive", "the tests gave no result in time"
     if broken_run.passed:
-        return "survived", "the tests still pass with the protection broken"
+        return "survived", (
+            "the tests still pass with this change; either a test is missing, "
+            "or the change does not break the protection (an equivalent mutation)"
+        )
     if expect is not None:
         if re.search(expect, broken_run.output):
             return "killed", f"the tests failed with output matching --expect {expect}"

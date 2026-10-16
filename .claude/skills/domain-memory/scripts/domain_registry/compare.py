@@ -50,19 +50,26 @@ def compare_registries(
         if asset != "contexts":
             assets[asset] = _matched(asset, gold_records[asset], candidate_records[asset], context_of)
     attempted = [result for result in assets.values() if result["candidate"] and result["gold"]]
-    report = {"assets": assets, "overall": _overall(assets.values()), "overall_attempted": _overall(attempted)}
+    copied = sum(1 for result in attempted for pair in result["matched"] if pair.get("copied_evidence"))
+    report = {
+        "assets": assets,
+        "overall": _overall(assets.values()),
+        "overall_attempted": _overall(attempted),
+        "overall_independent": _overall(attempted, copied),
+        "copied_matches": copied,
+    }
     if contexts:
         paired = {pair["gold"] for pair in matched_contexts["matched"]}
         report["scope"] = {"contexts": sorted(set(contexts)), "without_candidate": sorted(set(contexts) - paired)}
     return report
 
 
-def _overall(results: Any) -> dict[str, float | None]:
+def _overall(results: Any, left_out: int = 0) -> dict[str, float | None]:
     results = list(results)
     return _scores(
-        sum(len(result["matched"]) for result in results),
-        sum(result["gold"] for result in results),
-        sum(result["candidate"] for result in results),
+        sum(len(result["matched"]) for result in results) - left_out,
+        sum(result["gold"] for result in results) - left_out,
+        sum(result["candidate"] for result in results) - left_out,
     )
 
 

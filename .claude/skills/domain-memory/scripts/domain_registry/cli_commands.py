@@ -212,6 +212,15 @@ def handle_compare_registry(args: argparse.Namespace) -> int:
     candidate = _exported(args.candidate_root.resolve(), None, None, "")
     report = compare_registries(gold, candidate, args.context)
     print_json(report)
+    attempted_matches = sum(
+        len(result["matched"]) for result in report["assets"].values() if result["candidate"] and result["gold"]
+    )
+    if report["copied_matches"] * 2 > attempted_matches:
+        print(
+            f"NOTE: {report['copied_matches']} of {attempted_matches} matches cite exactly the gold evidence; "
+            "read overall_independent, which leaves them out, as the extraction's own score.",
+            file=sys.stderr,
+        )
     unpaired = report.get("scope", {}).get("without_candidate")
     if unpaired:
         print(

@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.37.0
+
+### Added
+
+- `compare-registry` reports `overall_independent`, the attempted score with every `copied_evidence` pair left out of both sides, and `copied_matches`; the command notes when copied pairs are more than half the matches.
+
+### Changed
+
+- A `survived` `counterfactual` verdict's reason names an equivalent mutation as a possible cause besides a missing test.
+
 ## 0.36.0
 
 ### Changed

@@ -431,7 +431,8 @@ class CounterfactualTest(RepositoryCase):
             ("LIMIT = 200", "LIMIT = 201", {}, "the tests failed once the protection was broken"),
             ("LIMIT = 200", "LIMIT = 201", {"expect": "AssertionError"},
              "the tests failed with output matching --expect AssertionError"),
-            ("CAP = 12", "CAP = 13", {}, "the tests still pass with the protection broken"),
+            ("CAP = 12", "CAP = 13", {}, "the tests still pass with this change; either a test is missing, "
+             "or the change does not break the protection (an equivalent mutation)"),
         ):
             with self.subTest(reason):
                 self.assertEqual(reason, self.break_rule(find, replace, **options)["reason"])
