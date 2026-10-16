@@ -5,6 +5,8 @@ import { ADMIN_ACCOUNT, ADMIN_LEDGER, ME } from "../src/testing/fixtures/platfor
 import { setOffline } from "./offline";
 import { stubPlatform } from "./stub";
 
+test.use({ trace: "retain-on-failure" });
+
 for (const phase of ["pending", "offline"]) {
   for (const amount of [25, -25]) {
     test(`a ${amount} credit intent blocked by ${phase} session verification stays editable and waits for explicit submission`, async ({
@@ -41,6 +43,7 @@ for (const phase of ["pending", "offline"]) {
         await page.goto("/admin/accounts");
         await page.getByLabel("Email", { exact: true }).fill("member@example.com");
         await page.getByRole("button", { name: "查詢", exact: true }).click();
+        await expect(page.getByRole("heading", { name: "封測者甲", exact: true })).toBeVisible();
         const input = page.locator("#admin-grant-amount");
         const note = page.locator("#admin-grant-note");
         await input.fill(String(amount));
