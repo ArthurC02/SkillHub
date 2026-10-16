@@ -8,9 +8,6 @@
       "methods": 73,
       "fields": 22
     },
-    "creator/workspace.Service": {
-      "fields": 14
-    },
     "product/operations.Service": {
       "methods": 32
     },

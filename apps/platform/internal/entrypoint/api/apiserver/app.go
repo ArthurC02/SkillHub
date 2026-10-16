@@ -216,6 +216,7 @@ func wireWorkspacePurge(identitySvc *identity.Service, testlabSvc *testlab.Servi
 	identitySvc.PurgeRunArtifacts = runPurgeSvc.PurgeWorkspace
 	identitySvc.PurgeDownloads = packagingPurgeSvc.PurgeWorkspace
 	identitySvc.PurgeCreation = creation.PurgeWorkspace
+	identitySvc.PurgeGraders = graders.PurgeWorkspace
 	identitySvc.PurgePublications = publishing.PurgeWorkspace
 	identitySvc.PurgeSkills = registryPurgeSvc.PurgeWorkspace
 	identitySvc.PurgeImportSources = ingestPurgeSvc.PurgeWorkspace

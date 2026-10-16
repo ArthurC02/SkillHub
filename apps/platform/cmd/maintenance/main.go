@@ -30,6 +30,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/graders"
 )
 
 func main() {
@@ -375,15 +376,18 @@ func purgeService(pool *pgxpool.Pool) *identity.Service {
 	registrySvc := registryPurger(pool)
 	ingestSvc := &ingest.Service{Pool: pool, SourcesInVersions: registry.SourcesInVersions}
 	return &identity.Service{
-		Pool:                       pool,
-		PurgeAnalytics:             analytics.PurgeWorkspace,
-		PurgeTestData:              testlabSvc.PurgeWorkspace,
-		PurgeRunArtifacts:          runSvc.PurgeWorkspace,
-		PurgeDownloads:             packagingSvc.PurgeWorkspace,
-		PurgeSkills:                registrySvc.PurgeWorkspace,
-		PurgeImportSources:         ingestSvc.PurgeWorkspace,
-		PurgeCreation:              creation.PurgeWorkspace,
-		PurgePublications:          publishing.PurgeWorkspace,
+		Pool: pool,
+		WorkspacePurges: identity.WorkspacePurges{
+			PurgeAnalytics:     analytics.PurgeWorkspace,
+			PurgeTestData:      testlabSvc.PurgeWorkspace,
+			PurgeRunArtifacts:  runSvc.PurgeWorkspace,
+			PurgeDownloads:     packagingSvc.PurgeWorkspace,
+			PurgeSkills:        registrySvc.PurgeWorkspace,
+			PurgeImportSources: ingestSvc.PurgeWorkspace,
+			PurgeCreation:      creation.PurgeWorkspace,
+			PurgeGraders:       graders.PurgeWorkspace,
+			PurgePublications:  publishing.PurgeWorkspace,
+		},
 		DatasetObjectKeys:          testlab.WorkspaceObjectKeys,
 		RunArtifactObjectKeys:      run.WorkspaceObjectKeys,
 		DownloadArtifactObjectKeys: packaging.WorkspaceObjectKeys,

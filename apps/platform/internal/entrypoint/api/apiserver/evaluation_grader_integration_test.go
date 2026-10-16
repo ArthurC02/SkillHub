@@ -145,6 +145,44 @@ func TestAPlatformGraderIsDefinedByOperatorsAndUsableByEveryWorkspace(t *testing
 	}
 }
 
+func TestAccountPurgeRemovesTheWorkspacesGradersAndKeepsPlatformOnes(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	operator, alice := a.login(t, freshName("grader-purge-operator")), a.login(t, freshName("grader-purge-alice"))
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	platform, _ := createGrader(t, operator, "/admin/evaluation/graders", freshName("平台"), "fail when the reply is rude")["id"].(string)
+	own, _ := createGrader(t, alice, "/evaluation/graders", "語氣", "fail when the reply sounds curt")["id"].(string)
+	if status, _ := alice.doJSON(t, http.MethodPost, "/evaluation/graders/"+own+"/versions",
+		`{"instructions":"fail when the reply sounds cold","reason":"cold replies slipped through"}`); status != http.StatusCreated {
+		t.Fatalf("revise: got %d", status)
+	}
+	ws := workspaceOf(t, pool, alice)
+	count := func(q string, arg any) int {
+		var n int
+		if err := pool.QueryRow(context.Background(), q, arg).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+
+	if code := alice.status(t, http.MethodDelete, "/me"); code != http.StatusOK {
+		t.Fatalf("DELETE /me: %d", code)
+	}
+	if _, err := a.auth.Service.PurgeExpiredAccounts(context.Background(), a.packages, 0, 10); err != nil {
+		t.Fatal(err)
+	}
+
+	if n := count("SELECT count(*) FROM evaluation_graders WHERE workspace_id=$1", ws.ID); n != 0 {
+		t.Errorf("%d of the deleted workspace's graders survived the purge", n)
+	}
+	if n := count("SELECT count(*) FROM evaluation_grader_versions WHERE grader_id=$1", mustUUID(t, own)); n != 0 {
+		t.Errorf("%d versions of the deleted workspace's grader survived the purge", n)
+	}
+	if n := count("SELECT count(*) FROM evaluation_grader_versions WHERE grader_id=$1", mustUUID(t, platform)); n != 1 {
+		t.Errorf("the platform grader has %d versions after another account's purge, want 1", n)
+	}
+}
+
 func checkNaming(versionID string) string {
 	return fmt.Sprintf(`{"text":"reads well","check":{"kind":"prompt_grader","values":[%q]}}`, versionID)
 }

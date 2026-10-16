@@ -40,3 +40,6 @@ SELECT v.id, v.version, v.instructions, g.name
 FROM evaluation_grader_versions v
 JOIN evaluation_graders g ON g.id = v.grader_id
 WHERE v.id = ANY(@ids::uuid[]) AND (g.workspace_id = @workspace_id OR g.workspace_id IS NULL);
+
+-- name: PurgeWorkspaceEvaluationGraders :execrows
+DELETE FROM evaluation_graders WHERE workspace_id = @workspace_id;

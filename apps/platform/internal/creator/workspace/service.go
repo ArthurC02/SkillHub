@@ -46,18 +46,23 @@ func ProviderOrNone(g *GitHubOAuth) IdentityProvider {
 	return g
 }
 
-type Service struct {
-	Pool  *pgxpool.Pool
-	OAuth IdentityProvider
-
+type WorkspacePurges struct {
 	PurgeAnalytics     WorkspacePurge
 	PurgeTestData      WorkspacePurge
 	PurgeRunArtifacts  WorkspacePurge
 	PurgeDownloads     WorkspacePurge
 	PurgeCreation      WorkspacePurge
+	PurgeGraders       WorkspacePurge
 	PurgePublications  WorkspacePurge
 	PurgeSkills        WorkspacePurge
 	PurgeImportSources WorkspacePurge
+}
+
+type Service struct {
+	Pool  *pgxpool.Pool
+	OAuth IdentityProvider
+
+	WorkspacePurges
 
 	DatasetObjectKeys          WorkspaceObjectKeys
 	RunArtifactObjectKeys      WorkspaceObjectKeys

@@ -238,3 +238,15 @@ func (q *Queries) ListVisibleEvaluationGraders(ctx context.Context, workspaceID 
 	}
 	return items, nil
 }
+
+const purgeWorkspaceEvaluationGraders = `-- name: PurgeWorkspaceEvaluationGraders :execrows
+DELETE FROM evaluation_graders WHERE workspace_id = $1
+`
+
+func (q *Queries) PurgeWorkspaceEvaluationGraders(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeWorkspaceEvaluationGraders, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

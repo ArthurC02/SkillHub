@@ -192,3 +192,8 @@ func listedGrader(r gen.ListVisibleEvaluationGradersRow) Grader {
 		VersionID: pgconv.UUIDString(r.VersionID), Version: r.Version, Instructions: r.Instructions, RevisedAt: r.VersionCreatedAt.Time,
 	}
 }
+
+func PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
+	_, err := gen.New(tx).PurgeWorkspaceEvaluationGraders(ctx, workspaceID)
+	return err
+}
