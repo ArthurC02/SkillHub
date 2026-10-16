@@ -529,6 +529,25 @@ class FailureEvidenceTest(unittest.TestCase):
         output = "=== RUN   TestPurge\n--- FAIL: TestPurge (0.00s)\npanic: nil pointer\n" + frames
         self.assertEqual("--- FAIL: TestPurge (0.00s)\npanic: nil pointer\n...\n" + output[-OUTPUT_TAIL:], failure_evidence(output))
 
+    def test_the_lines_indented_under_a_failure_are_kept_with_it(self) -> None:
+        failures = (
+            "--- FAIL: TestPurge (0.00s)\n"
+            "    --- FAIL: TestPurge/eval (0.00s)\n"
+            "        purge_steps_test.go:54: purge without eval = <nil>, want a refusal naming it\n"
+        )
+        output = failures + "FAIL\n" + "x" * OUTPUT_TAIL
+        self.assertEqual(failures + "...\n" + output[-OUTPUT_TAIL:], failure_evidence(output))
+
+    def test_at_most_three_indented_lines_follow_each_failure_until_a_line_not_indented_under_it(self) -> None:
+        details = "".join(f"    detail {number}\n" for number in range(5))
+        output = ("--- FAIL: TestPurge (0.00s)\n" + details + "--- FAIL: TestRun (0.00s)\n    run detail\nFAIL\n    unrelated\n"
+                  + "x" * OUTPUT_TAIL)
+        self.assertEqual(
+            ["--- FAIL: TestPurge (0.00s)", "    detail 0", "    detail 1", "    detail 2", "--- FAIL: TestRun (0.00s)",
+             "    run detail", "..."],
+            failure_evidence(output).splitlines()[:7],
+        )
+
     def test_output_that_fits_is_kept_whole(self) -> None:
         output = "--- FAIL: TestPurge (0.00s)\n" + "x" * (OUTPUT_TAIL - 30)
         self.assertEqual(output, failure_evidence(output))

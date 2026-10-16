@@ -26,13 +26,30 @@ BUILD_FAILURE = re.compile(
     r"IndentationError|could not compile|error TS\d+|COMPILATION ERROR|error: cannot find symbol"
 )
 FAILURE_LINE = re.compile(r"^\s*(--- FAIL|FAIL:|ERROR:|FAILED|panic:)")
-MAX_FAILURE_LINES = 20
+MAX_FAILURE_LINES = 40
+MAX_DETAIL_LINES = 3
 
 
 def failure_evidence(output: str) -> str:
     tail = output[-OUTPUT_TAIL:]
-    failures = [line for line in output[:-OUTPUT_TAIL].splitlines() if FAILURE_LINE.match(line)]
+    failures = _failure_lines(output[:-OUTPUT_TAIL].splitlines())
     return "\n".join([*failures[:MAX_FAILURE_LINES], "...", tail]) if failures else tail
+
+
+def _failure_lines(lines: list[str]) -> list[str]:
+    kept: list[str] = []
+    depth, details = None, 0
+    for line in lines:
+        indent = len(line) - len(line.lstrip())
+        if FAILURE_LINE.match(line):
+            kept.append(line)
+            depth, details = indent, 0
+        elif depth is not None and indent > depth and details < MAX_DETAIL_LINES:
+            kept.append(line)
+            details += 1
+        else:
+            depth = None
+    return kept
 
 
 @dataclass(frozen=True)

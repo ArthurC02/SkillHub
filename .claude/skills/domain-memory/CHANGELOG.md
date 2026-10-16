@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.45.1
+
+### Fixed
+
+- `counterfactual` evidence keeps with each failure line up to three lines indented under it, so the assertion message of a failure outside the tail is no longer dropped.
+
 ## 0.45.0
 
 ### Changed
