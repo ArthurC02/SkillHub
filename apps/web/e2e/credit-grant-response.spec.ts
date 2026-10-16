@@ -5,11 +5,87 @@ import type { CreditLedger } from "../src/features/admin/admin.service";
 import { ADMIN_ACCOUNT, ADMIN_LEDGER, ME } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
+test.use({ trace: "retain-on-failure" });
+
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await stubPlatform(page);
   await page.route("**/me", (route) => route.fulfill({ json: { ...ME, operator: true } }));
+  await page.addInitScript(() => {
+    document.addEventListener(
+      "invalid",
+      (event) => {
+        const input = event.target;
+        if (input instanceof HTMLInputElement && input.id === "admin-account-email") {
+          input.dataset.accountInvalidValue = input.value;
+          input.dataset.accountInvalidMessage = input.validationMessage;
+        }
+      },
+      true,
+    );
+    document.addEventListener(
+      "submit",
+      (event) => {
+        const form = event.target;
+        if (form instanceof HTMLFormElement) {
+          const input = form.querySelector<HTMLInputElement>("#admin-account-email");
+          if (input) input.dataset.accountSubmittedValue = input.value;
+        }
+      },
+      true,
+    );
+    document.addEventListener(
+      "click",
+      (event) => {
+        const target = event.target;
+        if (target instanceof HTMLElement) {
+          const input = target
+            .closest("form")
+            ?.querySelector<HTMLInputElement>("#admin-account-email");
+          if (input) input.dataset.accountClickedTarget = target.tagName;
+        }
+      },
+      true,
+    );
+  });
 });
+
+test.afterEach(async ({ page }, info) => {
+  if (info.status === info.expectedStatus || page.isClosed()) return;
+  const state = await page.evaluate(() => {
+    const input = document.querySelector<HTMLInputElement>("#admin-account-email");
+    return {
+      value: input?.value,
+      valid: input?.validity.valid,
+      missing: input?.validity.valueMissing,
+      typeMismatch: input?.validity.typeMismatch,
+      validationMessage: input?.validationMessage,
+      invalidValue: input?.dataset.accountInvalidValue,
+      invalidMessage: input?.dataset.accountInvalidMessage,
+      submittedValue: input?.dataset.accountSubmittedValue,
+      clickedTarget: input?.dataset.accountClickedTarget,
+      activeId: document.activeElement?.id,
+      activeTag: document.activeElement?.tagName,
+      focused: document.hasFocus(),
+      scrollY,
+      inputBounds: input?.getBoundingClientRect().toJSON(),
+      buttonBounds: input?.form
+        ?.querySelector("button[type='submit']")
+        ?.getBoundingClientRect()
+        .toJSON(),
+    };
+  });
+  const path = info.outputPath("account-form-state.json");
+  await writeFile(path, JSON.stringify(state));
+  await info.attach("account-form-state", { path, contentType: "application/json" });
+});
+
+async function openAccount(page: Page) {
+  await page.goto("/admin/accounts");
+  await page.getByLabel("Email", { exact: true }).fill("member@example.com");
+  await page.getByRole("button", { name: "查詢", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "封測者甲", exact: true })).toBeVisible();
+}
 
 async function inspectUnconfirmedGrant(page: Page) {
   const report = await new AxeBuilder({ page }).analyze();
@@ -78,9 +154,7 @@ for (const amount of [25, -25]) {
         return route.fulfill({ json: receipt });
       });
       try {
-        await page.goto("/admin/accounts");
-        await page.getByLabel("Email", { exact: true }).fill("member@example.com");
-        await page.getByRole("button", { name: "查詢", exact: true }).click();
+        await openAccount(page);
         const input = page.locator("#admin-grant-amount");
         const note = page.locator("#admin-grant-note");
         await input.fill(String(amount));
@@ -170,9 +244,7 @@ for (const amount of [9007199254740992, -9007199254740992]) {
         },
       });
     });
-    await page.goto("/admin/accounts");
-    await page.getByLabel("Email", { exact: true }).fill("member@example.com");
-    await page.getByRole("button", { name: "查詢", exact: true }).click();
+    await openAccount(page);
     const input = page.locator("#admin-grant-amount");
     const note = page.locator("#admin-grant-note");
     await input.fill(String(amount));

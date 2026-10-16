@@ -7,7 +7,7 @@ import { stubPlatform } from "./stub";
 
 test.use({ trace: "retain-on-failure" });
 
-async function openLookup(page: Page) {
+async function openLookup(page: Page, draft = "Member+Ops@Example.com") {
   await page.setViewportSize({ width: 375, height: 812 });
   await stubPlatform(page);
   await page.route("**/me", (route) => route.fulfill({ json: { ...ME, operator: true } }));
@@ -18,7 +18,7 @@ async function openLookup(page: Page) {
     if (request.method() === "POST") writes.push(request.url());
   });
   await page.goto("/admin/accounts");
-  await page.getByLabel("Email", { exact: true }).fill("Member+Ops@Example.com");
+  if (draft) await page.getByLabel("Email", { exact: true }).fill(draft);
   return {
     writes,
     get documents() {
@@ -28,54 +28,65 @@ async function openLookup(page: Page) {
 }
 
 for (const previous of ["", "previous@example.com"]) {
-  test(`a browser-filled email replaces ${previous ? "a different" : "an empty"} draft as the submitted lookup intent`, async ({
-    page,
-  }) => {
-    const state = await openLookup(page);
-    const input = page.getByLabel("Email", { exact: true });
-    const email = "member@example.com";
-    const reads: string[] = [];
-    await page.route("**/admin/accounts?email=*", (route) => {
-      const requested = new URL(route.request().url()).searchParams.get("email")!;
-      reads.push(requested);
-      return route.fulfill({
-        json: requested === email ? ADMIN_ACCOUNT : { ...ADMIN_ACCOUNT, display_name: "先前帳號" },
+  for (const refreshProfile of [false, true]) {
+    test(`a browser-filled email replaces ${previous ? "a different" : "an empty"} draft as the submitted lookup intent${refreshProfile ? " after a profile refresh" : ""}`, async ({
+      page,
+    }) => {
+      const state = await openLookup(page, previous);
+      const input = page.getByLabel("Email", { exact: true });
+      const email = "member@example.com";
+      const reads: string[] = [];
+      await page.route("**/admin/accounts?email=*", (route) => {
+        const requested = new URL(route.request().url()).searchParams.get("email")!;
+        reads.push(requested);
+        return route.fulfill({
+          json:
+            requested === email ? ADMIN_ACCOUNT : { ...ADMIN_ACCOUNT, display_name: "先前帳號" },
+        });
       });
+      const submissions = await input.evaluateHandle((element: HTMLInputElement, email) => {
+        const values: string[] = [];
+        element.form!.addEventListener("submit", () => values.push(element.value));
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+          element,
+          email,
+        );
+        return { values, valid: element.checkValidity() };
+      }, email);
+      try {
+        expect(await submissions.evaluate(({ valid }) => valid)).toBe(true);
+        if (refreshProfile) {
+          await page.route("**/me", (route) =>
+            route.fulfill({ json: { ...ME, operator: true, display_name: "updated tester" } }),
+          );
+          await page.evaluate(() =>
+            document.dispatchEvent(new Event("visibilitychange", { bubbles: true })),
+          );
+          await expect(page.locator(".auth-name")).toHaveText("updated tester");
+        }
+        await expect(input).toHaveValue(email);
+        await page.getByRole("button", { name: "查詢", exact: true }).click();
+        await expect.poll(() => submissions.evaluate(({ values }) => values)).toEqual([email]);
+        await expect.poll(() => reads).toEqual([email]);
+        await expect(page.getByRole("heading", { name: "封測者甲", exact: true })).toBeVisible();
+        await expect(input).toHaveValue(email);
+        expect(new URL(page.url()).pathname).toBe("/admin/accounts");
+        expect(new URL(page.url()).search).toBe("");
+        expect(state.documents).toBe(1);
+        expect(state.writes).toEqual([]);
+      } finally {
+        await writeFile(
+          test.info().outputPath("account-submission-values.json"),
+          JSON.stringify({
+            browser: await submissions.evaluate(({ values }) => values),
+            requested: reads,
+            field: await input.inputValue(),
+          }),
+        );
+        await submissions.dispose();
+      }
     });
-    await input.fill(previous);
-    const submissions = await input.evaluateHandle((element: HTMLInputElement, email) => {
-      const values: string[] = [];
-      element.form!.addEventListener("submit", () => values.push(element.value));
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
-        element,
-        email,
-      );
-      return { values, valid: element.checkValidity() };
-    }, email);
-    try {
-      expect(await submissions.evaluate(({ valid }) => valid)).toBe(true);
-      await expect(input).toHaveValue(email);
-      await page.getByRole("button", { name: "查詢", exact: true }).click();
-      await expect.poll(() => submissions.evaluate(({ values }) => values)).toEqual([email]);
-      await expect.poll(() => reads).toEqual([email]);
-      await expect(page.getByRole("heading", { name: "封測者甲", exact: true })).toBeVisible();
-      await expect(input).toHaveValue(email);
-      expect(new URL(page.url()).pathname).toBe("/admin/accounts");
-      expect(new URL(page.url()).search).toBe("");
-      expect(state.documents).toBe(1);
-      expect(state.writes).toEqual([]);
-    } finally {
-      await writeFile(
-        test.info().outputPath("account-submission-values.json"),
-        JSON.stringify({
-          browser: await submissions.evaluate(({ values }) => values),
-          requested: reads,
-          field: await input.inputValue(),
-        }),
-      );
-      await submissions.dispose();
-    }
-  });
+  }
 }
 
 for (const [name, body] of [

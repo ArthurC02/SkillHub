@@ -39,7 +39,6 @@ export function AdminAccounts() {
             name="email"
             type="email"
             required
-            value={draft}
             onChange={(event) => setDraft(event.target.value)}
           />
         </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { useMe } from "../../../core/session/me.service";
+import { isTransientReadFailure } from "../../../core/api/client";
 import { AdminNav } from "./AdminNav";
 import { Loading } from "../../../shared/ui/Loading";
 import { PageReadFailure } from "../../../shared/ui/LoginRequired";
@@ -18,28 +19,31 @@ export function AdminPage({
   const me = useMe();
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
-    if (me.data?.operator && !window.location.hash) headingRef.current?.focus();
-  }, [me.data?.operator]);
+    if (me.data?.operator && !me.error && !window.location.hash) headingRef.current?.focus();
+  }, [me.data?.operator, me.error]);
   if (me.isPending) return <Loading what="" />;
-  if (me.error)
-    return (
-      <PageReadFailure
-        heading={heading}
-        error={me.error}
-        what="後台"
-        retry={() => void me.refetch()}
-        retrying={me.isFetching}
-      />
-    );
+  const failure = me.error ? (
+    <PageReadFailure
+      heading={heading}
+      error={me.error}
+      what="後台"
+      retry={() => void me.refetch()}
+      retrying={me.isFetching}
+    />
+  ) : null;
+  if (failure && (me.data?.operator !== true || !isTransientReadFailure(me.error))) return failure;
   if (me.data?.operator !== true) return <RouteNotFound />;
   return (
-    <section>
-      <h1 ref={headingRef} tabIndex={-1} className="admin-page-heading">
-        {heading}
-      </h1>
-      {lede && <p className="note">{lede}</p>}
-      <AdminNav currentPage={heading} />
-      {children}
-    </section>
+    <>
+      {failure}
+      <section hidden={Boolean(failure)}>
+        <h1 ref={headingRef} tabIndex={-1} className="admin-page-heading">
+          {heading}
+        </h1>
+        {lede && <p className="note">{lede}</p>}
+        <AdminNav currentPage={heading} />
+        {children}
+      </section>
+    </>
   );
 }
