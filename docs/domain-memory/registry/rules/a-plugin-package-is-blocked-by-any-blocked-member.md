@@ -1,9 +1,12 @@
 ---
 type: Business Rule
-status: draft
+status: stable
 owner: skill-packaging
 version: "1"
 effective_from: unknown
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-16T17:57:56.233858Z"
 sources:
   - resource: "apps/platform/internal/skill/delivery/plugin.go#L92-101"
     excerpt_sha256: "sha256:d2183a3f4e3b72d329a357d34901e649bd6d33f468589f38e9b4e9228007540b"

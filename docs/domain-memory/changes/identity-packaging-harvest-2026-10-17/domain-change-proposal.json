@@ -3,12 +3,12 @@
   "proposal_id": "identity-packaging-harvest",
   "proposer": "domain-memory-agent",
   "requirement_id": "identity-packaging-harvest",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-16T17:57:55.864984Z",
   "verified_at": "2026-10-16T17:57:56.717411Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-16T17:58:00.489523Z",
+  "applied_at": "2026-10-16T17:58:03.495805Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "a0186eeb9c42ccb03f47508816d15db78d478977",
@@ -490,5 +490,9 @@
         "registry_digest": "sha256:538fc74219acbe48a88a98c00f18e8d5b2c1dc7339fb9c4e62753a300c149344"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "d4085bb351dad43010282970b92e96ecfe667004",
+    "registry_digest": "sha256:b1eea3ac6f6543d1fdb501be91abb8eec235bac1f6678ed2a0095ffc3d2903f3"
+  }
 }
