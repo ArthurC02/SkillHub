@@ -5,6 +5,8 @@ import { ADMIN_ACCOUNT, ME } from "../src/testing/fixtures/platform";
 import { setOffline } from "./offline";
 import { stubPlatform } from "./stub";
 
+test.use({ trace: "retain-on-failure" });
+
 async function openLookup(page: Page) {
   await page.setViewportSize({ width: 375, height: 812 });
   await stubPlatform(page);
@@ -23,6 +25,57 @@ async function openLookup(page: Page) {
       return documents;
     },
   };
+}
+
+for (const previous of ["", "previous@example.com"]) {
+  test(`a browser-filled email replaces ${previous ? "a different" : "an empty"} draft as the submitted lookup intent`, async ({
+    page,
+  }) => {
+    const state = await openLookup(page);
+    const input = page.getByLabel("Email", { exact: true });
+    const email = "member@example.com";
+    const reads: string[] = [];
+    await page.route("**/admin/accounts?email=*", (route) => {
+      const requested = new URL(route.request().url()).searchParams.get("email")!;
+      reads.push(requested);
+      return route.fulfill({
+        json: requested === email ? ADMIN_ACCOUNT : { ...ADMIN_ACCOUNT, display_name: "先前帳號" },
+      });
+    });
+    await input.fill(previous);
+    const submissions = await input.evaluateHandle((element: HTMLInputElement, email) => {
+      const values: string[] = [];
+      element.form!.addEventListener("submit", () => values.push(element.value));
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        element,
+        email,
+      );
+      return { values, valid: element.checkValidity() };
+    }, email);
+    try {
+      expect(await submissions.evaluate(({ valid }) => valid)).toBe(true);
+      await expect(input).toHaveValue(email);
+      await page.getByRole("button", { name: "查詢", exact: true }).click();
+      await expect.poll(() => submissions.evaluate(({ values }) => values)).toEqual([email]);
+      await expect.poll(() => reads).toEqual([email]);
+      await expect(page.getByRole("heading", { name: "封測者甲", exact: true })).toBeVisible();
+      await expect(input).toHaveValue(email);
+      expect(new URL(page.url()).pathname).toBe("/admin/accounts");
+      expect(new URL(page.url()).search).toBe("");
+      expect(state.documents).toBe(1);
+      expect(state.writes).toEqual([]);
+    } finally {
+      await writeFile(
+        test.info().outputPath("account-submission-values.json"),
+        JSON.stringify({
+          browser: await submissions.evaluate(({ values }) => values),
+          requested: reads,
+          field: await input.inputValue(),
+        }),
+      );
+      await submissions.dispose();
+    }
+  });
 }
 
 for (const [name, body] of [

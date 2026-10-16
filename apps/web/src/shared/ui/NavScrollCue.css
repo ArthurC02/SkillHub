@@ -3,8 +3,12 @@
 }
 
 @media (max-width: 640px) {
-  .nav-scroll-cue:not([hidden]) {
+  :has(> .nav-scroll-cue) {
     --nav-scroll-cue-width: 64px;
+    scroll-padding-inline: calc(var(--nav-scroll-cue-width) + 8px);
+  }
+
+  .nav-scroll-cue:not([hidden]) {
     position: sticky;
     right: 0;
     z-index: 1;
@@ -15,14 +19,14 @@
     justify-content: flex-end;
     margin-left: calc(-1 * var(--nav-scroll-cue-width));
     padding-right: 4px;
-    color: var(--link);
-    background: linear-gradient(90deg, transparent, var(--surface) 42%);
+    color: inherit;
+    background: inherit;
     font-size: 14px;
     font-weight: 700;
     pointer-events: none;
   }
 
   .category-nav .nav-scroll-cue {
-    background: linear-gradient(90deg, transparent, var(--bg) 42%);
+    background: var(--bg);
   }
 }

@@ -8,6 +8,7 @@ import {
   isLastingReadFailure,
 } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
+import { isEvaluationResponse, isEvaluationRevisionsResponse } from "./evaluation-response.model";
 
 export type EvaluationVerdict = "met" | "partially_met" | "not_met" | "undetermined";
 export type CriterionVerdict = "passed" | "failed" | "undetermined";
@@ -170,9 +171,12 @@ export type RunComparison = {
   version_diff_url?: string;
 };
 
-export function getEvaluation(runId: string, revision?: string) {
+export async function getEvaluation(runId: string, revision?: string): Promise<Evaluation> {
   const query = revision ? `?revision=${encodeURIComponent(revision)}` : "";
-  return apiFetch<Evaluation>(`/runs/${runId}/evaluation${query}`);
+  const result = await apiFetch<unknown>(`/runs/${encodeURIComponent(runId)}/evaluation${query}`);
+  if (!isEvaluationResponse(result, runId, revision))
+    throw new Error("Invalid evaluation response");
+  return result;
 }
 
 export const EVALUATION_POLL_MAX_404 = 20;
@@ -239,11 +243,19 @@ function useRevisionsFollowCurrent(runId: string, current: string | undefined) {
   }, [client, runId, current]);
 }
 
+export async function getEvaluationRevisions(
+  runId: string,
+): Promise<{ revisions: EvaluationRevision[] }> {
+  const result = await apiFetch<unknown>(`/runs/${encodeURIComponent(runId)}/evaluation/revisions`);
+  if (!isEvaluationRevisionsResponse(result))
+    throw new Error("Invalid evaluation revisions response");
+  return result;
+}
+
 export function useEvaluationRevisions(runId: string, evaluated: boolean) {
   return useQuery({
     queryKey: queryKeys.evaluation.revisions(runId),
-    queryFn: () =>
-      apiFetch<{ revisions: EvaluationRevision[] }>(`/runs/${runId}/evaluation/revisions`),
+    queryFn: () => getEvaluationRevisions(runId),
     enabled: runId.length > 0 && evaluated,
   });
 }
