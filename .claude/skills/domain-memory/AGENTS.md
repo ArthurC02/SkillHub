@@ -2,7 +2,7 @@
 
 A file-backed Registry of reviewed domain facts, and the commands that read it and change it under review. The next Agent inherits what this one established about the domain, instead of re-deriving it from the code and guessing where it was wrong.
 
-Nothing here is specific to one Agent or one host. The durable state is JSON files in the repository, the behavior is Markdown plus Python, and the review boundary is Git.
+Nothing here is specific to one Agent or one host. The durable state is files in the repository (the facts as Markdown in the Open Knowledge Format, the rest as JSON), the behavior is Markdown plus Python, and the review boundary is Git.
 
 ## How it fits together
 
@@ -10,7 +10,7 @@ Everything lives under one Registry root, inside the repository:
 
 ```text
 <registry-root>/
-  registry/                   the facts: one JSON file per asset, plus manifest.json
+  registry/                   the facts: one Markdown concept per record, one folder per asset, index.md files
   source-map.json             the repository paths the facts may cite, with a snapshot of each
   domain-memory-policy.json   who may approve a fact, and how that approval is checked
   audit/events.jsonl          a hash-chained log of every write

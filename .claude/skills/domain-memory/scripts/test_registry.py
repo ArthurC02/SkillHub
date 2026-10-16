@@ -24,18 +24,18 @@ from domain_registry.registry import (
     validate,
     verify_evidence,
 )
-from test_support import RegistryTestCase, append_audit, scan_secrets, amend_policy
+from domain_registry.store import read_document, write_document
+from test_support import RegistryTestCase, append_audit, scan_secrets, amend_policy, use_json_layout
 
 
 class RegistryTest(RegistryTestCase):
     def test_lookup_honors_policy_result_limit(self) -> None:
-        document = self.repo / "memory" / "registry" / "contexts.json"
-        value = json.loads(document.read_text(encoding="utf-8"))
+        value = read_document(self.repo / "memory", "contexts.json")
         value["contexts"] = [
             {"id": "one", "name": "One", "responsibility": "First."},
             {"id": "two", "name": "Two", "responsibility": "Second."},
         ]
-        document.write_text(json.dumps(value), encoding="utf-8")
+        write_document(self.repo / "memory", "contexts.json", value)
         policy_path = self.repo / "memory" / "domain-memory-policy.json"
         policy = json.loads(policy_path.read_text(encoding="utf-8"))
         policy["limits"]["max_query_results"] = 1
@@ -50,6 +50,7 @@ class RegistryTest(RegistryTestCase):
         )
 
     def test_each_record_and_reference_defect_is_named(self) -> None:
+        use_json_layout(self.repo / "memory")
         orders = {"id": "orders", "name": "Orders", "responsibility": "Own orders."}
         billing = {"id": "billing", "name": "Billing", "responsibility": "Own invoices."}
         order_term = {"id": "order", "name": "Order", "contexts": ["orders"]}
@@ -113,12 +114,12 @@ class RegistryTest(RegistryTestCase):
              [{"id": "i", "producer_context": "orders", "consumer_context": "billing", "contract_id": "none"}],
              "interactions.json:i references unknown contract"),
         ]
-        registry = self.repo / "memory" / "registry"
-        pristine = {name: (registry / name).read_text(encoding="utf-8") for name in ASSET_KEYS}
+        root = self.repo / "memory"
+        pristine = {name: read_document(root, name) for name in ASSET_KEYS}
         for label, name, records, message in cases:
             with self.subTest(label):
-                for asset, text in pristine.items():
-                    (registry / asset).write_text(text, encoding="utf-8")
+                for asset, document in pristine.items():
+                    write_document(root, asset, document)
                 if name != "contexts.json":
                     self.seed("contexts.json", [orders, billing])
                 self.seed(name, records)
@@ -179,6 +180,7 @@ class RegistryTest(RegistryTestCase):
         self.assertEqual(1, len(events.read_text(encoding="utf-8").splitlines()))
 
     def test_a_registry_root_one_directory_too_deep_is_named_as_such(self) -> None:
+        use_json_layout(self.repo / "memory")
         inner = self.repo / "memory" / "registry"
         self.assertEqual(
             [
@@ -652,6 +654,7 @@ class RegistryTest(RegistryTestCase):
             "contexts.json",
             [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}],
         )
+        use_json_layout(self.repo / "memory")
         (self.repo / "memory" / "registry" / "events.json").unlink()
         created = migrate_registry(self.repo / "memory")
         self.assertEqual(created, ["events.json"])
@@ -812,6 +815,7 @@ class RegistryTest(RegistryTestCase):
         self.assertEqual(self.stored_policy()["review_mode"], "scm-verified")
 
     def test_verify_evidence_names_the_record_of_each_citation_and_filters_by_path(self) -> None:
+        use_json_layout(self.repo / "memory")
         self.seed_two_cited_rules()
         report = verify_evidence(self.repo / "memory", self.repo, ["fact.md"])
         self.assertEqual(
@@ -874,6 +878,7 @@ class RegistryTest(RegistryTestCase):
             lookup(self.repo / "memory", "nonsense", "")
 
     def test_a_result_limit_equal_to_the_match_count_returns_every_match(self) -> None:
+        use_json_layout(self.repo / "memory")
         self.two_contexts()
         self.allow_results(2)
         found = lookup(self.repo / "memory", "contexts", "")
@@ -894,6 +899,7 @@ class RegistryTest(RegistryTestCase):
         )
 
     def test_a_context_model_gathers_each_section_from_the_records_that_name_the_context(self) -> None:
+        use_json_layout(self.repo / "memory")
         self.two_contexts()
         self.seed("vocabulary.json", [
             {"id": "order", "name": "Order", "contexts": ["orders"]},
@@ -960,6 +966,7 @@ class RegistryTest(RegistryTestCase):
         self.assertEqual(("no_registered_collaboration", []), (analysis["status"], analysis["contracts"]))
 
     def test_each_asset_level_defect_is_named(self) -> None:
+        use_json_layout(self.repo / "memory")
         registry = self.repo / "memory" / "registry"
         events = registry / "events.json"
 

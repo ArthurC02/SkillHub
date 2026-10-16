@@ -49,22 +49,30 @@ from domain_registry.updates import (
     retract_candidate,
     upsert_candidate,
 )
-from test_support import RegistryTestCase, append_audit, amend_policy
+from domain_registry.store import (
+    MANIFEST,
+    document_path,
+    is_concept_layout,
+    read_document,
+    write_document,
+)
+from test_support import RegistryTestCase, append_audit, amend_policy, snapshot_of_files, use_json_layout
 
 
 class UpdatesTest(RegistryTestCase):
     def test_changed_registry_rejects_a_captured_revision(self) -> None:
+        use_json_layout(self.repo / "memory")
         expected = current_registry_revision(self.repo / "memory", self.repo)
-        document = self.repo / "memory" / "registry" / "contexts.json"
-        value = json.loads(document.read_text(encoding="utf-8"))
+        value = read_document(self.repo / "memory", "contexts.json")
         value["note"] = "changed"
-        document.write_text(json.dumps(value), encoding="utf-8")
+        write_document(self.repo / "memory", "contexts.json", value)
         with self.assertRaisesRegex(ValueError, "stale"):
             require_current_registry_revision(
                 {"base_registry_revision": expected}, self.repo / "memory", self.repo
             )
 
     def test_a_stale_base_holds_only_while_what_the_proposal_touches_is_unchanged(self) -> None:
+        use_json_layout(self.repo / "memory")
         def billing_renamed(value):
             value["contexts"][1]["name"] = "Invoicing"
 
@@ -117,9 +125,7 @@ class UpdatesTest(RegistryTestCase):
             require_current_registry_revision(proposal, self.repo / "memory", self.repo)
 
     def test_invalid_candidate_does_not_change_registry(self) -> None:
-        before = (self.repo / "memory" / "registry" / "vocabulary.json").read_text(
-            encoding="utf-8"
-        )
+        before = read_document(self.repo / "memory", "vocabulary.json")
         record = self.write_record(
             "term.json",
             {
@@ -131,12 +137,7 @@ class UpdatesTest(RegistryTestCase):
         )
         with self.assertRaisesRegex(ValueError, "unknown context"):
             upsert_candidate(self.repo / "memory", self.repo, "vocabulary", record)
-        self.assertEqual(
-            before,
-            (self.repo / "memory" / "registry" / "vocabulary.json").read_text(
-                encoding="utf-8"
-            ),
-        )
+        self.assertEqual(before, read_document(self.repo / "memory", "vocabulary.json"))
 
     def test_a_submitted_record_cannot_carry_its_own_approval(self) -> None:
         record = self.write_record(
@@ -154,11 +155,7 @@ class UpdatesTest(RegistryTestCase):
             },
         )
         upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
-        stored = json.loads(
-            (self.repo / "memory" / "registry" / "contexts.json").read_text(
-                encoding="utf-8"
-            )
-        )
+        stored = read_document(self.repo / "memory", "contexts.json")
         written = next(
             entry for entry in stored["contexts"] if entry["id"] == "orders"
         )
@@ -166,9 +163,7 @@ class UpdatesTest(RegistryTestCase):
         self.assertNotIn("review", written)
 
     def test_audit_failure_rolls_back_a_registry_swap(self) -> None:
-        before = (self.repo / "memory" / "registry" / "contexts.json").read_text(
-            encoding="utf-8"
-        )
+        before = read_document(self.repo / "memory", "contexts.json")
         record = self.write_record(
             "context.json",
             {"id": "orders", "name": "Orders", "responsibility": "Own orders."},
@@ -181,12 +176,7 @@ class UpdatesTest(RegistryTestCase):
             self.assertRaisesRegex(OSError, "audit unavailable"),
         ):
             upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
-        self.assertEqual(
-            before,
-            (self.repo / "memory" / "registry" / "contexts.json").read_text(
-                encoding="utf-8"
-            ),
-        )
+        self.assertEqual(before, read_document(self.repo / "memory", "contexts.json"))
         self.assertFalse(
             (self.repo / "memory" / ".domain-registry-transaction.json").exists()
         )
@@ -384,9 +374,10 @@ class UpdatesTest(RegistryTestCase):
         root = self.repo / "memory"
         backup = root / ".domain-registry-backup-new"
         staging = root / ".domain-registry-stage-new"
+        original = document_path(root, MANIFEST).read_bytes()
         shutil.copytree(root / "registry", backup)
         staging.mkdir()
-        (root / "registry" / "manifest.json").write_text("{}\n", encoding="utf-8")
+        document_path(root, MANIFEST).write_text("{}\n", encoding="utf-8")
         transaction_path(root).write_text(
             json.dumps(
                 {
@@ -400,23 +391,19 @@ class UpdatesTest(RegistryTestCase):
             encoding="utf-8",
         )
         recover_interrupted_update(root, False)
-        self.assertEqual(
-            "domain-registry/v1",
-            json.loads(
-                (root / "registry" / "manifest.json").read_text(encoding="utf-8")
-            )["format"],
-        )
+        self.assertEqual(original, document_path(root, MANIFEST).read_bytes())
 
     def test_recovery_rolls_back_an_installed_transaction_when_the_last_audit_event_is_another_operations(
         self,
     ) -> None:
+        original = document_path(self.repo / "memory", MANIFEST).read_bytes()
         root, backup, _ = self.interrupted_transaction("installed")
         append_audit(root, {"operation": "update", "operation_id": "someone-else"})
         recover_interrupted_update(root, False)
         self.assertEqual(
-            ("domain-registry/v1", False, False),
+            (original, False, False),
             (
-                json.loads((root / "registry" / "manifest.json").read_text(encoding="utf-8"))["format"],
+                document_path(root, MANIFEST).read_bytes(),
                 backup.exists(), transaction_path(root).exists(),
             ),
         )
@@ -429,7 +416,7 @@ class UpdatesTest(RegistryTestCase):
         staging = root / ".domain-registry-stage-audited"
         shutil.copytree(root / "registry", backup)
         staging.mkdir()
-        (root / "registry" / "manifest.json").write_text("{}\n", encoding="utf-8")
+        document_path(root, MANIFEST).write_text("{}\n", encoding="utf-8")
         append_audit(root, {"operation": "update", "operation_id": "audited"})
         transaction_path(root).write_text(
             json.dumps(
@@ -445,7 +432,7 @@ class UpdatesTest(RegistryTestCase):
         )
         recover_interrupted_update(root, False)
         self.assertEqual(
-            "{}\n", (root / "registry" / "manifest.json").read_text(encoding="utf-8")
+            "{}\n", document_path(root, MANIFEST).read_text(encoding="utf-8")
         )
         self.assertFalse(backup.exists())
 
@@ -480,7 +467,7 @@ class UpdatesTest(RegistryTestCase):
         self.assertEqual(
             ("{}\n", False, False, False),
             (
-                (root / "registry" / "manifest.json").read_text(encoding="utf-8"),
+                document_path(root, MANIFEST).read_text(encoding="utf-8"),
                 backup.exists(), staging.exists(), transaction_path(root).exists(),
             ),
         )
@@ -499,13 +486,14 @@ class UpdatesTest(RegistryTestCase):
                 transaction_path(root).unlink()
 
     def test_recovery_restores_the_backup_when_an_unaudited_install_left_no_registry(self) -> None:
+        original = document_path(self.repo / "memory", MANIFEST).read_bytes()
         root, backup, _ = self.interrupted_transaction("installed")
         remove_tree(root / "registry")
         recover_interrupted_update(root, False)
         self.assertEqual(
-            ("domain-registry/v1", False, False),
+            (original, False, False),
             (
-                json.loads((root / "registry" / "manifest.json").read_text(encoding="utf-8"))["format"],
+                document_path(root, MANIFEST).read_bytes(),
                 backup.exists(), transaction_path(root).exists(),
             ),
         )
@@ -587,9 +575,9 @@ class UpdatesTest(RegistryTestCase):
         package = self.draft_package()
         self.approve_and_apply(package)
         written = [
-            self.repo / "memory" / "registry" / "manifest.json",
+            document_path(self.repo / "memory", MANIFEST),
             self.repo / "memory" / "audit" / "events.jsonl",
-            self.repo / "memory" / "registry" / "rules.json",
+            *sorted((self.repo / "memory" / "registry" / "rules").glob("*.md")),
             package / "domain-change-proposal.json",
         ]
         for path in written:
@@ -605,7 +593,7 @@ class UpdatesTest(RegistryTestCase):
         self.assertEqual(("upsert", "rules"), (update["operation"], update["asset"]))
         self.assertNotIn("status", update["record"])
         self.approve_and_apply(package)
-        rules = json.loads((self.repo / "memory" / "registry" / "rules.json").read_text(encoding="utf-8"))
+        rules = read_document(self.repo / "memory", "rules.json")
         [rule] = rules["rules"]
         self.assertEqual(("order-total", "reviewed", "An order total is non-negative."),
                          (rule["id"], rule["status"], rule["statement"]))
@@ -750,6 +738,7 @@ class UpdatesTest(RegistryTestCase):
             upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
 
     def test_terms_that_name_each_other_are_upserted_together_in_one_audited_change(self) -> None:
+        use_json_layout(self.repo / "memory")
         order, line = self.look_alike_terms()
         upsert_candidate(self.repo / "memory", self.repo, "vocabulary", order, line)
         self.assertEqual(
@@ -832,11 +821,7 @@ class UpdatesTest(RegistryTestCase):
             },
         )
         upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
-        stored = json.loads(
-            (self.repo / "memory" / "registry" / "contexts.json").read_text(
-                encoding="utf-8"
-            )
-        )
+        stored = read_document(self.repo / "memory", "contexts.json")
         self.assertEqual(
             stored["contexts"][0]["evidence"][0]["source_kind"], "decisions"
         )
@@ -869,11 +854,11 @@ class UpdatesTest(RegistryTestCase):
         self.assertEqual(recorded["reason"], "Not a boundary.")
 
     def test_a_reviewed_record_cannot_be_retracted(self) -> None:
+        use_json_layout(self.repo / "memory")
         self.two_contexts()
-        document = self.repo / "memory" / "registry" / "contexts.json"
-        value = json.loads(document.read_text(encoding="utf-8"))
+        value = read_document(self.repo / "memory", "contexts.json")
         value["contexts"][0]["status"] = "reviewed"
-        document.write_text(json.dumps(value), encoding="utf-8")
+        write_document(self.repo / "memory", "contexts.json", value)
         with self.assertRaisesRegex(ValueError, "superseding proposal"):
             retract_candidate(
                 self.repo / "memory", self.repo, "contexts", "orders", "Changed my mind."
@@ -883,18 +868,19 @@ class UpdatesTest(RegistryTestCase):
         )
 
     def test_a_reviewed_record_is_not_overwritten_by_an_upserted_candidate(self) -> None:
+        use_json_layout(self.repo / "memory")
         self.two_contexts()
         self.edit_registry("contexts.json", lambda value: value["contexts"][0].update(status="reviewed"))
-        registry_file = self.repo / "memory" / "registry" / "contexts.json"
-        before = registry_file.read_bytes()
+        registry_files = snapshot_of_files(self.repo / "memory" / "registry")
         record = self.write_record(
             "context.json", {"id": "orders", "name": "Renamed", "responsibility": "Own everything."}
         )
         with self.assertRaisesRegex(ValueError, "^cannot overwrite reviewed record: orders$"):
             upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
-        self.assertEqual(before, registry_file.read_bytes())
+        self.assertEqual(registry_files, snapshot_of_files(self.repo / "memory" / "registry"))
 
     def test_retracting_an_absent_record_changes_nothing(self) -> None:
+        use_json_layout(self.repo / "memory")
         self.two_contexts()
         with self.assertRaisesRegex(ValueError, "no such record"):
             retract_candidate(
@@ -910,6 +896,7 @@ class UpdatesTest(RegistryTestCase):
             retract_candidate(self.repo / "memory", self.repo, "contexts", "billing", "   ")
 
     def test_a_referenced_candidate_cannot_be_retracted(self) -> None:
+        use_json_layout(self.repo / "memory")
         self.two_contexts()
         self.seed(
             "interactions.json",
@@ -934,15 +921,14 @@ class UpdatesTest(RegistryTestCase):
             self.repo / "memory", "review_mode", "local-draft-only", "No external verifier is configured."
         )
         self.two_contexts()
-        document = self.repo / "memory" / "registry" / "contexts.json"
-        value = json.loads(document.read_text(encoding="utf-8"))
+        value = read_document(self.repo / "memory", "contexts.json")
         value["status"] = "reviewed"
         for record in value["contexts"]:
             record["status"] = "reviewed"
             record["review"] = {"proposal_id": "P-1"}
-        document.write_text(json.dumps(value), encoding="utf-8")
+        write_document(self.repo / "memory", "contexts.json", value)
         demote_local_reviews(self.repo / "memory", self.repo)
-        return json.loads(document.read_text(encoding="utf-8"))
+        return read_document(self.repo / "memory", "contexts.json")
 
     def test_demoting_local_reviews_sets_a_reviewed_record_to_candidate(self) -> None:
         self.assertEqual("candidate", self.demoted_contexts()["contexts"][0]["status"])
@@ -968,6 +954,10 @@ class UpdatesTest(RegistryTestCase):
             demote_local_reviews(self.repo / "memory", self.repo)
         self.assertEqual([], read_audit_events(self.repo / "memory"))
 
+    def assert_registry_in_place(self, root: Path) -> None:
+        self.assertTrue(is_concept_layout(root))
+        self.assertTrue((root / "registry" / "contexts").is_dir())
+
     def test_recovery_restores_the_registry_a_crash_left_in_the_backup(self) -> None:
         root = self.repo / "memory"
         backup = root / ".domain-registry-backup-abc"
@@ -979,7 +969,7 @@ class UpdatesTest(RegistryTestCase):
             encoding="utf-8",
         )
         recover_interrupted_update(root, False)
-        self.assertTrue((root / "registry" / "contexts.json").is_file())
+        self.assert_registry_in_place(root)
         self.assertFalse(transaction_path(root).exists())
 
     def test_recovery_discards_a_backup_whose_folders_are_read_only(self) -> None:
@@ -998,7 +988,7 @@ class UpdatesTest(RegistryTestCase):
         recover_interrupted_update(root, False)
         self.assertFalse(backup.exists())
         self.assertFalse(transaction_path(root).exists())
-        self.assertTrue((root / "registry" / "contexts.json").is_file())
+        self.assert_registry_in_place(root)
 
     def test_recovery_discards_a_backup_once_the_registry_is_already_in_place(
         self,
@@ -1014,7 +1004,7 @@ class UpdatesTest(RegistryTestCase):
         )
         recover_interrupted_update(root, False)
         self.assertFalse(backup.exists())
-        self.assertTrue((root / "registry" / "contexts.json").is_file())
+        self.assert_registry_in_place(root)
 
     def test_a_recovery_journal_naming_an_unsafe_path_is_refused(self) -> None:
         root = self.repo / "memory"
@@ -1033,7 +1023,7 @@ class UpdatesTest(RegistryTestCase):
                 )
                 with self.assertRaisesRegex(ValueError, "^registry recovery journal contains an unsafe path$"):
                     recover_interrupted_update(root, False)
-                self.assertTrue((root / "registry" / "contexts.json").is_file())
+                self.assert_registry_in_place(root)
 
     def test_a_malformed_recovery_journal_is_refused(self) -> None:
         root = self.repo / "memory"

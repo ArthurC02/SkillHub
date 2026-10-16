@@ -11,7 +11,7 @@ from .common import (
     GIT_COMMAND_TIMEOUT_SECONDS,
 )
 from .policy import existing_policy, policy_path
-from .store import document_path, has_document, read_document
+from .store import committed_documents, document_path, has_document, read_document
 
 COMMIT_LENGTH = 40
 DIGEST_PREFIX = "sha256:"
@@ -54,10 +54,18 @@ def git_commit(repo_root: Path) -> str | None:
 REGISTRY_FILES = ("manifest.json", *sorted(ASSET_KEYS))
 
 
+def _in_identifier_order(name: str, document: Any) -> Any:
+    records = document.get(ASSET_KEYS[name]) if name in ASSET_KEYS and isinstance(document, dict) else None
+    if not isinstance(records, list):
+        return document
+    ordered = sorted(records, key=lambda record: str(record.get("id")) if isinstance(record, dict) else "")
+    return {**document, ASSET_KEYS[name]: ordered}
+
+
 def _digest_of(documents: dict[str, Any], policy_name: str, policy: Any) -> str:
     digest = hashlib.sha256()
     for name in REGISTRY_FILES:
-        _feed(digest, name, _canonical_json(documents[name]))
+        _feed(digest, name, _canonical_json(_in_identifier_order(name, documents[name])))
     _feed(digest, policy_name, b"absent" if policy is None else _canonical_json(policy))
     return f"{DIGEST_PREFIX}{digest.hexdigest()}"
 
@@ -132,12 +140,9 @@ def _base_documents(
     commit = base.get("observed_commit")
     if commit is None:
         return None
-    documents = {}
-    for name in REGISTRY_FILES:
-        found, document = _committed_json(repo_root, commit, document_path(root, name))
-        if not found:
-            return None
-        documents[name] = document
+    documents = committed_documents(repo_root, commit, root, REGISTRY_FILES)
+    if documents is None:
+        return None
     _, policy = _committed_json(repo_root, commit, policy_path(root))
     if _digest_of(documents, policy_path(root).name, policy) != base["registry_digest"]:
         return None

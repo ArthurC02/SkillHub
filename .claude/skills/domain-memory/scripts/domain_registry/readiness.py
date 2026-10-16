@@ -3,10 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .common import load_json, one_level_too_deep_hint
+from .common import one_level_too_deep_hint
 from .policy import existing_policy
 from .registry import coverage, validate
 from .sources import discover_sources, verify_source_map
+from .store import MANIFEST, read_document
 
 PRODUCT_GROUPS = (
     "decisions",
@@ -55,7 +56,7 @@ def registry_condition(
         report[key]
         for key in ("contexts", "vocabulary_terms", "aggregates", "rules", "contracts")
     )
-    manifest = load_json(registry_path / "registry" / "manifest.json")
+    manifest = read_document(registry_path, MANIFEST)
     reviewed_empty = records == 0 and manifest.get("status") == "reviewed"
     return ("reviewed-empty" if reviewed_empty else "current"), records, []
 

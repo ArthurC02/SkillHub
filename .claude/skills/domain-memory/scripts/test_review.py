@@ -44,6 +44,7 @@ from domain_registry.git_hooks import governance_readiness
 from domain_registry.revision import (
     registry_digest,
 )
+from domain_registry.store import read_document
 from domain_registry.signing import SIGNING_KEY_ENV, init_signing_key
 from domain_registry.updates import (
     apply_approved_updates,
@@ -1249,11 +1250,7 @@ class ReviewTest(RegistryTestCase):
         verify_scm.assert_called_once_with(evidence["scm_attestation"], "GITHUB_TOKEN", True)
         digest_before_apply = registry_digest(self.repo / "memory")
         apply_approved_updates(package, self.repo / "memory", self.repo)
-        rules = json.loads(
-            (self.repo / "memory" / "registry" / "rules.json").read_text(
-                encoding="utf-8"
-            )
-        )
+        rules = read_document(self.repo / "memory", "rules.json")
         self.assertEqual("reviewed", rules["rules"][0]["status"])
         applied = json.loads(
             (package / "domain-change-proposal.json").read_text(encoding="utf-8")

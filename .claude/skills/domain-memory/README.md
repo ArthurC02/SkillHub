@@ -21,6 +21,8 @@ The suite takes several minutes. While working on one area, run its file from `s
 | --- | --- |
 | `common.py` | Asset names and formats, bounded JSON loading, the atomic `write_json`, the writer lock, and the shared rules: `record_status`, `utc_now` |
 | `registry.py` | Initializing and validating a Registry, lookups, terms, coverage, boundary analysis |
+| `store.py` | Reading and writing Registry documents, whichever layout holds them, and reading them at a commit |
+| `okf.py` | One record as one Open Knowledge Format concept document, and the YAML subset its frontmatter uses |
 | `transaction.py` | `mutate_registry`, the one write route: lock, stage a copy, validate, swap, audit, recover |
 | `audit.py` | The hash-chained `audit/events.jsonl` and its manifest |
 | `evidence.py` | Building a citation (`cite`) and judging one (`current`, `shifted`, `stale` and the rest) |
@@ -36,7 +38,7 @@ The suite takes several minutes. While working on one area, run its file from `s
 | `attestations.py`, `signing.py`, `git_hooks.py` | Outside proof: GitHub pull requests, signed commits, the pre-push hook |
 | `counterfactual.py`, `contracts.py` | Breaking one line to prove a test protects it; schema checks |
 
-Three rules keep this shape. Once a Registry exists, its records change only through `mutate_registry`; `init` and `migrate-registry` alone write asset files directly, to copy missing ones from `templates/` and list them in `manifest.json`. Every JSON document the plugin builds is written through `write_json`. A rule that two modules need lives once, in the lower one, and the other imports it.
+Three rules keep this shape. Once a Registry exists, its records change only through `mutate_registry`; every Registry read and write goes through `store.py`, so no other module knows the file layout. Every JSON document the plugin builds is written through `write_json`. A rule that two modules need lives once, in the lower one, and the other imports it.
 
 `ruff.toml` pins every finding that predates the lint gate with a line-level `noqa`. A new finding fails, and so does a `noqa` that no longer suppresses anything: simplify a pinned function and its marker has to go in the same change.
 

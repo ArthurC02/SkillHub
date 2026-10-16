@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.29.0
+
+### Changed
+
+- The Registry is stored as one Markdown concept document per record, in the Open Knowledge Format: `registry/<asset>/<id>.md`, with an `index.md` for the Registry and for each asset. A record's references to other records are typed links under `# Relations`, so people, other OKF tools and the scripts read the same graph. `init` creates this layout. A Registry kept as JSON files still reads and writes as before until `migrate-registry` moves it, which refuses, changing nothing, unless every record reads back unchanged. [Registry schema](references/registry-schema.md) describes the format.
+- The Registry digest no longer depends on the order records were written in, so the same records give the same digest in either layout.
+
 ## 0.28.0
 
 ### Added

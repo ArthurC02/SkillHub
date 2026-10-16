@@ -20,12 +20,13 @@ from domain_registry.git_hooks import governance_readiness, install_pre_push_hoo
 from domain_registry.registry import (
     asset_records,
 )
+from domain_registry.store import is_concept_layout, write_document
 from domain_registry.sources import (
     probe_sources,
     selected_source_map,
     write_source_map,
 )
-from test_support import RegistryTestCase, amend_policy, stored_policy_of
+from test_support import RegistryTestCase, amend_policy, stored_policy_of, use_json_layout
 
 
 class CliTest(RegistryTestCase):
@@ -160,9 +161,9 @@ class CliTest(RegistryTestCase):
             self.repo,
             Path(__file__).resolve().parent / "registry_tools.py",
         )
-        (self.repo / "memory" / "registry" / "rules.json").write_text(
-            json.dumps({"format": "domain-rules/v1", "status": "candidate", "rules": []}),
-            encoding="utf-8",
+        write_document(
+            self.repo / "memory", "rules.json",
+            {"format": "domain-rules/v1", "status": "candidate", "rules": []},
         )
         subprocess.run(["git", "add", "memory"], cwd=self.repo, check=True)
         subprocess.run(
@@ -328,6 +329,7 @@ class CliTest(RegistryTestCase):
         )
 
     def test_upsert_candidate_takes_record_file_more_than_once_from_the_command_line(self) -> None:
+        use_json_layout(self.repo / "memory")
         order, line = self.look_alike_terms()
         result = self.run_cli(
             "upsert-candidate", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
@@ -440,7 +442,8 @@ class CliTest(RegistryTestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue((destination / "source-map.json").is_file())
-        self.assertTrue((destination / "registry" / "contexts.json").is_file())
+        self.assertTrue(is_concept_layout(destination))
+        self.assertTrue((destination / "registry" / "contexts").is_dir())
         policy = json.loads((destination / "domain-memory-policy.json").read_text(encoding="utf-8"))
         self.assertEqual(
             ("ignored", "internal", "local-draft-only", "test", ["docs"]),

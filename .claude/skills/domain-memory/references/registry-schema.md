@@ -44,6 +44,35 @@ Build each entry in `evidence` with `cite` rather than by hand.
 
 `upsert-candidate` writes every record as a candidate whatever the submitted file says, because the command exists for machine-written records and a machine does not decide that a record has been reviewed. A record becomes reviewed only through an approved Change Package applied by `apply-approved-updates`.
 
+## Concept files
+
+The Registry stores each record as one Markdown concept document in the [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md): `registry/<asset>/<id>.md`, so a record's concept ID is `/<asset>/<id>`. `registry/index.md` declares the OKF version and lists the assets, and each asset folder's `index.md` lists its records with their first sentence; the scripts write both. Read the Registry through the commands, or `export`, rather than parsing these files.
+
+```markdown
+---
+type: Interaction
+status: stable
+consistency: synchronous
+sources:
+  - resource: "src/registry/facts.py#L196-219"
+    excerpt_sha256: "sha256:0e7d…"
+---
+# Relations
+- Producer context: [registry](/contexts/registry)
+- Consumer context: [run](/contexts/run)
+- Contract id: [registry-run-facts-v1](/contracts/registry-run-facts-v1)
+```
+
+- `type` names the asset. A Context or term's `name` is the `title`.
+- `status` is `draft` for a candidate, `stable` for a reviewed record and `deprecated` for a deprecated one. A superseded record is `deprecated` with `registry_status: superseded`. A Decision's own status is `decision_status`.
+- `evidence` is `sources`: each citation's path and lines become one `resource`, `path#Lstart-end`.
+- The body opens with the record's prose field, such as a Context's responsibility, a term's definition or a rule's statement.
+- Then `# Relations` lists each reference to another record as `- <Field>: [id](/<asset>/<id>)`, one line per target. This is how a reader follows the knowledge graph.
+- Each list of short texts, such as a rule's `examples`, becomes its own `# <Field>` section of `-` items.
+- Every other field stays in the frontmatter, as does any value Markdown cannot carry exactly: a multi-line item, an empty list, or a reference that is not an id. A record therefore reads back exactly as written.
+
+The frontmatter uses a subset of YAML: `key: value` lines, nested by two spaces, `- ` items, and values either plain or in double quotes. A hand edit that goes beyond it, such as single quotes or `[a, b]`, is refused with its line number.
+
 The supplied validator checks file shape, asset formats, status values, IDs, Context references, contract references, and optional structured evidence. Reviewed records must contain their type-specific fields, evidence, and `review` metadata, which `apply-approved-updates` writes from the approved Change Package. Use `validate --require-reviewed` before a change may rely only on reviewed records. The validator cannot confirm that a definition, owner, rule, or approval is true; review those claims against their authority.
 
 For a time-bound rule or contract, record an ISO-8601 effective range. For an unknown owner or date, record `unknown`; do not omit the field or substitute a technical implementer.

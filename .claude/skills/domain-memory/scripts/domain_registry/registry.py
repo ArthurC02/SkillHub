@@ -11,12 +11,10 @@ from .common import (
     CONTEXT_SUBDOMAINS,
     REGISTRY_STATUSES,
     REVIEW_REQUIRED_FIELDS,
-    load_json,
     one_level_too_deep_hint,
     record_status,
     registry_dir,
     template_dir,
-    write_json,
 )
 from .evidence import (
     all_references,
@@ -29,9 +27,12 @@ from .evidence import (
 from .policy import query_result_limit, review_mode
 from .store import (
     MANIFEST,
+    create_concept_layout,
     document_path,
     has_document,
     has_registry,
+    is_concept_layout,
+    logical_documents,
     read_document,
     write_document,
 )
@@ -48,28 +49,33 @@ ABSENCE_ASSETS = {
 def init_registry(output: Path) -> None:
     if output.exists() and any(output.iterdir()):
         raise FileExistsError(f"output directory is not empty: {output}")
-    target_registry = registry_dir(output)
-    target_registry.mkdir(parents=True, exist_ok=True)
-    templates = template_dir()
-    for name in STANDARD_FILES:
-        shutil.copyfile(templates / name, target_registry / name)
+    create_concept_layout(output)
 
 
 def migrate_registry(root: Path) -> list[str]:
-    target = registry_dir(root)
-    templates = template_dir()
+    if is_concept_layout(root):
+        return []
+    from .transaction import mutate_registry
+
     created = []
-    for name in STANDARD_FILES:
-        path = target / name
-        if not path.exists():
-            shutil.copyfile(templates / name, path)
-            created.append(name)
-    manifest = load_json(target / "manifest.json")
-    artifacts = manifest.setdefault("artifacts", [])
-    for name in ASSET_KEYS:
-        if name not in artifacts:
-            artifacts.append(name)
-    write_json(target / "manifest.json", manifest)
+    templates = template_dir()
+
+    def mutate(staging: Path) -> None:
+        target = registry_dir(staging)
+        for name in STANDARD_FILES:
+            if not (target / name).exists():
+                shutil.copyfile(templates / name, target / name)
+                created.append(name)
+        before = logical_documents(staging)
+        for name in STANDARD_FILES:
+            (target / name).unlink()
+        create_concept_layout(staging)
+        for name in ASSET_KEYS:
+            write_document(staging, name, before[name])
+        if logical_documents(staging) != before:
+            raise ValueError("the concept layout would not hold the Registry unchanged; nothing was converted")
+
+    mutate_registry(root, None, mutate, audit_event=lambda: {"operation": "migrate-registry", "layout": "okf"})
     return created
 
 

@@ -18,7 +18,7 @@ from domain_registry.changes import (
     init_change_package,
     validate_change_package,
 )
-from domain_registry.common import ASSET_KEYS, writer_lock
+from domain_registry.common import ASSET_KEYS, registry_dir, writer_lock, write_json
 from domain_registry.evidence import (
     citation,
     verify,
@@ -43,6 +43,13 @@ from domain_registry.sources import (
     verify_source_map,
     write_source_map,
 )
+from domain_registry.store import (
+    MANIFEST,
+    document_path,
+    manifest_document,
+    read_document,
+    write_document,
+)
 from domain_registry.transaction import transaction_path
 from domain_registry.updates import (
     apply_approved_updates,
@@ -63,6 +70,24 @@ def amend_policy(
     root: Path, field: str, value: str, reason: str, verifier: str | None = None
 ) -> dict:
     return amend_policy_fields(root, [(field, value)], reason, verifier)[0]
+
+
+def snapshot_of_files(directory: Path) -> dict[str, bytes]:
+    return {
+        path.relative_to(directory).as_posix(): path.read_bytes()
+        for path in sorted(directory.rglob("*"))
+        if path.is_file()
+    }
+
+
+def use_json_layout(root: Path) -> None:
+    documents = {name: read_document(root, name) for name in ASSET_KEYS}
+    registry = registry_dir(root)
+    for entry in registry.iterdir():
+        shutil.rmtree(entry) if entry.is_dir() else entry.unlink()
+    for name, document in documents.items():
+        write_json(registry / name, document)
+    write_json(registry / MANIFEST, manifest_document())
 
 
 def stored_policy_of(repo: Path) -> dict:
@@ -165,10 +190,10 @@ class RegistryTestCase(unittest.TestCase):
         return path
 
     def seed(self, name: str, records: list[dict]) -> None:
-        path = self.repo / "memory" / "registry" / name
-        value = json.loads(path.read_text(encoding="utf-8"))
+        root = self.repo / "memory"
+        value = read_document(root, name)
         value[ASSET_KEYS[name]] = records
-        path.write_text(json.dumps(value), encoding="utf-8")
+        write_document(root, name, value)
 
     def allow_results(self, count: int) -> None:
         path = self.repo / "memory" / "domain-memory-policy.json"
@@ -193,10 +218,10 @@ class RegistryTestCase(unittest.TestCase):
         upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
 
     def edit_registry(self, name: str, change) -> None:
-        path = self.repo / "memory" / "registry" / name
-        value = json.loads(path.read_text(encoding="utf-8"))
+        root = self.repo / "memory"
+        value = read_document(root, name)
         change(value)
-        path.write_text(json.dumps(value), encoding="utf-8")
+        write_document(root, name, value)
 
     def selected_docs(self) -> Path:
         source = self.repo / "docs"
@@ -224,8 +249,8 @@ class RegistryTestCase(unittest.TestCase):
 
     def seed_line_reference_evidence(self) -> None:
         (self.repo / "source.md").write_text("evidence\n", encoding="utf-8")
-        document = self.repo / "memory" / "registry" / "contexts.json"
-        value = json.loads(document.read_text(encoding="utf-8"))
+        root = self.repo / "memory"
+        value = read_document(root, "contexts.json")
         value["contexts"] = [
             {
                 "id": "orders",
@@ -234,7 +259,7 @@ class RegistryTestCase(unittest.TestCase):
                 "evidence": ["source.md:1"],
             }
         ]
-        document.write_text(json.dumps(value), encoding="utf-8")
+        write_document(root, "contexts.json", value)
 
     def sign_a_domain_memory_commit(self, message: str) -> str:
         target = self.repo / "docs" / "domain-memory"
@@ -365,7 +390,7 @@ class RegistryTestCase(unittest.TestCase):
         staging = root / ".domain-registry-stage-op"
         shutil.copytree(root / "registry", backup)
         staging.mkdir()
-        (root / "registry" / "manifest.json").write_text("{}\n", encoding="utf-8")
+        document_path(root, MANIFEST).write_text("{}\n", encoding="utf-8")
         transaction_path(root).write_text(
             json.dumps({
                 "format": "domain-registry-transaction/v2", "operation_id": "op",
@@ -594,11 +619,7 @@ class RegistryTestCase(unittest.TestCase):
         return proposal
 
     def stored_rule(self) -> dict:
-        document = json.loads(
-            (self.repo / "memory" / "registry" / "rules.json").read_text(
-                encoding="utf-8"
-            )
-        )
+        document = read_document(self.repo / "memory", "rules.json")
         return document["rules"][0]
 
     def reviewed_rule(self, evidence: list) -> None:
@@ -643,11 +664,7 @@ class RegistryTestCase(unittest.TestCase):
         return package
 
     def rule_ids(self) -> list[str]:
-        document = json.loads(
-            (self.repo / "memory" / "registry" / "rules.json").read_text(
-                encoding="utf-8"
-            )
-        )
+        document = read_document(self.repo / "memory", "rules.json")
         return [entry["id"] for entry in document["rules"]]
 
     def drafted_with_updates(self, updates: list) -> Path:
@@ -737,8 +754,7 @@ class RegistryTestCase(unittest.TestCase):
         )
 
     def stored_contexts(self) -> list[dict]:
-        document = self.repo / "memory" / "registry" / "contexts.json"
-        return json.loads(document.read_text(encoding="utf-8"))["contexts"]
+        return read_document(self.repo / "memory", "contexts.json")["contexts"]
 
     def placement_errors(self, *placements: tuple[str, str]) -> list[str]:
         self.seed(

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import sys
 import unittest
 from pathlib import Path
@@ -22,7 +21,8 @@ from domain_registry.registry import (
     coverage,
     validate,
 )
-from test_support import RegistryTestCase
+from domain_registry.store import read_document, write_document
+from test_support import RegistryTestCase, use_json_layout
 
 
 class EvidenceTest(RegistryTestCase):
@@ -235,11 +235,10 @@ class EvidenceTest(RegistryTestCase):
         self.two_contexts()
         source = self.repo / "fact.md"
         source.write_text("Orders notify Billing.", encoding="utf-8")
-        document = self.repo / "memory" / "registry" / "interactions.json"
-        value = json.loads(document.read_text(encoding="utf-8"))
+        value = read_document(self.repo / "memory", "interactions.json")
         value["status"] = "reviewed"
         value["interactions"] = [{"id": "order-billed", "producer_context": "orders", "consumer_context": "billing", "consistency": "eventual", "delivery": "outbox event", "evidence": [citation(self.repo, "fact.md", 1, 1)], "review": {"proposal_id": "P-1"}}]
-        document.write_text(json.dumps(value), encoding="utf-8")
+        write_document(self.repo / "memory", "interactions.json", value)
         self.assertEqual(validate(self.repo / "memory", self.repo, False), [])
 
     def test_citation_refuses_an_oversized_source(self) -> None:
@@ -321,6 +320,7 @@ class EvidenceTest(RegistryTestCase):
             with self.subTest(found=found):
                 self.tearDown()
                 self.setUp()
+                use_json_layout(self.repo / "memory")
                 self.evidence_moved("one\ntwo\n", "lib/a.py", text)
                 moved = relocate_evidence(self.repo / "memory", self.repo, "src", "lib")
                 self.assertEqual(([], []), (moved["registry_updates"], moved["candidates"]))

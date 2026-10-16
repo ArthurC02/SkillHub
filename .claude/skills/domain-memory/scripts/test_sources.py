@@ -31,7 +31,8 @@ from domain_registry.sources import (
 )
 from domain_registry.sources import discover_ci_tools
 from domain_registry.sources import source_snapshots
-from test_support import RegistryTestCase, stored_policy_of
+from domain_registry.store import read_document
+from test_support import RegistryTestCase, stored_policy_of, use_json_layout
 
 
 class SourcesTest(RegistryTestCase):
@@ -183,7 +184,7 @@ class SourcesTest(RegistryTestCase):
              "source_groups": [{"kind": "decisions", "paths": ["source.md"]}]},
         )
         migrate_evidence(self.repo / "memory", self.repo)
-        stored = load_json(self.repo / "memory" / "registry" / "contexts.json")
+        stored = read_document(self.repo / "memory", "contexts.json")
         self.assertEqual("decisions", stored["contexts"][0]["evidence"][0]["source_kind"])
 
     def test_a_change_across_two_contexts_without_a_collaboration_is_unregistered(self) -> None:
@@ -843,6 +844,7 @@ class SourcesTest(RegistryTestCase):
         )
 
     def test_readiness_reports_a_reviewed_registry_without_records_as_reviewed_empty(self) -> None:
+        use_json_layout(self.repo / "memory")
         self.write_files("apps/orders/main.py")
         (self.repo / "docs").mkdir()
         write_source_map(
@@ -869,6 +871,7 @@ class SourcesTest(RegistryTestCase):
     def test_readiness_routes_a_valid_registry_with_domain_records_to_greenfield(
         self,
     ) -> None:
+        use_json_layout(self.repo / "memory")
         docs = self.repo / "docs"
         docs.mkdir()
         write_source_map(
@@ -886,6 +889,7 @@ class SourcesTest(RegistryTestCase):
         )
 
     def test_readiness_reports_an_empty_working_memory_as_current(self) -> None:
+        use_json_layout(self.repo / "memory")
         (self.repo / "docs").mkdir()
         implementation = self.repo / "apps" / "orders"
         implementation.mkdir(parents=True)
@@ -916,6 +920,7 @@ class SourcesTest(RegistryTestCase):
             self.repo / "memory" / "source-map.json",
             selected_source_map(self.repo, [docs]),
         )
+        use_json_layout(self.repo / "memory")
         (self.repo / "memory" / "registry" / "contexts.json").write_text(
             '{"contexts": "broken"}', encoding="utf-8"
         )
