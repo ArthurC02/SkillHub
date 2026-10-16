@@ -121,12 +121,26 @@ def boundary_impact(root: Path, repo_root: Path, base: str) -> dict[str, Any]:
     ]
     evidence = _evidence_touched(records, set(paths), verifier(repo_root))
     owned = {path for files in touched.values() for path in files}
+    outside = [path for path in paths if path not in owned]
     return {
         "base": base,
         "changed_files": len(paths),
+        "mapped_files": len(owned),
         "verdict": _verdict(pairs, evidence, mapped=mapped),
         "contexts_touched": touched,
         "co_changed_pairs": pairs,
         "boundary_evidence_changed": evidence,
-        "outside_every_context": [path for path in paths if path not in owned],
+        "outside_every_context": outside,
+        "cited_outside_contexts": _cited(root, set(outside)),
     }
+
+
+def _cited(root: Path, paths: set[str]) -> list[dict[str, Any]]:
+    citing: dict[str, set[str]] = {}
+    for name in ASSET_KEYS:
+        for entry in _records_with_status(root, name):
+            for reference in all_references(entry):
+                cited = reference.get("path") if isinstance(reference, dict) else reference
+                if cited in paths:
+                    citing.setdefault(cited, set()).add(f"{name.removesuffix('.json')}/{entry.get('id')}")
+    return [{"path": path, "cited_by": sorted(records)} for path, records in sorted(citing.items())]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,6 +14,7 @@ MAX_JSON_BYTES = 16 * 1024 * 1024
 MAX_EVIDENCE_BYTES = 16 * 1024 * 1024
 MAX_NESTING_DEPTH = 100
 GIT_COMMAND_TIMEOUT_SECONDS = 15
+REPLACE_DELAYS_SECONDS = (0.05, 0.1, 0.2, 0.4, 0.8)
 
 ASSET_KEYS = {
     "contexts.json": "contexts",
@@ -49,7 +51,19 @@ def write_json(path: Path, value: dict) -> None:
         output.write(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
         output.flush()
         os.fsync(output.fileno())
-    temporary.replace(path)
+    _replace(temporary, path)
+
+
+def _replace(temporary: Path, path: Path) -> None:
+    for delay in (*REPLACE_DELAYS_SECONDS, None):
+        try:
+            temporary.replace(path)
+            break
+        except PermissionError:
+            if delay is None:
+                temporary.unlink(missing_ok=True)
+                raise
+            time.sleep(delay)
 
 
 def review_field(asset: str) -> str:

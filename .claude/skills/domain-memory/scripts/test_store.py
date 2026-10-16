@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import json
 import subprocess
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 from domain_registry.audit import read_events, reviewing_proposals
 from domain_registry.common import ASSET_KEYS, registry_dir, write_json
@@ -34,6 +37,39 @@ REVIEW = {
 }
 CITED = {"path": "docs/a.md", "lines": {"start": 1, "end": 1}, "excerpt_sha256": "sha256:e"}
 CITED_WITH_DERIVED_KEYS = {**CITED, "content_sha256": "sha256:c", "source_kind": "decisions"}
+
+
+class WriteJsonTest(unittest.TestCase):
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.path = Path(temporary.name) / "value.json"
+        self.path.write_bytes(b'{"old": true}\n')
+        sleeping = patch("domain_registry.common.time.sleep")
+        self.sleeps = sleeping.start()
+        self.addCleanup(sleeping.stop)
+
+    def test_a_replace_refused_for_a_moment_is_retried(self) -> None:
+        replace = Path.replace
+        refusals = iter([PermissionError(5, "Access is denied")])
+
+        def refuse_once(source: Path, target: Path) -> Path:
+            for refusal in refusals:
+                raise refusal
+            return replace(source, target)
+
+        with patch.object(Path, "replace", autospec=True, side_effect=refuse_once):
+            write_json(self.path, {"new": True})
+        self.assertEqual(({"new": True}, 1), (json.loads(self.path.read_text(encoding="utf-8")), self.sleeps.call_count))
+
+    def test_a_replace_refused_every_time_fails_and_leaves_no_temporary_file(self) -> None:
+        with patch.object(Path, "replace", autospec=True, side_effect=PermissionError(5, "Access is denied")), \
+                self.assertRaises(PermissionError):
+            write_json(self.path, {"new": True})
+        self.assertEqual(
+            (["value.json"], b'{"old": true}\n'),
+            (sorted(entry.name for entry in self.path.parent.iterdir()), self.path.read_bytes()),
+        )
 
 
 class ConceptLayoutTest(RegistryTestCase):

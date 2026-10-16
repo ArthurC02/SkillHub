@@ -1,5 +1,8 @@
 import re
 import shutil
+from collections import Counter
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -169,13 +172,39 @@ def init_change_package(
         raise ValueError(f"{', '.join(blank)} must not be blank")
     if output.exists() and any(output.iterdir()):
         raise FileExistsError(f"output directory is not empty: {output}")
-    output.mkdir(parents=True, exist_ok=True)
-    templates = change_template_dir()
-    for name in CHANGE_PACKAGE_FILES:
-        shutil.copyfile(templates / name, output / name)
-    given = {key: value for key, value in identifiers.items() if value is not None}
-    if given:
-        _fill_identifiers(output, given)
+    if proposal_id is not None:
+        _refuse_used_proposal_id(output, proposal_id)
+    with _whole_package(output):
+        output.mkdir(parents=True, exist_ok=True)
+        templates = change_template_dir()
+        for name in CHANGE_PACKAGE_FILES:
+            shutil.copyfile(templates / name, output / name)
+        given = {key: value for key, value in identifiers.items() if value is not None}
+        if given:
+            _fill_identifiers(output, given)
+
+
+def _refuse_used_proposal_id(output: Path, proposal_id: str) -> None:
+    siblings = output.resolve().parent
+    for package in siblings.iterdir() if siblings.is_dir() else ():
+        try:
+            used = load_json(package / PROPOSAL_FILE).get("proposal_id") if package.is_dir() else None
+        except (OSError, ValueError):
+            continue
+        if used == proposal_id and package.resolve() != output.resolve():
+            raise ValueError(f"proposal_id {proposal_id} is already used by {package.name}; choose another")
+
+
+@contextmanager
+def _whole_package(output: Path) -> Iterator[None]:
+    existed = output.exists()
+    try:
+        yield
+    except BaseException:
+        shutil.rmtree(output, ignore_errors=True)
+        if existed:
+            output.mkdir(exist_ok=True)
+        raise
 
 
 def _fill_identifiers(output: Path, given: dict[str, str]) -> None:
@@ -211,9 +240,15 @@ def redraft_change_package(source: Path, output: Path, proposal_id: str) -> None
         raise ValueError("proposal_id must not be blank")
     if output.exists() and any(output.iterdir()):
         raise FileExistsError(f"output directory is not empty: {output}")
+    _refuse_used_proposal_id(output, proposal_id)
     replaced = load_json(source / PROPOSAL_FILE).get("proposal_id")
-    shutil.copytree(source, output, dirs_exist_ok=True)
-    _fill_identifiers(output, {"proposal_id": proposal_id})
+    with _whole_package(output):
+        shutil.copytree(source, output, dirs_exist_ok=True)
+        _fill_identifiers(output, {"proposal_id": proposal_id})
+        _reset_review_state(output, replaced)
+
+
+def _reset_review_state(output: Path, replaced: Any) -> None:
     templates = change_template_dir()
     for name, fields in REVIEW_STATE.items():
         document = load_json(output / name)
@@ -752,7 +787,10 @@ def list_proposals(changes_root: Path) -> list[dict[str, Any]]:
         })
         if completed_identifier(proposal.get("superseded_by")):
             replacements[len(rows) - 1] = proposal["superseded_by"]
-    known = {row.get("proposal_id") for row in rows}
+    known = Counter(row.get("proposal_id") for row in rows)
+    for row in rows:
+        if row.get("proposal_id") is not None and known[row["proposal_id"]] > 1:
+            row["duplicate_proposal_id"] = True
     for index, replacement in replacements.items():
         rows[index]["superseded_by"] = replacement
         if replacement not in known:

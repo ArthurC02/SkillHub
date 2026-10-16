@@ -251,6 +251,17 @@ class SourcesTest(RegistryTestCase):
         self.assertEqual(("no-cross-context-change", 2, []), (impact["verdict"], impact["changed_files"], impact["co_changed_pairs"]))
         self.assertEqual(["README.md"], impact["outside_every_context"])
 
+    def test_a_changed_file_outside_every_context_is_named_with_the_records_citing_it(self) -> None:
+        cited = [{"path": "contracts/api.yaml", "lines": {"start": 1, "end": 1}}]
+        inside = [{"path": "src/orders/port.py", "lines": {"start": 1, "end": 1}}]
+        self.two_mapped_contexts(rules=[{"id": "r", "evidence": cited}, {"id": "inside", "evidence": inside}],
+                                 contracts=[{"id": "api", "producer_context": "orders", "evidence": cited}])
+        impact = self.change("contracts/api.yaml", "docs/note.md", "src/orders/port.py")
+        self.assertEqual(
+            (3, 1, [{"path": "contracts/api.yaml", "cited_by": ["contracts/api", "rules/r"]}]),
+            (impact["changed_files"], impact["mapped_files"], impact["cited_outside_contexts"]),
+        )
+
     def test_an_untracked_file_and_a_nested_path_count_but_a_sibling_prefix_does_not(self) -> None:
         self.two_mapped_contexts()
         impact = self.change("lib/src/billing/new.py", "src/orders_archive/old.py", "x/src/orders")

@@ -1017,6 +1017,24 @@ class ReviewTest(RegistryTestCase):
         self.assertEqual(["note.txt"], [entry.name for entry in (self.repo / "used").iterdir()])
         self.assertEqual("kept", (self.repo / "used" / "note.txt").read_text(encoding="utf-8"))
 
+    def test_redrafting_under_an_id_a_sibling_package_uses_is_refused_and_writes_nothing(self) -> None:
+        package = self.draft_package()
+        supersede_proposal(package, "replaced", None)
+        with self.assertRaisesRegex(ValueError, "^proposal_id PRO-1 is already used by proposal; choose another$"):
+            redraft_change_package(package, self.repo / "redraft", "PRO-1")
+        self.assertFalse((self.repo / "redraft").exists())
+
+    def test_a_redraft_that_fails_halfway_leaves_the_output_as_it_found_it(self) -> None:
+        package = self.draft_package()
+        supersede_proposal(package, "replaced", None)
+        (self.repo / "empty").mkdir()
+        for output, existed in ((self.repo / "redraft", False), (self.repo / "empty", True)):
+            with self.subTest(existed=existed):
+                with patch("domain_registry.changes._reset_review_state", side_effect=PermissionError(5, "Access is denied")), \
+                        self.assertRaises(PermissionError):
+                    redraft_change_package(package, output, "PRO-2")
+                self.assertEqual(([] if existed else None), sorted(output.iterdir()) if output.exists() else None)
+
     def test_redrafting_with_a_blank_proposal_id_is_refused_and_writes_nothing(self) -> None:
         package = self.draft_package()
         supersede_proposal(package, "replaced", None)

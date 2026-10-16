@@ -4,6 +4,7 @@ import json
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -139,6 +140,19 @@ class ChangesTest(RegistryTestCase):
             init_change_package(package, "REQ-7", " ")
         with self.assertRaisesRegex(ValueError, "proposer must not be blank"):
             init_change_package(package, "REQ-7", "PRO-7", " ")
+        self.assertFalse(package.exists())
+
+    def test_a_proposal_id_a_sibling_package_uses_is_refused_before_anything_is_written(self) -> None:
+        init_change_package(self.repo / "first", "REQ-7", "PRO-7")
+        with self.assertRaisesRegex(ValueError, "^proposal_id PRO-7 is already used by first; choose another$"):
+            init_change_package(self.repo / "second", "REQ-7", "PRO-7")
+        self.assertFalse((self.repo / "second").exists())
+
+    def test_a_package_that_fails_halfway_is_removed(self) -> None:
+        package = self.repo / "half"
+        with patch("domain_registry.changes._fill_identifiers", side_effect=PermissionError(5, "Access is denied")), \
+                self.assertRaises(PermissionError):
+            init_change_package(package, "REQ-7", "PRO-7")
         self.assertFalse(package.exists())
 
     def test_a_package_started_with_a_proposer_is_not_asked_for_one(self) -> None:

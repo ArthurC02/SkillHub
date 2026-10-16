@@ -2,6 +2,18 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.39.0
+
+### Added
+
+- `boundary-impact` reports `mapped_files`, how many changed files the verdict speaks for, and `cited_outside_contexts`, the changed files no Context owns that a Registry record cites, with the citing records.
+- `list-proposals` flags packages sharing a proposal id.
+
+### Fixed
+
+- Writing a JSON document retries a replace Windows refuses for a moment, when an indexer or virus scanner holds the new file, and removes its temporary file if the replace never succeeds.
+- `init-change-package` and `redraft-proposal` refuse a proposal id a package beside the output already carries, and remove a package they fail to finish instead of leaving one that reads as valid.
+
 ## 0.38.0
 
 ### Added
