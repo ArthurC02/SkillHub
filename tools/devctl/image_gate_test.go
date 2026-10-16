@@ -89,7 +89,7 @@ func TestBaseImagesMustBePinnedByDigestUnlessTheyAreAnEarlierStage(t *testing.T)
 
 func wantNoImageBumpProblems(t *testing.T, root, context string) {
 	t.Helper()
-	problems, err := imageBumpProblems(root)
+	problems, err := imageBumpProblems(root, "HEAD")
 	if err != nil || len(problems) != 0 {
 		t.Fatalf("%s: %v %v", context, problems, err)
 	}
@@ -97,7 +97,7 @@ func wantNoImageBumpProblems(t *testing.T, root, context string) {
 
 func wantOneImageBumpProblem(t *testing.T, root, substr, context string) string {
 	t.Helper()
-	problems, err := imageBumpProblems(root)
+	problems, err := imageBumpProblems(root, "HEAD")
 	if err != nil || len(problems) != 1 || !strings.Contains(problems[0], substr) {
 		t.Fatalf("%s: %v %v", context, problems, err)
 	}
@@ -148,6 +148,22 @@ func TestImageBumpComparesAgainstWhatTheVersionWasPublishedFrom(t *testing.T) {
 	repo.commit(t, map[string]string{runtimeDockerfile: published})
 	wantNoImageBumpProblems(t, repo.root, "taking the mistaken edit back out still demanded a bump; that is the shape where "+
 		"the only way to a green gate is publishing a version nobody measured")
+}
+
+func TestImageBumpReadsTheCommitNotTheWorkingTree(t *testing.T) {
+	t.Parallel()
+	repo := newGitRepo(t)
+	repo.commit(t, map[string]string{
+		runtimeDockerfile:            gateDockerfile + "ARG IMAGE_VERSION=2026.08-10\n",
+		runtimeImageDir + "/run.mjs": "export {}\n",
+		runtimeUpgrades:              "# 2026.08-10\n",
+	})
+	repo.commit(t, map[string]string{runtimeImageDir + "/run.mjs": "export const x = 1\n"})
+	unbumped := filepath.Join(repo.root, filepath.FromSlash(runtimeDockerfile))
+	if err := os.WriteFile(unbumped, []byte(gateDockerfile+"ARG IMAGE_VERSION=2026.08-11\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	wantOneImageBumpProblem(t, repo.root, "run.mjs", "a bump that exists only in the working tree excused the commit being pushed")
 }
 
 func TestRangeEndNamesTheCommitBeingChecked(t *testing.T) {

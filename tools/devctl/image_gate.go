@@ -22,7 +22,7 @@ func imageGate(root string, args []string, out io.Writer) error {
 	}
 	problems := digestPinProblems(root)
 	problems = append(problems, imageVersionProblems(root)...)
-	bump, err := imageBumpProblems(root)
+	bump, err := imageBumpProblems(root, "HEAD")
 	if err != nil {
 		return err
 	}
@@ -173,20 +173,20 @@ func (inputs imageInputs) include(file string) bool {
 	return false
 }
 
-func imageBumpProblems(root string) ([]string, error) {
-	dockerfile, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(runtimeDockerfile)))
+func imageBumpProblems(root, commit string) ([]string, error) {
+	dockerfile, err := gitOutput(root, "show", commit+":"+runtimeDockerfile)
 	if err != nil {
 		return nil, err
 	}
-	version := declaredImageVersion(string(dockerfile))
+	version := declaredImageVersion(dockerfile)
 	if version == "" {
 		return nil, nil
 	}
-	published, err := commitThatDeclared(root, version)
+	published, err := commitThatDeclared(root, commit, version)
 	if err != nil || published == "" {
 		return nil, err
 	}
-	changed, err := inputsChangedSince(root, published, string(dockerfile))
+	changed, err := inputsChangedSince(root, published, commit, dockerfile)
 	if err != nil || len(changed) == 0 {
 		return nil, err
 	}
@@ -207,8 +207,8 @@ func declaredImageVersion(dockerfile string) string {
 // Walks the Dockerfile's history newest first and stops at the first commit
 // declaring a different version; the commit before it is where the current
 // version was introduced, which is the content that was published under it.
-func commitThatDeclared(root, version string) (string, error) {
-	history, err := gitOutput(root, "log", "--format=%H", "--", runtimeDockerfile)
+func commitThatDeclared(root, commit, version string) (string, error) {
+	history, err := gitOutput(root, "log", "--format=%H", commit, "--", runtimeDockerfile)
 	if err != nil {
 		return "", err
 	}
@@ -226,9 +226,9 @@ func commitThatDeclared(root, version string) (string, error) {
 	return introduced, nil
 }
 
-func inputsChangedSince(root, commit, dockerfile string) ([]string, error) {
+func inputsChangedSince(root, published, commit, dockerfile string) ([]string, error) {
 	inputs := runtimeImageInputs(dockerfile)
-	names, err := gitOutput(root, "diff", "--name-only", commit, "HEAD", "--", runtimeImageDir)
+	names, err := gitOutput(root, "diff", "--name-only", published, commit, "--", runtimeImageDir)
 	if err != nil {
 		return nil, err
 	}

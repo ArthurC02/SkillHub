@@ -42,10 +42,7 @@ func preflight(root string, args []string, in io.Reader, out io.Writer) error {
 		ranges = []string{unpushedRange(root)}
 	}
 
-	problems, err := imageBumpProblems(root)
-	if err != nil {
-		return err
-	}
+	var problems []string
 	for _, rangeSpec := range ranges {
 		committed, err := committedProblems(root, rangeSpec, out)
 		if err != nil {
@@ -88,7 +85,11 @@ func committedProblems(root, rangeSpec string, out io.Writer) ([]string, error) 
 	for _, warning := range evidenceWarnings {
 		fmt.Fprintln(out, statusWarn, warning)
 	}
-	return append(append(format, comments...), evidence...), nil
+	bump, err := imageBumpProblems(root, rangeEnd(rangeSpec))
+	if err != nil {
+		return nil, err
+	}
+	return append(append(append(format, comments...), evidence...), bump...), nil
 }
 
 func unpushedRange(root string) string {
