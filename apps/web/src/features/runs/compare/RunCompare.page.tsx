@@ -52,7 +52,7 @@ export function RunCompare() {
       selfError={self.error}
       onRetrySelf={() => void self.refetch()}
       testCaseId={testCaseId}
-      siblingsPending={siblings.isPending}
+      siblingsPending={siblings.isPending || (siblings.isError && siblings.isFetching)}
       siblingsPaused={siblings.fetchStatus === "paused"}
       siblingsError={siblings.error}
       onRetrySiblings={() => void siblings.refetch()}

@@ -68,7 +68,8 @@ function CandidateList({
   if (!testCaseId) {
     return <p>這次試跑的測試題已無法解析，因此無法列出同一個測試題的其他試跑紀錄。</p>;
   }
-  if (siblingsPending) return <Loading what="可比較的試跑紀錄" paused={siblingsPaused} />;
+  if (siblingsPending || (siblingsPaused && siblingsError))
+    return <Loading what="可比較的試跑紀錄" paused={siblingsPaused} />;
   if (siblingsError)
     return (
       <ReadFailure
@@ -84,6 +85,7 @@ function CandidateList({
 
   return (
     <>
+      {siblingsPaused && <Loading what="可比較的試跑紀錄" paused />}
       {hasMoreCandidates && (
         <p className="note">
           目前僅列出已載入的紀錄；更早的試跑可繼續載入，不能據此判定沒有其他紀錄。
@@ -111,11 +113,11 @@ function CandidateList({
       {hasMoreCandidates && (
         <button
           type="button"
-          disabled={loadingMoreCandidates}
+          disabled={loadingMoreCandidates || siblingsPaused}
           onClick={onLoadMoreCandidates}
           ref={continuationRef}
         >
-          {loadingMoreCandidates ? "載入中…" : "載入更早的試跑紀錄"}
+          {siblingsPaused ? "等待連線…" : loadingMoreCandidates ? "載入中…" : "載入更早的試跑紀錄"}
         </button>
       )}
     </>
