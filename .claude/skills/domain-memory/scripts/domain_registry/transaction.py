@@ -241,7 +241,7 @@ def held_open(root: Path, error: OSError) -> ValueError:
     code = getattr(error, "winerror", None) or error.errno
     return ValueError(
         f"another process is holding {registry_dir(root)} or a file in it open (error {code}), so the update "
-        "could not be swapped in; nothing was changed. Close it and rerun."
+        "could not be swapped; nothing was changed. Close it and rerun."
     )
 
 

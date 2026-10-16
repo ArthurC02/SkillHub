@@ -575,7 +575,7 @@ class UpdatesTest(RegistryTestCase):
         with patch.object(Path, "replace", autospec=True, side_effect=refuse), \
                 patch("domain_registry.common.time.sleep"), \
                 self.assertRaisesRegex(ValueError, r"^another process is holding .*registry or a file in it open "
-                                       r"\(error 5\), so the update could not be swapped in; nothing was changed"):
+                                       r"\(error 5\), so the update could not be swapped; nothing was changed"):
             upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
         self.assertEqual(
             (before, False, []),
