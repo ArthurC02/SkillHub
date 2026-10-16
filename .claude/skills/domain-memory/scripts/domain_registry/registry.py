@@ -665,10 +665,14 @@ def ranked_lookup(root: Path, asset: str, query: str) -> tuple[list[dict[str, An
 
 SUFFIXES = ("ations", "ation", "ings", "ing", "ency", "ence", "ents", "ent", "ions", "ion", "ed", "es", "s", "e", "y")
 MIN_STEM_LENGTH = 3
+STOP_WORDS = frozenset({
+    "a", "after", "an", "and", "are", "at", "be", "before", "by", "for", "in", "is", "of", "on", "or", "the", "to",
+    "when", "with",
+})
 
 
 def word_stems(text: str) -> set[str]:
-    return {_stem(word) for word in re.findall(r"[a-z0-9]+", text.casefold())}
+    return {_stem(word) for word in re.findall(r"[a-z0-9]+", text.casefold()) if word not in STOP_WORDS}
 
 
 def _stem(word: str) -> str:
@@ -764,17 +768,26 @@ def prose_mentions(root: Path, needle: str) -> list[dict[str, Any]]:
         return []
     mentions = [
         {"match_kind": "mentioned", "authoritative": False, "asset": name.removesuffix(".json"),
-         "id": entry.get("id"), "field": field}
+         "id": entry.get("id"), "fields": fields}
         for name in sorted(ASSET_KEYS)
         if has_document(root, name)
         for entry in _reviewed_entries(root, name)
-        for field, value in entry.items()
-        if field not in UNSEARCHED_FIELDS and any(wanted <= word_stems(text) for text in _searchable(field, value))
+        if (fields := _mentioning_fields(entry, wanted))
     ]
     return sorted(
         mentions,
-        key=lambda mention: (mention["field"] not in DEFINING_FIELDS, mention["asset"] not in CONSTRAINT_ASSETS),
+        key=lambda mention: (
+            not any(field in DEFINING_FIELDS for field in mention["fields"]),
+            mention["asset"] not in CONSTRAINT_ASSETS,
+        ),
     )
+
+
+def _mentioning_fields(entry: dict[str, Any], wanted: set[str]) -> list[str]:
+    return [
+        field for field, value in entry.items()
+        if field not in UNSEARCHED_FIELDS and any(wanted <= word_stems(text) for text in _searchable(field, value))
+    ]
 
 
 def _searchable(field: str, value: Any) -> list[str]:

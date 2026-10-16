@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.44.0
+
+### Changed
+
+- A `resolve-terms` mention lists each record once with every field that mentions the query as `fields`, in place of one mention per `field`.
+- `lookup` and mention matching no longer count words such as `after`, `the` or `when` as shared, so a record holding only those no longer ranks.
+
 ## 0.43.0
 
 ### Added

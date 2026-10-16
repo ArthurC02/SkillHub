@@ -850,7 +850,7 @@ class RegistryTest(RegistryTestCase):
         self.contexts_mentioning_suggestions()
         self.assertEqual(
             [{"match_kind": "mentioned", "authoritative": False, "asset": "contexts", "id": "eval",
-              "field": "responsibility"}],
+              "fields": ["responsibility"]}],
             resolve_terms(self.repo / "memory", "suggestion", None),
         )
 
@@ -877,8 +877,8 @@ class RegistryTest(RegistryTestCase):
         self.allow_results(10)
         self.seed("interactions.json", [{"id": "eval-workspace-purge", "status": "reviewed"}])
         self.assertEqual(
-            [("interactions", "eval-workspace-purge", "id")],
-            [(match["asset"], match["id"], match["field"]) for match in resolve_terms(self.repo / "memory", "purge", None)],
+            [("interactions", "eval-workspace-purge", ["id"])],
+            [(match["asset"], match["id"], match["fields"]) for match in resolve_terms(self.repo / "memory", "purge", None)],
         )
 
     def test_a_list_of_text_is_searched_and_a_list_of_record_ids_is_not(self) -> None:
@@ -886,8 +886,8 @@ class RegistryTest(RegistryTestCase):
         self.seed("vocabulary.json", [{"id": "order", "name": "Order", "examples": ["a refund request"], "status": "reviewed"}])
         self.seed("rules.json", [{"id": "gate", "contexts": ["refund"], "statement": "x", "status": "reviewed"}])
         self.assertEqual(
-            [("vocabulary", "order", "examples")],
-            [(match["asset"], match["id"], match["field"]) for match in resolve_terms(self.repo / "memory", "refund", None)],
+            [("vocabulary", "order", ["examples"])],
+            [(match["asset"], match["id"], match["fields"]) for match in resolve_terms(self.repo / "memory", "refund", None)],
         )
 
     def test_verify_evidence_reports_each_requested_path_and_whether_it_exists(self) -> None:
@@ -907,8 +907,8 @@ class RegistryTest(RegistryTestCase):
         self.seed("value-objects.json", [{"id": "gauge", "description": "A precheck value.", "status": "reviewed"}])
         self.seed("rules.json", [{"id": "gate", "contexts": ["orders"], "statement": "A check gates release.", "status": "reviewed"}])
         self.assertEqual(
-            [("rules", "gate", "statement"), ("capabilities", "audit", "rationale")],
-            [(match["asset"], match["id"], match["field"]) for match in resolve_terms(self.repo / "memory", "check", None)],
+            [("rules", "gate", ["statement"]), ("capabilities", "audit", ["rationale"])],
+            [(match["asset"], match["id"], match["fields"]) for match in resolve_terms(self.repo / "memory", "check", None)],
         )
 
     def runs_rules(self) -> None:
@@ -934,6 +934,33 @@ class RegistryTest(RegistryTestCase):
         self.runs_rules()
         self.assertEqual((["taken-down", "licensed"], "some-words"), self.found("package taken down download"))
 
+    def test_a_query_word_like_after_does_not_count_as_shared(self) -> None:
+        self.allow_results(10)
+        self.seed("rules.json", [
+            {"id": "taken-down", "contexts": ["packaging"], "statement": "A skill taken down is not served.", "status": "reviewed"},
+            {"id": "halt", "contexts": ["run"], "statement": "Dispatch halts after an incident.", "status": "reviewed"},
+        ])
+        self.assertEqual((["taken-down"], "some-words"), self.found("download after taken"))
+
+    def test_a_record_mentioned_in_several_fields_is_listed_once_naming_each_field(self) -> None:
+        self.allow_results(10)
+        self.seed("rules.json", [{"id": "purge-runs-every-step", "contexts": ["identity"],
+                                  "statement": "A purge runs every step.", "status": "reviewed"}])
+        self.assertEqual(
+            [("purge-runs-every-step", ["id", "statement"])],
+            [(match["id"], match["fields"]) for match in resolve_terms(self.repo / "memory", "purge", None)],
+        )
+
+    def test_a_record_mentioned_in_one_defining_field_ranks_before_a_rule_mentioned_only_elsewhere(self) -> None:
+        self.allow_results(10)
+        self.seed("capabilities.json", [{"id": "purge", "rationale": "Purge on request.", "status": "reviewed"}])
+        self.seed("rules.json", [{"id": "gate", "contexts": ["identity"], "statement": "x", "notes": "purge",
+                                  "status": "reviewed"}])
+        self.assertEqual(
+            ["purge", "gate"],
+            [match["id"] for match in resolve_terms(self.repo / "memory", "purge", None)],
+        )
+
     def test_a_query_matching_a_phrase_lists_only_records_holding_the_phrase(self) -> None:
         self.runs_rules()
         self.assertEqual((["taken-down"], "phrase"), self.found("taken down"))
@@ -955,8 +982,8 @@ class RegistryTest(RegistryTestCase):
         self.runs_rules()
         self.seed("interactions.json", [{"id": "run-retry", "status": "reviewed"}])
         self.assertEqual(
-            [("rules", "one-trial", "statement")],
-            [(match["asset"], match["id"], match["field"]) for match in resolve_terms(self.repo / "memory", "concurrent runs", None)],
+            [("rules", "one-trial", ["statement"])],
+            [(match["asset"], match["id"], match["fields"]) for match in resolve_terms(self.repo / "memory", "concurrent runs", None)],
         )
 
     def test_mentions_in_rules_come_before_mentions_in_other_assets(self) -> None:
