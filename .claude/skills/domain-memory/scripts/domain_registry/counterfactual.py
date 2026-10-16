@@ -183,6 +183,10 @@ def verdict_of(broken_run: TestRun, expect: str | None = None) -> tuple[str, str
     return "killed", None
 
 
+def _one_line(text: str) -> str:
+    return " ".join(text.split())
+
+
 def _require_pattern(expect: str | None) -> None:
     if expect is None:
         return
@@ -233,7 +237,7 @@ def counterfactual(repo_root: Path, mutation: Mutation, proof: Proof) -> dict[st
         result["counterfactual_check"] = {
             "status": "passed",
             "obligation_id": proof.obligation_id or OBLIGATION_PLACEHOLDER,
-            "mutated_protection": f"{shown}:{line}: {mutation.find} -> {mutation.replace}",
+            "mutated_protection": f"{shown}:{line}: {_one_line(mutation.find)} -> {_one_line(mutation.replace)}",
             "failure_evidence": broken_run.output[-OUTPUT_TAIL:],
             "restored": True,
         }

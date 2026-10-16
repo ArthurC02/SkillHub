@@ -54,6 +54,14 @@ def _touched_contexts(contexts: list[dict[str, Any]], paths: list[str]) -> dict[
     return {identifier: files for identifier, files in touched.items() if files}
 
 
+def registered_collaborations(root: Path) -> dict[frozenset, list[str]]:
+    records = {name: _records_with_status(root, name) for name in COLLABORATION_ENDS}
+    return {
+        pair: [f"{entry['asset']}/{entry['id']}" for entry in entries]
+        for pair, entries in _collaborations(records).items()
+    }
+
+
 def _collaborations(records: dict[str, list[dict[str, Any]]]) -> dict[frozenset, list[dict[str, Any]]]:
     found: dict[frozenset, list[dict[str, Any]]] = {}
     for name, ends in COLLABORATION_ENDS.items():

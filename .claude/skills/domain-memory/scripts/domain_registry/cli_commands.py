@@ -40,7 +40,7 @@ from .policy import (
 )
 from .readiness import assess_readiness
 from .recitation_package import recitation_package
-from .impact import boundary_impact
+from .impact import boundary_impact, registered_collaborations
 from .relocate import Recitation, line_range, recite, relocate_evidence
 from .registry import (
     asset_records,
@@ -210,7 +210,15 @@ def handle_export(args: argparse.Namespace) -> int:
 def handle_compare_registry(args: argparse.Namespace) -> int:
     gold = _exported(args.gold_root.resolve(), args.gold_commit, args.repo_root, "compare-registry --gold-commit")
     candidate = _exported(args.candidate_root.resolve(), None, None, "")
-    print_json(compare_registries(gold, candidate, args.context))
+    report = compare_registries(gold, candidate, args.context)
+    print_json(report)
+    unpaired = report.get("scope", {}).get("without_candidate")
+    if unpaired:
+        print(
+            f"NOTE: no candidate Context pairs with {', '.join(unpaired)}, so its records cannot pair; "
+            "check that the candidate root holds an extraction of that Context.",
+            file=sys.stderr,
+        )
     return 0
 
 
@@ -245,17 +253,19 @@ def handle_get_record(args: argparse.Namespace) -> int:
 def handle_change_coupling(args: argparse.Namespace) -> int:
     if args.depth < 1:
         raise ValueError("change-coupling --depth must be at least 1")
-    limits = CouplingLimits(args.min_revisions, args.min_shared, args.min_degree, args.max_changeset)
+    limits = CouplingLimits(args.min_revisions, args.min_shared, args.min_degree, args.max_changeset, args.max_modules)
+    registry_root = args.registry_root.resolve() if args.registry_root else None
     contexts = (
         {
             context["id"]: context["implementation_path"]
-            for context in asset_records(args.registry_root.resolve(), "contexts.json")
+            for context in asset_records(registry_root, "contexts.json")
             if isinstance(context.get("implementation_path"), str)
         }
-        if args.registry_root
+        if registry_root
         else {}
     )
-    reading = CouplingReading(args.since, tuple(args.exclude_subject), contexts)
+    collaborations = registered_collaborations(registry_root) if registry_root else {}
+    reading = CouplingReading(args.since, tuple(args.exclude_subject), contexts, collaborations)
     print_json(change_coupling(args.repo_root.resolve(), args.root or ["."], args.depth, limits, reading))
     return 0
 

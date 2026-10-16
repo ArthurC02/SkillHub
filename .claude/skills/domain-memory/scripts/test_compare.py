@@ -165,6 +165,35 @@ class ScopeTest(unittest.TestCase):
         self.assertEqual((["orders"], ["order-rule"]),
                          ([pair["gold"] for pair in result["assets"]["contexts"]["matched"]], result["assets"]["rules"]["missed"]))
 
+    def test_a_scope_naming_a_context_the_gold_registry_lacks_is_refused(self) -> None:
+        with self.assertRaisesRegex(ValueError, "^no Context nosuch in the gold Registry$"):
+            compare_registries(registry(contexts=[ORDERS]), registry(contexts=[ORDERS]), ["orders", "nosuch"])
+
+    def test_a_scoped_context_no_candidate_pairs_with_is_named(self) -> None:
+        result = compare_registries(registry(contexts=[ORDERS, BILLING]), registry(contexts=[ORDERS]), ["billing", "orders"])
+        self.assertEqual({"contexts": ["billing", "orders"], "without_candidate": ["billing"]}, result["scope"])
+
+    def test_an_unscoped_comparison_reports_no_scope(self) -> None:
+        self.assertNotIn("scope", compare_registries(registry(contexts=[ORDERS]), registry(contexts=[ORDERS])))
+
+
+class CopiedEvidenceTest(unittest.TestCase):
+    def pair(self, gold_evidence: list[dict], candidate_evidence: list[dict]) -> dict:
+        gold = registry(contexts=[ORDERS], rules=[{"id": "r", "contexts": ["orders"], "evidence": gold_evidence}])
+        candidate = registry(contexts=[ORDERS], rules=[{"id": "r", "contexts": ["orders"], "evidence": candidate_evidence}])
+        return asset_result(gold, candidate, "rules")["matched"][0]
+
+    def test_a_pair_citing_the_same_excerpts_is_flagged(self) -> None:
+        evidence = [{"path": "src/orders/a.py", "excerpt_sha256": "1" * 64}, {"path": "src/orders/b.py", "excerpt_sha256": "2" * 64}]
+        self.assertTrue(self.pair(evidence, list(reversed(evidence)))["copied_evidence"])
+
+    def test_a_pair_sharing_only_some_excerpts_is_not_flagged(self) -> None:
+        shared = {"path": "src/orders/a.py", "excerpt_sha256": "1" * 64}
+        self.assertNotIn("copied_evidence", self.pair([shared], [shared, {"path": "src/orders/b.py", "excerpt_sha256": "2" * 64}]))
+
+    def test_a_pair_without_hashed_excerpts_is_not_flagged(self) -> None:
+        self.assertNotIn("copied_evidence", self.pair(cited("src/orders/a.py"), cited("src/orders/a.py")))
+
 
 class ScoreTest(unittest.TestCase):
     def scores(self, gold: list[dict], candidate: list[dict]) -> tuple:
@@ -185,6 +214,11 @@ class ScoreTest(unittest.TestCase):
         candidate = registry(contexts=[ORDERS], rules=[{"id": "other"}])
         self.assertEqual({"precision": 0.5, "recall": 0.5, "f1": 0.5}, compare_registries(gold, candidate)["overall"])
 
+    def test_the_attempted_score_leaves_out_assets_the_candidate_never_extracted(self) -> None:
+        gold = registry(contexts=[ORDERS], rules=[{"id": "r"}], events=[{"id": "e"}])
+        candidate = registry(contexts=[ORDERS], rules=[{"id": "other"}])
+        self.assertEqual({"precision": 0.5, "recall": 0.5, "f1": 0.5}, compare_registries(gold, candidate)["overall_attempted"])
+
 
 class CompareCommandTest(RegistryTestCase):
     def test_the_command_scores_a_candidate_registry_against_the_gold_registry_at_a_commit(self) -> None:
@@ -198,6 +232,19 @@ class CompareCommandTest(RegistryTestCase):
         self.assertEqual(0, result.returncode, result.stdout)
         self.assertEqual((1, ["orders"]), (json.loads(result.stdout)["assets"]["contexts"]["gold"],
                                            json.loads(result.stdout)["assets"]["contexts"]["missed"]))
+
+    def test_the_command_notes_a_scoped_context_with_no_candidate_and_refuses_an_unknown_one(self) -> None:
+        self.seed("contexts.json", [ORDERS])
+        candidate = self.repo / "candidate"
+        self.run_cli("init", "--output", str(candidate))
+        arguments = ("compare-registry", "--gold-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+                     "--candidate-root", str(candidate), "--context")
+        noted = self.run_cli(*arguments, "orders")
+        refused = self.run_cli(*arguments, "nosuch")
+        self.assertEqual(
+            (0, "NOTE: no candidate Context pairs with orders", 1, "ERROR: no Context nosuch in the gold Registry"),
+            (noted.returncode, noted.stderr.split(",")[0], refused.returncode, refused.stdout.strip()),
+        )
 
     def test_a_gold_commit_without_a_repository_root_is_refused(self) -> None:
         result = self.run_cli("compare-registry", "--gold-root", str(self.repo / "memory"), "--gold-commit", "HEAD",

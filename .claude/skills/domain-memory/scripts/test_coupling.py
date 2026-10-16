@@ -94,6 +94,37 @@ class ChangeCouplingTest(RegistryTestCase):
             [pair["contexts"] for pair in change_coupling(self.repo, ["src"], 1, LOW, reading)["pairs"]],
         )
 
+    def test_a_commit_touching_more_modules_than_the_maximum_is_a_sweep_and_not_counted(self) -> None:
+        for _ in range(2):
+            self.change("src/a/x.py", "src/b/y.py")
+            self.change("src/a/x.py", "src/b/y.py", "src/c/z.py")
+        result = change_coupling(self.repo, ["src"], 1, CouplingLimits(2, 2, 0, 30, max_modules=2))
+        self.assertEqual(
+            (2, [{"modules": ["src/a", "src/b"], "shared": 2, "degree": 100, "subjects": ["change", "change"]}]),
+            (result["skipped_sweeping_commits"], result["pairs"]),
+        )
+
+    def explained(self, context_paths: dict[str, str], collaborations: dict | None = None) -> list[str]:
+        self.change("src/a/x.py", "src/b/y.py")
+        self.change("src/a/x.py", "src/b/y.py")
+        reading = CouplingReading(context_paths=context_paths, collaborations=collaborations or {})
+        return change_coupling(self.repo, ["src"], 1, LOW, reading)["pairs"][0]["explained_by"]
+
+    def test_a_pair_between_registered_collaborators_is_explained_by_their_records(self) -> None:
+        collaborations = {frozenset(("alpha", "beta")): ["interactions/b-to-a", "contracts/a-api"]}
+        self.assertEqual(["contracts/a-api", "interactions/b-to-a"],
+                         self.explained({"alpha": "src/a", "beta": "src/b"}, collaborations))
+
+    def test_a_pair_inside_one_context_is_explained_by_that_context(self) -> None:
+        self.assertEqual(["contexts/wide"], self.explained({"wide": "src"}))
+
+    def test_a_pair_between_contexts_with_no_registered_collaboration_is_unexplained(self) -> None:
+        collaborations = {frozenset(("alpha", "gamma")): ["interactions/a-to-c"]}
+        self.assertEqual([], self.explained({"alpha": "src/a", "beta": "src/b"}, collaborations))
+
+    def test_a_pair_of_modules_outside_every_context_is_unexplained(self) -> None:
+        self.assertEqual([], self.explained({"gamma": "lib"}))
+
     def test_without_contexts_a_pair_names_none(self) -> None:
         self.change("src/a/x.py", "src/b/y.py")
         self.change("src/a/x.py", "src/b/y.py")
@@ -153,6 +184,14 @@ class ChangeCouplingTest(RegistryTestCase):
         self.assertEqual([["src/a", "src/b"]], [pair["modules"] for pair in json.loads(result.stdout)["pairs"]])
         refused = self.run_cli("change-coupling", "--repo-root", str(self.repo), "--depth", "0")
         self.assertEqual((1, "ERROR: change-coupling --depth must be at least 1"), (refused.returncode, refused.stdout.strip()))
+
+    def test_the_command_explains_a_pair_by_the_registered_interaction_between_its_contexts(self) -> None:
+        self.seed("contexts.json", [{"id": "alpha", "implementation_path": "src/a"}, {"id": "beta", "implementation_path": "src/b"}])
+        self.seed("interactions.json", [{"id": "a-to-b", "producer_context": "alpha", "consumer_context": "beta"}])
+        self.change("src/a/x.py", "src/b/y.py")
+        result = self.run_cli("change-coupling", "--repo-root", str(self.repo), "--root", "src", "--depth", "1",
+                              "--min-revisions", "1", "--min-shared", "1", "--registry-root", str(self.repo / "memory"))
+        self.assertEqual([["interactions/a-to-b"]], [pair["explained_by"] for pair in json.loads(result.stdout)["pairs"]])
 
 
 if __name__ == "__main__":

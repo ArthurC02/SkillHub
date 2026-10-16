@@ -68,7 +68,8 @@ def _add_history_commands(commands: argparse._SubParsersAction) -> None:
     coupling_parser.add_argument("--root", action="append", default=[])
     coupling_parser.add_argument("--depth", type=int, default=2)
     coupling_parser.add_argument("--since")
-    coupling_parser.add_argument("--exclude-subject", action="append", default=[])
+    coupling_parser.add_argument("--exclude-subject", action="append", default=[], help="repeatable regex")
+    coupling_parser.add_argument("--max-modules", type=int)
     add_path(coupling_parser, "--registry-root", required=False)
     for option, default in (("--min-revisions", 5), ("--min-shared", 5), ("--min-degree", 30), ("--max-changeset", 30)):
         coupling_parser.add_argument(option, type=int, default=default)

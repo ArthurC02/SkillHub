@@ -2,6 +2,18 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.35.0
+
+### Added
+
+- `change-coupling --max-modules <n>` skips a commit touching more modules than that and counts it in `skipped_sweeping_commits`; with `--registry-root`, each pair lists `explained_by`, the Context or the registered interactions, contracts and dependency policies that account for it.
+- `compare-registry` reports `overall_attempted`, the score over the assets the candidate extracted, marks a pair citing exactly the gold excerpts as `copied_evidence`, and with `--context` reports `scope.without_candidate`.
+
+### Changed
+
+- `compare-registry --context` refuses a Context the gold Registry lacks instead of scoring nothing, and notes a scoped Context no candidate Context pairs with.
+- The `mutated_protection` a killed `counterfactual` prints is one line, whatever whitespace the find and replace text holds.
+
 ## 0.34.0
 
 ### Added

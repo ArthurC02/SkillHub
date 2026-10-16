@@ -22,6 +22,7 @@ class CouplingLimits:
     min_shared: int = 5
     min_degree: int = 30
     max_changeset: int = 30
+    max_modules: int | None = None
 
 
 @dataclass(frozen=True)
@@ -29,6 +30,7 @@ class CouplingReading:
     since: str | None = None
     exclude_subjects: tuple[str, ...] = ()
     context_paths: dict[str, str] = field(default_factory=dict)
+    collaborations: dict[frozenset[str], list[str]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -52,13 +54,17 @@ def change_coupling(
     module_for = _existing_module_finder(repo_root, roots, depth)
     revisions: Counter[str] = Counter()
     shared: defaultdict[tuple[str, str], list[str]] = defaultdict(list)
+    sweeping = 0
     for commit in kept:
         modules = sorted({module for path in commit.files if (module := module_for(path))})
+        if limits.max_modules is not None and len(modules) > limits.max_modules:
+            sweeping += 1
+            continue
         revisions.update(modules)
         for pair in combinations(modules, 2):
             shared[pair].append(commit.subject)
     pairs = [
-        _pair(first, second, subjects, revisions, reading.context_paths)
+        _pair(first, second, subjects, revisions, reading)
         for (first, second), subjects in shared.items()
         if len(subjects) >= limits.min_shared
         and min(revisions[first], revisions[second]) >= limits.min_revisions
@@ -67,6 +73,7 @@ def change_coupling(
         "commits": len(commits),
         "excluded_commits": len(commits) - len(wanted),
         "skipped_large_commits": len(wanted) - len(kept),
+        "skipped_sweeping_commits": sweeping,
         "modules": [{"module": module, "revisions": count} for module, count in sorted(revisions.items())],
         "pairs": sorted(
             (pair for pair in pairs if pair["degree"] >= limits.min_degree),
@@ -76,7 +83,7 @@ def change_coupling(
 
 
 def _pair(
-    first: str, second: str, subjects: list[str], revisions: Counter[str], context_paths: dict[str, str]
+    first: str, second: str, subjects: list[str], revisions: Counter[str], reading: CouplingReading
 ) -> dict[str, Any]:
     pair: dict[str, Any] = {
         "modules": [first, second],
@@ -84,9 +91,20 @@ def _pair(
         "degree": round(200 * len(subjects) / (revisions[first] + revisions[second])),
         "subjects": subjects[:SUBJECTS_SHOWN],
     }
-    if context_paths:
-        pair["contexts"] = [context_of(first, context_paths), context_of(second, context_paths)]
+    if reading.context_paths:
+        contexts = [context_of(first, reading.context_paths), context_of(second, reading.context_paths)]
+        pair["contexts"] = contexts
+        pair["explained_by"] = _explanations(contexts, reading.collaborations)
     return pair
+
+
+def _explanations(contexts: list[str | None], collaborations: dict[frozenset[str], list[str]]) -> list[str]:
+    one, other = contexts
+    if one is None or other is None:
+        return []
+    if one == other:
+        return [f"contexts/{one}"]
+    return sorted(collaborations.get(frozenset((one, other)), []))
 
 
 def _subject_filter(patterns: tuple[str, ...]) -> Callable[[str], bool]:

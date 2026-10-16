@@ -35,6 +35,9 @@ def compare_registries(
 ) -> dict[str, Any]:
     gold_records = _records_by_asset(gold)
     if contexts:
+        unknown = sorted(set(contexts) - {record["id"] for record in gold_records["contexts"]})
+        if unknown:
+            raise ValueError(f"no Context {', '.join(unknown)} in the gold Registry")
         gold_records = _within(gold_records, set(contexts))
     candidate_records = _records_by_asset(candidate)
     matched_contexts = _matched("contexts", gold_records["contexts"], candidate_records["contexts"], {})
@@ -43,11 +46,21 @@ def compare_registries(
     for asset in gold_records:
         if asset != "contexts":
             assets[asset] = _matched(asset, gold_records[asset], candidate_records[asset], context_of)
-    return {"assets": assets, "overall": _scores(
-        sum(len(result["matched"]) for result in assets.values()),
-        sum(result["gold"] for result in assets.values()),
-        sum(result["candidate"] for result in assets.values()),
-    )}
+    attempted = [result for result in assets.values() if result["candidate"]]
+    report = {"assets": assets, "overall": _overall(assets.values()), "overall_attempted": _overall(attempted)}
+    if contexts:
+        paired = {pair["gold"] for pair in matched_contexts["matched"]}
+        report["scope"] = {"contexts": sorted(set(contexts)), "without_candidate": sorted(set(contexts) - paired)}
+    return report
+
+
+def _overall(results: Any) -> dict[str, float | None]:
+    results = list(results)
+    return _scores(
+        sum(len(result["matched"]) for result in results),
+        sum(result["gold"] for result in results),
+        sum(result["candidate"] for result in results),
+    )
 
 
 def _within(records: dict[str, list[dict[str, Any]]], contexts: set[str]) -> dict[str, list[dict[str, Any]]]:
@@ -88,7 +101,10 @@ def _matched(
             continue
         taken_candidates.add(index)
         taken_gold.add(gold_index)
-        matched.append({"candidate": candidate[index]["id"], "gold": gold[gold_index]["id"], "by": SCORE_LABELS[score[0]]})
+        pair = {"candidate": candidate[index]["id"], "gold": gold[gold_index]["id"], "by": SCORE_LABELS[score[0]]}
+        if _same_excerpts(gold[gold_index], candidate[index]):
+            pair["copied_evidence"] = True
+        matched.append(pair)
     missed = [gold_index for gold_index in range(len(gold)) if gold_index not in taken_gold]
     extra = [index for index in range(len(candidate)) if index not in taken_candidates]
     return {
@@ -222,6 +238,20 @@ def _citations(record: dict[str, Any]) -> list[Citation]:
             number = int(line) if line.isdigit() else 0
             citations.append((path, number, number if line.isdigit() else -1))
     return citations
+
+
+def _same_excerpts(gold: dict[str, Any], candidate: dict[str, Any]) -> bool:
+    excerpts = _excerpts(gold)
+    return bool(excerpts) and excerpts == _excerpts(candidate)
+
+
+def _excerpts(record: dict[str, Any]) -> set[tuple[str, str]]:
+    return {
+        (reference["path"], reference["excerpt_sha256"])
+        for reference in all_references(record)
+        if isinstance(reference, dict) and isinstance(reference.get("path"), str)
+        and isinstance(reference.get("excerpt_sha256"), str)
+    }
 
 
 def _shared_files(gold: list[Citation], candidate: list[Citation]) -> set[str]:

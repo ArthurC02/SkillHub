@@ -477,6 +477,13 @@ class CounterfactualTest(RepositoryCase):
             result["counterfactual_check"],
         )
 
+    def test_a_multi_line_mutation_is_shown_on_one_line(self) -> None:
+        result = self.break_rule("def refused(length):\n    return length > LIMIT", "def refused(length):\n\treturn length >= LIMIT")
+        self.assertEqual(
+            "rule.py:5: def refused(length): return length > LIMIT -> def refused(length): return length >= LIMIT",
+            result["counterfactual_check"]["mutated_protection"],
+        )
+
     def test_the_check_names_a_placeholder_until_an_obligation_is_given(self) -> None:
         result = self.break_rule("LIMIT = 200", "LIMIT = 201")
         self.assertEqual(result["counterfactual_check"]["obligation_id"], "<obligation-id>")
