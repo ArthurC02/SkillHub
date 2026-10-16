@@ -276,6 +276,7 @@ func (d *Driver) execOut(ctx context.Context, id string, cmd []string, out io.Wr
 		return err
 	}
 	defer attached.Close()
+	defer context.AfterFunc(ctx, attached.Close)()
 	copyUntilLimitOrBrokenStream(out, io.LimitReader(attached.Reader, limit))
 	return nil
 }

@@ -342,6 +342,7 @@ func (d *Driver) ReadTrace(ctx context.Context, id string, offset int64) ([]byte
 		return nil, false, err
 	}
 	defer attached.Close()
+	defer context.AfterFunc(ctx, attached.Close)()
 
 	var out bytes.Buffer
 	if _, err := stdcopy.StdCopy(&out, io.Discard, attached.Reader); err != nil {

@@ -174,6 +174,31 @@ func (silentExecEngine) ExecAttach(_ context.Context, _ string, _ client.ExecAtt
 	return client.ExecAttachResult{HijackedResponse: client.HijackedResponse{Conn: ours, Reader: bufio.NewReader(ours)}}, nil
 }
 
+func TestReadsOfARunningWorkloadReturnWhenTheirContextEndsThoughTheExecNeverAnswers(t *testing.T) {
+	d, _ := newDriver(t)
+	id := handle(t)
+	t.Cleanup(func() { _ = d.Remove(context.Background(), id) })
+	if err := d.Start(context.Background(), id, testRequest("sleep 30")); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	dockerdrv.WrapEngine(d, func(e dockerdrv.Engine) dockerdrv.Engine { return silentExecEngine{Engine: e} })
+
+	for name, read := range map[string]func(context.Context) error{
+		"trace": func(ctx context.Context) error { _, _, err := d.ReadTrace(ctx, id, 0); return err },
+		"done":  func(ctx context.Context) error { _, err := d.WorkloadDone(ctx, id); return err },
+	} {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		returned := make(chan struct{})
+		go func() { _ = read(ctx); close(returned) }()
+		select {
+		case <-returned:
+		case <-time.After(30 * time.Second):
+			t.Errorf("the %s read never returned after its context ended: the collector holds the run's slot", name)
+		}
+		cancel()
+	}
+}
+
 func TestAStartWhoseExecNeverAnswersReturnsWhenItsContextEnds(t *testing.T) {
 	newDriver(t)
 	d, err := dockerdrv.New(dockerdrv.Config{
