@@ -1,4 +1,9 @@
-import type { Evaluation, EvaluationRevision } from "./evaluation.service";
+import type {
+  Evaluation,
+  EvaluationRevision,
+  RunSuggestions,
+  SuggestionDiff,
+} from "./evaluation.service";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -164,4 +169,49 @@ export function isEvaluationRevisionsResponse(
   value: unknown,
 ): value is { revisions: EvaluationRevision[] } {
   return isRecord(value) && Array.isArray(value.revisions) && value.revisions.every(isRevision);
+}
+
+function isSuggestion(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  return (
+    isText(value.suggestion_id) &&
+    value.suggestion_id.trim().length > 0 &&
+    isMember(value.category, ["skill", "runtime", "mcp", "tool", "dataset"]) &&
+    isText(value.problem) &&
+    Array.isArray(value.evidence) &&
+    value.evidence.every(isEvidence) &&
+    isText(value.target_path) &&
+    isText(value.expected_impact) &&
+    isMember(value.decision, ["pending", "accepted", "rejected"]) &&
+    (value.decided_at === undefined || isDate(value.decided_at)) &&
+    (value.applied_skill_version_id === undefined ||
+      (isText(value.applied_skill_version_id) && value.applied_skill_version_id.trim().length > 0))
+  );
+}
+
+export function isRunSuggestionsResponse(value: unknown): value is RunSuggestions {
+  return (
+    isRecord(value) &&
+    isText(value.evaluation_id) &&
+    value.evaluation_id.trim().length > 0 &&
+    Array.isArray(value.suggestions) &&
+    value.suggestions.every(isSuggestion)
+  );
+}
+
+export function isSuggestionDiffResponse(value: unknown): value is SuggestionDiff {
+  return (
+    isRecord(value) &&
+    isText(value.target_path) &&
+    typeof value.applicable === "boolean" &&
+    isOptionalText(value.unified_diff) &&
+    (value.blocked_reason === undefined ||
+      isMember(value.blocked_reason, [
+        "path_out_of_bounds",
+        "target_changed",
+        "validation_blocked",
+        "access_restricted",
+        "diff_unavailable",
+      ]))
+  );
 }

@@ -8,7 +8,12 @@ import {
   isLastingReadFailure,
 } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
-import { isEvaluationResponse, isEvaluationRevisionsResponse } from "./evaluation-response.model";
+import {
+  isEvaluationResponse,
+  isEvaluationRevisionsResponse,
+  isRunSuggestionsResponse,
+  isSuggestionDiffResponse,
+} from "./evaluation-response.model";
 
 export type EvaluationVerdict = "met" | "partially_met" | "not_met" | "undetermined";
 export type CriterionVerdict = "passed" | "failed" | "undetermined";
@@ -284,18 +289,30 @@ export function useEvaluationFeedback(runId: string) {
   });
 }
 
+export async function getRunSuggestions(runId: string): Promise<RunSuggestions> {
+  const result = await apiFetch<unknown>(`/runs/${encodeURIComponent(runId)}/suggestions`);
+  if (!isRunSuggestionsResponse(result)) throw new Error("Invalid suggestions response");
+  return result;
+}
+
 export function useRunSuggestions(runId: string) {
   return useQuery({
     queryKey: queryKeys.evaluation.suggestions(runId),
-    queryFn: () => apiFetch<RunSuggestions>(`/runs/${runId}/suggestions`),
+    queryFn: () => getRunSuggestions(runId),
     enabled: runId.length > 0,
   });
+}
+
+export async function getSuggestionDiff(suggestionId: string): Promise<SuggestionDiff> {
+  const result = await apiFetch<unknown>(`/suggestions/${encodeURIComponent(suggestionId)}/diff`);
+  if (!isSuggestionDiffResponse(result)) throw new Error("Invalid preview response");
+  return result;
 }
 
 export function useSuggestionDiff(suggestionId: string, enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.evaluation.suggestionDiff(suggestionId),
-    queryFn: () => apiFetch<SuggestionDiff>(`/suggestions/${suggestionId}/diff`),
+    queryFn: () => getSuggestionDiff(suggestionId),
     enabled,
     staleTime: 0,
     gcTime: 0,
@@ -321,7 +338,13 @@ export async function decideSuggestion(suggestionId: string, decision: "accepted
   return result;
 }
 
-export function useDecideSuggestion(runId: string) {
+export function useDecideSuggestion(
+  runId: string,
+  callbacks: {
+    onConfirmed: () => void;
+    onError: (error: Error, decision: "accepted" | "rejected") => void;
+  },
+) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: ({
@@ -331,8 +354,11 @@ export function useDecideSuggestion(runId: string) {
       suggestionId: string;
       decision: "accepted" | "rejected";
     }) => decideSuggestion(suggestionId, decision),
-    onSuccess: () =>
-      client.invalidateQueries({ queryKey: queryKeys.evaluation.suggestions(runId) }),
+    onError: (error, { decision }) => callbacks.onError(error, decision),
+    onSuccess: () => {
+      callbacks.onConfirmed();
+      return client.invalidateQueries({ queryKey: queryKeys.evaluation.suggestions(runId) });
+    },
   });
 }
 

@@ -53,25 +53,22 @@ export function SuggestionItem({
 }) {
   const [showDiff, setShowDiff] = useState(false);
   const [unconfirmed, setUnconfirmed] = useState<UnconfirmedDecision>();
-  const decide = useDecideSuggestion(runId);
+  const decide = useDecideSuggestion(runId, {
+    onError: (error, decision) => {
+      if (isWriteResultUnknown(error)) setUnconfirmed({ error, decision });
+      if (!isWriteResultUnknown(error) && !unconfirmed)
+        onDecisionUnsettled(suggestion.suggestion_id, false);
+    },
+    onConfirmed: () => {
+      setUnconfirmed(undefined);
+      onDecisionUnsettled(suggestion.suggestion_id, false);
+    },
+  });
   const error = decide.error;
   const pendingDecision = decide.isPending ? decide.variables?.decision : undefined;
   const choose = (decision: "accepted" | "rejected") => {
     onDecisionUnsettled(suggestion.suggestion_id, true);
-    decide.mutate(
-      { suggestionId: suggestion.suggestion_id, decision },
-      {
-        onError: (error) => {
-          if (isWriteResultUnknown(error)) setUnconfirmed({ error, decision });
-          if (!isWriteResultUnknown(error) && !unconfirmed)
-            onDecisionUnsettled(suggestion.suggestion_id, false);
-        },
-        onSuccess: () => {
-          setUnconfirmed(undefined);
-          onDecisionUnsettled(suggestion.suggestion_id, false);
-        },
-      },
-    );
+    decide.mutate({ suggestionId: suggestion.suggestion_id, decision });
   };
 
   return (
