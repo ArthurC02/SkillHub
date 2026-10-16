@@ -380,7 +380,7 @@ func (d *ownerDeclaration) addEntry(number int, key, value string) error {
 
 var (
 	queryNamePattern  = regexp.MustCompile(`(?m)^--\s*name:\s*(\w+)\s*:\w+`)
-	sqlCommentPattern = regexp.MustCompile(`--[^\n]*`)
+	sqlCommentPattern = regexp.MustCompile(`--[^\n]*|(?s:/\*.*?\*/)`)
 	sqlLiteralPattern = regexp.MustCompile(`'[^']*'`)
 
 	sqlNonTargetPattern = regexp.MustCompile(`FOR (NO KEY )?UPDATE|FOR SHARE|DO UPDATE`)

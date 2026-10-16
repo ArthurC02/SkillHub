@@ -45,6 +45,11 @@ func TestLacksWorkspaceCondition(t *testing.T) {
 		{"workspace in a tuple comparison", "SELECT * FROM skills WHERE (id, workspace_id) = ($1, $2);", false},
 		{"workspace in a list", "SELECT * FROM skills WHERE workspace_id IN (SELECT id FROM workspaces WHERE owner_user_id = $1);", false},
 		{"insert that sets the workspace", "INSERT INTO skills (workspace_id, name) VALUES ($1, $2);", false},
+		{"workspace only joined column to column", "SELECT * FROM runs r JOIN skills s ON s.workspace_id = r.workspace_id WHERE r.id = $1;", true},
+		{"joined and filtered by the workspace", "SELECT * FROM runs r JOIN skills s ON s.workspace_id = r.workspace_id WHERE r.id = $1 AND r.workspace_id = $2;", false},
+		{"a union branch without the workspace", "SELECT id FROM skills WHERE workspace_id = $1 UNION ALL SELECT id FROM runs WHERE id = $2;", true},
+		{"every union branch scoped", "SELECT id FROM skills WHERE workspace_id = $1 UNION SELECT id FROM runs WHERE workspace_id = $1;", false},
+		{"workspace named only in a block comment", "/* WHERE workspace_id = $2 */ SELECT * FROM users WHERE id = $1;", true},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()

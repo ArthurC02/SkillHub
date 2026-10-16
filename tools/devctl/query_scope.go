@@ -19,10 +19,22 @@ var workspaceConditionPattern = regexp.MustCompile(
 		`|(?:=|<>|!=)\s*(?:[A-Z_][A-Z0-9_]*\.|@|SQLC\.N?ARG\s*\(\s*)?WORKSPACE_ID\b` +
 		`|\bINSERT\s+INTO\s+[A-Z_][A-Z0-9_]*\s*\([^)]*\bWORKSPACE_ID\b`)
 
+var (
+	workspaceColumnJoin = regexp.MustCompile(`(^|[^@\w(])(?:[A-Z_][A-Z0-9_]*\.)?WORKSPACE_ID\s*=\s*(?:[A-Z_][A-Z0-9_]*\.)?WORKSPACE_ID\b`)
+	sqlUnion            = regexp.MustCompile(`\bUNION\b`)
+)
+
 func lacksWorkspaceCondition(body string) bool {
-	normalized := normalizeSQL(body)
-	return sqlParameterPattern.MatchString(normalized) && !workspaceConditionPattern.MatchString(normalized) &&
-		len(referencedTables(body)) > 0
+	if len(referencedTables(body)) == 0 {
+		return false
+	}
+	normalized := workspaceColumnJoin.ReplaceAllString(normalizeSQL(body), "$1 ")
+	for _, branch := range sqlUnion.Split(normalized, -1) {
+		if sqlParameterPattern.MatchString(branch) && !workspaceConditionPattern.MatchString(branch) {
+			return true
+		}
+	}
+	return false
 }
 
 func queryScopeProblems(root string) []string {
