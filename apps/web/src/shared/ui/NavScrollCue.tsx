@@ -13,13 +13,39 @@ export function NavScrollCue() {
     const update = () => {
       setHidden(Math.ceil(nav.scrollLeft + nav.clientWidth) >= nav.scrollWidth);
     };
-    update();
+    const revealCurrent = (preserveFocusedLink = false) => {
+      const current =
+        (preserveFocusedLink ? nav.querySelector(":focus") : null) ??
+        nav.querySelector('[aria-current="page"]');
+      if (current && nav.scrollWidth > nav.clientWidth) {
+        const bounds = nav.getBoundingClientRect();
+        const item = current.getBoundingClientRect();
+        const inset = Number.parseFloat(getComputedStyle(nav).scrollPaddingInlineEnd) || 0;
+        nav.scrollLeft +=
+          item.left < bounds.left
+            ? item.left - bounds.left
+            : Math.max(0, item.right - bounds.right + inset);
+      }
+      update();
+    };
+    revealCurrent();
+    const resize = () => revealCurrent(true);
     nav.addEventListener("scroll", update, { passive: true });
-    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(update);
+    window.addEventListener("resize", resize);
+    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(resize);
     observer?.observe(nav);
+    const selection = new MutationObserver(() => revealCurrent());
+    selection.observe(nav, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["aria-current"],
+    });
     return () => {
       nav.removeEventListener("scroll", update);
+      window.removeEventListener("resize", resize);
       observer?.disconnect();
+      selection.disconnect();
     };
   }, []);
 
