@@ -394,10 +394,40 @@ export function useReviewExposure(publication: string) {
   });
 }
 
+export async function getCostStatistics(): Promise<{ statistics: CostStatisticsWindow[] }> {
+  const result = await apiFetch<unknown>("/admin/cost-statistics");
+  if (!isCostStatistics(result)) throw new Error("Invalid cost response");
+  return result;
+}
+
+function isCostStatistics(value: unknown): value is { statistics: CostStatisticsWindow[] } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const statistics = (value as { statistics?: unknown }).statistics;
+  return Array.isArray(statistics) && statistics.every(isCostStatisticsWindow);
+}
+
+function isCostStatisticsWindow(value: unknown): value is CostStatisticsWindow {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const statistic = value as Partial<CostStatisticsWindow>;
+  return (
+    typeof statistic.kind === "string" &&
+    [statistic.window_start, statistic.window_end].every(
+      (date) => typeof date === "string" && Number.isFinite(Date.parse(date)),
+    ) &&
+    Number.isSafeInteger(statistic.sample_count) &&
+    [
+      statistic.p50_usd_micros,
+      statistic.p90_usd_micros,
+      statistic.p95_usd_micros,
+      statistic.max_usd_micros,
+    ].every((amount) => amount === null || Number.isSafeInteger(amount))
+  );
+}
+
 export function useCostStatistics() {
   return useQuery({
     queryKey: queryKeys.admin.costStatistics,
-    queryFn: () => apiFetch<{ statistics: CostStatisticsWindow[] }>("/admin/cost-statistics"),
+    queryFn: getCostStatistics,
     enabled: useOperator(),
   });
 }
