@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/halt"
@@ -16,6 +17,8 @@ const (
 	ProviderLostAfter = 90 * time.Second
 
 	reassignmentsPerRun = 1
+
+	lostKeyRevokeTimeout = gatewayRequestTimeout
 )
 
 func providerForgotAttempt(err error) bool { return errors.Is(err, ErrAttemptUnknown) }
@@ -70,6 +73,7 @@ func (d *driver) providerLost(ctx context.Context, attempt gen.RunAttempt, reaso
 	if err := d.finishAttempt(ctx, attempt, errClassProviderLost, string(reason)); err != nil {
 		return err
 	}
+	revokeLostKey(ctx, d.svc.Gateway, attempt)
 	d.svc.providers().forget(attempt.Provider)
 
 	attempts, err := d.svc.attempts(ctx, d.cur.WorkspaceID, d.cur.ID)
@@ -83,6 +87,19 @@ func (d *driver) providerLost(ctx context.Context, attempt gen.RunAttempt, reaso
 	slog.Warn("provider lost this attempt; reassigning the run to another provider once",
 		"run_id", pgconv.UUIDString(d.cur.ID), "provider", attempt.Provider, "reason", reason)
 	return d.dispatch(ctx)
+}
+
+func revokeLostKey(ctx context.Context, gateway ModelGateway, attempt gen.RunAttempt) {
+	if gateway == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), lostKeyRevokeTimeout)
+	defer cancel()
+	if err := gateway.Revoke(ctx, pgconv.UUIDString(attempt.ID)); err != nil {
+		metrics.GatewayRevokeFailed.Inc()
+		slog.Warn("could not revoke a lost attempt's model key; cleanup revokes it again",
+			"run_attempt_id", pgconv.UUIDString(attempt.ID), "error", err)
+	}
 }
 
 func reassignableAfter(attempts []gen.RunAttempt) bool {

@@ -253,6 +253,7 @@ func TestARunReassignedAfterARestartIsDispatchedAgainInsteadOfTerminated(t *test
 type keyMint struct {
 	mu              sync.Mutex
 	budgets         []float64
+	calls           []string
 	spendUnreadable atomic.Bool
 }
 
@@ -266,6 +267,7 @@ func (m *keyMint) gateway(t *testing.T, spendPerAttempt float64) *run.Gateway {
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		m.mu.Lock()
 		m.budgets = append(m.budgets, body.MaxBudget)
+		m.calls = append(m.calls, "issue")
 		m.mu.Unlock()
 		_ = json.NewEncoder(w).Encode(map[string]string{"key": "sk-test"})
 	})
@@ -280,6 +282,9 @@ func (m *keyMint) gateway(t *testing.T, spendPerAttempt float64) *run.Gateway {
 		})
 	})
 	mux.HandleFunc("POST /key/delete", func(w http.ResponseWriter, _ *http.Request) {
+		m.mu.Lock()
+		m.calls = append(m.calls, "revoke")
+		m.mu.Unlock()
 		_, _ = w.Write([]byte(`{}`))
 	})
 	srv := httptest.NewServer(mux)
@@ -304,6 +309,21 @@ func TestAReassignedAttemptOnlyGetsWhatIsLeftOfTheRunBudget(t *testing.T) {
 	}
 	if diff := mint.budgets[1] - 0.38; diff > 0.000001 || diff < -0.000001 {
 		t.Errorf("the second attempt got %v, want 0.38: what is left after the first spent 0.12", mint.budgets[1])
+	}
+}
+
+func TestALostAttemptsKeyIsRevokedBeforeTheNextAttemptGetsOne(t *testing.T) {
+	mint := &keyMint{}
+	s := newLossSceneWithGateway(t, "alice-lost-key-revoked", mint.gateway(t, 0.12))
+	s.alpha.SetPollStatus(http.StatusNotFound)
+
+	s.drive(t, "the run losing its provider")
+
+	mint.mu.Lock()
+	defer mint.mu.Unlock()
+	if len(mint.calls) < 3 || mint.calls[0] != "issue" || mint.calls[1] != "revoke" || mint.calls[2] != "issue" {
+		t.Fatalf("gateway calls = %v, want issue, revoke, issue first: a lost attempt's sandbox may still be "+
+			"alive, and its unrevoked key would spend its own budget beside the next attempt's", mint.calls)
 	}
 }
 
