@@ -83,8 +83,8 @@ var disclosureCatalogue = []disclosure{
 	{
 
 		Code:  skillpkg.CodeFileNotScanned,
-		Label: "有檔案超過掃描上限",
-		Note:  "套件內有檔案超過 1 MB 的掃描上限,只掃了開頭那一段。超過的部分沒有被讀過——包含 Secret 比對在內,所以「沒有掃到」在這個套件上不代表「沒有」。",
+		Label: "有檔案超過分析上限",
+		Note:  "套件內有檔案超過 1 MB 的分析上限,網址與依賴只分析了開頭那一段,所以那些清單在這個套件上可能不完整。Secret 比對仍涵蓋整個檔案。",
 	},
 }
 

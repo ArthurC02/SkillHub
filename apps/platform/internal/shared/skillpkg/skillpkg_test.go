@@ -841,6 +841,8 @@ func TestSecretsAreFoundInOversizedAndBinaryFiles(t *testing.T) {
 	}{
 		{"over the scan cap", "fixtures/dump.sql", "-- aws_access_key_id = " + key + "\n" +
 			strings.Repeat("x", maxScanBytes+1)},
+		{"past the scan cap", "fixtures/dump.sql", strings.Repeat("x", maxScanBytes+1) +
+			"\n-- aws_access_key_id = " + key + "\n"},
 		{"binary", "bin/tool", "\x00\x01\x02ELF" + key + "\x00\x00"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

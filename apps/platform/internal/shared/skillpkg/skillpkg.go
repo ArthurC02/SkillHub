@@ -794,7 +794,7 @@ func (r *Report) scanTree(fsys fs.FS) {
 		deps.note(path)
 		r.discloseFileKind(path)
 
-		data, err := readCapped(fsys, path, maxScanBytes)
+		data, err := readCapped(fsys, path, int64(maxEntryBytes))
 		if err != nil {
 			return
 		}
@@ -839,23 +839,23 @@ func (r *Report) discloseFileKind(path string) {
 }
 
 func (r *Report) scanContent(path string, size int64, data []byte, deps *depScan, urlsByHost map[string][]string) {
+	r.scanSecrets(path, data)
+	analyzed := data[:min(len(data), maxScanBytes)]
 	if size > maxScanBytes {
 		r.add(SeverityInfo, CodeFileNotScanned, path, fmt.Sprintf(
-			"檔案超過內容掃描上限 %d bytes；只掃描了前 %d bytes",
-			maxScanBytes, len(data)))
+			"檔案超過內容分析上限 %d bytes；網址與依賴只分析了前 %d bytes，憑證比對涵蓋了 %d bytes",
+			maxScanBytes, len(analyzed), len(data)))
 	}
-	if isBinary(data) {
-		r.scanSecrets(path, data)
+	if isBinary(analyzed) {
 		return
 	}
-	content := string(data)
+	content := string(analyzed)
 	deps.observe(path, content)
 
 	for _, u := range dedupe(urlPattern.FindAllString(content, -1)) {
 		h := urlHost(u)
 		urlsByHost[h] = append(urlsByHost[h], path+": "+u)
 	}
-	r.scanSecrets(path, data)
 }
 
 const maxLinkTarget = 512
