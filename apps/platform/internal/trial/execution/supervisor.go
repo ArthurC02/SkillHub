@@ -103,7 +103,13 @@ func (s *Service) superviseRun(ctx context.Context, run gen.Run, policy []byte) 
 			lastAttemptID = attempts[len(attempts)-1].ID
 		}
 		d := &driver{svc: s, cur: run, policy: policy, clock: clock}
-		err := d.finish(ctx, lastAttemptID, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
+		var err error
+		if live := liveAttempt(attempts); live != nil {
+			err = d.finishAttemptAndRun(ctx, *live, errClassTimeout, string(d.timeoutReason()),
+				runEnding{to: gen.RunStatusTimedOut, failure: failureTimeout, reason: d.timeoutReason()})
+		} else {
+			err = d.finish(ctx, lastAttemptID, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
+		}
 		switch {
 		case err == nil:
 			slog.Warn("run timed out by the supervisor", "run_id", pgconv.UUIDString(run.ID), "status", run.Status)

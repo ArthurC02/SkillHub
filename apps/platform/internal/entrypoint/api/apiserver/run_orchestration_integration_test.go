@@ -657,6 +657,22 @@ func TestSupervisorTimesOutARunThatOutlivedItsWallClock(t *testing.T) {
 	if !strings.Contains(view.StatusReason, "時間上限") {
 		t.Errorf("reason = %q, want it to name the wall clock limit", view.StatusReason)
 	}
+	wantAttemptTimedOut(t, pool, dispatched.ID)
+}
+
+func wantAttemptTimedOut(t *testing.T, pool *pgxpool.Pool, attemptID pgtype.UUID) {
+	t.Helper()
+	var finished bool
+	var errorClass *string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT finished_at IS NOT NULL, error_class FROM run_attempts WHERE id = $1`, attemptID,
+	).Scan(&finished, &errorClass); err != nil {
+		t.Fatal(err)
+	}
+	if !finished || errorClass == nil || *errorClass != "timeout" {
+		t.Errorf("attempt finished = %v, error class = %v; want it finished as a timeout, not left running on a timed-out run",
+			finished, errorClass)
+	}
 }
 
 func TestSupervisorTimesOutARunWhoseTimestampsAreFreshButWhoseClockRanOut(t *testing.T) {
@@ -720,6 +736,7 @@ func TestADriverResumingADispatchedRunCountsItsWallClockFromTheDispatch(t *testi
 		t.Fatalf("a run dispatched 2m ago with a 60s wall clock resumed as %q (%s), want timed_out on the wall clock",
 			view.Status, view.StatusReason)
 	}
+	wantAttemptTimedOut(t, pool, dispatched.ID)
 }
 
 func TestTimeSpentWaitingForASlotIsBoundedByTheWaitLimitNotTheWallClock(t *testing.T) {

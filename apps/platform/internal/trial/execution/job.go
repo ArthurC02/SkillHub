@@ -101,6 +101,10 @@ func (d *driver) execute(ctx context.Context, attempts []gen.RunAttempt) error {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusCancelled, failureCancelled, "派送之前就被取消")
 	}
 	if d.expired() {
+		if live != nil {
+			return d.finishAttemptAndRun(ctx, *live, errClassTimeout, string(d.timeoutReason()),
+				runEnding{to: gen.RunStatusTimedOut, failure: failureTimeout, reason: d.timeoutReason()})
+		}
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
 	}
 
