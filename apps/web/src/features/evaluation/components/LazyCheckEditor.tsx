@@ -15,7 +15,7 @@ export function LazyCheckEditor({
   const id = useId();
   return (
     <div id={id} tabIndex={-1} role="group" aria-label="檢查方式與設計">
-      {kinds.isPending && <Loading what="檢查方式" />}
+      {kinds.isPending && <Loading what="檢查方式" paused={kinds.fetchStatus === "paused"} />}
       <ReadFailure
         error={kinds.error}
         what="檢查方式"

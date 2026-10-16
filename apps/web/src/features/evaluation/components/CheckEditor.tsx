@@ -327,7 +327,9 @@ export function CheckEditor({
         />
         {graders.isPending && (
           <p id={gradersStatusId} role="status">
-            評分器版本清單讀取中，暫時不能選擇評分器。
+            {graders.fetchStatus === "paused"
+              ? "等待連線以讀取評分器版本清單；恢復連線後會繼續讀取。暫時不能選擇評分器。"
+              : "評分器版本清單讀取中，暫時不能選擇評分器。"}
           </p>
         )}
         <ReadFailure
