@@ -33,8 +33,10 @@ export function RunCompare() {
     ? (siblings.data?.pages.flatMap((p) => p.runs) ?? []).filter((r) => r.run_id !== runId)
     : [];
 
-  const pick = (id: string) =>
+  const pick = (id: string) => {
     void navigate({ to: "/runs/$runId/compare", params: { runId }, search: { against: id } });
+    document.getElementById("run-comparison-heading")?.focus();
+  };
 
   const pickForm = (
     <CompareCandidatesPicker
@@ -114,22 +116,24 @@ function ComparisonResult({
   children: ReactNode;
 }) {
   if (against === "") return <>{children}</>;
-  const report = comparison.error || comparison.isFetching ? undefined : comparison.data;
+  const paused = comparison.fetchStatus === "paused";
+  const busy = comparison.fetchStatus !== "idle";
+  const report = comparison.error || busy ? undefined : comparison.data;
   return (
     <>
       {report && <ComparisonLead data={report} />}
       <button
         type="button"
-        aria-disabled={comparison.isFetching}
+        aria-disabled={busy}
         onClick={() => {
-          if (!comparison.isFetching) void comparison.refetch();
+          if (!busy) void comparison.refetch();
         }}
       >
-        {comparison.isFetching ? "更新比較中…" : "更新比較結果"}
+        {paused ? "等待連線…" : busy ? "更新比較中…" : "更新比較結果"}
       </button>
-      {comparison.isFetching && <Loading what="比較" />}
+      {busy && <Loading what="比較" paused={paused} />}
       <ReadFailure
-        error={comparison.isFetching ? null : comparison.error}
+        error={busy ? null : comparison.error}
         what="比較結果"
         retry={() => void comparison.refetch()}
         focusTarget="run-comparison-heading"
