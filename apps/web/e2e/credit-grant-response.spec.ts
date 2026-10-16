@@ -332,3 +332,45 @@ for (const amount of [9007199254740992, -9007199254740992]) {
     });
   });
 }
+
+for (const targetKind of ["text", "window", "document"] as const) {
+  test(`account interaction diagnostics retain ${targetKind} event targets`, async ({ page }) => {
+    const writes: string[] = [];
+    page.on("request", (request) => {
+      if (request.method() === "POST" && new URL(request.url()).pathname.endsWith("/grants"))
+        writes.push(request.url());
+    });
+    await page.goto("/admin/accounts");
+    await page.getByLabel("Email", { exact: true }).fill("member@example.com");
+    const observation = await page.evaluate((kind) => {
+      const input = document.querySelector<HTMLInputElement>("#admin-account-email")!;
+      if (kind === "text") {
+        const button = input.form!.querySelector("button[type='submit']")!;
+        const text = [...button.childNodes].find((node) => node.nodeType === Node.TEXT_NODE);
+        if (!text) throw new Error("Query label is missing");
+        text.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, composed: true }));
+      } else if (kind === "window") window.dispatchEvent(new Event("blur"));
+      else document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+      const events = Reflect.get(window, "accountInteractions") as Record<string, unknown>[];
+      const type = kind === "text" ? "mousedown" : kind === "window" ? "blur" : "visibilitychange";
+      return {
+        valid: input.validity.valid,
+        events: events.filter((event) => event.type === type && event.trusted === false),
+      };
+    }, targetKind);
+    expect(observation.valid).toBe(true);
+    expect(observation.events).toHaveLength(1);
+    expect(observation.events[0]).toMatchObject(
+      {
+        text: { type: "mousedown", tag: "#text", nodeType: 3 },
+        window: { type: "blur", tag: "WINDOW", nodeType: null },
+        document: { type: "visibilitychange", tag: "#document", nodeType: 9 },
+      }[targetKind],
+    );
+    if (targetKind === "text")
+      expect(observation.events[0]?.path).toEqual(
+        expect.arrayContaining([expect.objectContaining({ tag: "BUTTON", nodeType: 1 })]),
+      );
+    expect(writes).toEqual([]);
+  });
+}
