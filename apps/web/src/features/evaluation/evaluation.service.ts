@@ -1,8 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  CriterionCheckChildrenMaxItems,
+  CriterionCheckValuesMaxItems,
+} from "@skillhub/api-client-ts/limits";
 import { apiFetch } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
-import { problems, type CheckKind, type CheckNode } from "./check.model";
+import { problems, type Bounds, type CheckKind, type CheckNode } from "./check.model";
 
 export type GraderScope = "workspace" | "platform";
 
@@ -36,9 +40,55 @@ function send(body: unknown): RequestInit {
 export function useCheckKinds() {
   return useQuery({
     queryKey: queryKeys.checks.kinds,
-    queryFn: () => apiFetch<CheckKinds>("/evaluation/check-kinds"),
+    queryFn: getCheckKinds,
     staleTime: Infinity,
   });
+}
+
+export async function getCheckKinds(): Promise<CheckKinds> {
+  const result = await apiFetch<unknown>("/evaluation/check-kinds");
+  if (!isCheckKinds(result)) throw new Error("Invalid check kinds response");
+  return result;
+}
+
+function isCheckKinds(value: unknown): value is CheckKinds {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const palette = value as Partial<CheckKinds>;
+  return (
+    Array.isArray(palette.kinds) &&
+    palette.kinds.every(isCheckKind) &&
+    Number.isSafeInteger(palette.max_nodes) &&
+    Number.isSafeInteger(palette.max_depth)
+  );
+}
+
+function isCheckKind(value: unknown): value is CheckKind {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const kind = value as Partial<CheckKind>;
+  return (
+    typeof kind.kind === "string" &&
+    kind.kind.length > 0 &&
+    (kind.category === "grader" || kind.category === "composite") &&
+    typeof kind.label === "string" &&
+    typeof kind.description === "string" &&
+    typeof kind.at_least === "boolean" &&
+    isCheckBounds(kind.values, CriterionCheckValuesMaxItems) &&
+    isCheckBounds(kind.children, CriterionCheckChildrenMaxItems)
+  );
+}
+
+function isCheckBounds(value: unknown, maximum: number): value is Bounds {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const bounds = value as Partial<Bounds>;
+  return (
+    typeof bounds.min === "number" &&
+    Number.isSafeInteger(bounds.min) &&
+    bounds.min >= 0 &&
+    typeof bounds.max === "number" &&
+    Number.isSafeInteger(bounds.max) &&
+    bounds.max >= bounds.min &&
+    bounds.max <= maximum
+  );
 }
 
 export function useGraders(scope: GraderScope) {
