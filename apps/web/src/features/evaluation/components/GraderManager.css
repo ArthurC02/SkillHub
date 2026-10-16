@@ -2,6 +2,12 @@
   white-space: pre-wrap;
 }
 
+.grader-list,
+.grader-write-feedback,
+.grader-result {
+  overflow-wrap: anywhere;
+}
+
 .grader-list[hidden] {
   display: none;
 }

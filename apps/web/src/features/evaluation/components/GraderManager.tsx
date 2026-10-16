@@ -3,7 +3,12 @@ import {
   EvaluationGraderRevisionInstructionsMaxLength,
 } from "@skillhub/api-client-ts/limits";
 import { useEffect, useRef, useState } from "react";
-import { ApiError, isTransientReadFailure } from "../../../core/api/client";
+import {
+  ApiError,
+  SessionNotReadyError,
+  isTransientReadFailure,
+  isWriteResultUnknown,
+} from "../../../core/api/client";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
@@ -22,15 +27,37 @@ const SCOPE_LABEL: Record<GraderScope, string> = {
   workspace: "這個 Workspace 專用",
 };
 
-function WriteError({ error }: { error: unknown }) {
+type UnconfirmedWrite = { error: unknown; name: string };
+
+function WriteError({ error, unconfirmed }: { error: unknown; unconfirmed?: UnconfirmedWrite }) {
+  const failure = unconfirmed?.error ?? error;
+  const feedback = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (failure) feedback.current?.focus();
+  }, [failure]);
   return (
-    <ReadFailure error={error} what="評分器">
-      <p role="alert">
-        {error instanceof ApiError && [400, 409].includes(error.status)
-          ? error.message
-          : "沒有存成功，可以再試一次。"}
-      </p>
-    </ReadFailure>
+    <>
+      <ReadFailure error={failure} what="評分器">
+        <div ref={feedback} className="grader-write-feedback" role="alert" tabIndex={-1}>
+          {isWriteResultUnknown(failure) ? (
+            <>
+              <p>儲存結果尚未確認。無法確認是否已新增評分器或建立新版本。</p>
+              {unconfirmed && <p>這次送出的評分器：{unconfirmed.name}</p>}
+              <p>請先按「重新整理」核對現有的評分器，再決定是否重新送出。</p>
+            </>
+          ) : (
+            <p>
+              {failure instanceof ApiError && [400, 409].includes(failure.status)
+                ? failure.message
+                : "這次儲存被拒絕。草稿仍保留，請重新讀取評分器後再試。"}
+            </p>
+          )}
+        </div>
+      </ReadFailure>
+      {unconfirmed && error instanceof SessionNotReadyError && (
+        <ReadFailure error={error} what="評分器" />
+      )}
+    </>
   );
 }
 
@@ -93,19 +120,44 @@ function ReviseGrader({
 }: GraderActions & { grader: Grader }) {
   const [instructions, setInstructions] = useState(grader.instructions);
   const [reason, setReason] = useState("");
+  const [unconfirmed, setUnconfirmed] = useState<UnconfirmedWrite>();
   const revise = useReviseGrader(scope, grader.id, onCompleted);
+  const [sourceVersion, setSourceVersion] = useState(grader.version_id);
+  if (sourceVersion !== grader.version_id) {
+    setSourceVersion(grader.version_id);
+    if (!unconfirmed && !revise.isPending) {
+      setInstructions(grader.instructions);
+      setReason("");
+    }
+  }
   const id = `grader-${grader.id}`;
   const changed = instructions.trim() !== grader.instructions.trim();
   const ready = changed && instructions.trim() !== "" && reason.trim() !== "";
   return (
     <form
       onInput={() => {
-        revise.reset();
+        if (!unconfirmed) revise.reset();
         onDraftChange();
       }}
       onSubmit={(e) => {
         e.preventDefault();
-        if (ready && !revise.isPending) revise.mutate({ instructions, reason });
+        if (!ready || revise.isPending) return;
+        revise.mutate(
+          { instructions, reason },
+          {
+            onError: (error) => {
+              if (error instanceof SessionNotReadyError) return;
+              setUnconfirmed(
+                isWriteResultUnknown(error) ? { error, name: grader.name } : undefined,
+              );
+            },
+            onSuccess: (saved) => {
+              setUnconfirmed(undefined);
+              setInstructions(saved.instructions);
+              setReason("");
+            },
+          },
+        );
       }}
     >
       <InstructionsField
@@ -126,7 +178,7 @@ function ReviseGrader({
           disabled={!ready || revise.isPending}
           aria-describedby={ready ? undefined : `${id}-why`}
         >
-          {revise.isPending ? "存成新版本中…" : "存成新版本"}
+          {revise.isPending ? "存成新版本中…" : unconfirmed ? "重新送出新版本" : "存成新版本"}
         </button>{" "}
         {!ready && (
           <span className="note" id={`${id}-why`}>
@@ -134,7 +186,7 @@ function ReviseGrader({
           </span>
         )}
       </p>
-      <WriteError error={revise.error} />
+      <WriteError error={revise.error} unconfirmed={unconfirmed} />
     </form>
   );
 }
@@ -161,7 +213,6 @@ function GraderItem({
         <details>
           <summary>修改「{grader.name}」的評分指示</summary>
           <ReviseGrader
-            key={grader.version_id}
             grader={grader}
             scope={scope}
             onCompleted={onCompleted}
@@ -177,12 +228,13 @@ function CreateGrader({ scope, onCompleted, onDraftChange }: GraderActions) {
   const [name, setName] = useState("");
   const [instructions, setInstructions] = useState("");
   const [reason, setReason] = useState("");
+  const [unconfirmed, setUnconfirmed] = useState<UnconfirmedWrite>();
   const create = useCreateGrader(scope);
   const ready = name.trim() !== "" && instructions.trim() !== "" && reason.trim() !== "";
   return (
     <form
       onInput={() => {
-        create.reset();
+        if (!unconfirmed) create.reset();
         onDraftChange();
       }}
       aria-labelledby="grader-create-heading"
@@ -192,7 +244,12 @@ function CreateGrader({ scope, onCompleted, onDraftChange }: GraderActions) {
         create.mutate(
           { name, instructions, reason },
           {
+            onError: (error) => {
+              if (error instanceof SessionNotReadyError) return;
+              setUnconfirmed(isWriteResultUnknown(error) ? { error, name } : undefined);
+            },
             onSuccess: (grader) => {
+              setUnconfirmed(undefined);
               setName("");
               setInstructions("");
               setReason("");
@@ -231,7 +288,7 @@ function CreateGrader({ scope, onCompleted, onDraftChange }: GraderActions) {
           disabled={!ready || create.isPending}
           aria-describedby={ready ? undefined : "grader-create-why"}
         >
-          {create.isPending ? "新增中…" : "新增評分器"}
+          {create.isPending ? "新增中…" : unconfirmed ? "重新送出新增" : "新增評分器"}
         </button>{" "}
         {!ready && (
           <span className="note" id="grader-create-why">
@@ -239,7 +296,7 @@ function CreateGrader({ scope, onCompleted, onDraftChange }: GraderActions) {
           </span>
         )}
       </p>
-      <WriteError error={create.error} />
+      <WriteError error={create.error} unconfirmed={unconfirmed} />
     </form>
   );
 }
@@ -259,7 +316,7 @@ export function GraderManager({ scope }: { scope: GraderScope }) {
         <p
           ref={result}
           id="grader-result"
-          className="notice notice-success"
+          className="notice notice-success grader-result"
           role="status"
           tabIndex={-1}
         >

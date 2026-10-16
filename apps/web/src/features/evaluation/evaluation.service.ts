@@ -137,9 +137,34 @@ function isGrader(value: unknown): value is Grader {
 export function useCreateGrader(scope: GraderScope) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (draft: GraderDraft) => apiFetch<Grader>(GRADER_PATHS[scope], send(draft)),
+    mutationFn: (draft: GraderDraft) => createGrader(scope, draft),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.checks.all }),
   });
+}
+
+export async function createGrader(scope: GraderScope, draft: GraderDraft) {
+  const grader = await apiFetch<unknown>(GRADER_PATHS[scope], send(draft));
+  if (!isGrader(grader) || grader.scope !== scope || grader.version !== 1)
+    throw new Error("Invalid grader write response");
+  return grader;
+}
+
+export async function reviseGrader(
+  scope: GraderScope,
+  graderId: string,
+  revision: { instructions: string; reason: string },
+) {
+  const grader = await apiFetch<unknown>(
+    `${GRADER_PATHS[scope]}/${graderId}/versions`,
+    send(revision),
+  );
+  if (
+    !isGrader(grader) ||
+    grader.scope !== scope ||
+    grader.id.toLowerCase() !== graderId.toLowerCase()
+  )
+    throw new Error("Invalid grader write response");
+  return grader;
 }
 
 export function useReviseGrader(
@@ -150,7 +175,7 @@ export function useReviseGrader(
   const client = useQueryClient();
   return useMutation({
     mutationFn: (revision: { instructions: string; reason: string }) =>
-      apiFetch<Grader>(`${GRADER_PATHS[scope]}/${graderId}/versions`, send(revision)),
+      reviseGrader(scope, graderId, revision),
     onSuccess: (grader) => {
       onCompleted(grader);
       return client.invalidateQueries({ queryKey: queryKeys.checks.all });

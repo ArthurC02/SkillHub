@@ -348,3 +348,151 @@ test.each(["workspace", "platform"] as const)(
     expect(container.querySelector("#grader-result")).toBeNull();
   },
 );
+
+for (const scope of ["workspace", "platform"] as const) {
+  for (const operation of ["create", "revise"] as const) {
+    test(`an uncertain ${scope} ${operation} preserves its draft through verification and a blocked resend`, async () => {
+      const grader = scope === "workspace" ? WORKSPACE_GRADER : PLATFORM_GRADER;
+      const path = scope === "workspace" ? "/evaluation/graders" : "/admin/evaluation/graders";
+      const prefix = operation === "create" ? "grader-create" : `grader-${grader.id}`;
+      let latest = grader;
+      let writes = 0;
+      let holdIdentity = false;
+      let release!: () => void;
+      const identityRead = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      vi.stubGlobal("fetch", async (input: string, init?: RequestInit) => {
+        const url = String(input);
+        if (url === "/me") {
+          if (holdIdentity) await identityRead;
+          return json({ ...ME, operator: true });
+        }
+        if (init?.method === "POST") {
+          writes++;
+          const body = JSON.parse(init.body as string);
+          latest = {
+            ...grader,
+            name: body.name ?? grader.name,
+            instructions: body.instructions,
+            version: operation === "create" ? 1 : grader.version + writes,
+            version_id:
+              writes === 1
+                ? "11111111-1111-4111-8111-111111111111"
+                : "22222222-2222-4222-8222-222222222222",
+          };
+          return json(writes === 1 ? null : latest, 201);
+        }
+        if (url === path) return json({ graders: [latest] });
+        return json({ error: "not stubbed" }, 404);
+      });
+      try {
+        await renderNode(<GraderManager scope={scope} />);
+        await waitFor(() => container.textContent!.includes(grader.name));
+        await act(async () => {
+          if (operation === "create") setValue(field("#grader-create-name"), "保留的名稱");
+          setValue(field(`#${prefix}-instructions`), "保留的指示");
+          setValue(field(`#${prefix}-reason`), "保留的原因");
+        });
+        await act(async () => button(operation === "create" ? "新增評分器" : "存成新版本").click());
+        await waitFor(() => container.textContent!.includes("儲存結果尚未確認"));
+        expect(document.activeElement?.getAttribute("role")).toBe("alert");
+        expect(field<HTMLTextAreaElement>(`#${prefix}-instructions`).value).toBe("保留的指示");
+        expect(field<HTMLInputElement>(`#${prefix}-reason`).value).toBe("保留的原因");
+        expect(container.querySelector("#grader-result")).toBeNull();
+        await act(async () => setValue(field(`#${prefix}-instructions`), "下一份未儲存的指示"));
+        expect(container.textContent).toContain("儲存結果尚未確認");
+        await act(async () => button("重新整理").click());
+        await waitFor(
+          () => queryClient.getQueryState(queryKeys.checks.graders(scope))?.fetchStatus === "idle",
+        );
+        expect(field<HTMLTextAreaElement>(`#${prefix}-instructions`).value).toBe(
+          "下一份未儲存的指示",
+        );
+        expect(container.textContent).toContain("儲存結果尚未確認");
+        expect(writes).toBe(1);
+        holdIdentity = true;
+        void queryClient.refetchQueries({ queryKey: queryKeys.me });
+        await waitFor(() => queryClient.getQueryState(queryKeys.me)?.fetchStatus === "fetching");
+        const resend = operation === "create" ? "重新送出新增" : "重新送出新版本";
+        await act(async () => button(resend).click());
+        await waitFor(() => container.textContent!.includes("這次操作尚未送出"));
+        expect(container.textContent).toContain("儲存結果尚未確認");
+        expect(writes).toBe(1);
+        release();
+        await waitFor(() => queryClient.getQueryState(queryKeys.me)?.fetchStatus === "idle");
+        await act(async () => button(resend).click());
+        await waitFor(() => container.querySelector("#grader-result") !== null);
+        expect(field("#grader-result").textContent).toContain(
+          `已儲存「${latest.name}」v${latest.version}`,
+        );
+        expect(container.textContent).not.toContain("儲存結果尚未確認");
+        expect(writes).toBe(2);
+      } finally {
+        release();
+        await queryClient.cancelQueries();
+      }
+    });
+  }
+}
+
+test.each([false, true])(
+  "a version read refreshes idle fields but preserves an in-flight write=%s",
+  async (pending) => {
+    let latest = WORKSPACE_GRADER;
+    let release!: () => void;
+    const write = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.stubGlobal("fetch", async (input: string, init?: RequestInit) => {
+      if (String(input) === "/me") return json({ ...ME, operator: true });
+      if (init?.method === "POST") {
+        await write;
+        latest = {
+          ...latest,
+          instructions: "送出中的指示",
+          version: 4,
+          version_id: "22222222-2222-4222-8222-222222222222",
+        };
+        return json(latest, 201);
+      }
+      return json({ graders: [latest] });
+    });
+    const instructions = `#grader-${WORKSPACE_GRADER.id}-instructions`;
+    const reason = `#grader-${WORKSPACE_GRADER.id}-reason`;
+    try {
+      await renderNode(<GraderManager scope="workspace" />);
+      await waitFor(() => container.textContent!.includes(WORKSPACE_GRADER.name));
+      if (pending) {
+        await act(async () => {
+          setValue(field(instructions), "送出中的指示");
+          setValue(field(reason), "送出中的原因");
+          button("存成新版本").click();
+        });
+        await waitFor(() => container.textContent!.includes("存成新版本中…"));
+      }
+      latest = {
+        ...latest,
+        instructions: "剛讀到的新指示",
+        version: 3,
+        version_id: "11111111-1111-4111-8111-111111111111",
+      };
+      await act(async () =>
+        queryClient.setQueryData(queryKeys.checks.graders("workspace"), { graders: [latest] }),
+      );
+      await waitFor(() => container.textContent!.includes(`${WORKSPACE_GRADER.name} v3`));
+      expect(field<HTMLTextAreaElement>(instructions).value).toBe(
+        pending ? "送出中的指示" : "剛讀到的新指示",
+      );
+      expect(field<HTMLInputElement>(reason).value).toBe(pending ? "送出中的原因" : "");
+      release();
+      if (pending) {
+        await waitFor(() => container.querySelector("#grader-result") !== null);
+        expect(field<HTMLInputElement>(reason).value).toBe("");
+      }
+    } finally {
+      release();
+      await queryClient.cancelQueries();
+    }
+  },
+);

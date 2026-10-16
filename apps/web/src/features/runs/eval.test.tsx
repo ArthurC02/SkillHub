@@ -1084,6 +1084,7 @@ test("R4: the evaluation revision comes from the address, and the switcher write
 
   expect(asked.some((url) => url.includes(`revision=${superseded.evaluation_id}`))).toBe(true);
   expect(container.textContent).toContain("被取代的那一份判定。");
+  await waitFor(() => container.querySelector("#evaluation-revision") !== null);
   const picker = container.querySelector<HTMLSelectElement>("#evaluation-revision")!;
   expect(picker.value).toBe(superseded.evaluation_id);
 
