@@ -1,10 +1,11 @@
 import { Fragment } from "react";
+import "./MetadataCell.css";
 
 export function MetadataCell({ metadata }: { metadata: Record<string, unknown> }) {
   const entries = Object.entries(metadata);
   if (entries.length === 0) return <>不適用</>;
   return (
-    <details>
+    <details className="audit-metadata">
       <summary>{entries.length} 項</summary>
       <dl>
         {entries.map(([key, value]) => (

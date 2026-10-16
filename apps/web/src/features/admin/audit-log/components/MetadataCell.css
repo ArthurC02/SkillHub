@@ -1,0 +1,10 @@
+@media (width > 640px) {
+  .audit-metadata[open] {
+    min-width: 12em;
+  }
+
+  .audit-metadata dl {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    overflow-wrap: anywhere;
+  }
+}

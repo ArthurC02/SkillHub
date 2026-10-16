@@ -9,6 +9,7 @@ import { ACTION_LABEL } from "../admin.model";
 import type { OperatorAuditEvent } from "../admin.service";
 import { MetadataCell } from "./components/MetadataCell";
 import { usePaginationFocus } from "../../../shared/ui/usePaginationFocus";
+import "./AdminAuditLog.page.css";
 
 const RESOURCE_LABEL: Record<string, string> = {
   account: "帳號",
@@ -21,9 +22,9 @@ const RESOURCE_LABEL: Record<string, string> = {
 function ActorCell({ event }: { event: OperatorAuditEvent }) {
   if (event.actor_kind === "agent") {
     return (
-      <>
+      <div>
         平台 Agent <code>{event.actor_agent_id}</code>
-      </>
+      </div>
     );
   }
   if (event.actor_kind === "person") return <code>{event.actor_user_id}</code>;
@@ -89,7 +90,7 @@ export function AdminAuditLog() {
         ) : (
           <>
             <div className="table-scroll">
-              <table className="responsive-table">
+              <table className="responsive-table audit-log-table">
                 <caption>全平台動作紀錄，新的在上面</caption>
                 <thead>
                   <tr>
@@ -117,16 +118,18 @@ export function AdminAuditLog() {
                         <ActorCell event={event} />
                       </td>
                       <td data-label="對象">
-                        {RESOURCE_LABEL[event.resource_type] ?? event.resource_type}{" "}
-                        <code>{event.resource_id ?? "不適用"}</code>
-                        <p className="note">
-                          工作區：
-                          {event.workspace_id === null ? (
-                            "不適用"
-                          ) : (
-                            <code>{event.workspace_id}</code>
-                          )}
-                        </p>
+                        <div>
+                          {RESOURCE_LABEL[event.resource_type] ?? event.resource_type}{" "}
+                          <code>{event.resource_id ?? "不適用"}</code>
+                          <p className="note">
+                            工作區：
+                            {event.workspace_id === null ? (
+                              "不適用"
+                            ) : (
+                              <code>{event.workspace_id}</code>
+                            )}
+                          </p>
+                        </div>
                       </td>
                       <td data-label="內容">
                         <MetadataCell metadata={event.metadata} />

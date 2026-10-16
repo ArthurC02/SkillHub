@@ -1,0 +1,5 @@
+@media (width > 640px) {
+  .audit-log-table th[scope="row"] {
+    white-space: nowrap;
+  }
+}
