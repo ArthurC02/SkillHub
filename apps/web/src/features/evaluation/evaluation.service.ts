@@ -45,9 +45,43 @@ export function useGraders(scope: GraderScope) {
   const operator = useMe().data?.operator === true;
   return useQuery({
     queryKey: queryKeys.checks.graders(scope),
-    queryFn: () => apiFetch<{ graders: Grader[] }>(GRADER_PATHS[scope]),
+    queryFn: () => getGraders(scope),
     enabled: scope === "workspace" || operator,
   });
+}
+
+export async function getGraders(scope: GraderScope): Promise<{ graders: Grader[] }> {
+  const result = await apiFetch<unknown>(GRADER_PATHS[scope]);
+  if (
+    !result ||
+    typeof result !== "object" ||
+    !("graders" in result) ||
+    !Array.isArray(result.graders) ||
+    !result.graders.every(isGrader)
+  ) {
+    throw new Error("Invalid grader list response");
+  }
+  return result as { graders: Grader[] };
+}
+
+function isGrader(value: unknown): value is Grader {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const grader = value as Partial<Grader>;
+  return (
+    [grader.id, grader.version_id].every(
+      (id) =>
+        typeof id === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
+    ) &&
+    typeof grader.name === "string" &&
+    (grader.scope === "platform" || grader.scope === "workspace") &&
+    typeof grader.version === "number" &&
+    Number.isSafeInteger(grader.version) &&
+    grader.version >= 1 &&
+    typeof grader.instructions === "string" &&
+    typeof grader.revised_at === "string" &&
+    Number.isFinite(Date.parse(grader.revised_at))
+  );
 }
 
 export function useCreateGrader(scope: GraderScope) {
