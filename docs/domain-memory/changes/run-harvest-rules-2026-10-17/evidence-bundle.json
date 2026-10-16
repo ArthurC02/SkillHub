@@ -1,0 +1,149 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-harvest-rules",
+  "proposal_id": "run-harvest-rules",
+  "registry_revision": {
+    "observed_commit": "2632d51a6ff8746028756b00844587791a76c63b",
+    "registry_digest": "sha256:64d98013c3a640a179c9cd39d9b037d5e9292664718ac0334a63e248460cfb2b"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "rule-cleanup-preserves-the-scene-under-an-incident-halt",
+    "mutated_protection": "the per-attempt IncidentHeld(attempt.Provider) check in releaseAttempt",
+    "failure_evidence": "registry counterfactual: killed; dispatch_halt_integration_test.go:151: cleanup destroyed the halted provider's sandbox: destroys=1 live=0. The concurrency, quota, credit and second-loss guards were each killed by their tests the same way.",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/trial/execution/specification.go",
+    "apps/platform/internal/trial/execution/quota.go",
+    "apps/platform/internal/trial/execution/credit.go",
+    "apps/platform/internal/trial/execution/reassign.go",
+    "apps/platform/internal/trial/execution/cleanup.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "criterion-a-workspace-runs-one-trial-at-a-time",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestARefusedRunIsAudited ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:bd6250e1d04023a88f11f7d8478f3d79a7196a93db78299450578bacb26231b5",
+      "finished_at": "2026-10-16T17:13:45.918224Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-workspace-runs-one-trial-at-a-time",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestARefusedRunIsAudited ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:8b130581ade5156acf4102298ea6d7e99b489cdb5c465febf919ecb44890d659",
+      "finished_at": "2026-10-16T17:14:00.006530Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "criterion-only-a-runs-own-failures-count-against-the-quota",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestOnlyFailuresOfTheRunItselfCountAgainstTheQuota ./internal/trial/execution/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:0f1608ce42b01136ca8fe770eedadd1719485dbcacb0a97b6ee1c38677bed49b",
+      "finished_at": "2026-10-16T17:14:09.285063Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-only-a-runs-own-failures-count-against-the-quota",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestOnlyFailuresOfTheRunItselfCountAgainstTheQuota ./internal/trial/execution/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:1298bacd8d05f40fb40a821e0b0adff3e639eed8fd49e71a7ff357d1e9d2d143",
+      "finished_at": "2026-10-16T17:14:17.452502Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "criterion-a-run-starts-only-when-its-budget-is-reserved",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestARunIsRefusedWhenTheBalanceCannotCoverItsCeiling ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:54f663b84ab03c67cdf28ec1d9a98e2201d0f7ea2bc2a6fe412d92ddcac45fe5",
+      "finished_at": "2026-10-16T17:14:31.661494Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-run-starts-only-when-its-budget-is-reserved",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestARunIsRefusedWhenTheBalanceCannotCoverItsCeiling ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f187e848d8e300fa2d46eff9627701922c0b6c12417a84d74306241b587321e2",
+      "finished_at": "2026-10-16T17:14:45.034724Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "criterion-a-run-survives-at-most-one-lost-provider",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestASecondLossEndsTheRunAsAProviderError ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:a3b21c625e3a5690ac207b2adce1f370cf63b3ea2a49cfa564102f9fd0c1443d",
+      "finished_at": "2026-10-16T17:14:57.320938Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-run-survives-at-most-one-lost-provider",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestASecondLossEndsTheRunAsAProviderError ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:df8ad053c339bf9dd3c8941ddb512b30f68b6b1adb20766ead968738d75a1963",
+      "finished_at": "2026-10-16T17:15:10.490779Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "criterion-cleanup-preserves-the-scene-under-an-incident-halt",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestAnIncidentHaltOnOneProviderPreservesTheSceneItHolds ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:dcf48c01d421cbfc6a70c0863edea3b23859a7b3a6a5cb9577aabaeafad344ab",
+      "finished_at": "2026-10-16T17:15:22.031523Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-cleanup-preserves-the-scene-under-an-incident-halt",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestAnIncidentHaltOnOneProviderPreservesTheSceneItHolds ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:2cc0cceaa590996880ec8039031dd1676549f07c2d7a08b365ac869aaaa98ec1",
+      "finished_at": "2026-10-16T17:15:33.237651Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:1d41387f5b13f1858317a153d35f6e1b403041b632ffb560e09e646c126cda7a",
+      "finished_at": "2026-10-16T17:15:33.837130Z"
+    },
+    {
+      "obligation_id": "package-valid",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py validate-change-package --package-root docs/domain-memory/changes/run-harvest-rules-2026-10-17 --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:f59ed0f5e58f24af697fc460db7a190345b22c6e6c8a2fdbf184d0f488d61a0f",
+      "finished_at": "2026-10-16T17:15:34.556108Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

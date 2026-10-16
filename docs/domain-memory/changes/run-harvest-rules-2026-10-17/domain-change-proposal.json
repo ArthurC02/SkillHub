@@ -1,0 +1,269 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-harvest-rules",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "run-harvest-rules",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-16T17:15:48.210472Z",
+  "verified_at": "2026-10-16T17:15:50.019983Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "2632d51a6ff8746028756b00844587791a76c63b",
+    "registry_digest": "sha256:64d98013c3a640a179c9cd39d9b037d5e9292664718ac0334a63e248460cfb2b"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [
+    "a-workspace-runs-one-trial-at-a-time",
+    "only-a-runs-own-failures-count-against-the-quota",
+    "a-run-starts-only-when-its-budget-is-reserved",
+    "a-run-survives-at-most-one-lost-provider",
+    "cleanup-preserves-the-scene-under-an-incident-halt"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Run alone admits, counts, reassigns and cleans up Runs; these rules are decided inside its transaction.",
+    "evidence": [
+      "apps/platform/internal/trial/execution/specification.go:153-171",
+      "apps/platform/internal/trial/execution/reassign.go:72-90"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: credit is reserved through the Ledger port, dispatch halts through the halt ledger.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/execution/credit.go:18-32",
+      "apps/platform/internal/trial/execution/cleanup.go:65-73"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the run package found these enforced behaviors; the reviewed Registry held none of them, so the next Agent could not look them up."
+    ],
+    "decision": "Record the five behaviors as reviewed rules citing the enforcing code; add the one missing test, for a halt scoped to one provider.",
+    "invariants_preserved": [
+      "A terminal Run never transitions again.",
+      "A P1 incident halt is never downgraded."
+    ],
+    "rejected_alternatives": [
+      "Recording the grant-state, attempt-finishing and expected-status checks too: they are consistency mechanics, not business rules a creator or operator would name."
+    ],
+    "proof_obligations": [
+      "criterion-a-workspace-runs-one-trial-at-a-time",
+      "rule-a-workspace-runs-one-trial-at-a-time",
+      "criterion-only-a-runs-own-failures-count-against-the-quota",
+      "rule-only-a-runs-own-failures-count-against-the-quota",
+      "criterion-a-run-starts-only-when-its-budget-is-reserved",
+      "rule-a-run-starts-only-when-its-budget-is-reserved",
+      "criterion-a-run-survives-at-most-one-lost-provider",
+      "rule-a-run-survives-at-most-one-lost-provider",
+      "criterion-cleanup-preserves-the-scene-under-an-incident-halt",
+      "rule-cleanup-preserves-the-scene-under-an-incident-halt"
+    ],
+    "counterfactual_check": "Break each rule's enforcing line; its test must fail. The pool-wide and per-provider halt checks guard each other, so each is broken with the test that only it can satisfy."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-workspace-runs-one-trial-at-a-time",
+        "statement": "A Workspace may have at most one Run in progress; a further request is refused with the workspace_concurrency reason.",
+        "owner": "run-execution",
+        "version": "unknown",
+        "effective_from": "unknown",
+        "effective_until": "unknown",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A second Run requested while the Workspace's first is still queued or running is refused with workspace_concurrency and audited as a refusal.",
+          "Once the first Run reaches a terminal status, the next request is admitted."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/specification.go",
+            "lines": {
+              "start": 20,
+              "end": 20
+            },
+            "excerpt_sha256": "sha256:41b96ca1fe2bfcab4d81c3b6dc64ee813a085c582b4a546c5842c4c05467fe24"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/specification.go",
+            "lines": {
+              "start": 153,
+              "end": 171
+            },
+            "excerpt_sha256": "sha256:bdad79a9a14ee92166d7a0ad1ad44858e31f6b2e40b470d242204f24b9fe1a16"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-a-runs-own-failures-count-against-the-quota",
+        "statement": "A Run counts against the Workspace's quota only from preparing onward, and not when it failed with provider_error, platform_error, capability_mismatch, policy_refused or resource_limit.",
+        "owner": "run-execution",
+        "version": "unknown",
+        "effective_from": "unknown",
+        "effective_until": "unknown",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A Run that failed with resource_limit because its sandbox ran out of memory does not use up the Workspace's quota.",
+          "A Run that failed because its own Skill errored counts, as does every Run that reached preparing and succeeded."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/quota.go",
+            "lines": {
+              "start": 18,
+              "end": 26
+            },
+            "excerpt_sha256": "sha256:470051c4203e4f15d916f3e8a79a2f7d8090ead7abfa7a7140dfac908255d62c"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-run-starts-only-when-its-budget-is-reserved",
+        "statement": "When a credit ledger is configured, a Run is admitted only if the Workspace can reserve the deployment's run budget; otherwise it is refused with credit_balance.",
+        "owner": "run-execution",
+        "version": "unknown",
+        "effective_from": "unknown",
+        "effective_until": "unknown",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A Workspace whose balance is below the run budget is refused with credit_balance and no Run is created.",
+          "A deployment with no credit ledger admits the Run without a reservation."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/credit.go",
+            "lines": {
+              "start": 18,
+              "end": 32
+            },
+            "excerpt_sha256": "sha256:a9ec1408a833dd3ed97f0dff32201070c8faca55a24fdf7dfe0b28dc6705237d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-run-survives-at-most-one-lost-provider",
+        "statement": "When an attempt's provider is lost the Run is dispatched to another provider once; a second loss fails the Run with provider_error.",
+        "owner": "run-execution",
+        "version": "unknown",
+        "effective_from": "unknown",
+        "effective_until": "unknown",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A provider that stops answering for longer than the loss window hands the Run to another provider, never back to the one that lost it.",
+          "A second loss ends the Run failed with provider_error and a reason saying it was already reassigned once."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/reassign.go",
+            "lines": {
+              "start": 16,
+              "end": 22
+            },
+            "excerpt_sha256": "sha256:1be38a39e42fa2076af3d3eabadf3fbc9e0360105df4c9963295ff559cf2f4a2"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/reassign.go",
+            "lines": {
+              "start": 72,
+              "end": 90
+            },
+            "excerpt_sha256": "sha256:bbac22c4ccc604b008785bd7bbc8479943512fb3b660afb8e2216181c299a9dc"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/reassign.go",
+            "lines": {
+              "start": 105,
+              "end": 112
+            },
+            "excerpt_sha256": "sha256:3ca6250a7422e8f2bb66da53b986190203db1024dc84d809ff0b364f3cb872c3"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "cleanup-preserves-the-scene-under-an-incident-halt",
+        "statement": "While a P1 incident halt covers the pool or an attempt's provider, cleanup leaves that attempt's sandbox standing and does not mark the Run cleaned, so the scene stays preserved until an operator lifts the halt.",
+        "owner": "run-execution",
+        "version": "unknown",
+        "effective_from": "unknown",
+        "effective_until": "unknown",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A pool-wide incident halt holds every finished Run's sandbox.",
+          "A halt naming one provider holds only the sandboxes on that provider.",
+          "A capacity pause, which is not an incident, does not hold cleanup."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/cleanup.go",
+            "lines": {
+              "start": 65,
+              "end": 73
+            },
+            "excerpt_sha256": "sha256:3df07a2ab978833f6417331bc349f4762679b51702218c56b41937d769561b5a"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/cleanup.go",
+            "lines": {
+              "start": 92,
+              "end": 97
+            },
+            "excerpt_sha256": "sha256:34a5845c6fd63f4ba7558553aa8e684d51a8428d6aa6939907109aefc8ff3663"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-16T17:15:48.986336Z",
+      "scope": "Record five enforced Run rules found by a blind extraction: one trial at a time per Workspace, only a Run's own failures count against quota, admission reserves the run budget, at most one lost provider, and cleanup preserves an incident halt's scene",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "2632d51a6ff8746028756b00844587791a76c63b",
+        "registry_digest": "sha256:64d98013c3a640a179c9cd39d9b037d5e9292664718ac0334a63e248460cfb2b"
+      }
+    }
+  ]
+}

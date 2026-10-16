@@ -1,0 +1,47 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "run-harvest-rules",
+  "status": "draft",
+  "intent": "Record as reviewed rules five admission, quota, reassignment and incident behaviors of a Run that the code enforces and tests but the Registry did not hold.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context run returns the five rules as reviewed, each citing the enforcing code.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-workspace-runs-one-trial-at-a-time",
+      "statement": "A Run past the Workspace's concurrency limit is refused with workspace_concurrency."
+    },
+    {
+      "id": "enforced-only-a-runs-own-failures-count-against-the-quota",
+      "statement": "Platform, provider, capability, policy and resource-limit failures do not count against the quota."
+    },
+    {
+      "id": "enforced-a-run-starts-only-when-its-budget-is-reserved",
+      "statement": "A Workspace that cannot reserve the run budget is refused with credit_balance."
+    },
+    {
+      "id": "enforced-a-run-survives-at-most-one-lost-provider",
+      "statement": "A second lost provider ends the Run failed with provider_error."
+    },
+    {
+      "id": "enforced-cleanup-preserves-the-scene-under-an-incident-halt",
+      "statement": "Cleanup under an incident halt on the attempt's provider destroys nothing."
+    },
+    {
+      "id": "approval-externally-verifiable",
+      "statement": "The approval that makes the records reviewed is checkable outside the package."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/trial/execution/specification.go",
+    "apps/platform/internal/trial/execution/quota.go",
+    "apps/platform/internal/trial/execution/credit.go",
+    "apps/platform/internal/trial/execution/reassign.go",
+    "apps/platform/internal/trial/execution/cleanup.go"
+  ]
+}

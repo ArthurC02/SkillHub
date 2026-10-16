@@ -1,0 +1,115 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "run-harvest-rules",
+  "proposal_id": "run-harvest-rules",
+  "obligations": [
+    {
+      "id": "criterion-a-workspace-runs-one-trial-at-a-time",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-workspace-runs-one-trial-at-a-time",
+      "expected_outcome": "A Run past the Workspace's concurrency limit is refused with workspace_concurrency.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestARefusedRunIsAudited ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-workspace-runs-one-trial-at-a-time",
+      "source_type": "rule",
+      "source_id": "a-workspace-runs-one-trial-at-a-time",
+      "expected_outcome": "A Run past the Workspace's concurrency limit is refused with workspace_concurrency.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestARefusedRunIsAudited ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "criterion-only-a-runs-own-failures-count-against-the-quota",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-only-a-runs-own-failures-count-against-the-quota",
+      "expected_outcome": "Platform, provider, capability, policy and resource-limit failures do not count against the quota.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestOnlyFailuresOfTheRunItselfCountAgainstTheQuota ./internal/trial/execution/"
+    },
+    {
+      "id": "rule-only-a-runs-own-failures-count-against-the-quota",
+      "source_type": "rule",
+      "source_id": "only-a-runs-own-failures-count-against-the-quota",
+      "expected_outcome": "Platform, provider, capability, policy and resource-limit failures do not count against the quota.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestOnlyFailuresOfTheRunItselfCountAgainstTheQuota ./internal/trial/execution/"
+    },
+    {
+      "id": "criterion-a-run-starts-only-when-its-budget-is-reserved",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-run-starts-only-when-its-budget-is-reserved",
+      "expected_outcome": "A Workspace that cannot reserve the run budget is refused with credit_balance.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestARunIsRefusedWhenTheBalanceCannotCoverItsCeiling ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-run-starts-only-when-its-budget-is-reserved",
+      "source_type": "rule",
+      "source_id": "a-run-starts-only-when-its-budget-is-reserved",
+      "expected_outcome": "A Workspace that cannot reserve the run budget is refused with credit_balance.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestARunIsRefusedWhenTheBalanceCannotCoverItsCeiling ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "criterion-a-run-survives-at-most-one-lost-provider",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-run-survives-at-most-one-lost-provider",
+      "expected_outcome": "A second lost provider ends the Run failed with provider_error.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestASecondLossEndsTheRunAsAProviderError ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-run-survives-at-most-one-lost-provider",
+      "source_type": "rule",
+      "source_id": "a-run-survives-at-most-one-lost-provider",
+      "expected_outcome": "A second lost provider ends the Run failed with provider_error.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestASecondLossEndsTheRunAsAProviderError ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "criterion-cleanup-preserves-the-scene-under-an-incident-halt",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-cleanup-preserves-the-scene-under-an-incident-halt",
+      "expected_outcome": "Cleanup under an incident halt on the attempt's provider destroys nothing.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestAnIncidentHaltOnOneProviderPreservesTheSceneItHolds ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-cleanup-preserves-the-scene-under-an-incident-halt",
+      "source_type": "rule",
+      "source_id": "cleanup-preserves-the-scene-under-an-incident-halt",
+      "expected_outcome": "Cleanup under an incident halt on the attempt's provider destroys nothing.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestAnIncidentHaltOnOneProviderPreservesTheSceneItHolds ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "package-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "The package validates with current citations.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "registry validate-change-package --repo-root"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry verify-audit"
+    }
+  ]
+}
