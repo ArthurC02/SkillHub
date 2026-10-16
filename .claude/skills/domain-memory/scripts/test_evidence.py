@@ -329,6 +329,27 @@ class EvidenceTest(RegistryTestCase):
                     [(problem["id"], problem["found"]) for problem in moved["unmatched"]],
                 )
 
+    def test_splitting_a_file_moves_only_the_citations_whose_lines_left_it(self) -> None:
+        for kept_text, kept_status in (("keep\n", "current"), ("header\nkeep\n", "shifted")):
+            with self.subTest(kept_status):
+                self.tearDown()
+                self.setUp()
+                (self.repo / "src").mkdir()
+                (self.repo / "src" / "a.py").write_text("keep\nmove\n", encoding="utf-8")
+                self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+                self.seed("rules.json", [
+                    {"id": "kept", "contexts": ["orders"], "statement": "S.", "evidence": [citation(self.repo, "src/a.py", 1, 1)]},
+                    {"id": "moved", "contexts": ["orders"], "statement": "S.", "evidence": [citation(self.repo, "src/a.py", 2, 2)]},
+                ])
+                (self.repo / "src" / "a.py").write_text(kept_text, encoding="utf-8")
+                (self.repo / "src" / "b.py").write_text("move\n", encoding="utf-8")
+                moved = relocate_evidence(self.repo / "memory", self.repo, "src/a.py", "src/b.py")
+                self.assertEqual(
+                    ([("moved", "src/b.py")], [], []),
+                    ([(candidate["record"]["id"], candidate["record"]["evidence"][0]["path"]) for candidate in moved["candidates"]],
+                     moved["registry_updates"], moved["unmatched"]),
+                )
+
     def test_relocating_ignores_a_path_that_only_shares_the_prefix(self) -> None:
         self.evidence_moved("one\ntwo\n", "srcx/a.py", "one\ntwo\n")
         moved = relocate_evidence(self.repo / "memory", self.repo, "sr", "srcx")

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .git_hooks import hooks_dir, inside_repo
@@ -109,6 +109,23 @@ def golangci_gates(path: Path, shown: str) -> list[dict[str, str]]:
     return [gate("architecture", "depguard", shown)] if DEPGUARD_SETTINGS.search(text) else []
 
 
+GIT_HOOK_NAMES = {
+    "applypatch-msg", "pre-applypatch", "post-applypatch", "pre-commit", "pre-merge-commit",
+    "prepare-commit-msg", "commit-msg", "post-commit", "pre-rebase", "post-checkout", "post-merge",
+    "pre-push", "pre-receive", "post-receive", "post-update", "push-to-checkout", "pre-auto-gc",
+    "post-rewrite", "reference-transaction",
+}
+
+
+def shipped_hooks(files: list[str], installed: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    enabled = {entry["path"] for entry in installed}
+    return [
+        {**gate("hooks", f"git:{PurePosixPath(path).name}", path), "enabled": False}
+        for path in files
+        if PurePosixPath(path).name in GIT_HOOK_NAMES and path not in enabled
+    ]
+
+
 def installed_hooks(root: Path) -> list[dict[str, str]]:
     hooks = hooks_dir(root)
     if not hooks.is_dir():
@@ -161,7 +178,9 @@ def quality_gates(repo_root: Path) -> dict[str, Any]:
     candidates, tests = candidate_files(files), test_candidates(files)
     ignored = ignored_relatives(root, candidates + tests)
     gates = configured_gates(root, [entry for entry in candidates if entry not in ignored])
-    gates.extend(installed_hooks(root))
+    installed = installed_hooks(root)
+    gates.extend(installed)
+    gates.extend(shipped_hooks(files, installed))
     gates.extend(gate("ci", tool, "") for tool in discover_ci_tools(root))
     present = sorted({entry["kind"] for entry in gates})
     return {

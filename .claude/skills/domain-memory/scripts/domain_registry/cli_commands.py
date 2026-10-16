@@ -387,14 +387,20 @@ def handle_promote_candidate(args: argparse.Namespace) -> int:
 
 
 def handle_upsert_candidate(args: argparse.Namespace) -> int:
-    outside = upsert_candidate(
+    upserted = upsert_candidate(
         args.registry_root.resolve(),
         args.repo_root.resolve(),
         args.asset,
         *(path.resolve() for path in args.record_file),
     )
-    count = len(args.record_file)
-    print("Candidate record updated." if count == 1 else f"{count} candidate records updated.")
+    print(_upsert_summary(len(args.record_file), upserted.created))
+    outside = upserted.outside
+    if upserted.same_evidence:
+        print(
+            "NOTE: cites exactly the evidence of " + ", ".join(upserted.same_evidence)
+            + "; it may be a duplicate of that record.",
+            file=sys.stderr,
+        )
     if outside:
         print(
             "NOTE: this record rests on files the confirmed source map does not cover: "
@@ -404,6 +410,12 @@ def handle_upsert_candidate(args: argparse.Namespace) -> int:
             + OUTSIDE_SOURCES_CONSEQUENCE
         )
     return 0
+
+
+def _upsert_summary(count: int, created: int) -> str:
+    if count == 1:
+        return "Candidate record created." if created else "Candidate record updated."
+    return f"{count} candidate records written: {created} created, {count - created} updated."
 
 
 def handle_apply_approved_updates(args: argparse.Namespace) -> int:

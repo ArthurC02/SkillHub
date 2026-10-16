@@ -127,6 +127,15 @@ class QualityGatesTest(RepositoryCase):
         self.write(".git/hooks/pre-push", "#!/bin/sh\n")
         self.assertEqual([{"kind": "hooks", "tool": "git:pre-commit", "path": ".githooks/pre-commit"}], self.gates())
 
+    def test_a_hook_the_repository_ships_but_git_does_not_run_is_a_gate_not_enabled(self) -> None:
+        self.git("init", "-q")
+        self.write(".githooks/pre-push", "#!/bin/sh\n")
+        self.write(".githooks/pre-push.domain-memory-existing", "#!/bin/sh\n")
+        self.write("scripts/update", "")
+        self.assertEqual(
+            [{"kind": "hooks", "tool": "git:pre-push", "path": ".githooks/pre-push", "enabled": False}], self.gates()
+        )
+
     def test_a_configuration_file_is_recognised_by_the_start_of_its_name(self) -> None:
         self.write("eslint.config.mjs", "")
         self.assertEqual(

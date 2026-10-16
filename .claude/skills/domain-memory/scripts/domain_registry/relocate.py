@@ -40,7 +40,10 @@ class Relocation:
 
     def reference(self, reference: Any) -> Any:
         target = self.target(reference.get("path", "")) if isinstance(reference, dict) else None
-        if target is None or (target == reference.get("path") and verify(reference, self.repo_root)["status"] == "current"):
+        if target is None:
+            return reference
+        status = verify(reference, self.repo_root)["status"]
+        if status == "current" or (status == "shifted" and target != reference.get("path")):
             return reference
         lines = reference.get("lines") or {}
         length = lines.get("end", 0) - lines.get("start", 0) + 1

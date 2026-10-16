@@ -2,6 +2,21 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.40.0
+
+### Added
+
+- `upsert-candidate` says whether it created or updated each record and notes a record citing exactly the excerpts of another as a possible duplicate.
+- `quality-gates` reports a hook the repository ships but Git does not yet run, such as `.githooks/pre-push`, with `enabled: false`.
+
+### Changed
+
+- `readiness` reports the verifier and trigger the policy configures instead of recommending one.
+
+### Fixed
+
+- `relocate-evidence` no longer looks in the new file for a citation whose lines are still in its own file, so splitting a file no longer reports the lines that stayed as unmatched and blocks the re-citation package.
+
 ## 0.39.0
 
 ### Added

@@ -858,6 +858,18 @@ class SourcesTest(RegistryTestCase):
         self.assertEqual(result["state"], "brownfield")
         self.assertEqual(result["next_capability"], "read-and-maintain")
 
+    def test_readiness_reports_the_verifier_a_policy_configures_instead_of_recommending_one(self) -> None:
+        policy_file = self.repo / "memory" / "domain-memory-policy.json"
+        policy = stored_policy_of(self.repo)
+        policy["review_governance"].update(verifier="git-signed-commit", trigger="git-push")
+        policy_file.write_text(json.dumps(policy), encoding="utf-8")
+        self.assertEqual(
+            ({"ci_tools": [], "configured_verifier": "git-signed-commit", "configured_trigger": "git-push"},
+             {"ci_tools": [], "recommended_verifier": "git-signed-commit", "recommended_trigger": "git-push"}),
+            (assess_readiness(self.repo, self.repo / "memory")["governance_candidates"],
+             assess_readiness(self.repo)["governance_candidates"]),
+        )
+
     def test_readiness_calls_an_unverifiable_memory_without_sources_dead(self) -> None:
         memory = self.repo / "orphaned-memory"
         memory.mkdir()

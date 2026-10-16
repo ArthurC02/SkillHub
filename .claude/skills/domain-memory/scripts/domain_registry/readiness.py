@@ -61,6 +61,21 @@ def registry_condition(
     return ("reviewed-empty" if reviewed_empty else "current"), records, []
 
 
+def _governance(candidates: dict[str, Any], registry_root: Path | None) -> dict[str, Any]:
+    try:
+        policy = existing_policy(registry_root.resolve()) if registry_root else None
+    except ValueError:
+        policy = None
+    governance = policy.get("review_governance") if isinstance(policy, dict) else None
+    if not isinstance(governance, dict) or not governance.get("verifier"):
+        return candidates
+    return {
+        "ci_tools": candidates["ci_tools"],
+        "configured_verifier": governance["verifier"],
+        "configured_trigger": governance.get("trigger"),
+    }
+
+
 def assess_readiness(
     repo_root: Path, registry_root: Path | None = None
 ) -> dict[str, Any]:
@@ -104,7 +119,7 @@ def assess_readiness(
         "state": state,
         "confidence": "medium" if dead else "high",
         "signals": signals,
-        "governance_candidates": discovered["governance_candidates"],
+        "governance_candidates": _governance(discovered["governance_candidates"], registry_root),
         "blocks": blocks,
         "next_capability": next_capability,
     }

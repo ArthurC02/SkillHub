@@ -1158,7 +1158,7 @@ class UpdatesTest(RegistryTestCase):
             },
         )
         self.assertEqual(
-            upsert_candidate(self.repo / "memory", self.repo, "contexts", record),
+            upsert_candidate(self.repo / "memory", self.repo, "contexts", record).outside,
             ["notes.md"],
         )
 
@@ -1176,7 +1176,7 @@ class UpdatesTest(RegistryTestCase):
             },
         )
         self.assertEqual(
-            upsert_candidate(self.repo / "memory", self.repo, "contexts", record), []
+            upsert_candidate(self.repo / "memory", self.repo, "contexts", record).outside, []
         )
 
     def test_superseding_a_list_that_names_the_reviewing_proposal_replaces_a_reviewed_record(self) -> None:

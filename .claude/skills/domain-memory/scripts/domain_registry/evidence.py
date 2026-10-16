@@ -292,6 +292,15 @@ def migrate_legacy(reference: Any, repo_root: Path) -> Any:
     }
 
 
+def cited_excerpts(record: dict[str, Any]) -> set[tuple[str, str]]:
+    return {
+        (reference["path"], reference["excerpt_sha256"])
+        for reference in all_references(record)
+        if isinstance(reference, dict) and isinstance(reference.get("path"), str)
+        and isinstance(reference.get("excerpt_sha256"), str)
+    }
+
+
 def all_references(value: Any, depth: int = 0) -> list[Any]:
     if depth > MAX_NESTING_DEPTH:
         raise ValueError(f"evidence document exceeds nesting depth {MAX_NESTING_DEPTH}")

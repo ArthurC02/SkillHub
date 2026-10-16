@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +22,7 @@ from .common import (
     review_field,
     utc_now,
 )
-from .evidence import classify_all, hash_all, source_map_for, unclassified_paths
+from .evidence import cited_excerpts, classify_all, hash_all, source_map_for, unclassified_paths
 from .okf import contexts_named_by, verified_by
 from .policy import review_mode
 from .revision import (
@@ -184,23 +185,35 @@ def _batch_records(record_paths: tuple[Path, ...]) -> list[dict[str, Any]]:
     return records
 
 
+@dataclass
+class Upserted:
+    outside: list[str] = field(default_factory=list)
+    created: int = 0
+    same_evidence: list[str] = field(default_factory=list)
+
+
 def upsert_candidate(
     root: Path, repo_root: Path | None, asset: str, *record_paths: Path
-) -> list[str]:
+) -> Upserted:
     name = asset_file_name(asset)
     batch = _batch_records(record_paths)
     if repo_root is not None:
         batch = [hash_all(record, repo_root) for record in batch]
     source_map = source_map_for(root)
-    outside: list[str] = []
+    result = Upserted()
+    outside = result.outside
 
     def mutate(staging: Path) -> None:
         document = read_document(staging, name)
         records = document[ASSET_KEYS[name]]
+        result.created = 0
+        result.same_evidence.clear()
         for record in batch:
             existing = find_record(records, record["id"])
             if is_reviewed(asset, document, existing):
                 raise ValueError(f"cannot overwrite reviewed record: {record['id']}")
+            result.created += existing is None
+            result.same_evidence.extend(_citing_the_same_excerpts(asset, records, record))
             candidate = classify_all(dict(record), source_map)
             outside.extend(unclassified_paths(candidate))
             candidate.pop("review", None)
@@ -220,7 +233,17 @@ def upsert_candidate(
         mutate,
         audit_event=lambda: {"operation": "upsert-candidate", "asset": asset, **identity},
     )
-    return sorted(set(outside))
+    result.outside = sorted(set(outside))
+    return result
+
+
+def _citing_the_same_excerpts(asset: str, records: list[dict[str, Any]], record: dict[str, Any]) -> list[str]:
+    excerpts = cited_excerpts(record)
+    return [
+        f"{asset}/{other.get('id')}"
+        for other in records
+        if excerpts and other.get("id") != record["id"] and cited_excerpts(other) == excerpts
+    ]
 
 
 def retract_candidate(

@@ -335,7 +335,7 @@ class CliTest(RegistryTestCase):
             "upsert-candidate", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
             "--asset", "vocabulary", "--record-file", str(order), "--record-file", str(line),
         )
-        self.assertEqual((0, "2 candidate records updated."), (result.returncode, result.stdout.strip()))
+        self.assertEqual((0, "2 candidate records written: 2 created, 0 updated."), (result.returncode, result.stdout.strip()))
         self.assertEqual(["order", "order-line"],
                          [term["id"] for term in asset_records(self.repo / "memory", "vocabulary.json")])
 
@@ -425,6 +425,31 @@ class CliTest(RegistryTestCase):
             for path in self.repo.rglob("*")
             if path.is_file()
         }
+
+    def upsert_term(self, term: dict) -> subprocess.CompletedProcess:
+        self.add_context()
+        path = self.repo / "term.json"
+        path.write_text(json.dumps(term), encoding="utf-8")
+        return self.run_cli("upsert-candidate", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+                            "--asset", "vocabulary", "--record-file", str(path))
+
+    def test_upsert_candidate_says_whether_it_created_or_updated_the_record(self) -> None:
+        term = {"id": "order", "name": "Order", "contexts": ["orders"]}
+        self.assertEqual(["Candidate record created.", "Candidate record updated."],
+                         [self.upsert_term(term).stdout.strip() for _ in range(2)])
+
+    def test_upsert_candidate_notes_a_record_citing_exactly_the_evidence_of_another(self) -> None:
+        (self.repo / "fact.md").write_text("orders\nlines\n", encoding="utf-8")
+        same = [citation(self.repo, "fact.md", 1, 1)]
+        order = {"id": "order", "name": "Order", "contexts": ["orders"], "evidence": same}
+        again = [self.upsert_term(order).stderr.strip() for _ in range(2)]
+        noted = self.upsert_term({"id": "purchase", "name": "Purchase", "contexts": ["orders"], "evidence": same})
+        apart = self.upsert_term({"id": "line", "name": "Line", "contexts": ["orders"],
+                                  "evidence": [*same, citation(self.repo, "fact.md", 2, 2)]})
+        self.assertEqual(
+            (["", ""], "NOTE: cites exactly the evidence of vocabulary/order; it may be a duplicate of that record.", ""),
+            (again, noted.stderr.strip(), apart.stderr.strip()),
+        )
 
     def test_readiness_command_returns_json_without_writing(self) -> None:
         before = self.file_bytes()

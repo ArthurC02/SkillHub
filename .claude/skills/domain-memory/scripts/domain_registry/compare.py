@@ -6,7 +6,7 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from .common import ASSET_KEYS
-from .evidence import all_references
+from .evidence import all_references, cited_excerpts
 from .okf import contexts_named_by
 
 PAIRED_ASSETS = {
@@ -252,17 +252,8 @@ def _citations(record: dict[str, Any]) -> list[Citation]:
 
 
 def _same_excerpts(gold: dict[str, Any], candidate: dict[str, Any]) -> bool:
-    one, other = _excerpts(gold), _excerpts(candidate)
+    one, other = cited_excerpts(gold), cited_excerpts(candidate)
     return bool(one and other) and (one <= other or other <= one)
-
-
-def _excerpts(record: dict[str, Any]) -> set[tuple[str, str]]:
-    return {
-        (reference["path"], reference["excerpt_sha256"])
-        for reference in all_references(record)
-        if isinstance(reference, dict) and isinstance(reference.get("path"), str)
-        and isinstance(reference.get("excerpt_sha256"), str)
-    }
 
 
 def _shared_files(gold: list[Citation], candidate: list[Citation]) -> set[str]:
