@@ -223,13 +223,18 @@ func workflowPinProblems(file, content string) []string {
 }
 
 func composeAndWorkflowImageDrift(composeFiles, ciFiles map[string]string) []string {
-	compose := map[string]string{}
-	for _, content := range composeFiles {
-		for _, ref := range pinnedImageRef.FindAllString(content, -1) {
-			compose[imageRepository(ref)] = canonicalImage(ref)
+	compose, declaredIn := map[string]string{}, map[string]string{}
+	var problems []string
+	for _, file := range sortedKeys(composeFiles) {
+		for _, ref := range pinnedImageRef.FindAllString(composeFiles[file], -1) {
+			repo := imageRepository(ref)
+			if want, seen := compose[repo]; seen && canonicalImage(ref) != want {
+				problems = append(problems, fmt.Sprintf("%s: %s differs from %s's %s; bump both together", file, ref, declaredIn[repo], want))
+				continue
+			}
+			compose[repo], declaredIn[repo] = canonicalImage(ref), file
 		}
 	}
-	var problems []string
 	for file, content := range ciFiles {
 		for _, ref := range pinnedImageRef.FindAllString(content, -1) {
 			if want, shared := compose[imageRepository(ref)]; shared && canonicalImage(ref) != want {

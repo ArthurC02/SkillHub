@@ -119,6 +119,21 @@ func TestComposeAndCIMustRunTheSameImage(t *testing.T) {
 	}
 }
 
+func TestTwoComposeFilesMustRunTheSameImage(t *testing.T) {
+	t.Parallel()
+	digestA, digestB := "@sha256:"+strings.Repeat("a", 64), "@sha256:"+strings.Repeat("b", 64)
+	compose := map[string]string{
+		"infra/compose/docker-compose.yml": "    image: ghcr.io/berriai/litellm:main-stable" + digestB + "\n",
+		"infra/compose/gateway.yml":        "    image: ghcr.io/berriai/litellm:main-stable" + digestA + "\n",
+	}
+	problems := composeAndWorkflowImageDrift(compose, nil)
+	want := "infra/compose/gateway.yml: ghcr.io/berriai/litellm:main-stable" + digestA +
+		" differs from infra/compose/docker-compose.yml's ghcr.io/berriai/litellm:main-stable" + digestB
+	if len(problems) != 1 || !strings.HasPrefix(problems[0], want) {
+		t.Fatalf("got %v, want one drift starting %q", problems, want)
+	}
+}
+
 func TestDependencyPolicyComparesComposeWithTheWorkflows(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
