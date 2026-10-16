@@ -136,6 +136,102 @@ async function openDraft(page: Page, validation: string, blocked: boolean) {
   };
 }
 
+async function sampleComposerContrast(page: Page) {
+  const monitor = await page.evaluateHandle(() => {
+    const composer = document.querySelector<HTMLElement>(".composer")!;
+    const button = composer.querySelector<HTMLButtonElement>(".composer-send")!;
+    button.getAnimations().forEach((animation) => animation.finish());
+    button.getBoundingClientRect();
+    type Sample = { phase: number; foreground: string; background: string; ratio: number };
+    const sampled = new Promise<{ transitions: string[]; samples: Sample[] }>((resolve) => {
+      const observer = new MutationObserver(() => {
+        if (composer.hasAttribute("data-empty")) return;
+        observer.disconnect();
+        button.getBoundingClientRect();
+        const transitions = button
+          .getAnimations()
+          .filter(
+            (animation): animation is CSSTransition =>
+              "transitionProperty" in animation &&
+              typeof animation.transitionProperty === "string" &&
+              ["background-color", "color"].includes(animation.transitionProperty),
+          );
+        transitions.forEach((animation) => animation.pause());
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 1;
+        const context = canvas.getContext("2d", { willReadFrequently: true })!;
+        const luminance = (color: string) => {
+          context.fillStyle = color;
+          context.fillRect(0, 0, 1, 1);
+          const channels = [...context.getImageData(0, 0, 1, 1).data].slice(0, 3).map((value) => {
+            const channel = value / 255;
+            return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+          });
+          return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+        };
+        const samples = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.75, 0.9].map((phase) => {
+          transitions.forEach((animation) => {
+            animation.currentTime = Number(animation.effect!.getTiming().duration) * phase;
+          });
+          const style = getComputedStyle(button);
+          const foreground = style.color;
+          const background = style.backgroundColor;
+          const [high, low] = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+          return { phase, foreground, background, ratio: (high + 0.05) / (low + 0.05) };
+        });
+        const worst = samples.reduce((low, sample) => (sample.ratio < low.ratio ? sample : low));
+        transitions.forEach((animation) => {
+          animation.currentTime = Number(animation.effect!.getTiming().duration) * worst.phase;
+        });
+        resolve({
+          transitions: transitions.map((animation) => animation.transitionProperty),
+          samples,
+        });
+      });
+      observer.observe(composer, { attributes: true, attributeFilter: ["data-empty"] });
+    });
+    return { sampled };
+  });
+  try {
+    await page.locator("#creation-message").fill("保留目前的補充需求");
+    return await monitor.evaluate(async ({ sampled }) => await sampled);
+  } finally {
+    await monitor.dispose();
+  }
+}
+
+for (const colorScheme of ["light", "dark"] as const) {
+  test(`the composer keeps readable text while becoming ready in ${colorScheme} mode`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme, reducedMotion: "no-preference" });
+    const state = await openDraft(page, '{"findings":[', false);
+    try {
+      await expect(
+        page.locator("#creation-draft-decision").getByText("檢查細節未確認", { exact: true }),
+      ).toBeVisible();
+      await expect(page.locator(".composer")).toHaveAttribute("data-empty", "true");
+      const samples = await sampleComposerContrast(page);
+      await writeFile(
+        test.info().outputPath("composer-transition-contrast.json"),
+        JSON.stringify(samples),
+      );
+      const report = await new AxeBuilder({ page }).analyze();
+      await writeFile(
+        test.info().outputPath("composer-transition-a11y.json"),
+        JSON.stringify(report),
+      );
+      expect(report.violations).toEqual([]);
+      expect(report.incomplete).toEqual([]);
+      expect(samples.samples.filter((sample) => sample.ratio < 4.5)).toEqual([]);
+      expect(state.writes).toEqual([]);
+      await page.screenshot({ path: test.info().outputPath("composer-ready-viewport.png") });
+    } finally {
+      state.release();
+    }
+  });
+}
+
 for (const [name, validation] of [
   [
     "unknown severity",

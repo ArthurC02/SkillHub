@@ -953,6 +953,7 @@
   background: var(--cta);
   color: var(--on-cta);
   font-weight: 600;
+  transition: border-color var(--dur-fast) var(--ease);
 }
 
 .composer-send:hover:not(:disabled),
