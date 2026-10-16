@@ -4,7 +4,15 @@ from pathlib import Path
 from .changes import PREVIEW_STATUSES
 from .common import ASSET_KEYS
 from .counterfactual import DEFAULT_TIMEOUT_SECONDS
-from .policy import AMENDABLE_FIELDS
+from .policy import (
+    AMENDABLE_FIELDS,
+    CI_REQUIREMENTS,
+    CLASSIFICATIONS,
+    GOVERNANCE_TRIGGERS,
+    GOVERNANCE_VERIFIERS,
+    REVIEW_MODES,
+    STORAGE_MODES,
+)
 
 ASSET_CHOICES = [name.removesuffix(".json") for name in ASSET_KEYS]
 
@@ -187,25 +195,25 @@ def _add_governance_commands(commands: argparse._SubParsersAction) -> None:
         "--source", required=True, action="append", type=Path
     )
     memory_init_parser.add_argument(
-        "--storage-mode", required=True, choices=["tracked", "ignored", "external"]
+        "--storage-mode", required=True, choices=STORAGE_MODES
     )
     memory_init_parser.add_argument(
         "--data-classification",
         required=True,
-        choices=["public", "internal", "confidential", "restricted"],
+        choices=CLASSIFICATIONS,
     )
     memory_init_parser.add_argument(
-        "--review-mode", required=True, choices=["local-draft-only", "scm-verified"]
+        "--review-mode", required=True, choices=REVIEW_MODES
     )
     memory_init_parser.add_argument("--source-authority", required=True)
     memory_init_parser.add_argument(
-        "--review-verifier", choices=["github-pr", "git-signed-commit", "none"]
+        "--review-verifier", choices=GOVERNANCE_VERIFIERS
     )
     memory_init_parser.add_argument(
-        "--review-trigger", choices=["external-scm", "git-commit", "git-push", "none"]
+        "--review-trigger", choices=GOVERNANCE_TRIGGERS
     )
     memory_init_parser.add_argument(
-        "--ci-requirement", choices=["required", "optional", "none"], default="none"
+        "--ci-requirement", choices=CI_REQUIREMENTS, default="none"
     )
     memory_init_parser.add_argument("--authorized-signer", action="append")
     memory_init_parser.add_argument("--include", action="append")

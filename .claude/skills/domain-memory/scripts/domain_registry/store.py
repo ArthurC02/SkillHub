@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -11,6 +12,7 @@ from .common import (
     GIT_COMMAND_TIMEOUT_SECONDS,
     load_json,
     registry_dir,
+    review_field,
     write_json,
 )
 from .evidence import without_derived_keys
@@ -143,7 +145,7 @@ def _records_with_their_status(name: str, document: dict[str, Any]) -> list[dict
     records = document.get(ASSET_KEYS[name], [])
     if default == DEFAULT_STATUS:
         return records
-    field = "review_status" if asset_of(name) == "decisions" else "status"
+    field = review_field(asset_of(name))
     return [record if field in record else {**record, field: default} for record in records]
 
 
@@ -210,7 +212,6 @@ def committed_documents(repo_root: Path, commit: str, root: Path, names: tuple[s
 
 
 def _committed_json_documents(contents: dict[str, str], registry: str, names: tuple[str, ...]) -> dict[str, Any] | None:
-    import json
 
     documents = {}
     for name in names:

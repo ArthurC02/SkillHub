@@ -148,7 +148,7 @@ def counterfactual(
         "verdict": verdict_of(broken_run),
         "failing_evidence": broken_run.output,
         "restoration_result": {
-            "restored": digest(target.read_bytes()) == digest(original),
+            "restored": target.read_bytes() == original,
             "content_sha256": digest(original),
         },
     }

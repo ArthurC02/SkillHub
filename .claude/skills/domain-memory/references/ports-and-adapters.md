@@ -33,6 +33,16 @@ A failure the domain survives is still an outcome. The Adapter translates it, an
 
 Two Contexts do not share a provider's types as a common language. Each states what it needs in its own terms, and the assembly point translates.
 
+## At the assembly point
+
+- Configuration that changes how an immutable record behaves is captured in that record when it is made, not read again on a retry. Capture every value that decides compatibility or safety, including a limitation someone explicitly accepted.
+- Clients, transports and timeouts are chosen at the entry point and handed to the Adapter. A focused test proves the chosen client is the one that reaches it.
+- The Adapter owns its request and response contract; the assembly point owns the endpoint, the credentials and the client.
+- When the caller passes a deadline, the assembly point adds no shorter timeout of its own: one place decides how long to wait.
+- The entry point reads the environment once and passes typed values on. Setting types and their validation may be shared; reading the environment is not, and a helper that falls back between values chooses only among values it is given.
+- Tests build Adapters through the same assembly as production. A fallback that only tests rely on does not replace the entry point supplying the real client.
+- Persistence that the data-access tooling cannot express is confined to one Adapter at the entry point, and any record of who owns that data points at that Adapter.
+
 ## Evidence
 
 | Claim | Evidence |

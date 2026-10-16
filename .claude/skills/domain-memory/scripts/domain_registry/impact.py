@@ -53,10 +53,10 @@ def _touched_contexts(contexts: list[dict[str, Any]], paths: list[str]) -> dict[
     return {identifier: files for identifier, files in touched.items() if files}
 
 
-def _collaborations(root: Path) -> dict[frozenset, list[dict[str, Any]]]:
+def _collaborations(records: dict[str, list[dict[str, Any]]]) -> dict[frozenset, list[dict[str, Any]]]:
     found: dict[frozenset, list[dict[str, Any]]] = {}
     for name, ends in COLLABORATION_ENDS.items():
-        for entry in _records_with_status(root, name):
+        for entry in records[name]:
             for pair in ends(entry):
                 found.setdefault(frozenset(pair), []).append(
                     {"asset": name.removesuffix(".json"), "id": entry.get("id"), "status": entry.get("status")}
@@ -64,10 +64,10 @@ def _collaborations(root: Path) -> dict[frozenset, list[dict[str, Any]]]:
     return found
 
 
-def _evidence_touched(root: Path, paths: set[str]) -> list[dict[str, Any]]:
+def _evidence_touched(records: dict[str, list[dict[str, Any]]], paths: set[str]) -> list[dict[str, Any]]:
     touched = []
     for name in COLLABORATION_ENDS:
-        for entry in _records_with_status(root, name):
+        for entry in records[name]:
             cited = {
                 reference.get("path") if isinstance(reference, dict) else reference
                 for reference in all_references(entry)
@@ -97,12 +97,13 @@ def boundary_impact(root: Path, repo_root: Path, base: str) -> dict[str, Any]:
     contexts = _records_with_status(root, "contexts.json")
     mapped = any(isinstance(context.get("implementation_path"), str) for context in contexts)
     touched = _touched_contexts(contexts, paths)
-    collaborations = _collaborations(root)
+    records = {name: _records_with_status(root, name) for name in COLLABORATION_ENDS}
+    collaborations = _collaborations(records)
     pairs = [
         {"contexts": [one, other], "collaborations": collaborations.get(frozenset((one, other)), [])}
         for one, other in combinations(sorted(touched), 2)
     ]
-    evidence = _evidence_touched(root, set(paths))
+    evidence = _evidence_touched(records, set(paths))
     owned = {path for files in touched.values() for path in files}
     return {
         "base": base,

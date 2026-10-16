@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from pathlib import PurePosixPath
 from typing import Any
 
@@ -14,7 +15,7 @@ PAIRED_ASSETS = {
 }
 NAME_FIELDS = {"contexts": "name", "vocabulary": "name", "aggregates": "root"}
 EXACT_PATH, NESTED_PATH, SAME_NAME, SHARED_EVIDENCE = 4, 3, 2, 1
-MATCH_KINDS = {EXACT_PATH: "path", NESTED_PATH: "nested-path", SAME_NAME: "name", SHARED_EVIDENCE: "context-and-evidence"}
+SCORE_LABELS = {EXACT_PATH: "path", NESTED_PATH: "nested-path", SAME_NAME: "name", SHARED_EVIDENCE: "context-and-evidence"}
 
 
 def compare_registries(gold: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
@@ -46,12 +47,13 @@ def _records_by_asset(documents: dict[str, Any]) -> dict[str, list[dict[str, Any
 def _matched(
     asset: str, gold: list[dict[str, Any]], candidate: list[dict[str, Any]], context_of: dict[str, str]
 ) -> dict[str, Any]:
+    match_score = _scorer(asset, gold, candidate, context_of)
     scored = sorted(
         (
             (score, index, gold_index)
-            for index, record in enumerate(candidate)
-            for gold_index, expected in enumerate(gold)
-            if (score := _match_score(asset, expected, record, context_of))
+            for index in range(len(candidate))
+            for gold_index in range(len(gold))
+            if (score := match_score(gold_index, index))
         ),
         key=lambda entry: (-entry[0], entry[1], entry[2]),
     )
@@ -61,7 +63,7 @@ def _matched(
             continue
         taken_candidates.add(index)
         taken_gold.add(gold_index)
-        matched.append({"candidate": candidate[index]["id"], "gold": gold[gold_index]["id"], "by": MATCH_KINDS[score]})
+        matched.append({"candidate": candidate[index]["id"], "gold": gold[gold_index]["id"], "by": SCORE_LABELS[score]})
     return {
         "gold": len(gold),
         "candidate": len(candidate),
@@ -72,38 +74,55 @@ def _matched(
     }
 
 
-def _match_score(asset: str, gold: dict[str, Any], candidate: dict[str, Any], context_of: dict[str, str]) -> int:
-    if asset == "contexts":
-        return _path_score(gold.get("implementation_path"), candidate.get("implementation_path")) or (
-            SAME_NAME if _same_name(asset, gold, candidate) else 0
-        )
+def _scorer(
+    asset: str, gold: list[dict[str, Any]], candidate: list[dict[str, Any]], context_of: dict[str, str]
+) -> Callable[[int, int], int]:
     if asset in PAIRED_ASSETS:
         ends = PAIRED_ASSETS[asset]
-        return EXACT_PATH if all(context_of.get(candidate.get(end)) == gold.get(end) for end in ends) else 0
-    if _same_name(asset, gold, candidate):
-        return SAME_NAME
-    shares_context = bool(_contexts(gold) & {context_of.get(context) for context in _contexts(candidate)})
-    return SHARED_EVIDENCE if shares_context and _cited_paths(gold) & _cited_paths(candidate) else 0
+        gold_ends = [tuple(record.get(end) for end in ends) for record in gold]
+        candidate_ends = [tuple(context_of.get(record.get(end)) for end in ends) for record in candidate]
+        return lambda gold_index, index: EXACT_PATH if candidate_ends[index] == gold_ends[gold_index] else 0
+    gold_names = [_names(asset, record, with_synonyms=True) for record in gold]
+    candidate_names = [_names(asset, record, with_synonyms=False) for record in candidate]
+    if asset == "contexts":
+        gold_parts = [_path_parts(record.get("implementation_path")) for record in gold]
+        candidate_parts = [_path_parts(record.get("implementation_path")) for record in candidate]
+        return lambda gold_index, index: _path_score(gold_parts[gold_index], candidate_parts[index]) or (
+            SAME_NAME if gold_names[gold_index] & candidate_names[index] else 0
+        )
+    gold_contexts = [_contexts(record) for record in gold]
+    candidate_contexts = [{context_of.get(context) for context in _contexts(record)} for record in candidate]
+    gold_paths = [_cited_paths(record) for record in gold]
+    candidate_paths = [_cited_paths(record) for record in candidate]
+
+    def score(gold_index: int, index: int) -> int:
+        if gold_names[gold_index] & candidate_names[index]:
+            return SAME_NAME
+        shares_context = gold_contexts[gold_index] & candidate_contexts[index]
+        return SHARED_EVIDENCE if shares_context and gold_paths[gold_index] & candidate_paths[index] else 0
+
+    return score
 
 
-def _path_score(gold: Any, candidate: Any) -> int:
-    if not isinstance(gold, str) or not isinstance(candidate, str):
+def _path_parts(path: Any) -> tuple[str, ...] | None:
+    return PurePosixPath(path.strip("/")).parts if isinstance(path, str) else None
+
+
+def _path_score(gold: tuple[str, ...] | None, candidate: tuple[str, ...] | None) -> int:
+    if gold is None or candidate is None:
         return 0
-    gold_parts = PurePosixPath(gold.strip("/")).parts
-    candidate_parts = PurePosixPath(candidate.strip("/")).parts
-    if gold_parts == candidate_parts:
+    if gold == candidate:
         return EXACT_PATH
-    shorter = min(len(gold_parts), len(candidate_parts))
-    return NESTED_PATH if shorter and gold_parts[:shorter] == candidate_parts[:shorter] else 0
+    shorter = min(len(gold), len(candidate))
+    return NESTED_PATH if shorter and gold[:shorter] == candidate[:shorter] else 0
 
 
-def _same_name(asset: str, gold: dict[str, Any], candidate: dict[str, Any]) -> bool:
+def _names(asset: str, record: dict[str, Any], *, with_synonyms: bool) -> set[str]:
     field = NAME_FIELDS.get(asset)
-    names = {_normalized(gold.get("id"))} | ({_normalized(gold.get(field))} if field else set())
-    if asset == "vocabulary":
-        names |= {_normalized(synonym) for synonym in gold.get("synonyms") or []}
-    wanted = {_normalized(candidate.get("id"))} | ({_normalized(candidate.get(field))} if field else set())
-    return bool((names & wanted) - {""})
+    names = {_normalized(record.get("id"))} | ({_normalized(record.get(field))} if field else set())
+    if with_synonyms and asset == "vocabulary":
+        names |= {_normalized(synonym) for synonym in record.get("synonyms") or []}
+    return names - {""}
 
 
 def _normalized(value: Any) -> str:

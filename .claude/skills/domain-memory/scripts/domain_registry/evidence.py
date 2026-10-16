@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Callable
+from functools import cache
 from pathlib import Path
 from typing import Any
 
 from .common import MAX_EVIDENCE_BYTES, MAX_NESTING_DEPTH, load_json
-from .sources import source_kind_for
+from .sources import source_kind_index
 
 
 DERIVED_EVIDENCE_KEYS = ("content_sha256", "source_kind")
@@ -42,14 +43,21 @@ def _excerpt(rows: list[str], start: int, end: int) -> bytes:
     return "".join(rows[start - 1 : end]).encode("utf-8")
 
 
+def classifier(source_map: dict[str, Any]) -> Callable[[Any], Any]:
+    if not source_map:
+        return lambda reference: reference
+    kind_of = cache(lambda: source_kind_index(source_map))
+
+    def classify(reference: Any) -> Any:
+        if not isinstance(reference, dict) or not isinstance(reference.get("path"), str):
+            return reference
+        return reference | {"source_kind": kind_of()(reference["path"])}
+
+    return classify
+
+
 def classified(reference: Any, source_map: dict[str, Any]) -> Any:
-    if (
-        not source_map
-        or not isinstance(reference, dict)
-        or not isinstance(reference.get("path"), str)
-    ):
-        return reference
-    return reference | {"source_kind": source_kind_for(source_map, reference["path"])}
+    return classifier(source_map)(reference)
 
 
 def with_references(value: Any, change: Callable[[Any], Any], depth: int = 0) -> Any:
@@ -77,7 +85,7 @@ def without_derived_keys(value: Any) -> Any:
 
 
 def classify_all(value: Any, source_map: dict[str, Any]) -> Any:
-    return with_references(value, lambda reference: classified(reference, source_map))
+    return with_references(value, classifier(source_map))
 
 
 def citation(repo_root: Path, relative: str, start: int, end: int) -> dict[str, Any]:
@@ -110,7 +118,7 @@ def citation(repo_root: Path, relative: str, start: int, end: int) -> dict[str, 
 
 def excerpt_starts(repo_root: Path, relative: str, length: int, excerpt_sha256: str) -> list[int]:
     path = (repo_root / relative).resolve()
-    if _source_verdict(path, relative, repo_root):
+    if _source_verdict(path, relative, repo_root.resolve()):
         return []
     _, rows = _read_lines(path)
     return _starts_of(rows, length, excerpt_sha256)
@@ -165,8 +173,8 @@ def _shape_error(reference: Any) -> str | None:
     return None
 
 
-def _source_verdict(path: Path, path_text: str, repo_root: Path) -> dict[str, Any] | None:
-    if not path.is_relative_to(repo_root.resolve()):
+def _source_verdict(path: Path, path_text: str, root: Path) -> dict[str, Any] | None:
+    if not path.is_relative_to(root):
         return {"status": "invalid", "reason": "evidence path escapes repository"}
     if not path.is_file():
         return {"status": "missing", "path": path_text}
@@ -180,18 +188,31 @@ def _source_verdict(path: Path, path_text: str, repo_root: Path) -> dict[str, An
 
 
 def verify(reference: Any, repo_root: Path) -> dict[str, Any]:
-    if isinstance(reference, str):
-        return {"status": "legacy-unverified", "reference": reference}
-    shape = _shape_error(reference)
-    if shape:
-        return {"status": "invalid", "reason": shape}
-    path_text = reference["path"]
-    path = (repo_root / path_text).resolve()
-    problem = _source_verdict(path, path_text, repo_root)
-    if problem:
-        return problem
-    _, rows = _read_lines(path)
-    return {"cited_lines": dict(reference["lines"]), **_cited_lines_verdict(reference, path_text, rows)}
+    return verifier(repo_root)(reference)
+
+
+def verifier(repo_root: Path) -> Callable[[Any], dict[str, Any]]:
+    root = repo_root.resolve()
+    sources: dict[str, dict[str, Any] | list[str]] = {}
+
+    def source(path_text: str) -> dict[str, Any] | list[str]:
+        if path_text not in sources:
+            path = (root / path_text).resolve()
+            sources[path_text] = _source_verdict(path, path_text, root) or _read_lines(path)[1]
+        return sources[path_text]
+
+    def check(reference: Any) -> dict[str, Any]:
+        if isinstance(reference, str):
+            return {"status": "legacy-unverified", "reference": reference}
+        shape = _shape_error(reference)
+        if shape:
+            return {"status": "invalid", "reason": shape}
+        rows = source(reference["path"])
+        if isinstance(rows, dict):
+            return dict(rows)
+        return {"cited_lines": dict(reference["lines"]), **_cited_lines_verdict(reference, reference["path"], rows)}
+
+    return check
 
 
 def _cited_lines_verdict(reference: dict[str, Any], path_text: str, rows: list[str]) -> dict[str, Any]:

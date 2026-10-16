@@ -5,12 +5,12 @@ from typing import Any
 
 from .common import change_template_dir, load_json, write_json, writer_lock
 
-STORAGE_MODES = {"tracked", "ignored", "external"}
-CLASSIFICATIONS = {"public", "internal", "confidential", "restricted"}
-REVIEW_MODES = {"local-draft-only", "scm-verified"}
-GOVERNANCE_VERIFIERS = {"github-pr", "git-signed-commit", "none"}
-GOVERNANCE_TRIGGERS = {"external-scm", "git-commit", "git-push", "none"}
-CI_REQUIREMENTS = {"required", "optional", "none"}
+STORAGE_MODES = ("tracked", "ignored", "external")
+CLASSIFICATIONS = ("public", "internal", "confidential", "restricted")
+REVIEW_MODES = ("local-draft-only", "scm-verified")
+GOVERNANCE_VERIFIERS = ("github-pr", "git-signed-commit", "none")
+GOVERNANCE_TRIGGERS = ("external-scm", "git-commit", "git-push", "none")
+CI_REQUIREMENTS = ("required", "optional", "none")
 
 
 def existing_policy(root: Path) -> dict[str, Any] | None:
@@ -178,7 +178,7 @@ def _apply_field(
         if not isinstance(verifier, str) or not verifier.strip():
             raise ValueError(
                 "leaving local-draft-only requires the verifier that replaces it, "
-                f"one of {', '.join(sorted(GOVERNANCE_VERIFIERS - {'none'}))}: "
+                f"one of {', '.join(sorted(verifier for verifier in GOVERNANCE_VERIFIERS if verifier != 'none'))}: "
                 "a review mode and the authority that backs it move together"
             )
         document["review_governance"]["verifier"] = verifier.strip()
@@ -239,11 +239,14 @@ def _valid_policy(path: Path) -> dict[str, Any]:
     return value
 
 
-def review_mode(root: Path) -> str:
+def _valid_policy_if_any(root: Path) -> dict[str, Any] | None:
     path = policy_path(root)
-    if not path.is_file():
-        return "legacy-unverified"
-    return _valid_policy(path)["review_mode"]
+    return _valid_policy(path) if path.is_file() else None
+
+
+def review_mode(root: Path) -> str:
+    policy = _valid_policy_if_any(root)
+    return policy["review_mode"] if policy else "legacy-unverified"
 
 
 def review_governance(root: Path) -> dict[str, Any]:
@@ -251,19 +254,15 @@ def review_governance(root: Path) -> dict[str, Any]:
 
 
 def approved_command_profiles(root: Path | None) -> set[str]:
-    if root is None:
+    policy = _valid_policy_if_any(root) if root is not None else None
+    if policy is None:
         return set()
-    path = policy_path(root)
-    if not path.is_file():
-        return set()
-    profiles = _valid_policy(path).get("approved_command_profiles", [])
+    profiles = policy.get("approved_command_profiles", [])
     return {
         profile for profile in profiles if isinstance(profile, str) and profile.strip()
     }
 
 
 def query_result_limit(root: Path) -> int:
-    path = policy_path(root)
-    if not path.is_file():
-        return 100
-    return _valid_policy(path)["limits"]["max_query_results"]
+    policy = _valid_policy_if_any(root)
+    return policy["limits"]["max_query_results"] if policy else 100

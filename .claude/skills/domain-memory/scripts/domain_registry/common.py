@@ -60,19 +60,26 @@ def record_status(asset: str, document: dict[str, Any], record: dict[str, Any]) 
     return record.get(review_field(asset), document.get("status"))
 
 
+def updates_record(update: Any, asset: str, record_id: Any) -> bool:
+    return update.get("asset") == asset and (update.get("record") or {}).get("id") == record_id
+
+
+PROPOSAL_FILE = "domain-change-proposal.json"
+EVIDENCE_FILE = "evidence-bundle.json"
+
 CHANGE_PACKAGE_FILES = (
     "requirement-normalization.json",
-    "domain-change-proposal.json",
+    PROPOSAL_FILE,
     "test-obligations.json",
-    "evidence-bundle.json",
+    EVIDENCE_FILE,
     "draft-pr.md",
 )
 
 CHANGE_PACKAGE_FORMATS = {
     "requirement-normalization.json": "domain-requirement/v1",
-    "domain-change-proposal.json": "domain-change-proposal/v1",
+    PROPOSAL_FILE: "domain-change-proposal/v1",
     "test-obligations.json": "domain-test-obligations/v1",
-    "evidence-bundle.json": "domain-evidence-bundle/v1",
+    EVIDENCE_FILE: "domain-evidence-bundle/v1",
 }
 
 CHANGE_CLASSIFICATIONS = {"routine", "material"}

@@ -578,6 +578,17 @@ class SourcesTest(RegistryTestCase):
             source_kind_for(source_map, "apps/svc/preflight.go"), "implementation"
         )
 
+    def test_a_path_two_groups_list_takes_the_kind_of_the_first(self) -> None:
+        source_map = {
+            "source_groups": [
+                {"kind": "bounded_contexts", "paths": ["apps/svc"]},
+                {"kind": "implementation", "paths": ["apps/svc"]},
+            ],
+        }
+        self.assertEqual(
+            source_kind_for(source_map, "apps/svc/doc.go"), "bounded_contexts"
+        )
+
     def write_files(self, *names: str) -> None:
         for name in names:
             path = self.repo / name

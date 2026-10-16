@@ -11,7 +11,7 @@ from urllib.parse import quote, urlparse
 
 HTTP_NOT_FOUND = 404
 
-from .common import completed_identifier, load_json
+from .common import EVIDENCE_FILE, PROPOSAL_FILE, completed_identifier, load_json
 from .revision import valid_commit
 
 
@@ -227,7 +227,7 @@ def commit_carries_proposal(
     relative = package_path_in(repo_root, package_root)
     if relative is None:
         return [OUTSIDE_THE_REPOSITORY]
-    shown = _git(repo_root, "show", f"{commit}:{relative}/domain-change-proposal.json")
+    shown = _git(repo_root, "show", f"{commit}:{relative}/{PROPOSAL_FILE}")
     return carried_proposal_errors(shown.stdout if shown.returncode == 0 else None, relative, proposal)
 
 
@@ -252,7 +252,7 @@ def _proposal_at_pull_request_commit(value: dict[str, Any], token: str, relative
     repository = "/".join(github_api_path(str(value.get("pull_request", ""))).split("/")[:3])
     url = (
         f"https://api.github.com/{repository}/contents/"
-        f"{quote(relative)}/domain-change-proposal.json?ref={value.get('commit')}"
+        f"{quote(relative)}/{PROPOSAL_FILE}?ref={value.get('commit')}"
     )
     from urllib.error import HTTPError
 
@@ -295,7 +295,7 @@ def _read_objects(repo_root: Path, names: list[str]) -> dict[str, bytes]:
 
 
 def _proposal_object(commit: str, relative: str) -> str:
-    return f"{commit}:{relative}/domain-change-proposal.json"
+    return f"{commit}:{relative}/{PROPOSAL_FILE}"
 
 
 def _attested_commit(attestation: Any) -> str | None:
@@ -337,12 +337,12 @@ def _attestation_verdict(
 
 def audit_attestations(repo_root: Path, changes_root: Path, token_env: str) -> list[dict[str, str]]:
     audited = []
-    for proposal_file in sorted(changes_root.glob("*/domain-change-proposal.json")):
+    for proposal_file in sorted(changes_root.glob(f"*/{PROPOSAL_FILE}")):
         package = proposal_file.parent
         proposal = load_json(proposal_file)
         if proposal.get("status") not in AUDITED_STATUSES:
             continue
-        evidence_file = package / "evidence-bundle.json"
+        evidence_file = package / EVIDENCE_FILE
         attestation = load_json(evidence_file).get("scm_attestation") if evidence_file.is_file() else None
         audited.append(AuditedPackage(package, proposal, attestation))
     names = []

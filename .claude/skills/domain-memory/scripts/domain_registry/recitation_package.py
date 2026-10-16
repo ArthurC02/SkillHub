@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .changes import PROPOSAL_FILE, init_change_package, parsed_update
+from .changes import init_change_package, parsed_update
+from .common import PROPOSAL_FILE
 from .common import load_json, write_json
 from .evidence import all_references, with_references
 from .registry import asset_records

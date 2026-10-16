@@ -42,6 +42,9 @@ class ContextMatchingTest(unittest.TestCase):
     def test_a_context_without_a_path_matches_by_name_ignoring_case_and_punctuation(self) -> None:
         self.assertEqual([("order-ctx", "orders", "name")], self.matched([ORDERS], [{"id": "order-ctx", "name": "ORDERS"}]))
 
+    def test_contexts_that_both_lack_a_name_and_path_do_not_match(self) -> None:
+        self.assertEqual([], self.matched([{"id": "orders"}], [{"id": "sales"}]))
+
     def test_a_path_match_wins_over_a_name_match_for_the_same_candidate(self) -> None:
         candidate = {"id": "billing", "name": "Billing", "implementation_path": "src/orders"}
         self.assertEqual([("billing", "orders", "path")], self.matched([ORDERS, BILLING], [candidate]))
