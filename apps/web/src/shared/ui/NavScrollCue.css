@@ -3,6 +3,11 @@
 }
 
 @media (max-width: 640px) {
+  .app-nav,
+  .category-nav {
+    scroll-padding-inline: 72px;
+  }
+
   .nav-scroll-cue:not([hidden]) {
     --nav-scroll-cue-width: 64px;
     position: sticky;
@@ -16,13 +21,18 @@
     margin-left: calc(-1 * var(--nav-scroll-cue-width));
     padding-right: 4px;
     color: var(--link);
-    background: linear-gradient(90deg, transparent, var(--surface) 42%);
+    background: var(--surface);
     font-size: 14px;
     font-weight: 700;
     pointer-events: none;
   }
 
   .category-nav .nav-scroll-cue {
-    background: linear-gradient(90deg, transparent, var(--bg) 42%);
+    background: var(--bg);
+  }
+
+  .platform-shell .app-nav .nav-scroll-cue {
+    color: var(--chrome-text-h);
+    background: var(--chrome);
   }
 }
