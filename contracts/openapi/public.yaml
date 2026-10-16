@@ -6927,10 +6927,9 @@ paths:
         where a hold applied inside the TTL would not have stopped anything.
         Bytes crossing the API process is movement, not execution (iron rule 1).
 
-        One successful download writes three things in one transaction (iron
-        rule 9): the artifact's access time, a download record (WS-004, what the
-        user sees) and an audit event (CORE-008, what compliance keeps). Those
-        two are not merged — their retention and their visibility differ, and one
+        One successful download writes two things in one transaction (iron
+        rule 9): a download record (WS-004, what the user sees) and an audit
+        event (CORE-008, what compliance keeps). Those two are not merged — their retention and their visibility differ, and one
         row would bind each to the stricter of the two.
       parameters:
         - name: artifactId
