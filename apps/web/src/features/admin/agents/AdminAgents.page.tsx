@@ -137,9 +137,6 @@ function AgentWorkbench({ status }: { status?: "resolved" | "dismissed" | "recov
         </section>
 
         <section id="admin-agent-findings" aria-labelledby="admin-agent-findings-heading">
-          <h2 id="admin-agent-findings-heading" tabIndex={-1}>
-            待辦
-          </h2>
           <FindingInbox status={status} />
         </section>
       </div>

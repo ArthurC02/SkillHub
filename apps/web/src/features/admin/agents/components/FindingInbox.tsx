@@ -9,6 +9,7 @@ import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { ListFreshness } from "../../../../shared/ui/ListFreshness";
+import { usePaginationFocus } from "../../../../shared/ui/usePaginationFocus";
 import { FINDING_STATUS } from "./findingLabels";
 
 type ClosedView = "resolved" | "dismissed" | "recovered";
@@ -20,10 +21,16 @@ const VIEWS: { status?: ClosedView; label: string; counts: FindingStatus[] }[] =
   { status: "dismissed", label: FINDING_STATUS.dismissed, counts: ["dismissed"] },
 ];
 
-function FindingRow({ finding }: { finding: PlatformAgentFinding }) {
+function FindingRow({
+  finding,
+  focusRef,
+}: {
+  finding: PlatformAgentFinding;
+  focusRef?: (element: HTMLLIElement | null) => void;
+}) {
   const live = finding.status === "open" || finding.status === "acknowledged";
   return (
-    <li className="download-item">
+    <li className="download-item" ref={focusRef} tabIndex={focusRef ? -1 : undefined}>
       <p>
         <strong>{finding.title}</strong>
       </p>
@@ -58,10 +65,18 @@ export function FindingInbox({ status }: { status?: ClosedView }) {
   const blockingError = nextPageError ? null : findings.error;
   const showRows = findings.data && !blockingError;
   const rows = findings.data?.pages.flatMap((page) => page.findings) ?? [];
+  const { bindTarget, headingRef, loadMore, row } = usePaginationFocus(findings, rows);
   const counts = showRows && findings.data.pages[0].counts;
   const current = VIEWS.find((view) => view.status === status) ?? VIEWS[0];
   return (
     <>
+      <h2
+        id="admin-agent-findings-heading"
+        tabIndex={-1}
+        ref={nextPageError ? undefined : headingRef}
+      >
+        待辦
+      </h2>
       <nav aria-label="待辦的狀態" className="badge-row">
         {VIEWS.map((view) => (
           <Link
@@ -99,7 +114,11 @@ export function FindingInbox({ status }: { status?: ClosedView }) {
         <>
           <ul className="download-list">
             {rows.map((finding) => (
-              <FindingRow finding={finding} key={finding.id} />
+              <FindingRow
+                finding={finding}
+                key={finding.id}
+                focusRef={finding === row ? bindTarget : undefined}
+              />
             ))}
           </ul>
           <p className="note" role="status">
@@ -110,9 +129,10 @@ export function FindingInbox({ status }: { status?: ClosedView }) {
       {nextPageError && <p role="alert">後續待辦暫時無法讀取；已載入的待辦仍可查看。</p>}
       {showRows && findings.hasNextPage && (
         <button
+          ref={bindTarget}
           type="button"
           disabled={findings.isFetchingNextPage}
-          onClick={() => void findings.fetchNextPage()}
+          onClick={loadMore}
         >
           {findings.isFetchingNextPage
             ? "載入中…"
