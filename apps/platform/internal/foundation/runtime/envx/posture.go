@@ -1,6 +1,8 @@
 package envx
 
 import (
+	"net"
+	"net/url"
 	"strings"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
@@ -42,12 +44,32 @@ func (p Posture) WorkerRefusals() []string {
 }
 
 func (p Posture) devLoginRefusals() []string {
-	if !p.DevLogin || !p.SecureCookies {
+	switch {
+	case !p.DevLogin:
 		return nil
+	case p.SecureCookies:
+		return []string{"DEV_LOGIN=1 with secure session cookies: it marks a development deployment, where the API lets " +
+			"anybody sign in as any name without a credential and the worker dispatches runs to sandboxes that share " +
+			"the host kernel. Unset DEV_LOGIN, or set COOKIE_INSECURE=1 if this really is plain-http local dev."}
+	case !p.servedOnlyToThisMachine():
+		return []string{"DEV_LOGIN=1 with an APP_URL other machines reach: the API would let anybody who reaches " +
+			p.AppURL + " sign in as any name without a credential. Unset DEV_LOGIN, or point APP_URL at localhost."}
 	}
-	return []string{"DEV_LOGIN=1 with secure session cookies: it marks a development deployment, where the API lets " +
-		"anybody sign in as any name without a credential and the worker dispatches runs to sandboxes that share " +
-		"the host kernel. Unset DEV_LOGIN, or set COOKIE_INSECURE=1 if this really is plain-http local dev."}
+	return nil
+}
+
+func (p Posture) servedOnlyToThisMachine() bool {
+	origin := httpx.Origin(p.AppURL)
+	if origin == "" {
+		return true
+	}
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	host := u.Hostname()
+	ip := net.ParseIP(host)
+	return strings.EqualFold(host, "localhost") || (ip != nil && ip.IsLoopback())
 }
 
 func (p Posture) publicDevelopmentRefusals() []string {
