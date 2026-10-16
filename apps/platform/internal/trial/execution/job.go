@@ -350,7 +350,9 @@ func (d *driver) startAccepted(
 		r.AssignProvider(provider.Name(), snapshot)
 	})
 	if err != nil {
-		if destroyErr := provider.Destroy(ctx, pr.ProviderRunID); destroyErr != nil {
+		destroyCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), providerRequestTimeout)
+		defer cancel()
+		if destroyErr := provider.Destroy(destroyCtx, pr.ProviderRunID); destroyErr != nil {
 			slog.Error("leaked a sandbox: its mapping could not be recorded and it could not be destroyed; the orphan scan will reclaim it",
 				"run_id", pgconv.UUIDString(d.cur.ID), "error", destroyErr)
 		}

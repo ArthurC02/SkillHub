@@ -140,6 +140,74 @@ func TestASandboxWhoseDispatchCannotBeRecordedIsDestroyed(t *testing.T) {
 	}
 }
 
+func TestASandboxWhoseDispatchRecordIsCutShortByShutdownIsStillDestroyed(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-dispatch-cut-short")
+	ctx := context.Background()
+	created := f.start(t)
+	const gate = 7340032
+	if _, err := pool.Exec(ctx, `
+		CREATE OR REPLACE FUNCTION skillhub_test_hold_dispatch_record() RETURNS trigger AS $fn$
+		BEGIN
+			IF NEW.workspace_id = `+pgLiteral(f.workspaceID)+`::uuid THEN
+				PERFORM pg_advisory_xact_lock(`+strconv.Itoa(gate)+`);
+			END IF;
+			RETURN NEW;
+		END;
+		$fn$ LANGUAGE plpgsql`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `CREATE TRIGGER skillhub_test_hold_dispatch_record BEFORE UPDATE ON run_attempts
+		FOR EACH ROW WHEN (OLD.provider_run_id IS NULL AND NEW.provider_run_id IS NOT NULL)
+		EXECUTE FUNCTION skillhub_test_hold_dispatch_record()`); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(ctx, "DROP TRIGGER IF EXISTS skillhub_test_hold_dispatch_record ON run_attempts")
+		_, _ = pool.Exec(ctx, "DROP FUNCTION IF EXISTS skillhub_test_hold_dispatch_record()")
+	})
+	holder, err := pool.Acquire(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer holder.Release()
+	if _, err := holder.Exec(ctx, "SELECT pg_advisory_lock($1)", gate); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = holder.Exec(ctx, "SELECT pg_advisory_unlock($1)", gate) }()
+
+	fake := providertest.New("fake_sandbox", "test-token")
+	t.Cleanup(fake.Close)
+	svc := *a.runs
+	svc.Providers = run.NewRegistry(fake.Provider())
+	svc.Store = a.packages
+	driveCtx, shutdown := context.WithCancel(ctx)
+	driven := make(chan error, 1)
+	go func() { driven <- svc.Drive(driveCtx, mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)) }()
+
+	deadline := time.Now().Add(30 * time.Second)
+	for waiting := 0; waiting == 0; {
+		if time.Now().After(deadline) {
+			shutdown()
+			t.Fatal("the dispatch record never reached the held gate")
+		}
+		if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_locks
+			WHERE locktype = 'advisory' AND objid = $1 AND NOT granted`, gate).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	shutdown()
+	if err := <-driven; err == nil {
+		t.Fatal("a drive cut short while recording its dispatch reported success")
+	}
+	if fake.Dispatches() != 1 || fake.Live() != 0 {
+		t.Errorf("dispatches = %d, live sandboxes = %d; want the sandbox destroyed even though the drive's own context had ended",
+			fake.Dispatches(), fake.Live())
+	}
+}
+
 func TestAProviderRefusalThatWaitingCannotFixEndsTheRunAfterOneAttempt(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
