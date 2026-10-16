@@ -34,18 +34,31 @@ func exportedRegistryAsset(root, asset string) ([]byte, error) {
 	return document, nil
 }
 
-func exportRegistry(root string) (map[string]json.RawMessage, error) {
-	output, runErr := domainMemoryTool(root, "export", "--registry-root", filepath.Join(root, filepath.FromSlash(domainMemoryRoot)))
+type exportError struct {
+	reason string
+	err    error
+}
+
+func (e *exportError) Error() string { return e.err.Error() }
+
+func (e *exportError) Unwrap() error { return e.err }
+
+func exportRegistry(root string, args ...string) (map[string]json.RawMessage, error) {
+	output, runErr := domainMemoryTool(root, append([]string{"export", "--registry-root", filepath.Join(root, filepath.FromSlash(domainMemoryRoot))}, args...)...)
 	if runErr != nil {
-		return nil, fmt.Errorf("the Domain Memory export failed: %w: %s", runErr, firstLine(output))
+		reason := firstLine(output)
+		if reason == "" {
+			reason = runErr.Error()
+		}
+		return nil, &exportError{reason, fmt.Errorf("the Domain Memory export failed: %w: %s", runErr, firstLine(output))}
 	}
 	var assets map[string]json.RawMessage
 	start := strings.Index(output, "{")
 	if start < 0 {
-		return nil, fmt.Errorf("the Domain Memory export printed no JSON: %s", firstLine(output))
+		return nil, &exportError{firstLine(output), fmt.Errorf("the Domain Memory export printed no JSON: %s", firstLine(output))}
 	}
 	if err := json.Unmarshal([]byte(output[start:]), &assets); err != nil {
-		return nil, fmt.Errorf("the Domain Memory export is not JSON: %w", err)
+		return nil, &exportError{err.Error(), fmt.Errorf("the Domain Memory export is not JSON: %w", err)}
 	}
 	return assets, nil
 }

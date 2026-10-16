@@ -372,6 +372,38 @@ class CliTest(RegistryTestCase):
         self.assertEqual([rule], exported["rules"]["rules"])
         self.assertEqual("domain-rules/v1", exported["rules"]["format"])
 
+    def test_export_at_a_commit_prints_what_that_commit_holds(self) -> None:
+        committed = {"id": "order-total", "statement": "Committed.", "status": "candidate"}
+        self.seed("rules.json", [committed])
+        self.commit_all("rule")
+        self.seed("rules.json", [{**committed, "statement": "Only in the working tree."}])
+        result = self.run_cli("export", "--registry-root", str(self.repo / "memory"),
+                              "--repo-root", str(self.repo), "--commit", "HEAD")
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertEqual([committed], json.loads(result.stdout)["rules"]["rules"])
+
+    def test_each_export_at_a_commit_that_cannot_be_read_is_named(self) -> None:
+        root = str(self.repo / "memory")
+        cases = [
+            ("no repository root", ["--commit", "HEAD"], "ERROR: export --commit needs --repo-root"),
+            ("unknown commit", ["--repo-root", str(self.repo), "--commit", "f" * 40],
+             f"ERROR: no Domain Memory Registry at {'f' * 40}"),
+        ]
+        for label, extra, message in cases:
+            with self.subTest(label):
+                result = self.run_cli("export", "--registry-root", root, *extra)
+                self.assertEqual(1, result.returncode)
+                self.assertEqual(message, result.stdout.strip())
+
+    def test_a_committed_json_asset_that_is_not_json_is_named(self) -> None:
+        use_json_layout(self.repo / "memory")
+        (self.repo / "memory" / "registry" / "rules.json").write_text("not json", encoding="utf-8")
+        self.commit_all("broken")
+        result = self.run_cli("export", "--registry-root", str(self.repo / "memory"),
+                              "--repo-root", str(self.repo), "--commit", "HEAD")
+        self.assertEqual(1, result.returncode)
+        self.assertTrue(result.stdout.startswith("ERROR: memory/registry/rules.json is not JSON: "), result.stdout)
+
     def test_the_module_entry_point_runs_the_command_instead_of_exiting_quietly(
         self,
     ) -> None:

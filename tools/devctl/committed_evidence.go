@@ -37,6 +37,9 @@ type evidenceReport struct {
 func committedEvidenceProblems(root, rangeSpec string) (problems, warnings []string, err error) {
 	end := rangeEnd(rangeSpec)
 	cited, err := citedChanges(root, rangeSpec, end)
+	if unreadable := (*exportError)(nil); errors.As(err, &unreadable) {
+		return nil, []string{fmt.Sprintf("Domain Memory evidence skipped (%s); CI still checks it", unreadable.reason)}, nil
+	}
 	if err != nil || len(cited) == 0 {
 		return nil, nil, err
 	}
@@ -112,21 +115,17 @@ func committedPathExists(root, commit, path string) (bool, error) {
 }
 
 func committedCitedPaths(root, commit string) (map[string]bool, error) {
-	listing, err := gitOutput(root, "-c", "core.quotepath=false", "ls-tree", "--name-only", commit+":"+registryDirectory)
+	assets, err := exportRegistry(root, "--repo-root", root, "--commit", commit)
 	if err != nil {
 		return nil, err
 	}
 	paths := map[string]bool{}
-	for _, name := range lines(listing) {
-		body, err := gitOutput(root, "show", commit+":"+registryDirectory+"/"+name)
-		if err != nil {
-			return nil, err
+	for _, document := range assets {
+		var value any
+		if err := json.Unmarshal(document, &value); err != nil {
+			return nil, fmt.Errorf("the Domain Memory export at %s is not JSON: %w", commit, err)
 		}
-		var document any
-		if err := json.Unmarshal([]byte(body), &document); err != nil {
-			return nil, fmt.Errorf("%s/%s at %s is not JSON: %w", registryDirectory, name, commit, err)
-		}
-		collectCitedPaths(document, paths)
+		collectCitedPaths(value, paths)
 	}
 	return paths, nil
 }

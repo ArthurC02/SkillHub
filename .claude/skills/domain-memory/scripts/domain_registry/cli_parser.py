@@ -56,6 +56,8 @@ def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
     validate_parser.add_argument("--require-reviewed", action="store_true")
     export_parser = commands.add_parser("export")
     add_path(export_parser, "--registry-root")
+    add_path(export_parser, "--repo-root", required=False)
+    export_parser.add_argument("--commit")
     coverage_parser = commands.add_parser("coverage")
     add_path(coverage_parser, "--registry-root")
     readiness_parser = commands.add_parser("readiness")

@@ -131,7 +131,13 @@ func TestThePrePushHookStopsAStaleCitation(t *testing.T) {
 const currentReport = `{"results":[{"asset":"rules","id":"rule","path":"src/a.py","status":"current","cited_lines":{"start":1,"end":1}}]}`
 
 func stubEvidenceTool(output string, err error) {
-	domainMemoryTool = func(string, ...string) (string, error) { return output, err }
+	export := domainMemoryTool
+	domainMemoryTool = func(root string, args ...string) (string, error) {
+		if args[0] == "verify-evidence" {
+			return output, err
+		}
+		return export(root, args...)
+	}
 }
 
 func editCitedLine(t *testing.T, repo gitRepo) {
@@ -147,6 +153,44 @@ func TestAPushedCommitThatIsNotCheckedOutIsStoppedAsStale(t *testing.T) {
 	problems := rangeProblems(t, repo, base+".."+pushed)
 	if len(problems) != 1 || !strings.Contains(problems[0], "rules/rule cites src/a.py:1-1, which is stale as committed") {
 		t.Fatalf("the pushed commit was not the one checked: %v", problems)
+	}
+}
+
+func TestACitationAddedInAPushThatIsNotCheckedOutIsChecked(t *testing.T) {
+	repo, base := evidenceRepo(t)
+	writeAt(t, repo.root, "src/c.py", "fact = 1\n")
+	cited, err := domainMemoryTool(repo.root, "cite", "--repo-root", repo.root, "--path", "src/c.py", "--start", "1", "--end", "1")
+	if err != nil {
+		t.Fatalf("cite: %v\n%s", err, cited)
+	}
+	var citation map[string]any
+	_, body, _ := strings.Cut(cited, "{")
+	if err := json.Unmarshal([]byte("{"+body), &citation); err != nil {
+		t.Fatalf("cite printed %q: %v", cited, err)
+	}
+	rulesPath := filepath.Join(repo.root, "docs", "domain-memory", "registry", "rules.json")
+	data, err := os.ReadFile(rulesPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document map[string][]any
+	if err := json.Unmarshal(data, &document); err != nil {
+		t.Fatal(err)
+	}
+	document["rules"] = append(document["rules"], map[string]any{
+		"id": "later", "statement": "T.", "status": "reviewed", "evidence": []any{citation},
+	})
+	rules, err := json.MarshalIndent(document, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo.commit(t, map[string]string{"src/c.py": "fact = 1\n", "docs/domain-memory/registry/rules.json": string(rules) + "\n"})
+	repo.commit(t, map[string]string{"src/c.py": "fact = 2\n"})
+	pushed := repo.head(t)
+	repo.git(t, "checkout", "-q", "--detach", base)
+	problems := rangeProblems(t, repo, base+".."+pushed)
+	if len(problems) != 1 || !strings.Contains(problems[0], "rules/later cites src/c.py:1-1, which is stale as committed") {
+		t.Fatalf("the citation the push added was not checked: %v", problems)
 	}
 }
 
@@ -247,12 +291,13 @@ func TestARangeNamingAShaThatDoesNotExistIsAnError(t *testing.T) {
 	}
 }
 
-func TestARegistryFileThatIsNotJSONIsAnError(t *testing.T) {
+func TestARegistryFileThatIsNotJSONIsNamedAndLeftToCI(t *testing.T) {
 	repo, base := evidenceRepo(t)
 	repo.commit(t, map[string]string{"docs/domain-memory/registry/rules.json": "not json"})
-	_, _, err := committedEvidenceProblems(repo.root, base+"..HEAD")
-	if err == nil || !strings.Contains(err.Error(), "rules.json at ") || !strings.Contains(err.Error(), " is not JSON") {
-		t.Fatalf("an unparsable registry file was skipped: %v", err)
+	problems, warnings, err := committedEvidenceProblems(repo.root, base+"..HEAD")
+	if err != nil || len(problems) != 0 || len(warnings) != 1 ||
+		!strings.Contains(warnings[0], "Domain Memory evidence skipped (ERROR: docs/domain-memory/registry/rules.json is not JSON: ") {
+		t.Fatalf("an unparsable registry file was not named: %v %v %v", problems, warnings, err)
 	}
 }
 

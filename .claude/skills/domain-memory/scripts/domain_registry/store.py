@@ -213,10 +213,13 @@ def _committed_json_documents(contents: dict[str, str], registry: str, names: tu
 
     documents = {}
     for name in names:
-        text = contents.get(f"{registry}/{name}")
-        if text is None:
+        path = f"{registry}/{name}"
+        if path not in contents:
             return None
-        documents[name] = json.loads(text)
+        try:
+            documents[name] = json.loads(contents[path])
+        except ValueError as error:
+            raise ValueError(f"{path} is not JSON: {error}") from error
     return documents
 
 

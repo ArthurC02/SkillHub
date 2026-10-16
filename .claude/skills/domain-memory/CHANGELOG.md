@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.30.0
+
+### Added
+
+- `export --commit <sha> --repo-root <repo>` prints the Registry as that commit holds it, in either layout, so a tool checking a push reads the pushed facts rather than the working tree's.
+
 ## 0.29.0
 
 ### Changed

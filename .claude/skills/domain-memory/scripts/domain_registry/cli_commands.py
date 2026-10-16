@@ -55,7 +55,7 @@ from .registry import (
 )
 from .security import scan_report
 from .signing import init_signing_key
-from .store import read_document
+from .store import committed_documents, read_document
 from .sources import (
     adjusted_selection,
     confirm_sources,
@@ -201,7 +201,15 @@ def handle_resolve_terms(args: argparse.Namespace) -> int:
 
 def handle_export(args: argparse.Namespace) -> int:
     root = args.registry_root.resolve()
-    print_json({name.removesuffix(".json"): read_document(root, name) for name in ASSET_KEYS})
+    if args.commit is None:
+        documents = {name: read_document(root, name) for name in ASSET_KEYS}
+    else:
+        if args.repo_root is None:
+            raise ValueError("export --commit needs --repo-root")
+        documents = committed_documents(args.repo_root.resolve(), args.commit, root, tuple(ASSET_KEYS))
+        if documents is None:
+            raise ValueError(f"no Domain Memory Registry at {args.commit}")
+    print_json({name.removesuffix(".json"): document for name, document in documents.items()})
     return 0
 
 
