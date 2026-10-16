@@ -10,10 +10,12 @@ import { runStatusLabel } from "../../runs.model";
 
 type CandidateListProps = {
   selfPending: boolean;
+  selfPaused?: boolean;
   selfError: Error | null;
   onRetrySelf: () => void;
   testCaseId: string | undefined;
   siblingsPending: boolean;
+  siblingsPaused?: boolean;
   siblingsError: Error | null;
   onRetrySiblings: () => void;
   candidates: RunListItem[];
@@ -23,6 +25,7 @@ type CandidateListProps = {
   continuationRef?: (element: HTMLButtonElement | null) => void;
   continuationRunId?: string;
   versionsPending: boolean;
+  versionsPaused?: boolean;
   versionsError: Error | null;
   onRetryVersions: () => void;
   versions: SkillVersionSummary[];
@@ -31,10 +34,12 @@ type CandidateListProps = {
 
 function CandidateList({
   selfPending,
+  selfPaused,
   selfError,
   onRetrySelf,
   testCaseId,
   siblingsPending,
+  siblingsPaused,
   siblingsError,
   onRetrySiblings,
   candidates,
@@ -44,12 +49,13 @@ function CandidateList({
   continuationRef,
   continuationRunId,
   versionsPending,
+  versionsPaused,
   versionsError,
   onRetryVersions,
   versions,
   onPick,
 }: CandidateListProps) {
-  if (selfPending) return <Loading what="目前這次試跑" />;
+  if (selfPending) return <Loading what="目前這次試跑" paused={selfPaused} />;
   if (selfError)
     return (
       <ReadFailure
@@ -62,7 +68,7 @@ function CandidateList({
   if (!testCaseId) {
     return <p>這次試跑的測試題已無法解析，因此無法列出同一個測試題的其他試跑紀錄。</p>;
   }
-  if (siblingsPending) return <Loading what="可比較的試跑紀錄" />;
+  if (siblingsPending) return <Loading what="可比較的試跑紀錄" paused={siblingsPaused} />;
   if (siblingsError)
     return (
       <ReadFailure
@@ -83,7 +89,7 @@ function CandidateList({
           目前僅列出已載入的紀錄；更早的試跑可繼續載入，不能據此判定沒有其他紀錄。
         </p>
       )}
-      {versionsPending && <Loading what="候選試跑紀錄的 Version 編號" />}
+      {versionsPending && <Loading what="候選試跑紀錄的 Version 編號" paused={versionsPaused} />}
       <ReadFailure
         error={versionsError}
         what="候選試跑紀錄的 Version 編號"
@@ -91,50 +97,16 @@ function CandidateList({
         focusTarget="run-comparison-heading"
       />
       <ul className="download-list">
-        {candidates.map((run) => {
-          const version = versions.find(
-            (candidate) => candidate.version_id === run.skill_version_id,
-          );
-          const versionLabel = version ? `v${version.version_number}` : undefined;
-          const accessibleVersion = versionLabel ?? `Version ID ${run.skill_version_id}`;
-
-          return (
-            <li key={run.run_id} className="download-item">
-              <p>
-                Version：
-                <Link
-                  to="/skills/$skillId/versions/$versionId"
-                  params={{ skillId: run.skill_id, versionId: run.skill_version_id }}
-                >
-                  {versionLabel ?? (versionsPending ? "編號載入中" : "編號未知")}
-                </Link>
-              </p>
-              {!version && !versionsPending && (
-                <details>
-                  <summary>Version ID</summary>
-                  <code>{run.skill_version_id}</code>
-                </details>
-              )}
-              <p className="badge-row">
-                <RunVerdict verdict={run.evaluation} />
-              </p>
-              <p className="badge-row">
-                <span className="badge">執行狀態：{runStatusLabel(run.status)}</span>
-              </p>
-              {run.status_reason && <p className="note">{run.status_reason}</p>}
-              <p>
-                <button
-                  type="button"
-                  ref={run.run_id === continuationRunId ? continuationRef : undefined}
-                  aria-label={`以 ${accessibleVersion}、建立於 ${formatAt(run.created_at)} 的試跑比較，試跑紀錄 ID ${run.run_id}`}
-                  onClick={() => onPick(run.run_id)}
-                >
-                  與這一次比較（建立於 <Timestamp at={run.created_at} />）
-                </button>
-              </p>
-            </li>
-          );
-        })}
+        {candidates.map((run) => (
+          <CandidateRow
+            key={run.run_id}
+            run={run}
+            versions={versions}
+            versionsPending={versionsPending}
+            onPick={onPick}
+            focusRef={run.run_id === continuationRunId ? continuationRef : undefined}
+          />
+        ))}
       </ul>
       {hasMoreCandidates && (
         <button
@@ -150,12 +122,69 @@ function CandidateList({
   );
 }
 
+function CandidateRow({
+  run,
+  versions,
+  versionsPending,
+  onPick,
+  focusRef,
+}: {
+  run: RunListItem;
+  versions: SkillVersionSummary[];
+  versionsPending: boolean;
+  onPick: (id: string) => void;
+  focusRef?: (element: HTMLButtonElement | null) => void;
+}) {
+  const version = versions.find((candidate) => candidate.version_id === run.skill_version_id);
+  const versionLabel = version ? `v${version.version_number}` : undefined;
+  const accessibleVersion = versionLabel ?? `Version ID ${run.skill_version_id}`;
+
+  return (
+    <li className="download-item">
+      <p>
+        Version：
+        <Link
+          to="/skills/$skillId/versions/$versionId"
+          params={{ skillId: run.skill_id, versionId: run.skill_version_id }}
+        >
+          {versionLabel ?? (versionsPending ? "編號載入中" : "編號未知")}
+        </Link>
+      </p>
+      {!version && !versionsPending && (
+        <details>
+          <summary>Version ID</summary>
+          <code>{run.skill_version_id}</code>
+        </details>
+      )}
+      <p className="badge-row">
+        <RunVerdict verdict={run.evaluation} />
+      </p>
+      <p className="badge-row">
+        <span className="badge">執行狀態：{runStatusLabel(run.status)}</span>
+      </p>
+      {run.status_reason && <p className="note">{run.status_reason}</p>}
+      <p>
+        <button
+          type="button"
+          ref={focusRef}
+          aria-label={`以 ${accessibleVersion}、建立於 ${formatAt(run.created_at)} 的試跑比較，試跑紀錄 ID ${run.run_id}`}
+          onClick={() => onPick(run.run_id)}
+        >
+          與這一次比較（建立於 <Timestamp at={run.created_at} />）
+        </button>
+      </p>
+    </li>
+  );
+}
+
 export function CompareCandidatesPicker({
   selfPending,
+  selfPaused,
   selfError,
   onRetrySelf,
   testCaseId,
   siblingsPending,
+  siblingsPaused,
   siblingsError,
   onRetrySiblings,
   candidates,
@@ -165,6 +194,7 @@ export function CompareCandidatesPicker({
   continuationRef,
   continuationRunId,
   versionsPending,
+  versionsPaused,
   versionsError,
   onRetryVersions,
   versions,
@@ -179,10 +209,12 @@ export function CompareCandidatesPicker({
     <>
       <CandidateList
         selfPending={selfPending}
+        selfPaused={selfPaused}
         selfError={selfError}
         onRetrySelf={onRetrySelf}
         testCaseId={testCaseId}
         siblingsPending={siblingsPending}
+        siblingsPaused={siblingsPaused}
         siblingsError={siblingsError}
         onRetrySiblings={onRetrySiblings}
         candidates={candidates}
@@ -192,6 +224,7 @@ export function CompareCandidatesPicker({
         continuationRef={continuationRef}
         continuationRunId={continuationRunId}
         versionsPending={versionsPending}
+        versionsPaused={versionsPaused}
         versionsError={versionsError}
         onRetryVersions={onRetryVersions}
         versions={versions}

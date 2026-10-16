@@ -48,10 +48,12 @@ export function RunCompare() {
   const pickForm = (
     <CompareCandidatesPicker
       selfPending={self.isPending}
+      selfPaused={self.fetchStatus === "paused"}
       selfError={self.error}
       onRetrySelf={() => void self.refetch()}
       testCaseId={testCaseId}
       siblingsPending={siblings.isPending}
+      siblingsPaused={siblings.fetchStatus === "paused"}
       siblingsError={siblings.error}
       onRetrySiblings={() => void siblings.refetch()}
       candidates={candidates}
@@ -61,6 +63,7 @@ export function RunCompare() {
       continuationRef={bindTarget}
       continuationRunId={continuationRun?.run_id}
       versionsPending={versions.isPending}
+      versionsPaused={versions.fetchStatus === "paused"}
       versionsError={versions.error}
       onRetryVersions={() => void versions.refetch()}
       versions={versions.error ? [] : (versions.data?.versions ?? [])}
