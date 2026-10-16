@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.42.1
+
+### Fixed
+
+- A Registry another process holds open no longer leaves an interrupted transaction behind when the update cannot move it aside, and the refusal says in English that nothing was changed and what to close, instead of the operating system's message in the console code page.
+
 ## 0.42.0
 
 ### Added

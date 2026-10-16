@@ -196,7 +196,11 @@ def mutate_registry(
                     "expected_digest": expected_digest,
                 },
             )
-            replace_path(registry_dir(root), backup)
+            try:
+                replace_path(registry_dir(root), backup)
+            except OSError as error:
+                journal.unlink(missing_ok=True)
+                raise held_open(root, error) from error
             _install(staging_registry, root, backup, journal)
             journal_value = load_journal(journal)
             journal_value["phase"] = "installed"
@@ -227,10 +231,18 @@ def mutate_registry(
 def _install(staging_registry: Path, root: Path, backup: Path, journal: Path) -> None:
     try:
         replace_path(staging_registry, registry_dir(root))
-    except OSError:
+    except OSError as error:
         replace_path(backup, registry_dir(root))
         journal.unlink(missing_ok=True)
-        raise
+        raise held_open(root, error) from error
+
+
+def held_open(root: Path, error: OSError) -> ValueError:
+    code = getattr(error, "winerror", None) or error.errno
+    return ValueError(
+        f"another process is holding {registry_dir(root)} or a file in it open (error {code}), so the update "
+        "could not be swapped in; nothing was changed. Close it and rerun."
+    )
 
 
 def load_journal(path: Path) -> dict[str, Any]:

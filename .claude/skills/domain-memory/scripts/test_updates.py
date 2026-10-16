@@ -557,8 +557,25 @@ class UpdatesTest(RegistryTestCase):
                 raise PermissionError(5, "Access is denied")
             return replace(source, target)
 
-        with patch.object(Path, "replace", autospec=True, side_effect=refuse_installing), \
-                patch("domain_registry.common.time.sleep"), self.assertRaises(PermissionError):
+        self.assert_a_refused_swap_changes_nothing(before, record, refuse_installing)
+
+    def test_a_registry_that_cannot_be_moved_aside_leaves_no_interrupted_transaction(self) -> None:
+        before = read_document(self.repo / "memory", "contexts.json")
+        record = self.write_record("context.json", {"id": "orders", "name": "Orders", "responsibility": "Own orders."})
+        replace = Path.replace
+
+        def refuse_moving_aside(source: Path, target: Path) -> Path:
+            if source.name == "registry" and target.name.startswith(".domain-registry-backup-"):
+                raise PermissionError(5, "Access is denied")
+            return replace(source, target)
+
+        self.assert_a_refused_swap_changes_nothing(before, record, refuse_moving_aside)
+
+    def assert_a_refused_swap_changes_nothing(self, before: dict, record: Path, refuse) -> None:
+        with patch.object(Path, "replace", autospec=True, side_effect=refuse), \
+                patch("domain_registry.common.time.sleep"), \
+                self.assertRaisesRegex(ValueError, r"^another process is holding .*registry or a file in it open "
+                                       r"\(error 5\), so the update could not be swapped in; nothing was changed"):
             upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
         self.assertEqual(
             (before, False, []),
