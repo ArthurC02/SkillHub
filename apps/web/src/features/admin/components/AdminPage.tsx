@@ -11,15 +11,17 @@ export function AdminPage({
   heading,
   lede,
   children,
+  headingRef,
 }: {
   heading: string;
   lede?: ReactNode;
   children: ReactNode;
+  headingRef?: (element: HTMLHeadingElement | null) => void;
 }) {
   const me = useMe();
-  const headingRef = useRef<HTMLHeadingElement>(null);
+  const pageHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
-    if (me.data?.operator && !me.error && !window.location.hash) headingRef.current?.focus();
+    if (me.data?.operator && !me.error && !window.location.hash) pageHeading.current?.focus();
   }, [me.data?.operator, me.error]);
   if (me.isPending) return <Loading what="" />;
   const failure = me.error ? (
@@ -37,7 +39,14 @@ export function AdminPage({
     <>
       {failure}
       <section hidden={Boolean(failure)}>
-        <h1 ref={headingRef} tabIndex={-1} className="admin-page-heading">
+        <h1
+          ref={(element) => {
+            pageHeading.current = element;
+            headingRef?.(element);
+          }}
+          tabIndex={-1}
+          className="admin-page-heading"
+        >
           {heading}
         </h1>
         {lede && <p className="note">{lede}</p>}

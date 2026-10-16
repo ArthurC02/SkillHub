@@ -8,6 +8,7 @@ import { AdminPage } from "../components/AdminPage";
 import { ACTION_LABEL } from "../admin.model";
 import type { OperatorAuditEvent } from "../admin.service";
 import { MetadataCell } from "./components/MetadataCell";
+import { usePaginationFocus } from "../../../shared/ui/usePaginationFocus";
 
 const RESOURCE_LABEL: Record<string, string> = {
   account: "帳號",
@@ -45,9 +46,10 @@ export function AdminAuditLog() {
   const log = useOperatorAuditLog();
   const rows = log.data?.pages.flatMap((page) => page.events) ?? [];
   const { nextPageError, showRows, blockingError, loadMoreLabel } = auditPageState(log);
+  const { loadMore, bindTarget, headingRef, row: continuationRow } = usePaginationFocus(log, rows);
 
   return (
-    <AdminPage heading="動作紀錄">
+    <AdminPage heading="動作紀錄" headingRef={nextPageError ? undefined : headingRef}>
       {log.isPending && <Loading what="動作紀錄" />}
       <ReadFailure error={blockingError} what="動作紀錄">
         <p role="alert">
@@ -86,7 +88,11 @@ export function AdminAuditLog() {
                 </thead>
                 <tbody>
                   {rows.map((event, index) => (
-                    <tr key={`${event.action}-${index}`}>
+                    <tr
+                      key={`${event.action}-${index}`}
+                      ref={event === continuationRow ? bindTarget : undefined}
+                      tabIndex={event === continuationRow ? -1 : undefined}
+                    >
                       <td data-label="時間">
                         <Timestamp at={event.occurred_at} />
                       </td>
@@ -123,7 +129,7 @@ export function AdminAuditLog() {
         ))}
       {nextPageError && <p role="alert">後續紀錄暫時無法讀取；已載入的紀錄仍可查看。</p>}
       {log.hasNextPage && showRows && (
-        <button type="button" disabled={log.isFetchingNextPage} onClick={() => log.fetchNextPage()}>
+        <button type="button" disabled={log.isFetchingNextPage} ref={bindTarget} onClick={loadMore}>
           {loadMoreLabel}
         </button>
       )}
