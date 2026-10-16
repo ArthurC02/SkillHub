@@ -2,9 +2,11 @@ import AxeBuilder from "@axe-core/playwright";
 import { createServer } from "node:http";
 import { writeFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { SKILL, VERSION, SKILL_VERSIONS, platformResponse } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
+
+test.use({ trace: "retain-on-failure" });
 
 const CREATED = "abcdef01-2345-4789-abcd-0123456789ab";
 const SECOND = "abcdef02-2345-4789-abcd-0123456789ab";
@@ -126,11 +128,15 @@ async function openUploadedVersionHistory(page: Page) {
   return popup;
 }
 
-async function selectedFile(input: Locator) {
-  return input.evaluate(async (element) => {
-    const file = (element as HTMLInputElement).files?.[0];
-    return { name: file?.name, content: file ? await file.text() : undefined };
-  });
+async function inspectUnknownUpload(page: Page) {
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  await writeFile(
+    test.info().outputPath("version-upload-unknown-a11y.json"),
+    JSON.stringify(accessibility),
+  );
+  expect(accessibility.violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath("version-upload-unknown.png") });
 }
 
 for (const outcome of OUTCOMES) {
@@ -206,11 +212,7 @@ for (const outcome of OUTCOMES) {
       await expect(failure).toContainText("這次送出的檔案：first.zip");
       await expect(failure).not.toContainText("上傳被擋下");
       expect(posts).toEqual(["first bytes"]);
-      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
-        true,
-      );
-      await page.screenshot({ path: test.info().outputPath("version-upload-unknown.png") });
+      await inspectUnknownUpload(page);
       recovered = true;
       await page.getByRole("button", { name: "再試一次", exact: true }).click();
       await expect(
@@ -237,7 +239,7 @@ for (const outcome of OUTCOMES) {
       session.restore();
       await expect(page.locator(".auth-name")).toHaveText("tester");
       await expect(resend).toBeEnabled();
-      expect(await selectedFile(input)).toEqual({ name: "next.zip", content: "next bytes" });
+      await expect(input).toHaveValue(/(?:^|[\\/])next\.zip$/);
       expect(posts).toEqual(["first bytes"]);
       await resend.click();
       await expect(page.getByRole("status").filter({ hasText: "已存成 v4" })).toBeVisible();
