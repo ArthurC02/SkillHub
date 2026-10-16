@@ -1,0 +1,3 @@
+# Aggregates
+
+- [run](/aggregates/run)

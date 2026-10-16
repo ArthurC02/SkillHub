@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .audit import read_events, reviewing_proposals
 from .changes import (
     PROPOSAL_FILE,
     ParsedUpdate,
@@ -20,6 +21,7 @@ from .common import (
     utc_now,
 )
 from .evidence import classify_all, hash_all, source_map_for, unclassified_paths
+from .okf import verified_by
 from .policy import review_mode
 from .revision import (
     current_registry_revision,
@@ -82,9 +84,7 @@ def reconcile_pending_update(registry_root: Path, repo_root: Path) -> str | None
 
 
 def _was_applied(registry_root: Path, proposal_id: str) -> bool:
-    from .audit import read_events
-
-    return any(
+        return any(
         event.get("operation") == "apply-approved-updates" and event.get("proposal_id") == proposal_id
         for event in read_events(registry_root)
     )
@@ -143,6 +143,7 @@ def demote_local_reviews(registry_root: Path, repo_root: Path) -> None:
             document["status"] = "candidate"
             for record in document[key]:
                 record.pop("review", None)
+                record.pop("verified", None)
                 record[review_field(name.removesuffix(".json"))] = "candidate"
             write_document(staging, name, document)
 
@@ -201,6 +202,7 @@ def upsert_candidate(
             candidate = classify_all(dict(record), source_map)
             outside.extend(unclassified_paths(candidate))
             candidate.pop("review", None)
+            candidate.pop("verified", None)
             candidate[review_field(asset)] = "candidate"
             put_record(records, existing, candidate)
         write_document(staging, name, document)
@@ -256,11 +258,11 @@ def retract_candidate(
 
 
 def _refuse_unsuperseded_overwrite(
-    update: ParsedUpdate, document: dict[str, Any], existing: Any, proposal: dict[str, Any]
+    update: ParsedUpdate, document: dict[str, Any], existing: Any, proposal: dict[str, Any], reviewing: dict[str, str]
 ) -> None:
     if not is_reviewed(update.asset, document, existing):
         return
-    reviewed_by = (existing.get("review") or {}).get("proposal_id")
+    reviewed_by = reviewing.get(f"{update.asset}/{update.record_id}")
     if not reviewed_by or reviewed_by not in (superseded_ids(proposal) or set()):
         raise ValueError(
             f"cannot overwrite reviewed record: {update.record_id}; a proposal that "
@@ -281,21 +283,19 @@ def _reviewed_record(
             + "; cite a confirmed source, or select that path before "
             "the record is reviewed"
         )
-    promoted["review"] = {
-        "proposal_id": proposal["proposal_id"],
-        "proposal_revision": proposal["proposal_revision"],
-        "approvals": proposal["approvals"],
-    }
+    promoted.pop("review", None)
+    promoted["verified"] = verified_by(proposal["approvals"])
     promoted[review_field(update.asset)] = "reviewed"
     return promoted
 
 
 def _apply_update(
-    update: ParsedUpdate, document: dict[str, Any], proposal: dict[str, Any], source_map: Any
+    update: ParsedUpdate, document: dict[str, Any], proposal: dict[str, Any], source_map: Any,
+    reviewing: dict[str, str],
 ) -> None:
     records = document[ASSET_KEYS[update.document_name]]
     existing = find_record(records, update.record_id)
-    _refuse_unsuperseded_overwrite(update, document, existing, proposal)
+    _refuse_unsuperseded_overwrite(update, document, existing, proposal, reviewing)
     if update.record is not None:
         put_record(records, existing, _reviewed_record(update, proposal, source_map))
         return
@@ -335,6 +335,8 @@ def apply_approved_updates(
     if not isinstance(updates, list) or not updates:
         raise ValueError("approved proposal has no registry_updates")
     source_map = source_map_for(registry_root)
+    reviewing = reviewing_proposals(registry_root)
+    touched = sorted({f"{update.asset}/{update.record_id}" for update in map(parsed_update, updates)})
 
     def mutate(staging: Path) -> None:
         documents: dict[str, dict[str, Any]] = {}
@@ -342,7 +344,7 @@ def apply_approved_updates(
             document = documents.setdefault(
                 update.document_name, read_document(staging, update.document_name)
             )
-            _apply_update(update, document, proposal, source_map)
+            _apply_update(update, document, proposal, source_map, reviewing)
         for name, document in documents.items():
             write_document(staging, name, document)
 
@@ -367,6 +369,7 @@ def apply_approved_updates(
             audit_event=lambda: {
                 "operation": "apply-approved-updates",
                 "proposal_id": proposal["proposal_id"],
+                "records": touched,
                 **rebased_revisions(base_revision, accepted_digest, registry_root, repo_root),
                 "to_revision": current_registry_revision(registry_root, repo_root),
             },
@@ -404,7 +407,7 @@ def promote_candidate(
     promoted = {
         key: value
         for key, value in record.items()
-        if key not in {review_field(asset), "review"}
+        if key not in {review_field(asset), "review", "verified"}
     }
     update = {"operation": "upsert", "asset": asset, "record": promoted}
     updates = [

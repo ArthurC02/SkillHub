@@ -36,7 +36,7 @@ A Context may say where it lives and what it owns in the surrounding process. `s
   "name": "Orders",
   "responsibility": "Own the order lifecycle.",
   "evidence": [{ "path": "docs/adr/boundaries.md", "lines": { "start": 12, "end": 18 },
-                 "content_sha256": "sha256:...", "excerpt_sha256": "sha256:..." }]
+                 "excerpt_sha256": "sha256:..." }]
 }
 ```
 
@@ -65,7 +65,8 @@ sources:
 
 - `type` names the asset. A Context or term's `name` is the `title`.
 - `status` is `draft` for a candidate, `stable` for a reviewed record and `deprecated` for a deprecated one. A superseded record is `deprecated` with `registry_status: superseded`. A Decision's own status is `decision_status`.
-- `evidence` is `sources`: each citation's path and lines become one `resource`, `path#Lstart-end`.
+- `evidence` is `sources`: each citation's path and lines become one `resource`, `path#Lstart-end`. A citation keeps only what checking it needs, its `excerpt_sha256`; the kind of source it comes from is derived from `source-map.json` whenever it is verified.
+- `verified` lists who approved a reviewed record and when, each entry `by: "human:<reviewer>"` and `at`. The proposal that reviewed it is in the audit log, not the record.
 - The body opens with the record's prose field, such as a Context's responsibility, a term's definition or a rule's statement.
 - Then `# Relations` lists each reference to another record as `- <Field>: [id](/<asset>/<id>)`, one line per target. This is how a reader follows the knowledge graph.
 - Each list of short texts, such as a rule's `examples`, becomes its own `# <Field>` section of `-` items.
@@ -73,6 +74,6 @@ sources:
 
 The frontmatter uses a subset of YAML: `key: value` lines, nested by two spaces, `- ` items, and values either plain or in double quotes. A hand edit that goes beyond it, such as single quotes or `[a, b]`, is refused with its line number.
 
-The supplied validator checks file shape, asset formats, status values, IDs, Context references, contract references, and optional structured evidence. Reviewed records must contain their type-specific fields, evidence, and `review` metadata, which `apply-approved-updates` writes from the approved Change Package. Use `validate --require-reviewed` before a change may rely only on reviewed records. The validator cannot confirm that a definition, owner, rule, or approval is true; review those claims against their authority.
+The supplied validator checks file shape, asset formats, status values, IDs, Context references, contract references, and optional structured evidence. Reviewed records must contain their type-specific fields, evidence, and `verified`, which `apply-approved-updates` writes from the approved Change Package. A record still holding an older `review` block is refused until `migrate-registry` refines it. Use `validate --require-reviewed` before a change may rely only on reviewed records. The validator cannot confirm that a definition, owner, rule, or approval is true; review those claims against their authority.
 
 For a time-bound rule or contract, record an ISO-8601 effective range. For an unknown owner or date, record `unknown`; do not omit the field or substitute a technical implementer.

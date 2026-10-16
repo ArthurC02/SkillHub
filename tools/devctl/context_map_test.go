@@ -231,7 +231,7 @@ func rewriteRegistryContexts(t *testing.T, root string, reviewed func(string) st
 	if reviewed == nil {
 		return
 	}
-	path := filepath.Join(root, filepath.FromSlash(registryContextsFile))
+	path := filepath.Join(root, filepath.FromSlash(registryContextsFile+".json"))
 	existing, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)

@@ -11,8 +11,8 @@ import (
 
 const (
 	contextMapDoc          = "apps/platform/architecture-identity.yaml"
-	dependencyPoliciesFile = "docs/domain-memory/registry/dependency-policies.json"
-	registryContextsFile   = "docs/domain-memory/registry/contexts.json"
+	dependencyPoliciesFile = "docs/domain-memory/registry/dependency-policies"
+	registryContextsFile   = "docs/domain-memory/registry/contexts"
 	identityListKey        = "packages:"
 
 	identityHomes = registryContextsFile + " or " + contextMapDoc

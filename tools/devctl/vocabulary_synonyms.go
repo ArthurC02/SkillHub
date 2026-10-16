@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	vocabularyFile     = "docs/domain-memory/registry/vocabulary.json"
+	vocabularyFile     = "docs/domain-memory/registry/vocabulary"
 	publicContractFile = "contracts/openapi/public.yaml"
 )
 

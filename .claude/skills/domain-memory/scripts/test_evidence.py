@@ -22,7 +22,7 @@ from domain_registry.registry import (
     validate,
 )
 from domain_registry.store import read_document, write_document
-from test_support import RegistryTestCase, use_json_layout
+from test_support import VERIFIED, RegistryTestCase, applied_by, use_json_layout
 
 
 class EvidenceTest(RegistryTestCase):
@@ -237,7 +237,7 @@ class EvidenceTest(RegistryTestCase):
         source.write_text("Orders notify Billing.", encoding="utf-8")
         value = read_document(self.repo / "memory", "interactions.json")
         value["status"] = "reviewed"
-        value["interactions"] = [{"id": "order-billed", "producer_context": "orders", "consumer_context": "billing", "consistency": "eventual", "delivery": "outbox event", "evidence": [citation(self.repo, "fact.md", 1, 1)], "review": {"proposal_id": "P-1"}}]
+        value["interactions"] = [{"id": "order-billed", "producer_context": "orders", "consumer_context": "billing", "consistency": "eventual", "delivery": "outbox event", "evidence": [citation(self.repo, "fact.md", 1, 1)], "verified": VERIFIED}]
         write_document(self.repo / "memory", "interactions.json", value)
         self.assertEqual(validate(self.repo / "memory", self.repo, False), [])
 
@@ -301,7 +301,7 @@ class EvidenceTest(RegistryTestCase):
             (update["asset"], update["record"]["id"], reference["path"], reference["lines"],
              verify(reference, self.repo)["status"]),
         )
-        self.assertNotIn("review", update["record"])
+        self.assertEqual((False, False), ("review" in update["record"], "verified" in update["record"]))
         self.assertEqual(["PRO-1"], moved["supersedes"])
         self.assertEqual(["candidate-rule"], [candidate["record"]["id"] for candidate in moved["candidates"]])
         self.assertEqual([], moved["unmatched"])
@@ -367,10 +367,12 @@ class EvidenceTest(RegistryTestCase):
         self.seed("rules.json", [
             {"id": "both", "contexts": ["orders"], "statement": "S.", "status": "reviewed",
              "evidence": [citation(self.repo, "fact.md", 1, 1), citation(self.repo, "fact.md", 3, 3)],
-             "review": {"proposal_id": "PRO-1"}},
+             "verified": VERIFIED},
             {"id": "shifted", "contexts": ["orders"], "statement": "S.", "status": "reviewed",
-             "evidence": [citation(self.repo, "fact.md", 2, 2)], "review": {"proposal_id": "PRO-2"}},
+             "evidence": [citation(self.repo, "fact.md", 2, 2)], "verified": VERIFIED},
         ])
+        applied_by(self.repo / "memory", "PRO-1", "rules/both")
+        applied_by(self.repo / "memory", "PRO-2", "rules/shifted")
         (self.repo / "fact.md").write_text("x\nfact\na\nnew\n", encoding="utf-8")
         return relocate_evidence(self.repo / "memory", self.repo, "fact.md", "fact.md")
 

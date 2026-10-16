@@ -42,7 +42,7 @@ DDD 在這裡首先是**產品事實與規則的 owner boundary**，不是把每
 | 多個 context 真的共享無狀態的套件語言 | `shared/skillpkg` | 只放套件格式、讀取與純驗證；變更視為多方協議 | 把 Service、資料存取、政策或 Generic 工具塞進去 |
 | 需要避免反向依賴或 cycle，且由程序負責組裝 | composition injection | 在 `entrypoint`／process root 注入 owner API 或 callback | 在 consumer 方法中現場建構另一個 context 的 Service |
 
-前兩種關係的理由與強制規則見 [Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map)；Shared Kernel 的單一範圍與組裝位置亦同。若需要新增跨界 import，必須先在 Registry 立下 [dependency policy](../domain-memory/registry/dependency-policies.json)（經審查、帶簽章），同批更新 `apps/platform/.golangci.yml`，讓 depguard 反映新關係。
+前兩種關係的理由與強制規則見 [Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map)；Shared Kernel 的單一範圍與組裝位置亦同。若需要新增跨界 import，必須先在 Registry 立下 [dependency policy](../domain-memory/registry/dependency-policies/index.md)（經審查、帶簽章），同批更新 `apps/platform/.golangci.yml`，讓 depguard 反映新關係。
 
 ### 同步 owner 讀取的兩種形狀
 
@@ -93,14 +93,14 @@ DDD 在這裡首先是**產品事實與規則的 owner boundary**，不是把每
 
 - **它是導覽，不是事實來源。** 逐 package 的 Boundary ID、需求 ID 前綴與跨 context 依賴政策以 **[Domain Memory](../domain-memory/) 的已審查記錄與 [`architecture-identity.yaml`](../../apps/platform/architecture-identity.yaml) 為準**，那兩份受 `devctl automation-check` 機械對帳；**這一張表沒有機器在守**。不一致時，以那兩份為準並回來修這一張。
 - **新增一個 package 的順序是硬的**：先登記（Bounded Context 進 [Domain Memory](../domain-memory/)，技術套件進 [`architecture-identity.yaml`](../../apps/platform/architecture-identity.yaml)）→ 再建目錄。反過來做的話 CI 會在你寫第一行程式之前就紅。
-- **跨 context 的新 import 要先有一筆經審查的 [dependency policy](../domain-memory/registry/dependency-policies.json)**，並在同一個 commit 改 `apps/platform/.golangci.yml` 的 depguard 規則。
+- **跨 context 的新 import 要先有一筆經審查的 [dependency policy](../domain-memory/registry/dependency-policies/index.md)**，並在同一個 commit 改 `apps/platform/.golangci.yml` 的 depguard 規則。
 - **一個好用的自我檢查**：如果你正在想「這支檔案放 `foundation/` 比較方便」，先問它有沒有一個**領域**的理由會讓它變。**會變的東西不屬於 Generic**——那正是這一層與 Supporting 的分界。
 
 ## 新增、搬遷或改變 Context 的 checklist
 
 1. 以產品語言寫出使用者成果、owner facts、不變量與不擁有的事；確認需求 ID 與計畫文件的允收準則。
 2. 查 [Domain Memory](../domain-memory/) 的已審查 Context 與 [`architecture-identity.yaml`](../../apps/platform/architecture-identity.yaml)：既有 context 就留在其 owner；新 package 或新 boundary 先登記，並符合 [Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map) 的單一 architecture identity。
-3. 選定跨界關係：同步 owner DTO、outbox event、`skillpkg` 或 composition injection。若是 import，先立下 [dependency policy](../domain-memory/registry/dependency-policies.json)，同批調整 depguard。
+3. 選定跨界關係：同步 owner DTO、outbox event、`skillpkg` 或 composition injection。若是 import，先立下 [dependency policy](../domain-memory/registry/dependency-policies/index.md)，同批調整 depguard。
 4. 為新增／刪除 query 更新 `db/query-owners.yaml`；不要新增例外清單來掩蓋跨 owner 存取。
 5. 依目錄角色放置程式；generated source 與 output 依 automation 規範由主 Writer 串行處理。
 6. 更新受影響的 `doc.go`、internal 導覽與計畫／ADR 引用，使產品語言、stable ID、路徑三者可追溯。

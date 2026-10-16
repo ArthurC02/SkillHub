@@ -72,7 +72,7 @@ func TestASynonymUseOutsideTheBaselineFailsAndAStaleEntryMustGo(t *testing.T) {
 
 func TestOnlyReviewedTermsWithSynonymsAreEnforced(t *testing.T) {
 	root := t.TempDir()
-	writeAt(t, root, vocabularyFile, `{"terms": [
+	writeAt(t, root, vocabularyFile+".json", `{"terms": [
 		{"id": "a", "name": "A", "synonyms": ["x"], "status": "reviewed"},
 		{"id": "b", "name": "B", "synonyms": ["y"], "status": "candidate"},
 		{"id": "c", "name": "C", "status": "reviewed"}

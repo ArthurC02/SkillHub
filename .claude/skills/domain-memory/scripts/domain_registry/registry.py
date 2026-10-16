@@ -23,7 +23,9 @@ from .evidence import (
     source_map_for,
     verify,
     with_references,
+    without_derived_keys,
 )
+from .okf import verified_by
 from .policy import query_result_limit, review_mode
 from .store import (
     MANIFEST,
@@ -54,29 +56,70 @@ def init_registry(output: Path) -> None:
 
 def migrate_registry(root: Path) -> list[str]:
     if is_concept_layout(root):
-        return []
+        current = logical_documents(root)
+        if refined_documents(current)[0] == current:
+            return []
     from .transaction import mutate_registry
 
-    created = []
-    templates = template_dir()
+    created: list[str] = []
+    reviewed_by: dict[str, str] = {}
 
     def mutate(staging: Path) -> None:
         target = registry_dir(staging)
-        for name in STANDARD_FILES:
-            if not (target / name).exists():
-                shutil.copyfile(templates / name, target / name)
-                created.append(name)
-        before = logical_documents(staging)
-        for name in STANDARD_FILES:
-            (target / name).unlink()
-        create_concept_layout(staging)
+        converting = not is_concept_layout(staging)
+        if converting:
+            created.extend(_copy_missing_templates(target))
+        refined, found = refined_documents(logical_documents(staging))
+        reviewed_by.update(found)
+        if converting:
+            for name in STANDARD_FILES:
+                (target / name).unlink()
+            create_concept_layout(staging)
         for name in ASSET_KEYS:
-            write_document(staging, name, before[name])
-        if logical_documents(staging) != before:
+            write_document(staging, name, refined[name])
+        if logical_documents(staging) != refined:
             raise ValueError("the concept layout would not hold the Registry unchanged; nothing was converted")
 
-    mutate_registry(root, None, mutate, audit_event=lambda: {"operation": "migrate-registry", "layout": "okf"})
+    mutate_registry(
+        root, None, mutate,
+        audit_event=lambda: {"operation": "migrate-registry", "layout": "okf", "reviewed_by": reviewed_by},
+    )
     return created
+
+
+def refined_documents(documents: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
+    reviewed_by: dict[str, str] = {}
+    refined = {}
+    for name, document in documents.items():
+        key = ASSET_KEYS[name]
+        records = document.get(key)
+        if not isinstance(records, list):
+            refined[name] = document
+            continue
+        refined[name] = {**document, key: [_refined_record(name, record, reviewed_by) for record in records]}
+    return refined, reviewed_by
+
+
+def _refined_record(name: str, record: dict[str, Any], reviewed_by: dict[str, str]) -> dict[str, Any]:
+    refined = without_derived_keys(record)
+    review = refined.pop("review", None)
+    if not isinstance(review, dict):
+        return refined
+    if review.get("proposal_id"):
+        reviewed_by[f"{name.removesuffix('.json')}/{refined.get('id')}"] = review["proposal_id"]
+    verified = verified_by(review.get("approvals") or [])
+    if verified:
+        refined["verified"] = verified
+    return refined
+
+
+def _copy_missing_templates(target: Path) -> list[str]:
+    copied = []
+    for name in STANDARD_FILES:
+        if not (target / name).exists():
+            shutil.copyfile(template_dir() / name, target / name)
+            copied.append(name)
+    return copied
 
 
 def asset_records(root: Path, name: str) -> list[dict[str, Any]]:
@@ -125,6 +168,8 @@ def _entry_status_errors(
     if status not in REGISTRY_STATUSES:
         return [f"{label} has an invalid status"]
     errors: list[str] = []
+    if "review" in entry:
+        errors.append(f"{label} holds a legacy review block; run migrate-registry")
     if status == "reviewed":
         missing = [field for field in REVIEW_REQUIRED_FIELDS[name] if not entry.get(field)]
         if missing:
@@ -460,11 +505,10 @@ def migrate_evidence(root: Path, repo_root: Path) -> int:
     from .transaction import mutate_registry
 
     migrated = 0
-    source_map = source_map_for(root)
 
     def migrated_reference(reference: Any) -> Any:
         nonlocal migrated
-        after = classified(migrate_legacy(reference, repo_root), source_map)
+        after = migrate_legacy(reference, repo_root)
         migrated += reference != after
         return after
 

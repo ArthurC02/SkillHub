@@ -19,7 +19,7 @@ import (
 const (
 	platformModuleDir    = "apps/platform"
 	platformInternalPath = "github.com/ArthurC02/skillhub/apps/platform/internal/"
-	interactionsFile     = "docs/domain-memory/registry/interactions.json"
+	interactionsFile     = "docs/domain-memory/registry/interactions"
 	registryReviewed     = "reviewed"
 )
 

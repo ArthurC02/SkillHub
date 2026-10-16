@@ -80,7 +80,7 @@ The two re-cite commands print `registry_updates` and `supersedes` for a Change 
 ## Mistakes that cost a redo
 
 - A wrong asset name, such as `dependencies` for `dependency-policies`, is refused by `validate-change-package`. Run it before you submit; after submission, the only fix is to supersede and redraft.
-- Replacing or removing a reviewed record needs `supersedes` to list the proposal that reviewed it, which is `review.proposal_id` on the record. A package that replaces several takes a list.
+- Replacing or removing a reviewed record needs `supersedes` to list the proposal that reviewed it, which the audit log records when that proposal is applied; `recite` and `relocate-evidence` name it for you. A package that replaces several takes a list.
 - A submitted proposal cannot be edited. Use `supersede-proposal --reason`, then `redraft-proposal`. A redraft keeps the design but not the test results, so record them again.
 - Cite lines whose text occurs once in the file. A citation whose text repeats elsewhere in the file goes `stale` at the next edit, because nothing can tell the copies apart. `cite` and `recite` print a NOTE when that happens; widen the span to the enclosing block.
 - Once a commit is signed or attested, it must reach the remote unchanged. Take in upstream work with a merge (`git pull --no-rebase`), not a rebase: a rebase rewrites the commit without its signature, and an attestation naming it then names a commit that no longer exists.

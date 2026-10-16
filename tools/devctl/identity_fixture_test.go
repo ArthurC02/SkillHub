@@ -50,8 +50,8 @@ func writeIdentitySources(t *testing.T, root, identities string) {
 	t.Helper()
 	layout, contexts := identitySources(identities)
 	for relative, body := range map[string][]byte{
-		contextMapDoc:        []byte(layout),
-		registryContextsFile: contexts,
+		contextMapDoc:                  []byte(layout),
+		registryContextsFile + ".json": contexts,
 	} {
 		path := filepath.Join(root, filepath.FromSlash(relative))
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -149,7 +149,7 @@ func writeDependencyPolicies(t *testing.T, root, appendix string, declared map[s
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(root, filepath.FromSlash(dependencyPoliciesFile))
+	path := filepath.Join(root, filepath.FromSlash(dependencyPoliciesFile+".json"))
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func identityEntriesAsIdentities(identities string) (map[string]packageIdentity,
 	}
 	layout, contexts := identitySources(identities)
 	for relative, body := range map[string][]byte{
-		contextMapDoc: []byte(layout), registryContextsFile: contexts,
+		contextMapDoc: []byte(layout), registryContextsFile + ".json": contexts,
 	} {
 		path := filepath.Join(root, filepath.FromSlash(relative))
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

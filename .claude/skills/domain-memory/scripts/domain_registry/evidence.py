@@ -9,7 +9,8 @@ from .common import MAX_EVIDENCE_BYTES, MAX_NESTING_DEPTH, load_json
 from .sources import source_kind_for
 
 
-WIDEN_TO_UNIQUE = "Widen the citation to the enclosing block, so its lines occur once in the file."
+DERIVED_EVIDENCE_KEYS = ("content_sha256", "source_kind")
+WIDEN_TO_UNIQUE ="Widen the citation to the enclosing block, so its lines occur once in the file."
 
 
 def digest(value: bytes) -> str:
@@ -64,6 +65,15 @@ def with_references(value: Any, change: Callable[[Any], Any], depth: int = 0) ->
     if isinstance(value, list):
         return [with_references(child, change, depth + 1) for child in value]
     return value
+
+
+def without_derived_keys(value: Any) -> Any:
+    return with_references(
+        value,
+        lambda reference: {key: item for key, item in reference.items() if key not in DERIVED_EVIDENCE_KEYS}
+        if isinstance(reference, dict)
+        else reference,
+    )
 
 
 def classify_all(value: Any, source_map: dict[str, Any]) -> Any:

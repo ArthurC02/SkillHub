@@ -65,6 +65,14 @@ INTEGER = re.compile(r"-?\d+")
 CITED_RANGE = re.compile(r"(.+)#L(\d+)-(\d+)")
 
 
+def verified_by(approvals: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {"by": f"human:{approval['reviewer']}", "at": approval["approved_at"]}
+        for approval in approvals
+        if approval.get("decision") == "approved"
+    ]
+
+
 def concept_path(asset: str, record_id: str) -> str:
     return f"/{asset}/{record_id}"
 

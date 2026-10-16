@@ -4,8 +4,9 @@ import json
 import subprocess
 import unittest
 
-from domain_registry.audit import read_events
+from domain_registry.audit import read_events, reviewing_proposals
 from domain_registry.common import ASSET_KEYS, registry_dir, write_json
+from domain_registry.okf import encode
 from domain_registry.registry import migrate_registry
 from domain_registry.revision import registry_digest
 from domain_registry.store import (
@@ -18,11 +19,21 @@ from domain_registry.store import (
     read_document,
     write_document,
 )
-from test_support import RegistryTestCase, snapshot_of_files, use_json_layout
+from test_support import RegistryTestCase, applied_by, snapshot_of_files, use_json_layout
 
 ORDER_RULE = {"id": "order-total", "statement": "An order total is never negative. It is checked on save.",
               "contexts": ["orders"], "status": "reviewed"}
 REFUND_RULE = {"id": "refund-limit", "statement": "A refund never exceeds the paid amount.", "status": "candidate"}
+REVIEW = {
+    "proposal_id": "PRO-1",
+    "proposal_revision": "sha256:r",
+    "approvals": [
+        {"role": "owner", "reviewer": "Ann", "decision": "approved", "approved_at": "2026-01-02T00:00:00Z"},
+        {"role": "owner", "reviewer": "Bob", "decision": "rejected", "approved_at": "2026-01-03T00:00:00Z"},
+    ],
+}
+CITED = {"path": "docs/a.md", "lines": {"start": 1, "end": 1}, "excerpt_sha256": "sha256:e"}
+CITED_WITH_DERIVED_KEYS = {**CITED, "content_sha256": "sha256:c", "source_kind": "decisions"}
 
 
 class ConceptLayoutTest(RegistryTestCase):
@@ -144,6 +155,38 @@ class MigrationTest(RegistryTestCase):
         with self.assertRaisesRegex(ValueError, "would not hold the Registry unchanged"):
             migrate_registry(self.repo / "memory")
         self.assertEqual(before, snapshot_of_files(registry_dir(self.repo / "memory")))
+
+    def test_migration_keeps_only_who_verified_a_record_and_moves_its_proposal_to_the_audit(self) -> None:
+        self.legacy_registry([{**ORDER_RULE, "review": REVIEW, "evidence": [CITED_WITH_DERIVED_KEYS]}])
+        migrate_registry(self.repo / "memory")
+        self.assertEqual(
+            [{**ORDER_RULE, "verified": [{"by": "human:Ann", "at": "2026-01-02T00:00:00Z"}], "evidence": [CITED]}],
+            read_document(self.repo / "memory", "rules.json")["rules"],
+        )
+        self.assertEqual({"rules/order-total": "PRO-1"}, read_events(self.repo / "memory")[-1]["reviewed_by"])
+
+    def test_a_concept_registry_still_holding_a_review_block_is_refined_in_place(self) -> None:
+        write_document(self.repo / "memory", "rules.json", {"rules": [{**ORDER_RULE, "review": REVIEW}]})
+        migrate_registry(self.repo / "memory")
+        [rule] = read_document(self.repo / "memory", "rules.json")["rules"]
+        self.assertEqual((False, "PRO-1"), ("review" in rule, reviewing_proposals(self.repo / "memory")["rules/order-total"]))
+
+    def test_a_concept_file_still_holding_derived_hashes_loses_them(self) -> None:
+        concept = registry_dir(self.repo / "memory") / "rules" / "order-total.md"
+        concept.write_text(encode("rules", {**ORDER_RULE, "evidence": [CITED_WITH_DERIVED_KEYS]}), encoding="utf-8")
+        migrate_registry(self.repo / "memory")
+        self.assertEqual([CITED], read_document(self.repo / "memory", "rules.json")["rules"][0]["evidence"])
+
+    def test_a_review_block_without_an_approval_leaves_no_verified_entry(self) -> None:
+        write_document(self.repo / "memory", "rules.json", {"rules": [{**ORDER_RULE, "review": {"proposal_id": "PRO-1"}}]})
+        migrate_registry(self.repo / "memory")
+        self.assertEqual([ORDER_RULE], read_document(self.repo / "memory", "rules.json")["rules"])
+
+    def test_a_later_apply_takes_over_as_the_reviewing_proposal(self) -> None:
+        write_document(self.repo / "memory", "rules.json", {"rules": [{**ORDER_RULE, "review": REVIEW}]})
+        migrate_registry(self.repo / "memory")
+        applied_by(self.repo / "memory", "PRO-2", "rules/order-total")
+        self.assertEqual({"rules/order-total": "PRO-2"}, reviewing_proposals(self.repo / "memory"))
 
 
 class DigestAndHistoryTest(RegistryTestCase):

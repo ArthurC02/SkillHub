@@ -139,7 +139,7 @@ func TestOnlyUnregisteredEdgesOutsideTheBaselineFail(t *testing.T) {
 
 func TestAReviewedInteractionRegistersItsConsumerToProducerEdge(t *testing.T) {
 	root := t.TempDir()
-	writeAt(t, root, interactionsFile, `{"interactions": [
+	writeAt(t, root, interactionsFile+".json", `{"interactions": [
 		{"consumer_context": "run", "producer_context": "registry", "status": "reviewed"},
 		{"consumer_context": "eval", "producer_context": "run", "status": "candidate"}
 	]}`)

@@ -88,7 +88,7 @@ def _evidence_only_updates(registry_root: Path, recitation: dict[str, Any]) -> l
 
 
 def _without_evidence(record: dict[str, Any]) -> Any:
-    return with_references({key: value for key, value in record.items() if key != "review"}, lambda _: None)
+    return with_references({key: value for key, value in record.items() if key not in ("review", "verified")}, lambda _: None)
 
 
 def _contexts_named_by(asset: str, record: dict[str, Any]) -> set[str]:

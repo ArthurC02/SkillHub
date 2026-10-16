@@ -100,10 +100,10 @@ OBLIGATION_STATUSES = {"planned", "executed", "blocked"}
 REGISTRY_STATUSES = {"candidate", "reviewed", "deprecated", "superseded"}
 CONTEXT_SUBDOMAINS = {"core", "supporting", "generic", "shared-kernel"}
 REVIEW_REQUIRED_FIELDS = {
-    "contexts.json": ("name", "responsibility", "review"),
-    "vocabulary.json": ("name", "definition", "contexts", "review"),
-    "aggregates.json": ("context", "root", "invariants", "review"),
-    "rules.json": ("contexts", "statement", "review"),
+    "contexts.json": ("name", "responsibility", "verified"),
+    "vocabulary.json": ("name", "definition", "contexts", "verified"),
+    "aggregates.json": ("context", "root", "invariants", "verified"),
+    "rules.json": ("contexts", "statement", "verified"),
     "contracts.json": (
         "kind",
         "producer_context",
@@ -111,25 +111,25 @@ REVIEW_REQUIRED_FIELDS = {
         "version",
         "compatibility_policy",
         "data_classification",
-        "review",
+        "verified",
     ),
     "interactions.json": (
         "producer_context",
         "consumer_context",
         "consistency",
         "delivery",
-        "review",
+        "verified",
     ),
-    "decisions.json": ("statement", "source", "review"),
-    "events.json": ("owner_context", "meaning", "schema", "review"),
-    "capabilities.json": ("context", "meaning", "review"),
-    "value-objects.json": ("context", "meaning", "fields", "review"),
+    "decisions.json": ("statement", "source", "verified"),
+    "events.json": ("owner_context", "meaning", "schema", "verified"),
+    "capabilities.json": ("context", "meaning", "verified"),
+    "value-objects.json": ("context", "meaning", "fields", "verified"),
     "dependency-policies.json": (
         "from_context",
         "to_context",
         "mode",
         "policy",
-        "review",
+        "verified",
     ),
 }
 

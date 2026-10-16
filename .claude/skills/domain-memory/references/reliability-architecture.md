@@ -28,7 +28,6 @@ Every reviewed evidence citation is an object, not only `path:line`:
 {
   "path": "docs/rules.md",
   "lines": {"start": 12, "end": 16},
-  "content_sha256": "sha256:<file-content>",
   "excerpt_sha256": "sha256:<cited-lines>",
   "observed_commit": "<40-hex-sha-or-null>",
   "observed_at": "<ISO-8601>"

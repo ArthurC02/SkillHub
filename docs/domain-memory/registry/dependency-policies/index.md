@@ -1,0 +1,32 @@
+# Dependency Policies
+
+- [analytics-may-use-identity](/dependency-policies/analytics-may-use-identity) — Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.
+- [batch-may-use-identity](/dependency-policies/batch-may-use-identity) — Every batch request resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.
+- [catalog-may-use-analytics](/dependency-policies/catalog-may-use-analytics) — Discovery projects measured facts into its ranking; it does not own them.
+- [catalog-may-use-credit](/dependency-policies/catalog-may-use-credit) — Customer-Supplier: search embeddings are a paid call, so discovery writes the cost event.
+- [catalog-may-use-identity](/dependency-policies/catalog-may-use-identity) — Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.
+- [catalog-may-use-registry](/dependency-policies/catalog-may-use-registry) — Customer-Supplier: the reason code, the displayable sentence, the operator routing and the audit all live in discovery, but writing the takedown flag and takin….
+- [creation-may-use-credit](/dependency-policies/creation-may-use-credit) — Customer-Supplier: an interactive creation step checks the balance and threshold before settling, then writes the cost event and debit entry.
+- [creation-may-use-identity](/dependency-policies/creation-may-use-identity) — Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.
+- [credit-must-not-use-identity](/dependency-policies/credit-must-not-use-identity) — The credit ledger takes the workspace facts it needs as an injected function returning credit.WorkspaceFacts, one from each composition root, so the unit of ac….
+- [eval-may-use-credit](/dependency-policies/eval-may-use-credit) — Customer-Supplier: judging and suggesting are paid calls, so they write the cost event and debit entry.
+- [eval-may-use-identity](/dependency-policies/eval-may-use-identity) — Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.
+- [eval-may-use-ingest](/dependency-policies/eval-may-use-ingest) — Customer-Supplier: adopting a suggestion must reuse the whole import validation pipeline; a second version-creation path would be a second truth.
+- [eval-may-use-testlab](/dependency-policies/eval-may-use-testlab) — Judging a Run reads the acceptance criteria it was frozen against.
+- [eval-may-use-trace](/dependency-policies/eval-may-use-trace) — Judging and comparing Runs reads their recorded evidence, and an evaluation records its own start and end as orchestrator events in its transaction.
+- [ingest-may-use-credit](/dependency-policies/ingest-may-use-credit) — Customer-Supplier: admission checks the threshold before a paid call and writes the cost event and debit entry after, including the enrichment done at import.
+- [ingest-may-use-identity](/dependency-policies/ingest-may-use-identity) — Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.
+- [ingest-may-use-policy](/dependency-policies/ingest-may-use-policy) — Customer-Supplier: admission asks the generation allowance before generating, the same shape as run asking for a run allowance.
+- [ingest-may-use-registry](/dependency-policies/ingest-may-use-registry) — Customer-Supplier: the validation pipeline lives in admission, but writing skills and skill versions returns to their owner; a second version-creation path wou….
+- [packaging-may-use-identity](/dependency-policies/packaging-may-use-identity) — Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.
+- [packaging-may-use-policy](/dependency-policies/packaging-may-use-policy) — Customer-Supplier: no Download Artifact is built before an approved retention period exists.
+- [packaging-may-use-testlab](/dependency-policies/packaging-may-use-testlab) — A package names the Test Cases a Skill Version was proved against.
+- [policy-must-not-use-identity](/dependency-policies/policy-must-not-use-identity) — Entitlements are decided from facts the asking Context supplies, so the rule holder never resolves scope for itself.
+- [publishing-may-use-identity](/dependency-policies/publishing-may-use-identity) — Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.
+- [registry-may-use-identity](/dependency-policies/registry-may-use-identity) — Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.
+- [run-may-use-identity](/dependency-policies/run-may-use-identity) — Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.
+- [run-may-use-policy](/dependency-policies/run-may-use-policy) — Customer-Supplier: create-run asks the current allowance inside its own transaction and reads quota for display.
+- [run-may-use-testlab](/dependency-policies/run-may-use-testlab) — Creating a Run freezes a Test Case snapshot, grants its dataset and reads its schedule.
+- [run-may-use-trace](/dependency-policies/run-may-use-trace) — A Run writes its trace events as execution proceeds.
+- [testlab-may-use-identity](/dependency-policies/testlab-may-use-identity) — Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.
+- [trace-may-use-identity](/dependency-policies/trace-may-use-identity) — Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.

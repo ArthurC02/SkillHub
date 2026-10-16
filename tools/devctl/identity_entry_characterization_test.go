@@ -36,7 +36,7 @@ func TestIdentityEntryShapeRules(t *testing.T) {
 			name:         "a Bounded Context without a context name is rejected",
 			entry:        "  - id: trace\n    kind: Supporting\n    path: trace\n",
 			id:           "trace",
-			wantProblems: []string{`docs/domain-memory/registry/contexts.json kind "Supporting" requires a context name`},
+			wantProblems: []string{`docs/domain-memory/registry/contexts kind "Supporting" requires a context name`},
 		},
 		{
 			name:         "a Generic package that names a context is rejected",

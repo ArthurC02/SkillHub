@@ -15,6 +15,7 @@ from domain_registry.policy import validate_policy
 from domain_registry.readiness import assess_readiness
 from domain_registry.registry import (
     migrate_evidence,
+    verify_evidence,
 )
 from domain_registry.security import scan_report
 from domain_registry.sources import (
@@ -31,7 +32,6 @@ from domain_registry.sources import (
 )
 from domain_registry.sources import discover_ci_tools
 from domain_registry.sources import source_snapshots
-from domain_registry.store import read_document
 from test_support import RegistryTestCase, stored_policy_of, use_json_layout
 
 
@@ -176,7 +176,7 @@ class SourcesTest(RegistryTestCase):
             ],
         )
 
-    def test_migrated_evidence_is_classified_by_the_source_map(self) -> None:
+    def test_migrated_evidence_is_classified_by_the_source_map_when_verified(self) -> None:
         self.seed_line_reference_evidence()
         write_source_map(
             self.repo / "memory" / "source-map.json",
@@ -184,8 +184,8 @@ class SourcesTest(RegistryTestCase):
              "source_groups": [{"kind": "decisions", "paths": ["source.md"]}]},
         )
         migrate_evidence(self.repo / "memory", self.repo)
-        stored = read_document(self.repo / "memory", "contexts.json")
-        self.assertEqual("decisions", stored["contexts"][0]["evidence"][0]["source_kind"])
+        [result] = verify_evidence(self.repo / "memory", self.repo)["results"]
+        self.assertEqual("decisions", result["source_kind"])
 
     def test_a_change_across_two_contexts_without_a_collaboration_is_unregistered(self) -> None:
         self.two_mapped_contexts()

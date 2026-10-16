@@ -10,6 +10,13 @@ import (
 )
 
 func fixtureRegistryAsset(root, asset string) ([]byte, error) {
+	if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(registryDirectory), "index.md")); err == nil {
+		absolute, err := filepath.Abs(root)
+		if err != nil {
+			return nil, err
+		}
+		return exportedRegistryAsset(absolute, asset)
+	}
 	return os.ReadFile(filepath.Join(root, filepath.FromSlash(registryDirectory), asset+".json"))
 }
 

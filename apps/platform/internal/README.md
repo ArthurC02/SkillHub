@@ -81,7 +81,7 @@ internal/
 4. **Composition root 注入**：不能由 Generic package 反向 import domain，也不能形成
    cycle 時，在 process root 組裝 owner API／callback；這不是 consumer 自己建 Service。
 
-跨 Context import 必須先在 Registry 立下 [dependency policy](../../../docs/domain-memory/registry/dependency-policies.json)，同一批更新
+跨 Context import 必須先在 Registry 立下 [dependency policy](../../../docs/domain-memory/registry/dependency-policies/index.md)，同一批更新
 [`apps/platform/.golangci.yml`](../.golangci.yml)；資料 query 的 owner 由
 [`db/query-owners.yaml`](../../../db/query-owners.yaml) 宣告與檢查。Read ownership 的
 細節見 [Query 與寫入所有權](../../../docs/adr/README.md#query-與寫入所有權)，

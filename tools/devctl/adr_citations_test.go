@@ -194,6 +194,14 @@ func TestADRCitationProblemsExemptsDataFiles(t *testing.T) {
 			count: 0,
 		},
 		{
+			name: "a Domain Memory concept file cites an ADR as its source",
+			change: func(_ string, write func(string, string)) {
+				write("docs/domain-memory/registry/vocabulary/run.md",
+					"---\nsources:\n  - resource: \"docs/adr/"+one+"-alpha.md#L1-1\"\n---\n")
+			},
+			count: 0,
+		},
+		{
 			name: "a Domain Memory audit event names the ADR it cited",
 			change: func(_ string, write func(string, string)) {
 				write("docs/domain-memory/audit/events.jsonl",

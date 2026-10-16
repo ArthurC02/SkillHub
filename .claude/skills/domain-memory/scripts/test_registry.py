@@ -25,7 +25,7 @@ from domain_registry.registry import (
     verify_evidence,
 )
 from domain_registry.store import read_document, write_document
-from test_support import RegistryTestCase, append_audit, scan_secrets, amend_policy, use_json_layout
+from test_support import VERIFIED, RegistryTestCase, append_audit, scan_secrets, amend_policy, use_json_layout
 
 
 class RegistryTest(RegistryTestCase):
@@ -64,9 +64,9 @@ class RegistryTest(RegistryTestCase):
              "decisions.json:d has an invalid status"),
             ("reviewed without fields", "rules.json",
              [{"id": "r", "contexts": ["orders"], "status": "reviewed", "evidence": ["x"]}],
-             "rules.json:r is reviewed but missing statement, review"),
+             "rules.json:r is reviewed but missing statement, verified"),
             ("reviewed without evidence", "rules.json",
-             [{"id": "r", "contexts": ["orders"], "statement": "s", "review": {"p": 1}, "status": "reviewed"}],
+             [{"id": "r", "contexts": ["orders"], "statement": "s", "verified": VERIFIED, "status": "reviewed"}],
              "rules.json:r is reviewed but lacks evidence"),
             ("term without contexts", "vocabulary.json", [{"id": "t", "contexts": []}], "vocabulary.json:t requires contexts"),
             ("synonyms not a list", "vocabulary.json", [{**order_term, "synonyms": "purchase"}],
@@ -503,12 +503,20 @@ class RegistryTest(RegistryTestCase):
                     "name": "Orders",
                     "responsibility": "Own orders.",
                     "status": "reviewed",
-                    "review": {"proposal_id": "P-1"},
+                    "verified": VERIFIED,
                     "evidence": ["docs/kept.md:1"],
                 }
             ],
         )
         self.assertEqual([], validate(self.repo / "memory", self.repo, True))
+
+    def test_a_record_holding_a_legacy_review_block_is_sent_to_migrate_registry(self) -> None:
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders.",
+                                     "review": {"proposal_id": "P-1"}}])
+        self.assertEqual(
+            ["contexts.json:orders holds a legacy review block; run migrate-registry"],
+            validate(self.repo / "memory", None, False),
+        )
 
     def test_two_contexts_without_registered_collaboration_say_so(self) -> None:
         self.two_contexts()

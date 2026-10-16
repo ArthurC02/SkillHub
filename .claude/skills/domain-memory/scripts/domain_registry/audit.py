@@ -56,6 +56,16 @@ def read_events(root: Path) -> list[dict[str, Any]]:
     return events
 
 
+def reviewing_proposals(root: Path) -> dict[str, str]:
+    reviewed_by: dict[str, str] = {}
+    for event in read_events(root):
+        if event.get("operation") == "apply-approved-updates":
+            reviewed_by.update(dict.fromkeys(event.get("records", []), event.get("proposal_id")))
+        elif event.get("operation") == "migrate-registry":
+            reviewed_by.update(event.get("reviewed_by", {}))
+    return reviewed_by
+
+
 def append_locked(root: Path, event: dict[str, Any]) -> None:
     reserved = {
         "sequence",

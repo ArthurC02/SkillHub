@@ -104,8 +104,8 @@ func writeAutomationCheckRepoScanFixture(t *testing.T, root string) {
 		"而那正是  修好的那個形狀。\n")
 	writeTestFile(t, root, "apps/platform/.golangci.yml", "version: \"2\"\n")
 	writeTestFile(t, root, contextMapDoc, "packages:\n")
-	writeTestFile(t, root, registryContextsFile, `{"contexts": []}`)
-	writeTestFile(t, root, dependencyPoliciesFile, `{"dependencies": []}`)
+	writeTestFile(t, root, registryContextsFile+".json", `{"contexts": []}`)
+	writeTestFile(t, root, dependencyPoliciesFile+".json", `{"dependencies": []}`)
 }
 
 func writeAutomationCheckGeneratedCodeFixture(t *testing.T, root string) {

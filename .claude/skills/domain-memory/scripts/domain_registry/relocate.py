@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .audit import reviewing_proposals
 from .common import ASSET_KEYS, record_status
 from .evidence import (
     WIDEN_TO_UNIQUE,
@@ -56,13 +57,15 @@ class Relocation:
         return classified({**kept, **recited}, self.source_map)
 
 
-def _record_update(name: str, document: dict[str, Any], entry: dict[str, Any], changed: dict[str, Any]) -> dict[str, Any]:
-    record = {key: value for key, value in changed.items() if key != "review"}
+def _record_update(
+    name: str, document: dict[str, Any], entry: dict[str, Any], changed: dict[str, Any], reviewing: dict[str, str]
+) -> dict[str, Any]:
+    record = {key: value for key, value in changed.items() if key not in ("review", "verified")}
     asset = name.removesuffix(".json")
     if record_status(asset, document, entry) == "reviewed":
         return {
             "registry_updates": [{"operation": "upsert", "asset": asset, "record": record}],
-            "supersedes": [proposal for proposal in [(entry.get("review") or {}).get("proposal_id")] if proposal],
+            "supersedes": [proposal for proposal in [reviewing.get(f"{asset}/{entry.get('id')}")] if proposal],
             "candidates": [],
         }
     return {"registry_updates": [], "supersedes": [], "candidates": [{"asset": asset, "record": record}]}
@@ -144,7 +147,7 @@ def recite(root: Path, repo_root: Path, request: Recitation) -> dict[str, Any]:
     start, end = line_range(lines)
     recited = classified(citation(repo_root, path, start, end), source_map_for(root))
     changed = with_references(working, lambda reference: recited if reference is matches[0] else reference)
-    update = _record_update(name, document, entry, changed)
+    update = _record_update(name, document, entry, changed, reviewing_proposals(root))
     if request.onto is None:
         return update
     return _merged(request.onto, update, asset, record_id, matches[0])
@@ -152,6 +155,7 @@ def recite(root: Path, repo_root: Path, request: Recitation) -> dict[str, Any]:
 
 def relocate_evidence(root: Path, repo_root: Path, old: str, new: str) -> dict[str, Any]:
     relocation = Relocation(repo_root, old, new, source_map_for(root))
+    reviewing = reviewing_proposals(root)
     updates, candidates, supersedes = [], [], set()
     for name in ASSET_KEYS:
         document = read_document(root, name)
@@ -162,7 +166,7 @@ def relocate_evidence(root: Path, repo_root: Path, old: str, new: str) -> dict[s
                 problem.update(asset=name.removesuffix(".json"), id=entry.get("id"))
             if moved == entry:
                 continue
-            update = _record_update(name, document, entry, moved)
+            update = _record_update(name, document, entry, moved, reviewing)
             updates += update["registry_updates"]
             supersedes.update(update["supersedes"])
             candidates += update["candidates"]

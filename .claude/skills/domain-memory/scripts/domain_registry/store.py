@@ -13,6 +13,7 @@ from .common import (
     registry_dir,
     write_json,
 )
+from .evidence import without_derived_keys
 from .okf import OKF_VERSION, PROSE_FIELDS, TITLE_FIELDS, concept_path, decode, encode
 
 MANIFEST = "manifest.json"
@@ -106,7 +107,7 @@ def write_document(root: Path, name: str, document: dict[str, Any]) -> None:
         file_name = _concept_file_name(asset, record.get("id"))
         if file_name in written:
             raise ValueError(f"{asset} holds two records with id {record['id']}; a concept file holds one")
-        written[file_name] = encode(asset, record)
+        written[file_name] = encode(asset, without_derived_keys(record))
     for concept in directory.glob("*.md"):
         if concept.name != INDEX and concept.name not in written:
             concept.unlink()

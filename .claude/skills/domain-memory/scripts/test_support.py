@@ -57,9 +57,16 @@ from domain_registry.updates import (
 )
 
 
+VERIFIED = [{"by": "human:Reviewer", "at": "2026-01-01T00:00:00Z"}]
+
+
 def append_audit(root: Path, event: dict) -> None:
     with writer_lock(root):
         append_locked(root, event)
+
+
+def applied_by(root: Path, proposal_id: str, *records: str) -> None:
+    append_audit(root, {"operation": "apply-approved-updates", "proposal_id": proposal_id, "records": list(records)})
 
 
 def scan_secrets(root: Path) -> list[dict]:
@@ -886,11 +893,12 @@ class RegistryTestCase(unittest.TestCase):
             "rules.json",
             [
                 {"id": "reviewed-rule", "contexts": ["orders"], "statement": "S.", "status": "reviewed",
-                 "evidence": [reference], "review": {"proposal_id": "PRO-1"}},
+                 "evidence": [reference], "verified": VERIFIED},
                 {"id": "candidate-rule", "contexts": ["orders"], "statement": "S.", "status": "candidate",
                  "evidence": [reference]},
             ],
         )
+        applied_by(self.repo / "memory", "PRO-1", "rules/reviewed-rule")
         (self.repo / "src" / "a.py").unlink()
         target = self.repo / new_path
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -922,9 +930,10 @@ class RegistryTestCase(unittest.TestCase):
         rule = {
             "id": "rule", "contexts": ["orders"], "statement": "S.", "status": status,
             "evidence": [citation(self.repo, "src/a.py", start, end) for start, end in spans],
-            "review": {"proposal_id": "PRO-1"},
+            "verified": VERIFIED,
         }
         self.seed("rules.json", [rule])
+        applied_by(self.repo / "memory", "PRO-1", "rules/rule")
         (self.repo / "src" / "a.py").write_text("zero\none\ntwo\nthree\n", encoding="utf-8")
 
     def citation_after_edit(self, before: str, cited: int, after: str, last: int | None = None) -> dict:
@@ -942,12 +951,14 @@ class RegistryTestCase(unittest.TestCase):
             "rules.json",
             [
                 {"id": "moved", "contexts": ["orders"], "statement": "S.", "status": "reviewed",
-                 "evidence": [citation(self.repo, "fact.md", 2, 2)], "review": {"proposal_id": "PRO-1"}},
+                 "evidence": [citation(self.repo, "fact.md", 2, 2)], "verified": VERIFIED},
                 {"id": "kept", "contexts": ["orders"], "statement": "S.", "status": "reviewed",
                  "evidence": [citation(self.repo, "fact.md", 1, 1), citation(self.repo, "other.md", 1, 1)],
-                 "review": {"proposal_id": "PRO-2"}},
+                 "verified": VERIFIED},
             ],
         )
+        applied_by(self.repo / "memory", "PRO-1", "rules/moved")
+        applied_by(self.repo / "memory", "PRO-2", "rules/kept")
         (self.repo / "fact.md").write_text("a\nnew\nfact\n", encoding="utf-8")
 
     def contexts_mentioning_suggestions(self) -> None:

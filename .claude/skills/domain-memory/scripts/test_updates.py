@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.audit import read_events as read_audit_events
 from domain_registry.audit import event_digest as audit_event_digest
+from domain_registry.audit import reviewing_proposals
 from domain_registry.audit import verify as verify_audit
 from domain_registry.evidence import (
     citation,
@@ -56,7 +57,7 @@ from domain_registry.store import (
     read_document,
     write_document,
 )
-from test_support import RegistryTestCase, append_audit, amend_policy, snapshot_of_files, use_json_layout
+from test_support import VERIFIED, RegistryTestCase, append_audit, amend_policy, snapshot_of_files, use_json_layout
 
 
 class UpdatesTest(RegistryTestCase):
@@ -152,6 +153,7 @@ class UpdatesTest(RegistryTestCase):
                     "proposal_revision": "forged",
                     "approvals": [{"role": "owner", "reviewer": "nobody"}],
                 },
+                "verified": [{"by": "human:nobody", "at": "2026-01-01T00:00:00Z"}],
             },
         )
         upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
@@ -159,8 +161,9 @@ class UpdatesTest(RegistryTestCase):
         written = next(
             entry for entry in stored["contexts"] if entry["id"] == "orders"
         )
-        self.assertEqual(written["status"], "candidate")
-        self.assertNotIn("review", written)
+        self.assertEqual(
+            ("candidate", False, False), (written["status"], "review" in written, "verified" in written)
+        )
 
     def test_audit_failure_rolls_back_a_registry_swap(self) -> None:
         before = read_document(self.repo / "memory", "contexts.json")
@@ -319,7 +322,11 @@ class UpdatesTest(RegistryTestCase):
         })
         upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
         stored = asset_records(self.repo / "memory", "contexts.json")[0]["evidence"][0]
-        self.assertEqual({**citation(self.repo, "rule.md", 2, 2), "source_kind": "decisions"}, stored)
+        self.assertEqual(
+            {"path": "rule.md", "lines": {"start": 2, "end": 2},
+             "excerpt_sha256": citation(self.repo, "rule.md", 2, 2)["excerpt_sha256"]},
+            stored,
+        )
         self.assertEqual("current", verify(stored, self.repo)["status"])
 
     def test_a_citation_nested_in_a_list_is_hashed_too(self) -> None:
@@ -537,7 +544,11 @@ class UpdatesTest(RegistryTestCase):
         replaced = self.stored_rule()
         self.assertEqual(replaced["statement"], "An order total is never below zero.")
         self.assertEqual(replaced["status"], "reviewed")
-        self.assertEqual(replaced["review"]["proposal_id"], "PRO-2")
+        self.assertEqual(
+            ("PRO-2", ["human:reviewer"]),
+            (reviewing_proposals(self.repo / "memory")["rules/order-total"],
+             [entry["by"] for entry in replaced["verified"]]),
+        )
 
     def test_a_reviewed_record_may_not_cite_outside_the_selected_sources(self) -> None:
         self.select_docs_as_sources()
@@ -554,7 +565,7 @@ class UpdatesTest(RegistryTestCase):
         self.approve_and_apply(package)
         self.assertEqual(self.rule_ids(), ["order-total"])
 
-    def test_applying_a_record_derives_its_source_kind_rather_than_trusting_it(
+    def test_applying_a_record_drops_the_source_kind_it_claims_and_verification_derives_it(
         self,
     ) -> None:
         self.select_docs_as_sources()
@@ -567,8 +578,9 @@ class UpdatesTest(RegistryTestCase):
         )
         proposal_path.write_text(json.dumps(proposal), encoding="utf-8")
         self.approve_and_apply(package)
+        [result] = verify_evidence(self.repo / "memory", self.repo)["results"]
         self.assertEqual(
-            self.stored_rule()["evidence"][0]["source_kind"], "decisions"
+            (False, "decisions"), ("source_kind" in self.stored_rule()["evidence"][0], result["source_kind"])
         )
 
     def test_what_the_plugin_writes_ends_lines_with_lf_on_every_platform(self) -> None:
@@ -822,9 +834,7 @@ class UpdatesTest(RegistryTestCase):
         )
         upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
         stored = read_document(self.repo / "memory", "contexts.json")
-        self.assertEqual(
-            stored["contexts"][0]["evidence"][0]["source_kind"], "decisions"
-        )
+        self.assertNotIn("source_kind", stored["contexts"][0]["evidence"][0])
         summary = verify_evidence(self.repo / "memory", self.repo)["summary"]
         self.assertEqual(summary["by_source_kind"], {"decisions": 1})
 
@@ -925,7 +935,7 @@ class UpdatesTest(RegistryTestCase):
         value["status"] = "reviewed"
         for record in value["contexts"]:
             record["status"] = "reviewed"
-            record["review"] = {"proposal_id": "P-1"}
+            record["verified"] = VERIFIED
         write_document(self.repo / "memory", "contexts.json", value)
         demote_local_reviews(self.repo / "memory", self.repo)
         return read_document(self.repo / "memory", "contexts.json")
@@ -938,7 +948,7 @@ class UpdatesTest(RegistryTestCase):
 
     def test_demoting_local_reviews_drops_the_review_of_every_record(self) -> None:
         demoted = self.demoted_contexts()
-        self.assertEqual([False, False], ["review" in record for record in demoted["contexts"]])
+        self.assertEqual([False, False], ["verified" in record for record in demoted["contexts"]])
 
     def test_demoting_local_reviews_sets_the_document_status_to_candidate(self) -> None:
         self.assertEqual("candidate", self.demoted_contexts()["status"])

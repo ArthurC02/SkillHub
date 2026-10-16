@@ -2,6 +2,14 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.31.0
+
+### Changed
+
+- A reviewed record carries `verified`, the OKF list of who approved it and when, instead of a `review` block repeating the proposal and its approvals. The proposal that reviewed each record is recorded in the audit log when it is applied, and `supersedes` checks, `recite` and `relocate-evidence` read it from there.
+- A stored citation keeps its path, lines and `excerpt_sha256` only. Its `content_sha256` was never checked, and its source kind is derived from `source-map.json` whenever the citation is verified.
+- `migrate-registry` refines a Registry written by an earlier version in the same way, recording each record's reviewing proposal in its audit event, and `validate` names a record still holding a `review` block.
+
 ## 0.30.0
 
 ### Added
