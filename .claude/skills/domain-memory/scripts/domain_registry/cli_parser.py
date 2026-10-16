@@ -40,6 +40,18 @@ def _add_change_package_init(commands: argparse._SubParsersAction) -> None:
     add_path(package_init_parser, "--registry-root", required=False)
 
 
+def _add_export_commands(commands: argparse._SubParsersAction) -> None:
+    export_parser = commands.add_parser("export")
+    add_path(export_parser, "--registry-root")
+    add_path(export_parser, "--repo-root", required=False)
+    export_parser.add_argument("--commit")
+    compare_parser = commands.add_parser("compare-registry")
+    add_path(compare_parser, "--gold-root")
+    add_path(compare_parser, "--candidate-root")
+    add_path(compare_parser, "--repo-root", required=False)
+    compare_parser.add_argument("--gold-commit")
+
+
 def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
     init_parser = commands.add_parser("init")
     add_path(init_parser, "--output")
@@ -54,10 +66,7 @@ def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
     add_path(validate_parser, "--registry-root")
     add_path(validate_parser, "--repo-root", required=False)
     validate_parser.add_argument("--require-reviewed", action="store_true")
-    export_parser = commands.add_parser("export")
-    add_path(export_parser, "--registry-root")
-    add_path(export_parser, "--repo-root", required=False)
-    export_parser.add_argument("--commit")
+    _add_export_commands(commands)
     coverage_parser = commands.add_parser("coverage")
     add_path(coverage_parser, "--registry-root")
     readiness_parser = commands.add_parser("readiness")

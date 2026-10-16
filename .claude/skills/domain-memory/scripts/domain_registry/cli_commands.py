@@ -10,6 +10,7 @@ from .attestations import audit_attestations, verify_scm
 from .audit import verify as verify_audit
 from .changes import init_change_package, redraft_change_package, validate_change_package
 from .common import ASSET_KEYS, load_json
+from .compare import compare_registries
 from .contracts import validate_schema
 from .counterfactual import Mutation, counterfactual
 from .evidence import citation, classified, repeated_note, source_map_for
@@ -200,17 +201,27 @@ def handle_resolve_terms(args: argparse.Namespace) -> int:
 
 
 def handle_export(args: argparse.Namespace) -> int:
-    root = args.registry_root.resolve()
-    if args.commit is None:
+    print_json(_exported(args.registry_root.resolve(), args.commit, args.repo_root, "export --commit"))
+    return 0
+
+
+def handle_compare_registry(args: argparse.Namespace) -> int:
+    gold = _exported(args.gold_root.resolve(), args.gold_commit, args.repo_root, "compare-registry --gold-commit")
+    candidate = _exported(args.candidate_root.resolve(), None, None, "")
+    print_json(compare_registries(gold, candidate))
+    return 0
+
+
+def _exported(root: Path, commit: str | None, repo_root: Path | None, option: str) -> dict:
+    if commit is None:
         documents = {name: read_document(root, name) for name in ASSET_KEYS}
     else:
-        if args.repo_root is None:
-            raise ValueError("export --commit needs --repo-root")
-        documents = committed_documents(args.repo_root.resolve(), args.commit, root, tuple(ASSET_KEYS))
+        if repo_root is None:
+            raise ValueError(f"{option} needs --repo-root")
+        documents = committed_documents(repo_root.resolve(), commit, root, tuple(ASSET_KEYS))
         if documents is None:
-            raise ValueError(f"no Domain Memory Registry at {args.commit}")
-    print_json({name.removesuffix(".json"): document for name, document in documents.items()})
-    return 0
+            raise ValueError(f"no Domain Memory Registry at {commit}")
+    return {name.removesuffix(".json"): document for name, document in documents.items()}
 
 
 def handle_get_context(args: argparse.Namespace) -> int:
@@ -742,6 +753,7 @@ HANDLERS = {
     "validate": handle_validate,
     "coverage": handle_coverage,
     "export": handle_export,
+    "compare-registry": handle_compare_registry,
     "lookup": handle_lookup,
     "migrate-registry": handle_migrate_registry,
     "resolve-terms": handle_resolve_terms,

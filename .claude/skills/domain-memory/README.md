@@ -23,6 +23,7 @@ The suite takes several minutes. While working on one area, run its file from `s
 | `registry.py` | Initializing and validating a Registry, lookups, terms, coverage, boundary analysis |
 | `store.py` | Reading and writing Registry documents, whichever layout holds them, and reading them at a commit |
 | `okf.py` | One record as one Open Knowledge Format concept document, and the YAML subset its frontmatter uses |
+| `compare.py` | Scoring an extracted Registry against a reviewed one |
 | `transaction.py` | `mutate_registry`, the one write route: lock, stage a copy, validate, swap, audit, recover |
 | `audit.py` | The hash-chained `audit/events.jsonl` and its manifest |
 | `evidence.py` | Building a citation (`cite`) and judging one (`current`, `shifted`, `stale` and the rest) |
