@@ -1,0 +1,25 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "purge-interactions-cite-steps",
+  "proposal_id": "purge-interactions-cite-steps",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every cited path.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --path apps/platform/internal/creator/workspace/purge.go --path apps/platform/internal/entrypoint/api/apiserver/app.go"
+    },
+    {
+      "id": "steps-wired",
+      "source_type": "acceptance-criterion",
+      "source_id": "each-owner-step-enrolled",
+      "expected_outcome": "A purge missing any owner's step is refused, naming it.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestAnAccountPurgeMissingAnyOwnersStepRefusesToStart ./internal/creator/workspace/"
+    }
+  ]
+}

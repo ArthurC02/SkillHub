@@ -1,0 +1,394 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "purge-interactions-cite-steps",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "purge-interactions-cite-steps",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-16T22:47:56.452482Z",
+  "verified_at": "2026-10-16T22:48:02.755358Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "09d9fa14280cf528cb986fbe37dff3d1e7cb118b",
+    "registry_digest": "sha256:b1eea3ac6f6543d1fdb501be91abb8eec235bac1f6678ed2a0095ffc3d2903f3"
+  },
+  "affected_contexts": [
+    "analytics",
+    "creation",
+    "eval",
+    "identity",
+    "ingest",
+    "packaging",
+    "publishing",
+    "registry",
+    "run",
+    "testlab"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "identity",
+    "invariant": "Identity runs every owner's purge step in one transaction or none.",
+    "evidence": [
+      "apps/platform/internal/creator/workspace/purge.go:47-63"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: each owner provides its purge step through the composition root; identity lists the steps.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/entrypoint/api/apiserver/app.go:219",
+      "apps/platform/internal/creator/workspace/purge.go:47-63"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "get-context eval did not reach identity's purge rule: the interaction cited only the wiring line, the rule only purge.go, so no shared file linked them."
+    ],
+    "decision": "Add to each of the nine owner purge interactions a citation of its own entry in purgeSteps; no code change.",
+    "invariants_preserved": [
+      "Account purge is all-or-nothing across owners."
+    ],
+    "rejected_alternatives": [
+      "Citing the whole purgeSteps block from every interaction: one line per owner names exactly which step the interaction enrolls."
+    ],
+    "proof_obligations": [
+      "evidence-current",
+      "steps-wired"
+    ],
+    "counterfactual_check": "Remove one owner's entry from purgeSteps; the unwired-step test must fail naming that owner."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "analytics-identity-workspace-purge",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "producer_context": "analytics",
+        "consumer_context": "identity",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 214,
+              "end": 214
+            },
+            "content_sha256": "sha256:af9cb37c41764feb5814ccac1aca91d7dc5305cd783a893328319032f3b1a253",
+            "excerpt_sha256": "sha256:101f269cac55f7df989edf1c7dc2c82040fee75ddce602a015ac897bb9b05068",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 49,
+              "end": 49
+            },
+            "content_sha256": "sha256:fbc919a4f0484ce8e7c64c09c1126429b69cdcf65f7ca74e921bb61a3c88ca03",
+            "excerpt_sha256": "sha256:94e9dea507f50aff153aeef705a9cd9b10532fdea612161b75a2d515fd52a3e5",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "creation-identity-workspace-purge",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "producer_context": "creation",
+        "consumer_context": "identity",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 218,
+              "end": 218
+            },
+            "content_sha256": "sha256:af9cb37c41764feb5814ccac1aca91d7dc5305cd783a893328319032f3b1a253",
+            "excerpt_sha256": "sha256:ea89b07811a7efa9e43358783976b8abcd445f7abeec7a8b1153e022588820fd",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 53,
+              "end": 53
+            },
+            "content_sha256": "sha256:fbc919a4f0484ce8e7c64c09c1126429b69cdcf65f7ca74e921bb61a3c88ca03",
+            "excerpt_sha256": "sha256:c9cae7c12e9af3a872da5ff34ca3bb70bf99b37ee7b5c6e837e449be66f47be2",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "eval-identity-workspace-purge",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "producer_context": "eval",
+        "consumer_context": "identity",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 219,
+              "end": 219
+            },
+            "content_sha256": "sha256:af9cb37c41764feb5814ccac1aca91d7dc5305cd783a893328319032f3b1a253",
+            "excerpt_sha256": "sha256:875e512562f8552c6e2fe2e0c217a9d4a27edbebffd97420dd9e08bb452b1473",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 54,
+              "end": 54
+            },
+            "content_sha256": "sha256:fbc919a4f0484ce8e7c64c09c1126429b69cdcf65f7ca74e921bb61a3c88ca03",
+            "excerpt_sha256": "sha256:9262f7ba28b120c8a9d9b0201190a2e30e5d1b7c3931cba06acf3c836ec4cb12",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "ingest-identity-workspace-purge",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "producer_context": "ingest",
+        "consumer_context": "identity",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 222,
+              "end": 222
+            },
+            "content_sha256": "sha256:af9cb37c41764feb5814ccac1aca91d7dc5305cd783a893328319032f3b1a253",
+            "excerpt_sha256": "sha256:35fa68a17c790b5d0611f76f22885b12bf1fb3c789707cd36fe5b4ec7bb2cdea",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 61,
+              "end": 61
+            },
+            "content_sha256": "sha256:fbc919a4f0484ce8e7c64c09c1126429b69cdcf65f7ca74e921bb61a3c88ca03",
+            "excerpt_sha256": "sha256:bdfe758737c27fdd6053232ab772da1a38b8eeed93ff6b4b8d75580f9cab2d05",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "packaging-identity-workspace-purge",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "producer_context": "packaging",
+        "consumer_context": "identity",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 217,
+              "end": 217
+            },
+            "content_sha256": "sha256:af9cb37c41764feb5814ccac1aca91d7dc5305cd783a893328319032f3b1a253",
+            "excerpt_sha256": "sha256:70a173d82b2084fc3ef5a8c12d92b0e906fb2377aee147656437a51492fd3066",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 52,
+              "end": 52
+            },
+            "content_sha256": "sha256:fbc919a4f0484ce8e7c64c09c1126429b69cdcf65f7ca74e921bb61a3c88ca03",
+            "excerpt_sha256": "sha256:647cec0721b44499df4242fb0b21ac2dd2a9e7d5e3f7f0d0dfcb1c4bf9a06769",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "publishing-identity-workspace-purge",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "producer_context": "publishing",
+        "consumer_context": "identity",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 220,
+              "end": 220
+            },
+            "content_sha256": "sha256:af9cb37c41764feb5814ccac1aca91d7dc5305cd783a893328319032f3b1a253",
+            "excerpt_sha256": "sha256:d2f205a22a1246d5467e82a16fd7304a380fed48ca46ba4d2afd1dd2ede232d6",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 55,
+              "end": 55
+            },
+            "content_sha256": "sha256:fbc919a4f0484ce8e7c64c09c1126429b69cdcf65f7ca74e921bb61a3c88ca03",
+            "excerpt_sha256": "sha256:5a4271f7d52e39b4c0b40506defd594d7b6266b1863402aa52f077213e8a3fa4",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "registry-identity-workspace-purge",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "producer_context": "registry",
+        "consumer_context": "identity",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 221,
+              "end": 221
+            },
+            "content_sha256": "sha256:af9cb37c41764feb5814ccac1aca91d7dc5305cd783a893328319032f3b1a253",
+            "excerpt_sha256": "sha256:f4912f71c9d9e65eb60e93bfd40c742fd2e7f362d058b3e80449bea40f8f08bc",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 60,
+              "end": 60
+            },
+            "content_sha256": "sha256:fbc919a4f0484ce8e7c64c09c1126429b69cdcf65f7ca74e921bb61a3c88ca03",
+            "excerpt_sha256": "sha256:3e131ca4d5a1a5c3cd4ccded7be231c677608ec7e3023f63f1197722d1801e96",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-identity-workspace-purge",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "producer_context": "run",
+        "consumer_context": "identity",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 216,
+              "end": 216
+            },
+            "content_sha256": "sha256:af9cb37c41764feb5814ccac1aca91d7dc5305cd783a893328319032f3b1a253",
+            "excerpt_sha256": "sha256:d46152cb58f3e63ae83b091a659644a71bb98edaaa9e641779d94f1cde1b0364",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 51,
+              "end": 51
+            },
+            "content_sha256": "sha256:fbc919a4f0484ce8e7c64c09c1126429b69cdcf65f7ca74e921bb61a3c88ca03",
+            "excerpt_sha256": "sha256:03fb2d7b1d5ed909f511a3f6d350d580f7ad458bb32057023a97ca5e1b91c657",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "testlab-identity-workspace-purge",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "producer_context": "testlab",
+        "consumer_context": "identity",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 215,
+              "end": 215
+            },
+            "content_sha256": "sha256:af9cb37c41764feb5814ccac1aca91d7dc5305cd783a893328319032f3b1a253",
+            "excerpt_sha256": "sha256:1c1fd9c80da744da54ca7a2842316b3c7160e20eb9c631fa6ae9d7adcc0be275",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 50,
+              "end": 50
+            },
+            "content_sha256": "sha256:fbc919a4f0484ce8e7c64c09c1126429b69cdcf65f7ca74e921bb61a3c88ca03",
+            "excerpt_sha256": "sha256:9f291ec09e82f7aac8c977e0ff646df2a1963d548b316d378ea85bc222707cce",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-16T22:48:02.453867Z",
+      "scope": "Cite each owner's purgeSteps entry on its workspace-purge interaction",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "09d9fa14280cf528cb986fbe37dff3d1e7cb118b",
+        "registry_digest": "sha256:b1eea3ac6f6543d1fdb501be91abb8eec235bac1f6678ed2a0095ffc3d2903f3"
+      }
+    }
+  ],
+  "supersedes": [
+    "grader-purge",
+    "platform-shifted-recite"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "purge-interactions-cite-steps",
+  "proposal_id": "purge-interactions-cite-steps",
+  "registry_revision": {
+    "observed_commit": "09d9fa14280cf528cb986fbe37dff3d1e7cb118b",
+    "registry_digest": "sha256:b1eea3ac6f6543d1fdb501be91abb8eec235bac1f6678ed2a0095ffc3d2903f3"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "steps-wired",
+    "mutated_protection": "apps/platform/internal/creator/workspace/purge.go:54: {\"eval\", s.PurgeGraders}, -> ",
+    "failure_evidence": "--- FAIL: TestAnAccountPurgeMissingAnyOwnersStepRefusesToStart (0.00s)\n    --- FAIL: TestAnAccountPurgeMissingAnyOwnersStepRefusesToStart/eval (0.00s)\n        purge_steps_test.go:54: purge without eval = <nil>, want a refusal naming it\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace\t2.967s\nFAIL\n",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/creator/workspace/purge.go",
+    "apps/platform/internal/entrypoint/api/apiserver/app.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --path apps/platform/internal/creator/workspace/purge.go --path apps/platform/internal/entrypoint/api/apiserver/app.go",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:5e28b58fa0516550d5d770e267712c6505e2db8a8e859fd23e28c2814106e83c",
+      "finished_at": "2026-10-16T22:47:57.006349Z"
+    },
+    {
+      "obligation_id": "steps-wired",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestAnAccountPurgeMissingAnyOwnersStepRefusesToStart ./internal/creator/workspace/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:40a5347d1dc20ec03ede7594a17fa81978b549df20a44fec300f12eb4135938f",
+      "finished_at": "2026-10-16T22:48:02.196886Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

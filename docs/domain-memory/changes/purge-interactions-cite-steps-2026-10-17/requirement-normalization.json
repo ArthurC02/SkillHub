@@ -1,0 +1,28 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "purge-interactions-cite-steps",
+  "status": "draft",
+  "intent": "Each owner's workspace-purge interaction also cites the line that enrolls its step in identity's purge, so a reader of the owner Context reaches the identity rule that binds it.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context <owner> lists account-purge-runs-every-owners-step-or-none under rules_bound_through_collaborations.",
+  "acceptance_criteria": [
+    {
+      "id": "citations-current",
+      "statement": "Every citation in the updated interactions matches the lines it cites."
+    },
+    {
+      "id": "each-owner-step-enrolled",
+      "statement": "Each cited purge step line is what makes an unwired owner's step refuse the purge."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/creator/workspace/purge.go",
+    "apps/platform/internal/entrypoint/api/apiserver/app.go"
+  ]
+}
