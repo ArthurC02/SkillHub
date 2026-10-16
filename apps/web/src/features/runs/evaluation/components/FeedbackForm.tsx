@@ -2,7 +2,7 @@ import { SetEvaluationFeedbackBodyCommentMaxLength } from "@skillhub/api-client-
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { useState } from "react";
-import { ApiError } from "../../../../core/api/client";
+import { ApiError, isWriteResultUnknown } from "../../../../core/api/client";
 import { useEvaluationFeedback } from "../../evaluation.service";
 import type { Evaluation } from "../../evaluation.service";
 
@@ -66,7 +66,9 @@ export function FeedbackForm({
         <p role="alert">
           {error instanceof ApiError && error.status === 404
             ? "這次試跑目前沒有可以附回饋的判定。"
-            : "回饋沒有送出，可以再按一次。"}
+            : isWriteResultUnknown(error)
+              ? "尚未確認回饋是否已儲存。補充說明已保留，可以再按一次。"
+              : "回饋沒有送出，可以再按一次。"}
         </p>
       </ReadFailure>
     </div>

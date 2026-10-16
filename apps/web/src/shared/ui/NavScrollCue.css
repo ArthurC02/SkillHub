@@ -3,13 +3,12 @@
 }
 
 @media (max-width: 640px) {
-  .app-nav,
-  .category-nav {
-    scroll-padding-inline: 72px;
+  :has(> .nav-scroll-cue) {
+    --nav-scroll-cue-width: 64px;
+    scroll-padding-inline: calc(var(--nav-scroll-cue-width) + 8px);
   }
 
   .nav-scroll-cue:not([hidden]) {
-    --nav-scroll-cue-width: 64px;
     position: sticky;
     right: 0;
     z-index: 1;
@@ -20,8 +19,8 @@
     justify-content: flex-end;
     margin-left: calc(-1 * var(--nav-scroll-cue-width));
     padding-right: 4px;
-    color: var(--link);
-    background: var(--surface);
+    color: inherit;
+    background: inherit;
     font-size: 14px;
     font-weight: 700;
     pointer-events: none;
@@ -29,10 +28,5 @@
 
   .category-nav .nav-scroll-cue {
     background: var(--bg);
-  }
-
-  .platform-shell .app-nav .nav-scroll-cue {
-    color: var(--chrome-text-h);
-    background: var(--chrome);
   }
 }
