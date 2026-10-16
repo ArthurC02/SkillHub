@@ -14,33 +14,52 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     const interactions: unknown[] = [];
     Reflect.set(window, "accountInteractions", interactions);
+    const describeTarget = (target: EventTarget | null) => {
+      const node = target instanceof Node ? target : undefined;
+      const element = target instanceof Element ? target : node?.parentElement;
+      return {
+        tag: node?.nodeName ?? (target === window ? "WINDOW" : "UNKNOWN"),
+        id: element?.id ?? "",
+        nodeType: node?.nodeType ?? null,
+      };
+    };
     for (const type of [
       "pointerdown",
       "pointerup",
+      "pointercancel",
       "mousedown",
       "mouseup",
       "click",
+      "submit",
+      "invalid",
+      "focus",
+      "blur",
       "focusin",
       "focusout",
+      "visibilitychange",
+      "input",
+      "change",
+      "keydown",
+      "keyup",
     ]) {
-      document.addEventListener(
+      window.addEventListener(
         type,
         (event) => {
-          const target = event.target;
-          if (target instanceof HTMLElement) {
-            interactions.push({
-              type,
-              time: event.timeStamp,
-              tag: target.tagName,
-              id: target.id,
-              x: "clientX" in event ? event.clientX : undefined,
-              y: "clientY" in event ? event.clientY : undefined,
-              activeTag: document.activeElement?.tagName,
-              activeId: document.activeElement?.id,
-              focused: document.hasFocus(),
-              trusted: event.isTrusted,
-            });
-          }
+          interactions.push({
+            type,
+            time: event.timeStamp,
+            ...describeTarget(event.target),
+            path: event.composedPath().slice(0, 5).map(describeTarget),
+            phase: event.eventPhase,
+            defaultPrevented: event.defaultPrevented,
+            x: "clientX" in event ? event.clientX : undefined,
+            y: "clientY" in event ? event.clientY : undefined,
+            activeTag: document.activeElement?.tagName,
+            activeId: document.activeElement?.id,
+            focused: document.hasFocus(),
+            visibility: document.visibilityState,
+            trusted: event.isTrusted,
+          });
         },
         { capture: true, passive: true },
       );
@@ -71,12 +90,16 @@ test.beforeEach(async ({ page }) => {
       "click",
       (event) => {
         const target = event.target;
-        if (target instanceof HTMLElement) {
-          const input = target
-            .closest("form")
-            ?.querySelector<HTMLInputElement>("#admin-account-email");
-          if (input) input.dataset.accountClickedTarget = target.tagName;
-        }
+        const element =
+          target instanceof Element
+            ? target
+            : target instanceof Node
+              ? target.parentElement
+              : undefined;
+        const input = element
+          ?.closest("form")
+          ?.querySelector<HTMLInputElement>("#admin-account-email");
+        if (input) input.dataset.accountClickedTarget = element?.tagName;
       },
       true,
     );
@@ -100,6 +123,7 @@ test.afterEach(async ({ page }, info) => {
       activeId: document.activeElement?.id,
       activeTag: document.activeElement?.tagName,
       focused: document.hasFocus(),
+      visibility: document.visibilityState,
       viewport: { width: innerWidth, height: innerHeight, scale: window.visualViewport?.scale },
       interactions: Reflect.get(window, "accountInteractions"),
       scrollY,
