@@ -16,7 +16,7 @@ The Registry is a file-backed, reviewable projection of domain knowledge, not a 
 | Value object | An immutable domain concept | `context`, `meaning`, `fields` |
 | Dependency policy | An allowed or prohibited Context collaboration | `from_context`, `to_context`, `mode`, `policy` |
 
-A Context may record `confirmed_absences`: a list of `{asset, reason, evidence}` saying the domain was examined and genuinely holds no vocabulary, aggregate, rule or contract for it. `coverage` then reports that Context under `confirmed_absent` instead of `gaps`, so an answered question stops looking open. Declare an absence only when a source supports it; an unexamined Context belongs in `gaps`, and the validator refuses an absence that records contradict or that carries no reason.
+A Context may record `confirmed_absences`: a list of `{asset, reason, evidence}` saying the domain was examined and genuinely holds no vocabulary, aggregate, rule, contract or event for it. `coverage` then reports that Context under `confirmed_absent` instead of `gaps`, so an answered question stops looking open. Declare an absence only when a source supports it; an unexamined Context belongs in `gaps`, and the validator refuses an absence that records contradict or that carries no reason.
 
 A Vocabulary term's `name` is its one preferred name. `synonyms` lists other names people use for the same meaning, which code and documents should avoid in favour of `name`; `resolve-terms` finds the term through them, and a lint can flag them. `not_same_as` lists the ids of other terms that look or sound alike but mean something different. Both are optional lists. The validator refuses a blank or repeated synonym, a term's own name as its synonym, a synonym that is another term's name in a Context they share, and a `not_same_as` entry that is not another term's id. A synonym may be another term's name in a different Context, because each term means one thing within its Contexts.
 
@@ -24,9 +24,17 @@ A Contract may state how a repeated request behaves in an optional `idempotency`
 
 When one Context publishes a fact and another decides what to do about it, record each where its owner is: the fact in the producer's Contract, such as "this refusal is temporary", and the decision as a Rule in the consumer's Context, such as "wait for a temporary refusal, stop on any other". The Interaction joins them through `contract_id`. Do not copy the policy into the Contract or the fact into the Rule: one fact with two homes drifts.
 
+An outside system, such as a provider service another process runs, becomes a Context only when the Registry must name a promise it makes: record it with `subdomain: generic` and a responsibility saying what it provides, and the Contract with it as `producer_context`. Otherwise record only what the consuming Context decides, as its Rules and Interactions. Never name the consumer as the producer of its own dependency.
+
+When one Context declares a port that several others implement, each implementer provides the service: record one Interaction per implementer with the implementer as `producer_context` and the declaring Context as `consumer_context`.
+
+A dependency policy's `policy` is `allowed` or `forbidden`, and its `mode` names how the code depends: `synchronous-query` for a read, `synchronous-write` for a call that changes the other Context, `asynchronous` for an event, and `none` for a direction that must not exist.
+
 A Context's abilities live in the Capability asset, one record each, not in a field on the Context: one fact with two homes drifts, and only the asset can carry its own evidence and status.
 
-A Context may say where it lives and what it owns in the surrounding process. `subdomain` is one of `core`, `supporting`, `generic` or `shared-kernel`, the strategic classification that decides how much the boundary is worth defending. `implementation_path` is the directory its code occupies; two Contexts may not claim the same path or a path inside another's, because code belongs to one Context, while sibling directories that merely share a name prefix do not overlap. `requirement_prefixes` lists the requirement-ID prefixes the Context owns. All three are optional; a Registry that does not track code layout omits them.
+A Context may say where it lives and what it owns in the surrounding process. `subdomain` is one of `core`, `supporting`, `generic` or `shared-kernel`, the strategic classification that decides how much the boundary is worth defending. `implementation_path` is the directory its code occupies, written from the repository root, such as `apps/platform/internal/trial/execution`; two Contexts may not claim the same path or a path inside another's, because code belongs to one Context, while sibling directories that merely share a name prefix do not overlap. `requirement_prefixes` lists the requirement-ID prefixes the Context owns. All three are optional; a Registry that does not track code layout omits them.
+
+A field whose value the source does not show is left out, never filled with a placeholder or a guess; the validator asks for what a reviewed record needs.
 
 `upsert-candidate --record-file` reads one record object per file, not a list and not a Change Package. Give `--record-file` once for each record of the same asset that belongs to one change, such as two terms that name each other in `not_same_as`: the records are validated together and written in one audited update, or none of them is written:
 

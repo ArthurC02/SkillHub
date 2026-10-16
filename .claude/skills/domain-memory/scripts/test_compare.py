@@ -36,6 +36,14 @@ class ContextMatchingTest(unittest.TestCase):
             with self.subTest(path):
                 self.assertEqual([("x", "orders", "nested-path")], self.matched([ORDERS], [{"id": "x", "implementation_path": path}]))
 
+    def test_a_path_written_from_another_base_matches_by_its_suffix(self) -> None:
+        for path in ("app/src/orders", "orders"):
+            with self.subTest(path):
+                self.assertEqual([("x", "orders", "path-suffix")], self.matched([ORDERS], [{"id": "x", "implementation_path": path}]))
+
+    def test_a_path_inside_another_base_matches_as_nested(self) -> None:
+        self.assertEqual([("x", "orders", "nested-path")], self.matched([ORDERS], [{"id": "x", "implementation_path": "app/src/orders/core"}]))
+
     def test_a_sibling_path_that_only_shares_a_prefix_of_the_name_does_not_match(self) -> None:
         self.assertEqual([], self.matched([ORDERS], [{"id": "x", "implementation_path": "src/orders-legacy"}]))
 
@@ -98,6 +106,19 @@ class RecordMatchingTest(unittest.TestCase):
         rule = {"id": "totals", "contexts": ["sales"], "evidence": ["src/orders/total.py:4"]}
         self.assertEqual(["order-total-is-positive"], [pair["gold"] for pair in self.rules(rule)["matched"]])
 
+    def test_a_rule_whose_cited_lines_overlap_wins_over_one_citing_elsewhere_in_the_file(self) -> None:
+        gold = registry(contexts=[ORDERS], rules=[
+            {"id": "purge-runs-every-step", "contexts": ["orders"], "evidence": [
+                {"path": "purge.go", "lines": {"start": 47, "end": 63}}, {"path": "purge.go", "lines": {"start": 78, "end": 99}}]},
+        ])
+        candidate = registry(contexts=[ORDERS], rules=[
+            {"id": "audited-in-one-transaction", "contexts": ["orders"], "evidence": [{"path": "purge.go", "lines": {"start": 270, "end": 278}}]},
+            {"id": "refuses-an-unwired-step", "contexts": ["orders"], "evidence": [{"path": "purge.go", "lines": {"start": 78, "end": 99}}]},
+        ])
+        result = asset_result(gold, candidate, "rules")
+        self.assertEqual(([("refuses-an-unwired-step", "purge-runs-every-step")], ["audited-in-one-transaction"]),
+                         ([(pair["candidate"], pair["gold"]) for pair in result["matched"]], result["extra"]))
+
     def test_a_rule_citing_the_same_file_from_another_context_does_not_match(self) -> None:
         rule = {"id": "totals", "contexts": ["billing"], "evidence": cited("src/orders/total.py")}
         self.assertEqual([], self.rules(rule)["matched"])
@@ -115,6 +136,34 @@ class RecordMatchingTest(unittest.TestCase):
         gold = registry(aggregates=[{"id": "order-aggregate", "root": "Order"}])
         candidate = registry(aggregates=[{"id": "a1", "root": "order"}])
         self.assertEqual(["order-aggregate"], [pair["gold"] for pair in asset_result(gold, candidate, "aggregates")["matched"]])
+
+
+class PossiblePairTest(unittest.TestCase):
+    def possible(self, wording: str, contexts: list[str]) -> list[dict]:
+        gold = registry(contexts=[ORDERS, BILLING],
+                        rules=[{"id": "run-terminal-status-is-final", "contexts": ["orders"], "statement": "A terminal run status is final."}])
+        candidate = registry(contexts=[ORDERS, BILLING],
+                             rules=[{"id": "closed", "contexts": contexts, "statement": wording}])
+        return asset_result(gold, candidate, "rules")["possible_pairs"]
+
+    def test_an_unpaired_rule_worded_alike_in_a_paired_context_is_offered(self) -> None:
+        self.assertEqual([{"gold": "run-terminal-status-is-final", "candidate": "closed", "similarity": 0.5}],
+                         self.possible("Once a run reaches a terminal status it stays final.", ["orders"]))
+
+    def test_a_rule_worded_alike_in_another_context_is_not_offered(self) -> None:
+        self.assertEqual([], self.possible("Once a run reaches a terminal status it stays final.", ["billing"]))
+
+    def test_a_rule_worded_differently_is_not_offered(self) -> None:
+        self.assertEqual([], self.possible("Invoices are numbered in sequence.", ["orders"]))
+
+
+class ScopeTest(unittest.TestCase):
+    def test_a_context_scope_keeps_only_that_contexts_gold_records(self) -> None:
+        gold = registry(contexts=[ORDERS, BILLING], rules=[
+            {"id": "order-rule", "contexts": ["orders"]}, {"id": "bill-rule", "contexts": ["billing"]}, {"id": "loose"}])
+        result = compare_registries(gold, registry(contexts=[ORDERS]), ["orders"])
+        self.assertEqual((["orders"], ["order-rule"]),
+                         ([pair["gold"] for pair in result["assets"]["contexts"]["matched"]], result["assets"]["rules"]["missed"]))
 
 
 class ScoreTest(unittest.TestCase):

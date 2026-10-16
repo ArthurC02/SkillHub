@@ -10,7 +10,7 @@ The workflow is continuous: the Registry is the input to implementation and the 
 
 ## Before Step 0: Map repository sources
 
-Run `discover-sources --repo-root <repo>` without writing output. Present the candidate paths to the developer and ask which paths should be trusted as Domain Memory sources and where the Registry should live inside the repository. Do not choose a default directory. Once the developer has explicitly chosen both, run `init-domain-memory --repo-root <repo> --output <chosen-path> --source <chosen-source>` for every selected source. Read every selected repository-instruction path before reading other groups. The resulting source map is a deterministic inventory; it cannot establish domain ownership or rule truth.
+Run `discover-sources --repo-root <repo>` without writing output. Present the candidate paths to the developer and ask which paths should be trusted as Domain Memory sources and where the Registry should live inside the repository. Do not choose a default directory. Once the developer has explicitly chosen both, run `init-domain-memory --repo-root <repo> --output <chosen-path> --source <chosen-source> --storage-mode tracked --data-classification internal --review-mode local-draft-only --source-authority <developer>`, giving `--source` once for every selected source. `tracked` keeps the Registry in Git; `internal` suits a repository whose code is not public; `local-draft-only` holds candidates until `amend-policy` names who approves; `--source-authority` is the person who chose the sources. Without a person to ask, select the repository instructions and the directories that hold the code you are asked to extract, record nothing reviewed, and leave `confirm-sources` to the developer. Read every selected repository-instruction path before reading other groups. The resulting source map is a deterministic inventory; it cannot establish domain ownership or rule truth.
 
 ## Step 0: Normalize the requirement
 
@@ -22,7 +22,7 @@ For each candidate term, run `resolve-terms --query <text>`. Then run `get-conte
 
 ## Step 2: Discover adjacent Contexts
 
-For every external fact, identify its owner and the Context that consumes it. Run `analyze-boundary --source-context <id> --target-context <id>` before proposing a dependency. Check existing interactions and contracts before proposing a new one. `no_registered_collaboration` is a proposal trigger, not permission for a direct write. An implementation package, database table, or endpoint name cannot establish business ownership by itself.
+For every external fact, identify its owner and the Context that consumes it. Run `analyze-boundary --source-context <id> --target-context <id>` before proposing a dependency. Check existing interactions and contracts before proposing a new one. `no_registered_collaboration` is a proposal trigger, not permission for a direct write, and `policy_only` means a dependency is allowed but no collaboration is recorded yet. An implementation package, database table, or endpoint name cannot establish business ownership by itself.
 
 ## Step 3: Decide the boundary
 

@@ -23,9 +23,9 @@ When the source shows something close to an element but not its defining propert
 
 Models find vocabulary and relations reliably and Bounded Contexts and Aggregates unreliably, and an early wrong boundary spreads into everything recorded after it. So extract in this order, and validate after each stage before building on it:
 
-1. **Language.** Collect the terms the domain uses and what the code or requirement does with each. A word with two meanings is a boundary signal, not one term.
+1. **Language.** Collect the terms the domain uses and what the code or requirement does with each. A word with two meanings is a boundary signal, not one term. Keep them as notes: a Term names its Contexts, so it is recorded once step 2 has them.
 2. **Boundaries.** Propose Contexts only where several signals agree: the language changes, data is owned and written in one place, changes land together, and calls cross the boundary through an explicit surface. Each Context names its `implementation_path` when code exists. Prefer fewer, evidenced Contexts to a speculative split.
-3. **Relations.** Record Interactions and Contracts across the boundaries from step 2. Record a Dependency policy only for a direction a check enforces or a decision states.
+3. **Relations.** Record Interactions and Contracts across the boundaries from step 2. When the work covers one Context and a relation needs a neighbour, record the neighbour as a candidate Context holding only what the evidence shows, such as its `id`, `name` and `implementation_path`, so the relation can name it; Review decides whether it holds. Record a Dependency policy only for a direction a check enforces or a decision states.
 4. **Tactical facts.** Rules, Aggregates, Events and Value Objects, each inside one Context from step 2.
 
 ## From a requirement

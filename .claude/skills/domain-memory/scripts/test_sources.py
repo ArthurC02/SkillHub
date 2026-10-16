@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.common import load_json
+from domain_registry.evidence import digest
 from domain_registry.impact import boundary_impact
 from domain_registry.policy import validate_policy
 from domain_registry.readiness import assess_readiness
@@ -227,6 +228,22 @@ class SourcesTest(RegistryTestCase):
             [{"asset": "interactions", "id": "orders-bill", "status": "candidate", "changed_evidence": ["src/orders/port.py"]}],
             impact["boundary_evidence_changed"],
         )
+
+    def test_a_changed_file_whose_cited_lines_only_moved_is_not_changed_evidence(self) -> None:
+        self.two_mapped_contexts(interactions=[
+            {"id": "orders-bill", "producer_context": "orders", "consumer_context": "billing",
+             "evidence": [{"path": "src/orders/port.py", "lines": {"start": 1, "end": 1}, "excerpt_sha256": digest(b"v1\n")}]},
+        ])
+        (self.repo / "src/orders/port.py").write_bytes(b"header\nv1\n")
+        impact = boundary_impact(self.repo / "memory", self.repo, "HEAD")
+        self.assertEqual(("no-cross-context-change", []), (impact["verdict"], impact["boundary_evidence_changed"]))
+
+    def test_a_changed_file_whose_cited_lines_changed_is_changed_evidence(self) -> None:
+        self.two_mapped_contexts(interactions=[
+            {"id": "orders-bill", "producer_context": "orders", "consumer_context": "billing",
+             "evidence": [{"path": "src/orders/port.py", "lines": {"start": 1, "end": 1}, "excerpt_sha256": digest(b"v1\n")}]},
+        ])
+        self.assertEqual("boundary-evidence-changed", self.change("src/orders/port.py")["verdict"])
 
     def test_a_change_inside_one_context_crosses_no_boundary(self) -> None:
         self.two_mapped_contexts()
@@ -578,6 +595,13 @@ class SourcesTest(RegistryTestCase):
             source_kind_for(source_map, "apps/svc/preflight.go"), "implementation"
         )
 
+    def test_a_citation_inside_a_selected_path_no_group_classifies_is_selected(self) -> None:
+        source_map = {"source_kinds": {"db": "unclassified"}, "source_groups": []}
+        self.assertEqual(
+            ("selected", "unclassified"),
+            (source_kind_for(source_map, "db/migrations/0002.sql"), source_kind_for(source_map, "infra/x.tf")),
+        )
+
     def test_a_path_two_groups_list_takes_the_kind_of_the_first(self) -> None:
         source_map = {
             "source_groups": [
@@ -917,8 +941,10 @@ class SourcesTest(RegistryTestCase):
         self.commit_all("source map")
         result = assess_readiness(self.repo, self.repo / "memory")
 
-        self.assertEqual("brownfield", result["state"])
-        self.assertEqual("read-and-maintain", result["next_capability"])
+        self.assertEqual(("brownfield", "extract"), (result["state"], result["next_capability"]))
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        self.commit_all("one record")
+        self.assertEqual("read-and-maintain", assess_readiness(self.repo, self.repo / "memory")["next_capability"])
         self.assertEqual(
             {"kind": "registry", "status": "current"}, result["signals"][-2]
         )

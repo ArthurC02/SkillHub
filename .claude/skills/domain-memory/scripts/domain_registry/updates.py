@@ -22,7 +22,7 @@ from .common import (
     utc_now,
 )
 from .evidence import classify_all, hash_all, source_map_for, unclassified_paths
-from .okf import verified_by
+from .okf import contexts_named_by, verified_by
 from .policy import review_mode
 from .revision import (
     current_registry_revision,
@@ -159,6 +159,8 @@ def read_update(path: Path) -> dict[str, Any]:
             path.read_text(encoding="utf-8"),
             object_pairs_hook=reject_duplicate_keys,
         )
+    except FileNotFoundError as error:
+        raise ValueError(f"no such record file: {path}") from error
     except (json.JSONDecodeError, OSError, ValueError) as error:
         raise ValueError(f"invalid JSON: {path}") from error
     if not isinstance(value, dict) or not completed_identifier(value.get("id")):
@@ -414,4 +416,9 @@ def promote_candidate(
         if not updates_record(entry, asset, record_id)
     ]
     proposal["registry_updates"] = [*updates, update]
+    named = proposal.get("affected_contexts")
+    proposal["affected_contexts"] = sorted(
+        ({context for context in named if isinstance(context, str)} if isinstance(named, list) else set())
+        | contexts_named_by(asset, promoted)
+    )
     write_json(path, proposal)

@@ -11,7 +11,7 @@ from .attestations import (
     verify_git_signed_commit,
 )
 from .common import EVIDENCE_FILE, PROPOSAL_FILE, completed_identifier, iso_timestamp, load_json, utc_now, write_json
-from .counterfactual import OUTPUT_TAIL
+from .counterfactual import OUTPUT_TAIL, decoded, working_directory
 from .evidence import digest
 from .policy import approved_command_profiles, review_governance
 from .revision import current_registry_revision, require_current_registry_revision
@@ -142,16 +142,6 @@ class ObligationRun:
     cwd: str | None = None
 
 
-def _working_directory(repo_root: Path, cwd: str | None) -> Path:
-    if cwd is None:
-        return repo_root
-    root = repo_root.resolve()
-    directory = (root / cwd).resolve()
-    if not directory.is_relative_to(root) or not directory.is_dir():
-        raise ValueError(f"--cwd must name a directory inside the repository: {cwd}")
-    return directory
-
-
 def record_test_result(
     root: Path, registry_root: Path, repo_root: Path, run: ObligationRun, timeout: int
 ) -> None:
@@ -159,7 +149,7 @@ def record_test_result(
     obligations = load_json(root / "test-obligations.json").get("obligations", [])
     if not any(isinstance(entry, dict) and entry.get("id") == obligation_id for entry in obligations):
         raise ValueError(f"test-obligations.json has no obligation {obligation_id}")
-    working_directory = _working_directory(repo_root, run.cwd)
+    directory = working_directory(repo_root, run.cwd)
     profiles = approved_command_profiles(registry_root)
     if profiles and command_profile not in profiles:
         raise ValueError(
@@ -168,7 +158,7 @@ def record_test_result(
         )
     try:
         completed = subprocess.run(
-            shlex.split(command), cwd=working_directory, capture_output=True, timeout=timeout, check=False
+            shlex.split(command), cwd=directory, capture_output=True, timeout=timeout, check=False
         )
     except subprocess.TimeoutExpired as error:
         raise ValueError(f"{command} gave no result within {timeout} seconds; nothing recorded") from error
@@ -179,7 +169,7 @@ def record_test_result(
             "verify-audit --registry-root <root>; nothing recorded"
         ) from error
     if completed.returncode != 0:
-        tail = (completed.stdout + completed.stderr)[-OUTPUT_TAIL:].decode("utf-8", "replace")
+        tail = decoded(completed.stdout + completed.stderr)[-OUTPUT_TAIL:]
         raise ValueError(
             f"{command} exited {completed.returncode}; only a passing run is recorded, "
             f"and nothing was written:\n{tail}"
@@ -194,7 +184,7 @@ def record_test_result(
         "finished_at": utc_now(),
     }
     if run.cwd is not None:
-        result["working_directory"] = working_directory.relative_to(repo_root.resolve()).as_posix()
+        result["working_directory"] = directory.relative_to(repo_root.resolve()).as_posix()
     evidence_path = root / EVIDENCE_FILE
     evidence = load_json(evidence_path)
     kept = [

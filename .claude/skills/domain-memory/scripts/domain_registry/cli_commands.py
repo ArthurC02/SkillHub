@@ -8,12 +8,12 @@ from pathlib import Path
 
 from .attestations import audit_attestations, verify_scm
 from .audit import verify as verify_audit
-from .changes import init_change_package, redraft_change_package, validate_change_package
+from .changes import init_change_package, list_proposals, redraft_change_package, validate_change_package
 from .common import ASSET_KEYS, PROPOSAL_FILE, load_json
 from .compare import compare_registries
-from .coupling import CouplingLimits, change_coupling
+from .coupling import CouplingLimits, CouplingReading, change_coupling
 from .contracts import validate_schema
-from .counterfactual import Mutation, counterfactual
+from .counterfactual import Mutation, Proof, counterfactual
 from .evidence import citation, classified, repeated_note, source_map_for
 from .gates import quality_gates
 from .git_hooks import (
@@ -43,6 +43,7 @@ from .recitation_package import recitation_package
 from .impact import boundary_impact
 from .relocate import Recitation, line_range, recite, relocate_evidence
 from .registry import (
+    asset_records,
     boundary_analysis,
     context_model,
     coverage,
@@ -196,7 +197,7 @@ def handle_resolve_terms(args: argparse.Namespace) -> int:
     print_json([
         {**match, "query": query}
         for query in args.query
-        for match in resolve_terms(root, query, args.context)
+        for match in resolve_terms(root, query, args.context, with_mentions=args.with_mentions)
     ])
     return 0
 
@@ -209,7 +210,7 @@ def handle_export(args: argparse.Namespace) -> int:
 def handle_compare_registry(args: argparse.Namespace) -> int:
     gold = _exported(args.gold_root.resolve(), args.gold_commit, args.repo_root, "compare-registry --gold-commit")
     candidate = _exported(args.candidate_root.resolve(), None, None, "")
-    print_json(compare_registries(gold, candidate))
+    print_json(compare_registries(gold, candidate, args.context))
     return 0
 
 
@@ -245,7 +246,17 @@ def handle_change_coupling(args: argparse.Namespace) -> int:
     if args.depth < 1:
         raise ValueError("change-coupling --depth must be at least 1")
     limits = CouplingLimits(args.min_revisions, args.min_shared, args.min_degree, args.max_changeset)
-    print_json(change_coupling(args.repo_root.resolve(), args.root or ["."], args.depth, args.since, limits))
+    contexts = (
+        {
+            context["id"]: context["implementation_path"]
+            for context in asset_records(args.registry_root.resolve(), "contexts.json")
+            if isinstance(context.get("implementation_path"), str)
+        }
+        if args.registry_root
+        else {}
+    )
+    reading = CouplingReading(args.since, tuple(args.exclude_subject), contexts)
+    print_json(change_coupling(args.repo_root.resolve(), args.root or ["."], args.depth, limits, reading))
     return 0
 
 
@@ -316,6 +327,8 @@ def handle_cite(args: argparse.Namespace) -> int:
     if args.registry_root:
         reference = classified(reference, source_map_for(args.registry_root.resolve()))
     print_json(reference)
+    if args.show:
+        _show_cited_lines(args.repo_root.resolve(), reference)
     _note_repeated(args.repo_root.resolve(), reference)
     if reference.get("source_kind") == "unclassified":
         print(
@@ -323,6 +336,12 @@ def handle_cite(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
     return 0
+
+
+def _show_cited_lines(repo_root: Path, reference: dict) -> None:
+    rows = (repo_root / reference["path"]).read_text(encoding="utf-8", errors="replace").splitlines()
+    for line in dict.fromkeys((reference["lines"]["start"], reference["lines"]["end"])):
+        print(f"{reference['path']}:{line}: {rows[line - 1]}", file=sys.stderr)
 
 
 def handle_retract_candidate(args: argparse.Namespace) -> int:
@@ -355,7 +374,8 @@ def handle_upsert_candidate(args: argparse.Namespace) -> int:
         args.asset,
         *(path.resolve() for path in args.record_file),
     )
-    print("Candidate record updated.")
+    count = len(args.record_file)
+    print("Candidate record updated." if count == 1 else f"{count} candidate records updated.")
     if outside:
         print(
             "NOTE: this record rests on files the confirmed source map does not cover: "
@@ -414,7 +434,8 @@ def handle_verify_evidence(args: argparse.Namespace) -> int:
     result = verify_evidence(args.registry_root.resolve(), args.repo_root.resolve(), args.path)
     print_json(result)
     summary = result["summary"]
-    return int(any(summary[status] for status in ("stale", "unhashed", "missing", "invalid")))
+    failing = ("stale", "unhashed", "missing", "invalid", *(("shifted",) if args.strict else ()))
+    return int(any(summary[status] for status in failing))
 
 
 def handle_migrate_evidence(args: argparse.Namespace) -> int:
@@ -720,6 +741,17 @@ def handle_finalize_proposal(args: argparse.Namespace) -> int:
     return 0
 
 
+def _unchecked_at(status: str) -> str:
+    if status in ("submitted", "verified"):
+        return ", apart from the approvals, which are given only once it is submitted"
+    return ""
+
+
+def handle_list_proposals(args: argparse.Namespace) -> int:
+    print_json(list_proposals(args.changes_root.resolve()))
+    return 0
+
+
 def handle_validate_change_package(args: argparse.Namespace) -> int:
     errors = validate_change_package(
         args.package_root.resolve(),
@@ -728,8 +760,11 @@ def handle_validate_change_package(args: argparse.Namespace) -> int:
         args.repo_root.resolve() if args.repo_root else None,
     )
     if args.as_status is None:
-        return report_errors(errors, "Change package is valid.")
-    return report_errors(errors, f"Change package has everything {args.as_status} requires.")
+        exit_code = report_errors(errors, "Change package is valid.")
+        if not exit_code and not load_json(args.package_root / PROPOSAL_FILE).get("registry_updates"):
+            print("NOTE: this package changes no Registry record; add the updates it is for, or supersede it.")
+        return exit_code
+    return report_errors(errors, f"Change package has everything {args.as_status} requires{_unchecked_at(args.as_status)}.")
 
 
 def handle_coverage(args: argparse.Namespace) -> int:
@@ -746,8 +781,7 @@ def handle_counterfactual(args: argparse.Namespace) -> int:
     result = counterfactual(
         args.repo_root,
         Mutation(args.file, args.find, args.replace),
-        args.test_command,
-        args.timeout,
+        Proof(args.test_command, args.timeout, args.cwd, args.expect, args.obligation_id),
     )
     print_json(result)
     return COUNTERFACTUAL_EXIT_CODES[result["verdict"]]
@@ -756,6 +790,7 @@ def handle_counterfactual(args: argparse.Namespace) -> int:
 HANDLERS = {
     "quality-gates": handle_quality_gates,
     "counterfactual": handle_counterfactual,
+    "list-proposals": handle_list_proposals,
     "init": handle_init,
     "init-change-package": handle_init_change_package,
     "redraft-proposal": handle_redraft_proposal,

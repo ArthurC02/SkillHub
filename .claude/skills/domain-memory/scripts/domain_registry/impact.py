@@ -1,10 +1,11 @@
 import subprocess
+from collections.abc import Callable
 from itertools import combinations
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .common import ASSET_KEYS
-from .evidence import all_references
+from .evidence import all_references, verifier
 from .sources import run_git
 from .store import read_document
 
@@ -64,20 +65,27 @@ def _collaborations(records: dict[str, list[dict[str, Any]]]) -> dict[frozenset,
     return found
 
 
-def _evidence_touched(records: dict[str, list[dict[str, Any]]], paths: set[str]) -> list[dict[str, Any]]:
+UNCHANGED_EXCERPT = ("current", "shifted")
+
+
+def _evidence_touched(
+    records: dict[str, list[dict[str, Any]]], paths: set[str], check: Callable[[Any], dict[str, Any]]
+) -> list[dict[str, Any]]:
     touched = []
     for name in COLLABORATION_ENDS:
         for entry in records[name]:
-            cited = {
-                reference.get("path") if isinstance(reference, dict) else reference
+            changed = {
+                cited
                 for reference in all_references(entry)
+                if (cited := reference.get("path") if isinstance(reference, dict) else reference) in paths
+                and not (isinstance(reference, dict) and check(reference)["status"] in UNCHANGED_EXCERPT)
             }
-            if cited & paths:
+            if changed:
                 touched.append({
                     "asset": name.removesuffix(".json"),
                     "id": entry.get("id"),
                     "status": entry.get("status"),
-                    "changed_evidence": sorted(cited & paths),
+                    "changed_evidence": sorted(changed),
                 })
     return touched
 
@@ -103,7 +111,7 @@ def boundary_impact(root: Path, repo_root: Path, base: str) -> dict[str, Any]:
         {"contexts": [one, other], "collaborations": collaborations.get(frozenset((one, other)), [])}
         for one, other in combinations(sorted(touched), 2)
     ]
-    evidence = _evidence_touched(records, set(paths))
+    evidence = _evidence_touched(records, set(paths), verifier(repo_root))
     owned = {path for files in touched.values() for path in files}
     return {
         "base": base,

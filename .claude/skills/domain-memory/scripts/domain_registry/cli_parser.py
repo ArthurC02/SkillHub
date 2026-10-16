@@ -59,6 +59,7 @@ def _add_export_commands(commands: argparse._SubParsersAction) -> None:
     add_path(compare_parser, "--candidate-root")
     add_path(compare_parser, "--repo-root", required=False)
     compare_parser.add_argument("--gold-commit")
+    compare_parser.add_argument("--context", action="append", default=[])
 
 
 def _add_history_commands(commands: argparse._SubParsersAction) -> None:
@@ -67,6 +68,8 @@ def _add_history_commands(commands: argparse._SubParsersAction) -> None:
     coupling_parser.add_argument("--root", action="append", default=[])
     coupling_parser.add_argument("--depth", type=int, default=2)
     coupling_parser.add_argument("--since")
+    coupling_parser.add_argument("--exclude-subject", action="append", default=[])
+    add_path(coupling_parser, "--registry-root", required=False)
     for option, default in (("--min-revisions", 5), ("--min-shared", 5), ("--min-degree", 30), ("--max-changeset", 30)):
         coupling_parser.add_argument(option, type=int, default=default)
 
@@ -99,6 +102,7 @@ def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
     add_path(term_parser, "--registry-root")
     term_parser.add_argument("--query", required=True, action="append")
     term_parser.add_argument("--context")
+    term_parser.add_argument("--with-mentions", action="store_true")
     context_parser = commands.add_parser("get-context")
     add_path(context_parser, "--registry-root")
     context_parser.add_argument("--id", required=True)
@@ -126,6 +130,7 @@ def _add_evidence_commands(commands: argparse._SubParsersAction) -> None:
     add_path(evidence_verify_parser, "--registry-root")
     add_path(evidence_verify_parser, "--repo-root")
     evidence_verify_parser.add_argument("--path", action="append")
+    evidence_verify_parser.add_argument("--strict", action="store_true")
     recite_parser = commands.add_parser("recite")
     add_path(recite_parser, "--registry-root")
     add_path(recite_parser, "--repo-root")
@@ -144,11 +149,14 @@ def _add_record_and_source_commands(commands: argparse._SubParsersAction) -> Non
     cite_parser.add_argument("--start", required=True, type=int)
     cite_parser.add_argument("--end", required=True, type=int)
     add_path(cite_parser, "--registry-root", required=False)
+    cite_parser.add_argument("--show", action="store_true")
     candidate_update_parser = commands.add_parser("upsert-candidate")
     add_path(candidate_update_parser, "--registry-root")
     add_path(candidate_update_parser, "--repo-root")
     add_asset(candidate_update_parser)
-    candidate_update_parser.add_argument("--record-file", required=True, action="append", type=Path)
+    candidate_update_parser.add_argument(
+        "--record-file", required=True, action="append", type=Path, help="repeatable: one record per file"
+    )
     retract_parser = commands.add_parser("retract-candidate")
     add_path(retract_parser, "--registry-root")
     add_path(retract_parser, "--repo-root")
@@ -192,7 +200,7 @@ def _add_governance_commands(commands: argparse._SubParsersAction) -> None:
     add_path(memory_init_parser, "--repo-root")
     add_path(memory_init_parser, "--output")
     memory_init_parser.add_argument(
-        "--source", required=True, action="append", type=Path
+        "--source", required=True, action="append", type=Path, help="repeatable"
     )
     memory_init_parser.add_argument(
         "--storage-mode", required=True, choices=STORAGE_MODES
@@ -228,7 +236,7 @@ def _add_governance_commands(commands: argparse._SubParsersAction) -> None:
     refine_parser = commands.add_parser("refine-sources")
     add_path(refine_parser, "--registry-root")
     add_path(refine_parser, "--repo-root")
-    refine_parser.add_argument("--source", action="append", default=[], type=Path)
+    refine_parser.add_argument("--source", action="append", default=[], type=Path, help="repeatable")
     refine_parser.add_argument("--add", action="append", default=[], type=Path)
     refine_parser.add_argument("--remove", action="append", default=[], type=Path)
     amend_parser = commands.add_parser("amend-policy")
@@ -326,6 +334,11 @@ def _add_proposal_check_commands(commands: argparse._SubParsersAction) -> None:
     counterfactual_parser.add_argument(
         "--timeout", type=int, default=DEFAULT_TIMEOUT_SECONDS
     )
+    counterfactual_parser.add_argument("--cwd")
+    counterfactual_parser.add_argument("--expect")
+    counterfactual_parser.add_argument("--obligation-id")
+    proposals_parser = commands.add_parser("list-proposals")
+    add_path(proposals_parser, "--changes-root")
     package_validate_parser = commands.add_parser("validate-change-package")
     add_path(package_validate_parser, "--package-root")
     add_path(package_validate_parser, "--registry-root", required=False)

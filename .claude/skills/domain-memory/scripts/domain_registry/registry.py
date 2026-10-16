@@ -26,7 +26,7 @@ from .evidence import (
     with_references,
     without_derived_keys,
 )
-from .okf import verified_by
+from .okf import RELATION_TARGETS, verified_by
 from .policy import query_result_limit, review_mode
 from .store import (
     MANIFEST,
@@ -46,6 +46,7 @@ ABSENCE_ASSETS = {
     "aggregates": "without_aggregate",
     "rules": "without_rule",
     "contracts": "without_contract",
+    "events": "without_event",
 }
 
 
@@ -172,7 +173,7 @@ def _asset_header_errors(name: str, asset: dict[str, Any], entries: list[dict[st
 def _entry_status_errors(
     name: str, entry: dict[str, Any], status: Any, require_reviewed: bool  # noqa: FBT001
 ) -> list[str]:
-    label = f"{name}:{entry.get('id')}"
+    label = f"{name.removesuffix('.json')}/{entry.get('id')}"
     if status not in REGISTRY_STATUSES:
         return [f"{label} has an invalid status"]
     errors: list[str] = []
@@ -219,7 +220,7 @@ def _context_placement_problems(entries: list[dict[str, Any]]) -> list[str]:
     claimed: dict[str, str] = {}
     for entry in entries:
         identifier = entry.get("id")
-        label = f"contexts.json:{identifier}"
+        label = f"contexts/{identifier}"
         subdomain = entry.get("subdomain")
         if subdomain is not None and subdomain not in CONTEXT_SUBDOMAINS:
             errors.append(
@@ -263,7 +264,7 @@ def _validate_confirmed_absences(
     errors: list[str] = []
     holding = contexts_holding(records)
     for entry in records.get("contexts.json", []):
-        label = f"contexts.json:{entry.get('id')}"
+        label = f"contexts/{entry.get('id')}"
         declarations = entry.get("confirmed_absences", [])
         if not isinstance(declarations, list):
             errors.append(f"{label} confirmed_absences must be a list")
@@ -320,22 +321,22 @@ def _context_list_errors(records: dict[str, list[dict[str, Any]]], known_context
         for entry in records.get(name, []):
             contexts = entry.get("contexts")
             if not isinstance(contexts, list) or not contexts:
-                errors.append(f"{name}:{entry.get('id')} requires contexts")
+                errors.append(f"{name.removesuffix('.json')}/{entry.get('id')} requires contexts")
             elif set(contexts) - known_contexts:
-                errors.append(f"{name}:{entry.get('id')} references unknown context")
+                errors.append(f"{name.removesuffix('.json')}/{entry.get('id')} references unknown context")
     return errors
 
 
 def _single_context_errors(records: dict[str, list[dict[str, Any]]], known_contexts: set[Any]) -> list[str]:
     errors = [
-        f"{name}:{entry.get('id')} references unknown context"
+        f"{name.removesuffix('.json')}/{entry.get('id')} references unknown context"
         for name, fields in SINGLE_CONTEXT_FIELDS
         for entry in records.get(name, [])
         for field in fields
         if entry.get(field) not in known_contexts
     ]
     errors.extend(
-        f"dependency-policies.json:{entry.get('id')} references unknown context"
+        f"dependency-policies/{entry.get('id')} references unknown context"
         for entry in records.get("dependency-policies.json", [])
         if entry.get("from_context") not in known_contexts
         or entry.get("to_context") not in known_contexts
@@ -348,12 +349,12 @@ def _contract_party_errors(records: dict[str, list[dict[str, Any]]], known_conte
     for entry in records.get("contracts.json", []):
         if entry.get("producer_context") not in known_contexts:
             errors.append(
-                f"contracts.json:{entry.get('id')} references unknown producer context"
+                f"contracts/{entry.get('id')} references unknown producer context"
             )
         consumers = entry.get("consumer_contexts", [])
         if not isinstance(consumers, list) or set(consumers) - known_contexts:
             errors.append(
-                f"contracts.json:{entry.get('id')} references unknown consumer context"
+                f"contracts/{entry.get('id')} references unknown consumer context"
             )
     return errors
 
@@ -365,7 +366,7 @@ def _interaction_contract_errors(records: dict[str, list[dict[str, Any]]]) -> li
         contract_id = entry.get("contract_id")
         if contract_id is not None and contract_id not in contract_ids:
             errors.append(
-                f"interactions.json:{entry.get('id')} references unknown contract"
+                f"interactions/{entry.get('id')} references unknown contract"
             )
     return errors
 
@@ -413,7 +414,7 @@ def _validate_idempotency(contracts: list[dict[str, Any]]) -> list[str]:
         idempotency = contract.get("idempotency")
         if idempotency is None:
             continue
-        where = f"contracts.json:{contract.get('id')}"
+        where = f"contracts/{contract.get('id')}"
         if not isinstance(idempotency, dict):
             errors.append(f"{where} idempotency must be an object")
             continue
@@ -445,7 +446,7 @@ def _validate_term_labels(terms: list[dict[str, Any]]) -> list[str]:
     errors: list[str] = []
     term_ids = {term.get("id") for term in terms}
     for term in terms:
-        where = f"vocabulary.json:{term.get('id')}"
+        where = f"vocabulary/{term.get('id')}"
         synonyms = _labels(term, "synonyms")
         look_alikes = _labels(term, "not_same_as")
         if synonyms is None or look_alikes is None:
@@ -555,6 +556,7 @@ def contexts_holding(records: dict[str, list[dict[str, Any]]]) -> dict[str, set[
             for context in entry.get("contexts", [])
         },
         "contracts": contracts,
+        "events": {entry.get("owner_context") for entry in records.get("events.json", [])},
     }
 
 
@@ -604,6 +606,7 @@ def coverage(root: Path) -> dict[str, Any]:
     aggregates = asset_records(root, "aggregates.json")
     rules = asset_records(root, "rules.json")
     contracts = asset_records(root, "contracts.json")
+    events = asset_records(root, "events.json")
     known = [entry["id"] for entry in contexts]
     holding = contexts_holding(
         {
@@ -611,6 +614,7 @@ def coverage(root: Path) -> dict[str, Any]:
             "aggregates.json": aggregates,
             "rules.json": rules,
             "contracts.json": contracts,
+            "events.json": events,
         }
     )
     absent = declared_absences(contexts)
@@ -624,6 +628,7 @@ def coverage(root: Path) -> dict[str, Any]:
         "aggregates": len(aggregates),
         "rules": len(rules),
         "contracts": len(contracts),
+        "events": len(events),
         "gaps": {
             gap: [context for context in missing[gap] if context not in absent[asset]]
             for asset, gap in ABSENCE_ASSETS.items()
@@ -675,7 +680,9 @@ def _match_kind(term: dict[str, Any], needle: str) -> str | None:
     return None
 
 
-def resolve_terms(root: Path, query: str, context: str | None) -> list[dict[str, Any]]:
+def resolve_terms(
+    root: Path, query: str, context: str | None, *, with_mentions: bool = False
+) -> list[dict[str, Any]]:
     needle = query.casefold()
     matches = []
     for term in asset_records(root, "vocabulary.json"):
@@ -685,7 +692,14 @@ def resolve_terms(root: Path, query: str, context: str | None) -> list[dict[str,
         if kind is not None:
             matches.append({**term, "match_kind": kind})
     matches.sort(key=lambda match: MATCH_KINDS.index(match["match_kind"]))
-    return (matches or prose_mentions(root, needle))[: query_result_limit(root)]
+    if matches and not with_mentions:
+        return matches[: query_result_limit(root)]
+    matched = {match["id"] for match in matches}
+    mentions = [
+        mention for mention in prose_mentions(root, needle)
+        if mention["asset"] != "vocabulary" or mention["id"] not in matched
+    ]
+    return (matches + mentions)[: query_result_limit(root)]
 
 
 def _reviewed_entries(root: Path, name: str) -> list[dict[str, Any]]:
@@ -697,7 +711,8 @@ def _reviewed_entries(root: Path, name: str) -> list[dict[str, Any]]:
     ]
 
 
-DEFINING_FIELDS = ("name", "responsibility", "statement", "definition", "description")
+DEFINING_FIELDS = ("id", "name", "responsibility", "statement", "definition", "description")
+UNSEARCHED_FIELDS = ("status", "review_status")
 
 
 def prose_mentions(root: Path, needle: str) -> list[dict[str, Any]]:
@@ -709,9 +724,19 @@ def prose_mentions(root: Path, needle: str) -> list[dict[str, Any]]:
         if has_document(root, name)
         for entry in _reviewed_entries(root, name)
         for field, value in entry.items()
-        if field not in ("id", "status", "review_status") and isinstance(value, str) and word.search(value.casefold())
+        if field not in UNSEARCHED_FIELDS and any(word.search(text.casefold()) for text in _searchable(field, value))
     ]
     return sorted(mentions, key=lambda mention: mention["field"] not in DEFINING_FIELDS)
+
+
+def _searchable(field: str, value: Any) -> list[str]:
+    if field == "id":
+        return [value.replace("-", " ")] if isinstance(value, str) else []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list) and field not in RELATION_TARGETS:
+        return [item for item in value if isinstance(item, str)]
+    return []
 
 
 def _records_where(
@@ -792,5 +817,7 @@ def boundary_analysis(root: Path, source: str, target: str) -> dict[str, Any]:
         "dependencies": dependencies,
         "status": "known"
         if interactions or contracts
+        else "policy_only"
+        if dependencies
         else "no_registered_collaboration",
     }

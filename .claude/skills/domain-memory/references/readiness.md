@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | `empty` | No decisions, requirements, contracts, bounded-context files, implementation, or tests are discoverable. | `discover` |
 | `greenfield` | At least one design or product source is present, or a valid Registry contains domain records, but no implementation source is discoverable. | `design` |
-| `brownfield` | An implementation source is discoverable. Existing Registry facts still require the normal review checks. | `read-and-maintain` |
+| `brownfield` | An implementation source is discoverable. Existing Registry facts still require the normal review checks. | `read-and-maintain`, or `extract` when the supplied Registry holds no record yet |
 | `dead` | A supplied Registry or source map is invalid, unverified, or stale, and no current product source is discoverable. | `recover-or-reconfirm` |
 
 The state is a posture, not a verdict about project ownership, quality, or whether the project is commercially active. Missing tests do not make a project dead. A repository with an unusual layout may be reported as empty or greenfield; run `discover-sources` and let a developer choose the corpus.

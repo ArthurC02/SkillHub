@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -13,7 +14,17 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.cli import main
-from domain_registry.counterfactual import SIDECAR_SUFFIX, Mutation, TestRun, counterfactual
+from domain_registry import counterfactual as counterfactual_module
+from domain_registry.counterfactual import (
+    RESTORE_DELAYS_SECONDS,
+    SIDECAR_SUFFIX,
+    Mutation,
+    Proof,
+    TestRun,
+    counterfactual,
+    decoded,
+    verdict_of,
+)
 from domain_registry.gates import KINDS, quality_gates
 from domain_registry.sources import is_test_file
 
@@ -87,6 +98,34 @@ class QualityGatesTest(RepositoryCase):
             [{"kind": "lint", "tool": "ruff", "path": "apps/api/ruff.toml"}],
         )
         self.assertEqual(quality_gates(self.repo)["standard"], "configured")
+
+    def test_a_lint_configuration_with_dependency_rules_is_also_an_architecture_gate(self) -> None:
+        self.write(".golangci.yml", "linters-settings:\n  depguard:\n    rules: {}\n")
+        self.assertEqual(
+            [{"kind": "lint", "tool": "golangci-lint", "path": ".golangci.yml"},
+             {"kind": "architecture", "tool": "depguard", "path": ".golangci.yml"}],
+            self.gates(),
+        )
+
+    def test_a_lint_configuration_that_only_names_the_dependency_linter_is_not_an_architecture_gate(self) -> None:
+        self.write(".golangci.yaml", "linters:\n  disable:\n    - depguard\n")
+        self.assertEqual(["lint"], [entry["kind"] for entry in self.gates()])
+
+    def git(self, *arguments: str) -> None:
+        subprocess.run(["git", "-C", str(self.repo), *arguments], capture_output=True, check=True)
+
+    def test_a_hook_git_runs_is_a_gate_and_samples_and_copies_are_not(self) -> None:
+        self.git("init", "-q")
+        for name in ("pre-push", "pre-push.domain-memory-existing", "pre-commit.sample"):
+            self.write(f".git/hooks/{name}", "#!/bin/sh\n")
+        self.assertEqual([{"kind": "hooks", "tool": "git:pre-push", "path": ".git/hooks/pre-push"}], self.gates())
+
+    def test_hooks_are_read_where_core_hooks_path_points(self) -> None:
+        self.git("init", "-q")
+        self.git("config", "core.hooksPath", ".githooks")
+        self.write(".githooks/pre-commit", "#!/bin/sh\n")
+        self.write(".git/hooks/pre-push", "#!/bin/sh\n")
+        self.assertEqual([{"kind": "hooks", "tool": "git:pre-commit", "path": ".githooks/pre-commit"}], self.gates())
 
     def test_a_configuration_file_is_recognised_by_the_start_of_its_name(self) -> None:
         self.write("eslint.config.mjs", "")
@@ -262,7 +301,7 @@ class CounterfactualTest(RepositoryCase):
 
     def break_rule(self, find: str, replace: str, **options) -> dict:
         return counterfactual(
-            self.repo, Mutation(Path("rule.py"), find, replace), RUN_TESTS, **options
+            self.repo, Mutation(Path("rule.py"), find, replace), Proof(RUN_TESTS, **options)
         )
 
     def assert_untouched(self) -> None:
@@ -324,14 +363,14 @@ class CounterfactualTest(RepositoryCase):
             counterfactual(
                 self.repo / "tests",
                 Mutation(Path("../rule.py"), "LIMIT = 200", "LIMIT = 201"),
-                RUN_TESTS,
+                Proof(RUN_TESTS),
             )
         self.assert_untouched()
 
     def test_a_file_that_does_not_exist_is_refused(self) -> None:
         with self.assertRaisesRegex(ValueError, "does not exist"):
             counterfactual(
-                self.repo, Mutation(Path("absent.py"), "a", "b"), RUN_TESTS
+                self.repo, Mutation(Path("absent.py"), "a", "b"), Proof(RUN_TESTS)
             )
 
     def test_an_interrupted_earlier_run_is_refused_until_it_is_restored(self) -> None:
@@ -340,6 +379,131 @@ class CounterfactualTest(RepositoryCase):
             self.break_rule("LIMIT = 200", "LIMIT = 201")
         self.assertEqual(self.rule.read_bytes(), RULE.encode("utf-8"))
         self.assertTrue(sidecar.exists())
+
+    def test_a_copy_left_beside_another_file_is_refused_too(self) -> None:
+        sidecar = self.write("other/module.py" + SIDECAR_SUFFIX, "x")
+        with self.assertRaisesRegex(ValueError, "other/module.py" + SIDECAR_SUFFIX):
+            self.break_rule("LIMIT = 200", "LIMIT = 201")
+        self.assertEqual(self.rule.read_bytes(), RULE.encode("utf-8"))
+        self.assertTrue(sidecar.exists())
+
+    def test_a_copy_inside_an_excluded_directory_is_not_searched(self) -> None:
+        self.write("node_modules/pkg/index.js" + SIDECAR_SUFFIX, "x")
+        self.assertEqual(self.break_rule("LIMIT = 200", "LIMIT = 201")["verdict"], "killed")
+
+    def break_with_failing_restores(self, failures: int) -> dict:
+        real_write = counterfactual_module.write_as_newer
+        calls = []
+
+        def write(target: Path, content: bytes, seconds_ahead: int) -> None:
+            calls.append(content)
+            if 1 < len(calls) <= 1 + failures:
+                raise OSError(22, "Invalid argument")
+            real_write(target, content, seconds_ahead)
+
+        with patch.object(counterfactual_module, "write_as_newer", write), patch.object(
+            counterfactual_module.time, "sleep"
+        ):
+            return self.break_rule("LIMIT = 200", "LIMIT = 201")
+
+    def test_a_restore_that_succeeds_on_its_last_retry_restores_the_file(self) -> None:
+        result = self.break_with_failing_restores(len(RESTORE_DELAYS_SECONDS))
+        self.assertTrue(result["restoration_result"]["restored"])
+        self.assert_untouched()
+
+    def test_a_restore_that_never_succeeds_names_the_copy_to_restore_from(self) -> None:
+        with self.assertRaisesRegex(ValueError, "rule.py" + SIDECAR_SUFFIX):
+            self.break_with_failing_restores(len(RESTORE_DELAYS_SECONDS) + 1)
+        self.assertEqual(
+            (self.repo / ("rule.py" + SIDECAR_SUFFIX)).read_bytes(), RULE.encode("utf-8")
+        )
+
+    def test_broken_code_that_does_not_build_is_inconclusive(self) -> None:
+        result = self.break_rule("LIMIT = 200", "LIMIT = (")
+        self.assertEqual(("inconclusive", True), (result["verdict"], "did not build" in result["reason"]))
+        self.assert_untouched()
+
+    def test_an_expected_pattern_decides_even_when_the_code_does_not_build(self) -> None:
+        self.assertEqual("killed", self.break_rule("LIMIT = 200", "LIMIT = (", expect="SyntaxError")["verdict"])
+
+    def test_a_killed_rule_gives_no_reason(self) -> None:
+        self.assertNotIn("reason", self.break_rule("LIMIT = 200", "LIMIT = 201"))
+
+    def test_a_failure_matching_the_expected_pattern_is_killed(self) -> None:
+        result = self.break_rule("LIMIT = 200", "LIMIT = 201", expect="AssertionError")
+        self.assertEqual(result["verdict"], "killed")
+
+    def test_a_failure_not_matching_the_expected_pattern_is_inconclusive(self) -> None:
+        result = self.break_rule("LIMIT = 200", "LIMIT = (", expect="AssertionError")
+        self.assertEqual(result["verdict"], "inconclusive")
+        self.assertNotIn("counterfactual_check", result)
+        self.assert_untouched()
+
+    def test_an_expected_pattern_that_is_not_a_regular_expression_is_refused(self) -> None:
+        with self.assertRaisesRegex(ValueError, "--expect is not a regular expression"):
+            self.break_rule("LIMIT = 200", "LIMIT = 201", expect="(")
+        self.assert_untouched()
+
+    def test_the_command_runs_without_a_shell(self) -> None:
+        with self.assertRaisesRegex(ValueError, "could not start"):
+            counterfactual(
+                self.repo,
+                Mutation(Path("rule.py"), "LIMIT = 200", "LIMIT = 201"),
+                Proof("no-such-program-for-counterfactual --version"),
+            )
+        self.assert_untouched()
+
+    def test_the_command_runs_in_the_directory_cwd_names(self) -> None:
+        command = f'"{sys.executable}" -m unittest discover -s . -t ..'
+        result = counterfactual(
+            self.repo, Mutation(Path("rule.py"), "LIMIT = 200", "LIMIT = 201"), Proof(command, cwd="tests")
+        )
+        self.assertEqual(result["verdict"], "killed")
+
+    def test_a_cwd_outside_the_repository_is_refused(self) -> None:
+        with self.assertRaisesRegex(ValueError, "--cwd must name a directory inside the repository"):
+            self.break_rule("LIMIT = 200", "LIMIT = 201", cwd="..")
+
+    def test_a_killed_rule_prints_the_check_a_change_package_records(self) -> None:
+        result = self.break_rule("LIMIT = 200", "LIMIT = 201", obligation_id="limit-refused")
+        self.assertEqual(
+            {
+                "status": "passed",
+                "obligation_id": "limit-refused",
+                "mutated_protection": "rule.py:1: LIMIT = 200 -> LIMIT = 201",
+                "failure_evidence": result["failing_evidence"],
+                "restored": True,
+            },
+            result["counterfactual_check"],
+        )
+
+    def test_the_check_names_a_placeholder_until_an_obligation_is_given(self) -> None:
+        result = self.break_rule("LIMIT = 200", "LIMIT = 201")
+        self.assertEqual(result["counterfactual_check"]["obligation_id"], "<obligation-id>")
+
+    def test_a_surviving_rule_prints_no_check(self) -> None:
+        self.assertNotIn("counterfactual_check", self.break_rule("CAP = 12", "CAP = 13"))
+
+
+class VerdictTest(unittest.TestCase):
+    def test_a_compiler_refusal_is_inconclusive_and_an_assertion_is_killed(self) -> None:
+        for output, verdict in (
+            ("./purge.go:12:2: declared and not used: ready", "inconclusive"),
+            ('./email.go:4:2: "strings" imported and not used', "inconclusive"),
+            ("FAIL\tskillhub/identity [build failed]", "inconclusive"),
+            ("--- FAIL: TestPurge (0.00s)\n    purge_test.go:40: want refusal", "killed"),
+        ):
+            with self.subTest(output):
+                self.assertEqual(verdict, verdict_of(TestRun(1, output))[0])
+
+
+class DecodedOutputTest(unittest.TestCase):
+    def test_utf8_output_is_read_as_utf8(self) -> None:
+        self.assertEqual(decoded("中".encode()), "中")
+
+    def test_other_output_is_read_in_the_system_encoding(self) -> None:
+        with patch.object(counterfactual_module.locale, "getpreferredencoding", return_value="cp950"):
+            self.assertEqual(decoded("中".encode("cp950")), "中")
 
 
 class CommandLineTest(RepositoryCase):
@@ -391,6 +555,19 @@ class CommandLineTest(RepositoryCase):
         ), contextlib.redirect_stdout(output):
             exit_code = main()
         self.assertEqual((2, "inconclusive"), (exit_code, json.loads(output.getvalue())["verdict"]))
+
+    def test_an_error_the_console_cannot_encode_is_still_printed(self) -> None:
+        completed = subprocess.run(
+            [sys.executable, str(TOOLS), "counterfactual", "--repo-root", str(self.repo),
+             "--file", "\U0001F600.py", "--find", "a", "--replace", "b", "--test-command", "unused"],
+            capture_output=True,
+            env={**os.environ, "PYTHONIOENCODING": "cp950", "PYTHONUTF8": "0"},
+            check=False,
+        )
+        self.assertEqual(
+            (1, b"ERROR: file does not exist: \\U0001f600.py"),
+            (completed.returncode, completed.stdout.strip()),
+        )
 
     def test_quality_gates_prints_its_format(self) -> None:
         completed = self.run_tool("quality-gates", "--repo-root", str(self.repo))

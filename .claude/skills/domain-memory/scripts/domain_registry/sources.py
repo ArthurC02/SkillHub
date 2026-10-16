@@ -16,6 +16,7 @@ from .common import (
     writer_lock,
 )
 
+SELECTED_KIND = "selected"
 EXCLUDED_DIRECTORIES = {
     ".git",
     ".hg",
@@ -357,6 +358,8 @@ def source_kind_index(source_map: dict[str, Any]) -> Callable[[str], str]:
         if owner is not None and kinds[owner] != "unclassified":
             return kinds[owner]
         kind = next((group_kinds[path] for path in owners if path in group_kinds), "unclassified")
+        if kind == "unclassified" and owner is not None:
+            return SELECTED_KIND
         return kind if isinstance(kind, str) else "unclassified"
 
     return kind_of

@@ -610,6 +610,15 @@ class UpdatesTest(RegistryTestCase):
         self.assertEqual(("order-total", "reviewed", "An order total is non-negative."),
                          (rule["id"], rule["status"], rule["statement"]))
 
+    def test_promoting_adds_the_contexts_the_record_names_to_the_proposal(self) -> None:
+        package = self.package_with_a_candidate_rule("An order total is non-negative.")
+        proposal_file = package / "domain-change-proposal.json"
+        proposal = json.loads(proposal_file.read_text(encoding="utf-8"))
+        proposal["affected_contexts"] = ["billing"]
+        proposal_file.write_text(json.dumps(proposal), encoding="utf-8")
+        promote_candidate(package, self.repo / "memory", "rules", "order-total")
+        self.assertEqual(["billing", "orders"], json.loads(proposal_file.read_text(encoding="utf-8"))["affected_contexts"])
+
     def test_promoting_again_replaces_the_entry_with_the_current_candidate(self) -> None:
         package = self.package_with_a_candidate_rule("First wording.")
         promote_candidate(package, self.repo / "memory", "rules", "order-total")
@@ -776,7 +785,7 @@ class UpdatesTest(RegistryTestCase):
         order, line = self.look_alike_terms()
         stray = self.write_record("stray.json", {"id": "stray", "name": "Stray", "contexts": ["ghost"]})
         events = len(self.audit_lines())
-        with self.assertRaisesRegex(ValueError, "vocabulary.json:stray references unknown context"):
+        with self.assertRaisesRegex(ValueError, "vocabulary/stray references unknown context"):
             upsert_candidate(self.repo / "memory", self.repo, "vocabulary", order, line, stray)
         self.assertEqual([], asset_records(self.repo / "memory", "vocabulary.json"))
         self.assertEqual(events, len(self.audit_lines()))
@@ -1183,7 +1192,7 @@ class UpdatesTest(RegistryTestCase):
         self.add_context()
         self.assertEqual(["orders"], [entry["id"] for entry in asset_records(self.repo / "memory", "contexts.json")])
         record = self.write_record("rule.json", {"id": "new", "contexts": ["phantom"], "statement": "Refused."})
-        with self.assertRaisesRegex(ValueError, "rules.json:new references unknown context"):
+        with self.assertRaisesRegex(ValueError, "rules/new references unknown context"):
             upsert_candidate(self.repo / "memory", self.repo, "rules", record)
 
     def test_an_apply_that_fails_before_committing_leaves_no_marker(self) -> None:

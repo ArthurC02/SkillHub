@@ -59,60 +59,60 @@ class RegistryTest(RegistryTestCase):
             ("duplicate id", "contexts.json", [orders, dict(orders)], "contexts.json contains duplicate id"),
             ("blank id", "contexts.json", [orders, {**billing, "id": ""}], "contexts.json entries require non-empty id"),
             ("unknown status", "contexts.json", [{**orders, "status": "pending"}, billing],
-             "contexts.json:orders has an invalid status"),
+             "contexts/orders has an invalid status"),
             ("decision review status", "decisions.json", [{"id": "d", "review_status": "bogus", "status": "candidate"}],
-             "decisions.json:d has an invalid status"),
+             "decisions/d has an invalid status"),
             ("reviewed without fields", "rules.json",
              [{"id": "r", "contexts": ["orders"], "status": "reviewed", "evidence": ["x"]}],
-             "rules.json:r is reviewed but missing statement, verified"),
+             "rules/r is reviewed but missing statement, verified"),
             ("reviewed without evidence", "rules.json",
              [{"id": "r", "contexts": ["orders"], "statement": "s", "verified": VERIFIED, "status": "reviewed"}],
-             "rules.json:r is reviewed but lacks evidence"),
-            ("term without contexts", "vocabulary.json", [{"id": "t", "contexts": []}], "vocabulary.json:t requires contexts"),
+             "rules/r is reviewed but lacks evidence"),
+            ("term without contexts", "vocabulary.json", [{"id": "t", "contexts": []}], "vocabulary/t requires contexts"),
             ("synonyms not a list", "vocabulary.json", [{**order_term, "synonyms": "purchase"}],
-             "vocabulary.json:order synonyms and not_same_as must be lists of non-empty strings"),
+             "vocabulary/order synonyms and not_same_as must be lists of non-empty strings"),
             ("blank synonym", "vocabulary.json", [{**order_term, "synonyms": [" "]}],
-             "vocabulary.json:order synonyms and not_same_as must be lists of non-empty strings"),
+             "vocabulary/order synonyms and not_same_as must be lists of non-empty strings"),
             ("look-alikes not a list", "vocabulary.json", [{**order_term, "not_same_as": "invoice"}],
-             "vocabulary.json:order synonyms and not_same_as must be lists of non-empty strings"),
+             "vocabulary/order synonyms and not_same_as must be lists of non-empty strings"),
             ("repeated synonym", "vocabulary.json", [{**order_term, "synonyms": ["Purchase", "purchase"]}],
-             "vocabulary.json:order repeats a synonym"),
+             "vocabulary/order repeats a synonym"),
             ("own name as synonym", "vocabulary.json", [{**order_term, "synonyms": ["order"]}],
-             "vocabulary.json:order lists its own name as a synonym"),
+             "vocabulary/order lists its own name as a synonym"),
             ("synonym naming a term of the same context", "vocabulary.json",
              [{**order_term, "synonyms": ["Invoice"]}, invoice_term],
-             "vocabulary.json:order synonym 'Invoice' is the name of invoice in a shared context"),
+             "vocabulary/order synonym 'Invoice' is the name of invoice in a shared context"),
             ("unknown look-alike", "vocabulary.json", [{**order_term, "not_same_as": ["ghost"]}],
-             "vocabulary.json:order not_same_as must name other vocabulary term ids"),
+             "vocabulary/order not_same_as must name other vocabulary term ids"),
             ("itself as a look-alike", "vocabulary.json", [{**order_term, "not_same_as": ["order"]}],
-             "vocabulary.json:order not_same_as must name other vocabulary term ids"),
+             "vocabulary/order not_same_as must name other vocabulary term ids"),
             ("rule in unknown context", "rules.json", [{"id": "r", "contexts": ["ghost"]}],
-             "rules.json:r references unknown context"),
+             "rules/r references unknown context"),
             ("aggregate in unknown context", "aggregates.json", [{"id": "a", "context": "ghost"}],
-             "aggregates.json:a references unknown context"),
+             "aggregates/a references unknown context"),
             ("unknown consumer", "interactions.json",
              [{"id": "i", "producer_context": "orders", "consumer_context": "ghost"}],
-             "interactions.json:i references unknown context"),
+             "interactions/i references unknown context"),
             ("policy to unknown context", "dependency-policies.json",
              [{"id": "p", "from_context": "orders", "to_context": "ghost"}],
-             "dependency-policies.json:p references unknown context"),
+             "dependency-policies/p references unknown context"),
             ("contract producer", "contracts.json", [{"id": "c", "producer_context": "ghost", "consumer_contexts": []}],
-             "contracts.json:c references unknown producer context"),
+             "contracts/c references unknown producer context"),
             ("contract consumer", "contracts.json",
              [{"id": "c", "producer_context": "orders", "consumer_contexts": ["ghost"]}],
-             "contracts.json:c references unknown consumer context"),
+             "contracts/c references unknown consumer context"),
             ("unknown producer", "interactions.json",
              [{"id": "i", "producer_context": "ghost", "consumer_context": "orders"}],
-             "interactions.json:i references unknown context"),
+             "interactions/i references unknown context"),
             ("event in unknown context", "events.json", [{"id": "e", "owner_context": "ghost"}],
-             "events.json:e references unknown context"),
+             "events/e references unknown context"),
             ("capability in unknown context", "capabilities.json", [{"id": "k", "context": "ghost"}],
-             "capabilities.json:k references unknown context"),
+             "capabilities/k references unknown context"),
             ("value object in unknown context", "value-objects.json", [{"id": "v", "context": "ghost"}],
-             "value-objects.json:v references unknown context"),
+             "value-objects/v references unknown context"),
             ("unknown contract", "interactions.json",
              [{"id": "i", "producer_context": "orders", "consumer_context": "billing", "contract_id": "none"}],
-             "interactions.json:i references unknown contract"),
+             "interactions/i references unknown contract"),
         ]
         root = self.repo / "memory"
         pristine = {name: read_document(root, name) for name in ASSET_KEYS}
@@ -138,11 +138,11 @@ class RegistryTest(RegistryTestCase):
     def test_contract_idempotency_states_each_part_in_text(self) -> None:
         sound = {"key": "origin key", "scope": "per Workspace", "on_replay": "same Run", "on_conflict": "refused"}
         cases = [
-            ("not an object", "origin key", "contracts.json:c idempotency must be an object"),
-            ("missing parts", {"key": "origin key"}, "contracts.json:c idempotency lacks scope, on_replay, on_conflict"),
-            ("unknown part", {**sound, "on_retry": "x"}, "contracts.json:c idempotency has unknown fields on_retry"),
-            ("blank part", {**sound, "scope": " "}, "contracts.json:c idempotency fields must be non-empty text: scope"),
-            ("blank expiry", {**sound, "expiry": ""}, "contracts.json:c idempotency fields must be non-empty text: expiry"),
+            ("not an object", "origin key", "contracts/c idempotency must be an object"),
+            ("missing parts", {"key": "origin key"}, "contracts/c idempotency lacks scope, on_replay, on_conflict"),
+            ("unknown part", {**sound, "on_retry": "x"}, "contracts/c idempotency has unknown fields on_retry"),
+            ("blank part", {**sound, "scope": " "}, "contracts/c idempotency fields must be non-empty text: scope"),
+            ("blank expiry", {**sound, "expiry": ""}, "contracts/c idempotency fields must be non-empty text: expiry"),
         ]
         self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
         contract = {"id": "c", "producer_context": "orders", "consumer_contexts": []}
@@ -514,7 +514,7 @@ class RegistryTest(RegistryTestCase):
         self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders.",
                                      "review": {"proposal_id": "P-1"}}])
         self.assertEqual(
-            ["contexts.json:orders holds a legacy review block; run migrate-registry"],
+            ["contexts/orders holds a legacy review block; run migrate-registry"],
             validate(self.repo / "memory", None, False),
         )
 
@@ -561,7 +561,7 @@ class RegistryTest(RegistryTestCase):
             "no_registered_collaboration",
         )
 
-    def test_a_dependency_policy_alone_does_not_register_a_collaboration(self) -> None:
+    def test_a_dependency_policy_alone_is_a_permission_without_a_collaboration(self) -> None:
         self.two_contexts()
         self.seed(
             "dependency-policies.json",
@@ -575,7 +575,7 @@ class RegistryTest(RegistryTestCase):
         )
         analysis = boundary_analysis(self.repo / "memory", "orders", "billing")
         self.assertEqual(len(analysis["dependencies"]), 1)
-        self.assertEqual(analysis["status"], "no_registered_collaboration")
+        self.assertEqual(analysis["status"], "policy_only")
 
     def test_coverage_reports_a_context_only_under_the_asset_it_lacks(self) -> None:
         self.seed(
@@ -598,6 +598,18 @@ class RegistryTest(RegistryTestCase):
         self.assertEqual(gaps["without_aggregate"], ["orders"])
         self.assertEqual(gaps["without_rule"], ["orders"])
         self.assertEqual(gaps["without_contract"], ["orders"])
+        self.assertEqual(gaps["without_event"], ["orders"])
+
+    def test_coverage_counts_events_and_takes_a_confirmed_absence_of_events(self) -> None:
+        self.seed("contexts.json", [
+            {"id": "orders", "name": "Orders", "responsibility": "Own orders."},
+            {"id": "billing", "name": "Billing", "responsibility": "Own invoices.",
+             "confirmed_absences": [{"asset": "events", "reason": "Billing publishes nothing."}]},
+        ])
+        self.seed("events.json", [{"id": "order-placed", "owner_context": "orders"}])
+        report = coverage(self.repo / "memory")
+        self.assertEqual((1, [], ["billing"]),
+                         (report["events"], report["gaps"]["without_event"], report["confirmed_absent"]["without_event"]))
 
     def test_requiring_reviewed_records_rejects_a_candidate_registry(self) -> None:
         self.seed(
@@ -606,7 +618,7 @@ class RegistryTest(RegistryTestCase):
         )
         self.assertEqual(validate(self.repo / "memory", None, False), [])
         self.assertEqual(
-            ["contexts.json:orders is not reviewed"], validate(self.repo / "memory", None, True)
+            ["contexts/orders is not reviewed"], validate(self.repo / "memory", None, True)
         )
 
     def test_a_non_json_contract_is_reported_unverified_instead_of_valid(self) -> None:
@@ -715,10 +727,10 @@ class RegistryTest(RegistryTestCase):
     def test_a_confirmed_absence_of_an_unknown_asset_names_the_ones_allowed(
         self,
     ) -> None:
-        self.context_declaring("events", "Events are elsewhere.")
+        self.context_declaring("decisions", "Decisions are elsewhere.")
         errors = validate(self.repo / "memory", None, False)
         named = next(error for error in errors if "unknown asset" in error)
-        for allowed in ("aggregates", "contracts", "rules", "vocabulary"):
+        for allowed in ("aggregates", "contracts", "events", "rules", "vocabulary"):
             self.assertIn(allowed, named)
 
     def test_the_command_line_takes_one_field_or_several_sets_but_not_both(self) -> None:
@@ -848,6 +860,33 @@ class RegistryTest(RegistryTestCase):
         self.contexts_mentioning_suggestions()
         self.seed("vocabulary.json", [{"id": "suggestion", "name": "Suggestion", "contexts": ["eval"]}])
         self.assertEqual(["name"], [match["match_kind"] for match in resolve_terms(self.repo / "memory", "suggestion", None)])
+
+    def test_with_mentions_a_matching_term_comes_first_and_mentions_follow(self) -> None:
+        self.contexts_mentioning_suggestions()
+        self.seed("vocabulary.json", [{"id": "suggestion", "name": "Suggestion", "contexts": ["eval"],
+                                       "definition": "A suggestion to change a version.", "status": "reviewed"}])
+        self.assertEqual(
+            [("vocabulary", "suggestion", "name"), ("contexts", "eval", "mentioned")],
+            [(match.get("asset", "vocabulary"), match["id"], match["match_kind"])
+             for match in resolve_terms(self.repo / "memory", "suggestion", None, with_mentions=True)],
+        )
+
+    def test_a_record_id_is_searched_word_by_word(self) -> None:
+        self.allow_results(10)
+        self.seed("interactions.json", [{"id": "eval-workspace-purge", "status": "reviewed"}])
+        self.assertEqual(
+            [("interactions", "eval-workspace-purge", "id")],
+            [(match["asset"], match["id"], match["field"]) for match in resolve_terms(self.repo / "memory", "purge", None)],
+        )
+
+    def test_a_list_of_text_is_searched_and_a_list_of_record_ids_is_not(self) -> None:
+        self.allow_results(10)
+        self.seed("vocabulary.json", [{"id": "order", "name": "Order", "examples": ["a refund request"], "status": "reviewed"}])
+        self.seed("rules.json", [{"id": "gate", "contexts": ["refund"], "statement": "x", "status": "reviewed"}])
+        self.assertEqual(
+            [("vocabulary", "order", "examples")],
+            [(match["asset"], match["id"], match["field"]) for match in resolve_terms(self.repo / "memory", "refund", None)],
+        )
 
     def test_verify_evidence_reports_each_requested_path_and_whether_it_exists(self) -> None:
         self.seed_two_cited_rules()

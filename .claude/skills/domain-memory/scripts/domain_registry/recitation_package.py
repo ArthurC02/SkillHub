@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import shlex
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -7,10 +10,10 @@ from .changes import init_change_package, parsed_update
 from .common import PROPOSAL_FILE
 from .common import load_json, write_json
 from .evidence import all_references, with_references
+from .okf import contexts_named_by
+from .sources import run_git
 from .registry import asset_records
 
-CONTEXT_FIELDS = ("context", "owner_context", "producer_context", "consumer_context", "from_context", "to_context")
-CONTEXT_LIST_FIELDS = ("contexts", "consumer_contexts")
 CITATIONS_CURRENT = "citations-current"
 
 
@@ -18,7 +21,7 @@ def recitation_package(
     output: Path, registry_root: Path, recitation: dict[str, Any], identifiers: tuple[str, str, str]
 ) -> list[str]:
     updates = _evidence_only_updates(registry_root, recitation)
-    contexts = sorted({context for asset, record in updates for context in _contexts_named_by(asset, record)})
+    contexts = sorted({context for asset, record in updates for context in contexts_named_by(asset, record)})
     cited = sorted({
         reference["path"] for _, record in updates for reference in all_references(record)
         if isinstance(reference, dict) and isinstance(reference.get("path"), str)
@@ -44,7 +47,7 @@ def recitation_package(
         "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
         "level": "architecture",
         "status": "planned",
-        "check": "registry_tools.py verify-evidence " + " ".join(f"--path {path}" for path in cited),
+        "check": _verify_command(registry_root, cited),
     }]})
     _fill(output / PROPOSAL_FILE, {
         "change_classification": "routine",
@@ -92,11 +95,25 @@ def _without_evidence(record: dict[str, Any]) -> Any:
     return with_references({key: value for key, value in record.items() if key not in ("review", "verified")}, lambda _: None)
 
 
-def _contexts_named_by(asset: str, record: dict[str, Any]) -> set[str]:
-    named = {record.get(field) for field in CONTEXT_FIELDS}
-    for field in CONTEXT_LIST_FIELDS:
-        value = record.get(field)
-        named.update(value if isinstance(value, list) else [])
-    if asset == "contexts":
-        named.add(record.get("id"))
-    return {context for context in named if isinstance(context, str)}
+def _verify_command(registry_root: Path, cited: list[str]) -> str:
+    top = _repository_top(registry_root)
+    script = Path(__file__).resolve().parents[1] / "registry_tools.py"
+    arguments = [
+        Path(sys.executable).stem, _shown(script, top), "verify-evidence",
+        "--registry-root", _shown(registry_root, top), "--repo-root", ".",
+        *(argument for path in cited for argument in ("--path", path)),
+    ]
+    return shlex.join(arguments)
+
+
+def _repository_top(path: Path) -> Path | None:
+    try:
+        result = run_git(path, "rev-parse", "--show-toplevel")
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return Path(result.stdout.strip()).resolve() if result.returncode == 0 else None
+
+
+def _shown(path: Path, top: Path | None) -> str:
+    resolved = path.resolve()
+    return resolved.relative_to(top).as_posix() if top and resolved.is_relative_to(top) else resolved.as_posix()

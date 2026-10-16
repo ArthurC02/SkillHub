@@ -49,7 +49,7 @@ Commands that read or change the Registry take `--registry-root <root>`: the dir
 
 ## Words you will meet
 
-- **Registry**: one JSON file per asset under `<root>/registry/`. The asset name is the file name without `.json`, such as `contexts`, `rules`, `contracts`, `vocabulary` or `dependency-policies`. It is never the list key inside the file.
+- **Registry**: one Markdown concept file per record under `<root>/registry/<asset>/`. The asset name is the folder name, such as `contexts`, `rules`, `contracts`, `vocabulary` or `dependency-policies`, and messages name a record as `<asset>/<id>`. Read it through the commands, never its files.
 - **Record**: one entry in an asset. Its `status` is `candidate` (proposed, authorizes nothing) or `reviewed` (a fact, approved through a Change Package).
 - **Citation**: a record's evidence, `{path, lines, excerpt_sha256}`, always built by `cite`. `verify-evidence` reports each one with one of these statuses:
   - `current`: the cited lines are unchanged.
@@ -63,7 +63,8 @@ Commands that read or change the Registry take `--registry-root <root>`: the dir
 
 | You want to | Run |
 | --- | --- |
-| Know what this repository has | `readiness --repo-root <repo>` |
+| Know what this repository has | `readiness --repo-root <repo>`; `extract` means code exists and the Registry holds no record yet |
+| Start a Domain Memory | `init-domain-memory`, which records the destination, sources and policy choices a Registry needs; `init` only copies an empty skeleton that can never hold a reviewed record |
 | Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`; a `mentioned` match is prose in a reviewed record, not a term |
 | See which boundaries your change touches | `boundary-impact --base <branch point>`; `unknown` means no Context records an `implementation_path`, so it cannot map files to Contexts |
 | Check the Registry's shape and references | `validate`; it does not check that citations still match the code, which is `verify-evidence` |
@@ -72,7 +73,9 @@ Commands that read or change the Registry take `--registry-root <root>`: the dir
 | Re-cite after editing code in place | `recite --asset <asset> --id <id> --path <file> --lines <a>-<b>`; when the record cites the file more than once, name the old citation with `--replace <file>:<a>-<b>`, and leave out `--lines` if the code kept those lines; add `--onto <file>` holding what an earlier `relocate-evidence` or `recite` printed, and the output is that file with this record re-cited in it, so one record never gets two competing updates |
 | Put a re-citation through review | `init-change-package --recitation <file printed by recite or relocate-evidence> --requirement-id <id> --proposal-id <id> --proposer <you>` writes the whole package; then submit it, record its one test result, and review it as usual |
 | Extract the model from a requirement, code or a change | follow `skills/domain-memory-extract`; `change-coupling --repo-root <repo> --root <code root>` shows which modules change together, and `compare-registry` scores an extraction against a reviewed Registry |
-| Propose a new fact | `cite`, then `upsert-candidate --asset <asset> --record-file <file>`; give `--record-file` once per record |
+| Propose a new fact | `cite --show`, then `upsert-candidate --asset <asset> --record-file <file>`; give `--record-file` once per record |
+| Undo a candidate | `retract-candidate --asset <asset> --id <id> --reason <text>`; a reviewed record is withdrawn by a superseding proposal instead |
+| See every Change Package and its state | `list-proposals --changes-root <dir>` |
 | Change a reviewed fact | `init-change-package --requirement-id <id> --proposal-id <id> --proposer <you>`, add `registry_updates`, then `validate-change-package --as-status submitted --repo-root <repo>` before every transition; the lifecycle is in [references/script-api.md](references/script-api.md) |
 | Recover after a crash | `recover-registry-update --repo-root <repo>` |
 

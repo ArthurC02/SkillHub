@@ -466,7 +466,27 @@ class ChangesTest(RegistryTestCase):
         errors = self.proposal_reference_errors(
             "draft", registry_updates=[{"operation": "upsert", "asset": "rules", "record": rule}]
         )
-        self.assertIn("once applied: rules.json:order-total references unknown context", errors)
+        self.assertIn("once applied: rules/order-total references unknown context", errors)
+
+    def decision_evidence_errors(self, *evidence: object) -> list[str]:
+        (self.repo / "src").mkdir(exist_ok=True)
+        (self.repo / "src" / "owner.py").write_text("x\n", encoding="utf-8")
+        package = self.draft_package()
+        path = package / "domain-change-proposal.json"
+        proposal = json.loads(path.read_text(encoding="utf-8"))
+        proposal["boundary_decision"]["evidence"] = list(evidence)
+        path.write_text(json.dumps(proposal), encoding="utf-8")
+        errors = validate_change_package(package, self.repo / "memory", repo_root=self.repo)
+        return [error for error in errors if error.startswith("boundary_decision evidence")]
+
+    def test_decision_evidence_naming_a_missing_file_is_refused(self) -> None:
+        self.assertEqual(
+            ["boundary_decision evidence names src/gone.py, which is not a file in the repository"] * 2,
+            self.decision_evidence_errors("src/gone.py:6-45", {"path": "src/gone.py", "lines": {"start": 1, "end": 1}}),
+        )
+
+    def test_decision_evidence_naming_a_file_that_exists_or_written_as_prose_passes(self) -> None:
+        self.assertEqual([], self.decision_evidence_errors("src/owner.py:1", "src/owner.py", "Billing owns invoices.", "ADR-12"))
 
     def test_a_draft_does_not_repeat_an_error_the_registry_already_has(self) -> None:
         self.seed("rules.json", [{"id": "old", "contexts": ["ghost"], "statement": "Kept."}])

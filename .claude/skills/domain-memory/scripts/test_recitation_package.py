@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import shlex
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -9,7 +11,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.changes import validate_change_package
 from domain_registry.evidence import citation
-from domain_registry.recitation_package import _contexts_named_by, recitation_package
+from domain_registry.okf import contexts_named_by
+from domain_registry.recitation_package import recitation_package
 from domain_registry.relocate import Recitation, recite
 from test_support import RegistryTestCase
 
@@ -45,8 +48,8 @@ class RecitationPackageTest(RegistryTestCase):
         )
         [obligation] = self.read(output, "test-obligations.json")["obligations"]
         self.assertEqual(
-            ("citations-current", "registry_tools.py verify-evidence --path src/a.py"),
-            (obligation["source_id"], obligation["check"]),
+            ("citations-current", ["verify-evidence", "--registry-root", "memory", "--repo-root", ".", "--path", "src/a.py"]),
+            (obligation["source_id"], shlex.split(obligation["check"])[2:]),
         )
         self.assertEqual(["src/a.py"], requirement["sources"])
 
@@ -105,7 +108,26 @@ class RecitationPackageTest(RegistryTestCase):
         self.assertEqual([], recitation_package(output, self.repo / "memory", recitation, IDENTIFIERS))
         self.assertEqual(["src/a.py", "src/b.py"], self.read(output, "requirement-normalization.json")["sources"])
         [obligation] = self.read(output, "test-obligations.json")["obligations"]
-        self.assertEqual("registry_tools.py verify-evidence --path src/a.py --path src/b.py", obligation["check"])
+        arguments = shlex.split(obligation["check"])
+        self.assertEqual(
+            ["verify-evidence", "--registry-root", "memory", "--repo-root", ".", "--path", "src/a.py", "--path", "src/b.py"],
+            arguments[2:],
+        )
+        self.assertTrue(arguments[1].endswith("scripts/registry_tools.py"))
+
+    def test_the_check_runs_as_written_and_passes_once_the_citations_are_current(self) -> None:
+        (self.repo / "README.md").write_bytes(b"fact\n")
+        rule = {
+            "id": "r", "contexts": ["orders"], "statement": "S.",
+            "evidence": [citation(self.repo, "README.md", 1, 1)],
+        }
+        self.seed("rules.json", [rule])
+        output = self.repo / "changes" / "recite"
+        recitation_package(output, self.repo / "memory", {"registry_updates": [{"operation": "upsert", "asset": "rules", "record": rule}]}, IDENTIFIERS)
+        [obligation] = self.read(output, "test-obligations.json")["obligations"]
+        arguments = shlex.split(obligation["check"])
+        completed = subprocess.run([sys.executable, *arguments[1:]], cwd=self.repo, capture_output=True, check=False)
+        self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
 
     def test_each_record_shape_names_its_contexts(self) -> None:
         cases = [
@@ -120,7 +142,7 @@ class RecitationPackageTest(RegistryTestCase):
         ]
         for asset, record, expected in cases:
             with self.subTest(asset):
-                self.assertEqual(expected, _contexts_named_by(asset, record))
+                self.assertEqual(expected, contexts_named_by(asset, record))
 
     def test_the_command_writes_the_package_only_with_every_identifier_and_the_registry(self) -> None:
         recitation_file = self.repo / "recitation.json"

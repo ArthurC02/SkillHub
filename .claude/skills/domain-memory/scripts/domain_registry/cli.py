@@ -1,8 +1,14 @@
+import io
+import sys
+
 from .cli_commands import execute
 from .cli_parser import build_parser
 
 
 def main() -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if isinstance(stream, io.TextIOWrapper):
+            stream.reconfigure(errors="backslashreplace")
     try:
         return execute(build_parser().parse_args())
     except (ValueError, OSError) as error:

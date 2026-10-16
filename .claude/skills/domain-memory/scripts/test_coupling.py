@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from domain_registry.coupling import CouplingLimits, change_coupling, module_of
+from domain_registry.coupling import CouplingLimits, CouplingReading, change_coupling, module_of
 from test_support import RegistryTestCase
 
 LOW = CouplingLimits(min_revisions=2, min_shared=2, min_degree=0, max_changeset=30)
@@ -35,24 +35,69 @@ class ModuleOfTest(unittest.TestCase):
 
 
 class ChangeCouplingTest(RegistryTestCase):
-    def change(self, *paths: str) -> None:
+    def change(self, *paths: str, subject: str = "change") -> None:
         for path in paths:
             target = self.repo / path
             target.parent.mkdir(parents=True, exist_ok=True)
             with target.open("a", encoding="utf-8") as handle:
                 handle.write("x\n")
         self.git("add", *paths)
-        self.git("commit", "-qm", "change")
+        self.git("commit", "-qm", subject)
 
     def pairs(self, limits: CouplingLimits = LOW) -> list[dict]:
-        return change_coupling(self.repo, ["src"], 1, None, limits)["pairs"]
+        return change_coupling(self.repo, ["src"], 1, limits)["pairs"]
 
     def test_the_degree_is_shared_commits_over_the_average_revisions_of_the_two(self) -> None:
         for _ in range(4):
             self.change("src/a/x.py", "src/b/y.py")
         self.change("src/a/x.py")
         self.change("src/a/x.py")
-        self.assertEqual([{"modules": ["src/a", "src/b"], "shared": 4, "degree": 80}], self.pairs())
+        self.assertEqual(
+            [{"modules": ["src/a", "src/b"], "shared": 4, "degree": 80, "subjects": ["change"] * 4}], self.pairs()
+        )
+
+    def test_a_pair_lists_the_subjects_of_its_newest_shared_commits_up_to_ten(self) -> None:
+        for number in range(11):
+            self.change("src/a/x.py", "src/b/y.py", subject=f"step {number}")
+        self.assertEqual([f"step {number}" for number in range(10, 0, -1)], self.pairs()[0]["subjects"])
+
+    def test_a_commit_whose_subject_matches_an_exclusion_is_not_counted(self) -> None:
+        before = change_coupling(self.repo, ["src"], 1, LOW, CouplingReading(exclude_subjects=("^chore",)))
+        for _ in range(2):
+            self.change("src/a/x.py", "src/b/y.py", subject="chore: sweep comments")
+            self.change("src/a/x.py", "src/b/y.py")
+        result = change_coupling(self.repo, ["src"], 1, LOW, CouplingReading(exclude_subjects=("^chore",)))
+        self.assertEqual(
+            (2, [{"modules": ["src/a", "src/b"], "shared": 2, "degree": 100, "subjects": ["change", "change"]}]),
+            (result["excluded_commits"] - before["excluded_commits"], result["pairs"]),
+        )
+
+    def test_an_exclusion_that_is_not_a_regular_expression_is_refused(self) -> None:
+        with self.assertRaisesRegex(ValueError, "--exclude-subject is not a regular expression"):
+            change_coupling(self.repo, ["src"], 1, LOW, CouplingReading(exclude_subjects=("(",)))
+
+    def test_a_module_is_named_by_the_context_whose_longest_path_it_lies_in(self) -> None:
+        self.change("src/a/x.py", "src/b/y.py")
+        self.change("src/a/x.py", "src/b/y.py")
+        reading = CouplingReading(context_paths={"alpha": "src/a", "wide": "src"})
+        self.assertEqual(
+            [["alpha", "wide"]],
+            [pair["contexts"] for pair in change_coupling(self.repo, ["src"], 1, LOW, reading)["pairs"]],
+        )
+
+    def test_a_module_outside_every_context_is_named_by_none(self) -> None:
+        self.change("src/a/x.py", "src/b/y.py")
+        self.change("src/a/x.py", "src/b/y.py")
+        reading = CouplingReading(context_paths={"beta": "b"})
+        self.assertEqual(
+            [[None, "beta"]],
+            [pair["contexts"] for pair in change_coupling(self.repo, ["src"], 1, LOW, reading)["pairs"]],
+        )
+
+    def test_without_contexts_a_pair_names_none(self) -> None:
+        self.change("src/a/x.py", "src/b/y.py")
+        self.change("src/a/x.py", "src/b/y.py")
+        self.assertNotIn("contexts", self.pairs()[0])
 
     def test_a_pair_sharing_the_minimum_number_of_commits_is_kept_and_one_fewer_is_dropped(self) -> None:
         self.change("src/a/x.py", "src/b/y.py")
@@ -79,10 +124,10 @@ class ChangeCouplingTest(RegistryTestCase):
 
     def test_a_commit_at_the_changeset_limit_counts_and_one_file_over_it_is_skipped(self) -> None:
         limits = CouplingLimits(min_revisions=1, min_shared=1, min_degree=0, max_changeset=3)
-        before = change_coupling(self.repo, ["src"], 1, None, limits)
+        before = change_coupling(self.repo, ["src"], 1, limits)
         self.change("src/a/x.py", "src/b/y.py", "src/c/z.py")
         self.change("src/a/x.py", "src/b/y.py", "src/c/z.py", "src/d/w.py")
-        result = change_coupling(self.repo, ["src"], 1, None, limits)
+        result = change_coupling(self.repo, ["src"], 1, limits)
         self.assertEqual(
             (2, 1),
             (result["commits"] - before["commits"], result["skipped_large_commits"] - before["skipped_large_commits"]),
@@ -94,12 +139,12 @@ class ChangeCouplingTest(RegistryTestCase):
         self.change("src/a/x.py", "src/gone/y.py")
         self.git("rm", "-rq", "src/gone")
         self.git("commit", "-qm", "remove")
-        result = change_coupling(self.repo, ["src"], 1, None, LOW)
+        result = change_coupling(self.repo, ["src"], 1, LOW)
         self.assertEqual((["src/a"], []), ([module["module"] for module in result["modules"]], result["pairs"]))
 
     def test_a_directory_that_is_not_a_repository_is_named(self) -> None:
         with tempfile.TemporaryDirectory() as empty, self.assertRaisesRegex(ValueError, "git could not read the history: "):
-            change_coupling(Path(empty), ["src"], 1, None, LOW)
+            change_coupling(Path(empty), ["src"], 1, LOW)
 
     def test_the_command_prints_the_coupling_and_refuses_a_depth_below_one(self) -> None:
         self.change("src/a/x.py", "src/b/y.py")

@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from .git_hooks import hooks_dir, inside_repo
 from .sources import (
     discover_ci_tools,
     file_name,
@@ -58,6 +59,7 @@ PYPROJECT_TOOLS = {
 }
 PACKAGE_SCRIPTS = {"lint": "lint", "typecheck": "types", "test": "tests"}
 PYPROJECT_TABLE = re.compile(r"^\[tool\.([A-Za-z0-9_-]+)", re.MULTILINE)
+DEPGUARD_SETTINGS = re.compile(r"^\s*depguard\s*:", re.MULTILINE)
 
 
 def gate(kind: str, tool: str, path: str) -> dict[str, str]:
@@ -99,9 +101,33 @@ def package_gates(path: Path, shown: str) -> list[dict[str, str]]:
     ]
 
 
+def golangci_gates(path: Path, shown: str) -> list[dict[str, str]]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return []
+    return [gate("architecture", "depguard", shown)] if DEPGUARD_SETTINGS.search(text) else []
+
+
+def installed_hooks(root: Path) -> list[dict[str, str]]:
+    hooks = hooks_dir(root)
+    if not hooks.is_dir():
+        return []
+    return [
+        gate("hooks", f"git:{entry.name}", inside_repo(entry, root))
+        for entry in sorted(hooks.iterdir())
+        if entry.is_file() and "." not in entry.name
+    ]
+
+
 FIXTURE_DIRECTORIES = {"fixtures", "__fixtures__", "testdata"}
 
-CONTENT_READERS = {"pyproject.toml": pyproject_gates, "package.json": package_gates}
+CONTENT_READERS = {
+    "pyproject.toml": pyproject_gates,
+    "package.json": package_gates,
+    ".golangci.yml": golangci_gates,
+    ".golangci.yaml": golangci_gates,
+}
 
 
 def in_fixture(entry: str) -> bool:
@@ -135,6 +161,7 @@ def quality_gates(repo_root: Path) -> dict[str, Any]:
     candidates, tests = candidate_files(files), test_candidates(files)
     ignored = ignored_relatives(root, candidates + tests)
     gates = configured_gates(root, [entry for entry in candidates if entry not in ignored])
+    gates.extend(installed_hooks(root))
     gates.extend(gate("ci", tool, "") for tool in discover_ci_tools(root))
     present = sorted({entry["kind"] for entry in gates})
     return {

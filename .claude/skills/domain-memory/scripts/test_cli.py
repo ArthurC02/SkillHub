@@ -335,9 +335,17 @@ class CliTest(RegistryTestCase):
             "upsert-candidate", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
             "--asset", "vocabulary", "--record-file", str(order), "--record-file", str(line),
         )
-        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual((0, "2 candidate records updated."), (result.returncode, result.stdout.strip()))
         self.assertEqual(["order", "order-line"],
                          [term["id"] for term in asset_records(self.repo / "memory", "vocabulary.json")])
+
+    def test_upsert_candidate_names_a_record_file_that_does_not_exist(self) -> None:
+        missing = self.repo / "absent.json"
+        result = self.run_cli(
+            "upsert-candidate", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+            "--asset", "rules", "--record-file", str(missing),
+        )
+        self.assertEqual((1, f"ERROR: no such record file: {missing}"), (result.returncode, result.stdout.strip()))
 
     def test_the_probe_on_a_root_one_level_too_deep_names_the_likely_root(self) -> None:
         self.committed_source_map()
@@ -532,6 +540,34 @@ class CliTest(RegistryTestCase):
         self.assertIn("db/queries.sql is outside the confirmed sources", result.stderr)
         self.assertIn("apply-approved-updates refuses to review", result.stderr)
 
+    def test_citing_a_selected_path_no_discovery_group_classifies_is_selected_and_silent(self) -> None:
+        self.cited_file()
+        (self.repo / "db").mkdir()
+        (self.repo / "db" / "queries.sql").write_text("select 1;\n", encoding="utf-8")
+        write_source_map(
+            self.repo / "memory" / "source-map.json",
+            selected_source_map(self.repo, [self.repo / "docs" / "adr", self.repo / "db"]),
+        )
+        result = self.run_cli(
+            "cite", "--repo-root", str(self.repo), "--path", "db/queries.sql",
+            "--start", "1", "--end", "1", "--registry-root", str(self.repo / "memory"),
+        )
+        self.assertEqual(("selected", ""), (json.loads(result.stdout)["source_kind"], result.stderr))
+
+    def test_cite_shows_the_first_and_last_cited_lines_when_asked(self) -> None:
+        (self.repo / "notes.md").write_bytes(b"one\ntwo\nthree\n")
+        result = self.run_cli(
+            "cite", "--repo-root", str(self.repo), "--path", "notes.md", "--start", "1", "--end", "3", "--show",
+        )
+        self.assertEqual(["notes.md:1: one", "notes.md:3: three"], result.stderr.splitlines())
+
+    def test_cite_shows_a_one_line_citation_once(self) -> None:
+        (self.repo / "notes.md").write_bytes(b"one\ntwo\n")
+        result = self.run_cli(
+            "cite", "--repo-root", str(self.repo), "--path", "notes.md", "--start", "2", "--end", "2", "--show",
+        )
+        self.assertEqual(["notes.md:2: two"], result.stderr.splitlines())
+
     def test_the_upsert_command_says_review_will_refuse_an_unconfirmed_file(self) -> None:
         self.confirmed_corpus()
         (self.repo / "notes.md").write_text("Orders owns pricing.", encoding="utf-8")
@@ -664,6 +700,70 @@ class CliTest(RegistryTestCase):
         self.seed_two_cited_rules()
         result = self.run_cli("verify-evidence", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo))
         self.assertEqual((0, 1), (result.returncode, json.loads(result.stdout)["summary"]["shifted"]))
+
+    def test_list_proposals_reports_each_package_with_its_status_and_updates(self) -> None:
+        changes = self.repo / "changes"
+        for name, fields in (
+            ("a", {"proposal_id": "a", "status": "draft", "registry_updates": []}),
+            ("b", {"proposal_id": "b", "status": "applied", "submitted_at": "2026-10-01T00:00:00Z",
+                   "applied_at": "2026-10-02T00:00:00Z", "registry_updates": [{}], "supersedes": ["a"]}),
+        ):
+            (changes / name).mkdir(parents=True)
+            (changes / name / "domain-change-proposal.json").write_text(json.dumps(fields), encoding="utf-8")
+        (changes / "not-a-package").mkdir()
+        result = self.run_cli("list-proposals", "--changes-root", str(changes))
+        self.assertEqual(
+            [{"package": "a", "proposal_id": "a", "status": "draft", "last_changed_at": None, "registry_updates": 0, "supersedes": []},
+             {"package": "b", "proposal_id": "b", "status": "applied", "last_changed_at": "2026-10-02T00:00:00Z",
+              "registry_updates": 1, "supersedes": ["a"]}],
+            json.loads(result.stdout),
+        )
+
+    def validated_package(self, *, updates: bool) -> list[str]:
+        package = self.draft_package()
+        path = package / "domain-change-proposal.json"
+        proposal = json.loads(path.read_text(encoding="utf-8"))
+        if not updates:
+            proposal["registry_updates"] = []
+        path.write_text(json.dumps(proposal), encoding="utf-8")
+        result = self.run_cli("validate-change-package", "--package-root", str(package), "--registry-root", str(self.repo / "memory"))
+        return result.stdout.splitlines()
+
+    def test_a_valid_package_that_changes_no_record_says_so(self) -> None:
+        self.assertEqual(
+            ["Change package is valid.", "NOTE: this package changes no Registry record; add the updates it is for, or supersede it."],
+            self.validated_package(updates=False),
+        )
+
+    def test_a_preview_before_approval_says_approvals_are_not_asked_for(self) -> None:
+        package = self.draft_package()
+        result = self.run_cli(
+            "validate-change-package", "--package-root", str(package), "--registry-root", str(self.repo / "memory"),
+            "--as-status", "submitted",
+        )
+        self.assertEqual(
+            "Change package has everything submitted requires, apart from the approvals, which are given only once it is submitted.",
+            result.stdout.strip(),
+        )
+
+    def test_a_valid_package_with_updates_prints_only_its_verdict(self) -> None:
+        self.assertEqual(["Change package is valid."], self.validated_package(updates=True))
+
+    def test_a_shifted_citation_fails_verify_evidence_when_strict(self) -> None:
+        self.seed_two_cited_rules()
+        result = self.run_cli(
+            "verify-evidence", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo), "--strict"
+        )
+        self.assertEqual(1, result.returncode)
+
+    def test_strict_passes_when_every_citation_is_current(self) -> None:
+        self.seed_two_cited_rules()
+        result = self.run_cli(
+            "verify-evidence", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+            "--strict", "--path", "other.md",
+        )
+        self.assertEqual((0, {"current": 1, "shifted": 0}),
+                         (result.returncode, {key: json.loads(result.stdout)["summary"][key] for key in ("current", "shifted")}))
 
 
 if __name__ == "__main__":

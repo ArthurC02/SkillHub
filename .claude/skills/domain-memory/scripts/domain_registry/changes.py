@@ -1,3 +1,4 @@
+import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -265,6 +266,9 @@ BEHAVIOR_ASSETS = {"rules", "contracts", "aggregates"}
 
 
 SETTLED_STATUSES = {"applied", "superseded"}
+DECISIONS_WITH_EVIDENCE = ("ownership_decision", "boundary_decision")
+PROPOSAL_MOMENTS = ("submitted_at", "verified_at", "finalized_at", "applied_at")
+CITED_FILE = re.compile(r"^(?P<path>[^\s:]+)(?::\d+(?:-\d+)?)?$")
 
 
 def _changes_behavior(proposal: dict[str, Any]) -> bool:
@@ -699,7 +703,48 @@ def _staged_registry_errors(
     ]
     if repo_root is not None:
         errors.extend(_updated_evidence_errors(proposal, repo_root))
+        errors.extend(_decision_evidence_errors(proposal, repo_root))
     return errors
+
+
+def _decision_evidence_errors(proposal: dict[str, Any], repo_root: Path) -> list[str]:
+    errors = []
+    for decision in DECISIONS_WITH_EVIDENCE:
+        value = proposal.get(decision)
+        evidence = value.get("evidence") if isinstance(value, dict) else None
+        for item in evidence if isinstance(evidence, list) else []:
+            path = _cited_file(item)
+            if path and not (repo_root / path).is_file():
+                errors.append(f"{decision} evidence names {path}, which is not a file in the repository")
+    return errors
+
+
+def _cited_file(item: Any) -> str | None:
+    if isinstance(item, dict):
+        return item.get("path") if isinstance(item.get("path"), str) else None
+    match = CITED_FILE.match(item) if isinstance(item, str) else None
+    return match["path"] if match and "/" in match["path"] else None
+
+
+def list_proposals(changes_root: Path) -> list[dict[str, Any]]:
+    rows = []
+    for package in sorted(path for path in changes_root.iterdir() if (path / PROPOSAL_FILE).is_file()):
+        try:
+            proposal = load_json(package / PROPOSAL_FILE)
+        except ValueError as error:
+            rows.append({"package": package.name, "error": str(error)})
+            continue
+        updates = proposal.get("registry_updates")
+        moments = [proposal.get(field) for field in PROPOSAL_MOMENTS]
+        rows.append({
+            "package": package.name,
+            "proposal_id": proposal.get("proposal_id"),
+            "status": proposal.get("status"),
+            "last_changed_at": max((moment for moment in moments if isinstance(moment, str)), default=None),
+            "registry_updates": len(updates) if isinstance(updates, list) else 0,
+            "supersedes": proposal.get("supersedes", []),
+        })
+    return rows
 
 
 def _updated_evidence_errors(proposal: dict[str, Any], repo_root: Path) -> list[str]:

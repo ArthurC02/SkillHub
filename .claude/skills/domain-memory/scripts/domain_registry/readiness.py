@@ -95,7 +95,8 @@ def assess_readiness(
     elif not present["implementation"]:
         state, next_capability = "greenfield", "design"
     else:
-        state, next_capability = "brownfield", "read-and-maintain"
+        state = "brownfield"
+        next_capability = "extract" if registry_root and registry_records == 0 else "read-and-maintain"
     if registry_status in UNUSABLE_REGISTRY_STATUSES:
         next_capability = "recover-or-reconfirm"
     return {

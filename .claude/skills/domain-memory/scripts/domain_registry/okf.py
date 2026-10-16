@@ -50,6 +50,15 @@ RELATION_TARGETS = {
     "supersedes": "decisions",
 }
 LIST_RELATIONS = {"contexts", "consumer_contexts", "consumers", "not_same_as", "supersedes"}
+CONTEXT_RELATIONS = tuple(field for field, target in RELATION_TARGETS.items() if target == "contexts")
+
+
+def contexts_named_by(asset: str, record: dict[str, Any]) -> set[str]:
+    named = {record.get("id")} if asset == "contexts" else set()
+    for field in CONTEXT_RELATIONS:
+        value = record.get(field)
+        named.update(value if isinstance(value, list) else [value])
+    return {context for context in named if isinstance(context, str)}
 
 OKF_STATUSES = {"candidate": "draft", "reviewed": "stable", "deprecated": "deprecated"}
 REGISTRY_STATUSES = {okf: registry for registry, okf in OKF_STATUSES.items()}

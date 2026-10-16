@@ -2,6 +2,40 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.34.0
+
+### Added
+
+- `counterfactual --expect <regex>` counts a failure as `killed` only when its output matches, `--cwd <directory>` runs the command from a directory inside the repository, and `--obligation-id <id>` fills the `counterfactual_check` a killed run now prints, the object a Change Package's evidence records.
+- `resolve-terms --with-mentions` lists the reviewed records mentioning a query after the terms that match it.
+- `compare-registry --context <gold id>` scores an extraction against one part of the gold Registry, and each asset lists `possible_pairs`: missed gold records worded like an extra candidate in a paired Context.
+- `change-coupling --exclude-subject <regex>` leaves out sweeping commits by their subject, each pair lists the subjects of its shared commits, and `--registry-root` names the Context of each module.
+- `verify-evidence --strict` also fails on a shifted citation.
+- `cite --show` prints the first and last cited lines.
+- `list-proposals --changes-root <dir>` lists every Change Package with its status, last change, number of updates and supersedes.
+- `coverage` counts events and takes a confirmed absence of events.
+
+### Changed
+
+- `counterfactual` runs its command without a shell, like `record-test-result`, and refuses to start while any `.counterfactual-original` copy is left anywhere in the repository, not only beside the file it breaks.
+- `counterfactual` reports a broken file that does not build, such as an unused variable or a syntax error, as `inconclusive` with a `reason`, not `killed`.
+- `analyze-boundary` reports `policy_only` when only a dependency policy connects two Contexts.
+- `boundary-impact` no longer counts a citation whose lines only moved within a changed file as changed boundary evidence.
+- `compare-registry` pairs Contexts whose `implementation_path` one Registry writes from the repository root and the other from a module, and pairs records citing the same file by how many cited lines they share, so the closest record wins.
+- A citation inside a selected source that no discovered group classifies is `selected`, not `unclassified`, so a record citing it can be reviewed.
+- `quality-gates` counts golangci-lint `depguard` settings as an architecture gate and each Git hook as a hook gate, wherever `core.hooksPath` points.
+- `readiness` routes a repository with code and an empty Registry to `extract`.
+- `promote-candidate` adds the Contexts a record names to the proposal's `affected_contexts`.
+- A re-citation package's obligation carries the full `verify-evidence` command, ready for `record-test-result`.
+- `validate-change-package --repo-root` refuses decision evidence naming a file that does not exist, and notes a package that changes no record.
+- Messages name a record as `<asset>/<id>` instead of the file name the Registry no longer uses.
+
+### Fixed
+
+- A command no longer crashes printing text the console's encoding cannot show, and `counterfactual` reads test output in the system encoding when it is not UTF-8.
+- `counterfactual` retries restoring a file the system briefly refuses to write, and names the copy to restore from when it cannot.
+- `upsert-candidate` names a record file that does not exist instead of calling it invalid JSON, and says how many records it wrote.
+
 ## 0.33.1
 
 ### Fixed
