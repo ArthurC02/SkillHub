@@ -159,7 +159,7 @@ jobs:
       - if: runner.os == 'Linux'
         run: npm run build
 
-  web-browser:
+  web-browser-shards:
     needs: changes
     if: needs.changes.outputs.web == 'true'
     strategy:
@@ -168,12 +168,28 @@ jobs:
         include:
           - os: ubuntu-latest
             browser: chromium
+            shard: 1
+          - os: ubuntu-latest
+            browser: chromium
+            shard: 2
           - os: ubuntu-latest
             browser: firefox
+            shard: 1
+          - os: ubuntu-latest
+            browser: firefox
+            shard: 2
           - os: ubuntu-latest
             browser: webkit
+            shard: 1
+          - os: ubuntu-latest
+            browser: webkit
+            shard: 2
           - os: windows-latest
             browser: chromium
+            shard: 1
+          - os: windows-latest
+            browser: chromium
+            shard: 2
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:
@@ -199,15 +215,39 @@ jobs:
         run: npx playwright install --with-deps ${{ matrix.browser }}
       - if: runner.os != 'Linux'
         run: npx playwright install ${{ matrix.browser }}
-      - run: npm run test:e2e -- --project=${{ matrix.browser }}
+      - run: npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/2
       - if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-report-${{ matrix.os }}-${{ matrix.browser }}
+          name: playwright-report-${{ matrix.os }}-${{ matrix.browser }}-${{ matrix.shard }}-of-2
           path: |
             apps/web/playwright-report/
             apps/web/test-results/
           retention-days: 7
+
+  web-browser:
+    needs: [changes, web-browser-shards]
+    if: always() && needs.changes.outputs.web == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            browser: chromium
+          - os: ubuntu-latest
+            browser: firefox
+          - os: ubuntu-latest
+            browser: webkit
+          - os: windows-latest
+            browser: chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          BROWSER_SHARD_RESULT: ${{ needs.web-browser-shards.result }}
+        run: |
+          test "$BROWSER_SHARD_RESULT" = success
+          echo "All browser shards passed."
 
   platform:
     needs: changes
