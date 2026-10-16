@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.27.1
+
+### Fixed
+
+- A signing program that will not start is recognized on Linux and macOS too, where Git says `cannot run <program>`; 0.27.0 knew only the Windows wording, `cannot spawn <program>`, and reported the signature as not verifying there.
+
 ## 0.27.0
 
 ### Changed

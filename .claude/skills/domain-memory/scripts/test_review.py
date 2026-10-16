@@ -744,12 +744,13 @@ class ReviewTest(RegistryTestCase):
             init_signing_key(self.repo, "probe@example.com", self.repo / "keys" / "signing-key")
         signed = self.sign_a_domain_memory_commit("signed")
         subprocess.run(["git", "config", "gpg.ssh.program", "no-such-keygen"], cwd=self.repo, check=True)
-        self.assertEqual(
-            ["Git commit signature was not checked: cannot spawn no-such-keygen: No such file or directory. "
-             "Install the signing program, or point gpg.ssh.program or gpg.program at it, and verify again"],
-            verify_git_signed_commit(
-                {"commit": signed}, self.repo, self.repo / "docs" / "domain-memory", ["probe@example.com"]
-            ),
+        [unchecked] = verify_git_signed_commit(
+            {"commit": signed}, self.repo, self.repo / "docs" / "domain-memory", ["probe@example.com"]
+        )
+        self.assertRegex(
+            unchecked,
+            r"^Git commit signature was not checked: cannot (spawn|run) no-such-keygen: No such file or directory\. "
+            r"Install the signing program, or point gpg\.ssh\.program or gpg\.program at it, and verify again$",
         )
 
     def test_the_same_key_rebuilds_from_the_environment(self) -> None:

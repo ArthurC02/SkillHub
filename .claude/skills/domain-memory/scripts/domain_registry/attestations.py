@@ -139,9 +139,12 @@ def _git(repo_root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+UNRUNNABLE_PROGRAM = ("cannot spawn ", "cannot run ")
+
+
 def _invalid_signature(repo_root: Path, commit: str, verifier_stderr: str) -> str:
     reasons = [line.removeprefix("error: ") for line in verifier_stderr.splitlines() if line.strip()]
-    unrunnable = next((reason for reason in reasons if reason.startswith("cannot spawn ")), None)
+    unrunnable = next((reason for reason in reasons if reason.startswith(UNRUNNABLE_PROGRAM)), None)
     if unrunnable:
         return (
             f"Git commit signature was not checked: {unrunnable}. Install the signing program, "
