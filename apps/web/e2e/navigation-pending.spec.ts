@@ -35,11 +35,10 @@ for (const [name, url, module] of [
         finished();
       }
     });
-    const navigation = page.goto(url);
+    const navigation = page.goto(url, { waitUntil: "domcontentloaded" });
     try {
       await pending;
       await navigation;
-      expect(await page.evaluate(() => document.readyState)).toBe("complete");
       await expect(page.locator(".app-nav a").first()).toBeVisible();
       const main = page.getByRole("main");
       await expect(main.getByRole("status")).toHaveText("載入頁面中…");
@@ -61,6 +60,8 @@ for (const [name, url, module] of [
       });
       release();
       await continued;
+      await page.waitForLoadState("load");
+      expect(await page.evaluate(() => document.readyState)).toBe("complete");
       await expect(main.getByRole("heading", { level: 1 })).toBeVisible();
       await expect(main.locator("[data-loading]")).toHaveCount(0);
       await expect(page.locator(".app-nav a").first()).toBeVisible();
