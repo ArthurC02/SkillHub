@@ -25,9 +25,7 @@ func TestTheCIReportNamesFailedStepsAndJobsThatDidNotRun(t *testing.T) {
 	client := githubClient{repo: "owner/repo", http: &http.Client{Transport: jobs}}
 	runs := []workflowRun{{ID: 7, Name: "CI", Status: "completed", Conclusion: "failure", HTMLURL: "https://example.invalid/7"}}
 	var out strings.Builder
-	if err := client.report(&out, "0123456789abcdef", "red", runs); err != nil {
-		t.Fatal(err)
-	}
+	client.report(&out, "0123456789abcdef", "red", runs)
 	got := out.String()
 	for _, want := range []string{"    failure test: go test | upload\n", "    did not run: e2e\n"} {
 		if !strings.Contains(got, want) {

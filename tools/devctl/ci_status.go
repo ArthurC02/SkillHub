@@ -125,7 +125,8 @@ func reportCIStatusOnce(client githubClient, sha string, out io.Writer) (int, er
 		return 2, err
 	}
 	code, verdict := ciVerdict(runs)
-	return code, client.report(out, sha, verdict, runs)
+	client.report(out, sha, verdict, runs)
+	return code, nil
 }
 
 func pollCIStatusUntilDecided(client githubClient, sha string, out io.Writer) (int, error) {
@@ -143,7 +144,8 @@ func pollCIStatusUntilDecided(client githubClient, sha string, out io.Writer) (i
 		code, verdict := ciVerdict(runs)
 		waitedOut := time.Since(started) > ciStalledWait || (code == ciNoRuns && time.Since(started) > ciNoRunsWait)
 		if (code != ciPending && code != ciNoRuns) || waitedOut {
-			return code, client.report(out, sha, verdict, runs)
+			client.report(out, sha, verdict, runs)
+			return code, nil
 		}
 		time.Sleep(interval)
 	}
@@ -231,7 +233,7 @@ func (c githubClient) runsFor(sha string) ([]workflowRun, error) {
 	return page.Runs, nil
 }
 
-func (c githubClient) report(out io.Writer, sha, verdict string, runs []workflowRun) error {
+func (c githubClient) report(out io.Writer, sha, verdict string, runs []workflowRun) {
 	fmt.Fprintf(out, "%s (%s): %s\n", sha[:7], sha, verdict)
 	for _, run := range runs {
 		fmt.Fprintf(out, "  %s: %s/%s %s\n", run.Name, run.Status, orDash(run.Conclusion), run.HTMLURL)
@@ -242,11 +244,11 @@ func (c githubClient) report(out io.Writer, sha, verdict string, runs []workflow
 			Jobs []workflowJob `json:"jobs"`
 		}
 		if err := c.get(fmt.Sprintf("/actions/runs/%d/jobs?per_page=100", run.ID), &page); err != nil {
-			return err
+			fmt.Fprintf(out, "    jobs unavailable: %v\n", err)
+			continue
 		}
 		reportJobs(out, page.Jobs)
 	}
-	return nil
 }
 
 func reportJobs(out io.Writer, jobs []workflowJob) {

@@ -27,7 +27,7 @@ Usage:
   devctl seed-clean [--dry-run]  upload PORT-007's real, traceable demo skills into a clean-mode deployment
   devctl image-gate  runtime image source gates: digest-pinned base, upgrade record, image content matches its published version
   devctl preflight [--hook]  check unpushed commits for what CI would fail on (--hook reads git's pre-push input)
-  devctl ci-status [ref | --sha ref] [--wait]  every workflow run for a commit; exit 0 green, 1 red, 3 pending, 4 no runs
+  devctl ci-status [ref | --sha ref] [--wait]  every workflow run for a commit; exit 0 green, 1 red, 2 GitHub unreadable, 3 pending, 4 no runs
   devctl dep-audit [--full]  fail on fixable vulnerabilities, disallowed licenses and workflow findings (--full: vulnerabilities in every project, dev dependencies too)
 `
 
@@ -42,11 +42,18 @@ func main() {
 	}
 	code, err := runCommand(root, os.Args[1], os.Args[2:])
 	if err != nil {
-		fatal(err)
+		fmt.Fprintln(os.Stderr, "devctl:", err)
 	}
-	if code != 0 {
+	if code = exitCode(code, err); code != 0 {
 		os.Exit(code)
 	}
+}
+
+func exitCode(code int, err error) int {
+	if err != nil && code == 0 {
+		return 1
+	}
+	return code
 }
 
 const (
