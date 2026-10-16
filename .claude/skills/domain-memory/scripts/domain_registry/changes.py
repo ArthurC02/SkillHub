@@ -20,6 +20,7 @@ from .common import (
     completed_identifier,
     iso_timestamp,
     load_json,
+    utc_now,
     write_json,
 )
 from .policy import approved_command_profiles
@@ -210,6 +211,7 @@ def redraft_change_package(source: Path, output: Path, proposal_id: str) -> None
         raise ValueError("proposal_id must not be blank")
     if output.exists() and any(output.iterdir()):
         raise FileExistsError(f"output directory is not empty: {output}")
+    replaced = load_json(source / PROPOSAL_FILE).get("proposal_id")
     shutil.copytree(source, output, dirs_exist_ok=True)
     _fill_identifiers(output, {"proposal_id": proposal_id})
     templates = change_template_dir()
@@ -219,6 +221,9 @@ def redraft_change_package(source: Path, output: Path, proposal_id: str) -> None
         document.update({field: template[field] for field in fields})
         for field in STATE_AFTER_SUBMISSION:
             document.pop(field, None)
+        if name == PROPOSAL_FILE:
+            document["supersedes"] = sorted({*(superseded_ids(document) or set()), replaced} - {None})
+            document["redrafted_at"] = utc_now()
         write_json(output / name, document)
 
 
@@ -267,7 +272,7 @@ BEHAVIOR_ASSETS = {"rules", "contracts", "aggregates"}
 
 SETTLED_STATUSES = {"applied", "superseded"}
 DECISIONS_WITH_EVIDENCE = ("ownership_decision", "boundary_decision")
-PROPOSAL_MOMENTS = ("submitted_at", "verified_at", "finalized_at", "applied_at")
+PROPOSAL_MOMENTS = ("redrafted_at", "submitted_at", "verified_at", "finalized_at", "applied_at", "superseded_at")
 CITED_FILE = re.compile(r"^(?P<path>[^\s:]+)(?::\d+(?:-\d+)?)?$")
 
 
@@ -728,6 +733,7 @@ def _cited_file(item: Any) -> str | None:
 
 def list_proposals(changes_root: Path) -> list[dict[str, Any]]:
     rows = []
+    replacements = {}
     for package in sorted(path for path in changes_root.iterdir() if (path / PROPOSAL_FILE).is_file()):
         try:
             proposal = load_json(package / PROPOSAL_FILE)
@@ -744,6 +750,13 @@ def list_proposals(changes_root: Path) -> list[dict[str, Any]]:
             "registry_updates": len(updates) if isinstance(updates, list) else 0,
             "supersedes": proposal.get("supersedes", []),
         })
+        if completed_identifier(proposal.get("superseded_by")):
+            replacements[len(rows) - 1] = proposal["superseded_by"]
+    known = {row.get("proposal_id") for row in rows}
+    for index, replacement in replacements.items():
+        rows[index]["superseded_by"] = replacement
+        if replacement not in known:
+            rows[index]["superseded_by_unknown"] = True
     return rows
 
 

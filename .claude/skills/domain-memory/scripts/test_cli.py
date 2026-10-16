@@ -707,6 +707,11 @@ class CliTest(RegistryTestCase):
             ("a", {"proposal_id": "a", "status": "draft", "registry_updates": []}),
             ("b", {"proposal_id": "b", "status": "applied", "submitted_at": "2026-10-01T00:00:00Z",
                    "applied_at": "2026-10-02T00:00:00Z", "registry_updates": [{}], "supersedes": ["a"]}),
+            ("c", {"proposal_id": "c", "status": "superseded", "submitted_at": "2026-10-01T00:00:00Z",
+                   "superseded_at": "2026-10-03T00:00:00Z", "superseded_by": "b"}),
+            ("d", {"proposal_id": "d", "status": "superseded", "superseded_at": "2026-10-04T00:00:00Z",
+                   "superseded_by": "nosuch"}),
+            ("e", {"proposal_id": "e", "status": "draft", "redrafted_at": "2026-10-05T00:00:00Z"}),
         ):
             (changes / name).mkdir(parents=True)
             (changes / name / "domain-change-proposal.json").write_text(json.dumps(fields), encoding="utf-8")
@@ -715,7 +720,13 @@ class CliTest(RegistryTestCase):
         self.assertEqual(
             [{"package": "a", "proposal_id": "a", "status": "draft", "last_changed_at": None, "registry_updates": 0, "supersedes": []},
              {"package": "b", "proposal_id": "b", "status": "applied", "last_changed_at": "2026-10-02T00:00:00Z",
-              "registry_updates": 1, "supersedes": ["a"]}],
+              "registry_updates": 1, "supersedes": ["a"]},
+             {"package": "c", "proposal_id": "c", "status": "superseded", "last_changed_at": "2026-10-03T00:00:00Z",
+              "registry_updates": 0, "supersedes": [], "superseded_by": "b"},
+             {"package": "d", "proposal_id": "d", "status": "superseded", "last_changed_at": "2026-10-04T00:00:00Z",
+              "registry_updates": 0, "supersedes": [], "superseded_by": "nosuch", "superseded_by_unknown": True},
+             {"package": "e", "proposal_id": "e", "status": "draft", "last_changed_at": "2026-10-05T00:00:00Z",
+              "registry_updates": 0, "supersedes": []}],
             json.loads(result.stdout),
         )
 
@@ -754,7 +765,10 @@ class CliTest(RegistryTestCase):
         result = self.run_cli(
             "verify-evidence", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo), "--strict"
         )
-        self.assertEqual(1, result.returncode)
+        self.assertEqual(
+            (1, "verify-evidence failed: 1 shifted citations; run recite on each to cite its current lines"),
+            (result.returncode, result.stderr.strip()),
+        )
 
     def test_strict_passes_when_every_citation_is_current(self) -> None:
         self.seed_two_cited_rules()

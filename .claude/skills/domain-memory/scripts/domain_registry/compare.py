@@ -64,13 +64,14 @@ def compare_registries(
     return report
 
 
-def _overall(results: Any, left_out: int = 0) -> dict[str, float | None]:
+def _overall(results: Any, left_out: int = 0) -> dict[str, int | float | None]:
     results = list(results)
-    return _scores(
-        sum(len(result["matched"]) for result in results) - left_out,
-        sum(result["gold"] for result in results) - left_out,
-        sum(result["candidate"] for result in results) - left_out,
-    )
+    counts = {
+        "matched": sum(len(result["matched"]) for result in results) - left_out,
+        "gold": sum(result["gold"] for result in results) - left_out,
+        "candidate": sum(result["candidate"] for result in results) - left_out,
+    }
+    return {**counts, **_scores(counts["matched"], counts["gold"], counts["candidate"])}
 
 
 def _within(records: dict[str, list[dict[str, Any]]], contexts: set[str]) -> dict[str, list[dict[str, Any]]]:
@@ -112,7 +113,7 @@ def _matched(
         taken_candidates.add(index)
         taken_gold.add(gold_index)
         pair = {"candidate": candidate[index]["id"], "gold": gold[gold_index]["id"], "by": SCORE_LABELS[score[0]]}
-        if _same_excerpts(gold[gold_index], candidate[index]):
+        if asset != "contexts" and _same_excerpts(gold[gold_index], candidate[index]):
             pair["copied_evidence"] = True
         matched.append(pair)
     missed = [gold_index for gold_index in range(len(gold)) if gold_index not in taken_gold]

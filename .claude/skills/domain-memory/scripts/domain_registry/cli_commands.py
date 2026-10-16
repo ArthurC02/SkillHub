@@ -454,7 +454,13 @@ def handle_verify_evidence(args: argparse.Namespace) -> int:
     print_json(result)
     summary = result["summary"]
     failing = ("stale", "unhashed", "missing", "invalid", *(("shifted",) if args.strict else ()))
-    return int(any(summary[status] for status in failing))
+    found = [f"{summary[status]} {status}" for status in failing if summary[status]]
+    if found:
+        print(
+            f"verify-evidence failed: {', '.join(found)} citations; run recite on each to cite its current lines",
+            file=sys.stderr,
+        )
+    return int(bool(found))
 
 
 def handle_migrate_evidence(args: argparse.Namespace) -> int:

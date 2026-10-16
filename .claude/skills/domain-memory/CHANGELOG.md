@@ -2,6 +2,19 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.38.0
+
+### Added
+
+- `compare-registry` gives each `overall_*` score its `matched`, `gold` and `candidate` counts.
+- `redraft-proposal` lists the superseded proposal in the new draft's `supersedes` and records `redrafted_at`.
+- `list-proposals` shows a superseded proposal's `superseded_by`, flagging one that names no package, and counts redrafting and superseding in `last_changed_at`.
+- A failing `verify-evidence` names the failing counts on stderr.
+
+### Changed
+
+- `copied_evidence` no longer marks Context pairs: both sides naturally cite the package documentation, and Contexts already pair by path.
+
 ## 0.37.0
 
 ### Added

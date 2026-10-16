@@ -186,7 +186,7 @@ class ScopeTest(unittest.TestCase):
     def test_a_scope_no_candidate_context_pairs_with_has_no_attempted_score(self) -> None:
         gold = registry(contexts=[ORDERS, BILLING], rules=[{"id": "bill-rule", "contexts": ["billing"]}])
         candidate = registry(contexts=[ORDERS], rules=[{"id": "order-rule", "contexts": ["orders"]}])
-        self.assertEqual({"precision": None, "recall": None, "f1": None},
+        self.assertEqual({"matched": 0, "gold": 0, "candidate": 0, "precision": None, "recall": None, "f1": None},
                          compare_registries(gold, candidate, ["billing"])["overall_attempted"])
 
     def test_an_unscoped_comparison_reports_no_scope(self) -> None:
@@ -226,9 +226,15 @@ class CopiedEvidenceTest(unittest.TestCase):
             {"id": "extra", "contexts": ["orders"]}])
         result = compare_registries(gold, candidate)
         self.assertEqual(
-            (1, {"precision": 2 / 3, "recall": 2 / 3, "f1": 2 / 3}),
+            (1, {"matched": 2, "gold": 3, "candidate": 3, "precision": 2 / 3, "recall": 2 / 3, "f1": 2 / 3}),
             (result["copied_matches"], result["overall_independent"]),
         )
+
+    def test_contexts_citing_the_same_package_doc_are_not_flagged(self) -> None:
+        evidence = [{"path": "src/orders/doc.go", "excerpt_sha256": "1" * 64}]
+        result = asset_result(registry(contexts=[{**ORDERS, "evidence": evidence}]),
+                              registry(contexts=[{**ORDERS, "id": "sales", "evidence": evidence}]), "contexts")
+        self.assertEqual([{"candidate": "sales", "gold": "orders", "by": "path"}], result["matched"])
 
     def test_a_pair_without_hashed_excerpts_is_not_flagged(self) -> None:
         self.assertNotIn("copied_evidence", self.pair(cited("src/orders/a.py"), cited("src/orders/a.py")))
@@ -251,12 +257,14 @@ class ScoreTest(unittest.TestCase):
     def test_the_overall_score_counts_every_asset(self) -> None:
         gold = registry(contexts=[ORDERS], rules=[{"id": "r"}])
         candidate = registry(contexts=[ORDERS], rules=[{"id": "other"}])
-        self.assertEqual({"precision": 0.5, "recall": 0.5, "f1": 0.5}, compare_registries(gold, candidate)["overall"])
+        self.assertEqual({"matched": 1, "gold": 2, "candidate": 2, "precision": 0.5, "recall": 0.5, "f1": 0.5},
+                         compare_registries(gold, candidate)["overall"])
 
     def test_the_attempted_score_leaves_out_assets_either_registry_never_extracted(self) -> None:
         gold = registry(contexts=[ORDERS], rules=[{"id": "r"}], events=[{"id": "e"}])
         candidate = registry(contexts=[ORDERS], rules=[{"id": "other"}], vocabulary=[{"id": "t"}])
-        self.assertEqual({"precision": 0.5, "recall": 0.5, "f1": 0.5}, compare_registries(gold, candidate)["overall_attempted"])
+        self.assertEqual({"matched": 1, "gold": 2, "candidate": 2, "precision": 0.5, "recall": 0.5, "f1": 0.5},
+                         compare_registries(gold, candidate)["overall_attempted"])
 
 
 class CompareCommandTest(RegistryTestCase):

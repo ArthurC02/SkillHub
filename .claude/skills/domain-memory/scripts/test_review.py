@@ -40,6 +40,7 @@ from domain_registry.hitl import (
     supersede_proposal,
     verify_proposal,
 )
+from domain_registry.common import iso_timestamp
 from domain_registry.git_hooks import governance_readiness
 from domain_registry.revision import (
     registry_digest,
@@ -987,6 +988,7 @@ class ReviewTest(RegistryTestCase):
              proposal["base_registry_revision"]),
         )
         self.assertFalse([key for key in proposal if key.startswith("superseded")])
+        self.assertEqual((["PRO-1"], True), (proposal["supersedes"], iso_timestamp(proposal["redrafted_at"])))
         for name in ("domain-change-proposal.json", "test-obligations.json", "evidence-bundle.json"):
             with self.subTest(name=name):
                 document = json.loads((redraft / name).read_text(encoding="utf-8"))
