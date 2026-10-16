@@ -69,6 +69,7 @@ export function CatalogSkillCard({
         <label className="catalog-card-compare">
           <input
             type="checkbox"
+            aria-label={`將「${hit.name}」加入比較`}
             checked={checked}
             disabled={!checked && atLimit}
             aria-describedby={!checked && atLimit ? "compare-limit" : undefined}

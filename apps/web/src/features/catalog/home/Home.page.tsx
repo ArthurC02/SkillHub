@@ -1,5 +1,5 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useLayoutEffect, useState, type FormEvent } from "react";
 import { useCatalog, useCorrectedSkillSearch } from "../../skill";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useGenerateEntryPoint } from "../../creation";
@@ -43,12 +43,19 @@ function useSearchDraft(query: string | undefined) {
   return [draft, setDraft] as const;
 }
 
+function revealFocusedComparison() {
+  document
+    .querySelector('.home .search-results input[type="checkbox"]:focus')
+    ?.scrollIntoView({ block: "nearest" });
+}
+
 export function Home() {
   const search = useSearch({ from: "/" });
   const navigate = useNavigate({ from: "/" });
   const [draft, setDraft] = useSearchDraft(search.q);
   const [queryError, setQueryError] = useState("");
   const selected = parseSelection(search.compare);
+  useLayoutEffect(revealFocusedComparison, [search.compare]);
   const generateExposed = useGenerateEntryPoint();
   const loggedIn = !!useMe().data;
 
@@ -112,6 +119,7 @@ export function Home() {
         return { ...prev, compare: next.length ? next.join(",") : undefined };
       },
       replace: true,
+      resetScroll: false,
     });
   }
 
