@@ -137,10 +137,27 @@ export interface SkillImportLimits {
 export function useSkillImportLimits() {
   return useQuery({
     queryKey: queryKeys.skills.importLimits,
-    queryFn: async () => {
-      const limits = await apiFetch<SkillImportLimits>("/skills/import/limits");
-      if (!Array.isArray(limits?.allowed_hosts)) throw new Error("Invalid import limits");
-      return limits;
-    },
+    queryFn: getSkillImportLimits,
   });
+}
+
+export async function getSkillImportLimits() {
+  const limits = await apiFetch<SkillImportLimits>("/skills/import/limits");
+  if (
+    !limits ||
+    ![
+      limits.max_zip_bytes,
+      limits.max_unpacked_bytes,
+      limits.max_files,
+      limits.max_file_bytes,
+      limits.max_path_depth,
+      limits.max_skills_per_import,
+    ].every(Number.isSafeInteger) ||
+    limits.max_skills_per_import < 1 ||
+    !Array.isArray(limits.allowed_hosts) ||
+    !limits.allowed_hosts.every((host) => typeof host === "string") ||
+    typeof limits.note !== "string"
+  )
+    throw new Error("Invalid import limits");
+  return limits;
 }

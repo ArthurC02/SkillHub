@@ -1,10 +1,10 @@
 import { StrictMode, act, type Ref } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { VersionUpload } from "./version/components/VersionUpload";
-import { SKILL_VERSIONS, platformResponse } from "../../testing/fixtures/platform";
+import { IMPORT_LIMITS, SKILL_VERSIONS, platformResponse } from "../../testing/fixtures/platform";
 import { queryKeys } from "../../core/api/queryKeys";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
@@ -85,6 +85,7 @@ function stubOwner(uploadResponse: () => Promise<Response>) {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
     const path = url.split("?")[0];
     if (path === "/me") return json(platformResponse("/me").body);
+    if (path === "/skills/import/limits") return json(IMPORT_LIMITS);
     if (path.endsWith("/versions") && init?.method === "POST") return uploadResponse();
     if (path.endsWith("/versions")) return json(SKILL_VERSIONS);
     return json({ error: "not found" }, 404);
@@ -162,17 +163,80 @@ test("丙-151: 422 兩條 finding 的中文訊息都渲染，且不出現 Unproc
   expect(text()).not.toContain("Unprocessable Entity");
 });
 
-test("丙-151: 檔案輸入框之前有匯入頁同樣的規則句", async () => {
+test("version upload shows the deployment archive limits before choosing a file", async () => {
   stubOwner(() => json({ error: "unused" }, 500));
   await render();
 
   const rule = container.querySelector("ul.note");
   expect(rule, "找不到規則句的 <ul class=note>").not.toBeNull();
   expect(rule!.textContent).toContain("SKILL.md");
-  expect(rule!.textContent).toContain("大小上限見拒絕訊息");
+  await waitFor(() => text().includes("zip 最大 10.0 MB"));
+  expect(rule!.textContent).toContain("解壓後總量最大 100.0 MB");
+  expect(rule!.textContent).toContain("最多 100 個檔案");
+  expect(rule!.textContent).toContain("單一檔案最大 1.0 MB");
+  expect(rule!.textContent).toContain("路徑最深 8 層");
 
   const input = container.querySelector("#skill-version-file")!;
   expect(rule!.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+test.each([
+  ["server failure", 503, { error: "unavailable" }],
+  ["unreadable ceiling", 200, { ...IMPORT_LIMITS, max_zip_bytes: null }],
+])(
+  "a %s hides cached upload limits and blocks even a direct submit",
+  async (_label, status, body) => {
+    let writes = 0;
+    stubOwner(() => {
+      writes++;
+      return json({ error: "not submitted" }, 500);
+    });
+    queryClient.setQueryData(queryKeys.skills.importLimits, IMPORT_LIMITS);
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", (input: string, init?: RequestInit) =>
+      String(input).endsWith("/skills/import/limits")
+        ? json(body, status as number)
+        : originalFetch(input, init),
+    );
+    await render();
+    await waitFor(() => text().includes("暫時無法讀取上傳限制"));
+    expect(text()).not.toContain("zip 最大");
+    expect(text()).toContain("上傳限制尚未確認；請先重新讀取，再上傳新版本。");
+    expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(
+      true,
+    );
+    const input = container.querySelector<HTMLInputElement>("#skill-version-file")!;
+    Object.defineProperty(input, "files", { value: [new File(["draft"], "draft.zip")] });
+    await act(async () => input.dispatchEvent(new Event("change", { bubbles: true })));
+    await act(async () =>
+      container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true })),
+    );
+    expect(writes).toBe(0);
+  },
+);
+
+test("a paused upload limits reread withholds cached rules and blocks submission", async () => {
+  stubOwner(() => json({ error: "not submitted" }, 500));
+  await render();
+  await waitFor(
+    () => container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled === false,
+  );
+  try {
+    await act(async () => {
+      onlineManager.setOnline(false);
+      void queryClient.refetchQueries({ queryKey: queryKeys.skills.importLimits });
+    });
+    await waitFor(() => text().includes("等待連線以讀取上傳限制…"));
+    expect(text()).not.toContain("zip 最大");
+    expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(
+      true,
+    );
+    expect(queryClient.getQueryState(queryKeys.me)?.fetchStatus).toBe("idle");
+    expect(queryClient.getQueryState(queryKeys.skills.versions(SKILL))?.fetchStatus).toBe("idle");
+  } finally {
+    await queryClient.cancelQueries();
+    onlineManager.setOnline(true);
+  }
 });
 
 test("丙-151: 413 印「檔案超過上限，請縮小套件再上傳。」", async () => {

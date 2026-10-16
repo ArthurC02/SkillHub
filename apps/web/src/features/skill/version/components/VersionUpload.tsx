@@ -3,6 +3,9 @@ import { Link } from "@tanstack/react-router";
 import { useMe } from "../../../../core/session/me.service";
 import { SessionNotReadyError } from "../../../../core/api/client";
 import type { UploadResult } from "../../../../core/api/types";
+import { bytes } from "../../../../shared/format";
+import { ReadFailure } from "../../../../shared/ui/LoginRequired";
+import { useSkillImportLimits } from "../../../creation";
 import { useSkillVersions } from "../../skills.service";
 import { isVersionUploadResultUnknown, useSaveSkillVersion } from "../../versions.service";
 import { VersionUploadFailure } from "./VersionUploadFailure";
@@ -22,13 +25,16 @@ export function VersionUpload({
   const versions = useSkillVersions(skillId);
   const me = useMe();
   const save = useSaveSkillVersion(skillId);
+  const limits = useSkillImportLimits();
   const [file, setFile] = useState<File>();
   const [unknownUpload, setUnknownUpload] = useState<UploadFailure>();
   const identityConfirmed = me.isSuccess && me.fetchStatus === "idle";
   const confirmed =
-    identityConfirmed && contextConfirmed && versions.isSuccess && versions.fetchStatus === "idle";
+    contextConfirmed &&
+    [me, versions, limits].every((query) => query.isSuccess && query.fetchStatus === "idle");
   const failedUpload = readUploadFailure(save, unknownUpload);
   const readStatusId = `version-upload-${skillId}-read-status`;
+  const titleId = `version-upload-${skillId}-title`;
 
   if (
     !versions.data?.versions.length ||
@@ -39,21 +45,13 @@ export function VersionUpload({
 
   return (
     <section>
-      <h3>上傳新版本</h3>
+      <h3 id={titleId} tabIndex={-1}>
+        上傳新版本
+      </h3>
       <p className="note" data-role="teaching">
         把你改過的套件上傳成這個小工具的新版本；舊版本原封不動留著。
       </p>
-      <ul className="note">
-        <li>
-          大小上限見拒絕訊息——平台強制 zip 與解壓後的兩個上限，但這一頁還讀不到它們的值，
-          所以這裡不印一個沒有來源的數字。
-        </li>
-        <li>
-          zip 的最上層（或單一頂層資料夾）要有 <code>SKILL.md</code>，而且它的 frontmatter 要有{" "}
-          <code>name</code> 與 <code>description</code>——名稱、描述與 License 都從那裡讀，
-          不必在這一頁手打。
-        </li>
-      </ul>
+      <VersionUploadRules limits={limits} titleId={titleId} />
       <form
         className="version-upload"
         onSubmit={(event) => {
@@ -92,9 +90,11 @@ export function VersionUpload({
       </form>
       {!confirmed && (
         <p id={readStatusId} role="status">
-          {identityConfirmed
-            ? "小工具與版本脈絡尚未確認；請先重新讀取，再上傳新版本。"
-            : "登入狀態尚未確認；請先在頁首確認，再上傳新版本。"}
+          {!identityConfirmed
+            ? "登入狀態尚未確認；請先在頁首確認，再上傳新版本。"
+            : !limits.isSuccess || limits.fetchStatus !== "idle"
+              ? "上傳限制尚未確認；請先重新讀取，再上傳新版本。"
+              : "小工具與版本脈絡尚未確認；請先重新讀取，再上傳新版本。"}
         </p>
       )}
       {save.isError && (
@@ -110,6 +110,46 @@ export function VersionUpload({
         <VersionUploadSuccess result={save.data} fileName={save.variables?.name} />
       )}
     </section>
+  );
+}
+
+function VersionUploadRules({
+  limits,
+  titleId,
+}: {
+  limits: ReturnType<typeof useSkillImportLimits>;
+  titleId: string;
+}) {
+  const rules = limits.isSuccess && limits.fetchStatus === "idle" ? limits.data : undefined;
+  return (
+    <>
+      {limits.fetchStatus !== "idle" && (
+        <p role="status">
+          {limits.fetchStatus === "paused" ? "等待連線以讀取上傳限制…" : "正在讀取上傳限制…"}
+        </p>
+      )}
+      <ReadFailure
+        error={limits.error}
+        what="上傳限制"
+        retry={() => void limits.refetch()}
+        retrying={limits.fetchStatus !== "idle"}
+        focusTarget={titleId}
+      />
+      <ul className="note">
+        {rules && (
+          <li>
+            平台限制：zip 最大 {bytes(rules.max_zip_bytes)}，解壓後總量最大{" "}
+            {bytes(rules.max_unpacked_bytes)}；最多 {rules.max_files} 個檔案、單一檔案最大{" "}
+            {bytes(rules.max_file_bytes)}、路徑最深 {rules.max_path_depth} 層。
+          </li>
+        )}
+        <li>
+          zip 的最上層（或單一頂層資料夾）要有 <code>SKILL.md</code>，而且它的 frontmatter 要有{" "}
+          <code>name</code> 與 <code>description</code>——名稱、描述與 License 都從那裡讀，
+          不必在這一頁手打。
+        </li>
+      </ul>
+    </>
   );
 }
 
