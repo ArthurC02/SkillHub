@@ -500,6 +500,19 @@ func TestAServerGivenNoTokenRefusesEveryRequest(t *testing.T) {
 	}
 }
 
+func TestATokenSentWithoutTheBearerSchemeIsRefused(t *testing.T) {
+	_, h := newServer(t)
+	for _, header := range []string{testToken, "Basic " + testToken, "bearer" + testToken} {
+		req := httptest.NewRequest(http.MethodGet, "/capability", nil)
+		req.Header.Set("Authorization", header)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("Authorization %q: got %d, want 401", header, rec.Code)
+		}
+	}
+}
+
 func TestCreateRefusesLimitsItCannotEnforce(t *testing.T) {
 	_, h := newServer(t)
 	req := runRequest()
