@@ -1,10 +1,12 @@
 import { Link } from "@tanstack/react-router";
+import { useRef, useState } from "react";
 import { canRetainLoadedPage } from "../../core/api/client";
 import { useFeatureAvailability } from "../../shared/featureAvailability";
 import { ListFreshness } from "../../shared/ui/ListFreshness";
 import { Loading } from "../../shared/ui/Loading";
 import { ReadFailure } from "../../shared/ui/LoginRequired";
 import { Timestamp } from "../../shared/ui/Timestamp";
+import { useContinuationFocus } from "../../shared/ui/useContinuationFocus";
 import {
   activityUnavailable,
   useActivity,
@@ -59,18 +61,19 @@ export function Activity() {
   const showItems =
     Boolean(pages) && (!activity.error || items.length > 0) && (!busy || items.length > 0);
   const inProgress = items.some((item) => item.classification === "in_progress");
+  const { loadMore, bindTarget, row: continuationRow } = useActivityPagination(activity, items);
 
   return (
     <section className="activity-page">
       <header className="activity-hero">
         <div>
           <p className="activity-eyebrow">Workspace activity</p>
-          <h1 id="activity-heading" tabIndex={-1}>
+          <h1 id="activity-heading" tabIndex={-1} ref={activity.error ? bindTarget : undefined}>
             活動
           </h1>
           <p>把正在執行、等待決定與最近完成的工作放在同一條可信時間線。</p>
         </div>
-        {pages && !activity.error && (!busy || items.length > 0) && (
+        {showItems && !activity.error && (
           <ActivitySummary items={items} hasMore={activity.hasNextPage} />
         )}
       </header>
@@ -116,6 +119,7 @@ export function Activity() {
                         key={`${item.kind}:${item.source_id}`}
                         item={item}
                         creationExposed={availability.creation}
+                        focusRef={item === continuationRow ? bindTarget : undefined}
                       />
                     ))}
                   </ol>
@@ -129,13 +133,41 @@ export function Activity() {
         <button
           type="button"
           disabled={activity.isFetchingNextPage || paused}
-          onClick={() => void activity.fetchNextPage()}
+          ref={bindTarget}
+          onClick={loadMore}
         >
           {paused ? "等待連線…" : activity.isFetchingNextPage ? "載入中…" : "載入更多活動"}
         </button>
       )}
     </section>
   );
+}
+
+function useActivityPagination(activity: ReturnType<typeof useActivity>, items: ActivityItem[]) {
+  const [request, setRequest] = useState({ sequence: 0, pageCount: 0, itemCount: 0 });
+  const target = useRef<HTMLElement>(null);
+  const available =
+    request.sequence > 0 &&
+    activity.fetchStatus === "idle" &&
+    Boolean(activity.error || (activity.data?.pages.length ?? 0) > request.pageCount);
+  useContinuationFocus(request.sequence ? String(request.sequence) : undefined, available, target);
+  return {
+    loadMore: () => {
+      setRequest((previous) => ({
+        sequence: previous.sequence + 1,
+        pageCount: activity.data?.pages.length ?? 0,
+        itemCount: items.length,
+      }));
+      void activity.fetchNextPage();
+    },
+    bindTarget: (element: HTMLElement | null) => {
+      target.current = element;
+    },
+    row:
+      request.sequence > 0 && !activity.hasNextPage && !activity.error
+        ? (items[request.itemCount] ?? items.at(-1))
+        : undefined,
+  };
 }
 
 function ActivityReadStatus({
@@ -212,7 +244,9 @@ function ActivitySummary({ items, hasMore }: { items: ActivityItem[]; hasMore: b
           <dd>{count("in_progress")}</dd>
         </div>
       </dl>
-      <p className="note">{hasMore ? "尚有更多活動" : "已載入全部活動"}</p>
+      <p className="note" role="status">
+        {hasMore ? "尚有更多活動" : "已載入全部活動"}
+      </p>
     </div>
   );
 }
@@ -235,9 +269,21 @@ function UnavailableSources({
   );
 }
 
-function ActivityRow({ item, creationExposed }: { item: ActivityItem; creationExposed: boolean }) {
+function ActivityRow({
+  item,
+  creationExposed,
+  focusRef,
+}: {
+  item: ActivityItem;
+  creationExposed: boolean;
+  focusRef?: (element: HTMLLIElement | null) => void;
+}) {
   return (
-    <li data-classification={item.classification}>
+    <li
+      data-classification={item.classification}
+      ref={focusRef}
+      tabIndex={focusRef ? -1 : undefined}
+    >
       <span className="activity-rail" aria-hidden="true">
         <span />
       </span>
