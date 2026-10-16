@@ -1,0 +1,128 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "patrol-rules",
+  "proposal_id": "patrol-rules",
+  "registry_revision": {
+    "observed_commit": "a4fd3f9431f5150a3d119ac1cf7ebd41c6e35ea0",
+    "registry_digest": "sha256:b93fee700ade6c94fa889bc019ccf88a77cda36aea83c16bcdf32d8b487f9033"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "purge-refuses-missing-step",
+    "mutated_protection": "the step.purge nil check in requirePurgeSteps",
+    "failing_evidence": "registry counterfactual: killed; purge_steps_test.go:54: purge without packaging = <nil>, want a refusal naming it. The step.list and WorkspaceQuiescent checks, the revokeLostKey call and both live-attempt timeout branches were each killed the same way by their obligations' tests.",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/creator/workspace/purge.go",
+    "apps/platform/internal/trial/execution/reassign.go",
+    "apps/platform/internal/trial/execution/job.go",
+    "apps/platform/internal/trial/execution/supervisor.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "purge-refuses-missing-step",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestAnAccountPurgeMissingAnyOwnersStepRefusesToStart ./internal/creator/workspace/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:2d5546650efdeced5759bf7511ae54a0ed99dd5440eae45bc465685235bb988a",
+      "finished_at": "2026-10-16T16:30:29.012771Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "purge-removes-graders",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestAccountPurgeRemovesTheWorkspacesGradersAndKeepsPlatformOnes ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:9028801400a512a4d42ad5587b481aba2ce1eff9e9dade05554dab5fbba50bb5",
+      "finished_at": "2026-10-16T16:30:38.736407Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "lost-key-revoked",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestALostAttemptsKeyIsRevokedBeforeTheNextAttemptGetsOne ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:9ec64d7bf98191a6a79f212a51f5a6a809ac557699405cd24b7cf675672f82fa",
+      "finished_at": "2026-10-16T16:30:49.835787Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "supervisor-timeout-ends-attempt",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestSupervisorTimesOutARunThatOutlivedItsWallClock ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:86af0916a9c3a96ae33b442539b42785b4c092550250548f4866b5ae7a5f93b2",
+      "finished_at": "2026-10-16T16:31:03.214581Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "job-timeout-ends-attempt",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestADriverResumingADispatchedRunCountsItsWallClockFromTheDispatch ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:d019df99d1ae2d34a4f7a2058a16a426f65be51b98490e6ad0f56f792e8b9358",
+      "finished_at": "2026-10-16T16:31:15.114666Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-purge-refuses-missing-step",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestAnAccountPurgeMissingAnyOwnersStepRefusesToStart ./internal/creator/workspace/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ced64b231ada3cec8b3e0b5e51e35ef8b12601df9c40fa1588b33451885825d3",
+      "finished_at": "2026-10-16T16:31:25.872128Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-lost-key-revoked",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestALostAttemptsKeyIsRevokedBeforeTheNextAttemptGetsOne ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:3b1d0ee26dfda1b5925e13eaf0e358c19b092dc2dc687bd0dba9df8691aaebbf",
+      "finished_at": "2026-10-16T16:31:37.518422Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-supervisor-timeout-ends-attempt",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestSupervisorTimesOutARunThatOutlivedItsWallClock ./internal/entrypoint/api/apiserver/\r",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:5404207ee635d864476b1520aead0a856fb20cd494e05f48a428c81fee84d943",
+      "finished_at": "2026-10-16T16:31:50.816976Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:f97927ff1a2c49ffc00e87e9c6bd37ccb2bf4ea74ae3712cc77b14754453028c",
+      "finished_at": "2026-10-16T16:32:05.501029Z"
+    },
+    {
+      "obligation_id": "package-valid",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py validate-change-package --package-root docs/domain-memory/changes/patrol-rules-2026-10-17 --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:f59ed0f5e58f24af697fc460db7a190345b22c6e6c8a2fdbf184d0f488d61a0f",
+      "finished_at": "2026-10-16T16:32:06.375518Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

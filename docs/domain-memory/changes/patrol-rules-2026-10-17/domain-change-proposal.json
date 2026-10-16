@@ -1,0 +1,188 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "patrol-rules",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "patrol-rules",
+  "status": "submitted",
+  "change_classification": "material",
+  "submitted_at": "2026-10-16T16:32:07.529090Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "a4fd3f9431f5150a3d119ac1cf7ebd41c6e35ea0",
+    "registry_digest": "sha256:b93fee700ade6c94fa889bc019ccf88a77cda36aea83c16bcdf32d8b487f9033"
+  },
+  "affected_contexts": [
+    "identity",
+    "run"
+  ],
+  "rule_ids": [
+    "account-purge-runs-every-owners-step-or-none",
+    "a-lost-attempts-model-key-is-revoked-before-reassignment",
+    "a-timed-out-run-ends-its-live-attempt"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Run owns attempt lifecycle and model key use; identity owns the account purge and runs each owner's step without reading their data.",
+    "evidence": [
+      "apps/platform/internal/trial/execution/supervisor.go:107-112",
+      "apps/platform/internal/creator/workspace/purge.go:78-99"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: owners supply purge hooks to identity through the composition root; run calls the model gateway through its ModelGateway port.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/creator/workspace/purge.go:47-63",
+      "apps/platform/internal/trial/execution/reassign.go:92-103"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "These behaviors were fixed and tested during the architecture patrol but were not in the Registry, so the next Agent could not find them by term."
+    ],
+    "decision": "Record the three enforced behaviors as reviewed rules citing the enforcing code; no code change beyond the purge refusal test.",
+    "invariants_preserved": [
+      "A terminal Run never transitions again.",
+      "Identity never reads another owner's tables."
+    ],
+    "rejected_alternatives": [
+      "Recording the purge as one interaction per owner only: it names who collaborates, not that the purge is all-or-nothing."
+    ],
+    "proof_obligations": [
+      "purge-refuses-missing-step",
+      "purge-removes-graders",
+      "lost-key-revoked",
+      "supervisor-timeout-ends-attempt",
+      "job-timeout-ends-attempt",
+      "rule-purge-refuses-missing-step",
+      "rule-lost-key-revoked",
+      "rule-supervisor-timeout-ends-attempt"
+    ],
+    "counterfactual_check": "Remove each guard in requirePurgeSteps, the revokeLostKey call, and the live-attempt branch in execute and superviseRun; the named test for each must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "account-purge-runs-every-owners-step-or-none",
+        "statement": "Purging a deleted account runs the purge step of every Context that keeps data for its workspace (analytics, testlab, run, packaging, creation, eval, publishing, registry, ingest) together with the object listings of testlab, run and packaging; when any of them is missing, the purge refuses to start instead of purging part of the account.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "An account past its grace period has its graders, creation sessions, publications and skills removed in one purge.",
+          "A deployment wired without the eval purge step refuses every account purge and names eval as missing.",
+          "Registry's step runs before ingest's, so import sources no remaining version points at are removed in the same purge."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 47,
+              "end": 63
+            },
+            "excerpt_sha256": "sha256:d588cbf6256bba6e28af204b6b7465dbf9cd229c111fe73349df0f3a5f3b4f15"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 78,
+              "end": 99
+            },
+            "excerpt_sha256": "sha256:b2cddd12981e24193eb23240c8570879ad52e8cb7756935e9233f978188ca0c3"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-lost-attempts-model-key-is-revoked-before-reassignment",
+        "statement": "When a Run's attempt is lost with its provider, the platform asks the model gateway to revoke that attempt's model key before it dispatches the next attempt, so the lost sandbox cannot keep spending on a key the Run no longer uses. A revocation the gateway refuses is counted and left to cleanup, which revokes it again.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A provider that stops answering mid-run: the attempt ends provider_lost, its key is revoked, and a new attempt receives a new key.",
+          "The gateway is unreachable at revocation time: the reassignment still proceeds and the cleanup pass revokes the key later."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/reassign.go",
+            "lines": {
+              "start": 73,
+              "end": 77
+            },
+            "excerpt_sha256": "sha256:9a952ee3fef2b37747a2894803666dbb6775e370c1c9a17611bc0248289b34e8"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/reassign.go",
+            "lines": {
+              "start": 92,
+              "end": 103
+            },
+            "excerpt_sha256": "sha256:60410d86ddd74fc448481e494a1bb8e8cc52b17032388de8a6f3fa452e0b0547"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-timed-out-run-ends-its-live-attempt",
+        "statement": "When a Run reaches its deadline while an attempt is still live, the attempt is finished as timed out in the same step that moves the Run to timed_out, whether the deadline is noticed by the Run's own job or by the supervisor; a timed-out Run never leaves a live attempt behind.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A sandbox still running at the deadline: the Run becomes timed_out and its attempt carries the timeout error class.",
+          "A Run whose job died before its deadline: the supervisor times it out and closes the attempt the job left live."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/job.go",
+            "lines": {
+              "start": 103,
+              "end": 109
+            },
+            "excerpt_sha256": "sha256:3f1b00aec8279e0b970e2732c26c32c251d7e706385577f4ee6f04bacbe15336"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/supervisor.go",
+            "lines": {
+              "start": 107,
+              "end": 112
+            },
+            "excerpt_sha256": "sha256:67183cc4ca98ecbd7fc22fb4e6b0cb51cb14a9b8fd42cba7a81ae10bef96f200"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-16T16:32:08.394666Z",
+      "scope": "Record three enforced behaviors as reviewed rules: all-or-nothing account purge across owners, revoking a lost attempt's model key before reassignment, and a timed-out Run ending its live attempt",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "a4fd3f9431f5150a3d119ac1cf7ebd41c6e35ea0",
+        "registry_digest": "sha256:b93fee700ade6c94fa889bc019ccf88a77cda36aea83c16bcdf32d8b487f9033"
+      }
+    }
+  ]
+}

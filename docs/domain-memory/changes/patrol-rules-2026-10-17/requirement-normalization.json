@@ -1,0 +1,38 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "patrol-rules",
+  "status": "draft",
+  "intent": "Record as reviewed rules three behaviors the platform already enforces and tests: account purge is all-or-nothing across owners, a lost attempt's model key is revoked before reassignment, and a timed-out Run ends its live attempt.",
+  "actor": "coding-agent",
+  "observable_outcome": "resolve-terms and get-record return the three rules as reviewed, each citing the code that enforces it.",
+  "acceptance_criteria": [
+    {
+      "id": "purge-all-owners",
+      "statement": "Account purge removes each owner's workspace data and refuses to start when any owner's step is missing."
+    },
+    {
+      "id": "lost-key-revoked",
+      "statement": "A lost attempt's model key is revoked before the next attempt is dispatched."
+    },
+    {
+      "id": "timeout-ends-attempt",
+      "statement": "A Run timed out by its job or by the supervisor leaves no live attempt."
+    },
+    {
+      "id": "approval-externally-verifiable",
+      "statement": "The approval that makes the records reviewed is checkable outside the package."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/creator/workspace/purge.go",
+    "apps/platform/internal/trial/execution/reassign.go",
+    "apps/platform/internal/trial/execution/job.go",
+    "apps/platform/internal/trial/execution/supervisor.go"
+  ]
+}

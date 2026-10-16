@@ -1,0 +1,97 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "patrol-rules",
+  "proposal_id": "patrol-rules",
+  "obligations": [
+    {
+      "id": "purge-refuses-missing-step",
+      "source_type": "acceptance-criterion",
+      "source_id": "purge-all-owners",
+      "expected_outcome": "Unwiring any owner's step makes the purge refuse and name it.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestAnAccountPurgeMissingAnyOwnersStepRefusesToStart ./internal/creator/workspace/"
+    },
+    {
+      "id": "purge-removes-graders",
+      "source_type": "acceptance-criterion",
+      "source_id": "purge-all-owners",
+      "expected_outcome": "The purged workspace's graders are gone; platform graders stay.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestAccountPurgeRemovesTheWorkspacesGradersAndKeepsPlatformOnes ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "lost-key-revoked",
+      "source_type": "acceptance-criterion",
+      "source_id": "lost-key-revoked",
+      "expected_outcome": "The gateway is asked to revoke the lost attempt's key before a new key is minted.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestALostAttemptsKeyIsRevokedBeforeTheNextAttemptGetsOne ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "supervisor-timeout-ends-attempt",
+      "source_type": "acceptance-criterion",
+      "source_id": "timeout-ends-attempt",
+      "expected_outcome": "The supervisor's timeout finishes the live attempt as a timeout.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestSupervisorTimesOutARunThatOutlivedItsWallClock ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "job-timeout-ends-attempt",
+      "source_type": "acceptance-criterion",
+      "source_id": "timeout-ends-attempt",
+      "expected_outcome": "The job's own timeout finishes the live attempt as a timeout.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestADriverResumingADispatchedRunCountsItsWallClockFromTheDispatch ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "package-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "The package validates with current citations.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "registry validate-change-package --repo-root"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "rule-purge-refuses-missing-step",
+      "source_type": "rule",
+      "source_id": "account-purge-runs-every-owners-step-or-none",
+      "expected_outcome": "Unwiring any owner's step makes the purge refuse and name it.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run TestAnAccountPurgeMissingAnyOwnersStepRefusesToStart ./internal/creator/workspace/"
+    },
+    {
+      "id": "rule-lost-key-revoked",
+      "source_type": "rule",
+      "source_id": "a-lost-attempts-model-key-is-revoked-before-reassignment",
+      "expected_outcome": "The gateway is asked to revoke the lost attempt's key before a new key is minted.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestALostAttemptsKeyIsRevokedBeforeTheNextAttemptGetsOne ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-supervisor-timeout-ends-attempt",
+      "source_type": "rule",
+      "source_id": "a-timed-out-run-ends-its-live-attempt",
+      "expected_outcome": "The supervisor's timeout finishes the live attempt as a timeout.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestSupervisorTimesOutARunThatOutlivedItsWallClock ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}
