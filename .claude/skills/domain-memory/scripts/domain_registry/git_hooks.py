@@ -48,13 +48,19 @@ def governance_readiness(registry_root: Path, repo_root: Path) -> dict[str, obje
     return {"status": "needs-setup" if blocks else "ready", "blocks": blocks}
 
 
-def verify_git_governance(registry_root: Path, repo_root: Path, commit: str) -> list[str]:
+def verify_git_governance(registry_root: Path, repo_root: Path, commits: list[str]) -> list[str]:
     governance = review_governance(registry_root)
     if governance["verifier"] != "git-signed-commit":
         return ["Domain Memory policy does not select git-signed-commit"]
-    return verify_git_signed_commit(
-        {"commit": commit}, repo_root, registry_root, governance["authorized_signers"]
-    )
+    if not commits:
+        return ["no commit to verify"]
+    return [
+        error if commit in error else f"{commit}: {error}"
+        for commit in commits
+        for error in verify_git_signed_commit(
+            {"commit": commit}, repo_root, registry_root, governance["authorized_signers"]
+        )
+    ]
 
 
 def install_pre_push_hook(registry_root: Path, repo_root: Path, script: Path) -> Path:
@@ -95,10 +101,10 @@ def install_pre_push_hook(registry_root: Path, repo_root: Path, script: Path) ->
         f"  test \"$local_sha\" = \"{EMPTY_SHA}\" && continue\n"
         "  range=\"$local_sha --not --remotes\"\n"
         f"  test \"$remote_sha\" = \"{EMPTY_SHA}\" || range=$remote_sha..$local_sha\n"
-        "  for commit in $(git rev-list $range -- \"$memory\"); do\n"
-        "    test -n \"$py\" || py=$(python_for_tool) || exit 1\n"
-        "    \"$py\" \"$tool\" verify-git-governance --registry-root \"$memory\" --repo-root . --commit \"$commit\" || exit 1\n"
-        "  done\n"
+        "  commits=$(git rev-list $range -- \"$memory\") || exit 1\n"
+        "  test -n \"$commits\" || continue\n"
+        "  test -n \"$py\" || py=$(python_for_tool) || exit 1\n"
+        "  printf '%s\\n' \"$commits\" | \"$py\" \"$tool\" verify-git-governance --registry-root \"$memory\" --repo-root . --stdin || exit 1\n"
         "done || exit 1\n"
     )
     hook.write_text(script_text, encoding="utf-8", newline="\n")

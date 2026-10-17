@@ -2,6 +2,18 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.58.0
+
+### Added
+
+- `coverage` prints `rule_totals`: reviewed and candidate rules, Contexts without a reviewed rule, and, with Change Packages, how many reviewed rules are proven, unproven or unknown, each rule counted once.
+- `verify-git-governance --stdin` checks every commit read from standard input and prints one line for them all.
+
+### Changed
+
+- The pre-push hook verifies a push's Registry commits in one call, so a push of many signed commits prints one line, and a failing `git rev-list` stops the push instead of passing it unchecked. Reinstall it with `install-git-hitl-hook`.
+- A survived counterfactual's reason says to rerun over the whole suite when the test command selects only some tests, where a kill names the protecting test in `failing_tests`.
+
 ## 0.57.0
 
 ### Added

@@ -24,8 +24,8 @@ printf '%s\n' "$refs" | while read local_ref local_sha remote_ref remote_sha; do
   test "$local_sha" = "0000000000000000000000000000000000000000" && continue
   range="$local_sha --not --remotes"
   test "$remote_sha" = "0000000000000000000000000000000000000000" || range=$remote_sha..$local_sha
-  for commit in $(git rev-list $range -- "$memory"); do
-    test -n "$py" || py=$(python_for_tool) || exit 1
-    "$py" "$tool" verify-git-governance --registry-root "$memory" --repo-root . --commit "$commit" || exit 1
-  done
+  commits=$(git rev-list $range -- "$memory") || exit 1
+  test -n "$commits" || continue
+  test -n "$py" || py=$(python_for_tool) || exit 1
+  printf '%s\n' "$commits" | "$py" "$tool" verify-git-governance --registry-root "$memory" --repo-root . --stdin || exit 1
 done || exit 1

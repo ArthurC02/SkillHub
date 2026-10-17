@@ -826,10 +826,9 @@ def handle_verify_scm_attestation(args: argparse.Namespace) -> int:
 
 
 def handle_verify_git_governance(args: argparse.Namespace) -> int:
-    errors = verify_git_governance(
-        args.registry_root.resolve(), args.repo_root.resolve(), args.commit
-    )
-    return report_errors(errors, "Git governance is valid.")
+    commits = [args.commit] if args.commit else sys.stdin.read().split()
+    errors = verify_git_governance(args.registry_root.resolve(), args.repo_root.resolve(), commits)
+    return report_errors(errors, f"Git governance is valid for {len(commits)} commit{'' if len(commits) == 1 else 's'}.")
 
 
 def handle_install_git_hitl_hook(args: argparse.Namespace) -> int:
@@ -973,7 +972,7 @@ def handle_validate_change_package(args: argparse.Namespace) -> int:
 def handle_coverage(args: argparse.Namespace) -> int:
     root = args.registry_root.resolve()
     changes_root = _changes_root(root, args.changes_root)
-    print_json({**coverage(root), "rules_by_context": rule_coverage(root, changes_root)})
+    print_json({**coverage(root), **rule_coverage(root, changes_root)})
     if changes_root is None:
         print(f"NOTE: no Change Packages at {root / 'changes'}; pass --changes-root to count the rules a test proves.",
               file=sys.stderr)

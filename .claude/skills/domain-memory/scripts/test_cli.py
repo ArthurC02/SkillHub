@@ -583,8 +583,11 @@ class CliTest(RegistryTestCase):
             json.loads(self.run_cli(*coverage).stdout)["rules_by_context"],
         )
         applied_by(self.repo / "memory", "PRO-4", "rules/order-total")
+        unknown = json.loads(self.run_cli(*coverage).stdout)
         self.assertEqual(
-            ["order-total"], json.loads(self.run_cli(*coverage).stdout)["rules_by_context"][0]["unknown"],
+            (["order-total"], {"reviewed_rules": 1, "candidate_rules": 0, "proven": 0, "unproven": 0, "unknown": 1,
+                               "contexts_without_reviewed_rules": 0}),
+            (unknown["rules_by_context"][0]["unknown"], unknown["rule_totals"]),
         )
 
     def test_promote_candidate_adds_the_citations_it_is_given_once(self) -> None:
@@ -744,11 +747,18 @@ class CliTest(RegistryTestCase):
              "the rules a test proves."),
             (json.loads(bare.stdout)["rules_by_context"], bare.stderr.strip()),
         )
-        (self.repo / "memory" / "changes").mkdir()
         self.assertEqual(
-            [("ghost", [], []), ("ops", [], []), ("billing", [], ["c"]), ("orders", [], ["a", "c"])],
-            [(row["context"], row["proven"], row["unproven"])
-             for row in json.loads(self.run_cli("coverage", "--registry-root", memory).stdout)["rules_by_context"]],
+            {"reviewed_rules": 2, "candidate_rules": 2, "contexts_without_reviewed_rules": 2},
+            json.loads(bare.stdout)["rule_totals"],
+        )
+        (self.repo / "memory" / "changes").mkdir()
+        proved = json.loads(self.run_cli("coverage", "--registry-root", memory).stdout)
+        self.assertEqual(
+            ([("ghost", [], []), ("ops", [], []), ("billing", [], ["c"]), ("orders", [], ["a", "c"])],
+             {"reviewed_rules": 2, "candidate_rules": 2, "proven": 0, "unproven": 2, "unknown": 0,
+              "contexts_without_reviewed_rules": 2}),
+            ([(row["context"], row["proven"], row["unproven"]) for row in proved["rules_by_context"]],
+             proved["rule_totals"]),
         )
 
     def test_get_record_says_a_candidate_has_no_proving_obligation_yet(self) -> None:

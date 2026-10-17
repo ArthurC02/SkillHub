@@ -42,7 +42,7 @@ from domain_registry.hitl import (
     verify_proposal,
 )
 from domain_registry.common import iso_timestamp
-from domain_registry.git_hooks import governance_readiness
+from domain_registry.git_hooks import governance_readiness, install_pre_push_hook
 from domain_registry.revision import (
     registry_digest,
 )
@@ -425,6 +425,48 @@ class ReviewTest(RegistryTestCase):
                 {"commit": commit}, self.repo, self.repo / "docs" / "domain-memory", key["authorized_signers"]
             ),
         )
+
+    def signing_for_the_registry(self) -> None:
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            key = init_signing_key(self.repo, "probe@example.com", self.repo / "keys" / "signing-key")
+        policy_path = self.repo / "memory" / "domain-memory-policy.json"
+        policy = json.loads(policy_path.read_text(encoding="utf-8"))
+        policy["review_governance"].update(
+            verifier="git-signed-commit", trigger="git-push", authorized_signers=[key["fingerprint"]]
+        )
+        policy_path.write_text(json.dumps(policy), encoding="utf-8")
+
+    def test_one_governance_call_checks_every_commit_it_reads_and_names_the_one_that_fails(self) -> None:
+        self.signing_for_the_registry()
+        first = self.sign_a_commit_changing("memory/a.txt")
+        second = self.sign_a_commit_changing("memory/b.txt")
+        outside = self.sign_a_commit_changing("src/c.txt")
+        verify = ("verify-git-governance", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo))
+        for given, stdin, expected in (
+            (("--stdin",), f"{first}\n{second}\n", (0, "Git governance is valid for 2 commits.")),
+            (("--commit", first), None, (0, "Git governance is valid for 1 commit.")),
+            (("--stdin",), f"{first}\n{outside}\n",
+             (1, f"ERROR: {outside}: Git commit does not change Domain Memory files")),
+            (("--stdin",), "", (1, "ERROR: no commit to verify")),
+        ):
+            with self.subTest(expected[1]):
+                completed = self.run_cli(*verify, *given, stdin=stdin)
+                self.assertEqual(expected, (completed.returncode, completed.stdout.strip()))
+
+    def test_the_pre_push_hook_reports_a_push_of_several_commits_once(self) -> None:
+        self.signing_for_the_registry()
+        base = self.commit_everything("selects signed commits")
+        self.sign_a_commit_changing("memory/a.txt")
+        tip = self.sign_a_commit_changing("memory/b.txt")
+        outside = self.sign_a_commit_changing("src/c.txt")
+        hook = install_pre_push_hook(self.repo / "memory", self.repo, Path(__file__).resolve().parent / "registry_tools.py")
+        for remote, local, expected in ((base, tip, "Git governance is valid for 2 commits."), (tip, outside, "")):
+            with self.subTest(expected):
+                pushed = subprocess.run(
+                    ["sh", str(hook), "origin", "unused"], cwd=self.repo,
+                    input=f"refs/heads/main {local} refs/heads/main {remote}\n", capture_output=True, text=True, check=False,
+                )
+                self.assertEqual((0, expected), (pushed.returncode, pushed.stdout.strip()), pushed.stderr)
 
     def sign_a_commit_changing(self, relative: str) -> str:
         path = self.repo / relative

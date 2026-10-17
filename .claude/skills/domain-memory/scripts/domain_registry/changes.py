@@ -874,7 +874,7 @@ def proven_sources(changes_root: Path) -> dict[Any, set[tuple[Any, Any]]]:
     return proven
 
 
-def rule_coverage(registry_root: Path, changes_root: Path | None) -> list[dict[str, Any]]:
+def rule_coverage(registry_root: Path, changes_root: Path | None) -> dict[str, Any]:
     document = read_document(registry_root, "rules.json")
     history = review_history(registry_root)
     proven = proven_sources(changes_root) if changes_root is not None else None
@@ -883,15 +883,27 @@ def rule_coverage(registry_root: Path, changes_root: Path | None) -> list[dict[s
         for context in asset_records(registry_root, "contexts.json")
         if isinstance(context.get("id"), str)
     }
+    totals = {"reviewed_rules": 0, "candidate_rules": 0}
+    if proven is not None:
+        totals.update(dict.fromkeys(PROOF_ROWS.values(), 0))
     for rule in document.get(ASSET_KEYS["rules.json"], []):
         reviewed = record_status("rules", document, rule) == "reviewed"
+        totals["reviewed_rules" if reviewed else "candidate_rules"] += 1
+        proof = None
+        if reviewed and proven is not None:
+            found = _proven_in(proven, history.get(f"rules/{rule.get('id')}", []), ("rule", rule.get("id")))
+            proof = PROOF_ROWS[found]
+            totals[proof] += 1
         for context in rule.get("contexts") or []:
             row = rows.setdefault(context, _coverage_row(context, with_proofs=proven is not None))
             row["reviewed_rules" if reviewed else "candidate_rules"] += 1
-            if reviewed and proven is not None:
-                found = _proven_in(proven, history.get(f"rules/{rule.get('id')}", []), ("rule", rule.get("id")))
-                row[PROOF_ROWS[found]].append(rule.get("id"))
-    return sorted(rows.values(), key=lambda row: (row["reviewed_rules"], str(row["context"])))
+            if proof is not None:
+                row[proof].append(rule.get("id"))
+    totals["contexts_without_reviewed_rules"] = sum(1 for row in rows.values() if row["reviewed_rules"] == 0)
+    return {
+        "rule_totals": totals,
+        "rules_by_context": sorted(rows.values(), key=lambda row: (row["reviewed_rules"], str(row["context"]))),
+    }
 
 
 def _coverage_row(context: Any, *, with_proofs: bool) -> dict[str, Any]:

@@ -784,10 +784,11 @@ class RegistryTestCase(unittest.TestCase):
         )
         return validate(self.repo / "memory", self.repo, False)
 
-    def run_cli(self, *arguments: str) -> subprocess.CompletedProcess:
+    def run_cli(self, *arguments: str, stdin: str | None = None) -> subprocess.CompletedProcess:
         return subprocess.run(
             [sys.executable, "-m", "domain_registry.cli", *arguments],
             cwd=Path(__file__).parent,
+            input=stdin,
             capture_output=True,
             text=True,
             encoding="utf-8",

@@ -213,7 +213,9 @@ def verdict_of(broken_run: TestRun, expect: str | None = None) -> tuple[str, str
     if broken_run.passed:
         return "survived", (
             "the tests still pass with this change; either a test is missing, "
-            "or the change does not break the protection (an equivalent mutation)"
+            "or the change does not break the protection (an equivalent mutation); if the test command "
+            "selects only some tests, run it over the whole suite, where a kill names the protecting test "
+            "in failing_tests"
         )
     if BUILD_FAILURE.search(broken_run.output):
         return "inconclusive", (
