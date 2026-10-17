@@ -3,12 +3,12 @@
   "proposal_id": "ingest-base-version-rule-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "ingest-base-version-rule-2026-10-17",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T04:43:21.229600Z",
   "verified_at": "2026-10-17T04:43:31.845537Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T04:43:34.415345Z",
+  "applied_at": "2026-10-17T04:43:36.442177Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "5e5f1d269f2cdca2c8412656b1f47aeda188e4fd",
@@ -103,5 +103,9 @@
         "registry_digest": "sha256:24f5ae4cd95452d1f3e48982a448de4c9ec1463c3989cfe6c7f26bb1b25ddd87"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "f44db0e582997265804bf376217594155e04cad5",
+    "registry_digest": "sha256:630d68d676e60c06396b6ed075c81ace9b5d1a567ed63d6146824f7840d6f4c6"
+  }
 }
