@@ -14,7 +14,7 @@ from typing import Any
 
 INVOCATION = re.compile(r"registry_tools\.py[\"']?\s+([a-z][a-z0-9-]*)")
 INTERPRETER = re.compile(r"(?<![\w-])python[\d.]*(?:\.exe)?(?![\w-])")
-COMMAND_LIST = re.compile(r"\{([a-z0-9,-]+)\}")
+COMMAND_LINE = re.compile(r"^ {4}([a-z][a-z0-9-]*)(?=\s|$)", re.MULTILINE)
 FAILURE_LINE = re.compile(
     r"^(ERROR: .*|registry_tools\.py [a-z0-9-]+: error: .*|[\w.]*(?:Error|Exception): .*)$", re.MULTILINE
 )
@@ -188,10 +188,10 @@ def plugin_commands(plugin: Path) -> set[str]:
     shown = subprocess.run(
         [sys.executable, str(plugin), "--help"], capture_output=True, text=True, check=True
     )
-    found = COMMAND_LIST.search(shown.stdout)
-    if found is None:
+    found = set(COMMAND_LINE.findall(shown.stdout))
+    if not found:
         raise SystemExit(f"{plugin} --help lists no commands")
-    return set(found.group(1).split(","))
+    return found
 
 
 def main(argv: list[str] | None = None) -> int:

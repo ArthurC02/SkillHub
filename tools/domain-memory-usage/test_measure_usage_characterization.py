@@ -118,7 +118,8 @@ def test_a_signature_carries_no_path_quoted_text_digest_or_number():
 
 def test_the_plugin_help_names_its_commands():
     commands = mu.plugin_commands(PLUGIN)
-    assert {"validate", "record-test-result", "audit-attestations"} <= commands and "in" not in commands
+    assert {"validate", "record-test-result", "audit-attestations", "init-change-package"} <= commands
+    assert not {"in", "start", "command", "h"} & commands
 
 
 if __name__ == "__main__":
