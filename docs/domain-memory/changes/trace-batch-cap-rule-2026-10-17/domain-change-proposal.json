@@ -3,12 +3,12 @@
   "proposal_id": "trace-batch-cap-rule-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "trace-batch-cap-rule-2026-10-17",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T13:11:57.535092Z",
   "verified_at": "2026-10-17T13:12:04.326159Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T13:12:06.773405Z",
+  "applied_at": "2026-10-17T13:12:08.918629Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "ab65a2f2b3b51d85d5d7e150b27d01abd94e4739",
@@ -112,5 +112,9 @@
         "registry_digest": "sha256:e5b36a59e79c03d62f09c3a276923bd0b3b50673b09d33fca2b995d87fc9f4a1"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "1b322c7d37e6d1260050be5596e74fa723145c0f",
+    "registry_digest": "sha256:ff617504c51aa939a702f9c78efb77c7e06badd6d878f8d1370f609f0ac3e5c3"
+  }
 }
