@@ -3,7 +3,7 @@
   "proposal_id": "version-run-evidence",
   "proposer": "codex",
   "requirement_id": "version-run-evidence",
-  "status": "submitted",
+  "status": "superseded",
   "change_classification": "material",
   "submitted_at": "2026-09-29T02:24:01.110080Z",
   "verified_at": null,
@@ -90,5 +90,8 @@
     "public_contract"
   ],
   "open_questions": [],
-  "approvals": []
+  "approvals": [],
+  "superseded_from_status": "submitted",
+  "superseded_at": "2026-10-17T00:23:00.777827Z",
+  "superseded_reason": "The Version filter it proposed shipped in 0c55feefb on 2026-09-29. The package changes no Registry record, its developer approval was never recorded, and its boundary_decision cites docs/domain-memory/registry/contexts.json, which the move to concept files removed, so nothing remains to apply."
 }
