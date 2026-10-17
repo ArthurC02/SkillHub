@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-17T04:33:27.317410Z"
 sources:
   - resource: "apps/platform/internal/product/entitlements/retention.go#L12-17"
     excerpt_sha256: "sha256:596b19b4e090d0f1897f7939b6fdf9378f2e28bead414ca390ac8e2ea7ef1e93"
