@@ -760,10 +760,18 @@ test("EVAL-002 a suggestion that cannot be applied names the rule that blocked i
     (b) => b.textContent === "查看差異",
   );
   expect(button).toBeDefined();
+  expect(button?.getAttribute("aria-expanded")).toBe("false");
   await act(async () => button?.click());
   await waitFor(() => (container.textContent ?? "").includes("目前無法套用"));
 
+  expect(button?.getAttribute("aria-expanded")).toBe("true");
   expect(container.textContent).toContain("目標檔案已經和建議產生當時不同");
+  await act(async () => button?.click());
+  expect(button?.getAttribute("aria-expanded")).toBe("false");
+  expect(container.querySelector('[aria-label="建議差異"]')).toBeNull();
+  await act(async () => button?.click());
+  await waitFor(() => (container.textContent ?? "").includes("目前無法套用"));
+  expect(button?.getAttribute("aria-expanded")).toBe("true");
 });
 
 test("EVAL-001 an old run with no evaluation stops being asked about, and says so", async () => {

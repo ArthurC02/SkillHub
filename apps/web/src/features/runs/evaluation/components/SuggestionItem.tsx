@@ -95,7 +95,7 @@ export function SuggestionItem({
       <EvidenceList evidence={suggestion.evidence} />
 
       <p>
-        <button type="button" onClick={() => setShowDiff((v) => !v)}>
+        <button type="button" aria-expanded={showDiff} onClick={() => setShowDiff((v) => !v)}>
           {showDiff ? "收起差異" : "查看差異"}
         </button>{" "}
         <button

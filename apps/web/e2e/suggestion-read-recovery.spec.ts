@@ -80,11 +80,23 @@ for (const [kind, fault, payload] of [
             .click();
         }
         if (kind === "diff") {
-          await page.getByRole("button", { name: "查看差異", exact: true }).click();
+          const collapsed = page.getByRole("button", { name: "查看差異", exact: true });
+          await expect(collapsed).toHaveAttribute("aria-expanded", "false");
+          if (phase === "first read") await collapsed.press("Enter");
+          else await collapsed.click();
+          const expanded = page.getByRole("button", { name: "收起差異", exact: true });
+          await expect(expanded).toHaveAttribute("aria-expanded", "true");
           if (phase === "reread") {
             await expect(page.locator(".diff")).toContainText("清楚列出欄位");
-            await page.getByRole("button", { name: "收起差異", exact: true }).click();
-            await page.getByRole("button", { name: "查看差異", exact: true }).click();
+            await expanded.press("Space");
+            await expect(collapsed).toHaveAttribute("aria-expanded", "false");
+            await expect(collapsed).toBeFocused();
+            await expect(page.getByRole("region", { name: "建議差異", exact: true })).toHaveCount(
+              0,
+            );
+            await collapsed.press("Enter");
+            await expect(expanded).toHaveAttribute("aria-expanded", "true");
+            await expect(expanded).toBeFocused();
           }
         }
         await expect.poll(() => reads).toBe(failAt);
@@ -111,6 +123,10 @@ for (const [kind, fault, payload] of [
           ).toBeEnabled();
         } else {
           await expect(page.getByRole("region", { name: "建議差異", exact: true })).toBeFocused();
+          await expect(page.getByRole("button", { name: "收起差異", exact: true })).toHaveAttribute(
+            "aria-expanded",
+            "true",
+          );
           await expect(page.locator(".diff")).toContainText("清楚列出欄位");
         }
         await expect(alert).toHaveCount(0);
