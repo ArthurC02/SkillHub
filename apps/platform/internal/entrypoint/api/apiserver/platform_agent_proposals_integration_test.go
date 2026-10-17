@@ -644,7 +644,7 @@ func TestEveryMaintenanceActionPreviewsAgainstTheDatabase(t *testing.T) {
 	} {
 		t.Setenv(key, value)
 	}
-	actions := wiring.MaintenanceActions(testPool)
+	actions := wiring.MaintenanceActions(requireDB(t))
 	var jobs []string
 	for _, a := range actions {
 		job, _ := operations.MaintenanceJobOf(a.Name)
@@ -674,6 +674,7 @@ func TestEveryMaintenanceActionPreviewsAgainstTheDatabase(t *testing.T) {
 }
 
 func TestARotationPreviewCountsAnalyticsOnlyWhileAnalyticsIsCollected(t *testing.T) {
+	pool := requireDB(t)
 	for _, tc := range []struct {
 		analytics     string
 		wantAnalytics int
@@ -681,7 +682,7 @@ func TestARotationPreviewCountsAnalyticsOnlyWhileAnalyticsIsCollected(t *testing
 		t.Setenv("TRACE_RETENTION", "2160h")
 		t.Setenv("ANALYTICS_RETENTION", tc.analytics)
 		var rotate operations.Action
-		for _, a := range wiring.MaintenanceActions(testPool) {
+		for _, a := range wiring.MaintenanceActions(pool) {
 			if a.Name == operations.MaintenanceJobAction(operations.JobRotatePartitions) {
 				rotate = a
 			}
@@ -707,6 +708,7 @@ func TestARotationPreviewCountsAnalyticsOnlyWhileAnalyticsIsCollected(t *testing
 }
 
 func TestARetentionPreviewCountsWhatThePurgeThenRemoves(t *testing.T) {
+	requireDB(t)
 	ctx := context.Background()
 	const retention = 90 * 24 * time.Hour
 	for _, stmt := range []string{
