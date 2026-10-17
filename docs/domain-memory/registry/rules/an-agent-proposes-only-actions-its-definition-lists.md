@@ -1,9 +1,14 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-17T15:14:38.912433Z"
 sources:
   - resource: "apps/platform/internal/product/operations/proposals.go#L61-67"
     excerpt_sha256: "sha256:2fbf91fa908148ac1b5ae4d2b37499609071c611ba7d52bdc964eac461a4f1a3"
+  - resource: "apps/platform/internal/product/operations/proposals_test.go#L9-32"
+    excerpt_sha256: "sha256:7a56f9eeab3ab5a983fcb339c1ea49dd6a6ea47b6cf0893c8ff7a240cb0ccb12"
 ---
 A platform agent conclusion that proposes an action outside its definition's action list fails as a whole, so nothing is recorded.
 

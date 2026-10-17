@@ -1,9 +1,14 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-17T15:14:38.912433Z"
 sources:
   - resource: "apps/platform/internal/product/operations/runs.go#L51-60"
     excerpt_sha256: "sha256:8ade248d11061b21cdc5dd7b4f7a6bb6f8be2d16afa16184ca64f5477d1e9ec8"
+  - resource: "apps/platform/internal/product/operations/runs_test.go#L40-58"
+    excerpt_sha256: "sha256:10de2a505bef6708276125b8104019a709308c8eafe3872dacadf4ecb231e30b"
 ---
 A run halted while the brake is engaged stops with the brake's reason even when the agent is also disabled.
 
