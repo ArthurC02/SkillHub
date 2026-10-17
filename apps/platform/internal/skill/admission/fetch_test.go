@@ -30,17 +30,25 @@ func TestFetchRejectsDisallowedHost(t *testing.T) {
 }
 
 func TestFetchRejectsURLsThatCouldLeakCredentials(t *testing.T) {
-	f := &URLFetcher{Allowed: map[string]bool{"github.com": true}}
+	var reached atomic.Int32
+	src := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { reached.Add(1) }))
+	defer src.Close()
+	host := strings.TrimPrefix(src.URL, "http://")
+	f := &URLFetcher{Allowed: map[string]bool{host: true}, AllowInsecure: true}
 	for _, raw := range []string{
-		"https://user:secret@github.com/o/r",
-		"https://github.com/o/r?token=secret",
-		"https://github.com/o/r#secret",
+		"http://user:secret@" + host + "/o/r",
+		"http://" + host + "/o/r?token=secret",
+		"http://" + host + "/o/r#secret",
 	} {
-		if _, _, err := f.Fetch(context.Background(), raw); !errors.Is(err, ErrFetch) {
-			t.Fatalf("%s: want ErrFetch, got %v", raw, err)
+		_, _, err := f.Fetch(context.Background(), raw)
+		if !errors.Is(err, ErrFetch) || !strings.Contains(err.Error(), "不得帶帳號密碼、查詢字串或錨點") {
+			t.Errorf("%s: got %v, want the credential, query or fragment refusal", raw, err)
 		} else if strings.Contains(err.Error(), "secret") {
-			t.Fatalf("error leaked credential: %v", err)
+			t.Errorf("error leaked credential: %v", err)
 		}
+	}
+	if n := reached.Load(); n != 0 {
+		t.Errorf("the source was requested %d times; a refused URL must not be fetched", n)
 	}
 }
 
