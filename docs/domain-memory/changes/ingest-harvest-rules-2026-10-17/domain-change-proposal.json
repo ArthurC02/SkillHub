@@ -3,12 +3,12 @@
   "proposal_id": "ingest-harvest-rules-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "ingest-harvest-rules-2026-10-17",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T04:34:20.119072Z",
   "verified_at": "2026-10-17T04:35:41.495624Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T04:35:44.101299Z",
+  "applied_at": "2026-10-17T04:35:47.037316Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "dbde6f1d5b146117f327c05f4229bc7ee3412a1c",
@@ -316,5 +316,9 @@
         "registry_digest": "sha256:0bb8ed3a4b33a4100e243850775acb632ddef6823349df67eaf36a81005bfc83"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "38a6eb7e4e9890c2483c3635de15bb7152412c3a",
+    "registry_digest": "sha256:24aeac869e2cb1d70d5a865fcb76fde7a4d4d1dc9cdc68ea7bcddee3cc529978"
+  }
 }
