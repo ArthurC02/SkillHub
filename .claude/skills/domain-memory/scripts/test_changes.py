@@ -583,6 +583,18 @@ class ChangesTest(RegistryTestCase):
             ("also_covers not a list", [{**good, "also_covers": "order-total"}], ["order-total"], [],
              ["test obligation OB-1 has also_covers that is not a list of sources", "rule order-total lacks a test obligation"],
              {"OB-1"}),
+            ("also_covers naming a rule the proposal does not name",
+             [{**good, "also_covers": [{"source_type": "rule", "source_id": "no-such-rule"}]}], ["order-total"], [],
+             ["test obligation OB-1 lists rule no-such-rule in also_covers, but the proposal names no such rule; "
+              "also_covers counts only toward the acceptance criteria and the rule_ids and contract_ids the proposal names",
+              "rule order-total lacks a test obligation"], {"OB-1"}),
+            ("also_covers naming a criterion the requirement lacks",
+             [{**good, "also_covers": [{"source_type": "acceptance-criterion", "source_id": "AC-9"}]}], [], [],
+             ["test obligation OB-1 lists acceptance-criterion AC-9 in also_covers, but the proposal names no such "
+              "acceptance-criterion; also_covers counts only toward the acceptance criteria and the rule_ids and "
+              "contract_ids the proposal names"], {"OB-1"}),
+            ("also_covers naming an invariant", [{**good, "also_covers": [{"source_type": "invariant", "source_id": "totals-hold"}]}],
+             [], [], [], {"OB-1"}),
             ("also_covers a number", [{**good, "also_covers": 7}], [], [],
              ["test obligation OB-1 has also_covers that is not a list of sources"], {"OB-1"}),
             ("also_covers holding a bare id", [{**good, "also_covers": ["order-total"]}], [], [],

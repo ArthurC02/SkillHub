@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.48.1
+
+### Fixed
+
+- An `also_covers` entry naming an acceptance criterion, rule or contract the package does not name is refused by name, where a typo used to read as if the field were ignored.
+
 ## 0.48.0
 
 ### Added

@@ -367,6 +367,7 @@ def _obligation_errors(
     errors: list[str] = []
     obligation_ids: set[str] = set()
     obligation_sources: set[tuple[str, str]] = set()
+    named = _named_sources(criterion_ids, rule_ids, contract_ids)
     for obligation in obligation_records:
         if not isinstance(obligation, dict) or not completed_identifier(
             obligation.get("id")
@@ -387,6 +388,7 @@ def _obligation_errors(
                 errors.append(error)
             else:
                 obligation_sources.add((source["source_type"], source["source_id"]))
+        errors.extend(_unnamed_also_covered(obligation_id, also_covers, named))
         if not completed_identifier(
             obligation.get("expected_outcome")
         ) or not completed_identifier(obligation.get("check")):
@@ -411,6 +413,26 @@ def _obligation_errors(
         if (source_type, source_id) not in obligation_sources
     )
     return errors, obligation_ids
+
+
+def _named_sources(criterion_ids: set[str], rule_ids: list[Any], contract_ids: list[Any]) -> set[tuple[str, str]]:
+    return {
+        (source_type, source_id)
+        for source_type, source_ids in (("acceptance-criterion", criterion_ids), ("rule", rule_ids), ("contract", contract_ids))
+        for source_id in source_ids
+    }
+
+
+def _unnamed_also_covered(obligation_id: str, also_covers: list[dict[str, Any]], named: set[tuple[str, str]]) -> list[str]:
+    return [
+        f"test obligation {obligation_id} lists {source['source_type']} {source['source_id']} in also_covers, but the "
+        f"proposal names no such {source['source_type']}; also_covers counts only toward the acceptance criteria and "
+        "the rule_ids and contract_ids the proposal names"
+        for source in also_covers
+        if source.get("source_type") != "invariant"
+        and _obligation_source_error(obligation_id, source) is None
+        and (source["source_type"], source["source_id"]) not in named
+    ]
 
 
 def _obligation_source_error(obligation_id: str, source: dict[str, Any]) -> str | None:
