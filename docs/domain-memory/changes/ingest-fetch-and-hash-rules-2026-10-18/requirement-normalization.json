@@ -1,0 +1,51 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "ingest-fetch-and-hash-rules-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed the URL fetch, duplicate and content hash rules the ingest Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context ingest lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-fetched-package-is-at-most-the-zip-ceiling",
+      "statement": "An import from a URL accepts a package of exactly the zip ceiling and refuses one byte more."
+    },
+    {
+      "id": "enforced-an-import-fetch-follows-at-most-three-redirects",
+      "statement": "An import from a URL follows at most three redirects and then stops."
+    },
+    {
+      "id": "enforced-every-redirect-hop-stays-on-the-host-allow-list",
+      "statement": "Each redirect of an import fetch is checked against the allowed hosts again, so a redirect off the list is never followed."
+    },
+    {
+      "id": "enforced-an-import-url-carries-no-query-fragment-or-credentials",
+      "statement": "An import URL holding a query, a fragment or credentials is refused before any request, without echoing them."
+    },
+    {
+      "id": "enforced-an-import-fetch-never-dials-a-non-public-address",
+      "statement": "An import fetch never connects to a loopback, link-local or metadata address, even through an allowed host name or a redirect."
+    },
+    {
+      "id": "enforced-identical-content-is-recognised-not-versioned-again",
+      "statement": "Saving content whose hash a version of the same Skill already holds returns that version as a duplicate and writes no new version."
+    },
+    {
+      "id": "enforced-a-skill-inside-a-plugin-is-hashed-over-its-own-files",
+      "statement": "A Skill that is one directory of a larger package is hashed over its own files only, so the same content hashes the same wherever it sits."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+    "apps/platform/internal/skill/admission/fetch.go",
+    "apps/platform/internal/skill/admission/fetch_test.go",
+    "apps/platform/internal/skill/admission/service.go",
+    "apps/platform/internal/skill/admission/source.go",
+    "apps/platform/internal/skill/admission/source_test.go",
+    "apps/platform/internal/skill/admission/source_url.go"
+  ]
+}

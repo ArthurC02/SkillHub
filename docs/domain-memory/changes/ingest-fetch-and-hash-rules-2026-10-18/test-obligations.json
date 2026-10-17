@@ -1,0 +1,112 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "ingest-fetch-and-hash-rules-2026-10-18",
+  "proposal_id": "ingest-fetch-and-hash-rules-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-a-fetched-package-is-at-most-the-zip-ceiling",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-fetched-package-is-at-most-the-zip-ceiling",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-fetched-package-is-at-most-the-zip-ceiling"
+        }
+      ],
+      "expected_outcome": "An import from a URL accepts a package of exactly the zip ceiling and refuses one byte more.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestFetchSizeCap$ ./internal/skill/admission/"
+    },
+    {
+      "id": "rule-an-import-fetch-follows-at-most-three-redirects",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-import-fetch-follows-at-most-three-redirects",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-import-fetch-follows-at-most-three-redirects"
+        }
+      ],
+      "expected_outcome": "An import from a URL follows at most three redirects and then stops.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestFetchRedirectLimit$ ./internal/skill/admission/"
+    },
+    {
+      "id": "rule-every-redirect-hop-stays-on-the-host-allow-list",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-every-redirect-hop-stays-on-the-host-allow-list",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "every-redirect-hop-stays-on-the-host-allow-list"
+        }
+      ],
+      "expected_outcome": "Each redirect of an import fetch is checked against the allowed hosts again, so a redirect off the list is never followed.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestFetchRedirectOffAllowListBlocked$ ./internal/skill/admission/"
+    },
+    {
+      "id": "rule-an-import-url-carries-no-query-fragment-or-credentials",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-import-url-carries-no-query-fragment-or-credentials",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-import-url-carries-no-query-fragment-or-credentials"
+        }
+      ],
+      "expected_outcome": "An import URL holding a query, a fragment or credentials is refused before any request, without echoing them.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestFetchRejectsURLsThatCouldLeakCredentials$ ./internal/skill/admission/"
+    },
+    {
+      "id": "rule-an-import-fetch-never-dials-a-non-public-address",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-import-fetch-never-dials-a-non-public-address",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-import-fetch-never-dials-a-non-public-address"
+        }
+      ],
+      "expected_outcome": "An import fetch never connects to a loopback, link-local or metadata address, even through an allowed host name or a redirect.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestFetchRefusesRedirectIntoBlockedAddress$ ./internal/skill/admission/"
+    },
+    {
+      "id": "rule-identical-content-is-recognised-not-versioned-again",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-identical-content-is-recognised-not-versioned-again",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "identical-content-is-recognised-not-versioned-again"
+        }
+      ],
+      "expected_outcome": "Saving content whose hash a version of the same Skill already holds returns that version as a duplicate and writes no new version.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestSuggestionsThatRebuildAnExistingVersionAreRecordedAgainstThatVersion$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-skill-inside-a-plugin-is-hashed-over-its-own-files",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-skill-inside-a-plugin-is-hashed-over-its-own-files",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-skill-inside-a-plugin-is-hashed-over-its-own-files"
+        }
+      ],
+      "expected_outcome": "A Skill that is one directory of a larger package is hashed over its own files only, so the same content hashes the same wherever it sits.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestPlanImportHashesEachSkillOfAPluginOverItsOwnFiles$ ./internal/skill/admission/"
+    }
+  ]
+}

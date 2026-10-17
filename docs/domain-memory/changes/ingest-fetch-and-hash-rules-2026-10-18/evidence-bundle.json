@@ -1,0 +1,147 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "ingest-fetch-and-hash-rules-2026-10-18",
+  "proposal_id": "ingest-fetch-and-hash-rules-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "d609375ba10f7370b05a3c3e3325fcdd8d63aa5c",
+    "registry_digest": "sha256:28d9de89e6190ecd828b3766b077fb5372c38deb20db473b72725dfe7c45c520"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-fetched-package-is-at-most-the-zip-ceiling",
+      "mutated_protection": "apps/platform/internal/skill/admission/fetch.go:237: len(data) > skillpkg.MaxZipBytes -> len(data) > skillpkg.MaxZipBytes+1",
+      "failure_evidence": "=== RUN   TestFetchSizeCap\n2026/10/18 02:54:11 INFO import fetch host=127.0.0.1:58616 ok=true\n    fetch_test.go:106: want ErrFetch for oversized package, got <nil>\n--- FAIL: TestFetchSizeCap (0.06s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\t3.530s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-import-fetch-follows-at-most-three-redirects",
+      "mutated_protection": "apps/platform/internal/skill/admission/fetch.go:110: len(via) > maxRedirects -> len(via) > maxRedirects+1",
+      "failure_evidence": "=== RUN   TestFetchRedirectLimit\n2026/10/18 02:54:27 INFO import fetch host=127.0.0.1:58629 ok=false\n    fetch_test.go:308: server saw 5 requests, want 4\n--- FAIL: TestFetchRedirectLimit (0.07s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\t4.737s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-every-redirect-hop-stays-on-the-host-allow-list",
+      "mutated_protection": "apps/platform/internal/skill/admission/source_url.go:28: !p.allowedHosts[strings.ToLower(u.Host)] -> !p.allowedHosts[strings.ToLower(u.Host)] && false",
+      "failure_evidence": "=== RUN   TestFetchRedirectOffAllowListBlocked\n    fetch_test.go:57: redirect target must never be reached\n2026/10/18 02:54:43 INFO import fetch host=127.0.0.1:58644 ok=false\n--- FAIL: TestFetchRedirectOffAllowListBlocked (0.08s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\t5.234s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-import-url-carries-no-query-fragment-or-credentials",
+      "mutated_protection": "apps/platform/internal/skill/admission/source_url.go:18: u.RawQuery != \"\" || u.Fragment != \"\" -> u.RawQuery != \"\"",
+      "failure_evidence": "=== RUN   TestFetchRejectsURLsThatCouldLeakCredentials\n2026/10/18 03:03:39 INFO import fetch host=127.0.0.1:50620 ok=true\n    fetch_test.go:45: http://127.0.0.1:50620/o/r#secret: got <nil>, want the credential, query or fragment refusal\n    fetch_test.go:51: the source was requested 1 times; a refused URL must not be fetched\n--- FAIL: TestFetchRejectsURLsThatCouldLeakCredentials (0.07s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\t5.461s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-import-fetch-never-dials-a-non-public-address",
+      "mutated_protection": "apps/platform/internal/skill/admission/fetch.go:56: err != nil || blocked(ap.Addr()) -> err != nil || (blocked(ap.Addr()) && false)",
+      "failure_evidence": "=== RUN   TestFetchRefusesRedirectIntoBlockedAddress\n2026/10/18 02:55:21 INFO import fetch host=127.0.0.1:49403 ok=false\n    fetch_test.go:290: error = \"fetch failed: 連不上這個來源。\", want \"fetch failed: 轉址之後落在不允許的位址，下載已停止。\"\n--- FAIL: TestFetchRefusesRedirectIntoBlockedAddress (0.05s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\t4.626s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-identical-content-is-recognised-not-versioned-again",
+      "mutated_protection": "apps/platform/internal/skill/admission/service.go:452: } else if found { -> } else if found && false {",
+      "failure_evidence": "=== RUN   TestSuggestionsThatRebuildAnExistingVersionAreRecordedAgainstThatVersion\n2026/10/18 02:55:49 INFO improvement proposals evaluation_id=c903ea99-caa0-4db6-90c6-264c97f9bd65 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n2026/10/18 02:55:49 INFO improvement proposals evaluation_id=897fc560-d5fa-47ff-ae95-f6e181688a34 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n2026/10/18 02:55:49 INFO improvement proposals evaluation_id=ded687b7-9631-4820-b543-9606126a0508 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n2026/10/18 02:55:49 ERROR request failed on the server method=POST path=/skills/4b51325f-56b9-4d1b-ba48-1211a91ce3c1/versions/from-suggestions status=500\n    suggestion_integration_test.go:515: applying: got 500 (the new version could not be created)\n--- FAIL: TestSuggestionsThatRebuildAnExistingVersionAreRecordedAgainstThatVersion (0.50s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.516s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-skill-inside-a-plugin-is-hashed-over-its-own-files",
+      "mutated_protection": "apps/platform/internal/skill/admission/source.go:132: p.contentHash = hash -> p.contentHash = packageHash + hash[:0]",
+      "failure_evidence": "=== RUN   TestPlanImportHashesEachSkillOfAPluginOverItsOwnFiles\n    source_test.go:91: skills/alpha was hashed over the whole plugin, so two skills of one plugin would collide\n    source_test.go:91: skills/beta was hashed over the whole plugin, so two skills of one plugin would collide\n    source_test.go:94: skills/beta repeats a content hash already used in this plan\n--- FAIL: TestPlanImportHashesEachSkillOfAPluginOverItsOwnFiles (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\t3.576s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+    "apps/platform/internal/skill/admission/fetch.go",
+    "apps/platform/internal/skill/admission/fetch_test.go",
+    "apps/platform/internal/skill/admission/service.go",
+    "apps/platform/internal/skill/admission/source.go",
+    "apps/platform/internal/skill/admission/source_test.go",
+    "apps/platform/internal/skill/admission/source_url.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-fetched-package-is-at-most-the-zip-ceiling",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestFetchSizeCap$ ./internal/skill/admission/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:0e4d5ea7b70b100a1110bf40ea8ea6f2a0cae15a5fcebd1e7fdd421fa43a7535",
+      "finished_at": "2026-10-17T19:07:56.844931Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-import-fetch-follows-at-most-three-redirects",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestFetchRedirectLimit$ ./internal/skill/admission/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:cce15af073d3f653d1cef4447b994f53e17890ecad7bcf2806c2cfde6bbb490f",
+      "finished_at": "2026-10-17T19:08:03.338720Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-every-redirect-hop-stays-on-the-host-allow-list",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestFetchRedirectOffAllowListBlocked$ ./internal/skill/admission/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ce55b96175e9f606d756e94daf1f343e0c97886090c64fc438edfd584e6539db",
+      "finished_at": "2026-10-17T19:08:09.992004Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-import-url-carries-no-query-fragment-or-credentials",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestFetchRejectsURLsThatCouldLeakCredentials$ ./internal/skill/admission/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:d7e67990c51fb4bf414ebaf50098f3a045b39885196916ff7606327cd261390a",
+      "finished_at": "2026-10-17T19:08:15.750104Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-import-fetch-never-dials-a-non-public-address",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestFetchRefusesRedirectIntoBlockedAddress$ ./internal/skill/admission/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:52f27d40f0dd15e5e688dbe0997e6d7eeaf9f8a9d07e67c2556f6954f6cba7fb",
+      "finished_at": "2026-10-17T19:08:22.435054Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-identical-content-is-recognised-not-versioned-again",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestSuggestionsThatRebuildAnExistingVersionAreRecordedAgainstThatVersion$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4482008ad0f103611b14522852a6b91779d880101ea91b61563c20a3e1831b8f",
+      "finished_at": "2026-10-17T19:08:31.453118Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-skill-inside-a-plugin-is-hashed-over-its-own-files",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestPlanImportHashesEachSkillOfAPluginOverItsOwnFiles$ ./internal/skill/admission/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:27ba88ab79fea7d7f71b80f9d0161eae214f429ab8da5f18adb6a2f53d90cf2c",
+      "finished_at": "2026-10-17T19:08:37.773180Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

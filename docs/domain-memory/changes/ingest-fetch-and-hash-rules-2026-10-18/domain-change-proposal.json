@@ -1,0 +1,327 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "ingest-fetch-and-hash-rules-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "ingest-fetch-and-hash-rules-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T19:07:50.350036Z",
+  "verified_at": "2026-10-17T19:08:39.092887Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "d609375ba10f7370b05a3c3e3325fcdd8d63aa5c",
+    "registry_digest": "sha256:28d9de89e6190ecd828b3766b077fb5372c38deb20db473b72725dfe7c45c520"
+  },
+  "affected_contexts": [
+    "ingest"
+  ],
+  "rule_ids": [
+    "a-fetched-package-is-at-most-the-zip-ceiling",
+    "an-import-fetch-follows-at-most-three-redirects",
+    "every-redirect-hop-stays-on-the-host-allow-list",
+    "an-import-url-carries-no-query-fragment-or-credentials",
+    "an-import-fetch-never-dials-a-non-public-address",
+    "identical-content-is-recognised-not-versioned-again",
+    "a-skill-inside-a-plugin-is-hashed-over-its-own-files"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "ingest",
+    "invariant": "Only ingest decides what an import may fetch and when admitted content becomes a new Skill Version.",
+    "evidence": [
+      "apps/platform/internal/skill/admission/fetch.go:50-64"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: package validation stays in the shared package library that ingest calls.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/admission/service.go:449-455"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A second extraction of the ingest Context found these enforced rules beyond the eight the Registry held."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording the base-version-moved refusal again: the Registry already holds it as an-improvement-to-a-superseded-version-is-refused.",
+      "Recording the missing-projection refusal: it is wiring, and its mutation may fail another way."
+    ],
+    "proof_obligations": [
+      "rule-a-fetched-package-is-at-most-the-zip-ceiling",
+      "rule-an-import-fetch-follows-at-most-three-redirects",
+      "rule-every-redirect-hop-stays-on-the-host-allow-list",
+      "rule-an-import-url-carries-no-query-fragment-or-credentials",
+      "rule-an-import-fetch-never-dials-a-non-public-address",
+      "rule-identical-content-is-recognised-not-versioned-again",
+      "rule-a-skill-inside-a-plugin-is-hashed-over-its-own-files"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-fetched-package-is-at-most-the-zip-ceiling",
+        "statement": "An import from a URL accepts a package of exactly the zip ceiling and refuses one byte more.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "A server answering with one byte over the ceiling is refused naming the 10.0 MB limit."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/fetch.go",
+            "lines": {
+              "start": 233,
+              "end": 243
+            },
+            "excerpt_sha256": "sha256:2a04fbc39b6e47f21e35a6d382e55c3cddfc6b118e7ccd2c2835e2000a2b9e6b"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/fetch_test.go",
+            "lines": {
+              "start": 104,
+              "end": 123
+            },
+            "content_sha256": "sha256:855dae6f99fd3652febd7c1c85d8b18fd9691507c221e1a70390ba46034fcaa3",
+            "excerpt_sha256": "sha256:a7401075fbc4fab5abd08c775320a3eb4e7badf6bc863097c0cc7196654b0d3c"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-import-fetch-follows-at-most-three-redirects",
+        "statement": "An import from a URL follows at most three redirects and then stops.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "A server that always redirects sees four requests before the import fails."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/fetch.go",
+            "lines": {
+              "start": 106,
+              "end": 114
+            },
+            "excerpt_sha256": "sha256:10556d4399e7ec88b71d2b948ba025a53118e7a2d8568d296e34ef3e7049c97b"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/fetch_test.go",
+            "lines": {
+              "start": 301,
+              "end": 318
+            },
+            "content_sha256": "sha256:855dae6f99fd3652febd7c1c85d8b18fd9691507c221e1a70390ba46034fcaa3",
+            "excerpt_sha256": "sha256:406f3dc202c8758bb7273889a031d2afb2e4db82a7b7b718ff8837ba22ea7e30"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "every-redirect-hop-stays-on-the-host-allow-list",
+        "statement": "Each redirect of an import fetch is checked against the allowed hosts again, so a redirect off the list is never followed.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "An allowed host that redirects to another host is refused, and the other host receives no request."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/fetch.go",
+            "lines": {
+              "start": 106,
+              "end": 114
+            },
+            "excerpt_sha256": "sha256:10556d4399e7ec88b71d2b948ba025a53118e7a2d8568d296e34ef3e7049c97b"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/source_url.go",
+            "lines": {
+              "start": 24,
+              "end": 35
+            },
+            "excerpt_sha256": "sha256:accc9465f4a37eed465279710dfbc6c2ba66acdce0d0aadc4739a8475f6288d6"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/fetch_test.go",
+            "lines": {
+              "start": 63,
+              "end": 78
+            },
+            "content_sha256": "sha256:855dae6f99fd3652febd7c1c85d8b18fd9691507c221e1a70390ba46034fcaa3",
+            "excerpt_sha256": "sha256:25cab0958feaac3154cc0182902010af65a6c1c2b3c9cf314579b1b1c9152211"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-import-url-carries-no-query-fragment-or-credentials",
+        "statement": "An import URL holding a query, a fragment or credentials is refused before any request, without echoing them.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "https://github.com/o/r#secret is refused and the message does not contain secret."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/source_url.go",
+            "lines": {
+              "start": 14,
+              "end": 22
+            },
+            "excerpt_sha256": "sha256:e1c8105fa93164492bbdeb4daa39fc2151fb5ea1a476e911e408ffef333d4c7a"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/fetch_test.go",
+            "lines": {
+              "start": 32,
+              "end": 53
+            },
+            "content_sha256": "sha256:855dae6f99fd3652febd7c1c85d8b18fd9691507c221e1a70390ba46034fcaa3",
+            "excerpt_sha256": "sha256:b23102f5408fcc24a4c503a5684421bf26c8af9f70437d6f3b7ae29e3d2a5fc4"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-import-fetch-never-dials-a-non-public-address",
+        "statement": "An import fetch never connects to a loopback, link-local or metadata address, even through an allowed host name or a redirect.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "A redirect into 169.254.169.254 ends with destination address is not allowed."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/fetch.go",
+            "lines": {
+              "start": 50,
+              "end": 64
+            },
+            "excerpt_sha256": "sha256:a401156339274187142e5e156527da96d0cafe0730639e77489815603d7c4640"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/fetch_test.go",
+            "lines": {
+              "start": 286,
+              "end": 299
+            },
+            "content_sha256": "sha256:855dae6f99fd3652febd7c1c85d8b18fd9691507c221e1a70390ba46034fcaa3",
+            "excerpt_sha256": "sha256:3829691ef8b0bb1001f332ff646a3d72c8d536b4d2515f96af813e122e0a10c0"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "identical-content-is-recognised-not-versioned-again",
+        "statement": "Saving content whose hash a version of the same Skill already holds returns that version as a duplicate and writes no new version.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "Restoring the text of an earlier version returns that version's id, marked duplicate."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 449,
+              "end": 455
+            },
+            "excerpt_sha256": "sha256:50c5524a8523ab9829c100da0922b8081e531304155e7c4c1c92affb1fb16dd2"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+            "lines": {
+              "start": 470,
+              "end": 526
+            },
+            "content_sha256": "sha256:875e60a361a4c632d796b96700add8be9667b22d7a80d137fbefa988de81b9d6",
+            "excerpt_sha256": "sha256:54d0b65ca0cf0d1d222e01b4d2110a758fbc6439e45e37d80a9963a5a945d5f8"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-skill-inside-a-plugin-is-hashed-over-its-own-files",
+        "statement": "A Skill that is one directory of a larger package is hashed over its own files only, so the same content hashes the same wherever it sits.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "The same Skill inside two different plugins gets the same content hash, unlike the whole package's digest."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/source.go",
+            "lines": {
+              "start": 111,
+              "end": 136
+            },
+            "excerpt_sha256": "sha256:efc1523379d5ef2dfa6c218f44e995b78a4af6f5e78cb3203f4f1cf899a72aa6"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/source_test.go",
+            "lines": {
+              "start": 62,
+              "end": 98
+            },
+            "content_sha256": "sha256:766f1bb2fec1a8724dab4cf81b034a156460fd98ecb9297b6fccaab48cecd127",
+            "excerpt_sha256": "sha256:878f12779a8feeca1fc38f859cc7ef20321765f8b83fd3f7766bb5ae67a217fd"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T19:08:38.278632Z",
+      "scope": "Record ingest fetch and hash rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "d609375ba10f7370b05a3c3e3325fcdd8d63aa5c",
+        "registry_digest": "sha256:28d9de89e6190ecd828b3766b077fb5372c38deb20db473b72725dfe7c45c520"
+      }
+    }
+  ]
+}
