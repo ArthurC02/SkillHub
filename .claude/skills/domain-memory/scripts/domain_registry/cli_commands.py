@@ -297,7 +297,8 @@ def handle_get_record(args: argparse.Namespace) -> int:
 
 def _did_you_mean(identifier: str, records: list[dict]) -> str:
     known = [record["id"] for record in records if isinstance(record.get("id"), str)]
-    close = difflib.get_close_matches(identifier, known, n=3)
+    starting = [candidate for candidate in known if candidate.startswith(identifier)]
+    close = list(dict.fromkeys([*starting, *difflib.get_close_matches(identifier, known, n=3)]))[:3]
     return f"; did you mean {', '.join(close)}?" if close else ""
 
 

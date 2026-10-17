@@ -334,10 +334,20 @@ def counterfactual_errors(
     evidence: dict[str, Any], obligation_ids: set[str], proposal: dict[str, Any]
 ) -> list[str]:
     check = evidence.get("counterfactual_check")
-    if not isinstance(check, dict):
-        return ["a material verified proposal requires counterfactual_check evidence"]
-    if check.get("status") == "not_applicable":
+    if isinstance(check, dict) and check.get("status") == "not_applicable":
         return _inapplicable_counterfactual_errors(check, proposal)
+    checks = check if isinstance(check, list) else [check]
+    if not checks or not all(isinstance(entry, dict) for entry in checks):
+        return ["a material verified proposal requires counterfactual_check evidence"]
+    targets = [str(entry.get("obligation_id")) for entry in checks]
+    if len(set(targets)) < len(targets):
+        return ["each counterfactual_check in a list targets a different obligation"]
+    return [error for entry in checks for error in _killed_counterfactual_errors(entry, obligation_ids, proposal)]
+
+
+def _killed_counterfactual_errors(
+    check: dict[str, Any], obligation_ids: set[str], proposal: dict[str, Any]
+) -> list[str]:
     design = proposal.get("implementation_design")
     planned = design.get("proof_obligations") if isinstance(design, dict) else None
     if proposal.get("status") not in SETTLED_STATUSES and isinstance(planned, list) and check.get("obligation_id") not in planned:

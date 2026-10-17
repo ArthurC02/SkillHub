@@ -64,22 +64,22 @@ class CliTest(RegistryTestCase):
                 self.assertEqual(1, result.returncode)
                 self.assertIn("with --source, or change it with --add and --remove, not both", result.stdout)
 
-    def test_the_command_line_records_the_run_it_was_given(self) -> None:
+    def test_the_command_line_runs_the_obligation_check_when_given_no_command(self) -> None:
         package = self.draft_package()
+        check = self.declare_check(package, self.run_writing("cli"))
         completed = subprocess.run(
             [
                 sys.executable, str(Path(__file__).resolve().parent / "registry_tools.py"),
                 "record-test-result", "--package-root", str(package),
                 "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
-                "--obligation", "OB-1", "--command", self.run_writing("cli"),
-                "--command-profile", "unit",
+                "--obligation", "OB-1", "--command-profile", "unit",
             ],
             capture_output=True, text=True, check=False,
         )
         self.assertEqual(0, completed.returncode, completed.stderr)
         evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
         [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
-        self.assertEqual("sha256:" + hashlib.sha256(b"cli").hexdigest(), result["output_sha256"])
+        self.assertEqual((check, "sha256:" + hashlib.sha256(b"cli").hexdigest()), (result["evidence"], result["output_sha256"]))
 
     def test_pre_push_hook_checks_each_domain_memory_commit(self) -> None:
         (self.repo / ".git" / "hooks").mkdir(parents=True, exist_ok=True)
@@ -524,10 +524,12 @@ class CliTest(RegistryTestCase):
         self.assertEqual(
             ["ERROR: context not found: evals; did you mean eval?",
              "ERROR: rules record not found: one-live-account-per-mail; did you mean one-live-account-per-email?",
-             "ERROR: context not found: billing"],
+             "ERROR: context not found: billing",
+             "ERROR: rules record not found: one-live; did you mean one-live-account-per-email?"],
             [self.run_cli("get-context", "--registry-root", memory, "--id", "evals").stdout.strip(),
              self.run_cli("get-record", "--registry-root", memory, "--asset", "rules", "--id", "one-live-account-per-mail").stdout.strip(),
-             self.run_cli("get-context", "--registry-root", memory, "--id", "billing").stdout.strip()],
+             self.run_cli("get-context", "--registry-root", memory, "--id", "billing").stdout.strip(),
+             self.run_cli("get-record", "--registry-root", memory, "--asset", "rules", "--id", "one-live").stdout.strip()],
         )
 
     def test_an_asset_named_in_the_singular_is_the_plural_asset(self) -> None:

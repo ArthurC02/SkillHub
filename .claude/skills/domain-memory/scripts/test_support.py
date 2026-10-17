@@ -294,6 +294,13 @@ class RegistryTestCase(unittest.TestCase):
             capture_output=True, text=True, check=True,
         ).stdout.strip()
 
+    def declare_check(self, package: Path, command: str) -> str:
+        path = package / "test-obligations.json"
+        obligations = json.loads(path.read_text(encoding="utf-8"))
+        obligations["obligations"][0]["check"] = command
+        path.write_text(json.dumps(obligations), encoding="utf-8")
+        return command
+
     def run_writing(self, text: str, exit_code: int = 0) -> str:
         script = f"import sys; sys.stdout.write({text!r}); sys.exit({exit_code})"
         return f'"{sys.executable}" -c "{script}"'
@@ -504,7 +511,7 @@ class RegistryTestCase(unittest.TestCase):
                 {
                     "obligation_id": "OB-1",
                     "status": "passed",
-                    "evidence": "test output",
+                    "evidence": "test command",
                     "command_profile": "unit",
                     "exit_code": 0,
                     "output_sha256": "sha256:" + "0" * 64,

@@ -199,15 +199,15 @@ def verdict_of(broken_run: TestRun, expect: str | None = None) -> tuple[str, str
             "the tests still pass with this change; either a test is missing, "
             "or the change does not break the protection (an equivalent mutation)"
         )
+    if BUILD_FAILURE.search(broken_run.output):
+        return "inconclusive", (
+            "the broken code did not build, so no test judged it, whatever --expect matches; "
+            "break the protection so it still builds"
+        )
     if expect is not None:
         if re.search(expect, broken_run.output):
             return "killed", f"the tests failed with output matching --expect {expect}"
         return "inconclusive", f"the failure does not match --expect {expect}"
-    if BUILD_FAILURE.search(broken_run.output):
-        return "inconclusive", (
-            "the broken code did not build, so no test judged it; break the protection so it still builds, "
-            "or pass --expect with the assertion the failure must show"
-        )
     return "killed", "the tests failed once the protection was broken"
 
 
@@ -215,9 +215,17 @@ def _one_line(text: str) -> str:
     return " ".join(text.split())
 
 
+VERDICT_WORDS = {"fail", "failed", "failure", "pass", "passed", "killed", "survived", "error"}
+
+
 def _require_pattern(expect: str | None) -> None:
     if expect is None:
         return
+    if expect.strip().casefold() in VERDICT_WORDS:
+        raise ValueError(
+            f"--expect is a regular expression the failing output must match, such as the assertion message, "
+            f"not a verdict: {expect!r} would match almost any failure"
+        )
     try:
         re.compile(expect)
     except re.error as error:

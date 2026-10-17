@@ -34,6 +34,7 @@ from domain_registry.hitl import (
     attest_signed_commit,
     finalize_proposal,
     missing_attestation_message,
+    no_test_passed,
     record_test_result,
     record_approval,
     submit_proposal,
@@ -490,7 +491,7 @@ class ReviewTest(RegistryTestCase):
         package = self.draft_package()
         record_test_result(
             package, self.repo / "memory", self.repo,
-            ObligationRun("OB-1", self.run_writing("ok"), "unit"), 60,
+            ObligationRun("OB-1", self.declare_check(package, self.run_writing("ok")), "unit"), 60,
         )
         evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
         [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
@@ -504,7 +505,7 @@ class ReviewTest(RegistryTestCase):
         echo = "import sys; sys.stdout.write(sys.argv[1])"
         record_test_result(
             package, self.repo / "memory", self.repo,
-            ObligationRun("OB-1", f'"{sys.executable}" -c "{echo}" ^(A|B)$', "unit"), 60,
+            ObligationRun("OB-1", self.declare_check(package, f'"{sys.executable}" -c "{echo}" ^(A|B)$'), "unit"), 60,
         )
         evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
         [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
@@ -516,7 +517,7 @@ class ReviewTest(RegistryTestCase):
         with self.assertRaisesRegex(ValueError, "could not start: .*runs as written, with no shell and no aliases"):
             record_test_result(
                 package, self.repo / "memory", self.repo,
-                ObligationRun("OB-1", "no-such-program-for-domain-memory --version", "unit"), 60,
+                ObligationRun("OB-1", self.declare_check(package, "no-such-program-for-domain-memory --version"), "unit"), 60,
             )
         self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
 
@@ -528,7 +529,7 @@ class ReviewTest(RegistryTestCase):
         policy_path.write_text(json.dumps(policy), encoding="utf-8")
         record_test_result(
             package, self.repo / "memory", self.repo,
-            ObligationRun("OB-1", self.run_writing("ok"), "release"), 60,
+            ObligationRun("OB-1", self.declare_check(package, self.run_writing("ok")), "release"), 60,
         )
         evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
         [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
@@ -547,7 +548,7 @@ class ReviewTest(RegistryTestCase):
                 with self.assertRaisesRegex(ValueError, refusal):
                     record_test_result(
                         package, self.repo / "memory", self.repo,
-                        ObligationRun(obligation, command, profile), 60,
+                        ObligationRun(obligation, self.declare_check(package, command), profile), 60,
                     )
                 self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
 
@@ -1000,7 +1001,8 @@ class ReviewTest(RegistryTestCase):
         evidence["counterfactual_check"] = stuck_evidence["counterfactual_check"]
         evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
         record_test_result(
-            redraft, self.repo / "memory", self.repo, ObligationRun("OB-1", self.run_writing("ok"), "unit"), 60
+            redraft, self.repo / "memory", self.repo,
+            ObligationRun("OB-1", self.declare_check(redraft, self.run_writing("ok")), "unit"), 60,
         )
         self.approve_and_apply(redraft)
         self.assertEqual(["order-total"], self.rule_ids())
@@ -1335,7 +1337,8 @@ class ReviewTest(RegistryTestCase):
             "sys.stdout.write('ok')", "import os; sys.stdout.write(os.path.basename(os.getcwd()))"
         )
         record_test_result(
-            package, self.repo / "memory", self.repo, ObligationRun("OB-1", command, "unit", cwd="apps/web"), 60
+            package, self.repo / "memory", self.repo,
+            ObligationRun("OB-1", self.declare_check(package, command), "unit", cwd="apps/web"), 60,
         )
         evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
         [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
@@ -1351,9 +1354,133 @@ class ReviewTest(RegistryTestCase):
             with self.subTest(cwd=cwd), self.assertRaisesRegex(ValueError, "--cwd must name a directory inside"):
                 record_test_result(
                     package, self.repo / "memory", self.repo,
-                    ObligationRun("OB-1", self.run_writing("ok"), "unit", cwd=cwd), 60,
+                    ObligationRun("OB-1", self.declare_check(package, self.run_writing("ok")), "unit", cwd=cwd), 60,
                 )
         self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
+
+    def recorded(self, package: Path) -> dict:
+        evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
+        [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
+        return result
+
+    def test_a_run_given_no_command_runs_the_obligation_check(self) -> None:
+        package = self.draft_package()
+        check = self.declare_check(package, self.run_writing("ok"))
+        record_test_result(package, self.repo / "memory", self.repo, ObligationRun("OB-1", None, "unit"), 60)
+        self.assertEqual(
+            (check, "sha256:" + hashlib.sha256(b"ok").hexdigest()),
+            (self.recorded(package)["evidence"], self.recorded(package)["output_sha256"]),
+        )
+
+    def test_a_command_other_than_the_obligation_check_records_nothing(self) -> None:
+        package = self.draft_package()
+        self.declare_check(package, self.run_writing("ok"))
+        before = (package / "evidence-bundle.json").read_bytes()
+        with self.assertRaisesRegex(ValueError, "obligation OB-1 declares the check .*; record that command"):
+            record_test_result(
+                package, self.repo / "memory", self.repo, ObligationRun("OB-1", self.run_writing("other"), "unit"), 60
+            )
+        self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
+
+    def test_a_command_padded_with_whitespace_is_recorded_as_the_check(self) -> None:
+        package = self.draft_package()
+        check = self.declare_check(package, self.run_writing("ok"))
+        record_test_result(
+            package, self.repo / "memory", self.repo, ObligationRun("OB-1", f"  {check}\n", "unit"), 60
+        )
+        self.assertEqual(check, self.recorded(package)["evidence"])
+
+    def test_test_results_are_recorded_only_before_verification(self) -> None:
+        package = self.draft_package()
+        check = self.declare_check(package, self.run_writing("ok"))
+        proposal_path = package / "domain-change-proposal.json"
+        for status, records in (
+            ("draft", True), ("submitted", True), ("verified", False), ("applied", False), ("superseded", False),
+        ):
+            with self.subTest(status):
+                proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
+                proposal["status"] = status
+                proposal_path.write_text(json.dumps(proposal), encoding="utf-8")
+                evidence_path = package / "evidence-bundle.json"
+                evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+                evidence["test_results"] = []
+                evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+                try:
+                    record_test_result(package, self.repo / "memory", self.repo, ObligationRun("OB-1", None, "unit"), 60)
+                except ValueError as error:
+                    self.assertRegex(str(error), f"^the proposal is {status}: its test results are what verify-proposal")
+                recorded = json.loads(evidence_path.read_text(encoding="utf-8"))["test_results"]
+                self.assertEqual(records, [check] == [entry["evidence"] for entry in recorded])
+
+    def test_a_passing_run_in_which_no_test_passed_records_nothing(self) -> None:
+        package = self.draft_package()
+        check = self.declare_check(package, self.run_writing("Ran 0 tests in 0.000s\n\nNO TESTS RAN\n"))
+        before = (package / "evidence-bundle.json").read_bytes()
+        with self.assertRaisesRegex(ValueError, "exited 0, but unittest ran no test that was not skipped; nothing recorded"):
+            record_test_result(package, self.repo / "memory", self.repo, ObligationRun("OB-1", check, "unit"), 60)
+        self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
+
+    def with_recorded_evidence(self, evidence: str) -> Path:
+        package = self.draft_package()
+        self.declare_check(package, "go test -v ./orders/...")
+        path = package / "evidence-bundle.json"
+        bundle = json.loads(path.read_text(encoding="utf-8"))
+        bundle["test_results"][0]["evidence"] = evidence
+        path.write_text(json.dumps(bundle), encoding="utf-8")
+        return package
+
+    def test_verification_refuses_a_test_result_that_ran_a_command_other_than_the_check(self) -> None:
+        package = self.with_recorded_evidence("go test -v ./billing/...")
+        with self.assertRaisesRegex(
+            ValueError,
+            "the test result of OB-1 ran 'go test -v ./billing/...', not the obligation's check 'go test -v ./orders/...'",
+        ):
+            self.approve_and_finalize(package)
+
+    def assert_verified_with(self, evidence: str) -> None:
+        package = self.with_recorded_evidence(evidence)
+        self.approve_and_finalize(package)
+        proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        self.assertNotIn(proposal["status"], ("draft", "submitted"))
+
+    def test_verification_accepts_the_check_written_with_other_spacing(self) -> None:
+        self.assert_verified_with("go test  -v ./orders/...")
+
+    def test_verification_accepts_a_link_to_the_ci_run(self) -> None:
+        self.assert_verified_with("https://ci.example/runs/1")
+
+    def test_each_runner_says_when_no_test_passed(self) -> None:
+        go_requires_v = (
+            "go test without -v or -json does not say which tests passed, so a skipped test reads as a pass; add -v"
+        )
+        none_passed = "no test passed: every test was skipped or none matched"
+        unittest_none = "unittest ran no test that was not skipped"
+        for command, output, expected in (
+            ("go test -v ./...", "=== RUN   TestA\n--- PASS: TestA (0.00s)\nok  p 0.1s\n", None),
+            ("go test -v ./...", "=== RUN   TestA\n--- SKIP: TestA (0.00s)\nok  p 0.1s\n", none_passed),
+            ("go test -v=true ./...", "    --- PASS: TestA/sub (0.00s)\n", None),
+            ("go test -test.v ./...", "--- PASS: TestA (0.00s)\n", None),
+            ("go test ./...", "ok  p 0.1s\n", go_requires_v),
+            ("go -C tools test ./...", "ok  p 0.1s\n", go_requires_v),
+            ("C:/Go/bin/go.exe test ./...", "ok  p 0.1s\n", go_requires_v),
+            ("go vet ./...", "", None),
+            ("go test -json ./...", '{"Action":"pass","Package":"p","Test":"TestA","Elapsed":0}\n', None),
+            ("go test -json ./...", '{"Action":"pass","Package":"p","Elapsed":0}\n', none_passed),
+            ("task test", "ok  p 0.1s [no tests to run]\n", "go test found no test to run"),
+            ("task test", "?   p [no test files]\n", "go test found no test to run"),
+            ("task test", "--- PASS: TestA (0.00s)\nok  a 0.1s\nok  b 0.1s [no tests to run]\n", None),
+            ("python -m unittest", "Ran 0 tests in 0.000s\n\nNO TESTS RAN\n", unittest_none),
+            ("python -m unittest", "Ran 2 tests in 0.1s\n\nOK (skipped=2)\n", unittest_none),
+            ("python -m unittest", "Ran 2 tests in 0.1s\n\nOK (skipped=1)\n", None),
+            ("python -m unittest", "Ran 1 test in 0.1s\n\nOK\n", None),
+            ("pytest", "===== 3 skipped in 0.12s =====\n", "pytest passed no test: 3 skipped"),
+            ("pytest -q", "3 deselected in 0.01s\n", "pytest passed no test: 3 deselected"),
+            ("pytest", "===== 1 passed, 3 skipped in 0.12s =====\n", None),
+            ("pytest", "== 2 passed in 0.1s ==\n== 1 skipped in 0.1s ==\n", "pytest passed no test: 1 skipped"),
+            ("npm test", "anything at all\n", None),
+        ):
+            with self.subTest(f"{command}: {output!r}"):
+                self.assertEqual(expected, no_test_passed(command.split(), output))
 
 
 if __name__ == "__main__":

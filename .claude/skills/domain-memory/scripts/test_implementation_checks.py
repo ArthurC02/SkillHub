@@ -469,8 +469,12 @@ class CounterfactualTest(RepositoryCase):
         self.assertEqual(("inconclusive", True), (result["verdict"], "did not build" in result["reason"]))
         self.assert_untouched()
 
-    def test_an_expected_pattern_decides_even_when_the_code_does_not_build(self) -> None:
-        self.assertEqual("killed", self.break_rule("LIMIT = 200", "LIMIT = (", expect="SyntaxError")["verdict"])
+    def test_broken_code_that_does_not_build_is_inconclusive_whatever_expect_matches(self) -> None:
+        result = self.break_rule("LIMIT = 200", "LIMIT = (", expect="SyntaxError")
+        self.assertEqual(
+            ("inconclusive", False, True),
+            (result["verdict"], "counterfactual_check" in result, "whatever --expect matches" in result["reason"]),
+        )
 
     def test_every_verdict_gives_its_reason(self) -> None:
         for find, replace, options, reason in (
@@ -488,9 +492,16 @@ class CounterfactualTest(RepositoryCase):
         self.assertEqual(result["verdict"], "killed")
 
     def test_a_failure_not_matching_the_expected_pattern_is_inconclusive(self) -> None:
-        result = self.break_rule("LIMIT = 200", "LIMIT = (", expect="AssertionError")
+        result = self.break_rule("LIMIT = 200", "LIMIT = 201", expect="KeyError")
         self.assertEqual(result["verdict"], "inconclusive")
         self.assertNotIn("counterfactual_check", result)
+        self.assert_untouched()
+
+    def test_an_expected_pattern_that_is_a_verdict_word_is_refused(self) -> None:
+        for expect in ("FAIL", " passed ", "Killed", "error"):
+            with self.subTest(expect), self.assertRaisesRegex(ValueError, "^--expect is a regular expression .* not a verdict"):
+                self.break_rule("LIMIT = 200", "LIMIT = 201", expect=expect)
+        self.assertEqual("killed", self.break_rule("LIMIT = 200", "LIMIT = 201", expect="FAIL|Error")["verdict"])
         self.assert_untouched()
 
     def test_an_expected_pattern_that_is_not_a_regular_expression_is_refused(self) -> None:

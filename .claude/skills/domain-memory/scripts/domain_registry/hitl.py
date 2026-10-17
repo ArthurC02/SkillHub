@@ -1,7 +1,9 @@
+import re
 import shlex
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from .changes import missing_approval_roles, test_attestation_errors, validate_change_package
 from .attestations import (
@@ -101,6 +103,52 @@ def record_approval(
     write_json(proposal_path(root), proposal)
 
 
+RECORDABLE_STATUSES = {"draft", "submitted"}
+CI_LINK_PREFIX = "https://"
+GO_TEST_PASSED = re.compile(r'^\s*--- PASS: |"Action":"pass"[^\n]*"Test":"', re.MULTILINE)
+GO_NOTHING_RAN = re.compile(r"\[no tests to run\]|\[no test files\]")
+UNITTEST_RAN = re.compile(r"^Ran (\d+) tests? in ", re.MULTILINE)
+UNITTEST_SKIPPED = re.compile(r"skipped=(\d+)")
+PYTEST_SUMMARY = re.compile(
+    r"^=*\s*(\d+ (?:passed|failed|skipped|deselected|xfailed|xpassed|errors?|warnings?)(?:, \d+ \w+)*) in [\d.]+s",
+    re.MULTILINE,
+)
+
+
+def same_command(command: str, check: Any) -> bool:
+    return isinstance(check, str) and command.split() == check.split()
+
+
+def no_test_passed(argv: list[str], output: str) -> str | None:
+    if argv and Path(argv[0]).stem == "go" and "test" in argv[1:]:
+        if not any(argument in ("-v", "-json") or argument.startswith(("-v=", "-test.v")) for argument in argv):
+            return "go test without -v or -json does not say which tests passed, so a skipped test reads as a pass; add -v"
+        return None if GO_TEST_PASSED.search(output) else "no test passed: every test was skipped or none matched"
+    if GO_NOTHING_RAN.search(output) and not GO_TEST_PASSED.search(output):
+        return "go test found no test to run"
+    ran = UNITTEST_RAN.search(output)
+    if ran:
+        skipped = UNITTEST_SKIPPED.search(output)
+        if int(ran[1]) == 0 or (skipped and int(skipped[1]) >= int(ran[1])):
+            return "unittest ran no test that was not skipped"
+    summaries = PYTEST_SUMMARY.findall(output)
+    if summaries and "passed" not in summaries[-1]:
+        return f"pytest passed no test: {summaries[-1]}"
+    return None
+
+
+def _evidence_check_errors(evidence: dict[str, Any], obligations: list[Any]) -> list[str]:
+    checks = {entry.get("id"): entry.get("check") for entry in obligations if isinstance(entry, dict)}
+    return [
+        f"the test result of {result['obligation_id']} ran {result.get('evidence')!r}, not the obligation's check "
+        f"{checks[result['obligation_id']]!r}; record the check, or cite the CI run as an https:// link"
+        for result in evidence.get("test_results", [])
+        if isinstance(result, dict) and result.get("obligation_id") in checks
+        and not str(result.get("evidence")).startswith(CI_LINK_PREFIX)
+        and not same_command(str(result.get("evidence")), checks[result["obligation_id"]])
+    ]
+
+
 def verify_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
     path = proposal_path(root)
     proposal = load_json(path)
@@ -120,7 +168,9 @@ def verify_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
         if isinstance(entry, dict) and completed_identifier(entry.get("id"))
     }
     evidence = load_json(root / EVIDENCE_FILE)
-    errors = test_attestation_errors(evidence, obligation_ids, registry_root)
+    errors = test_attestation_errors(evidence, obligation_ids, registry_root) + _evidence_check_errors(
+        evidence, obligations
+    )
     if errors:
         raise ValueError("proposal lacks verified test evidence: " + "; ".join(errors))
     proposal["status"] = "verified"
@@ -137,7 +187,7 @@ def verify_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
 @dataclass(frozen=True)
 class ObligationRun:
     obligation_id: str
-    command: str
+    command: str | None
     command_profile: str
     cwd: str | None = None
 
@@ -145,10 +195,25 @@ class ObligationRun:
 def record_test_result(
     root: Path, registry_root: Path, repo_root: Path, run: ObligationRun, timeout: int
 ) -> None:
-    obligation_id, command, command_profile = run.obligation_id, run.command, run.command_profile
+    obligation_id, command_profile = run.obligation_id, run.command_profile
+    status = load_json(proposal_path(root)).get("status")
+    if status not in RECORDABLE_STATUSES:
+        raise ValueError(
+            f"the proposal is {status}: its test results are what verify-proposal checked, so they stay as they are; "
+            "redraft it to record new ones"
+        )
     obligations = load_json(root / "test-obligations.json").get("obligations", [])
-    if not any(isinstance(entry, dict) and entry.get("id") == obligation_id for entry in obligations):
+    obligation = next(
+        (entry for entry in obligations if isinstance(entry, dict) and entry.get("id") == obligation_id), None
+    )
+    if obligation is None:
         raise ValueError(f"test-obligations.json has no obligation {obligation_id}")
+    command = (run.command or obligation.get("check") or "").strip()
+    if not same_command(command, obligation.get("check")):
+        raise ValueError(
+            f"obligation {obligation_id} declares the check {obligation.get('check')!r}; record that command, "
+            "or make the obligation's check the command that proves it"
+        )
     directory = working_directory(repo_root, run.cwd)
     profiles = approved_command_profiles(registry_root)
     if profiles and command_profile not in profiles:
@@ -158,7 +223,7 @@ def record_test_result(
         )
     try:
         completed = subprocess.run(
-            shlex.split(command), cwd=directory, capture_output=True, timeout=timeout, check=False
+            argv := shlex.split(command), cwd=directory, capture_output=True, timeout=timeout, check=False
         )
     except subprocess.TimeoutExpired as error:
         raise ValueError(f"{command} gave no result within {timeout} seconds; nothing recorded") from error
@@ -168,12 +233,15 @@ def record_test_result(
             "no aliases, so give the full invocation, such as python3 <path>/registry_tools.py "
             "verify-audit --registry-root <root>; nothing recorded"
         ) from error
+    output = decoded(completed.stdout + completed.stderr)
     if completed.returncode != 0:
-        tail = decoded(completed.stdout + completed.stderr)[-OUTPUT_TAIL:]
         raise ValueError(
             f"{command} exited {completed.returncode}; only a passing run is recorded, "
-            f"and nothing was written:\n{tail}"
+            f"and nothing was written:\n{output[-OUTPUT_TAIL:]}"
         )
+    reason = no_test_passed(argv, output)
+    if reason:
+        raise ValueError(f"{command} exited 0, but {reason}; nothing recorded")
     result = {
         "obligation_id": obligation_id,
         "status": "passed",

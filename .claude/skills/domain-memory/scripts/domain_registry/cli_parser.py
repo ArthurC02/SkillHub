@@ -240,7 +240,10 @@ def _add_governance_commands(commands: argparse._SubParsersAction) -> None:
     memory_init_parser.add_argument(
         "--review-mode", required=True, choices=REVIEW_MODES
     )
-    memory_init_parser.add_argument("--source-authority", required=True)
+    memory_init_parser.add_argument(
+        "--source-authority", required=True,
+        help="who confirms the selected sources are the right ones, such as the domain owner's name",
+    )
     memory_init_parser.add_argument(
         "--review-verifier", choices=GOVERNANCE_VERIFIERS
     )
@@ -331,8 +334,13 @@ def _add_proposal_commands(commands: argparse._SubParsersAction) -> None:
     add_path(result_parser, "--registry-root")
     add_path(result_parser, "--repo-root")
     result_parser.add_argument("--obligation", required=True)
-    result_parser.add_argument("--command", dest="obligation_command", required=True)
-    result_parser.add_argument("--command-profile", required=True)
+    result_parser.add_argument(
+        "--command", dest="obligation_command", help="the obligation's check, which is also the default"
+    )
+    result_parser.add_argument(
+        "--command-profile", required=True,
+        help="a label for the kind of run, one of the policy's approved_command_profiles; it never expands into a command",
+    )
     result_parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT_SECONDS)
     result_parser.add_argument("--cwd")
     attest_parser = commands.add_parser("attest-signed-commit", help="Attest a signed commit")
@@ -364,7 +372,11 @@ def _add_proposal_check_commands(commands: argparse._SubParsersAction) -> None:
         "--timeout", type=int, default=DEFAULT_TIMEOUT_SECONDS
     )
     counterfactual_parser.add_argument("--cwd")
-    counterfactual_parser.add_argument("--expect")
+    counterfactual_parser.add_argument(
+        "--expect",
+        help="regular expression the failing output must match, such as the assertion message; "
+        "write --expect=PATTERN when the pattern starts with -",
+    )
     counterfactual_parser.add_argument("--obligation-id")
     proposals_parser = commands.add_parser("list-proposals", help="List the Change Packages")
     add_path(proposals_parser, "--changes-root")

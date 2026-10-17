@@ -2,6 +2,22 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.51.0
+
+### Added
+
+- `counterfactual_check` may be a list of checks, each targeting a different obligation, when one package proves several protections.
+
+### Changed
+
+- `counterfactual` calls broken code that does not build `inconclusive` even when `--expect` matches its output, and refuses a verdict word such as `FAIL` or `passed` as `--expect`.
+- `record-test-result` runs the obligation's `check` when given no `--command`, and refuses a command other than that check; surrounding whitespace is not recorded.
+- `record-test-result` records only while the proposal is draft or submitted.
+- `verify-proposal` refuses a test result whose `evidence` is a command other than its obligation's `check`; an `https://` link to a CI run is still accepted.
+- `get-context` and `get-record` suggest the ids that start with the one given before the nearest by spelling, so a truncated id finds its record.
+- `--source-authority` and `--command-profile` describe themselves in `--help`, as `--expect` and `--command` do.
+- `record-test-result` refuses a run that exits 0 without passing a test: `go test` without `-v` or `-json`, or one in which every test was skipped; `[no tests to run]`; unittest that ran nothing or skipped everything; a pytest summary with nothing passed.
+
 ## 0.50.0
 
 ### Added
