@@ -130,7 +130,7 @@ class ChangeCouplingTest(RegistryTestCase):
         self.assertEqual((21, 20, "sweep 20"), (result["skipped_sweeping_commits"], len(result["skipped_sweeping"]),
                                                 result["skipped_sweeping"][0]["subject"]))
         large = change_coupling(self.repo, ["src"], 1, CouplingLimits(1, 1, 0, 1))
-        self.assertEqual((22, 20, "sweep 20"), (large["skipped_large_commits"], len(large["skipped_large"]),
+        self.assertEqual((21, 20, "sweep 20"), (large["skipped_large_commits"], len(large["skipped_large"]),
                                                 large["skipped_large"][0]["subject"]))
 
     def test_with_contexts_only_modules_a_context_owns_count_toward_the_maximum(self) -> None:
@@ -212,8 +212,20 @@ class ChangeCouplingTest(RegistryTestCase):
             (result["commits"] - before["commits"], result["skipped_large_commits"] - before["skipped_large_commits"]),
         )
         self.assertEqual([1, 1, 1], [pair["shared"] for pair in result["pairs"]])
-        self.assertEqual({"sha": self.git("rev-parse", "--short", "HEAD"), "subject": "change", "files": 4},
+        self.assertEqual({"sha": self.git("rev-parse", "--short", "HEAD"), "subject": "change", "files": 4, "files_under_roots": 4},
                          result["skipped_large"][0])
+
+    def test_only_files_under_the_roots_count_toward_the_changeset_limit(self) -> None:
+        limits = CouplingLimits(min_revisions=1, min_shared=1, min_degree=0, max_changeset=2)
+        before = change_coupling(self.repo, ["src"], 1, limits)
+        self.change("src/a/x.py", "src/b/y.py", "web/page.ts", "contracts/api.yaml")
+        self.change("src/a/x.py", "src/b/y.py", "src/c/z.py", "web/page.ts")
+        result = change_coupling(self.repo, ["src"], 1, limits)
+        self.assertEqual(
+            (1, {"subject": "change", "files": 4, "files_under_roots": 3}),
+            (result["skipped_large_commits"] - before["skipped_large_commits"],
+             {key: result["skipped_large"][0][key] for key in ("subject", "files", "files_under_roots")}),
+        )
 
     def test_a_module_that_no_longer_exists_is_left_out(self) -> None:
         self.change("src/a/x.py", "src/gone/y.py")

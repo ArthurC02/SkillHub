@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.47.1
+
+### Fixed
+
+- `change-coupling --max-changeset` counts only the files under the roots, so a feature commit that also ships web, contract or migration files is no longer skipped as large; `skipped_large` shows `files_under_roots` beside `files`.
+
 ## 0.47.0
 
 ### Added

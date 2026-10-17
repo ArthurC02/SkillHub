@@ -52,9 +52,11 @@ def change_coupling(
     excluded = _subject_filter(reading.exclude_subjects)
     commits = _commits(repo_root, reading.since)
     wanted = [commit for commit in commits if not excluded(commit.subject)]
+    owned = [PurePosixPath(root.strip("/")).parts for root in roots]
+    under_roots = {commit: sum(1 for path in commit.files if _under(path, owned)) for commit in wanted}
     kept, large = [], []
     for commit in wanted:
-        (large if len(commit.files) > limits.max_changeset else kept).append(commit)
+        (large if under_roots[commit] > limits.max_changeset else kept).append(commit)
     module_for = _existing_module_finder(repo_root, roots, depth)
     revisions: Counter[str] = Counter()
     shared: defaultdict[tuple[str, str], list[str]] = defaultdict(list)
@@ -79,7 +81,8 @@ def change_coupling(
         "excluded_commits": len(commits) - len(wanted),
         "skipped_large_commits": len(large),
         "skipped_large": [
-            {"sha": commit.sha, "subject": commit.subject, "files": len(commit.files)} for commit in large[:SKIPPED_SHOWN]
+            {"sha": commit.sha, "subject": commit.subject, "files": len(commit.files), "files_under_roots": under_roots[commit]}
+            for commit in large[:SKIPPED_SHOWN]
         ],
         "skipped_sweeping_commits": len(sweeping),
         "skipped_sweeping": sweeping[:SKIPPED_SHOWN],
@@ -89,6 +92,11 @@ def change_coupling(
             key=lambda pair: (-pair["degree"], -pair["shared"], pair["modules"]),
         ),
     }
+
+
+def _under(path: str, owned: list[tuple[str, ...]]) -> bool:
+    parts = PurePosixPath(path).parts
+    return any(parts[: len(root)] == root for root in owned)
 
 
 def _sweep(commit: Commit, counted: list[str], reading: CouplingReading) -> dict[str, Any]:
