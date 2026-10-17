@@ -1,0 +1,131 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-terminal-reprove-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "run-terminal-reprove-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T05:14:29.240169Z",
+  "verified_at": "2026-10-17T05:14:37.970402Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "beec54807a86cb375daf3451be62963a8dab66ad",
+    "registry_digest": "sha256:15207cf1f5998736f7f280fc7eea94b1f2a3b162ded5445c7382f777f4657892"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [
+    "run-terminal-status-is-final"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Only run moves a Run between statuses.",
+    "evidence": [
+      "apps/platform/internal/trial/execution/statemachine.go:177-179"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/execution/statemachine.go:102-105"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "coverage reports the rule's proof unknown: the package that reviewed it was removed from the repository on 2026-10-16."
+    ],
+    "decision": "Keep the statement and enforcing citations; add the test that fails when terminal statuses stop being dead ends.",
+    "invariants_preserved": [
+      "A terminal Run never transitions again."
+    ],
+    "rejected_alternatives": [
+      "Restoring the removed package from git history: it carried no test obligation either."
+    ],
+    "proof_obligations": [
+      "rule-run-terminal-status-is-final"
+    ],
+    "counterfactual_check": "Break each rule's enforcing line so the package still builds; its test must fail with that rule's own assertion."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "run-terminal-status-is-final",
+        "statement": "A Run that has reached a terminal status never transitions again. succeeded, failed, cancelled and timed_out have no successors, and a command asking a Run to leave one of them is refused as an illegal transition.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A cancel arriving after the Run already succeeded is refused, not applied.",
+          "A late provider callback reporting failure on a Run that already timed out is refused, so the recorded outcome does not change after the fact.",
+          "A Run in evaluating may still move to succeeded, failed, cancelled or timed_out, because evaluating is not terminal."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/statemachine.go",
+            "lines": {
+              "start": 58,
+              "end": 79
+            },
+            "excerpt_sha256": "sha256:2b24d1bfc40e17508f9b41163d986c73853f889a335b9e2b5a679853382d0504"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/statemachine.go",
+            "lines": {
+              "start": 102,
+              "end": 105
+            },
+            "excerpt_sha256": "sha256:6dd7b2e7a94fc3753f72114d807cf544fd975da385086d33b97fd39ed6f2d5cf"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/statemachine.go",
+            "lines": {
+              "start": 177,
+              "end": 179
+            },
+            "excerpt_sha256": "sha256:403523b7886f9a7fe5d0410a2c5d1fd06e6ef99d834e335ca5ff384f6bcab486"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/statemachine_test.go",
+            "lines": {
+              "start": 100,
+              "end": 118
+            },
+            "content_sha256": "sha256:d2312ead57aa2866bc3dbead373a87a27b53c5d88bf8df1af47ef145cedd9e97",
+            "excerpt_sha256": "sha256:587351aa75fd051a0f1e2172d889d9fb455b955927abd7820d707187308779a6",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T05:14:37.495704Z",
+      "scope": "Re-prove run-terminal-status-is-final with its existing statement",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "beec54807a86cb375daf3451be62963a8dab66ad",
+        "registry_digest": "sha256:15207cf1f5998736f7f280fc7eea94b1f2a3b162ded5445c7382f777f4657892"
+      }
+    }
+  ],
+  "supersedes": [
+    "run-terminal-status-follows-its-lines"
+  ]
+}

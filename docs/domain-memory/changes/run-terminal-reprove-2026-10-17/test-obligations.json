@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "run-terminal-reprove-2026-10-17",
+  "proposal_id": "run-terminal-reprove-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-run-terminal-status-is-final",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-run-terminal-status-is-final",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "run-terminal-status-is-final"
+        }
+      ],
+      "expected_outcome": "A Run that has reached a terminal status never transitions again. succeeded, failed, cancelled and timed_out have no successors, and a command asking a Run to leave one of them is refused as an illegal transition.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTerminalStatesAreDeadEnds$ ./internal/trial/execution/"
+    }
+  ]
+}

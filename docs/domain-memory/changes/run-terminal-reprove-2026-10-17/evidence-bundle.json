@@ -1,0 +1,40 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-terminal-reprove-2026-10-17",
+  "proposal_id": "run-terminal-reprove-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "beec54807a86cb375daf3451be62963a8dab66ad",
+    "registry_digest": "sha256:15207cf1f5998736f7f280fc7eea94b1f2a3b162ded5445c7382f777f4657892"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-run-terminal-status-is-final",
+      "mutated_protection": "apps/platform/internal/trial/execution/statemachine.go:102: func IsTerminal(s gen.RunStatus) bool { _, ongoing := successors[s] return !ongoing -> func IsTerminal(s gen.RunStatus) bool { _, ongoing := successors[s] return !ongoing && false",
+      "failure_evidence": "=== RUN   TestTerminalStatesAreDeadEnds\n    statemachine_test.go:107: IsTerminal(succeeded) = false, want true\n    statemachine_test.go:107: IsTerminal(failed) = false, want true\n    statemachine_test.go:107: IsTerminal(cancelled) = false, want true\n    statemachine_test.go:107: IsTerminal(timed_out) = false, want true\n--- FAIL: TestTerminalStatesAreDeadEnds (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/execution\t4.393s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/trial/execution/statemachine.go",
+    "apps/platform/internal/trial/execution/statemachine_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-run-terminal-status-is-final",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTerminalStatesAreDeadEnds$ ./internal/trial/execution/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:3d51102845a7a16a4a5dbd47e0f915ab644074a7959e4297774b0490f832a576",
+      "finished_at": "2026-10-17T05:14:37.174259Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

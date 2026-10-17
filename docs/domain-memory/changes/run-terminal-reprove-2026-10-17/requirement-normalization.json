@@ -1,0 +1,24 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "run-terminal-reprove-2026-10-17",
+  "status": "draft",
+  "intent": "Attach a proving test to the reviewed rule run-terminal-status-is-final, whose reviewing package is no longer in the repository.",
+  "actor": "coding-agent",
+  "observable_outcome": "coverage lists run-terminal-status-is-final as proven, and get-record names the obligation that proves it.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-run-terminal-status-is-final",
+      "statement": "A Run that has reached a terminal status never transitions again. succeeded, failed, cancelled and timed_out have no successors, and a command asking a Run to leave one of them is refused as an illegal transition."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/trial/execution/statemachine.go",
+    "apps/platform/internal/trial/execution/statemachine_test.go"
+  ]
+}
