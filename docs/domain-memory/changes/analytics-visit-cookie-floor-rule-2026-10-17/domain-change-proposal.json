@@ -3,12 +3,12 @@
   "proposal_id": "analytics-visit-cookie-floor-rule-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "analytics-visit-cookie-floor-rule-2026-10-17",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T14:00:26.771821Z",
   "verified_at": "2026-10-17T14:00:33.572322Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T14:00:36.539207Z",
+  "applied_at": "2026-10-17T14:00:39.398614Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "a40a2f07f146c62cb50c375ec0ff9f0820b74bed",
@@ -104,5 +104,9 @@
         "registry_digest": "sha256:92da5370cc9ffed4a7ed4af905689e07417c2cfd44d91a7c2bf1da365261c8fb"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "6a831e511b25c08beef5e267c17a275483bae9ea",
+    "registry_digest": "sha256:593f6a856e86e476dd9292a8c70ce93eafa6176df099b12b3313335e61173d7b"
+  }
 }
