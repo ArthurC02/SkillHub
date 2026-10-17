@@ -3,12 +3,12 @@
   "proposal_id": "policy-first-window-rule-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "policy-first-window-rule-2026-10-17",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T04:43:51.662400Z",
   "verified_at": "2026-10-17T04:43:55.723063Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T04:43:58.560560Z",
+  "applied_at": "2026-10-17T04:44:00.445360Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "ee9d8745a0121b62493fd391dbaf69dbed13ae91",
@@ -103,5 +103,9 @@
         "registry_digest": "sha256:f59146cbe616b10ea366a92fb790d9f2c07ae317311ce8b42da169c3fb6fc1df"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "5b9e260d238406575177d0da40eb5617fc1adb3a",
+    "registry_digest": "sha256:15207cf1f5998736f7f280fc7eea94b1f2a3b162ded5445c7382f777f4657892"
+  }
 }

@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-17T04:43:55.306798Z"
 sources:
   - resource: "apps/platform/internal/product/entitlements/quota.go#L106-121"
     excerpt_sha256: "sha256:570a7c58898fba68b1e51679006ab7919ce909d0d9bc46ae3958c3862faaf50c"
