@@ -3,12 +3,12 @@
   "proposal_id": "registry-skill-purge-grace-recited-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "registry-skill-purge-grace-recited-2026-10-17",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T13:13:40.985935Z",
   "verified_at": "2026-10-17T13:13:49.923210Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T13:13:57.159866Z",
+  "applied_at": "2026-10-17T13:14:05.750649Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "887f8b64cdc8cc5f99556ce696adaa72b78ad0b9",
@@ -121,5 +121,9 @@
         "registry_digest": "sha256:0d37d926c149c5096c393be5309774a5e323263bcd730a138fe036a1c1f5c399"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "2a5df627934617db736e9ed1e3c5094b39568a8c",
+    "registry_digest": "sha256:ec5cbfa4f2a520c758602e1ccac087cda30f9e02b58ae458d01ef10fa0de25a7"
+  }
 }
