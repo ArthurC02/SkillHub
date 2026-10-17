@@ -91,6 +91,39 @@ func TestUsageCombinesOwnerFactsWithoutPersistenceTypes(t *testing.T) {
 	}
 }
 
+func TestAYoungWorkspaceHasTheFirstWindowAllowanceUntilItsFirstWindowEnds(t *testing.T) {
+	now := time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		name       string
+		age        time.Duration
+		wantWindow int
+		wantResets time.Time
+	}{
+		{"one second before its first window ends", 30*24*time.Hour - time.Second, 20, now.Add(time.Second)},
+		{"the moment its first window ends", 30 * 24 * time.Hour, 30, now.Add(29 * 24 * time.Hour)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			created := now.Add(-tc.age)
+			oldest := now.Add(-24 * time.Hour)
+			state, err := Usage(context.Background(), UsageReader{
+				WorkspaceCreatedAt: func(context.Context, pgtype.UUID) (time.Time, error) { return created, nil },
+				CountRuns: func(context.Context, pgtype.UUID, time.Time) (RunUsage, error) {
+					return RunUsage{Used: 5, Oldest: &oldest}, nil
+				},
+			}, DefaultQuotaLimits(), pgtype.UUID{}, now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if state.Limits.Window != tc.wantWindow || state.RemainingWindow != tc.wantWindow-5 {
+				t.Errorf("window limit %d with %d remaining, want %d with %d", state.Limits.Window, state.RemainingWindow, tc.wantWindow, tc.wantWindow-5)
+			}
+			if !state.WindowResetsAt.Equal(tc.wantResets) {
+				t.Errorf("window resets at %s, want %s", state.WindowResetsAt, tc.wantResets)
+			}
+		})
+	}
+}
+
 func splitReader(window, today int64, created time.Time) UsageReader {
 	dayStart := time.Now().Add(-25 * time.Hour)
 	return UsageReader{
