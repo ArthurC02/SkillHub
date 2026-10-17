@@ -1,0 +1,65 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "identity-harvest-rules-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed the login, session, operator and dev-login rules the identity Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context identity lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-an-oauth-callback-needs-its-state-cookie",
+      "statement": "A GitHub login callback is refused with 401 before any code exchange unless its state matches the state cookie set when the login began."
+    },
+    {
+      "id": "enforced-a-session-ends-at-its-expiry-instant",
+      "statement": "A session counts only strictly before its expiry; at the expiry instant it is already signed out."
+    },
+    {
+      "id": "enforced-a-purging-or-deleted-account-is-signed-out",
+      "statement": "An unexpired session stops counting once its account is being purged or has been deleted."
+    },
+    {
+      "id": "enforced-operator-routes-answer-404-to-everyone-else",
+      "statement": "An operator route lets a request through only for a user on the operator roster; anyone else gets 404 and a refused signed-in user is audited."
+    },
+    {
+      "id": "enforced-dev-login-exists-only-when-enabled",
+      "statement": "The development login route exists only when development login is enabled; otherwise it answers 404."
+    },
+    {
+      "id": "enforced-a-dev-login-name-is-at-most-64-characters",
+      "statement": "A development login name longer than 64 characters is refused with 400 before any account is touched."
+    },
+    {
+      "id": "enforced-a-session-workspace-answers-only-for-its-owner",
+      "statement": "The Workspace carried by a signed-in request is reused only when asking about its own owner; any other account's Workspace is read from its owner."
+    },
+    {
+      "id": "enforced-a-github-login-without-a-profile-email-takes-the-primary-verified-one",
+      "statement": "When the GitHub profile carries no email, the login uses only the address GitHub marks both primary and verified."
+    },
+    {
+      "id": "enforced-a-github-outage-is-503-not-a-refused-login",
+      "statement": "GitHub rate limiting, server errors and transport failures answer 503, while other GitHub refusals answer 401, so an outage never reads as a bad credential."
+    },
+    {
+      "id": "enforced-an-unverified-github-email-never-logs-in",
+      "statement": "A GitHub login whose profile carries no email is refused when no address is both primary and verified, so an unverified address can never claim an account."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/creator/workspace/account.go",
+    "apps/platform/internal/creator/workspace/account_test.go",
+    "apps/platform/internal/creator/workspace/github.go",
+    "apps/platform/internal/creator/workspace/github_test.go",
+    "apps/platform/internal/creator/workspace/http.go",
+    "apps/platform/internal/creator/workspace/http_test.go",
+    "apps/platform/internal/creator/workspace/service.go",
+    "apps/platform/internal/entrypoint/api/apiserver/identity_hardening_a3_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/session_lookup_integration_test.go"
+  ]
+}

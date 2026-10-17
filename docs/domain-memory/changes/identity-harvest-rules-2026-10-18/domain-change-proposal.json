@@ -1,0 +1,424 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "identity-harvest-rules-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "identity-harvest-rules-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T17:09:54.107005Z",
+  "verified_at": "2026-10-17T17:11:23.446425Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "585b3864aa8674eae77b55e199b2608983808a7f",
+    "registry_digest": "sha256:5e733744aead6651441e5d12b9239ad1c0a756018f933ca9567520f0810011d8"
+  },
+  "affected_contexts": [
+    "identity"
+  ],
+  "rule_ids": [
+    "an-oauth-callback-needs-its-state-cookie",
+    "a-session-ends-at-its-expiry-instant",
+    "a-purging-or-deleted-account-is-signed-out",
+    "operator-routes-answer-404-to-everyone-else",
+    "dev-login-exists-only-when-enabled",
+    "a-dev-login-name-is-at-most-64-characters",
+    "a-session-workspace-answers-only-for-its-owner",
+    "a-github-login-without-a-profile-email-takes-the-primary-verified-one",
+    "a-github-outage-is-503-not-a-refused-login",
+    "an-unverified-github-email-never-logs-in"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "identity",
+    "invariant": "Only identity decides who is signed in, whose Workspace a session carries and who is an operator.",
+    "evidence": [
+      "apps/platform/internal/creator/workspace/account.go:63-68"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: every route is wrapped by identity's session and operator middleware.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/creator/workspace/http.go:241-264"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the identity Context found these enforced rules; the reviewed Registry held only account deletion and purge rules.",
+      "Two guards survived their counterfactuals, the OAuth state check and the verified-email check; one test was strengthened and one added."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording guards no test reaches: they wait for a test."
+    ],
+    "proof_obligations": [
+      "rule-an-oauth-callback-needs-its-state-cookie",
+      "rule-a-session-ends-at-its-expiry-instant",
+      "rule-a-purging-or-deleted-account-is-signed-out",
+      "rule-operator-routes-answer-404-to-everyone-else",
+      "rule-dev-login-exists-only-when-enabled",
+      "rule-a-dev-login-name-is-at-most-64-characters",
+      "rule-a-session-workspace-answers-only-for-its-owner",
+      "rule-a-github-login-without-a-profile-email-takes-the-primary-verified-one",
+      "rule-a-github-outage-is-503-not-a-refused-login",
+      "rule-an-unverified-github-email-never-logs-in"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-oauth-callback-needs-its-state-cookie",
+        "statement": "A GitHub login callback is refused with 401 before any code exchange unless its state matches the state cookie set when the login began.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "A callback with state abc and a state cookie of other answers 401."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/http.go",
+            "lines": {
+              "start": 120,
+              "end": 124
+            },
+            "excerpt_sha256": "sha256:6a570ea78e1c8c2a9058de2411a3e61f5b45c3ebb397084a1d0feda7a90b7ced"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/github_test.go",
+            "lines": {
+              "start": 183,
+              "end": 209
+            },
+            "content_sha256": "sha256:3db8aef584efd2a389d437f399d31c55d0794a94068b58b2b80943ed4f522a52",
+            "excerpt_sha256": "sha256:c30f42ad3b3446dbbf8bfedb0b1f66682d4f0719e3769bb1963ef655d79791d8"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-session-ends-at-its-expiry-instant",
+        "statement": "A session counts only strictly before its expiry; at the expiry instant it is already signed out.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "A session expiring exactly now is invalid."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/account.go",
+            "lines": {
+              "start": 63,
+              "end": 68
+            },
+            "excerpt_sha256": "sha256:a5d67500585fa5d20713957254af7d5b53d1c81383ddf9852c670514fb3299df"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/account_test.go",
+            "lines": {
+              "start": 11,
+              "end": 32
+            },
+            "content_sha256": "sha256:fad510c4e8cc2b21b2a6775a4df785a95e6c19c4b4fd3a36ab22fbf4b0e62e8d",
+            "excerpt_sha256": "sha256:0f9ff53abbd7fad80898ad4d6a6d0b83e07318eb807954a08e0bfcc68276a44e"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-purging-or-deleted-account-is-signed-out",
+        "statement": "An unexpired session stops counting once its account is being purged or has been deleted.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "A user whose purge has started gets 401 with a still-valid cookie."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/account.go",
+            "lines": {
+              "start": 63,
+              "end": 68
+            },
+            "excerpt_sha256": "sha256:a5d67500585fa5d20713957254af7d5b53d1c81383ddf9852c670514fb3299df"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/account_test.go",
+            "lines": {
+              "start": 11,
+              "end": 32
+            },
+            "content_sha256": "sha256:fad510c4e8cc2b21b2a6775a4df785a95e6c19c4b4fd3a36ab22fbf4b0e62e8d",
+            "excerpt_sha256": "sha256:0f9ff53abbd7fad80898ad4d6a6d0b83e07318eb807954a08e0bfcc68276a44e"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "operator-routes-answer-404-to-everyone-else",
+        "statement": "An operator route lets a request through only for a user on the operator roster; anyone else gets 404 and a refused signed-in user is audited.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "A signed-in non-operator asking for /admin/dispatch gets 404 and one operator-refused audit row."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/http.go",
+            "lines": {
+              "start": 241,
+              "end": 264
+            },
+            "excerpt_sha256": "sha256:63c687d608ed5449b3cce49f5b72b2bbb4cca50e6e5913d5757573b2ccba5ccb"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/identity_hardening_a3_integration_test.go",
+            "lines": {
+              "start": 17,
+              "end": 57
+            },
+            "content_sha256": "sha256:d4f191eaae697a111644532ad0d3b244d768d0019621b04171c14b2b1f89aea3",
+            "excerpt_sha256": "sha256:5b197623c20cb91614af3b18876842d267bece2dcaa036d12fe8ed5c2a9b7de9"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "dev-login-exists-only-when-enabled",
+        "statement": "The development login route exists only when development login is enabled; otherwise it answers 404.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "With development login off, POST /auth/dev/login answers 404."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/http.go",
+            "lines": {
+              "start": 55,
+              "end": 57
+            },
+            "excerpt_sha256": "sha256:85a660fd968da5521234781c2277aba2c22190e9a7461f00a31057fa1719b90f"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/github_test.go",
+            "lines": {
+              "start": 240,
+              "end": 263
+            },
+            "content_sha256": "sha256:3db8aef584efd2a389d437f399d31c55d0794a94068b58b2b80943ed4f522a52",
+            "excerpt_sha256": "sha256:c3331dac3482412666a5beadd2f4a7c1a8666f465a0d826b8522b789d95cf2b9"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-dev-login-name-is-at-most-64-characters",
+        "statement": "A development login name longer than 64 characters is refused with 400 before any account is touched.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "A 64-character name logs in; 65 characters answer 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/http.go",
+            "lines": {
+              "start": 75,
+              "end": 78
+            },
+            "excerpt_sha256": "sha256:a1e2a72f8e5868b95ddd26407e4bf965c1adcb4194a8aca76d146f22d97ac3df"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/http_test.go",
+            "lines": {
+              "start": 34,
+              "end": 49
+            },
+            "content_sha256": "sha256:ba726e2665d069aff7e7f0e096c3113c83224244acac73176c3cf6b2658a8e3d",
+            "excerpt_sha256": "sha256:434ad64af8102470abc001f76704971f08b61c83a80582c1fae6c20d47782ab7"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-session-workspace-answers-only-for-its-owner",
+        "statement": "The Workspace carried by a signed-in request is reused only when asking about its own owner; any other account's Workspace is read from its owner.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "Inside Alice's request, asking for Bob's Workspace returns Bob's, not Alice's."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/service.go",
+            "lines": {
+              "start": 389,
+              "end": 406
+            },
+            "excerpt_sha256": "sha256:25c1aadf0ac80ce26114639e8b64598881c2394531a8329064ed3f64ea85ed56"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/session_lookup_integration_test.go",
+            "lines": {
+              "start": 56,
+              "end": 90
+            },
+            "content_sha256": "sha256:f1c3573b53054cf26a1cfece11addad8cae5d3212a31d1f3b77eb1626fb9a27b",
+            "excerpt_sha256": "sha256:a10c40994348c38c70cadebcf6c2c399af2c3b8e7e558189dd444a7610b9e2fb"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-github-login-without-a-profile-email-takes-the-primary-verified-one",
+        "statement": "When the GitHub profile carries no email, the login uses only the address GitHub marks both primary and verified.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "Of a verified old address and a primary verified one, the primary is used."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/github.go",
+            "lines": {
+              "start": 124,
+              "end": 142
+            },
+            "excerpt_sha256": "sha256:9674ee19536ccb9a0d165569d198ebbc02ef8432870c20a1998c83561d1aba1c"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/github_test.go",
+            "lines": {
+              "start": 93,
+              "end": 108
+            },
+            "content_sha256": "sha256:3db8aef584efd2a389d437f399d31c55d0794a94068b58b2b80943ed4f522a52",
+            "excerpt_sha256": "sha256:44ba3a921e28f24d919cd95d276af3bc5b34bf94dbcc290adb7d97b5979d6e94"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-github-outage-is-503-not-a-refused-login",
+        "statement": "GitHub rate limiting, server errors and transport failures answer 503, while other GitHub refusals answer 401, so an outage never reads as a bad credential.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "GitHub answering 429 on the token exchange makes the callback answer 503."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/github.go",
+            "lines": {
+              "start": 161,
+              "end": 175
+            },
+            "excerpt_sha256": "sha256:19db2141c1569a717bf1fc95f3db30eed8ceb2e828ab1b63c7aa45b59ed9dd46"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/github_test.go",
+            "lines": {
+              "start": 211,
+              "end": 238
+            },
+            "content_sha256": "sha256:3db8aef584efd2a389d437f399d31c55d0794a94068b58b2b80943ed4f522a52",
+            "excerpt_sha256": "sha256:5fbccf129a0883aaf9e689f81ea09d2366135c86a936ec227e8e4b9730b3178c"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-unverified-github-email-never-logs-in",
+        "statement": "A GitHub login whose profile carries no email is refused when no address is both primary and verified, so an unverified address can never claim an account.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "A GitHub account whose only primary address is unverified is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/github.go",
+            "lines": {
+              "start": 133,
+              "end": 142
+            },
+            "excerpt_sha256": "sha256:93ed9e3b5f4393880b3a552f0e327ef9d93d5ba9b081ca0eb4ca8f29023f0b2d"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/github_test.go",
+            "lines": {
+              "start": 110,
+              "end": 125
+            },
+            "content_sha256": "sha256:3db8aef584efd2a389d437f399d31c55d0794a94068b58b2b80943ed4f522a52",
+            "excerpt_sha256": "sha256:185caf4df0c030c04213961420804078139e8f33adcca3599c10c45df6b90d2f"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T17:11:22.999935Z",
+      "scope": "Record identity rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "585b3864aa8674eae77b55e199b2608983808a7f",
+        "registry_digest": "sha256:5e733744aead6651441e5d12b9239ad1c0a756018f933ca9567520f0810011d8"
+      }
+    }
+  ]
+}

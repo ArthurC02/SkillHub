@@ -1,0 +1,157 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "identity-harvest-rules-2026-10-18",
+  "proposal_id": "identity-harvest-rules-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-an-oauth-callback-needs-its-state-cookie",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-oauth-callback-needs-its-state-cookie",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-oauth-callback-needs-its-state-cookie"
+        }
+      ],
+      "expected_outcome": "A GitHub login callback is refused with 401 before any code exchange unless its state matches the state cookie set when the login began.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestCallbackRejectsStateMismatch$ ./internal/creator/workspace/"
+    },
+    {
+      "id": "rule-a-session-ends-at-its-expiry-instant",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-session-ends-at-its-expiry-instant",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-session-ends-at-its-expiry-instant"
+        }
+      ],
+      "expected_outcome": "A session counts only strictly before its expiry; at the expiry instant it is already signed out.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestASessionCountsOnlyBeforeItExpiresAndWhileItsAccountStands$ ./internal/creator/workspace/"
+    },
+    {
+      "id": "rule-a-purging-or-deleted-account-is-signed-out",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-purging-or-deleted-account-is-signed-out",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-purging-or-deleted-account-is-signed-out"
+        }
+      ],
+      "expected_outcome": "An unexpired session stops counting once its account is being purged or has been deleted.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestASessionCountsOnlyBeforeItExpiresAndWhileItsAccountStands$ ./internal/creator/workspace/"
+    },
+    {
+      "id": "rule-operator-routes-answer-404-to-everyone-else",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-operator-routes-answer-404-to-everyone-else",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "operator-routes-answer-404-to-everyone-else"
+        }
+      ],
+      "expected_outcome": "An operator route lets a request through only for a user on the operator roster; anyone else gets 404 and a refused signed-in user is audited.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnOperatorRefusalIsAudited$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-dev-login-exists-only-when-enabled",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-dev-login-exists-only-when-enabled",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "dev-login-exists-only-when-enabled"
+        }
+      ],
+      "expected_outcome": "The development login route exists only when development login is enabled; otherwise it answers 404.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestDevLoginNotMountedByDefault$ ./internal/creator/workspace/"
+    },
+    {
+      "id": "rule-a-dev-login-name-is-at-most-64-characters",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-dev-login-name-is-at-most-64-characters",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-dev-login-name-is-at-most-64-characters"
+        }
+      ],
+      "expected_outcome": "A development login name longer than 64 characters is refused with 400 before any account is touched.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestDevLoginRejectsOverlongNameInChinese$ ./internal/creator/workspace/"
+    },
+    {
+      "id": "rule-a-session-workspace-answers-only-for-its-owner",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-session-workspace-answers-only-for-its-owner",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-session-workspace-answers-only-for-its-owner"
+        }
+      ],
+      "expected_outcome": "The Workspace carried by a signed-in request is reused only when asking about its own owner; any other account's Workspace is read from its owner.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheWorkspaceFoundWithTheSessionIsTheOneTheTableHolds$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-github-login-without-a-profile-email-takes-the-primary-verified-one",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-github-login-without-a-profile-email-takes-the-primary-verified-one",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-github-login-without-a-profile-email-takes-the-primary-verified-one"
+        }
+      ],
+      "expected_outcome": "When the GitHub profile carries no email, the login uses only the address GitHub marks both primary and verified.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestFetchUserEmailFallbackAndNameDefault$ ./internal/creator/workspace/"
+    },
+    {
+      "id": "rule-a-github-outage-is-503-not-a-refused-login",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-github-outage-is-503-not-a-refused-login",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-github-outage-is-503-not-a-refused-login"
+        }
+      ],
+      "expected_outcome": "GitHub rate limiting, server errors and transport failures answer 503, while other GitHub refusals answer 401, so an outage never reads as a bad credential.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestCallbackTellsAGitHubOutageFromARefusedLogin$ ./internal/creator/workspace/"
+    },
+    {
+      "id": "rule-an-unverified-github-email-never-logs-in",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-unverified-github-email-never-logs-in",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-unverified-github-email-never-logs-in"
+        }
+      ],
+      "expected_outcome": "A GitHub login whose profile carries no email is refused when no address is both primary and verified, so an unverified address can never claim an account.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAGitHubAccountWhosePrimaryEmailIsUnverifiedCannotLogIn$ ./internal/creator/workspace/"
+    }
+  ]
+}

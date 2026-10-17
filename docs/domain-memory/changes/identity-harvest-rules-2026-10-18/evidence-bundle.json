@@ -1,0 +1,200 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "identity-harvest-rules-2026-10-18",
+  "proposal_id": "identity-harvest-rules-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "585b3864aa8674eae77b55e199b2608983808a7f",
+    "registry_digest": "sha256:5e733744aead6651441e5d12b9239ad1c0a756018f933ca9567520f0810011d8"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-oauth-callback-needs-its-state-cookie",
+      "mutated_protection": "apps/platform/internal/creator/workspace/http.go:121: || r.URL.Query().Get(\"state\") != sc.Value { -> || false {",
+      "failure_evidence": "=== RUN   TestCallbackRejectsStateMismatch\n=== RUN   TestCallbackRejectsStateMismatch/missing_cookie\n=== RUN   TestCallbackRejectsStateMismatch/mismatched_state\n2026/10/18 01:09:11 WARN github code exchange failed error=\"github token exchange failed: bad_verification_code\"\n    github_test.go:205: got 401 \"{\\\"error\\\":\\\"code exchange failed\\\"}\\n\", want refused for state mismatch = true\n=== RUN   TestCallbackRejectsStateMismatch/empty_cookie_and_empty_state\n=== RUN   TestCallbackRejectsStateMismatch/matching_state\n2026/10/18 01:09:11 WARN github code exchange failed error=\"github token exchange failed: bad_verification_code\"\n--- FAIL: TestCallbackRejectsStateMismatch (0.07s)\n    --- PASS: TestCallbackRejectsStateMismatch/missing_cookie (0.00s)\n    --- FAIL: TestCallbackRejectsStateMismatch/mismatched_state (0.07s)\n    --- PASS: TestCallbackRejectsStateMismatch/empty_cookie_and_empty_state (0.00s)\n    --- PASS: TestCallbackRejectsStateMismatch/matching_state (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace\t3.560s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-session-ends-at-its-expiry-instant",
+      "mutated_protection": "apps/platform/internal/creator/workspace/account.go:64: if !expiresAt.Time.After(now) { -> if expiresAt.Time.Before(now) {",
+      "failure_evidence": "=== RUN   TestASessionCountsOnlyBeforeItExpiresAndWhileItsAccountStands\n    account_test.go:29: a session expiring this very moment: validity = <nil>, want identity: session unknown or expired\n--- FAIL: TestASessionCountsOnlyBeforeItExpiresAndWhileItsAccountStands (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace\t2.796s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-purging-or-deleted-account-is-signed-out",
+      "mutated_protection": "apps/platform/internal/creator/workspace/account.go:67: return account.standing() -> return nil",
+      "failure_evidence": "=== RUN   TestASessionCountsOnlyBeforeItExpiresAndWhileItsAccountStands\n    account_test.go:29: the account is being purged: validity = <nil>, want account deletion is already in progress\n    account_test.go:29: the account was deleted: validity = <nil>, want identity: account deleted\n    account_test.go:29: a deleted account whose purge had started reads as gone: validity = <nil>, want identity: account deleted\n--- FAIL: TestASessionCountsOnlyBeforeItExpiresAndWhileItsAccountStands (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace\t2.786s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-operator-routes-answer-404-to-everyone-else",
+      "mutated_protection": "apps/platform/internal/creator/workspace/http.go:257: if !h.Operators[pgconv.UUIDString(found.user.ID)] { -> if !h.Operators[pgconv.UUIDString(found.user.ID)] && false {",
+      "failure_evidence": "=== RUN   TestAnOperatorRefusalIsAudited\n    identity_hardening_a3_integration_test.go:29: an operator route answered 200 to a non-operator; SEC-011 requires 404\n--- FAIL: TestAnOperatorRefusalIsAudited (0.03s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.945s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-dev-login-exists-only-when-enabled",
+      "mutated_protection": "apps/platform/internal/creator/workspace/http.go:55: if h.DevLogin { -> if h.DevLogin || true {",
+      "failure_evidence": "--- FAIL: TestDevLoginNotMountedByDefault (0.00s)\npanic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]\n...\n69ef8d470, 0x137275922940}, 0x13727592e280)\n\tC:/Users/a8022/OneDrive/Desktop/SkillHub/apps/platform/internal/creator/workspace/http.go:79 +0x326\nnet/http.HandlerFunc.ServeHTTP(0x137275946000?, {0x7ff69ef8d470?, 0x137275922940?}, 0x12c6ce408c8?)\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/net/http/server.go:2358 +0x29\nnet/http.(*ServeMux).ServeHTTP(0x7ff69ef8f278?, {0x7ff69ef8d470, 0x137275922940}, 0x13727592e280)\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/net/http/server.go:2923 +0x1cf\ngithub.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace.TestDevLoginNotMountedByDefault(0x13727593e200)\n\tC:/Users/a8022/OneDrive/Desktop/SkillHub/apps/platform/internal/creator/workspace/github_test.go:220 +0x157\ntesting.tRunner(0x13727593e200, 0x7ff69ef93e88)\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/testing/testing.go:2195 +0xc3\ncreated by testing.(*T).Run in goroutine 1\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/testing/testing.go:2260 +0x4b4\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace\t2.711s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-dev-login-name-is-at-most-64-characters",
+      "mutated_protection": "apps/platform/internal/creator/workspace/http.go:75: utf8.RuneCountInString(name) > maxDevLoginNameChars { -> utf8.RuneCountInString(name) > maxDevLoginNameChars+1 {",
+      "failure_evidence": "--- FAIL: TestDevLoginRejectsOverlongNameInChinese (0.00s)\npanic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]\n...\nlatform/internal/creator/workspace.(*Service).LoginOrSignup(0x0, {0x7ff6f735f278, 0x7ff6f7450700}, {{0x7ff6f6aae31c, 0x3}, {0x24c827c8e1e0, 0x41}, {0x24c827c8e230, 0x4b}, {0x24c827c8e1e0, ...}, ...})\n\tC:/Users/a8022/OneDrive/Desktop/SkillHub/apps/platform/internal/creator/workspace/service.go:156 +0x35\ngithub.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace.(*Handler).devLogin(0x24c827cd9f00, {0x7ff6f735d470, 0x24c827ca49c0}, 0x24c827cb4280)\n\tC:/Users/a8022/OneDrive/Desktop/SkillHub/apps/platform/internal/creator/workspace/http.go:79 +0x326\ngithub.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace.TestDevLoginRejectsOverlongNameInChinese(0x24c827cc8200)\n\tC:/Users/a8022/OneDrive/Desktop/SkillHub/apps/platform/internal/creator/workspace/http_test.go:38 +0x1ef\ntesting.tRunner(0x24c827cc8200, 0x7ff6f7363e90)\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/testing/testing.go:2195 +0xc3\ncreated by testing.(*T).Run in goroutine 1\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/testing/testing.go:2260 +0x4b4\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace\t2.692s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-session-workspace-answers-only-for-its-owner",
+      "mutated_protection": "apps/platform/internal/creator/workspace/service.go:390: ok && ws.OwnerUserID == user.ID { -> ok {",
+      "failure_evidence": "=== RUN   TestTheWorkspaceFoundWithTheSessionIsTheOneTheTableHolds\n    session_lookup_integration_test.go:88: asking for another account's workspace inside a signed-in request answered 4e5dddfb-92c0-4eb4-8d7a-a7df2d095c3f, want cc969819-a069-434e-ac86-5ca0000a7414\n--- FAIL: TestTheWorkspaceFoundWithTheSessionIsTheOneTheTableHolds (0.06s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.575s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-github-login-without-a-profile-email-takes-the-primary-verified-one",
+      "mutated_protection": "apps/platform/internal/creator/workspace/github.go:134: if e.Primary && e.Verified { -> if e.Verified {",
+      "failure_evidence": "=== RUN   TestFetchUserEmailFallbackAndNameDefault\n    github_test.go:100: want primary verified email, got \"old@x.dev\"\n--- FAIL: TestFetchUserEmailFallbackAndNameDefault (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace\t2.592s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-github-outage-is-503-not-a-refused-login",
+      "mutated_protection": "apps/platform/internal/creator/workspace/github.go:171: resp.StatusCode == http.StatusTooManyRequests || -> resp.StatusCode == http.StatusTooManyRequests && false ||",
+      "failure_evidence": "=== RUN   TestCallbackTellsAGitHubOutageFromARefusedLogin\n=== RUN   TestCallbackTellsAGitHubOutageFromARefusedLogin/github_is_down\n2026/10/18 00:28:32 WARN github code exchange failed error=\"github is not answering right now: github /access_token: status 502: \"\n=== RUN   TestCallbackTellsAGitHubOutageFromARefusedLogin/github_is_rate_limiting\n2026/10/18 00:28:32 WARN github code exchange failed error=\"github /access_token: status 429: \"\n    github_test.go:208: callback = 401, want 503\n=== RUN   TestCallbackTellsAGitHubOutageFromARefusedLogin/github_refused_the_code\n2026/10/18 00:28:32 WARN github code exchange failed error=\"github /access_token: status 401: \"\n--- FAIL: TestCallbackTellsAGitHubOutageFromARefusedLogin (0.06s)\n    --- PASS: TestCallbackTellsAGitHubOutageFromARefusedLogin/github_is_down (0.06s)\n    --- FAIL: TestCallbackTellsAGitHubOutageFromARefusedLogin/github_is_rate_limiting (0.00s)\n    --- PASS: TestCallbackTellsAGitHubOutageFromARefusedLogin/github_refused_the_code (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace\t2.514s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-unverified-github-email-never-logs-in",
+      "mutated_protection": "apps/platform/internal/creator/workspace/github.go:134: if e.Primary && e.Verified { -> if e.Primary {",
+      "failure_evidence": "=== RUN   TestAGitHubAccountWhosePrimaryEmailIsUnverifiedCannotLogIn\n    github_test.go:123: FetchUser = {ID:7 Login:mallory Name:mallory Email:victim@x.dev}, <nil>; want the unverified address refused\n--- FAIL: TestAGitHubAccountWhosePrimaryEmailIsUnverifiedCannotLogIn (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace\t3.884s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/creator/workspace/account.go",
+    "apps/platform/internal/creator/workspace/account_test.go",
+    "apps/platform/internal/creator/workspace/github.go",
+    "apps/platform/internal/creator/workspace/github_test.go",
+    "apps/platform/internal/creator/workspace/http.go",
+    "apps/platform/internal/creator/workspace/http_test.go",
+    "apps/platform/internal/creator/workspace/service.go",
+    "apps/platform/internal/entrypoint/api/apiserver/identity_hardening_a3_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/session_lookup_integration_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-an-oauth-callback-needs-its-state-cookie",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestCallbackRejectsStateMismatch$ ./internal/creator/workspace/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4f09f9cc16d806e4eaed5683f7d29a84bd58170c267ec2d08b843d3e09346bf5",
+      "finished_at": "2026-10-17T17:10:03.105413Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-session-ends-at-its-expiry-instant",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestASessionCountsOnlyBeforeItExpiresAndWhileItsAccountStands$ ./internal/creator/workspace/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:94a6c2030cab7f4399ab80b72fb028ff84974866fd82ed932c03f94c83159efd",
+      "finished_at": "2026-10-17T17:10:10.644385Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-purging-or-deleted-account-is-signed-out",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestASessionCountsOnlyBeforeItExpiresAndWhileItsAccountStands$ ./internal/creator/workspace/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e54602c33e55a81dedca42f2d490367bee51b5e57a557d9506ac0e3b16369325",
+      "finished_at": "2026-10-17T17:10:17.681430Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-operator-routes-answer-404-to-everyone-else",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnOperatorRefusalIsAudited$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b125e9062abfac554fb3c08208e0e32eb07109861e25a66541d1b855e5291f23",
+      "finished_at": "2026-10-17T17:10:31.328687Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-dev-login-exists-only-when-enabled",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestDevLoginNotMountedByDefault$ ./internal/creator/workspace/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:d2f22b92f03b2f6a74f33809cf2c9cff195a4938c500e4a0d41010c45d213a35",
+      "finished_at": "2026-10-17T17:10:38.143567Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-dev-login-name-is-at-most-64-characters",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestDevLoginRejectsOverlongNameInChinese$ ./internal/creator/workspace/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:65bfdacaa8814e21fa963e244d6590547baeae19eb843291758218d024dc1d1d",
+      "finished_at": "2026-10-17T17:10:45.826918Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-session-workspace-answers-only-for-its-owner",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheWorkspaceFoundWithTheSessionIsTheOneTheTableHolds$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:6d36a0f5443e1d3e96a004cad6692aff9e332c5430482d3e2406f441fd32177e",
+      "finished_at": "2026-10-17T17:10:58.101770Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-github-login-without-a-profile-email-takes-the-primary-verified-one",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestFetchUserEmailFallbackAndNameDefault$ ./internal/creator/workspace/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:18ef81636d04435ab51177fb91670fe1241018902daf23c622b0441f88b886cd",
+      "finished_at": "2026-10-17T17:11:05.116953Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-github-outage-is-503-not-a-refused-login",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestCallbackTellsAGitHubOutageFromARefusedLogin$ ./internal/creator/workspace/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:30e38e1a12698f4e8abe18c6b2faf022ff059f9518178eb71015fd3cb8e4a677",
+      "finished_at": "2026-10-17T17:11:14.998115Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-unverified-github-email-never-logs-in",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAGitHubAccountWhosePrimaryEmailIsUnverifiedCannotLogIn$ ./internal/creator/workspace/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:8ee703df0a9316d504b53ba3ed62ae30aca89f7de1ea15c1d8003de3ec3ac45a",
+      "finished_at": "2026-10-17T17:11:22.574864Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
