@@ -1,0 +1,142 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "operations-harvest-rules-2026-10-17",
+  "proposal_id": "operations-harvest-rules-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-an-agent-proposes-only-actions-its-definition-lists",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-agent-proposes-only-actions-its-definition-lists",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-agent-proposes-only-actions-its-definition-lists"
+        }
+      ],
+      "expected_outcome": "A platform agent conclusion that proposes an action outside its definition's action list fails as a whole, so nothing is recorded.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnAgentMayNotProposeARegisteredActionItsDefinitionDoesNotList$ ./internal/product/operations/"
+    },
+    {
+      "id": "rule-a-proposal-that-changes-nothing-is-never-recorded",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-proposal-that-changes-nothing-is-never-recorded",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-proposal-that-changes-nothing-is-never-recorded"
+        }
+      ],
+      "expected_outcome": "A proposal whose preview counts are all zero is dropped and never reaches an operator.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAProposalWhosePreviewChangesNothingNeverReachesAnOperator$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-at-most-one-live-proposal-per-action",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-at-most-one-live-proposal-per-action",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "at-most-one-live-proposal-per-action"
+        }
+      ],
+      "expected_outcome": "A new proposal is skipped while another proposal for the same action is proposed, approved or running.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnAgentProposesOnlyARegisteredActionWithItsPreviewAndOnceWhileItIsLive$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-operators-move-findings-only-along-allowed-paths",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-operators-move-findings-only-along-allowed-paths",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "operators-move-findings-only-along-allowed-paths"
+        }
+      ],
+      "expected_outcome": "An operator may move a finding only along the allowed status paths; any other move is refused.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnOperatorMovesAFindingOnlyAlongTheAllowedPaths$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-live-finding-absent-from-a-report-recovers",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-live-finding-absent-from-a-report-recovers",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-live-finding-absent-from-a-report-recovers"
+        }
+      ],
+      "expected_outcome": "After a successful report, every open or acknowledged finding the report did not cite becomes recovered, and reopens if a later report cites it.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAReportedProblemIsOneFindingAcrossDaysUntilItRecoversAndReopens$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-report-item-must-cite-a-fact-a-tool-returned",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-report-item-must-cite-a-fact-a-tool-returned",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-report-item-must-cite-a-fact-a-tool-returned"
+        }
+      ],
+      "expected_outcome": "A daily report item or proposal that cites no fact, or cites a pointer no tool result holds, is rejected.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestADailyReportMustBeWellFormedBeforeItsCitesCount$ ./internal/product/operations/"
+    },
+    {
+      "id": "rule-an-unpriced-run-counts-at-least-its-key-budget",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-unpriced-run-counts-at-least-its-key-budget",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-unpriced-run-counts-at-least-its-key-budget"
+        }
+      ],
+      "expected_outcome": "A platform agent run with unpriced steps counts toward the daily cap at least the budget its gateway key was given.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnUnpricedRunCountsAtLeastTheBudgetItsKeyWasGiven$ ./internal/product/operations/"
+    },
+    {
+      "id": "rule-every-operator-change-to-an-agent-needs-a-note",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-every-operator-change-to-an-agent-needs-a-note",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "every-operator-change-to-an-agent-needs-a-note"
+        }
+      ],
+      "expected_outcome": "Enabling or disabling an agent, changing its spend cap or its brake is refused with 400 when the note is blank.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAgentChangesNeedANoteAndAKnownAgent$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-the-brake-is-named-before-the-disable-switch",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-brake-is-named-before-the-disable-switch",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-brake-is-named-before-the-disable-switch"
+        }
+      ],
+      "expected_outcome": "A run halted while the brake is engaged stops with the brake's reason even when the agent is also disabled.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestHaltReasonNamesTheBrakeBeforeTheDisable$ ./internal/product/operations/"
+    }
+  ]
+}

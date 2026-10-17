@@ -1,0 +1,65 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "operations-harvest-rules-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed the proposal, finding, report, spend and note rules the operations Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context operations lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-an-agent-proposes-only-actions-its-definition-lists",
+      "statement": "A platform agent conclusion that proposes an action outside its definition's action list fails as a whole, so nothing is recorded."
+    },
+    {
+      "id": "enforced-a-proposal-that-changes-nothing-is-never-recorded",
+      "statement": "A proposal whose preview counts are all zero is dropped and never reaches an operator."
+    },
+    {
+      "id": "enforced-at-most-one-live-proposal-per-action",
+      "statement": "A new proposal is skipped while another proposal for the same action is proposed, approved or running."
+    },
+    {
+      "id": "enforced-operators-move-findings-only-along-allowed-paths",
+      "statement": "An operator may move a finding only along the allowed status paths; any other move is refused."
+    },
+    {
+      "id": "enforced-a-live-finding-absent-from-a-report-recovers",
+      "statement": "After a successful report, every open or acknowledged finding the report did not cite becomes recovered, and reopens if a later report cites it."
+    },
+    {
+      "id": "enforced-a-report-item-must-cite-a-fact-a-tool-returned",
+      "statement": "A daily report item or proposal that cites no fact, or cites a pointer no tool result holds, is rejected."
+    },
+    {
+      "id": "enforced-an-unpriced-run-counts-at-least-its-key-budget",
+      "statement": "A platform agent run with unpriced steps counts toward the daily cap at least the budget its gateway key was given."
+    },
+    {
+      "id": "enforced-every-operator-change-to-an-agent-needs-a-note",
+      "statement": "Enabling or disabling an agent, changing its spend cap or its brake is refused with 400 when the note is blank."
+    },
+    {
+      "id": "enforced-the-brake-is-named-before-the-disable-switch",
+      "statement": "A run halted while the brake is engaged stops with the brake's reason even when the agent is also disabled."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/platform_agent_findings_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/platform_agents_integration_test.go",
+    "apps/platform/internal/product/operations/actions.go",
+    "apps/platform/internal/product/operations/daily_report.go",
+    "apps/platform/internal/product/operations/daily_report_test.go",
+    "apps/platform/internal/product/operations/findings.go",
+    "apps/platform/internal/product/operations/handler.go",
+    "apps/platform/internal/product/operations/proposals.go",
+    "apps/platform/internal/product/operations/proposals_test.go",
+    "apps/platform/internal/product/operations/runs.go",
+    "apps/platform/internal/product/operations/runs_test.go",
+    "apps/platform/internal/product/operations/spend_test.go"
+  ]
+}

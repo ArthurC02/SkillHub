@@ -1,0 +1,187 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "operations-harvest-rules-2026-10-17",
+  "proposal_id": "operations-harvest-rules-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "a06bd2d5459a0a4554cf5d6cb0a24d476e9c97c6",
+    "registry_digest": "sha256:9fa069bf0b4b41ace6252364fcbe5b050c3d222ec51e00f5d26eb9d9d09c8e91"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-agent-proposes-only-actions-its-definition-lists",
+      "mutated_protection": "apps/platform/internal/product/operations/proposals.go:61: if !slices.Contains(def.Actions, request.Action) { -> if !slices.Contains(def.Actions, request.Action) && false {",
+      "failure_evidence": "=== RUN   TestAnAgentMayNotProposeARegisteredActionItsDefinitionDoesNotList\n    proposals_test.go:27: a registered but unlisted action: err = <nil>, want the conclusion refused\n--- FAIL: TestAnAgentMayNotProposeARegisteredActionItsDefinitionDoesNotList (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/operations\t2.493s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-proposal-that-changes-nothing-is-never-recorded",
+      "mutated_protection": "apps/platform/internal/product/operations/proposals.go:73: if preview.changesNothing() { -> if preview.changesNothing() && false {",
+      "failure_evidence": "=== RUN   TestAProposalWhosePreviewChangesNothingNeverReachesAnOperator\n    platform_agent_proposals_integration_test.go:168: every count zero: 1 proposals, want 0\n--- FAIL: TestAProposalWhosePreviewChangesNothingNeverReachesAnOperator (0.32s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.463s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-at-most-one-live-proposal-per-action",
+      "mutated_protection": "apps/platform/internal/product/operations/proposals.go:95: if live { -> if live && false {",
+      "failure_evidence": "=== RUN   TestAnAgentProposesOnlyARegisteredActionWithItsPreviewAndOnceWhileItIsLive\n    platform_agent_proposals_integration_test.go:145: run: ERROR: duplicate key value violates unique constraint \"platform_agent_proposals_one_live_idx\" (SQLSTATE 23505)\n--- FAIL: TestAnAgentProposesOnlyARegisteredActionWithItsPreviewAndOnceWhileItIsLive (0.19s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.930s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-operators-move-findings-only-along-allowed-paths",
+      "mutated_protection": "apps/platform/internal/product/operations/findings.go:244: if !allowed { -> if !allowed && false {",
+      "failure_evidence": "=== RUN   TestAnOperatorMovesAFindingOnlyAlongTheAllowedPaths\n    platform_agent_findings_integration_test.go:227: move to acknowledged with \"again\": 204 map[], want 409\n--- FAIL: TestAnOperatorMovesAFindingOnlyAlongTheAllowedPaths (0.12s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.544s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-live-finding-absent-from-a-report-recovers",
+      "mutated_protection": "apps/platform/internal/product/operations/findings.go:149: if !seen[j] && f.live() { -> if !seen[j] && f.live() && false {",
+      "failure_evidence": "=== RUN   TestAReportedProblemIsOneFindingAcrossDaysUntilItRecoversAndReopens\n    platform_agent_findings_integration_test.go:162: after day 3: [{id:{Bytes:[183 199 48 30 84 4 74 46 179 98 92 174 174 252 222 225] Valid:true} status:open title:purge is still late seenCount:2} {id:{Bytes:[89 148 131 189 163 124 72 47 184 115 70 195 178 29 172 19] Valid:true} status:open title:rotate is late seenCount:2}], want purge recovered and rotate still open\n--- FAIL: TestAReportedProblemIsOneFindingAcrossDaysUntilItRecoversAndReopens (0.12s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.073s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-report-item-must-cite-a-fact-a-tool-returned",
+      "mutated_protection": "apps/platform/internal/product/operations/daily_report.go:89: if len(cites) == 0 { -> if len(cites) == 0 && false {",
+      "failure_evidence": "--- FAIL: TestADailyReportMustBeWellFormedBeforeItsCitesCount (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/cites_the_second_tool_answer (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/attention_is_a_status (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/no_items (0.00s)\n...\nunt/blank_text (0.00s)\n    --- FAIL: TestADailyReportMustBeWellFormedBeforeItsCitesCount/no_cites (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/unknown_field (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/not_an_object (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/second_item_is_wrong (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/a_proposal_citing_a_fact (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/a_proposal_with_no_action (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/a_proposal_with_no_reason (0.00s)\n    --- FAIL: TestADailyReportMustBeWellFormedBeforeItsCitesCount/a_proposal_citing_nothing (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/a_proposal_no_fact_offers (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/a_proposal_whose_name_is_a_fact_but_not_an_offer (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/a_proposal_citing_a_missing_fact (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/operations\t1.655s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-unpriced-run-counts-at-least-its-key-budget",
+      "mutated_protection": "apps/platform/internal/product/operations/runs.go:97: return max(run.PricedMicros, *run.KeyBudgetMicros) -> return min(run.PricedMicros, *run.KeyBudgetMicros)",
+      "failure_evidence": "=== RUN   TestAnUnpricedRunCountsAtLeastTheBudgetItsKeyWasGiven\n    spend_test.go:22: an unpriced step counts the whole key budget: 1200, want 5000\n    spend_test.go:22: priced spend above the budget still counts in full: 5000, want 6000\n--- FAIL: TestAnUnpricedRunCountsAtLeastTheBudgetItsKeyWasGiven (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/operations\t1.888s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-every-operator-change-to-an-agent-needs-a-note",
+      "mutated_protection": "apps/platform/internal/product/operations/handler.go:208: if note == \"\" { -> if note == \"\" && false {",
+      "failure_evidence": "=== RUN   TestAgentChangesNeedANoteAndAKnownAgent\n    platform_agents_integration_test.go:276: PUT /admin/agents/agent-needs-note/enabled {\"enabled\":true}: got 200, want 400\n    platform_agents_integration_test.go:276: PUT /admin/agents/agent-needs-note/enabled {\"enabled\":true,\"note\":\"   \"}: got 200, want 400\n2026/10/17 23:07:52 ERROR request failed on the server method=PUT path=/admin/agents/brake status=500\n    platform_agents_integration_test.go:276: PUT /admin/agents/brake {}: got 500, want 400\n    platform_agents_integration_test.go:284: a refused request enabled the agent\n--- FAIL: TestAgentChangesNeedANoteAndAKnownAgent (0.13s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t3.432s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-brake-is-named-before-the-disable-switch",
+      "mutated_protection": "apps/platform/internal/product/operations/runs.go:53: case braked: -> case braked && false:",
+      "failure_evidence": "=== RUN   TestHaltReasonNamesTheBrakeBeforeTheDisable\n=== RUN   TestHaltReasonNamesTheBrakeBeforeTheDisable/enabled_and_no_brake_runs_on\n=== RUN   TestHaltReasonNamesTheBrakeBeforeTheDisable/disabled_stops\n=== RUN   TestHaltReasonNamesTheBrakeBeforeTheDisable/brake_stops_an_enabled_agent\n    runs_test.go:54: haltReason(enabled=true, braked=true) = \"\", want \"the agent brake is engaged\"\n=== RUN   TestHaltReasonNamesTheBrakeBeforeTheDisable/brake_is_named_when_both_hold\n    runs_test.go:54: haltReason(enabled=false, braked=true) = \"the agent was disabled\", want \"the agent brake is engaged\"\n--- FAIL: TestHaltReasonNamesTheBrakeBeforeTheDisable (0.00s)\n    --- PASS: TestHaltReasonNamesTheBrakeBeforeTheDisable/enabled_and_no_brake_runs_on (0.00s)\n    --- PASS: TestHaltReasonNamesTheBrakeBeforeTheDisable/disabled_stops (0.00s)\n    --- FAIL: TestHaltReasonNamesTheBrakeBeforeTheDisable/brake_stops_an_enabled_agent (0.00s)\n    --- FAIL: TestHaltReasonNamesTheBrakeBeforeTheDisable/brake_is_named_when_both_hold (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/operations\t1.557s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/platform_agent_findings_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/platform_agents_integration_test.go",
+    "apps/platform/internal/product/operations/actions.go",
+    "apps/platform/internal/product/operations/daily_report.go",
+    "apps/platform/internal/product/operations/daily_report_test.go",
+    "apps/platform/internal/product/operations/findings.go",
+    "apps/platform/internal/product/operations/handler.go",
+    "apps/platform/internal/product/operations/proposals.go",
+    "apps/platform/internal/product/operations/proposals_test.go",
+    "apps/platform/internal/product/operations/runs.go",
+    "apps/platform/internal/product/operations/runs_test.go",
+    "apps/platform/internal/product/operations/spend_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-an-agent-proposes-only-actions-its-definition-lists",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnAgentMayNotProposeARegisteredActionItsDefinitionDoesNotList$ ./internal/product/operations/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:8b950655de7a77fe6f6280d7071e287c10edf53d9deb85143a9a176eb10e7897",
+      "finished_at": "2026-10-17T15:13:39.896800Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-proposal-that-changes-nothing-is-never-recorded",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAProposalWhosePreviewChangesNothingNeverReachesAnOperator$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:14f5b7b32e93f0ffb0fe8e679360e31a73d528ac03aa623af9fc95ae431be528",
+      "finished_at": "2026-10-17T15:13:48.754734Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-at-most-one-live-proposal-per-action",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnAgentProposesOnlyARegisteredActionWithItsPreviewAndOnceWhileItIsLive$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:d34ed92c9adee3f65c27ca12cf5bd70966cfd5f3acda1f1f20f3f67a9a067795",
+      "finished_at": "2026-10-17T15:13:59.573736Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-operators-move-findings-only-along-allowed-paths",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnOperatorMovesAFindingOnlyAlongTheAllowedPaths$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:28be95e84fc4b47363406b59bb22ca8e897fe05869355aba1062f50b7906beca",
+      "finished_at": "2026-10-17T15:14:07.655798Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-live-finding-absent-from-a-report-recovers",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAReportedProblemIsOneFindingAcrossDaysUntilItRecoversAndReopens$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:882f2521d5e14aaf435ee3b77d5fc971bf0e447f7f58b280fdd2bd852b81dbef",
+      "finished_at": "2026-10-17T15:14:17.208141Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-report-item-must-cite-a-fact-a-tool-returned",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestADailyReportMustBeWellFormedBeforeItsCitesCount$ ./internal/product/operations/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:afef00ebd8ea84d276589b479c8613379c143e80b9205ed800a0b810789c4abc",
+      "finished_at": "2026-10-17T15:14:22.488393Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-unpriced-run-counts-at-least-its-key-budget",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnUnpricedRunCountsAtLeastTheBudgetItsKeyWasGiven$ ./internal/product/operations/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:7ce38a3d3c2d6ef77695be3fc82f1a83383b53482203b5b1f7621da72da2290a",
+      "finished_at": "2026-10-17T15:14:26.792438Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-every-operator-change-to-an-agent-needs-a-note",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAgentChangesNeedANoteAndAKnownAgent$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:a4e23de33691df964cef38a6256371905df274eed291f948411516118e7b7d1a",
+      "finished_at": "2026-10-17T15:14:34.553946Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-the-brake-is-named-before-the-disable-switch",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestHaltReasonNamesTheBrakeBeforeTheDisable$ ./internal/product/operations/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:41c0de87d82657a9ded74d62ab1f4f58f7c08413782b2b9c4d39eec0d5861e2e",
+      "finished_at": "2026-10-17T15:14:38.606737Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

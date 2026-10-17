@@ -1,0 +1,397 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "operations-harvest-rules-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "operations-harvest-rules-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T15:13:35.356319Z",
+  "verified_at": "2026-10-17T15:14:39.527479Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "a06bd2d5459a0a4554cf5d6cb0a24d476e9c97c6",
+    "registry_digest": "sha256:9fa069bf0b4b41ace6252364fcbe5b050c3d222ec51e00f5d26eb9d9d09c8e91"
+  },
+  "affected_contexts": [
+    "operations"
+  ],
+  "rule_ids": [
+    "an-agent-proposes-only-actions-its-definition-lists",
+    "a-proposal-that-changes-nothing-is-never-recorded",
+    "at-most-one-live-proposal-per-action",
+    "operators-move-findings-only-along-allowed-paths",
+    "a-live-finding-absent-from-a-report-recovers",
+    "a-report-item-must-cite-a-fact-a-tool-returned",
+    "an-unpriced-run-counts-at-least-its-key-budget",
+    "every-operator-change-to-an-agent-needs-a-note",
+    "the-brake-is-named-before-the-disable-switch"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "operations",
+    "invariant": "Only operations decides what a platform agent may propose and how its findings and spend are tracked.",
+    "evidence": [
+      "apps/platform/internal/product/operations/proposals.go:61-67"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: owners supply maintenance previews through wiring.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/product/operations/proposals.go:73-75"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the operations Context found these enforced rules; the reviewed Registry held one.",
+      "The definition-list guard survived its counterfactual over the integration suite; a unit test was added."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording guards no test reaches: they wait for a test."
+    ],
+    "proof_obligations": [
+      "rule-an-agent-proposes-only-actions-its-definition-lists",
+      "rule-a-proposal-that-changes-nothing-is-never-recorded",
+      "rule-at-most-one-live-proposal-per-action",
+      "rule-operators-move-findings-only-along-allowed-paths",
+      "rule-a-live-finding-absent-from-a-report-recovers",
+      "rule-a-report-item-must-cite-a-fact-a-tool-returned",
+      "rule-an-unpriced-run-counts-at-least-its-key-budget",
+      "rule-every-operator-change-to-an-agent-needs-a-note",
+      "rule-the-brake-is-named-before-the-disable-switch"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-agent-proposes-only-actions-its-definition-lists",
+        "statement": "A platform agent conclusion that proposes an action outside its definition's action list fails as a whole, so nothing is recorded.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A daily-report agent not allowed run-purge-audit that proposes it fails the run."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/proposals.go",
+            "lines": {
+              "start": 61,
+              "end": 67
+            },
+            "excerpt_sha256": "sha256:2fbf91fa908148ac1b5ae4d2b37499609071c611ba7d52bdc964eac461a4f1a3"
+          },
+          {
+            "path": "apps/platform/internal/product/operations/proposals_test.go",
+            "lines": {
+              "start": 9,
+              "end": 32
+            },
+            "content_sha256": "sha256:06fab4e609942a9e9130acf7ce0e105d76f97d56adee8823b3f48ee1dd749665",
+            "excerpt_sha256": "sha256:7a56f9eeab3ab5a983fcb339c1ea49dd6a6ea47b6cf0893c8ff7a240cb0ccb12"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-proposal-that-changes-nothing-is-never-recorded",
+        "statement": "A proposal whose preview counts are all zero is dropped and never reaches an operator.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A purge-feedback preview of zero feedback rows records no proposal."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/actions.go",
+            "lines": {
+              "start": 28,
+              "end": 30
+            },
+            "excerpt_sha256": "sha256:a3147c40b2fe0faca25d252f03bac9247052baac6dd9a5805d43442684ee7150"
+          },
+          {
+            "path": "apps/platform/internal/product/operations/proposals.go",
+            "lines": {
+              "start": 73,
+              "end": 75
+            },
+            "excerpt_sha256": "sha256:f7e1c5f2cb945950843500e54fc9088c19c5045fb6f447d8e93cdde803ec72e6"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go",
+            "lines": {
+              "start": 151,
+              "end": 171
+            },
+            "content_sha256": "sha256:20e58199659c81708737a5f1a6237e9defc78f802fe8349421711efbb9749a57",
+            "excerpt_sha256": "sha256:df2f303a5a7be3927ae8fa9fabbb62fb0921c38b10681855fdb82e2a80a4236d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "at-most-one-live-proposal-per-action",
+        "statement": "A new proposal is skipped while another proposal for the same action is proposed, approved or running.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "Two daily reports proposing run-purge-audit leave one proposal until the first closes."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/proposals.go",
+            "lines": {
+              "start": 91,
+              "end": 97
+            },
+            "excerpt_sha256": "sha256:89994fa5c32ede52796e9d47871dc32d689fab8ca202951e16cb11618db2d526"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go",
+            "lines": {
+              "start": 126,
+              "end": 149
+            },
+            "content_sha256": "sha256:20e58199659c81708737a5f1a6237e9defc78f802fe8349421711efbb9749a57",
+            "excerpt_sha256": "sha256:170cfb346bb7da5da662b9c6233527d92a54076a2a40b22fefc2c52b5631440b"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "operators-move-findings-only-along-allowed-paths",
+        "statement": "An operator may move a finding only along the allowed status paths; any other move is refused.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A dismissed finding cannot go straight to acknowledged, but can be reopened."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/findings.go",
+            "lines": {
+              "start": 241,
+              "end": 256
+            },
+            "excerpt_sha256": "sha256:1cf92a482cba27ccfd4670b55ecb8f717572742b3494ca6977325bd59f818327"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agent_findings_integration_test.go",
+            "lines": {
+              "start": 203,
+              "end": 246
+            },
+            "content_sha256": "sha256:4984d89ea68528c87430c08b419c305145d29a4b6433c7b93929a97f50b9f0b5",
+            "excerpt_sha256": "sha256:b3130b26c0c0ff49e831718d1c095e31f7291b1686d4553ab417e3371c315ca8"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-live-finding-absent-from-a-report-recovers",
+        "statement": "After a successful report, every open or acknowledged finding the report did not cite becomes recovered, and reopens if a later report cites it.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A stuck-queue finding absent from today's report becomes recovered."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/findings.go",
+            "lines": {
+              "start": 149,
+              "end": 155
+            },
+            "excerpt_sha256": "sha256:3c9d463a383b8581258e7487a137f68103046907f373328e4c240550a5d1acdd"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agent_findings_integration_test.go",
+            "lines": {
+              "start": 144,
+              "end": 171
+            },
+            "content_sha256": "sha256:4984d89ea68528c87430c08b419c305145d29a4b6433c7b93929a97f50b9f0b5",
+            "excerpt_sha256": "sha256:d468bc3dce726f0f3b22d777df31afe8ce7599a8e0d7217846ed6576ad5f19de"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-report-item-must-cite-a-fact-a-tool-returned",
+        "statement": "A daily report item or proposal that cites no fact, or cites a pointer no tool result holds, is rejected.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "An item citing nothing fails with it cites no fact."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/daily_report.go",
+            "lines": {
+              "start": 88,
+              "end": 98
+            },
+            "excerpt_sha256": "sha256:6c93aa96ffe67c4ecb2b208ec5335013692ba2a73995b452872bd6a7f89ca0c0"
+          },
+          {
+            "path": "apps/platform/internal/product/operations/daily_report_test.go",
+            "lines": {
+              "start": 105,
+              "end": 147
+            },
+            "content_sha256": "sha256:02e79f038bb5f8d96283800de343438ece52788c2e0873bd25106cb4ad4679ba",
+            "excerpt_sha256": "sha256:044baace0461065579ec1c7d9564e28b3cb9e22028ceb1bda20950a9531a5bb9"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-unpriced-run-counts-at-least-its-key-budget",
+        "statement": "A platform agent run with unpriced steps counts toward the daily cap at least the budget its gateway key was given.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A run priced at 0.2 USD with one unpriced step and a 1 USD key budget counts as 1 USD."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/runs.go",
+            "lines": {
+              "start": 95,
+              "end": 100
+            },
+            "excerpt_sha256": "sha256:46f4a50e5c091e68a826b733aa4d76a8eb398dd1eaf8b2c727f5e9ce7bca1881"
+          },
+          {
+            "path": "apps/platform/internal/product/operations/spend_test.go",
+            "lines": {
+              "start": 9,
+              "end": 25
+            },
+            "content_sha256": "sha256:06541f3512c9216f10d771a10c4d449b5a27070f577d4389d256af5bcc84db7a",
+            "excerpt_sha256": "sha256:31683f5e6f146f2cabea222e6120d3705d0dbe00bb0dc18cab868622df138bae"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "every-operator-change-to-an-agent-needs-a-note",
+        "statement": "Enabling or disabling an agent, changing its spend cap or its brake is refused with 400 when the note is blank.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A whitespace-only note answers 400 and the agent stays disabled."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/handler.go",
+            "lines": {
+              "start": 206,
+              "end": 217
+            },
+            "excerpt_sha256": "sha256:ba7cdcc4692dae9bb9f57d95b7de62dc7a46856cb2b5c39d554b558831539d56"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agents_integration_test.go",
+            "lines": {
+              "start": 260,
+              "end": 286
+            },
+            "content_sha256": "sha256:b76db531d6c26be0b67b944ff812130ca264557de69cde91cc5fe92161beb6b2",
+            "excerpt_sha256": "sha256:28067289ca49b4627080a9ce9d0b5da5ac32fe87276d8b6651b52b9c4f5945bc"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-brake-is-named-before-the-disable-switch",
+        "statement": "A run halted while the brake is engaged stops with the brake's reason even when the agent is also disabled.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A braked and disabled agent's run stops saying the agent brake is engaged."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/runs.go",
+            "lines": {
+              "start": 51,
+              "end": 60
+            },
+            "excerpt_sha256": "sha256:8ade248d11061b21cdc5dd7b4f7a6bb6f8be2d16afa16184ca64f5477d1e9ec8"
+          },
+          {
+            "path": "apps/platform/internal/product/operations/runs_test.go",
+            "lines": {
+              "start": 40,
+              "end": 58
+            },
+            "content_sha256": "sha256:8990f73896875a7cf955a15d97abb51ff62279aa07a66aa64a8a91e1a9516214",
+            "excerpt_sha256": "sha256:10de2a505bef6708276125b8104019a709308c8eafe3872dacadf4ecb231e30b"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T15:14:38.912433Z",
+      "scope": "Record operations rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "a06bd2d5459a0a4554cf5d6cb0a24d476e9c97c6",
+        "registry_digest": "sha256:9fa069bf0b4b41ace6252364fcbe5b050c3d222ec51e00f5d26eb9d9d09c8e91"
+      }
+    }
+  ]
+}
