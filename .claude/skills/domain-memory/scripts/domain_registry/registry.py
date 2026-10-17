@@ -431,7 +431,7 @@ def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list
 def _implementation_path_errors(contexts: list[dict[str, Any]], repo_root: Path) -> list[str]:
     return [
         f"contexts/{identifier} implementation_path {path} lies over no file in the repository; "
-        "after a move, relocate-evidence --from <old> --to <new> proposes the new path, or correct it"
+        "after a move, relocate-evidence --from <old repository path> --to <new> proposes the new path, or correct it"
         for identifier, path, reviewed in unplaced_implementation_paths(contexts, repo_root)
         if reviewed
     ]

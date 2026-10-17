@@ -776,6 +776,18 @@ class CliTest(RegistryTestCase):
             (validated.returncode, validated.stdout.strip(), validated.stderr.strip()),
         )
 
+    def test_relocate_evidence_notes_when_nothing_under_from_needs_moving(self) -> None:
+        self.cited_rule("reviewed", (2, 2))
+        registry = ("--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo))
+        in_place = self.run_cli("relocate-evidence", *registry, "--from", "src", "--to", "lib")
+        nothing = self.run_cli("relocate-evidence", *registry, "--from", "trial/batch", "--to", "trial/batchy")
+        self.assertEqual(
+            ((0, "NOTE: 1 citation under src is still in place and no Context ends with it; nothing to move."),
+             (0, "NOTE: no record cites a path under trial/batch and no Context ends with it; nothing to move. "
+                 "Pass the path as the repository holds it, such as src/billing/orders for a Context at billing/orders.")),
+            ((in_place.returncode, in_place.stderr.strip()), (nothing.returncode, nothing.stderr.strip())),
+        )
+
     def test_validate_names_the_approved_packages_left_unapplied(self) -> None:
         changes = self.repo / "memory" / "changes"
         for name, status in (("a", "approved"), ("b", "applied"), ("c", "approved"), ("d", "verified")):

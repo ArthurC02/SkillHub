@@ -326,6 +326,31 @@ class EvidenceTest(RegistryTestCase):
               for item in moved["candidates"]]),
         )
 
+    def test_relocating_by_repository_path_moves_the_context_whose_implementation_path_ends_it(self) -> None:
+        self.evidence_moved("one\ntwo\n", "lib/a.py", "one\ntwo\n")
+        self.seed("contexts.json", [
+            {"id": "batch", "name": "Batch", "responsibility": "Run batches.", "implementation_path": "trial/batch"},
+            {"id": "trial", "name": "Trial", "responsibility": "Try.", "implementation_path": "internal/trial"},
+            {"id": "other", "name": "Other", "responsibility": "Else.", "implementation_path": "batch"},
+        ])
+        moved = relocate_evidence(
+            self.repo / "memory", self.repo, "apps/platform/internal/trial/batch", "apps/platform/internal/trial/batchy"
+        )
+        self.assertEqual(
+            ([], [("contexts", "batch", "trial/batchy"), ("contexts", "other", "batchy")]),
+            (moved["registry_updates"],
+             [(item["asset"], item["record"]["id"], item["record"]["implementation_path"])
+              for item in moved["candidates"]]),
+        )
+
+    def test_relocating_counts_the_citations_under_from_that_stayed_in_their_own_file(self) -> None:
+        self.cited_rule("reviewed", (2, 2))
+        moved = relocate_evidence(self.repo / "memory", self.repo, "src", "lib")
+        self.assertEqual(
+            (1, [], [], []),
+            (moved["citations_in_place"], moved["registry_updates"], moved["candidates"], moved["unmatched"]),
+        )
+
     def test_relocating_a_single_file_recites_its_evidence(self) -> None:
         self.evidence_moved("one\ntwo\n", "lib/b.py", "two\n")
         moved = relocate_evidence(self.repo / "memory", self.repo, "src/a.py", "lib/b.py")

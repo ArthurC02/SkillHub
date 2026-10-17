@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.67.0
+
+### Fixed
+
+- `relocate-evidence --from <repository path>` now also moves a Context whose `implementation_path` ends that path the way `boundary-impact` maps files to it, so one call re-cites the evidence and relocates the Context; before, only the Registry's own form of the path moved the Context, and that form never matched a citation.
+
+### Added
+
+- `relocate-evidence` prints `citations_in_place`, the citations under `from` whose lines stayed in their own file, and a NOTE when nothing needed moving, telling "already fine" apart from a path in the wrong form. The `validate` hint names the repository path form.
+
 ## 0.66.0
 
 ### Changed

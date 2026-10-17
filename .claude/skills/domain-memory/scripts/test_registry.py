@@ -561,7 +561,7 @@ class RegistryTest(RegistryTestCase):
             {"id": "billing", "name": "Billing", "responsibility": "Own invoices.", "implementation_path": "src/billing"},
         ])
         refusal = ("contexts/orders implementation_path src/orders lies over no file in the repository; after a move, "
-                   "relocate-evidence --from <old> --to <new> proposes the new path, or correct it")
+                   "relocate-evidence --from <old repository path> --to <new> proposes the new path, or correct it")
         def placement(repo_root: Path | None) -> list[str]:
             return [error for error in validate(self.repo / "memory", repo_root, False) if "implementation_path" in error]
 

@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .audit import reviewing_proposals
@@ -26,6 +26,7 @@ class Relocation:
     new: str
     classify: Callable[[Any], Any]
     unmatched: list[dict[str, Any]] = field(default_factory=list)
+    in_place: int = 0
 
     def target(self, path: str) -> str | None:
         old, new = self.old.rstrip("/"), self.new.rstrip("/")
@@ -35,12 +36,22 @@ class Relocation:
             return new
         return new + path[len(old):] if path.startswith(old + "/") else None
 
+    def placement(self, implementation_path: str) -> str | None:
+        target = self.target(implementation_path)
+        if target is not None:
+            return target
+        owned = PurePosixPath(implementation_path.strip("/")).parts
+        old, new = PurePosixPath(self.old.rstrip("/")).parts, PurePosixPath(self.new.rstrip("/")).parts
+        if not owned or old[-len(owned):] != owned:
+            return None
+        return "/".join(new[-len(owned):])
+
     def moved(self, value: Any) -> Any:
         return with_references(value, self.reference)
 
     def placed(self, name: str, record: dict[str, Any]) -> dict[str, Any]:
         path = record.get("implementation_path")
-        target = self.target(path) if name == "contexts.json" and isinstance(path, str) else None
+        target = self.placement(path) if name == "contexts.json" and isinstance(path, str) else None
         return record if target is None or target == path else {**record, "implementation_path": target}
 
     def reference(self, reference: Any) -> Any:
@@ -49,6 +60,7 @@ class Relocation:
             return reference
         status = verify(reference, self.repo_root)["status"]
         if status == "current" or (status == "shifted" and target != reference.get("path")):
+            self.in_place += 1
             return reference
         lines = reference.get("lines") or {}
         length = lines.get("end", 0) - lines.get("start", 0) + 1
@@ -187,4 +199,5 @@ def relocate_evidence(root: Path, repo_root: Path, old: str, new: str) -> dict[s
         "supersedes": sorted(supersedes),
         "candidates": candidates,
         "unmatched": relocation.unmatched,
+        "citations_in_place": relocation.in_place,
     }

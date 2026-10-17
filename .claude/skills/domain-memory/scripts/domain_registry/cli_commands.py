@@ -406,11 +406,19 @@ def handle_boundary_impact(args: argparse.Namespace) -> int:
 
 
 def handle_relocate_evidence(args: argparse.Namespace) -> int:
-    print_json(
-        relocate_evidence(
-            args.registry_root.resolve(), args.repo_root.resolve(), args.moved_from, args.moved_to
-        )
+    relocated = relocate_evidence(
+        args.registry_root.resolve(), args.repo_root.resolve(), args.moved_from, args.moved_to
     )
+    print_json(relocated)
+    if not any(relocated[key] for key in ("registry_updates", "candidates", "unmatched")):
+        in_place = relocated["citations_in_place"]
+        print(
+            f"NOTE: {in_place} citation{'' if in_place == 1 else 's'} under {args.moved_from} "
+            f"{'is' if in_place == 1 else 'are'} still in place and no Context ends with it; nothing to move."
+            if in_place else f"NOTE: no record cites a path under {args.moved_from} and no Context ends with it; "
+            "nothing to move. Pass the path as the repository holds it, such as src/billing/orders for a Context at billing/orders.",
+            file=sys.stderr,
+        )
     return 0
 
 
