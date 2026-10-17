@@ -196,6 +196,9 @@ def handle_lookup(args: argparse.Namespace) -> int:
         "some-words": f"no {args.asset} record holds every word of \"{args.query}\"; these hold some of them, most first.",
         "none": f"no {args.asset} record mentions \"{args.query}\" or any of its words. That is not proof that no "
                 "constraint applies: read get-context for the Context you are changing, or look up another asset.",
+        "common-words": f"the {args.asset} records share with \"{args.query}\" only words many of them hold, so none "
+                        "is listed. That is not proof that no constraint applies: read get-context for the Context "
+                        "you are changing, or look up another asset.",
     }
     if how in notes:
         print("NOTE: " + notes[how], file=sys.stderr)

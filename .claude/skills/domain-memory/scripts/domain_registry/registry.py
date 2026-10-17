@@ -655,19 +655,34 @@ def ranked_lookup(root: Path, asset: str, query: str) -> tuple[list[dict[str, An
     if phrase:
         return phrase[:limit], "phrase"
     wanted = word_stems(query)
-    shared = [(len(wanted & word_stems(" ".join(_strings(entry)))), entry) for entry in entries]
-    every = [entry for count, entry in shared if wanted and count == len(wanted)]
+    held = [word_stems(" ".join(_strings(entry))) for entry in entries]
+    every = [entry for entry, words in zip(entries, held, strict=True) if wanted and wanted <= words]
     if every:
         return every[:limit], "all-words"
+    common = {word for word in wanted if _is_common(sum(word in words for words in held), len(entries))}
+    shared = [(len((wanted - common) & words), entry) for entry, words in zip(entries, held, strict=True)]
     some = [entry for count, entry in sorted(shared, key=lambda pair: -pair[0]) if count]
-    return some[:limit], "some-words" if some else "none"
+    if some:
+        return some[:limit], "some-words"
+    return [], "common-words" if common else "none"
 
 
-SUFFIXES = ("ations", "ation", "ings", "ing", "ency", "ence", "ents", "ent", "ions", "ion", "ed", "es", "s", "e", "y")
+COMMON_SHARE = 4
+MIN_COMMON_RECORDS = 3
+
+
+def _is_common(holders: int, records: int) -> bool:
+    return holders >= MIN_COMMON_RECORDS and holders * COMMON_SHARE > records
+
+
+SUFFIXES = (
+    "ations", "ation", "ings", "ing", "ency", "ence", "ents", "ent", "ions", "ion", "ures", "ured", "ure", "ed", "es", "s",
+    "e", "y",
+)
 MIN_STEM_LENGTH = 3
 STOP_WORDS = frozenset({
-    "a", "after", "an", "and", "are", "at", "be", "before", "by", "for", "in", "is", "of", "on", "or", "the", "to",
-    "when", "with",
+    "a", "after", "an", "and", "are", "at", "be", "before", "by", "can", "do", "does", "for", "how", "in", "is", "it",
+    "of", "on", "or", "that", "the", "this", "to", "what", "when", "who", "with",
 })
 
 

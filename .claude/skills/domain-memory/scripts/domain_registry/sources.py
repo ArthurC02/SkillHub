@@ -43,7 +43,11 @@ CI_MARKERS = {
 
 
 def discover_ci_tools(root: Path) -> list[str]:
-    return sorted(name for path, name in CI_MARKERS.items() if (root / path).exists())
+    return [name for _, name in discover_ci_markers(root)]
+
+
+def discover_ci_markers(root: Path) -> list[tuple[str, str]]:
+    return sorted(((path, name) for path, name in CI_MARKERS.items() if (root / path).exists()), key=lambda marker: marker[1])
 
 
 def git_ignored(root: Path, candidates: list[Path]) -> set[Path]:

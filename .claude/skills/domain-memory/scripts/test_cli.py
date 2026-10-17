@@ -468,6 +468,18 @@ class CliTest(RegistryTestCase):
         self.assertRegex(self.lookup_note("invoices"), '^NOTE: no rules record mentions "invoices" or any of its words. '
                          "That is not proof that no constraint applies")
 
+    def test_lookup_notes_a_query_sharing_only_common_words(self) -> None:
+        self.allow_results(10)
+        self.seed("rules.json", [{"id": f"r{number}", "contexts": ["run"], "statement": "A skill is served.", "status": "reviewed"}
+                                 for number in range(3)])
+        result = self.run_cli("lookup", "--registry-root", str(self.repo / "memory"), "--asset", "rules", "--query", "unpublish skill")
+        self.assertEqual(
+            ([], 'NOTE: the rules records share with "unpublish skill" only words many of them hold, so none is listed. '
+                 "That is not proof that no constraint applies: read get-context for the Context you are changing, or "
+                 "look up another asset."),
+            (json.loads(result.stdout), result.stderr.strip()),
+        )
+
     def test_lookup_finding_every_word_adds_no_note(self) -> None:
         self.assertEqual("", self.lookup_note("trial workspace"))
 
@@ -787,7 +799,7 @@ class CliTest(RegistryTestCase):
                    "superseded_at": "2026-10-03T00:00:00Z", "superseded_by": "b"}),
             ("d", {"proposal_id": "d", "status": "superseded", "superseded_at": "2026-10-04T00:00:00Z",
                    "superseded_by": "nosuch"}),
-            ("e", {"proposal_id": "e", "status": "draft", "redrafted_at": "2026-10-05T00:00:00Z"}),
+            ("e", {"proposal_id": "e", "status": "draft", "redrafted_at": "2026-10-05T00:00:00Z", "supersedes": ["a", "gone"]}),
         ):
             (changes / name).mkdir(parents=True)
             (changes / name / "domain-change-proposal.json").write_text(json.dumps(fields), encoding="utf-8")
@@ -802,7 +814,7 @@ class CliTest(RegistryTestCase):
              {"package": "d", "proposal_id": "d", "status": "superseded", "last_changed_at": "2026-10-04T00:00:00Z",
               "registry_updates": 0, "supersedes": [], "superseded_by": "nosuch", "superseded_by_unknown": True},
              {"package": "e", "proposal_id": "e", "status": "draft", "last_changed_at": "2026-10-05T00:00:00Z",
-              "registry_updates": 0, "supersedes": []}],
+              "registry_updates": 0, "supersedes": ["a", "gone"], "supersedes_unknown": ["gone"]}],
             json.loads(result.stdout),
         )
 

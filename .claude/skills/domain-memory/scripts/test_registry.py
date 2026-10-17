@@ -18,6 +18,7 @@ from domain_registry.registry import (
     coverage,
     lookup,
     migrate_evidence,
+    _is_common,
     ranked_lookup,
     word_stems,
     migrate_registry,
@@ -961,6 +962,20 @@ class RegistryTest(RegistryTestCase):
             [match["id"] for match in resolve_terms(self.repo / "memory", "purge", None)],
         )
 
+    def test_a_query_sharing_only_a_word_many_records_hold_lists_nothing_and_says_so(self) -> None:
+        self.allow_results(10)
+        self.seed("rules.json", [
+            {"id": f"rule-{number}", "contexts": ["run"], "statement": text, "status": "reviewed"}
+            for number, text in enumerate(["A skill is served.", "A skill is packaged.", "A skill is rated.", "A run ends."])
+        ])
+        self.assertEqual(([], "common-words"), self.found("unpublish a skill"))
+
+    def test_a_word_is_common_from_three_holders_above_a_quarter_of_the_records(self) -> None:
+        self.assertEqual(
+            [True, False, False, True],
+            [_is_common(holders, records) for holders, records in ((3, 11), (3, 12), (2, 7), (3, 3))],
+        )
+
     def test_a_query_matching_a_phrase_lists_only_records_holding_the_phrase(self) -> None:
         self.runs_rules()
         self.assertEqual((["taken-down"], "phrase"), self.found("taken down"))
@@ -974,6 +989,15 @@ class RegistryTest(RegistryTestCase):
             (word_stems("concurrency"), word_stems("licensing"), word_stems("deleted"), word_stems("runs"), {"precheck"}),
             (word_stems("concurrent"), word_stems("license"), word_stems("deletion"), word_stems("run"), word_stems("precheck")),
         )
+
+    def test_word_stems_join_a_noun_in_ure_with_its_verb_forms(self) -> None:
+        self.assertEqual(
+            [word_stems("exposed"), word_stems("failed"), word_stems("measure"), word_stems("measures")],
+            [word_stems("exposure"), word_stems("failure"), word_stems("measured"), word_stems("measured")],
+        )
+
+    def test_question_words_are_not_searched(self) -> None:
+        self.assertEqual({"see"}, word_stems("who can see what it does, how and when that is"))
 
     def test_word_stems_keep_a_short_word_whole(self) -> None:
         self.assertEqual({"ring", "bed"}, word_stems("ring bed"))

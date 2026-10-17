@@ -2,6 +2,18 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.49.0
+
+### Added
+
+- `quality-gates` reports a Go module with tests as a `go-test` gate and each Taskfile `lint`, `typecheck` or `test` task as a gate, and gives each pipeline gate its path.
+- `list-proposals` lists in `supersedes_unknown` the ids a package supersedes that no package carries.
+
+### Changed
+
+- `lookup` no longer ranks records that share with the query only words many records hold, such as `skill`; it lists nothing and says so. Question words such as `who`, `can` or `what` are no longer searched.
+- A noun in `-ure` is the same word as its verb forms, so `exposure` finds `exposed` and `failure` finds `failed`.
+
 ## 0.48.1
 
 ### Fixed

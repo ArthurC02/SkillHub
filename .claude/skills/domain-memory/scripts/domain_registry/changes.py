@@ -827,6 +827,10 @@ def list_proposals(changes_root: Path) -> list[dict[str, Any]]:
         rows[index]["superseded_by"] = replacement
         if replacement not in known:
             rows[index]["superseded_by_unknown"] = True
+    for row in rows:
+        unknown = sorted((superseded_ids(row) or set()) - set(known))
+        if unknown:
+            row["supersedes_unknown"] = unknown
     return rows
 
 

@@ -7,7 +7,7 @@ from typing import Any
 
 from .git_hooks import hooks_dir, inside_repo
 from .sources import (
-    discover_ci_tools,
+    discover_ci_markers,
     file_name,
     ignored_relatives,
     repository_files,
@@ -58,6 +58,11 @@ PYPROJECT_TOOLS = {
     "pytest": "tests",
 }
 PACKAGE_SCRIPTS = {"lint": "lint", "typecheck": "types", "test": "tests"}
+TASK_PREFIXES = (("lint", "lint"), ("typecheck", "types"), ("test", "tests"))
+GO_MODULE = "go.mod"
+TASKFILE_NAMES = ("Taskfile.yml", "Taskfile.yaml", "taskfile.yml", "taskfile.yaml")
+TASKS_SECTION = re.compile(r"^tasks:[ \t]*$(.*?)(?=^\S|\Z)", re.MULTILINE | re.DOTALL)
+TASK_NAME = re.compile(r"""^  ['"]?([A-Za-z0-9_.:-]+)['"]?:""", re.MULTILINE)
 PYPROJECT_TABLE = re.compile(r"^\[tool\.([A-Za-z0-9_-]+)", re.MULTILINE)
 DEPGUARD_SETTINGS = re.compile(r"^\s*depguard\s*:", re.MULTILINE)
 
@@ -99,6 +104,34 @@ def package_gates(path: Path, shown: str) -> list[dict[str, str]]:
         for name, kind in PACKAGE_SCRIPTS.items()
         if name in scripts
     ]
+
+
+def taskfile_gates(path: Path, shown: str) -> list[dict[str, str]]:
+    try:
+        section = TASKS_SECTION.search(path.read_text(encoding="utf-8"))
+    except UnicodeDecodeError:
+        return []
+    names = TASK_NAME.findall(section[1]) if section else []
+    return [
+        gate(kind, f"task:{name}", shown)
+        for name in names
+        for prefix, kind in TASK_PREFIXES
+        if name.startswith(prefix)
+    ]
+
+
+def go_test_gates(candidates: list[str], tests: list[str]) -> list[dict[str, str]]:
+    modules = [entry for entry in candidates if file_name(entry) == GO_MODULE]
+    tests = [entry for entry in tests if entry.endswith("_test.go") and not in_fixture(entry)]
+    return [
+        gate("tests", "go-test", module)
+        for module in modules
+        if any(_inside(test, PurePosixPath(module).parent.as_posix()) for test in tests)
+    ]
+
+
+def _inside(path: str, directory: str) -> bool:
+    return directory == "." or path.startswith(directory + "/")
 
 
 def golangci_gates(path: Path, shown: str) -> list[dict[str, str]]:
@@ -144,6 +177,7 @@ CONTENT_READERS = {
     "package.json": package_gates,
     ".golangci.yml": golangci_gates,
     ".golangci.yaml": golangci_gates,
+    **dict.fromkeys(TASKFILE_NAMES, taskfile_gates),
 }
 
 
@@ -154,7 +188,8 @@ def in_fixture(entry: str) -> bool:
 def candidate_files(files: list[str]) -> list[str]:
     return sorted(
         entry for entry in files
-        if (marker_for(file_name(entry)) or file_name(entry) in CONTENT_READERS) and not in_fixture(entry)
+        if (marker_for(file_name(entry)) or file_name(entry) in CONTENT_READERS or file_name(entry) == GO_MODULE)
+        and not in_fixture(entry)
     )
 
 
@@ -178,10 +213,13 @@ def quality_gates(repo_root: Path) -> dict[str, Any]:
     candidates, tests = candidate_files(files), test_candidates(files)
     ignored = ignored_relatives(root, candidates + tests)
     gates = configured_gates(root, [entry for entry in candidates if entry not in ignored])
+    gates.extend(go_test_gates(
+        [entry for entry in candidates if entry not in ignored], [entry for entry in tests if entry not in ignored]
+    ))
     installed = installed_hooks(root)
     gates.extend(installed)
     gates.extend(shipped_hooks(files, installed))
-    gates.extend(gate("ci", tool, "") for tool in discover_ci_tools(root))
+    gates.extend(gate("ci", tool, path) for path, tool in discover_ci_markers(root))
     present = sorted({entry["kind"] for entry in gates})
     return {
         "format": FORMAT,

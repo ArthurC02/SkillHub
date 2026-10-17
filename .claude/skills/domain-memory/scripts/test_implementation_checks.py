@@ -93,6 +93,41 @@ class QualityGatesTest(RepositoryCase):
         self.assertEqual(result["kinds_present"], ["ci"])
         self.assertEqual(result["standard"], "none")
 
+    def test_a_pipeline_is_a_gate_at_its_path(self) -> None:
+        self.write(".gitlab-ci.yml", "")
+        self.assertEqual([{"kind": "ci", "tool": "gitlab-ci", "path": ".gitlab-ci.yml"}], self.gates())
+
+    def test_a_go_module_with_tests_beneath_it_is_a_test_gate(self) -> None:
+        self.write("apps/api/go.mod", "module api\n")
+        self.write("apps/api/internal/run_test.go", "package internal\n")
+        self.write("apps/cli/go.mod", "module cli\n")
+        self.write("apps/cli-tools/x_test.go", "package x\n")
+        self.write("apps/cli/testdata/y_test.go", "package y\n")
+        self.write("testdata/go.mod", "module fixture\n")
+        self.write("testdata/a_test.go", "package a\n")
+        self.assertEqual([{"kind": "tests", "tool": "go-test", "path": "apps/api/go.mod"}], self.gates())
+
+    def test_a_root_go_module_owns_every_test(self) -> None:
+        self.write("go.mod", "module root\n")
+        self.write("pkg/a_test.go", "package a\n")
+        self.assertEqual([{"kind": "tests", "tool": "go-test", "path": "go.mod"}], self.gates())
+
+    def test_taskfile_tasks_named_for_a_check_are_gates(self) -> None:
+        self.write("Taskfile.yml", (
+            "version: '3'\nvars:\n  test: x\ntasks:\n  build:\n    cmd: go build\n  lint:\n    cmd: x\n"
+            "  'test:go':\n    cmds:\n      - go test ./...\n  typecheck:\n    cmd: x\nincludes:\n  lint-more: x\n"
+        ))
+        self.assertEqual(
+            [{"kind": "lint", "tool": "task:lint", "path": "Taskfile.yml"},
+             {"kind": "tests", "tool": "task:test:go", "path": "Taskfile.yml"},
+             {"kind": "types", "tool": "task:typecheck", "path": "Taskfile.yml"}],
+            self.gates(),
+        )
+
+    def test_a_taskfile_without_tasks_is_no_gate(self) -> None:
+        self.write("Taskfile.yml", "version: '3'\nvars:\n  test: x\n")
+        self.assertEqual([], self.gates())
+
     def test_a_configuration_file_is_a_gate_at_its_path(self) -> None:
         self.write("apps/api/ruff.toml", "")
         self.assertEqual(
