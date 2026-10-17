@@ -1,0 +1,27 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "trace-ingestion-binding-rules-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed that a sandbox ingestion token accepts only sandbox events of its own Run attempt.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context trace lists both rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-an-ingestion-token-admits-only-sandbox-events",
+      "statement": "An event sent under a sandbox ingestion token is refused unless the sandbox emitted it; orchestrator and llm_service events cannot arrive that way."
+    },
+    {
+      "id": "enforced-a-trace-event-must-belong-to-its-tokens-attempt",
+      "statement": "An event whose run_id or attempt differs from the ingestion token's grant is refused and counted as rejected."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/trace_integration_test.go",
+    "apps/platform/internal/trial/evidence/service.go",
+    "apps/platform/internal/trial/evidence/trace_test.go"
+  ]
+}

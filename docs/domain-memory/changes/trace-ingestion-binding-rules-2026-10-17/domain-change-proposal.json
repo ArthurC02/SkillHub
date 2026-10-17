@@ -1,0 +1,143 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "trace-ingestion-binding-rules-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "trace-ingestion-binding-rules-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T12:47:17.784977Z",
+  "verified_at": "2026-10-17T12:47:32.507882Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "b1e29d1f3fa1a64de4f7aa07c674d507ecaebb54",
+    "registry_digest": "sha256:7cfcf51bf571db0d3e5df360dc82281a17151ea937f6916f813437babd52073e"
+  },
+  "affected_contexts": [
+    "trace"
+  ],
+  "rule_ids": [
+    "an-ingestion-token-admits-only-sandbox-events",
+    "a-trace-event-must-belong-to-its-tokens-attempt"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "trace",
+    "invariant": "Only trace decides which events an ingestion token admits.",
+    "evidence": [
+      "apps/platform/internal/trial/evidence/service.go:188-202"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: the token is minted by run and verified here.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/evidence/service.go:193-202"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction found these guards; a counterfactual over the whole suite showed the producer guard had no test, so one was added."
+    ],
+    "decision": "Record both rules citing the guard and the test that fails without it.",
+    "invariants_preserved": [
+      "A workload cannot write evaluation-side events."
+    ],
+    "rejected_alternatives": [
+      "One rule for all three checks: the producer check and the run/attempt binding are proven by different tests."
+    ],
+    "proof_obligations": [
+      "rule-an-ingestion-token-admits-only-sandbox-events",
+      "rule-a-trace-event-must-belong-to-its-tokens-attempt"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-ingestion-token-admits-only-sandbox-events",
+        "statement": "An event sent under a sandbox ingestion token is refused unless the sandbox emitted it; orchestrator and llm_service events cannot arrive that way.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "An orchestrator event sent with the sandbox token is counted as rejected and not stored."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/service.go",
+            "lines": {
+              "start": 193,
+              "end": 195
+            },
+            "excerpt_sha256": "sha256:0dcf0936d7823f7a0d6662fcf7e9442cd034a8d2902a990df6d9afc71886c152"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/trace_test.go",
+            "lines": {
+              "start": 309,
+              "end": 349
+            },
+            "content_sha256": "sha256:865445394db2f5dd8c0a67b534bebcc61b6770c0cc7c428099d4446558ee7654",
+            "excerpt_sha256": "sha256:0cfc45365ff7b3614219993476183fc45751e6f29f6a1d953c368def1ad2898c"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-trace-event-must-belong-to-its-tokens-attempt",
+        "statement": "An event whose run_id or attempt differs from the ingestion token's grant is refused and counted as rejected.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "An event naming another Run's id under this Run's token is not stored."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/service.go",
+            "lines": {
+              "start": 197,
+              "end": 202
+            },
+            "excerpt_sha256": "sha256:20d027d1998fca7a612b64b08e971530d36111821ddcee6dd1903a5499d755f9"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/trace_integration_test.go",
+            "lines": {
+              "start": 602,
+              "end": 638
+            },
+            "content_sha256": "sha256:6a8df40f318e33a882f0349ec1198f4256abebff67f4a96dd3622a3a88c7ef61",
+            "excerpt_sha256": "sha256:728df401b9a0a8df88392eaeec840c728d77c5290f105073227ffc34cd976441"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T12:47:32.093363Z",
+      "scope": "Record trace ingestion binding rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "b1e29d1f3fa1a64de4f7aa07c674d507ecaebb54",
+        "registry_digest": "sha256:7cfcf51bf571db0d3e5df360dc82281a17151ea937f6916f813437babd52073e"
+      }
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "trace-ingestion-binding-rules-2026-10-17",
+  "proposal_id": "trace-ingestion-binding-rules-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "b1e29d1f3fa1a64de4f7aa07c674d507ecaebb54",
+    "registry_digest": "sha256:7cfcf51bf571db0d3e5df360dc82281a17151ea937f6916f813437babd52073e"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-ingestion-token-admits-only-sandbox-events",
+      "mutated_protection": "apps/platform/internal/trial/evidence/service.go:193: if event.EmittedBy != SourceSandbox { -> if event.EmittedBy != SourceSandbox && false {",
+      "failure_evidence": "=== RUN   TestAnIngestionTokenAcceptsEventsOnlyFromTheSandbox\n=== RUN   TestAnIngestionTokenAcceptsEventsOnlyFromTheSandbox/a_sandbox_event_of_the_granted_run_and_attempt\n=== RUN   TestAnIngestionTokenAcceptsEventsOnlyFromTheSandbox/an_orchestrator_event\n    trace_test.go:345: prepareEvent = <nil>, want ErrInvalid saying \"only permits sandbox events\"\n=== RUN   TestAnIngestionTokenAcceptsEventsOnlyFromTheSandbox/an_llm_service_event\n    trace_test.go:345: prepareEvent = <nil>, want ErrInvalid saying \"only permits sandbox events\"\n--- FAIL: TestAnIngestionTokenAcceptsEventsOnlyFromTheSandbox (0.00s)\n    --- PASS: TestAnIngestionTokenAcceptsEventsOnlyFromTheSandbox/a_sandbox_event_of_the_granted_run_and_attempt (0.00s)\n    --- FAIL: TestAnIngestionTokenAcceptsEventsOnlyFromTheSandbox/an_orchestrator_event (0.00s)\n    --- FAIL: TestAnIngestionTokenAcceptsEventsOnlyFromTheSandbox/an_llm_service_event (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.446s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-trace-event-must-belong-to-its-tokens-attempt",
+      "mutated_protection": "apps/platform/internal/trial/evidence/service.go:197: if event.RunID != pgconv.UUIDString(grant.RunID) { -> if event.RunID != pgconv.UUIDString(grant.RunID) && false {",
+      "failure_evidence": "=== RUN   TestTraceIngestionRefusesWhatTheTokenDoesNotCover\n    trace_integration_test.go:619: cross-run event: got 202 {Received:1 Stored:1 Duplicate:0 Rejected:0 Reasons:[]}, want it rejected\n--- FAIL: TestTraceIngestionRefusesWhatTheTokenDoesNotCover (0.10s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.230s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/trace_integration_test.go",
+    "apps/platform/internal/trial/evidence/service.go",
+    "apps/platform/internal/trial/evidence/trace_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-an-ingestion-token-admits-only-sandbox-events",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnIngestionTokenAcceptsEventsOnlyFromTheSandbox$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:85ec7523ca670520d8e96398d25a307e0814f633ca972ca354a0340f57f45390",
+      "finished_at": "2026-10-17T12:47:22.689945Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-trace-event-must-belong-to-its-tokens-attempt",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTraceIngestionRefusesWhatTheTokenDoesNotCover$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:d8fed0e2ed7e0020dd4bb83fcd28d42b4ec1df1c05c057d8575436505cccff98",
+      "finished_at": "2026-10-17T12:47:31.806057Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
