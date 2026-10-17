@@ -1,0 +1,164 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "publishing-review-rules-2026-10-18",
+  "proposal_id": "publishing-review-rules-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "f455c975f2a26d1310cc1a6e38748619e0e974e4",
+    "registry_digest": "sha256:18fc7f5df9539e33523d3a8b22041e8b1b30149691e89476f028e9408d4e05f6"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-exposure-review-names-the-release-and-sequence-it-saw",
+      "mutated_protection": "apps/platform/internal/skill/publishing/exposure.go:413: reviewed.ReleaseID != in.ReleaseID || reviewed.Sequence != in.ExpectedSequence -> reviewed.ReleaseID != in.ReleaseID",
+      "failure_evidence": "_user_id:fe98aa9a-caef-44e8-874a-249785b7e314 sequence:1 snapshot_digest:ac303c8c1d246f67cb34cd6d0693da69]] name:stale-skill-642ea21bd2 publisher:stale-0df2ab3ac3 release:map[content_hash:bae0f5c51c1f273d97fc1c84cb366ffd3b8a059e57ee7b2c494d268d2b8ab701 release_id:8ce39c77-79f2-4cf1-bd5e-5c90dbe3884e released_at:2026-10-17T18:30:31Z version_id:bd940790-a5a6-42ee-a01d-f6c8d5d25d5d version_number:1] sequence:3 snapshot:map[current:true digest:ac303c8c1d246f67cb34cd6d0693da69 enriched:true enriched_summary: limitations: name:stale-skill-642ea21bd2 summary:Turn one thing into another. tags:<nil> task_examples: version_id:bd940790-a5a6-42ee-a01d-f6c8d5d25d5d] status:published], want 409 review_stale\n--- FAIL: TestAReviewThatSawStaleFactsIsRefused (0.25s)\n    --- FAIL: TestAReviewThatSawStaleFactsIsRefused/a_sequence_someone_already_moved_past (0.04s)\n    --- PASS: TestAReviewThatSawStaleFactsIsRefused/a_release_that_is_not_the_newest (0.00s)\n    --- PASS: TestAReviewThatSawStaleFactsIsRefused/no_reason (0.00s)\n    --- PASS: TestAReviewThatSawStaleFactsIsRefused/an_unknown_decision (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.108s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-approval-names-the-snapshot-digest-its-reviewer-saw",
+      "mutated_protection": "apps/platform/internal/skill/publishing/exposure.go:522: if snapshot.Digest != in.ExpectedDigest { -> if false && snapshot.Digest != in.ExpectedDigest {",
+      "failure_evidence": "3a29bfed0c05b1d9db66e5476f212ba2cb3200ac3fac6c61ebf89af558b10 decision:approved reason:fine release_id:24f62656-2f01-4e6c-b60c-d49e229e1302 reviewed_at:2026-10-17T18:30:58Z reviewer_user_id:30c849b7-5b39-4945-8864-5da1d4b762c6 sequence:1 snapshot_digest:1b55597a6d74b22a14a2e42ba4b8d385]] name:digest-skill-e1cfdfda56 publisher:digest-f8c75c7713 release:map[content_hash:70b3a29bfed0c05b1d9db66e5476f212ba2cb3200ac3fac6c61ebf89af558b10 release_id:24f62656-2f01-4e6c-b60c-d49e229e1302 released_at:2026-10-17T18:30:57Z version_id:1ebcd0f6-5fbc-4178-8b45-450501d6ee1c version_number:1] sequence:1 snapshot:map[current:true digest:1b55597a6d74b22a14a2e42ba4b8d385 enriched:true enriched_summary:changed while the reviewer was reading limitations: name:digest-skill-e1cfdfda56 summary:Turn one thing into another. tags:<nil> task_examples: version_id:1ebcd0f6-5fbc-4178-8b45-450501d6ee1c] status:published], want 409 review_stale\n    exposure_integration_test.go:369: a stale approval left 1 review rows, want 0\n--- FAIL: TestAnApprovalNamesTheSnapshotTheReviewerSawAndARevocationNeedsNoSuchProof (0.26s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.848s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-exposure-review-needs-a-reason",
+      "mutated_protection": "apps/platform/internal/skill/publishing/exposure.go:405: case reason == \"\": -> case false && reason == \"\":",
+      "failure_evidence": "=== RUN   TestAReviewThatSawStaleFactsIsRefused\n=== RUN   TestAReviewThatSawStaleFactsIsRefused/a_sequence_someone_already_moved_past\n=== RUN   TestAReviewThatSawStaleFactsIsRefused/a_release_that_is_not_the_newest\n=== RUN   TestAReviewThatSawStaleFactsIsRefused/no_reason\n2026/10/18 02:31:24 ERROR request failed on the server method=POST path=/admin/publications/stale-16bf48d227/stale-skill-6acd8d35d2/exposure status=500\n    exposure_integration_test.go:329: got 500 map[error:exposure review failed], want 422 reason_missing\n=== RUN   TestAReviewThatSawStaleFactsIsRefused/an_unknown_decision\n--- FAIL: TestAReviewThatSawStaleFactsIsRefused (0.27s)\n    --- PASS: TestAReviewThatSawStaleFactsIsRefused/a_sequence_someone_already_moved_past (0.00s)\n    --- PASS: TestAReviewThatSawStaleFactsIsRefused/a_release_that_is_not_the_newest (0.00s)\n    --- FAIL: TestAReviewThatSawStaleFactsIsRefused/no_reason (0.08s)\n    --- PASS: TestAReviewThatSawStaleFactsIsRefused/an_unknown_decision (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.954s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-publishing-request-body-is-at-most-64-kib",
+      "mutated_protection": "apps/platform/internal/skill/publishing/http.go:150: const maxJSONBodyBytes = 64 << 10 -> const maxJSONBodyBytes = 65 << 10",
+      "failure_evidence": "read\n=== RUN   TestPublishingRequestsStopReadingABodyPastSixtyFourKilobytes/publish_a_skill\n    publishing_body_cap_integration_test.go:29: got 404 map[error:not found], want 400 and the malformed-body answer: nothing past 64 KiB may be read\n=== RUN   TestPublishingRequestsStopReadingABodyPastSixtyFourKilobytes/review_an_exposure\n    publishing_body_cap_integration_test.go:29: got 422 map[error:審核結論只能是核准或撤銷 reason:decision_unknown], want 400 and the malformed-body answer: nothing past 64 KiB may be read\n--- FAIL: TestPublishingRequestsStopReadingABodyPastSixtyFourKilobytes (0.08s)\n    --- FAIL: TestPublishingRequestsStopReadingABodyPastSixtyFourKilobytes/register_a_publisher (0.01s)\n    --- FAIL: TestPublishingRequestsStopReadingABodyPastSixtyFourKilobytes/create_a_bundle_version (0.00s)\n    --- FAIL: TestPublishingRequestsStopReadingABodyPastSixtyFourKilobytes/publish_a_bundle (0.01s)\n    --- FAIL: TestPublishingRequestsStopReadingABodyPastSixtyFourKilobytes/publish_a_skill (0.01s)\n    --- FAIL: TestPublishingRequestsStopReadingABodyPastSixtyFourKilobytes/review_an_exposure (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.859s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-republishing-the-same-version-keeps-its-one-release",
+      "mutated_protection": "apps/platform/internal/skill/publishing/service.go:639: return latest.SkillVersionID == version.ID && latest.ContentHash == version.ContentHash -> return false",
+      "failure_evidence": "=== RUN   TestPublishingTheSameVersionAgainKeepsItsOneRelease\n    publishing_integration_test.go:649: releases = [map[content_hash:7b7be3f41bb24057d74097a1d84443aa8eb68706d69dec521fbf5a1f487bfdb8 findings:map[errors:[] infos:[] warnings:[]] released_at:2026-10-17T18:32:17Z rights_attested:true version_id:cbb1f204-99ee-4c4c-a25e-fef2bfbb58c0 version_number:1] map[content_hash:7b7be3f41bb24057d74097a1d84443aa8eb68706d69dec521fbf5a1f487bfdb8 findings:map[errors:[] infos:[] warnings:[]] released_at:2026-10-17T18:32:17Z rights_attested:true version_id:cbb1f204-99ee-4c4c-a25e-fef2bfbb58c0 version_number:1]], want the one release kept: a repeated publish must not reset its exposure review\n--- FAIL: TestPublishingTheSameVersionAgainKeepsItsOneRelease (0.15s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.077s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-taken-down-skill-cannot-be-published",
+      "mutated_protection": "apps/platform/internal/skill/publishing/service.go:242: if !found || skill.TakenDown { -> if !found {",
+      "failure_evidence": "=== RUN   TestATakenDownSkillCannotBePublished\n    publishing_release_guard_integration_test.go:17: publishing a taken-down Skill: 200 map[acquisition:map[available:false note:這個發佈物目前不提供下載，原因見上方。] address:/p/takedown-dd50f900ce/takedown-skill-44fd3e465f availability:map[label:已不提供 note:這個 Skill 已被平台下架。 value:taken_down] kind:skill name:takedown-skill-44fd3e465f publisher:takedown-dd50f900ce releases:[map[content_hash:6102b7bac4c89e172084ba3f3719241d069a769d8089d2d23e550935a02a10d9 findings:map[errors:[] infos:[] warnings:[]] released_at:2026-10-17T19:02:29Z rights_attested:true version_id:13ff4f60-8014-468b-9349-198ced74c514 version_number:1]] status:published status_changed_at:2026-10-17T19:02:29Z], want 404\n--- FAIL: TestATakenDownSkillCannotBePublished (0.16s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.985s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-publication-takes-only-a-version-of-its-own-skill",
+      "mutated_protection": "apps/platform/internal/skill/publishing/service.go:301: found = found && version.SkillID == skillID -> found = found",
+      "failure_evidence": "=== RUN   TestAPublicationRefusesAVersionOfAnotherSkill\n    publishing_release_guard_integration_test.go:37: publishing another Skill's version: 200 map[acquisition:map[available:true note:登入後可以下載這一版的標準 Agent Skill 套件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。] address:/p/foreign-version-e2e8b74b43/foreign-target-effd6339e7 availability:map[label:提供中 note: value:available] kind:skill name:foreign-target-effd6339e7 publisher:foreign-version-e2e8b74b43 releases:[map[content_hash:51132999959c20b09482920edd7ed6dfec671550ffc792d503bed28f72dd8e4a findings:map[errors:[] infos:[] warnings:[]] released_at:2026-10-17T19:02:52Z rights_attested:true version_id:c07ad0b6-0c0c-4fdd-a712-038464b5dbde version_number:1]] status:published status_changed_at:2026-10-17T19:02:52Z], want 404\n--- FAIL: TestAPublicationRefusesAVersionOfAnotherSkill (0.19s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.300s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-delisting-audits-only-an-actual-change",
+      "mutated_protection": "apps/platform/internal/skill/publishing/service.go:408: if changed > 0 { -> if changed >= 0 {",
+      "failure_evidence": "=== RUN   TestDelistingTwiceRecordsOneDelistInTheAuditLog\n    publishing_release_guard_integration_test.go:62: delisting twice wrote 2 delist audit events, want 1\n--- FAIL: TestDelistingTwiceRecordsOneDelistInTheAuditLog (0.19s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.240s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/exposure_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/publishing_body_cap_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/publishing_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/publishing_release_guard_integration_test.go",
+    "apps/platform/internal/skill/publishing/exposure.go",
+    "apps/platform/internal/skill/publishing/http.go",
+    "apps/platform/internal/skill/publishing/service.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-an-exposure-review-names-the-release-and-sequence-it-saw",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAReviewThatSawStaleFactsIsRefused$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e47015802f4952c835c8cf8c907e64b52464a474a6bf3f323906e5d3fc0181eb",
+      "finished_at": "2026-10-17T19:05:36.328483Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-approval-names-the-snapshot-digest-its-reviewer-saw",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnApprovalNamesTheSnapshotTheReviewerSawAndARevocationNeedsNoSuchProof$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ca6b02821a72f3e7436960992f142fd0ca4b84559b13a4e4b590ebb349d21f10",
+      "finished_at": "2026-10-17T19:05:44.434728Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-exposure-review-needs-a-reason",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAReviewThatSawStaleFactsIsRefused$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e224f6d90610812ca30aa0870a3e11431aca6cfa43c2968cc2a57627f38240d3",
+      "finished_at": "2026-10-17T19:05:52.993405Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-publishing-request-body-is-at-most-64-kib",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestPublishingRequestsStopReadingABodyPastSixtyFourKilobytes$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:27bfaaba733a07d2549e4a34ee745c6715cc36d5c73fcdef7bd3617fb3badba2",
+      "finished_at": "2026-10-17T19:06:01.455204Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-republishing-the-same-version-keeps-its-one-release",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestPublishingTheSameVersionAgainKeepsItsOneRelease$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:68de0533a0650d6e6f5788baf8236be090a910d81488031d45dbb462dcf95274",
+      "finished_at": "2026-10-17T19:06:10.462938Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-taken-down-skill-cannot-be-published",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestATakenDownSkillCannotBePublished$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:baa9d70ce09146d63efa5f2af724f5a9e4fe03c1901c8579bdf8ac473bdffabc",
+      "finished_at": "2026-10-17T19:06:19.300667Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-publication-takes-only-a-version-of-its-own-skill",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAPublicationRefusesAVersionOfAnotherSkill$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:7448d7f8a379cba64efde310c636070493ae3217184b08f32e578b06dc52e546",
+      "finished_at": "2026-10-17T19:06:28.034437Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-delisting-audits-only-an-actual-change",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestDelistingTwiceRecordsOneDelistInTheAuditLog$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:fbbf7faa258e9377f14afa0159dbd5b26560163819d2b2b8cdc54671b92dbf8e",
+      "finished_at": "2026-10-17T19:06:36.515714Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

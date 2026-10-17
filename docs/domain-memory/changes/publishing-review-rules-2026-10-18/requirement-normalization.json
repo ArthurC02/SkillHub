@@ -1,0 +1,55 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "publishing-review-rules-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed the exposure review, body size and republication rules the publishing Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context publishing lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-an-exposure-review-names-the-release-and-sequence-it-saw",
+      "statement": "An exposure review is refused as stale unless it names the current release and the review sequence its reviewer saw."
+    },
+    {
+      "id": "enforced-an-approval-names-the-snapshot-digest-its-reviewer-saw",
+      "statement": "An approval is refused as stale and records nothing unless it names the search snapshot digest the reviewer saw; a revocation needs no such proof."
+    },
+    {
+      "id": "enforced-an-exposure-review-needs-a-reason",
+      "statement": "An exposure review is refused before any lookup unless its decision is approved or revoked and it carries a non-blank reason."
+    },
+    {
+      "id": "enforced-a-publishing-request-body-is-at-most-64-kib",
+      "statement": "Every publishing request reads at most 64 KiB of JSON and refuses a longer body with 400."
+    },
+    {
+      "id": "enforced-republishing-the-same-version-keeps-its-one-release",
+      "statement": "Publishing the published latest version again, with the same content, adds no release, so its exposure review is kept."
+    },
+    {
+      "id": "enforced-a-taken-down-skill-cannot-be-published",
+      "statement": "A Skill an operator took down cannot be published; the request is answered not found and no publication is created."
+    },
+    {
+      "id": "enforced-a-publication-takes-only-a-version-of-its-own-skill",
+      "statement": "Publishing a Skill with a version of another Skill is answered not found, so one Skill's gates never pass another Skill's files."
+    },
+    {
+      "id": "enforced-delisting-audits-only-an-actual-change",
+      "statement": "Delisting writes an audit event only when it changes the publication, so delisting twice records one delist."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/exposure_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/publishing_body_cap_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/publishing_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/publishing_release_guard_integration_test.go",
+    "apps/platform/internal/skill/publishing/exposure.go",
+    "apps/platform/internal/skill/publishing/http.go",
+    "apps/platform/internal/skill/publishing/service.go"
+  ]
+}

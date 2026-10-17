@@ -1,0 +1,370 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "publishing-review-rules-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "publishing-review-rules-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T19:05:26.619278Z",
+  "verified_at": "2026-10-17T19:06:37.190203Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "f455c975f2a26d1310cc1a6e38748619e0e974e4",
+    "registry_digest": "sha256:18fc7f5df9539e33523d3a8b22041e8b1b30149691e89476f028e9408d4e05f6"
+  },
+  "affected_contexts": [
+    "publishing"
+  ],
+  "rule_ids": [
+    "an-exposure-review-names-the-release-and-sequence-it-saw",
+    "an-approval-names-the-snapshot-digest-its-reviewer-saw",
+    "an-exposure-review-needs-a-reason",
+    "a-publishing-request-body-is-at-most-64-kib",
+    "republishing-the-same-version-keeps-its-one-release",
+    "a-taken-down-skill-cannot-be-published",
+    "a-publication-takes-only-a-version-of-its-own-skill",
+    "delisting-audits-only-an-actual-change"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "publishing",
+    "invariant": "Only publishing decides when a release exists and whether it is exposed in the catalog.",
+    "evidence": [
+      "apps/platform/internal/skill/publishing/exposure.go:401-415"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: operators reach exposure review through the operator-only route.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/publishing/service.go:238-244"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A second extraction of the publishing Context found these enforced rules beyond the eight the Registry held.",
+      "Three release guards survived their counterfactuals over the whole suite; a test was added for each."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording guards no test reaches: they wait for a test."
+    ],
+    "proof_obligations": [
+      "rule-an-exposure-review-names-the-release-and-sequence-it-saw",
+      "rule-an-approval-names-the-snapshot-digest-its-reviewer-saw",
+      "rule-an-exposure-review-needs-a-reason",
+      "rule-a-publishing-request-body-is-at-most-64-kib",
+      "rule-republishing-the-same-version-keeps-its-one-release",
+      "rule-a-taken-down-skill-cannot-be-published",
+      "rule-a-publication-takes-only-a-version-of-its-own-skill",
+      "rule-delisting-audits-only-an-actual-change"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-exposure-review-names-the-release-and-sequence-it-saw",
+        "statement": "An exposure review is refused as stale unless it names the current release and the review sequence its reviewer saw.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "Two reviewers open sequence 0; after one approves, the other's revocation at sequence 0 is refused as stale."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure.go",
+            "lines": {
+              "start": 413,
+              "end": 415
+            },
+            "excerpt_sha256": "sha256:4c82a61280b22d24f9eb043161b1cf71c44bfbdaae39c767d9be8779b05c343c"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/exposure_integration_test.go",
+            "lines": {
+              "start": 305,
+              "end": 339
+            },
+            "content_sha256": "sha256:5edeaa89f6c95e1f8858e0ece8252680636782d49a715cd5d94a0f4042ce81d6",
+            "excerpt_sha256": "sha256:7b742849aada15e4ee3cdfb0bd32ac1679e59301ee34662faeaa5674f6077a7e"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-approval-names-the-snapshot-digest-its-reviewer-saw",
+        "statement": "An approval is refused as stale and records nothing unless it names the search snapshot digest the reviewer saw; a revocation needs no such proof.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "Text re-enriched while the reviewer reads makes an approval with the old digest fail with 409 and no review row."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure.go",
+            "lines": {
+              "start": 505,
+              "end": 507
+            },
+            "excerpt_sha256": "sha256:68596d47432e22a6800c4296c8e56876f5ff2daf3f56204e2e069f8ec4715b1e"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure.go",
+            "lines": {
+              "start": 522,
+              "end": 524
+            },
+            "excerpt_sha256": "sha256:e345f40f292de8f6a4d16c2b8519d9526293d41d6cc157179ce147f77e0fbfc3"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/exposure_integration_test.go",
+            "lines": {
+              "start": 341,
+              "end": 388
+            },
+            "content_sha256": "sha256:5edeaa89f6c95e1f8858e0ece8252680636782d49a715cd5d94a0f4042ce81d6",
+            "excerpt_sha256": "sha256:8ac74fd716f64426d304597ba245515b9142ebdf7bafbcdce309af3f92778ecd"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-exposure-review-needs-a-reason",
+        "statement": "An exposure review is refused before any lookup unless its decision is approved or revoked and it carries a non-blank reason.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "An approval whose reason is only spaces answers 422 reason_missing."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure.go",
+            "lines": {
+              "start": 401,
+              "end": 407
+            },
+            "excerpt_sha256": "sha256:d292880236791f5fbdaad4c9c9993cca3fe6691ae4ff858cfaf2c4ff071b031e"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/exposure_integration_test.go",
+            "lines": {
+              "start": 305,
+              "end": 339
+            },
+            "content_sha256": "sha256:5edeaa89f6c95e1f8858e0ece8252680636782d49a715cd5d94a0f4042ce81d6",
+            "excerpt_sha256": "sha256:7b742849aada15e4ee3cdfb0bd32ac1679e59301ee34662faeaa5674f6077a7e"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-publishing-request-body-is-at-most-64-kib",
+        "statement": "Every publishing request reads at most 64 KiB of JSON and refuses a longer body with 400.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "A body of 64 KiB of spaces followed by valid JSON is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/http.go",
+            "lines": {
+              "start": 150,
+              "end": 150
+            },
+            "excerpt_sha256": "sha256:219bae0a6b69660694667645c9f09403a77c7ec638131346d5617e3abeaf709b"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/publishing_body_cap_integration_test.go",
+            "lines": {
+              "start": 8,
+              "end": 33
+            },
+            "content_sha256": "sha256:8b715e39f9ec38b09acec62d4a51402439d193014f3b3859a2a333789f71ca61",
+            "excerpt_sha256": "sha256:00a6e0624352217fb2334d7f502d520060eda438503c19b55a0461df092bebf5"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "republishing-the-same-version-keeps-its-one-release",
+        "statement": "Publishing the published latest version again, with the same content, adds no release, so its exposure review is kept.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "Publishing v1 twice leaves exactly one release."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/service.go",
+            "lines": {
+              "start": 253,
+              "end": 258
+            },
+            "excerpt_sha256": "sha256:2ed17076347abb93b8232b5a2b059e7a31cf7fbbc274594f43ce620c85494987"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/service.go",
+            "lines": {
+              "start": 637,
+              "end": 654
+            },
+            "excerpt_sha256": "sha256:4f542c48510815605afd328c19586613d7d0669e59b80b98b00b03833ae6e8ca"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/publishing_integration_test.go",
+            "lines": {
+              "start": 633,
+              "end": 651
+            },
+            "content_sha256": "sha256:458016982c72172550d6f717a393308586c0fdb60631aeeea70d2f00deda6063",
+            "excerpt_sha256": "sha256:4aed4754abba0c074d43ab2e05d649654164e5b14f2f8a216a722686b735a49f"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-taken-down-skill-cannot-be-published",
+        "statement": "A Skill an operator took down cannot be published; the request is answered not found and no publication is created.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "Publishing a taken-down Skill answers 404 and leaves no publication."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/service.go",
+            "lines": {
+              "start": 238,
+              "end": 244
+            },
+            "excerpt_sha256": "sha256:bdbe4f4dd26d41819129c44f2b7003f3b4dbedfc91561582358b3ec3bbee029f"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/publishing_release_guard_integration_test.go",
+            "lines": {
+              "start": 8,
+              "end": 22
+            },
+            "content_sha256": "sha256:87a4fc73bde55f60872a02dbb35c538f5c56c484ee08bae415aa10bc33a1afb1",
+            "excerpt_sha256": "sha256:17292075d428fb45abc6a346a7788926e4edc3c8d489ca8f734c75ab8c611ca3"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-publication-takes-only-a-version-of-its-own-skill",
+        "statement": "Publishing a Skill with a version of another Skill is answered not found, so one Skill's gates never pass another Skill's files.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "Publishing Skill A with Skill B's version answers 404."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/service.go",
+            "lines": {
+              "start": 299,
+              "end": 311
+            },
+            "excerpt_sha256": "sha256:cdd494d55f4fda162e5097e214ba6a75457cc5aeab8e5f940f21fbcffb51df6f"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/publishing_release_guard_integration_test.go",
+            "lines": {
+              "start": 24,
+              "end": 42
+            },
+            "content_sha256": "sha256:87a4fc73bde55f60872a02dbb35c538f5c56c484ee08bae415aa10bc33a1afb1",
+            "excerpt_sha256": "sha256:1bbbbd7537384980cd26e261152236ba47ff7e0a95423d4ae9b5acf786caa793"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "delisting-audits-only-an-actual-change",
+        "statement": "Delisting writes an audit event only when it changes the publication, so delisting twice records one delist.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "Delisting an already delisted publication adds no second audit event."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/service.go",
+            "lines": {
+              "start": 402,
+              "end": 418
+            },
+            "excerpt_sha256": "sha256:0e0c7d4ed44015bf994aa6a5cb2065683e44cd4de86a20903db64bc3ad1394d8"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/publishing_release_guard_integration_test.go",
+            "lines": {
+              "start": 44,
+              "end": 64
+            },
+            "content_sha256": "sha256:87a4fc73bde55f60872a02dbb35c538f5c56c484ee08bae415aa10bc33a1afb1",
+            "excerpt_sha256": "sha256:79c69f97fc71d3ebc1bcc07565428d1f5966f48fa5fec8a514b5ee782a6aeb3a"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T19:06:36.790775Z",
+      "scope": "Record publishing review rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "f455c975f2a26d1310cc1a6e38748619e0e974e4",
+        "registry_digest": "sha256:18fc7f5df9539e33523d3a8b22041e8b1b30149691e89476f028e9408d4e05f6"
+      }
+    }
+  ]
+}

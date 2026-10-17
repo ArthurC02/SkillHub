@@ -1,0 +1,127 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "publishing-review-rules-2026-10-18",
+  "proposal_id": "publishing-review-rules-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-an-exposure-review-names-the-release-and-sequence-it-saw",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-exposure-review-names-the-release-and-sequence-it-saw",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-exposure-review-names-the-release-and-sequence-it-saw"
+        }
+      ],
+      "expected_outcome": "An exposure review is refused as stale unless it names the current release and the review sequence its reviewer saw.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAReviewThatSawStaleFactsIsRefused$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-an-approval-names-the-snapshot-digest-its-reviewer-saw",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-approval-names-the-snapshot-digest-its-reviewer-saw",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-approval-names-the-snapshot-digest-its-reviewer-saw"
+        }
+      ],
+      "expected_outcome": "An approval is refused as stale and records nothing unless it names the search snapshot digest the reviewer saw; a revocation needs no such proof.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnApprovalNamesTheSnapshotTheReviewerSawAndARevocationNeedsNoSuchProof$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-an-exposure-review-needs-a-reason",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-exposure-review-needs-a-reason",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-exposure-review-needs-a-reason"
+        }
+      ],
+      "expected_outcome": "An exposure review is refused before any lookup unless its decision is approved or revoked and it carries a non-blank reason.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAReviewThatSawStaleFactsIsRefused$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-publishing-request-body-is-at-most-64-kib",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-publishing-request-body-is-at-most-64-kib",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-publishing-request-body-is-at-most-64-kib"
+        }
+      ],
+      "expected_outcome": "Every publishing request reads at most 64 KiB of JSON and refuses a longer body with 400.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestPublishingRequestsStopReadingABodyPastSixtyFourKilobytes$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-republishing-the-same-version-keeps-its-one-release",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-republishing-the-same-version-keeps-its-one-release",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "republishing-the-same-version-keeps-its-one-release"
+        }
+      ],
+      "expected_outcome": "Publishing the published latest version again, with the same content, adds no release, so its exposure review is kept.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestPublishingTheSameVersionAgainKeepsItsOneRelease$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-taken-down-skill-cannot-be-published",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-taken-down-skill-cannot-be-published",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-taken-down-skill-cannot-be-published"
+        }
+      ],
+      "expected_outcome": "A Skill an operator took down cannot be published; the request is answered not found and no publication is created.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestATakenDownSkillCannotBePublished$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-publication-takes-only-a-version-of-its-own-skill",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-publication-takes-only-a-version-of-its-own-skill",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-publication-takes-only-a-version-of-its-own-skill"
+        }
+      ],
+      "expected_outcome": "Publishing a Skill with a version of another Skill is answered not found, so one Skill's gates never pass another Skill's files.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAPublicationRefusesAVersionOfAnotherSkill$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-delisting-audits-only-an-actual-change",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-delisting-audits-only-an-actual-change",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "delisting-audits-only-an-actual-change"
+        }
+      ],
+      "expected_outcome": "Delisting writes an audit event only when it changes the publication, so delisting twice records one delist.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestDelistingTwiceRecordsOneDelistInTheAuditLog$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}
