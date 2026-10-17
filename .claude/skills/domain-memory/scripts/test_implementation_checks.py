@@ -399,6 +399,13 @@ class CounterfactualTest(RepositoryCase):
             self.break_rule("0", "5")
         self.assert_untouched()
 
+    def test_the_lines_of_a_repeated_text_are_listed_up_to_ten(self) -> None:
+        for count, listed in ((10, "1, 2, 3, 4, 5, 6, 7, 8, 9, 10;"), (11, "1, 2, 3, 4, 5, 6, 7, 8, 9, 10 and 1 more;")):
+            with self.subTest(count):
+                self.write("many.py", "x\n" * count)
+                with self.assertRaisesRegex(ValueError, f"at lines {listed}"):
+                    counterfactual(self.repo, Mutation(Path("many.py"), "x", "y"), Proof(RUN_TESTS))
+
     def test_a_replacement_that_changes_nothing_is_refused(self) -> None:
         with self.assertRaisesRegex(ValueError, "is the text it replaces"):
             self.break_rule("LIMIT = 200", "LIMIT = 200")
@@ -709,6 +716,23 @@ class CommandLineTest(RepositoryCase):
         self.assertEqual(
             (3, "file does not exist: \U0001F600.py"),
             (completed.returncode, json.loads(completed.stdout.decode("utf-8"))["reason"]),
+        )
+
+    def test_a_counterfactual_usage_mistake_is_a_json_error_and_other_commands_keep_exit_two(self) -> None:
+        for arguments, reason in (
+            (("--repo-root", str(self.repo), "--file", "rule.py", "--find", "a", "--replace", "b", "--test-command", "x",
+              "--bogus"), "unrecognized arguments: --bogus"),
+            (("--repo-root", str(self.repo)), "the following arguments are required: --file"),
+        ):
+            with self.subTest(reason):
+                completed = self.run_tool("counterfactual", *arguments)
+                result = json.loads(completed.stdout)
+                self.assertEqual((3, "error", True), (completed.returncode, result["verdict"], reason in result["reason"]))
+        other = self.run_tool("quality-gates", "--repo-root", str(self.repo), "--bogus")
+        self.assertEqual(
+            (2, "", True, True),
+            (other.returncode, other.stdout, other.stderr.startswith("usage: "),
+             other.stderr.rstrip().endswith("error: unrecognized arguments: --bogus")),
         )
 
     def test_a_failing_baseline_is_a_json_error_with_its_own_exit_code(self) -> None:

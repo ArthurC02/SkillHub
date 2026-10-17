@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+from typing import NoReturn
 
 from .changes import PREVIEW_STATUSES
 from .common import ASSET_KEYS
@@ -43,8 +44,19 @@ def query_text(text: str) -> str:
     return text
 
 
+class UsageError(Exception):
+    def __init__(self, usage: str, message: str) -> None:
+        super().__init__(message)
+        self.usage = usage
+
+
+class CliParser(argparse.ArgumentParser):
+    def error(self, message: str) -> NoReturn:
+        raise UsageError(self.format_usage(), f"{self.prog}: error: {message}")
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = CliParser(
         description="Initialize, validate, or assess a file-backed Domain Registry."
     )
     commands = parser.add_subparsers(dest="command", required=True, metavar="command")

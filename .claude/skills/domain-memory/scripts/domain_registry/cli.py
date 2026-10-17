@@ -1,8 +1,8 @@
 import io
 import sys
 
-from .cli_commands import execute
-from .cli_parser import build_parser
+from .cli_commands import COUNTERFACTUAL_EXIT_CODES, COUNTERFACTUAL_FORMAT, execute, print_json
+from .cli_parser import UsageError, build_parser
 
 
 def main() -> int:
@@ -10,10 +10,22 @@ def main() -> int:
         if isinstance(stream, io.TextIOWrapper):
             stream.reconfigure(encoding="utf-8", errors="backslashreplace", newline="\n")
     try:
-        return execute(build_parser().parse_args())
+        args = build_parser().parse_args()
+    except UsageError as error:
+        return _refuse_usage(error)
+    try:
+        return execute(args)
     except (ValueError, OSError) as error:
         print(f"ERROR: {error}")
         return 1
+
+
+def _refuse_usage(error: UsageError) -> int:
+    if sys.argv[1:2] == ["counterfactual"]:
+        print_json({"format": COUNTERFACTUAL_FORMAT, "verdict": "error", "reason": str(error)})
+        return COUNTERFACTUAL_EXIT_CODES["error"]
+    sys.stderr.write(f"{error.usage}{error}\n")
+    return 2
 
 
 if __name__ == "__main__":

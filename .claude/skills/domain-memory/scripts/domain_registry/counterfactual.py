@@ -182,6 +182,14 @@ def _lines_holding(original: bytes, find: bytes) -> list[int]:
     return list(dict.fromkeys(lines))
 
 
+LISTED_LINES = 10
+
+
+def _listed(lines: list[int]) -> str:
+    shown = ", ".join(map(str, lines[:LISTED_LINES]))
+    return f"{shown} and {len(lines) - LISTED_LINES} more" if len(lines) > LISTED_LINES else shown
+
+
 def mutated(original: bytes, mutation: Mutation) -> bytes:
     find, replace = mutation.find.encode("utf-8"), mutation.replace.encode("utf-8")
     occurrences = original.count(find)
@@ -190,7 +198,7 @@ def mutated(original: bytes, mutation: Mutation) -> bytes:
     if occurrences > 1:
         raise ValueError(
             f"the text to break must occur once in {mutation.file}, and it occurs {occurrences} times, "
-            f"at lines {', '.join(map(str, _lines_holding(original, find)))}; widen --find to text that occurs once"
+            f"at lines {_listed(_lines_holding(original, find))}; widen --find to text that occurs once"
         )
     if find == replace:
         raise ValueError("the replacement is the text it replaces")

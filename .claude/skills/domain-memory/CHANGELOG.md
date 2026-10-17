@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.63.0
+
+### Changed
+
+- A usage mistake in `counterfactual`, such as an unknown option or a missing `--file`, prints JSON with `verdict` `error` and exits 3, as its other refusals do; it exited 2, the exit code of `inconclusive`. Other commands keep argparse's message on stderr and exit 2.
+- A `--find` text that occurs more than once lists its first ten lines and how many more.
+
 ## 0.62.0
 
 ### Changed
