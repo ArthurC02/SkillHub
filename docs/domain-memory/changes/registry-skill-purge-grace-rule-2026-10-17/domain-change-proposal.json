@@ -3,11 +3,11 @@
   "proposal_id": "registry-skill-purge-grace-rule-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "registry-skill-purge-grace-rule-2026-10-17",
-  "status": "verified",
+  "status": "approved",
   "change_classification": "material",
   "submitted_at": "2026-10-17T13:12:34.405295Z",
   "verified_at": "2026-10-17T13:12:45.274237Z",
-  "finalized_at": null,
+  "finalized_at": "2026-10-17T13:12:49.538088Z",
   "applied_at": null,
   "proposal_revision": 1,
   "base_registry_revision": {
