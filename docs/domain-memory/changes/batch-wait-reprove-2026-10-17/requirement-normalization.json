@@ -1,0 +1,24 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "batch-wait-reprove-2026-10-17",
+  "status": "draft",
+  "intent": "Attach a proving test to the reviewed rule batch-waits-only-on-a-passing-refusal, whose reviewing package is no longer in the repository.",
+  "actor": "coding-agent",
+  "observable_outcome": "coverage lists batch-waits-only-on-a-passing-refusal as proven, and get-record names the obligation that proves it.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-batch-waits-only-on-a-passing-refusal",
+      "statement": "An evaluation batch waits when Run refuses a trial with a refusal Run says will pass on its own, and stops with that reason recorded on any other refusal."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+    "apps/platform/internal/trial/batch/batch.go",
+    "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md"
+  ]
+}

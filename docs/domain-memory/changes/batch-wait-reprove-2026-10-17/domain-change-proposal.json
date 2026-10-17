@@ -1,0 +1,130 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "batch-wait-reprove-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "batch-wait-reprove-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T05:41:29.860714Z",
+  "verified_at": "2026-10-17T05:41:42.133343Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "0e31e99e2800dfe995c796b44aa9469aac22e74e",
+    "registry_digest": "sha256:c1e35ca41d3611ee8e6c9da8b50f8bf5a790bdfe756d8f8d036203e1528d9946"
+  },
+  "affected_contexts": [
+    "batch"
+  ],
+  "rule_ids": [
+    "batch-waits-only-on-a-passing-refusal"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "batch",
+    "invariant": "Only batch decides whether a batch waits, stops or goes on.",
+    "evidence": [
+      "apps/platform/internal/trial/batch/batch.go:259-267"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/batch/batch.go:259-267"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "coverage reports the rule's proof unknown: the package that reviewed it was removed from the repository on 2026-10-16."
+    ],
+    "decision": "Keep the statement and citations; add the test that fails when the guard is broken.",
+    "invariants_preserved": [
+      "The rule's statement is unchanged."
+    ],
+    "rejected_alternatives": [
+      "Restoring the removed package from git history: the proof belongs with the current citations."
+    ],
+    "proof_obligations": [
+      "rule-batch-waits-only-on-a-passing-refusal"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "batch-waits-only-on-a-passing-refusal",
+        "statement": "An evaluation batch waits when Run refuses a trial with a refusal Run says will pass on its own, and stops with that reason recorded on any other refusal.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "The workspace is already running as many runs as it may: the batch tries the trial again on its next advance.",
+          "The credit balance is too low: the batch stops and records credit_balance as its reason."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 259,
+              "end": 267
+            },
+            "excerpt_sha256": "sha256:e238eec0c0131176e4ec23b7886a601f24f453431a717cc5e2a2f1c04bfc959f"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 110,
+              "end": 124
+            },
+            "excerpt_sha256": "sha256:d5fd29b1dd40a5647cfceda7ad758c7e3139ba3313362c4ab3732ba5d9959dbb"
+          },
+          {
+            "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+            "lines": {
+              "start": 104,
+              "end": 104
+            },
+            "excerpt_sha256": "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+            "lines": {
+              "start": 64,
+              "end": 103
+            },
+            "content_sha256": "sha256:b47096ca08fba031718e8d21c32719496d0f37d5a2eeca48bba70b8834b29216",
+            "excerpt_sha256": "sha256:e81314b24b08c5ee37b8d39ec9bd58f93f0d7734f3b01ed16175ca4224756eff",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T05:41:41.818005Z",
+      "scope": "Re-prove batch-waits-only-on-a-passing-refusal with its existing statement",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "0e31e99e2800dfe995c796b44aa9469aac22e74e",
+        "registry_digest": "sha256:c1e35ca41d3611ee8e6c9da8b50f8bf5a790bdfe756d8f8d036203e1528d9946"
+      }
+    }
+  ],
+  "supersedes": [
+    "receiver-free-recite"
+  ]
+}

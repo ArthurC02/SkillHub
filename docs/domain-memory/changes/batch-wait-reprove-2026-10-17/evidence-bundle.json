@@ -1,0 +1,42 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "batch-wait-reprove-2026-10-17",
+  "proposal_id": "batch-wait-reprove-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "0e31e99e2800dfe995c796b44aa9469aac22e74e",
+    "registry_digest": "sha256:c1e35ca41d3611ee8e6c9da8b50f8bf5a790bdfe756d8f8d036203e1528d9946"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-batch-waits-only-on-a-passing-refusal",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch.go:259: if errors.Is(err, ErrRunMustWait) { -> if errors.Is(err, ErrRunMustWait) && false {",
+      "failure_evidence": "=== RUN   TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait\n2026/10/17 13:41:27 WARN the batch was saved but its first run could not start yet; the periodic advance retries it batch_id=c99d925e-2951-47f3-911c-399122fcadd4 error=\"the workspace cannot start a run right now; the batch waits for its turn\"\n    evaluation_batch_integration_test.go:93: the workspace cannot start a run right now; the batch waits for its turn\n--- FAIL: TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait (0.25s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.571s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+    "apps/platform/internal/trial/batch/batch.go",
+    "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-batch-waits-only-on-a-passing-refusal",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:0a13b6a705525d3b50c2940caf5ea1b3ed7c73921a7c98cb9f513ae58cb0f71c",
+      "finished_at": "2026-10-17T05:41:41.527496Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

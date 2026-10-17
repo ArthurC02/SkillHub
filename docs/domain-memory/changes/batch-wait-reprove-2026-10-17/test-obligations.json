@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "batch-wait-reprove-2026-10-17",
+  "proposal_id": "batch-wait-reprove-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-batch-waits-only-on-a-passing-refusal",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-batch-waits-only-on-a-passing-refusal",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "batch-waits-only-on-a-passing-refusal"
+        }
+      ],
+      "expected_outcome": "An evaluation batch waits when Run refuses a trial with a refusal Run says will pass on its own, and stops with that reason recorded on any other refusal.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}
