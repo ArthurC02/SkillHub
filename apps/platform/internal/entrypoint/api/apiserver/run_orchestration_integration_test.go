@@ -563,6 +563,36 @@ func TestRetriesAreBoundedAndClassifiedAsProviderFailure(t *testing.T) {
 	}
 }
 
+func TestEachDispatchIsKeyedByThePlatformsOwnAttemptID(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-dispatch-key")
+	fake, _ := withProvider(t, a, pool, providertest.Plan{})
+	fake.DispatchStatuses = []int{http.StatusServiceUnavailable}
+
+	created := f.start(t)
+	req := dispatchedRequestOfAttempt(t, fake, created.RunID, 2)
+	if req.RunAttemptID == "" || req.IdempotencyKey != req.RunAttemptID {
+		t.Fatalf("retry dispatch idempotency key = %q, want its own attempt id %q", req.IdempotencyKey, req.RunAttemptID)
+	}
+	if req.IdempotencyKey == created.RunID {
+		t.Fatalf("retry dispatch reused the run id %q as its idempotency key", created.RunID)
+	}
+}
+
+func dispatchedRequestOfAttempt(t *testing.T, fake *providertest.Fake, runID string, attempt int) run.RunRequest {
+	t.Helper()
+	deadline := time.Now().Add(20 * time.Second)
+	for time.Now().Before(deadline) {
+		if req, ok := fake.Request(runID, attempt); ok {
+			return req
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatalf("attempt %d of run %s was never accepted by the provider", attempt, runID)
+	return run.RunRequest{}
+}
+
 func TestWorkloadFailureIsRecordedOnceAndNotRetried(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
