@@ -152,3 +152,21 @@ func TestASessionCookieThatIsNotAMintedIdIsReplacedNotRecorded(t *testing.T) {
 		}
 	}
 }
+
+func TestVisitCookieInTheLastSecondBeforeUTCMidnightStillGetsAPositiveLifetime(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		now  time.Time
+		want int
+	}{
+		{"half a second before midnight", time.Date(2026, 8, 19, 23, 59, 59, 500_000_000, time.UTC), 1},
+		{"exactly one second before midnight", time.Date(2026, 8, 19, 23, 59, 59, 0, time.UTC), 1},
+		{"two seconds before midnight", time.Date(2026, 8, 19, 23, 59, 58, 0, time.UTC), 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := visitLifetimeSeconds(tc.now, 48*time.Hour); got != tc.want {
+				t.Errorf("visit cookie lifetime = %d seconds, want %d; zero would make it a browser-session cookie", got, tc.want)
+			}
+		})
+	}
+}
