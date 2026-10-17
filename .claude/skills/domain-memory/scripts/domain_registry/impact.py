@@ -17,6 +17,7 @@ COLLABORATION_ENDS = {
     "contracts.json": lambda entry: [
         (entry.get("producer_context"), consumer) for consumer in entry.get("consumer_contexts") or []
     ],
+    "events.json": lambda entry: [(entry.get("owner_context"), consumer) for consumer in entry.get("consumers") or []],
 }
 
 

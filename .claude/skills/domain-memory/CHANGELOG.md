@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.64.0
+
+### Changed
+
+- `analyze-boundary` reports each direction on its own, `source_depends_on_target` and `target_depends_on_source`, each with interactions, contracts, dependency policies and consumed events. It filtered interactions by producer and policies by depender under the same `--source-context`, so a Context that calls another and may also be depended on by it came back as one relation, and the reverse question came back as `no_registered_collaboration`.
+- An Event's `consumers` are validated as existing Context ids, count as a collaboration in `boundary-impact`, `change-coupling` and `analyze-boundary`, and put the event in the consuming Context's `get-context` model; `resolve-terms` names them among a mention's Contexts.
+
 ## 0.63.0
 
 ### Changed

@@ -11,7 +11,7 @@ The Registry is a file-backed, reviewable projection of domain knowledge, not a 
 | Contract | An API or event promise | `kind`, `producer_context`, `consumer_contexts`, `version`, `compatibility_policy`, `data_classification`, `idempotency` |
 | Interaction | A collaboration across boundaries | `producer_context`, `consumer_context`, `consistency`, `delivery`; `contract_id` only when the collaboration relies on a stable API or event promise |
 | Decision | A current architectural or business decision | `status` for the decision, `review_status` for Registry curation, `statement`, `source`, `effective_from`, `supersedes` |
-| Event | A committed business occurrence | `owner_context`, `meaning`, `schema`, `consumers`, `version` |
+| Event | A committed business occurrence | `owner_context`, `meaning`, `schema`, `consumers` (the Context ids that react to it; each must exist), `version` |
 | Capability | A business ability owned by one Context | `context`, `meaning` |
 | Value object | An immutable domain concept | `context`, `meaning`, `fields` |
 | Dependency policy | An allowed or prohibited Context collaboration | `from_context`, `to_context`, `mode`, `policy` |

@@ -217,6 +217,16 @@ class SourcesTest(RegistryTestCase):
             (impact["verdict"], impact["co_changed_pairs"][0]["collaborations"]),
         )
 
+    def test_an_event_with_a_consumer_registers_the_collaboration_of_its_two_contexts(self) -> None:
+        self.two_mapped_contexts(events=[
+            {"id": "invoice-issued", "owner_context": "billing", "consumers": ["orders"]},
+        ])
+        impact = self.change("src/orders/port.py", "src/billing/invoice.py")
+        self.assertEqual(
+            ("registered-co-change", [{"asset": "events", "id": "invoice-issued", "status": "candidate"}]),
+            (impact["verdict"], impact["co_changed_pairs"][0]["collaborations"]),
+        )
+
     def test_a_changed_file_cited_by_a_boundary_record_is_named(self) -> None:
         self.two_mapped_contexts(interactions=[
             {"id": "orders-bill", "producer_context": "orders", "consumer_context": "billing",
