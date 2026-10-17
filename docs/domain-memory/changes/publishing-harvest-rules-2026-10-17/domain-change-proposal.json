@@ -3,12 +3,12 @@
   "proposal_id": "publishing-harvest-rules-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "publishing-harvest-rules-2026-10-17",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T02:49:45.191375Z",
   "verified_at": "2026-10-17T02:50:57.217435Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T02:51:10.949862Z",
+  "applied_at": "2026-10-17T02:51:13.427097Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "b87d268acccf20467bdf64458b427eae293a092a",
@@ -351,5 +351,9 @@
         "registry_digest": "sha256:5fda890716564949f8067d97ab8769e951ac12319941b14e21c5d232dbfd75c8"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "69c84a17cddc66f59229b392b6d79091f1716c72",
+    "registry_digest": "sha256:85860d5a27a4f3dbe47bbb5bd4b40c42c291b294a80de20753a86407ff00b1b8"
+  }
 }
