@@ -56,6 +56,14 @@ class DependentsTest(RegistryTestCase):
             (shown.returncode, [f"{item['asset']}/{item['id']}" for item in json.loads(shown.stdout)["reached"]]),
         )
 
+    def test_the_command_names_the_ids_that_resemble_an_unknown_one(self) -> None:
+        self.coupled_registry()
+        shown = self.run_cli("dependents", "--registry-root", str(self.repo / "memory"), "--asset", "rules", "--id", "tot")
+        self.assertEqual(
+            (1, "ERROR: rules record not found: tot; did you mean total?"),
+            (shown.returncode, shown.stdout.strip()),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

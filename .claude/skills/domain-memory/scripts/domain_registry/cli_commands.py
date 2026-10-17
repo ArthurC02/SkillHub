@@ -470,7 +470,11 @@ def _note_repeated(repo_root: Path, cited: dict) -> None:
 
 
 def handle_dependents(args: argparse.Namespace) -> int:
-    print_json(dependents(args.registry_root.resolve(), args.asset, args.id))
+    root = args.registry_root.resolve()
+    if record_by_id(root, args.asset, args.id) is None:
+        known = asset_records(root, f"{args.asset}.json")
+        raise ValueError(f"{args.asset} record not found: {args.id}{_did_you_mean(args.id, known)}")
+    print_json(dependents(root, args.asset, args.id))
     return 0
 
 

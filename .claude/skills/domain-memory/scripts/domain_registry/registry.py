@@ -11,6 +11,7 @@ from typing import Any
 from .common import (
     ASSET_FORMATS,
     ASSET_KEYS,
+    CLOSED_FIELDS,
     CONTEXT_SUBDOMAINS,
     REGISTRY_STATUSES,
     REVIEW_REQUIRED_FIELDS,
@@ -230,6 +231,8 @@ def _context_placement_problems(entries: list[dict[str, Any]]) -> list[str]:
             errors.append(
                 f"{label} has an unknown subdomain: "
                 f"{subdomain!r} is not one of {', '.join(sorted(CONTEXT_SUBDOMAINS))}"
+                + ("; shared-kernel is a relationship between two Contexts, recorded on their Interaction"
+                   if subdomain == "shared-kernel" else "")
             )
         prefixes = entry.get("requirement_prefixes")
         if prefixes is not None and (
@@ -318,6 +321,18 @@ def _validate_context_references(
         *_event_consumer_errors(records, known_contexts),
         *_contract_errors(records),
         *_aggregate_binding_errors(records),
+        *_closed_field_errors(records),
+    ]
+
+
+def _closed_field_errors(records: dict[str, list[dict[str, Any]]]) -> list[str]:
+    return [
+        f"{name.removesuffix('.json')}/{entry.get('id')} has an unknown {field}: "
+        f"{entry[field]!r} is not one of {', '.join(sorted(allowed))}"
+        for name, fields in CLOSED_FIELDS.items()
+        for entry in records.get(name, [])
+        for field, allowed in fields.items()
+        if entry.get(field) is not None and (not isinstance(entry[field], str) or entry[field] not in allowed)
     ]
 
 

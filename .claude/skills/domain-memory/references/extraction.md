@@ -13,7 +13,7 @@ Extraction turns a source into Registry candidates. It is judged by one question
 | Domain Event | a business occurrence the domain cares about, after it is committed | a technical notification or a state write |
 | Value Object | an immutable concept compared by its values | any data structure without an ID |
 | Contract | a promise between processes or Contexts: shape, version and compatibility | an endpoint or a topic name |
-| Interaction | one Context reacting to or calling another, with its consistency | an import edge |
+| Interaction | one Context reacting to or calling another, with its consistency and, when the code shows it, the Context Map relationship between them | an import edge |
 | Dependency policy | a direction one Context's code may or must never depend on | an observed import |
 | Decision | a current, owned choice that constrains the model | a discussion or a superseded choice |
 

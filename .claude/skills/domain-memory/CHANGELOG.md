@@ -2,6 +2,18 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.69.0
+
+### Added
+
+- An Interaction may name the Context Map pattern between its two Contexts in `relationship`: `partnership`, `shared-kernel`, `customer-supplier`, `conformist`, `anticorruption-layer`, `open-host-service`, `published-language` or `separate-ways`, the producer being upstream; `validate` refuses any other value.
+- `validate` refuses a dependency policy whose `mode` or `policy` is outside the documented set.
+- `dependents` given an unknown id names up to three ids that start with or resemble it, as `get-record` does.
+
+### Changed
+
+- `shared-kernel` is no longer a Context `subdomain`: a shared kernel is a relationship between two Contexts, and the refusal says to record it on their Interaction. A Registry that used it moves the value to the Interaction; this repository's Registry never did.
+
 ## 0.68.0
 
 ### Added

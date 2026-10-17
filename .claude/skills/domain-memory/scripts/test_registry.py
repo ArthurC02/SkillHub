@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.common import ASSET_KEYS, load_json
+from domain_registry.common import ASSET_KEYS, CONTEXT_RELATIONSHIPS, load_json
 from domain_registry.contracts import validate_schema
 from domain_registry.cli_commands import HANDLERS, policy_assignments
 from domain_registry.cli_parser import build_parser
@@ -525,8 +525,47 @@ class RegistryTest(RegistryTestCase):
         errors = validate(self.repo / "memory", self.repo, False)
         self.assertTrue(any("unknown subdomain" in error for error in errors), errors)
 
+    def test_shared_kernel_is_refused_as_a_subdomain_and_pointed_to_the_interaction(self) -> None:
+        self.seed("contexts.json", [
+            {"id": "orders", "name": "Orders", "responsibility": "Own orders.", "subdomain": "shared-kernel"},
+        ])
+        self.assertIn(
+            "contexts/orders has an unknown subdomain: 'shared-kernel' is not one of core, generic, supporting; "
+            "shared-kernel is a relationship between two Contexts, recorded on their Interaction",
+            validate(self.repo / "memory", self.repo, False),
+        )
+
+    def test_a_collaboration_field_outside_its_closed_set_is_refused(self) -> None:
+        cases = [
+            ("relationship", "interactions.json",
+             [{"id": "i", "producer_context": "orders", "consumer_context": "billing", "relationship": "friends"}],
+             "interactions/i has an unknown relationship: 'friends' is not one of anticorruption-layer, conformist, "
+             "customer-supplier, open-host-service, partnership, published-language, separate-ways, shared-kernel"),
+            ("mode", "dependency-policies.json",
+             [{"id": "p", "from_context": "orders", "to_context": "billing", "mode": "sometimes", "policy": "allowed"}],
+             "dependency-policies/p has an unknown mode: 'sometimes' is not one of asynchronous, none, "
+             "synchronous-query, synchronous-write"),
+            ("policy", "dependency-policies.json",
+             [{"id": "p", "from_context": "orders", "to_context": "billing", "mode": "none", "policy": ["forbidden"]}],
+             "dependency-policies/p has an unknown policy: ['forbidden'] is not one of allowed, forbidden"),
+        ]
+        orders = {"id": "orders", "name": "Orders", "responsibility": "Own orders."}
+        billing = {"id": "billing", "name": "Billing", "responsibility": "Own invoices."}
+        for label, name, records, message in cases:
+            with self.subTest(label):
+                self.seed("contexts.json", [orders, billing])
+                self.seed(name, records)
+                self.assertIn(message, validate(self.repo / "memory", None, False))
+        self.seed("dependency-policies.json", [])
+        for relationship in sorted(CONTEXT_RELATIONSHIPS):
+            with self.subTest(relationship):
+                self.seed("interactions.json", [
+                    {"id": "i", "producer_context": "orders", "consumer_context": "billing", "relationship": relationship},
+                ])
+                self.assertEqual([], [error for error in validate(self.repo / "memory", None, False) if "unknown" in error])
+
     def test_a_known_subdomain_is_accepted(self) -> None:
-        for subdomain in ("core", "supporting", "generic", "shared-kernel"):
+        for subdomain in ("core", "supporting", "generic"):
             with self.subTest(subdomain=subdomain):
                 self.seed(
                     "contexts.json",

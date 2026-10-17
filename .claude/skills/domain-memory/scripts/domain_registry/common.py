@@ -123,7 +123,23 @@ PROPOSAL_STATUSES = {
 OBLIGATION_SOURCE_TYPES = {"acceptance-criterion", "rule", "contract", "invariant"}
 OBLIGATION_STATUSES = {"planned", "executed", "blocked"}
 REGISTRY_STATUSES = {"candidate", "reviewed", "deprecated", "superseded"}
-CONTEXT_SUBDOMAINS = {"core", "supporting", "generic", "shared-kernel"}
+CONTEXT_SUBDOMAINS = {"core", "supporting", "generic"}
+CONTEXT_RELATIONSHIPS = {
+    "partnership",
+    "shared-kernel",
+    "customer-supplier",
+    "conformist",
+    "anticorruption-layer",
+    "open-host-service",
+    "published-language",
+    "separate-ways",
+}
+DEPENDENCY_MODES = {"synchronous-query", "synchronous-write", "asynchronous", "none"}
+DEPENDENCY_POLICIES = {"allowed", "forbidden"}
+CLOSED_FIELDS = {
+    "interactions.json": {"relationship": CONTEXT_RELATIONSHIPS},
+    "dependency-policies.json": {"mode": DEPENDENCY_MODES, "policy": DEPENDENCY_POLICIES},
+}
 REVIEW_REQUIRED_FIELDS = {
     "contexts.json": ("name", "responsibility", "verified"),
     "vocabulary.json": ("name", "definition", "contexts", "verified"),
