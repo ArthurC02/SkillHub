@@ -1,0 +1,147 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "ingest-harvest-rules-2026-10-17",
+  "proposal_id": "ingest-harvest-rules-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "dbde6f1d5b146117f327c05f4229bc7ee3412a1c",
+    "registry_digest": "sha256:0bb8ed3a4b33a4100e243850775acb632ddef6823349df67eaf36a81005bfc83"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-one-import-creates-at-most-fifty-skills",
+      "mutated_protection": "apps/platform/internal/skill/admission/source.go:76: len(plan.admitted) > MaxSkillsPerImport -> len(plan.admitted) > MaxSkillsPerImport+1000",
+      "failure_evidence": "=== RUN   TestPlanImportStopsAtTheCeilingAndSaysBothNumbers\n    source_test.go:189: one over the ceiling: err = <nil>, want ErrTooManySkills\n--- FAIL: TestPlanImportStopsAtTheCeilingAndSaysBothNumbers (0.01s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\t3.135s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-one-import-admits-a-name-once",
+      "mutated_protection": "apps/platform/internal/skill/admission/source.go:91: if !taken { -> if !taken || true {",
+      "failure_evidence": "=== RUN   TestPlanImportRefusesASecondSkillClaimingANameAlreadyTaken\n    source_test.go:258: admitted = \"skills/alpha,skills/beta\"; a repeated name would become the first skill's version 2\n--- FAIL: TestPlanImportRefusesASecondSkillClaimingANameAlreadyTaken (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\t5.386s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-name-from-another-source-is-not-versioned",
+      "mutated_protection": "apps/platform/internal/skill/admission/source.go:274: if held == \"\" || held == incoming { -> if true || held == \"\" || held == incoming {",
+      "failure_evidence": "=== RUN   TestASecondPluginCannotTurnItsSkillIntoANewVersionOfAnotherPluginsSkill\n    import_source_integration_test.go:375: refusal codes for skills/review = [], want [name-held-by-another-source]; otherwise the second plugin's skill becomes a version of the first's\n    import_source_integration_test.go:379: imported 2 skills, want lint-rules alone; one collision must not refuse the rest\n    import_source_integration_test.go:388: code-review has 2 versions, want 1; the other plugin's text was appended to it\n--- FAIL: TestASecondPluginCannotTurnItsSkillIntoANewVersionOfAnotherPluginsSkill (0.13s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.417s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-taken-down-skill-takes-no-new-version",
+      "mutated_protection": "apps/platform/internal/skill/admission/service.go:604: case root.TakenDown(): -> case root.TakenDown() && false:",
+      "failure_evidence": "=== RUN   TestATakenDownSkillTakesNoNewVersion\n    version_refusal_integration_test.go:72: report = {Manifest:0x1161dd07d0e0 LicenseExpression: LicenseSource: Findings:[{Severity:warning Code:license-unknown Path:SKILL.md Message:未宣告授權；視為未知授權 Details:[]}] Blocked:false}, want blocked with skill-taken-down\n--- FAIL: TestATakenDownSkillTakesNoNewVersion (0.11s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.373s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-new-version-keeps-the-skills-name",
+      "mutated_protection": "apps/platform/internal/skill/admission/service.go:606: case incoming != name: -> case incoming != name && false:",
+      "failure_evidence": "=== RUN   TestAVersionNamingADifferentSkillIsRefusedAndAddsNothing\n    version_refusal_integration_test.go:34: report = {Manifest:0x394fcab818c0 LicenseExpression: LicenseSource: Findings:[{Severity:warning Code:license-unknown Path:SKILL.md Message:未宣告授權；視為未知授權 Details:[]}] Blocked:false}, want blocked with version-name-mismatch\n--- FAIL: TestAVersionNamingADifferentSkillIsRefusedAndAddsNothing (0.09s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.094s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-source-records-the-provenance-its-kind-requires",
+      "mutated_protection": "apps/platform/internal/skill/admission/service.go:176: if present(m.URL) || slices.ContainsFunc(generatorFields, present) { -> if false && (present(m.URL) || slices.ContainsFunc(generatorFields, present)) {",
+      "failure_evidence": "--- FAIL: TestASourceIsWrittenOnlyWithTheProvenanceItsTypeRequires (0.00s)\n    --- PASS: TestASourceIsWrittenOnlyWithTheProvenanceItsTypeRequires/a_git_source_with_its_URL (0.00s)\n    --- PASS: TestASourceIsWrittenOnlyWithTheProvenanceItsTypeRequires/a_git_source_without_a_URL (0.00s)\n    --- PASS: TestASourceIsWrittenOnlyWithTheProvenanceItsTypeRequires/a_git_source_with_a_blank_URL (0.00s)\n...\nnOnlyWithTheProvenanceItsTypeRequires/a_plain_upload (0.00s)\n    --- FAIL: TestASourceIsWrittenOnlyWithTheProvenanceItsTypeRequires/an_upload_claiming_a_URL (0.00s)\n    --- FAIL: TestASourceIsWrittenOnlyWithTheProvenanceItsTypeRequires/an_upload_claiming_a_task (0.00s)\n    --- PASS: TestASourceIsWrittenOnlyWithTheProvenanceItsTypeRequires/a_generated_source_with_task,_model_and_prompt (0.00s)\n    --- PASS: TestASourceIsWrittenOnlyWithTheProvenanceItsTypeRequires/a_generated_source_without_its_task (0.00s)\n    --- PASS: TestASourceIsWrittenOnlyWithTheProvenanceItsTypeRequires/a_generated_source_from_a_diagram_alone_records_an_empty_task (0.00s)\n    --- PASS: TestASourceIsWrittenOnlyWithTheProvenanceItsTypeRequires/a_generated_source_with_a_blank_model (0.00s)\n    --- PASS: TestASourceIsWrittenOnlyWithTheProvenanceItsTypeRequires/a_generated_source_without_its_prompt_version (0.00s)\n    --- PASS: TestASourceIsWrittenOnlyWithTheProvenanceItsTypeRequires/a_generated_source_claiming_a_URL (0.00s)\n    --- PASS: TestASourceIsWrittenOnlyWithTheProvenanceItsTypeRequires/an_unknown_source_type (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\t3.778s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-generated-and-uploaded-skills-do-not-share-a-name",
+      "mutated_protection": "apps/platform/internal/skill/admission/service.go:443: if !root.AcceptsContent(generated) { -> if !root.AcceptsContent(generated) && false {",
+      "failure_evidence": "17 12:32:23 WARN index-time enrichment failed; search document left pending skill=pdf-extract error=\"llmclient: /v1/enrich-skill returned 502: \"\n2026/10/17 12:32:23 INFO generate: model usage attempts=1 model=gpt-5.4-mini prompt_tokens=1200 completion_tokens=800 cost_usd=0.0123\n2026/10/17 12:32:23 WARN index-time enrichment failed; search document left pending skill=pdf-extract error=\"llmclient: /v1/enrich-skill returned 502: \"\n    generate_integration_test.go:567: SaveVersion onto a generated skill: err = registry: refused: generated_name_collision, want ErrGeneratedNameCollision\n--- FAIL: TestAGeneratedNameCollisionIsRefusedInBothDirections (0.44s)\n    --- PASS: TestAGeneratedNameCollisionIsRefusedInBothDirections/generating_onto_an_uploaded_skill (0.19s)\n    --- FAIL: TestAGeneratedNameCollisionIsRefusedInBothDirections/uploading_onto_a_generated_skill (0.09s)\n    --- PASS: TestAGeneratedNameCollisionIsRefusedInBothDirections/generating_onto_a_generated_skill (0.08s)\n    --- FAIL: TestAGeneratedNameCollisionIsRefusedInBothDirections/saving_a_version_onto_a_generated_skill (0.08s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.436s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/generate_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/import_source_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/version_refusal_integration_test.go",
+    "apps/platform/internal/skill/admission/service.go",
+    "apps/platform/internal/skill/admission/service_test.go",
+    "apps/platform/internal/skill/admission/source.go",
+    "apps/platform/internal/skill/admission/source_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-one-import-creates-at-most-fifty-skills",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestPlanImportStopsAtTheCeilingAndSaysBothNumbers$ ./internal/skill/admission/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e9d6772f29e6466621b40d040c8538d35aa206004e18c1387aad3428dd9143b1",
+      "finished_at": "2026-10-17T04:34:33.509993Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-one-import-admits-a-name-once",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestPlanImportRefusesASecondSkillClaimingANameAlreadyTaken$ ./internal/skill/admission/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:682289ea3c2ffe419e8f0fcaddf3ea86dbe7276359df9a72392bad7891b5660e",
+      "finished_at": "2026-10-17T04:34:47.235959Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-name-from-another-source-is-not-versioned",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestASecondPluginCannotTurnItsSkillIntoANewVersionOfAnotherPluginsSkill$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:8c45556efb70105e525579afbdeb896bec5433ef04c98cd505ad7de85f8de2d2",
+      "finished_at": "2026-10-17T04:34:57.215837Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-taken-down-skill-takes-no-new-version",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestATakenDownSkillTakesNoNewVersion$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:8d3c51f439958648dfce54d3876efaa6c9382c40965d97931a8abd0a7885302a",
+      "finished_at": "2026-10-17T04:35:10.557474Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-new-version-keeps-the-skills-name",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAVersionNamingADifferentSkillIsRefusedAndAddsNothing$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:bb09ba831ac73b1623c6b0a5faf526d5958e4552b29554b5e4bff4b31c2b7dbb",
+      "finished_at": "2026-10-17T04:35:20.340889Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-source-records-the-provenance-its-kind-requires",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestASourceIsWrittenOnlyWithTheProvenanceItsTypeRequires$ ./internal/skill/admission/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4b0c0251dca7e0a6d5606d4e640239f92a054fab9794490e840c83a3d96be8b7",
+      "finished_at": "2026-10-17T04:35:31.148763Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-generated-and-uploaded-skills-do-not-share-a-name",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAGeneratedNameCollisionIsRefusedInBothDirections$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:9ceecc82bc49bb0835f292d512e2c85049e6c03c091fa4103db32ee3a2b56b4e",
+      "finished_at": "2026-10-17T04:35:40.751004Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

@@ -1,0 +1,53 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "ingest-harvest-rules-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed the import ceiling, naming, provenance and version-admission rules the ingest Context enforces and tests but the Registry did not hold.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context ingest lists the seven rules as reviewed, each citing its enforcing code and the test that proves it.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-one-import-creates-at-most-fifty-skills",
+      "statement": "One import may create at most MaxSkillsPerImport (50) Skills; a source that would create more is refused as a whole, naming the count it would create and the ceiling. Skills refused for other reasons do not count."
+    },
+    {
+      "id": "enforced-one-import-admits-a-name-once",
+      "statement": "When two directories of one source declare the same Skill name, the first keeps it and the later ones are refused with a duplicate-name finding naming the first path, instead of silently becoming its next version."
+    },
+    {
+      "id": "enforced-a-name-from-another-source-is-not-versioned",
+      "statement": "A Skill arriving from a plugin or URL is refused as name_held_by_another_source when the same-named Skill's latest version came from a different plugin or URL; the rest of the import proceeds. Uploads without an origin and generated sources are exempt."
+    },
+    {
+      "id": "enforced-a-taken-down-skill-takes-no-new-version",
+      "statement": "A taken-down Skill refuses every new version as skill_taken_down and gains no version row; in a re-import of several Skills the others still import."
+    },
+    {
+      "id": "enforced-a-new-version-keeps-the-skills-name",
+      "statement": "A new version must declare the same name as its Skill; another name is refused as version_name_mismatch and neither a version nor the summary changes."
+    },
+    {
+      "id": "enforced-a-source-records-the-provenance-its-kind-requires",
+      "statement": "A version is written only when its source carries the provenance its kind requires: git needs a URL and no generator fields, an upload has neither, a generated source needs a model and prompt version and no URL; anything else is refused with ErrIncompleteProvenance."
+    },
+    {
+      "id": "enforced-generated-and-uploaded-skills-do-not-share-a-name",
+      "statement": "A name held by a generated Skill takes no uploaded version, and a generated candidate takes no name held by an uploaded Skill; either way the save is refused with ErrGeneratedNameCollision."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/generate_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/import_source_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/version_refusal_integration_test.go",
+    "apps/platform/internal/skill/admission/service.go",
+    "apps/platform/internal/skill/admission/service_test.go",
+    "apps/platform/internal/skill/admission/source.go",
+    "apps/platform/internal/skill/admission/source_test.go"
+  ]
+}

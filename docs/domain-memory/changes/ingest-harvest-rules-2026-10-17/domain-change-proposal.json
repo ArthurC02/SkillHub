@@ -1,0 +1,320 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "ingest-harvest-rules-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "ingest-harvest-rules-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T04:34:20.119072Z",
+  "verified_at": "2026-10-17T04:35:41.495624Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "dbde6f1d5b146117f327c05f4229bc7ee3412a1c",
+    "registry_digest": "sha256:0bb8ed3a4b33a4100e243850775acb632ddef6823349df67eaf36a81005bfc83"
+  },
+  "affected_contexts": [
+    "ingest"
+  ],
+  "rule_ids": [
+    "one-import-creates-at-most-fifty-skills",
+    "one-import-admits-a-name-once",
+    "a-name-from-another-source-is-not-versioned",
+    "a-taken-down-skill-takes-no-new-version",
+    "a-new-version-keeps-the-skills-name",
+    "a-source-records-the-provenance-its-kind-requires",
+    "generated-and-uploaded-skills-do-not-share-a-name"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "ingest",
+    "invariant": "Only ingest decides which Skills an import creates and which versions a Skill accepts.",
+    "evidence": [
+      "apps/platform/internal/skill/admission/source.go:76-102",
+      "apps/platform/internal/skill/admission/service.go:598-609"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: the Skill root's takedown and content kind still come from registry.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/admission/service.go:442-445"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the ingest Context found these enforced rules; the reviewed Registry held none, so the next Agent could not look them up."
+    ],
+    "decision": "Record the seven rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "A Skill Version is never overwritten."
+    ],
+    "rejected_alternatives": [
+      "Recording the refusal of an improvement whose base version moved: no test reaches ErrBaseVersionMoved, so it waits for one."
+    ],
+    "proof_obligations": [
+      "rule-one-import-creates-at-most-fifty-skills",
+      "rule-one-import-admits-a-name-once",
+      "rule-a-name-from-another-source-is-not-versioned",
+      "rule-a-taken-down-skill-takes-no-new-version",
+      "rule-a-new-version-keeps-the-skills-name",
+      "rule-a-source-records-the-provenance-its-kind-requires",
+      "rule-generated-and-uploaded-skills-do-not-share-a-name"
+    ],
+    "counterfactual_check": "Break each rule's enforcing line so the package still builds; its test must fail with that rule's own assertion."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "one-import-creates-at-most-fifty-skills",
+        "statement": "One import may create at most MaxSkillsPerImport (50) Skills; a source that would create more is refused as a whole, naming the count it would create and the ceiling. Skills refused for other reasons do not count.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "A plugin with 51 valid Skills is refused; one with 50 imports."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/source.go",
+            "lines": {
+              "start": 76,
+              "end": 78
+            },
+            "excerpt_sha256": "sha256:12a8ec67d431c4fd07d815729db475426ea4f1af333175b51e3b31eb8b92ade4"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/source_test.go",
+            "lines": {
+              "start": 180,
+              "end": 196
+            },
+            "excerpt_sha256": "sha256:03e39b80d7e226ef5bffcf92d564182f9049ca1a13ac3de3e16a939ebd2821d9"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "one-import-admits-a-name-once",
+        "statement": "When two directories of one source declare the same Skill name, the first keeps it and the later ones are refused with a duplicate-name finding naming the first path, instead of silently becoming its next version.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "skills/alpha and skills/beta both named alpha: alpha is admitted, beta is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/source.go",
+            "lines": {
+              "start": 84,
+              "end": 102
+            },
+            "excerpt_sha256": "sha256:1eed6f0e19d93b7c23c49fa1495b4f9d2131ad738f563dd3fd522d6d5b43dce4"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/source_test.go",
+            "lines": {
+              "start": 250,
+              "end": 284
+            },
+            "excerpt_sha256": "sha256:18448ef607d72580c1f28e12014d135bbbbd309df87edcbfa25ffd942a85ee1c"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-name-from-another-source-is-not-versioned",
+        "statement": "A Skill arriving from a plugin or URL is refused as name_held_by_another_source when the same-named Skill's latest version came from a different plugin or URL; the rest of the import proceeds. Uploads without an origin and generated sources are exempt.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "Plugin team-kit's code-review is refused when code-review came from plugin desk-tools; team-kit's other Skills import."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/source.go",
+            "lines": {
+              "start": 250,
+              "end": 282
+            },
+            "excerpt_sha256": "sha256:e97463c4ca7d531e92a5e5c89c4b669aa40a8c601ef87192fda95caafb2c331c"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/import_source_integration_test.go",
+            "lines": {
+              "start": 353,
+              "end": 390
+            },
+            "excerpt_sha256": "sha256:396e2d2e70bb25822cd556bbd4a109233b83ac34e3a32fc2ef4290a521b3261d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-taken-down-skill-takes-no-new-version",
+        "statement": "A taken-down Skill refuses every new version as skill_taken_down and gains no version row; in a re-import of several Skills the others still import.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "After a takedown, uploading tidy-notes again is blocked and it keeps one version."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 598,
+              "end": 605
+            },
+            "excerpt_sha256": "sha256:53f5f9b2099c41148ef9a142ef94d92174b27dac9b06b600288e071e6d590501"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/version_refusal_integration_test.go",
+            "lines": {
+              "start": 48,
+              "end": 77
+            },
+            "excerpt_sha256": "sha256:fa35029bb6012585eab2761d785cdea396c5435601f97c2865a997ac98c872b9"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-new-version-keeps-the-skills-name",
+        "statement": "A new version must declare the same name as its Skill; another name is refused as version_name_mismatch and neither a version nor the summary changes.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "Uploading a package named split-csv as a version of tidy-notes is blocked."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 606,
+              "end": 609
+            },
+            "excerpt_sha256": "sha256:34decd15f5b58566224bf707fbbf6115a1bb4d5cdc28e5ca5e2ccdfec508f446"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/version_refusal_integration_test.go",
+            "lines": {
+              "start": 13,
+              "end": 46
+            },
+            "excerpt_sha256": "sha256:476af42ae0ea563712e09a36a5580ce7f88be2534f6cd6dbcfcc717b1b953543"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-source-records-the-provenance-its-kind-requires",
+        "statement": "A version is written only when its source carries the provenance its kind requires: git needs a URL and no generator fields, an upload has neither, a generated source needs a model and prompt version and no URL; anything else is refused with ErrIncompleteProvenance.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "An upload claiming a URL is refused with ErrIncompleteProvenance."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 168,
+              "end": 187
+            },
+            "excerpt_sha256": "sha256:944af754f6d1e8ff987861ed0d04a7cfad3805bd4d7693325e5173637e28bbee"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/service_test.go",
+            "lines": {
+              "start": 69,
+              "end": 108
+            },
+            "excerpt_sha256": "sha256:89439b462bb8a8de4b5dc1c96b788f3dc43fc5758ad8b7eac23bdb78af753759"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "generated-and-uploaded-skills-do-not-share-a-name",
+        "statement": "A name held by a generated Skill takes no uploaded version, and a generated candidate takes no name held by an uploaded Skill; either way the save is refused with ErrGeneratedNameCollision.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "Generate pdf-extract, then upload a package named pdf-extract: refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 442,
+              "end": 445
+            },
+            "excerpt_sha256": "sha256:931f0de54d52ccff3324c35a11df0139dd7eccbf6cd9fb0decd044f1d1818009"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/source.go",
+            "lines": {
+              "start": 318,
+              "end": 320
+            },
+            "excerpt_sha256": "sha256:6ee66eeb8798f18a22d1de950c509ccfaea129be8dee28cfb00e525d0c48aa5d"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/generate_integration_test.go",
+            "lines": {
+              "start": 488,
+              "end": 495
+            },
+            "excerpt_sha256": "sha256:5ce31c71c263ee1ef54534269a8a334f268caa2920d31bfe374a76d27861c4db"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T04:35:41.095408Z",
+      "scope": "Record seven ingest import and version-admission rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "dbde6f1d5b146117f327c05f4229bc7ee3412a1c",
+        "registry_digest": "sha256:0bb8ed3a4b33a4100e243850775acb632ddef6823349df67eaf36a81005bfc83"
+      }
+    }
+  ]
+}

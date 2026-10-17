@@ -1,0 +1,112 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "ingest-harvest-rules-2026-10-17",
+  "proposal_id": "ingest-harvest-rules-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-one-import-creates-at-most-fifty-skills",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-one-import-creates-at-most-fifty-skills",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "one-import-creates-at-most-fifty-skills"
+        }
+      ],
+      "expected_outcome": "One import may create at most MaxSkillsPerImport (50) Skills; a source that would create more is refused as a whole, naming the count it would create and the ceiling. Skills refused for other reasons do not count.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestPlanImportStopsAtTheCeilingAndSaysBothNumbers$ ./internal/skill/admission/"
+    },
+    {
+      "id": "rule-one-import-admits-a-name-once",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-one-import-admits-a-name-once",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "one-import-admits-a-name-once"
+        }
+      ],
+      "expected_outcome": "When two directories of one source declare the same Skill name, the first keeps it and the later ones are refused with a duplicate-name finding naming the first path, instead of silently becoming its next version.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestPlanImportRefusesASecondSkillClaimingANameAlreadyTaken$ ./internal/skill/admission/"
+    },
+    {
+      "id": "rule-a-name-from-another-source-is-not-versioned",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-name-from-another-source-is-not-versioned",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-name-from-another-source-is-not-versioned"
+        }
+      ],
+      "expected_outcome": "A Skill arriving from a plugin or URL is refused as name_held_by_another_source when the same-named Skill's latest version came from a different plugin or URL; the rest of the import proceeds. Uploads without an origin and generated sources are exempt.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestASecondPluginCannotTurnItsSkillIntoANewVersionOfAnotherPluginsSkill$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-taken-down-skill-takes-no-new-version",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-taken-down-skill-takes-no-new-version",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-taken-down-skill-takes-no-new-version"
+        }
+      ],
+      "expected_outcome": "A taken-down Skill refuses every new version as skill_taken_down and gains no version row; in a re-import of several Skills the others still import.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestATakenDownSkillTakesNoNewVersion$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-new-version-keeps-the-skills-name",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-new-version-keeps-the-skills-name",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-new-version-keeps-the-skills-name"
+        }
+      ],
+      "expected_outcome": "A new version must declare the same name as its Skill; another name is refused as version_name_mismatch and neither a version nor the summary changes.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAVersionNamingADifferentSkillIsRefusedAndAddsNothing$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-source-records-the-provenance-its-kind-requires",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-source-records-the-provenance-its-kind-requires",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-source-records-the-provenance-its-kind-requires"
+        }
+      ],
+      "expected_outcome": "A version is written only when its source carries the provenance its kind requires: git needs a URL and no generator fields, an upload has neither, a generated source needs a model and prompt version and no URL; anything else is refused with ErrIncompleteProvenance.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestASourceIsWrittenOnlyWithTheProvenanceItsTypeRequires$ ./internal/skill/admission/"
+    },
+    {
+      "id": "rule-generated-and-uploaded-skills-do-not-share-a-name",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-generated-and-uploaded-skills-do-not-share-a-name",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "generated-and-uploaded-skills-do-not-share-a-name"
+        }
+      ],
+      "expected_outcome": "A name held by a generated Skill takes no uploaded version, and a generated candidate takes no name held by an uploaded Skill; either way the save is refused with ErrGeneratedNameCollision.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAGeneratedNameCollisionIsRefusedInBothDirections$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}
