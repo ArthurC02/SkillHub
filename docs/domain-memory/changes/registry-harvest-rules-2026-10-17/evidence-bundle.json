@@ -1,0 +1,132 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "registry-harvest-rules-2026-10-17",
+  "proposal_id": "registry-harvest-rules-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "82fce4a153fcaacda700d896a8c44a40699d2063",
+    "registry_digest": "sha256:962bc6cbc3d07014a6f15da1ce322046a053578de707f71670d84f53bc719ee3"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-takedown-needs-a-reason",
+      "mutated_protection": "apps/platform/internal/skill/library/skill_root.go:210: if strings.TrimSpace(reason) == \"\" { -> if strings.TrimSpace(reason) == \"\" && false {",
+      "failure_evidence": "=== RUN   TestATakedownWithoutAReasonIsRefusedAndLeavesTheSkillUp\n=== RUN   TestATakedownWithoutAReasonIsRefusedAndLeavesTheSkillUp/empty\n    skill_root_test.go:52: a takedown without a reason took the skill down\n=== RUN   TestATakedownWithoutAReasonIsRefusedAndLeavesTheSkillUp/whitespace\n    skill_root_test.go:52: a takedown without a reason took the skill down\n--- FAIL: TestATakedownWithoutAReasonIsRefusedAndLeavesTheSkillUp (0.00s)\n    --- FAIL: TestATakedownWithoutAReasonIsRefusedAndLeavesTheSkillUp/empty (0.00s)\n    --- FAIL: TestATakedownWithoutAReasonIsRefusedAndLeavesTheSkillUp/whitespace (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t3.268s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-skill-is-taken-down-once",
+      "mutated_protection": "apps/platform/internal/skill/library/skill_root.go:206: if s.TakenDown() { s.record(Refused{Reason: RefusedAlreadyTakenDown}) -> if s.TakenDown() && false { s.record(Refused{Reason: RefusedAlreadyTakenDown})",
+      "failure_evidence": "=== RUN   TestTakingDownASkillHidesItOnce\n    skill_root_test.go:41: events = []registry.Event{registry.SkillTakenDown{}}, want []registry.Event{registry.Refused{Reason:\"already_taken_down\", Recorded:registry.LicenseClaim{Expression:\"\", Source:\"\"}}}\n--- FAIL: TestTakingDownASkillHidesItOnce (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t3.160s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-access-restriction-needs-a-reason-code",
+      "mutated_protection": "apps/platform/internal/skill/library/skill_root.go:219: if reason != nil && !RestrictionFrom(reason).InEffect() { -> if reason != nil && !RestrictionFrom(reason).InEffect() && false {",
+      "failure_evidence": "on_test.go:36: err = ERROR: new row for relation \"skills\" violates check constraint \"skills_access_restriction_check\" (SQLSTATE 23514), want registry: access restriction must be a non-empty reason code, or nil to lift the hold\n=== RUN   TestABlankRestrictionReasonIsRefusedByTheSkillAndLeavesItAsItWas/a_whitespace_reason\n    restriction_test.go:36: err = ERROR: new row for relation \"skills\" violates check constraint \"skills_access_restriction_check\" (SQLSTATE 23514), want registry: access restriction must be a non-empty reason code, or nil to lift the hold\n=== RUN   TestABlankRestrictionReasonIsRefusedByTheSkillAndLeavesItAsItWas/a_blank_reason_for_a_skill_that_does_not_exist\n--- FAIL: TestABlankRestrictionReasonIsRefusedByTheSkillAndLeavesItAsItWas (0.03s)\n    --- FAIL: TestABlankRestrictionReasonIsRefusedByTheSkillAndLeavesItAsItWas/an_empty_reason (0.01s)\n    --- FAIL: TestABlankRestrictionReasonIsRefusedByTheSkillAndLeavesItAsItWas/a_whitespace_reason (0.01s)\n    --- PASS: TestABlankRestrictionReasonIsRefusedByTheSkillAndLeavesItAsItWas/a_blank_reason_for_a_skill_that_does_not_exist (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t3.056s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-restricted-skill-shows-no-diff",
+      "mutated_protection": "apps/platform/internal/skill/library/diff.go:45: if RestrictionFrom(skill.AccessRestriction).InEffect() { -> if RestrictionFrom(skill.AccessRestriction).InEffect() && false {",
+      "failure_evidence": "=== RUN   TestSkillDiffOfASkillUnderAnAccessRestrictionRevealsNoContent\n    skill_diff_integration_test.go:94: GET diff of a held skill: got 200 with 1 files, want 403 and none\n--- FAIL: TestSkillDiffOfASkillUnderAnAccessRestrictionRevealsNoContent (0.07s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t3.895s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-unvalidated-package-is-not-written",
+      "mutated_protection": "apps/platform/internal/skill/library/write.go:18: if report.Blocked || report.Manifest == nil { -> if (report.Blocked || report.Manifest == nil) && false {",
+      "failure_evidence": "--- FAIL: TestImportWritesRejectUnvalidatedReports (0.00s)\n    --- FAIL: TestImportWritesRejectUnvalidatedReports/blocked_report (0.00s)\n    --- FAIL: TestImportWritesRejectUnvalidatedReports/zero_report_has_no_manifest (0.00s)\npanic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]\n...\nting/testing.go:2125 +0x239\ntesting.tRunner.func1()\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/testing/testing.go:2128 +0x329\npanic({0x7ff6106db140?, 0x7ff610803b40?})\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/runtime/panic.go:859 +0x125\ngithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library.SkillFromPackage({{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, ...}, ...}, ...)\n\tC:/Users/a8022/OneDrive/Desktop/SkillHub/apps/platform/internal/skill/library/write.go:83 +0x94\ngithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library.TestImportWritesRejectUnvalidatedReports.func1(0x19718e4eee00)\n\tC:/Users/a8022/OneDrive/Desktop/SkillHub/apps/platform/internal/skill/library/write_test.go:22 +0x69\ntesting.tRunner(0x19718e4eee00, 0x19718e5e5590)\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/testing/testing.go:2195 +0xc3\ncreated by testing.(*T).Run in goroutine 54\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/testing/testing.go:2260 +0x4b4\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t3.432s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-skill-listing-page-stays-in-bounds",
+      "mutated_protection": "apps/platform/internal/skill/library/http.go:322: parsed < 1 || parsed > maxSkillListingLimit { -> parsed < 1 || parsed > maxSkillListingLimit+1000 {",
+      "failure_evidence": "/offset_above_int4\n=== RUN   TestSkillListingPageMatchesThePublicBounds/empty_offset\n=== RUN   TestSkillListingPageMatchesThePublicBounds/non-integer_offset\n--- FAIL: TestSkillListingPageMatchesThePublicBounds (0.00s)\n    --- PASS: TestSkillListingPageMatchesThePublicBounds/defaults (0.00s)\n    --- PASS: TestSkillListingPageMatchesThePublicBounds/lower_limit (0.00s)\n    --- PASS: TestSkillListingPageMatchesThePublicBounds/upper_limit_and_zero_offset (0.00s)\n    --- PASS: TestSkillListingPageMatchesThePublicBounds/largest_offset (0.00s)\n    --- PASS: TestSkillListingPageMatchesThePublicBounds/limit_below_range (0.00s)\n    --- FAIL: TestSkillListingPageMatchesThePublicBounds/limit_above_range (0.00s)\n    --- PASS: TestSkillListingPageMatchesThePublicBounds/empty_limit (0.00s)\n    --- PASS: TestSkillListingPageMatchesThePublicBounds/negative_offset (0.00s)\n    --- PASS: TestSkillListingPageMatchesThePublicBounds/offset_above_int4 (0.00s)\n    --- PASS: TestSkillListingPageMatchesThePublicBounds/empty_offset (0.00s)\n    --- PASS: TestSkillListingPageMatchesThePublicBounds/non-integer_offset (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t3.204s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/skill_diff_integration_test.go",
+    "apps/platform/internal/skill/library/diff.go",
+    "apps/platform/internal/skill/library/http.go",
+    "apps/platform/internal/skill/library/http_test.go",
+    "apps/platform/internal/skill/library/restriction_test.go",
+    "apps/platform/internal/skill/library/skill_root.go",
+    "apps/platform/internal/skill/library/skill_root_test.go",
+    "apps/platform/internal/skill/library/write.go",
+    "apps/platform/internal/skill/library/write_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-takedown-needs-a-reason",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestATakedownWithoutAReasonIsRefusedAndLeavesTheSkillUp$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b9d9e7f1d6d066e1bc6654a1bfefb042d89cc329216db75ac3d7852a747120b9",
+      "finished_at": "2026-10-17T06:42:20.418233Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-skill-is-taken-down-once",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTakingDownASkillHidesItOnce$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:07f60c497dda10144850398c5c68826bccf4311ba287a71eac121f399218d43e",
+      "finished_at": "2026-10-17T06:42:28.129563Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-access-restriction-needs-a-reason-code",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestABlankRestrictionReasonIsRefusedByTheSkillAndLeavesItAsItWas$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f4b3f01fe50fdd192c9c4760cbce42769eb8db5fb35bf730c11a254b5708b679",
+      "finished_at": "2026-10-17T06:42:37.093480Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-restricted-skill-shows-no-diff",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestSkillDiffOfASkillUnderAnAccessRestrictionRevealsNoContent$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:1d1726ea698ea1a074e4942fd7270d41b75991b7078e7b2b3a3179ab199f03c6",
+      "finished_at": "2026-10-17T06:42:47.744087Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-unvalidated-package-is-not-written",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestImportWritesRejectUnvalidatedReports$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:09683fc33733690de1061b977f22679e6ebbc22a9940f37aaab0c683d10e3a57",
+      "finished_at": "2026-10-17T06:42:54.008134Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-skill-listing-page-stays-in-bounds",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestSkillListingPageMatchesThePublicBounds$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4ea5705c58f886c4f24722d9eb26730cfb6f7466d6624420567990ec0b65fa9e",
+      "finished_at": "2026-10-17T06:43:00.299353Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

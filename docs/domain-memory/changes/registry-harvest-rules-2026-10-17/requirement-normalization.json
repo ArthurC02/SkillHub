@@ -1,0 +1,49 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "registry-harvest-rules-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed the rules the registry Context enforces and tests but the Registry did not hold.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context registry lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-takedown-needs-a-reason",
+      "statement": "A takedown with an empty or whitespace-only reason is refused and the Skill stays up."
+    },
+    {
+      "id": "enforced-a-skill-is-taken-down-once",
+      "statement": "A Skill already taken down cannot be taken down again; the second attempt is refused and the Skill stays down."
+    },
+    {
+      "id": "enforced-an-access-restriction-needs-a-reason-code",
+      "statement": "An access restriction must carry a non-blank reason code; a blank one is refused and the Skill's restriction is unchanged. A restriction is lifted with none, not blank."
+    },
+    {
+      "id": "enforced-a-restricted-skill-shows-no-diff",
+      "statement": "While a Skill is under an access restriction, its version diffs reveal no content; the request answers 403."
+    },
+    {
+      "id": "enforced-an-unvalidated-package-is-not-written",
+      "statement": "A package whose validation report is blocked or carries no manifest cannot become a Skill or a version."
+    },
+    {
+      "id": "enforced-a-skill-listing-page-stays-in-bounds",
+      "statement": "The Skill listing accepts a limit of 1 to 100 and a non-negative offset; any other value, including an empty or non-integer one, is refused."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/skill_diff_integration_test.go",
+    "apps/platform/internal/skill/library/diff.go",
+    "apps/platform/internal/skill/library/http.go",
+    "apps/platform/internal/skill/library/http_test.go",
+    "apps/platform/internal/skill/library/restriction_test.go",
+    "apps/platform/internal/skill/library/skill_root.go",
+    "apps/platform/internal/skill/library/skill_root_test.go",
+    "apps/platform/internal/skill/library/write.go",
+    "apps/platform/internal/skill/library/write_test.go"
+  ]
+}

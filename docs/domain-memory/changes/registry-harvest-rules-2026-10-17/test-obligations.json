@@ -1,0 +1,97 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "registry-harvest-rules-2026-10-17",
+  "proposal_id": "registry-harvest-rules-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-a-takedown-needs-a-reason",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-takedown-needs-a-reason",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-takedown-needs-a-reason"
+        }
+      ],
+      "expected_outcome": "A takedown with an empty or whitespace-only reason is refused and the Skill stays up.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestATakedownWithoutAReasonIsRefusedAndLeavesTheSkillUp$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-a-skill-is-taken-down-once",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-skill-is-taken-down-once",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-skill-is-taken-down-once"
+        }
+      ],
+      "expected_outcome": "A Skill already taken down cannot be taken down again; the second attempt is refused and the Skill stays down.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTakingDownASkillHidesItOnce$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-an-access-restriction-needs-a-reason-code",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-access-restriction-needs-a-reason-code",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-access-restriction-needs-a-reason-code"
+        }
+      ],
+      "expected_outcome": "An access restriction must carry a non-blank reason code; a blank one is refused and the Skill's restriction is unchanged. A restriction is lifted with none, not blank.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestABlankRestrictionReasonIsRefusedByTheSkillAndLeavesItAsItWas$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-a-restricted-skill-shows-no-diff",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-restricted-skill-shows-no-diff",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-restricted-skill-shows-no-diff"
+        }
+      ],
+      "expected_outcome": "While a Skill is under an access restriction, its version diffs reveal no content; the request answers 403.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestSkillDiffOfASkillUnderAnAccessRestrictionRevealsNoContent$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-an-unvalidated-package-is-not-written",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-unvalidated-package-is-not-written",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-unvalidated-package-is-not-written"
+        }
+      ],
+      "expected_outcome": "A package whose validation report is blocked or carries no manifest cannot become a Skill or a version.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestImportWritesRejectUnvalidatedReports$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-a-skill-listing-page-stays-in-bounds",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-skill-listing-page-stays-in-bounds",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-skill-listing-page-stays-in-bounds"
+        }
+      ],
+      "expected_outcome": "The Skill listing accepts a limit of 1 to 100 and a non-negative offset; any other value, including an empty or non-integer one, is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestSkillListingPageMatchesThePublicBounds$ ./internal/skill/library/"
+    }
+  ]
+}

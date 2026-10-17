@@ -1,0 +1,283 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "registry-harvest-rules-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "registry-harvest-rules-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T06:42:03.492465Z",
+  "verified_at": "2026-10-17T06:43:00.937163Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "82fce4a153fcaacda700d896a8c44a40699d2063",
+    "registry_digest": "sha256:962bc6cbc3d07014a6f15da1ce322046a053578de707f71670d84f53bc719ee3"
+  },
+  "affected_contexts": [
+    "registry"
+  ],
+  "rule_ids": [
+    "a-takedown-needs-a-reason",
+    "a-skill-is-taken-down-once",
+    "an-access-restriction-needs-a-reason-code",
+    "a-restricted-skill-shows-no-diff",
+    "an-unvalidated-package-is-not-written",
+    "a-skill-listing-page-stays-in-bounds"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Only registry owns Skills and their versions: takedown, restriction and admission of validated packages.",
+    "evidence": [
+      "apps/platform/internal/skill/library/skill_root.go:210-213"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/library/http.go:318-336"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the registry Context found these enforced rules; the reviewed Registry held none."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording guards no test reaches: they wait for a test."
+    ],
+    "proof_obligations": [
+      "rule-a-takedown-needs-a-reason",
+      "rule-a-skill-is-taken-down-once",
+      "rule-an-access-restriction-needs-a-reason-code",
+      "rule-a-restricted-skill-shows-no-diff",
+      "rule-an-unvalidated-package-is-not-written",
+      "rule-a-skill-listing-page-stays-in-bounds"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-takedown-needs-a-reason",
+        "statement": "A takedown with an empty or whitespace-only reason is refused and the Skill stays up.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A takedown with reason ' \\t\\n' is refused as takedown_reason_missing."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 210,
+              "end": 213
+            },
+            "excerpt_sha256": "sha256:58f0db9a7890d85a5f52681fb23546ab26392416dc1dfe38b18bd70ebaf08e2f"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root_test.go",
+            "lines": {
+              "start": 44,
+              "end": 60
+            },
+            "content_sha256": "sha256:baebc9caf77d417ecf17f05d8d84fcec6d0ec4f6affa7309814acf5f1de4008a",
+            "excerpt_sha256": "sha256:12dbd73b03a83bcc1969d75038191d923ee1e0d01d4b2169034616daf7868236"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-skill-is-taken-down-once",
+        "statement": "A Skill already taken down cannot be taken down again; the second attempt is refused and the Skill stays down.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A second report against a taken-down Skill is refused as already_taken_down."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 206,
+              "end": 209
+            },
+            "excerpt_sha256": "sha256:3cbf71fa47d03be6f2fd425040d690723372ce560beac77080e4b4c8a2b4af2a"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root_test.go",
+            "lines": {
+              "start": 25,
+              "end": 42
+            },
+            "content_sha256": "sha256:baebc9caf77d417ecf17f05d8d84fcec6d0ec4f6affa7309814acf5f1de4008a",
+            "excerpt_sha256": "sha256:daea6ba494f86d15ddfb8f6d802164bc58636ae510c45d2ce75bc1c8c6d81f06"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-access-restriction-needs-a-reason-code",
+        "statement": "An access restriction must carry a non-blank reason code; a blank one is refused and the Skill's restriction is unchanged. A restriction is lifted with none, not blank.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "Setting the restriction to '  ' is refused and the column stays empty."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 218,
+              "end": 221
+            },
+            "excerpt_sha256": "sha256:1a892d5d9eba5f0d6c19bf1d3296453cba241953f0d3ddf6c96b47d82ec26ff4"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/restriction_test.go",
+            "lines": {
+              "start": 14,
+              "end": 47
+            },
+            "content_sha256": "sha256:c847bd882f6b97a9391330872fefe5c0cd01f21d3a9f9ffddd0e63b0670a6516",
+            "excerpt_sha256": "sha256:5cd3c0bf024a0884a9c6ad362c11708518eb327818ac2442aa3818141a80d895"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-restricted-skill-shows-no-diff",
+        "statement": "While a Skill is under an access restriction, its version diffs reveal no content; the request answers 403.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "The diff of a Skill under license-review answers 403 with no files."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/diff.go",
+            "lines": {
+              "start": 45,
+              "end": 47
+            },
+            "excerpt_sha256": "sha256:b7bb4c3fac09517d946964e992970e4c4a26d466362481868b2c1f215b0b73de"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/skill_diff_integration_test.go",
+            "lines": {
+              "start": 78,
+              "end": 96
+            },
+            "content_sha256": "sha256:f180ad553cf1005e664723f8c138bddb0a35e6b2d78b8b662bf0b15719da12d2",
+            "excerpt_sha256": "sha256:c07a1d9c09511fd1dbe3b4446ba061f061fee8682b4b7c8f5a643f257a9785a5"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-unvalidated-package-is-not-written",
+        "statement": "A package whose validation report is blocked or carries no manifest cannot become a Skill or a version.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A report with Blocked set is refused with ErrUnvalidatedPackage."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/write.go",
+            "lines": {
+              "start": 17,
+              "end": 22
+            },
+            "excerpt_sha256": "sha256:cd9bbe04b7739c927a4a19310eede44f46be6bb304e63d0fd047a43034e0f11b"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/write_test.go",
+            "lines": {
+              "start": 12,
+              "end": 30
+            },
+            "content_sha256": "sha256:7b45e73df56cf43f6f2350fcc56f905206691cf5895c23a2942d04814cc1dc5f",
+            "excerpt_sha256": "sha256:10803ff72e20ae17ca2a98da8b1fdf41d396922e48f9714ff4367cab87a3af23"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-skill-listing-page-stays-in-bounds",
+        "statement": "The Skill listing accepts a limit of 1 to 100 and a non-negative offset; any other value, including an empty or non-integer one, is refused.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "limit=101 is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/http.go",
+            "lines": {
+              "start": 318,
+              "end": 336
+            },
+            "excerpt_sha256": "sha256:d49a43458e53ce6a7ea39de260a268a7adfbf3bb78274685b90fc119dea9ba40"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/http_test.go",
+            "lines": {
+              "start": 13,
+              "end": 50
+            },
+            "content_sha256": "sha256:af5a98b8a9962ce914e9032974ec56d5874741284c28ecc6608e5a70bd68f7c1",
+            "excerpt_sha256": "sha256:4aa8e925c744c1e006dbff381f70c82e0bf4b1a0bfe973cd271faf03b8306da0"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T06:43:00.552336Z",
+      "scope": "Record registry rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "82fce4a153fcaacda700d896a8c44a40699d2063",
+        "registry_digest": "sha256:962bc6cbc3d07014a6f15da1ce322046a053578de707f71670d84f53bc719ee3"
+      }
+    }
+  ]
+}
