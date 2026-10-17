@@ -3,12 +3,12 @@
   "proposal_id": "testlab-snapshot-and-dataset-rules-2026-10-18",
   "proposer": "domain-memory-agent",
   "requirement_id": "testlab-snapshot-and-dataset-rules-2026-10-18",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T19:45:20.094406Z",
   "verified_at": "2026-10-17T19:46:14.614917Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T19:46:16.709849Z",
+  "applied_at": "2026-10-17T19:46:23.965764Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "b2d17170912b041fac5ced8e47ca798fc26b34e7",
@@ -358,5 +358,9 @@
         "registry_digest": "sha256:ecbd1008c4b274a8fbf2ae2cc3c9d233a2d805c1ce4501db84a41ec33878c9b9"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "fb82dd9c2306a136908e7a043d346ac7a1753278",
+    "registry_digest": "sha256:4ef1fa40619b0841a555ee398aa34235e4cc7e7fc79ce8c151b455ca8aad71a3"
+  }
 }
