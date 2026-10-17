@@ -44,3 +44,16 @@ func TestIngestSeparatesAnOversizedBatchFromAnUnreadableOne(t *testing.T) {
 		})
 	}
 }
+
+func TestIngestJudgesABatchOfExactlyTheEventLimitAndRefusesOneEventMore(t *testing.T) {
+	batch := func(n int) io.Reader {
+		return strings.NewReader("[" + strings.TrimSuffix(strings.Repeat("{},", n), ",") + "]")
+	}
+
+	if code, text := ingestStatus(t, batch(maxBatchEvents)); code == http.StatusRequestEntityTooLarge || strings.Contains(text, "too many events") {
+		t.Errorf("a batch of exactly %d events: got %d %q, want it passed on to ingestion", maxBatchEvents, code, text)
+	}
+	if code, text := ingestStatus(t, batch(maxBatchEvents+1)); code != http.StatusRequestEntityTooLarge || !strings.Contains(text, "too many events") {
+		t.Errorf("a batch of %d events: got %d %q, want 413 too many events", maxBatchEvents+1, code, text)
+	}
+}

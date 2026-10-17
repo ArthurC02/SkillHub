@@ -53,3 +53,17 @@ func TestTheReviewableDiffCarriesThreeLinesOfContext(t *testing.T) {
 		t.Fatalf("diff does not carry three lines of context around line 6:\n%s", diff)
 	}
 }
+
+func TestReadTargetReadsAFileOfExactlyTheReviewableLimitAndRefusesOneByteMore(t *testing.T) {
+	fsys := fstest.MapFS{
+		"at-the-limit.txt":  {Data: []byte(strings.Repeat("a", maxTargetFileBytes))},
+		"one-byte-over.txt": {Data: []byte(strings.Repeat("a", maxTargetFileBytes+1))},
+	}
+
+	if got, err := readTarget(fsys, "at-the-limit.txt"); err != nil || len(got) != maxTargetFileBytes {
+		t.Errorf("a file of exactly %d bytes: got %d bytes, err %v; want it read", maxTargetFileBytes, len(got), err)
+	}
+	if _, err := readTarget(fsys, "one-byte-over.txt"); err == nil || !strings.Contains(err.Error(), "byte limit for a reviewable diff") {
+		t.Errorf("a file one byte over the limit: err = %v, want the size refusal", err)
+	}
+}
