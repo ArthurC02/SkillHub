@@ -1,0 +1,336 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "batch-harvest-rules-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "batch-harvest-rules-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T15:11:56.319212Z",
+  "verified_at": "2026-10-17T15:13:02.672139Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "6e23f43962d55d2ddfbef663ea8f6e6551aa24b4",
+    "registry_digest": "sha256:01d4b563e979fa1fffec44c379f093ee6794dd15b1cb27073e31c3086ead66ac"
+  },
+  "affected_contexts": [
+    "batch"
+  ],
+  "rule_ids": [
+    "a-batch-has-1-to-10-trials-and-1-to-50-distinct-test-cases",
+    "a-batch-needs-every-test-case-confirmed",
+    "a-batch-whose-test-case-is-gone-stops",
+    "a-simulated-person-answers-only-where-the-test-case-has-facts",
+    "a-batch-settles-only-when-no-trial-is-open",
+    "batches-are-compared-only-on-test-cases-both-judged",
+    "a-batch-whose-creator-is-gone-stops"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "batch",
+    "invariant": "Only batch decides a batch's shape, when its next trial starts and when it stops or settles.",
+    "evidence": [
+      "apps/platform/internal/trial/batch/batch.go:132-155"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: batch starts trials through run and reads judged trials through eval facts.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/batch/batch.go:251-267"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the batch Context found these enforced rules; the reviewed Registry held one.",
+      "A counterfactual over the whole suite showed no test reached the creator_gone stop; a test was added."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording guards no test reaches: they wait for a test.",
+      "Recording Workspace scoping of batch reads: dropping the scope breaks every read, so no test isolates the stranger case."
+    ],
+    "proof_obligations": [
+      "rule-a-batch-has-1-to-10-trials-and-1-to-50-distinct-test-cases",
+      "rule-a-batch-needs-every-test-case-confirmed",
+      "rule-a-batch-whose-test-case-is-gone-stops",
+      "rule-a-simulated-person-answers-only-where-the-test-case-has-facts",
+      "rule-a-batch-settles-only-when-no-trial-is-open",
+      "rule-batches-are-compared-only-on-test-cases-both-judged",
+      "rule-a-batch-whose-creator-is-gone-stops"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-batch-has-1-to-10-trials-and-1-to-50-distinct-test-cases",
+        "statement": "A batch is refused before anything is saved unless it has 1 to 10 trials and 1 to 50 test cases with no test case repeated.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "11 trials, 51 test cases, or the same test case twice is refused with 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 132,
+              "end": 147
+            },
+            "excerpt_sha256": "sha256:1fea6c931f96bc19629c6b4915152a7a472a3b3ae9a235e0a9ba8ced4a9355d1"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 153,
+              "end": 155
+            },
+            "excerpt_sha256": "sha256:41da104f7567c86f867dd91a2089fc209ccb3f8af7826ad49d6b71bd9f5860a8"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch_test.go",
+            "lines": {
+              "start": 24,
+              "end": 46
+            },
+            "content_sha256": "sha256:ad1666cf428efd318fcc88caaffb184461d7adeb73f5a9fab2efc57cba89e634",
+            "excerpt_sha256": "sha256:e16c8ec0730ffb17bf6bafe608d087f822f9089108175533027c11343bdb42a9"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-batch-needs-every-test-case-confirmed",
+        "statement": "A batch is refused as a whole, naming every unconfirmed test case, when any of its test cases lacks confirmed run permissions.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "Two test cases, one unconfirmed: 422 naming only that one, and nothing is saved."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 191,
+              "end": 208
+            },
+            "excerpt_sha256": "sha256:ca8f118919d1dc686914a1561d46212438c88e538e9e2b789eb75c4a6ab1b11b"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+            "lines": {
+              "start": 64,
+              "end": 103
+            },
+            "content_sha256": "sha256:62599d4434b42f9eda292c8ce23ba8a9171afecd90b41260d55af04f27a25360",
+            "excerpt_sha256": "sha256:e81314b24b08c5ee37b8d39ec9bd58f93f0d7734f3b01ed16175ca4224756eff"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-batch-whose-test-case-is-gone-stops",
+        "statement": "When starting a batch's next trial finds its target gone, the batch stops with reason target_gone and starts no further trial.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A test case deleted mid-batch: the batch becomes stopped with target_gone."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 259,
+              "end": 267
+            },
+            "excerpt_sha256": "sha256:e238eec0c0131176e4ec23b7886a601f24f453431a717cc5e2a2f1c04bfc959f"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+            "lines": {
+              "start": 317,
+              "end": 347
+            },
+            "content_sha256": "sha256:62599d4434b42f9eda292c8ce23ba8a9171afecd90b41260d55af04f27a25360",
+            "excerpt_sha256": "sha256:65c59c22f7d7a9b26eac1b275c201f12a679a063856768fc72eda07bcceea0e5"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-simulated-person-answers-only-where-the-test-case-has-facts",
+        "statement": "A batch answers a trial's questions as the simulated person only when the trial's conversation ended successfully, its test case has facts and the creator still exists; otherwise the questions are left for a real person.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A succeeded run whose test case has no facts gets no simulated reply."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_simulated_user.go",
+            "lines": {
+              "start": 103,
+              "end": 124
+            },
+            "excerpt_sha256": "sha256:a9fd0caa2a3f9e3b36f3f43fb71b6789e39a7fc1251707622425c52bbbfbfa0c"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_simulated_user_integration_test.go",
+            "lines": {
+              "start": 79,
+              "end": 113
+            },
+            "content_sha256": "sha256:a495bb5e60a34702210ef1081686b583c6b27933d7ca57d932239d6fb8a44cdf",
+            "excerpt_sha256": "sha256:6c5df44dca15ccf4b7f9877ffc4b88b50436d234cf06b4828dda18a6ebc23a5f"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-batch-settles-only-when-no-trial-is-open",
+        "statement": "A batch is marked settled only once none of its trials is still running or owed an answer.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A batch whose next trial is still running after a simulated answer stays unsettled."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_simulated_user.go",
+            "lines": {
+              "start": 48,
+              "end": 59
+            },
+            "excerpt_sha256": "sha256:54b626746fdb5d35b1a8a9e257a0876f89c464f7a4f335b38ce278d206b7d874"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch_simulated_user.go",
+            "lines": {
+              "start": 65,
+              "end": 78
+            },
+            "excerpt_sha256": "sha256:db70f9be6da0b8a45b9feecb10b002702c064a61007b5f7c859627adac4d5ef9"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_simulated_user_integration_test.go",
+            "lines": {
+              "start": 79,
+              "end": 113
+            },
+            "content_sha256": "sha256:a495bb5e60a34702210ef1081686b583c6b27933d7ca57d932239d6fb8a44cdf",
+            "excerpt_sha256": "sha256:6c5df44dca15ccf4b7f9877ffc4b88b50436d234cf06b4828dda18a6ebc23a5f"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "batches-are-compared-only-on-test-cases-both-judged",
+        "statement": "Two batches are compared only on test cases judged in both; a test case judged in only one counts as unpaired, not as better, worse or tied.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A test case judged in the candidate but not the reference adds to unpaired."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_comparison.go",
+            "lines": {
+              "start": 41,
+              "end": 76
+            },
+            "excerpt_sha256": "sha256:289ea79783d392a422187574d2ecaae36382cfd20626f8283a53d5220aa9edb6"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+            "lines": {
+              "start": 493,
+              "end": 533
+            },
+            "content_sha256": "sha256:62599d4434b42f9eda292c8ce23ba8a9171afecd90b41260d55af04f27a25360",
+            "excerpt_sha256": "sha256:250e1b3f1c63f2f11b7e19e47ad5d8af3de9494a054b646dcc39a83f35724e2c"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-batch-whose-creator-is-gone-stops",
+        "statement": "When a batch's creator no longer exists, the batch stops as creator_gone instead of starting another trial with no actor.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "The creator's account is removed mid-batch; the next advance stops the batch and starts nothing."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 251,
+              "end": 253
+            },
+            "excerpt_sha256": "sha256:ffb91cb46bacd98cfd80a1f3fb041bbfe19400dec91a6b1d8c9db961752249f0"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+            "lines": {
+              "start": 349,
+              "end": 375
+            },
+            "content_sha256": "sha256:62599d4434b42f9eda292c8ce23ba8a9171afecd90b41260d55af04f27a25360",
+            "excerpt_sha256": "sha256:d040fb142634b949d1226750c92785df9643761a1eefe0105ae21cfa9ad336b7"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T15:13:02.301694Z",
+      "scope": "Record batch rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "6e23f43962d55d2ddfbef663ea8f6e6551aa24b4",
+        "registry_digest": "sha256:01d4b563e979fa1fffec44c379f093ee6794dd15b1cb27073e31c3086ead66ac"
+      }
+    }
+  ]
+}

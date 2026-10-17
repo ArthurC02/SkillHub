@@ -1,0 +1,146 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "batch-harvest-rules-2026-10-17",
+  "proposal_id": "batch-harvest-rules-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "6e23f43962d55d2ddfbef663ea8f6e6551aa24b4",
+    "registry_digest": "sha256:01d4b563e979fa1fffec44c379f093ee6794dd15b1cb27073e31c3086ead66ac"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-has-1-to-10-trials-and-1-to-50-distinct-test-cases",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch.go:133: n.Trials > MaxBatchTrials -> n.Trials > MaxBatchTrials+1",
+      "failure_evidence": "=== RUN   TestABatchShapeKeepsTrialsAndTestCasesWithinTheirLimits\n    batch_test.go:43: eleven trials: accepted = true, want false\n--- FAIL: TestABatchShapeKeepsTrialsAndTestCasesWithinTheirLimits (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/batch\t2.180s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-needs-every-test-case-confirmed",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch.go:204: len(unconfirmed) > 0 -> len(unconfirmed) > 0 && false",
+      "failure_evidence": "=== RUN   TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait\n    evaluation_batch_integration_test.go:74: one test case unconfirmed: got 201 map[created_at:2026-10-17T14:29:03Z id:e094574a-232f-4385-9c1b-d89fd946086b skill_id:b79e9592-a78c-459e-b6f8-b9764a84689d skill_version_id:85223d4f-b34c-4daf-9592-fd02b3bc60c7 status:launching trials:2 with_skill_withheld:false], want 422 naming only 577a1393-04b0-4127-8d22-fbfb82a3e178\n--- FAIL: TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait (0.24s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t12.837s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-whose-test-case-is-gone-stops",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch.go:262: if errors.Is(err, ErrTargetGone) { -> if errors.Is(err, ErrTargetGone) && false {",
+      "failure_evidence": "=== RUN   TestABatchWhoseTestCaseWasDeletedStopsAsTargetGone\n    evaluation_batch_integration_test.go:333: the skill, version or test case this trial runs is gone: run not found\n--- FAIL: TestABatchWhoseTestCaseWasDeletedStopsAsTargetGone (0.19s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.548s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-simulated-person-answers-only-where-the-test-case-has-facts",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_simulated_user.go:109: !end.Succeeded || len(facts) == 0 || !actor.Valid -> !end.Succeeded || !actor.Valid",
+      "failure_evidence": "=== RUN   TestABatchAnswersAQuestionAsTheSimulatedPersonOnlyWhereTheTestCaseHasFacts\n    evaluation_simulated_user_integration_test.go:96: the trial with facts was answered [] (found false), want both questions answered with \"補充我剛才沒講的資訊：本期用水 45 度；上期沒有欠費。其他照我前面說的。\"\n--- FAIL: TestABatchAnswersAQuestionAsTheSimulatedPersonOnlyWhereTheTestCaseHasFacts (0.38s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t9.004s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-settles-only-when-no-trial-is-open",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_simulated_user.go:74: if open { return nil } -> if open && false { return nil }",
+      "failure_evidence": "=== RUN   TestABatchAnswersAQuestionAsTheSimulatedPersonOnlyWhereTheTestCaseHasFacts\n    evaluation_simulated_user_integration_test.go:111: the batch settled while the answered trial's next run has not ended\n--- FAIL: TestABatchAnswersAQuestionAsTheSimulatedPersonOnlyWhereTheTestCaseHasFacts (0.23s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.758s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-batches-are-compared-only-on-test-cases-both-judged",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_comparison.go:47: if !both { -> if !both && false {",
+      "failure_evidence": "=== RUN   TestTwoBatchesAreComparedOnlyOnTheTestCasesBothJudged\n    evaluation_batch_integration_test.go:491: comparison: got 200 map[candidate:map[created_at:2026-10-17T14:31:45Z id:8db01275-83da-45ca-84bd-6ccfc56c0daf skill_id:63ea6a3b-516f-4f67-b9f7-e2ea1bc48ba0 skill_version_id:af80d6c9-50c4-4c1c-bce2-4556796e5f00 status:launched trials:1 with_skill_withheld:false] candidate_better:2 difference:0.6666666666666666 difference_95:map[high:1.3199879948466848 low:0.01334533848664854] paired:3 reference:map[created_at:2026-10-17T14:31:44Z id:7aa80f28-f00d-4eed-92d7-f9821ea4e60f skill_id:63ea6a3b-516f-4f67-b9f7-e2ea1bc48ba0 skill_version_id:af80d6c9-50c4-4c1c-bce2-4556796e5f00 status:launched trials:1 with_skill_withheld:false] reference_better:0 tied:1 unpaired:1], want 2 pairs (an awaiting trial leaves its test case unpaired), one better and one tied, 0.5 within [-0.48, 1.48]\n--- FAIL: TestTwoBatchesAreComparedOnlyOnTheTestCasesBothJudged (0.52s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.844s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-whose-creator-is-gone-stops",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch.go:251: if !next.CreatedBy.Valid { -> if !next.CreatedBy.Valid && false {",
+      "failure_evidence": "=== RUN   TestABatchWhoseCreatorIsGoneStopsWithoutStartingAnotherTrial\n    evaluation_batch_integration_test.go:370: after the creator was removed: got 200 map[created_at:2026-10-17T15:04:50Z id:d2179bbc-65f9-4f9e-af5d-8e1794c8a97b skill_id:4624c50b-f31d-4680-93cb-234109234cd3 skill_version_id:854a84ea-dc54-492c-9a0c-1928959fb58d status:launched trials:2 with_skill_withheld:false], want stopped as creator_gone\n--- FAIL: TestABatchWhoseCreatorIsGoneStopsWithoutStartingAnotherTrial (0.53s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.582s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_simulated_user_integration_test.go",
+    "apps/platform/internal/trial/batch/batch.go",
+    "apps/platform/internal/trial/batch/batch_comparison.go",
+    "apps/platform/internal/trial/batch/batch_simulated_user.go",
+    "apps/platform/internal/trial/batch/batch_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-batch-has-1-to-10-trials-and-1-to-50-distinct-test-cases",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestABatchShapeKeepsTrialsAndTestCasesWithinTheirLimits$ ./internal/trial/batch/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:cf5ff4558a9ea70570cb625c0408b4fbea8b60928f29c3eafa30b4b10ea62a19",
+      "finished_at": "2026-10-17T15:12:00.927401Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-batch-needs-every-test-case-confirmed",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:2c080a785879edd1bfa3c335c52694d6607002af431424a8c1d8acf6f66468e0",
+      "finished_at": "2026-10-17T15:12:10.237500Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-batch-whose-test-case-is-gone-stops",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestABatchWhoseTestCaseWasDeletedStopsAsTargetGone$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:dc121630cda66cc5781bca5da73204fc20ad1b7f27e12be7a9d6af68eaaf8e48",
+      "finished_at": "2026-10-17T15:12:25.921247Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-simulated-person-answers-only-where-the-test-case-has-facts",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestABatchAnswersAQuestionAsTheSimulatedPersonOnlyWhereTheTestCaseHasFacts$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:fb9a0b2671f7351954996acfea1f17ddd6987186245ca11b03cbf1aa28e1063d",
+      "finished_at": "2026-10-17T15:12:34.558535Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-batch-settles-only-when-no-trial-is-open",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestABatchAnswersAQuestionAsTheSimulatedPersonOnlyWhereTheTestCaseHasFacts$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:9a7c598e578b71412e6197122a0b68aff9063781045bf68161bab4fb16287f55",
+      "finished_at": "2026-10-17T15:12:43.868745Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-batches-are-compared-only-on-test-cases-both-judged",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTwoBatchesAreComparedOnlyOnTheTestCasesBothJudged$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b724253272f02e8375bdb68a0d87be616c031403fa77b288fe3d92ba60b6b45b",
+      "finished_at": "2026-10-17T15:12:53.445478Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-batch-whose-creator-is-gone-stops",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestABatchWhoseCreatorIsGoneStopsWithoutStartingAnotherTrial$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:395a798eb9ce779be7fdf9a4dd17c516cad5cdd7a6398918cdaac9b6bad80481",
+      "finished_at": "2026-10-17T15:13:01.964687Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

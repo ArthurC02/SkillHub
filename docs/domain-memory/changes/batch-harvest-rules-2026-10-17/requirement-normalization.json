@@ -1,0 +1,50 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "batch-harvest-rules-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed the shape, confirmation, stop, scoping, simulated-user and comparison rules the batch Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context batch lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-batch-has-1-to-10-trials-and-1-to-50-distinct-test-cases",
+      "statement": "A batch is refused before anything is saved unless it has 1 to 10 trials and 1 to 50 test cases with no test case repeated."
+    },
+    {
+      "id": "enforced-a-batch-needs-every-test-case-confirmed",
+      "statement": "A batch is refused as a whole, naming every unconfirmed test case, when any of its test cases lacks confirmed run permissions."
+    },
+    {
+      "id": "enforced-a-batch-whose-test-case-is-gone-stops",
+      "statement": "When starting a batch's next trial finds its target gone, the batch stops with reason target_gone and starts no further trial."
+    },
+    {
+      "id": "enforced-a-simulated-person-answers-only-where-the-test-case-has-facts",
+      "statement": "A batch answers a trial's questions as the simulated person only when the trial's conversation ended successfully, its test case has facts and the creator still exists; otherwise the questions are left for a real person."
+    },
+    {
+      "id": "enforced-a-batch-settles-only-when-no-trial-is-open",
+      "statement": "A batch is marked settled only once none of its trials is still running or owed an answer."
+    },
+    {
+      "id": "enforced-batches-are-compared-only-on-test-cases-both-judged",
+      "statement": "Two batches are compared only on test cases judged in both; a test case judged in only one counts as unpaired, not as better, worse or tied."
+    },
+    {
+      "id": "enforced-a-batch-whose-creator-is-gone-stops",
+      "statement": "When a batch's creator no longer exists, the batch stops as creator_gone instead of starting another trial with no actor."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_simulated_user_integration_test.go",
+    "apps/platform/internal/trial/batch/batch.go",
+    "apps/platform/internal/trial/batch/batch_comparison.go",
+    "apps/platform/internal/trial/batch/batch_simulated_user.go",
+    "apps/platform/internal/trial/batch/batch_test.go"
+  ]
+}

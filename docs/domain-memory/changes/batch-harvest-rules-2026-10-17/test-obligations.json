@@ -1,0 +1,112 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "batch-harvest-rules-2026-10-17",
+  "proposal_id": "batch-harvest-rules-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-a-batch-has-1-to-10-trials-and-1-to-50-distinct-test-cases",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-batch-has-1-to-10-trials-and-1-to-50-distinct-test-cases",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-batch-has-1-to-10-trials-and-1-to-50-distinct-test-cases"
+        }
+      ],
+      "expected_outcome": "A batch is refused before anything is saved unless it has 1 to 10 trials and 1 to 50 test cases with no test case repeated.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestABatchShapeKeepsTrialsAndTestCasesWithinTheirLimits$ ./internal/trial/batch/"
+    },
+    {
+      "id": "rule-a-batch-needs-every-test-case-confirmed",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-batch-needs-every-test-case-confirmed",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-batch-needs-every-test-case-confirmed"
+        }
+      ],
+      "expected_outcome": "A batch is refused as a whole, naming every unconfirmed test case, when any of its test cases lacks confirmed run permissions.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-batch-whose-test-case-is-gone-stops",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-batch-whose-test-case-is-gone-stops",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-batch-whose-test-case-is-gone-stops"
+        }
+      ],
+      "expected_outcome": "When starting a batch's next trial finds its target gone, the batch stops with reason target_gone and starts no further trial.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestABatchWhoseTestCaseWasDeletedStopsAsTargetGone$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-simulated-person-answers-only-where-the-test-case-has-facts",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-simulated-person-answers-only-where-the-test-case-has-facts",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-simulated-person-answers-only-where-the-test-case-has-facts"
+        }
+      ],
+      "expected_outcome": "A batch answers a trial's questions as the simulated person only when the trial's conversation ended successfully, its test case has facts and the creator still exists; otherwise the questions are left for a real person.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestABatchAnswersAQuestionAsTheSimulatedPersonOnlyWhereTheTestCaseHasFacts$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-batch-settles-only-when-no-trial-is-open",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-batch-settles-only-when-no-trial-is-open",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-batch-settles-only-when-no-trial-is-open"
+        }
+      ],
+      "expected_outcome": "A batch is marked settled only once none of its trials is still running or owed an answer.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestABatchAnswersAQuestionAsTheSimulatedPersonOnlyWhereTheTestCaseHasFacts$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-batches-are-compared-only-on-test-cases-both-judged",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-batches-are-compared-only-on-test-cases-both-judged",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "batches-are-compared-only-on-test-cases-both-judged"
+        }
+      ],
+      "expected_outcome": "Two batches are compared only on test cases judged in both; a test case judged in only one counts as unpaired, not as better, worse or tied.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTwoBatchesAreComparedOnlyOnTheTestCasesBothJudged$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-batch-whose-creator-is-gone-stops",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-batch-whose-creator-is-gone-stops",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-batch-whose-creator-is-gone-stops"
+        }
+      ],
+      "expected_outcome": "When a batch's creator no longer exists, the batch stops as creator_gone instead of starting another trial with no actor.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestABatchWhoseCreatorIsGoneStopsWithoutStartingAnotherTrial$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}
