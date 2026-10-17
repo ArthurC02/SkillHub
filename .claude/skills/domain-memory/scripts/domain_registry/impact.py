@@ -3,12 +3,12 @@ import subprocess
 import sys
 from collections.abc import Callable
 from itertools import combinations
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
 from .common import ASSET_KEYS
 from .evidence import all_references, verifier
-from .sources import run_git
+from .sources import lies_under, run_git
 from .store import read_document
 
 COLLABORATION_ENDS = {
@@ -95,18 +95,9 @@ def _records_with_status(root: Path, name: str) -> list[dict[str, Any]]:
     return [{**entry, "status": entry.get("status", default)} for entry in document.get(ASSET_KEYS[name], [])]
 
 
-def _lies_under(path: str, implementation_path: str) -> bool:
-    directories = PurePosixPath(path).parts[:-1]
-    owned = PurePosixPath(implementation_path.strip("/")).parts
-    return any(
-        directories[start : start + len(owned)] == owned
-        for start in range(len(directories) - len(owned) + 1)
-    )
-
-
 def _touched_contexts(contexts: list[dict[str, Any]], paths: list[str]) -> dict[str, list[str]]:
     touched = {
-        context.get("id"): [path for path in paths if _lies_under(path, context["implementation_path"])]
+        context.get("id"): [path for path in paths if lies_under(path, context["implementation_path"])]
         for context in contexts
         if isinstance(context.get("implementation_path"), str)
     }

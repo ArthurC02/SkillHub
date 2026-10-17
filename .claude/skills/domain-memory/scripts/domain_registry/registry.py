@@ -28,6 +28,7 @@ from .evidence import (
 )
 from .okf import CONTEXT_RELATIONS, PROSE_FIELDS, RELATION_TARGETS, verified_by
 from .policy import query_result_limit, review_mode
+from .sources import lies_under, repository_files
 from .store import (
     MANIFEST,
     create_concept_layout,
@@ -420,7 +421,28 @@ def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list
     errors.extend(_validate_asset_records(documents, records, require_reviewed))
     errors.extend(cross_reference_errors(records))
     errors.extend(_validate_evidence(records, repo_root))
+    if repo_root is not None:
+        errors.extend(_implementation_path_errors(records.get("contexts.json", []), repo_root))
     return errors
+
+
+def _implementation_path_errors(contexts: list[dict[str, Any]], repo_root: Path) -> list[str]:
+    return [
+        f"contexts/{identifier} implementation_path {path} lies over no file in the repository; "
+        "after a move, relocate-evidence --from <old> --to <new> proposes the new path, or correct it"
+        for identifier, path, reviewed in unplaced_implementation_paths(contexts, repo_root)
+        if reviewed
+    ]
+
+
+def unplaced_implementation_paths(contexts: list[dict[str, Any]], repo_root: Path) -> list[tuple[Any, str, bool]]:
+    placed = [(entry.get("id"), entry["implementation_path"], is_reviewed(entry)) for entry in contexts
+              if isinstance(entry.get("implementation_path"), str) and entry["implementation_path"].strip()]
+    if not placed:
+        return []
+    files = repository_files(repo_root)
+    return [(identifier, path, reviewed) for identifier, path, reviewed in placed
+            if not any(lies_under(file, path) for file in files)]
 
 
 IDEMPOTENCY_FIELDS = ("key", "scope", "on_replay", "on_conflict")

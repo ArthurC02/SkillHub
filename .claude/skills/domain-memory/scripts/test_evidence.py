@@ -306,6 +306,26 @@ class EvidenceTest(RegistryTestCase):
         self.assertEqual(["candidate-rule"], [candidate["record"]["id"] for candidate in moved["candidates"]])
         self.assertEqual([], moved["unmatched"])
 
+    def test_relocating_a_directory_moves_the_implementation_path_of_the_contexts_it_holds(self) -> None:
+        self.evidence_moved("one\ntwo\nthree\n", "lib/a.py", "zero\none\ntwo\nthree\n")
+        self.seed("contexts.json", [
+            {"id": "orders", "name": "Orders", "responsibility": "Own orders.", "implementation_path": "src",
+             "status": "reviewed", "verified": VERIFIED},
+            {"id": "billing", "name": "Billing", "responsibility": "Own invoices.", "implementation_path": "src/billing"},
+            {"id": "shipping", "name": "Shipping", "responsibility": "Ship.", "implementation_path": "srcs/ship"},
+        ])
+        applied_by(self.repo / "memory", "PRO-2", "contexts/orders")
+        moved = relocate_evidence(self.repo / "memory", self.repo, "src", "lib")
+        self.assertEqual(
+            ([("contexts", "orders", "lib"), ("rules", "reviewed-rule", None)], ["PRO-1", "PRO-2"],
+             [("contexts", "billing", "lib/billing"), ("rules", "candidate-rule", None)]),
+            ([(item["asset"], item["record"]["id"], item["record"].get("implementation_path"))
+              for item in moved["registry_updates"]],
+             moved["supersedes"],
+             [(item["asset"], item["record"]["id"], item["record"].get("implementation_path"))
+              for item in moved["candidates"]]),
+        )
+
     def test_relocating_a_single_file_recites_its_evidence(self) -> None:
         self.evidence_moved("one\ntwo\n", "lib/b.py", "two\n")
         moved = relocate_evidence(self.repo / "memory", self.repo, "src/a.py", "lib/b.py")

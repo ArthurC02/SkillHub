@@ -38,6 +38,11 @@ class Relocation:
     def moved(self, value: Any) -> Any:
         return with_references(value, self.reference)
 
+    def placed(self, name: str, record: dict[str, Any]) -> dict[str, Any]:
+        path = record.get("implementation_path")
+        target = self.target(path) if name == "contexts.json" and isinstance(path, str) else None
+        return record if target is None or target == path else {**record, "implementation_path": target}
+
     def reference(self, reference: Any) -> Any:
         target = self.target(reference.get("path", "")) if isinstance(reference, dict) else None
         if target is None:
@@ -166,7 +171,7 @@ def relocate_evidence(root: Path, repo_root: Path, old: str, new: str) -> dict[s
         document = read_document(root, name)
         for entry in document.get(ASSET_KEYS[name], []):
             unmatched_before = len(relocation.unmatched)
-            moved = relocation.moved(entry)
+            moved = relocation.placed(name, relocation.moved(entry))
             for problem in relocation.unmatched[unmatched_before:]:
                 problem.update(asset=name.removesuffix(".json"), id=entry.get("id"))
             if moved == entry:

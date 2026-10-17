@@ -639,6 +639,15 @@ def write_and_audit(
     append_locked(root, event)
 
 
+def lies_under(path: str, implementation_path: str) -> bool:
+    directories = PurePosixPath(path).parts[:-1]
+    owned = PurePosixPath(implementation_path.strip("/")).parts
+    return any(
+        directories[start : start + len(owned)] == owned
+        for start in range(len(directories) - len(owned) + 1)
+    )
+
+
 def run_git(root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", "-C", str(root), *arguments],

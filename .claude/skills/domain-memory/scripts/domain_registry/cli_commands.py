@@ -60,6 +60,7 @@ from .registry import (
     CONSTRAINT_ASSETS,
     MATCH_KINDS,
     asset_records,
+    unplaced_implementation_paths,
     boundary_analysis,
     context_model,
     context_summary,
@@ -194,7 +195,24 @@ def handle_validate(args: argparse.Namespace) -> int:
     )
     exit_code = report_errors(errors, "Registry is valid.")
     _note_unsettled(args.registry_root.resolve())
+    if exit_code == 0 and args.repo_root:
+        _note_unplaced(args.registry_root.resolve(), args.repo_root.resolve())
     return exit_code
+
+
+def _note_unplaced(registry_root: Path, repo_root: Path) -> None:
+    unplaced = [
+        f"contexts/{identifier} implementation_path {path}"
+        for identifier, path, reviewed in unplaced_implementation_paths(asset_records(registry_root, "contexts.json"), repo_root)
+        if not reviewed
+    ]
+    if unplaced:
+        print(
+            f"NOTE: {', '.join(unplaced)} {'lies' if len(unplaced) == 1 else 'lie'} over no file in the repository; "
+            "a candidate may name code to come, and apply-approved-updates refuses to review it until code is there "
+            "or the path is corrected.",
+            file=sys.stderr,
+        )
 
 
 def _note_unsettled(registry_root: Path) -> None:

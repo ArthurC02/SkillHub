@@ -554,6 +554,22 @@ class RegistryTest(RegistryTestCase):
             validate(self.repo / "memory", None, False),
         )
 
+    def test_with_the_repository_a_reviewed_implementation_path_over_no_file_is_refused(self) -> None:
+        self.seed("contexts.json", [
+            {"id": "orders", "name": "Orders", "responsibility": "Own orders.", "implementation_path": "src/orders",
+             "status": "reviewed", "verified": VERIFIED},
+            {"id": "billing", "name": "Billing", "responsibility": "Own invoices.", "implementation_path": "src/billing"},
+        ])
+        refusal = ("contexts/orders implementation_path src/orders lies over no file in the repository; after a move, "
+                   "relocate-evidence --from <old> --to <new> proposes the new path, or correct it")
+        def placement(repo_root: Path | None) -> list[str]:
+            return [error for error in validate(self.repo / "memory", repo_root, False) if "implementation_path" in error]
+
+        before = (placement(self.repo), placement(None))
+        (self.repo / "apps" / "src" / "orders").mkdir(parents=True)
+        (self.repo / "apps" / "src" / "orders" / "port.py").write_text("v1\n", encoding="utf-8")
+        self.assertEqual((([refusal], []), []), (before, placement(self.repo)))
+
     def test_two_contexts_without_registered_collaboration_say_so(self) -> None:
         self.two_contexts()
         self.assertEqual(

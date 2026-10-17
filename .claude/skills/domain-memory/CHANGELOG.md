@@ -2,6 +2,14 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.65.0
+
+### Changed
+
+- `relocate-evidence` gives a Context whose `implementation_path` is `--from` or lies under it the new path, in the same output, so a move no longer leaves `boundary-impact` mapping the moved code to no Context.
+- `validate --repo-root` refuses a reviewed Context whose `implementation_path` lies over no file in the repository, by the same test `boundary-impact` uses, and notes a candidate's, which may name code to come.
+- The brownfield refactoring fast path lists the re-citation commands, and the Maintain and Extract Skills link the Registry schema and that path, which the root page alone linked before.
+
 ## 0.64.0
 
 ### Changed

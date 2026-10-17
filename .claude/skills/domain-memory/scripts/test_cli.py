@@ -762,6 +762,20 @@ class CliTest(RegistryTestCase):
              proved["rule_totals"]),
         )
 
+    def test_validate_notes_a_candidate_implementation_path_over_no_file_instead_of_refusing_it(self) -> None:
+        self.seed("contexts.json", [
+            {"id": "orders", "name": "Orders", "responsibility": "Own orders.", "implementation_path": "src/orders"},
+            {"id": "billing", "name": "Billing", "responsibility": "Own invoices.", "implementation_path": "src/billing"},
+        ])
+        validated = self.run_cli("validate", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo))
+        self.assertEqual(
+            (0, "Registry is valid.",
+             "NOTE: contexts/billing implementation_path src/billing, contexts/orders implementation_path src/orders lie "
+             "over no file in the repository; a candidate may name code to come, and apply-approved-updates refuses to "
+             "review it until code is there or the path is corrected."),
+            (validated.returncode, validated.stdout.strip(), validated.stderr.strip()),
+        )
+
     def test_validate_names_the_approved_packages_left_unapplied(self) -> None:
         changes = self.repo / "memory" / "changes"
         for name, status in (("a", "approved"), ("b", "applied"), ("c", "approved"), ("d", "verified")):
