@@ -27,7 +27,7 @@ const RECEIPT: ImportResult = {
 async function importReceiver(mode: string, requests: string[]) {
   const receiver = createServer(async (request, response) => {
     const headers = {
-      "Access-Control-Allow-Origin": request.headers.origin ?? "http://localhost:4173",
+      "Access-Control-Allow-Origin": request.headers.origin ?? "http://127.0.0.1:4173",
       "Access-Control-Allow-Credentials": "true",
       "Access-Control-Allow-Headers": "accept, content-type",
       "Content-Type": "application/json",

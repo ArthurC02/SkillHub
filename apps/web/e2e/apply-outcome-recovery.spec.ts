@@ -52,7 +52,7 @@ test("a complete apply receipt exposes the created version and preserves the ori
       region.getByRole("link", { name: "開啟剛建立的版本", exact: true }),
     ).toHaveAttribute("href", `/skills/${SKILL}/versions/${NEW_VERSION}`);
     const rerun = region.getByRole("link", { name: "以新版本重跑這個測試題", exact: true });
-    const url = new URL((await rerun.getAttribute("href")) as string, "http://localhost:4173");
+    const url = new URL((await rerun.getAttribute("href")) as string, "http://127.0.0.1:4173");
     expect(url.searchParams.get("version")).toBe(NEW_VERSION);
     expect(url.searchParams.get("against")).toBe(RUN);
     await expect(region.getByRole("alert")).toHaveCount(0);
@@ -130,7 +130,7 @@ for (const blockedSession of [false, true]) {
 function receiverFor(transport: string, onBody: (body: string) => void) {
   return createServer(async (request, response) => {
     const headers = {
-      "Access-Control-Allow-Origin": request.headers.origin ?? "http://localhost:4173",
+      "Access-Control-Allow-Origin": request.headers.origin ?? "http://127.0.0.1:4173",
       "Access-Control-Allow-Credentials": "true",
       "Access-Control-Allow-Headers": "accept, content-type",
       "Access-Control-Allow-Methods": "POST",

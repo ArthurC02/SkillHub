@@ -10,7 +10,7 @@ import { stubPlatform } from "./stub";
 function uploadReceiver(transport: string, onBody: (body: string) => void) {
   return createServer(async (request, response) => {
     const headers = {
-      "Access-Control-Allow-Origin": request.headers.origin ?? "http://localhost:4173",
+      "Access-Control-Allow-Origin": request.headers.origin ?? "http://127.0.0.1:4173",
       "Access-Control-Allow-Credentials": "true",
       "Access-Control-Allow-Headers": "accept, content-type",
       "Content-Type": "application/json",
@@ -237,7 +237,7 @@ async function datasetSessionReceiver(previous: boolean, writes: string[]) {
   const receiver = createServer(async (request, response) => {
     response.setHeader(
       "Access-Control-Allow-Origin",
-      request.headers.origin ?? "http://localhost:4173",
+      request.headers.origin ?? "http://127.0.0.1:4173",
     );
     response.setHeader("Access-Control-Allow-Credentials", "true");
     response.setHeader("Access-Control-Allow-Headers", "accept, content-type");

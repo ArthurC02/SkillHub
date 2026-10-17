@@ -26,7 +26,7 @@ for (const scenario of [
     const receiver = createServer(async (request, response) => {
       response.setHeader(
         "Access-Control-Allow-Origin",
-        request.headers.origin ?? "http://localhost:4173",
+        request.headers.origin ?? "http://127.0.0.1:4173",
       );
       response.setHeader("Access-Control-Allow-Credentials", "true");
       response.setHeader("Access-Control-Allow-Headers", "accept, content-type");

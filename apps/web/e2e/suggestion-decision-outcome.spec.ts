@@ -21,7 +21,7 @@ function receiveDecision(fault: string, uncertain: boolean) {
   });
   const server = createServer(async (request, response) => {
     const headers = {
-      "Access-Control-Allow-Origin": request.headers.origin ?? "http://localhost:4173",
+      "Access-Control-Allow-Origin": request.headers.origin ?? "http://127.0.0.1:4173",
       "Access-Control-Allow-Credentials": "true",
       "Access-Control-Allow-Headers": "accept, content-type",
       "Access-Control-Allow-Methods": "PUT, OPTIONS",

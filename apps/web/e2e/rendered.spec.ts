@@ -2000,7 +2000,7 @@ test("a finding opens the run that reported its visible evidence", async ({ page
     fullPage: true,
   });
   await source.click();
-  await expect(page).toHaveURL(`http://localhost:4173/admin/agents?run=${AGENT_REPORT_RUN}`);
+  await expect(page).toHaveURL(`http://127.0.0.1:4173/admin/agents?run=${AGENT_REPORT_RUN}`);
   await expect(page.getByRole("heading", { name: "這次執行", exact: true })).toBeFocused();
   await expect(page.getByText("需要注意：1 項")).toBeVisible();
 });
@@ -2051,7 +2051,7 @@ test("a proposal opens its proposing run before an operator decides", async ({
   });
   await source.click();
   await expect(page).toHaveURL(
-    `http://localhost:4173/admin/agents?run=${ADMIN_AGENT_PROPOSAL.run_id}`,
+    `http://127.0.0.1:4173/admin/agents?run=${ADMIN_AGENT_PROPOSAL.run_id}`,
   );
   await expect(page.getByRole("heading", { name: "這次執行", exact: true })).toBeFocused();
   await expect(page.getByText("需要注意：1 項")).toBeVisible();

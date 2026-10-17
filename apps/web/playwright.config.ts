@@ -9,7 +9,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
-    baseURL: "http://localhost:4173",
+    baseURL: "http://127.0.0.1:4173",
     trace: "retain-on-failure",
   },
   projects: [
@@ -18,9 +18,9 @@ export default defineConfig({
     { name: "webkit", use: { ...devices["Desktop Safari"] } },
   ],
   webServer: {
-    command: "npm run build && npm run preview -- --port 4173 --strictPort",
+    command: "npm run build && npm run preview -- --host 127.0.0.1 --port 4173 --strictPort",
     env: { VITE_API_BASE_URL: "" },
-    url: "http://localhost:4173",
+    url: "http://127.0.0.1:4173",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

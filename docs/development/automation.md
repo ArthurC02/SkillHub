@@ -435,6 +435,7 @@ docker run --rm --network container:skillhub-postgres-1 \
 - 每週日一次 `schedule` 全量跑（所有 path filter 視為命中），`workflow_dispatch` 也是全量——手寫 path filter 漏掉的那一格由它兜底。
 - 每個 job 都有 `timeout-minutes`，一個卡住的 job 不會再佔滿預設的 6 小時。
 - 瀏覽器測試的四種作業系統／瀏覽器組合各用兩個 Playwright 原生分片，保留完整套件與既有逾時；失敗產物按環境與分片命名。原有四個 `web-browser` 檢查名稱保留為彙總閘門，只有全部分片成功才通過，分片失敗、取消或缺席都不得放行。
+- 瀏覽器的 baseURL、就緒探測網址與預覽監聽位址使用同一個明確的 IPv4 loopback，不依賴 localhost 的位址族解析順序。
 - 每次都跑、沒有 path filter 的有三個並行 job：`devctl`（devctl 自己的 vet／race 測試、`automation-check`、`agent-sync`）、`contracts-drift`（`gen --check` 與 `contracts/` 的各項檢查）與 `dependency-audit`（見下一條）。純文件 commit 的等待時間由三者中最慢的那個決定，不再是相加。
 - **依賴漏洞**（見[開發自動化與依賴治理](../adr/README.md#開發自動化與依賴治理)）：push／PR 跑 `devctl dep-audit`，只看會出貨的四個專案——`apps/web` 的 production 依賴（high 以上）、`apps/platform`／`apps/sandbox` 程式呼叫得到的漏洞、`apps/llm` 的非 dev 依賴——而且**只擋有修補版的**，沒有修補版的印成 `NOTE`。每週排程與 `workflow_dispatch` 改跑 `--full`：每個有 lockfile 的專案連 dev 依賴、npm 取 moderate 以上、Go 連沒呼叫到的模組也算，紅了就是那一週的報告。`images-push` 等它綠了才推。本機 `task deps:audit`（加 `-- --full` 全掃）；同一條命令也擋出貨依賴的授權與 workflow 的 zizmor 稽核（用法見〈依賴的准入、更新與閘門〉）；job 帶 `GH_TOKEN`，zizmor 連網的稽核項目只在 CI 跑。工具版本在 `tools/toolchain.yaml` 的 `govulncheck`／`pip_audit`／`go_licenses`／`zizmor`。
 - `golangci-lint` 由 [`.github/actions/golangci-lint`](../../.github/actions/golangci-lint/action.yml) 安裝：版本讀 `tools/toolchain.yaml` 的 `golangci_lint`，編好的 binary 以「版本＋OS＋Go 版本」為鍵另外快取。不能指望 `setup-go` 的快取帶著它——那份快取的鍵只有 `go.sum` 的雜湊，第一次存下之後內容就不再更新，`go.sum` 沒動過的模組會一直拿到那天的舊內容。
