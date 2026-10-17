@@ -107,6 +107,23 @@ func TestFetchUserEmailFallbackAndNameDefault(t *testing.T) {
 	}
 }
 
+func TestAGitHubAccountWhosePrimaryEmailIsUnverifiedCannotLogIn(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /user", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"id":7,"login":"mallory","name":"","email":null}`))
+	})
+	mux.HandleFunc("GET /user/emails", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`[{"email":"victim@x.dev","primary":true,"verified":false}]`))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	u, err := (&GitHubOAuth{APIBase: srv.URL}).FetchUser(context.Background(), "tok")
+	if err == nil || !strings.Contains(err.Error(), "no primary verified email") {
+		t.Fatalf("FetchUser = %+v, %v; want the unverified address refused", u, err)
+	}
+}
+
 func TestGitHubJSONRejectsOversizedAndTrailingResponses(t *testing.T) {
 	for _, body := range []string{
 		`{}` + strings.Repeat(" ", maxGitHubResponseBytes-1),
