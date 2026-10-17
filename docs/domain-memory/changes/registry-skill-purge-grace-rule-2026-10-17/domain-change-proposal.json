@@ -3,7 +3,7 @@
   "proposal_id": "registry-skill-purge-grace-rule-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "registry-skill-purge-grace-rule-2026-10-17",
-  "status": "approved",
+  "status": "superseded",
   "change_classification": "material",
   "submitted_at": "2026-10-17T13:12:34.405295Z",
   "verified_at": "2026-10-17T13:12:45.274237Z",
@@ -120,5 +120,9 @@
         "registry_digest": "sha256:a06abec4fac93eeecbea7ba3458dcca8ba8c2198da445d79cfed0b6196cf5bcd"
       }
     }
-  ]
+  ],
+  "superseded_from_status": "approved",
+  "superseded_at": "2026-10-17T13:42:24.451250Z",
+  "superseded_reason": "Approved but could not apply: its evidence cited db/queries, outside the confirmed sources.",
+  "superseded_by": "registry-skill-purge-grace-recited-2026-10-17"
 }
