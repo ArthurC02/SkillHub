@@ -1,9 +1,14 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-17T19:06:36.790775Z"
 sources:
   - resource: "apps/platform/internal/skill/publishing/service.go#L299-311"
     excerpt_sha256: "sha256:cdd494d55f4fda162e5097e214ba6a75457cc5aeab8e5f940f21fbcffb51df6f"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/publishing_release_guard_integration_test.go#L24-42"
+    excerpt_sha256: "sha256:1bbbbd7537384980cd26e261152236ba47ff7e0a95423d4ae9b5acf786caa793"
 ---
 Publishing a Skill with a version of another Skill is answered not found, so one Skill's gates never pass another Skill's files.
 
