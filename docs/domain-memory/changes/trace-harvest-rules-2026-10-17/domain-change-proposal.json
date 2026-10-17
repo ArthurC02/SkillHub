@@ -3,12 +3,12 @@
   "proposal_id": "trace-harvest-rules-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "trace-harvest-rules-2026-10-17",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T06:45:05.385529Z",
   "verified_at": "2026-10-17T06:45:46.345394Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T06:45:48.852096Z",
+  "applied_at": "2026-10-17T06:45:52.274262Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "618d958ae373371ea87579e83343044c55385f54",
@@ -322,5 +322,9 @@
         "registry_digest": "sha256:c61cb385583b0283cdc2bb04092fc840f5a598009ff874aecabe809ad87803c6"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "ac64eadd4fba965399ccf1917b7301ad40ffca6d",
+    "registry_digest": "sha256:33ccedc31264c414835e9d446abb29012ba92a52e5765f503771e3d188c19f95"
+  }
 }
