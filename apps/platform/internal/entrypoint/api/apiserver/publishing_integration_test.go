@@ -127,6 +127,28 @@ func TestPublishingNeedsAPublisherAndTheAuthorsStatementForTheirOwnContent(t *te
 	}
 }
 
+func TestAVersionThatFailsValidationIsRefusedPublicationAndLeavesNoRelease(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, freshName("publish-invalid"))
+	registerPublisher(t, alice, freshName("alice"))
+	skillID := seedSkill(t, pool, alice.workspaceID, "secret-bearing-skill")
+	seedStoredVersion(t, a, pool, alice, skillID, "secretbearing", zipOf(t, map[string]string{
+		"SKILL.md": packagingSKILLMD("secret-bearing-skill"),
+		".env":     "OPENAI_API_KEY=sk-thisisnotarealkeybutitmatchesthepattern0123456789\n",
+	}))
+	allowRedistribution(t, pool, skillID)
+
+	code, body := publish(t, alice, skillID, `{"rights_attested":true}`)
+
+	if code != http.StatusUnprocessableEntity || body["reason"] != "validation_blocked" {
+		t.Fatalf("publishing a version that fails validation: %d %v, want 422 validation_blocked", code, body)
+	}
+	if n := countRow(t, pool, `SELECT count(*) FROM publications WHERE skill_id = $1`, mustUUID(t, skillID)); n != 0 {
+		t.Errorf("a refused publish left %d publication rows", n)
+	}
+}
+
 func TestOwnPublicationOverviewIsEmptyWithoutAPublisher(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
