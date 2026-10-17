@@ -587,6 +587,111 @@ class CliTest(RegistryTestCase):
             ["order-total"], json.loads(self.run_cli(*coverage).stdout)["rules_by_context"][0]["unknown"],
         )
 
+    def harvest_spec(self, **changes: object) -> Path:
+        check = "go test -v -run ^TestTotal$ ./orders/"
+        entry = {
+            "check": f"{check}\n",
+            "counterfactual": {
+                "verdict": "killed", "test_command": check,
+                "counterfactual_check": {"status": "passed", "obligation_id": "<obligation-id>",
+                                         "mutated_protection": "total.go:3: >= 0 -> >= -1",
+                                         "failure_evidence": "--- FAIL: TestTotal", "restored": True},
+            },
+        }
+        spec = {
+            "requirement": {"intent": "Record the enforced order rules."},
+            "implementation_design": {"decision": "Record the rule as reviewed.", "ignored": "x"},
+            "rules": {"order-total": {**entry, **changes}},
+        }
+        path = self.repo / "spec.json"
+        path.write_text(json.dumps(spec), encoding="utf-8")
+        return path
+
+    def fill(self, package: Path, spec: Path, *options: str) -> subprocess.CompletedProcess:
+        return self.run_cli("fill-harvest-package", "--package-root", str(package), "--spec", str(spec), *options)
+
+    def test_fill_harvest_package_maps_each_promoted_rule_to_a_criterion_an_obligation_and_its_counterfactual(self) -> None:
+        package = self.draft_package()
+        proposal_path = package / "domain-change-proposal.json"
+        proposal_path.write_text(
+            json.dumps({**json.loads(proposal_path.read_text(encoding="utf-8")), "affected_contexts": []}), encoding="utf-8"
+        )
+        evidence_path = package / "evidence-bundle.json"
+        evidence_path.write_text(
+            json.dumps({**json.loads(evidence_path.read_text(encoding="utf-8")), "test_results": []}), encoding="utf-8"
+        )
+        before = {path.name: path.read_bytes() for path in package.iterdir()}
+        dry = self.fill(package, self.harvest_spec(), "--dry-run")
+        self.assertEqual((0, before), (dry.returncode, {path.name: path.read_bytes() for path in package.iterdir()}))
+        self.assertEqual(0, self.fill(package, self.harvest_spec()).returncode)
+        written = {path.name: json.loads(path.read_text(encoding="utf-8")) for path in package.glob("*.json")}
+        self.assertEqual(json.loads(dry.stdout), {name: written[name] for name in json.loads(dry.stdout)})
+        requirement, obligations = written["requirement-normalization.json"], written["test-obligations.json"]
+        proposal, evidence = written["domain-change-proposal.json"], written["evidence-bundle.json"]
+        self.assertEqual(
+            ("Record the enforced order rules.", [{"id": "enforced-order-total", "statement": "An order total is non-negative."}],
+             ["README.md"]),
+            (requirement["intent"], requirement["acceptance_criteria"], requirement["sources"]),
+        )
+        self.assertEqual(
+            [{"id": "rule-order-total", "source_type": "acceptance-criterion", "source_id": "enforced-order-total",
+              "also_covers": [{"source_type": "rule", "source_id": "order-total"}],
+              "expected_outcome": "An order total is non-negative.", "level": "unit", "status": "planned",
+              "check": "go test -v -run ^TestTotal$ ./orders/"}],
+            obligations["obligations"],
+        )
+        self.assertEqual(
+            (["orders"], ["order-total"], ["rule-order-total"], "Record the rule as reviewed.", False),
+            (proposal["affected_contexts"], proposal["rule_ids"], proposal["implementation_design"]["proof_obligations"],
+             proposal["implementation_design"]["decision"], "ignored" in proposal["implementation_design"]),
+        )
+        self.assertEqual(
+            (["README.md"], ["rule-order-total"], []),
+            (evidence["sources"], [check["obligation_id"] for check in evidence["counterfactual_check"]],
+             validate_change_package(package, None)),
+        )
+
+    def test_fill_harvest_package_refuses_a_rule_it_cannot_show_proven_and_dry_run_refuses_alike(self) -> None:
+        package = self.draft_package()
+        killed = json.loads(self.harvest_spec().read_text(encoding="utf-8"))["rules"]["order-total"]["counterfactual"]
+        for label, changes, refusal in (
+            ("no check", {"check": " "}, "rules.order-total: give the check that runs the rule's test"),
+            ("only the check object", {"counterfactual": killed["counterfactual_check"]},
+             "rules.order-total: counterfactual must be the whole output of counterfactual"),
+            ("survived", {"counterfactual": {**killed, "verdict": "survived"}},
+             "rules.order-total: the counterfactual is survived, not killed"),
+            ("another command", {"counterfactual": {**killed, "test_command": "go test -v ./..."}},
+             "rules.order-total: the counterfactual ran 'go test -v ./...', not the check"),
+            ("another obligation", {"counterfactual": {**killed, "counterfactual_check": {
+                **killed["counterfactual_check"], "obligation_id": "rule-other"}}},
+             "rules.order-total: the counterfactual names obligation rule-other, not rule-order-total"),
+        ):
+            spec = self.harvest_spec(**changes)
+            for options in ((), ("--dry-run",)):
+                with self.subTest(label=label, options=options):
+                    result = self.fill(package, spec, *options)
+                    self.assertEqual((1, True), (result.returncode, refusal in result.stdout))
+        spec = json.loads(self.harvest_spec().read_text(encoding="utf-8"))
+        spec["rules"]["extra-rule"] = spec["rules"].pop("order-total")
+        (self.repo / "spec.json").write_text(json.dumps(spec), encoding="utf-8")
+        self.assertEqual(
+            "ERROR: the harvest spec cannot fill this package: rules.order-total is missing; "
+            "rules.extra-rule names a rule the package does not promote",
+            self.fill(package, self.repo / "spec.json").stdout.strip(),
+        )
+
+    def test_fill_harvest_package_fills_only_a_draft_that_promotes_a_rule(self) -> None:
+        package = self.draft_package()
+        proposal_path = package / "domain-change-proposal.json"
+        proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
+        for status, updates, refusal in (
+            ("submitted", proposal["registry_updates"], "ERROR: the package is submitted; fill-harvest-package fills a draft"),
+            ("draft", [], "ERROR: the package promotes no rule; run promote-candidate for each harvested rule first"),
+        ):
+            with self.subTest(refusal):
+                proposal_path.write_text(json.dumps({**proposal, "status": status, "registry_updates": updates}), encoding="utf-8")
+                self.assertEqual(refusal, self.fill(package, self.harvest_spec()).stdout.strip())
+
     def test_get_record_looks_for_packages_beside_the_registry_only_for_rules_and_contracts(self) -> None:
         self.seed("rules.json", [{"id": "r", "contexts": ["orders"], "statement": "x"}])
         self.seed("contexts.json", [{"id": "orders", "name": "Orders"}])
@@ -661,7 +766,7 @@ class CliTest(RegistryTestCase):
             tasks.setdefault(command, task.strip())
         [subcommands] = [action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)]
         helps = {choice.dest: choice.help for choice in subcommands._choices_actions}
-        self.assertEqual((57, tasks), (len(helps), helps))
+        self.assertEqual((58, tasks), (len(helps), helps))
 
     def test_readiness_command_returns_json_without_writing(self) -> None:
         before = self.file_bytes()

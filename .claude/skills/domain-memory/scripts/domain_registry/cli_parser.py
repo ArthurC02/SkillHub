@@ -84,6 +84,10 @@ def _add_harvest_command(commands: argparse._SubParsersAction) -> None:
         "--context-map", action="append", default=[], help="repeatable CANDIDATE=GOLD, over the pairing found by path or name"
     )
     harvest_parser.add_argument("--keep-duplicates", action="store_true")
+    fill_parser = commands.add_parser("fill-harvest-package", help="Fill a rule harvest package")
+    add_path(fill_parser, "--package-root")
+    add_path(fill_parser, "--spec")
+    fill_parser.add_argument("--dry-run", action="store_true", help="print the four documents instead of writing them")
 
 
 def _add_history_commands(commands: argparse._SubParsersAction) -> None:

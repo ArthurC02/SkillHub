@@ -52,6 +52,7 @@ from .policy import (
 from .readiness import assess_readiness
 from .recitation_package import recitation_package
 from .harvest import harvest_candidates
+from .harvest_package import harvest_package, write_harvest_package
 from .impact import boundary_impact, registered_collaborations
 from .relocate import Recitation, line_range, recite, relocate_evidence
 from .registry import (
@@ -510,6 +511,17 @@ def handle_upsert_candidate(args: argparse.Namespace) -> int:
             "becomes reviewed only through an approved Change Package.",
             file=sys.stderr,
         )
+    return 0
+
+
+def handle_fill_harvest_package(args: argparse.Namespace) -> int:
+    package_root = args.package_root.resolve()
+    documents = harvest_package(package_root, load_json(args.spec.resolve()))
+    if args.dry_run:
+        print_json(documents)
+        return 0
+    write_harvest_package(package_root, documents)
+    print(f"Filled {package_root} from the spec; run validate-change-package next.")
     return 0
 
 
@@ -989,6 +1001,7 @@ HANDLERS = {
     "cite": handle_cite,
     "upsert-candidate": handle_upsert_candidate,
     "harvest-candidates": handle_harvest_candidates,
+    "fill-harvest-package": handle_fill_harvest_package,
     "retract-candidate": handle_retract_candidate,
     "promote-candidate": handle_promote_candidate,
     "apply-approved-updates": handle_apply_approved_updates,

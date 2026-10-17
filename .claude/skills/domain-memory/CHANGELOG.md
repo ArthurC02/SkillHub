@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.55.0
+
+### Added
+
+- `fill-harvest-package` fills a draft package that promotes harvested rules from a spec: one acceptance criterion and one test obligation per rule, the rule ids, contexts, proof obligations, the files the rules cite as sources, and the list of counterfactual checks. It refuses a rule whose counterfactual was not killed, ran another command than the rule's check, or names another obligation, and `--dry-run` prints the documents and refuses alike.
+
 ## 0.54.0
 
 ### Added

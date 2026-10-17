@@ -57,14 +57,14 @@ Create an [evidence bundle](../templates/evidence-bundle.json) and [Draft PR des
 
 ## Harvesting proven rules from existing code
 
-When reviewed rules are drawn from code that already enforces them rather than from a new requirement, start from the Contexts with the fewest reviewed rules in `coverage`'s `rules_by_context`. For each rule, cite the code that enforces it and, with `cite --function`, the test that proves it; record it with `upsert-candidate` and promote it into one package. Give each rule an obligation whose `also_covers` names it and whose `check` runs only that test, with `-v` for Go. Then show that every rule can fail before anything is submitted, once per rule:
+When reviewed rules are drawn from code that already enforces them rather than from a new requirement, start from the Contexts with the fewest reviewed rules in `coverage`'s `rules_by_context`. For each rule, cite the code that enforces it and, with `cite --function`, the test that proves it; record it with `upsert-candidate` and promote it into one package. Its `check` runs only that test, with `-v` for Go. Then show that every rule can fail before anything is submitted, once per rule:
 
 ```sh
 DM="python3 <path>/registry_tools.py"
 $DM counterfactual --repo-root . --file <enforcing file> --find '<protection>' --replace '<broken protection>' --test-command '<check>' --cwd <directory> --obligation-id <obligation>
 ```
 
-Continue only when every verdict is `killed`, and record each printed `counterfactual_check` in the evidence bundle's `counterfactual_check` list. A rule whose mutation survives is either untested or not the rule it claims: write the test, or leave the rule out and say why in `rejected_alternatives`.
+Continue only when every verdict is `killed`. Keep each whole output and give it, with the rule's check and the package's ownership, boundary and design decisions, to `fill-harvest-package`, which writes the criteria, obligations, proof obligations, sources and `counterfactual_check` list and refuses a rule whose counterfactual was not killed or ran another command than its check. A rule whose mutation survives is either untested or not the rule it claims: write the test, or leave the rule out and say why in `rejected_alternatives`.
 
 After `submit-proposal`, `record-test-result` for each obligation, `record-approval` and `verify-proposal`, the `git-signed-commit` verifier needs five more steps. They take no decisions, but they must run in this order, because the attestation names the signed commit that carries the verified package:
 
