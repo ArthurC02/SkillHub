@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "operations-spend-cap-reprove-2026-10-17",
+  "proposal_id": "operations-spend-cap-reprove-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling"
+        }
+      ],
+      "expected_outcome": "A platform agent's effective daily spend cap is the operator's override when one is set, otherwise the default its definition declares. An override must be above zero and at most US$5 a day, and re-registering the definitions replaces only the default, never the override.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnOperatorSetsAnAgentsDailySpendCapWithinTheCeilingAndClearsItBackToTheDefault$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

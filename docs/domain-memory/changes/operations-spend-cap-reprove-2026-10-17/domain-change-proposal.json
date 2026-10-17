@@ -1,0 +1,123 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "operations-spend-cap-reprove-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "operations-spend-cap-reprove-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T05:42:09.130215Z",
+  "verified_at": "2026-10-17T05:42:18.519177Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "74d515b30788e47d45107ea539fed7829a720420",
+    "registry_digest": "sha256:566fc5d9e77aad616d60991c63972c5283e22a018eca6891b63957dbaeccb869"
+  },
+  "affected_contexts": [
+    "operations"
+  ],
+  "rule_ids": [
+    "agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "operations",
+    "invariant": "Only operations decides an agent's daily spend cap.",
+    "evidence": [
+      "apps/platform/internal/product/operations/agents.go:146-151"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/product/operations/agents.go:146-151"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "coverage reports the rule's proof unknown: the package that reviewed it was removed from the repository on 2026-10-16."
+    ],
+    "decision": "Keep the statement and citations; add the test that fails when the guard is broken.",
+    "invariants_preserved": [
+      "The rule's statement is unchanged."
+    ],
+    "rejected_alternatives": [
+      "Restoring the removed package from git history: the proof belongs with the current citations."
+    ],
+    "proof_obligations": [
+      "rule-agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling",
+        "statement": "A platform agent's effective daily spend cap is the operator's override when one is set, otherwise the default its definition declares. An override must be above zero and at most US$5 a day, and re-registering the definitions replaces only the default, never the override.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "An operator raising an agent's cap to 5000000 micros takes effect at that agent's next run; 5000001 micros is refused.",
+          "Clearing the override returns the agent to the default its definition declares.",
+          "A worker restart re-registers every definition and the operator's override survives it."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/agents.go",
+            "lines": {
+              "start": 38,
+              "end": 45
+            },
+            "excerpt_sha256": "sha256:6211e42ac2359b958cd10d4857a002f3bc66b51d2ba7611f690b9dba4df51f66"
+          },
+          {
+            "path": "apps/platform/internal/product/operations/agents.go",
+            "lines": {
+              "start": 146,
+              "end": 151
+            },
+            "excerpt_sha256": "sha256:340bcb7471e9f24e68d0ab5b19f3262013d77d69a40ce07f12ba96908a86e518"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_settings_integration_test.go",
+            "lines": {
+              "start": 44,
+              "end": 84
+            },
+            "content_sha256": "sha256:678f03514d2ca6f2e8a1905ad9ed18dea187a118e8d1c92efb15bbca5868e1c4",
+            "excerpt_sha256": "sha256:9da17d1845d4d40b7dced044969315d2916def066862fa0dc46684329f677b27",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T05:42:18.112047Z",
+      "scope": "Re-prove agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling with its existing statement",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "74d515b30788e47d45107ea539fed7829a720420",
+        "registry_digest": "sha256:566fc5d9e77aad616d60991c63972c5283e22a018eca6891b63957dbaeccb869"
+      }
+    }
+  ],
+  "supersedes": [
+    "operations-agent-spend-cap-override-r4"
+  ]
+}

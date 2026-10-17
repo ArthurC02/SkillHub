@@ -1,0 +1,40 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "operations-spend-cap-reprove-2026-10-17",
+  "proposal_id": "operations-spend-cap-reprove-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "74d515b30788e47d45107ea539fed7829a720420",
+    "registry_digest": "sha256:566fc5d9e77aad616d60991c63972c5283e22a018eca6891b63957dbaeccb869"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling",
+      "mutated_protection": "apps/platform/internal/product/operations/agents.go:149: *capMicros <= 0 || *capMicros > MaxDailySpendCapMicros -> *capMicros <= 0 || *capMicros > MaxDailySpendCapMicros+1000000",
+      "failure_evidence": "=== RUN   TestAnOperatorSetsAnAgentsDailySpendCapWithinTheCeilingAndClearsItBackToTheDefault\n    platform_settings_integration_test.go:53: one past the ceiling: got 200 map[actions:[] daily_spend_cap_overridden:true daily_spend_cap_usd_micros:5.000001e+06 default_daily_spend_cap_usd_micros:1 enabled:false model_role:skillhub-test name:agent-spend-cap purpose:test agent tools:[maintenance_report]], want 400\n    platform_settings_integration_test.go:61: refused changes wrote 1 audit events\n--- FAIL: TestAnOperatorSetsAnAgentsDailySpendCapWithinTheCeilingAndClearsItBackToTheDefault (0.08s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.967s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/platform_settings_integration_test.go",
+    "apps/platform/internal/product/operations/agents.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnOperatorSetsAnAgentsDailySpendCapWithinTheCeilingAndClearsItBackToTheDefault$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ec619407c2e3679e740e8a3e0f5086f3ca4be0f48c3c05dd0c7d598fe8ad486f",
+      "finished_at": "2026-10-17T05:42:17.833900Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
