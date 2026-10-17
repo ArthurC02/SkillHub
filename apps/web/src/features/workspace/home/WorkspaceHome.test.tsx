@@ -1,7 +1,7 @@
 import { ME as SESSION } from "../../../testing/fixtures/platform";
 import { StrictMode, act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../../core/api/queryClient";
 import { queryKeys } from "../../../core/api/queryKeys";
@@ -47,7 +47,9 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   await act(async () => queryClient.cancelQueries());
+  onlineManager.setOnline(true);
   container.remove();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -55,6 +57,96 @@ function json(body: unknown, status = 200) {
   return Promise.resolve(
     new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
   );
+}
+
+for (const identityConfirmed of [false, true]) {
+  test(`workspace home explains paused initial ${identityConfirmed ? "summaries" : "identity"} without issuing reads`, async () => {
+    const fetchSpy = vi.fn(() => json({ error: "unexpected request" }, 500));
+    vi.stubGlobal("fetch", fetchSpy);
+    if (identityConfirmed) {
+      queryClient.setQueryData(queryKeys.me, {
+        ...SESSION,
+        features: { generate_skill: true, creation_skill: true },
+      });
+    }
+    onlineManager.setOnline(false);
+    await render(
+      <WorkspaceHome />,
+      () => container.querySelectorAll("[data-loading]").length === (identityConfirmed ? 4 : 1),
+    );
+
+    for (const what of identityConfirmed
+      ? ["需要處理的試跑", "你的資產", "發佈成果", "最近的創作"]
+      : ["工作區首頁"]) {
+      expect(container.textContent).toContain(`等待連線以讀取${what}；恢復連線後會繼續讀取。`);
+    }
+    expect(container.querySelector(".loading-skeleton")).toBeNull();
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(container.textContent).not.toContain("目前沒有");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+}
+
+for (const previous of ["empty", "active", "error"] as const) {
+  test(`workspace home explains paused cached ${previous} summaries without reusing empty or failed conclusions`, async () => {
+    let fail = false;
+    const fetchSpy = vi.fn((input: string) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return json({ ...SESSION, features: { generate_skill: true, creation_skill: true } });
+      }
+      if (fail) return json({ error: "service unavailable" }, 503);
+      if (url.includes("/runs?")) {
+        return json({
+          runs:
+            previous === "active"
+              ? [run("active-run", "Still working", "running", "undetermined")]
+              : [],
+        });
+      }
+      if (url.endsWith("/skills"))
+        return json({ skills: [], total: 0, limit: 100, truncated: false });
+      if (url.endsWith("/me/publications")) return json({ publications: [] });
+      if (url.endsWith("/creation-sessions")) return json([]);
+      return json({ error: "not found" }, 404);
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    await render(<WorkspaceHome />, () =>
+      (container.textContent ?? "").includes("目前沒有發佈成果。"),
+    );
+    await waitFor(() => container.querySelectorAll("[data-loading]").length === 0);
+    if (previous === "error") {
+      fail = true;
+      await act(async () => {
+        await queryClient.refetchQueries({ type: "active" });
+      });
+      await waitFor(() => container.querySelectorAll('[role="alert"]').length === 4);
+    }
+    const before = fetchSpy.mock.calls.length;
+    onlineManager.setOnline(false);
+    await act(async () => {
+      void queryClient.refetchQueries({ type: "active" });
+    });
+    await waitFor(() => container.querySelectorAll("[data-loading]").length === 4);
+
+    for (const what of ["需要處理的試跑", "你的資產", "發佈成果", "最近的創作"]) {
+      expect(container.textContent).toContain(`等待連線以讀取${what}；恢復連線後會繼續讀取。`);
+    }
+    expect(container.querySelector(".loading-skeleton")).toBeNull();
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(container.textContent).not.toContain("目前沒有");
+    expect(container.textContent).not.toContain("資產庫目前是空的。");
+    expect(container.textContent).not.toContain("目前無法確認哪些試跑仍在執行");
+    expect(container.querySelectorAll(".workspace-home-list > li")).toHaveLength(
+      previous === "active" ? 1 : 0,
+    );
+    const refresh = Array.from(container.querySelectorAll("button")).filter(
+      (button) => button.textContent === "等待連線…",
+    );
+    expect(refresh).toHaveLength(previous === "active" ? 1 : 0);
+    for (const button of refresh) expect(button.disabled).toBe(true);
+    expect(fetchSpy).toHaveBeenCalledTimes(before);
+  });
 }
 
 async function render(node: ReactNode, settled: () => boolean) {
@@ -552,45 +644,90 @@ test("workspace home surfaces a refresh failure after an earlier empty creation 
   expect(section("繼續進行").textContent).not.toContain("service unavailable");
 });
 
-test("workspace home removes a creation continuation when its action deadline passes", async () => {
-  vi.stubGlobal("fetch", (input: string) => {
-    const url = String(input);
-    if (url.endsWith("/me")) {
-      return json({
-        ...SESSION,
-        email: "tester@example.com",
-        display_name: "tester",
-        operator: false,
-        features: { generate_skill: true, creation_skill: true },
+test.each([0, 99, 101])(
+  "workspace home removes a creation continuation when its action deadline passes after a %i ms read",
+  async (responseAt) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-17T00:00:00Z"));
+    const startedAt = Date.now();
+    const deadline = startedAt + 100;
+    let creationRequested = false;
+    vi.stubGlobal("fetch", (input: string) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return json({
+          ...SESSION,
+          email: "tester@example.com",
+          display_name: "tester",
+          operator: false,
+          features: { generate_skill: true, creation_skill: true },
+        });
+      }
+      if (url.endsWith("/creation-sessions")) {
+        creationRequested = true;
+        const result = json([
+          {
+            id: "88888888-8888-4888-8888-888888888888",
+            revision: 1,
+            state: "waiting_input",
+            snapshot: { brief: "即將到期的創作" },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            expires_at: new Date(Date.now() + 60_000).toISOString(),
+            deadline: new Date(deadline).toISOString(),
+          },
+        ]);
+        return new Promise<Response>((resolve) => {
+          setTimeout(() => resolve(result), Math.max(0, startedAt + responseAt - Date.now()));
+        });
+      }
+      if (url.includes("/runs?")) return json({ runs: [] });
+      if (url.endsWith("/skills")) {
+        return json({ skills: [], total: 0, limit: 100, truncated: false });
+      }
+      if (url.endsWith("/me/publications")) return json({ publications: [] });
+      return json({ error: "not found" }, 404);
+    });
+
+    await render(<WorkspaceHome />, () => true);
+    async function flushUntil(settled: () => boolean) {
+      for (let step = 0; step < 10 && !settled(); step++) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1);
+        });
+      }
+      expect(settled()).toBe(true);
+    }
+    await flushUntil(() => creationRequested);
+    expect(Date.now()).toBeLessThan(deadline);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(Math.max(0, startedAt + responseAt - Date.now()));
+    });
+    await flushUntil(
+      () =>
+        queryClient.getQueryData(queryKeys.creation.sessions) !== undefined &&
+        container.querySelector("[data-loading]") === null,
+    );
+    if (responseAt === 0) {
+      expect(Date.now()).toBeLessThan(deadline);
+      expect(container.textContent).toContain("即將到期的創作");
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(deadline - Date.now() - 1);
+      });
+      expect(section("繼續進行").textContent).toContain("即將到期的創作");
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2);
+      });
+    } else {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(Math.max(0, deadline + 1 - Date.now()));
       });
     }
-    if (url.endsWith("/creation-sessions")) {
-      return json([
-        {
-          id: "88888888-8888-4888-8888-888888888888",
-          revision: 1,
-          state: "waiting_input",
-          snapshot: { brief: "即將到期的創作" },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 60_000).toISOString(),
-          deadline: new Date(Date.now() + 100).toISOString(),
-        },
-      ]);
-    }
-    if (url.includes("/runs?")) return json({ runs: [] });
-    if (url.endsWith("/skills")) {
-      return json({ skills: [], total: 0, limit: 100, truncated: false });
-    }
-    if (url.endsWith("/me/publications")) return json({ publications: [] });
-    return json({ error: "not found" }, 404);
-  });
 
-  await render(<WorkspaceHome />, () => (container.textContent ?? "").includes("即將到期的創作"));
-  await waitFor(() => section("繼續進行") === undefined);
-
-  expect(container.textContent).not.toContain("即將到期的創作");
-});
+    expect(section("繼續進行")).toBeUndefined();
+    expect(container.textContent).not.toContain("即將到期的創作");
+  },
+);
 
 test("workspace home without active work does not show a stale refresh control", async () => {
   vi.stubGlobal("fetch", (input: string) => {

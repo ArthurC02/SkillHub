@@ -35,7 +35,7 @@ export function WorkspaceHome() {
   const generateExposed = useGenerateEntryPoint();
   const creationExposed = useCreationEntryPoint();
 
-  if (me.isPending) return <Loading what="工作區首頁" />;
+  if (me.isPending) return <Loading what="工作區首頁" paused={me.fetchStatus === "paused"} />;
   if (me.error)
     return (
       <PageReadFailure
@@ -64,6 +64,8 @@ function WorkspaceHomeContent({
   creationExposed: boolean;
 }) {
   const runs = useRuns();
+  const busy = runs.fetchStatus !== "idle";
+  const paused = runs.fetchStatus === "paused";
   const runData = runs.error ? undefined : runs.data;
   const runRows = runData?.pages.flatMap((page) => page.runs) ?? [];
   const attention = runRows.filter(
@@ -84,9 +86,11 @@ function WorkspaceHomeContent({
           </h2>
           <p className="note">執行失敗、逾時或仍待判斷的結果會集中在這裡。</p>
         </header>
-        {runs.isPending && <Loading what="需要處理的試跑" />}
+        {(runs.isPending || paused || (runRows.length === 0 && busy)) && (
+          <Loading what="需要處理的試跑" paused={paused} />
+        )}
         <ReadFailure
-          error={runs.error}
+          error={busy ? undefined : runs.error}
           what="需要處理的試跑"
           retry={() => void runs.refetch()}
           retrying={runs.isFetching}
@@ -94,7 +98,7 @@ function WorkspaceHomeContent({
         />
         {runData &&
           (attention.length === 0 ? (
-            <RunEmptyState kind="attention" hasMore={runs.hasNextPage} />
+            !busy && <RunEmptyState kind="attention" hasMore={runs.hasNextPage} />
           ) : (
             <ul className="workspace-home-list" data-role="evidence">
               {attention.slice(0, 3).map((run) => (
@@ -119,19 +123,20 @@ function WorkspaceHomeContent({
             inFlight={active.length > 0}
             updatedAt={runs.dataUpdatedAt}
             fetching={runs.isFetching}
+            paused={paused}
             refetch={async () => {
               const result = await runs.refetch();
               if (result.error) document.getElementById("workspace-attention-heading")?.focus();
             }}
           />
-          {runs.error && (
+          {runs.error && !busy && (
             <p className="note" data-role="reason">
               目前無法確認哪些試跑仍在執行；請使用「需要留意」區的「再試一次」。
             </p>
           )}
           {runData &&
             (active.length === 0 ? (
-              <RunEmptyState kind="active" hasMore={runs.hasNextPage} />
+              !busy && <RunEmptyState kind="active" hasMore={runs.hasNextPage} />
             ) : (
               <ul className="workspace-home-list">
                 {active.slice(0, 3).map((run) => (
@@ -154,6 +159,8 @@ function WorkspaceHomeContent({
 
 function WorkspaceAssets() {
   const skills = useOwnSkills();
+  const busy = skills.fetchStatus !== "idle";
+  const paused = skills.fetchStatus === "paused";
   const skillData = skills.error ? undefined : skills.data;
   const owned = skillData?.skills.slice(0, 4) ?? [];
   return (
@@ -169,9 +176,11 @@ function WorkspaceAssets() {
           打開資產庫
         </Link>
       </header>
-      {skills.isPending && <Loading what="你的資產" />}
+      {(skills.isPending || paused || (owned.length === 0 && busy)) && (
+        <Loading what="你的資產" paused={paused} />
+      )}
       <ReadFailure
-        error={skills.error}
+        error={busy ? undefined : skills.error}
         what="你的資產"
         retry={() => void skills.refetch()}
         retrying={skills.isFetching}
@@ -179,17 +188,19 @@ function WorkspaceAssets() {
       />
       {skillData &&
         (owned.length === 0 ? (
-          <div className="workspace-home-empty">
-            <p>資產庫目前是空的。先從 Catalog 找一個，或匯入現成套件。</p>
-            <div className="workspace-home-actions">
-              <Link className="action-secondary" to="/" search={{}}>
-                探索 Catalog
-              </Link>
-              <Link className="action-secondary" to="/workspace/import">
-                匯入套件
-              </Link>
+          !busy && (
+            <div className="workspace-home-empty">
+              <p>資產庫目前是空的。先從 Catalog 找一個，或匯入現成套件。</p>
+              <div className="workspace-home-actions">
+                <Link className="action-secondary" to="/" search={{}}>
+                  探索 Catalog
+                </Link>
+                <Link className="action-secondary" to="/workspace/import">
+                  匯入套件
+                </Link>
+              </div>
             </div>
-          </div>
+          )
         ) : (
           <ul className="workspace-home-assets">
             {owned.map((skill) => (
@@ -234,6 +245,8 @@ function WorkspaceHomeHero({ name }: { name: string }) {
 
 function PublicationContinuations() {
   const publications = useOwnPublications();
+  const busy = publications.fetchStatus !== "idle";
+  const paused = publications.fetchStatus === "paused";
   const data = publications.error ? undefined : publications.data;
   const rows = data?.publications.slice(0, 3) ?? [];
 
@@ -250,9 +263,11 @@ function PublicationContinuations() {
           查看全部發佈
         </Link>
       </header>
-      {publications.isPending && <Loading what="發佈成果" />}
+      {(publications.isPending || paused || (rows.length === 0 && busy)) && (
+        <Loading what="發佈成果" paused={paused} />
+      )}
       <ReadFailure
-        error={publications.error}
+        error={busy ? undefined : publications.error}
         what="發佈成果"
         retry={() => void publications.refetch()}
         retrying={publications.isFetching}
@@ -260,7 +275,7 @@ function PublicationContinuations() {
       />
       {data &&
         (rows.length === 0 ? (
-          <p>目前沒有發佈成果。</p>
+          !busy && <p>目前沒有發佈成果。</p>
         ) : (
           <ul className="workspace-home-list">
             {rows.map((publication) => (
@@ -317,9 +332,12 @@ function publicationStatusLabel(status: OwnerPublicationSummary["status"]): stri
 
 function CreationContinuations() {
   const sessions = useCreationSessions();
-  const now = useDeadlineClock(sessions.data);
+  const busy = sessions.fetchStatus !== "idle";
+  const paused = sessions.fetchStatus === "paused";
+  const data = sessions.error ? undefined : sessions.data;
+  const now = useDeadlineClock(sessions.data, sessions.dataUpdatedAt);
   const resumable =
-    sessions.data
+    data
       ?.filter(
         (session) =>
           session.state !== "saved" &&
@@ -331,7 +349,7 @@ function CreationContinuations() {
     (session) => session.state === "queued" || session.state === "working",
   );
 
-  if (sessions.data && resumable.length === 0 && !sessions.error) return null;
+  if (data && resumable.length === 0 && !busy) return null;
 
   return (
     <section className="workspace-home-section">
@@ -345,21 +363,24 @@ function CreationContinuations() {
         inFlight={working && !sessions.error}
         updatedAt={sessions.dataUpdatedAt}
         fetching={sessions.isFetching}
+        paused={paused}
         refetch={async () => {
           const result = await sessions.refetch();
           if (result.error) document.getElementById("workspace-creations-heading")?.focus();
         }}
         subject="創作"
       />
-      {sessions.isPending && <Loading what="最近的創作" />}
+      {(sessions.isPending || paused || (resumable.length === 0 && busy)) && (
+        <Loading what="最近的創作" paused={paused} />
+      )}
       <ReadFailure
-        error={sessions.error}
+        error={busy ? undefined : sessions.error}
         what="最近的創作"
         retry={() => void sessions.refetch()}
         retrying={sessions.isFetching}
         focusTarget="workspace-creations-heading"
       />
-      {sessions.data && !sessions.error && (
+      {data && resumable.length > 0 && (
         <ul className="workspace-home-list">
           {resumable.map((session) => (
             <CreationItem key={session.id} session={session} />
@@ -370,23 +391,24 @@ function CreationContinuations() {
   );
 }
 
-function useDeadlineClock(sessions: CreationSession[] | undefined): number {
+function useDeadlineClock(sessions: CreationSession[] | undefined, readAt: number): number {
   const [now, setNow] = useState(() => Date.now());
+  const observedAt = Math.max(now, readAt);
 
   useEffect(() => {
     const next = sessions
       ?.map((session) => Date.parse(session.deadline))
-      .filter((deadline) => deadline > now)
+      .filter((deadline) => deadline > observedAt)
       .sort((left, right) => left - right)[0];
     if (next === undefined) return;
     const timeout = window.setTimeout(
       () => setNow(Date.now()),
-      Math.max(0, Math.min(next - now + 1, 60_000)),
+      Math.max(0, Math.min(next - Date.now() + 1, 60_000)),
     );
     return () => window.clearTimeout(timeout);
-  }, [now, sessions]);
+  }, [observedAt, sessions]);
 
-  return now;
+  return observedAt;
 }
 
 function CreationItem({ session }: { session: CreationSession }) {
