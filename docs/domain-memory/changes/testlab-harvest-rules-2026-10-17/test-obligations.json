@@ -1,0 +1,142 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "testlab-harvest-rules-2026-10-17",
+  "proposal_id": "testlab-harvest-rules-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-a-dataset-file-is-at-most-25-mb",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-dataset-file-is-at-most-25-mb",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-dataset-file-is-at-most-25-mb"
+        }
+      ],
+      "expected_outcome": "A dataset file larger than MaxFileBytes is refused before anything is stored; empty and nameless files are refused too.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestUploadDatasetRefusesAnUnusableFileBeforeAnyStorage$ ./internal/trial/design/"
+    },
+    {
+      "id": "rule-a-disguised-executable-is-refused",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-disguised-executable-is-refused",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-disguised-executable-is-refused"
+        }
+      ],
+      "expected_outcome": "An upload whose leading bytes match an executable or archive signature is refused as an unsupported type, whatever its name.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestDetectContentTypeRejectsDisguisedExecutables$ ./internal/trial/design/"
+    },
+    {
+      "id": "rule-a-zip-entry-may-not-escape-its-archive",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-zip-entry-may-not-escape-its-archive",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-zip-entry-may-not-escape-its-archive"
+        }
+      ],
+      "expected_outcome": "A zip upload is refused when any entry would escape the archive root by traversal or an absolute path.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestInspectZipRejectsUnsafeEntries$ ./internal/trial/design/"
+    },
+    {
+      "id": "rule-a-test-case-holds-at-most-50-criteria",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-test-case-holds-at-most-50-criteria",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-test-case-holds-at-most-50-criteria"
+        }
+      ],
+      "expected_outcome": "A Test Case holds at most MaxCriteria acceptance criteria; one more is refused as over the limit.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAddCriterionAcceptsUpToTheLimitAndRefusesOneOver$ ./internal/trial/design/"
+    },
+    {
+      "id": "rule-a-test-case-holds-at-most-20-dataset-files",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-test-case-holds-at-most-20-dataset-files",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-test-case-holds-at-most-20-dataset-files"
+        }
+      ],
+      "expected_outcome": "A Test Case holds at most MaxFilesPerTestCase live dataset files; one more is refused and the object already written is removed.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestUploadDatasetRemovesObjectAfterDefiniteQuotaFailure$ ./internal/trial/design/"
+    },
+    {
+      "id": "rule-a-test-cases-datasets-total-at-most-100-mb",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-test-cases-datasets-total-at-most-100-mb",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-test-cases-datasets-total-at-most-100-mb"
+        }
+      ],
+      "expected_outcome": "All of a Test Case's dataset files together may not exceed MaxTestCaseBytes; an upload past it is refused.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestUploadDatasetAtExactlyTheTestCaseByteLimitIsStoredAndOneByteOverIsNot$ ./internal/trial/design/"
+    },
+    {
+      "id": "rule-a-continuation-prompt-is-held-to-the-prompt-limit",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-continuation-prompt-is-held-to-the-prompt-limit",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-continuation-prompt-is-held-to-the-prompt-limit"
+        }
+      ],
+      "expected_outcome": "A continued snapshot's prompt may not exceed MaxPromptChars characters, counted as characters, not bytes.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAContinuationPromptIsHeldToThePromptLimit$ ./internal/trial/design/"
+    },
+    {
+      "id": "rule-test-case-text-limits-count-characters",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-test-case-text-limits-count-characters",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "test-case-text-limits-count-characters"
+        }
+      ],
+      "expected_outcome": "A Test Case's name and prompt must be non-blank and within their limits, counted in characters so Han text is not penalised for its byte length.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTextLimitsCountCharactersNotBytes$ ./internal/trial/design/"
+    },
+    {
+      "id": "rule-simulated-user-facts-stay-within-their-limits",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-simulated-user-facts-stay-within-their-limits",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "simulated-user-facts-stay-within-their-limits"
+        }
+      ],
+      "expected_outcome": "A simulated user holds at most MaxSimulatedUserFacts non-blank facts totalling at most MaxSimulatedUserFactsChars characters; anything else is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestSimulatedUserFactsStayWithinTheirCountAndSize$ ./internal/trial/design/"
+    }
+  ]
+}

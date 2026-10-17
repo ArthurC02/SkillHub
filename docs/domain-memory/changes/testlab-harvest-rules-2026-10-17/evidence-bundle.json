@@ -1,0 +1,185 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "testlab-harvest-rules-2026-10-17",
+  "proposal_id": "testlab-harvest-rules-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "6025f53227a953c336c78e047351296e7aefcd08",
+    "registry_digest": "sha256:53bd9918d4b729497bc2535cab5fab071a2bf14e6b5c186d3dd6d383463c851c"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-dataset-file-is-at-most-25-mb",
+      "mutated_protection": "apps/platform/internal/trial/design/dataset.go:76: size > MaxFileBytes -> size > MaxFileBytes+1000",
+      "failure_evidence": "--- FAIL: TestUploadDatasetRefusesAnUnusableFileBeforeAnyStorage (0.08s)\npanic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]\n...\n.sql.go:257 +0x122\ngithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design.(*Service).GetTestCase(_, {_, _}, {{{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, ...}, ...}, ...}, ...)\n\tC:/Users/a8022/OneDrive/Desktop/SkillHub/apps/platform/internal/trial/design/testlab.go:354 +0x11d\ngithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design.(*Service).UploadDataset(_, {_, _}, {{{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, ...}, ...}, ...}, ...)\n\tC:/Users/a8022/OneDrive/Desktop/SkillHub/apps/platform/internal/trial/design/dataset.go:38 +0x205\ngithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design.TestUploadDatasetRefusesAnUnusableFileBeforeAnyStorage(0x3dbc5d1e8400)\n\tC:/Users/a8022/OneDrive/Desktop/SkillHub/apps/platform/internal/trial/design/dataset_characterization_test.go:115 +0x7b3\ntesting.tRunner(0x3dbc5d1e8400, 0x7ff68e17f3a0)\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/testing/testing.go:2195 +0xc3\ncreated by testing.(*T).Run in goroutine 1\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/testing/testing.go:2260 +0x4b4\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design\t3.865s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-disguised-executable-is-refused",
+      "mutated_protection": "apps/platform/internal/trial/design/filetype.go:51: range deniedMagic { -> range deniedMagic[:0] {",
+      "failure_evidence": "TestDetectContentTypeRejectsDisguisedExecutables/gzip\n=== RUN   TestDetectContentTypeRejectsDisguisedExecutables/xz\n=== RUN   TestDetectContentTypeRejectsDisguisedExecutables/rar\n=== RUN   TestDetectContentTypeRejectsDisguisedExecutables/elf\n=== RUN   TestDetectContentTypeRejectsDisguisedExecutables/pe\n=== RUN   TestDetectContentTypeRejectsDisguisedExecutables/macho\n=== RUN   TestDetectContentTypeRejectsDisguisedExecutables/fatmach\n--- FAIL: TestDetectContentTypeRejectsDisguisedExecutables (0.00s)\n    --- FAIL: TestDetectContentTypeRejectsDisguisedExecutables/shebang (0.00s)\n    --- PASS: TestDetectContentTypeRejectsDisguisedExecutables/gzip (0.00s)\n    --- PASS: TestDetectContentTypeRejectsDisguisedExecutables/xz (0.00s)\n    --- PASS: TestDetectContentTypeRejectsDisguisedExecutables/rar (0.00s)\n    --- PASS: TestDetectContentTypeRejectsDisguisedExecutables/elf (0.00s)\n    --- PASS: TestDetectContentTypeRejectsDisguisedExecutables/pe (0.00s)\n    --- PASS: TestDetectContentTypeRejectsDisguisedExecutables/macho (0.00s)\n    --- PASS: TestDetectContentTypeRejectsDisguisedExecutables/fatmach (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design\t3.428s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-zip-entry-may-not-escape-its-archive",
+      "mutated_protection": "apps/platform/internal/trial/design/filetype.go:102: if escapesArchiveRoot(name) { -> if escapesArchiveRoot(name) && false {",
+      "failure_evidence": "=== RUN   TestInspectZipRejectsUnsafeEntries\n=== RUN   TestInspectZipRejectsUnsafeEntries/nested_archive\n=== RUN   TestInspectZipRejectsUnsafeEntries/nested_tarball\n=== RUN   TestInspectZipRejectsUnsafeEntries/traversal\n    filetype_test.go:117: accepted archive with traversal: err = <nil>\n=== RUN   TestInspectZipRejectsUnsafeEntries/nested_traversal\n    filetype_test.go:117: accepted archive with nested traversal: err = <nil>\n=== RUN   TestInspectZipRejectsUnsafeEntries/absolute_path\n    filetype_test.go:117: accepted archive with absolute path: err = <nil>\n--- FAIL: TestInspectZipRejectsUnsafeEntries (0.00s)\n    --- PASS: TestInspectZipRejectsUnsafeEntries/nested_archive (0.00s)\n    --- PASS: TestInspectZipRejectsUnsafeEntries/nested_tarball (0.00s)\n    --- FAIL: TestInspectZipRejectsUnsafeEntries/traversal (0.00s)\n    --- FAIL: TestInspectZipRejectsUnsafeEntries/nested_traversal (0.00s)\n    --- FAIL: TestInspectZipRejectsUnsafeEntries/absolute_path (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design\t3.756s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-test-case-holds-at-most-50-criteria",
+      "mutated_protection": "apps/platform/internal/trial/design/testlab.go:640: len(list) >= MaxCriteria -> len(list) >= MaxCriteria+1000",
+      "failure_evidence": "=== RUN   TestAddCriterionAcceptsUpToTheLimitAndRefusesOneOver\n    testlab_test.go:200: criterion 51 returned <nil>, want ErrLimitExceeded\n--- FAIL: TestAddCriterionAcceptsUpToTheLimitAndRefusesOneOver (0.25s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design\t4.220s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-test-case-holds-at-most-20-dataset-files",
+      "mutated_protection": "apps/platform/internal/trial/design/dataset.go:251: usage.FileCount+1 > MaxFilesPerTestCase -> usage.FileCount+1 > MaxFilesPerTestCase+1000",
+      "failure_evidence": "=== RUN   TestUploadDatasetRemovesObjectAfterDefiniteQuotaFailure\n    dataset_ownership_integration_test.go:430: upload beyond file quota returned <nil>, want ErrLimitExceeded\n--- FAIL: TestUploadDatasetRemovesObjectAfterDefiniteQuotaFailure (0.03s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design\t3.257s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-test-cases-datasets-total-at-most-100-mb",
+      "mutated_protection": "apps/platform/internal/trial/design/dataset.go:255: usage.TotalBytes+int64(size) > MaxTestCaseBytes -> usage.TotalBytes+int64(size) > MaxTestCaseBytes+1000",
+      "failure_evidence": "=== RUN   TestUploadDatasetAtExactlyTheTestCaseByteLimitIsStoredAndOneByteOverIsNot\n    dataset_characterization_test.go:196: one byte over the test case: <nil>, want ErrLimitExceeded\n    dataset_characterization_test.go:199: puts=[datasets/1a90b227-5bc5-434b-91d3-d7939a224376/9eaa81a0-f84b-44f7-b813-928e3a84c3af] removed=[], want the written object removed again\n--- FAIL: TestUploadDatasetAtExactlyTheTestCaseByteLimitIsStoredAndOneByteOverIsNot (0.06s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design\t3.334s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-continuation-prompt-is-held-to-the-prompt-limit",
+      "mutated_protection": "apps/platform/internal/trial/design/snapshot.go:298: utf8.RuneCountInString(prompt) > MaxPromptChars { -> utf8.RuneCountInString(prompt) > MaxPromptChars+1000 {",
+      "failure_evidence": "=== RUN   TestAContinuationPromptIsHeldToThePromptLimit\n    check_test.go:42: one byte past the limit: got testlab: persistence is not configured, want ErrPromptTooLong\n--- FAIL: TestAContinuationPromptIsHeldToThePromptLimit (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design\t3.860s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-test-case-text-limits-count-characters",
+      "mutated_protection": "apps/platform/internal/trial/design/testlab.go:539: case utf8.RuneCountInString(prompt) > MaxPromptChars: -> case utf8.RuneCountInString(prompt) > MaxPromptChars+1000:",
+      "failure_evidence": "=== RUN   TestTextLimitsCountCharactersNotBytes\n    char_limits_test.go:34: prompt of 32769 characters: <nil>, want it refused\n--- FAIL: TestTextLimitsCountCharactersNotBytes (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design\t3.454s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-simulated-user-facts-stay-within-their-limits",
+      "mutated_protection": "apps/platform/internal/trial/design/testlab.go:567: len(facts) > MaxSimulatedUserFacts || total > MaxSimulatedUserFactsChars -> len(facts) > MaxSimulatedUserFacts+1000 || total > MaxSimulatedUserFactsChars+1000",
+      "failure_evidence": "=== RUN   TestSimulatedUserFactsStayWithinTheirCountAndSize\n    test_case_test.go:61: eleven facts: err = <nil>, want accepted false\n    test_case_test.go:61: one character over the budget: err = <nil>, want accepted false\n--- FAIL: TestSimulatedUserFactsStayWithinTheirCountAndSize (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design\t3.313s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/trial/design/char_limits_test.go",
+    "apps/platform/internal/trial/design/check_test.go",
+    "apps/platform/internal/trial/design/dataset.go",
+    "apps/platform/internal/trial/design/dataset_characterization_test.go",
+    "apps/platform/internal/trial/design/dataset_ownership_integration_test.go",
+    "apps/platform/internal/trial/design/filetype.go",
+    "apps/platform/internal/trial/design/filetype_test.go",
+    "apps/platform/internal/trial/design/snapshot.go",
+    "apps/platform/internal/trial/design/test_case_test.go",
+    "apps/platform/internal/trial/design/testlab.go",
+    "apps/platform/internal/trial/design/testlab_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-dataset-file-is-at-most-25-mb",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestUploadDatasetRefusesAnUnusableFileBeforeAnyStorage$ ./internal/trial/design/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:6ab33da392853bc9416a0fee2d389f8b82bd39ecdafabcd1bec4b1369bee3f98",
+      "finished_at": "2026-10-17T06:46:28.580411Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-disguised-executable-is-refused",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestDetectContentTypeRejectsDisguisedExecutables$ ./internal/trial/design/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:d66ea62bb13eb8cce2b8df62aa6e0bcca1b7feaad4b0f6600da9b14ee832e244",
+      "finished_at": "2026-10-17T06:46:36.171015Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-zip-entry-may-not-escape-its-archive",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestInspectZipRejectsUnsafeEntries$ ./internal/trial/design/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b85ff5e2d066794ad34dbf21da7c8d81de3006d12bc0aa4fd91ccb7b17483121",
+      "finished_at": "2026-10-17T06:46:43.043224Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-test-case-holds-at-most-50-criteria",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAddCriterionAcceptsUpToTheLimitAndRefusesOneOver$ ./internal/trial/design/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:cdea5f49a6564a310476ab45cb2688b3502a4807542ef9eac4d5983b2cf6d828",
+      "finished_at": "2026-10-17T06:46:53.330175Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-test-case-holds-at-most-20-dataset-files",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestUploadDatasetRemovesObjectAfterDefiniteQuotaFailure$ ./internal/trial/design/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:0bcc970ec4ef9fb86130fa3e0348edc3d3dd3d4814f7a096d15f4a3b67288373",
+      "finished_at": "2026-10-17T06:47:00.007189Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-test-cases-datasets-total-at-most-100-mb",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestUploadDatasetAtExactlyTheTestCaseByteLimitIsStoredAndOneByteOverIsNot$ ./internal/trial/design/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:94c0a154f07be7f115f037bd1e5e9a37e6582b9b87a9d4f501bfb6c7b15eda12",
+      "finished_at": "2026-10-17T06:47:06.703232Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-continuation-prompt-is-held-to-the-prompt-limit",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAContinuationPromptIsHeldToThePromptLimit$ ./internal/trial/design/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:cf6a5931a76867b83faca088e046288841d72c2f08824e1b44d3b9e297e0b537",
+      "finished_at": "2026-10-17T06:47:13.672859Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-test-case-text-limits-count-characters",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTextLimitsCountCharactersNotBytes$ ./internal/trial/design/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:90b0bff13d84a0ddffc9b45ab79356d8f0009f0bb3d429547875f44bee8d09aa",
+      "finished_at": "2026-10-17T06:47:21.673392Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-simulated-user-facts-stay-within-their-limits",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestSimulatedUserFactsStayWithinTheirCountAndSize$ ./internal/trial/design/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:7a5384dedafa9bc2ab28df39e93d1ccb41bd0a8c76725022b1419e6e09ec0afe",
+      "finished_at": "2026-10-17T06:47:28.020334Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

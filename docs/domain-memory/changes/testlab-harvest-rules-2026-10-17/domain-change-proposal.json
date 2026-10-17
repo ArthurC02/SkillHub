@@ -1,0 +1,388 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "testlab-harvest-rules-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "testlab-harvest-rules-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T06:46:19.247869Z",
+  "verified_at": "2026-10-17T06:47:28.630606Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "6025f53227a953c336c78e047351296e7aefcd08",
+    "registry_digest": "sha256:53bd9918d4b729497bc2535cab5fab071a2bf14e6b5c186d3dd6d383463c851c"
+  },
+  "affected_contexts": [
+    "testlab"
+  ],
+  "rule_ids": [
+    "a-dataset-file-is-at-most-25-mb",
+    "a-disguised-executable-is-refused",
+    "a-zip-entry-may-not-escape-its-archive",
+    "a-test-case-holds-at-most-50-criteria",
+    "a-test-case-holds-at-most-20-dataset-files",
+    "a-test-cases-datasets-total-at-most-100-mb",
+    "a-continuation-prompt-is-held-to-the-prompt-limit",
+    "test-case-text-limits-count-characters",
+    "simulated-user-facts-stay-within-their-limits"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "testlab",
+    "invariant": "Only testlab owns Test Cases, their criteria, datasets and simulated users.",
+    "evidence": [
+      "apps/platform/internal/trial/design/dataset.go:76-78"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/design/testlab.go:558-569"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the testlab Context found these enforced rules; the reviewed Registry held none."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording guards no test reaches: they wait for a test."
+    ],
+    "proof_obligations": [
+      "rule-a-dataset-file-is-at-most-25-mb",
+      "rule-a-disguised-executable-is-refused",
+      "rule-a-zip-entry-may-not-escape-its-archive",
+      "rule-a-test-case-holds-at-most-50-criteria",
+      "rule-a-test-case-holds-at-most-20-dataset-files",
+      "rule-a-test-cases-datasets-total-at-most-100-mb",
+      "rule-a-continuation-prompt-is-held-to-the-prompt-limit",
+      "rule-test-case-text-limits-count-characters",
+      "rule-simulated-user-facts-stay-within-their-limits"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-dataset-file-is-at-most-25-mb",
+        "statement": "A dataset file larger than MaxFileBytes is refused before anything is stored; empty and nameless files are refused too.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "A file of 25 MB and one byte is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/dataset.go",
+            "lines": {
+              "start": 76,
+              "end": 78
+            },
+            "excerpt_sha256": "sha256:c15f426d0c807786500f7719fd88f62f97411f5f43c9a464f1cdac40bc8f9f3c"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/dataset_characterization_test.go",
+            "lines": {
+              "start": 101,
+              "end": 122
+            },
+            "content_sha256": "sha256:48d812ffb6b3656ba59534a7c995ea43bb85307a81364e40432645a8b7252af5",
+            "excerpt_sha256": "sha256:c409da511c4d0da84b9cf5626452aa5b510b0193c3b9f3ba989952ba405de3cb"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-disguised-executable-is-refused",
+        "statement": "An upload whose leading bytes match an executable or archive signature is refused as an unsupported type, whatever its name.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "data.csv beginning with the ELF magic is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/filetype.go",
+            "lines": {
+              "start": 51,
+              "end": 55
+            },
+            "excerpt_sha256": "sha256:4608079bf33bfb95f582fb4e4d0ce9b9ebae7f49441acbd8caf379bf0869c8a4"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/filetype_test.go",
+            "lines": {
+              "start": 56,
+              "end": 75
+            },
+            "content_sha256": "sha256:7ce187157e26d4580b9ce62cbb641150e6d2b5afe5a1a2259fff743b21f9a86a",
+            "excerpt_sha256": "sha256:06fe609c44ac9d636307989282f4ad591018c4aa327e9c742cb7660cec2608d8"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-zip-entry-may-not-escape-its-archive",
+        "statement": "A zip upload is refused when any entry would escape the archive root by traversal or an absolute path.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "A zip holding ../escape.txt is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/filetype.go",
+            "lines": {
+              "start": 102,
+              "end": 104
+            },
+            "excerpt_sha256": "sha256:bc543ac9f019dbe9236e51fcde206dc948af782d135af55374a8e113b6036cf5"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/filetype_test.go",
+            "lines": {
+              "start": 106,
+              "end": 121
+            },
+            "content_sha256": "sha256:7ce187157e26d4580b9ce62cbb641150e6d2b5afe5a1a2259fff743b21f9a86a",
+            "excerpt_sha256": "sha256:0f1417be9843b13d8f9b609f83bda4e55d3cc579224fdb822dba5d951d186766"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-test-case-holds-at-most-50-criteria",
+        "statement": "A Test Case holds at most MaxCriteria acceptance criteria; one more is refused as over the limit.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "The 50th criterion is accepted and the 51st refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/testlab.go",
+            "lines": {
+              "start": 640,
+              "end": 642
+            },
+            "excerpt_sha256": "sha256:f5065104f232d1879c455e454199732e37886328586f6043ec3eb55a1c6a2b53"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/testlab_test.go",
+            "lines": {
+              "start": 184,
+              "end": 202
+            },
+            "content_sha256": "sha256:aa6a39d1bdbb5d36874850d1e3ff97547d2e657d0719b2195c797b48b79ae391",
+            "excerpt_sha256": "sha256:1b5bb2329d2bd01be3ca06ba94c975cf0e2a636727b9d18059947bda29bd737e"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-test-case-holds-at-most-20-dataset-files",
+        "statement": "A Test Case holds at most MaxFilesPerTestCase live dataset files; one more is refused and the object already written is removed.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "With 20 files on the case, a 21st upload is refused and its object removed."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/dataset.go",
+            "lines": {
+              "start": 251,
+              "end": 254
+            },
+            "excerpt_sha256": "sha256:4cf6700bee0a55349f14a7c75c5f2829f7086892cb4f530ecd601546fdf4aa37"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/dataset_ownership_integration_test.go",
+            "lines": {
+              "start": 415,
+              "end": 435
+            },
+            "content_sha256": "sha256:164c13ae9577a6c32f6738e2c41f20fae33ab43b5a4f8183adb14484a9b674ab",
+            "excerpt_sha256": "sha256:2bc57a0f21e3c8eef4047ed2e863700cfb6ead69dc453f65ae3d3d43579e97ad"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-test-cases-datasets-total-at-most-100-mb",
+        "statement": "All of a Test Case's dataset files together may not exceed MaxTestCaseBytes; an upload past it is refused.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "At exactly the limit an upload is stored; one byte over is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/dataset.go",
+            "lines": {
+              "start": 255,
+              "end": 258
+            },
+            "excerpt_sha256": "sha256:ef18ae3b573be41765ba3e4fdeec703582f0a43d6e06a82d71af57c1d952630e"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/dataset_characterization_test.go",
+            "lines": {
+              "start": 182,
+              "end": 201
+            },
+            "content_sha256": "sha256:48d812ffb6b3656ba59534a7c995ea43bb85307a81364e40432645a8b7252af5",
+            "excerpt_sha256": "sha256:351d26f8aa7d63c465e5e20b926ed3ecaa696e3627b9a837315958d34d276ded"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-continuation-prompt-is-held-to-the-prompt-limit",
+        "statement": "A continued snapshot's prompt may not exceed MaxPromptChars characters, counted as characters, not bytes.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "A prompt one character over the limit is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/snapshot.go",
+            "lines": {
+              "start": 298,
+              "end": 300
+            },
+            "excerpt_sha256": "sha256:9184525d33d316f636139c556128d84a195b3a88a5b01fd0ffc482d021b9c722"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/check_test.go",
+            "lines": {
+              "start": 39,
+              "end": 47
+            },
+            "content_sha256": "sha256:c12dfd186d5be5698bc2a495b551ec90a096e6c6de0dac28a24593a5c3c624f7",
+            "excerpt_sha256": "sha256:d67c82b25b4624ba0ed8dcefd49a355fb7f8d332118115cebc7010a0360bbec7"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "test-case-text-limits-count-characters",
+        "statement": "A Test Case's name and prompt must be non-blank and within their limits, counted in characters so Han text is not penalised for its byte length.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "A prompt of MaxPromptChars+1 Han characters is refused; exactly MaxPromptChars is accepted."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/testlab.go",
+            "lines": {
+              "start": 531,
+              "end": 541
+            },
+            "excerpt_sha256": "sha256:ca340efe5e63b62f8f2af103ecbee81a1471dd450f47aaa5239a53f8225b7045"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/char_limits_test.go",
+            "lines": {
+              "start": 9,
+              "end": 37
+            },
+            "content_sha256": "sha256:ebbe965d1bb62dffc47d5362629b14b5fbe3e616f9ab3a2283e1881357b5dd85",
+            "excerpt_sha256": "sha256:0b9e482eae35cb808d2c721fc1ff6d5998507119ad70512da86b3a3d4fd01051"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "simulated-user-facts-stay-within-their-limits",
+        "statement": "A simulated user holds at most MaxSimulatedUserFacts non-blank facts totalling at most MaxSimulatedUserFactsChars characters; anything else is refused.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "Eleven facts, a blank fact or one fact over the total is refused; an empty list removes the persona."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/testlab.go",
+            "lines": {
+              "start": 558,
+              "end": 569
+            },
+            "excerpt_sha256": "sha256:4a2e444d2234a6d7eb1733b0d153d7fbb3c1974a0ba968b5742dca7a3a51e216"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/test_case_test.go",
+            "lines": {
+              "start": 38,
+              "end": 70
+            },
+            "content_sha256": "sha256:a5c10bbfdc526fc7fb855d909e1a4c3ef8f9aa34e80820a34d8208d0e35a1d54",
+            "excerpt_sha256": "sha256:2d507f86466117d9009f59315214a5753b2a74837af0db8268322467dba8f91c"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T06:47:28.319050Z",
+      "scope": "Record testlab rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "6025f53227a953c336c78e047351296e7aefcd08",
+        "registry_digest": "sha256:53bd9918d4b729497bc2535cab5fab071a2bf14e6b5c186d3dd6d383463c851c"
+      }
+    }
+  ]
+}

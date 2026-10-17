@@ -1,0 +1,63 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "testlab-harvest-rules-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed the rules the testlab Context enforces and tests but the Registry did not hold.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context testlab lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-dataset-file-is-at-most-25-mb",
+      "statement": "A dataset file larger than MaxFileBytes is refused before anything is stored; empty and nameless files are refused too."
+    },
+    {
+      "id": "enforced-a-disguised-executable-is-refused",
+      "statement": "An upload whose leading bytes match an executable or archive signature is refused as an unsupported type, whatever its name."
+    },
+    {
+      "id": "enforced-a-zip-entry-may-not-escape-its-archive",
+      "statement": "A zip upload is refused when any entry would escape the archive root by traversal or an absolute path."
+    },
+    {
+      "id": "enforced-a-test-case-holds-at-most-50-criteria",
+      "statement": "A Test Case holds at most MaxCriteria acceptance criteria; one more is refused as over the limit."
+    },
+    {
+      "id": "enforced-a-test-case-holds-at-most-20-dataset-files",
+      "statement": "A Test Case holds at most MaxFilesPerTestCase live dataset files; one more is refused and the object already written is removed."
+    },
+    {
+      "id": "enforced-a-test-cases-datasets-total-at-most-100-mb",
+      "statement": "All of a Test Case's dataset files together may not exceed MaxTestCaseBytes; an upload past it is refused."
+    },
+    {
+      "id": "enforced-a-continuation-prompt-is-held-to-the-prompt-limit",
+      "statement": "A continued snapshot's prompt may not exceed MaxPromptChars characters, counted as characters, not bytes."
+    },
+    {
+      "id": "enforced-test-case-text-limits-count-characters",
+      "statement": "A Test Case's name and prompt must be non-blank and within their limits, counted in characters so Han text is not penalised for its byte length."
+    },
+    {
+      "id": "enforced-simulated-user-facts-stay-within-their-limits",
+      "statement": "A simulated user holds at most MaxSimulatedUserFacts non-blank facts totalling at most MaxSimulatedUserFactsChars characters; anything else is refused."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/trial/design/char_limits_test.go",
+    "apps/platform/internal/trial/design/check_test.go",
+    "apps/platform/internal/trial/design/dataset.go",
+    "apps/platform/internal/trial/design/dataset_characterization_test.go",
+    "apps/platform/internal/trial/design/dataset_ownership_integration_test.go",
+    "apps/platform/internal/trial/design/filetype.go",
+    "apps/platform/internal/trial/design/filetype_test.go",
+    "apps/platform/internal/trial/design/snapshot.go",
+    "apps/platform/internal/trial/design/test_case_test.go",
+    "apps/platform/internal/trial/design/testlab.go",
+    "apps/platform/internal/trial/design/testlab_test.go"
+  ]
+}

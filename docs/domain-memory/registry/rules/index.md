@@ -2,7 +2,10 @@
 
 - [a-balance-never-goes-below-the-lowest-stored-balance](/rules/a-balance-never-goes-below-the-lowest-stored-balance) — An entry that would take a balance below MinBalanceCredits is refused with ErrBalanceOutOfRange and nothing is applied; landing exactly on the minimum is appli….
 - [a-charge-is-debited-once-per-idempotency-key](/rules/a-charge-is-debited-once-per-idempotency-key) — Replaying a charge under the same idempotency key reports it as existing and leaves one cost event, one ledger entry and one debit.
+- [a-continuation-prompt-is-held-to-the-prompt-limit](/rules/a-continuation-prompt-is-held-to-the-prompt-limit) — A continued snapshot's prompt may not exceed MaxPromptChars characters, counted as characters, not bytes.
+- [a-dataset-file-is-at-most-25-mb](/rules/a-dataset-file-is-at-most-25-mb) — A dataset file larger than MaxFileBytes is refused before anything is stored; empty and nameless files are refused too.
 - [a-detail-carries-a-restriction-only-while-one-is-in-effect](/rules/a-detail-carries-a-restriction-only-while-one-is-in-effect) — A Skill's detail carries an access restriction only while one is in effect; a blank restriction is none, and an unrecognised reason still restricts with the de….
+- [a-disguised-executable-is-refused](/rules/a-disguised-executable-is-refused) — An upload whose leading bytes match an executable or archive signature is refused as an unsupported type, whatever its name.
 - [a-feedback-kind-is-blocking-issue-or-need-signal](/rules/a-feedback-kind-is-blocking-issue-or-need-signal) — A feedback kind must be blocking_issue or need_signal; any other or a missing kind is refused with 400.
 - [a-feedback-message-is-at-most-2000-characters](/rules/a-feedback-message-is-at-most-2000-characters) — A feedback message is trimmed, must be non-blank and may hold at most 2000 characters; otherwise it is refused with 400.
 - [a-forged-analytics-session-cookie-is-replaced](/rules/a-forged-analytics-session-cookie-is-replaced) — An analytics session cookie that is not a minted id is never used as the session id; it is replaced with a fresh one.
@@ -29,6 +32,9 @@
 - [a-takedown-needs-a-reason](/rules/a-takedown-needs-a-reason) — A takedown with an empty or whitespace-only reason is refused and the Skill stays up.
 - [a-taken-down-catalog-skill-answers-gone](/rules/a-taken-down-catalog-skill-answers-gone) — Opening a Catalog Skill that has been taken down answers 410 and returns nothing of it.
 - [a-taken-down-skill-takes-no-new-version](/rules/a-taken-down-skill-takes-no-new-version) — A taken-down Skill refuses every new version as skill_taken_down and gains no version row; in a re-import of several Skills the others still import.
+- [a-test-case-holds-at-most-20-dataset-files](/rules/a-test-case-holds-at-most-20-dataset-files) — A Test Case holds at most MaxFilesPerTestCase live dataset files; one more is refused and the object already written is removed.
+- [a-test-case-holds-at-most-50-criteria](/rules/a-test-case-holds-at-most-50-criteria) — A Test Case holds at most MaxCriteria acceptance criteria; one more is refused as over the limit.
+- [a-test-cases-datasets-total-at-most-100-mb](/rules/a-test-cases-datasets-total-at-most-100-mb) — All of a Test Case's dataset files together may not exceed MaxTestCaseBytes; an upload past it is refused.
 - [a-timed-out-run-ends-its-live-attempt](/rules/a-timed-out-run-ends-its-live-attempt) — When a Run reaches its deadline while an attempt is still live, the attempt is finished as timed out in the same step that moves the Run to timed_out, whether….
 - [a-trace-event-falls-in-its-attempts-window](/rules/a-trace-event-falls-in-its-attempts-window) — An event's time must fall between a few minutes in the future and the token's lifetime in the past; epoch or far-future timestamps are refused.
 - [a-trace-payload-is-at-most-96-kib](/rules/a-trace-payload-is-at-most-96-kib) — A trace event whose payload exceeds 96 KiB is refused as invalid; exactly 96 KiB is accepted.
@@ -38,6 +44,7 @@
 - [a-visit-cookie-never-outlives-retention](/rules/a-visit-cookie-never-outlives-retention) — The daily visit cookie lasts until UTC midnight but never longer than the analytics retention period.
 - [a-workspace-runs-one-trial-at-a-time](/rules/a-workspace-runs-one-trial-at-a-time) — A Workspace may have at most one Run in progress; a further request is refused with the workspace_concurrency reason.
 - [a-young-workspace-has-the-first-window-allowance](/rules/a-young-workspace-has-the-first-window-allowance) — Until a Workspace's first window ends, its window ceiling is the first-window allowance, and its window resets at the earlier of that end and the rolling reset….
+- [a-zip-entry-may-not-escape-its-archive](/rules/a-zip-entry-may-not-escape-its-archive) — A zip upload is refused when any entry would escape the archive root by traversal or an absolute path.
 - [account-purge-runs-every-owners-step-or-none](/rules/account-purge-runs-every-owners-step-or-none) — Purging a deleted account runs the purge step of every Context that keeps data for its workspace (analytics, testlab, run, packaging, creation, eval, publishin….
 - [activity-readers-see-only-the-requesting-workspace](/rules/activity-readers-see-only-the-requesting-workspace) — Every owner source of the feed is read with the requesting Workspace's id, so no Workspace sees another's activity.
 - [agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling](/rules/agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling) — A platform agent's effective daily spend cap is the operator's override when one is set, otherwise the default its definition declares.
@@ -88,7 +95,9 @@
 - [replaying-a-grant-key-applies-and-audits-once](/rules/replaying-a-grant-key-applies-and-audits-once) — Re-submitting an operator entry under the same idempotency key returns the current balance without applying it or writing a second audit entry.
 - [run-terminal-status-is-final](/rules/run-terminal-status-is-final) — A Run that has reached a terminal status never transitions again.
 - [session-token-stored-only-as-hash](/rules/session-token-stored-only-as-hash) — The raw session token exists only in the cookie handed to the user; the platform stores and looks up only its SHA-256 hash.
+- [simulated-user-facts-stay-within-their-limits](/rules/simulated-user-facts-stay-within-their-limits) — A simulated user holds at most MaxSimulatedUserFacts non-blank facts totalling at most MaxSimulatedUserFactsChars characters; anything else is refused.
 - [taken-down-or-held-skill-is-not-packaged](/rules/taken-down-or-held-skill-is-not-packaged) — A Skill that the platform has taken down, or whose content is held for an unresolved license question, cannot be built into a package; the refusal names taken_….
+- [test-case-text-limits-count-characters](/rules/test-case-text-limits-count-characters) — A Test Case's name and prompt must be non-blank and within their limits, counted in characters so Han text is not penalised for its byte length.
 - [the-activity-feed-fails-closed-on-an-unreadable-source](/rules/the-activity-feed-fails-closed-on-an-unreadable-source) — If any owner source of the feed cannot be read or is not configured, no partial page is returned; the request fails naming every source that failed.
 - [the-activity-feed-pages-in-one-total-order](/rules/the-activity-feed-pages-in-one-total-order) — The feed is ordered by priority, then newest first, then kind, then source id, and a cursor resumes strictly after the last item returned, so pages neither rep….
 - [the-default-run-allowance](/rules/the-default-run-allowance) — By default a Workspace may start 5 runs a day and 30 per 30 days, and 20 in its first 30 days.
