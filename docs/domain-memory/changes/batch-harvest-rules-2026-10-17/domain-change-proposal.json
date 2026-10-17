@@ -3,12 +3,12 @@
   "proposal_id": "batch-harvest-rules-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "batch-harvest-rules-2026-10-17",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T15:11:56.319212Z",
   "verified_at": "2026-10-17T15:13:02.672139Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T15:13:05.051715Z",
+  "applied_at": "2026-10-17T15:13:07.016928Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "6e23f43962d55d2ddfbef663ea8f6e6551aa24b4",
@@ -332,5 +332,9 @@
         "registry_digest": "sha256:01d4b563e979fa1fffec44c379f093ee6794dd15b1cb27073e31c3086ead66ac"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "37661df470c5046d00ea0530fee38fbacc1ad52b",
+    "registry_digest": "sha256:e40d50a47d23b933ce00cf8e8a0cabd67d37e23ef4f4aa3bf5cde3049be2e4e5"
+  }
 }
