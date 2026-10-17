@@ -7,7 +7,16 @@
     "registry_digest": "sha256:f7038b282715eb4b77779ddadb662beb50acc1678cc6eb2967bf4a8e677eb7de"
   },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "9c4d6bcfd3fde9083615e5f563e1106bf7dc3d55",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "dc7f018e0ea2a0b58080768aa4ca25772a4a6e59",
+      "registry_digest": "sha256:f7038b282715eb4b77779ddadb662beb50acc1678cc6eb2967bf4a8e677eb7de"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "rule-a-grant-key-reused-for-a-different-entry-is-refused",

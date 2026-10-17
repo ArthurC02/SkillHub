@@ -3,12 +3,12 @@
   "proposal_id": "credit-harvest-rules",
   "proposer": "domain-memory-agent",
   "requirement_id": "credit-harvest-rules",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T02:39:13.786904Z",
   "verified_at": "2026-10-17T02:41:07.184601Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T02:42:58.741203Z",
+  "applied_at": "2026-10-17T02:43:00.510532Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "dc7f018e0ea2a0b58080768aa4ca25772a4a6e59",
@@ -436,5 +436,9 @@
         "registry_digest": "sha256:f7038b282715eb4b77779ddadb662beb50acc1678cc6eb2967bf4a8e677eb7de"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "9c4d6bcfd3fde9083615e5f563e1106bf7dc3d55",
+    "registry_digest": "sha256:47a2e1ef7117e9a6db6a85aacd52e5088d2b695a7d4630b04244fc1891d2eac9"
+  }
 }

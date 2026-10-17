@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-17T02:41:06.695372Z"
 sources:
   - resource: "apps/platform/internal/creator/credit/postgres.go#L153-159"
     excerpt_sha256: "sha256:9f9bd680d69cddd3e5b78dd7effb5fdb6978c4c6d8ce28253e1eba19f2f6e4b0"
