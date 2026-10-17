@@ -1,0 +1,40 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "trace-batch-cap-rule-2026-10-17",
+  "proposal_id": "trace-batch-cap-rule-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "ab65a2f2b3b51d85d5d7e150b27d01abd94e4739",
+    "registry_digest": "sha256:e5b36a59e79c03d62f09c3a276923bd0b3b50673b09d33fca2b995d87fc9f4a1"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-trace-ingestion-batch-holds-at-most-1000-events",
+      "mutated_protection": "apps/platform/internal/trial/evidence/http.go:59: if len(events) > maxBatchEvents { -> if len(events) > maxBatchEvents+1 {",
+      "failure_evidence": "=== RUN   TestIngestJudgesABatchOfExactlyTheEventLimitAndRefusesOneEventMore\n    http_test.go:57: a batch of 1001 events: got 500 \"{\\\"error\\\":\\\"trace ingestion failed\\\"}\\n\", want 413 too many events\n--- FAIL: TestIngestJudgesABatchOfExactlyTheEventLimitAndRefusesOneEventMore (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.256s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/trial/evidence/http.go",
+    "apps/platform/internal/trial/evidence/http_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-trace-ingestion-batch-holds-at-most-1000-events",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestIngestJudgesABatchOfExactlyTheEventLimitAndRefusesOneEventMore$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:7553c5097bfab3e0d0124ad9e20208b4eb6f0905e58a3618a48784042ae15296",
+      "finished_at": "2026-10-17T13:12:03.525168Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

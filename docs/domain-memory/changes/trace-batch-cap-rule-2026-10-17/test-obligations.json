@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "trace-batch-cap-rule-2026-10-17",
+  "proposal_id": "trace-batch-cap-rule-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-a-trace-ingestion-batch-holds-at-most-1000-events",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-trace-ingestion-batch-holds-at-most-1000-events",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-trace-ingestion-batch-holds-at-most-1000-events"
+        }
+      ],
+      "expected_outcome": "One trace ingestion request carries at most 1000 events; a larger batch is refused with 413 before any event is judged.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestIngestJudgesABatchOfExactlyTheEventLimitAndRefusesOneEventMore$ ./internal/trial/evidence/"
+    }
+  ]
+}

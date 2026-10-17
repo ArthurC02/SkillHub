@@ -1,0 +1,116 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "trace-batch-cap-rule-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "trace-batch-cap-rule-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T13:11:57.535092Z",
+  "verified_at": "2026-10-17T13:12:04.326159Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "ab65a2f2b3b51d85d5d7e150b27d01abd94e4739",
+    "registry_digest": "sha256:e5b36a59e79c03d62f09c3a276923bd0b3b50673b09d33fca2b995d87fc9f4a1"
+  },
+  "affected_contexts": [
+    "trace"
+  ],
+  "rule_ids": [
+    "a-trace-ingestion-batch-holds-at-most-1000-events"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "trace",
+    "invariant": "Only trace decides which events an ingestion token admits.",
+    "evidence": [
+      "apps/platform/internal/trial/evidence/service.go:188-202"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: the token is minted by run and verified here.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/evidence/service.go:193-202"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A counterfactual over the whole suite showed no test reached this limit; a boundary test was added."
+    ],
+    "decision": "Record both rules citing the guard and the test that fails without it.",
+    "invariants_preserved": [
+      "A workload cannot write evaluation-side events."
+    ],
+    "rejected_alternatives": [
+      "Testing only a far-over value: it would survive the limit drifting upward."
+    ],
+    "proof_obligations": [
+      "rule-a-trace-ingestion-batch-holds-at-most-1000-events"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-trace-ingestion-batch-holds-at-most-1000-events",
+        "statement": "One trace ingestion request carries at most 1000 events; a larger batch is refused with 413 before any event is judged.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "1000 events reach ingestion; 1001 events answer 413 too many events in one batch."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/http.go",
+            "lines": {
+              "start": 20,
+              "end": 20
+            },
+            "excerpt_sha256": "sha256:15c38985632ac58e03ab6c4758c9bc4ecff83ae59196bd5159b89f1c7302c840"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/http.go",
+            "lines": {
+              "start": 59,
+              "end": 62
+            },
+            "excerpt_sha256": "sha256:81de9a87479fee0bec3492b389a487dd4cedeb005e38bdf25df8c572e0265db7"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/http_test.go",
+            "lines": {
+              "start": 48,
+              "end": 59
+            },
+            "content_sha256": "sha256:54210933e3ee706a8aa5feddd053146a5d1e10d0b1add457cf79294663d3542c",
+            "excerpt_sha256": "sha256:f172c0e4a2593829b92fc13dc0d4697666a7379caf20de448fe031ee973d44ba"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T13:12:03.910710Z",
+      "scope": "Record the trace batch limit as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "ab65a2f2b3b51d85d5d7e150b27d01abd94e4739",
+        "registry_digest": "sha256:e5b36a59e79c03d62f09c3a276923bd0b3b50673b09d33fca2b995d87fc9f4a1"
+      }
+    }
+  ]
+}

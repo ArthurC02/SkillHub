@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "trace-batch-cap-rule-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed that one ingestion batch holds at most 1000 events.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context trace lists the batch limit as reviewed, proven by its boundary test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-trace-ingestion-batch-holds-at-most-1000-events",
+      "statement": "One trace ingestion request carries at most 1000 events; a larger batch is refused with 413 before any event is judged."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/trial/evidence/http.go",
+    "apps/platform/internal/trial/evidence/http_test.go"
+  ]
+}
