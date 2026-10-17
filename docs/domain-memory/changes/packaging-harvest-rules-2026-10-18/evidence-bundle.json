@@ -1,0 +1,114 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "packaging-harvest-rules-2026-10-18",
+  "proposal_id": "packaging-harvest-rules-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "135267b5d02239397f641114f340997f14ebdbfe",
+    "registry_digest": "sha256:31576d21624210d4e25712853eaec8db4ebf7808ab5b033f3f864d9ada2722fd"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-built-package-is-at-most-the-produced-size-ceiling",
+      "mutated_protection": "apps/platform/internal/skill/delivery/packaging.go:187: if n <= MaxProducedZipBytes { -> if n <= MaxProducedZipBytes+1 {",
+      "failure_evidence": "=== RUN   TestAPackageJustOverTheImportCeilingStillPackages\n    size_test.go:28: a produced package over the produced ceiling was accepted\n--- FAIL: TestAPackageJustOverTheImportCeilingStillPackages (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery\t2.369s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-package-plan-reads-only-a-version-of-the-requested-skill",
+      "mutated_protection": "apps/platform/internal/skill/delivery/packaging.go:300: if version.SkillID != skill.ID { -> if version.SkillID != skill.ID && false {",
+      "failure_evidence": "nlyAVersionOfTheRequestedSkill/skill_read_fails\n=== RUN   TestAPackagePlanReadsOnlyAVersionOfTheRequestedSkill/version_not_found\n=== RUN   TestAPackagePlanReadsOnlyAVersionOfTheRequestedSkill/version_read_fails\n=== RUN   TestAPackagePlanReadsOnlyAVersionOfTheRequestedSkill/version_of_another_skill\n    plan_subject_characterization_test.go:50: err = <nil>, want skill version not found\n=== RUN   TestAPackagePlanReadsOnlyAVersionOfTheRequestedSkill/version_of_this_skill\n--- FAIL: TestAPackagePlanReadsOnlyAVersionOfTheRequestedSkill (0.00s)\n    --- PASS: TestAPackagePlanReadsOnlyAVersionOfTheRequestedSkill/skill_not_found (0.00s)\n    --- PASS: TestAPackagePlanReadsOnlyAVersionOfTheRequestedSkill/skill_read_fails (0.00s)\n    --- PASS: TestAPackagePlanReadsOnlyAVersionOfTheRequestedSkill/version_not_found (0.00s)\n    --- PASS: TestAPackagePlanReadsOnlyAVersionOfTheRequestedSkill/version_read_fails (0.00s)\n    --- FAIL: TestAPackagePlanReadsOnlyAVersionOfTheRequestedSkill/version_of_another_skill (0.00s)\n    --- PASS: TestAPackagePlanReadsOnlyAVersionOfTheRequestedSkill/version_of_this_skill (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery\t3.346s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-package-is-reused-only-while-it-can-still-be-served",
+      "mutated_protection": "apps/platform/internal/skill/delivery/scan.go:12: !purgedAt.Valid -> true",
+      "failure_evidence": "=== RUN   TestAPackageIsReusedOnlyWhileItCanStillBeServed\n    scan_test.go:45: bytes already purged: reusable = true, want false\n--- FAIL: TestAPackageIsReusedOnlyWhileItCanStillBeServed (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery\t3.102s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-workspace-that-may-not-store-objects-gets-no-package",
+      "mutated_protection": "apps/platform/internal/skill/delivery/packaging.go:785: if !allowed { -> if !allowed && false {",
+      "failure_evidence": "=== RUN   TestAWorkspaceThatMayNotStoreObjectsGetsNoPackage\n    download_lifecycle_characterization_test.go:21: packaging for a workspace that may not store objects: got 201, want 404\n--- FAIL: TestAWorkspaceThatMayNotStoreObjectsGetsNoPackage (0.15s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.130s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-path-windows-would-read-as-nested-or-rooted-never-travels",
+      "mutated_protection": "apps/platform/internal/skill/delivery/export.go:77: path == \".\" || strings.ContainsAny(path, `\\`) { -> path == \".\" {",
+      "failure_evidence": "  TestAPathThatOnlyWindowsWouldReadAsNestedOrRootedNeverTravels\n=== RUN   TestAPathThatOnlyWindowsWouldReadAsNestedOrRootedNeverTravels/scripts/run.sh\n=== RUN   TestAPathThatOnlyWindowsWouldReadAsNestedOrRootedNeverTravels/scripts\\..\\..\\escape.sh\n    export_path_test.go:27: travels(\"scripts\\\\..\\\\..\\\\escape.sh\") = true, \"\"; want travel false, or \"unsafe_path\" when refused\n=== RUN   TestAPathThatOnlyWindowsWouldReadAsNestedOrRootedNeverTravels/a\\b\n    export_path_test.go:27: travels(\"a\\\\b\") = true, \"\"; want travel false, or \"unsafe_path\" when refused\n=== RUN   TestAPathThatOnlyWindowsWouldReadAsNestedOrRootedNeverTravels/C:escape.sh\n--- FAIL: TestAPathThatOnlyWindowsWouldReadAsNestedOrRootedNeverTravels (0.00s)\n    --- PASS: TestAPathThatOnlyWindowsWouldReadAsNestedOrRootedNeverTravels/scripts/run.sh (0.00s)\n    --- FAIL: TestAPathThatOnlyWindowsWouldReadAsNestedOrRootedNeverTravels/scripts\\..\\..\\escape.sh (0.00s)\n    --- FAIL: TestAPathThatOnlyWindowsWouldReadAsNestedOrRootedNeverTravels/a\\b (0.00s)\n    --- PASS: TestAPathThatOnlyWindowsWouldReadAsNestedOrRootedNeverTravels/C:escape.sh (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery\t3.434s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/download_lifecycle_characterization_test.go",
+    "apps/platform/internal/skill/delivery/export.go",
+    "apps/platform/internal/skill/delivery/export_path_test.go",
+    "apps/platform/internal/skill/delivery/packaging.go",
+    "apps/platform/internal/skill/delivery/plan_subject_characterization_test.go",
+    "apps/platform/internal/skill/delivery/scan.go",
+    "apps/platform/internal/skill/delivery/scan_test.go",
+    "apps/platform/internal/skill/delivery/size_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-built-package-is-at-most-the-produced-size-ceiling",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAPackageJustOverTheImportCeilingStillPackages$ ./internal/skill/delivery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:37830b58d60ae7e589f514fe48fa129f4592683024e0f6b3da6f6fbd35156cc5",
+      "finished_at": "2026-10-17T17:11:58.521116Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-package-plan-reads-only-a-version-of-the-requested-skill",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAPackagePlanReadsOnlyAVersionOfTheRequestedSkill$ ./internal/skill/delivery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:6b63698f12b3e1b8a866893f3cf0c78347c8cef7c40268449a5382c7f01061ff",
+      "finished_at": "2026-10-17T17:12:04.943568Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-package-is-reused-only-while-it-can-still-be-served",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAPackageIsReusedOnlyWhileItCanStillBeServed$ ./internal/skill/delivery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:8c4baed77690d44a4c4aee5d3ca02e514ed924ce3eb00d8c680c44c41a33606b",
+      "finished_at": "2026-10-17T17:12:12.017701Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-workspace-that-may-not-store-objects-gets-no-package",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAWorkspaceThatMayNotStoreObjectsGetsNoPackage$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:2b436b14bf65370d610db22896ef2c6d3cd67d488874ebed875330a41b14b4fb",
+      "finished_at": "2026-10-17T17:12:24.845180Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-path-windows-would-read-as-nested-or-rooted-never-travels",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAPathThatOnlyWindowsWouldReadAsNestedOrRootedNeverTravels$ ./internal/skill/delivery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b0104d6c726210cea21e7894eba8cc0fb00c9b0301f17d87a274316af439f945",
+      "finished_at": "2026-10-17T17:12:31.558890Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

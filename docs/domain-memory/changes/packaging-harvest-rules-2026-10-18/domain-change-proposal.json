@@ -1,0 +1,249 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "packaging-harvest-rules-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "packaging-harvest-rules-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T17:11:50.679414Z",
+  "verified_at": "2026-10-17T17:12:32.422345Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "135267b5d02239397f641114f340997f14ebdbfe",
+    "registry_digest": "sha256:31576d21624210d4e25712853eaec8db4ebf7808ab5b033f3f864d9ada2722fd"
+  },
+  "affected_contexts": [
+    "packaging"
+  ],
+  "rule_ids": [
+    "a-built-package-is-at-most-the-produced-size-ceiling",
+    "a-package-plan-reads-only-a-version-of-the-requested-skill",
+    "a-package-is-reused-only-while-it-can-still-be-served",
+    "a-workspace-that-may-not-store-objects-gets-no-package",
+    "a-path-windows-would-read-as-nested-or-rooted-never-travels"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "packaging",
+    "invariant": "Only packaging decides what a package holds and when a stored package may be reused or served.",
+    "evidence": [
+      "apps/platform/internal/skill/delivery/export.go:76-100"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: Workspace lifecycle and owner reads reach packaging through injected readers.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/delivery/packaging.go:773-793"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the packaging Context found these enforced rules; the unsafe-path check survived its counterfactual, so a test was added."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording Workspace scoping of downloads: dropping the scope breaks the owner's own reads too, so no test isolates the stranger case.",
+      "Recording the 4096-byte request body limit: no test reaches it yet."
+    ],
+    "proof_obligations": [
+      "rule-a-built-package-is-at-most-the-produced-size-ceiling",
+      "rule-a-package-plan-reads-only-a-version-of-the-requested-skill",
+      "rule-a-package-is-reused-only-while-it-can-still-be-served",
+      "rule-a-workspace-that-may-not-store-objects-gets-no-package",
+      "rule-a-path-windows-would-read-as-nested-or-rooted-never-travels"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-built-package-is-at-most-the-produced-size-ceiling",
+        "statement": "A package the packager has built is refused when its zip exceeds the produced-size ceiling, and the refusal is counted.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "A zip one byte over the ceiling is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/packaging.go",
+            "lines": {
+              "start": 186,
+              "end": 194
+            },
+            "excerpt_sha256": "sha256:3084fb265faebbaadafa53fa12af62ef081e79c059ce938a4c5a90b66182200c"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/size_test.go",
+            "lines": {
+              "start": 18,
+              "end": 34
+            },
+            "content_sha256": "sha256:3d3c3c9c698c03df43902a6cd279136e3fd363a8aa275e74967733c8605d1c0b",
+            "excerpt_sha256": "sha256:b1c0fce60b779b1f8ad90e845409eaa513c093e66cccac9641a2512800f0b50c"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-package-plan-reads-only-a-version-of-the-requested-skill",
+        "statement": "Planning a package refuses a version that belongs to another Skill, so one Skill's gates are never applied to another Skill's files.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "Asking for Skill A with a version of Skill B is not found."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/packaging.go",
+            "lines": {
+              "start": 285,
+              "end": 305
+            },
+            "excerpt_sha256": "sha256:f195893da12e0c3fdd89965b17be5a9e2204628a3ba80737461dfa8b5c0d3f38"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/plan_subject_characterization_test.go",
+            "lines": {
+              "start": 17,
+              "end": 60
+            },
+            "content_sha256": "sha256:032a611cf94ad59212b9593d17ae863fd0fd2df719f75af1c50e2106e65eb8fc",
+            "excerpt_sha256": "sha256:066b3f1bd8f40a9ffa0f3bf158f51c9b55d0d59ae9d38c8ad230cde015498b9a"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-package-is-reused-only-while-it-can-still-be-served",
+        "statement": "Packaging the same content again reuses an existing package only while it is available, not deleted, not purged and not expired; otherwise a new one is built.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "A purged package with the same identity is not reused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/scan.go",
+            "lines": {
+              "start": 11,
+              "end": 13
+            },
+            "excerpt_sha256": "sha256:075fad83956c729e76d872ca8826f0de58d9f6da0ec7ae631016f1383bfd8c9c"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/scan_test.go",
+            "lines": {
+              "start": 12,
+              "end": 48
+            },
+            "content_sha256": "sha256:8e6f36a033faeba2f0fd6ad6f6b30cef44109dad870c06bf89db6a1e65b6c1b2",
+            "excerpt_sha256": "sha256:1c6fbf00d595c149d835c3c269cb6b39ad060c31f19ff833d357f404b4666f81"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-workspace-that-may-not-store-objects-gets-no-package",
+        "statement": "Before any package object is stored, a Workspace that may not store objects is answered not found and nothing is written.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "A Workspace whose lifecycle forbids storage gets 404 and no object."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/packaging.go",
+            "lines": {
+              "start": 773,
+              "end": 793
+            },
+            "excerpt_sha256": "sha256:1632c80882599b638ca6df20af86d766fd20903472010e09299d63a1c44c57e0"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/download_lifecycle_characterization_test.go",
+            "lines": {
+              "start": 13,
+              "end": 32
+            },
+            "content_sha256": "sha256:16e9d98b595224b3d92cb5ae99d4d2623abd410f8f80b66a06456b009479dfa7",
+            "excerpt_sha256": "sha256:ca6efa9071f4eb20dcf2d1b76c2c639f0e3d52bcb2d0b477af4bf3c354376bee"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-path-windows-would-read-as-nested-or-rooted-never-travels",
+        "statement": "A file whose path holds a backslash or starts with a drive letter is left out of a package as an unsafe path.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "scripts\\..\\..\\escape.sh and C:escape.sh are dropped as unsafe_path."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/export.go",
+            "lines": {
+              "start": 76,
+              "end": 82
+            },
+            "excerpt_sha256": "sha256:2f4b2a7d37b976cbe7edb1ed5693db648f1845d5a9dcf4985e3c54e93b36507c"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/export_path_test.go",
+            "lines": {
+              "start": 9,
+              "end": 31
+            },
+            "content_sha256": "sha256:10cf03c36e237fe66ca2bb3693b0a68f5ecd11619097f223bd6ece7ad33a6e1e",
+            "excerpt_sha256": "sha256:f918b61117ac9ad181e028ab7bc46f393317ca5b5e13e10efaf58fc8d8ac1bf7"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T17:12:31.935298Z",
+      "scope": "Record packaging rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "135267b5d02239397f641114f340997f14ebdbfe",
+        "registry_digest": "sha256:31576d21624210d4e25712853eaec8db4ebf7808ab5b033f3f864d9ada2722fd"
+      }
+    }
+  ]
+}

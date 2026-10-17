@@ -1,0 +1,82 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "packaging-harvest-rules-2026-10-18",
+  "proposal_id": "packaging-harvest-rules-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-a-built-package-is-at-most-the-produced-size-ceiling",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-built-package-is-at-most-the-produced-size-ceiling",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-built-package-is-at-most-the-produced-size-ceiling"
+        }
+      ],
+      "expected_outcome": "A package the packager has built is refused when its zip exceeds the produced-size ceiling, and the refusal is counted.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAPackageJustOverTheImportCeilingStillPackages$ ./internal/skill/delivery/"
+    },
+    {
+      "id": "rule-a-package-plan-reads-only-a-version-of-the-requested-skill",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-package-plan-reads-only-a-version-of-the-requested-skill",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-package-plan-reads-only-a-version-of-the-requested-skill"
+        }
+      ],
+      "expected_outcome": "Planning a package refuses a version that belongs to another Skill, so one Skill's gates are never applied to another Skill's files.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAPackagePlanReadsOnlyAVersionOfTheRequestedSkill$ ./internal/skill/delivery/"
+    },
+    {
+      "id": "rule-a-package-is-reused-only-while-it-can-still-be-served",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-package-is-reused-only-while-it-can-still-be-served",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-package-is-reused-only-while-it-can-still-be-served"
+        }
+      ],
+      "expected_outcome": "Packaging the same content again reuses an existing package only while it is available, not deleted, not purged and not expired; otherwise a new one is built.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAPackageIsReusedOnlyWhileItCanStillBeServed$ ./internal/skill/delivery/"
+    },
+    {
+      "id": "rule-a-workspace-that-may-not-store-objects-gets-no-package",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-workspace-that-may-not-store-objects-gets-no-package",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-workspace-that-may-not-store-objects-gets-no-package"
+        }
+      ],
+      "expected_outcome": "Before any package object is stored, a Workspace that may not store objects is answered not found and nothing is written.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAWorkspaceThatMayNotStoreObjectsGetsNoPackage$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-path-windows-would-read-as-nested-or-rooted-never-travels",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-path-windows-would-read-as-nested-or-rooted-never-travels",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-path-windows-would-read-as-nested-or-rooted-never-travels"
+        }
+      ],
+      "expected_outcome": "A file whose path holds a backslash or starts with a drive letter is left out of a package as an unsafe path.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAPathThatOnlyWindowsWouldReadAsNestedOrRootedNeverTravels$ ./internal/skill/delivery/"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "packaging-harvest-rules-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed the size, version, reuse, storage and path rules the packaging Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context packaging lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-built-package-is-at-most-the-produced-size-ceiling",
+      "statement": "A package the packager has built is refused when its zip exceeds the produced-size ceiling, and the refusal is counted."
+    },
+    {
+      "id": "enforced-a-package-plan-reads-only-a-version-of-the-requested-skill",
+      "statement": "Planning a package refuses a version that belongs to another Skill, so one Skill's gates are never applied to another Skill's files."
+    },
+    {
+      "id": "enforced-a-package-is-reused-only-while-it-can-still-be-served",
+      "statement": "Packaging the same content again reuses an existing package only while it is available, not deleted, not purged and not expired; otherwise a new one is built."
+    },
+    {
+      "id": "enforced-a-workspace-that-may-not-store-objects-gets-no-package",
+      "statement": "Before any package object is stored, a Workspace that may not store objects is answered not found and nothing is written."
+    },
+    {
+      "id": "enforced-a-path-windows-would-read-as-nested-or-rooted-never-travels",
+      "statement": "A file whose path holds a backslash or starts with a drive letter is left out of a package as an unsafe path."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/download_lifecycle_characterization_test.go",
+    "apps/platform/internal/skill/delivery/export.go",
+    "apps/platform/internal/skill/delivery/export_path_test.go",
+    "apps/platform/internal/skill/delivery/packaging.go",
+    "apps/platform/internal/skill/delivery/plan_subject_characterization_test.go",
+    "apps/platform/internal/skill/delivery/scan.go",
+    "apps/platform/internal/skill/delivery/scan_test.go",
+    "apps/platform/internal/skill/delivery/size_test.go"
+  ]
+}
