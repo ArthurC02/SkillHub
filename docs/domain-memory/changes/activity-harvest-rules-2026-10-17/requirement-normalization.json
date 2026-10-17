@@ -1,0 +1,48 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "activity-harvest-rules-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed the feed ordering, paging, scoping and fail-closed rules the activity Context enforces and tests but the Registry did not hold.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context activity lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-the-activity-feed-fails-closed-on-an-unreadable-source",
+      "statement": "If any owner source of the feed cannot be read or is not configured, no partial page is returned; the request fails naming every source that failed."
+    },
+    {
+      "id": "enforced-an-activity-cursor-must-be-one-the-feed-issued",
+      "statement": "A cursor the feed did not issue is refused as invalid before any owner source is read."
+    },
+    {
+      "id": "enforced-a-runs-evaluation-can-raise-its-activity-priority",
+      "statement": "A Run and its evaluation appear as one item; when the evaluation is more urgent, or equally urgent and newer, its classification and status replace the Run's, and the item's time is the later of the two."
+    },
+    {
+      "id": "enforced-the-activity-feed-pages-in-one-total-order",
+      "statement": "The feed is ordered by priority, then newest first, then kind, then source id, and a cursor resumes strictly after the last item returned, so pages neither repeat nor skip an item."
+    },
+    {
+      "id": "enforced-an-activity-page-holds-at-most-its-limit",
+      "statement": "A page never holds more items than its limit; a next cursor is issued only while items remain."
+    },
+    {
+      "id": "enforced-activity-readers-see-only-the-requesting-workspace",
+      "statement": "Every owner source of the feed is read with the requesting Workspace's id, so no Workspace sees another's activity."
+    },
+    {
+      "id": "enforced-an-activity-page-limit-is-1-to-100",
+      "statement": "The activity feed refuses a page limit outside 1 to 100 with 400."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/activity.go",
+    "apps/platform/internal/entrypoint/api/apiserver/activity_integration_test.go",
+    "apps/platform/internal/product/activity/service.go",
+    "apps/platform/internal/product/activity/service_test.go"
+  ]
+}

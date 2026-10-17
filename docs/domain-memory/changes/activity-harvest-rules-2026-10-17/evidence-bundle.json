@@ -1,0 +1,144 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "activity-harvest-rules-2026-10-17",
+  "proposal_id": "activity-harvest-rules-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "a42a3dcc4359b7e149eaf44ee9ebdd9ee88f5472",
+    "registry_digest": "sha256:29e33605707c22b8ddddff7e81cc34079e63c58421abe6d005e725762aceb8ae"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-activity-feed-fails-closed-on-an-unreadable-source",
+      "mutated_protection": "apps/platform/internal/product/activity/service.go:174: if len(facts.unavailable) > 0 { -> if len(facts.unavailable) > 0 && false {",
+      "failure_evidence": "=== RUN   TestListFailsClosedAndNamesEveryUnavailableSource\n    service_test.go:84: error = <nil>\n--- FAIL: TestListFailsClosedAndNamesEveryUnavailableSource (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/activity\t0.986s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-activity-cursor-must-be-one-the-feed-issued",
+      "mutated_protection": "apps/platform/internal/product/activity/service.go:169: return Page{}, err -> return Page{}, nil",
+      "failure_evidence": "=== RUN   TestListRejectsMalformedCursorBeforeReadingOwners\n    service_test.go:104: error = <nil>, want invalid cursor\n--- FAIL: TestListRejectsMalformedCursorBeforeReadingOwners (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/activity\t1.289s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-runs-evaluation-can-raise-its-activity-priority",
+      "mutated_protection": "apps/platform/internal/product/activity/service.go:242: classificationRank(evaluation.Classification) < classificationRank(classification) || -> classificationRank(evaluation.Classification) > classificationRank(classification) ||",
+      "failure_evidence": "=== RUN   TestListCombinesRunAndEvaluationByPriorityAndLatestOwnerTime\n    service_test.go:39: combined item = {Kind:run SourceID:run-1 Summary:Release notes 的試跑 Classification:recent Status:{Value:succeeded Label:試跑完成 Note:} ActivityAt:2026-09-30 09:00:00 +0000 UTC Context:0x8c265ffc380 Continuation:{Kind:run RunID:run-1 SessionID: ArtifactID: Publisher: PublicationName:}}\n--- FAIL: TestListCombinesRunAndEvaluationByPriorityAndLatestOwnerTime (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/activity\t1.117s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-activity-feed-pages-in-one-total-order",
+      "mutated_protection": "apps/platform/internal/product/activity/service.go:180: compareCursor(item, *pageCursor) <= 0 -> compareCursor(item, *pageCursor) < 0",
+      "failure_evidence": "=== RUN   TestListUsesTheGlobalTotalOrderAcrossPages\n    service_test.go:67: order = [c a a], want [c a b]\n--- FAIL: TestListUsesTheGlobalTotalOrderAcrossPages (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/activity\t1.140s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-activity-page-holds-at-most-its-limit",
+      "mutated_protection": "apps/platform/internal/product/activity/service.go:183: len(page.Items) > limit { -> len(page.Items) > limit+1000 {",
+      "failure_evidence": "=== RUN   TestListUsesTheGlobalTotalOrderAcrossPages\n    service_test.go:67: order = [c a c], want [c a b]\n--- FAIL: TestListUsesTheGlobalTotalOrderAcrossPages (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/activity\t1.275s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-activity-readers-see-only-the-requesting-workspace",
+      "mutated_protection": "apps/platform/internal/product/activity/service.go:224: return reader(ctx, workspaceID) -> return reader(ctx, pgtype.UUID{})",
+      "failure_evidence": "=== RUN   TestListScopesEveryOwnerReaderToTheRequestedWorkspace\n    service_test.go:172: alice items = 0, bob items = 0\n--- FAIL: TestListScopesEveryOwnerReaderToTheRequestedWorkspace (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/activity\t1.023s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-activity-page-limit-is-1-to-100",
+      "mutated_protection": "apps/platform/internal/entrypoint/api/apiserver/activity.go:42: value < 1 || value > 100 -> value < 1 || value > 100+1000",
+      "failure_evidence": "=== RUN   TestWorkspaceActivityRejectsForeignCursorAndOutOfRangeLimit\n2026/10/17 14:22:00 ERROR request failed on the server method=GET path=/me/activity status=500\n    activity_integration_test.go:139: GET /me/activity?limit=101: status = 500, body = map[error:activity lookup failed]\n--- FAIL: TestWorkspaceActivityRejectsForeignCursorAndOutOfRangeLimit (0.10s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.312s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/activity.go",
+    "apps/platform/internal/entrypoint/api/apiserver/activity_integration_test.go",
+    "apps/platform/internal/product/activity/service.go",
+    "apps/platform/internal/product/activity/service_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-the-activity-feed-fails-closed-on-an-unreadable-source",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestListFailsClosedAndNamesEveryUnavailableSource$ ./internal/product/activity/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e2da6ec49a97cdf3b75d2eacd515f658607f59e9ce4066faecb161115a0dff34",
+      "finished_at": "2026-10-17T06:41:20.382594Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-activity-cursor-must-be-one-the-feed-issued",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestListRejectsMalformedCursorBeforeReadingOwners$ ./internal/product/activity/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:fcc268ba1775b58c2ad5db3d104189c619a7106b2b9fe1e86228010665b41728",
+      "finished_at": "2026-10-17T06:41:22.633508Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-runs-evaluation-can-raise-its-activity-priority",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestListCombinesRunAndEvaluationByPriorityAndLatestOwnerTime$ ./internal/product/activity/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e5b965dbec783758686f213815c6d4690fc53e44680e11fde606dd69be6d799f",
+      "finished_at": "2026-10-17T06:41:25.939937Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-the-activity-feed-pages-in-one-total-order",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestListUsesTheGlobalTotalOrderAcrossPages$ ./internal/product/activity/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b72882e218f2febdbd5d64ff2078efc0831ed9b328a1730b797b6b9cf4454a3f",
+      "finished_at": "2026-10-17T06:41:28.485776Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-activity-page-holds-at-most-its-limit",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestListUsesTheGlobalTotalOrderAcrossPages$ ./internal/product/activity/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4676ca483e35c241477aa0507e76153fcc7717b2cb5cee5b9d3557291a09b54e",
+      "finished_at": "2026-10-17T06:41:30.928891Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-activity-readers-see-only-the-requesting-workspace",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestListScopesEveryOwnerReaderToTheRequestedWorkspace$ ./internal/product/activity/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:24c6303fb82524ff6011a2efc3cd51387bc481b48df635293c69b5bf12e97708",
+      "finished_at": "2026-10-17T06:41:33.390895Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-activity-page-limit-is-1-to-100",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestWorkspaceActivityRejectsForeignCursorAndOutOfRangeLimit$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:2c49958e08ca94f458be12395cf0e56d625382da9dfbfd37fa3c694baf41d936",
+      "finished_at": "2026-10-17T06:41:43.373545Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

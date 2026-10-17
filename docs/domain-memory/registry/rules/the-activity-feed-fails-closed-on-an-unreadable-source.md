@@ -1,0 +1,16 @@
+---
+type: Business Rule
+status: draft
+sources:
+  - resource: "apps/platform/internal/product/activity/service.go#L173-176"
+    excerpt_sha256: "sha256:5016a6ac6b4593356e8f1043e78fbe7859ff1d979ba065c1d26bf32f557bd694"
+  - resource: "apps/platform/internal/product/activity/service.go#L221-223"
+    excerpt_sha256: "sha256:24e1a8bc3ae06fff8ebb02fa622c923f4a37aa0640b0a7701e1c0119b1481c28"
+---
+If any owner source of the feed cannot be read or is not configured, no partial page is returned; the request fails naming every source that failed.
+
+# Relations
+- Contexts: [activity](/contexts/activity)
+
+# Examples
+- The evaluation store errors and the publishing reader is missing: the error names both and no items are returned.

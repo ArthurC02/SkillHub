@@ -1,0 +1,112 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "activity-harvest-rules-2026-10-17",
+  "proposal_id": "activity-harvest-rules-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-the-activity-feed-fails-closed-on-an-unreadable-source",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-activity-feed-fails-closed-on-an-unreadable-source",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-activity-feed-fails-closed-on-an-unreadable-source"
+        }
+      ],
+      "expected_outcome": "If any owner source of the feed cannot be read or is not configured, no partial page is returned; the request fails naming every source that failed.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestListFailsClosedAndNamesEveryUnavailableSource$ ./internal/product/activity/"
+    },
+    {
+      "id": "rule-an-activity-cursor-must-be-one-the-feed-issued",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-activity-cursor-must-be-one-the-feed-issued",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-activity-cursor-must-be-one-the-feed-issued"
+        }
+      ],
+      "expected_outcome": "A cursor the feed did not issue is refused as invalid before any owner source is read.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestListRejectsMalformedCursorBeforeReadingOwners$ ./internal/product/activity/"
+    },
+    {
+      "id": "rule-a-runs-evaluation-can-raise-its-activity-priority",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-runs-evaluation-can-raise-its-activity-priority",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-runs-evaluation-can-raise-its-activity-priority"
+        }
+      ],
+      "expected_outcome": "A Run and its evaluation appear as one item; when the evaluation is more urgent, or equally urgent and newer, its classification and status replace the Run's, and the item's time is the later of the two.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestListCombinesRunAndEvaluationByPriorityAndLatestOwnerTime$ ./internal/product/activity/"
+    },
+    {
+      "id": "rule-the-activity-feed-pages-in-one-total-order",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-activity-feed-pages-in-one-total-order",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-activity-feed-pages-in-one-total-order"
+        }
+      ],
+      "expected_outcome": "The feed is ordered by priority, then newest first, then kind, then source id, and a cursor resumes strictly after the last item returned, so pages neither repeat nor skip an item.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestListUsesTheGlobalTotalOrderAcrossPages$ ./internal/product/activity/"
+    },
+    {
+      "id": "rule-an-activity-page-holds-at-most-its-limit",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-activity-page-holds-at-most-its-limit",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-activity-page-holds-at-most-its-limit"
+        }
+      ],
+      "expected_outcome": "A page never holds more items than its limit; a next cursor is issued only while items remain.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestListUsesTheGlobalTotalOrderAcrossPages$ ./internal/product/activity/"
+    },
+    {
+      "id": "rule-activity-readers-see-only-the-requesting-workspace",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-activity-readers-see-only-the-requesting-workspace",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "activity-readers-see-only-the-requesting-workspace"
+        }
+      ],
+      "expected_outcome": "Every owner source of the feed is read with the requesting Workspace's id, so no Workspace sees another's activity.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestListScopesEveryOwnerReaderToTheRequestedWorkspace$ ./internal/product/activity/"
+    },
+    {
+      "id": "rule-an-activity-page-limit-is-1-to-100",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-activity-page-limit-is-1-to-100",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-activity-page-limit-is-1-to-100"
+        }
+      ],
+      "expected_outcome": "The activity feed refuses a page limit outside 1 to 100 with 400.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestWorkspaceActivityRejectsForeignCursorAndOutOfRangeLimit$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

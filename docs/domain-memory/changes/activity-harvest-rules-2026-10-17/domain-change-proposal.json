@@ -1,0 +1,342 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "activity-harvest-rules-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "activity-harvest-rules-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T06:41:17.967037Z",
+  "verified_at": "2026-10-17T06:41:43.974660Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "a42a3dcc4359b7e149eaf44ee9ebdd9ee88f5472",
+    "registry_digest": "sha256:29e33605707c22b8ddddff7e81cc34079e63c58421abe6d005e725762aceb8ae"
+  },
+  "affected_contexts": [
+    "activity"
+  ],
+  "rule_ids": [
+    "the-activity-feed-fails-closed-on-an-unreadable-source",
+    "an-activity-cursor-must-be-one-the-feed-issued",
+    "a-runs-evaluation-can-raise-its-activity-priority",
+    "the-activity-feed-pages-in-one-total-order",
+    "an-activity-page-holds-at-most-its-limit",
+    "activity-readers-see-only-the-requesting-workspace",
+    "an-activity-page-limit-is-1-to-100"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "activity",
+    "invariant": "Only activity composes the Workspace activity feed from owner facts.",
+    "evidence": [
+      "apps/platform/internal/product/activity/service.go:160-190"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: every owner reaches activity through an injected reader.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/product/activity/service.go:218-225"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the activity Context found these enforced rules; the reviewed Registry held none."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "A Workspace never sees another Workspace's activity."
+    ],
+    "rejected_alternatives": [
+      "Citing the service's own limit guard: the handler refuses first, so no test reaches it; the handler's guard is cited instead."
+    ],
+    "proof_obligations": [
+      "rule-the-activity-feed-fails-closed-on-an-unreadable-source",
+      "rule-an-activity-cursor-must-be-one-the-feed-issued",
+      "rule-a-runs-evaluation-can-raise-its-activity-priority",
+      "rule-the-activity-feed-pages-in-one-total-order",
+      "rule-an-activity-page-holds-at-most-its-limit",
+      "rule-activity-readers-see-only-the-requesting-workspace",
+      "rule-an-activity-page-limit-is-1-to-100"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-activity-feed-fails-closed-on-an-unreadable-source",
+        "statement": "If any owner source of the feed cannot be read or is not configured, no partial page is returned; the request fails naming every source that failed.",
+        "contexts": [
+          "activity"
+        ],
+        "examples": [
+          "The evaluation store errors and the publishing reader is missing: the error names both and no items are returned."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/activity/service.go",
+            "lines": {
+              "start": 173,
+              "end": 176
+            },
+            "excerpt_sha256": "sha256:5016a6ac6b4593356e8f1043e78fbe7859ff1d979ba065c1d26bf32f557bd694"
+          },
+          {
+            "path": "apps/platform/internal/product/activity/service.go",
+            "lines": {
+              "start": 221,
+              "end": 223
+            },
+            "excerpt_sha256": "sha256:24e1a8bc3ae06fff8ebb02fa622c923f4a37aa0640b0a7701e1c0119b1481c28"
+          },
+          {
+            "path": "apps/platform/internal/product/activity/service_test.go",
+            "lines": {
+              "start": 74,
+              "end": 93
+            },
+            "content_sha256": "sha256:3d4d52ec8d78e9e09173d989b2f7cacb8eddda62496b3094765a2a2115072ee4",
+            "excerpt_sha256": "sha256:b1ea57ac9aba394d7956bcf7b1be726bfa635dd5696bcf7ecf9502b3d6b62fb1"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-activity-cursor-must-be-one-the-feed-issued",
+        "statement": "A cursor the feed did not issue is refused as invalid before any owner source is read.",
+        "contexts": [
+          "activity"
+        ],
+        "examples": [
+          "cursor=not-a-cursor is refused and no reader is called."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/activity/service.go",
+            "lines": {
+              "start": 166,
+              "end": 172
+            },
+            "excerpt_sha256": "sha256:9424e437ae4245042e062a777015cfc0533bedb669a587503a5dfaf10595fdb0"
+          },
+          {
+            "path": "apps/platform/internal/product/activity/service.go",
+            "lines": {
+              "start": 307,
+              "end": 319
+            },
+            "excerpt_sha256": "sha256:494b7302c857f8d127ba8b11ec41ac0022a9613d347917ce517d8916e5a9f20c"
+          },
+          {
+            "path": "apps/platform/internal/product/activity/service_test.go",
+            "lines": {
+              "start": 95,
+              "end": 109
+            },
+            "content_sha256": "sha256:3d4d52ec8d78e9e09173d989b2f7cacb8eddda62496b3094765a2a2115072ee4",
+            "excerpt_sha256": "sha256:daf769227cefef6165c4de28f76169740dbd6978eec54df11379edce9d954871"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-runs-evaluation-can-raise-its-activity-priority",
+        "statement": "A Run and its evaluation appear as one item; when the evaluation is more urgent, or equally urgent and newer, its classification and status replace the Run's, and the item's time is the later of the two.",
+        "contexts": [
+          "activity"
+        ],
+        "examples": [
+          "A succeeded Run at 08:00 whose evaluation is not_met at 09:00 shows as needs attention at 09:00."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/activity/service.go",
+            "lines": {
+              "start": 241,
+              "end": 249
+            },
+            "excerpt_sha256": "sha256:bcf9e16a5937ef73ce4265d5eed8cc3c19b269e1152dcb04fe5c3ac2509d1e59"
+          },
+          {
+            "path": "apps/platform/internal/product/activity/service_test.go",
+            "lines": {
+              "start": 13,
+              "end": 41
+            },
+            "content_sha256": "sha256:3d4d52ec8d78e9e09173d989b2f7cacb8eddda62496b3094765a2a2115072ee4",
+            "excerpt_sha256": "sha256:22160df690a73f03f43509e36bd3630fb4668b7eafa730a4bd001ffa6db8c0b1"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-activity-feed-pages-in-one-total-order",
+        "statement": "The feed is ordered by priority, then newest first, then kind, then source id, and a cursor resumes strictly after the last item returned, so pages neither repeat nor skip an item.",
+        "contexts": [
+          "activity"
+        ],
+        "examples": [
+          "Items c (needs attention), a and b (recent, same time) with limit 2 page as [c, a] then [b]."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/activity/service.go",
+            "lines": {
+              "start": 178,
+              "end": 181
+            },
+            "excerpt_sha256": "sha256:ebf05fcb1b18546e76d0b540e5dc766bd3aaf2e988b49759d2cbc1b83b27c357"
+          },
+          {
+            "path": "apps/platform/internal/product/activity/service.go",
+            "lines": {
+              "start": 322,
+              "end": 345
+            },
+            "excerpt_sha256": "sha256:d24a699e771170a7089b09735765bb0a74fffbc07d074a1f4978e7ddd1471e7a"
+          },
+          {
+            "path": "apps/platform/internal/product/activity/service_test.go",
+            "lines": {
+              "start": 43,
+              "end": 72
+            },
+            "content_sha256": "sha256:3d4d52ec8d78e9e09173d989b2f7cacb8eddda62496b3094765a2a2115072ee4",
+            "excerpt_sha256": "sha256:c928d01f5d0b0af2a2d6b54f1d8f038164c37567c527ed5fc400b1105ef9adc5"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-activity-page-holds-at-most-its-limit",
+        "statement": "A page never holds more items than its limit; a next cursor is issued only while items remain.",
+        "contexts": [
+          "activity"
+        ],
+        "examples": [
+          "Three items with limit 2: two items and a cursor, then one item and none."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/activity/service.go",
+            "lines": {
+              "start": 182,
+              "end": 187
+            },
+            "excerpt_sha256": "sha256:cfae50c3f59c886c7d24aceeb0b4da7531e246d8cd936e9b2ec1368aa31a5e45"
+          },
+          {
+            "path": "apps/platform/internal/product/activity/service_test.go",
+            "lines": {
+              "start": 43,
+              "end": 72
+            },
+            "content_sha256": "sha256:3d4d52ec8d78e9e09173d989b2f7cacb8eddda62496b3094765a2a2115072ee4",
+            "excerpt_sha256": "sha256:c928d01f5d0b0af2a2d6b54f1d8f038164c37567c527ed5fc400b1105ef9adc5"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "activity-readers-see-only-the-requesting-workspace",
+        "statement": "Every owner source of the feed is read with the requesting Workspace's id, so no Workspace sees another's activity.",
+        "contexts": [
+          "activity"
+        ],
+        "examples": [
+          "Alice's Workspace lists her four items; Bob's lists none."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/activity/service.go",
+            "lines": {
+              "start": 218,
+              "end": 225
+            },
+            "excerpt_sha256": "sha256:f2d1e366fa3772200e6b1bd8eb1e7d0bfcbb965686fec66250058ecbe4ea12ca"
+          },
+          {
+            "path": "apps/platform/internal/product/activity/service_test.go",
+            "lines": {
+              "start": 121,
+              "end": 179
+            },
+            "content_sha256": "sha256:3d4d52ec8d78e9e09173d989b2f7cacb8eddda62496b3094765a2a2115072ee4",
+            "excerpt_sha256": "sha256:f221aa575c58692e8d7efee541d3f73625e24c4e6f3f0736d6019413cdd53c5e"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-activity-page-limit-is-1-to-100",
+        "statement": "The activity feed refuses a page limit outside 1 to 100 with 400.",
+        "contexts": [
+          "activity"
+        ],
+        "examples": [
+          "limit=0 and limit=101 both answer 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/activity.go",
+            "lines": {
+              "start": 36,
+              "end": 43
+            },
+            "excerpt_sha256": "sha256:bccd750657145b2ee6609f8059666e0b1f489c6411d2d53349744d4b788473fe"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/activity_integration_test.go",
+            "lines": {
+              "start": 134,
+              "end": 142
+            },
+            "content_sha256": "sha256:345d936fbd12fd02b053e6c51266526b350b86c463e8d2dde04b0b10551309f0",
+            "excerpt_sha256": "sha256:76c4f331def1c7138ff0e571926a1076891edba0dde252f5c11bb1b735cceda4"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T06:41:43.641716Z",
+      "scope": "Record activity feed rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "a42a3dcc4359b7e149eaf44ee9ebdd9ee88f5472",
+        "registry_digest": "sha256:29e33605707c22b8ddddff7e81cc34079e63c58421abe6d005e725762aceb8ae"
+      }
+    }
+  ]
+}
