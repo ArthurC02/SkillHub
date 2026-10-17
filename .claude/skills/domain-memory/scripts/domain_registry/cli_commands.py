@@ -902,9 +902,10 @@ def handle_record_approval(args: argparse.Namespace) -> int:
 
 def handle_supersede_proposal(args: argparse.Namespace) -> int:
     supersede_proposal(args.package_root.resolve(), args.reason, args.superseded_by)
-    print(
-        "Proposal superseded. Its record stays; create a new draft for the replacement."
-    )
+    if args.superseded_by is None:
+        print("Proposal superseded. Its record stays; create a new draft for the replacement.")
+    else:
+        print(f"Proposal superseded by {args.superseded_by}. Its record stays.")
     return 0
 
 

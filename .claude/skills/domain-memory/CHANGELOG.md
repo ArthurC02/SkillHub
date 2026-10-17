@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.60.0
+
+### Changed
+
+- `supersede-proposal` and `redraft-proposal` accept, and do not use, `--registry-root` and `--repo-root`, as the other lifecycle commands take them.
+- `supersede-proposal --superseded-by <id>` says the proposal was superseded by that id instead of asking for a new draft.
+
 ## 0.59.0
 
 ### Changed

@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.changes import (
+    init_change_package,
     validate_change_package,
 )
 from domain_registry.evidence import (
@@ -782,6 +783,21 @@ class CliTest(RegistryTestCase):
             json.dumps({"proposal_id": "PRO-a", "status": "applied"}), encoding="utf-8"
         )
         self.assertEqual("", self.run_cli(*validate).stderr.strip())
+
+    def test_supersede_and_redraft_take_the_lifecycle_flags_and_say_what_replaces_the_proposal(self) -> None:
+        lifecycle = ("--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo))
+        for name, replacement, said in (
+            ("a", (), "Proposal superseded. Its record stays; create a new draft for the replacement."),
+            ("b", ("--superseded-by", "PRO-2"), "Proposal superseded by PRO-2. Its record stays."),
+        ):
+            with self.subTest(said):
+                init_change_package(self.repo / name)
+                retired = self.run_cli("supersede-proposal", "--package-root", str(self.repo / name), "--reason",
+                                       "replaced", *replacement, *lifecycle)
+                self.assertEqual((0, said), (retired.returncode, retired.stdout.strip()))
+        redrafted = self.run_cli("redraft-proposal", "--package-root", str(self.repo / "a"), "--output",
+                                 str(self.repo / "c"), "--proposal-id", "PRO-3", *lifecycle)
+        self.assertEqual(0, redrafted.returncode, redrafted.stdout)
 
     def test_get_record_says_a_candidate_has_no_proving_obligation_yet(self) -> None:
         self.seed("rules.json", [{"id": "r", "contexts": ["orders"], "statement": "x"}])

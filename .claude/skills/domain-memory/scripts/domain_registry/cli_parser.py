@@ -24,6 +24,11 @@ def add_path(parser: argparse.ArgumentParser, name: str, required: bool = True) 
     parser.add_argument(name, required=required, type=Path)
 
 
+def add_lifecycle_roots(parser: argparse.ArgumentParser) -> None:
+    add_path(parser, "--registry-root", required=False)
+    add_path(parser, "--repo-root", required=False)
+
+
 def add_asset(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--asset", required=True, choices=ASSET_CHOICES, type=asset_name)
 
@@ -120,6 +125,7 @@ def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
     add_path(redraft_parser, "--package-root")
     add_path(redraft_parser, "--output")
     redraft_parser.add_argument("--proposal-id", required=True)
+    add_lifecycle_roots(redraft_parser)
     validate_parser = commands.add_parser("validate", help="Validate the Registry")
     add_path(validate_parser, "--registry-root")
     add_path(validate_parser, "--repo-root", required=False)
@@ -354,6 +360,7 @@ def _add_proposal_commands(commands: argparse._SubParsersAction) -> None:
     add_path(supersede_parser, "--package-root")
     supersede_parser.add_argument("--reason", required=True)
     supersede_parser.add_argument("--superseded-by")
+    add_lifecycle_roots(supersede_parser)
     verify_parser = commands.add_parser("verify-proposal", help="Verify test attestations")
     add_path(verify_parser, "--package-root")
     add_path(verify_parser, "--registry-root")
