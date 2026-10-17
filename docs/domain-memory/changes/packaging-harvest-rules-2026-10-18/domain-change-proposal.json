@@ -3,12 +3,12 @@
   "proposal_id": "packaging-harvest-rules-2026-10-18",
   "proposer": "domain-memory-agent",
   "requirement_id": "packaging-harvest-rules-2026-10-18",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T17:11:50.679414Z",
   "verified_at": "2026-10-17T17:12:32.422345Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T17:12:35.861780Z",
+  "applied_at": "2026-10-17T17:12:39.819532Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "135267b5d02239397f641114f340997f14ebdbfe",
@@ -245,5 +245,9 @@
         "registry_digest": "sha256:31576d21624210d4e25712853eaec8db4ebf7808ab5b033f3f864d9ada2722fd"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "945ce4e3676daf14faa82c972b74d1adae595d39",
+    "registry_digest": "sha256:968df911933365ce79ad5e26ff096744d8cfba37a26fd569573a89aaf3d9ea3f"
+  }
 }
