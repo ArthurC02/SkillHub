@@ -3,6 +3,7 @@ import re
 import shutil
 from collections import Counter
 from collections.abc import Callable
+from functools import cache
 from itertools import pairwise
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -36,6 +37,7 @@ from .store import (
     has_document,
     has_registry,
     is_concept_layout,
+    read_record,
     missing_registry,
     logical_documents,
     read_document,
@@ -617,15 +619,15 @@ def is_reviewed(record: dict[str, Any]) -> bool:
     return "reviewed" in (record.get("status"), record.get("review_status"))
 
 
-def evidence_gaps(root: Path) -> list[dict[str, Any]]:
+def evidence_gaps(root: Path, records: dict[str, list[dict[str, Any]]] | None = None) -> list[dict[str, Any]]:
     from .evidence import classify_all, unclassified_paths
 
     source_map = source_map_for(root)
     gaps = []
     for name in sorted(ASSET_KEYS):
-        if not has_document(root, name):
+        if records is None and not has_document(root, name):
             continue
-        for record in asset_records(root, name):
+        for record in records[name] if records is not None else asset_records(root, name):
             if not is_reviewed(record):
                 continue
             entry = {"asset": name.removesuffix(".json"), "id": record.get("id")}
@@ -642,22 +644,13 @@ def evidence_gaps(root: Path) -> list[dict[str, Any]]:
 
 
 def coverage(root: Path) -> dict[str, Any]:
-    contexts = asset_records(root, "contexts.json")
-    vocabulary = asset_records(root, "vocabulary.json")
-    aggregates = asset_records(root, "aggregates.json")
-    rules = asset_records(root, "rules.json")
-    contracts = asset_records(root, "contracts.json")
-    events = asset_records(root, "events.json")
-    known = [entry["id"] for entry in contexts]
-    holding = contexts_holding(
-        {
-            "vocabulary.json": vocabulary,
-            "aggregates.json": aggregates,
-            "rules.json": rules,
-            "contracts.json": contracts,
-            "events.json": events,
-        }
+    records = {name: asset_records(root, name) if has_document(root, name) else [] for name in ASSET_KEYS}
+    contexts, vocabulary, aggregates, rules, contracts, events = (
+        records[name] for name in ("contexts.json", "vocabulary.json", "aggregates.json", "rules.json",
+                                   "contracts.json", "events.json")
     )
+    known = [entry["id"] for entry in contexts]
+    holding = contexts_holding(records)
     absent = declared_absences(contexts)
     missing = {
         gap: [context for context in known if context not in holding[asset]]
@@ -678,7 +671,7 @@ def coverage(root: Path) -> dict[str, Any]:
             gap: [context for context in missing[gap] if context in absent[asset]]
             for asset, gap in ABSENCE_ASSETS.items()
         },
-        "evidence_gaps": evidence_gaps(root),
+        "evidence_gaps": evidence_gaps(root, records),
     }
 
 
@@ -753,11 +746,17 @@ def query_words(query: str) -> list[str]:
 
 
 def holds(word: str, held: set[str]) -> bool:
-    return _stem(word) in held or any(
-        _stem(word[:split]) + _stem(word[split:]) in held for split in range(MIN_STEM_LENGTH, len(word) - 1)
-    )
+    return not _candidate_stems(word).isdisjoint(held)
 
 
+@cache
+def _candidate_stems(word: str) -> frozenset[str]:
+    return frozenset({
+        _stem(word), *(_stem(word[:split]) + _stem(word[split:]) for split in range(MIN_STEM_LENGTH, len(word) - 1))
+    })
+
+
+@cache
 def _stem(word: str) -> str:
     return next(
         (word[: -len(suffix)] for suffix in SUFFIXES
@@ -777,14 +776,7 @@ def _strings(value: Any) -> list[str]:
 
 
 def record_by_id(root: Path, asset: str, identifier: str) -> dict[str, Any] | None:
-    return next(
-        (
-            entry
-            for entry in asset_records(root, f"{asset}.json")
-            if entry.get("id") == identifier
-        ),
-        None,
-    )
+    return read_record(root, f"{asset}.json", identifier)
 
 
 MATCH_KINDS = ("name", "synonym", "definition")
@@ -922,6 +914,8 @@ def context_model(root: Path, identifier: str) -> dict[str, Any] | None:
     if context is None:
         return None
     contracts = asset_records(root, "contracts.json")
+    rules = asset_records(root, "rules.json")
+    interactions = asset_records(root, "interactions.json")
     mode = review_mode(root)
     return {
         "usage": "constraint" if mode == "scm-verified" else "working-memory",
@@ -935,21 +929,16 @@ def context_model(root: Path, identifier: str) -> dict[str, Any] | None:
         "aggregates": _records_where(
             root, "aggregates.json", lambda entry: entry.get("context") == identifier
         ),
-        "rules": _records_where(
-            root, "rules.json", lambda entry: identifier in entry.get("contexts", [])
-        ),
+        "rules": [entry for entry in rules if identifier in entry.get("contexts", [])],
         "contracts": [
             entry
             for entry in contracts
             if identifier == entry.get("producer_context")
             or identifier in entry.get("consumer_contexts", [])
         ],
-        "interactions": _records_where(
-            root,
-            "interactions.json",
-            lambda entry: identifier
-            in {entry.get("producer_context"), entry.get("consumer_context")},
-        ),
+        "interactions": [
+            entry for entry in interactions if identifier in {entry.get("producer_context"), entry.get("consumer_context")}
+        ],
         "events": _records_where(
             root, "events.json",
             lambda entry: entry.get("owner_context") == identifier or identifier in (entry.get("consumers") or []),
@@ -960,20 +949,22 @@ def context_model(root: Path, identifier: str) -> dict[str, Any] | None:
         "value_objects": _records_where(
             root, "value-objects.json", lambda entry: entry.get("context") == identifier
         ),
-        "rules_bound_through_collaborations": _bound_rules(root, identifier, contracts),
+        "rules_bound_through_collaborations": _bound_rules(identifier, contracts, interactions, rules),
     }
 
 
-def _bound_rules(root: Path, identifier: str, contracts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _bound_rules(
+    identifier: str, contracts: list[dict[str, Any]], interactions: list[dict[str, Any]], rules: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
     collaborations = [
         (f"contracts/{entry.get('id')}", entry) for entry in contracts
         if identifier == entry.get("producer_context") or identifier in entry.get("consumer_contexts", [])
     ] + [
-        (f"interactions/{entry.get('id')}", entry) for entry in asset_records(root, "interactions.json")
+        (f"interactions/{entry.get('id')}", entry) for entry in interactions
         if identifier in {entry.get("producer_context"), entry.get("consumer_context")}
     ]
     bound = []
-    for rule in asset_records(root, "rules.json"):
+    for rule in rules:
         if identifier in rule.get("contexts", []):
             continue
         cited = _cited_paths(rule)

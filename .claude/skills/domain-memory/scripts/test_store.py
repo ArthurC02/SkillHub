@@ -13,6 +13,7 @@ from domain_registry.okf import encode
 from domain_registry.registry import migrate_registry
 from domain_registry.revision import registry_digest
 from domain_registry.store import (
+    read_record,
     MANIFEST,
     committed_documents,
     has_document,
@@ -258,6 +259,31 @@ class DigestAndHistoryTest(RegistryTestCase):
 
     def head(self) -> str:
         return subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True).stdout.strip()
+
+
+class ReadRecordTest(RegistryTestCase):
+    def test_a_record_is_read_from_its_own_concept_file_and_an_absent_or_unsafe_id_is_none(self) -> None:
+        self.seed("contexts.json", [
+            {"id": "orders", "name": "Orders", "responsibility": "Own orders."},
+            {"id": "billing", "name": "Billing", "responsibility": "Own invoices."},
+        ])
+        root = self.repo / "memory"
+        (root / "registry" / "contexts" / "billing.md").unlink()
+        self.assertEqual(
+            ("Orders", None, None, None, None),
+            (read_record(root, "contexts.json", "orders")["name"], read_record(root, "contexts.json", "billing"),
+             read_record(root, "contexts.json", "index"), read_record(root, "contexts.json", "../orders"),
+             read_record(root, "contexts.json", "orders/../orders")),
+        )
+
+    def test_a_record_is_found_in_a_json_layout_by_scanning_its_asset(self) -> None:
+        use_json_layout(self.repo / "memory")
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        self.assertEqual(
+            ("Orders", None),
+            (read_record(self.repo / "memory", "contexts.json", "orders")["name"],
+             read_record(self.repo / "memory", "contexts.json", "billing")),
+        )
 
 
 if __name__ == "__main__":

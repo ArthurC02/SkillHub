@@ -90,6 +90,20 @@ def read_document(root: Path, name: str) -> dict[str, Any]:
     ])
 
 
+def read_record(root: Path, name: str, record_id: str) -> dict[str, Any] | None:
+    if not is_concept_layout(root):
+        records = read_document(root, name).get(ASSET_KEYS[name], [])
+        return next((entry for entry in records if isinstance(entry, dict) and entry.get("id") == record_id), None)
+    asset = asset_of(name)
+    try:
+        concept = registry_dir(root) / asset / _concept_file_name(asset, record_id)
+    except ValueError:
+        return None
+    if not concept.is_file():
+        return None
+    return _decoded(asset, record_id, concept.read_text(encoding="utf-8"))
+
+
 def asset_document(name: str, concepts: list[tuple[str, str]]) -> dict[str, Any]:
     asset = asset_of(name)
     records = [_decoded(asset, record_id, text) for record_id, text in concepts]

@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.66.0
+
+### Changed
+
+- `lookup` and `resolve-terms` stem each distinct word once and test a query word's forms as one set, `get-record` and `get-context` read a record from its own concept file, and `coverage` and `get-context` read each asset once per call. Results are unchanged; on a 10,000-rule Registry a lookup takes a third of the time and `get-record` reads one file instead of ten thousand.
+
 ## 0.65.0
 
 ### Changed
