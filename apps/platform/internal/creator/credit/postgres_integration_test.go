@@ -99,6 +99,55 @@ func TestAnAdjustmentIsRefusedExactlyWhenItWouldPassTheLowestStoredBalance(t *te
 	}
 }
 
+func TestAGrantKeyReusedForADifferentEntryIsRefusedAndLeavesTheBalance(t *testing.T) {
+	pool := integrationPool(t)
+	for _, tc := range []struct {
+		name    string
+		kind    EntryKind
+		credits int64
+	}{
+		{"another amount", EntryGrant, 60},
+		{"another kind", EntryTopup, 50},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			tx, err := pool.Begin(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = tx.Rollback(ctx) }()
+			var user pgtype.UUID
+			if err := tx.QueryRow(ctx, `
+				INSERT INTO users (email, display_name) VALUES ($1, 'fixture') RETURNING id`,
+				uuid.NewString()+"@example.test").Scan(&user); err != nil {
+				t.Fatal(err)
+			}
+			store := NewPostgresStore(pool)
+			key := "grant:" + uuid.NewString()
+			if _, _, err := store.ApplyGrant(ctx, tx, GrantEntry{
+				UserID: user, EntryKind: EntryGrant, Credits: 50, Reason: "fixture", IdempotencyKey: key,
+			}); err != nil {
+				t.Fatal(err)
+			}
+
+			_, applied, err := store.ApplyGrant(ctx, savepointTx{tx}, GrantEntry{
+				UserID: user, EntryKind: tc.kind, Credits: tc.credits, Reason: "fixture", IdempotencyKey: key,
+			})
+
+			if !errors.Is(err, ErrGrantKeyReused) || applied {
+				t.Fatalf("reusing the key for %s: (applied %v, error %v), want ErrGrantKeyReused", tc.name, applied, err)
+			}
+			var balance int64
+			if err := tx.QueryRow(ctx, `SELECT balance_credits FROM credit_accounts WHERE user_id = $1`, user).Scan(&balance); err != nil {
+				t.Fatal(err)
+			}
+			if balance != 50 {
+				t.Fatalf("balance after the refused reuse = %d, want 50", balance)
+			}
+		})
+	}
+}
+
 func TestAReplayedChargeKeyRecordsAndDebitsOnce(t *testing.T) {
 	pool := integrationPool(t)
 	ctx := context.Background()
