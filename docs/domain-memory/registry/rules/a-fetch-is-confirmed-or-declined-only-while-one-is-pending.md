@@ -1,9 +1,14 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-17T15:16:09.817174Z"
 sources:
   - resource: "apps/platform/internal/creator/creation/run_fetch_commands.go#L32-60"
     excerpt_sha256: "sha256:360ef5dbd42624609ea908b34b964a46cb3bac78943619903c49874b192ec914"
+  - resource: "apps/platform/internal/creator/creation/command_test.go#L481-490"
+    excerpt_sha256: "sha256:a5b266aa0fdc0520d59634cfe0aefde3930e8beafddb83473ed5e8dc9852a6b5"
 ---
 Confirming or declining a fetch is refused unless a fetch permission question is pending.
 
