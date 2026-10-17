@@ -1,0 +1,58 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "testlab-snapshot-and-dataset-rules-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed the criterion, snapshot, dataset, rubric and purge rules the testlab Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context testlab lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-editing-a-criterion-clears-its-confirmation",
+      "statement": "Changing the text of an acceptance criterion clears its confirmation, so a person must confirm the new wording."
+    },
+    {
+      "id": "enforced-a-snapshot-hash-covers-the-prompt",
+      "statement": "A snapshot's content hash covers the prompt with the criteria, datasets, rubric and facts, so any edit freezes a new snapshot and earlier ones stay as they were."
+    },
+    {
+      "id": "enforced-a-snapshot-reruns-only-while-its-inputs-are-live",
+      "statement": "A snapshot can be rerun only while its Test Case is not deleted and every dataset it references exists, is not deleted and has not expired."
+    },
+    {
+      "id": "enforced-a-dataset-is-deleted-only-through-its-own-test-case",
+      "statement": "A dataset can be deleted only through the Test Case that owns it; naming another Test Case finds nothing and removes nothing."
+    },
+    {
+      "id": "enforced-a-workspace-that-may-not-store-objects-uploads-no-dataset",
+      "statement": "A Workspace that may not store objects cannot upload a dataset; the upload is answered not found before anything is stored."
+    },
+    {
+      "id": "enforced-a-rubric-item-addresses-an-existing-criterion",
+      "statement": "A rubric is accepted only when every item names an existing acceptance criterion, and deleting a criterion removes its rubric item."
+    },
+    {
+      "id": "enforced-a-workspace-purge-keeps-test-cases-a-run-froze",
+      "statement": "Purging a Workspace erases only the Test Cases no snapshot froze, so past runs keep the Test Case they ran."
+    },
+    {
+      "id": "enforced-a-continuation-freezes-a-new-snapshot-for-its-new-prompt",
+      "statement": "Continuing a run freezes a new snapshot of the same Test Case whose content hash covers the new prompt, and leaves the earlier snapshot as it was."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/testlab_integration_test.go",
+    "apps/platform/internal/trial/design/dataset.go",
+    "apps/platform/internal/trial/design/dataset_characterization_test.go",
+    "apps/platform/internal/trial/design/dataset_ownership_integration_test.go",
+    "apps/platform/internal/trial/design/purge.go",
+    "apps/platform/internal/trial/design/purge_test.go",
+    "apps/platform/internal/trial/design/snapshot.go",
+    "apps/platform/internal/trial/design/snapshot_continue_integration_test.go",
+    "apps/platform/internal/trial/design/snapshot_test.go",
+    "apps/platform/internal/trial/design/testlab.go"
+  ]
+}

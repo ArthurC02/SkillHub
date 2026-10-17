@@ -1,0 +1,167 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "testlab-snapshot-and-dataset-rules-2026-10-18",
+  "proposal_id": "testlab-snapshot-and-dataset-rules-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "b2d17170912b041fac5ced8e47ca798fc26b34e7",
+    "registry_digest": "sha256:ecbd1008c4b274a8fbf2ae2cc3c9d233a2d805c1ce4501db84a41ec33878c9b9"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-editing-a-criterion-clears-its-confirmation",
+      "mutated_protection": "apps/platform/internal/trial/design/testlab.go:667: list[i].Text = newText list[i].ConfirmedAt = nil -> list[i].Text = newText",
+      "failure_evidence": "=== RUN   TestAcceptanceCriteriaLifecycle\n    testlab_integration_test.go:312: editing a confirmed criterion kept the old confirmation\n--- FAIL: TestAcceptanceCriteriaLifecycle (0.09s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.309s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-snapshot-hash-covers-the-prompt",
+      "mutated_protection": "apps/platform/internal/trial/design/snapshot.go:250: UserPrompt: tc.UserPrompt, AcceptanceCriteria: criteria, -> UserPrompt: \"\", AcceptanceCriteria: criteria,",
+      "failure_evidence": "=== RUN   TestSnapshotFreezesTheTestCase\n    testlab_integration_test.go:647: editing the prompt did not change the snapshot hash\n--- FAIL: TestSnapshotFreezesTheTestCase (0.10s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t3.834s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-snapshot-reruns-only-while-its-inputs-are-live",
+      "mutated_protection": "apps/platform/internal/trial/design/snapshot.go:203: dataset.ExpiresAt.Time.After(now) -> !dataset.ExpiresAt.Time.Before(now)",
+      "failure_evidence": "=== RUN   TestASnapshotCanBeRerunOnlyWhileItsTestCaseAndEveryDatasetAreStillThere\n    snapshot_test.go:35: one dataset expires this very moment: available = true, want false\n--- FAIL: TestASnapshotCanBeRerunOnlyWhileItsTestCaseAndEveryDatasetAreStillThere (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design\t3.157s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-dataset-is-deleted-only-through-its-own-test-case",
+      "mutated_protection": "apps/platform/internal/trial/design/dataset.go:342: ds.TestCaseID != testCaseID { -> ds.TestCaseID != testCaseID && false {",
+      "failure_evidence": "=== RUN   TestDeleteDatasetRefusesAnUnrelatedParentInTheURL\n2026/10/18 03:34:04 WARN dataset object removed but cleanup state was not recorded; retention sweep will retry error=\"testlab: persistence is not configured\"\n    dataset_ownership_integration_test.go:269: deleting through the wrong test case returned <nil>, want ErrNotFound\n--- FAIL: TestDeleteDatasetRefusesAnUnrelatedParentInTheURL (0.08s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design\t3.645s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-workspace-that-may-not-store-objects-uploads-no-dataset",
+      "mutated_protection": "apps/platform/internal/trial/design/dataset.go:155: if !allowed { -> if !allowed && false {",
+      "failure_evidence": "=== RUN   TestUploadDatasetToAWorkspaceThatMayNotStoreObjectsIsNotFoundAndLetsGo\n    dataset_characterization_test.go:157: err = <nil>, want ErrNotFound\n--- FAIL: TestUploadDatasetToAWorkspaceThatMayNotStoreObjectsIsNotFoundAndLetsGo (0.04s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design\t3.068s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-rubric-item-addresses-an-existing-criterion",
+      "mutated_protection": "apps/platform/internal/trial/design/testlab.go:247: case !known[it.ID]: -> case false && !known[it.ID]:",
+      "failure_evidence": "=== RUN   TestRubricIsEditableAndBoundToTheCriteriaItStrengthens\n    testlab_integration_test.go:344: rubric item with an unknown criterion id: got 200, want 400\n--- FAIL: TestRubricIsEditableAndBoundToTheCriteriaItStrengthens (0.10s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.234s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-workspace-purge-keeps-test-cases-a-run-froze",
+      "mutated_protection": "apps/platform/internal/trial/design/purge.go:48: !slices.Contains(snapshotted, id) -> slices.Contains(snapshotted, id)",
+      "failure_evidence": "=== RUN   TestOnlyTestCasesNoRunFrozeAreErased\n    purge_test.go:25: none snapshotted: erasable = [], want [01000000-0000-0000-0000-000000000000 02000000-0000-0000-0000-000000000000]\n    purge_test.go:25: one snapshotted: erasable = [01000000-0000-0000-0000-000000000000], want [02000000-0000-0000-0000-000000000000]\n    purge_test.go:25: all snapshotted: erasable = [01000000-0000-0000-0000-000000000000 02000000-0000-0000-0000-000000000000], want []\n--- FAIL: TestOnlyTestCasesNoRunFrozeAreErased (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design\t3.465s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-continuation-freezes-a-new-snapshot-for-its-new-prompt",
+      "mutated_protection": "apps/platform/internal/trial/design/snapshot.go:325: UserPrompt: prompt, AcceptanceCriteria: criteria, DatasetRefs: refs, Rubric: rubric, -> UserPrompt: from.UserPrompt, AcceptanceCriteria: criteria, DatasetRefs: refs, Rubric: rubric,",
+      "failure_evidence": "=== RUN   TestContinuingASnapshotFreezesANewOneForTheNewPromptAndLeavesTheFirst\n    snapshot_continue_integration_test.go:39: a new prompt kept the first snapshot's content hash \"2b011781dd30892e19074d06933b0ab14808b66f58a6aa89403baf4c72469da2\"\n--- FAIL: TestContinuingASnapshotFreezesANewOneForTheNewPromptAndLeavesTheFirst (0.03s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design\t3.491s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/testlab_integration_test.go",
+    "apps/platform/internal/trial/design/dataset.go",
+    "apps/platform/internal/trial/design/dataset_characterization_test.go",
+    "apps/platform/internal/trial/design/dataset_ownership_integration_test.go",
+    "apps/platform/internal/trial/design/purge.go",
+    "apps/platform/internal/trial/design/purge_test.go",
+    "apps/platform/internal/trial/design/snapshot.go",
+    "apps/platform/internal/trial/design/snapshot_continue_integration_test.go",
+    "apps/platform/internal/trial/design/snapshot_test.go",
+    "apps/platform/internal/trial/design/testlab.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-editing-a-criterion-clears-its-confirmation",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAcceptanceCriteriaLifecycle$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4185f3a2043d1ee9202b8014bf4fe6d4a8c9ef74a5c6c1b1cc04cd7ae11e5c5e",
+      "finished_at": "2026-10-17T19:45:28.226462Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-snapshot-hash-covers-the-prompt",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestSnapshotFreezesTheTestCase$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:11d5132eb75cb70dc384ad37d79313b15efe0715853aa3f22984860e8b4f43b4",
+      "finished_at": "2026-10-17T19:45:35.894201Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-snapshot-reruns-only-while-its-inputs-are-live",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestASnapshotCanBeRerunOnlyWhileItsTestCaseAndEveryDatasetAreStillThere$ ./internal/trial/design/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f5183e830e67cb34c03b61dc5fe37e2867006611f0c257f618c39ca517615b28",
+      "finished_at": "2026-10-17T19:45:42.387121Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-dataset-is-deleted-only-through-its-own-test-case",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestDeleteDatasetRefusesAnUnrelatedParentInTheURL$ ./internal/trial/design/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ec8e069dfdbbfb1f788fcb047031a96163e5a49d3ee9f7e9a7ebc15334699f69",
+      "finished_at": "2026-10-17T19:45:48.652320Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-workspace-that-may-not-store-objects-uploads-no-dataset",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestUploadDatasetToAWorkspaceThatMayNotStoreObjectsIsNotFoundAndLetsGo$ ./internal/trial/design/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ac43ea20b5318d0eb2f4ac0ab99cb9712a332d8c33bd3639dd3dcf639587530c",
+      "finished_at": "2026-10-17T19:45:53.854452Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-rubric-item-addresses-an-existing-criterion",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestRubricIsEditableAndBoundToTheCriteriaItStrengthens$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:9fc1e4bb2f97e54d0fb61d7cf76004bd14d27fb0d9bd6333186b68fcc2c92e18",
+      "finished_at": "2026-10-17T19:46:01.432247Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-workspace-purge-keeps-test-cases-a-run-froze",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestOnlyTestCasesNoRunFrozeAreErased$ ./internal/trial/design/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:63e5001537bb925c1133f4329d15c25e5d3d470bee5299ac5b0bf90e02331236",
+      "finished_at": "2026-10-17T19:46:07.632736Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-continuation-freezes-a-new-snapshot-for-its-new-prompt",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestContinuingASnapshotFreezesANewOneForTheNewPromptAndLeavesTheFirst$ ./internal/trial/design/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:21fba2029b080d131f0d13d453e86b272c49884b9df8e1eedb460ef3023469a9",
+      "finished_at": "2026-10-17T19:46:13.983265Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

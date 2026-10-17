@@ -1,0 +1,127 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "testlab-snapshot-and-dataset-rules-2026-10-18",
+  "proposal_id": "testlab-snapshot-and-dataset-rules-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-editing-a-criterion-clears-its-confirmation",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-editing-a-criterion-clears-its-confirmation",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "editing-a-criterion-clears-its-confirmation"
+        }
+      ],
+      "expected_outcome": "Changing the text of an acceptance criterion clears its confirmation, so a person must confirm the new wording.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAcceptanceCriteriaLifecycle$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-snapshot-hash-covers-the-prompt",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-snapshot-hash-covers-the-prompt",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-snapshot-hash-covers-the-prompt"
+        }
+      ],
+      "expected_outcome": "A snapshot's content hash covers the prompt with the criteria, datasets, rubric and facts, so any edit freezes a new snapshot and earlier ones stay as they were.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestSnapshotFreezesTheTestCase$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-snapshot-reruns-only-while-its-inputs-are-live",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-snapshot-reruns-only-while-its-inputs-are-live",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-snapshot-reruns-only-while-its-inputs-are-live"
+        }
+      ],
+      "expected_outcome": "A snapshot can be rerun only while its Test Case is not deleted and every dataset it references exists, is not deleted and has not expired.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestASnapshotCanBeRerunOnlyWhileItsTestCaseAndEveryDatasetAreStillThere$ ./internal/trial/design/"
+    },
+    {
+      "id": "rule-a-dataset-is-deleted-only-through-its-own-test-case",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-dataset-is-deleted-only-through-its-own-test-case",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-dataset-is-deleted-only-through-its-own-test-case"
+        }
+      ],
+      "expected_outcome": "A dataset can be deleted only through the Test Case that owns it; naming another Test Case finds nothing and removes nothing.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestDeleteDatasetRefusesAnUnrelatedParentInTheURL$ ./internal/trial/design/"
+    },
+    {
+      "id": "rule-a-workspace-that-may-not-store-objects-uploads-no-dataset",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-workspace-that-may-not-store-objects-uploads-no-dataset",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-workspace-that-may-not-store-objects-uploads-no-dataset"
+        }
+      ],
+      "expected_outcome": "A Workspace that may not store objects cannot upload a dataset; the upload is answered not found before anything is stored.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestUploadDatasetToAWorkspaceThatMayNotStoreObjectsIsNotFoundAndLetsGo$ ./internal/trial/design/"
+    },
+    {
+      "id": "rule-a-rubric-item-addresses-an-existing-criterion",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-rubric-item-addresses-an-existing-criterion",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-rubric-item-addresses-an-existing-criterion"
+        }
+      ],
+      "expected_outcome": "A rubric is accepted only when every item names an existing acceptance criterion, and deleting a criterion removes its rubric item.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestRubricIsEditableAndBoundToTheCriteriaItStrengthens$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-workspace-purge-keeps-test-cases-a-run-froze",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-workspace-purge-keeps-test-cases-a-run-froze",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-workspace-purge-keeps-test-cases-a-run-froze"
+        }
+      ],
+      "expected_outcome": "Purging a Workspace erases only the Test Cases no snapshot froze, so past runs keep the Test Case they ran.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestOnlyTestCasesNoRunFrozeAreErased$ ./internal/trial/design/"
+    },
+    {
+      "id": "rule-a-continuation-freezes-a-new-snapshot-for-its-new-prompt",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-continuation-freezes-a-new-snapshot-for-its-new-prompt",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-continuation-freezes-a-new-snapshot-for-its-new-prompt"
+        }
+      ],
+      "expected_outcome": "Continuing a run freezes a new snapshot of the same Test Case whose content hash covers the new prompt, and leaves the earlier snapshot as it was.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestContinuingASnapshotFreezesANewOneForTheNewPromptAndLeavesTheFirst$ ./internal/trial/design/"
+    }
+  ]
+}

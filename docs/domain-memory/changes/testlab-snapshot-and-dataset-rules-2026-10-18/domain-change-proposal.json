@@ -1,0 +1,362 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "testlab-snapshot-and-dataset-rules-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "testlab-snapshot-and-dataset-rules-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T19:45:20.094406Z",
+  "verified_at": "2026-10-17T19:46:14.614917Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "b2d17170912b041fac5ced8e47ca798fc26b34e7",
+    "registry_digest": "sha256:ecbd1008c4b274a8fbf2ae2cc3c9d233a2d805c1ce4501db84a41ec33878c9b9"
+  },
+  "affected_contexts": [
+    "testlab"
+  ],
+  "rule_ids": [
+    "editing-a-criterion-clears-its-confirmation",
+    "a-snapshot-hash-covers-the-prompt",
+    "a-snapshot-reruns-only-while-its-inputs-are-live",
+    "a-dataset-is-deleted-only-through-its-own-test-case",
+    "a-workspace-that-may-not-store-objects-uploads-no-dataset",
+    "a-rubric-item-addresses-an-existing-criterion",
+    "a-workspace-purge-keeps-test-cases-a-run-froze",
+    "a-continuation-freezes-a-new-snapshot-for-its-new-prompt"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "testlab",
+    "invariant": "Only testlab decides what a Test Case holds and what a snapshot freezes.",
+    "evidence": [
+      "apps/platform/internal/trial/design/snapshot.go:249-258"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: Workspace lifecycle and check validation reach testlab through injected readers.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/design/dataset.go:144-168"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A second extraction of the testlab Context found these enforced rules beyond the nine size and safety limits the Registry held.",
+      "Continuing a snapshot had no database test; one was added."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording the missing-validator refusal: it is wiring, and its mutation fails only by a nil call."
+    ],
+    "proof_obligations": [
+      "rule-editing-a-criterion-clears-its-confirmation",
+      "rule-a-snapshot-hash-covers-the-prompt",
+      "rule-a-snapshot-reruns-only-while-its-inputs-are-live",
+      "rule-a-dataset-is-deleted-only-through-its-own-test-case",
+      "rule-a-workspace-that-may-not-store-objects-uploads-no-dataset",
+      "rule-a-rubric-item-addresses-an-existing-criterion",
+      "rule-a-workspace-purge-keeps-test-cases-a-run-froze",
+      "rule-a-continuation-freezes-a-new-snapshot-for-its-new-prompt"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "editing-a-criterion-clears-its-confirmation",
+        "statement": "Changing the text of an acceptance criterion clears its confirmation, so a person must confirm the new wording.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "A confirmed criterion edited to add a unit comes back unconfirmed."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/testlab.go",
+            "lines": {
+              "start": 666,
+              "end": 671
+            },
+            "excerpt_sha256": "sha256:ad04bbcbe3c53aec2b1dbd5a2a209b61e0090301a8317daced9b5751c2b5d7e7"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/testlab_integration_test.go",
+            "lines": {
+              "start": 278,
+              "end": 326
+            },
+            "content_sha256": "sha256:d169eef73bcfe02af2d35ebe37a65b555aa1d5ae9955a85aa516eeea5183d3cb",
+            "excerpt_sha256": "sha256:bae90962e97deaa23ea147e30d898dc4753b459d3d3442ee034faa585c13ba48"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-snapshot-hash-covers-the-prompt",
+        "statement": "A snapshot's content hash covers the prompt with the criteria, datasets, rubric and facts, so any edit freezes a new snapshot and earlier ones stay as they were.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "Snapshotting after changing the prompt gives a different hash and leaves the first snapshot's prompt unchanged."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/snapshot.go",
+            "lines": {
+              "start": 249,
+              "end": 258
+            },
+            "excerpt_sha256": "sha256:c341a031d1d790d46c9c07526a0c76166ee436b812681f92561c7833edeb73f3"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/testlab_integration_test.go",
+            "lines": {
+              "start": 612,
+              "end": 672
+            },
+            "content_sha256": "sha256:d169eef73bcfe02af2d35ebe37a65b555aa1d5ae9955a85aa516eeea5183d3cb",
+            "excerpt_sha256": "sha256:0cb829bc302b9511b6028abe4f82563b009439633b4f58680668484fdb350944"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-snapshot-reruns-only-while-its-inputs-are-live",
+        "statement": "A snapshot can be rerun only while its Test Case is not deleted and every dataset it references exists, is not deleted and has not expired.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "A dataset expiring at this very moment makes the snapshot not rerunnable."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/snapshot.go",
+            "lines": {
+              "start": 197,
+              "end": 211
+            },
+            "excerpt_sha256": "sha256:dae3569d8fa0614ee5772d9af84acf709d5a70dde6d18e7784cdab10f5dd41b7"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/snapshot_test.go",
+            "lines": {
+              "start": 12,
+              "end": 38
+            },
+            "content_sha256": "sha256:d7960c0c8c8569a45e133bf7baac754c5b80e60958558dc20a63daa278433d6a",
+            "excerpt_sha256": "sha256:6bd7a9307cf21064fa1b79c71292cb213989f710777271ad892fced0c3d5ce2e"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-dataset-is-deleted-only-through-its-own-test-case",
+        "statement": "A dataset can be deleted only through the Test Case that owns it; naming another Test Case finds nothing and removes nothing.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "Deleting Test Case B's dataset under Test Case A answers not found and B's file stays."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/dataset.go",
+            "lines": {
+              "start": 334,
+              "end": 349
+            },
+            "excerpt_sha256": "sha256:a7ea17c49ccdd871b48eb4c57b678a7f69a5b9c431b18987134bc9530de172ff"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/dataset_ownership_integration_test.go",
+            "lines": {
+              "start": 262,
+              "end": 287
+            },
+            "content_sha256": "sha256:164c13ae9577a6c32f6738e2c41f20fae33ab43b5a4f8183adb14484a9b674ab",
+            "excerpt_sha256": "sha256:9a237874c5f117457a0d4e857b7918f337f54f0a115c32fc5e3a475e3f4d83b7"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-workspace-that-may-not-store-objects-uploads-no-dataset",
+        "statement": "A Workspace that may not store objects cannot upload a dataset; the upload is answered not found before anything is stored.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "A Workspace being erased uploading rows.csv gets not found and the store receives nothing."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/dataset.go",
+            "lines": {
+              "start": 144,
+              "end": 168
+            },
+            "excerpt_sha256": "sha256:3281488dde4045a795eb11aa1de6abdca7d8db8e283a14adcd5e2e575050c172"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/dataset_characterization_test.go",
+            "lines": {
+              "start": 149,
+              "end": 165
+            },
+            "content_sha256": "sha256:48d812ffb6b3656ba59534a7c995ea43bb85307a81364e40432645a8b7252af5",
+            "excerpt_sha256": "sha256:3aa5882e18df2e392d68420b3eb6eed5c61cc4fa816297e7919f30762ddf9e4a"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-rubric-item-addresses-an-existing-criterion",
+        "statement": "A rubric is accepted only when every item names an existing acceptance criterion, and deleting a criterion removes its rubric item.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "A rubric item naming not-a-criterion answers 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/testlab.go",
+            "lines": {
+              "start": 238,
+              "end": 251
+            },
+            "excerpt_sha256": "sha256:a9090bc6e32c38085d4e72a23ca3a904979ad2d35f984125d4ec197f4ff466aa"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/testlab.go",
+            "lines": {
+              "start": 733,
+              "end": 761
+            },
+            "excerpt_sha256": "sha256:4ef606451bd38712bf45d5464617d19abc8ad86571407c22153130bbe9beff5e"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/testlab_integration_test.go",
+            "lines": {
+              "start": 328,
+              "end": 389
+            },
+            "content_sha256": "sha256:d169eef73bcfe02af2d35ebe37a65b555aa1d5ae9955a85aa516eeea5183d3cb",
+            "excerpt_sha256": "sha256:5dd4d78fbfbedd376541466baa1926b09eaf3753e4d1251d5cfb58b26d243cb0"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-workspace-purge-keeps-test-cases-a-run-froze",
+        "statement": "Purging a Workspace erases only the Test Cases no snapshot froze, so past runs keep the Test Case they ran.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "Of two Test Cases, the snapshotted one survives the purge."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/purge.go",
+            "lines": {
+              "start": 33,
+              "end": 53
+            },
+            "excerpt_sha256": "sha256:9af317c5e1cd4caa2cf5eb225af44c4de4f6e2a4485052d1d492059a296d2246"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/purge_test.go",
+            "lines": {
+              "start": 10,
+              "end": 28
+            },
+            "content_sha256": "sha256:7bade8c38a76c9e31c3c606471c11a773c003389c268e5602ef2bfb889ce89e0",
+            "excerpt_sha256": "sha256:21927454a7740370d3acbb5edc616fda5f26f5254e3a2488a1b683ecf8347133"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-continuation-freezes-a-new-snapshot-for-its-new-prompt",
+        "statement": "Continuing a run freezes a new snapshot of the same Test Case whose content hash covers the new prompt, and leaves the earlier snapshot as it was.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "Continuing with now do it in French gives a new snapshot with a different hash; continuing with the same prompt gives the same hash."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/snapshot.go",
+            "lines": {
+              "start": 295,
+              "end": 345
+            },
+            "excerpt_sha256": "sha256:ff95ff66ec683de274f24406cbb28a9a91f802c276625c01e0c646b8dcddf204"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/snapshot_continue_integration_test.go",
+            "lines": {
+              "start": 8,
+              "end": 48
+            },
+            "content_sha256": "sha256:4c17e129c55516cd4fe2a8ebd54d2fcd99db0706b301101a844557a284d2c9ec",
+            "excerpt_sha256": "sha256:0a8e43125f51d4eb86c0518a8ddd5364ad3b565296d5493e9fc97ddd21dff328"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T19:46:14.276516Z",
+      "scope": "Record testlab snapshot and dataset rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "b2d17170912b041fac5ced8e47ca798fc26b34e7",
+        "registry_digest": "sha256:ecbd1008c4b274a8fbf2ae2cc3c9d233a2d805c1ce4501db84a41ec33878c9b9"
+      }
+    }
+  ]
+}
