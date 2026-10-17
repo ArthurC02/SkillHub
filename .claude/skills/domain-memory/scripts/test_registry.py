@@ -109,6 +109,11 @@ class RegistryTest(RegistryTestCase):
              "interactions/i references unknown context ghost; add the Context first"),
             ("event in unknown context", "events.json", [{"id": "e", "owner_context": "ghost"}],
              "events/e references unknown context ghost; add the Context first"),
+            ("event consumed by unknown context", "events.json",
+             [{"id": "e", "owner_context": "orders", "consumers": ["billing", "ghost"]}],
+             "events/e references as consumer unknown context ghost; add the Context first"),
+            ("event consumers not a list", "events.json", [{"id": "e", "owner_context": "orders", "consumers": "billing"}],
+             "events/e consumers must be a list of Context ids"),
             ("capability in unknown context", "capabilities.json", [{"id": "k", "context": "ghost"}],
              "capabilities/k references unknown context ghost; add the Context first"),
             ("value object in unknown context", "value-objects.json", [{"id": "v", "context": "ghost"}],
@@ -556,41 +561,48 @@ class RegistryTest(RegistryTestCase):
             "no_registered_collaboration",
         )
 
-    def test_a_registered_interaction_makes_a_boundary_known(self) -> None:
-        self.two_contexts()
-        self.seed(
-            "interactions.json",
-            [
-                {
-                    "id": "order-billed",
-                    "producer_context": "orders",
-                    "consumer_context": "billing",
-                }
-            ],
-        )
-        self.assertEqual(
-            boundary_analysis(self.repo / "memory", "orders", "billing")["status"],
-            "known",
-        )
-
-    def test_a_registered_interaction_does_not_make_the_reverse_direction_known(
+    def test_a_registered_interaction_makes_a_boundary_known_under_the_consumer_that_depends_on_its_producer(
         self,
     ) -> None:
         self.two_contexts()
-        self.seed(
-            "interactions.json",
-            [
-                {
-                    "id": "order-billed",
-                    "producer_context": "orders",
-                    "consumer_context": "billing",
-                }
-            ],
-        )
+        self.seed("interactions.json", [
+            {"id": "order-billed", "producer_context": "orders", "consumer_context": "billing"},
+        ])
+        for source, target, direction in (("billing", "orders", "source_depends_on_target"),
+                                          ("orders", "billing", "target_depends_on_source")):
+            with self.subTest(direction):
+                analysis = boundary_analysis(self.repo / "memory", source, target)
+                other = ({"source_depends_on_target", "target_depends_on_source"} - {direction}).pop()
+                self.assertEqual(
+                    ("known", ["order-billed"], {"interactions": [], "contracts": [], "dependencies": [], "events": []}),
+                    (analysis["status"], [entry["id"] for entry in analysis[direction]["interactions"]], analysis[other]),
+                )
+
+    def test_a_boundary_lists_each_direction_so_opposite_collaborations_are_not_mixed(self) -> None:
+        self.two_contexts()
+        self.seed("interactions.json", [
+            {"id": "purge-hook", "producer_context": "billing", "consumer_context": "orders"},
+        ])
+        self.seed("dependency-policies.json", [
+            {"id": "billing-may-use-orders", "from_context": "billing", "to_context": "orders"},
+        ])
+        self.seed("events.json", [
+            {"id": "order-placed", "owner_context": "orders", "consumers": ["billing"]},
+        ])
+        analysis = boundary_analysis(self.repo / "memory", "billing", "orders")
         self.assertEqual(
-            boundary_analysis(self.repo / "memory", "billing", "orders")["status"],
-            "no_registered_collaboration",
+            ("known",
+             {"interactions": [], "contracts": [], "dependencies": ["billing-may-use-orders"], "events": ["order-placed"]},
+             {"interactions": ["purge-hook"], "contracts": [], "dependencies": [], "events": []}),
+            (analysis["status"],
+             {key: [entry["id"] for entry in value] for key, value in analysis["source_depends_on_target"].items()},
+             {key: [entry["id"] for entry in value] for key, value in analysis["target_depends_on_source"].items()}),
         )
+
+    def test_an_event_with_a_consumer_alone_makes_a_boundary_known(self) -> None:
+        self.two_contexts()
+        self.seed("events.json", [{"id": "order-placed", "owner_context": "orders", "consumers": ["billing"]}])
+        self.assertEqual("known", boundary_analysis(self.repo / "memory", "orders", "billing")["status"])
 
     def test_a_dependency_policy_alone_is_a_permission_without_a_collaboration(self) -> None:
         self.two_contexts()
@@ -605,8 +617,11 @@ class RegistryTest(RegistryTestCase):
             ],
         )
         analysis = boundary_analysis(self.repo / "memory", "orders", "billing")
-        self.assertEqual(len(analysis["dependencies"]), 1)
-        self.assertEqual(analysis["status"], "policy_only")
+        self.assertEqual(
+            ("policy_only", ["orders-billing"], []),
+            (analysis["status"], [entry["id"] for entry in analysis["source_depends_on_target"]["dependencies"]],
+             analysis["target_depends_on_source"]["dependencies"]),
+        )
 
     def test_coverage_reports_a_context_only_under_the_asset_it_lacks(self) -> None:
         self.seed(
@@ -891,8 +906,11 @@ class RegistryTest(RegistryTestCase):
                                          "description": "Withdrawn skills stop billing", "status": "reviewed"}])
         self.seed("dependency-policies.json", [{"id": "lookup", "from_context": "catalog", "to_context": "registry",
                                                 "rationale": "Withdrawn skills are looked up here.", "status": "reviewed"}])
+        self.seed("events.json", [{"id": "withdrawn", "owner_context": "catalog", "consumers": ["search", "billing"],
+                                   "meaning": "A skill was withdrawn.", "status": "reviewed"}])
         self.assertEqual(
             [("rules", ["catalog", "search"], "A withdrawn skill answers gone."),
+             ("events", ["catalog", "search", "billing"], "A skill was withdrawn."),
              ("interactions", ["catalog", "billing"], "Withdrawn skills stop billing"),
              ("dependency-policies", ["catalog", "registry"], "Withdrawn skills are looked up here.")],
             [(item["asset"], item["contexts"], item["summary"])
@@ -1170,6 +1188,7 @@ class RegistryTest(RegistryTestCase):
         ])
         self.seed("events.json", [
             {"id": "order-placed", "owner_context": "orders"}, {"id": "invoice-issued", "owner_context": "billing"},
+            {"id": "payment-received", "owner_context": "billing", "consumers": ["orders"]},
         ])
         self.seed("capabilities.json", [
             {"id": "place-order", "context": "orders"}, {"id": "issue-invoice", "context": "billing"},
@@ -1184,7 +1203,7 @@ class RegistryTest(RegistryTestCase):
             "aggregates": ["order-aggregate"],
             "rules": ["order-total", "shared-currency"],
             "interactions": ["order-billed", "invoice-paid"],
-            "events": ["order-placed"],
+            "events": ["order-placed", "payment-received"],
             "capabilities": ["place-order"],
             "value_objects": ["money"],
         }
@@ -1196,24 +1215,19 @@ class RegistryTest(RegistryTestCase):
             (model["context"]["id"], model["usage"], model["review_mode"]),
         )
 
-    def test_a_registered_contract_makes_a_boundary_known(self) -> None:
+    def test_a_registered_contract_makes_a_boundary_known_under_the_consumer_whichever_way_it_is_asked(self) -> None:
         self.two_contexts()
         self.seed("contracts.json", [
             {"id": "order-api", "producer_context": "orders", "consumer_contexts": ["billing"]},
         ])
-        analysis = boundary_analysis(self.repo / "memory", "orders", "billing")
+        asked = boundary_analysis(self.repo / "memory", "billing", "orders")
+        reversed_ask = boundary_analysis(self.repo / "memory", "orders", "billing")
         self.assertEqual(
-            ("known", [], ["order-api"]),
-            (analysis["status"], analysis["interactions"], [entry["id"] for entry in analysis["contracts"]]),
+            ("known", ["order-api"], [], "known", ["order-api"]),
+            (asked["status"], [entry["id"] for entry in asked["source_depends_on_target"]["contracts"]],
+             asked["target_depends_on_source"]["contracts"],
+             reversed_ask["status"], [entry["id"] for entry in reversed_ask["target_depends_on_source"]["contracts"]]),
         )
-
-    def test_a_registered_contract_does_not_make_the_reverse_direction_known(self) -> None:
-        self.two_contexts()
-        self.seed("contracts.json", [
-            {"id": "order-api", "producer_context": "orders", "consumer_contexts": ["billing"]},
-        ])
-        analysis = boundary_analysis(self.repo / "memory", "billing", "orders")
-        self.assertEqual(("no_registered_collaboration", []), (analysis["status"], analysis["contracts"]))
 
     def test_each_asset_level_defect_is_named(self) -> None:
         use_json_layout(self.repo / "memory")

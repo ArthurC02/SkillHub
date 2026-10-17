@@ -26,7 +26,7 @@ from .evidence import (
     with_references,
     without_derived_keys,
 )
-from .okf import PROSE_FIELDS, RELATION_TARGETS, verified_by
+from .okf import CONTEXT_RELATIONS, PROSE_FIELDS, RELATION_TARGETS, verified_by
 from .policy import query_result_limit, review_mode
 from .store import (
     MANIFEST,
@@ -312,6 +312,7 @@ def _validate_context_references(
         *_context_list_errors(records, known_contexts),
         *_single_context_errors(records, known_contexts),
         *_contract_party_errors(records, known_contexts),
+        *_event_consumer_errors(records, known_contexts),
         *_interaction_contract_errors(records),
     ]
 
@@ -362,6 +363,19 @@ def _contract_party_errors(records: dict[str, list[dict[str, Any]]], known_conte
             errors.append(
                 f"contracts/{entry.get('id')} references as consumer {_unknown(set(consumers) - known_contexts)}"
             )
+    return errors
+
+
+def _event_consumer_errors(records: dict[str, list[dict[str, Any]]], known_contexts: set[Any]) -> list[str]:
+    errors: list[str] = []
+    for entry in records.get("events.json", []):
+        consumers = entry.get("consumers")
+        if consumers is None:
+            continue
+        if not isinstance(consumers, list):
+            errors.append(f"events/{entry.get('id')} consumers must be a list of Context ids")
+        elif set(consumers) - known_contexts:
+            errors.append(f"events/{entry.get('id')} references as consumer {_unknown(set(consumers) - known_contexts)}")
     return errors
 
 
@@ -831,7 +845,7 @@ def _contexts_named(asset: str, entry: dict[str, Any]) -> list[Any]:
     named = [
         context
         for field, value in entry.items()
-        if field == "contexts" or field.endswith(("_context", "_contexts"))
+        if field in CONTEXT_RELATIONS
         for context in (value if isinstance(value, list) else [value])
     ]
     return list(dict.fromkeys(named))
@@ -915,7 +929,8 @@ def context_model(root: Path, identifier: str) -> dict[str, Any] | None:
             in {entry.get("producer_context"), entry.get("consumer_context")},
         ),
         "events": _records_where(
-            root, "events.json", lambda entry: entry.get("owner_context") == identifier
+            root, "events.json",
+            lambda entry: entry.get("owner_context") == identifier or identifier in (entry.get("consumers") or []),
         ),
         "capabilities": _records_where(
             root, "capabilities.json", lambda entry: entry.get("context") == identifier
@@ -971,33 +986,42 @@ def _summarized(entry: dict[str, Any]) -> dict[str, Any]:
 
 
 def boundary_analysis(root: Path, source: str, target: str) -> dict[str, Any]:
-    interactions = _records_where(
-        root,
-        "interactions.json",
-        lambda entry: entry.get("producer_context") == source
-        and entry.get("consumer_context") == target,
-    )
-    contracts = _records_where(
-        root,
-        "contracts.json",
-        lambda entry: entry.get("producer_context") == source
-        and target in entry.get("consumer_contexts", []),
-    )
-    dependencies = _records_where(
-        root,
-        "dependency-policies.json",
-        lambda entry: entry.get("from_context") == source
-        and entry.get("to_context") == target,
-    )
+    records = {name: asset_records(root, name) for name in COLLABORATION_ASSETS}
+    forward = _dependence(records, dependent=source, provider=target)
+    backward = _dependence(records, dependent=target, provider=source)
+    both = [*forward.values(), *backward.values()]
     return {
         "source_context": source,
         "target_context": target,
-        "interactions": interactions,
-        "contracts": contracts,
-        "dependencies": dependencies,
+        "source_depends_on_target": forward,
+        "target_depends_on_source": backward,
         "status": "known"
-        if interactions or contracts
+        if any(direction[key] for direction in (forward, backward) for key in ("interactions", "contracts", "events"))
         else "policy_only"
-        if dependencies
+        if any(both)
         else "no_registered_collaboration",
+    }
+
+
+COLLABORATION_ASSETS = ("interactions.json", "contracts.json", "dependency-policies.json", "events.json")
+
+
+def _dependence(records: dict[str, list[dict[str, Any]]], *, dependent: str, provider: str) -> dict[str, list[Any]]:
+    return {
+        "interactions": [
+            entry for entry in records["interactions.json"]
+            if entry.get("producer_context") == provider and entry.get("consumer_context") == dependent
+        ],
+        "contracts": [
+            entry for entry in records["contracts.json"]
+            if entry.get("producer_context") == provider and dependent in (entry.get("consumer_contexts") or [])
+        ],
+        "dependencies": [
+            entry for entry in records["dependency-policies.json"]
+            if entry.get("from_context") == dependent and entry.get("to_context") == provider
+        ],
+        "events": [
+            entry for entry in records["events.json"]
+            if entry.get("owner_context") == provider and dependent in (entry.get("consumers") or [])
+        ],
     }
