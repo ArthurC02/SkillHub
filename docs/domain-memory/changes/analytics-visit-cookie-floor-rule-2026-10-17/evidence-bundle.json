@@ -1,0 +1,40 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "analytics-visit-cookie-floor-rule-2026-10-17",
+  "proposal_id": "analytics-visit-cookie-floor-rule-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "a40a2f07f146c62cb50c375ec0ff9f0820b74bed",
+    "registry_digest": "sha256:92da5370cc9ffed4a7ed4af905689e07417c2cfd44d91a7c2bf1da365261c8fb"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-visit-cookie-always-lives-at-least-one-second",
+      "mutated_protection": "apps/platform/internal/product/learning/analytics.go:121: if seconds < 1 { return 1 -> if seconds < 0 { return 1",
+      "failure_evidence": "=== RUN   TestVisitCookieInTheLastSecondBeforeUTCMidnightStillGetsAPositiveLifetime\n=== RUN   TestVisitCookieInTheLastSecondBeforeUTCMidnightStillGetsAPositiveLifetime/half_a_second_before_midnight\n    analytics_test.go:168: visit cookie lifetime = 0 seconds, want 1; zero would make it a browser-session cookie\n=== RUN   TestVisitCookieInTheLastSecondBeforeUTCMidnightStillGetsAPositiveLifetime/exactly_one_second_before_midnight\n=== RUN   TestVisitCookieInTheLastSecondBeforeUTCMidnightStillGetsAPositiveLifetime/two_seconds_before_midnight\n--- FAIL: TestVisitCookieInTheLastSecondBeforeUTCMidnightStillGetsAPositiveLifetime (0.00s)\n    --- FAIL: TestVisitCookieInTheLastSecondBeforeUTCMidnightStillGetsAPositiveLifetime/half_a_second_before_midnight (0.00s)\n    --- PASS: TestVisitCookieInTheLastSecondBeforeUTCMidnightStillGetsAPositiveLifetime/exactly_one_second_before_midnight (0.00s)\n    --- PASS: TestVisitCookieInTheLastSecondBeforeUTCMidnightStillGetsAPositiveLifetime/two_seconds_before_midnight (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/learning\t2.526s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/product/learning/analytics.go",
+    "apps/platform/internal/product/learning/analytics_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-visit-cookie-always-lives-at-least-one-second",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestVisitCookieInTheLastSecondBeforeUTCMidnightStillGetsAPositiveLifetime$ ./internal/product/learning/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ec3003e159b7476b2b3f78b4c659a686b9989796b537f880eb1e8ca5abe484d2",
+      "finished_at": "2026-10-17T14:00:32.655184Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

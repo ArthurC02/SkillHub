@@ -1,0 +1,108 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "analytics-visit-cookie-floor-rule-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "analytics-visit-cookie-floor-rule-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T14:00:26.771821Z",
+  "verified_at": "2026-10-17T14:00:33.572322Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "a40a2f07f146c62cb50c375ec0ff9f0820b74bed",
+    "registry_digest": "sha256:92da5370cc9ffed4a7ed4af905689e07417c2cfd44d91a7c2bf1da365261c8fb"
+  },
+  "affected_contexts": [
+    "analytics"
+  ],
+  "rule_ids": [
+    "a-visit-cookie-always-lives-at-least-one-second"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "analytics",
+    "invariant": "Only analytics collects feedback and funnel events, under retention and de-identification.",
+    "evidence": [
+      "apps/platform/internal/product/learning/feedback.go:109-113"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/product/learning/purge.go:12-19"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A counterfactual showed no test reached the one-second floor; a boundary test was added."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Amending a-visit-cookie-never-outlives-retention: the cap and the floor are proven by different tests."
+    ],
+    "proof_obligations": [
+      "rule-a-visit-cookie-always-lives-at-least-one-second"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-visit-cookie-always-lives-at-least-one-second",
+        "statement": "A visit cookie's lifetime never drops below one second, so in the last second before UTC midnight it still expires instead of becoming a browser-session cookie.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "At 23:59:59.5 UTC the visit cookie gets Max-Age 1, not 0."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/analytics.go",
+            "lines": {
+              "start": 121,
+              "end": 123
+            },
+            "excerpt_sha256": "sha256:f7a007be9a86ea7e3202cc9b5fe452c536e43a4bff95d84ca30b71c089ab419b"
+          },
+          {
+            "path": "apps/platform/internal/product/learning/analytics_test.go",
+            "lines": {
+              "start": 156,
+              "end": 172
+            },
+            "content_sha256": "sha256:2e873f2590040960e3c092346378250e33b1b8954ad6ead36a59d99a2be74af0",
+            "excerpt_sha256": "sha256:97d9283ddc29258846c707c1f5f9f1400ae61db076ced7bc8b33e23cb83dcc1d"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T14:00:33.042847Z",
+      "scope": "Record the analytics visit cookie floor as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "a40a2f07f146c62cb50c375ec0ff9f0820b74bed",
+        "registry_digest": "sha256:92da5370cc9ffed4a7ed4af905689e07417c2cfd44d91a7c2bf1da365261c8fb"
+      }
+    }
+  ]
+}

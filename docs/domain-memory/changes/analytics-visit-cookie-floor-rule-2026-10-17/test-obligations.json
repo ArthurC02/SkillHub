@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "analytics-visit-cookie-floor-rule-2026-10-17",
+  "proposal_id": "analytics-visit-cookie-floor-rule-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-a-visit-cookie-always-lives-at-least-one-second",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-visit-cookie-always-lives-at-least-one-second",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-visit-cookie-always-lives-at-least-one-second"
+        }
+      ],
+      "expected_outcome": "A visit cookie's lifetime never drops below one second, so in the last second before UTC midnight it still expires instead of becoming a browser-session cookie.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestVisitCookieInTheLastSecondBeforeUTCMidnightStillGetsAPositiveLifetime$ ./internal/product/learning/"
+    }
+  ]
+}

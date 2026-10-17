@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "analytics-visit-cookie-floor-rule-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed that a visit cookie always gets a positive lifetime.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context analytics lists the floor as reviewed, proven by its boundary test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-visit-cookie-always-lives-at-least-one-second",
+      "statement": "A visit cookie's lifetime never drops below one second, so in the last second before UTC midnight it still expires instead of becoming a browser-session cookie."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/product/learning/analytics.go",
+    "apps/platform/internal/product/learning/analytics_test.go"
+  ]
+}
