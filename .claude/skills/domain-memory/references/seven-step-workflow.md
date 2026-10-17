@@ -49,7 +49,7 @@ For an API or event contract, record producer, consumers, version, compatibility
 
 ## Step 6: Derive test obligations
 
-Copy [test-obligations.json](../templates/test-obligations.json). Map every acceptance criterion, invariant, contract promise, and material failure mode to an observable assertion. An obligation's `source_type` names what it is derived from and must be `acceptance-criterion`, `rule`, `contract` or `invariant`; the kind of check it runs belongs in `level`, where aggregate, integration, architecture and security checks appear only when the proposal changes them. Every acceptance criterion needs its own obligation carrying that criterion's id. A green implementation test alone does not prove a changed invariant.
+Copy [test-obligations.json](../templates/test-obligations.json). Map every acceptance criterion, invariant, contract promise, and material failure mode to an observable assertion. An obligation's `source_type` names what it is derived from and must be `acceptance-criterion`, `rule`, `contract` or `invariant`; the kind of check it runs belongs in `level`, where aggregate, integration, architecture and security checks appear only when the proposal changes them. Every acceptance criterion, and every rule and contract the proposal names, needs an obligation carrying its id. When one check proves several of them, list the others in that obligation's `also_covers` as `{"source_type": ..., "source_id": ...}` entries rather than repeating the obligation, so `record-test-result` runs the check once. A green implementation test alone does not prove a changed invariant.
 
 ## Step 7: Prepare, verify, and review the package
 

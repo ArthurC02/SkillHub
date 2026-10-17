@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.48.0
+
+### Added
+
+- A test obligation can list in `also_covers` further acceptance criteria, rules or contracts its check proves, each as `{source_type, source_id}`, so one check covering several sources is recorded and run once instead of repeated per source.
+
+### Changed
+
+- The `change-coupling` reference says that a fan-in feature crosses `--max-modules` like a sweep, and how to tell them apart.
+
 ## 0.47.1
 
 ### Fixed

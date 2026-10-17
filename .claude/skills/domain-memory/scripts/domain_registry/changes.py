@@ -377,19 +377,16 @@ def _obligation_errors(
         if obligation_id in obligation_ids:
             errors.append("test-obligations.json contains duplicate obligation id")
         obligation_ids.add(obligation_id)
-        source_type = obligation.get("source_type")
-        if source_type not in OBLIGATION_SOURCE_TYPES:
-            allowed = ", ".join(sorted(OBLIGATION_SOURCE_TYPES))
-            errors.append(
-                f"test obligation {obligation_id} has source_type {source_type!r}; a source_type names what the "
-                f"obligation is derived from, not the kind of check, and must be one of {allowed}"
-            )
-        elif not completed_identifier(obligation.get("source_id")):
-            errors.append(
-                f"test obligation {obligation_id} has an incomplete source_id: {obligation.get('source_id')!r}"
-            )
-        else:
-            obligation_sources.add((source_type, obligation["source_id"]))
+        also_covers = obligation.get("also_covers", [])
+        if not isinstance(also_covers, list) or not all(isinstance(source, dict) for source in also_covers):
+            errors.append(f"test obligation {obligation_id} has also_covers that is not a list of sources")
+            also_covers = []
+        for source in (obligation, *also_covers):
+            error = _obligation_source_error(obligation_id, source)
+            if error:
+                errors.append(error)
+            else:
+                obligation_sources.add((source["source_type"], source["source_id"]))
         if not completed_identifier(
             obligation.get("expected_outcome")
         ) or not completed_identifier(obligation.get("check")):
@@ -414,6 +411,19 @@ def _obligation_errors(
         if (source_type, source_id) not in obligation_sources
     )
     return errors, obligation_ids
+
+
+def _obligation_source_error(obligation_id: str, source: dict[str, Any]) -> str | None:
+    source_type = source.get("source_type")
+    if source_type not in OBLIGATION_SOURCE_TYPES:
+        allowed = ", ".join(sorted(OBLIGATION_SOURCE_TYPES))
+        return (
+            f"test obligation {obligation_id} has source_type {source_type!r}; a source_type names what the "
+            f"obligation is derived from, not the kind of check, and must be one of {allowed}"
+        )
+    if not completed_identifier(source.get("source_id")):
+        return f"test obligation {obligation_id} has an incomplete source_id: {source.get('source_id')!r}"
+    return None
 
 
 def _counts_as_approval(approval: Any, proposal: dict[str, Any]) -> bool:

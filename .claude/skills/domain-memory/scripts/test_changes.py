@@ -573,6 +573,26 @@ class ChangesTest(RegistryTestCase):
             ("contract lacks an obligation", [good], [], ["invoice-api"],
              ["contract invoice-api lacks a test obligation"], {"OB-1"}),
             ("contract covered", [good, contract_obligation], [], ["invoice-api"], [], {"OB-1", "OB-3"}),
+            ("rule and contract covered by the criterion's obligation",
+             [{**good, "also_covers": [{"source_type": "rule", "source_id": "order-total"},
+                                       {"source_type": "contract", "source_id": "invoice-api"}]}],
+             ["order-total"], ["invoice-api"], [], {"OB-1"}),
+            ("criterion covered only through also_covers",
+             [{**rule_obligation, "also_covers": [{"source_type": "acceptance-criterion", "source_id": "AC-1"}]}],
+             ["order-total"], [], [], {"OB-2"}),
+            ("also_covers not a list", [{**good, "also_covers": "order-total"}], ["order-total"], [],
+             ["test obligation OB-1 has also_covers that is not a list of sources", "rule order-total lacks a test obligation"],
+             {"OB-1"}),
+            ("also_covers a number", [{**good, "also_covers": 7}], [], [],
+             ["test obligation OB-1 has also_covers that is not a list of sources"], {"OB-1"}),
+            ("also_covers holding a bare id", [{**good, "also_covers": ["order-total"]}], [], [],
+             ["test obligation OB-1 has also_covers that is not a list of sources"], {"OB-1"}),
+            ("also_covers source of an unknown type", [{**good, "also_covers": [{"source_type": "test", "source_id": "x"}]}],
+             [], [],
+             ["test obligation OB-1 has source_type 'test'; a source_type names what the obligation is derived from, "
+              "not the kind of check, and must be one of acceptance-criterion, contract, invariant, rule"], {"OB-1"}),
+            ("also_covers source without an id", [{**good, "also_covers": [{"source_type": "rule"}]}], [], [],
+             ["test obligation OB-1 has an incomplete source_id: None"], {"OB-1"}),
         ]
         for label, records, rule_ids, contract_ids, expected_errors, expected_ids in cases:
             with self.subTest(label):
