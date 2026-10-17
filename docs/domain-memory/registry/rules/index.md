@@ -34,6 +34,7 @@
 - [a-suggestion-applies-only-to-the-bytes-it-was-written-for](/rules/a-suggestion-applies-only-to-the-bytes-it-was-written-for) — A suggestion applies only while its target file in the newest version is byte-identical to the version it was written against; otherwise it is blocked as targe….
 - [a-suggestion-decision-is-accepted-or-rejected](/rules/a-suggestion-decision-is-accepted-or-rejected) — A suggestion decision must be accepted or rejected; pending or any other word is refused as not_a_choice.
 - [a-suggestion-path-stays-inside-the-package](/rules/a-suggestion-path-stays-inside-the-package) — A suggestion's target must be a clean relative path inside the Skill package; empty, absolute, traversing or uncleaned paths are refused, not repaired.
+- [a-suggestion-target-file-is-at-most-1-mib](/rules/a-suggestion-target-file-is-at-most-1-mib) — A file a suggestion targets is read for a reviewable diff only up to 1 MiB; a larger file is refused before any content check.
 - [a-takedown-needs-a-reason](/rules/a-takedown-needs-a-reason) — A takedown with an empty or whitespace-only reason is refused and the Skill stays up.
 - [a-taken-down-catalog-skill-answers-gone](/rules/a-taken-down-catalog-skill-answers-gone) — Opening a Catalog Skill that has been taken down answers 410 and returns nothing of it.
 - [a-taken-down-skill-takes-no-new-version](/rules/a-taken-down-skill-takes-no-new-version) — A taken-down Skill refuses every new version as skill_taken_down and gains no version row; in a re-import of several Skills the others still import.

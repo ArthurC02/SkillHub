@@ -1,0 +1,116 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "eval-target-size-rule-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "eval-target-size-rule-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T13:12:14.726757Z",
+  "verified_at": "2026-10-17T13:12:23.966501Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "cbc88e462060cf148508e1ac33f3830faf070002",
+    "registry_digest": "sha256:b62a77390e2ed44c738cb9a609d1bb213e5cf2ba42d9c6150e18a9aeab7afe21"
+  },
+  "affected_contexts": [
+    "eval"
+  ],
+  "rule_ids": [
+    "a-suggestion-target-file-is-at-most-1-mib"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "eval",
+    "invariant": "Only eval settles evaluations and decides, reproduces and applies suggestions.",
+    "evidence": [
+      "apps/platform/internal/trial/improvement/apply.go:228-238"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/improvement/suggest.go:152-162"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A counterfactual over the whole suite showed no test reached this limit; a boundary test was added."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Testing only a far-over value: it would survive the limit drifting upward."
+    ],
+    "proof_obligations": [
+      "rule-a-suggestion-target-file-is-at-most-1-mib"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-suggestion-target-file-is-at-most-1-mib",
+        "statement": "A file a suggestion targets is read for a reviewable diff only up to 1 MiB; a larger file is refused before any content check.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A file of exactly 1048576 bytes is read; 1048577 bytes is refused as larger than the byte limit for a reviewable diff."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 35,
+              "end": 35
+            },
+            "excerpt_sha256": "sha256:e8102a52cf248cb2f57c4663818b428e7ff0cf344c5f60b8e8275459a466b76d"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 219,
+              "end": 221
+            },
+            "excerpt_sha256": "sha256:387c2ba24e0a9768ded1c7997f07c973ed0e8afaa906ae7f41f86ed8e8f51b0c"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/apply_limits_characterization_test.go",
+            "lines": {
+              "start": 57,
+              "end": 69
+            },
+            "content_sha256": "sha256:7c94f81dcbbc425289571506c6f7106729000bcca42f289a73cd423d24ce68fd",
+            "excerpt_sha256": "sha256:ea5f7dbfb033392e15780b03b031dadcc21abb867373a6a452479e8833371863"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T13:12:23.581261Z",
+      "scope": "Record the eval target size limit as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "cbc88e462060cf148508e1ac33f3830faf070002",
+        "registry_digest": "sha256:b62a77390e2ed44c738cb9a609d1bb213e5cf2ba42d9c6150e18a9aeab7afe21"
+      }
+    }
+  ]
+}

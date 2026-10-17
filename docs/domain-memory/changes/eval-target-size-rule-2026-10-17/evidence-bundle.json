@@ -1,0 +1,40 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "eval-target-size-rule-2026-10-17",
+  "proposal_id": "eval-target-size-rule-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "cbc88e462060cf148508e1ac33f3830faf070002",
+    "registry_digest": "sha256:b62a77390e2ed44c738cb9a609d1bb213e5cf2ba42d9c6150e18a9aeab7afe21"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-suggestion-target-file-is-at-most-1-mib",
+      "mutated_protection": "apps/platform/internal/trial/improvement/apply.go:219: if len(data) > maxTargetFileBytes { -> if len(data) > maxTargetFileBytes+1 {",
+      "failure_evidence": "=== RUN   TestReadTargetReadsAFileOfExactlyTheReviewableLimitAndRefusesOneByteMore\n    apply_limits_characterization_test.go:67: a file one byte over the limit: err = <nil>, want the size refusal\n--- FAIL: TestReadTargetReadsAFileOfExactlyTheReviewableLimitAndRefusesOneByteMore (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement\t4.264s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/trial/improvement/apply.go",
+    "apps/platform/internal/trial/improvement/apply_limits_characterization_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-suggestion-target-file-is-at-most-1-mib",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestReadTargetReadsAFileOfExactlyTheReviewableLimitAndRefusesOneByteMore$ ./internal/trial/improvement/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:9c7fe63cba09336e2da31ffb54cd898eb8e14327efda3a512b3e188cca799df5",
+      "finished_at": "2026-10-17T13:12:23.271121Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

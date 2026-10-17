@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "eval-target-size-rule-2026-10-17",
+  "proposal_id": "eval-target-size-rule-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-a-suggestion-target-file-is-at-most-1-mib",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-suggestion-target-file-is-at-most-1-mib",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-suggestion-target-file-is-at-most-1-mib"
+        }
+      ],
+      "expected_outcome": "A file a suggestion targets is read for a reviewable diff only up to 1 MiB; a larger file is refused before any content check.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestReadTargetReadsAFileOfExactlyTheReviewableLimitAndRefusesOneByteMore$ ./internal/trial/improvement/"
+    }
+  ]
+}

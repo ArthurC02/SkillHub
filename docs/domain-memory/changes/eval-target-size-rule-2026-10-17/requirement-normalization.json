@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "eval-target-size-rule-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed that a suggestion target file over 1 MiB cannot be diffed or applied.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context eval lists the target size limit as reviewed, proven by its boundary test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-suggestion-target-file-is-at-most-1-mib",
+      "statement": "A file a suggestion targets is read for a reviewable diff only up to 1 MiB; a larger file is refused before any content check."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/trial/improvement/apply.go",
+    "apps/platform/internal/trial/improvement/apply_limits_characterization_test.go"
+  ]
+}
