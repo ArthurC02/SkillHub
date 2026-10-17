@@ -7,7 +7,7 @@ A plugin install and a direct Skill read of the Plugin root are different entry 
 The host chooses execution. It may assign the four lifecycle capabilities to separate agents when it supports delegation, or run them in one agent in this order:
 
 1. `domain-memory-read` before implementation, after `domain-memory-extract` when the Registry has not yet learned the requirement or the code it is about.
-2. `domain-memory-design` when the change affects a boundary, contract, invariant, event, or material business rule.
+2. `domain-memory-design` for a material change, as [the seven-step workflow](seven-step-workflow.md) defines it.
 3. `domain-memory-review` before handing the implementation off, and again after implementation when the result is material.
 4. `domain-memory-maintain` after implementation or source drift.
 5. `domain-memory-review` before relying on the maintained result.
@@ -33,7 +33,7 @@ The lifecycle adapter should wire these command groups to its own events:
 | Brownfield repository before implementation | Read | `probe`, `validate --require-reviewed`, then term and Context lookup |
 | Dead or unusable Registry | Router / Review | Stop, report the readiness block, and recover or reconfirm sources before relying on facts |
 | Before a material domain change | Design | `init-change-package`, package validation, and the seven-step workflow |
-| While implementing a code change | Implementation hygiene | No Registry command; read the implementation handoff, then route a changed owner, invariant, contract, event, or consistency rule to Design |
+| While implementing a code change | Implementation hygiene | No Registry command; read the implementation handoff, then route a material change, as the seven-step workflow defines it, to Design |
 | Before dispatching a code change | Implementation hygiene | `quality-gates --repo-root <repo>`; pass its result to the coding Agent with the handoff |
 | Before accepting a code change | Implementation hygiene | `counterfactual` on each rule the change added or moved; a `survived` verdict returns the change to its author |
 | Before implementation handoff | Review | Registry, source, evidence, audit, and Change Package validation |

@@ -15,7 +15,7 @@ Choose one focused capability:
 
 - **Extract**: turn a requirement, existing code, or a requirement change or refactoring into DDD candidates with evidence. Use [domain-memory-extract](skills/domain-memory-extract/SKILL.md).
 - **Read**: before coding, load the reviewed terms, Context, ownership, invariants, and existing collaboration. Use [domain-memory-read](skills/domain-memory-read/SKILL.md).
-- **Design**: when a request changes a boundary, contract, event, consistency rule, or material business rule, prepare a reviewable Change Package. Use [domain-memory-design](skills/domain-memory-design/SKILL.md).
+- **Design**: when a request is a material change, as the seven-step workflow defines it, prepare a reviewable Change Package. Use [domain-memory-design](skills/domain-memory-design/SKILL.md).
 - **Maintain**: after implementation or source drift, update the smallest affected asset as a candidate and preserve evidence. Use [domain-memory-maintain](skills/domain-memory-maintain/SKILL.md).
 - **Review**: before relying on domain facts or handing off work, validate the Registry, source evidence, audit chain, and proposal state. Use [domain-memory-review](skills/domain-memory-review/SKILL.md).
 - **Implementation hygiene**: after Read or Design, and whenever a repository check forces a change, check that code expresses the reviewed boundary without turning generic style rules into Registry facts. Use [domain-memory-implementation-hygiene](skills/domain-memory-implementation-hygiene/SKILL.md).

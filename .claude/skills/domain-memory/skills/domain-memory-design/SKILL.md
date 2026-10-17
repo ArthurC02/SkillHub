@@ -5,7 +5,7 @@ description: Turn a domain-significant requirement into a reviewable DDD boundar
 
 # Design a Domain Change
 
-Use the read capability first. For a changed owner, invariant, boundary, event, contract, consistency rule, regulated rule, or irreversible behavior, follow [the seven-step workflow](../../references/seven-step-workflow.md).
+Use the read capability first. For a material change, follow [the seven-step workflow](../../references/seven-step-workflow.md), which defines what is material.
 
 1. Start with business behavior and observable acceptance criteria.
 2. Identify the owning Context and existing collaboration.

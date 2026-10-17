@@ -15,4 +15,4 @@ Use this path for a refactoring in an implemented repository when the change pre
    - `init-change-package --recitation <file> --requirement-id <id> --proposal-id <id> --proposer <you>` packages what the two commands printed; submit it, record its one test result, and review it as usual.
 7. Run Maintain after implementation. Record a candidate only when the source evidence, owner, invariant, collaboration surface, or contract actually changed; otherwise the re-citation package is the record that the reviewed model was preserved, because it changes nothing but citations and paths.
 
-Escalate to the seven-step workflow when the refactor adds or splits an Aggregate, changes a consistency boundary, changes an event or public contract, introduces a new cross-Context dependency, or changes a material business rule. Uncertainty is an escalation trigger, not permission to assume the model is unchanged.
+Escalate to the seven-step workflow when the refactor is a material change as that workflow defines it, an added or split Aggregate among them. Uncertainty is an escalation trigger, not permission to assume the model is unchanged.

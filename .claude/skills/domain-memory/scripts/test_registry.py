@@ -540,7 +540,12 @@ class RegistryTest(RegistryTestCase):
             ("relationship", "interactions.json",
              [{"id": "i", "producer_context": "orders", "consumer_context": "billing", "relationship": "friends"}],
              "interactions/i has an unknown relationship: 'friends' is not one of anticorruption-layer, conformist, "
-             "customer-supplier, open-host-service, partnership, published-language, separate-ways, shared-kernel"),
+             "customer-supplier, open-host-service, partnership, published-language, shared-kernel"),
+            ("separate ways on a collaboration", "interactions.json",
+             [{"id": "i", "producer_context": "orders", "consumer_context": "billing", "relationship": "separate-ways"}],
+             "interactions/i has an unknown relationship: 'separate-ways' is not one of anticorruption-layer, conformist, "
+             "customer-supplier, open-host-service, partnership, published-language, shared-kernel; separate-ways is a "
+             "decision not to collaborate, recorded as a dependency policy with policy forbidden and mode none"),
             ("mode", "dependency-policies.json",
              [{"id": "p", "from_context": "orders", "to_context": "billing", "mode": "sometimes", "policy": "allowed"}],
              "dependency-policies/p has an unknown mode: 'sometimes' is not one of asynchronous, none, "

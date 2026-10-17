@@ -2,6 +2,14 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.71.0
+
+### Changed
+
+- `separate-ways` is no longer an Interaction `relationship`: an Interaction records that two Contexts collaborate, and separate ways is the decision not to, so `validate` refuses it and says to record a dependency policy with `policy: forbidden` and `mode: none`.
+- What makes a change material is defined once, in the seven-step workflow; the root skill, the design and hygiene skills, the host integration page and the brownfield fast path refer to that definition instead of carrying five differing lists.
+- A dependency policy is "allowed or forbidden" everywhere, matching the value `validate` accepts; "prohibited" named the same thing on two pages.
+
 ## 0.70.0
 
 ### Changed

@@ -16,7 +16,7 @@ The registry has eleven asset types:
 | Event | committed business occurrence, owner, schema | an event topic or database mutation alone |
 | Capability | business ability owned by a Context | a UI route or service name alone |
 | Value object | immutable concept and its fields | a JSON payload shape alone |
-| Dependency policy | allowed or prohibited Context collaboration | an import edge alone |
+| Dependency policy | allowed or forbidden Context collaboration | an import edge alone |
 
 Choose between an Interaction and a Dependency policy by what the code may do, not by how cheap the record is. A host project's tooling may enforce an `allowed` policy as permission for one Context's code to import the other's, so recording a collaboration as allowed can open an import the architecture keeps closed on purpose. A collaboration that avoids an import deliberately is an Interaction: a callback wired at the composition root, an injected dependency, or a published event. Record an `allowed` policy only for a dependency the code may actually take, and a `prohibited` one for a dependency it must never take.
 
