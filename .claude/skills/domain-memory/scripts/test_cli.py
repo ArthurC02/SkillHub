@@ -532,6 +532,47 @@ class CliTest(RegistryTestCase):
              self.run_cli("get-record", "--registry-root", memory, "--asset", "rules", "--id", "one-live").stdout.strip()],
         )
 
+    def test_get_record_names_the_obligations_that_prove_a_reviewed_rule(self) -> None:
+        package = self.draft_package()
+        for name, change in (
+            ("test-obligations.json",
+             lambda value: value["obligations"][0].update(also_covers=[{"source_type": "rule", "source_id": "order-total"}])),
+            ("domain-change-proposal.json", lambda value: value.update(rule_ids=["order-total"])),
+        ):
+            value = json.loads((package / name).read_text(encoding="utf-8"))
+            change(value)
+            (package / name).write_text(json.dumps(value), encoding="utf-8")
+        self.approve_and_apply(package)
+        other = self.repo / "other"
+        other.mkdir()
+        (other / "domain-change-proposal.json").write_text(json.dumps({"proposal_id": "PRO-2"}), encoding="utf-8")
+        (other / "test-obligations.json").write_bytes((package / "test-obligations.json").read_bytes())
+        elsewhere = self.repo / "elsewhere"
+        elsewhere.mkdir()
+        memory = str(self.repo / "memory")
+        shown, unseen = (
+            self.run_cli("get-record", "--registry-root", memory, "--asset", "rule", "--id", "order-total", "--changes-root", str(root))
+            for root in (self.repo, elsewhere)
+        )
+        self.assertEqual(
+            [{"proposal_id": "PRO-1", "package": "proposal", "obligation_id": "OB-1", "check": "test command"}],
+            json.loads(shown.stdout)["proven_by"],
+        )
+        self.assertEqual(
+            (False, f"NOTE: the Change Package of PRO-1, which reviewed rules/order-total, is not under {elsewhere.resolve()}, "
+                    "so the tests that prove it are unknown."),
+            ("proven_by" in json.loads(unseen.stdout), unseen.stderr.strip()),
+        )
+
+    def test_get_record_says_a_candidate_has_no_proving_obligation_yet(self) -> None:
+        self.seed("rules.json", [{"id": "r", "contexts": ["orders"], "statement": "x"}])
+        shown = self.run_cli("get-record", "--registry-root", str(self.repo / "memory"), "--asset", "rules", "--id", "r",
+                             "--changes-root", str(self.repo))
+        self.assertEqual(
+            (False, "NOTE: rules/r was not reviewed through an applied Change Package, so no test obligation proves it yet."),
+            ("proven_by" in json.loads(shown.stdout), shown.stderr.strip()),
+        )
+
     def test_an_asset_named_in_the_singular_is_the_plural_asset(self) -> None:
         self.seed("rules.json", [{"id": "r", "contexts": ["orders"], "statement": "x"}])
         self.seed("dependency-policies.json", [{"id": "p", "from_context": "a", "to_context": "b"}])
@@ -709,10 +750,42 @@ class CliTest(RegistryTestCase):
         self.assertEqual(json.loads(self.cite("--start", "2", "--end", "3").stdout), json.loads(self.cite("--lines", "2-3").stdout))
 
     def test_cite_refuses_both_line_forms_or_neither(self) -> None:
-        for options in (("--lines", "1-2", "--start", "1", "--end", "2"), ("--lines", "1-2", "--start", "1"), ("--start", "1"), ()):
+        for options in (("--lines", "1-2", "--start", "1", "--end", "2"), ("--lines", "1-2", "--start", "1"), ("--start", "1"),
+                        ("--function", "f", "--lines", "1-2"), ("--function", "f", "--start", "1", "--end", "2"), ()):
             with self.subTest(options):
-                self.assertEqual("ERROR: cite takes --lines START-END, or --start and --end",
+                self.assertEqual("ERROR: cite takes --lines START-END, --start and --end, or --function NAME",
                                  self.cite(*options).stdout.strip())
+
+    def test_cite_finds_the_span_of_a_go_func_or_python_def_by_name(self) -> None:
+        (self.repo / "total_test.go").write_text(
+            "package orders\n\nfunc TestTotalPos(t *testing.T) {}\n\nfunc TestTotal(t *testing.T) {\n"
+            "\tif total() < 0 {\n\t\tt.Fatal(\"negative\")\n\t}\n}\n\nfunc (s *suite) TestMethod() {\n}\n",
+            encoding="utf-8",
+        )
+        (self.repo / "test_total.py").write_text(
+            "class TotalTest:\n    def test_total(\n        self,\n    ) -> None:\n        x = 1\n\n"
+            "        assert x\n\n    def test_other(self) -> None:\n        pass\n",
+            encoding="utf-8",
+        )
+        for path, name, lines in (
+            ("total_test.go", "TestTotal", (5, 9)), ("total_test.go", "TestTotalPos", (3, 3)),
+            ("total_test.go", "TestMethod", (11, 12)), ("test_total.py", "test_total", (2, 7)),
+            ("test_total.py", "test_other", (9, 10)),
+        ):
+            with self.subTest(name):
+                cited = json.loads(self.cite("--path", path, "--function", name).stdout)
+                self.assertEqual(lines, (cited["lines"]["start"], cited["lines"]["end"]))
+
+    def test_cite_refuses_a_function_it_cannot_place(self) -> None:
+        (self.repo / "twice.py").write_text("def f():\n    pass\n\ndef f():\n    pass\n", encoding="utf-8")
+        (self.repo / "open.go").write_text("package p\n\nfunc Open() {\n\treturn\n", encoding="utf-8")
+        for path, name, refusal in (
+            ("twice.py", "g", "ERROR: twice.py defines no Go func or Python def named g"),
+            ("twice.py", "f", "ERROR: twice.py defines f 2 times; cite the one you mean with --lines"),
+            ("open.go", "Open", "ERROR: open.go: the body of Open starting on line 3 does not end; cite it with --lines"),
+        ):
+            with self.subTest(refusal):
+                self.assertEqual(refusal, self.cite("--path", path, "--function", name).stdout.strip())
 
     def test_output_lines_end_in_a_line_feed_on_every_platform(self) -> None:
         (self.repo / "notes.md").write_bytes(b"one\ntwo\nthree\n")

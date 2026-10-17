@@ -808,6 +808,32 @@ def _cited_file(item: Any) -> str | None:
     return match["path"] if match and "/" in match["path"] else None
 
 
+def obligations_proving(
+    changes_root: Path, proposal_id: str, source: tuple[str, str]
+) -> list[dict[str, Any]] | None:
+    packages = [
+        package for package in sorted(changes_root.iterdir())
+        if (package / PROPOSAL_FILE).is_file() and load_json(package / PROPOSAL_FILE).get("proposal_id") == proposal_id
+    ]
+    if not packages:
+        return None
+    return [
+        {"proposal_id": proposal_id, "package": package.name, "obligation_id": entry.get("id"), "check": entry.get("check")}
+        for package in packages
+        for entry in load_json(package / "test-obligations.json").get("obligations", [])
+        if isinstance(entry, dict) and source in _covered_sources(entry)
+    ]
+
+
+def _covered_sources(obligation: dict[str, Any]) -> set[tuple[Any, Any]]:
+    also = obligation.get("also_covers")
+    return {
+        (item.get("source_type"), item.get("source_id"))
+        for item in [obligation, *(also if isinstance(also, list) else [])]
+        if isinstance(item, dict)
+    }
+
+
 def list_proposals(changes_root: Path) -> list[dict[str, Any]]:
     rows = []
     replacements = {}

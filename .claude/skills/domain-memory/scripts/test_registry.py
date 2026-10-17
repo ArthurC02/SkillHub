@@ -878,9 +878,49 @@ class RegistryTest(RegistryTestCase):
     def test_a_query_no_term_matches_lists_reviewed_records_that_mention_it(self) -> None:
         self.contexts_mentioning_suggestions()
         self.assertEqual(
-            [{"match_kind": "mentioned", "authoritative": False, "asset": "contexts", "id": "eval",
-              "fields": ["responsibility"]}],
+            [{"match_kind": "mentioned", "asset": "contexts", "id": "eval", "status": "reviewed", "contexts": ["eval"],
+              "summary": "Applies accepted Suggestions.", "fields": ["responsibility"]}],
             resolve_terms(self.repo / "memory", "suggestion", None),
+        )
+
+    def test_a_mention_names_its_contexts_and_the_first_sentence_of_its_statement(self) -> None:
+        self.allow_results(10)
+        self.seed("rules.json", [{"id": "gone", "contexts": ["catalog", "search"], "status": "reviewed",
+                                  "statement": "A withdrawn skill answers gone. Search drops it too."}])
+        self.seed("interactions.json", [{"id": "notice", "producer_context": "catalog", "consumer_context": "billing",
+                                         "description": "Withdrawn skills stop billing", "status": "reviewed"}])
+        self.assertEqual(
+            [("rules", ["catalog", "search"], "A withdrawn skill answers gone."),
+             ("interactions", ["catalog", "billing"], "Withdrawn skills stop billing")],
+            [(item["asset"], item["contexts"], item["summary"])
+             for item in resolve_terms(self.repo / "memory", "withdrawn", None)],
+        )
+
+    def test_one_word_finds_its_spaced_hyphenated_and_camel_case_forms(self) -> None:
+        self.allow_results(10)
+        self.seed("rules.json", [
+            {"id": f"r{number}", "contexts": ["catalog"], "status": "reviewed", "statement": statement}
+            for number, statement in enumerate([
+                "A taken down skill answers gone.", "TakedownAt is set once.", "A take-down hides the skill.",
+                "Takedowns are audited.", "A skill taken over keeps its history.", "Down time is reported.",
+            ])
+        ])
+        self.assertEqual(
+            ["r0", "r1", "r2", "r3"],
+            [item["id"] for item in resolve_terms(self.repo / "memory", "takedown", None)],
+        )
+
+    def test_lookup_finds_every_word_through_its_spaced_form(self) -> None:
+        self.seed("rules.json", [
+            {"id": "gone", "contexts": ["catalog"], "statement": "A taken down skill answers gone."},
+            {"id": "kept", "contexts": ["catalog"], "statement": "A skill keeps its history."},
+        ])
+        self.assertEqual((["gone"], "all-words"), self.found("takedown answers"))
+
+    def test_a_participle_in_en_and_a_plural_are_forms_of_their_word(self) -> None:
+        self.assertEqual(
+            (word_stems("take"), word_stems("token"), word_stems("open")),
+            (word_stems("taken"), word_stems("tokens"), {"open"}),
         )
 
     def test_a_mention_search_ignores_the_status_field(self) -> None:

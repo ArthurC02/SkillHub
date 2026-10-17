@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from collections.abc import Callable
 from functools import cache
 from pathlib import Path
@@ -88,13 +89,58 @@ def classify_all(value: Any, source_map: dict[str, Any]) -> Any:
     return with_references(value, classifier(source_map))
 
 
-def citation(repo_root: Path, relative: str, start: int, end: int) -> dict[str, Any]:
-    root = repo_root.resolve()
+def _cited_file(root: Path, relative: str) -> Path:
     path = (root / relative).resolve()
     if not path.is_relative_to(root):
         raise ValueError(f"evidence path escapes the repository: {relative}")
     if not path.is_file():
         raise ValueError(f"no such file to cite: {relative}")
+    return path
+
+
+FUNCTION_START = r"^(?P<indent>[ \t]*)(?:(?P<go>func)(?:\s*\([^)]*\))?\s+|(?:async\s+)?def\s+){name}\s*[(\[]"
+
+
+def function_span(repo_root: Path, relative: str, name: str) -> tuple[int, int]:
+    rows = _cited_file(repo_root.resolve(), relative).read_text(encoding="utf-8", errors="replace").splitlines()
+    pattern = re.compile(FUNCTION_START.format(name=re.escape(name)))
+    starts = [(number, found) for number, row in enumerate(rows, 1) if (found := pattern.match(row))]
+    if len(starts) != 1:
+        raise ValueError(
+            f"{relative} defines no Go func or Python def named {name}" if not starts
+            else f"{relative} defines {name} {len(starts)} times; cite the one you mean with --lines"
+        )
+    start, found = starts[0]
+    end = _go_end(rows, start, found["indent"]) if found["go"] else _python_end(rows, start, len(found["indent"]))
+    if end is None:
+        raise ValueError(f"{relative}: the body of {name} starting on line {start} does not end; cite it with --lines")
+    return start, end
+
+
+def _go_end(rows: list[str], start: int, indent: str) -> int | None:
+    if rows[start - 1].rstrip().endswith("}"):
+        return start
+    return next((number for number in range(start + 1, len(rows) + 1) if rows[number - 1].rstrip() == indent + "}"), None)
+
+
+def _python_end(rows: list[str], start: int, indent: int) -> int | None:
+    signature_end = next((number for number in range(start, len(rows) + 1) if rows[number - 1].rstrip().endswith(":")), None)
+    if signature_end is None:
+        return None
+    end = signature_end
+    for number in range(signature_end + 1, len(rows) + 1):
+        row = rows[number - 1]
+        if not row.strip():
+            continue
+        if len(row) - len(row.lstrip()) <= indent:
+            break
+        end = number
+    return end
+
+
+def citation(repo_root: Path, relative: str, start: int, end: int) -> dict[str, Any]:
+    root = repo_root.resolve()
+    path = _cited_file(root, relative)
     if path.stat().st_size > MAX_EVIDENCE_BYTES:
         raise ValueError(
             f"evidence source exceeds {MAX_EVIDENCE_BYTES} bytes: {relative}"

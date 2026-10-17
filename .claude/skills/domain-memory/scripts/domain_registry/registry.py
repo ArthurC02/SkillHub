@@ -3,6 +3,7 @@ import re
 import shutil
 from collections import Counter
 from collections.abc import Callable
+from itertools import pairwise
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -658,13 +659,18 @@ def ranked_lookup(root: Path, asset: str, query: str) -> tuple[list[dict[str, An
     phrase = [entry for entry in entries if needle in json.dumps(entry, ensure_ascii=False).casefold()]
     if phrase:
         return phrase[:limit], "phrase"
-    wanted = word_stems(query)
-    held = [word_stems(" ".join(_strings(entry))) for entry in entries]
-    every = [entry for entry, words in zip(entries, held, strict=True) if wanted and wanted <= words]
+    wanted = query_words(query)
+    held = [held_stems(" ".join(_strings(entry))) for entry in entries]
+    every = [
+        entry for entry, words in zip(entries, held, strict=True) if wanted and all(holds(word, words) for word in wanted)
+    ]
     if every:
         return every[:limit], "all-words"
-    common = {word for word in wanted if _is_common(sum(word in words for words in held), len(entries))}
-    shared = [(len((wanted - common) & words), entry) for entry, words in zip(entries, held, strict=True)]
+    common = {word for word in wanted if _is_common(sum(holds(word, words) for words in held), len(entries))}
+    shared = [
+        (sum(holds(word, words) for word in wanted if word not in common), entry)
+        for entry, words in zip(entries, held, strict=True)
+    ]
     some = [entry for count, entry in sorted(shared, key=lambda pair: -pair[0]) if count]
     if some:
         return some[:limit], "some-words"
@@ -680,7 +686,7 @@ def _is_common(holders: int, records: int) -> bool:
 
 
 SUFFIXES = (
-    "ations", "ation", "ings", "ing", "ency", "ence", "ents", "ent", "ions", "ion", "ures", "ured", "ure", "ed", "es", "s",
+    "ations", "ation", "ings", "ing", "ency", "ence", "ents", "ent", "ions", "ion", "ures", "ured", "ure", "ens", "en", "ed", "es", "s",
     "e", "y",
 )
 MIN_STEM_LENGTH = 3
@@ -690,8 +696,30 @@ STOP_WORDS = frozenset({
 })
 
 
+CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+
+
+def _words(text: str) -> list[str]:
+    return [word for word in re.findall(r"[a-z0-9]+", CAMEL_BOUNDARY.sub(" ", text).casefold()) if word not in STOP_WORDS]
+
+
 def word_stems(text: str) -> set[str]:
-    return {_stem(word) for word in re.findall(r"[a-z0-9]+", text.casefold()) if word not in STOP_WORDS}
+    return {_stem(word) for word in _words(text)}
+
+
+def held_stems(text: str) -> set[str]:
+    stems = [_stem(word) for word in _words(text)]
+    return {*stems, *(first + second for first, second in pairwise(stems))}
+
+
+def query_words(query: str) -> list[str]:
+    return list({_stem(word): word for word in _words(query)}.values())
+
+
+def holds(word: str, held: set[str]) -> bool:
+    return _stem(word) in held or any(
+        _stem(word[:split]) + _stem(word[split:]) in held for split in range(MIN_STEM_LENGTH, len(word) - 1)
+    )
 
 
 def _stem(word: str) -> str:
@@ -781,13 +809,38 @@ UNSEARCHED_FIELDS = ("status", "review_status")
 CONSTRAINT_ASSETS = ("rules", "contracts")
 
 
+SUMMARY_FIELDS = ("statement", "definition", "description", "responsibility")
+SENTENCE_END = re.compile(r"(?<=[.!?])\s")
+
+
+def _mention(name: str, entry: dict[str, Any], fields: list[str]) -> dict[str, Any]:
+    asset = name.removesuffix(".json")
+    summary = next((entry[field] for field in SUMMARY_FIELDS if isinstance(entry.get(field), str)), "")
+    return {
+        "match_kind": "mentioned", "asset": asset, "id": entry.get("id"), "status": "reviewed",
+        "contexts": _contexts_named(asset, entry), "summary": SENTENCE_END.split(summary.strip(), maxsplit=1)[0],
+        "fields": fields,
+    }
+
+
+def _contexts_named(asset: str, entry: dict[str, Any]) -> list[Any]:
+    if asset == "contexts":
+        return [entry.get("id")]
+    named = [
+        context
+        for field, value in entry.items()
+        if field == "contexts" or field.endswith(("_context", "_contexts"))
+        for context in (value if isinstance(value, list) else [value])
+    ]
+    return list(dict.fromkeys(named))
+
+
 def prose_mentions(root: Path, needle: str) -> list[dict[str, Any]]:
-    wanted = word_stems(needle)
+    wanted = query_words(needle)
     if not wanted:
         return []
     mentions = [
-        {"match_kind": "mentioned", "authoritative": False, "asset": name.removesuffix(".json"),
-         "id": entry.get("id"), "fields": fields}
+        _mention(name, entry, fields)
         for name in sorted(ASSET_KEYS)
         if has_document(root, name)
         for entry in _reviewed_entries(root, name)
@@ -802,10 +855,11 @@ def prose_mentions(root: Path, needle: str) -> list[dict[str, Any]]:
     )
 
 
-def _mentioning_fields(entry: dict[str, Any], wanted: set[str]) -> list[str]:
+def _mentioning_fields(entry: dict[str, Any], wanted: list[str]) -> list[str]:
     return [
         field for field, value in entry.items()
-        if field not in UNSEARCHED_FIELDS and any(wanted <= word_stems(text) for text in _searchable(field, value))
+        if field not in UNSEARCHED_FIELDS
+        and any(all(holds(word, stems) for word in wanted) for stems in map(held_stems, _searchable(field, value)))
     ]
 
 

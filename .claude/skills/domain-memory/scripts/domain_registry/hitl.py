@@ -27,6 +27,16 @@ def submit_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
     proposal = load_json(proposal_path(root))
     if proposal.get("status") != "draft":
         raise ValueError("only a draft proposal may be submitted")
+    silent = [
+        entry.get("id")
+        for entry in load_json(root / "test-obligations.json").get("obligations", [])
+        if isinstance(entry, dict) and _go_test(argv := str(entry.get("check", "")).split()) and not _reports_tests(argv)
+    ]
+    if silent:
+        raise ValueError(
+            f"obligations {', '.join(map(str, silent))} run go test without -v or -json, so record-test-result "
+            "cannot tell a passing test from a skipped one; add -v to their check"
+        )
     if not completed_identifier(proposal.get("proposer")):
         raise ValueError("a proposal requires a proposer before submission")
     revision = current_registry_revision(registry_root, repo_root)
@@ -119,9 +129,17 @@ def same_command(command: str, check: Any) -> bool:
     return isinstance(check, str) and command.split() == check.split()
 
 
+def _go_test(argv: list[str]) -> bool:
+    return bool(argv) and Path(argv[0]).stem == "go" and "test" in argv[1:]
+
+
+def _reports_tests(argv: list[str]) -> bool:
+    return any(argument in ("-v", "-json") or argument.startswith(("-v=", "-test.v")) for argument in argv)
+
+
 def no_test_passed(argv: list[str], output: str) -> str | None:
-    if argv and Path(argv[0]).stem == "go" and "test" in argv[1:]:
-        if not any(argument in ("-v", "-json") or argument.startswith(("-v=", "-test.v")) for argument in argv):
+    if _go_test(argv):
+        if not _reports_tests(argv):
             return "go test without -v or -json does not say which tests passed, so a skipped test reads as a pass; add -v"
         return None if GO_TEST_PASSED.search(output) else "no test passed: every test was skipped or none matched"
     if GO_NOTHING_RAN.search(output) and not GO_TEST_PASSED.search(output):

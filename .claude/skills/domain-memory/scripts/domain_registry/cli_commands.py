@@ -8,12 +8,13 @@ import sys
 from pathlib import Path
 
 from .attestations import audit_attestations, verify_scm
-from .audit import anchor_error
+from .audit import anchor_error, reviewing_proposals
 from .audit import verify as verify_audit
 from .changes import (
     init_change_package,
     list_proposals,
     missing_approval_roles,
+    obligations_proving,
     redraft_change_package,
     validate_change_package,
 )
@@ -22,7 +23,7 @@ from .compare import compare_registries
 from .coupling import CouplingLimits, CouplingReading, change_coupling
 from .contracts import validate_schema
 from .counterfactual import Mutation, Proof, counterfactual
-from .evidence import citation, classified, repeated_note, source_map_for
+from .evidence import citation, classified, function_span, repeated_note, source_map_for
 from .gates import quality_gates
 from .git_hooks import (
     governance_readiness,
@@ -291,8 +292,25 @@ def handle_get_record(args: argparse.Namespace) -> int:
     if result is None:
         known = asset_records(root, f"{args.asset}.json")
         raise ValueError(f"{args.asset} record not found: {args.id}{_did_you_mean(args.id, known)}")
+    if args.changes_root is not None:
+        result = _with_proofs(root, args.changes_root.resolve(), args.asset, args.id, result)
     print_json(result)
     return 0
+
+
+def _with_proofs(root: Path, changes_root: Path, asset: str, identifier: str, record: dict) -> dict:
+    key = f"{asset}/{identifier}"
+    proposal_id = reviewing_proposals(root).get(key)
+    if proposal_id is None:
+        print(f"NOTE: {key} was not reviewed through an applied Change Package, so no test obligation proves it yet.",
+              file=sys.stderr)
+        return record
+    proofs = obligations_proving(changes_root, proposal_id, (asset.removesuffix("s"), identifier))
+    if proofs is None:
+        print(f"NOTE: the Change Package of {proposal_id}, which reviewed {key}, is not under {changes_root}, "
+              "so the tests that prove it are unknown.", file=sys.stderr)
+        return record
+    return {**record, "proven_by": proofs}
 
 
 def _did_you_mean(identifier: str, records: list[dict]) -> str:
@@ -401,11 +419,15 @@ def handle_cite(args: argparse.Namespace) -> int:
 
 
 def _cited_lines(args: argparse.Namespace) -> tuple[int, int]:
-    if args.lines is None and None not in (args.start, args.end):
+    given = [form for form, value in (("lines", args.lines), ("start", args.start), ("end", args.end),
+                                      ("function", args.function)) if value is not None]
+    if given == ["start", "end"]:
         return args.start, args.end
-    if args.lines is not None and args.start is None and args.end is None:
+    if given == ["lines"]:
         return line_range(args.lines)
-    raise ValueError("cite takes --lines START-END, or --start and --end")
+    if given == ["function"]:
+        return function_span(args.repo_root, args.path, args.function)
+    raise ValueError("cite takes --lines START-END, --start and --end, or --function NAME")
 
 
 def _show_cited_lines(repo_root: Path, reference: dict) -> None:

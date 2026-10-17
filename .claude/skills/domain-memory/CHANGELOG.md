@@ -2,6 +2,23 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.52.0
+
+### Added
+
+- `get-record --changes-root` adds `proven_by` to a reviewed rule or contract: the test obligations of the package that reviewed it, with their checks.
+- `cite --function <name>` cites the whole body of a Go `func` or Python `def`.
+
+### Changed
+
+- A word in a search matches its spaced, hyphenated and camel-case forms, and a participle in `-en` is a form of its verb, so `takedown` finds `taken down`, `take-down` and `TakedownAt`.
+- A `resolve-terms` mention names its `status`, `contexts` and the first sentence of its text as `summary`.
+- `submit-proposal` refuses an obligation whose check runs `go test` without `-v` or `-json`.
+
+### Removed
+
+- The `authoritative` field of a `resolve-terms` mention, which was always false; `match_kind: "mentioned"` already says the record does not define the term.
+
 ## 0.51.0
 
 ### Added

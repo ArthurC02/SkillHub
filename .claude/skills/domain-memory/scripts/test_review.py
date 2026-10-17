@@ -1449,6 +1449,17 @@ class ReviewTest(RegistryTestCase):
     def test_verification_accepts_a_link_to_the_ci_run(self) -> None:
         self.assert_verified_with("https://ci.example/runs/1")
 
+    def test_submitting_refuses_a_go_test_check_that_cannot_report_its_tests(self) -> None:
+        package = self.draft_package()
+        self.declare_check(package, "go test -count=1 -run ^TestTotal$ ./orders/")
+        with self.assertRaisesRegex(ValueError, "^obligations OB-1 run go test without -v or -json"):
+            submit_proposal(package, self.repo / "memory", self.repo)
+        proposal_path = package / "domain-change-proposal.json"
+        self.assertEqual("draft", json.loads(proposal_path.read_text(encoding="utf-8"))["status"])
+        self.declare_check(package, "go test -v -count=1 -run ^TestTotal$ ./orders/")
+        submit_proposal(package, self.repo / "memory", self.repo)
+        self.assertEqual("submitted", json.loads(proposal_path.read_text(encoding="utf-8"))["status"])
+
     def test_each_runner_says_when_no_test_passed(self) -> None:
         go_requires_v = (
             "go test without -v or -json does not say which tests passed, so a skipped test reads as a pass; add -v"
