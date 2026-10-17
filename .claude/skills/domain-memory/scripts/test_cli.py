@@ -761,6 +761,28 @@ class CliTest(RegistryTestCase):
              proved["rule_totals"]),
         )
 
+    def test_validate_names_the_approved_packages_left_unapplied(self) -> None:
+        changes = self.repo / "memory" / "changes"
+        for name, status in (("a", "approved"), ("b", "applied"), ("c", "approved"), ("d", "verified")):
+            (changes / name).mkdir(parents=True)
+            (changes / name / "domain-change-proposal.json").write_text(
+                json.dumps({"proposal_id": f"PRO-{name}", "status": status}), encoding="utf-8"
+            )
+        validate = ("validate", "--registry-root", str(self.repo / "memory"))
+        validated = self.run_cli(*validate)
+        self.assertEqual(
+            (0, "Registry is valid.", "NOTE: 2 approved Change Packages not applied: PRO-a, PRO-c. Apply each with apply-approved-updates; retire one that cannot be applied with supersede-proposal, and redraft-proposal carries its work into a new draft."),
+            (validated.returncode, validated.stdout.strip(), validated.stderr.strip()),
+        )
+        (changes / "c" / "domain-change-proposal.json").write_text(
+            json.dumps({"proposal_id": "PRO-c", "status": "superseded"}), encoding="utf-8"
+        )
+        self.assertEqual("NOTE: 1 approved Change Package not applied: PRO-a. Apply each with apply-approved-updates; retire one that cannot be applied with supersede-proposal, and redraft-proposal carries its work into a new draft.", self.run_cli(*validate).stderr.strip())
+        (changes / "a" / "domain-change-proposal.json").write_text(
+            json.dumps({"proposal_id": "PRO-a", "status": "applied"}), encoding="utf-8"
+        )
+        self.assertEqual("", self.run_cli(*validate).stderr.strip())
+
     def test_get_record_says_a_candidate_has_no_proving_obligation_yet(self) -> None:
         self.seed("rules.json", [{"id": "r", "contexts": ["orders"], "statement": "x"}])
         shown = self.run_cli("get-record", "--registry-root", str(self.repo / "memory"), "--asset", "rules", "--id", "r",

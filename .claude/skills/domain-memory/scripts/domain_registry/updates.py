@@ -340,15 +340,6 @@ def _reviewed_record(
     update: ParsedUpdate, proposal: dict[str, Any], source_map: Any
 ) -> dict[str, Any]:
     promoted = classify_all(dict(update.record or {}), source_map)
-    outside = unclassified_paths(promoted)
-    if outside:
-        raise ValueError(
-            f"cannot review a record whose evidence rests outside the "
-            f"confirmed sources: {update.asset}/{update.record_id} cites "
-            + ", ".join(outside)
-            + "; cite a confirmed source, or select that path before "
-            "the record is reviewed"
-        )
     promoted.pop("review", None)
     promoted["verified"] = verified_by(proposal["approvals"])
     promoted[review_field(update.asset)] = "reviewed"

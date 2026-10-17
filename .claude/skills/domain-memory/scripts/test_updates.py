@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import stat
 import sys
@@ -13,6 +14,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.audit import read_events as read_audit_events
+from domain_registry.hitl import submit_proposal
 from domain_registry.audit import event_digest as audit_event_digest
 from domain_registry.audit import reviewing_proposals
 from domain_registry.audit import anchor_error
@@ -682,12 +684,35 @@ class UpdatesTest(RegistryTestCase):
              [entry["by"] for entry in replaced["verified"]]),
         )
 
-    def test_a_reviewed_record_may_not_cite_outside_the_selected_sources(self) -> None:
+    def test_a_proposal_citing_outside_the_selected_sources_is_refused_at_submission(self) -> None:
         self.select_docs_as_sources()
         package = self.draft_package()
         self.cite_in_proposal(package, "README.md")
-        with self.assertRaisesRegex(ValueError, "outside the confirmed sources"):
-            self.approve_and_apply(package)
+        refusal = ("rules/order-total cites README.md outside the confirmed sources, so apply-approved-updates would "
+                   "refuse to review it; cite a confirmed source, or have the developer select that path")
+        with self.assertRaisesRegex(ValueError, re.escape(refusal)):
+            submit_proposal(package, self.repo / "memory", self.repo)
+        self.assertEqual(
+            "draft", json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))["status"]
+        )
+
+    def test_a_source_deselected_after_approval_still_stops_the_apply(self) -> None:
+        self.select_docs_as_sources()
+        package = self.draft_package()
+        self.cite_in_proposal(package, "docs/decision.md")
+        self.approve_and_finalize(package)
+        (self.repo / "notes").mkdir()
+        write_source_map(
+            self.repo / "memory" / "source-map.json",
+            {
+                "selected_paths": ["notes"],
+                "selection_status": "developer-confirmed",
+                "source_kinds": {"notes": "decisions"},
+                "source_groups": [{"kind": "decisions", "paths": ["notes"]}],
+            },
+        )
+        with self.assertRaisesRegex(ValueError, "rules/order-total cites docs/decision.md outside the confirmed sources"):
+            apply_approved_updates(package, self.repo / "memory", self.repo)
         self.assertEqual(self.rule_ids(), [])
 
     def test_a_reviewed_record_citing_a_selected_source_is_applied(self) -> None:

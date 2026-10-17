@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .changes import missing_approval_roles, test_attestation_errors, validate_change_package
+from .changes import missing_approval_roles, test_attestation_errors, unconfirmed_evidence_errors, validate_change_package
 from .attestations import (
     commit_carries_proposal,
     github_commit_carries_proposal,
@@ -44,7 +44,7 @@ def submit_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
     evidence_path = root / EVIDENCE_FILE
     evidence = load_json(evidence_path)
     evidence["registry_revision"] = revision
-    errors = validate_change_package(root, None)
+    errors = validate_change_package(root, None) + unconfirmed_evidence_errors(proposal, registry_root)
     if errors:
         raise ValueError("draft proposal is invalid: " + "; ".join(errors))
     proposal["status"] = "submitted"

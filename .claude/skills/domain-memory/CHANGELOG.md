@@ -2,6 +2,14 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.59.0
+
+### Changed
+
+- `submit-proposal` refuses a promoted record citing a path outside the confirmed sources, and `validate-change-package`, `verify-proposal` and `finalize-proposal` report it, so the refusal that only `apply-approved-updates` gave comes before approval and the signed commit.
+- `validate` and `verify-git-governance` print a NOTE naming the approved Change Packages not applied yet, with how to retire one that cannot be.
+- `counterfactual` names the lines of a `--find` text that occurs more than once.
+
 ## 0.58.0
 
 ### Added

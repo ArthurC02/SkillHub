@@ -29,7 +29,7 @@ from .common import (
     write_json,
 )
 from .policy import approved_command_profiles
-from .evidence import all_references, verifier
+from .evidence import all_references, classify_all, source_map_for, unclassified_paths, verifier
 from .registry import asset_records, cross_reference_errors
 from .store import read_document
 from .revision import DIGEST_HEX_LENGTH, DIGEST_PREFIX, valid_digest, valid_registry_revision
@@ -756,7 +756,31 @@ def validate_change_package(
         staged = _staged(current, proposal)
         errors.extend(_registry_reference_errors(staged, proposal))
         errors.extend(_staged_registry_errors(current, staged, proposal, repo_root))
+        errors.extend(unconfirmed_evidence_errors(proposal, registry_root))
     return errors
+
+
+def unconfirmed_evidence_errors(proposal: dict[str, Any], registry_root: Path) -> list[str]:
+    source_map = source_map_for(registry_root)
+    errors = []
+    updates = proposal.get("registry_updates")
+    for raw in updates if isinstance(updates, list) else []:
+        try:
+            update = parsed_update(raw)
+        except ValueError:
+            continue
+        outside = unclassified_paths(classify_all(dict(update.record or {}), source_map))
+        if outside:
+            errors.append(
+                f"{update.asset}/{update.record_id} cites {', '.join(outside)} outside the confirmed sources, so "
+                "apply-approved-updates would refuse to review it; cite a confirmed source, or have the developer "
+                "select that path"
+            )
+    return errors
+
+
+def unapplied_approved_proposals(changes_root: Path) -> list[Any]:
+    return [row["proposal_id"] for row in list_proposals(changes_root) if row.get("status") == "approved"]
 
 
 def _staged(current: dict[str, list[dict[str, Any]]], proposal: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:

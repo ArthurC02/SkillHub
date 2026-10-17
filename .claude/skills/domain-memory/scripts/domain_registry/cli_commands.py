@@ -17,6 +17,7 @@ from .changes import (
     proof_of,
     rule_coverage,
     redraft_change_package,
+    unapplied_approved_proposals,
     validate_change_package,
 )
 from .common import ASSET_KEYS, PROPOSAL_FILE, REQUIREMENT_FILE, load_json
@@ -191,7 +192,21 @@ def handle_validate(args: argparse.Namespace) -> int:
         args.repo_root.resolve() if args.repo_root else None,
         args.require_reviewed,
     )
-    return report_errors(errors, "Registry is valid.")
+    exit_code = report_errors(errors, "Registry is valid.")
+    _note_unapplied(args.registry_root.resolve())
+    return exit_code
+
+
+def _note_unapplied(registry_root: Path) -> None:
+    changes_root = _changes_root(registry_root, None)
+    pending = unapplied_approved_proposals(changes_root) if changes_root is not None else []
+    if pending:
+        print(
+            f"NOTE: {len(pending)} approved Change Package{'' if len(pending) == 1 else 's'} not applied: "
+            f"{', '.join(map(str, pending))}. Apply each with apply-approved-updates; retire one that cannot be "
+            "applied with supersede-proposal, and redraft-proposal carries its work into a new draft.",
+            file=sys.stderr,
+        )
 
 
 def handle_lookup(args: argparse.Namespace) -> int:
@@ -828,7 +843,9 @@ def handle_verify_scm_attestation(args: argparse.Namespace) -> int:
 def handle_verify_git_governance(args: argparse.Namespace) -> int:
     commits = [args.commit] if args.commit else sys.stdin.read().split()
     errors = verify_git_governance(args.registry_root.resolve(), args.repo_root.resolve(), commits)
-    return report_errors(errors, f"Git governance is valid for {len(commits)} commit{'' if len(commits) == 1 else 's'}.")
+    exit_code = report_errors(errors, f"Git governance is valid for {len(commits)} commit{'' if len(commits) == 1 else 's'}.")
+    _note_unapplied(args.registry_root.resolve())
+    return exit_code
 
 
 def handle_install_git_hitl_hook(args: argparse.Namespace) -> int:

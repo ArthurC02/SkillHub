@@ -388,8 +388,14 @@ class CounterfactualTest(RepositoryCase):
         self.assert_untouched()
 
     def test_text_that_occurs_twice_is_refused(self) -> None:
-        with self.assertRaisesRegex(ValueError, "occurs 2 times"):
+        with self.assertRaisesRegex(
+            ValueError,
+            "^the text to break must occur once in rule.py, and it occurs 2 times, at lines 9, 10; "
+            "widen --find to text that occurs once$",
+        ):
             self.break_rule("amount", "total")
+        with self.assertRaisesRegex(ValueError, "occurs 2 times, at lines 1;"):
+            self.break_rule("0", "5")
         self.assert_untouched()
 
     def test_a_replacement_that_changes_nothing_is_refused(self) -> None:

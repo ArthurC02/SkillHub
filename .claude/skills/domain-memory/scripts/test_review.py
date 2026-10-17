@@ -452,6 +452,13 @@ class ReviewTest(RegistryTestCase):
             with self.subTest(expected[1]):
                 completed = self.run_cli(*verify, *given, stdin=stdin)
                 self.assertEqual(expected, (completed.returncode, completed.stdout.strip()))
+        (self.repo / "memory" / "changes" / "a").mkdir(parents=True)
+        (self.repo / "memory" / "changes" / "a" / "domain-change-proposal.json").write_text(
+            json.dumps({"proposal_id": "PRO-a", "status": "approved"}), encoding="utf-8"
+        )
+        self.assertTrue(
+            self.run_cli(*verify, "--commit", first).stderr.startswith("NOTE: 1 approved Change Package not applied: PRO-a.")
+        )
 
     def test_the_pre_push_hook_reports_a_push_of_several_commits_once(self) -> None:
         self.signing_for_the_registry()
