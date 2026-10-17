@@ -1,0 +1,56 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "run-harvest-rules-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed the retry, deadline, artifact, origin-key and cancellation rules the run Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context run lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-transient-provider-refusals-stop-at-the-attempt-ceiling",
+      "statement": "Transient provider refusals start at most the configured number of attempts, after which the run fails as a provider error."
+    },
+    {
+      "id": "enforced-a-refusal-waiting-cannot-fix-ends-the-run-after-one-attempt",
+      "statement": "A provider refusal that is neither unavailable nor full is final, so no further attempt starts."
+    },
+    {
+      "id": "enforced-an-unaccepted-run-expires-after-the-slot-wait-limit",
+      "statement": "A run no provider has accepted expires once the slot wait limit has passed since its creation, and not before."
+    },
+    {
+      "id": "enforced-the-hard-wall-clock-runs-from-the-first-dispatch",
+      "statement": "Once a provider has accepted an attempt, the run's deadline is its first dispatch plus the frozen policy's hard wall clock, not its creation time."
+    },
+    {
+      "id": "enforced-a-provider-cannot-name-an-artifact-object-outside-its-write-grant",
+      "statement": "An artifact the provider reports may name only the archive object the platform derived for the attempt; any other object key is refused."
+    },
+    {
+      "id": "enforced-artifact-sizes-stay-within-the-runs-frozen-limits",
+      "statement": "Each reported artifact must be no larger than the run's frozen per-file limit, and their total within its frozen total limit, before anything is persisted."
+    },
+    {
+      "id": "enforced-an-origin-key-starts-only-one-skill-version",
+      "statement": "A caller's origin key returns the run it already started for the same Skill Version and is refused for a different version."
+    },
+    {
+      "id": "enforced-each-dispatch-is-keyed-by-its-own-attempt-id",
+      "statement": "Every dispatch to a provider carries the platform's own attempt id as its idempotency key, so a re-sent dispatch is deduplicated per attempt and no provider id stands in for the platform's identity."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/run_dispatch_characterization_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/run_orchestration_integration_test.go",
+    "apps/platform/internal/trial/execution/job.go",
+    "apps/platform/internal/trial/execution/provider_response_test.go",
+    "apps/platform/internal/trial/execution/schedule.go",
+    "apps/platform/internal/trial/execution/schedule_test.go",
+    "apps/platform/internal/trial/execution/service.go"
+  ]
+}

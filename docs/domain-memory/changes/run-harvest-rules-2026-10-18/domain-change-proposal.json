@@ -1,0 +1,355 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-harvest-rules-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "run-harvest-rules-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T18:17:20.784373Z",
+  "verified_at": "2026-10-17T18:18:26.448959Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "e6ca06830c2dfb99f109a1fc5e91ae0da2e25da8",
+    "registry_digest": "sha256:a5fefd8d7f3dd3471cc4e396651779eec6948c6299d16336840091f7410d013b"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [
+    "transient-provider-refusals-stop-at-the-attempt-ceiling",
+    "a-refusal-waiting-cannot-fix-ends-the-run-after-one-attempt",
+    "an-unaccepted-run-expires-after-the-slot-wait-limit",
+    "the-hard-wall-clock-runs-from-the-first-dispatch",
+    "a-provider-cannot-name-an-artifact-object-outside-its-write-grant",
+    "artifact-sizes-stay-within-the-runs-frozen-limits",
+    "an-origin-key-starts-only-one-skill-version",
+    "each-dispatch-is-keyed-by-its-own-attempt-id"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Only run decides how a Run's attempts are dispatched, retried, timed out and ended.",
+    "evidence": [
+      "apps/platform/internal/trial/execution/job.go:240-262"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: providers are reached through the sandbox provider contract; batches start runs through an origin key.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/execution/service.go:874-891"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the run Context found these enforced rules; the reviewed Registry held nine others.",
+      "The dispatch idempotency key had no test; one was added."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording guards no test reaches: they wait for a test.",
+      "Recording the pre-dispatch cancellation check: the dispatch loop checks cancellation again before starting an attempt, so the mutation is equivalent and no test isolates it."
+    ],
+    "proof_obligations": [
+      "rule-transient-provider-refusals-stop-at-the-attempt-ceiling",
+      "rule-a-refusal-waiting-cannot-fix-ends-the-run-after-one-attempt",
+      "rule-an-unaccepted-run-expires-after-the-slot-wait-limit",
+      "rule-the-hard-wall-clock-runs-from-the-first-dispatch",
+      "rule-a-provider-cannot-name-an-artifact-object-outside-its-write-grant",
+      "rule-artifact-sizes-stay-within-the-runs-frozen-limits",
+      "rule-an-origin-key-starts-only-one-skill-version",
+      "rule-each-dispatch-is-keyed-by-its-own-attempt-id"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "transient-provider-refusals-stop-at-the-attempt-ceiling",
+        "statement": "Transient provider refusals start at most the configured number of attempts, after which the run fails as a provider error.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "With two attempts allowed and the provider answering 503 every time, the run ends failed with two attempts."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/job.go",
+            "lines": {
+              "start": 240,
+              "end": 262
+            },
+            "excerpt_sha256": "sha256:65c482960460daa739b2ca93247051f448365848a6274d0e6585e3cce6767ed6"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/run_orchestration_integration_test.go",
+            "lines": {
+              "start": 545,
+              "end": 564
+            },
+            "content_sha256": "sha256:3ee2a4c18ef7b37144389e4bbbf50a0521d10b397f12b68aa312579015e9e12c",
+            "excerpt_sha256": "sha256:d44f4a05fe8d9c2478b0ec053382129c416d97a7a0063235b241be59761db435"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-refusal-waiting-cannot-fix-ends-the-run-after-one-attempt",
+        "statement": "A provider refusal that is neither unavailable nor full is final, so no further attempt starts.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A provider answering 400 leaves the run failed after exactly one attempt."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/job.go",
+            "lines": {
+              "start": 324,
+              "end": 343
+            },
+            "excerpt_sha256": "sha256:21a04e1f74e5b9d64dc51b2fb0a81208c3d70ca3347ac94b95061b1664dab3f5"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/run_dispatch_characterization_test.go",
+            "lines": {
+              "start": 211,
+              "end": 227
+            },
+            "content_sha256": "sha256:6526ed6ca269c5c421e45786111b30d933e54a64ffd111a4228e9d99950c148c",
+            "excerpt_sha256": "sha256:e2a28869548a08225d5a0aa3c2311cc050c9a703ca2b830cb3b48e512d060918"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-unaccepted-run-expires-after-the-slot-wait-limit",
+        "statement": "A run no provider has accepted expires once the slot wait limit has passed since its creation, and not before.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A run with no provider handle is still waiting at creation plus the limit, and expired a moment later."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/job.go",
+            "lines": {
+              "start": 949,
+              "end": 973
+            },
+            "excerpt_sha256": "sha256:9e49212b592ff44e29aef0aaff310f307a6db7cfff43827f33a1f6c3ac92c289"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/schedule_test.go",
+            "lines": {
+              "start": 401,
+              "end": 419
+            },
+            "content_sha256": "sha256:9e6d11ab3d6e5b184813ce96801a47a7a108f80ed142eac0e1ab5380c865de6b",
+            "excerpt_sha256": "sha256:b1b0177c40cc82c1deee4e43c7def823453d2e5efa3b4aeb19e5a60f5935612e"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-hard-wall-clock-runs-from-the-first-dispatch",
+        "statement": "Once a provider has accepted an attempt, the run's deadline is its first dispatch plus the frozen policy's hard wall clock, not its creation time.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "Dispatches at 13:00 and 14:00 under a 120-second policy give a 13:02 deadline."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/job.go",
+            "lines": {
+              "start": 921,
+              "end": 958
+            },
+            "excerpt_sha256": "sha256:03f9ac092c8fd18dae138c4065676dad149bbb0c0e34ab6a88b6833dfe033b8a"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/schedule_test.go",
+            "lines": {
+              "start": 376,
+              "end": 399
+            },
+            "content_sha256": "sha256:9e6d11ab3d6e5b184813ce96801a47a7a108f80ed142eac0e1ab5380c865de6b",
+            "excerpt_sha256": "sha256:b1620d0d6727c1258ab54edd3923c640130725457f56f3b5d9e9152dd591b625"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-provider-cannot-name-an-artifact-object-outside-its-write-grant",
+        "statement": "An artifact the provider reports may name only the archive object the platform derived for the attempt; any other object key is refused.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A manifest entry naming another Workspace's dataset object is refused as outside its write grant."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/job.go",
+            "lines": {
+              "start": 665,
+              "end": 692
+            },
+            "excerpt_sha256": "sha256:53c14820b6b09819c350716c621b2ff693ae43e6eafe2499b51a4133ea80fabc"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/provider_response_test.go",
+            "lines": {
+              "start": 18,
+              "end": 29
+            },
+            "content_sha256": "sha256:bb5991329899cb1098cf2e1202fdfd2962c1e7b7fe97d06185218a1383eb1fd5",
+            "excerpt_sha256": "sha256:8c8cc7dadd470111ef418fed96278c87af5ce936c21ae0cb4c1aa0ec975d608e"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "artifact-sizes-stay-within-the-runs-frozen-limits",
+        "statement": "Each reported artifact must be no larger than the run's frozen per-file limit, and their total within its frozen total limit, before anything is persisted.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A file one byte over the per-file limit is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/job.go",
+            "lines": {
+              "start": 670,
+              "end": 700
+            },
+            "excerpt_sha256": "sha256:7469ca0c5c2165b05ca13a7629d34c7fa2a64c305523e3a72972ed89af0a981e"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/provider_response_test.go",
+            "lines": {
+              "start": 31,
+              "end": 56
+            },
+            "content_sha256": "sha256:bb5991329899cb1098cf2e1202fdfd2962c1e7b7fe97d06185218a1383eb1fd5",
+            "excerpt_sha256": "sha256:fdce51c649e64c873b8cfdfffbb43405220acaa1d3f2c8af562b153c2b733438"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-origin-key-starts-only-one-skill-version",
+        "statement": "A caller's origin key returns the run it already started for the same Skill Version and is refused for a different version.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "The same key on another version is refused; on the same version it returns the same run."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/service.go",
+            "lines": {
+              "start": 874,
+              "end": 891
+            },
+            "excerpt_sha256": "sha256:b33d744e5dc035dd07b22002b8fd5e71cba0dd4fb652efe02fe1d92a6a91ae62"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+            "lines": {
+              "start": 169,
+              "end": 193
+            },
+            "content_sha256": "sha256:62599d4434b42f9eda292c8ce23ba8a9171afecd90b41260d55af04f27a25360",
+            "excerpt_sha256": "sha256:2b5d23941a92f5b3931f8bb94133ea6bf177ef3edf90c279cb5d34307813dcf8"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "each-dispatch-is-keyed-by-its-own-attempt-id",
+        "statement": "Every dispatch to a provider carries the platform's own attempt id as its idempotency key, so a re-sent dispatch is deduplicated per attempt and no provider id stands in for the platform's identity.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A run retried after a 503 dispatches its second attempt keyed by that attempt's id, not the run id."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/schedule.go",
+            "lines": {
+              "start": 564,
+              "end": 569
+            },
+            "excerpt_sha256": "sha256:55aaf0b38bc08527338b0dd3b23de3e89ef09a6ddf19cc597e703161a7df4f32"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/run_orchestration_integration_test.go",
+            "lines": {
+              "start": 566,
+              "end": 581
+            },
+            "content_sha256": "sha256:3ee2a4c18ef7b37144389e4bbbf50a0521d10b397f12b68aa312579015e9e12c",
+            "excerpt_sha256": "sha256:1a6598a1a05d6065f75e05517b620ae5d5c023e2b0a02c21d2f31b9feb059291"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T18:18:26.030858Z",
+      "scope": "Record run rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "e6ca06830c2dfb99f109a1fc5e91ae0da2e25da8",
+        "registry_digest": "sha256:a5fefd8d7f3dd3471cc4e396651779eec6948c6299d16336840091f7410d013b"
+      }
+    }
+  ]
+}

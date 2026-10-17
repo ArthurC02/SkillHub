@@ -1,0 +1,127 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "run-harvest-rules-2026-10-18",
+  "proposal_id": "run-harvest-rules-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-transient-provider-refusals-stop-at-the-attempt-ceiling",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-transient-provider-refusals-stop-at-the-attempt-ceiling",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "transient-provider-refusals-stop-at-the-attempt-ceiling"
+        }
+      ],
+      "expected_outcome": "Transient provider refusals start at most the configured number of attempts, after which the run fails as a provider error.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestRetriesAreBoundedAndClassifiedAsProviderFailure$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-refusal-waiting-cannot-fix-ends-the-run-after-one-attempt",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-refusal-waiting-cannot-fix-ends-the-run-after-one-attempt",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-refusal-waiting-cannot-fix-ends-the-run-after-one-attempt"
+        }
+      ],
+      "expected_outcome": "A provider refusal that is neither unavailable nor full is final, so no further attempt starts.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAProviderRefusalThatWaitingCannotFixEndsTheRunAfterOneAttempt$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-an-unaccepted-run-expires-after-the-slot-wait-limit",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-unaccepted-run-expires-after-the-slot-wait-limit",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-unaccepted-run-expires-after-the-slot-wait-limit"
+        }
+      ],
+      "expected_outcome": "A run no provider has accepted expires once the slot wait limit has passed since its creation, and not before.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestARunNobodyHasAcceptedWaitsForASlotUpToTheWaitLimit$ ./internal/trial/execution/"
+    },
+    {
+      "id": "rule-the-hard-wall-clock-runs-from-the-first-dispatch",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-hard-wall-clock-runs-from-the-first-dispatch",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-hard-wall-clock-runs-from-the-first-dispatch"
+        }
+      ],
+      "expected_outcome": "Once a provider has accepted an attempt, the run's deadline is its first dispatch plus the frozen policy's hard wall clock, not its creation time.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheWallClockRunsFromTheFirstDispatchNotFromCreation$ ./internal/trial/execution/"
+    },
+    {
+      "id": "rule-a-provider-cannot-name-an-artifact-object-outside-its-write-grant",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-provider-cannot-name-an-artifact-object-outside-its-write-grant",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-provider-cannot-name-an-artifact-object-outside-its-write-grant"
+        }
+      ],
+      "expected_outcome": "An artifact the provider reports may name only the archive object the platform derived for the attempt; any other object key is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestArtifactManifestCannotNameAnObjectOutsideItsWriteGrant$ ./internal/trial/execution/"
+    },
+    {
+      "id": "rule-artifact-sizes-stay-within-the-runs-frozen-limits",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-artifact-sizes-stay-within-the-runs-frozen-limits",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "artifact-sizes-stay-within-the-runs-frozen-limits"
+        }
+      ],
+      "expected_outcome": "Each reported artifact must be no larger than the run's frozen per-file limit, and their total within its frozen total limit, before anything is persisted.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestArtifactManifestIsValidatedBeforePersistence$ ./internal/trial/execution/"
+    },
+    {
+      "id": "rule-an-origin-key-starts-only-one-skill-version",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-origin-key-starts-only-one-skill-version",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-origin-key-starts-only-one-skill-version"
+        }
+      ],
+      "expected_outcome": "A caller's origin key returns the run it already started for the same Skill Version and is refused for a different version.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnOriginKeyThatStartedOneSkillVersionCannotStartAnother$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-each-dispatch-is-keyed-by-its-own-attempt-id",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-each-dispatch-is-keyed-by-its-own-attempt-id",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "each-dispatch-is-keyed-by-its-own-attempt-id"
+        }
+      ],
+      "expected_outcome": "Every dispatch to a provider carries the platform's own attempt id as its idempotency key, so a re-sent dispatch is deduplicated per attempt and no provider id stands in for the platform's identity.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestEachDispatchIsKeyedByThePlatformsOwnAttemptID$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

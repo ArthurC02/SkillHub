@@ -1,0 +1,165 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-harvest-rules-2026-10-18",
+  "proposal_id": "run-harvest-rules-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "e6ca06830c2dfb99f109a1fc5e91ae0da2e25da8",
+    "registry_digest": "sha256:a5fefd8d7f3dd3471cc4e396651779eec6948c6299d16336840091f7410d013b"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-transient-provider-refusals-stop-at-the-attempt-ceiling",
+      "mutated_protection": "apps/platform/internal/trial/execution/job.go:241: round.failures < d.svc.maxAttempts() -> round.failures <= d.svc.maxAttempts()",
+      "failure_evidence": "4 ERROR a run failed; the run carries the platform's own wording instead of this error run_id=5db62cb6-ca5c-45ca-ac14-81c9623d14c4 failure_class=provider_error error=\"provider returned 503: Service Unavailable\"\n2026/10/18 02:02:15 WARN run dispatch failed, retrying with a new attempt run_id=5db62cb6-ca5c-45ca-ac14-81c9623d14c4 attempt=2 error=\"provider returned 503: Service Unavailable\"\n2026/10/18 02:02:15 ERROR a run failed; the run carries the platform's own wording instead of this error run_id=5db62cb6-ca5c-45ca-ac14-81c9623d14c4 failure_class=provider_error error=\"provider returned 503: Service Unavailable\"\n2026/10/18 02:02:15 WARN run dispatch failed, retrying with a new attempt run_id=5db62cb6-ca5c-45ca-ac14-81c9623d14c4 attempt=3 error=\"provider returned 503: Service Unavailable\"\n    run_orchestration_integration_test.go:562: attempts = 3, want the configured ceiling of 2\ntime=2026-10-18T02:02:15.124+08:00 level=ERROR msg=\"maintenance.PeriodicJobEnqueuer: Error starting transaction\" error=\"context canceled\"\n--- FAIL: TestRetriesAreBoundedAndClassifiedAsProviderFailure (0.47s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.377s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-refusal-waiting-cannot-fix-ends-the-run-after-one-attempt",
+      "mutated_protection": "apps/platform/internal/trial/execution/job.go:336: case !retryable(err): return attemptGiveUp, nil -> case false: return attemptGiveUp, nil",
+      "failure_evidence": "OR a run failed; the run carries the platform's own wording instead of this error run_id=2ecfcde0-b5d3-4a33-8da9-0d9a2b2911c9 failure_class=provider_error error=\"provider returned 400: Bad Request\"\n2026/10/18 02:02:43 WARN run dispatch failed, retrying with a new attempt run_id=2ecfcde0-b5d3-4a33-8da9-0d9a2b2911c9 attempt=2 error=\"provider returned 400: Bad Request\"\n2026/10/18 02:02:43 ERROR a run failed; the run carries the platform's own wording instead of this error run_id=2ecfcde0-b5d3-4a33-8da9-0d9a2b2911c9 failure_class=provider_error error=\"provider returned 400: Bad Request\"\n2026/10/18 02:02:43 WARN run dispatch failed, retrying with a new attempt run_id=2ecfcde0-b5d3-4a33-8da9-0d9a2b2911c9 attempt=3 error=\"provider returned 400: Bad Request\"\n    run_dispatch_characterization_test.go:225: attempts = 3, want 1: a refusal that is not about load is not retried\ntime=2026-10-18T02:02:43.517+08:00 level=ERROR msg=\"maintenance.PeriodicJobEnqueuer: Error starting transaction\" error=\"context canceled\"\n--- FAIL: TestAProviderRefusalThatWaitingCannotFixEndsTheRunAfterOneAttempt (0.49s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.563s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-unaccepted-run-expires-after-the-slot-wait-limit",
+      "mutated_protection": "apps/platform/internal/trial/execution/job.go:956: return c.createdAt.Add(SlotWaitLimit) -> return c.createdAt.Add(SlotWaitLimit + time.Hour)",
+      "failure_evidence": "=== RUN   TestARunNobodyHasAcceptedWaitsForASlotUpToTheWaitLimit\n    schedule_test.go:414: the run is still waiting past the wait limit\n--- FAIL: TestARunNobodyHasAcceptedWaitsForASlotUpToTheWaitLimit (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/execution\t3.089s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-hard-wall-clock-runs-from-the-first-dispatch",
+      "mutated_protection": "apps/platform/internal/trial/execution/job.go:952: return c.dispatched.Add(c.wallClock) -> return c.dispatched.Add(c.wallClock + time.Second)",
+      "failure_evidence": "=== RUN   TestTheWallClockRunsFromTheFirstDispatchNotFromCreation\n    schedule_test.go:388: deadline = 2026-08-16 13:02:01 +0000 UTC, want the earliest dispatch plus the frozen policy's 2m, 2026-08-16 13:02:00 +0000 UTC\n    schedule_test.go:394: deadline without a policy = 2026-08-16 13:15:01 +0000 UTC, want the default counted from dispatch, 2026-08-16 13:15:00 +0000 UTC\n--- FAIL: TestTheWallClockRunsFromTheFirstDispatchNotFromCreation (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/execution\t3.249s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-provider-cannot-name-an-artifact-object-outside-its-write-grant",
+      "mutated_protection": "apps/platform/internal/trial/execution/job.go:685: artifact.ObjectKey != \"\" && artifact.ObjectKey != archiveKey -> artifact.ObjectKey != \"\" && artifact.ObjectKey != archiveKey && false",
+      "failure_evidence": "=== RUN   TestArtifactManifestCannotNameAnObjectOutsideItsWriteGrant\n    provider_response_test.go:27: arbitrary provider object key was accepted: provider returned an invalid artifact hash for \"output.txt\"\n--- FAIL: TestArtifactManifestCannotNameAnObjectOutsideItsWriteGrant (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/execution\t2.984s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-artifact-sizes-stay-within-the-runs-frozen-limits",
+      "mutated_protection": "apps/platform/internal/trial/execution/job.go:696: artifact.SizeBytes > limits.ArtifactFileBytes -> artifact.SizeBytes > limits.ArtifactFileBytes+1",
+      "failure_evidence": "edBeforePersistence/negative_size\n=== RUN   TestArtifactManifestIsValidatedBeforePersistence/oversized_file\n    provider_response_test.go:52: invalid manifest reached persistence: run artifact persistence is not configured\n=== RUN   TestArtifactManifestIsValidatedBeforePersistence/bad_hash\n=== RUN   TestArtifactManifestIsValidatedBeforePersistence/bad_content_type\n--- FAIL: TestArtifactManifestIsValidatedBeforePersistence (0.00s)\n    --- PASS: TestArtifactManifestIsValidatedBeforePersistence/empty_name (0.00s)\n    --- PASS: TestArtifactManifestIsValidatedBeforePersistence/leading_dash (0.00s)\n    --- PASS: TestArtifactManifestIsValidatedBeforePersistence/traversal_name (0.00s)\n    --- PASS: TestArtifactManifestIsValidatedBeforePersistence/control_name (0.00s)\n    --- PASS: TestArtifactManifestIsValidatedBeforePersistence/negative_size (0.00s)\n    --- FAIL: TestArtifactManifestIsValidatedBeforePersistence/oversized_file (0.00s)\n    --- PASS: TestArtifactManifestIsValidatedBeforePersistence/bad_hash (0.00s)\n    --- PASS: TestArtifactManifestIsValidatedBeforePersistence/bad_content_type (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/execution\t2.774s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-origin-key-starts-only-one-skill-version",
+      "mutated_protection": "apps/platform/internal/trial/execution/service.go:887: existing.SkillVersionID != p.VersionID -> existing.SkillVersionID != p.VersionID && false",
+      "failure_evidence": "=== RUN   TestAnOriginKeyThatStartedOneSkillVersionCannotStartAnother\n    evaluation_batch_integration_test.go:191: same key, another version: <nil>, want ErrOriginKeyReused\n--- FAIL: TestAnOriginKeyThatStartedOneSkillVersionCannotStartAnother (0.18s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.918s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-each-dispatch-is-keyed-by-its-own-attempt-id",
+      "mutated_protection": "apps/platform/internal/trial/execution/schedule.go:569: IdempotencyKey: pgconv.UUIDString(attempt.ID), -> IdempotencyKey: pgconv.UUIDString(run.ID),",
+      "failure_evidence": "=== RUN   TestEachDispatchIsKeyedByThePlatformsOwnAttemptID\n2026/10/18 02:14:33 ERROR a run failed; the run carries the platform's own wording instead of this error run_id=8952bdde-5163-491d-9875-98b0c1b30396 failure_class=provider_error error=\"provider returned 503: Service Unavailable\"\n2026/10/18 02:14:33 WARN run dispatch failed, retrying with a new attempt run_id=8952bdde-5163-491d-9875-98b0c1b30396 attempt=1 error=\"provider returned 503: Service Unavailable\"\n    run_orchestration_integration_test.go:576: retry dispatch idempotency key = \"8952bdde-5163-491d-9875-98b0c1b30396\", want its own attempt id \"ac31ab58-dcb0-4b51-a922-fe7f1b5b01fb\"\ntime=2026-10-18T02:14:33.076+08:00 level=ERROR msg=\"maintenance.PeriodicJobEnqueuer: Error starting transaction\" error=\"context canceled\"\n--- FAIL: TestEachDispatchIsKeyedByThePlatformsOwnAttemptID (0.37s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.742s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/run_dispatch_characterization_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/run_orchestration_integration_test.go",
+    "apps/platform/internal/trial/execution/job.go",
+    "apps/platform/internal/trial/execution/provider_response_test.go",
+    "apps/platform/internal/trial/execution/schedule.go",
+    "apps/platform/internal/trial/execution/schedule_test.go",
+    "apps/platform/internal/trial/execution/service.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-transient-provider-refusals-stop-at-the-attempt-ceiling",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestRetriesAreBoundedAndClassifiedAsProviderFailure$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f11c4b3b19512e0e4cd9926900447319be652c732025e97f94452fe424277798",
+      "finished_at": "2026-10-17T18:17:31.530417Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-refusal-waiting-cannot-fix-ends-the-run-after-one-attempt",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAProviderRefusalThatWaitingCannotFixEndsTheRunAfterOneAttempt$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:551013ff7823dbed2aba13f66f623258ece9508b13393340b1df73444c3e88ce",
+      "finished_at": "2026-10-17T18:17:41.508053Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-unaccepted-run-expires-after-the-slot-wait-limit",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestARunNobodyHasAcceptedWaitsForASlotUpToTheWaitLimit$ ./internal/trial/execution/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f3b30226c460c4920875e434e4cacd2c5b5fb7c2fd35b4d34c1a89be8a586753",
+      "finished_at": "2026-10-17T18:17:47.329677Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-the-hard-wall-clock-runs-from-the-first-dispatch",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheWallClockRunsFromTheFirstDispatchNotFromCreation$ ./internal/trial/execution/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4318c593a7fbad40d9c18d14b2b3317220992fa6c1a2b9db1f80d05484ea27a9",
+      "finished_at": "2026-10-17T18:17:54.177846Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-provider-cannot-name-an-artifact-object-outside-its-write-grant",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestArtifactManifestCannotNameAnObjectOutsideItsWriteGrant$ ./internal/trial/execution/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:2e8dd2e01f101e8329baa2dd53ac84ab5fef4e54e2b5c18f25e60244889f7d8c",
+      "finished_at": "2026-10-17T18:18:00.420964Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-artifact-sizes-stay-within-the-runs-frozen-limits",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestArtifactManifestIsValidatedBeforePersistence$ ./internal/trial/execution/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:cd3f9bf23b7f817a49392192057cdcae56cce67b284424a3d8fa7b596c3fbd32",
+      "finished_at": "2026-10-17T18:18:06.916272Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-origin-key-starts-only-one-skill-version",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnOriginKeyThatStartedOneSkillVersionCannotStartAnother$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:158f9ec35621605c3228f1cf9271f9c7b90cd96d8a36b00ec94011e3c934126b",
+      "finished_at": "2026-10-17T18:18:17.309044Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-each-dispatch-is-keyed-by-its-own-attempt-id",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestEachDispatchIsKeyedByThePlatformsOwnAttemptID$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:8d4440670fcf0fe2465cba34a964b7b2852fc1f451b6f7eb370b9e20df2be7f5",
+      "finished_at": "2026-10-17T18:18:25.745314Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
