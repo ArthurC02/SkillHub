@@ -446,8 +446,8 @@ def apply_approved_updates(
     reconciliation_path(registry_root).unlink(missing_ok=True)
 
 def promote_candidate(
-    package_root: Path, registry_root: Path, asset: str, record_id: str
-) -> None:
+    package_root: Path, registry_root: Path, asset: str, record_id: str, *, amend: bool = False
+) -> str | None:
     path = package_root / PROPOSAL_FILE
     proposal = load_json(path)
     if proposal.get("status") != "draft":
@@ -463,11 +463,20 @@ def promote_candidate(
         raise ValueError(
             f"no {asset}/{record_id} in the Registry; record it with upsert-candidate first"
         )
+    superseded = None
     if is_reviewed(asset, document, record):
-        raise ValueError(
-            f"{asset}/{record_id} is already reviewed; record the change as a candidate with "
-            "upsert-candidate, then promote that"
-        )
+        if not amend:
+            raise ValueError(
+                f"{asset}/{record_id} is already reviewed; record the change as a candidate with "
+                "upsert-candidate, then promote that, or pass --amend to change the reviewed record as it stands"
+            )
+        superseded = reviewing_proposals(registry_root).get(f"{asset}/{record_id}")
+        if superseded is None:
+            raise ValueError(
+                f"no applied Change Package reviewed {asset}/{record_id} in the audit log, so the package "
+                "cannot name the proposal it supersedes"
+            )
+        proposal["supersedes"] = _with_superseded(proposal.get("supersedes"), superseded)
     promoted = {
         key: value
         for key, value in record.items()
@@ -486,3 +495,9 @@ def promote_candidate(
         | contexts_named_by(asset, promoted)
     )
     write_json(path, proposal)
+    return superseded
+
+
+def _with_superseded(supersedes: Any, proposal_id: str) -> list[Any]:
+    named = [supersedes] if isinstance(supersedes, str) else list(supersedes) if isinstance(supersedes, list) else []
+    return named if proposal_id in named else [*named, proposal_id]

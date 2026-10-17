@@ -38,8 +38,8 @@ UNITTEST_FAILED_TEST = re.compile(r"^(?:FAIL|ERROR): (\w+) \(([\w.]+)\)", re.MUL
 
 def failing_tests(output: str) -> list[str]:
     names = [
-        *GO_FAILED_TEST.findall(output),
-        *GO_JSON_FAILED_TEST.findall(output),
+        *(name.split("/", 1)[0] for name in GO_FAILED_TEST.findall(output)),
+        *(name.split("/", 1)[0] for name in GO_JSON_FAILED_TEST.findall(output)),
         *(summary or verbose for summary, verbose in PYTEST_FAILED_TEST.findall(output)),
         *(where if where.endswith(f".{name}") else f"{where}.{name}" for name, where in UNITTEST_FAILED_TEST.findall(output)),
     ]

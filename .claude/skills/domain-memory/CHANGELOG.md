@@ -2,6 +2,18 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.56.0
+
+### Added
+
+- `promote-candidate --amend` copies a reviewed record into a draft without its review fields and supersedes the proposal that reviewed it, so a rule can be re-proven.
+
+### Changed
+
+- `failing_tests` names a Go subtest by its top-level test, once.
+- `fill-harvest-package` says that `submit-proposal` validates the package it filled.
+- The harvest recipe ends with a merge from upstream, never a rebase, and says how a reviewed rule is re-proven and how a rule a dependency gate enforces is proven.
+
 ## 0.55.0
 
 ### Added

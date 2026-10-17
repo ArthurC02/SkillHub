@@ -575,8 +575,9 @@ class FailingTestsTest(unittest.TestCase):
     def test_each_runner_names_the_tests_that_failed_once_each_in_order(self) -> None:
         for runner, output, names in (
             ("go -v", "=== RUN   TestA\n--- FAIL: TestA (0.00s)\n    --- FAIL: TestA/sub (0.00s)\n--- PASS: TestB (0.00s)\n"
-                      "--- FAIL: TestA (0.00s)\nFAIL\n", ["TestA", "TestA/sub"]),
-            ("go -json", '{"Action":"fail","Package":"p","Test":"TestA","Elapsed":0}\n'
+                      "--- FAIL: TestA (0.00s)\nFAIL\n", ["TestA"]),
+            ("go -json", '{"Action":"fail","Package":"p","Test":"TestA/sub","Elapsed":0}\n'
+                         '{"Action":"fail","Package":"p","Test":"TestA","Elapsed":0}\n'
                          '{"Action":"pass","Package":"p","Test":"TestB","Elapsed":0}\n'
                          '{"Action":"fail","Package":"p","Elapsed":0}\n', ["TestA"]),
             ("pytest summary", "FAILED tests/test_a.py::test_one - assert 1 == 2\nERROR tests/test_a.py::test_two\n",

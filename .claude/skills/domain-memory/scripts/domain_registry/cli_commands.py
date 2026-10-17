@@ -471,13 +471,16 @@ def handle_retract_candidate(args: argparse.Namespace) -> int:
 
 
 def handle_promote_candidate(args: argparse.Namespace) -> int:
-    promote_candidate(
-        args.package_root.resolve(), args.registry_root.resolve(), args.asset, args.id
+    superseded = promote_candidate(
+        args.package_root.resolve(), args.registry_root.resolve(), args.asset, args.id, amend=args.amend
     )
     print(
         f"{args.asset}/{args.id} is in registry_updates; "
         "apply-approved-updates reviews it once the proposal is approved."
     )
+    if superseded is not None:
+        print(f"NOTE: the package supersedes {superseded}, which reviewed it; change the record in registry_updates, "
+              "such as adding the citation of the test that proves it.", file=sys.stderr)
     return 0
 
 
@@ -521,7 +524,7 @@ def handle_fill_harvest_package(args: argparse.Namespace) -> int:
         print_json(documents)
         return 0
     write_harvest_package(package_root, documents)
-    print(f"Filled {package_root} from the spec; run validate-change-package next.")
+    print(f"Filled {package_root} from the spec; submit-proposal validates it, or run validate-change-package first.")
     return 0
 
 

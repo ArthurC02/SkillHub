@@ -792,8 +792,37 @@ class UpdatesTest(RegistryTestCase):
         promote_candidate(package, self.repo / "memory", "rules", "order-total")
         self.approve_and_apply(package)
         again = self.redraft_target()
-        with self.assertRaisesRegex(ValueError, "already reviewed"):
+        with self.assertRaisesRegex(ValueError, "already reviewed; .* or pass --amend"):
             promote_candidate(again, self.repo / "memory", "rules", "order-total")
+
+    def test_amending_a_reviewed_record_copies_it_unreviewed_and_supersedes_its_reviewer(self) -> None:
+        package = self.package_with_a_candidate_rule("An order total is non-negative.")
+        promote_candidate(package, self.repo / "memory", "rules", "order-total")
+        self.approve_and_apply(package)
+        again = self.redraft_target()
+        proposal_path = again / "domain-change-proposal.json"
+        for supersedes, expected in ((None, ["PRO-1"]), ("PRO-0", ["PRO-0", "PRO-1"]), (["PRO-1"], ["PRO-1"])):
+            with self.subTest(supersedes=supersedes):
+                proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
+                proposal_path.write_text(json.dumps({**proposal, "supersedes": supersedes}), encoding="utf-8")
+                self.assertEqual("PRO-1", promote_candidate(again, self.repo / "memory", "rules", "order-total", amend=True))
+                proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
+                [update] = [entry for entry in proposal["registry_updates"] if entry["record"]["id"] == "order-total"]
+                self.assertEqual(
+                    (expected, False, False),
+                    (proposal["supersedes"], "status" in update["record"], "verified" in update["record"]),
+                )
+
+    def test_amending_a_reviewed_record_no_package_reviewed_is_refused(self) -> None:
+        package = self.package_with_a_candidate_rule("An order total is non-negative.")
+        self.seed("rules.json", [{"id": "order-total", "contexts": ["orders"], "statement": "x", "status": "reviewed"}])
+        with self.assertRaisesRegex(ValueError, "^no applied Change Package reviewed rules/order-total in the audit log"):
+            promote_candidate(package, self.repo / "memory", "rules", "order-total", amend=True)
+
+    def test_amend_promotes_a_candidate_as_promotion_does(self) -> None:
+        package = self.package_with_a_candidate_rule("An order total is non-negative.")
+        self.assertIsNone(promote_candidate(package, self.repo / "memory", "rules", "order-total", amend=True))
+        self.assertEqual(["order-total"], [entry["record"]["id"] for entry in self.registry_updates(package)])
 
     def test_promoting_into_a_proposal_that_is_no_longer_a_draft_is_refused(self) -> None:
         package = self.package_with_a_candidate_rule("An order total is non-negative.")

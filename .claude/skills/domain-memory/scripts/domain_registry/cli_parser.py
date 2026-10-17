@@ -179,6 +179,18 @@ def _add_evidence_commands(commands: argparse._SubParsersAction) -> None:
     add_path(recite_parser, "--onto", required=False)
 
 
+def _add_promote_command(commands: argparse._SubParsersAction) -> None:
+    promote_parser = commands.add_parser("promote-candidate", help="Put a candidate into a draft proposal")
+    add_path(promote_parser, "--package-root")
+    add_path(promote_parser, "--registry-root")
+    add_asset(promote_parser)
+    promote_parser.add_argument("--id", required=True)
+    promote_parser.add_argument(
+        "--amend", action="store_true",
+        help="a reviewed record: copy it without its review fields and supersede the proposal that reviewed it",
+    )
+
+
 def _add_record_and_source_commands(commands: argparse._SubParsersAction) -> None:
     cite_parser = commands.add_parser("cite", help="Build an evidence citation")
     add_path(cite_parser, "--repo-root")
@@ -202,11 +214,7 @@ def _add_record_and_source_commands(commands: argparse._SubParsersAction) -> Non
     add_asset(retract_parser)
     retract_parser.add_argument("--id", required=True)
     retract_parser.add_argument("--reason", required=True)
-    promote_parser = commands.add_parser("promote-candidate", help="Put a candidate into a draft proposal")
-    add_path(promote_parser, "--package-root")
-    add_path(promote_parser, "--registry-root")
-    add_asset(promote_parser)
-    promote_parser.add_argument("--id", required=True)
+    _add_promote_command(commands)
     apply_updates_parser = commands.add_parser("apply-approved-updates", help="Apply an approved change")
     add_path(apply_updates_parser, "--package-root")
     add_path(apply_updates_parser, "--registry-root")
