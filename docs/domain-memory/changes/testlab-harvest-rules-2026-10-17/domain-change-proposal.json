@@ -3,12 +3,12 @@
   "proposal_id": "testlab-harvest-rules-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "testlab-harvest-rules-2026-10-17",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T06:46:19.247869Z",
   "verified_at": "2026-10-17T06:47:28.630606Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T06:47:30.837339Z",
+  "applied_at": "2026-10-17T06:47:32.773589Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "6025f53227a953c336c78e047351296e7aefcd08",
@@ -384,5 +384,9 @@
         "registry_digest": "sha256:53bd9918d4b729497bc2535cab5fab071a2bf14e6b5c186d3dd6d383463c851c"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "253a1d35d5e43e3ec3bf699f780629496b0437bc",
+    "registry_digest": "sha256:53845027824d1f5733f19a42a6aeaaee444ffce23df685b51543eac1154e6a98"
+  }
 }
