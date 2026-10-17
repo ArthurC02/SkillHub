@@ -1,0 +1,132 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "credit-harvest-rules",
+  "proposal_id": "credit-harvest-rules",
+  "registry_revision": {
+    "observed_commit": "dc7f018e0ea2a0b58080768aa4ca25772a4a6e59",
+    "registry_digest": "sha256:f7038b282715eb4b77779ddadb662beb50acc1678cc6eb2967bf4a8e677eb7de"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "rule-a-grant-key-reused-for-a-different-entry-is-refused",
+    "mutated_protection": "apps/platform/internal/creator/credit/postgres.go:173: if earlier.Kind != string(g.EntryKind) || earlier.DeltaCredits != g.Credits { -> if (earlier.Kind != string(g.EntryKind) || earlier.DeltaCredits != g.Credits) && false {",
+    "failure_evidence": "--- FAIL: TestAGrantKeyReusedForADifferentEntryIsRefusedAndLeavesTheBalance (0.09s)\n    --- FAIL: TestAGrantKeyReusedForADifferentEntryIsRefusedAndLeavesTheBalance/another_amount (0.04s)\n        postgres_integration_test.go:138: reusing the key for another amount: (applied false, error <nil>), want ErrGrantKeyReused\n    --- FAIL: TestAGrantKeyReusedForADifferentEntryIsRefusedAndLeavesTheBalance/another_kind (0.01s)\n        postgres_integration_test.go:138: reusing the key for another kind: (applied false, error <nil>), want ErrGrantKeyReused\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t2.137s\nFAIL\n",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/creator/credit/money.go",
+    "apps/platform/internal/creator/credit/money_test.go",
+    "apps/platform/internal/creator/credit/postgres.go",
+    "apps/platform/internal/creator/credit/postgres_integration_test.go",
+    "apps/platform/internal/creator/credit/service.go",
+    "apps/platform/internal/creator/credit/service_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-only-an-adjustment-may-lower-a-balance",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestOnlyAnAdjustmentMayLowerABalance$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:189b709beea62a0069e413b7b18d592475563f7003574a09fa28f070fad054fc",
+      "finished_at": "2026-10-17T02:41:23.088436Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-charge-is-debited-once-per-idempotency-key",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestAReplayedChargeKeyRecordsAndDebitsOnce$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:3970bd45a33ec60a69de0d9fd4eae2c65e4004c4afaa26bab04ad633a60cd1a4",
+      "finished_at": "2026-10-17T02:41:28.568070Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-grant-needs-a-nonzero-amount-a-reason-and-an-accountable-operator",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestGrantRequiresReasonAndOperator$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:9d158a1cfdae3cc617893db8503b0a7bc3b4553351fc7ea353f413b8c145d5c3",
+      "finished_at": "2026-10-17T02:42:04.482128Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-balance-never-goes-below-the-lowest-stored-balance",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestAnAdjustmentIsRefusedExactlyWhenItWouldPassTheLowestStoredBalance$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:89d6df92c15b9f862b0adff8ce853a5c284d31fc72dbca041a9d205e2114c165",
+      "finished_at": "2026-10-17T02:42:09.131772Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-replaying-a-grant-key-applies-and-audits-once",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestReplayingAGrantKeyGrantsAndAuditsOnce$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:6eabd04655eadafbe8efdb599ff7bc79eee90d93fccc378242669ca80bfb8a9c",
+      "finished_at": "2026-10-17T02:42:16.487205Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-grant-key-reused-for-a-different-entry-is-refused",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestAGrantKeyReusedForADifferentEntryIsRefusedAndLeavesTheBalance$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4a883cd19213bc9eb0426caf45da93003bdfc05a1d0bbbab5735f26c541c2cae",
+      "finished_at": "2026-10-17T02:42:21.013317Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-usage-with-unknown-cost-is-recorded-but-never-debited",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestUnknownUsageIsRecordedAndNeverDebited$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:7336bbf295f668b5f37f7fd8a6b86c9dc6d924fb3adf019bacad52afd1c36500",
+      "finished_at": "2026-10-17T02:42:25.166643Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-step-is-affordable-only-above-the-debt-floor",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestCanAffordStepEnforcesDebtFloor$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:3bf491a81af8420b1718e014504cb6ccbfabfb98bf539a24b59c2af79b4d4c1a",
+      "finished_at": "2026-10-17T02:42:29.526923Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-unpriceable-amount-is-refused-never-billed-as-free",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestAnAmountTooLargeToPriceIsAnErrorNotZero$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ca046bb91ce5d50707b71c938e2ca918fdb2dcadec69feda6543c7af258904d9",
+      "finished_at": "2026-10-17T02:42:34.470851Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-purged-or-missing-account-cannot-be-charged-or-granted",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestFactsBlockPurgedAccountOnCharge$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:d36282e599aa2e12972493fc606ec02fcc81420b2c208f7348c0f9e0a44d0315",
+      "finished_at": "2026-10-17T02:42:40.945510Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

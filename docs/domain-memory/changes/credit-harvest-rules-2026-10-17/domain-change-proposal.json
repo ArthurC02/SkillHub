@@ -1,0 +1,440 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "credit-harvest-rules",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "credit-harvest-rules",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T02:39:13.786904Z",
+  "verified_at": "2026-10-17T02:41:07.184601Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "dc7f018e0ea2a0b58080768aa4ca25772a4a6e59",
+    "registry_digest": "sha256:f7038b282715eb4b77779ddadb662beb50acc1678cc6eb2967bf4a8e677eb7de"
+  },
+  "affected_contexts": [
+    "credit"
+  ],
+  "rule_ids": [
+    "only-an-adjustment-may-lower-a-balance",
+    "a-grant-needs-a-nonzero-amount-a-reason-and-an-accountable-operator",
+    "a-balance-never-goes-below-the-lowest-stored-balance",
+    "replaying-a-grant-key-applies-and-audits-once",
+    "a-grant-key-reused-for-a-different-entry-is-refused",
+    "a-charge-is-debited-once-per-idempotency-key",
+    "usage-with-unknown-cost-is-recorded-but-never-debited",
+    "a-step-is-affordable-only-above-the-debt-floor",
+    "an-unpriceable-amount-is-refused-never-billed-as-free",
+    "a-purged-or-missing-account-cannot-be-charged-or-granted"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "credit",
+    "invariant": "Only the credit Context writes balances and ledger entries; every write goes through Service.Grant or Service.Charge.",
+    "evidence": [
+      "apps/platform/internal/creator/credit/service.go:345-374",
+      "apps/platform/internal/creator/credit/postgres.go:96-123"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: account standing still arrives through the Facts port.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/creator/credit/service.go:46-58"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the credit Context found ten enforced rules; the reviewed Registry held none, so the next Agent could not look them up.",
+      "One of them, refusing a reused grant key, had no test at all."
+    ],
+    "decision": "Record the ten rules as reviewed citing code and test; add the integration test for the reused grant key.",
+    "invariants_preserved": [
+      "A balance changes only through a ledger entry."
+    ],
+    "rejected_alternatives": [
+      "Citing the balance CHECK constraint in db/migrations: it is outside the confirmed sources; the Go mapping and its integration test carry the rule.",
+      "Recording the start threshold from cost statistics: its fallback rules are tuning, not a rule a creator or operator would name."
+    ],
+    "proof_obligations": [
+      "rule-only-an-adjustment-may-lower-a-balance",
+      "rule-a-grant-needs-a-nonzero-amount-a-reason-and-an-accountable-operator",
+      "rule-a-balance-never-goes-below-the-lowest-stored-balance",
+      "rule-replaying-a-grant-key-applies-and-audits-once",
+      "rule-a-grant-key-reused-for-a-different-entry-is-refused",
+      "rule-a-charge-is-debited-once-per-idempotency-key",
+      "rule-usage-with-unknown-cost-is-recorded-but-never-debited",
+      "rule-a-step-is-affordable-only-above-the-debt-floor",
+      "rule-an-unpriceable-amount-is-refused-never-billed-as-free",
+      "rule-a-purged-or-missing-account-cannot-be-charged-or-granted"
+    ],
+    "counterfactual_check": "Break each rule's enforcing line so the package still builds; its test must fail with that rule's own assertion."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-an-adjustment-may-lower-a-balance",
+        "statement": "An operator entry with negative credits is refused with ErrGrantLowersBalance unless it is an adjustment.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "A grant of -10 is refused; the same -10 as an adjustment is applied."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 356,
+              "end": 357
+            },
+            "excerpt_sha256": "sha256:037049a24ecd2317ebaa862dab5fb1f4c830d5d1685da0562920ef6340c87598"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 341,
+              "end": 359
+            },
+            "excerpt_sha256": "sha256:582d2b4adaa7a920bd3c99d1b16f71aa2efec1425e1c2f3d67e13a3c83ff2c61"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-grant-needs-a-nonzero-amount-a-reason-and-an-accountable-operator",
+        "statement": "An operator entry is refused when its credits are zero, its trimmed reason is empty, or its user, operator or idempotency key is missing; its kind must be grant, topup or adjustment.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "A 50-credit grant whose reason is only spaces is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 345,
+              "end": 360
+            },
+            "excerpt_sha256": "sha256:8806b258fe65c4f5ad9e7a1f4d561bab7f56b6aa779d8b9c19e5c204e36d62ad"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 325,
+              "end": 339
+            },
+            "excerpt_sha256": "sha256:f574783edfd264c90cf378c0716149fe2bdf7463f8e041ffef638be6eb6a88f6"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-balance-never-goes-below-the-lowest-stored-balance",
+        "statement": "An entry that would take a balance below MinBalanceCredits is refused with ErrBalanceOutOfRange and nothing is applied; landing exactly on the minimum is applied.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "An adjustment of MinBalanceCredits-1 on a fresh account is refused and the balance stays 0."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/postgres.go",
+            "lines": {
+              "start": 153,
+              "end": 159
+            },
+            "excerpt_sha256": "sha256:9f9bd680d69cddd3e5b78dd7effb5fdb6978c4c6d8ce28253e1eba19f2f6e4b0"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/postgres.go",
+            "lines": {
+              "start": 182,
+              "end": 185
+            },
+            "excerpt_sha256": "sha256:b406ed390b8f367075c22ddc07b1bf079784717034c5c4bdca68da73b612588f"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/postgres_integration_test.go",
+            "lines": {
+              "start": 59,
+              "end": 100
+            },
+            "excerpt_sha256": "sha256:f58c03d11586a4afd8d7802a68dc97df1a6cc53ab3dbd3daca514faa79b60909"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "replaying-a-grant-key-applies-and-audits-once",
+        "statement": "Re-submitting an operator entry under the same idempotency key returns the current balance without applying it or writing a second audit entry.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "Two identical 50-credit grants under one key leave the balance at 50 with one audit entry."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 365,
+              "end": 374
+            },
+            "excerpt_sha256": "sha256:ebf6d5024dbf03c729ef4fd7e1ecb3eec09060465a6f16c6f0b83a8546b617f6"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 398,
+              "end": 419
+            },
+            "excerpt_sha256": "sha256:ef5d04abbe1616793a579ae5cc1cd81c9ecd8266a93a826aef11d4c37e55a006"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-grant-key-reused-for-a-different-entry-is-refused",
+        "statement": "An idempotency key already used for an operator entry is refused with ErrGrantKeyReused when it is presented with another kind or another amount, and the balance is unchanged.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "Key k granted 50; k presented again for 60 or as a topup is refused and the balance stays 50."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/postgres.go",
+            "lines": {
+              "start": 166,
+              "end": 178
+            },
+            "excerpt_sha256": "sha256:0753543290451865f1bb118b6ea518dea7c72975ec60c5d618135db3aaa8a6be"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/postgres_integration_test.go",
+            "lines": {
+              "start": 102,
+              "end": 149
+            },
+            "excerpt_sha256": "sha256:201b6b104284653458199a67b657139f04029123c1d8de6df7810a1ddd8f956b"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-charge-is-debited-once-per-idempotency-key",
+        "statement": "Replaying a charge under the same idempotency key reports it as existing and leaves one cost event, one ledger entry and one debit.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "Charging the same creation-step key twice debits 13 credits once."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/postgres.go",
+            "lines": {
+              "start": 103,
+              "end": 123
+            },
+            "excerpt_sha256": "sha256:74cc54b7abf930eaca81a2c4dbf63aaad8da82b69882be963c7539bf5f8981de"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 152,
+              "end": 167
+            },
+            "excerpt_sha256": "sha256:ed46f19c08d56093bebfa9abae115f13a530be12d901ece13272e4381c79d214"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/postgres_integration_test.go",
+            "lines": {
+              "start": 151,
+              "end": 200
+            },
+            "excerpt_sha256": "sha256:865b49bbf664dd06a0889fd18915bc7e6b3c0e30f52ba9d2e7131c1bb47c42e8"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "usage-with-unknown-cost-is-recorded-but-never-debited",
+        "statement": "A charge whose actual cost is unknown is recorded as an estimated cost event and debits no credits; the reserved ceiling is never billed as the cost.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "An unpriced call leaves the balance unchanged and records an estimated cost event."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 115,
+              "end": 119
+            },
+            "excerpt_sha256": "sha256:c53e8e188f9f5771c4cdcc0236e21066793714ed1839b8394d4885b9d5f4d06b"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 144,
+              "end": 151
+            },
+            "excerpt_sha256": "sha256:8a0e5c729dc2ac07aff5309d092f73cda6edf0e33985fa8c62a647b4c241942e"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 143,
+              "end": 168
+            },
+            "excerpt_sha256": "sha256:6152f0ffdcdf942ab68bfb6437f197ac9a063f357feaa2f4edc112141bebbbb2"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-step-is-affordable-only-above-the-debt-floor",
+        "statement": "A paid step may proceed only when the balance minus the credits billed for its reservation stays at or above the configured debt floor.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "With a floor of -50 and 13 credits reserved, a balance of -37 may continue and -38 may not."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 182,
+              "end": 188
+            },
+            "excerpt_sha256": "sha256:0cd436a386eb11960d8654d65c811c6239b6a105d6b52beb7e7828450dd36801"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 238,
+              "end": 257
+            },
+            "excerpt_sha256": "sha256:0c034df5c58b06a3e32795dad570d3292e6d706888e1945cdfa485a3c00670b1"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-unpriceable-amount-is-refused-never-billed-as-free",
+        "statement": "A cost or markup outside its billable range is refused with ErrAmountOutOfRange instead of overflowing, and billing rounds up, never down.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "Pricing an amount above MaxBillableMicros is an error, not a bill of 0."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/money.go",
+            "lines": {
+              "start": 30,
+              "end": 38
+            },
+            "excerpt_sha256": "sha256:162827f2762093738e339d20f7e465adaffa055963a7f61a2e32ac9c760b6e78"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/money_test.go",
+            "lines": {
+              "start": 53,
+              "end": 68
+            },
+            "excerpt_sha256": "sha256:f40d29758968210065f48ce455a8fa7049ff271fbf129dd5bc8a016b3f580f7a"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-purged-or-missing-account-cannot-be-charged-or-granted",
+        "statement": "When account facts report the user missing or purged, a grant and a charge are refused with ErrAccountGone and nothing is recorded.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "A charge to a purged account leaves no cost event and no debit."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 46,
+              "end": 58
+            },
+            "excerpt_sha256": "sha256:2578d8f9055751a6201744f7180225f09c45f79dc164de0819caf77afb89e26c"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 479,
+              "end": 497
+            },
+            "excerpt_sha256": "sha256:a419941f99fb7fceab65fbe651440614874553d83ac80ff449550cdab4460b85"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T02:41:06.695372Z",
+      "scope": "Record ten credit balance, grant, charge and pricing rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "dc7f018e0ea2a0b58080768aa4ca25772a4a6e59",
+        "registry_digest": "sha256:f7038b282715eb4b77779ddadb662beb50acc1678cc6eb2967bf4a8e677eb7de"
+      }
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "credit-harvest-rules",
+  "status": "draft",
+  "intent": "Record as reviewed the ten balance, grant, charge and pricing rules the credit Context enforces and tests but the Registry did not hold.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context credit lists the ten rules as reviewed, each citing its enforcing code and the test that proves it.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-only-an-adjustment-may-lower-a-balance",
+      "statement": "An operator entry with negative credits is refused with ErrGrantLowersBalance unless it is an adjustment."
+    },
+    {
+      "id": "enforced-a-grant-needs-a-nonzero-amount-a-reason-and-an-accountable-operator",
+      "statement": "An operator entry is refused when its credits are zero, its trimmed reason is empty, or its user, operator or idempotency key is missing; its kind must be grant, topup or adjustment."
+    },
+    {
+      "id": "enforced-a-balance-never-goes-below-the-lowest-stored-balance",
+      "statement": "An entry that would take a balance below MinBalanceCredits is refused with ErrBalanceOutOfRange and nothing is applied; landing exactly on the minimum is applied."
+    },
+    {
+      "id": "enforced-replaying-a-grant-key-applies-and-audits-once",
+      "statement": "Re-submitting an operator entry under the same idempotency key returns the current balance without applying it or writing a second audit entry."
+    },
+    {
+      "id": "enforced-a-grant-key-reused-for-a-different-entry-is-refused",
+      "statement": "An idempotency key already used for an operator entry is refused with ErrGrantKeyReused when it is presented with another kind or another amount, and the balance is unchanged."
+    },
+    {
+      "id": "enforced-a-charge-is-debited-once-per-idempotency-key",
+      "statement": "Replaying a charge under the same idempotency key reports it as existing and leaves one cost event, one ledger entry and one debit."
+    },
+    {
+      "id": "enforced-usage-with-unknown-cost-is-recorded-but-never-debited",
+      "statement": "A charge whose actual cost is unknown is recorded as an estimated cost event and debits no credits; the reserved ceiling is never billed as the cost."
+    },
+    {
+      "id": "enforced-a-step-is-affordable-only-above-the-debt-floor",
+      "statement": "A paid step may proceed only when the balance minus the credits billed for its reservation stays at or above the configured debt floor."
+    },
+    {
+      "id": "enforced-an-unpriceable-amount-is-refused-never-billed-as-free",
+      "statement": "A cost or markup outside its billable range is refused with ErrAmountOutOfRange instead of overflowing, and billing rounds up, never down."
+    },
+    {
+      "id": "enforced-a-purged-or-missing-account-cannot-be-charged-or-granted",
+      "statement": "When account facts report the user missing or purged, a grant and a charge are refused with ErrAccountGone and nothing is recorded."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/creator/credit/money.go",
+    "apps/platform/internal/creator/credit/money_test.go",
+    "apps/platform/internal/creator/credit/postgres.go",
+    "apps/platform/internal/creator/credit/postgres_integration_test.go",
+    "apps/platform/internal/creator/credit/service.go",
+    "apps/platform/internal/creator/credit/service_test.go"
+  ]
+}
