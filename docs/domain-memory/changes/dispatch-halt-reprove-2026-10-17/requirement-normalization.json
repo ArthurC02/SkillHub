@@ -1,0 +1,23 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "dispatch-halt-reprove-2026-10-17",
+  "status": "draft",
+  "intent": "Attach a proving test to the reviewed rule dispatch-incident-halt-is-never-downgraded, whose reviewing package is no longer in the repository.",
+  "actor": "coding-agent",
+  "observable_outcome": "coverage lists dispatch-incident-halt-is-never-downgraded as proven, and get-record names the obligation that proves it.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-dispatch-incident-halt-is-never-downgraded",
+      "statement": "A dispatch halt declared as a P1 incident outranks a capacity pause on the same target: a later capacity pause replaces neither its source, its reason nor its declarer, and only an operator lifts it. A capacity pause lifts itself after two consecutive clear reconciler rounds."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/trial/execution/halt/halt_test.go",
+    "apps/platform/internal/trial/execution/halt/ledger.go",
+    "apps/platform/internal/trial/execution/halt/source.go"
+  ]
+}

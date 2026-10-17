@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "dispatch-halt-reprove-2026-10-17",
+  "proposal_id": "dispatch-halt-reprove-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-dispatch-incident-halt-is-never-downgraded",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-dispatch-incident-halt-is-never-downgraded",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "dispatch-incident-halt-is-never-downgraded"
+        }
+      ],
+      "expected_outcome": "A dispatch halt declared as a P1 incident outranks a capacity pause on the same target: a later capacity pause replaces neither its source, its reason nor its declarer, and only an operator lifts it. A capacity pause lifts itself after two consecutive clear reconciler rounds.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestARedeclarationNeverDowngradesAnIncident$ ./internal/trial/execution/halt/"
+    }
+  ]
+}

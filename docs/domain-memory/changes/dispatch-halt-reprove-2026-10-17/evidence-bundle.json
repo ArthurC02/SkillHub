@@ -1,0 +1,41 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "dispatch-halt-reprove-2026-10-17",
+  "proposal_id": "dispatch-halt-reprove-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "319a8916a03e77dbea06e522549e9ba302c73b0d",
+    "registry_digest": "sha256:a024af6a89102c32cc7536be66aeef70f485e6f37c56ada9ae8f29acad0241c6"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-dispatch-incident-halt-is-never-downgraded",
+      "mutated_protection": "apps/platform/internal/trial/execution/halt/source.go:70: if Source(active.Source) == Incident && d.source != Incident { -> if Source(active.Source) == Incident && d.source != Incident && false {",
+      "failure_evidence": "=== RUN   TestARedeclarationNeverDowngradesAnIncident\n    halt_test.go:150: a capacity pause cannot overwrite an incident: got source=p1_incident reason=\"second\" declared_by=01000000-0000-0000-0000-000000000000\n--- FAIL: TestARedeclarationNeverDowngradesAnIncident (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/halt\t2.369s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/trial/execution/halt/halt_test.go",
+    "apps/platform/internal/trial/execution/halt/ledger.go",
+    "apps/platform/internal/trial/execution/halt/source.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-dispatch-incident-halt-is-never-downgraded",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestARedeclarationNeverDowngradesAnIncident$ ./internal/trial/execution/halt/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:cee55cb350ee63b0b2279aa55245d08374a99b6f0367327c60ea5008f02c73a6",
+      "finished_at": "2026-10-17T05:40:48.685479Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
