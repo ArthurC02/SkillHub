@@ -1,0 +1,108 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "catalog-harvest-rules-2026-10-17",
+  "proposal_id": "catalog-harvest-rules-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "c69c68008bee33320cf99af66b3289cb473f5d2e",
+    "registry_digest": "sha256:a6c2ffaadcb590853bf0b235d70fb3f1af768c243143ed617269767a0e89b5dd"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "rule-a-taken-down-catalog-skill-answers-gone",
+    "mutated_protection": "apps/platform/internal/skill/discovery/detail.go:569: if skill.TakedownAt.Valid { httpx.WriteError(w, http.StatusGone -> if false && skill.TakedownAt.Valid { httpx.WriteError(w, http.StatusGone",
+    "failure_evidence": "--- FAIL: TestAnOperatorCanTakeDownContentTheyDoNotOwn (0.94s)\n    takedown_operator_integration_test.go:90: detail view of an operator-taken-down skill: got 200, want 410\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.704s\nFAIL\n",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/takedown_operator_integration_test.go",
+    "apps/platform/internal/skill/discovery/detail.go",
+    "apps/platform/internal/skill/discovery/detail_test.go",
+    "apps/platform/internal/skill/discovery/enrichment.go",
+    "apps/platform/internal/skill/discovery/http.go",
+    "apps/platform/internal/skill/discovery/http_test.go",
+    "apps/platform/internal/skill/discovery/projection.go",
+    "apps/platform/internal/skill/discovery/projection_test.go",
+    "apps/platform/internal/skill/discovery/scope_test.go",
+    "apps/platform/internal/skill/discovery/service.go",
+    "apps/platform/internal/skill/discovery/trust.go",
+    "apps/platform/internal/skill/discovery/trust_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-taken-down-catalog-skill-answers-gone",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestAnOperatorCanTakeDownContentTheyDoNotOwn$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:d6c1a6d5eb4e1b512fabd8de5f573ed5712829dec019b9c589de4694743eaea8",
+      "finished_at": "2026-10-17T02:56:41.130065Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-detail-carries-a-restriction-only-while-one-is-in-effect",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestADetailShowsARestrictionOnlyWhileOneIsInEffect$ ./internal/skill/discovery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ce8ac5c5f24104d5100918d998c7768b1ca5a0dcdf1ec889c3371965f895a054",
+      "finished_at": "2026-10-17T02:56:49.438008Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-unrecognised-redistribution-reads-as-unconfirmed",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestRedistributionDisplayFallsBackToUnknownWording$ ./internal/skill/discovery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ec17dba315bd38be677d5a852f8099f9e69dde85ed4685e58f9e131d8ed35642",
+      "finished_at": "2026-10-17T02:56:56.140210Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-only-an-enriched-or-embedded-document-is-listable",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestADocumentIsListedOnceEnrichedOrOnceAVectorCanFindIt$ ./internal/skill/discovery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:110b87ce75818030645a1758595cf851846b9baf7ae00a334f882a2d6e1feee2",
+      "finished_at": "2026-10-17T02:57:10.198084Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-only-a-curated-listing-names-its-reviewed-version",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestAnUnmeasuredListingIsWrittenUnverifiedAndOnlyACuratedTierNamesItsReviewedVersion$ ./internal/skill/discovery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:41447220f07bf7de19690b28c88ddb87407db00f4e2e2094b141bcc5e478e821",
+      "finished_at": "2026-10-17T02:57:17.200559Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-catalog-reads-refuse-without-the-catalog-workspaces",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestCatalogReadsRefuseWithoutKnowingTheCatalogWorkspaces$ ./internal/skill/discovery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:24fce5055dc18880059873dd444e5cc4202683e7bde662760b7b500eabfe9d4f",
+      "finished_at": "2026-10-17T02:57:24.819571Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-search-purpose-is-reference-or-absent",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestPublicSearchRejectsAnUnknownPurpose$ ./internal/skill/discovery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:93afc9234837c32c591b3062441654d0ba4eadedce8864ee85872f5c1f4b9f77",
+      "finished_at": "2026-10-17T02:57:33.543639Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

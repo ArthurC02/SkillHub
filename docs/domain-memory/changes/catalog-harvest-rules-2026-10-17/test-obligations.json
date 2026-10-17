@@ -1,0 +1,112 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "catalog-harvest-rules-2026-10-17",
+  "proposal_id": "catalog-harvest-rules-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-a-taken-down-catalog-skill-answers-gone",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-taken-down-catalog-skill-answers-gone",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-taken-down-catalog-skill-answers-gone"
+        }
+      ],
+      "expected_outcome": "Opening a Catalog Skill that has been taken down answers 410 and returns nothing of it.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run ^TestAnOperatorCanTakeDownContentTheyDoNotOwn$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-detail-carries-a-restriction-only-while-one-is-in-effect",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-detail-carries-a-restriction-only-while-one-is-in-effect",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-detail-carries-a-restriction-only-while-one-is-in-effect"
+        }
+      ],
+      "expected_outcome": "A Skill's detail carries an access restriction only while one is in effect; a blank restriction is none, and an unrecognised reason still restricts with the default note.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run ^TestADetailShowsARestrictionOnlyWhileOneIsInEffect$ ./internal/skill/discovery/"
+    },
+    {
+      "id": "rule-an-unrecognised-redistribution-reads-as-unconfirmed",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-unrecognised-redistribution-reads-as-unconfirmed",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-unrecognised-redistribution-reads-as-unconfirmed"
+        }
+      ],
+      "expected_outcome": "A redistribution value the Catalog does not recognise is shown as unknown and not confirmed, never as allowed or blank.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run ^TestRedistributionDisplayFallsBackToUnknownWording$ ./internal/skill/discovery/"
+    },
+    {
+      "id": "rule-only-an-enriched-or-embedded-document-is-listable",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-only-an-enriched-or-embedded-document-is-listable",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "only-an-enriched-or-embedded-document-is-listable"
+        }
+      ],
+      "expected_outcome": "A search document is listable only once its enrichment is finished or it has an embedding a vector search can find.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run ^TestADocumentIsListedOnceEnrichedOrOnceAVectorCanFindIt$ ./internal/skill/discovery/"
+    },
+    {
+      "id": "rule-only-a-curated-listing-names-its-reviewed-version",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-only-a-curated-listing-names-its-reviewed-version",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "only-a-curated-listing-names-its-reviewed-version"
+        }
+      ],
+      "expected_outcome": "A listing records a curated version only when the Skill's tier is curated; any other tier writes none.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run ^TestAnUnmeasuredListingIsWrittenUnverifiedAndOnlyACuratedTierNamesItsReviewedVersion$ ./internal/skill/discovery/"
+    },
+    {
+      "id": "rule-catalog-reads-refuse-without-the-catalog-workspaces",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-catalog-reads-refuse-without-the-catalog-workspaces",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "catalog-reads-refuse-without-the-catalog-workspaces"
+        }
+      ],
+      "expected_outcome": "Browsing, Catalog risk reads and reference reads fail when the catalog Workspace reader is missing; they never fall back to an unscoped listing.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run ^TestCatalogReadsRefuseWithoutKnowingTheCatalogWorkspaces$ ./internal/skill/discovery/"
+    },
+    {
+      "id": "rule-a-search-purpose-is-reference-or-absent",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-search-purpose-is-reference-or-absent",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-search-purpose-is-reference-or-absent"
+        }
+      ],
+      "expected_outcome": "The public search refuses any purpose other than reference with 400.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run ^TestPublicSearchRejectsAnUnknownPurpose$ ./internal/skill/discovery/"
+    }
+  ]
+}

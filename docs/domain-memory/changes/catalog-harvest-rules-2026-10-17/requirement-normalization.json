@@ -1,0 +1,58 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "catalog-harvest-rules-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed the takedown, restriction, listing, tier and search rules the catalog Context enforces and tests but the Registry did not hold.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context catalog lists the seven rules as reviewed, each citing its enforcing code and the test that proves it.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-taken-down-catalog-skill-answers-gone",
+      "statement": "Opening a Catalog Skill that has been taken down answers 410 and returns nothing of it."
+    },
+    {
+      "id": "enforced-a-detail-carries-a-restriction-only-while-one-is-in-effect",
+      "statement": "A Skill's detail carries an access restriction only while one is in effect; a blank restriction is none, and an unrecognised reason still restricts with the default note."
+    },
+    {
+      "id": "enforced-an-unrecognised-redistribution-reads-as-unconfirmed",
+      "statement": "A redistribution value the Catalog does not recognise is shown as unknown and not confirmed, never as allowed or blank."
+    },
+    {
+      "id": "enforced-only-an-enriched-or-embedded-document-is-listable",
+      "statement": "A search document is listable only once its enrichment is finished or it has an embedding a vector search can find."
+    },
+    {
+      "id": "enforced-only-a-curated-listing-names-its-reviewed-version",
+      "statement": "A listing records a curated version only when the Skill's tier is curated; any other tier writes none."
+    },
+    {
+      "id": "enforced-catalog-reads-refuse-without-the-catalog-workspaces",
+      "statement": "Browsing, Catalog risk reads and reference reads fail when the catalog Workspace reader is missing; they never fall back to an unscoped listing."
+    },
+    {
+      "id": "enforced-a-search-purpose-is-reference-or-absent",
+      "statement": "The public search refuses any purpose other than reference with 400."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/takedown_operator_integration_test.go",
+    "apps/platform/internal/skill/discovery/detail.go",
+    "apps/platform/internal/skill/discovery/detail_test.go",
+    "apps/platform/internal/skill/discovery/enrichment.go",
+    "apps/platform/internal/skill/discovery/http.go",
+    "apps/platform/internal/skill/discovery/http_test.go",
+    "apps/platform/internal/skill/discovery/projection.go",
+    "apps/platform/internal/skill/discovery/projection_test.go",
+    "apps/platform/internal/skill/discovery/scope_test.go",
+    "apps/platform/internal/skill/discovery/service.go",
+    "apps/platform/internal/skill/discovery/trust.go",
+    "apps/platform/internal/skill/discovery/trust_test.go"
+  ]
+}

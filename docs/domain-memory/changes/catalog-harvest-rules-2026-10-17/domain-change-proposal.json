@@ -1,0 +1,320 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "catalog-harvest-rules-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "catalog-harvest-rules-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T02:56:30.397617Z",
+  "verified_at": "2026-10-17T02:57:34.190852Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "c69c68008bee33320cf99af66b3289cb473f5d2e",
+    "registry_digest": "sha256:a6c2ffaadcb590853bf0b235d70fb3f1af768c243143ed617269767a0e89b5dd"
+  },
+  "affected_contexts": [
+    "catalog"
+  ],
+  "rule_ids": [
+    "a-taken-down-catalog-skill-answers-gone",
+    "a-detail-carries-a-restriction-only-while-one-is-in-effect",
+    "an-unrecognised-redistribution-reads-as-unconfirmed",
+    "only-an-enriched-or-embedded-document-is-listable",
+    "only-a-curated-listing-names-its-reviewed-version",
+    "catalog-reads-refuse-without-the-catalog-workspaces",
+    "a-search-purpose-is-reference-or-absent"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "catalog",
+    "invariant": "Only catalog decides what a reader can find, list and open from the Catalog.",
+    "evidence": [
+      "apps/platform/internal/skill/discovery/service.go:345-350",
+      "apps/platform/internal/skill/discovery/detail.go:566-573"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: exposure still arrives from publishing through the injected ExposedSkills reader.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/discovery/exposure.go:84-101"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the catalog Context found these enforced rules; the reviewed Registry held none, so the next Agent could not look them up."
+    ],
+    "decision": "Record the seven rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "A Catalog read is always scoped to the known catalog Workspaces."
+    ],
+    "rejected_alternatives": [
+      "Recording the exposed detail's version and digest match: publishing already filters exposure by the same comparison, so no test can break discovery's copy alone without a database stub; it waits for a test that can."
+    ],
+    "proof_obligations": [
+      "rule-a-taken-down-catalog-skill-answers-gone",
+      "rule-a-detail-carries-a-restriction-only-while-one-is-in-effect",
+      "rule-an-unrecognised-redistribution-reads-as-unconfirmed",
+      "rule-only-an-enriched-or-embedded-document-is-listable",
+      "rule-only-a-curated-listing-names-its-reviewed-version",
+      "rule-catalog-reads-refuse-without-the-catalog-workspaces",
+      "rule-a-search-purpose-is-reference-or-absent"
+    ],
+    "counterfactual_check": "Break each rule's enforcing line so the package still builds; its test must fail with that rule's own assertion."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-taken-down-catalog-skill-answers-gone",
+        "statement": "Opening a Catalog Skill that has been taken down answers 410 and returns nothing of it.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "An operator takes a Skill down; its detail view answers 410."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/detail.go",
+            "lines": {
+              "start": 566,
+              "end": 573
+            },
+            "excerpt_sha256": "sha256:9594d3f322ced510bb685a1e06966aa2e8f697846f9d426d7c57e51310210a93"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/takedown_operator_integration_test.go",
+            "lines": {
+              "start": 49,
+              "end": 100
+            },
+            "excerpt_sha256": "sha256:3b80f399d6d7a495b475225eb828d68fb3768664a867817dc91e5f055f063c58"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-detail-carries-a-restriction-only-while-one-is-in-effect",
+        "statement": "A Skill's detail carries an access restriction only while one is in effect; a blank restriction is none, and an unrecognised reason still restricts with the default note.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "access_restriction license-review shows the licence-review note; a blank value shows no restriction."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/detail.go",
+            "lines": {
+              "start": 511,
+              "end": 521
+            },
+            "excerpt_sha256": "sha256:650151c16e16c25ddb3d0cc17117a9f81acd70b4dcf401f783e0de22fedd97ed"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/detail_test.go",
+            "lines": {
+              "start": 74,
+              "end": 88
+            },
+            "excerpt_sha256": "sha256:5f0383a8472769fb8731f700e8ffbcbb05450cf992ddd7d583a60e8a4ccd4ea4"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-unrecognised-redistribution-reads-as-unconfirmed",
+        "statement": "A redistribution value the Catalog does not recognise is shown as unknown and not confirmed, never as allowed or blank.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "A value added next year displays exactly as the unknown value does."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/trust.go",
+            "lines": {
+              "start": 83,
+              "end": 88
+            },
+            "excerpt_sha256": "sha256:af7fa8141b56077d4c471a57e226a59eb483392b8bdd7dbdd67d65a55cea9748"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/trust_test.go",
+            "lines": {
+              "start": 67,
+              "end": 75
+            },
+            "excerpt_sha256": "sha256:0370a42ab18f079d8570d97d3d4013a56c193eb5429905fc4b9e44d4a1899b26"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-an-enriched-or-embedded-document-is-listable",
+        "statement": "A search document is listable only once its enrichment is finished or it has an embedding a vector search can find.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "A pending document without a vector is not listable; the same document with a vector is."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/enrichment.go",
+            "lines": {
+              "start": 12,
+              "end": 14
+            },
+            "excerpt_sha256": "sha256:c8086abe2eb931f39133735544a49735766e725679ad1a32ddc72e9620f779b2"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/projection.go",
+            "lines": {
+              "start": 109,
+              "end": 109
+            },
+            "excerpt_sha256": "sha256:199c4d254986e18f47af0f6f37dbfd906346d604dd293e8696da7c047ac560a2"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/projection_test.go",
+            "lines": {
+              "start": 26,
+              "end": 44
+            },
+            "excerpt_sha256": "sha256:da55aa942302f94559e17233d087426deafb687be03efd9c32840365fb2c56c4"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-a-curated-listing-names-its-reviewed-version",
+        "statement": "A listing records a curated version only when the Skill's tier is curated; any other tier writes none.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "Indexed-tier facts that carry a curated version id write none."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/projection.go",
+            "lines": {
+              "start": 147,
+              "end": 149
+            },
+            "excerpt_sha256": "sha256:cfb9cac5eb1c1a3638fda9fe2841f13917ce1ad05973589b96b707a873e910f9"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/projection_test.go",
+            "lines": {
+              "start": 46,
+              "end": 59
+            },
+            "excerpt_sha256": "sha256:573e2823728cb4cd0fa78b25379c5f74f857fbb332f6f7d3c34ccbdf256c12c6"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "catalog-reads-refuse-without-the-catalog-workspaces",
+        "statement": "Browsing, Catalog risk reads and reference reads fail when the catalog Workspace reader is missing; they never fall back to an unscoped listing.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "A Service with no catalog Workspace reader answers Browse with an error."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/service.go",
+            "lines": {
+              "start": 345,
+              "end": 350
+            },
+            "excerpt_sha256": "sha256:e687c0440aad31ffb1812aac767849d8788d323c8f79d11733841fa0f4f97df2"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/scope_test.go",
+            "lines": {
+              "start": 10,
+              "end": 22
+            },
+            "excerpt_sha256": "sha256:d55e20ac041d24c5f32e37e299cd3ffba0b70653a7f95af5fa880a0e3cf41c2b"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-search-purpose-is-reference-or-absent",
+        "statement": "The public search refuses any purpose other than reference with 400.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "Searching with purpose=other answers 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/http.go",
+            "lines": {
+              "start": 357,
+              "end": 362
+            },
+            "excerpt_sha256": "sha256:af25ee4a3ae972a2a9a428b288ab3d867dbd91b9849a64d8923e7c2d31e627f1"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/http_test.go",
+            "lines": {
+              "start": 20,
+              "end": 28
+            },
+            "excerpt_sha256": "sha256:4af9f70860b12def7ad9cf0767a56655d0fcf7426ddf02be1a8d78df4851beab"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T02:57:33.844230Z",
+      "scope": "Record seven catalog takedown, restriction, listing, tier and search rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "c69c68008bee33320cf99af66b3289cb473f5d2e",
+        "registry_digest": "sha256:a6c2ffaadcb590853bf0b235d70fb3f1af768c243143ed617269767a0e89b5dd"
+      }
+    }
+  ]
+}
