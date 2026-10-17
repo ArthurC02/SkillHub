@@ -55,6 +55,30 @@ Copy [test-obligations.json](../templates/test-obligations.json). Map every acce
 
 Create an [evidence bundle](../templates/evidence-bundle.json) and [Draft PR description](../templates/draft-pr.md). Include the requirement, proposal, registry revision, approvals, executed checks, failures, and residual risks. Run `validate-change-package --package-root <path> --registry-root <root>` before presenting the package. Run `apply-approved-updates` only when the package is approved and Registry records must change. A Skill can prepare this package; repository write, PR creation, merge, and deployment remain subject to the user's authorization and the repository's own controls.
 
+## Harvesting proven rules from existing code
+
+When reviewed rules are drawn from code that already enforces them rather than from a new requirement, start from the Contexts with the fewest reviewed rules in `coverage`'s `rules_by_context`. For each rule, cite the code that enforces it and, with `cite --function`, the test that proves it; record it with `upsert-candidate` and promote it into one package. Give each rule an obligation whose `also_covers` names it and whose `check` runs only that test, with `-v` for Go. Then show that every rule can fail before anything is submitted, once per rule:
+
+```sh
+DM="python3 <path>/registry_tools.py"
+$DM counterfactual --repo-root . --file <enforcing file> --find '<protection>' --replace '<broken protection>' --test-command '<check>' --cwd <directory> --obligation-id <obligation>
+```
+
+Continue only when every verdict is `killed`, and record each printed `counterfactual_check` in the evidence bundle's `counterfactual_check` list. A rule whose mutation survives is either untested or not the rule it claims: write the test, or leave the rule out and say why in `rejected_alternatives`.
+
+After `submit-proposal`, `record-test-result` for each obligation, `record-approval` and `verify-proposal`, the `git-signed-commit` verifier needs five more steps. They take no decisions, but they must run in this order, because the attestation names the signed commit that carries the verified package:
+
+```sh
+P=<package directory>; R=<registry root>
+git add "$P" && git commit -S -m "docs(domain-memory): propose <package>"
+$DM attest-signed-commit --package-root "$P" --registry-root "$R" --repo-root . --commit "$(git rev-parse HEAD)"
+$DM finalize-proposal --package-root "$P" --registry-root "$R" --repo-root .
+$DM apply-approved-updates --package-root "$P" --registry-root "$R" --repo-root .
+git add "$P" "$R" && git commit -S -m "docs(domain-memory): apply <package>"
+```
+
+The signatures stay with the person or host whose key the policy authorizes.
+
 ## After implementation: reflect the model
 
 Run `verify-evidence` and `verify-audit`, then compare the observable behavior with the reviewed records used in Steps 1–5. If the model is unchanged, record that the implementation preserved it in the normal review material. If it changed, add a candidate with `upsert-candidate` or create a new Change Package; never hide the difference in a code-only change. A candidate is the handoff to the next review, not a new constraint until an authorized reviewer promotes it.

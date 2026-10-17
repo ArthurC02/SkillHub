@@ -99,6 +99,12 @@ def _add_history_commands(commands: argparse._SubParsersAction) -> None:
         coupling_parser.add_argument(option, type=int, default=default)
 
 
+def _add_coverage_command(commands: argparse._SubParsersAction) -> None:
+    coverage_parser = commands.add_parser("coverage", help="Report modelling gaps")
+    add_path(coverage_parser, "--registry-root")
+    add_path(coverage_parser, "--changes-root", required=False)
+
+
 def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
     init_parser = commands.add_parser("init", help="Create an empty Registry skeleton, not the entry point")
     add_path(init_parser, "--output")
@@ -114,8 +120,7 @@ def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
     add_path(validate_parser, "--repo-root", required=False)
     validate_parser.add_argument("--require-reviewed", action="store_true")
     _add_export_commands(commands)
-    coverage_parser = commands.add_parser("coverage", help="Report modelling gaps")
-    add_path(coverage_parser, "--registry-root")
+    _add_coverage_command(commands)
     readiness_parser = commands.add_parser("readiness", help="Assess project readiness")
     add_path(readiness_parser, "--repo-root")
     add_path(readiness_parser, "--registry-root", required=False)

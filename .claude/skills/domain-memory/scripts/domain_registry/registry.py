@@ -26,7 +26,7 @@ from .evidence import (
     with_references,
     without_derived_keys,
 )
-from .okf import RELATION_TARGETS, verified_by
+from .okf import PROSE_FIELDS, RELATION_TARGETS, verified_by
 from .policy import query_result_limit, review_mode
 from .store import (
     MANIFEST,
@@ -815,7 +815,9 @@ SENTENCE_END = re.compile(r"(?<=[.!?])\s")
 
 def _mention(name: str, entry: dict[str, Any], fields: list[str]) -> dict[str, Any]:
     asset = name.removesuffix(".json")
-    summary = next((entry[field] for field in SUMMARY_FIELDS if isinstance(entry.get(field), str)), "")
+    summary = next(
+        (entry[field] for field in (PROSE_FIELDS.get(asset), *SUMMARY_FIELDS) if isinstance(entry.get(field), str)), ""
+    )
     return {
         "match_kind": "mentioned", "asset": asset, "id": entry.get("id"), "status": "reviewed",
         "contexts": _contexts_named(asset, entry), "summary": SENTENCE_END.split(summary.strip(), maxsplit=1)[0],

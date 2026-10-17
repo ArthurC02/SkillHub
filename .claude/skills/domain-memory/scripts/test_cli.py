@@ -538,6 +538,7 @@ class CliTest(RegistryTestCase):
             ("test-obligations.json",
              lambda value: value["obligations"][0].update(also_covers=[{"source_type": "rule", "source_id": "order-total"}])),
             ("domain-change-proposal.json", lambda value: value.update(rule_ids=["order-total"])),
+            ("evidence-bundle.json", lambda value: value["test_results"][0].update(working_directory="apps/platform")),
         ):
             value = json.loads((package / name).read_text(encoding="utf-8"))
             change(value)
@@ -555,13 +556,59 @@ class CliTest(RegistryTestCase):
             for root in (self.repo, elsewhere)
         )
         self.assertEqual(
-            [{"proposal_id": "PRO-1", "package": "proposal", "obligation_id": "OB-1", "check": "test command"}],
+            [{"proposal_id": "PRO-1", "package": "proposal", "obligation_id": "OB-1", "check": "test command",
+              "working_directory": "apps/platform"}],
             json.loads(shown.stdout)["proven_by"],
+        )
+        self.assertEqual(
+            [{"context": "orders", "reviewed_rules": 1, "candidate_rules": 0, "proven": 1, "unproven": []}],
+            json.loads(self.run_cli("coverage", "--registry-root", memory, "--changes-root", str(self.repo)).stdout)["rules_by_context"],
         )
         self.assertEqual(
             (False, f"NOTE: the Change Package of PRO-1, which reviewed rules/order-total, is not under {elsewhere.resolve()}, "
                     "so the tests that prove it are unknown."),
             ("proven_by" in json.loads(unseen.stdout), unseen.stderr.strip()),
+        )
+
+    def test_get_record_looks_for_packages_beside_the_registry_only_for_rules_and_contracts(self) -> None:
+        self.seed("rules.json", [{"id": "r", "contexts": ["orders"], "statement": "x"}])
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders"}])
+        memory = self.repo / "memory"
+        note = "NOTE: rules/r was not reviewed through an applied Change Package, so no test obligation proves it yet."
+        rule, context = (("--asset", "rules", "--id", "r"), ("--asset", "contexts", "--id", "orders"))
+        before = self.run_cli("get-record", "--registry-root", str(memory), *rule).stderr.strip()
+        (memory / "changes").mkdir()
+        self.assertEqual(
+            ("", note, ""),
+            (before, self.run_cli("get-record", "--registry-root", str(memory), *rule).stderr.strip(),
+             self.run_cli("get-record", "--registry-root", str(memory), *context, "--changes-root", str(memory / "changes")).stderr.strip()),
+        )
+
+    def test_coverage_counts_reviewed_and_candidate_rules_per_context_gaps_first(self) -> None:
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders"}, {"id": "billing", "name": "Billing"},
+                                    {"id": "ops", "name": "Ops"}])
+        self.seed("rules.json", [
+            {"id": "a", "contexts": ["orders"], "statement": "x", "status": "reviewed"},
+            {"id": "b", "contexts": ["orders"], "statement": "x"},
+            {"id": "c", "contexts": ["orders", "billing"], "statement": "x", "status": "reviewed"},
+            {"id": "d", "contexts": ["ghost"], "statement": "x"},
+        ])
+        memory = str(self.repo / "memory")
+        bare = self.run_cli("coverage", "--registry-root", memory)
+        self.assertEqual(
+            ([{"context": "ghost", "reviewed_rules": 0, "candidate_rules": 1},
+              {"context": "ops", "reviewed_rules": 0, "candidate_rules": 0},
+              {"context": "billing", "reviewed_rules": 1, "candidate_rules": 0},
+              {"context": "orders", "reviewed_rules": 2, "candidate_rules": 1}],
+             f"NOTE: no Change Packages at {(self.repo / 'memory').resolve() / 'changes'}; pass --changes-root to count "
+             "the rules a test proves."),
+            (json.loads(bare.stdout)["rules_by_context"], bare.stderr.strip()),
+        )
+        (self.repo / "memory" / "changes").mkdir()
+        self.assertEqual(
+            [("ghost", 0, []), ("ops", 0, []), ("billing", 0, ["c"]), ("orders", 0, ["a", "c"])],
+            [(row["context"], row["proven"], row["unproven"])
+             for row in json.loads(self.run_cli("coverage", "--registry-root", memory).stdout)["rules_by_context"]],
         )
 
     def test_get_record_says_a_candidate_has_no_proving_obligation_yet(self) -> None:

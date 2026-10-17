@@ -889,9 +889,12 @@ class RegistryTest(RegistryTestCase):
                                   "statement": "A withdrawn skill answers gone. Search drops it too."}])
         self.seed("interactions.json", [{"id": "notice", "producer_context": "catalog", "consumer_context": "billing",
                                          "description": "Withdrawn skills stop billing", "status": "reviewed"}])
+        self.seed("dependency-policies.json", [{"id": "lookup", "from_context": "catalog", "to_context": "registry",
+                                                "rationale": "Withdrawn skills are looked up here.", "status": "reviewed"}])
         self.assertEqual(
             [("rules", ["catalog", "search"], "A withdrawn skill answers gone."),
-             ("interactions", ["catalog", "billing"], "Withdrawn skills stop billing")],
+             ("interactions", ["catalog", "billing"], "Withdrawn skills stop billing"),
+             ("dependency-policies", ["catalog", "registry"], "Withdrawn skills are looked up here.")],
             [(item["asset"], item["contexts"], item["summary"])
              for item in resolve_terms(self.repo / "memory", "withdrawn", None)],
         )

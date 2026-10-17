@@ -2,6 +2,19 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.53.0
+
+### Added
+
+- `coverage` lists in `rules_by_context` the reviewed and candidate rules of every Context, fewest reviewed first, and with Change Packages the reviewed rules no test obligation proves.
+- The workflow reference gives the order of a rule harvest: one counterfactual per rule, then the five signing steps as one block.
+
+### Changed
+
+- `get-record` reads Change Packages from the Registry's `changes/` directory when no `--changes-root` is given, and adds `proven_by` only to rules and contracts.
+- A `proven_by` entry names the `working_directory` its check passed in.
+- A `resolve-terms` mention takes its `summary` from the asset's prose field, such as a dependency policy's `rationale`.
+
 ## 0.52.0
 
 ### Added

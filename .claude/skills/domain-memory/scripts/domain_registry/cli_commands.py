@@ -15,6 +15,7 @@ from .changes import (
     list_proposals,
     missing_approval_roles,
     obligations_proving,
+    rule_coverage,
     redraft_change_package,
     validate_change_package,
 )
@@ -292,10 +293,23 @@ def handle_get_record(args: argparse.Namespace) -> int:
     if result is None:
         known = asset_records(root, f"{args.asset}.json")
         raise ValueError(f"{args.asset} record not found: {args.id}{_did_you_mean(args.id, known)}")
-    if args.changes_root is not None:
-        result = _with_proofs(root, args.changes_root.resolve(), args.asset, args.id, result)
+    changes_root = _changes_root(root, args.changes_root)
+    if changes_root is not None and args.asset in PROVEN_ASSETS:
+        result = _with_proofs(root, changes_root, args.asset, args.id, result)
     print_json(result)
     return 0
+
+
+PROVEN_ASSETS = ("rules", "contracts")
+
+
+def _changes_root(registry_root: Path, given: Path | None) -> Path | None:
+    if given is not None:
+        return given.resolve()
+    beside = registry_root / "changes"
+    return beside if beside.is_dir() else None
+
+
 
 
 def _with_proofs(root: Path, changes_root: Path, asset: str, identifier: str, record: dict) -> dict:
@@ -924,7 +938,12 @@ def handle_validate_change_package(args: argparse.Namespace) -> int:
 
 
 def handle_coverage(args: argparse.Namespace) -> int:
-    print_json(coverage(args.registry_root.resolve()))
+    root = args.registry_root.resolve()
+    changes_root = _changes_root(root, args.changes_root)
+    print_json({**coverage(root), "rules_by_context": rule_coverage(root, changes_root)})
+    if changes_root is None:
+        print(f"NOTE: no Change Packages at {root / 'changes'}; pass --changes-root to count the rules a test proves.",
+              file=sys.stderr)
     return 0
 
 

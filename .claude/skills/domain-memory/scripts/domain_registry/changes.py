@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .attestations import verify_scm_value
+from .audit import reviewing_proposals
 from .common import (
     ASSET_KEYS,
     CHANGE_CLASSIFICATIONS,
@@ -23,12 +24,14 @@ from .common import (
     completed_identifier,
     iso_timestamp,
     load_json,
+    record_status,
     utc_now,
     write_json,
 )
 from .policy import approved_command_profiles
 from .evidence import all_references, verifier
 from .registry import asset_records, cross_reference_errors
+from .store import read_document
 from .revision import DIGEST_HEX_LENGTH, DIGEST_PREFIX, valid_digest, valid_registry_revision
 
 SUBMITTED_OR_LATER = {"submitted", "verified", "approved", "applied"}
@@ -818,11 +821,62 @@ def obligations_proving(
     if not packages:
         return None
     return [
-        {"proposal_id": proposal_id, "package": package.name, "obligation_id": entry.get("id"), "check": entry.get("check")}
+        {"proposal_id": proposal_id, "package": package.name, "obligation_id": entry.get("id"), "check": entry.get("check"),
+         "working_directory": _working_directories(package).get(entry.get("id"), ".")}
         for package in packages
         for entry in load_json(package / "test-obligations.json").get("obligations", [])
         if isinstance(entry, dict) and source in _covered_sources(entry)
     ]
+
+
+def _working_directories(package: Path) -> dict[Any, str]:
+    results = load_json(package / EVIDENCE_FILE).get("test_results", [])
+    return {
+        result.get("obligation_id"): result["working_directory"]
+        for result in results
+        if isinstance(result, dict) and isinstance(result.get("working_directory"), str)
+    }
+
+
+def proven_sources(changes_root: Path) -> dict[Any, set[tuple[Any, Any]]]:
+    proven: dict[Any, set[tuple[Any, Any]]] = {}
+    for package in sorted(changes_root.iterdir()):
+        if not (package / PROPOSAL_FILE).is_file() or not (package / "test-obligations.json").is_file():
+            continue
+        sources = proven.setdefault(load_json(package / PROPOSAL_FILE).get("proposal_id"), set())
+        for entry in load_json(package / "test-obligations.json").get("obligations", []):
+            if isinstance(entry, dict):
+                sources |= _covered_sources(entry)
+    return proven
+
+
+def rule_coverage(registry_root: Path, changes_root: Path | None) -> list[dict[str, Any]]:
+    document = read_document(registry_root, "rules.json")
+    reviewing = reviewing_proposals(registry_root)
+    proven = proven_sources(changes_root) if changes_root is not None else None
+    rows = {
+        context["id"]: _coverage_row(context["id"], with_proofs=proven is not None)
+        for context in asset_records(registry_root, "contexts.json")
+        if isinstance(context.get("id"), str)
+    }
+    for rule in document.get(ASSET_KEYS["rules.json"], []):
+        reviewed = record_status("rules", document, rule) == "reviewed"
+        for context in rule.get("contexts") or []:
+            row = rows.setdefault(context, _coverage_row(context, with_proofs=proven is not None))
+            row["reviewed_rules" if reviewed else "candidate_rules"] += 1
+            if reviewed and proven is not None:
+                is_proven = ("rule", rule.get("id")) in proven.get(reviewing.get(f"rules/{rule.get('id')}"), set())
+                row["proven"] += is_proven
+                if not is_proven:
+                    row["unproven"].append(rule.get("id"))
+    return sorted(rows.values(), key=lambda row: (row["reviewed_rules"], str(row["context"])))
+
+
+def _coverage_row(context: Any, *, with_proofs: bool) -> dict[str, Any]:
+    row: dict[str, Any] = {"context": context, "reviewed_rules": 0, "candidate_rules": 0}
+    if with_proofs:
+        row.update(proven=0, unproven=[])
+    return row
 
 
 def _covered_sources(obligation: dict[str, Any]) -> set[tuple[Any, Any]]:
