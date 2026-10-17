@@ -1,0 +1,41 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "registry-skill-purge-grace-rule-2026-10-17",
+  "proposal_id": "registry-skill-purge-grace-rule-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "02ccc1da41226cd859074a6fb357484b0445b997",
+    "registry_digest": "sha256:a06abec4fac93eeecbea7ba3458dcca8ba8c2198da445d79cfed0b6196cf5bcd"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-deleted-skill-is-purged-only-after-its-grace",
+      "mutated_protection": "apps/platform/internal/skill/library/purge.go:134: limit int32) (DeletionSweep, error) { if grace <= 0 { -> limit int32) (DeletionSweep, error) { if grace <= -1000 {",
+      "failure_evidence": "=== RUN   TestDeletedSkillPurgeTakesOnlyWhatIsPastGraceAndUnreferenced\n    governance_integration_test.go:1203: a zero grace period was accepted; every deletion would be purged instantly\n--- FAIL: TestDeletedSkillPurgeTakesOnlyWhatIsPastGraceAndUnreferenced (0.29s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.632s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/governance_integration_test.go",
+    "apps/platform/internal/skill/library/purge.go",
+    "db/queries/governance.sql"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-deleted-skill-is-purged-only-after-its-grace",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestDeletedSkillPurgeTakesOnlyWhatIsPastGraceAndUnreferenced$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:9d1eb3c95a944653b389ec50b22328482cbf43dfd393bbd3307f0012c8a3bf7f",
+      "finished_at": "2026-10-17T13:12:44.058962Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

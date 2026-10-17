@@ -1,0 +1,23 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "registry-skill-purge-grace-rule-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed that a deleted Skill is purged only after its grace period.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context registry lists the purge grace rule as reviewed, proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-deleted-skill-is-purged-only-after-its-grace",
+      "statement": "A deletion sweep purges a Skill and its versions only once the Skill's deletion is older than the grace period; a sweep given a non-positive grace is refused and purges nothing."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/governance_integration_test.go",
+    "apps/platform/internal/skill/library/purge.go",
+    "db/queries/governance.sql"
+  ]
+}

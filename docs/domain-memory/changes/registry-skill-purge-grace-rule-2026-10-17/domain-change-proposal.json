@@ -1,0 +1,124 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "registry-skill-purge-grace-rule-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "registry-skill-purge-grace-rule-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T13:12:34.405295Z",
+  "verified_at": "2026-10-17T13:12:45.274237Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "02ccc1da41226cd859074a6fb357484b0445b997",
+    "registry_digest": "sha256:a06abec4fac93eeecbea7ba3458dcca8ba8c2198da445d79cfed0b6196cf5bcd"
+  },
+  "affected_contexts": [
+    "registry"
+  ],
+  "rule_ids": [
+    "a-deleted-skill-is-purged-only-after-its-grace"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Only registry owns Skills and their versions: takedown, restriction and admission of validated packages.",
+    "evidence": [
+      "apps/platform/internal/skill/library/skill_root.go:210-213"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/library/http.go:318-336"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A counterfactual over the whole suite showed no test reached this limit; a boundary test was added."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Testing only a far-over value: it would survive the limit drifting upward."
+    ],
+    "proof_obligations": [
+      "rule-a-deleted-skill-is-purged-only-after-its-grace"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-deleted-skill-is-purged-only-after-its-grace",
+        "statement": "A deletion sweep purges a Skill and its versions only once the Skill's deletion is older than the grace period; a sweep given a non-positive grace is refused and purges nothing.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A Skill deleted a moment ago survives a 30-day sweep and a sweep with zero grace is refused; one deleted 31 days ago with nothing depending on it is purged."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/purge.go",
+            "lines": {
+              "start": 134,
+              "end": 138
+            },
+            "excerpt_sha256": "sha256:94b81098b7db0f4f1b06c0ff40911850aa92d750e48f0571491c6a171639178c"
+          },
+          {
+            "path": "db/queries/governance.sql",
+            "lines": {
+              "start": 121,
+              "end": 127
+            },
+            "excerpt_sha256": "sha256:d76db6e6f9cbc4624c16d86dcff2be1eb0916fff993ffe611167d3a47fc9692d"
+          },
+          {
+            "path": "db/queries/governance.sql",
+            "lines": {
+              "start": 133,
+              "end": 138
+            },
+            "excerpt_sha256": "sha256:4c880ef90cd0672748bc4fab8ee070cf75b2fef7423de28e183729d11ee1655a"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/governance_integration_test.go",
+            "lines": {
+              "start": 1168,
+              "end": 1243
+            },
+            "content_sha256": "sha256:762652427ddfd5b784f86183f8c54df36189414d7c3bf0f4b95d3c215c4e39d2",
+            "excerpt_sha256": "sha256:9c950e0aada31131eb1022930cd99c4b513377e53abca704ca33e9827322c4c5"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T13:12:44.369804Z",
+      "scope": "Record the registry purge grace rule as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "02ccc1da41226cd859074a6fb357484b0445b997",
+        "registry_digest": "sha256:a06abec4fac93eeecbea7ba3458dcca8ba8c2198da445d79cfed0b6196cf5bcd"
+      }
+    }
+  ]
+}

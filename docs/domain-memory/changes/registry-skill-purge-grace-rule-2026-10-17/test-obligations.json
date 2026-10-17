@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "registry-skill-purge-grace-rule-2026-10-17",
+  "proposal_id": "registry-skill-purge-grace-rule-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-a-deleted-skill-is-purged-only-after-its-grace",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-deleted-skill-is-purged-only-after-its-grace",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-deleted-skill-is-purged-only-after-its-grace"
+        }
+      ],
+      "expected_outcome": "A deletion sweep purges a Skill and its versions only once the Skill's deletion is older than the grace period; a sweep given a non-positive grace is refused and purges nothing.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestDeletedSkillPurgeTakesOnlyWhatIsPastGraceAndUnreferenced$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}
