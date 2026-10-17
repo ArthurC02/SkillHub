@@ -3,12 +3,12 @@
   "proposal_id": "session-token-hash",
   "proposer": "domain-memory-agent",
   "requirement_id": "session-token-hash",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T01:25:22.430459Z",
   "verified_at": "2026-10-17T01:25:40.139040Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T01:25:57.591335Z",
+  "applied_at": "2026-10-17T01:26:00.724314Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "c991ae446eae5898177a4531e53a632ed7e948a3",
@@ -121,5 +121,9 @@
         "registry_digest": "sha256:0fb68b581caf0a73fef163b44465de1c0f432322e04ff99a4d26b69af4d92b53"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "0ed32dbd37d86c97da188d3859d586beaf9ad21e",
+    "registry_digest": "sha256:0446d12e0b2b2638ee48903f84583599b758bebe9adf655fc2de9e297db3349a"
+  }
 }
