@@ -1,0 +1,118 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "creation-inversion-reprove-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "creation-inversion-reprove-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T05:59:58.242805Z",
+  "verified_at": "2026-10-17T06:00:01.380303Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "42d77cfb54991749d94fbedbd51ac1587a612530",
+    "registry_digest": "sha256:d4ab67fb4bcb2ba782ca197d0e7ffd795acd70abfbb31e8566de45c1d836ff1a"
+  },
+  "affected_contexts": [
+    "creation"
+  ],
+  "rule_ids": [
+    "creation-reaches-its-collaborators-through-inversion"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "creation",
+    "invariant": "creation imports none of its collaborators; they arrive as injected interfaces.",
+    "evidence": [
+      "apps/platform/.golangci.yml:106-122"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "skill/admission",
+      "skill/discovery",
+      "trial/execution"
+    ],
+    "evidence": [
+      "apps/platform/.golangci.yml:106-122"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The rule cited only an ADR line, so no test could prove it; the depguard list for creation is what enforces it."
+    ],
+    "decision": "Cite the depguard rule and prove it with the gate: a blank import of a forbidden collaborator fails it.",
+    "invariants_preserved": [
+      "The rule statement is unchanged."
+    ],
+    "rejected_alternatives": [
+      "A Go test that walks imports: it would duplicate the gate the repository already runs."
+    ],
+    "proof_obligations": [
+      "rule-creation-reaches-its-collaborators-through-inversion"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "creation-reaches-its-collaborators-through-inversion",
+        "statement": "Interactive Skill creation does not import the Contexts it collaborates with, and none of them imports it. Everything it needs from the reference, admission and trial Contexts arrives as a narrow interface injected by a composition root, so the creation loop can be replaced or removed without any other Context changing.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "Enqueueing a creation job goes through an interface the wiring package supplies, not through the queue Context's own Service.",
+          "A Context that wants to know what a creation session produced reads the Skill Version the session created, not the session.",
+          "Credit and identity are reached the same way every other Context reaches them, because neither is part of the creation loop being kept replaceable."
+        ],
+        "evidence": [
+          {
+            "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+            "lines": {
+              "start": 53,
+              "end": 53
+            },
+            "excerpt_sha256": "sha256:5665a77570ab86754c4b5578e93d83c1657f67ffcc095b8bd8e4f5723b6b0c9b"
+          },
+          {
+            "path": "apps/platform/.golangci.yml",
+            "lines": {
+              "start": 106,
+              "end": 122
+            },
+            "content_sha256": "sha256:65c12dc5f1ac7cd5018fede1894ecf2608f0c38a012e50971c1c70b8704312c1",
+            "excerpt_sha256": "sha256:870b6a9c1aff1e2521f150827c6cb1eb887dc6b6b919fdd46d452c91e4793691",
+            "source_kind": "implementation"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T06:00:00.961097Z",
+      "scope": "Prove the creation inversion rule with its dependency gate",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "42d77cfb54991749d94fbedbd51ac1587a612530",
+        "registry_digest": "sha256:d4ab67fb4bcb2ba782ca197d0e7ffd795acd70abfbb31e8566de45c1d836ff1a"
+      }
+    }
+  ],
+  "supersedes": [
+    "creation-reaches-out-through-inversion"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "creation-inversion-reprove-2026-10-17",
+  "proposal_id": "creation-inversion-reprove-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-creation-reaches-its-collaborators-through-inversion",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-creation-reaches-its-collaborators-through-inversion",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "creation-reaches-its-collaborators-through-inversion"
+        }
+      ],
+      "expected_outcome": "Interactive Skill creation does not import the Contexts it collaborates with, and none of them imports it. Everything it needs from the reference, admission and trial Contexts arrives as a narrow interface injected by a composition root, so the creation loop can be replaced or removed without any other Context changing.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "golangci-lint run --enable-only depguard ./internal/creator/creation/..."
+    }
+  ]
+}

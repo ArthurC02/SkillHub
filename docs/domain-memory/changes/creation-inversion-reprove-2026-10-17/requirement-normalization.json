@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "creation-inversion-reprove-2026-10-17",
+  "status": "draft",
+  "intent": "Prove the architecture rule creation-reaches-its-collaborators-through-inversion with the dependency gate that enforces it.",
+  "actor": "coding-agent",
+  "observable_outcome": "coverage lists the rule as proven by an architecture obligation.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-creation-reaches-its-collaborators-through-inversion",
+      "statement": "Interactive Skill creation does not import the Contexts it collaborates with, and none of them imports it. Everything it needs from the reference, admission and trial Contexts arrives as a narrow interface injected by a composition root, so the creation loop can be replaced or removed without any other Context changing."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/.golangci.yml",
+    "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md"
+  ]
+}

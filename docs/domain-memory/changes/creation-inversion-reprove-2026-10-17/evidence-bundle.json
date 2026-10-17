@@ -1,0 +1,40 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "creation-inversion-reprove-2026-10-17",
+  "proposal_id": "creation-inversion-reprove-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "42d77cfb54991749d94fbedbd51ac1587a612530",
+    "registry_digest": "sha256:d4ab67fb4bcb2ba782ca197d0e7ffd795acd70abfbb31e8566de45c1d836ff1a"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-creation-reaches-its-collaborators-through-inversion",
+      "mutated_protection": "apps/platform/internal/creator/creation/doc.go:3: package creation -> package creation import _ \"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\"",
+      "failure_evidence": "internal\\creator\\creation\\doc.go:5:8: import 'github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission' is not allowed from list 'creation': creation uses injected owner APIs (depguard)\nimport _ \"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\"\n       ^\n1 issues:\n* depguard: 1\nlevel=warning msg=\"[runner/exclusion_rules] Skipped 0 issues by rules: [Path: \\\"_test\\\\\\\\.go\\\", Linters: \\\"dupl, revive, unparam, goconst, mnd\\\"]\"\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/.golangci.yml",
+    "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-creation-reaches-its-collaborators-through-inversion",
+      "status": "passed",
+      "evidence": "golangci-lint run --enable-only depguard ./internal/creator/creation/...",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:96a4e0a27b074a77cb99087b27ad21278cd9b8877b360c74d611bf4ed61a710b",
+      "finished_at": "2026-10-17T06:00:00.567416Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
