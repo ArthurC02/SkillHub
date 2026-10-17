@@ -3,12 +3,12 @@
   "proposal_id": "creation-inversion-reprove-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "creation-inversion-reprove-2026-10-17",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T05:59:58.242805Z",
   "verified_at": "2026-10-17T06:00:01.380303Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T06:00:20.052496Z",
+  "applied_at": "2026-10-17T06:00:23.264739Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "42d77cfb54991749d94fbedbd51ac1587a612530",
@@ -114,5 +114,9 @@
   ],
   "supersedes": [
     "creation-reaches-out-through-inversion"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "a40caef038514b05f2eeaebc298dce16ee8260e6",
+    "registry_digest": "sha256:cda4cd8c6f9e5672b23982fb5f033a5bddf52a14580a7f565f8cf8db3ca340bb"
+  }
 }
