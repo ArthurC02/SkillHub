@@ -1,0 +1,150 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "trace-harvest-rules-2026-10-17",
+  "proposal_id": "trace-harvest-rules-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "618d958ae373371ea87579e83343044c55385f54",
+    "registry_digest": "sha256:c61cb385583b0283cdc2bb04092fc840f5a598009ff874aecabe809ad87803c6"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-trace-payload-is-at-most-96-kib",
+      "mutated_protection": "apps/platform/internal/trial/evidence/event.go:151: case len(e.Payload) > maxPayloadBytes: -> case len(e.Payload) > maxPayloadBytes+1000000:",
+      "failure_evidence": "=== RUN   TestValidateRefusesAWellFormedPayloadOneByteOverTheSizeCeiling\n    limits_characterization_test.go:37: a 98305 byte payload: got <nil>, want the size refusal\n--- FAIL: TestValidateRefusesAWellFormedPayloadOneByteOverTheSizeCeiling (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.200s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-oversized-trace-batch-answers-413",
+      "mutated_protection": "apps/platform/internal/trial/evidence/http.go:44: case errors.As(err, &tooLarge): -> case errors.As(err, &tooLarge) && false:",
+      "failure_evidence": "=== RUN   TestIngestSeparatesAnOversizedBatchFromAnUnreadableOne\n=== RUN   TestIngestSeparatesAnOversizedBatchFromAnUnreadableOne/a_batch_of_exactly_the_limit_is_read_and_judged_malformed\n=== RUN   TestIngestSeparatesAnOversizedBatchFromAnUnreadableOne/a_batch_one_byte_over_the_limit_is_too_large\n    http_test.go:42: got 400 \"{\\\"error\\\":\\\"could not read the trace batch\\\"}\\n\", want 413 containing \"too large\"\n=== RUN   TestIngestSeparatesAnOversizedBatchFromAnUnreadableOne/a_body_that_fails_mid-read_is_unreadable,_not_too_large\n--- FAIL: TestIngestSeparatesAnOversizedBatchFromAnUnreadableOne (0.01s)\n    --- PASS: TestIngestSeparatesAnOversizedBatchFromAnUnreadableOne/a_batch_of_exactly_the_limit_is_read_and_judged_malformed (0.00s)\n    --- FAIL: TestIngestSeparatesAnOversizedBatchFromAnUnreadableOne/a_batch_one_byte_over_the_limit_is_too_large (0.00s)\n    --- PASS: TestIngestSeparatesAnOversizedBatchFromAnUnreadableOne/a_body_that_fails_mid-read_is_unreadable,_not_too_large (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.055s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-value-under-a-secret-key-is-redacted",
+      "mutated_protection": "apps/platform/internal/trial/evidence/mask.go:150: if namesASecret(key) { -> if namesASecret(key) && false {",
+      "failure_evidence": "--- FAIL: TestMaskRedactsAStringValueWhoseKeyNamesASecret (0.00s)\n    --- FAIL: TestMaskRedactsAStringValueWhoseKeyNamesASecret/password (0.00s)\n    --- FAIL: TestM\n...\naskRedactsAStringValueWhoseKeyNamesASecret/PASSWD (0.00s)\n    --- FAIL: TestMaskRedactsAStringValueWhoseKeyNamesASecret/client_secret (0.00s)\n    --- FAIL: TestMaskRedactsAStringValueWhoseKeyNamesASecret/token (0.00s)\n    --- FAIL: TestMaskRedactsAStringValueWhoseKeyNamesASecret/access-token (0.00s)\n    --- FAIL: TestMaskRedactsAStringValueWhoseKeyNamesASecret/OPENAI_API_KEY (0.00s)\n    --- FAIL: TestMaskRedactsAStringValueWhoseKeyNamesASecret/Api-Key (0.00s)\n    --- FAIL: TestMaskRedactsAStringValueWhoseKeyNamesASecret/apikey (0.00s)\n    --- FAIL: TestMaskRedactsAStringValueWhoseKeyNamesASecret/access_key (0.00s)\n    --- FAIL: TestMaskRedactsAStringValueWhoseKeyNamesASecret/private_key (0.00s)\n    --- FAIL: TestMaskRedactsAStringValueWhoseKeyNamesASecret/Authorization (0.00s)\n    --- FAIL: TestMaskRedactsAStringValueWhoseKeyNamesASecret/credential (0.00s)\n    --- FAIL: TestMaskRedactsAStringValueWhoseKeyNamesASecret/credentials (0.00s)\n    --- FAIL: TestMaskRedactsAStringValueWhoseKeyNamesASecret/Set-Cookie (0.00s)\n    --- FAIL: TestMaskRedactsAStringValueWhoseKeyNamesASecret/session (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.127s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-known-secrets-of-sixteen-bytes-are-scrubbed",
+      "mutated_protection": "apps/platform/internal/trial/evidence/mask.go:197: if len(known) < minKnownSecretBytes { -> if len(known) < 0 {",
+      "failure_evidence": "=== RUN   TestMaskerRedactsKnownValuesFromSixteenBytesAndLeavesShorterOnes\n    limits_characterization_test.go:49: MaskString = \"a [REDACTED] b [REDACTED] c\", want \"a kkkkkkkkkkkkkkk b [REDACTED] c\"\n--- FAIL: TestMaskerRedactsKnownValuesFromSixteenBytesAndLeavesShorterOnes (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.259s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-ingestion-token-expires",
+      "mutated_protection": "apps/platform/internal/trial/evidence/token.go:97: if now.After(time.Unix(exp, 0)) { -> if now.After(time.Unix(exp, 0)) && false {",
+      "failure_evidence": "=== RUN   TestIngestionTokenRejectsTampering\n    trace_test.go:92: an expired token was not reported as expired\n--- FAIL: TestIngestionTokenRejectsTampering (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.403s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-trace-event-falls-in-its-attempts-window",
+      "mutated_protection": "apps/platform/internal/trial/evidence/event.go:125: e.OccurredAt.After(now.Add(maxOccurrenceSkew)) -> e.OccurredAt.After(now.Add(maxOccurrenceSkew+100000*time.Hour))",
+      "failure_evidence": "=== RUN   TestValidateRejectsMalformedEnvelopes\n    trace_test.go:211: just past the skew was accepted\n    trace_test.go:211: years ahead was accepted\n--- FAIL: TestValidateRejectsMalformedEnvelopes (0.06s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.462s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-trace-payload-matches-its-types-schema",
+      "mutated_protection": "apps/platform/internal/trial/evidence/payload.go:192: if rule.open { -> if true {",
+      "failure_evidence": "adTheReaderWouldMisreadIsRefused/a_required_field_left_out\n=== RUN   TestAPayloadTheReaderWouldMisreadIsRefused/a_number_where_the_reader_expects_text\n=== RUN   TestAPayloadTheReaderWouldMisreadIsRefused/an_object_where_the_reader_expects_a_number\n=== RUN   TestAPayloadTheReaderWouldMisreadIsRefused/a_value_outside_the_closed_set\n=== RUN   TestAPayloadTheReaderWouldMisreadIsRefused/a_field_this_type_does_not_have\n    payload_contract_test.go:244: a field this type does not have was accepted; the reader turns it into an empty string, not an error\n--- FAIL: TestAPayloadTheReaderWouldMisreadIsRefused (0.00s)\n    --- PASS: TestAPayloadTheReaderWouldMisreadIsRefused/a_required_field_left_out (0.00s)\n    --- PASS: TestAPayloadTheReaderWouldMisreadIsRefused/a_number_where_the_reader_expects_text (0.00s)\n    --- PASS: TestAPayloadTheReaderWouldMisreadIsRefused/an_object_where_the_reader_expects_a_number (0.00s)\n    --- PASS: TestAPayloadTheReaderWouldMisreadIsRefused/a_value_outside_the_closed_set (0.00s)\n    --- FAIL: TestAPayloadTheReaderWouldMisreadIsRefused/a_field_this_type_does_not_have (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.279s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/trial/evidence/event.go",
+    "apps/platform/internal/trial/evidence/http.go",
+    "apps/platform/internal/trial/evidence/http_test.go",
+    "apps/platform/internal/trial/evidence/limits_characterization_test.go",
+    "apps/platform/internal/trial/evidence/mask.go",
+    "apps/platform/internal/trial/evidence/mask_key_test.go",
+    "apps/platform/internal/trial/evidence/payload.go",
+    "apps/platform/internal/trial/evidence/payload_contract_test.go",
+    "apps/platform/internal/trial/evidence/token.go",
+    "apps/platform/internal/trial/evidence/trace_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-trace-payload-is-at-most-96-kib",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestValidateRefusesAWellFormedPayloadOneByteOverTheSizeCeiling$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:7cd56a51d5ea29bd88bad3daa67b36d2cee5e5612b75dc98bd27b0a66884dbfd",
+      "finished_at": "2026-10-17T06:45:12.965540Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-oversized-trace-batch-answers-413",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestIngestSeparatesAnOversizedBatchFromAnUnreadableOne$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:aa79cff564096a384037d56908394f2cf7f8b8347dd1ed9932a70e26d89d695a",
+      "finished_at": "2026-10-17T06:45:18.360085Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-value-under-a-secret-key-is-redacted",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestMaskRedactsAStringValueWhoseKeyNamesASecret$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e023ebdfccc4d716a7439648e91d1f0e7fa3419daebbe61dc88a52f54af39303",
+      "finished_at": "2026-10-17T06:45:23.580265Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-known-secrets-of-sixteen-bytes-are-scrubbed",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestMaskerRedactsKnownValuesFromSixteenBytesAndLeavesShorterOnes$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:0045be7ca7235be49a74ba8aae99a7dcb117428ee2007c1f482e4f7b90bc7c7f",
+      "finished_at": "2026-10-17T06:45:30.939333Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-ingestion-token-expires",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestIngestionTokenRejectsTampering$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:732f58ebca03edfe0e9fcb978588221269d0a84470095f2cc8072dd181badd21",
+      "finished_at": "2026-10-17T06:45:36.237957Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-trace-event-falls-in-its-attempts-window",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestValidateRejectsMalformedEnvelopes$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:0bade083eb6e9d7f34a14f31d8b6cb4099717bb0354c393c4a86ba8fcbbac49b",
+      "finished_at": "2026-10-17T06:45:41.031007Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-trace-payload-matches-its-types-schema",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAPayloadTheReaderWouldMisreadIsRefused$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:150426c74c49b4ee9f45ea41746f16a744ee9c5e56591d7cc0ac4b6a958aa012",
+      "finished_at": "2026-10-17T06:45:45.741499Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

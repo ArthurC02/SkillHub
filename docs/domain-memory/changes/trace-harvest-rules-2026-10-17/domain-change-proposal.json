@@ -1,0 +1,326 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "trace-harvest-rules-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "trace-harvest-rules-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T06:45:05.385529Z",
+  "verified_at": "2026-10-17T06:45:46.345394Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "618d958ae373371ea87579e83343044c55385f54",
+    "registry_digest": "sha256:c61cb385583b0283cdc2bb04092fc840f5a598009ff874aecabe809ad87803c6"
+  },
+  "affected_contexts": [
+    "trace"
+  ],
+  "rule_ids": [
+    "a-trace-payload-is-at-most-96-kib",
+    "an-oversized-trace-batch-answers-413",
+    "a-value-under-a-secret-key-is-redacted",
+    "known-secrets-of-sixteen-bytes-are-scrubbed",
+    "an-ingestion-token-expires",
+    "a-trace-event-falls-in-its-attempts-window",
+    "a-trace-payload-matches-its-types-schema"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "trace",
+    "invariant": "Only trace accepts, masks and stores trace events of a Run attempt.",
+    "evidence": [
+      "apps/platform/internal/trial/evidence/event.go:137-138"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/evidence/payload.go:189-200"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the trace Context found these enforced rules; the reviewed Registry held none."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording guards no test reaches: they wait for a test."
+    ],
+    "proof_obligations": [
+      "rule-a-trace-payload-is-at-most-96-kib",
+      "rule-an-oversized-trace-batch-answers-413",
+      "rule-a-value-under-a-secret-key-is-redacted",
+      "rule-known-secrets-of-sixteen-bytes-are-scrubbed",
+      "rule-an-ingestion-token-expires",
+      "rule-a-trace-event-falls-in-its-attempts-window",
+      "rule-a-trace-payload-matches-its-types-schema"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-trace-payload-is-at-most-96-kib",
+        "statement": "A trace event whose payload exceeds 96 KiB is refused as invalid; exactly 96 KiB is accepted.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "A payload of 98305 bytes is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/event.go",
+            "lines": {
+              "start": 137,
+              "end": 138
+            },
+            "excerpt_sha256": "sha256:4752673520f87440b59698125fd5e529da315fc4aca58ca12c6e71e82f80f398"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/limits_characterization_test.go",
+            "lines": {
+              "start": 33,
+              "end": 39
+            },
+            "content_sha256": "sha256:f2df2eb925d3f334d609abb46ca9813b1623e4c9345a391985126817c1b3d1e4",
+            "excerpt_sha256": "sha256:06875357a15c572d7e463ace8a087e6b7b64fa2736aa0993a2bc8ac95791b9b4"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-oversized-trace-batch-answers-413",
+        "statement": "A trace ingestion body over 4 MiB answers 413 as too large, apart from a body that fails while being read, which answers 400.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "A body of 4 MiB and one byte answers 413."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/http.go",
+            "lines": {
+              "start": 28,
+              "end": 50
+            },
+            "excerpt_sha256": "sha256:fa4944a4acb327dd5b375b7968ccf41a811cadc8581a9abcc95e7c108cbd95cd"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/http_test.go",
+            "lines": {
+              "start": 28,
+              "end": 46
+            },
+            "content_sha256": "sha256:f5c8da17948893758b1fa88ba64ef340e96edce90a837ffc9ecbb66dbe64566c",
+            "excerpt_sha256": "sha256:87afbc3316bdb801580510e85014275b73b23fd25ce533c0a3ee6ca9c838c4b2"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-value-under-a-secret-key-is-redacted",
+        "statement": "Any value under a JSON key whose name denotes a secret, such as password, token, api key, authorization or cookie, is stored as [REDACTED] and its path is reported as masked.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "{\"client_secret\":\"opaque-value-123\"} is stored redacted."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/mask.go",
+            "lines": {
+              "start": 150,
+              "end": 153
+            },
+            "excerpt_sha256": "sha256:260a1c4f787a2fedb35c9fd48b86cc99a30750586634755b3528a5b5d4b45024"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/mask.go",
+            "lines": {
+              "start": 224,
+              "end": 232
+            },
+            "excerpt_sha256": "sha256:9cef7c5b948702a4a0c182f7ecb1eb9728531c903bb47e744afcaa8d5734c3a7"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/mask_key_test.go",
+            "lines": {
+              "start": 10,
+              "end": 30
+            },
+            "content_sha256": "sha256:88767fa388ebbf7e25f6ea2137a1e6f9dcf373909c9086efda6da734b0104613",
+            "excerpt_sha256": "sha256:964f8bab36ca1f1f3b02d356fcb858b72498d2c2307d38c0cf77e49928b2dd00"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "known-secrets-of-sixteen-bytes-are-scrubbed",
+        "statement": "A known secret such as the Run's own ingestion token is scrubbed from every payload when it is at least 16 bytes long; shorter known values are left alone so ordinary text is not redacted.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "A 16-byte token inside a log message becomes [REDACTED]; a 15-byte one stays."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/mask.go",
+            "lines": {
+              "start": 195,
+              "end": 201
+            },
+            "excerpt_sha256": "sha256:36de434ffc195b0aa5f8628624eba770148f07ebbcf1010bfc765a68b2038fe5"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/limits_characterization_test.go",
+            "lines": {
+              "start": 41,
+              "end": 51
+            },
+            "content_sha256": "sha256:f2df2eb925d3f334d609abb46ca9813b1623e4c9345a391985126817c1b3d1e4",
+            "excerpt_sha256": "sha256:a44ff74a053c36fb8c356eb2a37c2d1ee25b7010a3a05c02ee8784754eabf120"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-ingestion-token-expires",
+        "statement": "A trace ingestion token is a signed grant for one Run attempt; it expires after its time to live, and a tampered or expired token is refused.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "Verifying a token after it expired returns ErrTokenExpired."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/token.go",
+            "lines": {
+              "start": 97,
+              "end": 99
+            },
+            "excerpt_sha256": "sha256:047daca93ecb9a1d6b3612d66614f88ea5a871dabaf45f707434750102959d16"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/trace_test.go",
+            "lines": {
+              "start": 75,
+              "end": 94
+            },
+            "content_sha256": "sha256:270d4a0caa87015bf68b60ce2f3768bd144f2860795b0af3d06f2ace980e7b03",
+            "excerpt_sha256": "sha256:f74e7042630fdfec76901313d2fd82fa2f76cbd9364dbb1e51a298e9c378cb81"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-trace-event-falls-in-its-attempts-window",
+        "statement": "An event's time must fall between a few minutes in the future and the token's lifetime in the past; epoch or far-future timestamps are refused.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "An event timestamped four years ahead is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/event.go",
+            "lines": {
+              "start": 123,
+              "end": 128
+            },
+            "excerpt_sha256": "sha256:50d5cef3b7a91903ae5428e2a722f861f3e01bd756591782ee0f2541eed44086"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/trace_test.go",
+            "lines": {
+              "start": 175,
+              "end": 214
+            },
+            "content_sha256": "sha256:270d4a0caa87015bf68b60ce2f3768bd144f2860795b0af3d06f2ace980e7b03",
+            "excerpt_sha256": "sha256:e8af8b0f200535df46a9c978e734a7f0de0d6fa35668e2dedfb58ab3c7ce26d2"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-trace-payload-matches-its-types-schema",
+        "statement": "Each event type declares its payload schema; missing required fields, wrong kinds, values outside an enum and undeclared fields on a closed type are refused.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "An agent_output payload with an extra field is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/payload.go",
+            "lines": {
+              "start": 189,
+              "end": 200
+            },
+            "excerpt_sha256": "sha256:db9ab627e5864940a9756f1373cd3248304a7502178de444dfa04bd182cecb27"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/payload_contract_test.go",
+            "lines": {
+              "start": 223,
+              "end": 254
+            },
+            "content_sha256": "sha256:357a12a4b8de5cbb70ac107511c747fd9e8683187f7565a959e58532202852b5",
+            "excerpt_sha256": "sha256:8064080b3e97895756f108dc8b9aa0becab303bfafae2d476d185331d46c9fb9"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T06:45:46.007817Z",
+      "scope": "Record trace rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "618d958ae373371ea87579e83343044c55385f54",
+        "registry_digest": "sha256:c61cb385583b0283cdc2bb04092fc840f5a598009ff874aecabe809ad87803c6"
+      }
+    }
+  ]
+}

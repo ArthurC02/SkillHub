@@ -1,0 +1,54 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "trace-harvest-rules-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed the rules the trace Context enforces and tests but the Registry did not hold.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context trace lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-trace-payload-is-at-most-96-kib",
+      "statement": "A trace event whose payload exceeds 96 KiB is refused as invalid; exactly 96 KiB is accepted."
+    },
+    {
+      "id": "enforced-an-oversized-trace-batch-answers-413",
+      "statement": "A trace ingestion body over 4 MiB answers 413 as too large, apart from a body that fails while being read, which answers 400."
+    },
+    {
+      "id": "enforced-a-value-under-a-secret-key-is-redacted",
+      "statement": "Any value under a JSON key whose name denotes a secret, such as password, token, api key, authorization or cookie, is stored as [REDACTED] and its path is reported as masked."
+    },
+    {
+      "id": "enforced-known-secrets-of-sixteen-bytes-are-scrubbed",
+      "statement": "A known secret such as the Run's own ingestion token is scrubbed from every payload when it is at least 16 bytes long; shorter known values are left alone so ordinary text is not redacted."
+    },
+    {
+      "id": "enforced-an-ingestion-token-expires",
+      "statement": "A trace ingestion token is a signed grant for one Run attempt; it expires after its time to live, and a tampered or expired token is refused."
+    },
+    {
+      "id": "enforced-a-trace-event-falls-in-its-attempts-window",
+      "statement": "An event's time must fall between a few minutes in the future and the token's lifetime in the past; epoch or far-future timestamps are refused."
+    },
+    {
+      "id": "enforced-a-trace-payload-matches-its-types-schema",
+      "statement": "Each event type declares its payload schema; missing required fields, wrong kinds, values outside an enum and undeclared fields on a closed type are refused."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/trial/evidence/event.go",
+    "apps/platform/internal/trial/evidence/http.go",
+    "apps/platform/internal/trial/evidence/http_test.go",
+    "apps/platform/internal/trial/evidence/limits_characterization_test.go",
+    "apps/platform/internal/trial/evidence/mask.go",
+    "apps/platform/internal/trial/evidence/mask_key_test.go",
+    "apps/platform/internal/trial/evidence/payload.go",
+    "apps/platform/internal/trial/evidence/payload_contract_test.go",
+    "apps/platform/internal/trial/evidence/token.go",
+    "apps/platform/internal/trial/evidence/trace_test.go"
+  ]
+}

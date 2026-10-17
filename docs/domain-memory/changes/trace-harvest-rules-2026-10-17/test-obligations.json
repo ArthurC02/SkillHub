@@ -1,0 +1,112 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "trace-harvest-rules-2026-10-17",
+  "proposal_id": "trace-harvest-rules-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-a-trace-payload-is-at-most-96-kib",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-trace-payload-is-at-most-96-kib",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-trace-payload-is-at-most-96-kib"
+        }
+      ],
+      "expected_outcome": "A trace event whose payload exceeds 96 KiB is refused as invalid; exactly 96 KiB is accepted.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestValidateRefusesAWellFormedPayloadOneByteOverTheSizeCeiling$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-an-oversized-trace-batch-answers-413",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-oversized-trace-batch-answers-413",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-oversized-trace-batch-answers-413"
+        }
+      ],
+      "expected_outcome": "A trace ingestion body over 4 MiB answers 413 as too large, apart from a body that fails while being read, which answers 400.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestIngestSeparatesAnOversizedBatchFromAnUnreadableOne$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-a-value-under-a-secret-key-is-redacted",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-value-under-a-secret-key-is-redacted",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-value-under-a-secret-key-is-redacted"
+        }
+      ],
+      "expected_outcome": "Any value under a JSON key whose name denotes a secret, such as password, token, api key, authorization or cookie, is stored as [REDACTED] and its path is reported as masked.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestMaskRedactsAStringValueWhoseKeyNamesASecret$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-known-secrets-of-sixteen-bytes-are-scrubbed",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-known-secrets-of-sixteen-bytes-are-scrubbed",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "known-secrets-of-sixteen-bytes-are-scrubbed"
+        }
+      ],
+      "expected_outcome": "A known secret such as the Run's own ingestion token is scrubbed from every payload when it is at least 16 bytes long; shorter known values are left alone so ordinary text is not redacted.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestMaskerRedactsKnownValuesFromSixteenBytesAndLeavesShorterOnes$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-an-ingestion-token-expires",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-ingestion-token-expires",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-ingestion-token-expires"
+        }
+      ],
+      "expected_outcome": "A trace ingestion token is a signed grant for one Run attempt; it expires after its time to live, and a tampered or expired token is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestIngestionTokenRejectsTampering$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-a-trace-event-falls-in-its-attempts-window",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-trace-event-falls-in-its-attempts-window",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-trace-event-falls-in-its-attempts-window"
+        }
+      ],
+      "expected_outcome": "An event's time must fall between a few minutes in the future and the token's lifetime in the past; epoch or far-future timestamps are refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestValidateRejectsMalformedEnvelopes$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-a-trace-payload-matches-its-types-schema",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-trace-payload-matches-its-types-schema",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-trace-payload-matches-its-types-schema"
+        }
+      ],
+      "expected_outcome": "Each event type declares its payload schema; missing required fields, wrong kinds, values outside an enum and undeclared fields on a closed type are refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAPayloadTheReaderWouldMisreadIsRefused$ ./internal/trial/evidence/"
+    }
+  ]
+}
