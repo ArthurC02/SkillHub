@@ -165,20 +165,29 @@ func TestGitHubJSONDrainsAndClosesOrdinaryErrorResponses(t *testing.T) {
 
 func TestCallbackRejectsStateMismatch(t *testing.T) {
 	h := &Handler{Service: &Service{OAuth: stubGitHub(t, "x@x.dev")}}
-
-	r := httptest.NewRequest(http.MethodGet, "/auth/github/callback?code=c&state=abc", nil)
-	w := httptest.NewRecorder()
-	h.finishLogin(w, r)
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("missing cookie: want 401, got %d", w.Code)
-	}
-
-	r = httptest.NewRequest(http.MethodGet, "/auth/github/callback?code=c&state=abc", nil)
-	r.AddCookie(&http.Cookie{Name: stateCookie, Value: "other"})
-	w = httptest.NewRecorder()
-	h.finishLogin(w, r)
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("mismatched state: want 401, got %d", w.Code)
+	for _, tc := range []struct {
+		name    string
+		state   string
+		cookie  *string
+		refused bool
+	}{
+		{"missing cookie", "abc", nil, true},
+		{"mismatched state", "abc", new("other"), true},
+		{"empty cookie and empty state", "", new(""), true},
+		{"matching state", "abc", new("abc"), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodGet, "/auth/github/callback?code=c&state="+tc.state, nil)
+			if tc.cookie != nil {
+				r.AddCookie(&http.Cookie{Name: stateCookie, Value: *tc.cookie})
+			}
+			w := httptest.NewRecorder()
+			h.finishLogin(w, r)
+			refused := w.Code == http.StatusUnauthorized && strings.Contains(w.Body.String(), "oauth state mismatch")
+			if refused != tc.refused {
+				t.Fatalf("got %d %q, want refused for state mismatch = %v", w.Code, w.Body.String(), tc.refused)
+			}
+		})
 	}
 }
 
