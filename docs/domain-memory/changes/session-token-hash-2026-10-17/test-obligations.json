@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "session-token-hash",
+  "proposal_id": "session-token-hash",
+  "obligations": [
+    {
+      "id": "session-stored-as-hash",
+      "source_type": "acceptance-criterion",
+      "source_id": "stored-value-is-not-a-cookie",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "session-token-stored-only-as-hash"
+        }
+      ],
+      "expected_outcome": "The stored token_hash equals the SHA-256 of the issued token, and replaying it as a cookie is refused.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestASessionIsStoredOnlyAsTheHashOfItsToken ./internal/creator/workspace/"
+    }
+  ]
+}

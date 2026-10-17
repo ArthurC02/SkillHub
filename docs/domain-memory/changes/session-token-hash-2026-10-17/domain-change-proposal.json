@@ -1,0 +1,125 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "session-token-hash",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "session-token-hash",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T01:25:22.430459Z",
+  "verified_at": "2026-10-17T01:25:40.139040Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "c991ae446eae5898177a4531e53a632ed7e948a3",
+    "registry_digest": "sha256:0fb68b581caf0a73fef163b44465de1c0f432322e04ff99a4d26b69af4d92b53"
+  },
+  "affected_contexts": [
+    "identity"
+  ],
+  "rule_ids": [
+    "session-token-stored-only-as-hash"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "identity",
+    "invariant": "Only identity mints and resolves sessions, always through hashToken.",
+    "evidence": [
+      "apps/platform/internal/creator/workspace/service.go:239",
+      "apps/platform/internal/creator/workspace/service.go:272",
+      "apps/platform/internal/creator/workspace/service.go:463-466"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: no other Context reads the sessions table.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/creator/workspace/service.go:463-466"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of identity found the hashing; no test proved it, so storing the raw token would have stayed green."
+    ],
+    "decision": "Record the rule as reviewed and add the integration test that proves it; no product code change.",
+    "invariants_preserved": [
+      "A session resolves only while it has not expired and its account stands."
+    ],
+    "rejected_alternatives": [
+      "Citing the migration column: db/migrations is outside the confirmed sources, and the bytea column alone does not say what is stored in it."
+    ],
+    "proof_obligations": [
+      "session-stored-as-hash"
+    ],
+    "counterfactual_check": "Make hashToken return the raw token; the test must fail on the stored hash."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "session-token-stored-only-as-hash",
+        "statement": "The raw session token exists only in the cookie handed to the user; the platform stores and looks up only its SHA-256 hash.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "Reading the sessions table never reveals a token that can be replayed as a cookie."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/service.go",
+            "lines": {
+              "start": 239,
+              "end": 239
+            },
+            "excerpt_sha256": "sha256:43f8454b95f77d0bbe30de34cd064d82049b9218d1218a83b52cd3d09fab88d2"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/service.go",
+            "lines": {
+              "start": 272,
+              "end": 272
+            },
+            "excerpt_sha256": "sha256:af715aa9ad0a5d6a90a7c9cdb7bbc0c5856e449f7fa9a46cf98fced866766050"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/service.go",
+            "lines": {
+              "start": 463,
+              "end": 466
+            },
+            "excerpt_sha256": "sha256:3ac2b38361fc85de9017f77d0bd9ab98206ee29283cf301bfc9f3ad41bd9711f"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/signup_integration_test.go",
+            "lines": {
+              "start": 98,
+              "end": 123
+            },
+            "excerpt_sha256": "sha256:6c1dc4919a0831b97ec1747dec4c592c41320acf48d1d41155e5bd964062f9ac"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T01:25:37.610091Z",
+      "scope": "Record session-token-stored-only-as-hash as a reviewed identity rule",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "c991ae446eae5898177a4531e53a632ed7e948a3",
+        "registry_digest": "sha256:0fb68b581caf0a73fef163b44465de1c0f432322e04ff99a4d26b69af4d92b53"
+      }
+    }
+  ]
+}

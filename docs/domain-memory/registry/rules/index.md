@@ -22,4 +22,5 @@
 - [purge-removes-files-before-rows](/rules/purge-removes-files-before-rows) — An account's stored files are removed before its database rows are erased, and the rows are erased in one transaction, so a failure leaves rows pointing at mis….
 - [purge-waits-for-grace-and-quiet-workspace](/rules/purge-waits-for-grace-and-quiet-workspace) — An account purge starts only when the deletion request is older than the 30-day grace at the moment of claiming and every Run in each of the Account's workspac….
 - [run-terminal-status-is-final](/rules/run-terminal-status-is-final) — A Run that has reached a terminal status never transitions again.
+- [session-token-stored-only-as-hash](/rules/session-token-stored-only-as-hash) — The raw session token exists only in the cookie handed to the user; the platform stores and looks up only its SHA-256 hash.
 - [taken-down-or-held-skill-is-not-packaged](/rules/taken-down-or-held-skill-is-not-packaged) — A Skill that the platform has taken down, or whose content is held for an unresolved license question, cannot be built into a package; the refusal names taken_….

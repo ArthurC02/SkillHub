@@ -1,0 +1,24 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "session-token-hash",
+  "status": "draft",
+  "intent": "Record as a reviewed identity rule that a session token is stored and looked up only as its SHA-256 hash.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context identity lists session-token-stored-only-as-hash as reviewed, citing the code that hashes and the test that proves it.",
+  "acceptance_criteria": [
+    {
+      "id": "stored-value-is-not-a-cookie",
+      "statement": "The value the sessions table holds cannot be replayed as a session cookie."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/creator/workspace/service.go",
+    "apps/platform/internal/creator/workspace/signup_integration_test.go"
+  ]
+}

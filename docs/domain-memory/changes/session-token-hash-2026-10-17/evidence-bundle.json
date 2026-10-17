@@ -1,0 +1,38 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "session-token-hash",
+  "proposal_id": "session-token-hash",
+  "registry_revision": {
+    "observed_commit": "c991ae446eae5898177a4531e53a632ed7e948a3",
+    "registry_digest": "sha256:0fb68b581caf0a73fef163b44465de1c0f432322e04ff99a4d26b69af4d92b53"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "session-stored-as-hash",
+    "mutated_protection": "apps/platform/internal/creator/workspace/service.go:465: return h[:] -> return append(h[:0:0], token...)",
+    "failure_evidence": "--- FAIL: TestASessionIsStoredOnlyAsTheHashOfItsToken (0.09s)\n    signup_integration_test.go:116: stored token_hash = 37383663373661333237663232396535336439656436643163663937623336396266316532373063316461663062316635303533363861653065623164616135, want the SHA-256 of the issued token 2aafb128a6e306aab08e19a66776ff9c5d633f6ca6565eb40338d5c994dabe28\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace\t3.851s\nFAIL\n",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/creator/workspace/service.go",
+    "apps/platform/internal/creator/workspace/signup_integration_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "session-stored-as-hash",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestASessionIsStoredOnlyAsTheHashOfItsToken ./internal/creator/workspace/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:7e722752d0bfe9acfa87131abdd9b0c008d76886a447b96fed88a5424a558497",
+      "finished_at": "2026-10-17T01:25:36.304163Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
