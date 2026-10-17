@@ -1,0 +1,127 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "eval-harvest-rules-2026-10-17",
+  "proposal_id": "eval-harvest-rules-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-a-suggestion-path-stays-inside-the-package",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-suggestion-path-stays-inside-the-package",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-suggestion-path-stays-inside-the-package"
+        }
+      ],
+      "expected_outcome": "A suggestion's target must be a clean relative path inside the Skill package; empty, absolute, traversing or uncleaned paths are refused, not repaired.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTargetPathsThatLeaveThePackageAreRefusedNotRepaired$ ./internal/trial/improvement/"
+    },
+    {
+      "id": "rule-a-held-skill-gets-no-suggestion-diff",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-held-skill-gets-no-suggestion-diff",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-held-skill-gets-no-suggestion-diff"
+        }
+      ],
+      "expected_outcome": "A Skill held for a licensing question gets no reproduced diff and no version from its suggestions; the block is decided before any file is read.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAHeldSkillBlocksASuggestionBeforeAnyFileIsRead$ ./internal/trial/improvement/"
+    },
+    {
+      "id": "rule-a-suggestion-applies-only-to-the-bytes-it-was-written-for",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-suggestion-applies-only-to-the-bytes-it-was-written-for",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-suggestion-applies-only-to-the-bytes-it-was-written-for"
+        }
+      ],
+      "expected_outcome": "A suggestion applies only while its target file in the newest version is byte-identical to the version it was written against; otherwise it is blocked as target_changed.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestASuggestionWhoseFileHasMovedOnIsRefusedWhileTheRestOfTheBatchApplies$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-binary-target-gets-no-diff",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-binary-target-gets-no-diff",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-binary-target-gets-no-diff"
+        }
+      ],
+      "expected_outcome": "A target file with a NUL byte in its first 8000 bytes is not diffable, so its suggestion is blocked as diff_unavailable rather than applied unseen.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestReadTargetLooksForANulByteOnlyInTheFirst8000Bytes$ ./internal/trial/improvement/"
+    },
+    {
+      "id": "rule-a-suggestion-decision-is-accepted-or-rejected",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-suggestion-decision-is-accepted-or-rejected",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-suggestion-decision-is-accepted-or-rejected"
+        }
+      ],
+      "expected_outcome": "A suggestion decision must be accepted or rejected; pending or any other word is refused as not_a_choice.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal$ ./internal/trial/improvement/"
+    },
+    {
+      "id": "rule-an-applied-acceptance-is-final",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-applied-acceptance-is-final",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-applied-acceptance-is-final"
+        }
+      ],
+      "expected_outcome": "Once a suggestion has gone into a Skill version its acceptance cannot be withdrawn; rejecting it is refused as acceptance_is_final.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal$ ./internal/trial/improvement/"
+    },
+    {
+      "id": "rule-only-a-pending-evaluation-settles",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-only-a-pending-evaluation-settles",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "only-a-pending-evaluation-settles"
+        }
+      ],
+      "expected_outcome": "An evaluation settles only while it awaits the judge; a second verdict on a settled evaluation is refused, so the first stands.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestOnlyAPendingRevisionSettles$ ./internal/trial/improvement/"
+    },
+    {
+      "id": "rule-only-actionable-suggestion-categories-are-stored",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-only-actionable-suggestion-categories-are-stored",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "only-actionable-suggestion-categories-are-stored"
+        }
+      ],
+      "expected_outcome": "Only skill, runtime, tool and dataset suggestions are stored; MCP and unknown categories are dropped.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestOnlyProposalsThePlatformCanActOnAreStored$ ./internal/trial/improvement/"
+    }
+  ]
+}

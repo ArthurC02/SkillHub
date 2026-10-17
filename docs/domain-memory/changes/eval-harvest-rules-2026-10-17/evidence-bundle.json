@@ -1,0 +1,164 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "eval-harvest-rules-2026-10-17",
+  "proposal_id": "eval-harvest-rules-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "8e658bb9fe4c1393bd5aface5aee05da86640a55",
+    "registry_digest": "sha256:d1748d82cc6537ac2b62feb3a831427088e25d66f7c06a1c595930de9ccfad62"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-suggestion-path-stays-inside-the-package",
+      "mutated_protection": "apps/platform/internal/trial/improvement/apply.go:234: if cleaned != p || !fs.ValidPath(cleaned) || cleaned == \".\" { -> if false && (cleaned != p || !fs.ValidPath(cleaned) || cleaned == \".\") {",
+      "failure_evidence": "=== RUN   TestTargetPathsThatLeaveThePackageAreRefusedNotRepaired\n    suggest_test.go:87: cleanTargetPath(\"../secrets.txt\") = \"../secrets.txt\", accepted; a path that escapes or needed repairing is not the path the proposal meant\n    suggest_test.go:87: cleanTargetPath(\"docs/../../out\") = \"../out\", accepted; a path that escapes or needed repairing is not the path the proposal meant\n    suggest_test.go:87: cleanTargetPath(\"./SKILL.md\") = \"SKILL.md\", accepted; a path that escapes or needed repairing is not the path the proposal meant\n    suggest_test.go:87: cleanTargetPath(\"scripts//run.py\") = \"scripts/run.py\", accepted; a path that escapes or needed repairing is not the path the proposal meant\n    suggest_test.go:87: cleanTargetPath(\"..\") = \"..\", accepted; a path that escapes or needed repairing is not the path the proposal meant\n    suggest_test.go:87: cleanTargetPath(\".\") = \".\", accepted; a path that escapes or needed repairing is not the path the proposal meant\n--- FAIL: TestTargetPathsThatLeaveThePackageAreRefusedNotRepaired (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement\t3.239s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-held-skill-gets-no-suggestion-diff",
+      "mutated_protection": "apps/platform/internal/trial/improvement/apply.go:165: if sc.skill.AccessRestricted { -> if sc.skill.AccessRestricted && false {",
+      "failure_evidence": "=== RUN   TestAHeldSkillBlocksASuggestionBeforeAnyFileIsRead\n    suggest_test.go:23: a held skill: blocked = &{SuggestionID: Reason:path_out_of_bounds Message:the suggestion names a path that does not resolve inside the package, so nothing it proposes can be written}, want access_restricted\n--- FAIL: TestAHeldSkillBlocksASuggestionBeforeAnyFileIsRead (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement\t3.495s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-suggestion-applies-only-to-the-bytes-it-was-written-for",
+      "mutated_protection": "apps/platform/internal/trial/improvement/apply.go:187: if origin != current { -> if origin != current && false {",
+      "failure_evidence": "=== RUN   TestASuggestionWhoseFileHasMovedOnIsRefusedWhileTheRestOfTheBatchApplies\n2026/10/17 14:40:49 INFO improvement proposals evaluation_id=46316872-c3eb-4300-af10-92cc71ba3f5b proposed=3 stored=3 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    suggestion_apply_characterization_test.go:96: applied [feaadcf5-eb1e-4b22-bf58-4ce3fe99d160 19dd2a06-a588-4307-ab68-da15dc50231e], want only the notes suggestion 19dd2a06-a588-4307-ab68-da15dc50231e\n    suggestion_apply_characterization_test.go:100: rejected [], want feaadcf5-eb1e-4b22-bf58-4ce3fe99d160 as target_changed\n    suggestion_apply_characterization_test.go:110: SKILL.md in the new version = \"---\\nname: sugg-moved-on-skill\\ndescription: Reports on sugg-moved-on-skill.\\nlicense: MIT\\n---\\n\\nUse it like this.\\n\\nIt writes an xlsx file.\\n\", want the first change and not the refused one\n--- FAIL: TestASuggestionWhoseFileHasMovedOnIsRefusedWhileTheRestOfTheBatchApplies (0.41s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.004s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-binary-target-gets-no-diff",
+      "mutated_protection": "apps/platform/internal/trial/improvement/apply.go:222: if bytes.IndexByte(data[:min(len(data), binaryProbeBytes)], 0) >= 0 { -> if false && bytes.IndexByte(data[:min(len(data), binaryProbeBytes)], 0) >= 0 {",
+      "failure_evidence": "=== RUN   TestReadTargetLooksForANulByteOnlyInTheFirst8000Bytes\n    apply_limits_characterization_test.go:21: a NUL byte at offset 7999: err = <nil>, want the not-text refusal\n--- FAIL: TestReadTargetLooksForANulByteOnlyInTheFirst8000Bytes (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement\t3.930s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-suggestion-decision-is-accepted-or-rejected",
+      "mutated_protection": "apps/platform/internal/trial/improvement/evaluation.go:180: case !to.chosen(): -> case !to.chosen() && false:",
+      "failure_evidence": "--- FAIL: T\n...\nestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal (0.00s)\n    --- PASS: TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal/accepting (0.00s)\n    --- PASS: TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal/rejecting (0.00s)\n    --- FAIL: TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal/going_back_to_pending_is_not_a_choice (0.00s)\n    --- FAIL: TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal/an_empty_decision_is_not_a_choice (0.00s)\n    --- FAIL: TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal/an_undeclared_word_is_not_a_choice (0.00s)\n    --- PASS: TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal/a_suggestion_this_evaluation_does_not_hold (0.00s)\n    --- PASS: TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal/rejecting_an_applied_suggestion (0.00s)\n    --- PASS: TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal/accepting_an_applied_suggestion_again (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement\t3.548s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-applied-acceptance-is-final",
+      "mutated_protection": "apps/platform/internal/trial/improvement/evaluation.go:184: case suggestion.AppliedSkillVersionID.Valid && to != DecisionAccepted: -> case suggestion.AppliedSkillVersionID.Valid && to != DecisionAccepted && false:",
+      "failure_evidence": "--- FAIL: T\n...\nestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal (0.00s)\n    --- PASS: TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal/accepting (0.00s)\n    --- PASS: TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal/rejecting (0.00s)\n    --- PASS: TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal/going_back_to_pending_is_not_a_choice (0.00s)\n    --- PASS: TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal/an_empty_decision_is_not_a_choice (0.00s)\n    --- PASS: TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal/an_undeclared_word_is_not_a_choice (0.00s)\n    --- PASS: TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal/a_suggestion_this_evaluation_does_not_hold (0.00s)\n    --- FAIL: TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal/rejecting_an_applied_suggestion (0.00s)\n    --- PASS: TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal/accepting_an_applied_suggestion_again (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement\t3.658s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-only-a-pending-evaluation-settles",
+      "mutated_protection": "apps/platform/internal/trial/improvement/evaluation.go:147: func (e *Evaluation) Complete(v assessment) { if !e.Status().AwaitsTheJudge() { -> func (e *Evaluation) Complete(v assessment) { if !e.Status().AwaitsTheJudge() && false {",
+      "failure_evidence": "ion\n=== RUN   TestOnlyAPendingRevisionSettles/complete_a_completed_revision\n    evaluation_test.go:185: events = []eval.Event{eval.EvaluationCompleted{Overall:\"met\", EvidenceComplete:true}}, want []eval.Event{eval.Refused{Reason:\"settled\"}}\n=== RUN   TestOnlyAPendingRevisionSettles/complete_a_failed_revision\n    evaluation_test.go:183: a settled revision became \"completed\"\n=== RUN   TestOnlyAPendingRevisionSettles/fail_a_pending_revision\n=== RUN   TestOnlyAPendingRevisionSettles/fail_a_completed_revision\n=== RUN   TestOnlyAPendingRevisionSettles/fail_a_failed_revision\n--- FAIL: TestOnlyAPendingRevisionSettles (0.00s)\n    --- PASS: TestOnlyAPendingRevisionSettles/complete_a_pending_revision (0.00s)\n    --- FAIL: TestOnlyAPendingRevisionSettles/complete_a_completed_revision (0.00s)\n    --- FAIL: TestOnlyAPendingRevisionSettles/complete_a_failed_revision (0.00s)\n    --- PASS: TestOnlyAPendingRevisionSettles/fail_a_pending_revision (0.00s)\n    --- PASS: TestOnlyAPendingRevisionSettles/fail_a_completed_revision (0.00s)\n    --- PASS: TestOnlyAPendingRevisionSettles/fail_a_failed_revision (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement\t3.653s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-only-actionable-suggestion-categories-are-stored",
+      "mutated_protection": "apps/platform/internal/trial/improvement/suggest.go:153: if !SuggestionCategory(p.Category).actionable() { -> if !SuggestionCategory(p.Category).actionable() && false {",
+      "failure_evidence": "=== RUN   TestOnlyProposalsThePlatformCanActOnAreStored\n    suggest_test.go:120: unknown category: proposal was accepted for storage\n    suggest_test.go:120: mcp category: proposal was accepted for storage\n--- FAIL: TestOnlyProposalsThePlatformCanActOnAreStored (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement\t3.770s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/suggestion_apply_characterization_test.go",
+    "apps/platform/internal/trial/improvement/apply.go",
+    "apps/platform/internal/trial/improvement/apply_limits_characterization_test.go",
+    "apps/platform/internal/trial/improvement/evaluation.go",
+    "apps/platform/internal/trial/improvement/evaluation_test.go",
+    "apps/platform/internal/trial/improvement/suggest.go",
+    "apps/platform/internal/trial/improvement/suggest_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-suggestion-path-stays-inside-the-package",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTargetPathsThatLeaveThePackageAreRefusedNotRepaired$ ./internal/trial/improvement/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:85d0e20c34e4c1ca1d28f98f092cdead6fae4ce88775ae6b56923a721cbd0f42",
+      "finished_at": "2026-10-17T06:48:12.412251Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-held-skill-gets-no-suggestion-diff",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAHeldSkillBlocksASuggestionBeforeAnyFileIsRead$ ./internal/trial/improvement/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b7870f953b5a30490020ff3095b613c011381fd6f0eb7ccdb0caddaa09edd7b7",
+      "finished_at": "2026-10-17T06:48:21.078093Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-suggestion-applies-only-to-the-bytes-it-was-written-for",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestASuggestionWhoseFileHasMovedOnIsRefusedWhileTheRestOfTheBatchApplies$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b4dd90a78c6ba1b07b1b62d583858cbb2b843d67ac8207ac3f9dcff963c14c14",
+      "finished_at": "2026-10-17T06:48:31.212552Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-binary-target-gets-no-diff",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestReadTargetLooksForANulByteOnlyInTheFirst8000Bytes$ ./internal/trial/improvement/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:3da03605b0c61b250e4b327b9392bfdb71f86c19dd5bdf67dd026b8f062ca30e",
+      "finished_at": "2026-10-17T06:48:37.968042Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-suggestion-decision-is-accepted-or-rejected",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal$ ./internal/trial/improvement/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:510973063db6fc0a006cf0ec5ebd3f75295f130419ab3433d65ff17bdf9ce505",
+      "finished_at": "2026-10-17T06:48:47.194728Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-applied-acceptance-is-final",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal$ ./internal/trial/improvement/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e240ee9658bb7707b2218f3690c4ed9fab8812c046575ece86084f6fa9015f7b",
+      "finished_at": "2026-10-17T06:48:53.620911Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-only-a-pending-evaluation-settles",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestOnlyAPendingRevisionSettles$ ./internal/trial/improvement/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:fb50f5dbe1f3ec549aed8f374a05cffd9312276371a034b154480113768bb6a2",
+      "finished_at": "2026-10-17T06:48:59.894561Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-only-actionable-suggestion-categories-are-stored",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestOnlyProposalsThePlatformCanActOnAreStored$ ./internal/trial/improvement/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:625fd6292e22744b6b0761f2f5e4ae09e13739b9df390401a7b905d4bccc7181",
+      "finished_at": "2026-10-17T06:49:07.329762Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

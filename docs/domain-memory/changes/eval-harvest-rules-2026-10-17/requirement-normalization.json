@@ -1,0 +1,55 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "eval-harvest-rules-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed the rules the eval Context enforces and tests but the Registry did not hold.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context eval lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-suggestion-path-stays-inside-the-package",
+      "statement": "A suggestion's target must be a clean relative path inside the Skill package; empty, absolute, traversing or uncleaned paths are refused, not repaired."
+    },
+    {
+      "id": "enforced-a-held-skill-gets-no-suggestion-diff",
+      "statement": "A Skill held for a licensing question gets no reproduced diff and no version from its suggestions; the block is decided before any file is read."
+    },
+    {
+      "id": "enforced-a-suggestion-applies-only-to-the-bytes-it-was-written-for",
+      "statement": "A suggestion applies only while its target file in the newest version is byte-identical to the version it was written against; otherwise it is blocked as target_changed."
+    },
+    {
+      "id": "enforced-a-binary-target-gets-no-diff",
+      "statement": "A target file with a NUL byte in its first 8000 bytes is not diffable, so its suggestion is blocked as diff_unavailable rather than applied unseen."
+    },
+    {
+      "id": "enforced-a-suggestion-decision-is-accepted-or-rejected",
+      "statement": "A suggestion decision must be accepted or rejected; pending or any other word is refused as not_a_choice."
+    },
+    {
+      "id": "enforced-an-applied-acceptance-is-final",
+      "statement": "Once a suggestion has gone into a Skill version its acceptance cannot be withdrawn; rejecting it is refused as acceptance_is_final."
+    },
+    {
+      "id": "enforced-only-a-pending-evaluation-settles",
+      "statement": "An evaluation settles only while it awaits the judge; a second verdict on a settled evaluation is refused, so the first stands."
+    },
+    {
+      "id": "enforced-only-actionable-suggestion-categories-are-stored",
+      "statement": "Only skill, runtime, tool and dataset suggestions are stored; MCP and unknown categories are dropped."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/suggestion_apply_characterization_test.go",
+    "apps/platform/internal/trial/improvement/apply.go",
+    "apps/platform/internal/trial/improvement/apply_limits_characterization_test.go",
+    "apps/platform/internal/trial/improvement/evaluation.go",
+    "apps/platform/internal/trial/improvement/evaluation_test.go",
+    "apps/platform/internal/trial/improvement/suggest.go",
+    "apps/platform/internal/trial/improvement/suggest_test.go"
+  ]
+}

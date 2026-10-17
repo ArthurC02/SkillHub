@@ -1,0 +1,353 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "eval-harvest-rules-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "eval-harvest-rules-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T06:48:03.786204Z",
+  "verified_at": "2026-10-17T06:49:08.012087Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "8e658bb9fe4c1393bd5aface5aee05da86640a55",
+    "registry_digest": "sha256:d1748d82cc6537ac2b62feb3a831427088e25d66f7c06a1c595930de9ccfad62"
+  },
+  "affected_contexts": [
+    "eval"
+  ],
+  "rule_ids": [
+    "a-suggestion-path-stays-inside-the-package",
+    "a-held-skill-gets-no-suggestion-diff",
+    "a-suggestion-applies-only-to-the-bytes-it-was-written-for",
+    "a-binary-target-gets-no-diff",
+    "a-suggestion-decision-is-accepted-or-rejected",
+    "an-applied-acceptance-is-final",
+    "only-a-pending-evaluation-settles",
+    "only-actionable-suggestion-categories-are-stored"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "eval",
+    "invariant": "Only eval settles evaluations and decides, reproduces and applies suggestions.",
+    "evidence": [
+      "apps/platform/internal/trial/improvement/apply.go:228-238"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/improvement/suggest.go:152-162"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the eval Context found these enforced rules; the reviewed Registry held none."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording guards no test reaches: they wait for a test."
+    ],
+    "proof_obligations": [
+      "rule-a-suggestion-path-stays-inside-the-package",
+      "rule-a-held-skill-gets-no-suggestion-diff",
+      "rule-a-suggestion-applies-only-to-the-bytes-it-was-written-for",
+      "rule-a-binary-target-gets-no-diff",
+      "rule-a-suggestion-decision-is-accepted-or-rejected",
+      "rule-an-applied-acceptance-is-final",
+      "rule-only-a-pending-evaluation-settles",
+      "rule-only-actionable-suggestion-categories-are-stored"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-suggestion-path-stays-inside-the-package",
+        "statement": "A suggestion's target must be a clean relative path inside the Skill package; empty, absolute, traversing or uncleaned paths are refused, not repaired.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A proposal targeting ../../etc/passwd or ./SKILL.md is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 228,
+              "end": 238
+            },
+            "excerpt_sha256": "sha256:8d29a5dda5e6be22e6ac2413293cf8231513265f4798fa1215af7436b21a07d6"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/suggest_test.go",
+            "lines": {
+              "start": 81,
+              "end": 96
+            },
+            "content_sha256": "sha256:afceb6b21594032ef88ba766bd43101f695cd99af5a8ebbafb9662d00827ed30",
+            "excerpt_sha256": "sha256:099aa14f57a807c343b0e1199f0bcedcd623e6ed7983c078e167a417e284b536"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-held-skill-gets-no-suggestion-diff",
+        "statement": "A Skill held for a licensing question gets no reproduced diff and no version from its suggestions; the block is decided before any file is read.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A held Skill's suggestion preview is blocked as access_restricted."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 165,
+              "end": 169
+            },
+            "excerpt_sha256": "sha256:c6d874d6357a03f12bd1b654b9f430ba9d3b2e5b311a3088a913683298ace043"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/suggest_test.go",
+            "lines": {
+              "start": 21,
+              "end": 28
+            },
+            "content_sha256": "sha256:afceb6b21594032ef88ba766bd43101f695cd99af5a8ebbafb9662d00827ed30",
+            "excerpt_sha256": "sha256:64c779f71e0122412cd2ac982ed6666842ec4b14ce1db4250852e12cf5883d4d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-suggestion-applies-only-to-the-bytes-it-was-written-for",
+        "statement": "A suggestion applies only while its target file in the newest version is byte-identical to the version it was written against; otherwise it is blocked as target_changed.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Two accepted suggestions on one file: the first applies, the second is refused as target_changed."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 187,
+              "end": 192
+            },
+            "excerpt_sha256": "sha256:12701771cebb71792b2f94443da52cf878d92d038ac3c38562bbd05c2e2265c6"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggestion_apply_characterization_test.go",
+            "lines": {
+              "start": 69,
+              "end": 112
+            },
+            "content_sha256": "sha256:18e1d76d8315ace8b07c1cab060ad7ce3d811ddadb706e10664ef2f48072d903",
+            "excerpt_sha256": "sha256:783bbae9a1abdbdfed086e415e58a464701fd669091612052bbd798b3fe0978a"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-binary-target-gets-no-diff",
+        "statement": "A target file with a NUL byte in its first 8000 bytes is not diffable, so its suggestion is blocked as diff_unavailable rather than applied unseen.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A target with a NUL at offset 7999 is refused as not text."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 219,
+              "end": 224
+            },
+            "excerpt_sha256": "sha256:bd538d6f219337858e3f5f9d60751d6a0c5ea9dc0f933e547f6cc24760ca02e7"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/apply_limits_characterization_test.go",
+            "lines": {
+              "start": 11,
+              "end": 26
+            },
+            "content_sha256": "sha256:1fa1b38217c8bf956087fe45b1e79413aeca74b6f02fbe93589c4355d20de98e",
+            "excerpt_sha256": "sha256:f6543c327f6a0e2382e9b4190b13b59de84fb524a176273fb020a6cc9e2232b5"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-suggestion-decision-is-accepted-or-rejected",
+        "statement": "A suggestion decision must be accepted or rejected; pending or any other word is refused as not_a_choice.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Deciding maybe, or going back to pending, leaves the decision as it was."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/evaluation.go",
+            "lines": {
+              "start": 178,
+              "end": 184
+            },
+            "excerpt_sha256": "sha256:e04c888239d2bd639dac10d1fb70cb3f493a4d2ecc4b6cb2764d10fbf0e24f21"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/evaluation_test.go",
+            "lines": {
+              "start": 209,
+              "end": 255
+            },
+            "content_sha256": "sha256:ea91ddee2925fce37594fc11003a0ba82f0b5b49306788c3fffa4b6f98a6f152",
+            "excerpt_sha256": "sha256:f7916b8d47b08f9157c7f24573e676ad5feef8643653e0ad00a99355a101bf7d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-applied-acceptance-is-final",
+        "statement": "Once a suggestion has gone into a Skill version its acceptance cannot be withdrawn; rejecting it is refused as acceptance_is_final.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A suggestion applied to version 9 cannot be flipped to rejected."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/evaluation.go",
+            "lines": {
+              "start": 184,
+              "end": 185
+            },
+            "excerpt_sha256": "sha256:d247f84a2b5fbb66e4b7d469c8864454b619a894f3d3089b7fa6baba42099b3a"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/evaluation_test.go",
+            "lines": {
+              "start": 209,
+              "end": 255
+            },
+            "content_sha256": "sha256:ea91ddee2925fce37594fc11003a0ba82f0b5b49306788c3fffa4b6f98a6f152",
+            "excerpt_sha256": "sha256:f7916b8d47b08f9157c7f24573e676ad5feef8643653e0ad00a99355a101bf7d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-a-pending-evaluation-settles",
+        "statement": "An evaluation settles only while it awaits the judge; a second verdict on a settled evaluation is refused, so the first stands.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Completing an already failed evaluation leaves it failed."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/evaluation.go",
+            "lines": {
+              "start": 147,
+              "end": 152
+            },
+            "excerpt_sha256": "sha256:5aa83b79579c4f64f96680c2c0b428519540d35b8b503c0db000e49e35432e37"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/evaluation_test.go",
+            "lines": {
+              "start": 152,
+              "end": 189
+            },
+            "content_sha256": "sha256:ea91ddee2925fce37594fc11003a0ba82f0b5b49306788c3fffa4b6f98a6f152",
+            "excerpt_sha256": "sha256:c41fab7e4e26b585f07e5c98b5643869130397a4aa052cc2c12a77ac69b95e9e"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-actionable-suggestion-categories-are-stored",
+        "statement": "Only skill, runtime, tool and dataset suggestions are stored; MCP and unknown categories are dropped.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A proposal in category mcp is not stored."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/suggest.go",
+            "lines": {
+              "start": 152,
+              "end": 162
+            },
+            "excerpt_sha256": "sha256:43813eb17f4af906a42facf88e98ba70fd1a825d2f4ae145d2a0d834812682be"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/suggest_test.go",
+            "lines": {
+              "start": 98,
+              "end": 123
+            },
+            "content_sha256": "sha256:afceb6b21594032ef88ba766bd43101f695cd99af5a8ebbafb9662d00827ed30",
+            "excerpt_sha256": "sha256:1dc7f540f9c7ac1ad6aed482f041336655f67d5af04952e259fe10f8c584e17e"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T06:49:07.637777Z",
+      "scope": "Record eval rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "8e658bb9fe4c1393bd5aface5aee05da86640a55",
+        "registry_digest": "sha256:d1748d82cc6537ac2b62feb3a831427088e25d66f7c06a1c595930de9ccfad62"
+      }
+    }
+  ]
+}
