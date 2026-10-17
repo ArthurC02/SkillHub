@@ -1,0 +1,65 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "creation-harvest-rules-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed the fetch consent, message, budget, replay, command and state rules the creation Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context creation lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-fetch-request-starts-without-an-earlier-approval",
+      "statement": "Each new fetch the model asks for waits for the person to confirm that exact URL; an earlier approval never carries over."
+    },
+    {
+      "id": "enforced-a-fetch-is-confirmed-or-declined-only-while-one-is-pending",
+      "statement": "Confirming or declining a fetch is refused unless a fetch permission question is pending."
+    },
+    {
+      "id": "enforced-only-public-http-urls-without-credentials-are-fetched",
+      "statement": "Only http or https URLs with a public host and no credentials can be fetched; a literal private address is refused."
+    },
+    {
+      "id": "enforced-a-person-message-is-at-most-4000-characters",
+      "statement": "A person's message is refused when blank or longer than 4000 characters."
+    },
+    {
+      "id": "enforced-a-session-budget-lies-between-one-call-and-the-ceiling",
+      "statement": "A session is refused before any database work when its budget is below one model call's cost or above the session ceiling."
+    },
+    {
+      "id": "enforced-a-repeated-start-resumes-only-the-same-request",
+      "statement": "Starting a session with an id already used returns that session only for the same message and budget; a different request with the same id is refused as a replay mismatch."
+    },
+    {
+      "id": "enforced-past-the-deadline-only-cancel-is-accepted",
+      "statement": "After a creation session's deadline every command except cancel is refused."
+    },
+    {
+      "id": "enforced-only-the-model-produces-a-draft",
+      "statement": "A creation session reaches draft_ready only through the model's step; no other transition may produce a draft."
+    },
+    {
+      "id": "enforced-a-proposal-holds-at-most-12-acceptance-criteria",
+      "statement": "A model reply with more than 12 acceptance criteria is rejected."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/creator/creation/attempt_test.go",
+    "apps/platform/internal/creator/creation/command_test.go",
+    "apps/platform/internal/creator/creation/creation.go",
+    "apps/platform/internal/creator/creation/proposal.go",
+    "apps/platform/internal/creator/creation/proposal_test.go",
+    "apps/platform/internal/creator/creation/run_fetch_commands.go",
+    "apps/platform/internal/creator/creation/session_start.go",
+    "apps/platform/internal/creator/creation/start_test.go",
+    "apps/platform/internal/creator/creation/state.go",
+    "apps/platform/internal/creator/creation/state_test.go",
+    "apps/platform/internal/creator/creation/tool_actions.go",
+    "apps/platform/internal/creator/creation/webfetch/fetch.go",
+    "apps/platform/internal/creator/creation/webfetch/fetch_test.go"
+  ]
+}

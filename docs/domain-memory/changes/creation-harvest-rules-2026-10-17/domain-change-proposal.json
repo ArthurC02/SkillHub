@@ -1,0 +1,388 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "creation-harvest-rules-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "creation-harvest-rules-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T15:15:13.743591Z",
+  "verified_at": "2026-10-17T15:16:10.222890Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "254bd8f1f2fe3633c1c86e6fd369efb0cd36683c",
+    "registry_digest": "sha256:1325251d224a68c08253e82202736522787581fa68459c5c2b66d0bcf83fec84"
+  },
+  "affected_contexts": [
+    "creation"
+  ],
+  "rule_ids": [
+    "a-fetch-request-starts-without-an-earlier-approval",
+    "a-fetch-is-confirmed-or-declined-only-while-one-is-pending",
+    "only-public-http-urls-without-credentials-are-fetched",
+    "a-person-message-is-at-most-4000-characters",
+    "a-session-budget-lies-between-one-call-and-the-ceiling",
+    "a-repeated-start-resumes-only-the-same-request",
+    "past-the-deadline-only-cancel-is-accepted",
+    "only-the-model-produces-a-draft",
+    "a-proposal-holds-at-most-12-acceptance-criteria"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "creation",
+    "invariant": "Only creation decides a creation session's state, budget and what the person must approve.",
+    "evidence": [
+      "apps/platform/internal/creator/creation/state.go:35-107"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: creation reaches its collaborators through inverted ports.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/creator/creation/session_start.go:32-52"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the creation Context found these enforced rules; the reviewed Registry held only an architecture rule."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording guards no test reaches: they wait for a test."
+    ],
+    "proof_obligations": [
+      "rule-a-fetch-request-starts-without-an-earlier-approval",
+      "rule-a-fetch-is-confirmed-or-declined-only-while-one-is-pending",
+      "rule-only-public-http-urls-without-credentials-are-fetched",
+      "rule-a-person-message-is-at-most-4000-characters",
+      "rule-a-session-budget-lies-between-one-call-and-the-ceiling",
+      "rule-a-repeated-start-resumes-only-the-same-request",
+      "rule-past-the-deadline-only-cancel-is-accepted",
+      "rule-only-the-model-produces-a-draft",
+      "rule-a-proposal-holds-at-most-12-acceptance-criteria"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-fetch-request-starts-without-an-earlier-approval",
+        "statement": "Each new fetch the model asks for waits for the person to confirm that exact URL; an earlier approval never carries over.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "After approving one URL, a new fetch request is pending with no approved URL."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/tool_actions.go",
+            "lines": {
+              "start": 135,
+              "end": 148
+            },
+            "excerpt_sha256": "sha256:d9bb367a7ac20e28ef77c5351f7dbf0b19056789355d293b0354294c204b516d"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/attempt_test.go",
+            "lines": {
+              "start": 399,
+              "end": 411
+            },
+            "content_sha256": "sha256:ccbf6ad4c1917d07188a0d29841c9b235c6b586fbbff846ff7309214ccae8b11",
+            "excerpt_sha256": "sha256:54244f560d249db6b1ece5d95e8f843014ad4d3c4160cb63ea17ed610f5a4e90"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-fetch-is-confirmed-or-declined-only-while-one-is-pending",
+        "statement": "Confirming or declining a fetch is refused unless a fetch permission question is pending.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "confirm_fetch when nobody asked is an invalid command."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/run_fetch_commands.go",
+            "lines": {
+              "start": 32,
+              "end": 60
+            },
+            "excerpt_sha256": "sha256:360ef5dbd42624609ea908b34b964a46cb3bac78943619903c49874b192ec914"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/command_test.go",
+            "lines": {
+              "start": 481,
+              "end": 490
+            },
+            "content_sha256": "sha256:7ccf02a1019cef1646b6857da46056d022ff92ea20175f842cb2df91f171a3bb",
+            "excerpt_sha256": "sha256:a5b266aa0fdc0520d59634cfe0aefde3930e8beafddb83473ed5e8dc9852a6b5"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-public-http-urls-without-credentials-are-fetched",
+        "statement": "Only http or https URLs with a public host and no credentials can be fetched; a literal private address is refused.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "http://10.0.0.1/ and http://user:pw@host/ are refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/webfetch/fetch.go",
+            "lines": {
+              "start": 38,
+              "end": 54
+            },
+            "excerpt_sha256": "sha256:bb0bdd2751e1170f36a5886c187087eaea7c52b190601ec03dd18ee4149aa65f"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/webfetch/fetch_test.go",
+            "lines": {
+              "start": 15,
+              "end": 25
+            },
+            "content_sha256": "sha256:01ed0b716a3142ed08c63e3609efdf9a37342f7bb0ce07af7e81c89560a9c0ff",
+            "excerpt_sha256": "sha256:f1c60c5534694653cf1dd7b42c7c8c5476dd19a5205de389078658291d03120c"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-person-message-is-at-most-4000-characters",
+        "statement": "A person's message is refused when blank or longer than 4000 characters.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "4000 characters are accepted; 4001 are refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/creation.go",
+            "lines": {
+              "start": 413,
+              "end": 420
+            },
+            "excerpt_sha256": "sha256:ce1ed5eb3f399d531ca86580f30822b1cc6e5b82892bd2a5f49606c128e2022e"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/command_test.go",
+            "lines": {
+              "start": 145,
+              "end": 166
+            },
+            "content_sha256": "sha256:7ccf02a1019cef1646b6857da46056d022ff92ea20175f842cb2df91f171a3bb",
+            "excerpt_sha256": "sha256:5dd8e61af210a147411209b8d1b40e8fa5a1f6188d13f45d46b7dfa2205cc0e7"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-session-budget-lies-between-one-call-and-the-ceiling",
+        "statement": "A session is refused before any database work when its budget is below one model call's cost or above the session ceiling.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "A budget just over the ceiling is refused as out of band."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/session_start.go",
+            "lines": {
+              "start": 32,
+              "end": 52
+            },
+            "excerpt_sha256": "sha256:b20110a1f8ae1270f000a1990171cfd12ae18a370e6c5dacd0a52b9a53e30c9f"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/start_test.go",
+            "lines": {
+              "start": 16,
+              "end": 45
+            },
+            "content_sha256": "sha256:f42d104d3040b101e80fd046ab8a7b096d7ce925f1b911bc9a87e596e04680f4",
+            "excerpt_sha256": "sha256:87a2f6d2cef57d471c95b6b55fe4e64e52e7f9ffe5f2fee896b9400c4047681f"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-repeated-start-resumes-only-the-same-request",
+        "statement": "Starting a session with an id already used returns that session only for the same message and budget; a different request with the same id is refused as a replay mismatch.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "The same id with another message is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/session_start.go",
+            "lines": {
+              "start": 54,
+              "end": 64
+            },
+            "excerpt_sha256": "sha256:828dbb63dd45e30cd26b34959b781dbb49311e3809abf9a8289690d5f55da76c"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/start_test.go",
+            "lines": {
+              "start": 69,
+              "end": 83
+            },
+            "content_sha256": "sha256:f42d104d3040b101e80fd046ab8a7b096d7ce925f1b911bc9a87e596e04680f4",
+            "excerpt_sha256": "sha256:3590e5ff8b0a7df610dd3acc932c91daf4d8ee8c2034a648c86343942609754b"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "past-the-deadline-only-cancel-is-accepted",
+        "statement": "After a creation session's deadline every command except cancel is refused.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "A message after the deadline is refused; cancel still works."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/creation.go",
+            "lines": {
+              "start": 285,
+              "end": 308
+            },
+            "excerpt_sha256": "sha256:e620da6d930b20f109a6417a623ce6a8aaa563895900dba269b812192ab9a5e6"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/command_test.go",
+            "lines": {
+              "start": 89,
+              "end": 99
+            },
+            "content_sha256": "sha256:7ccf02a1019cef1646b6857da46056d022ff92ea20175f842cb2df91f171a3bb",
+            "excerpt_sha256": "sha256:fef8105ca0d1d2d64c1c6a69b39b14185821def4d6fd6dd9ffa23277de398d51"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-the-model-produces-a-draft",
+        "statement": "A creation session reaches draft_ready only through the model's step; no other transition may produce a draft.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "waiting_input to draft_ready is an illegal transition."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/state.go",
+            "lines": {
+              "start": 35,
+              "end": 107
+            },
+            "excerpt_sha256": "sha256:9adca72d292652876bb34bcfb9e8aaeccd270cd04c3295430167283b57dd9327"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/state_test.go",
+            "lines": {
+              "start": 95,
+              "end": 107
+            },
+            "content_sha256": "sha256:943821701e3107716939d8d496c6ffab0c5fc664e2dde657c74593b3bd2ae248",
+            "excerpt_sha256": "sha256:720926e694e872cd0b6b2c6985ad991871ecb23539c1bd9870b63d1132e7d5f5"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-proposal-holds-at-most-12-acceptance-criteria",
+        "statement": "A model reply with more than 12 acceptance criteria is rejected.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "13 criteria are rejected."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/proposal.go",
+            "lines": {
+              "start": 35,
+              "end": 64
+            },
+            "excerpt_sha256": "sha256:aa1249f62aa4e31a1d0b8c709774e4b42cef3ca4650d311b734125c2cd1978d7"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/proposal_test.go",
+            "lines": {
+              "start": 119,
+              "end": 134
+            },
+            "content_sha256": "sha256:9a96090db79da8b5d2c232dd3defa3928d01c388605276b6aaef3809d64da282",
+            "excerpt_sha256": "sha256:097778f802025133658739675f12d98c2daff370bb256700f673e1634ed03270"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T15:16:09.817174Z",
+      "scope": "Record creation rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "254bd8f1f2fe3633c1c86e6fd369efb0cd36683c",
+        "registry_digest": "sha256:1325251d224a68c08253e82202736522787581fa68459c5c2b66d0bcf83fec84"
+      }
+    }
+  ]
+}

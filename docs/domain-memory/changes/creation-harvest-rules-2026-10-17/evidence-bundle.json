@@ -1,0 +1,187 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "creation-harvest-rules-2026-10-17",
+  "proposal_id": "creation-harvest-rules-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "254bd8f1f2fe3633c1c86e6fd369efb0cd36683c",
+    "registry_digest": "sha256:1325251d224a68c08253e82202736522787581fa68459c5c2b66d0bcf83fec84"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-fetch-request-starts-without-an-earlier-approval",
+      "mutated_protection": "apps/platform/internal/creator/creation/tool_actions.go:144: p.PendingFetchURL, p.ApprovedFetchURL = clean, \"\" -> p.PendingFetchURL, p.ApprovedFetchURL = clean, clean",
+      "failure_evidence": "=== RUN   TestANewFetchRequestStartsWithoutAnEarlierApproval\n    attempt_test.go:409: approved = \"https://example.com/a\", want a fresh request to need a fresh confirmation\n--- FAIL: TestANewFetchRequestStartsWithoutAnEarlierApproval (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t2.586s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-fetch-is-confirmed-or-declined-only-while-one-is-pending",
+      "mutated_protection": "apps/platform/internal/creator/creation/run_fetch_commands.go:33: p.PendingAction == PendingFetchPermission && p.PendingFetchURL != \"\" -> p.PendingFetchURL != \"\"",
+      "failure_evidence": "=== RUN   TestAFetchIsConfirmedOrDeclinedOnlyWhileOneIsPending\n    command_test.go:484: confirm, nobody asked: err = <nil>\n    command_test.go:487: decline, nobody asked: err = <nil>\n--- FAIL: TestAFetchIsConfirmedOrDeclinedOnlyWhileOneIsPending (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t2.759s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-only-public-http-urls-without-credentials-are-fetched",
+      "mutated_protection": "apps/platform/internal/creator/creation/webfetch/fetch.go:49: ip != nil && !publicIP(ip) -> ip != nil && !publicIP(ip) && false",
+      "failure_evidence": "=== RUN   TestValidateFetchURLRefusesWhatMustNeverBeAsked\n    fetch_test.go:18: \"http://127.0.0.1/\" was accepted\n--- FAIL: TestValidateFetchURLRefusesWhatMustNeverBeAsked (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/webfetch\t2.158s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-person-message-is-at-most-4000-characters",
+      "mutated_protection": "apps/platform/internal/creator/creation/creation.go:414: utf8.RuneCountInString(message) > maxPersonMessageRunes -> utf8.RuneCountInString(message) > maxPersonMessageRunes+1",
+      "failure_evidence": "=== RUN   TestAMessageMustHaveTextFitTheLimitAndLeaveRoom\n=== RUN   TestAMessageMustHaveTextFitTheLimitAndLeaveRoom/blank\n=== RUN   TestAMessageMustHaveTextFitTheLimitAndLeaveRoom/at_the_rune_limit\n=== RUN   TestAMessageMustHaveTextFitTheLimitAndLeaveRoom/one_rune_over\n    command_test.go:162: err = <nil>, want accepted=false\n=== RUN   TestAMessageMustHaveTextFitTheLimitAndLeaveRoom/at_the_message_ceiling\n=== RUN   TestAMessageMustHaveTextFitTheLimitAndLeaveRoom/one_below_the_ceiling\n--- FAIL: TestAMessageMustHaveTextFitTheLimitAndLeaveRoom (0.00s)\n    --- PASS: TestAMessageMustHaveTextFitTheLimitAndLeaveRoom/blank (0.00s)\n    --- PASS: TestAMessageMustHaveTextFitTheLimitAndLeaveRoom/at_the_rune_limit (0.00s)\n    --- FAIL: TestAMessageMustHaveTextFitTheLimitAndLeaveRoom/one_rune_over (0.00s)\n    --- PASS: TestAMessageMustHaveTextFitTheLimitAndLeaveRoom/at_the_message_ceiling (0.00s)\n    --- PASS: TestAMessageMustHaveTextFitTheLimitAndLeaveRoom/one_below_the_ceiling (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t2.609s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-session-budget-lies-between-one-call-and-the-ceiling",
+      "mutated_protection": "apps/platform/internal/creator/creation/session_start.go:48: budget > s.Limits.MaxCostUSD -> budget > s.Limits.MaxCostUSD*2",
+      "failure_evidence": "tside the permitted band\n--- FAIL: TestStartingASessionChecksTheRequestBeforeAnyDatabaseWork (0.00s)\n    --- PASS: TestStartingASessionChecksTheRequestBeforeAnyDatabaseWork/limits_not_configured (0.00s)\n    --- PASS: TestStartingASessionChecksTheRequestBeforeAnyDatabaseWork/no_id (0.00s)\n    --- PASS: TestStartingASessionChecksTheRequestBeforeAnyDatabaseWork/budget_not_a_number (0.00s)\n    --- PASS: TestStartingASessionChecksTheRequestBeforeAnyDatabaseWork/infinite_budget (0.00s)\n    --- PASS: TestStartingASessionChecksTheRequestBeforeAnyDatabaseWork/message_one_rune_over (0.00s)\n    --- PASS: TestStartingASessionChecksTheRequestBeforeAnyDatabaseWork/message_at_the_rune_limit (0.00s)\n    --- PASS: TestStartingASessionChecksTheRequestBeforeAnyDatabaseWork/budget_below_one_call (0.00s)\n    --- PASS: TestStartingASessionChecksTheRequestBeforeAnyDatabaseWork/budget_of_exactly_one_call (0.00s)\n    --- PASS: TestStartingASessionChecksTheRequestBeforeAnyDatabaseWork/budget_at_the_ceiling (0.00s)\n    --- FAIL: TestStartingASessionChecksTheRequestBeforeAnyDatabaseWork/budget_over_the_ceiling (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t2.509s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-repeated-start-resumes-only-the-same-request",
+      "mutated_protection": "apps/platform/internal/creator/creation/session_start.go:59: e.StartHash != key -> e.StartHash != key && false",
+      "failure_evidence": "=== RUN   TestResumingAStartReturnsTheSameSessionOnlyForTheSameRequest\n    start_test.go:71: another request: err = <nil>, want ErrReplayMismatch\n--- FAIL: TestResumingAStartReturnsTheSameSessionOnlyForTheSameRequest (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t2.434s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-past-the-deadline-only-cancel-is-accepted",
+      "mutated_protection": "apps/platform/internal/creator/creation/creation.go:297: c.Kind != commandCancel && !e.Deadline.After(time.Now()) -> c.Kind != commandCancel && !e.Deadline.After(time.Now()) && false",
+      "failure_evidence": "=== RUN   TestPastTheDeadlineOnlyCancelIsAccepted\n    command_test.go:94: message after the deadline: err = <nil>, want ErrDeadline\n--- FAIL: TestPastTheDeadlineOnlyCancelIsAccepted (0.05s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t2.451s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-only-the-model-produces-a-draft",
+      "mutated_protection": "apps/platform/internal/creator/creation/state.go:106: return slices.Contains(successors[from], to) -> return slices.Contains(successors[from], to) || to == StateDraftReady",
+      "failure_evidence": "=== RUN   TestOnlyTheModelProducesADraft\n    state_test.go:101: a draft is the outcome of a model step, so queued must not reach draft_ready\n    state_test.go:101: a draft is the outcome of a model step, so waiting_input must not reach draft_ready\n    state_test.go:101: a draft is the outcome of a model step, so waiting_confirmation must not reach draft_ready\n    state_test.go:101: a draft is the outcome of a model step, so candidate_ready must not reach draft_ready\n    state_test.go:101: a draft is the outcome of a model step, so saved must not reach draft_ready\n    state_test.go:101: a draft is the outcome of a model step, so cancelled must not reach draft_ready\n    state_test.go:101: a draft is the outcome of a model step, so failed must not reach draft_ready\n    state_test.go:101: a draft is the outcome of a model step, so needs_reupload must not reach draft_ready\n--- FAIL: TestOnlyTheModelProducesADraft (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t2.337s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-proposal-holds-at-most-12-acceptance-criteria",
+      "mutated_protection": "apps/platform/internal/creator/creation/proposal.go:36: len(criteria) > MaxAcceptanceCriteria -> len(criteria) > MaxAcceptanceCriteria+1",
+      "failure_evidence": "=== RUN   TestProposalAcceptanceCriteriaCountBoundaryRejectsThirteen\n    proposal_test.go:129: MaxAcceptanceCriteria+1 criteria must be rejected: state=\"waiting_confirmation\" next=false err=<nil>\n--- FAIL: TestProposalAcceptanceCriteriaCountBoundaryRejectsThirteen (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t2.582s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/creator/creation/attempt_test.go",
+    "apps/platform/internal/creator/creation/command_test.go",
+    "apps/platform/internal/creator/creation/creation.go",
+    "apps/platform/internal/creator/creation/proposal.go",
+    "apps/platform/internal/creator/creation/proposal_test.go",
+    "apps/platform/internal/creator/creation/run_fetch_commands.go",
+    "apps/platform/internal/creator/creation/session_start.go",
+    "apps/platform/internal/creator/creation/start_test.go",
+    "apps/platform/internal/creator/creation/state.go",
+    "apps/platform/internal/creator/creation/state_test.go",
+    "apps/platform/internal/creator/creation/tool_actions.go",
+    "apps/platform/internal/creator/creation/webfetch/fetch.go",
+    "apps/platform/internal/creator/creation/webfetch/fetch_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-fetch-request-starts-without-an-earlier-approval",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestANewFetchRequestStartsWithoutAnEarlierApproval$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:296aa5ac9c7b47fd3476bc30c177905e8ee19d1f745aeb2a9cf06672ea21739a",
+      "finished_at": "2026-10-17T15:15:21.455454Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-fetch-is-confirmed-or-declined-only-while-one-is-pending",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAFetchIsConfirmedOrDeclinedOnlyWhileOneIsPending$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4cb4b2418a786bf87f1c0ddafade5484541a38a5864ff11d6546bc8bc767fba5",
+      "finished_at": "2026-10-17T15:15:27.151869Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-only-public-http-urls-without-credentials-are-fetched",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestValidateFetchURLRefusesWhatMustNeverBeAsked$ ./internal/creator/creation/webfetch/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:5721c5aa8be5342250c069279d322db933916bb36ca52274175cc632cde8818a",
+      "finished_at": "2026-10-17T15:15:31.767521Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-person-message-is-at-most-4000-characters",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAMessageMustHaveTextFitTheLimitAndLeaveRoom$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:21baa1164558c6467004c6249ca7d43afa94b3c09086c9f0bb87f394a7c5059e",
+      "finished_at": "2026-10-17T15:15:39.315750Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-session-budget-lies-between-one-call-and-the-ceiling",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestStartingASessionChecksTheRequestBeforeAnyDatabaseWork$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:35c8eff515d129ce1934b082e58dda2bbf8c4b4b82dab1dc21577741affe0ec9",
+      "finished_at": "2026-10-17T15:15:45.372806Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-repeated-start-resumes-only-the-same-request",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestResumingAStartReturnsTheSameSessionOnlyForTheSameRequest$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:10cdf38eaa48a254b12100a590db853d2d7189890104f874650a6fbcb90e1b45",
+      "finished_at": "2026-10-17T15:15:50.753905Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-past-the-deadline-only-cancel-is-accepted",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestPastTheDeadlineOnlyCancelIsAccepted$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:a5fd4d83071dfeab4f0359bafef0ab691272d8e71066102d78bc64b6a2a1aef5",
+      "finished_at": "2026-10-17T15:15:55.861668Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-only-the-model-produces-a-draft",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestOnlyTheModelProducesADraft$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f1d75abd6ab9a84df64f89dc1c9aba29c868b75dd637e2b3dd423f8700c61595",
+      "finished_at": "2026-10-17T15:16:02.007018Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-proposal-holds-at-most-12-acceptance-criteria",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestProposalAcceptanceCriteriaCountBoundaryRejectsThirteen$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e37670551db389df7c18dc3fa93e847f500fdc17d4b7a91908cd79042d06158c",
+      "finished_at": "2026-10-17T15:16:09.524874Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

@@ -1,0 +1,142 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "creation-harvest-rules-2026-10-17",
+  "proposal_id": "creation-harvest-rules-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-a-fetch-request-starts-without-an-earlier-approval",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-fetch-request-starts-without-an-earlier-approval",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-fetch-request-starts-without-an-earlier-approval"
+        }
+      ],
+      "expected_outcome": "Each new fetch the model asks for waits for the person to confirm that exact URL; an earlier approval never carries over.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestANewFetchRequestStartsWithoutAnEarlierApproval$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-a-fetch-is-confirmed-or-declined-only-while-one-is-pending",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-fetch-is-confirmed-or-declined-only-while-one-is-pending",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-fetch-is-confirmed-or-declined-only-while-one-is-pending"
+        }
+      ],
+      "expected_outcome": "Confirming or declining a fetch is refused unless a fetch permission question is pending.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAFetchIsConfirmedOrDeclinedOnlyWhileOneIsPending$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-only-public-http-urls-without-credentials-are-fetched",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-only-public-http-urls-without-credentials-are-fetched",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "only-public-http-urls-without-credentials-are-fetched"
+        }
+      ],
+      "expected_outcome": "Only http or https URLs with a public host and no credentials can be fetched; a literal private address is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestValidateFetchURLRefusesWhatMustNeverBeAsked$ ./internal/creator/creation/webfetch/"
+    },
+    {
+      "id": "rule-a-person-message-is-at-most-4000-characters",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-person-message-is-at-most-4000-characters",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-person-message-is-at-most-4000-characters"
+        }
+      ],
+      "expected_outcome": "A person's message is refused when blank or longer than 4000 characters.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAMessageMustHaveTextFitTheLimitAndLeaveRoom$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-a-session-budget-lies-between-one-call-and-the-ceiling",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-session-budget-lies-between-one-call-and-the-ceiling",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-session-budget-lies-between-one-call-and-the-ceiling"
+        }
+      ],
+      "expected_outcome": "A session is refused before any database work when its budget is below one model call's cost or above the session ceiling.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestStartingASessionChecksTheRequestBeforeAnyDatabaseWork$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-a-repeated-start-resumes-only-the-same-request",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-repeated-start-resumes-only-the-same-request",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-repeated-start-resumes-only-the-same-request"
+        }
+      ],
+      "expected_outcome": "Starting a session with an id already used returns that session only for the same message and budget; a different request with the same id is refused as a replay mismatch.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestResumingAStartReturnsTheSameSessionOnlyForTheSameRequest$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-past-the-deadline-only-cancel-is-accepted",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-past-the-deadline-only-cancel-is-accepted",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "past-the-deadline-only-cancel-is-accepted"
+        }
+      ],
+      "expected_outcome": "After a creation session's deadline every command except cancel is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestPastTheDeadlineOnlyCancelIsAccepted$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-only-the-model-produces-a-draft",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-only-the-model-produces-a-draft",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "only-the-model-produces-a-draft"
+        }
+      ],
+      "expected_outcome": "A creation session reaches draft_ready only through the model's step; no other transition may produce a draft.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestOnlyTheModelProducesADraft$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-a-proposal-holds-at-most-12-acceptance-criteria",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-proposal-holds-at-most-12-acceptance-criteria",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-proposal-holds-at-most-12-acceptance-criteria"
+        }
+      ],
+      "expected_outcome": "A model reply with more than 12 acceptance criteria is rejected.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestProposalAcceptanceCriteriaCountBoundaryRejectsThirteen$ ./internal/creator/creation/"
+    }
+  ]
+}
