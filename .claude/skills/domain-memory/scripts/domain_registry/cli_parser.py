@@ -189,6 +189,13 @@ def _add_promote_command(commands: argparse._SubParsersAction) -> None:
         "--amend", action="store_true",
         help="a reviewed record: copy it without its review fields and supersede the proposal that reviewed it",
     )
+    add_path(promote_parser, "--repo-root", required=False)
+    promote_parser.add_argument(
+        "--cite", action="append", default=[], help="repeatable PATH:START-END to add to the promoted record's evidence"
+    )
+    promote_parser.add_argument(
+        "--cite-function", action="append", default=[], help="repeatable PATH:NAME, a Go func or Python def to add as evidence"
+    )
 
 
 def _add_record_and_source_commands(commands: argparse._SubParsersAction) -> None:

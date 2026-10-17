@@ -91,6 +91,7 @@ from .transaction import recover_interrupted_update, transaction_path
 from .updates import (
     apply_approved_updates,
     demote_local_reviews,
+    add_promoted_evidence,
     promote_candidate,
     reconcile_pending_update,
     reconciliation_path,
@@ -470,10 +471,24 @@ def handle_retract_candidate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _added_citations(args: argparse.Namespace) -> tuple[dict, ...]:
+    if not (args.cite or args.cite_function):
+        return ()
+    if args.repo_root is None:
+        raise ValueError("--cite and --cite-function need --repo-root")
+    repo_root = args.repo_root.resolve()
+    spans = [(path, line_range(lines)) for path, _, lines in (given.rpartition(":") for given in args.cite)]
+    spans += [(path, function_span(repo_root, path, name)) for path, _, name in (given.rpartition(":") for given in args.cite_function)]
+    return tuple(citation(repo_root, path, *lines) for path, lines in spans)
+
+
 def handle_promote_candidate(args: argparse.Namespace) -> int:
+    citations = _added_citations(args)
     superseded = promote_candidate(
         args.package_root.resolve(), args.registry_root.resolve(), args.asset, args.id, amend=args.amend
     )
+    if citations:
+        add_promoted_evidence(args.package_root.resolve(), args.asset, args.id, citations)
     print(
         f"{args.asset}/{args.id} is in registry_updates; "
         "apply-approved-updates reviews it once the proposal is approved."

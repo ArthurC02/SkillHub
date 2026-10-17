@@ -498,6 +498,21 @@ def promote_candidate(
     return superseded
 
 
+def add_promoted_evidence(
+    package_root: Path, asset: str, record_id: str, citations: tuple[dict[str, Any], ...]
+) -> None:
+    path = package_root / PROPOSAL_FILE
+    proposal = load_json(path)
+    for update in proposal.get("registry_updates", []):
+        if updates_record(update, asset, record_id) and isinstance(update.get("record"), dict):
+            record = update["record"]
+            evidence = list(record.get("evidence")) if isinstance(record.get("evidence"), list) else []
+            evidence += [citation for index, citation in enumerate(citations)
+                         if citation not in evidence and citation not in citations[:index]]
+            record["evidence"] = evidence
+    write_json(path, proposal)
+
+
 def _with_superseded(supersedes: Any, proposal_id: str) -> list[Any]:
     named = [supersedes] if isinstance(supersedes, str) else list(supersedes) if isinstance(supersedes, list) else []
     return named if proposal_id in named else [*named, proposal_id]

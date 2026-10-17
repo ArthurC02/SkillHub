@@ -80,7 +80,7 @@ git pull --no-rebase && git push
 
 Upstream work comes in with a merge, never a rebase: a rebase rewrites both signed commits, and the attestation would name a commit that no longer carries the package. The signatures stay with the person or host whose key the policy authorizes.
 
-A rule already reviewed, such as one from before test obligations were recorded, is re-proven the same way after `promote-candidate --amend` puts it into the draft and names the package it supersedes; add the citation of its test to its entry in `registry_updates`. A rule that a dependency gate enforces rather than a test, such as a forbidden import between Contexts, is proven by an obligation with `level: architecture` whose `check` runs the gate; its counterfactual adds a blank import of the forbidden package, `_ "<package>"`, which still builds, so the gate is what fails.
+A rule already reviewed, such as one from before test obligations were recorded, is re-proven the same way after `promote-candidate --amend --repo-root . --cite-function <test file>:<test name>` puts it into the draft with the citation of its test and names the package it supersedes. A rule that a dependency gate enforces rather than a test, such as a forbidden import between Contexts, is proven by an obligation with `level: architecture` whose `check` runs the gate; its counterfactual adds a blank import of the forbidden package, `_ "<package>"`, which still builds, so the gate is what fails.
 
 ## After implementation: reflect the model
 

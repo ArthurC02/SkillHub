@@ -587,6 +587,24 @@ class CliTest(RegistryTestCase):
             ["order-total"], json.loads(self.run_cli(*coverage).stdout)["rules_by_context"][0]["unknown"],
         )
 
+    def test_promote_candidate_adds_the_citations_it_is_given_once(self) -> None:
+        package = self.package_with_a_candidate_rule("An order total is non-negative.")
+        (self.repo / "total_test.py").write_text("def test_total():\n    assert True\n", encoding="utf-8")
+        promote = ("promote-candidate", "--package-root", str(package), "--registry-root", str(self.repo / "memory"),
+                   "--asset", "rules", "--id", "order-total")
+        for alone in (("--cite", "README.md:1-1"), ("--cite-function", "total_test.py:test_total")):
+            with self.subTest(alone):
+                self.assertEqual("ERROR: --cite and --cite-function need --repo-root", self.run_cli(*promote, *alone).stdout.strip())
+        cited = ("--repo-root", str(self.repo), "--cite", "README.md:1-1", "--cite", "README.md:1-1",
+                 "--cite-function", "total_test.py:test_total")
+        self.assertEqual(0, self.run_cli(*promote, *cited).returncode)
+        [update] = self.registry_updates(package)
+        self.assertEqual(
+            ["README.md:1", ("README.md", 1, 1), ("total_test.py", 1, 2)],
+            [entry if isinstance(entry, str) else (entry["path"], entry["lines"]["start"], entry["lines"]["end"])
+             for entry in update["record"]["evidence"]],
+        )
+
     def harvest_spec(self, **changes: object) -> Path:
         check = "go test -v -run ^TestTotal$ ./orders/"
         entry = {

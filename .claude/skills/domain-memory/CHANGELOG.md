@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.57.0
+
+### Added
+
+- `promote-candidate --cite <path>:<start>-<end>` and `--cite-function <path>:<name>`, with `--repo-root`, add citations to the promoted record's evidence, each once, so re-proving a reviewed rule is done from the command line.
+
 ## 0.56.0
 
 ### Added
