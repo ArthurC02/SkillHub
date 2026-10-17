@@ -1,0 +1,355 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "publishing-harvest-rules-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "publishing-harvest-rules-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T02:49:45.191375Z",
+  "verified_at": "2026-10-17T02:50:57.217435Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "b87d268acccf20467bdf64458b427eae293a092a",
+    "registry_digest": "sha256:5fda890716564949f8067d97ab8769e951ac12319941b14e21c5d232dbfd75c8"
+  },
+  "affected_contexts": [
+    "publishing"
+  ],
+  "rule_ids": [
+    "the-release-gate-refuses-unclear-or-blocked-redistribution",
+    "a-publication-name-is-permanent",
+    "a-publisher-name-refuses-reserved-words",
+    "releasing-requires-a-registered-publisher",
+    "a-version-failing-validation-cannot-be-published",
+    "public-availability-reports-the-first-reason-it-is-withheld",
+    "catalog-exposure-needs-an-approved-review-of-redistributable-content",
+    "an-exposure-approval-needs-a-current-enriched-snapshot"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "publishing",
+    "invariant": "Only publishing creates releases, decides public availability and records exposure reviews.",
+    "evidence": [
+      "apps/platform/internal/skill/publishing/service.go:240-247",
+      "apps/platform/internal/skill/publishing/publication.go:108-122"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: Skill facts and search snapshots still arrive through injected readers.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/publishing/exposure.go:316-323"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the publishing Context found eight enforced rules; the reviewed Registry held none, so the next Agent could not look them up.",
+      "Refusing a version that fails validation had no test anywhere."
+    ],
+    "decision": "Record the eight rules as reviewed citing code and test; add the integration test for the validation refusal.",
+    "invariants_preserved": [
+      "A publication name never changes once published."
+    ],
+    "rejected_alternatives": [
+      "Recording the stale-review guard: its test proves only sameReleaseAs, not the refusal path, so it waits for a test of its own."
+    ],
+    "proof_obligations": [
+      "rule-the-release-gate-refuses-unclear-or-blocked-redistribution",
+      "rule-a-publication-name-is-permanent",
+      "rule-a-publisher-name-refuses-reserved-words",
+      "rule-releasing-requires-a-registered-publisher",
+      "rule-a-version-failing-validation-cannot-be-published",
+      "rule-public-availability-reports-the-first-reason-it-is-withheld",
+      "rule-catalog-exposure-needs-an-approved-review-of-redistributable-content",
+      "rule-an-exposure-approval-needs-a-current-enriched-snapshot"
+    ],
+    "counterfactual_check": "Break each rule's enforcing line so the package still builds; its test must fail with that rule's own assertion."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-release-gate-refuses-unclear-or-blocked-redistribution",
+        "statement": "A release is refused unless the Skill's redistribution is allowed, or self_supplied or generated with the author's rights statement; a license hold, a blocked licence and an unconfirmed licence are refused whatever the statement.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "Self-supplied content without the statement is refused as rights_not_attested; an unconfirmed licence is refused as license_unknown even with it."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/publication.go",
+            "lines": {
+              "start": 88,
+              "end": 106
+            },
+            "excerpt_sha256": "sha256:fe4ff21dc505e19f5bf61dc5f83804fb65d21385798e9e027898c1a8a57962f9"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/publication_test.go",
+            "lines": {
+              "start": 52,
+              "end": 84
+            },
+            "excerpt_sha256": "sha256:ed6a9eb53391cd5d36eea65f4d78d3b5b25912af48f072c62fe4ab25f63f559c"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-publication-name-is-permanent",
+        "statement": "A Skill that already has a publication cannot be republished under another name; the request is refused as name_is_permanent and the publication keeps its name.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "A Skill published as foo and republished as another-name answers 409 name_is_permanent."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/service.go",
+            "lines": {
+              "start": 363,
+              "end": 366
+            },
+            "excerpt_sha256": "sha256:e197ee981b6023dafa0149a50c26fa20ab36699df6979099986488e75f20db72"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/publishing_integration_test.go",
+            "lines": {
+              "start": 345,
+              "end": 372
+            },
+            "excerpt_sha256": "sha256:20d078f0a78ffdc40021e043e094514e80b33b410c63fac6d159093dd05b12b7"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-publisher-name-refuses-reserved-words",
+        "statement": "A publisher name follows the Skill name shape and must not equal a reserved word once its hyphens are removed; a publication name follows only the shape.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "s-k-i-l-l-h-u-b is refused as a publisher name."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/name.go",
+            "lines": {
+              "start": 23,
+              "end": 34
+            },
+            "excerpt_sha256": "sha256:3dc7a4bf958ec80d38e64f35a58362ff973860d7ee32f4e4859a7d2bb611aa9d"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/publication_test.go",
+            "lines": {
+              "start": 12,
+              "end": 41
+            },
+            "excerpt_sha256": "sha256:ec494c62d0125a668439124c83197ca3b2863a05aa2ce1036408020f0addb263"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "releasing-requires-a-registered-publisher",
+        "statement": "A Workspace without a registered publisher name cannot release; the release is refused with ErrNoPublisher.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "A Workspace with no publishers row is refused as no_publisher."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/service.go",
+            "lines": {
+              "start": 284,
+              "end": 291
+            },
+            "excerpt_sha256": "sha256:0fd744d3c2f6d067153444e3d5f87ab5b21e10735019f8630f3164cca18ee010"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/lock_characterization_test.go",
+            "lines": {
+              "start": 69,
+              "end": 88
+            },
+            "excerpt_sha256": "sha256:f354f1635271078e0591b08009e7c33cb05e24541c3be4532028aef393104774"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-version-failing-validation-cannot-be-published",
+        "statement": "Publishing scans the version's stored package and refuses as validation_blocked when it finds any validation error; no publication is recorded.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "A version carrying a credential in .env answers 422 validation_blocked and leaves no publication row."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/service.go",
+            "lines": {
+              "start": 201,
+              "end": 207
+            },
+            "excerpt_sha256": "sha256:1000826da41f85768807e10f752adacc4e4b8659cd8a27375845a31f2c5f6832"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/publishing_integration_test.go",
+            "lines": {
+              "start": 130,
+              "end": 150
+            },
+            "excerpt_sha256": "sha256:3500279e08e37b922c3ebb8bb743409585db09d31e5e4a98198ac375458d4ed0"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "public-availability-reports-the-first-reason-it-is-withheld",
+        "statement": "A publication is offered only while it is published and its Skill exists, is not taken down, is not held and still passes the release gate; otherwise the first failing reason, in the order delisted, withdrawn, taken_down, held, not_redistributable, is reported.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "A delisted publication whose Skill is also taken down reports delisted."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/publication.go",
+            "lines": {
+              "start": 108,
+              "end": 122
+            },
+            "excerpt_sha256": "sha256:41c189c32a7a6eec1c38be2bcf2c4876e04e5f939d4ba2e28686d3228f5aa396"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/publication_test.go",
+            "lines": {
+              "start": 86,
+              "end": 109
+            },
+            "excerpt_sha256": "sha256:b0a0e2f2522e70cafbf01f0c0e40dc6bf4d2cada3782f3200a8f0c1e8452a605"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "catalog-exposure-needs-an-approved-review-of-redistributable-content",
+        "statement": "A publication is exposed in the Catalog only when its review is approved, its Skill is available with redistribution allowed, and its search snapshot is listable, of the released version and with the digest the reviewer approved.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "An approved Skill whose content its creator supplied is not exposed."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure.go",
+            "lines": {
+              "start": 206,
+              "end": 208
+            },
+            "excerpt_sha256": "sha256:760da291190a02d8a3c6edb6197ebfbbea980cf25a0f4ec77a024867e1654200"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure.go",
+            "lines": {
+              "start": 322,
+              "end": 323
+            },
+            "excerpt_sha256": "sha256:a77829a080bc3e4a4b719c99e181bf7e4a4a4c3c2b14d71837379169f7ae8c59"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure_test.go",
+            "lines": {
+              "start": 94,
+              "end": 121
+            },
+            "excerpt_sha256": "sha256:04ac41455b07575b937d2cfa8f8a85a5a2094b5ce4952b69bf85f164c27a8ffe"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-exposure-approval-needs-a-current-enriched-snapshot",
+        "statement": "An exposure approval is refused unless the publication is published, its Skill is available and cleared for redistribution, and a fully enriched search snapshot of the released version exists.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "Approving while the snapshot is still enriching is refused as snapshot_pending."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure.go",
+            "lines": {
+              "start": 210,
+              "end": 225
+            },
+            "excerpt_sha256": "sha256:d90e79154ab3ae7bf683f1b82983f3b40105749dd7661835c6851271c517d7f0"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure_test.go",
+            "lines": {
+              "start": 154,
+              "end": 184
+            },
+            "excerpt_sha256": "sha256:81ed59ce43ecdd925ff09a91718f7fad8dab1d7c5a78c8ca28b75ce9860c056a"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T02:50:56.766681Z",
+      "scope": "Record eight publishing release, naming, availability and exposure rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "b87d268acccf20467bdf64458b427eae293a092a",
+        "registry_digest": "sha256:5fda890716564949f8067d97ab8769e951ac12319941b14e21c5d232dbfd75c8"
+      }
+    }
+  ]
+}

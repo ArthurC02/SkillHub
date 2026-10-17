@@ -1,0 +1,58 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "publishing-harvest-rules-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed the release, naming, availability and Catalog exposure rules the publishing Context enforces and tests but the Registry did not hold.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context publishing lists the eight rules as reviewed, each citing its enforcing code and the test that proves it.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-the-release-gate-refuses-unclear-or-blocked-redistribution",
+      "statement": "A release is refused unless the Skill's redistribution is allowed, or self_supplied or generated with the author's rights statement; a license hold, a blocked licence and an unconfirmed licence are refused whatever the statement."
+    },
+    {
+      "id": "enforced-a-publication-name-is-permanent",
+      "statement": "A Skill that already has a publication cannot be republished under another name; the request is refused as name_is_permanent and the publication keeps its name."
+    },
+    {
+      "id": "enforced-a-publisher-name-refuses-reserved-words",
+      "statement": "A publisher name follows the Skill name shape and must not equal a reserved word once its hyphens are removed; a publication name follows only the shape."
+    },
+    {
+      "id": "enforced-releasing-requires-a-registered-publisher",
+      "statement": "A Workspace without a registered publisher name cannot release; the release is refused with ErrNoPublisher."
+    },
+    {
+      "id": "enforced-a-version-failing-validation-cannot-be-published",
+      "statement": "Publishing scans the version's stored package and refuses as validation_blocked when it finds any validation error; no publication is recorded."
+    },
+    {
+      "id": "enforced-public-availability-reports-the-first-reason-it-is-withheld",
+      "statement": "A publication is offered only while it is published and its Skill exists, is not taken down, is not held and still passes the release gate; otherwise the first failing reason, in the order delisted, withdrawn, taken_down, held, not_redistributable, is reported."
+    },
+    {
+      "id": "enforced-catalog-exposure-needs-an-approved-review-of-redistributable-content",
+      "statement": "A publication is exposed in the Catalog only when its review is approved, its Skill is available with redistribution allowed, and its search snapshot is listable, of the released version and with the digest the reviewer approved."
+    },
+    {
+      "id": "enforced-an-exposure-approval-needs-a-current-enriched-snapshot",
+      "statement": "An exposure approval is refused unless the publication is published, its Skill is available and cleared for redistribution, and a fully enriched search snapshot of the released version exists."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/publishing_integration_test.go",
+    "apps/platform/internal/skill/publishing/exposure.go",
+    "apps/platform/internal/skill/publishing/exposure_test.go",
+    "apps/platform/internal/skill/publishing/lock_characterization_test.go",
+    "apps/platform/internal/skill/publishing/name.go",
+    "apps/platform/internal/skill/publishing/publication.go",
+    "apps/platform/internal/skill/publishing/publication_test.go",
+    "apps/platform/internal/skill/publishing/service.go"
+  ]
+}

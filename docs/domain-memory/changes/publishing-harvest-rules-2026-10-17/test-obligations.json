@@ -1,0 +1,127 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "publishing-harvest-rules-2026-10-17",
+  "proposal_id": "publishing-harvest-rules-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-the-release-gate-refuses-unclear-or-blocked-redistribution",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-release-gate-refuses-unclear-or-blocked-redistribution",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-release-gate-refuses-unclear-or-blocked-redistribution"
+        }
+      ],
+      "expected_outcome": "A release is refused unless the Skill's redistribution is allowed, or self_supplied or generated with the author's rights statement; a license hold, a blocked licence and an unconfirmed licence are refused whatever the statement.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run ^TestTheReleaseGateAnswersEveryRedistributionValueAndTheHold$ ./internal/skill/publishing/"
+    },
+    {
+      "id": "rule-a-publication-name-is-permanent",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-publication-name-is-permanent",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-publication-name-is-permanent"
+        }
+      ],
+      "expected_outcome": "A Skill that already has a publication cannot be republished under another name; the request is refused as name_is_permanent and the publication keeps its name.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run ^TestRepublishingAddsAReleaseAndThePublicationKeepsItsName$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-publisher-name-refuses-reserved-words",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-publisher-name-refuses-reserved-words",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-publisher-name-refuses-reserved-words"
+        }
+      ],
+      "expected_outcome": "A publisher name follows the Skill name shape and must not equal a reserved word once its hyphens are removed; a publication name follows only the shape.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run ^TestAPublisherNameFollowsTheSkillNameRuleAndRefusesReservedWords$ ./internal/skill/publishing/"
+    },
+    {
+      "id": "rule-releasing-requires-a-registered-publisher",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-releasing-requires-a-registered-publisher",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "releasing-requires-a-registered-publisher"
+        }
+      ],
+      "expected_outcome": "A Workspace without a registered publisher name cannot release; the release is refused with ErrNoPublisher.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run ^TestReleasingRequiresTheWorkspaceToHaveRegisteredAPublisher$ ./internal/skill/publishing/"
+    },
+    {
+      "id": "rule-a-version-failing-validation-cannot-be-published",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-version-failing-validation-cannot-be-published",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-version-failing-validation-cannot-be-published"
+        }
+      ],
+      "expected_outcome": "Publishing scans the version's stored package and refuses as validation_blocked when it finds any validation error; no publication is recorded.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run ^TestAVersionThatFailsValidationIsRefusedPublicationAndLeavesNoRelease$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-public-availability-reports-the-first-reason-it-is-withheld",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-public-availability-reports-the-first-reason-it-is-withheld",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "public-availability-reports-the-first-reason-it-is-withheld"
+        }
+      ],
+      "expected_outcome": "A publication is offered only while it is published and its Skill exists, is not taken down, is not held and still passes the release gate; otherwise the first failing reason, in the order delisted, withdrawn, taken_down, held, not_redistributable, is reported.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run ^TestAPublicAddressReportsWhyItNoLongerOffersItsContent$ ./internal/skill/publishing/"
+    },
+    {
+      "id": "rule-catalog-exposure-needs-an-approved-review-of-redistributable-content",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-catalog-exposure-needs-an-approved-review-of-redistributable-content",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "catalog-exposure-needs-an-approved-review-of-redistributable-content"
+        }
+      ],
+      "expected_outcome": "A publication is exposed in the Catalog only when its review is approved, its Skill is available with redistribution allowed, and its search snapshot is listable, of the released version and with the digest the reviewer approved.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run ^TestACurrentListableSnapshotIsExposedOnlyForAnApprovedRedistributableSkill$ ./internal/skill/publishing/"
+    },
+    {
+      "id": "rule-an-exposure-approval-needs-a-current-enriched-snapshot",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-exposure-approval-needs-a-current-enriched-snapshot",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-exposure-approval-needs-a-current-enriched-snapshot"
+        }
+      ],
+      "expected_outcome": "An exposure approval is refused unless the publication is published, its Skill is available and cleared for redistribution, and a fully enriched search snapshot of the released version exists.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -run ^TestApprovalProblemUsesTheSameFactsAsTheReviewGuard$ ./internal/skill/publishing/"
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "publishing-harvest-rules-2026-10-17",
+  "proposal_id": "publishing-harvest-rules-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "b87d268acccf20467bdf64458b427eae293a092a",
+    "registry_digest": "sha256:5fda890716564949f8067d97ab8769e951ac12319941b14e21c5d232dbfd75c8"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "rule-a-version-failing-validation-cannot-be-published",
+    "mutated_protection": "apps/platform/internal/skill/publishing/service.go:205: if len(findings.Errors) > 0 { return Publication{}, &RefusedError{RefusedValidation -> if len(findings.Errors) > 99 { return Publication{}, &RefusedError{RefusedValidation",
+    "failure_evidence": "--- FAIL: TestAVersionThatFailsValidationIsRefusedPublicationAndLeavesNoRelease (0.12s)\n    publishing_integration_test.go:145: publishing a version that fails validation: 200 map[acquisition:map[available:true note:登入後可以下載這一版的標準 Agent Skill 套件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。] address:/p/alice-dab2ecc0ae/secret-bearing-skill availability:map[label:提供中 note: value:available] kind:skill name:secret-bearing-skill publisher:alice-dab2ecc0ae releases:[map[content_hash:secretbearing findings:map[errors:[map[code:possible-secret message:內容符合已知的憑證格式；請在匯入前移除它 path:.env severity:error]] infos:[] warnings:[map[code:file-ref-missing message:SKILL.md 引用了 \"scripts/run.py\"，但套件裡沒有這個檔案 path:scripts/run.py severity:warning]]] released_at:2026-10-17T02:47:59Z rights_attested:true version_id:094b770a-2c9b-4f26-ae4a-141e6e77fdca version_number:1]] status:published status_changed_at:2026-10-17T02:47:59Z], want 422 validation_blocked\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.596s\nFAIL\n",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/publishing_integration_test.go",
+    "apps/platform/internal/skill/publishing/exposure.go",
+    "apps/platform/internal/skill/publishing/exposure_test.go",
+    "apps/platform/internal/skill/publishing/lock_characterization_test.go",
+    "apps/platform/internal/skill/publishing/name.go",
+    "apps/platform/internal/skill/publishing/publication.go",
+    "apps/platform/internal/skill/publishing/publication_test.go",
+    "apps/platform/internal/skill/publishing/service.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-the-release-gate-refuses-unclear-or-blocked-redistribution",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestTheReleaseGateAnswersEveryRedistributionValueAndTheHold$ ./internal/skill/publishing/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:673224fc62e726ad9b76780420de9688fdd87748de26786c3faa05fa265f4afd",
+      "finished_at": "2026-10-17T02:49:52.186678Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-publication-name-is-permanent",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestRepublishingAddsAReleaseAndThePublicationKeepsItsName$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4a9f9537c3a51f97a341d12fd88cc8d72a21dcb704ad431c4a686a43c0fccdec",
+      "finished_at": "2026-10-17T02:50:05.728776Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-publisher-name-refuses-reserved-words",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestAPublisherNameFollowsTheSkillNameRuleAndRefusesReservedWords$ ./internal/skill/publishing/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:70359159af631146b1501bedf99aa979a5d13611fd79790c6a4dfbbe70ad6c3f",
+      "finished_at": "2026-10-17T02:50:11.956160Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-releasing-requires-a-registered-publisher",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestReleasingRequiresTheWorkspaceToHaveRegisteredAPublisher$ ./internal/skill/publishing/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:dc0d83a715c8e34743481c79ac0652387dbda7f4e83627b935e864ec2af77d0f",
+      "finished_at": "2026-10-17T02:50:20.083782Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-version-failing-validation-cannot-be-published",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestAVersionThatFailsValidationIsRefusedPublicationAndLeavesNoRelease$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:5f14859ece2161a6ead3a7ec46175c933a86d649ac0cd49570075af2aa1dff03",
+      "finished_at": "2026-10-17T02:50:33.327250Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-public-availability-reports-the-first-reason-it-is-withheld",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestAPublicAddressReportsWhyItNoLongerOffersItsContent$ ./internal/skill/publishing/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:c0adae8e2c3f3d23c2ca03e4cd67d900dd9b1d078078e41a3433d241cd3f4dd6",
+      "finished_at": "2026-10-17T02:50:40.452358Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-catalog-exposure-needs-an-approved-review-of-redistributable-content",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestACurrentListableSnapshotIsExposedOnlyForAnApprovedRedistributableSkill$ ./internal/skill/publishing/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ab9adce01aff606457c46adb870f176d087d0f426990ce2e64c2d794e7340015",
+      "finished_at": "2026-10-17T02:50:49.855495Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-exposure-approval-needs-a-current-enriched-snapshot",
+      "status": "passed",
+      "evidence": "go test -count=1 -run ^TestApprovalProblemUsesTheSameFactsAsTheReviewGuard$ ./internal/skill/publishing/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:693845c074b0c68f86088df748fabefb689598c0ed2cd804a749d72d27c6f99f",
+      "finished_at": "2026-10-17T02:50:56.481742Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
