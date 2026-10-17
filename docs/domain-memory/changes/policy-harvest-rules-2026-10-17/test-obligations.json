@@ -1,0 +1,127 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "policy-harvest-rules-2026-10-17",
+  "proposal_id": "policy-harvest-rules-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-a-spent-daily-allowance-refuses-the-next-run",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-spent-daily-allowance-refuses-the-next-run",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-spent-daily-allowance-refuses-the-next-run"
+        }
+      ],
+      "expected_outcome": "A Workspace that has used its daily allowance in the trailing 24 hours is refused with reason quota_daily, and the message says when it resets.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes$ ./internal/product/entitlements/"
+    },
+    {
+      "id": "rule-a-spent-window-allowance-refuses-the-next-run",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-spent-window-allowance-refuses-the-next-run",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-spent-window-allowance-refuses-the-next-run"
+        }
+      ],
+      "expected_outcome": "A Workspace that has used its rolling-window allowance is refused with reason quota_window, and the message says when the next one frees up.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes$ ./internal/product/entitlements/"
+    },
+    {
+      "id": "rule-an-uncountable-allowance-refuses-without-claiming-it-ran-out",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-uncountable-allowance-refuses-without-claiming-it-ran-out",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-uncountable-allowance-refuses-without-claiming-it-ran-out"
+        }
+      ],
+      "expected_outcome": "When usage cannot be counted the request is refused with ErrAllowanceUnavailable and a *_unavailable reason; it is never read as unused and never reported as exhausted.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnUncountableAllowanceRefusesWithoutClaimingItRanOut$ ./internal/product/entitlements/"
+    },
+    {
+      "id": "rule-generation-and-run-allowances-are-separate",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-generation-and-run-allowances-are-separate",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "generation-and-run-allowances-are-separate"
+        }
+      ],
+      "expected_outcome": "Generations and runs have separate allowances: a spent generation allowance refuses with ErrGenerateQuotaExceeded, never the run refusal, and the reverse.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheTwoAllowancesAreNotTheSameAllowance$ ./internal/product/entitlements/"
+    },
+    {
+      "id": "rule-an-allowance-needs-a-window-and-a-ceiling",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-allowance-needs-a-window-and-a-ceiling",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-allowance-needs-a-window-and-a-ceiling"
+        }
+      ],
+      "expected_outcome": "An allowance is enforced only when it has a window length and at least one ceiling; a zero or partial configuration refuses nothing.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestQuotaEnforcedOnlyWithARealCeiling$ ./internal/product/entitlements/"
+    },
+    {
+      "id": "rule-remaining-allowance-is-never-negative",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-remaining-allowance-is-never-negative",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "remaining-allowance-is-never-negative"
+        }
+      ],
+      "expected_outcome": "The remaining allowance a Workspace sees is clamped at zero; an overspent Workspace reads 0, not a negative number.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestRemainingIsClamped$ ./internal/product/entitlements/"
+    },
+    {
+      "id": "rule-the-default-run-allowance",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-default-run-allowance",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-default-run-allowance"
+        }
+      ],
+      "expected_outcome": "By default a Workspace may start 5 runs a day and 30 per 30 days, and 20 in its first 30 days.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestDefaultsAreThePDM010Proposal$ ./internal/product/entitlements/"
+    },
+    {
+      "id": "rule-download-retention-must-be-positive",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-download-retention-must-be-positive",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "download-retention-must-be-positive"
+        }
+      ],
+      "expected_outcome": "Download retention must be a positive duration; zero or negative is refused with ErrRetentionNotConfigured rather than meaning keep forever or delete at once.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestRetentionFailsClosedWithoutAValue$ ./internal/product/entitlements/"
+    }
+  ]
+}

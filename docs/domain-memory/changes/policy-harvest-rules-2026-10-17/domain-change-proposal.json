@@ -1,0 +1,346 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "policy-harvest-rules-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "policy-harvest-rules-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T04:32:55.955108Z",
+  "verified_at": "2026-10-17T04:33:27.952051Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "2f2ffc12dbdb590a094aa549f93433eab8ce2b7e",
+    "registry_digest": "sha256:aef6a2fa3a30dcc5a7513390283fed502762c08812eaa37e1f92f8c00eec6e27"
+  },
+  "affected_contexts": [
+    "policy"
+  ],
+  "rule_ids": [
+    "a-spent-daily-allowance-refuses-the-next-run",
+    "a-spent-window-allowance-refuses-the-next-run",
+    "an-uncountable-allowance-refuses-without-claiming-it-ran-out",
+    "generation-and-run-allowances-are-separate",
+    "an-allowance-needs-a-window-and-a-ceiling",
+    "remaining-allowance-is-never-negative",
+    "the-default-run-allowance",
+    "download-retention-must-be-positive"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "policy",
+    "invariant": "Only policy decides whether an allowance permits one more run or generation and how long downloads are kept.",
+    "evidence": [
+      "apps/platform/internal/product/entitlements/quota.go:169-196",
+      "apps/platform/internal/product/entitlements/retention.go:12-17"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: usage arrives through the UsageReader port; run and generation callers map the sentinels.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/product/entitlements/quota.go:175-181"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the policy Context found these enforced rules; the reviewed Registry held none, so the next Agent could not look them up."
+    ],
+    "decision": "Record the eight rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "An allowance that cannot be counted never reads as unused."
+    ],
+    "rejected_alternatives": [
+      "Recording the first-window allowance for a young Workspace: the tests pin only the constants, and no test fails if the first-window selection is broken, so it waits for one."
+    ],
+    "proof_obligations": [
+      "rule-a-spent-daily-allowance-refuses-the-next-run",
+      "rule-a-spent-window-allowance-refuses-the-next-run",
+      "rule-an-uncountable-allowance-refuses-without-claiming-it-ran-out",
+      "rule-generation-and-run-allowances-are-separate",
+      "rule-an-allowance-needs-a-window-and-a-ceiling",
+      "rule-remaining-allowance-is-never-negative",
+      "rule-the-default-run-allowance",
+      "rule-download-retention-must-be-positive"
+    ],
+    "counterfactual_check": "Break each rule's enforcing line so the package still builds; its test must fail with that rule's own assertion."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-spent-daily-allowance-refuses-the-next-run",
+        "statement": "A Workspace that has used its daily allowance in the trailing 24 hours is refused with reason quota_daily, and the message says when it resets.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "A Workspace with 5 runs in the last 24 hours is refused a sixth."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 182,
+              "end": 186
+            },
+            "excerpt_sha256": "sha256:fe837607a4ccd37e7b2399326cc71dea687a3995d3f525b67ef993c3b9964d32"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota_test.go",
+            "lines": {
+              "start": 107,
+              "end": 149
+            },
+            "excerpt_sha256": "sha256:c761b7938a96c3f4cb254095afec235845ebc6501b296ed7dda2c5ec9e5fb92a"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-spent-window-allowance-refuses-the-next-run",
+        "statement": "A Workspace that has used its rolling-window allowance is refused with reason quota_window, and the message says when the next one frees up.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "A Workspace with 30 runs in the last 30 days but none today is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 187,
+              "end": 192
+            },
+            "excerpt_sha256": "sha256:212e583747950494d660710aa5748390f50ef5fa4ff5b44e5c1f091c21e27d4f"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota_test.go",
+            "lines": {
+              "start": 107,
+              "end": 149
+            },
+            "excerpt_sha256": "sha256:c761b7938a96c3f4cb254095afec235845ebc6501b296ed7dda2c5ec9e5fb92a"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-uncountable-allowance-refuses-without-claiming-it-ran-out",
+        "statement": "When usage cannot be counted the request is refused with ErrAllowanceUnavailable and a *_unavailable reason; it is never read as unused and never reported as exhausted.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "The usage lookup fails, so a generation is refused as generate_quota_unavailable."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 175,
+              "end": 181
+            },
+            "excerpt_sha256": "sha256:7f67e78ff28ff673883a8d7a6a02357ee6e8e429dd961e50884f253e5d19381c"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/generate_quota_test.go",
+            "lines": {
+              "start": 59,
+              "end": 94
+            },
+            "excerpt_sha256": "sha256:04449d826f1fcb489d91b5c31eb6816e0826e73ac108a3f8aa02787a78fe660b"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "generation-and-run-allowances-are-separate",
+        "statement": "Generations and runs have separate allowances: a spent generation allowance refuses with ErrGenerateQuotaExceeded, never the run refusal, and the reverse.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "A Workspace out of generations gets ErrGenerateQuotaExceeded, not ErrQuotaExceeded."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/generate_quota.go",
+            "lines": {
+              "start": 28,
+              "end": 34
+            },
+            "excerpt_sha256": "sha256:76d93e91db9308763a759ad239897ad8e7d6f0b52101dd71046777d94717ec4e"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/generate_quota_test.go",
+            "lines": {
+              "start": 22,
+              "end": 49
+            },
+            "excerpt_sha256": "sha256:efca75e19a8923db91558b42c740acbf59912a89bd202fb0242d9f8e5fd4d264"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-allowance-needs-a-window-and-a-ceiling",
+        "statement": "An allowance is enforced only when it has a window length and at least one ceiling; a zero or partial configuration refuses nothing.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "Daily 5, window 30 but no window length is not enforced."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 43,
+              "end": 43
+            },
+            "excerpt_sha256": "sha256:55d07fd21cfc15e1bfa77f71f46fda588492dbce6153980371900f821625bbb4"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota_test.go",
+            "lines": {
+              "start": 13,
+              "end": 31
+            },
+            "excerpt_sha256": "sha256:c45bb3d408ffb06b177a06b5a35c98dcbc8a2fb6e21a05bd7df964473a044028"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "remaining-allowance-is-never-negative",
+        "statement": "The remaining allowance a Workspace sees is clamped at zero; an overspent Workspace reads 0, not a negative number.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "Limit 5 with 7 used reads 0 remaining."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 135,
+              "end": 141
+            },
+            "excerpt_sha256": "sha256:b7f7b8f3bc7490a633e92bd1556c9b56b01070b8cb31dabc0e944b3a9b83ca00"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota_test.go",
+            "lines": {
+              "start": 44,
+              "end": 51
+            },
+            "excerpt_sha256": "sha256:ab02a82bd1ec1fdfb6e16bf14d99239cac78a9cd3a3dac983568fd08d8c987f0"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-default-run-allowance",
+        "statement": "By default a Workspace may start 5 runs a day and 30 per 30 days, and 20 in its first 30 days.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "An unconfigured deployment refuses a sixth run in one day."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 17,
+              "end": 22
+            },
+            "excerpt_sha256": "sha256:58b8248ef779eed06f35dfbc8dd2ff4aaf70e45209cea13366d98c544af7588e"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota_test.go",
+            "lines": {
+              "start": 33,
+              "end": 42
+            },
+            "excerpt_sha256": "sha256:0e69279ca7382a95a8ae0b485b7b9a01f6862a1cbff41010e0b508578e3af8bd"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "download-retention-must-be-positive",
+        "statement": "Download retention must be a positive duration; zero or negative is refused with ErrRetentionNotConfigured rather than meaning keep forever or delete at once.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "A deployment with retention 0 cannot compute a retention period."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/retention.go",
+            "lines": {
+              "start": 12,
+              "end": 17
+            },
+            "excerpt_sha256": "sha256:596b19b4e090d0f1897f7939b6fdf9378f2e28bead414ca390ac8e2ea7ef1e93"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/retention_test.go",
+            "lines": {
+              "start": 9,
+              "end": 19
+            },
+            "excerpt_sha256": "sha256:16cfefa237c71e16ab9d419a8d465a6980d5e743882e93b844d4551b39ef8bf6"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T04:33:27.317410Z",
+      "scope": "Record eight policy allowance and retention rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "2f2ffc12dbdb590a094aa549f93433eab8ce2b7e",
+        "registry_digest": "sha256:aef6a2fa3a30dcc5a7513390283fed502762c08812eaa37e1f92f8c00eec6e27"
+      }
+    }
+  ]
+}

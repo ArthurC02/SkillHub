@@ -1,0 +1,56 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "policy-harvest-rules-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed the run and generation allowance and download retention rules the policy Context enforces and tests but the Registry did not hold.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context policy lists the eight rules as reviewed, each citing its enforcing code and the test that proves it.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-spent-daily-allowance-refuses-the-next-run",
+      "statement": "A Workspace that has used its daily allowance in the trailing 24 hours is refused with reason quota_daily, and the message says when it resets."
+    },
+    {
+      "id": "enforced-a-spent-window-allowance-refuses-the-next-run",
+      "statement": "A Workspace that has used its rolling-window allowance is refused with reason quota_window, and the message says when the next one frees up."
+    },
+    {
+      "id": "enforced-an-uncountable-allowance-refuses-without-claiming-it-ran-out",
+      "statement": "When usage cannot be counted the request is refused with ErrAllowanceUnavailable and a *_unavailable reason; it is never read as unused and never reported as exhausted."
+    },
+    {
+      "id": "enforced-generation-and-run-allowances-are-separate",
+      "statement": "Generations and runs have separate allowances: a spent generation allowance refuses with ErrGenerateQuotaExceeded, never the run refusal, and the reverse."
+    },
+    {
+      "id": "enforced-an-allowance-needs-a-window-and-a-ceiling",
+      "statement": "An allowance is enforced only when it has a window length and at least one ceiling; a zero or partial configuration refuses nothing."
+    },
+    {
+      "id": "enforced-remaining-allowance-is-never-negative",
+      "statement": "The remaining allowance a Workspace sees is clamped at zero; an overspent Workspace reads 0, not a negative number."
+    },
+    {
+      "id": "enforced-the-default-run-allowance",
+      "statement": "By default a Workspace may start 5 runs a day and 30 per 30 days, and 20 in its first 30 days."
+    },
+    {
+      "id": "enforced-download-retention-must-be-positive",
+      "statement": "Download retention must be a positive duration; zero or negative is refused with ErrRetentionNotConfigured rather than meaning keep forever or delete at once."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/product/entitlements/generate_quota.go",
+    "apps/platform/internal/product/entitlements/generate_quota_test.go",
+    "apps/platform/internal/product/entitlements/quota.go",
+    "apps/platform/internal/product/entitlements/quota_test.go",
+    "apps/platform/internal/product/entitlements/retention.go",
+    "apps/platform/internal/product/entitlements/retention_test.go"
+  ]
+}

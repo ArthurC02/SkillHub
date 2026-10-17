@@ -1,0 +1,163 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "policy-harvest-rules-2026-10-17",
+  "proposal_id": "policy-harvest-rules-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "2f2ffc12dbdb590a094aa549f93433eab8ce2b7e",
+    "registry_digest": "sha256:aef6a2fa3a30dcc5a7513390283fed502762c08812eaa37e1f92f8c00eec6e27"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-spent-daily-allowance-refuses-the-next-run",
+      "mutated_protection": "apps/platform/internal/product/entitlements/quota.go:182: if state.RemainingToday <= 0 { -> if state.RemainingToday <= 0 && false {",
+      "failure_evidence": "=== RUN   TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes\n=== RUN   TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/uncountable\n=== RUN   TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/daily_spent\n    quota_test.go:136: daily spent was allowed through\n=== RUN   TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/window_spent\n=== NAME  TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes\n    quota_test.go:146: \"quota_daily\" is published as a refusal reason but no path produces it\n--- FAIL: TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes (0.00s)\n    --- PASS: TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/uncountable (0.00s)\n    --- FAIL: TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/daily_spent (0.00s)\n    --- PASS: TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/window_spent (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements\t1.455s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-spent-window-allowance-refuses-the-next-run",
+      "mutated_protection": "apps/platform/internal/product/entitlements/quota.go:187: if state.RemainingWindow <= 0 { -> if state.RemainingWindow <= 0 && false {",
+      "failure_evidence": "=== RUN   TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes\n=== RUN   TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/uncountable\n=== RUN   TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/daily_spent\n=== RUN   TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/window_spent\n    quota_test.go:136: window spent was allowed through\n=== NAME  TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes\n    quota_test.go:146: \"quota_window\" is published as a refusal reason but no path produces it\n--- FAIL: TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes (0.00s)\n    --- PASS: TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/uncountable (0.00s)\n    --- PASS: TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/daily_spent (0.00s)\n    --- FAIL: TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/window_spent (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements\t1.205s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-uncountable-allowance-refuses-without-claiming-it-ran-out",
+      "mutated_protection": "apps/platform/internal/product/entitlements/quota.go:175: state, err := Usage(ctx, reader, l, workspaceID, time.Now()) if err != nil { -> state, err := Usage(ctx, reader, l, workspaceID, time.Now()) if err != nil && false {",
+      "failure_evidence": "=== RUN   TestAnUncountableAllowanceRefusesWithoutClaimingItRanOut\n=== RUN   TestAnUncountableAllowanceRefusesWithoutClaimingItRanOut/generations\n    generate_quota_test.go:84: err = this workspace has used its free generation allowance: 10 generations a day is the limit; it resets 24 hours after your earliest generation today, want ErrAllowanceUnavailable\n=== RUN   TestAnUncountableAllowanceRefusesWithoutClaimingItRanOut/runs\n    generate_quota_test.go:84: err = this workspace has used its free run allowance: 5 runs a day is the limit; it resets 24 hours after your earliest run today, want ErrAllowanceUnavailable\n--- FAIL: TestAnUncountableAllowanceRefusesWithoutClaimingItRanOut (0.00s)\n    --- FAIL: TestAnUncountableAllowanceRefusesWithoutClaimingItRanOut/generations (0.00s)\n    --- FAIL: TestAnUncountableAllowanceRefusesWithoutClaimingItRanOut/runs (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements\t1.152s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-generation-and-run-allowances-are-separate",
+      "mutated_protection": "apps/platform/internal/product/entitlements/generate_quota.go:32: sentinel: ErrGenerateQuotaExceeded, -> sentinel: ErrQuotaExceeded,",
+      "failure_evidence": "=== RUN   TestTheTwoAllowancesAreNotTheSameAllowance\n    generate_quota_test.go:29: generation refusal = this workspace has used its free run allowance: 10 generations a day is the limit; it resets 24 hours after your earliest generation today, want ErrGenerateQuotaExceeded\n--- FAIL: TestTheTwoAllowancesAreNotTheSameAllowance (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements\t1.748s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-allowance-needs-a-window-and-a-ceiling",
+      "mutated_protection": "apps/platform/internal/product/entitlements/quota.go:43: l.WindowDays > 0 && (l.Daily > 0 || l.Window > 0) -> l.WindowDays > 0 || (l.Daily > 0 || l.Window > 0)",
+      "failure_evidence": "=== RUN   TestQuotaEnforcedOnlyWithARealCeiling\n    quota_test.go:28: no window length is no allowance: Enforced() = true, want false\n    quota_test.go:28: a window with no ceilings is no allowance: Enforced() = true, want false\n--- FAIL: TestQuotaEnforcedOnlyWithARealCeiling (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements\t1.845s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-remaining-allowance-is-never-negative",
+      "mutated_protection": "apps/platform/internal/product/entitlements/quota.go:137: if left < 0 { -> if left < 0 && false {",
+      "failure_evidence": "=== RUN   TestRemainingIsClamped\n    quota_test.go:46: remaining(5, 7) = -2, want 0\n--- FAIL: TestRemainingIsClamped (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements\t0.805s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-default-run-allowance",
+      "mutated_protection": "apps/platform/internal/product/entitlements/quota.go:20: quotaDailyRuns = 5 -> quotaDailyRuns = 6",
+      "failure_evidence": "=== RUN   TestDefaultsAreThePDM010Proposal\n    quota_test.go:36: defaults drifted from PDM-010 §8.1: {Daily:6 Window:30 FirstWindow:20 WindowDays:30}\n--- FAIL: TestDefaultsAreThePDM010Proposal (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements\t0.942s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-download-retention-must-be-positive",
+      "mutated_protection": "apps/platform/internal/product/entitlements/retention.go:13: if r <= 0 { -> if r <= 0 && false {",
+      "failure_evidence": "=== RUN   TestRetentionFailsClosedWithoutAValue\n    retention_test.go:12: DownloadRetention(0).Period() error = <nil>, want ErrRetentionNotConfigured\n    retention_test.go:12: DownloadRetention(-1).Period() error = <nil>, want ErrRetentionNotConfigured\n--- FAIL: TestRetentionFailsClosedWithoutAValue (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements\t0.872s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/product/entitlements/generate_quota.go",
+    "apps/platform/internal/product/entitlements/generate_quota_test.go",
+    "apps/platform/internal/product/entitlements/quota.go",
+    "apps/platform/internal/product/entitlements/quota_test.go",
+    "apps/platform/internal/product/entitlements/retention.go",
+    "apps/platform/internal/product/entitlements/retention_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-spent-daily-allowance-refuses-the-next-run",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes$ ./internal/product/entitlements/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:117b43e2dd541b4aacbc2498ebdee48fc4f15d3f31120879f4034bca0e1c83b8",
+      "finished_at": "2026-10-17T04:32:58.549272Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-spent-window-allowance-refuses-the-next-run",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes$ ./internal/product/entitlements/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:d588b312c9e70a54a0badbe07e0d93c8e0b1c76a5ef107dc76185bafed59ed4b",
+      "finished_at": "2026-10-17T04:33:01.168953Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-uncountable-allowance-refuses-without-claiming-it-ran-out",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnUncountableAllowanceRefusesWithoutClaimingItRanOut$ ./internal/product/entitlements/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:9e3eafcb83502977435fda042297c4b9047a4c7e2a4cee03b61dda826fad4e07",
+      "finished_at": "2026-10-17T04:33:04.187345Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-generation-and-run-allowances-are-separate",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheTwoAllowancesAreNotTheSameAllowance$ ./internal/product/entitlements/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:0db46edaef4de4ee6334939986a01c13df004b14d838453851b6f036f9ebd6b4",
+      "finished_at": "2026-10-17T04:33:06.641905Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-allowance-needs-a-window-and-a-ceiling",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestQuotaEnforcedOnlyWithARealCeiling$ ./internal/product/entitlements/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:96ffeec1fd3c6f85efb15fe62272191107ea4c1ac25c2e0511f8a77a397ebdeb",
+      "finished_at": "2026-10-17T04:33:10.521019Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-remaining-allowance-is-never-negative",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestRemainingIsClamped$ ./internal/product/entitlements/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e05496b7c8d71a512e6771c6a36710e4a8039910639ebb93ef315c40ccdf565a",
+      "finished_at": "2026-10-17T04:33:14.273336Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-the-default-run-allowance",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestDefaultsAreThePDM010Proposal$ ./internal/product/entitlements/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:418d6fbf1d617af99b2bdbf66118d5b36cd50a890137dd8c55f59206fc31531a",
+      "finished_at": "2026-10-17T04:33:23.601671Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-download-retention-must-be-positive",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestRetentionFailsClosedWithoutAValue$ ./internal/product/entitlements/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:25236a66ba72bfba039a5e86a148c0f2cb7ca0d6390356d0f5c6bc7c76f77bc1",
+      "finished_at": "2026-10-17T04:33:26.851697Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
