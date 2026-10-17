@@ -480,7 +480,7 @@ class ChangesTest(RegistryTestCase):
         errors = self.proposal_reference_errors(
             "draft", registry_updates=[{"operation": "upsert", "asset": "rules", "record": rule}]
         )
-        self.assertIn("once applied: rules/order-total references unknown context", errors)
+        self.assertIn("once applied: rules/order-total references unknown context ghost; add the Context first", errors)
 
     def decision_evidence_errors(self, *evidence: object) -> list[str]:
         (self.repo / "src").mkdir(exist_ok=True)

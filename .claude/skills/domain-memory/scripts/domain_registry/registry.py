@@ -12,7 +12,6 @@ from .common import (
     CONTEXT_SUBDOMAINS,
     REGISTRY_STATUSES,
     REVIEW_REQUIRED_FIELDS,
-    one_level_too_deep_hint,
     record_status,
     registry_dir,
     template_dir,
@@ -35,6 +34,7 @@ from .store import (
     has_document,
     has_registry,
     is_concept_layout,
+    missing_registry,
     logical_documents,
     read_document,
     write_document,
@@ -323,23 +323,26 @@ def _context_list_errors(records: dict[str, list[dict[str, Any]]], known_context
             if not isinstance(contexts, list) or not contexts:
                 errors.append(f"{name.removesuffix('.json')}/{entry.get('id')} requires contexts")
             elif set(contexts) - known_contexts:
-                errors.append(f"{name.removesuffix('.json')}/{entry.get('id')} references unknown context")
+                errors.append(f"{name.removesuffix('.json')}/{entry.get('id')} references {_unknown(set(contexts) - known_contexts)}")
     return errors
+
+
+def _unknown(contexts: Any) -> str:
+    return f"unknown context {', '.join(sorted(map(str, contexts)))}; add the Context first"
 
 
 def _single_context_errors(records: dict[str, list[dict[str, Any]]], known_contexts: set[Any]) -> list[str]:
     errors = [
-        f"{name.removesuffix('.json')}/{entry.get('id')} references unknown context"
+        f"{name.removesuffix('.json')}/{entry.get('id')} references {_unknown([entry.get(field)])}"
         for name, fields in SINGLE_CONTEXT_FIELDS
         for entry in records.get(name, [])
         for field in fields
         if entry.get(field) not in known_contexts
     ]
     errors.extend(
-        f"dependency-policies/{entry.get('id')} references unknown context"
+        f"dependency-policies/{entry.get('id')} references {_unknown(missing)}"
         for entry in records.get("dependency-policies.json", [])
-        if entry.get("from_context") not in known_contexts
-        or entry.get("to_context") not in known_contexts
+        if (missing := {entry.get(end) for end in ("from_context", "to_context")} - known_contexts)
     )
     return errors
 
@@ -349,12 +352,14 @@ def _contract_party_errors(records: dict[str, list[dict[str, Any]]], known_conte
     for entry in records.get("contracts.json", []):
         if entry.get("producer_context") not in known_contexts:
             errors.append(
-                f"contracts/{entry.get('id')} references unknown producer context"
+                f"contracts/{entry.get('id')} references as producer {_unknown([entry.get('producer_context')])}"
             )
         consumers = entry.get("consumer_contexts", [])
-        if not isinstance(consumers, list) or set(consumers) - known_contexts:
+        if not isinstance(consumers, list):
+            errors.append(f"contracts/{entry.get('id')} consumer_contexts must be a list of Context ids")
+        elif set(consumers) - known_contexts:
             errors.append(
-                f"contracts/{entry.get('id')} references unknown consumer context"
+                f"contracts/{entry.get('id')} references as consumer {_unknown(set(consumers) - known_contexts)}"
             )
     return errors
 
@@ -387,8 +392,7 @@ def _validate_evidence(
 
 def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list[str]:  # noqa: FBT001
     if not has_registry(root):
-        manifest_path = document_path(root, MANIFEST)
-        return [f"missing manifest: {manifest_path}{one_level_too_deep_hint(manifest_path)}"]
+        return [missing_registry(root)]
     errors: list[str] = []
     if require_reviewed and review_mode(root) != "scm-verified":
         errors.append("local-draft-only Domain Memory cannot satisfy --require-reviewed")
@@ -900,7 +904,7 @@ SUMMARY_FIELDS = ("statement", "definition", "responsibility", "description", "n
 def context_summary(model: dict[str, Any]) -> dict[str, Any]:
     return {
         key: [_summarized(entry) for entry in value] if isinstance(value, list) and key != "rules_bound_through_collaborations"
-        else _summarized(value) if key == "context" else value
+        else {**_summarized(value), "implementation_path": value.get("implementation_path")} if key == "context" else value
         for key, value in model.items()
     }
 

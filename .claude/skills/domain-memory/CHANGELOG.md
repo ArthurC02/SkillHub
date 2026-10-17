@@ -2,6 +2,27 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.50.0
+
+### Added
+
+- Every command has a one-line help, the task it serves in the script reference, and `--help` lists them.
+- `cite` takes `--lines START-END` as `recite` does, beside `--start` and `--end`.
+- `get-context` and `get-record` name up to three nearest ids when the one asked for does not exist.
+- `--asset` takes the singular, such as `rule` or `dependency-policy`.
+
+### Changed
+
+- `get-context --summary` keeps the Context's `implementation_path`.
+- `cite --show` marks the lines it leaves out between the first and the last.
+- Output ends lines with a line feed on every platform, and the `upsert-candidate` NOTEs all go to stderr; the reference states the output convention of every command.
+- An empty `--query` is a usage error.
+- A root that holds no Registry is named as such, and one pointing at `registry/` itself says to pass the directory containing it, for the concept layout as for JSON.
+- An unknown Context is named in the error, with the advice to add it first.
+- `upsert-candidate` says when a record carried a review status it does not keep.
+- `init-domain-memory` names the `--source-authority` it was given instead of a developer.
+- The extract capability describes the scratch root, `compare-registry` and `harvest-candidates` flow.
+
 ## 0.49.0
 
 ### Added

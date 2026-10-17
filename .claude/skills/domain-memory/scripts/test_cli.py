@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import unittest
@@ -17,6 +19,7 @@ from domain_registry.evidence import (
     citation,
     digest,
 )
+from domain_registry.cli_parser import build_parser
 from domain_registry.git_hooks import governance_readiness, install_pre_push_hook
 from domain_registry.hitl import record_approval
 from domain_registry.registry import (
@@ -503,16 +506,55 @@ class CliTest(RegistryTestCase):
                          self.resolve_notes(10, term=True))
 
     def test_get_context_summary_gives_one_line_per_record_without_evidence(self) -> None:
-        self.seed("contexts.json", [{"id": "run", "name": "Run", "responsibility": "Runs trials."}])
+        self.seed("contexts.json", [{"id": "run", "name": "Run", "responsibility": "Runs trials.", "implementation_path": "src/run"}])
         self.seed("rules.json", [{"id": "one-trial", "contexts": ["run"], "statement": "One trial at a time.", "status": "reviewed",
                                   "evidence": [{"path": "run.go", "lines": {"start": 1, "end": 1}}]}])
         summary = json.loads(self.run_cli("get-context", "--registry-root", str(self.repo / "memory"), "--id", "run",
                                           "--summary").stdout)
         self.assertEqual(
-            ({"id": "run", "status": None, "summary": "Runs trials."},
+            ({"id": "run", "status": None, "summary": "Runs trials.", "implementation_path": "src/run"},
              [{"id": "one-trial", "status": "reviewed", "summary": "One trial at a time."}]),
             (summary["context"], summary["rules"]),
         )
+
+    def test_an_unknown_id_names_the_nearest_known_ones(self) -> None:
+        self.seed("contexts.json", [{"id": "eval", "name": "Eval"}, {"id": "evaluation-batch", "name": "Batch"}, {"id": "run", "name": "Run"}])
+        self.seed("rules.json", [{"id": "one-live-account-per-email", "contexts": ["eval"], "statement": "x"}])
+        memory = str(self.repo / "memory")
+        self.assertEqual(
+            ["ERROR: context not found: evals; did you mean eval?",
+             "ERROR: rules record not found: one-live-account-per-mail; did you mean one-live-account-per-email?",
+             "ERROR: context not found: billing"],
+            [self.run_cli("get-context", "--registry-root", memory, "--id", "evals").stdout.strip(),
+             self.run_cli("get-record", "--registry-root", memory, "--asset", "rules", "--id", "one-live-account-per-mail").stdout.strip(),
+             self.run_cli("get-context", "--registry-root", memory, "--id", "billing").stdout.strip()],
+        )
+
+    def test_an_asset_named_in_the_singular_is_the_plural_asset(self) -> None:
+        self.seed("rules.json", [{"id": "r", "contexts": ["orders"], "statement": "x"}])
+        self.seed("dependency-policies.json", [{"id": "p", "from_context": "a", "to_context": "b"}])
+        memory = str(self.repo / "memory")
+        self.assertEqual(
+            ["r", "p"],
+            [json.loads(self.run_cli("get-record", "--registry-root", memory, "--asset", asset, "--id", identifier).stdout)["id"]
+             for asset, identifier in (("rule", "r"), ("dependency-policy", "p"))],
+        )
+
+    def test_an_empty_query_is_a_usage_error(self) -> None:
+        memory = str(self.repo / "memory")
+        for command in (("resolve-terms", "--query", " "), ("lookup", "--asset", "rules", "--query", "")):
+            with self.subTest(command[0]):
+                result = self.run_cli(command[0], "--registry-root", memory, *command[1:])
+                self.assertEqual((2, True), (result.returncode, result.stderr.strip().endswith("the query is empty")))
+
+    def test_every_command_says_in_one_line_what_it_is_for_as_the_reference_does(self) -> None:
+        reference = (Path(__file__).parents[1] / "references" / "script-api.md").read_text(encoding="utf-8")
+        tasks: dict[str, str] = {}
+        for task, command in re.findall(r"^\| ([^|`]+?) \| `([a-z][a-z-]*)", reference, re.MULTILINE):
+            tasks.setdefault(command, task.strip())
+        [subcommands] = [action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)]
+        helps = {choice.dest: choice.help for choice in subcommands._choices_actions}
+        self.assertEqual((57, tasks), (len(helps), helps))
 
     def test_readiness_command_returns_json_without_writing(self) -> None:
         before = self.file_bytes()
@@ -583,6 +625,7 @@ class CliTest(RegistryTestCase):
                 policy["source_policy"]["selected_paths"],
             ),
         )
+        self.assertIn("and test, the source authority, has not said they are the right corpus", result.stdout)
 
     def test_the_cite_command_reports_the_kind_of_source_the_lines_came_from(
         self,
@@ -647,7 +690,36 @@ class CliTest(RegistryTestCase):
         result = self.run_cli(
             "cite", "--repo-root", str(self.repo), "--path", "notes.md", "--start", "1", "--end", "3", "--show",
         )
-        self.assertEqual(["notes.md:1: one", "notes.md:3: three"], result.stderr.splitlines())
+        self.assertEqual(["notes.md:1: one", "notes.md: ... 1 lines not shown", "notes.md:3: three"], result.stderr.splitlines())
+
+    def test_cite_shows_two_adjacent_lines_without_an_elision(self) -> None:
+        (self.repo / "notes.md").write_bytes(b"one\ntwo\n")
+        result = self.run_cli(
+            "cite", "--repo-root", str(self.repo), "--path", "notes.md", "--lines", "1-2", "--show",
+        )
+        self.assertEqual(["notes.md:1: one", "notes.md:2: two"], result.stderr.splitlines())
+
+    def cite(self, *range_options: str) -> subprocess.CompletedProcess:
+        (self.repo / "notes.md").write_bytes(b"one\ntwo\nthree\n")
+        return self.run_cli("cite", "--repo-root", str(self.repo), "--path", "notes.md", *range_options)
+
+    def test_cite_takes_lines_as_recite_does(self) -> None:
+        self.assertEqual(json.loads(self.cite("--start", "2", "--end", "3").stdout), json.loads(self.cite("--lines", "2-3").stdout))
+
+    def test_cite_refuses_both_line_forms_or_neither(self) -> None:
+        for options in (("--lines", "1-2", "--start", "1", "--end", "2"), ("--lines", "1-2", "--start", "1"), ("--start", "1"), ()):
+            with self.subTest(options):
+                self.assertEqual("ERROR: cite takes --lines START-END, or --start and --end",
+                                 self.cite(*options).stdout.strip())
+
+    def test_output_lines_end_in_a_line_feed_on_every_platform(self) -> None:
+        (self.repo / "notes.md").write_bytes(b"one\ntwo\nthree\n")
+        result = subprocess.run(
+            [sys.executable, "-m", "domain_registry.cli", "cite", "--repo-root", str(self.repo), "--path", "notes.md",
+             "--lines", "1-3", "--show"],
+            cwd=Path(__file__).parent, capture_output=True, check=False,
+        )
+        self.assertEqual((False, False, True), (b"\r\n" in result.stdout, b"\r\n" in result.stderr, b"\n" in result.stderr))
 
     def test_cite_shows_a_one_line_citation_once(self) -> None:
         (self.repo / "notes.md").write_bytes(b"one\ntwo\n")
@@ -673,8 +745,32 @@ class CliTest(RegistryTestCase):
             "--repo-root", str(self.repo), "--asset", "contexts", "--record-file", str(record),
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("files the confirmed source map does not cover: notes.md", result.stdout)
-        self.assertIn("apply-approved-updates refuses to review", result.stdout)
+        self.assertIn("files the confirmed source map does not cover: notes.md", result.stderr)
+        self.assertIn("apply-approved-updates refuses to review", result.stderr)
+        self.assertEqual("Candidate record created.", result.stdout.strip())
+
+    def upsert_with(self, **fields: object) -> subprocess.CompletedProcess:
+        record = self.write_record("context.json", {
+            "id": "orders", "name": "Orders", "responsibility": "Own orders.",
+            "evidence": [citation(self.repo, "notes.md", 1, 1)], **fields,
+        })
+        return self.run_cli("upsert-candidate", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+                            "--asset", "contexts", "--record-file", str(record))
+
+    def test_upsert_says_when_it_drops_a_review_status_the_record_carried(self) -> None:
+        note = ("NOTE: contexts/orders carried a review status, stored as candidate: a record becomes reviewed only "
+                "through an approved Change Package.")
+        self.confirmed_corpus()
+        (self.repo / "notes.md").write_text("Orders owns pricing.", encoding="utf-8")
+        for label, fields, expected in (
+            ("reviewed", {"status": "reviewed"}, True),
+            ("verified", {"verified": True}, True),
+            ("candidate", {"status": "candidate"}, False),
+            ("no status", {}, False),
+        ):
+            with self.subTest(label):
+                result = self.upsert_with(**fields)
+                self.assertEqual((0, expected), (result.returncode, note in result.stderr))
 
     def test_recovery_reports_that_nothing_was_interrupted_or_pending(self) -> None:
         result = self.run_cli(

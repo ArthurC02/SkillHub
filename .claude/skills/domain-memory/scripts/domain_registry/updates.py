@@ -192,6 +192,7 @@ class Upserted:
     same_evidence: list[str] = field(default_factory=list)
     skipped_reviewed: list[str] = field(default_factory=list)
     skipped_duplicate: list[dict[str, str]] = field(default_factory=list)
+    status_dropped: list[str] = field(default_factory=list)
 
     def reset(self) -> None:
         self.created = 0
@@ -199,6 +200,7 @@ class Upserted:
         self.same_evidence.clear()
         self.skipped_reviewed.clear()
         self.skipped_duplicate.clear()
+        self.status_dropped.clear()
 
 
 @dataclass(frozen=True)
@@ -227,6 +229,8 @@ def stage_candidates(
         result.same_evidence.extend(_citing_the_same_excerpts(asset, records, record))
         candidate = classify_all(dict(record), staging.source_map)
         result.outside.extend(unclassified_paths(candidate))
+        if candidate.get(review_field(asset), "candidate") != "candidate" or candidate.get("verified"):
+            result.status_dropped.append(f"{asset}/{record['id']}")
         candidate.pop("review", None)
         candidate.pop("verified", None)
         candidate[review_field(asset)] = "candidate"

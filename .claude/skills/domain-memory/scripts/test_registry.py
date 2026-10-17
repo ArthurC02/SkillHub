@@ -90,29 +90,35 @@ class RegistryTest(RegistryTestCase):
             ("itself as a look-alike", "vocabulary.json", [{**order_term, "not_same_as": ["order"]}],
              "vocabulary/order not_same_as must name other vocabulary term ids"),
             ("rule in unknown context", "rules.json", [{"id": "r", "contexts": ["ghost"]}],
-             "rules/r references unknown context"),
+             "rules/r references unknown context ghost; add the Context first"),
             ("aggregate in unknown context", "aggregates.json", [{"id": "a", "context": "ghost"}],
-             "aggregates/a references unknown context"),
+             "aggregates/a references unknown context ghost; add the Context first"),
             ("unknown consumer", "interactions.json",
              [{"id": "i", "producer_context": "orders", "consumer_context": "ghost"}],
-             "interactions/i references unknown context"),
+             "interactions/i references unknown context ghost; add the Context first"),
             ("policy to unknown context", "dependency-policies.json",
              [{"id": "p", "from_context": "orders", "to_context": "ghost"}],
-             "dependency-policies/p references unknown context"),
+             "dependency-policies/p references unknown context ghost; add the Context first"),
             ("contract producer", "contracts.json", [{"id": "c", "producer_context": "ghost", "consumer_contexts": []}],
-             "contracts/c references unknown producer context"),
+             "contracts/c references as producer unknown context ghost; add the Context first"),
             ("contract consumer", "contracts.json",
              [{"id": "c", "producer_context": "orders", "consumer_contexts": ["ghost"]}],
-             "contracts/c references unknown consumer context"),
+             "contracts/c references as consumer unknown context ghost; add the Context first"),
             ("unknown producer", "interactions.json",
              [{"id": "i", "producer_context": "ghost", "consumer_context": "orders"}],
-             "interactions/i references unknown context"),
+             "interactions/i references unknown context ghost; add the Context first"),
             ("event in unknown context", "events.json", [{"id": "e", "owner_context": "ghost"}],
-             "events/e references unknown context"),
+             "events/e references unknown context ghost; add the Context first"),
             ("capability in unknown context", "capabilities.json", [{"id": "k", "context": "ghost"}],
-             "capabilities/k references unknown context"),
+             "capabilities/k references unknown context ghost; add the Context first"),
             ("value object in unknown context", "value-objects.json", [{"id": "v", "context": "ghost"}],
-             "value-objects/v references unknown context"),
+             "value-objects/v references unknown context ghost; add the Context first"),
+            ("contract consumers not a list", "contracts.json",
+             [{"id": "c", "producer_context": "orders", "consumer_contexts": "billing"}],
+             "contracts/c consumer_contexts must be a list of Context ids"),
+            ("policy between two unknown contexts", "dependency-policies.json",
+             [{"id": "p", "from_context": "ghost", "to_context": "phantom"}],
+             "dependency-policies/p references unknown context ghost, phantom; add the Context first"),
             ("unknown contract", "interactions.json",
              [{"id": "i", "producer_context": "orders", "consumer_context": "billing", "contract_id": "none"}],
              "interactions/i references unknown contract"),
@@ -187,14 +193,20 @@ class RegistryTest(RegistryTestCase):
         inner = self.repo / "memory" / "registry"
         self.assertEqual(
             [
-                f"missing manifest: {inner / 'registry' / 'manifest.json'}; {inner / 'manifest.json'} exists, "
-                "so a root option probably points one directory too deep: a registry root holds registry/, "
-                "source-map.json, and the policy"
+                f"no Domain Registry at {inner}: it holds neither registry/index.md nor registry/manifest.json; "
+                f"{inner} is the registry/ directory itself, so pass the directory that contains it, {self.repo / 'memory'}"
             ],
             validate(inner, self.repo, False),
         )
         with self.assertRaisesRegex(ValueError, "points one directory too deep"):
             load_json(inner / "domain-memory-policy.json")
+
+    def test_a_json_registry_without_a_manifest_is_still_read(self) -> None:
+        root = self.repo / "memory"
+        use_json_layout(root)
+        contexts = read_document(root, "contexts.json")
+        (root / "registry" / "manifest.json").unlink()
+        self.assertEqual(contexts, read_document(root, "contexts.json"))
 
     def test_a_missing_file_with_nothing_nearby_gets_no_hint(self) -> None:
         missing = self.repo / "memory" / "nowhere.json"
@@ -202,7 +214,23 @@ class RegistryTest(RegistryTestCase):
             load_json(missing)
         self.assertEqual(f"JSON file required: {missing}", str(refused.exception))
         elsewhere = self.repo / "elsewhere"
-        self.assertEqual([f"missing manifest: {elsewhere / 'registry' / 'manifest.json'}"], validate(elsewhere, None, False))
+        self.assertEqual(
+            [f"no Domain Registry at {elsewhere}: it holds neither registry/index.md nor registry/manifest.json"],
+            validate(elsewhere, None, False),
+        )
+        with self.assertRaisesRegex(ValueError, "^no Domain Registry at "):
+            read_document(elsewhere, "contexts.json")
+        for beside in (self.repo / "memory" / "other", elsewhere / "registry"):
+            with self.subTest(beside.as_posix()):
+                self.assertEqual(
+                    [f"no Domain Registry at {beside}: it holds neither registry/index.md nor registry/manifest.json"],
+                    validate(beside, None, False),
+                )
+
+    def test_a_concept_registry_root_one_directory_too_deep_is_named_as_such(self) -> None:
+        inner = self.repo / "memory" / "registry"
+        with self.assertRaisesRegex(ValueError, "is the registry/ directory itself, so pass the directory that contains it"):
+            read_document(inner, "contexts.json")
 
     def test_json_loader_rejects_duplicate_keys(self) -> None:
         path = self.repo / "duplicate.json"

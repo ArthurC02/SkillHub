@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import shutil
 import sys
@@ -276,19 +277,28 @@ def _exported(root: Path, commit: str | None, repo_root: Path | None, option: st
 
 
 def handle_get_context(args: argparse.Namespace) -> int:
-    result = context_model(args.registry_root.resolve(), args.id)
+    root = args.registry_root.resolve()
+    result = context_model(root, args.id)
     if result is None:
-        raise ValueError(f"context not found: {args.id}")
+        raise ValueError(f"context not found: {args.id}{_did_you_mean(args.id, asset_records(root, 'contexts.json'))}")
     print_json(context_summary(result) if args.summary else result)
     return 0
 
 
 def handle_get_record(args: argparse.Namespace) -> int:
-    result = record_by_id(args.registry_root.resolve(), args.asset, args.id)
+    root = args.registry_root.resolve()
+    result = record_by_id(root, args.asset, args.id)
     if result is None:
-        raise ValueError(f"{args.asset} record not found: {args.id}")
+        known = asset_records(root, f"{args.asset}.json")
+        raise ValueError(f"{args.asset} record not found: {args.id}{_did_you_mean(args.id, known)}")
     print_json(result)
     return 0
+
+
+def _did_you_mean(identifier: str, records: list[dict]) -> str:
+    known = [record["id"] for record in records if isinstance(record.get("id"), str)]
+    close = difflib.get_close_matches(identifier, known, n=3)
+    return f"; did you mean {', '.join(close)}?" if close else ""
 
 
 def handle_change_coupling(args: argparse.Namespace) -> int:
@@ -374,7 +384,7 @@ OUTSIDE_SOURCES_CONSEQUENCE = (
 
 
 def handle_cite(args: argparse.Namespace) -> int:
-    reference = citation(args.repo_root.resolve(), args.path, args.start, args.end)
+    reference = citation(args.repo_root.resolve(), args.path, *_cited_lines(args))
     if args.registry_root:
         reference = classified(reference, source_map_for(args.registry_root.resolve()))
     print_json(reference)
@@ -389,10 +399,22 @@ def handle_cite(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cited_lines(args: argparse.Namespace) -> tuple[int, int]:
+    if args.lines is None and None not in (args.start, args.end):
+        return args.start, args.end
+    if args.lines is not None and args.start is None and args.end is None:
+        return line_range(args.lines)
+    raise ValueError("cite takes --lines START-END, or --start and --end")
+
+
 def _show_cited_lines(repo_root: Path, reference: dict) -> None:
     rows = (repo_root / reference["path"]).read_text(encoding="utf-8", errors="replace").splitlines()
-    for line in dict.fromkeys((reference["lines"]["start"], reference["lines"]["end"])):
-        print(f"{reference['path']}:{line}: {rows[line - 1]}", file=sys.stderr)
+    start, end = reference["lines"]["start"], reference["lines"]["end"]
+    print(f"{reference['path']}:{start}: {rows[start - 1]}", file=sys.stderr)
+    if end - start > 1:
+        print(f"{reference['path']}: ... {end - start - 1} lines not shown", file=sys.stderr)
+    if end > start:
+        print(f"{reference['path']}:{end}: {rows[end - 1]}", file=sys.stderr)
 
 
 def handle_retract_candidate(args: argparse.Namespace) -> int:
@@ -439,7 +461,14 @@ def handle_upsert_candidate(args: argparse.Namespace) -> int:
             + ", ".join(outside)
             + ". That is reach, not an error. A Domain Memory that comes to depend on an unconfirmed file loses its "
             "evidence when that file moves. "
-            + OUTSIDE_SOURCES_CONSEQUENCE
+            + OUTSIDE_SOURCES_CONSEQUENCE,
+            file=sys.stderr,
+        )
+    if upserted.status_dropped:
+        print(
+            f"NOTE: {', '.join(upserted.status_dropped)} carried a review status, stored as candidate: a record "
+            "becomes reviewed only through an approved Change Package.",
+            file=sys.stderr,
         )
     return 0
 
@@ -598,8 +627,9 @@ def handle_init_domain_memory(args: argparse.Namespace) -> int:
         raise
     write_source_map(output / "source-map.json", source_map)
     print(
-        "Domain Memory initialized. The sources are agent-asserted: you selected them, the developer has not "
-        "said they are the right corpus. Show them the selected paths and ask. When they answer, record it with "
+        f"Domain Memory initialized. The sources are agent-asserted: you selected them, and {args.source_authority}, "
+        "the source authority, has not said they are the right corpus. Show them the selected paths and ask. When "
+        "they answer, record it with "
         "confirm-sources --confirmed-by <the identity they give you>; until then verify-sources reports the map "
         "as unverified, which is the truth and not a problem to work around."
     )

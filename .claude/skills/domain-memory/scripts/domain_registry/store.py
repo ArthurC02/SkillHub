@@ -63,12 +63,21 @@ def has_registry(root: Path) -> bool:
     return is_concept_layout(root) or (registry_dir(root) / MANIFEST).is_file()
 
 
+def missing_registry(root: Path) -> str:
+    message = f"no Domain Registry at {root}: it holds neither registry/{INDEX} nor registry/{MANIFEST}"
+    if root.name == "registry" and has_registry(root.parent):
+        return f"{message}; {root} is the registry/ directory itself, so pass the directory that contains it, {root.parent}"
+    return message
+
+
 def manifest_document() -> dict[str, Any]:
     return {"format": MANIFEST_FORMAT, "status": DEFAULT_STATUS, "artifacts": list(ASSET_KEYS)}
 
 
 def read_document(root: Path, name: str) -> dict[str, Any]:
     if not is_concept_layout(root):
+        if not registry_dir(root).is_dir():
+            raise ValueError(missing_registry(root))
         return load_json(registry_dir(root) / name)
     if name == MANIFEST:
         return manifest_document()
