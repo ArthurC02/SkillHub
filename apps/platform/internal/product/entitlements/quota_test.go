@@ -3,7 +3,9 @@ package policy
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -134,6 +136,16 @@ func splitReader(window, today int64, created time.Time) UsageReader {
 			}
 			return RunUsage{Used: today}, nil
 		},
+	}
+}
+
+func TestWhenBothAllowancesAreSpentTheDailyOneIsTheReasonGiven(t *testing.T) {
+	limits := DefaultQuotaLimits()
+	bothSpent := splitReader(int64(limits.Window), int64(limits.Daily), time.Now().Add(-365*24*time.Hour))
+
+	reason, err := EnforceQuota(context.Background(), bothSpent, limits, pgtype.UUID{})
+	if reason != "quota_daily" || !strings.Contains(fmt.Sprint(err), "resets 24 hours after") {
+		t.Fatalf("both spent: reason %q, %v; want quota_daily and when the day resets", reason, err)
 	}
 }
 
