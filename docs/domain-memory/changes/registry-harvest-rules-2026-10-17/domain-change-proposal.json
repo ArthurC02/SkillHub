@@ -3,12 +3,12 @@
   "proposal_id": "registry-harvest-rules-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "registry-harvest-rules-2026-10-17",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T06:42:03.492465Z",
   "verified_at": "2026-10-17T06:43:00.937163Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T06:43:03.877809Z",
+  "applied_at": "2026-10-17T06:43:05.816309Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "82fce4a153fcaacda700d896a8c44a40699d2063",
@@ -279,5 +279,9 @@
         "registry_digest": "sha256:962bc6cbc3d07014a6f15da1ce322046a053578de707f71670d84f53bc719ee3"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "3e6eb5bd5ee4b579fda6f25c66f0468a675ad05d",
+    "registry_digest": "sha256:141ae6cb4d63a78c8b725a0313482fbcbf158b22b10509982af0d42fc86ceefe"
+  }
 }
