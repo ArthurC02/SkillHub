@@ -1,0 +1,108 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "policy-allowance-window-rules-2026-10-18",
+  "proposal_id": "policy-allowance-window-rules-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "d53853e21121fe9bf3e60b0a1160835de379dfed",
+    "registry_digest": "sha256:5b4bf1eef4d8f219cf26815373498d75098f6ef5f9bf13ea15119a13c23ef961"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-daily-allowance-counts-the-last-24-hours",
+      "mutated_protection": "apps/platform/internal/product/entitlements/quota.go:101: day, err := reader.CountRuns(ctx, workspaceID, now.Add(-24*time.Hour)) -> day, err := reader.CountRuns(ctx, workspaceID, now.Add(-48*time.Hour))",
+      "failure_evidence": "=== RUN   TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes\n=== RUN   TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/uncountable\n=== RUN   TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/daily_spent\n=== RUN   TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/window_spent\n=== NAME  TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes\n    quota_test.go:179: \"quota_window\" is published as a refusal reason but no path produces it\n--- FAIL: TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes (0.00s)\n    --- PASS: TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/uncountable (0.00s)\n    --- PASS: TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/daily_spent (0.00s)\n    --- PASS: TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/window_spent (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements\t0.775s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-window-allowance-counts-the-last-window-of-days",
+      "mutated_protection": "apps/platform/internal/product/entitlements/quota.go:95: windowStart := now.Add(-time.Duration(l.WindowDays) * 24 * time.Hour) -> windowStart := now.Add(-24 * time.Hour)",
+      "failure_evidence": "=== RUN   TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes\n=== RUN   TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/uncountable\n=== RUN   TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/daily_spent\n=== RUN   TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/window_spent\n    quota_test.go:169: window spent was allowed through\n=== NAME  TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes\n    quota_test.go:179: \"quota_window\" is published as a refusal reason but no path produces it\n--- FAIL: TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes (0.00s)\n    --- PASS: TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/uncountable (0.00s)\n    --- PASS: TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/daily_spent (0.00s)\n    --- FAIL: TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes/window_spent (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements\t0.716s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-window-allowance-resets-a-window-after-its-oldest-run",
+      "mutated_protection": "apps/platform/internal/product/entitlements/quota.go:115: resets = window.Oldest.Add(time.Duration(l.WindowDays) * 24 * time.Hour) -> resets = window.Oldest.Add(time.Duration(l.WindowDays-1) * 24 * time.Hour)",
+      "failure_evidence": "=== RUN   TestUsageCombinesOwnerFactsWithoutPersistenceTypes\n    quota_test.go:90: window resets at 2026-09-10 12:00:00 +0000 UTC, want 2026-09-11 12:00:00 +0000 UTC\n--- FAIL: TestUsageCombinesOwnerFactsWithoutPersistenceTypes (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements\t0.831s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-young-workspace-resets-at-the-earlier-boundary",
+      "mutated_protection": "apps/platform/internal/product/entitlements/quota.go:119: if inFirstWindow && firstWindowEnds.Before(resets) { -> if inFirstWindow && firstWindowEnds.Before(resets) && false {",
+      "failure_evidence": "=== RUN   TestAYoungWorkspaceHasTheFirstWindowAllowanceUntilItsFirstWindowEnds\n=== RUN   TestAYoungWorkspaceHasTheFirstWindowAllowanceUntilItsFirstWindowEnds/one_second_before_its_first_window_ends\n    quota_test.go:121: window resets at 2026-09-20 12:00:00 +0000 UTC, want 2026-08-22 12:00:01 +0000 UTC\n=== RUN   TestAYoungWorkspaceHasTheFirstWindowAllowanceUntilItsFirstWindowEnds/the_moment_its_first_window_ends\n--- FAIL: TestAYoungWorkspaceHasTheFirstWindowAllowanceUntilItsFirstWindowEnds (0.00s)\n    --- FAIL: TestAYoungWorkspaceHasTheFirstWindowAllowanceUntilItsFirstWindowEnds/one_second_before_its_first_window_ends (0.00s)\n    --- PASS: TestAYoungWorkspaceHasTheFirstWindowAllowanceUntilItsFirstWindowEnds/the_moment_its_first_window_ends (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements\t0.721s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-when-both-allowances-are-spent-the-daily-reason-is-given",
+      "mutated_protection": "apps/platform/internal/product/entitlements/quota.go:182: if state.RemainingToday <= 0 { -> if state.RemainingToday <= 0 && state.RemainingWindow > 0 {",
+      "failure_evidence": "=== RUN   TestWhenBothAllowancesAreSpentTheDailyOneIsTheReasonGiven\n    quota_test.go:148: both spent: reason \"quota_window\", this workspace has used its free run allowance: 30 runs per 30 days is the limit; the next one frees up at 2026-10-17T19:32:44Z; want quota_daily and when the day resets\n--- FAIL: TestWhenBothAllowancesAreSpentTheDailyOneIsTheReasonGiven (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements\t0.999s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/product/entitlements/quota.go",
+    "apps/platform/internal/product/entitlements/quota_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-the-daily-allowance-counts-the-last-24-hours",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes$ ./internal/product/entitlements/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:0f5139daadd3963b7a25308630d6fcd66b795f79dad5b5d660efd38f52670acc",
+      "finished_at": "2026-10-17T19:43:51.825678Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-the-window-allowance-counts-the-last-window-of-days",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes$ ./internal/product/entitlements/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:bb408d01089f2106b631639291c175782607be144a36a1dd97309e5f623bf218",
+      "finished_at": "2026-10-17T19:43:53.724221Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-window-allowance-resets-a-window-after-its-oldest-run",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestUsageCombinesOwnerFactsWithoutPersistenceTypes$ ./internal/product/entitlements/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:c1a80b1f5e01565798725e0542c2f88865d9fcae7c218a6f37aeb91723accd4f",
+      "finished_at": "2026-10-17T19:43:55.731045Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-young-workspace-resets-at-the-earlier-boundary",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAYoungWorkspaceHasTheFirstWindowAllowanceUntilItsFirstWindowEnds$ ./internal/product/entitlements/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b8bbd274136412db7077cfbed5095f769205aad06be88fc1acff51a3d7361902",
+      "finished_at": "2026-10-17T19:43:57.729109Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-when-both-allowances-are-spent-the-daily-reason-is-given",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestWhenBothAllowancesAreSpentTheDailyOneIsTheReasonGiven$ ./internal/product/entitlements/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:0b24173c3614ea464fcf4ef2a31f570af138cdbac292fef395bdb54e2666836f",
+      "finished_at": "2026-10-17T19:43:59.665835Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

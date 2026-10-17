@@ -1,0 +1,82 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "policy-allowance-window-rules-2026-10-18",
+  "proposal_id": "policy-allowance-window-rules-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-the-daily-allowance-counts-the-last-24-hours",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-daily-allowance-counts-the-last-24-hours",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-daily-allowance-counts-the-last-24-hours"
+        }
+      ],
+      "expected_outcome": "The daily allowance counts the runs of the 24 hours before now, not of the calendar day.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes$ ./internal/product/entitlements/"
+    },
+    {
+      "id": "rule-the-window-allowance-counts-the-last-window-of-days",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-window-allowance-counts-the-last-window-of-days",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-window-allowance-counts-the-last-window-of-days"
+        }
+      ],
+      "expected_outcome": "The window allowance counts the runs of the configured number of days before now, a rolling window rather than a calendar month.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes$ ./internal/product/entitlements/"
+    },
+    {
+      "id": "rule-a-window-allowance-resets-a-window-after-its-oldest-run",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-window-allowance-resets-a-window-after-its-oldest-run",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-window-allowance-resets-a-window-after-its-oldest-run"
+        }
+      ],
+      "expected_outcome": "A spent window allowance frees its next run one window after the oldest run it still counts.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestUsageCombinesOwnerFactsWithoutPersistenceTypes$ ./internal/product/entitlements/"
+    },
+    {
+      "id": "rule-a-young-workspace-resets-at-the-earlier-boundary",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-young-workspace-resets-at-the-earlier-boundary",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-young-workspace-resets-at-the-earlier-boundary"
+        }
+      ],
+      "expected_outcome": "While a Workspace is in its first window, its allowance resets at whichever comes first, the end of that first window or the rolling window's reset.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAYoungWorkspaceHasTheFirstWindowAllowanceUntilItsFirstWindowEnds$ ./internal/product/entitlements/"
+    },
+    {
+      "id": "rule-when-both-allowances-are-spent-the-daily-reason-is-given",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-when-both-allowances-are-spent-the-daily-reason-is-given",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "when-both-allowances-are-spent-the-daily-reason-is-given"
+        }
+      ],
+      "expected_outcome": "When the daily and the window allowance are both spent, the refusal names the daily allowance and when it resets.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestWhenBothAllowancesAreSpentTheDailyOneIsTheReasonGiven$ ./internal/product/entitlements/"
+    }
+  ]
+}

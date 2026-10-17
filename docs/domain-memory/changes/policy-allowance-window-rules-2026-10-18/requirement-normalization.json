@@ -1,0 +1,38 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "policy-allowance-window-rules-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed how the run allowance counts its rolling day and window and when it resets.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context policy lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-the-daily-allowance-counts-the-last-24-hours",
+      "statement": "The daily allowance counts the runs of the 24 hours before now, not of the calendar day."
+    },
+    {
+      "id": "enforced-the-window-allowance-counts-the-last-window-of-days",
+      "statement": "The window allowance counts the runs of the configured number of days before now, a rolling window rather than a calendar month."
+    },
+    {
+      "id": "enforced-a-window-allowance-resets-a-window-after-its-oldest-run",
+      "statement": "A spent window allowance frees its next run one window after the oldest run it still counts."
+    },
+    {
+      "id": "enforced-a-young-workspace-resets-at-the-earlier-boundary",
+      "statement": "While a Workspace is in its first window, its allowance resets at whichever comes first, the end of that first window or the rolling window's reset."
+    },
+    {
+      "id": "enforced-when-both-allowances-are-spent-the-daily-reason-is-given",
+      "statement": "When the daily and the window allowance are both spent, the refusal names the daily allowance and when it resets."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/product/entitlements/quota.go",
+    "apps/platform/internal/product/entitlements/quota_test.go"
+  ]
+}

@@ -1,0 +1,258 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "policy-allowance-window-rules-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "policy-allowance-window-rules-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T19:43:49.980705Z",
+  "verified_at": "2026-10-17T19:44:00.296816Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "d53853e21121fe9bf3e60b0a1160835de379dfed",
+    "registry_digest": "sha256:5b4bf1eef4d8f219cf26815373498d75098f6ef5f9bf13ea15119a13c23ef961"
+  },
+  "affected_contexts": [
+    "policy"
+  ],
+  "rule_ids": [
+    "the-daily-allowance-counts-the-last-24-hours",
+    "the-window-allowance-counts-the-last-window-of-days",
+    "a-window-allowance-resets-a-window-after-its-oldest-run",
+    "a-young-workspace-resets-at-the-earlier-boundary",
+    "when-both-allowances-are-spent-the-daily-reason-is-given"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "policy",
+    "invariant": "Only policy decides how many runs a Workspace may start and when its allowance resets.",
+    "evidence": [
+      "apps/platform/internal/product/entitlements/quota.go:91-121"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: run counts reach policy through an injected reader.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/product/entitlements/quota.go:182-192"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A second extraction of the policy Context found how the allowance counts and resets, which the Registry did not hold.",
+      "The order of the two refusal reasons survived its counterfactual; a test was added."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording guards no test reaches: they wait for a test.",
+      "Recording that only the asking Workspace's runs are counted: dropping the Workspace id zeroes every count, so no test isolates the cross-Workspace case."
+    ],
+    "proof_obligations": [
+      "rule-the-daily-allowance-counts-the-last-24-hours",
+      "rule-the-window-allowance-counts-the-last-window-of-days",
+      "rule-a-window-allowance-resets-a-window-after-its-oldest-run",
+      "rule-a-young-workspace-resets-at-the-earlier-boundary",
+      "rule-when-both-allowances-are-spent-the-daily-reason-is-given"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-daily-allowance-counts-the-last-24-hours",
+        "statement": "The daily allowance counts the runs of the 24 hours before now, not of the calendar day.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "A run at 23:00 yesterday still counts at 10:00 today."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 101,
+              "end": 101
+            },
+            "excerpt_sha256": "sha256:1797f3509bbc09245a741eb54d357af291c9c7282d56820b78049db85fe4efb6"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 182,
+              "end": 186
+            },
+            "excerpt_sha256": "sha256:fe837607a4ccd37e7b2399326cc71dea687a3995d3f525b67ef993c3b9964d32"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota_test.go",
+            "lines": {
+              "start": 152,
+              "end": 194
+            },
+            "content_sha256": "sha256:70f2a74a7c8ad1c43e0a8a203be8ed532566b6742873cdb7a7a0314a8b3751a7",
+            "excerpt_sha256": "sha256:c761b7938a96c3f4cb254095afec235845ebc6501b296ed7dda2c5ec9e5fb92a"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-window-allowance-counts-the-last-window-of-days",
+        "statement": "The window allowance counts the runs of the configured number of days before now, a rolling window rather than a calendar month.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "With a 30-day window, a run 29 days ago counts and one 31 days ago does not."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 95,
+              "end": 100
+            },
+            "excerpt_sha256": "sha256:7272d86d1cd1a395b370a6918e41b68d8f311fae3eab380bfb071c7dfed3035b"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota_test.go",
+            "lines": {
+              "start": 152,
+              "end": 194
+            },
+            "content_sha256": "sha256:70f2a74a7c8ad1c43e0a8a203be8ed532566b6742873cdb7a7a0314a8b3751a7",
+            "excerpt_sha256": "sha256:c761b7938a96c3f4cb254095afec235845ebc6501b296ed7dda2c5ec9e5fb92a"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-window-allowance-resets-a-window-after-its-oldest-run",
+        "statement": "A spent window allowance frees its next run one window after the oldest run it still counts.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "With a 30-day window and the oldest counted run 10 days ago, the next run frees in 20 days."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 113,
+              "end": 116
+            },
+            "excerpt_sha256": "sha256:c5769e2f3f176fe094816e80239ef453162a9bcd9328343f33d2603068dffd50"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota_test.go",
+            "lines": {
+              "start": 68,
+              "end": 94
+            },
+            "content_sha256": "sha256:70f2a74a7c8ad1c43e0a8a203be8ed532566b6742873cdb7a7a0314a8b3751a7",
+            "excerpt_sha256": "sha256:f78a678feb4911ee1a2e0b1adce32f41ebd3bb5c0b1350924f1bddcfcf46e752"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-young-workspace-resets-at-the-earlier-boundary",
+        "statement": "While a Workspace is in its first window, its allowance resets at whichever comes first, the end of that first window or the rolling window's reset.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "One second before its first window ends, a Workspace whose oldest run is yesterday resets in one second."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 117,
+              "end": 121
+            },
+            "excerpt_sha256": "sha256:43b0e02377b3e68a842cd5f170d141cbe5be28368be6eed1022e64cc6f0b81ce"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota_test.go",
+            "lines": {
+              "start": 96,
+              "end": 127
+            },
+            "content_sha256": "sha256:70f2a74a7c8ad1c43e0a8a203be8ed532566b6742873cdb7a7a0314a8b3751a7",
+            "excerpt_sha256": "sha256:080c648b367e9a099998601bf11f09d5af67bae5e1cdd44bed09aa11ce8a01ea"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "when-both-allowances-are-spent-the-daily-reason-is-given",
+        "statement": "When the daily and the window allowance are both spent, the refusal names the daily allowance and when it resets.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "Five runs today and thirty this window refuse with quota_daily and its 24-hour reset."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 182,
+              "end": 192
+            },
+            "excerpt_sha256": "sha256:9afc7ba25773b59264f1e73efa25c1af874f1586f0ef21cc7a7262006d8b919f"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota_test.go",
+            "lines": {
+              "start": 142,
+              "end": 150
+            },
+            "content_sha256": "sha256:70f2a74a7c8ad1c43e0a8a203be8ed532566b6742873cdb7a7a0314a8b3751a7",
+            "excerpt_sha256": "sha256:d2f634cab52cfcf0202b2c705180959fea8a34c7b5316848535c8e12bfe38625"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T19:43:59.923381Z",
+      "scope": "Record policy allowance window rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "d53853e21121fe9bf3e60b0a1160835de379dfed",
+        "registry_digest": "sha256:5b4bf1eef4d8f219cf26815373498d75098f6ef5f9bf13ea15119a13c23ef961"
+      }
+    }
+  ]
+}
