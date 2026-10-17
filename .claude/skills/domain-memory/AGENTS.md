@@ -50,7 +50,7 @@ Commands that read or change the Registry take `--registry-root <root>`: the dir
 ## Words you will meet
 
 - **Registry**: one Markdown concept file per record under `<root>/registry/<asset>/`. The asset name is the folder name, such as `contexts`, `rules`, `contracts`, `vocabulary` or `dependency-policies`, and messages name a record as `<asset>/<id>`. Read it through the commands, never its files.
-- **Record**: one entry in an asset. Its `status` is `candidate` (proposed, authorizes nothing) or `reviewed` (a fact, approved through a Change Package).
+- **Record**: one entry in an asset. Its `status` is `candidate` (proposed, authorizes nothing), `reviewed` (a fact, approved through a Change Package), `deprecated` (a fact no longer in force) or `superseded` (replaced by a newer record).
 - **Citation**: a record's evidence, `{path, lines, excerpt_sha256}`, always built by `cite`. `verify-evidence` reports each one with one of these statuses:
   - `current`: the cited lines are unchanged.
   - `shifted`: the excerpt is unchanged but sits on other lines. This does not fail.

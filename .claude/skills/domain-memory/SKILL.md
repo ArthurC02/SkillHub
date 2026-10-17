@@ -1,6 +1,6 @@
 ---
 name: domain-memory
-description: "Route domain-driven development work to the smallest Domain Memory capability: read the model, design a boundary, maintain the files, or review consistency."
+description: "Route domain-driven development work to the smallest Domain Memory capability: read the model, extract it from requirements or code, design a boundary, check a change expresses it, maintain the files, or review consistency."
 ---
 
 # Domain Memory

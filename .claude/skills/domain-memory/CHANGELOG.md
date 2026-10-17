@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.70.0
+
+### Changed
+
+- AGENTS.md names all four record statuses, the root skill description names extraction and implementation hygiene among the capabilities it routes to, and the extraction reference's asset table has a Capability row, so the three agree with the schema and the skills that exist.
+
 ## 0.69.0
 
 ### Added
