@@ -3,12 +3,12 @@
   "proposal_id": "signup-test-shift-recite",
   "proposer": "domain-memory-agent",
   "requirement_id": "signup-test-shift-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-17T01:42:32.857489Z",
   "verified_at": "2026-10-17T01:42:34.608240Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T01:42:38.197629Z",
+  "applied_at": "2026-10-17T01:42:41.646521Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "3d9885fb6c352692255fcc1034fb8368c67a8543",
@@ -105,5 +105,9 @@
   ],
   "supersedes": [
     "identity-packaging-harvest"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "0b7dfadda34636a8f2c211f212a86939ac2f5b6a",
+    "registry_digest": "sha256:731a4128bfac3c604cd53681d55f8a6e029426be58d1fa4b897c223ab65d6a0a"
+  }
 }
