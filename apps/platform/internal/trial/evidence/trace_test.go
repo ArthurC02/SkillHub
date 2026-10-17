@@ -305,3 +305,45 @@ func TestNothingWasCollected(t *testing.T) {
 		})
 	}
 }
+
+func TestAnIngestionTokenAcceptsEventsOnlyFromTheSandbox(t *testing.T) {
+	const runID = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20"
+	var grantedRun pgtype.UUID
+	if err := grantedRun.Scan(runID); err != nil {
+		t.Fatal(err)
+	}
+	grant := Grant{RunID: grantedRun, Attempt: 2}
+	event := func(change func(*Event)) Event {
+		e := Event{
+			SchemaVersion: "1.0", EventID: "0f0a1e6c-1c9a-4f8e-9a2b-1d5a2c7b3e01",
+			RunID: runID, Attempt: 2, Seq: 1,
+			OccurredAt: time.Now(), EmittedBy: SourceSandbox, Type: TypeAgentOutput,
+			Payload: json.RawMessage(`{"kind":"final","text":"done","truncated":false}`),
+		}
+		change(&e)
+		return e
+	}
+	for _, tc := range []struct {
+		name    string
+		change  func(*Event)
+		refusal string
+	}{
+		{"a sandbox event of the granted run and attempt", func(*Event) {}, ""},
+		{"an orchestrator event", func(e *Event) { e.EmittedBy = SourceOrchestr }, "only permits sandbox events"},
+		{"an llm service event", func(e *Event) { e.EmittedBy = SourceLLMService }, "only permits sandbox events"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := event(tc.change)
+			_, err := prepareEvent(IngestRunState{ID: grantedRun}, grant, &Masker{}, &e)
+			if tc.refusal == "" {
+				if err != nil {
+					t.Fatalf("prepareEvent = %v, want the event accepted", err)
+				}
+				return
+			}
+			if !errors.Is(err, ErrInvalid) || !strings.Contains(err.Error(), tc.refusal) {
+				t.Fatalf("prepareEvent = %v, want ErrInvalid saying %q", err, tc.refusal)
+			}
+		})
+	}
+}
