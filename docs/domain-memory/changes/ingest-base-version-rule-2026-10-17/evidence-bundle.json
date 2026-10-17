@@ -1,0 +1,40 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "ingest-base-version-rule-2026-10-17",
+  "proposal_id": "ingest-base-version-rule-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "5e5f1d269f2cdca2c8412656b1f47aeda188e4fd",
+    "registry_digest": "sha256:24f5ae4cd95452d1f3e48982a448de4c9ec1463c3989cfe6c7f26bb1b25ddd87"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-improvement-to-a-superseded-version-is-refused",
+      "mutated_protection": "apps/platform/internal/skill/admission/service.go:456: if src.ImprovedFrom.Valid && root.NewestVersionID() != src.ImprovedFrom { -> if src.ImprovedFrom.Valid && root.NewestVersionID() != src.ImprovedFrom && false {",
+      "failure_evidence": "=== RUN   TestSuggestionsAppliedToAVersionThatIsNoLongerTheNewestAreRefused\n2026/10/17 12:43:16 INFO improvement proposals evaluation_id=b3cdc889-5f0e-4b01-9d78-0c30c6e58714 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    suggestion_integration_test.go:829: apply against a superseded version: 201 {SkillID:075cbe39-1976-4a83-9e35-fc28e11de177 VersionID:20458364-80d5-4244-9fd5-6a885361eb24 VersionNumber:3 ContentHash:35a3672b64be18dd0521dfaf8496b2cf591ac85327d736a3281d73575b0391d1 Duplicate:false AppliedSuggestionIDs:[ff463cc0-9a61-429e-a241-ead47a7a4f8c] RejectedSuggestions:[] Error:}, want 422 with the suggestion refused as target_changed\n--- FAIL: TestSuggestionsAppliedToAVersionThatIsNoLongerTheNewestAreRefused (0.40s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t3.989s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+    "apps/platform/internal/skill/admission/service.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-an-improvement-to-a-superseded-version-is-refused",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestSuggestionsAppliedToAVersionThatIsNoLongerTheNewestAreRefused$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:defd57472332080b1fc73c4e0ca96e17fe1026b94ca454f987808de069ca495e",
+      "finished_at": "2026-10-17T04:43:31.197855Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

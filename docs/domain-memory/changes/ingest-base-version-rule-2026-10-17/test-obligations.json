@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "ingest-base-version-rule-2026-10-17",
+  "proposal_id": "ingest-base-version-rule-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-an-improvement-to-a-superseded-version-is-refused",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-improvement-to-a-superseded-version-is-refused",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-improvement-to-a-superseded-version-is-refused"
+        }
+      ],
+      "expected_outcome": "Saving an improved version is refused with ErrBaseVersionMoved when the Skill's newest version is no longer the version the improvement was made to; content identical to an existing version is deduplicated first.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestSuggestionsAppliedToAVersionThatIsNoLongerTheNewestAreRefused$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

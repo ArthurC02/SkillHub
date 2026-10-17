@@ -1,0 +1,107 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "ingest-base-version-rule-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "ingest-base-version-rule-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T04:43:21.229600Z",
+  "verified_at": "2026-10-17T04:43:31.845537Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "5e5f1d269f2cdca2c8412656b1f47aeda188e4fd",
+    "registry_digest": "sha256:24f5ae4cd95452d1f3e48982a448de4c9ec1463c3989cfe6c7f26bb1b25ddd87"
+  },
+  "affected_contexts": [
+    "ingest"
+  ],
+  "rule_ids": [
+    "an-improvement-to-a-superseded-version-is-refused"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "ingest",
+    "invariant": "Only ingest decides which versions a Skill accepts.",
+    "evidence": [
+      "apps/platform/internal/skill/admission/service.go:456-458"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: eval maps ErrBaseVersionMoved to target_changed.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/improvement/apply.go:572-576"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The earlier harvest left this rule out because a grep for ErrBaseVersionMoved found no test; a counterfactual over the suggestion tests found one asserting target_changed."
+    ],
+    "decision": "Record the rule as reviewed citing the guard and that test.",
+    "invariants_preserved": [
+      "A Skill Version is never overwritten."
+    ],
+    "rejected_alternatives": [
+      "Writing a new test: the existing integration test already fails when the guard is broken."
+    ],
+    "proof_obligations": [
+      "rule-an-improvement-to-a-superseded-version-is-refused"
+    ],
+    "counterfactual_check": "Break each rule's enforcing line so the package still builds; its test must fail with that rule's own assertion."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-improvement-to-a-superseded-version-is-refused",
+        "statement": "Saving an improved version is refused with ErrBaseVersionMoved when the Skill's newest version is no longer the version the improvement was made to; content identical to an existing version is deduplicated first.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "Suggestions applied to v1 after v2 was saved are refused as target_changed."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 456,
+              "end": 458
+            },
+            "excerpt_sha256": "sha256:877e1de1f9a1fa1816ad63f5889d876c48d6072e838c76eb54d421f1593edb1b"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+            "lines": {
+              "start": 788,
+              "end": 840
+            },
+            "excerpt_sha256": "sha256:5303accac73762162a167fd6feb02560d8d71f28cb1f3e8b86c7e1794032e280"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T04:43:31.505921Z",
+      "scope": "Record the base-version rule of ingest as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "5e5f1d269f2cdca2c8412656b1f47aeda188e4fd",
+        "registry_digest": "sha256:24f5ae4cd95452d1f3e48982a448de4c9ec1463c3989cfe6c7f26bb1b25ddd87"
+      }
+    }
+  ]
+}

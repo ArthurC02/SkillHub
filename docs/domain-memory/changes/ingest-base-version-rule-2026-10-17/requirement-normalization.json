@@ -1,0 +1,24 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "ingest-base-version-rule-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed that an improved version is refused when its base is no longer the Skill's newest version.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context ingest lists an-improvement-to-a-superseded-version-is-refused as reviewed.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-an-improvement-to-a-superseded-version-is-refused",
+      "statement": "Saving an improved version is refused with ErrBaseVersionMoved when the Skill's newest version is no longer the version the improvement was made to; content identical to an existing version is deduplicated first."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+    "apps/platform/internal/skill/admission/service.go"
+  ]
+}
