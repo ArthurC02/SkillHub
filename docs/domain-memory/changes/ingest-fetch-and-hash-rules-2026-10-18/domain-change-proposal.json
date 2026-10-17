@@ -3,12 +3,12 @@
   "proposal_id": "ingest-fetch-and-hash-rules-2026-10-18",
   "proposer": "domain-memory-agent",
   "requirement_id": "ingest-fetch-and-hash-rules-2026-10-18",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T19:07:50.350036Z",
   "verified_at": "2026-10-17T19:08:39.092887Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T19:08:41.895970Z",
+  "applied_at": "2026-10-17T19:08:49.766208Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "d609375ba10f7370b05a3c3e3325fcdd8d63aa5c",
@@ -323,5 +323,9 @@
         "registry_digest": "sha256:28d9de89e6190ecd828b3766b077fb5372c38deb20db473b72725dfe7c45c520"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "ef07163c7458056439fd27cc7449546b137b29d3",
+    "registry_digest": "sha256:2daea1f7460da159756d571d3a845ecf520e61e3ff0ef321789ca4eaf52307c8"
+  }
 }
