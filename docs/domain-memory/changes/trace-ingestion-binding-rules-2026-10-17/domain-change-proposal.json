@@ -3,12 +3,12 @@
   "proposal_id": "trace-ingestion-binding-rules-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "trace-ingestion-binding-rules-2026-10-17",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T12:47:17.784977Z",
   "verified_at": "2026-10-17T12:47:32.507882Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T12:47:50.472605Z",
+  "applied_at": "2026-10-17T12:47:52.833150Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "b1e29d1f3fa1a64de4f7aa07c674d507ecaebb54",
@@ -139,5 +139,9 @@
         "registry_digest": "sha256:7cfcf51bf571db0d3e5df360dc82281a17151ea937f6916f813437babd52073e"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "a64b4139aba6d025ca25f0d3e6350b345e0cb935",
+    "registry_digest": "sha256:b946c499c9667744add01c20cc8f482f0220b44c9e5576d580faf9a8542896eb"
+  }
 }
