@@ -1,7 +1,10 @@
 package identity
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -89,6 +92,34 @@ func TestASignupWhoseEmailOnlyAGoneAccountHoldsSucceeds(t *testing.T) {
 	token, err := s.LoginOrSignup(context.Background(), githubIdentity(reused))
 	if err != nil || token == "" {
 		t.Fatalf("sign-up reusing a deleted account's email: token %q, error %v; want a session", token, err)
+	}
+}
+
+func TestASessionIsStoredOnlyAsTheHashOfItsToken(t *testing.T) {
+	pool := signupPool(t)
+	email := uuid.NewString() + "@example.test"
+	s := &Service{Pool: pool}
+	ctx := context.Background()
+
+	token, err := s.LoginOrSignup(ctx, githubIdentity(email))
+	if err != nil {
+		t.Fatalf("sign-up: %v", err)
+	}
+	var stored []byte
+	if err := pool.QueryRow(ctx,
+		`SELECT s.token_hash FROM sessions s JOIN users u ON u.id = s.user_id WHERE u.email = $1`, email,
+	).Scan(&stored); err != nil {
+		t.Fatalf("read the stored session: %v", err)
+	}
+	want := sha256.Sum256([]byte(token))
+	if !bytes.Equal(stored, want[:]) {
+		t.Errorf("stored token_hash = %x, want the SHA-256 of the issued token %x", stored, want)
+	}
+	if _, err := s.UserForToken(ctx, token); err != nil {
+		t.Errorf("the issued token does not resolve its session: %v", err)
+	}
+	if _, err := s.UserForToken(ctx, hex.EncodeToString(stored)); !errors.Is(err, ErrSessionInvalid) {
+		t.Errorf("the stored value replayed as a cookie: error = %v, want ErrSessionInvalid", err)
 	}
 }
 
