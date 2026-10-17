@@ -3,12 +3,12 @@
   "proposal_id": "run-harvest-rules-2026-10-18",
   "proposer": "domain-memory-agent",
   "requirement_id": "run-harvest-rules-2026-10-18",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T18:17:20.784373Z",
   "verified_at": "2026-10-17T18:18:26.448959Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T18:18:28.840565Z",
+  "applied_at": "2026-10-17T18:18:38.577491Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "e6ca06830c2dfb99f109a1fc5e91ae0da2e25da8",
@@ -351,5 +351,9 @@
         "registry_digest": "sha256:a5fefd8d7f3dd3471cc4e396651779eec6948c6299d16336840091f7410d013b"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "9ee7447f07251592373ef2103c43a7055405315d",
+    "registry_digest": "sha256:1809f2cedf007fb5be468d1d7484eb0bd109928f003e288870f5bcf2aab72503"
+  }
 }
