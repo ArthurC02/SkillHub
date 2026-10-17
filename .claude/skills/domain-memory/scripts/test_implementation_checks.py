@@ -17,6 +17,7 @@ from domain_registry.cli import main
 from domain_registry import counterfactual as counterfactual_module
 from domain_registry.counterfactual import (
     OUTPUT_TAIL,
+    FailingBaselineError,
     RESTORE_DELAYS_SECONDS,
     SIDECAR_SUFFIX,
     Mutation,
@@ -402,15 +403,23 @@ class CounterfactualTest(RepositoryCase):
         with self.assertRaisesRegex(ValueError, "is the text it replaces"):
             self.break_rule("LIMIT = 200", "LIMIT = 200")
 
-    def test_tests_that_fail_before_anything_is_broken_are_refused(self) -> None:
+    def test_tests_that_fail_before_anything_is_broken_are_refused_with_what_failed_and_the_whole_log(self) -> None:
         self.write(
             "tests/test_red.py",
             "import unittest\n\n\nclass Red(unittest.TestCase):\n"
-            "    def test_red(self):\n        self.fail('already red')\n",
+            "    def test_red(self):\n        self.fail('already red' + 'x' * 3000)\n",
         )
-        with self.assertRaisesRegex(ValueError, "prove nothing"):
+        with self.assertRaisesRegex(FailingBaselineError, "prove nothing; the whole output is in ") as refused:
             self.break_rule("LIMIT = 200", "LIMIT = 201")
         self.assert_untouched()
+        details = refused.exception.details
+        log = Path(details["log_path"])
+        self.addCleanup(log.unlink)
+        self.assertEqual(
+            (["tests.test_red.Red.test_red"], True, True, str(log)),
+            (details["failing_tests"], "FAIL: test_red" in details["failure_evidence"],
+             "already red" in log.read_text(encoding="utf-8"), str(refused.exception).rpartition(" ")[2]),
+        )
 
     def test_a_file_outside_the_repository_is_refused(self) -> None:
         with self.assertRaisesRegex(ValueError, "outside the repository"):
@@ -698,8 +707,22 @@ class CommandLineTest(RepositoryCase):
             check=False,
         )
         self.assertEqual(
-            (1, "ERROR: file does not exist: \U0001F600.py".encode()),
-            (completed.returncode, completed.stdout.strip()),
+            (3, "file does not exist: \U0001F600.py"),
+            (completed.returncode, json.loads(completed.stdout.decode("utf-8"))["reason"]),
+        )
+
+    def test_a_failing_baseline_is_a_json_error_with_its_own_exit_code(self) -> None:
+        self.write(
+            "tests/test_red.py",
+            "import unittest\n\n\nclass Red(unittest.TestCase):\n    def test_red(self):\n        self.fail('red')\n",
+        )
+        completed = self.counterfactual_run("CAP = 12", "CAP = 13")
+        result = json.loads(completed.stdout)
+        self.addCleanup(Path(result["log_path"]).unlink)
+        self.assertEqual(
+            (3, "domain-memory-counterfactual/v1", "error", ["tests.test_red.Red.test_red"], True),
+            (completed.returncode, result["format"], result["verdict"], result["failing_tests"],
+             "FAIL: test_red" in result["failure_evidence"]),
         )
 
     def test_quality_gates_prints_its_format(self) -> None:

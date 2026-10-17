@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.62.0
+
+### Changed
+
+- `counterfactual` prints every refusal as JSON with `verdict` `error` and exits 3; a refusal printed plain text and exited 1, the exit code of `survived`.
+- When the intact run fails, the refusal carries that run's failure lines with its tail, its `failing_tests`, and `log_path`, a file holding the whole output, instead of the last 1200 characters alone.
+
 ## 0.61.0
 
 ### Added

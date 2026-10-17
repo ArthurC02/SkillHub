@@ -23,7 +23,8 @@ from .common import ASSET_KEYS, PROPOSAL_FILE, REQUIREMENT_FILE, load_json
 from .compare import compare_registries
 from .coupling import CouplingLimits, CouplingReading, change_coupling
 from .contracts import validate_schema
-from .counterfactual import Mutation, Proof, counterfactual
+from .counterfactual import FORMAT as COUNTERFACTUAL_FORMAT
+from .counterfactual import FailingBaselineError, Mutation, Proof, counterfactual
 from .evidence import citation, classified, function_span, repeated_note, source_map_for
 from .gates import quality_gates
 from .git_hooks import (
@@ -99,7 +100,7 @@ from .updates import (
     upsert_candidate,
 )
 
-COUNTERFACTUAL_EXIT_CODES = {"killed": 0, "survived": 1, "inconclusive": 2}
+COUNTERFACTUAL_EXIT_CODES = {"killed": 0, "survived": 1, "inconclusive": 2, "error": 3}
 
 
 def report_errors(errors: list[str], success_message: str) -> int:
@@ -1020,11 +1021,15 @@ def handle_quality_gates(args: argparse.Namespace) -> int:
 
 
 def handle_counterfactual(args: argparse.Namespace) -> int:
-    result = counterfactual(
-        args.repo_root,
-        Mutation(args.file, args.find, args.replace),
-        Proof(args.test_command, args.timeout, args.cwd, args.expect, args.obligation_id),
-    )
+    try:
+        result = counterfactual(
+            args.repo_root,
+            Mutation(args.file, args.find, args.replace),
+            Proof(args.test_command, args.timeout, args.cwd, args.expect, args.obligation_id),
+        )
+    except (ValueError, OSError) as error:
+        details = error.details if isinstance(error, FailingBaselineError) else {}
+        result = {"format": COUNTERFACTUAL_FORMAT, "verdict": "error", "reason": str(error), **details}
     print_json(result)
     return COUNTERFACTUAL_EXIT_CODES[result["verdict"]]
 

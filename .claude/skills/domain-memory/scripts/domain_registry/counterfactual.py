@@ -5,6 +5,7 @@ import os
 import re
 import shlex
 import subprocess
+import tempfile
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -66,6 +67,23 @@ def _failure_lines(lines: list[str]) -> list[str]:
         else:
             depth = None
     return kept
+
+
+class FailingBaselineError(ValueError):
+    def __init__(self, output: str) -> None:
+        with tempfile.NamedTemporaryFile(
+            "w", encoding="utf-8", newline="", prefix="counterfactual-baseline-", suffix=".log", delete=False
+        ) as log:
+            log.write(output)
+        super().__init__(
+            "the tests do not pass before anything is broken, so a failure afterwards would prove nothing; "
+            f"the whole output is in {log.name}"
+        )
+        self.details = {
+            "failure_evidence": failure_evidence(output),
+            "failing_tests": failing_tests(output),
+            "log_path": log.name,
+        }
 
 
 @dataclass(frozen=True)
@@ -276,10 +294,7 @@ def counterfactual(repo_root: Path, mutation: Mutation, proof: Proof) -> dict[st
     broken = mutated(original, mutation)
     intact_run = run_tests(directory, proof.test_command, proof.timeout)
     if not intact_run.passed:
-        raise ValueError(
-            "the tests do not pass before anything is broken, "
-            "so a failure afterwards would prove nothing:\n" + intact_run.output[-OUTPUT_TAIL:]
-        )
+        raise FailingBaselineError(intact_run.output)
     broken_run = run_broken(
         target, original, broken, lambda: run_tests(directory, proof.test_command, proof.timeout)
     )
