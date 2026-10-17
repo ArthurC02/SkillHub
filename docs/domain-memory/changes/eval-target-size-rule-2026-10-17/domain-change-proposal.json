@@ -3,12 +3,12 @@
   "proposal_id": "eval-target-size-rule-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "eval-target-size-rule-2026-10-17",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T13:12:14.726757Z",
   "verified_at": "2026-10-17T13:12:23.966501Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T13:12:26.360881Z",
+  "applied_at": "2026-10-17T13:12:28.335413Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "cbc88e462060cf148508e1ac33f3830faf070002",
@@ -112,5 +112,9 @@
         "registry_digest": "sha256:b62a77390e2ed44c738cb9a609d1bb213e5cf2ba42d9c6150e18a9aeab7afe21"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "24cec003fa81fca45c9f4f2700e03ad0a1543605",
+    "registry_digest": "sha256:be75c9fc44148e4dabf2b850fcaf9b72887e9c5f2595d7aff9fe562e7b77c125"
+  }
 }
