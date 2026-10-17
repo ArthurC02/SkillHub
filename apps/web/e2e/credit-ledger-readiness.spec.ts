@@ -85,7 +85,7 @@ for (const [amount, action, why, receipt, finalBalance, kind] of [
     try {
       await page.goto("/admin/accounts");
       await page.getByLabel("Email", { exact: true }).fill("member@example.com");
-      await page.getByRole("button", { name: "查詢", exact: true }).click();
+      await page.getByLabel("Email", { exact: true }).press("Enter");
       await expect(
         page.getByRole("heading", { name: ADMIN_ACCOUNT.display_name, exact: true }),
       ).toBeVisible();
@@ -188,7 +188,7 @@ for (const enlarged of [false, true]) {
       await page.goto("/admin/accounts");
       if (enlarged) await page.addStyleTag({ content: ".app-title { font-size: 24px }" });
       await page.getByLabel("Email", { exact: true }).fill("member@example.com");
-      await page.getByRole("button", { name: "查詢", exact: true }).click();
+      await page.getByLabel("Email", { exact: true }).press("Enter");
       await expect.poll(() => accountReads).toBe(1);
       await setOffline(page, true);
       releaseAccount();

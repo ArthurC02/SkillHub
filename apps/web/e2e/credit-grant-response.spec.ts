@@ -142,7 +142,7 @@ test.afterEach(async ({ page }, info) => {
 async function openAccount(page: Page) {
   await page.goto("/admin/accounts");
   await page.getByLabel("Email", { exact: true }).fill("member@example.com");
-  await page.getByRole("button", { name: "查詢", exact: true }).click();
+  await page.getByLabel("Email", { exact: true }).press("Enter");
   await expect(page.getByRole("heading", { name: "封測者甲", exact: true })).toBeVisible();
 }
 

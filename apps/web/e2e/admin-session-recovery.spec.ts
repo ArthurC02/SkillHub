@@ -74,7 +74,7 @@ async function openIntent(page: Page, amount: number, state: IntentState) {
   });
   await page.goto("/admin/accounts");
   await page.getByLabel("Email", { exact: true }).fill("member@example.com");
-  await page.getByRole("button", { name: "查詢", exact: true }).click();
+  await page.getByLabel("Email", { exact: true }).press("Enter");
   await page.locator("#admin-grant-amount").fill(String(amount));
   await page.locator("#admin-grant-note").fill(reason);
   return {

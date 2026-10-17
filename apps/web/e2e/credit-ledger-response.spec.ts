@@ -39,7 +39,7 @@ for (const [name, invalid] of [
       try {
         await page.goto("/admin/accounts");
         await page.getByLabel("Email", { exact: true }).fill("member@example.com");
-        await page.getByRole("button", { name: "查詢", exact: true }).click();
+        await page.getByLabel("Email", { exact: true }).press("Enter");
         const main = page.getByRole("main");
         if (reread) {
           await page.locator("#admin-grant-amount").fill("25");

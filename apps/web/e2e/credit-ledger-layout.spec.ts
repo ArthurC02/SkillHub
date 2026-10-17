@@ -59,7 +59,7 @@ for (const width of [320, 375]) {
       await page.goto("/admin/accounts");
       await expect(page.getByRole("heading", { level: 1, name: "帳號與點數" })).toBeVisible();
       await page.getByLabel("Email", { exact: true }).fill("member@example.com");
-      await page.getByRole("button", { name: "查詢", exact: true }).click();
+      await page.getByLabel("Email", { exact: true }).press("Enter");
       const table = page.getByRole("table", { name: "最近 50 筆分錄，新的在上面", exact: true });
       const region = table.locator("..");
       const source = table.getByRole("cell", { name: "不適用", exact: true });

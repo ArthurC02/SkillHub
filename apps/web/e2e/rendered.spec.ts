@@ -965,7 +965,7 @@ lookupTest(
     await page.goto("/admin/accounts");
     const email = page.getByLabel("Email");
     await email.fill("member@example.com");
-    await page.getByRole("button", { name: "查詢", exact: true }).click();
+    await page.getByLabel("Email", { exact: true }).press("Enter");
     await expect(page.getByRole("heading", { name: "封測者甲" })).toBeVisible();
     await page.locator("#admin-grant-amount").fill("50");
     await page.locator("#admin-grant-note").fill("first account");
@@ -1038,7 +1038,7 @@ test("a completed credit grant needs a changed draft before another submission",
   });
   await page.goto("/admin/accounts");
   await page.getByLabel("Email").fill("member@example.com");
-  await page.getByRole("button", { name: "查詢", exact: true }).click();
+  await page.getByLabel("Email", { exact: true }).press("Enter");
   await expect(page.getByRole("heading", { name: "封測者甲" })).toBeVisible();
   await page.locator("#admin-grant-amount").fill("50");
   await page.locator("#admin-grant-note").fill("beta reward");
@@ -1066,7 +1066,7 @@ test("an uncertain admin grant explains verification before retry on a phone", a
   );
   await page.goto("/admin/accounts");
   await page.getByLabel("Email").fill("member@example.com");
-  await page.getByRole("button", { name: "查詢", exact: true }).click();
+  await page.getByLabel("Email", { exact: true }).press("Enter");
   await expect(page.getByRole("heading", { name: "封測者甲" })).toBeVisible();
   await page.locator("#admin-grant-amount").fill("50");
   await page.locator("#admin-grant-note").fill("beta reward");
