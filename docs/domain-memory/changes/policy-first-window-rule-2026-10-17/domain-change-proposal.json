@@ -1,0 +1,107 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "policy-first-window-rule-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "policy-first-window-rule-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T04:43:51.662400Z",
+  "verified_at": "2026-10-17T04:43:55.723063Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "ee9d8745a0121b62493fd391dbaf69dbed13ae91",
+    "registry_digest": "sha256:f59146cbe616b10ea366a92fb790d9f2c07ae317311ce8b42da169c3fb6fc1df"
+  },
+  "affected_contexts": [
+    "policy"
+  ],
+  "rule_ids": [
+    "a-young-workspace-has-the-first-window-allowance"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "policy",
+    "invariant": "Only policy decides the allowance a Workspace has.",
+    "evidence": [
+      "apps/platform/internal/product/entitlements/quota.go:106-121"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: the Workspace creation time arrives through the UsageReader port.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/product/entitlements/quota.go:80-83"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The earlier harvest left this rule out because no test reached the first-window selection; a new test pins both sides of the boundary."
+    ],
+    "decision": "Record the rule as reviewed citing the selection and the new test.",
+    "invariants_preserved": [
+      "An allowance that cannot be counted never reads as unused."
+    ],
+    "rejected_alternatives": [
+      "Folding it into the-default-run-allowance: that rule pins constants, this one pins when the first-window ceiling applies."
+    ],
+    "proof_obligations": [
+      "rule-a-young-workspace-has-the-first-window-allowance"
+    ],
+    "counterfactual_check": "Break each rule's enforcing line so the package still builds; its test must fail with that rule's own assertion."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-young-workspace-has-the-first-window-allowance",
+        "statement": "Until a Workspace's first window ends, its window ceiling is the first-window allowance, and its window resets at the earlier of that end and the rolling reset; from the moment the first window ends the ordinary window ceiling applies.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "One second before its first 30 days end a Workspace's ceiling is 20; at the moment they end it is 30."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 106,
+              "end": 121
+            },
+            "excerpt_sha256": "sha256:570a7c58898fba68b1e51679006ab7919ce909d0d9bc46ae3958c3862faaf50c"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota_test.go",
+            "lines": {
+              "start": 94,
+              "end": 125
+            },
+            "excerpt_sha256": "sha256:080c648b367e9a099998601bf11f09d5af67bae5e1cdd44bed09aa11ce8a01ea"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T04:43:55.306798Z",
+      "scope": "Record the first-window allowance rule of policy as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "ee9d8745a0121b62493fd391dbaf69dbed13ae91",
+        "registry_digest": "sha256:f59146cbe616b10ea366a92fb790d9f2c07ae317311ce8b42da169c3fb6fc1df"
+      }
+    }
+  ]
+}

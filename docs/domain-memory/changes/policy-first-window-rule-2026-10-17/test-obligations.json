@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "policy-first-window-rule-2026-10-17",
+  "proposal_id": "policy-first-window-rule-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-a-young-workspace-has-the-first-window-allowance",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-young-workspace-has-the-first-window-allowance",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-young-workspace-has-the-first-window-allowance"
+        }
+      ],
+      "expected_outcome": "Until a Workspace's first window ends, its window ceiling is the first-window allowance, and its window resets at the earlier of that end and the rolling reset; from the moment the first window ends the ordinary window ceiling applies.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAYoungWorkspaceHasTheFirstWindowAllowanceUntilItsFirstWindowEnds$ ./internal/product/entitlements/"
+    }
+  ]
+}

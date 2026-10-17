@@ -1,0 +1,24 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "policy-first-window-rule-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed that a young Workspace has the first-window allowance until its first window ends.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context policy lists a-young-workspace-has-the-first-window-allowance as reviewed.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-young-workspace-has-the-first-window-allowance",
+      "statement": "Until a Workspace's first window ends, its window ceiling is the first-window allowance, and its window resets at the earlier of that end and the rolling reset; from the moment the first window ends the ordinary window ceiling applies."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/product/entitlements/quota.go",
+    "apps/platform/internal/product/entitlements/quota_test.go"
+  ]
+}
