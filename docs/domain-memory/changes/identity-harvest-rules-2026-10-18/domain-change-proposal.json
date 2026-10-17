@@ -3,12 +3,12 @@
   "proposal_id": "identity-harvest-rules-2026-10-18",
   "proposer": "domain-memory-agent",
   "requirement_id": "identity-harvest-rules-2026-10-18",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T17:09:54.107005Z",
   "verified_at": "2026-10-17T17:11:23.446425Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T17:11:26.081708Z",
+  "applied_at": "2026-10-17T17:11:29.319886Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "585b3864aa8674eae77b55e199b2608983808a7f",
@@ -420,5 +420,9 @@
         "registry_digest": "sha256:5e733744aead6651441e5d12b9239ad1c0a756018f933ca9567520f0810011d8"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "2624bb9e68e324d5f28c721786ba8ee45a727642",
+    "registry_digest": "sha256:250dbf9b14c3b72042d8e2995ffeaaa847c046a1ac1511fcf2ae38f5f2ef4973"
+  }
 }
