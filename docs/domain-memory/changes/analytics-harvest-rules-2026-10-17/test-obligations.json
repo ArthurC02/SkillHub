@@ -1,0 +1,127 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "analytics-harvest-rules-2026-10-17",
+  "proposal_id": "analytics-harvest-rules-2026-10-17",
+  "obligations": [
+    {
+      "id": "rule-a-feedback-message-is-at-most-2000-characters",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-feedback-message-is-at-most-2000-characters",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-feedback-message-is-at-most-2000-characters"
+        }
+      ],
+      "expected_outcome": "A feedback message is trimmed, must be non-blank and may hold at most 2000 characters; otherwise it is refused with 400.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestFeedbackRejectsWhatTheContractRejects$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-feedback-kind-is-blocking-issue-or-need-signal",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-feedback-kind-is-blocking-issue-or-need-signal",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-feedback-kind-is-blocking-issue-or-need-signal"
+        }
+      ],
+      "expected_outcome": "A feedback kind must be blocking_issue or need_signal; any other or a missing kind is refused with 400.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestFeedbackRejectsWhatTheContractRejects$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-feedback-keeps-a-run-only-from-the-reporters-workspace",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-feedback-keeps-a-run-only-from-the-reporters-workspace",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "feedback-keeps-a-run-only-from-the-reporters-workspace"
+        }
+      ],
+      "expected_outcome": "A run named on a feedback report is kept only when it belongs to the reporter's Workspace; another Workspace's run is dropped and the report is still accepted.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestFeedbackIsRecordedWithWorkspaceScope$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-feedback-keeps-only-a-bare-page-path",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-feedback-keeps-only-a-bare-page-path",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "feedback-keeps-only-a-bare-page-path"
+        }
+      ],
+      "expected_outcome": "A reported page path is kept only when it starts with '/', carries no query or fragment and is at most 512 bytes; otherwise it is dropped and the report is still accepted.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestReportedPagePathKeepsOnlyABarePathWithinTheLimit$ ./internal/product/learning/"
+    },
+    {
+      "id": "rule-nothing-is-collected-without-a-retention-period",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-nothing-is-collected-without-a-retention-period",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "nothing-is-collected-without-a-retention-period"
+        }
+      ],
+      "expected_outcome": "No funnel event is collected and no analytics cookie is set unless a retention period of at least one second is configured.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestNoFunnelEventsWithoutARetentionPeriod$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-forged-analytics-session-cookie-is-replaced",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-forged-analytics-session-cookie-is-replaced",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-forged-analytics-session-cookie-is-replaced"
+        }
+      ],
+      "expected_outcome": "An analytics session cookie that is not a minted id is never used as the session id; it is replaced with a fresh one.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestASessionCookieThatIsNotAMintedIdIsReplacedNotRecorded$ ./internal/product/learning/"
+    },
+    {
+      "id": "rule-a-visit-cookie-never-outlives-retention",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-visit-cookie-never-outlives-retention",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-visit-cookie-never-outlives-retention"
+        }
+      ],
+      "expected_outcome": "The daily visit cookie lasts until UTC midnight but never longer than the analytics retention period.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestVisitCookieNeverOutlivesTheAnalyticsSession$ ./internal/product/learning/"
+    },
+    {
+      "id": "rule-an-account-purge-de-identifies-feedback",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-account-purge-de-identifies-feedback",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-account-purge-de-identifies-feedback"
+        }
+      ],
+      "expected_outcome": "Purging an account detaches its feedback reports and funnel events from the Workspace and user, keeping the text, rather than deleting them.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestPurgeDetachesAnalyticsAndFeedbackWithoutDeletingThem$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

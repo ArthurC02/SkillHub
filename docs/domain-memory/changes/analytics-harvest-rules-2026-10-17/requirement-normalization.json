@@ -1,0 +1,54 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "analytics-harvest-rules-2026-10-17",
+  "status": "draft",
+  "intent": "Record as reviewed the rules the analytics Context enforces and tests but the Registry did not hold.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context analytics lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-feedback-message-is-at-most-2000-characters",
+      "statement": "A feedback message is trimmed, must be non-blank and may hold at most 2000 characters; otherwise it is refused with 400."
+    },
+    {
+      "id": "enforced-a-feedback-kind-is-blocking-issue-or-need-signal",
+      "statement": "A feedback kind must be blocking_issue or need_signal; any other or a missing kind is refused with 400."
+    },
+    {
+      "id": "enforced-feedback-keeps-a-run-only-from-the-reporters-workspace",
+      "statement": "A run named on a feedback report is kept only when it belongs to the reporter's Workspace; another Workspace's run is dropped and the report is still accepted."
+    },
+    {
+      "id": "enforced-feedback-keeps-only-a-bare-page-path",
+      "statement": "A reported page path is kept only when it starts with '/', carries no query or fragment and is at most 512 bytes; otherwise it is dropped and the report is still accepted."
+    },
+    {
+      "id": "enforced-nothing-is-collected-without-a-retention-period",
+      "statement": "No funnel event is collected and no analytics cookie is set unless a retention period of at least one second is configured."
+    },
+    {
+      "id": "enforced-a-forged-analytics-session-cookie-is-replaced",
+      "statement": "An analytics session cookie that is not a minted id is never used as the session id; it is replaced with a fresh one."
+    },
+    {
+      "id": "enforced-a-visit-cookie-never-outlives-retention",
+      "statement": "The daily visit cookie lasts until UTC midnight but never longer than the analytics retention period."
+    },
+    {
+      "id": "enforced-an-account-purge-de-identifies-feedback",
+      "statement": "Purging an account detaches its feedback reports and funnel events from the Workspace and user, keeping the text, rather than deleting them."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go",
+    "apps/platform/internal/product/learning/analytics.go",
+    "apps/platform/internal/product/learning/analytics_test.go",
+    "apps/platform/internal/product/learning/feedback.go",
+    "apps/platform/internal/product/learning/feedback_characterization_test.go",
+    "apps/platform/internal/product/learning/purge.go"
+  ]
+}

@@ -1,0 +1,163 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "analytics-harvest-rules-2026-10-17",
+  "proposal_id": "analytics-harvest-rules-2026-10-17",
+  "registry_revision": {
+    "observed_commit": "3d3933169e150b0b28284572dbe0d610d5e5a121",
+    "registry_digest": "sha256:96a256f0341c51cc39af0dbc0fa3cc02fc8a6ff96e7bc82715b6371b0cf5ef5b"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-feedback-message-is-at-most-2000-characters",
+      "mutated_protection": "apps/platform/internal/product/learning/feedback.go:110: len([]rune(message)) > maxFeedbackMessage -> len([]rune(message)) > maxFeedbackMessage+100000",
+      "failure_evidence": "=== RUN   TestFeedbackRejectsWhatTheContractRejects\n2026/10/17 14:24:35 ERROR request failed on the server method=POST path=/feedback status=500\n    beta_integration_test.go:708: oversized: got 500, want 400\n--- FAIL: TestFeedbackRejectsWhatTheContractRejects (0.14s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.355s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-feedback-kind-is-blocking-issue-or-need-signal",
+      "mutated_protection": "apps/platform/internal/product/learning/feedback.go:105: !slices.Contains(AllFeedbackKinds(), body.Kind) -> !slices.Contains(AllFeedbackKinds(), body.Kind) && false",
+      "failure_evidence": "=== RUN   TestFeedbackRejectsWhatTheContractRejects\n2026/10/17 14:25:01 ERROR request failed on the server method=POST path=/feedback status=500\n    beta_integration_test.go:708: unknown kind: got 500, want 400\n2026/10/17 14:25:01 ERROR request failed on the server method=POST path=/feedback status=500\n    beta_integration_test.go:708: no kind: got 500, want 400\n--- FAIL: TestFeedbackRejectsWhatTheContractRejects (0.14s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.646s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-feedback-keeps-a-run-only-from-the-reporters-workspace",
+      "mutated_protection": "apps/platform/internal/product/learning/feedback.go:131: if err == nil && mine { -> if err == nil && (mine || true) {",
+      "failure_evidence": "=== RUN   TestFeedbackIsRecordedWithWorkspaceScope\n    beta_integration_test.go:657: a run from another workspace was stored on the report: bcdd5207-7bec-4732-9ed2-9325d6c873a3\n--- FAIL: TestFeedbackIsRecordedWithWorkspaceScope (0.21s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.646s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-feedback-keeps-only-a-bare-page-path",
+      "mutated_protection": "apps/platform/internal/product/learning/feedback.go:145: !strings.ContainsAny(path, \"?#\") -> !strings.ContainsAny(path, \"#\")",
+      "failure_evidence": "hKeepsOnlyABarePathWithinTheLimit/a_query_string_is_dropped\n    feedback_characterization_test.go:25: got \"/skills?q=x\", want nothing recorded\n=== RUN   TestReportedPagePathKeepsOnlyABarePathWithinTheLimit/a_fragment_is_dropped\n=== RUN   TestReportedPagePathKeepsOnlyABarePathWithinTheLimit/an_empty_path_is_dropped\n--- FAIL: TestReportedPagePathKeepsOnlyABarePathWithinTheLimit (0.00s)\n    --- PASS: TestReportedPagePathKeepsOnlyABarePathWithinTheLimit/a_path_of_exactly_512_bytes_is_kept (0.00s)\n    --- PASS: TestReportedPagePathKeepsOnlyABarePathWithinTheLimit/a_path_of_513_bytes_is_dropped (0.00s)\n    --- PASS: TestReportedPagePathKeepsOnlyABarePathWithinTheLimit/surrounding_space_is_trimmed (0.00s)\n    --- PASS: TestReportedPagePathKeepsOnlyABarePathWithinTheLimit/a_relative_path_is_dropped (0.00s)\n    --- FAIL: TestReportedPagePathKeepsOnlyABarePathWithinTheLimit/a_query_string_is_dropped (0.00s)\n    --- PASS: TestReportedPagePathKeepsOnlyABarePathWithinTheLimit/a_fragment_is_dropped (0.00s)\n    --- PASS: TestReportedPagePathKeepsOnlyABarePathWithinTheLimit/an_empty_path_is_dropped (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/learning\t2.193s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-nothing-is-collected-without-a-retention-period",
+      "mutated_protection": "apps/platform/internal/product/learning/analytics.go:45: s.Retention >= time.Second -> s.Retention >= 0",
+      "failure_evidence": "=== RUN   TestNoFunnelEventsWithoutARetentionPeriod\n    beta_integration_test.go:522: a deployment with no retention period collected 3 events\n    beta_integration_test.go:526: a deployment with no retention period still set an analytics cookie\n--- FAIL: TestNoFunnelEventsWithoutARetentionPeriod (0.09s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.148s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-forged-analytics-session-cookie-is-replaced",
+      "mutated_protection": "apps/platform/internal/product/learning/analytics.go:64: err != nil || !mintedSessionID(c.Value) -> err != nil",
+      "failure_evidence": "orded\n2026/10/17 14:26:05 WARN analytics event not recorded event=session_started error=\"failed to connect to `user=nobody database=nothing`: 127.0.0.1:1 (127.0.0.1): dial error: dial tcp 127.0.0.1:1: connectex: No connection could be made because the target machine actively refused it.\"\n    analytics_test.go:142: cookie \"my-email-is-someone@example.com!\" was used as session id \"my-email-is-someone@example.com!\"\n    analytics_test.go:151: cookie \"my-email-is-someone@example.com!\" was not replaced with a minted id\n2026/10/17 14:26:05 WARN analytics event not recorded event=session_started error=\"failed to connect to `user=nobody database=nothing`: 127.0.0.1:1 (127.0.0.1): dial error: dial tcp 127.0.0.1:1: connectex: No connection could be made because the target machine actively refused it.\"\n    analytics_test.go:142: cookie \"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz\" was used as session id \"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz\"\n    analytics_test.go:151: cookie \"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz\" was not replaced with a minted id\n--- FAIL: TestASessionCookieThatIsNotAMintedIdIsReplacedNotRecorded (0.05s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/learning\t2.326s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-visit-cookie-never-outlives-retention",
+      "mutated_protection": "apps/platform/internal/product/learning/analytics.go:118: seconds > sessionSeconds -> seconds > sessionSeconds+1000000",
+      "failure_evidence": "=== RUN   TestVisitCookieNeverOutlivesTheAnalyticsSession\n    analytics_test.go:31: visit cookie lifetime = 43200 seconds, want the one-hour session retention\n--- FAIL: TestVisitCookieNeverOutlivesTheAnalyticsSession (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/learning\t2.173s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-account-purge-de-identifies-feedback",
+      "mutated_protection": "apps/platform/internal/product/learning/purge.go:17: _, err := q.DetachWorkspaceFeedback(ctx, workspaceID) -> var err error",
+      "failure_evidence": "=== RUN   TestPurgeDetachesAnalyticsAndFeedbackWithoutDeletingThem\n    beta_integration_test.go:618: feedback after purge: message=\"I wanted a python profile\" workspace=0x2b8e2ffe2ae0 user=0x2b8e2ffe2af0, want the text kept and both ids null\n--- FAIL: TestPurgeDetachesAnalyticsAndFeedbackWithoutDeletingThem (0.18s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.488s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go",
+    "apps/platform/internal/product/learning/analytics.go",
+    "apps/platform/internal/product/learning/analytics_test.go",
+    "apps/platform/internal/product/learning/feedback.go",
+    "apps/platform/internal/product/learning/feedback_characterization_test.go",
+    "apps/platform/internal/product/learning/purge.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-feedback-message-is-at-most-2000-characters",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestFeedbackRejectsWhatTheContractRejects$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:15cda4535dd015065547618bf74c50fbe977f867e37be795840f122b83685c78",
+      "finished_at": "2026-10-17T06:43:38.023466Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-feedback-kind-is-blocking-issue-or-need-signal",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestFeedbackRejectsWhatTheContractRejects$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:22476f86d6fcb05bd813ed8cd5b6467084d8566f644a9c62dd5fad0e53ba9661",
+      "finished_at": "2026-10-17T06:43:46.941032Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-feedback-keeps-a-run-only-from-the-reporters-workspace",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestFeedbackIsRecordedWithWorkspaceScope$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e62a5eb299a44821beb03610b1f42f454302cff82cefc8048526920b1e6826b0",
+      "finished_at": "2026-10-17T06:43:56.937986Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-feedback-keeps-only-a-bare-page-path",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestReportedPagePathKeepsOnlyABarePathWithinTheLimit$ ./internal/product/learning/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:c013763d6ae35383b45deb49626dce77ff3fec989ee63e25a2ab4544305c1dba",
+      "finished_at": "2026-10-17T06:44:02.311613Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-nothing-is-collected-without-a-retention-period",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestNoFunnelEventsWithoutARetentionPeriod$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f416aa4ede3fc8c1dcca8e17c63f8e7013abd950c98e8802f7e7bbac88ddd4cb",
+      "finished_at": "2026-10-17T06:44:13.119153Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-forged-analytics-session-cookie-is-replaced",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestASessionCookieThatIsNotAMintedIdIsReplacedNotRecorded$ ./internal/product/learning/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:d914ee1bac10521057d314cd814d40bf4e7d5a3f887f5f8e1b4b051158985e44",
+      "finished_at": "2026-10-17T06:44:19.788783Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-visit-cookie-never-outlives-retention",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestVisitCookieNeverOutlivesTheAnalyticsSession$ ./internal/product/learning/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:93a40c3501ee784946f46fa9ed0004d42ecd37423e5c00229f44555bbe966461",
+      "finished_at": "2026-10-17T06:44:24.644911Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-account-purge-de-identifies-feedback",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestPurgeDetachesAnalyticsAndFeedbackWithoutDeletingThem$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:101b7d39803bb7851b8ba5104ffce7e569ddab23b601272dbf4dc7b8c124bd2e",
+      "finished_at": "2026-10-17T06:44:33.467392Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

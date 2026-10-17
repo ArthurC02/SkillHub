@@ -1,0 +1,353 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "analytics-harvest-rules-2026-10-17",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "analytics-harvest-rules-2026-10-17",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-17T06:43:27.657203Z",
+  "verified_at": "2026-10-17T06:44:34.462037Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "3d3933169e150b0b28284572dbe0d610d5e5a121",
+    "registry_digest": "sha256:96a256f0341c51cc39af0dbc0fa3cc02fc8a6ff96e7bc82715b6371b0cf5ef5b"
+  },
+  "affected_contexts": [
+    "analytics"
+  ],
+  "rule_ids": [
+    "a-feedback-message-is-at-most-2000-characters",
+    "a-feedback-kind-is-blocking-issue-or-need-signal",
+    "feedback-keeps-a-run-only-from-the-reporters-workspace",
+    "feedback-keeps-only-a-bare-page-path",
+    "nothing-is-collected-without-a-retention-period",
+    "a-forged-analytics-session-cookie-is-replaced",
+    "a-visit-cookie-never-outlives-retention",
+    "an-account-purge-de-identifies-feedback"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "analytics",
+    "invariant": "Only analytics collects feedback and funnel events, under retention and de-identification.",
+    "evidence": [
+      "apps/platform/internal/product/learning/feedback.go:109-113"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/product/learning/purge.go:12-19"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A blind extraction of the analytics Context found these enforced rules; the reviewed Registry held none."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording guards no test reaches: they wait for a test."
+    ],
+    "proof_obligations": [
+      "rule-a-feedback-message-is-at-most-2000-characters",
+      "rule-a-feedback-kind-is-blocking-issue-or-need-signal",
+      "rule-feedback-keeps-a-run-only-from-the-reporters-workspace",
+      "rule-feedback-keeps-only-a-bare-page-path",
+      "rule-nothing-is-collected-without-a-retention-period",
+      "rule-a-forged-analytics-session-cookie-is-replaced",
+      "rule-a-visit-cookie-never-outlives-retention",
+      "rule-an-account-purge-de-identifies-feedback"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-feedback-message-is-at-most-2000-characters",
+        "statement": "A feedback message is trimmed, must be non-blank and may hold at most 2000 characters; otherwise it is refused with 400.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "A 2001-character message answers 400; exactly 2000 is accepted."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/feedback.go",
+            "lines": {
+              "start": 109,
+              "end": 113
+            },
+            "excerpt_sha256": "sha256:c6aab9ace0f515da994f241b75d035e9c9e248dec2beeddc5b86d1c1069d94b2"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go",
+            "lines": {
+              "start": 695,
+              "end": 751
+            },
+            "content_sha256": "sha256:4faf5f7e51eaa3e0c6389d4f4800b368d453eb75e92a53e960a0bf7602d8db16",
+            "excerpt_sha256": "sha256:c382a294cb7c64621f66bbfb1e7622ccd4c23012efbe2a5e60d6e672be116dae"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-feedback-kind-is-blocking-issue-or-need-signal",
+        "statement": "A feedback kind must be blocking_issue or need_signal; any other or a missing kind is refused with 400.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "kind praise answers 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/feedback.go",
+            "lines": {
+              "start": 105,
+              "end": 108
+            },
+            "excerpt_sha256": "sha256:70eb94f8e916828cc8ff788cd220269fc1405ece7f254163469e149ecc20fa0d"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go",
+            "lines": {
+              "start": 695,
+              "end": 751
+            },
+            "content_sha256": "sha256:4faf5f7e51eaa3e0c6389d4f4800b368d453eb75e92a53e960a0bf7602d8db16",
+            "excerpt_sha256": "sha256:c382a294cb7c64621f66bbfb1e7622ccd4c23012efbe2a5e60d6e672be116dae"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "feedback-keeps-a-run-only-from-the-reporters-workspace",
+        "statement": "A run named on a feedback report is kept only when it belongs to the reporter's Workspace; another Workspace's run is dropped and the report is still accepted.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "Alice reports with Bob's run id: the report is filed with no run."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/feedback.go",
+            "lines": {
+              "start": 124,
+              "end": 134
+            },
+            "excerpt_sha256": "sha256:17ee6ee2434e519fb11b4c221395a44dc6de9d1265736f346ce81cdc30e8a159"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go",
+            "lines": {
+              "start": 622,
+              "end": 659
+            },
+            "content_sha256": "sha256:4faf5f7e51eaa3e0c6389d4f4800b368d453eb75e92a53e960a0bf7602d8db16",
+            "excerpt_sha256": "sha256:01f78e901941335ead5745e6fcfa5a17ce5fbb885d4c682981337c45459a586e"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "feedback-keeps-only-a-bare-page-path",
+        "statement": "A reported page path is kept only when it starts with '/', carries no query or fragment and is at most 512 bytes; otherwise it is dropped and the report is still accepted.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "/skills?q=secret is stored as no page path."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/feedback.go",
+            "lines": {
+              "start": 143,
+              "end": 149
+            },
+            "excerpt_sha256": "sha256:1cd6327a8adb96c69060ac8d044373c93acf2d7b5a8033f66d82bee908aebb69"
+          },
+          {
+            "path": "apps/platform/internal/product/learning/feedback_characterization_test.go",
+            "lines": {
+              "start": 8,
+              "end": 28
+            },
+            "content_sha256": "sha256:9ac32966600ea172de567950fdbd0b84b53d0bb63d75162465965d755e087aaf",
+            "excerpt_sha256": "sha256:78dfdcf707497b9f66a23d2e42692c08caf6de51afc3e435bfe409534365130f"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "nothing-is-collected-without-a-retention-period",
+        "statement": "No funnel event is collected and no analytics cookie is set unless a retention period of at least one second is configured.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "A deployment with no retention period records no search or detail event."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/analytics.go",
+            "lines": {
+              "start": 41,
+              "end": 43
+            },
+            "excerpt_sha256": "sha256:7ff5a7e8aa2563338a6170d0a81cc54c6f24a8511be5ce7afc2a961926568057"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go",
+            "lines": {
+              "start": 508,
+              "end": 529
+            },
+            "content_sha256": "sha256:4faf5f7e51eaa3e0c6389d4f4800b368d453eb75e92a53e960a0bf7602d8db16",
+            "excerpt_sha256": "sha256:6a312f899b359297d14fdc2922827e0be2d94c9ca2e8b57f31fc80026755af14"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-forged-analytics-session-cookie-is-replaced",
+        "statement": "An analytics session cookie that is not a minted id is never used as the session id; it is replaced with a fresh one.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "A cookie holding an email address is not recorded; a new id is issued."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/analytics.go",
+            "lines": {
+              "start": 63,
+              "end": 82
+            },
+            "excerpt_sha256": "sha256:1eb3c302986474d39fd30cf0a8d8accbf8edaca932400154c969373113f75af8"
+          },
+          {
+            "path": "apps/platform/internal/product/learning/analytics_test.go",
+            "lines": {
+              "start": 119,
+              "end": 154
+            },
+            "content_sha256": "sha256:6424579f711bc53e5e1bd1a8dde98cab5eb793738bf5d5579035d99d4a37e10a",
+            "excerpt_sha256": "sha256:cb3a43c72f0f00af1e09f9176968998d249493a0bbb6f2262a464b6f1b0110e6"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-visit-cookie-never-outlives-retention",
+        "statement": "The daily visit cookie lasts until UTC midnight but never longer than the analytics retention period.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "With one hour of retention at noon UTC, the visit cookie lives one hour, not twelve."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/analytics.go",
+            "lines": {
+              "start": 109,
+              "end": 119
+            },
+            "excerpt_sha256": "sha256:419787f33c04c7f166758e4205e739551997ba88fabc90760e2f06fd48abf37a"
+          },
+          {
+            "path": "apps/platform/internal/product/learning/analytics_test.go",
+            "lines": {
+              "start": 28,
+              "end": 36
+            },
+            "content_sha256": "sha256:6424579f711bc53e5e1bd1a8dde98cab5eb793738bf5d5579035d99d4a37e10a",
+            "excerpt_sha256": "sha256:41489261ce19608ded685ac978707e89b3301a89593d6a4032edc2848e7a25da"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-account-purge-de-identifies-feedback",
+        "statement": "Purging an account detaches its feedback reports and funnel events from the Workspace and user, keeping the text, rather than deleting them.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "After the purge, the report text remains with no Workspace or user."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/purge.go",
+            "lines": {
+              "start": 12,
+              "end": 19
+            },
+            "excerpt_sha256": "sha256:d99774fae07a4d8b414657d86781d19459d5d76f3055857ee5a1b0a1203df9ae"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go",
+            "lines": {
+              "start": 568,
+              "end": 620
+            },
+            "content_sha256": "sha256:4faf5f7e51eaa3e0c6389d4f4800b368d453eb75e92a53e960a0bf7602d8db16",
+            "excerpt_sha256": "sha256:2d84118f2837268e9b80d1e828958b173762bc91e0a10d8a32c8fc0e6cb0bfde"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-17T06:44:34.068147Z",
+      "scope": "Record analytics rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "3d3933169e150b0b28284572dbe0d610d5e5a121",
+        "registry_digest": "sha256:96a256f0341c51cc39af0dbc0fa3cc02fc8a6ff96e7bc82715b6371b0cf5ef5b"
+      }
+    }
+  ]
+}
