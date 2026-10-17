@@ -22,6 +22,7 @@ from .changes import (
 from .common import ASSET_KEYS, PROPOSAL_FILE, REQUIREMENT_FILE, load_json
 from .compare import compare_registries
 from .coupling import CouplingLimits, CouplingReading, change_coupling
+from .dependents import dependents
 from .contracts import validate_schema
 from .counterfactual import FORMAT as COUNTERFACTUAL_FORMAT
 from .counterfactual import FailingBaselineError, Mutation, Proof, counterfactual
@@ -406,10 +407,10 @@ def handle_boundary_impact(args: argparse.Namespace) -> int:
 
 
 def handle_relocate_evidence(args: argparse.Namespace) -> int:
-    relocated = relocate_evidence(
-        args.registry_root.resolve(), args.repo_root.resolve(), args.moved_from, args.moved_to
-    )
+    repo_root = args.repo_root.resolve()
+    relocated = relocate_evidence(args.registry_root.resolve(), repo_root, args.moved_from, args.moved_to)
     print_json(relocated)
+    _note_contexts_placed_over_nothing(repo_root, args.moved_to, relocated)
     if not any(relocated[key] for key in ("registry_updates", "candidates", "unmatched")):
         in_place = relocated["citations_in_place"]
         print(
@@ -420,6 +421,20 @@ def handle_relocate_evidence(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
     return 0
+
+
+def _note_contexts_placed_over_nothing(repo_root: Path, moved_to: str, relocated: dict[str, list]) -> None:
+    placed = [
+        item["record"]["id"]
+        for item in [*relocated["registry_updates"], *relocated["candidates"]]
+        if item["asset"] == "contexts"
+    ]
+    if placed and not (repo_root / moved_to).exists():
+        print(
+            f"NOTE: --to {moved_to} lies over no file in the repository; the Context path proposed for "
+            f"{', '.join(placed)} would be refused at review. Check --to for a typo.",
+            file=sys.stderr,
+        )
 
 
 def handle_recite(args: argparse.Namespace) -> int:
@@ -452,6 +467,11 @@ def _note_repeated(repo_root: Path, cited: dict) -> None:
     note = repeated_note(repo_root, cited)
     if note:
         print(note, file=sys.stderr)
+
+
+def handle_dependents(args: argparse.Namespace) -> int:
+    print_json(dependents(args.registry_root.resolve(), args.asset, args.id))
+    return 0
 
 
 def handle_analyze_boundary(args: argparse.Namespace) -> int:
@@ -1076,6 +1096,7 @@ HANDLERS = {
     "resolve-terms": handle_resolve_terms,
     "get-context": handle_get_context,
     "get-record": handle_get_record,
+    "dependents": handle_dependents,
     "analyze-boundary": handle_analyze_boundary,
     "boundary-impact": handle_boundary_impact,
     "change-coupling": handle_change_coupling,

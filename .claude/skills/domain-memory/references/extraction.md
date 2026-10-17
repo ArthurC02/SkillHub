@@ -26,7 +26,7 @@ Models find vocabulary and relations reliably and Bounded Contexts and Aggregate
 1. **Language.** Collect the terms the domain uses and what the code or requirement does with each. A word with two meanings is a boundary signal, not one term. Keep them as notes: a Term names its Contexts, so it is recorded once step 2 has them.
 2. **Boundaries.** Propose Contexts only where several signals agree: the language changes, data is owned and written in one place, changes land together, and calls cross the boundary through an explicit surface. Each Context names its `implementation_path` when code exists. Prefer fewer, evidenced Contexts to a speculative split.
 3. **Relations.** Record Interactions and Contracts across the boundaries from step 2. When the work covers one Context and a relation needs a neighbour, record the neighbour as a candidate Context holding only what the evidence shows, such as its `id`, `name` and `implementation_path`, so the relation can name it; Review decides whether it holds. Record a Dependency policy only for a direction a check enforces or a decision states.
-4. **Tactical facts.** Rules, Aggregates, Events and Value Objects, each inside one Context from step 2.
+4. **Tactical facts.** Rules, Aggregates, Events and Value Objects, each inside one Context from step 2. A Rule that states an Aggregate's invariant and an Event that Aggregate raises name it in `aggregate`; an Event published under a Contract names it in `contract_id`.
 
 ## From a requirement
 

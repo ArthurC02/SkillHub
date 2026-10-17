@@ -788,6 +788,19 @@ class CliTest(RegistryTestCase):
             ((in_place.returncode, in_place.stderr.strip()), (nothing.returncode, nothing.stderr.strip())),
         )
 
+    def test_relocate_evidence_notes_a_context_placed_under_a_to_that_holds_no_file(self) -> None:
+        self.cited_rule("reviewed", (2, 2))
+        self.seed("contexts.json", [
+            {"id": "orders", "name": "Orders", "responsibility": "Own orders.", "implementation_path": "src"},
+        ])
+        registry = ("--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo))
+        typo = self.run_cli("relocate-evidence", *registry, "--from", "src", "--to", "lib")
+        self.assertEqual(
+            (0, "NOTE: --to lib lies over no file in the repository; the Context path proposed for orders would be "
+                "refused at review. Check --to for a typo."),
+            (typo.returncode, typo.stderr.strip()),
+        )
+
     def test_validate_names_the_approved_packages_left_unapplied(self) -> None:
         changes = self.repo / "memory" / "changes"
         for name, status in (("a", "approved"), ("b", "applied"), ("c", "approved"), ("d", "verified")):
@@ -880,7 +893,7 @@ class CliTest(RegistryTestCase):
             tasks.setdefault(command, task.strip())
         [subcommands] = [action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)]
         helps = {choice.dest: choice.help for choice in subcommands._choices_actions}
-        self.assertEqual((58, tasks), (len(helps), helps))
+        self.assertEqual((59, tasks), (len(helps), helps))
 
     def test_readiness_command_returns_json_without_writing(self) -> None:
         before = self.file_bytes()

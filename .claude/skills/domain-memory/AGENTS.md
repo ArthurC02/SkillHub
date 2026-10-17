@@ -65,7 +65,7 @@ Commands that read or change the Registry take `--registry-root <root>`: the dir
 | --- | --- |
 | Know what this repository has | `readiness --repo-root <repo>`; `extract` means code exists and the Registry holds no record yet |
 | Start a Domain Memory | `init-domain-memory`, which records the destination, sources and policy choices a Registry needs; `init` only copies an empty skeleton that can never hold a reviewed record |
-| Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`; a `mentioned` match is prose in a reviewed record, not a term |
+| Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`, and before changing a record `dependents --asset <asset> --id <id>` for what else it may touch; a `mentioned` match is prose in a reviewed record, not a term |
 | See which boundaries your change touches | `boundary-impact --base <branch point>`; `unknown` means no Context records an `implementation_path`, so it cannot map files to Contexts |
 | Check the Registry's shape and references | `validate`; it does not check that citations still match the code, which is `verify-evidence` |
 | Check the evidence of files you edited | `verify-evidence --path <file>`; `stale` needs `recite` after you check the fact. `shifted` passes every check and needs no Change Package of its own: re-cite it with `relocate-evidence --from <file> --to <file>` in the next package that touches the record; a directory, or `.`, covers everything under it |

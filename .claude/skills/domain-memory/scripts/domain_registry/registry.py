@@ -316,7 +316,8 @@ def _validate_context_references(
         *_single_context_errors(records, known_contexts),
         *_contract_party_errors(records, known_contexts),
         *_event_consumer_errors(records, known_contexts),
-        *_interaction_contract_errors(records),
+        *_contract_errors(records),
+        *_aggregate_binding_errors(records),
     ]
 
 
@@ -382,16 +383,39 @@ def _event_consumer_errors(records: dict[str, list[dict[str, Any]]], known_conte
     return errors
 
 
-def _interaction_contract_errors(records: dict[str, list[dict[str, Any]]]) -> list[str]:
+def _contract_errors(records: dict[str, list[dict[str, Any]]]) -> list[str]:
     errors: list[str] = []
     contract_ids = {entry.get("id") for entry in records.get("contracts.json", [])}
-    for entry in records.get("interactions.json", []):
-        contract_id = entry.get("contract_id")
-        if contract_id is not None and contract_id not in contract_ids:
-            errors.append(
-                f"interactions/{entry.get('id')} references unknown contract"
-            )
+    for name in ("interactions.json", "events.json"):
+        for entry in records.get(name, []):
+            contract_id = entry.get("contract_id")
+            if contract_id is not None and contract_id not in contract_ids:
+                errors.append(f"{name.removesuffix('.json')}/{entry.get('id')} references unknown contract")
     return errors
+
+
+def _aggregate_binding_errors(records: dict[str, list[dict[str, Any]]]) -> list[str]:
+    errors: list[str] = []
+    aggregate_contexts = {entry.get("id"): entry.get("context") for entry in records.get("aggregates.json", [])}
+    for name in ("rules.json", "events.json"):
+        for entry in records.get(name, []):
+            aggregate = entry.get("aggregate")
+            if aggregate is None:
+                continue
+            label = f"{name.removesuffix('.json')}/{entry.get('id')}"
+            if aggregate not in aggregate_contexts:
+                errors.append(f"{label} references unknown aggregate {aggregate}; add the Aggregate first")
+            elif aggregate_contexts[aggregate] not in _named_contexts(entry):
+                errors.append(
+                    f"{label} aggregate {aggregate} belongs to context {aggregate_contexts[aggregate]}, "
+                    "which the record does not name"
+                )
+    return errors
+
+
+def _named_contexts(entry: dict[str, Any]) -> list[Any]:
+    contexts = entry.get("contexts")
+    return contexts if isinstance(contexts, list) else [entry.get("owner_context")]
 
 
 def _validate_evidence(
@@ -837,7 +861,7 @@ UNSEARCHED_FIELDS = ("status", "review_status")
 CONSTRAINT_ASSETS = ("rules", "contracts")
 
 
-SUMMARY_FIELDS = ("statement", "definition", "description", "responsibility")
+SUMMARY_FIELDS = ("statement", "definition", "responsibility", "description", "name")
 SENTENCE_END = re.compile(r"(?<=[.!?])\s")
 
 
@@ -982,18 +1006,15 @@ def _cited_paths(record: dict[str, Any]) -> set[str]:
     }
 
 
-SUMMARY_FIELDS = ("statement", "definition", "responsibility", "description", "name")
-
-
 def context_summary(model: dict[str, Any]) -> dict[str, Any]:
     return {
-        key: [_summarized(entry) for entry in value] if isinstance(value, list) and key != "rules_bound_through_collaborations"
-        else {**_summarized(value), "implementation_path": value.get("implementation_path")} if key == "context" else value
+        key: [summarized(entry) for entry in value] if isinstance(value, list) and key != "rules_bound_through_collaborations"
+        else {**summarized(value), "implementation_path": value.get("implementation_path")} if key == "context" else value
         for key, value in model.items()
     }
 
 
-def _summarized(entry: dict[str, Any]) -> dict[str, Any]:
+def summarized(entry: dict[str, Any]) -> dict[str, Any]:
     summary = next((entry[field] for field in SUMMARY_FIELDS if isinstance(entry.get(field), str)), None)
     return {"id": entry.get("id"), "status": entry.get("status", entry.get("review_status")), "summary": summary}
 

@@ -2,6 +2,18 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.68.0
+
+### Added
+
+- Rules and Events may name the Aggregate whose invariant they state or raise in `aggregate`, and an Event the Contract it is published under in `contract_id`; `validate` refuses an unknown Aggregate or Contract and an Aggregate that sits in a Context the record does not name, and the concept file links them under Relations.
+- `relocate-evidence` prints a NOTE when `--to` lies over no file in the repository and a Context path was proposed there, so a typo surfaces before a package is built.
+- `dependents --asset <asset> --id <id>` walks every relation from a record in both directions, without crossing a Context, and lists what a change to it may touch.
+
+### Fixed
+
+- `lookup` summaries and `get-context` summaries read one field list; the two definitions that drifted apart are one.
+
 ## 0.67.0
 
 ### Fixed

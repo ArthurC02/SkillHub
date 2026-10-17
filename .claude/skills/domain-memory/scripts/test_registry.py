@@ -139,6 +139,37 @@ class RegistryTest(RegistryTestCase):
                 self.seed(name, records)
                 self.assertIn(message, validate(self.repo / "memory", None, False))
 
+    def test_a_bound_aggregate_must_exist_and_sit_in_a_context_the_record_names(self) -> None:
+        cases = [
+            ("rule bound to an unknown aggregate", "rules.json",
+             [{"id": "r", "contexts": ["orders"], "statement": "S.", "aggregate": "ghost"}],
+             "rules/r references unknown aggregate ghost; add the Aggregate first"),
+            ("rule bound to an aggregate of a context it does not name", "rules.json",
+             [{"id": "r", "contexts": ["billing"], "statement": "S.", "aggregate": "order"}],
+             "rules/r aggregate order belongs to context orders, which the record does not name"),
+            ("event bound to an aggregate of another context", "events.json",
+             [{"id": "e", "owner_context": "billing", "aggregate": "order"}],
+             "events/e aggregate order belongs to context orders, which the record does not name"),
+            ("event under an unknown contract", "events.json",
+             [{"id": "e", "owner_context": "orders", "contract_id": "none"}],
+             "events/e references unknown contract"),
+        ]
+        orders = {"id": "orders", "name": "Orders", "responsibility": "Own orders."}
+        billing = {"id": "billing", "name": "Billing", "responsibility": "Own invoices."}
+        root = self.repo / "memory"
+        for label, name, records, message in cases:
+            with self.subTest(label):
+                self.seed("contexts.json", [orders, billing])
+                self.seed("aggregates.json", [{"id": "order", "context": "orders", "root": "Order"}])
+                self.seed(name, records)
+                self.assertIn(message, validate(root, None, False))
+        self.seed("contracts.json", [{"id": "c", "producer_context": "orders", "consumer_contexts": ["billing"]}])
+        self.seed("rules.json", [{"id": "r", "contexts": ["orders"], "statement": "S.", "aggregate": "order"}])
+        self.seed("events.json", [{"id": "e", "owner_context": "orders", "aggregate": "order", "contract_id": "c"}])
+        self.assertEqual(
+            [], [error for error in validate(root, None, False) if "aggregate" in error or "contract" in error]
+        )
+
     def test_validate_refuses_an_unhashed_citation(self) -> None:
         self.two_line_rule()
         self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders.",

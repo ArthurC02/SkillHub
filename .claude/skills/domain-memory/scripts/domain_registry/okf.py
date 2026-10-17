@@ -45,6 +45,7 @@ RELATION_TARGETS = {
     "from_context": "contexts",
     "to_context": "contexts",
     "consumers": "contexts",
+    "aggregate": "aggregates",
     "contract_id": "contracts",
     "not_same_as": "vocabulary",
     "supersedes": "decisions",

@@ -45,6 +45,17 @@ class ConceptRoundTripTest(unittest.TestCase):
         self.assertIn("- Producer context: [orders](/contexts/orders)\n", text)
         self.assertIn("- Contract id: [orders-v1](/contracts/orders-v1)\n", text)
 
+    def test_a_rule_and_an_event_link_the_aggregate_and_the_contract_they_name(self) -> None:
+        rule = self.assert_round_trip("rules", {
+            "id": "total", "contexts": ["orders"], "aggregate": "order", "statement": "A total is never negative.",
+        })
+        event = self.assert_round_trip("events", {
+            "id": "order-placed", "owner_context": "orders", "aggregate": "order", "contract_id": "orders-v1",
+            "meaning": "An order was placed.",
+        })
+        self.assertIn("- Aggregate: [order](/aggregates/order)\n", rule)
+        self.assertIn("- Aggregate: [order](/aggregates/order)\n- Contract id: [orders-v1](/contracts/orders-v1)\n", event)
+
     def test_what_markdown_cannot_carry_stays_in_frontmatter(self) -> None:
         cases = [
             ("relation id with a space", "interactions", {"id": "i", "producer_context": "two words"}),

@@ -7,11 +7,11 @@ The Registry is a file-backed, reviewable projection of domain knowledge, not a 
 | Context | A business boundary and its responsibility | `name`, `subdomain`, `responsibility`, `business_owner`, `version`, `effective_from`, `implementation_path`, `requirement_prefixes` |
 | Vocabulary | One Context-specific meaning | `name`, `definition`, `contexts`, `synonyms`, `not_same_as`, `required_qualifiers`, `owner` |
 | Aggregate | An invariant boundary | `context`, `root`, `entities`, `value_objects`, `domain_services`, `policies`, `invariants`, `commands`, `allowed_dependencies`, `prohibited_dependencies` |
-| Rule | A falsifiable business constraint | `contexts`, `statement`, `owner`, `version`, `effective_from`, `effective_until`, `examples` |
+| Rule | A falsifiable business constraint | `contexts`, `statement`, `aggregate` (the Aggregate whose invariant it states; must exist and sit in a Context the rule names), `owner`, `version`, `effective_from`, `effective_until`, `examples` |
 | Contract | An API or event promise | `kind`, `producer_context`, `consumer_contexts`, `version`, `compatibility_policy`, `data_classification`, `idempotency` |
 | Interaction | A collaboration across boundaries | `producer_context`, `consumer_context`, `consistency`, `delivery`; `contract_id` only when the collaboration relies on a stable API or event promise |
 | Decision | A current architectural or business decision | `status` for the decision, `review_status` for Registry curation, `statement`, `source`, `effective_from`, `supersedes` |
-| Event | A committed business occurrence | `owner_context`, `meaning`, `schema`, `consumers` (the Context ids that react to it; each must exist), `version` |
+| Event | A committed business occurrence | `owner_context`, `meaning`, `schema`, `aggregate` (the Aggregate that raises it; must exist and sit in `owner_context`), `contract_id` (the Contract it is published under; must exist), `consumers` (the Context ids that react to it; each must exist), `version` |
 | Capability | A business ability owned by one Context | `context`, `meaning` |
 | Value object | An immutable domain concept | `context`, `meaning`, `fields` |
 | Dependency policy | An allowed or prohibited Context collaboration | `from_context`, `to_context`, `mode`, `policy` |
