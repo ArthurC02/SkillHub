@@ -9,6 +9,7 @@ Extraction turns a source into Registry candidates. It is judged by one question
 | Bounded Context | a boundary inside which one model and its terms mean one thing, owned and changed together | a folder, a service, or a team name on its own |
 | Term | a word the domain uses with one meaning inside a Context, tied to behavior | an identifier, a table, or an acronym |
 | Rule | a falsifiable statement the system enforces or refuses to break | a test name, a log message, or a wish |
+| Capability | a business ability one Context owns and others ask of it | a handler, a package, or a feature flag |
 | Aggregate | one invariant that must hold across several objects in a single consistency boundary, guarded by one root | an entity, a table, or a class with children |
 | Domain Event | a business occurrence the domain cares about, after it is committed | a technical notification or a state write |
 | Value Object | an immutable concept compared by its values | any data structure without an ID |

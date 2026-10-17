@@ -325,10 +325,17 @@ def _validate_context_references(
     ]
 
 
+CLOSED_FIELD_HINTS = {
+    ("relationship", "separate-ways"):
+        "; separate-ways is a decision not to collaborate, recorded as a dependency policy with policy forbidden and mode none",
+}
+
+
 def _closed_field_errors(records: dict[str, list[dict[str, Any]]]) -> list[str]:
     return [
         f"{name.removesuffix('.json')}/{entry.get('id')} has an unknown {field}: "
         f"{entry[field]!r} is not one of {', '.join(sorted(allowed))}"
+        + (CLOSED_FIELD_HINTS.get((field, entry[field]), "") if isinstance(entry[field], str) else "")
         for name, fields in CLOSED_FIELDS.items()
         for entry in records.get(name, [])
         for field, allowed in fields.items()

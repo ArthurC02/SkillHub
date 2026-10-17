@@ -132,7 +132,6 @@ CONTEXT_RELATIONSHIPS = {
     "anticorruption-layer",
     "open-host-service",
     "published-language",
-    "separate-ways",
 }
 DEPENDENCY_MODES = {"synchronous-query", "synchronous-write", "asynchronous", "none"}
 DEPENDENCY_POLICIES = {"allowed", "forbidden"}

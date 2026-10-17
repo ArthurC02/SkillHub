@@ -2,7 +2,7 @@
 
 Start with `readiness --repo-root <repo>` and use the result only to choose the smallest next action, as [readiness](readiness.md) describes. It is a read-only filesystem observation; it never selects sources or changes the Registry.
 
-Use this workflow for a change that affects a domain model, crosses a Bounded Context, changes a public or event contract, or changes a material business rule. A routine implementation contained within one approved owner does not need the full workflow, but it still reads the Registry before coding and checks whether the implementation changed the domain documents afterward.
+Use this workflow for a material change. A change is material when it changes an owner, a boundary, an invariant, a public or event contract, an event, a consistency rule or a material business rule, a regulated rule and an irreversible behaviour among them, or when it adds a cross-Context dependency; this is the one definition the other pages refer to. A routine implementation contained within one approved owner does not need the full workflow, but it still reads the Registry before coding and checks whether the implementation changed the domain documents afterward.
 
 A brownfield refactoring that preserves the reviewed model takes the [brownfield refactoring fast path](brownfield-refactoring.md), which escalates back here.
 
