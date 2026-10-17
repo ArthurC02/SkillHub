@@ -784,6 +784,27 @@ class CliTest(RegistryTestCase):
         )
         self.assertEqual("", self.run_cli(*validate).stderr.strip())
 
+    def test_a_replacement_no_package_carries_is_noted_until_one_does(self) -> None:
+        changes = self.repo / "memory" / "changes"
+        for name, proposal in (("a", {"proposal_id": "PRO-a", "status": "superseded", "superseded_by": "PRO-x"}),
+                               ("b", {"proposal_id": "PRO-b", "status": "superseded", "superseded_by": "PRO-a"})):
+            (changes / name).mkdir(parents=True)
+            (changes / name / "domain-change-proposal.json").write_text(json.dumps(proposal), encoding="utf-8")
+        validate = ("validate", "--registry-root", str(self.repo / "memory"))
+        self.assertEqual(
+            "NOTE: 1 superseded Change Package names a replacement no package carries: PRO-a (by PRO-x). "
+            "Create it with redraft-proposal --proposal-id <id>.",
+            self.run_cli(*validate).stderr.strip(),
+        )
+        (changes / "x").mkdir()
+        (changes / "x" / "domain-change-proposal.json").write_text(
+            json.dumps({"proposal_id": "PRO-x", "status": "draft"}), encoding="utf-8"
+        )
+        self.assertEqual("", self.run_cli(*validate).stderr.strip())
+        init_change_package(changes / "y")
+        retire = ("supersede-proposal", "--package-root", str(changes / "y"), "--reason", "replaced", "--superseded-by")
+        self.assertEqual("", self.run_cli(*retire, "PRO-x").stderr.strip())
+
     def test_supersede_and_redraft_take_the_lifecycle_flags_and_say_what_replaces_the_proposal(self) -> None:
         lifecycle = ("--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo))
         for name, replacement, said in (
@@ -795,6 +816,7 @@ class CliTest(RegistryTestCase):
                 retired = self.run_cli("supersede-proposal", "--package-root", str(self.repo / name), "--reason",
                                        "replaced", *replacement, *lifecycle)
                 self.assertEqual((0, said), (retired.returncode, retired.stdout.strip()))
+        self.assertTrue(retired.stderr.startswith(f"NOTE: no package beside {self.repo / 'b'} carries PRO-2 yet;"))
         redrafted = self.run_cli("redraft-proposal", "--package-root", str(self.repo / "a"), "--output",
                                  str(self.repo / "c"), "--proposal-id", "PRO-3", *lifecycle)
         self.assertEqual(0, redrafted.returncode, redrafted.stdout)

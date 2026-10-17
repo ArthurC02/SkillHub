@@ -779,10 +779,6 @@ def unconfirmed_evidence_errors(proposal: dict[str, Any], registry_root: Path) -
     return errors
 
 
-def unapplied_approved_proposals(changes_root: Path) -> list[Any]:
-    return [row["proposal_id"] for row in list_proposals(changes_root) if row.get("status") == "approved"]
-
-
 def _staged(current: dict[str, list[dict[str, Any]]], proposal: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
     records = {name: list(entries) for name, entries in current.items()}
     updates = proposal.get("registry_updates")

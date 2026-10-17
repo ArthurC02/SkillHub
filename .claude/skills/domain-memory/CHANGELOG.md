@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.61.0
+
+### Added
+
+- `supersede-proposal --superseded-by <id>` notes when no package beside it carries that id yet, and `validate` and `verify-git-governance` name each superseded package whose replacement no package under `changes/` carries, so a mistyped id is seen.
+
 ## 0.60.0
 
 ### Changed

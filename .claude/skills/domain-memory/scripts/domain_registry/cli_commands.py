@@ -17,7 +17,6 @@ from .changes import (
     proof_of,
     rule_coverage,
     redraft_change_package,
-    unapplied_approved_proposals,
     validate_change_package,
 )
 from .common import ASSET_KEYS, PROPOSAL_FILE, REQUIREMENT_FILE, load_json
@@ -193,13 +192,21 @@ def handle_validate(args: argparse.Namespace) -> int:
         args.require_reviewed,
     )
     exit_code = report_errors(errors, "Registry is valid.")
-    _note_unapplied(args.registry_root.resolve())
+    _note_unsettled(args.registry_root.resolve())
     return exit_code
 
 
-def _note_unapplied(registry_root: Path) -> None:
+def _note_unsettled(registry_root: Path) -> None:
     changes_root = _changes_root(registry_root, None)
-    pending = unapplied_approved_proposals(changes_root) if changes_root is not None else []
+    rows = list_proposals(changes_root) if changes_root is not None else []
+    pending = [row["proposal_id"] for row in rows if row.get("status") == "approved"]
+    dangling = [f"{row['proposal_id']} (by {row['superseded_by']})" for row in rows if row.get("superseded_by_unknown")]
+    if dangling:
+        print(
+            f"NOTE: {len(dangling)} superseded Change Package{' names' if len(dangling) == 1 else 's name'} a replacement "
+            f"no package carries: {', '.join(dangling)}. Create it with redraft-proposal --proposal-id <id>.",
+            file=sys.stderr,
+        )
     if pending:
         print(
             f"NOTE: {len(pending)} approved Change Package{'' if len(pending) == 1 else 's'} not applied: "
@@ -844,7 +851,7 @@ def handle_verify_git_governance(args: argparse.Namespace) -> int:
     commits = [args.commit] if args.commit else sys.stdin.read().split()
     errors = verify_git_governance(args.registry_root.resolve(), args.repo_root.resolve(), commits)
     exit_code = report_errors(errors, f"Git governance is valid for {len(commits)} commit{'' if len(commits) == 1 else 's'}.")
-    _note_unapplied(args.registry_root.resolve())
+    _note_unsettled(args.registry_root.resolve())
     return exit_code
 
 
@@ -902,6 +909,16 @@ def handle_record_approval(args: argparse.Namespace) -> int:
 
 def handle_supersede_proposal(args: argparse.Namespace) -> int:
     supersede_proposal(args.package_root.resolve(), args.reason, args.superseded_by)
+    beside = args.package_root.resolve().parent
+    if args.superseded_by is not None and args.superseded_by not in {
+        row.get("proposal_id") for row in list_proposals(beside)
+    }:
+        print(
+            f"NOTE: no package beside {args.package_root} carries {args.superseded_by} yet; create it with "
+            f"redraft-proposal --package-root {args.package_root} --output <dir> --proposal-id {args.superseded_by}, "
+            "and validate names this proposal until a package carries it.",
+            file=sys.stderr,
+        )
     if args.superseded_by is None:
         print("Proposal superseded. Its record stays; create a new draft for the replacement.")
     else:
