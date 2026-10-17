@@ -3,12 +3,12 @@
   "proposal_id": "activity-harvest-rules-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "activity-harvest-rules-2026-10-17",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T06:41:17.967037Z",
   "verified_at": "2026-10-17T06:41:43.974660Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T06:41:46.039678Z",
+  "applied_at": "2026-10-17T06:41:47.704104Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "a42a3dcc4359b7e149eaf44ee9ebdd9ee88f5472",
@@ -338,5 +338,9 @@
         "registry_digest": "sha256:29e33605707c22b8ddddff7e81cc34079e63c58421abe6d005e725762aceb8ae"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "dab3de6a08a8837db4218894543d442d279ca5e9",
+    "registry_digest": "sha256:b2c43347ad95acb0f0f3406fa464fdb4c8f84b30e7ef685ab7011d451b606e62"
+  }
 }
