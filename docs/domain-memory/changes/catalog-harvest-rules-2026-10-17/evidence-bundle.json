@@ -7,7 +7,16 @@
     "registry_digest": "sha256:a6c2ffaadcb590853bf0b235d70fb3f1af768c243143ed617269767a0e89b5dd"
   },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "8a72ae57ac8ad480c9fcc9588e3c6e96f4619ea5",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "c69c68008bee33320cf99af66b3289cb473f5d2e",
+      "registry_digest": "sha256:a6c2ffaadcb590853bf0b235d70fb3f1af768c243143ed617269767a0e89b5dd"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "rule-a-taken-down-catalog-skill-answers-gone",

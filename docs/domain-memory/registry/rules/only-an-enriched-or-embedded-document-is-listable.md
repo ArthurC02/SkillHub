@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-17T02:57:33.844230Z"
 sources:
   - resource: "apps/platform/internal/skill/discovery/enrichment.go#L12-14"
     excerpt_sha256: "sha256:c8086abe2eb931f39133735544a49735766e725679ad1a32ddc72e9620f779b2"
