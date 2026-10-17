@@ -30,6 +30,22 @@ MAX_FAILURE_LINES = 40
 MAX_DETAIL_LINES = 3
 
 
+GO_FAILED_TEST = re.compile(r"^\s*--- FAIL: (\S+)", re.MULTILINE)
+GO_JSON_FAILED_TEST = re.compile(r'"Action":"fail"[^\n]*?"Test":"([^"]+)"')
+PYTEST_FAILED_TEST = re.compile(r"^(?:FAILED|ERROR) (\S+::\S+)|^(\S+::\S+) (?:FAILED|ERROR)", re.MULTILINE)
+UNITTEST_FAILED_TEST = re.compile(r"^(?:FAIL|ERROR): (\w+) \(([\w.]+)\)", re.MULTILINE)
+
+
+def failing_tests(output: str) -> list[str]:
+    names = [
+        *GO_FAILED_TEST.findall(output),
+        *GO_JSON_FAILED_TEST.findall(output),
+        *(summary or verbose for summary, verbose in PYTEST_FAILED_TEST.findall(output)),
+        *(where if where.endswith(f".{name}") else f"{where}.{name}" for name, where in UNITTEST_FAILED_TEST.findall(output)),
+    ]
+    return list(dict.fromkeys(names))
+
+
 def failure_evidence(output: str) -> str:
     tail = output[-OUTPUT_TAIL:]
     failures = _failure_lines(output[:-OUTPUT_TAIL].splitlines())
@@ -267,6 +283,7 @@ def counterfactual(repo_root: Path, mutation: Mutation, proof: Proof) -> dict[st
         "verdict": verdict,
         "reason": reason,
         "failure_evidence": failure_evidence(broken_run.output),
+        "failing_tests": failing_tests(broken_run.output),
         "restoration_result": {"restored": restored, "content_sha256": digest(original)},
     }
     if verdict == "killed" and restored:

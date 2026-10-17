@@ -2,6 +2,20 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.54.0
+
+### Added
+
+- `counterfactual` names in `failing_tests` the tests that failed on the broken file, read from Go, pytest and unittest output, and the extract capability finds a rule's proving test that way instead of by text search.
+
+### Changed
+
+- `coverage` lists a Context's reviewed rules by proof in `proven`, `unproven` and `unknown`, each a list of ids, and accepts `--repo-root`.
+
+### Fixed
+
+- A rule re-cited by a later package without test obligations kept its proof: `get-record` and `coverage` now take the proof from the most recent reviewing package that covers the rule, and a NOTE names the packages applied since; a reviewing package that is not there makes the proof unknown, not absent.
+
 ## 0.53.0
 
 ### Added

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .attestations import verify_scm_value
-from .audit import reviewing_proposals
+from .audit import review_history
 from .common import (
     ASSET_KEYS,
     CHANGE_CLASSIFICATIONS,
@@ -824,9 +824,33 @@ def obligations_proving(
         {"proposal_id": proposal_id, "package": package.name, "obligation_id": entry.get("id"), "check": entry.get("check"),
          "working_directory": _working_directories(package).get(entry.get("id"), ".")}
         for package in packages
-        for entry in load_json(package / "test-obligations.json").get("obligations", [])
+        for entry in _obligations(package)
         if isinstance(entry, dict) and source in _covered_sources(entry)
     ]
+
+
+def _obligations(package: Path) -> list[Any]:
+    path = package / "test-obligations.json"
+    return load_json(path).get("obligations", []) if path.is_file() else []
+
+
+@dataclass(frozen=True)
+class Proof:
+    obligations: list[dict[str, Any]] | None
+    missing: str | None = None
+    since: tuple[str, ...] = ()
+
+
+def proof_of(changes_root: Path, proposals: list[str], source: tuple[str, str]) -> Proof:
+    since: list[str] = []
+    for proposal_id in reversed(proposals):
+        found = obligations_proving(changes_root, proposal_id, source)
+        if found is None:
+            return Proof(None, proposal_id, tuple(since))
+        if found:
+            return Proof(found, None, tuple(since))
+        since.append(proposal_id)
+    return Proof([], None, tuple(since))
 
 
 def _working_directories(package: Path) -> dict[Any, str]:
@@ -841,10 +865,10 @@ def _working_directories(package: Path) -> dict[Any, str]:
 def proven_sources(changes_root: Path) -> dict[Any, set[tuple[Any, Any]]]:
     proven: dict[Any, set[tuple[Any, Any]]] = {}
     for package in sorted(changes_root.iterdir()):
-        if not (package / PROPOSAL_FILE).is_file() or not (package / "test-obligations.json").is_file():
+        if not (package / PROPOSAL_FILE).is_file():
             continue
         sources = proven.setdefault(load_json(package / PROPOSAL_FILE).get("proposal_id"), set())
-        for entry in load_json(package / "test-obligations.json").get("obligations", []):
+        for entry in _obligations(package):
             if isinstance(entry, dict):
                 sources |= _covered_sources(entry)
     return proven
@@ -852,7 +876,7 @@ def proven_sources(changes_root: Path) -> dict[Any, set[tuple[Any, Any]]]:
 
 def rule_coverage(registry_root: Path, changes_root: Path | None) -> list[dict[str, Any]]:
     document = read_document(registry_root, "rules.json")
-    reviewing = reviewing_proposals(registry_root)
+    history = review_history(registry_root)
     proven = proven_sources(changes_root) if changes_root is not None else None
     rows = {
         context["id"]: _coverage_row(context["id"], with_proofs=proven is not None)
@@ -865,18 +889,28 @@ def rule_coverage(registry_root: Path, changes_root: Path | None) -> list[dict[s
             row = rows.setdefault(context, _coverage_row(context, with_proofs=proven is not None))
             row["reviewed_rules" if reviewed else "candidate_rules"] += 1
             if reviewed and proven is not None:
-                is_proven = ("rule", rule.get("id")) in proven.get(reviewing.get(f"rules/{rule.get('id')}"), set())
-                row["proven"] += is_proven
-                if not is_proven:
-                    row["unproven"].append(rule.get("id"))
+                found = _proven_in(proven, history.get(f"rules/{rule.get('id')}", []), ("rule", rule.get("id")))
+                row[PROOF_ROWS[found]].append(rule.get("id"))
     return sorted(rows.values(), key=lambda row: (row["reviewed_rules"], str(row["context"])))
 
 
 def _coverage_row(context: Any, *, with_proofs: bool) -> dict[str, Any]:
     row: dict[str, Any] = {"context": context, "reviewed_rules": 0, "candidate_rules": 0}
     if with_proofs:
-        row.update(proven=0, unproven=[])
+        row.update({name: [] for name in PROOF_ROWS.values()})
     return row
+
+
+PROOF_ROWS = {True: "proven", False: "unproven", None: "unknown"}
+
+
+def _proven_in(proven: dict[Any, set[tuple[Any, Any]]], proposals: list[str], source: tuple[Any, Any]) -> bool | None:
+    for proposal_id in reversed(proposals):
+        if proposal_id not in proven:
+            return None
+        if source in proven[proposal_id]:
+            return True
+    return False
 
 
 def _covered_sources(obligation: dict[str, Any]) -> set[tuple[Any, Any]]:

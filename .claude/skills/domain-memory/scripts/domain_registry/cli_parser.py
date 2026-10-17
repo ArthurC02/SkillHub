@@ -103,6 +103,7 @@ def _add_coverage_command(commands: argparse._SubParsersAction) -> None:
     coverage_parser = commands.add_parser("coverage", help="Report modelling gaps")
     add_path(coverage_parser, "--registry-root")
     add_path(coverage_parser, "--changes-root", required=False)
+    add_path(coverage_parser, "--repo-root", required=False)
 
 
 def _add_registry_commands(commands: argparse._SubParsersAction) -> None:

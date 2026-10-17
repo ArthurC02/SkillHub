@@ -31,7 +31,7 @@ from domain_registry.sources import (
     selected_source_map,
     write_source_map,
 )
-from test_support import RegistryTestCase, amend_policy, stored_policy_of, use_json_layout
+from test_support import RegistryTestCase, amend_policy, applied_by, stored_policy_of, use_json_layout
 
 
 class CliTest(RegistryTestCase):
@@ -561,13 +561,30 @@ class CliTest(RegistryTestCase):
             json.loads(shown.stdout)["proven_by"],
         )
         self.assertEqual(
-            [{"context": "orders", "reviewed_rules": 1, "candidate_rules": 0, "proven": 1, "unproven": []}],
-            json.loads(self.run_cli("coverage", "--registry-root", memory, "--changes-root", str(self.repo)).stdout)["rules_by_context"],
-        )
-        self.assertEqual(
             (False, f"NOTE: the Change Package of PRO-1, which reviewed rules/order-total, is not under {elsewhere.resolve()}, "
                     "so the tests that prove it are unknown."),
             ("proven_by" in json.loads(unseen.stdout), unseen.stderr.strip()),
+        )
+        recitation = self.repo / "recitation"
+        recitation.mkdir()
+        (recitation / "domain-change-proposal.json").write_text(json.dumps({"proposal_id": "PRO-3"}), encoding="utf-8")
+        applied_by(self.repo / "memory", "PRO-3", "rules/order-total")
+        recited = self.run_cli("get-record", "--registry-root", memory, "--asset", "rules", "--id", "order-total",
+                               "--changes-root", str(self.repo))
+        self.assertEqual(
+            (["PRO-1"], "NOTE: rules/order-total is proven by PRO-1; PRO-3, applied since, changed it without a test "
+                        "obligation, as a re-citation does."),
+            ([entry["proposal_id"] for entry in json.loads(recited.stdout)["proven_by"]], recited.stderr.strip()),
+        )
+        coverage = ("coverage", "--registry-root", memory, "--changes-root", str(self.repo), "--repo-root", str(self.repo))
+        self.assertEqual(
+            [{"context": "orders", "reviewed_rules": 1, "candidate_rules": 0, "proven": ["order-total"], "unproven": [],
+              "unknown": []}],
+            json.loads(self.run_cli(*coverage).stdout)["rules_by_context"],
+        )
+        applied_by(self.repo / "memory", "PRO-4", "rules/order-total")
+        self.assertEqual(
+            ["order-total"], json.loads(self.run_cli(*coverage).stdout)["rules_by_context"][0]["unknown"],
         )
 
     def test_get_record_looks_for_packages_beside_the_registry_only_for_rules_and_contracts(self) -> None:
@@ -606,7 +623,7 @@ class CliTest(RegistryTestCase):
         )
         (self.repo / "memory" / "changes").mkdir()
         self.assertEqual(
-            [("ghost", 0, []), ("ops", 0, []), ("billing", 0, ["c"]), ("orders", 0, ["a", "c"])],
+            [("ghost", [], []), ("ops", [], []), ("billing", [], ["c"]), ("orders", [], ["a", "c"])],
             [(row["context"], row["proven"], row["unproven"])
              for row in json.loads(self.run_cli("coverage", "--registry-root", memory).stdout)["rules_by_context"]],
         )

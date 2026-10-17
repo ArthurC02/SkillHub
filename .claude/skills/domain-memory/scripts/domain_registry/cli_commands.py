@@ -8,13 +8,13 @@ import sys
 from pathlib import Path
 
 from .attestations import audit_attestations, verify_scm
-from .audit import anchor_error, reviewing_proposals
+from .audit import anchor_error, review_history
 from .audit import verify as verify_audit
 from .changes import (
     init_change_package,
     list_proposals,
     missing_approval_roles,
-    obligations_proving,
+    proof_of,
     rule_coverage,
     redraft_change_package,
     validate_change_package,
@@ -314,17 +314,20 @@ def _changes_root(registry_root: Path, given: Path | None) -> Path | None:
 
 def _with_proofs(root: Path, changes_root: Path, asset: str, identifier: str, record: dict) -> dict:
     key = f"{asset}/{identifier}"
-    proposal_id = reviewing_proposals(root).get(key)
-    if proposal_id is None:
+    proposals = review_history(root).get(key)
+    if not proposals:
         print(f"NOTE: {key} was not reviewed through an applied Change Package, so no test obligation proves it yet.",
               file=sys.stderr)
         return record
-    proofs = obligations_proving(changes_root, proposal_id, (asset.removesuffix("s"), identifier))
-    if proofs is None:
-        print(f"NOTE: the Change Package of {proposal_id}, which reviewed {key}, is not under {changes_root}, "
+    proof = proof_of(changes_root, proposals, (asset.removesuffix("s"), identifier))
+    if proof.obligations is None:
+        print(f"NOTE: the Change Package of {proof.missing}, which reviewed {key}, is not under {changes_root}, "
               "so the tests that prove it are unknown.", file=sys.stderr)
         return record
-    return {**record, "proven_by": proofs}
+    if proof.obligations and proof.since:
+        print(f"NOTE: {key} is proven by {proof.obligations[0]['proposal_id']}; {', '.join(proof.since)}, applied since, "
+              "changed it without a test obligation, as a re-citation does.", file=sys.stderr)
+    return {**record, "proven_by": proof.obligations}
 
 
 def _did_you_mean(identifier: str, records: list[dict]) -> str:

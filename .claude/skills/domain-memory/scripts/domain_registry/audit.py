@@ -58,14 +58,22 @@ def read_events(root: Path) -> list[dict[str, Any]]:
     return events
 
 
-def reviewing_proposals(root: Path) -> dict[str, str]:
-    reviewed_by: dict[str, str] = {}
+def review_history(root: Path) -> dict[str, list[str]]:
+    history: dict[str, list[str]] = {}
     for event in read_events(root):
         if event.get("operation") == "apply-approved-updates":
-            reviewed_by.update(dict.fromkeys(event.get("records", []), event.get("proposal_id")))
+            reviewed = dict.fromkeys(event.get("records", []), event.get("proposal_id"))
         elif event.get("operation") == "migrate-registry":
-            reviewed_by.update(event.get("reviewed_by", {}))
-    return reviewed_by
+            reviewed = event.get("reviewed_by", {})
+        else:
+            continue
+        for record, proposal_id in reviewed.items():
+            history.setdefault(record, []).append(proposal_id)
+    return history
+
+
+def reviewing_proposals(root: Path) -> dict[str, str]:
+    return {record: proposals[-1] for record, proposals in review_history(root).items()}
 
 
 def append_locked(root: Path, event: dict[str, Any]) -> None:

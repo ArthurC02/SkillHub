@@ -24,6 +24,7 @@ from domain_registry.counterfactual import (
     TestRun,
     counterfactual,
     decoded,
+    failing_tests,
     failure_evidence,
     verdict_of,
 )
@@ -359,6 +360,7 @@ class CounterfactualTest(RepositoryCase):
         self.assertEqual(result["verdict"], "killed")
         self.assertEqual(result["line"], 1)
         self.assertIn("FAILED", result["failure_evidence"])
+        self.assertEqual(["tests.test_rule.RefusalTest.test_one_past_the_limit_is_refused"], result["failing_tests"])
         self.assertTrue(result["restoration_result"]["restored"])
         self.assert_untouched()
 
@@ -567,6 +569,27 @@ class VerdictTest(unittest.TestCase):
         ):
             with self.subTest(output):
                 self.assertEqual(verdict, verdict_of(TestRun(1, output))[0])
+
+
+class FailingTestsTest(unittest.TestCase):
+    def test_each_runner_names_the_tests_that_failed_once_each_in_order(self) -> None:
+        for runner, output, names in (
+            ("go -v", "=== RUN   TestA\n--- FAIL: TestA (0.00s)\n    --- FAIL: TestA/sub (0.00s)\n--- PASS: TestB (0.00s)\n"
+                      "--- FAIL: TestA (0.00s)\nFAIL\n", ["TestA", "TestA/sub"]),
+            ("go -json", '{"Action":"fail","Package":"p","Test":"TestA","Elapsed":0}\n'
+                         '{"Action":"pass","Package":"p","Test":"TestB","Elapsed":0}\n'
+                         '{"Action":"fail","Package":"p","Elapsed":0}\n', ["TestA"]),
+            ("pytest summary", "FAILED tests/test_a.py::test_one - assert 1 == 2\nERROR tests/test_a.py::test_two\n",
+             ["tests/test_a.py::test_one", "tests/test_a.py::test_two"]),
+            ("pytest -v", "tests/test_a.py::test_one FAILED  [ 50%]\ntests/test_a.py::test_two PASSED  [100%]\n",
+             ["tests/test_a.py::test_one"]),
+            ("unittest 3.11", "FAIL: test_one (tests.test_a.ATest.test_one)\nERROR: test_two (tests.test_a.ATest.test_two)\n",
+             ["tests.test_a.ATest.test_one", "tests.test_a.ATest.test_two"]),
+            ("unittest 3.10", "FAIL: test_one (tests.test_a.ATest)\n", ["tests.test_a.ATest.test_one"]),
+            ("unrecognised", "error: something broke\nFAIL\n", []),
+        ):
+            with self.subTest(runner):
+                self.assertEqual(names, failing_tests(output))
 
 
 class FailureEvidenceTest(unittest.TestCase):
