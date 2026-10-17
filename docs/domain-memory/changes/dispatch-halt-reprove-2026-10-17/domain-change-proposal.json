@@ -3,12 +3,12 @@
   "proposal_id": "dispatch-halt-reprove-2026-10-17",
   "proposer": "domain-memory-agent",
   "requirement_id": "dispatch-halt-reprove-2026-10-17",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-17T05:40:41.948385Z",
   "verified_at": "2026-10-17T05:40:49.287677Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-17T05:41:03.138473Z",
+  "applied_at": "2026-10-17T05:41:05.812859Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "319a8916a03e77dbea06e522549e9ba302c73b0d",
@@ -127,5 +127,9 @@
   ],
   "supersedes": [
     "dispatch-halt-rule"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "0f887e4f8b9627557cc45fdc811be7c5c6ae5136",
+    "registry_digest": "sha256:c1e35ca41d3611ee8e6c9da8b50f8bf5a790bdfe756d8f8d036203e1528d9946"
+  }
 }
