@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.47.0
+
+### Added
+
+- `change-coupling` lists the newest twenty commits it skipped in `skipped_large` and `skipped_sweeping`, with their sha, subject and the files, modules or Contexts that made them skip, so a reader can check that each is a sweep.
+
 ## 0.46.0
 
 ### Added

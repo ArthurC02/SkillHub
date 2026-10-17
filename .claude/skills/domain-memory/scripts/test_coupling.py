@@ -104,6 +104,35 @@ class ChangeCouplingTest(RegistryTestCase):
             (result["skipped_sweeping_commits"], result["pairs"]),
         )
 
+    def test_each_skipped_sweep_is_listed_newest_first_with_the_contexts_it_spans(self) -> None:
+        self.change("src/a/x.py", "src/b/y.py", subject="first sweep")
+        self.change("src/a/x.py", "src/b/y.py", "src/wiring/w.py", subject="second sweep")
+        reading = CouplingReading(context_paths={"alpha": "src/a", "beta": "src/b"})
+        result = change_coupling(self.repo, ["src"], 1, CouplingLimits(1, 1, 0, 30, max_modules=1), reading)
+        self.assertEqual(
+            [{"sha": self.git("rev-parse", "--short", "HEAD"), "subject": "second sweep", "modules": ["src/a", "src/b"],
+              "contexts": ["alpha", "beta"]},
+             {"sha": self.git("rev-parse", "--short", "HEAD~1"), "subject": "first sweep", "modules": ["src/a", "src/b"],
+              "contexts": ["alpha", "beta"]}],
+            result["skipped_sweeping"],
+        )
+
+    def test_without_contexts_a_skipped_sweep_names_its_modules_only(self) -> None:
+        self.change("src/a/x.py", "src/b/y.py", subject="sweep")
+        result = change_coupling(self.repo, ["src"], 1, CouplingLimits(1, 1, 0, 30, max_modules=1))
+        self.assertEqual([{"sha": self.git("rev-parse", "--short", "HEAD"), "subject": "sweep", "modules": ["src/a", "src/b"]}],
+                         result["skipped_sweeping"])
+
+    def test_at_most_twenty_skipped_sweeps_are_listed_and_all_are_counted(self) -> None:
+        for number in range(21):
+            self.change("src/a/x.py", "src/b/y.py", subject=f"sweep {number}")
+        result = change_coupling(self.repo, ["src"], 1, CouplingLimits(1, 1, 0, 30, max_modules=1))
+        self.assertEqual((21, 20, "sweep 20"), (result["skipped_sweeping_commits"], len(result["skipped_sweeping"]),
+                                                result["skipped_sweeping"][0]["subject"]))
+        large = change_coupling(self.repo, ["src"], 1, CouplingLimits(1, 1, 0, 1))
+        self.assertEqual((22, 20, "sweep 20"), (large["skipped_large_commits"], len(large["skipped_large"]),
+                                                large["skipped_large"][0]["subject"]))
+
     def test_with_contexts_only_modules_a_context_owns_count_toward_the_maximum(self) -> None:
         for _ in range(2):
             self.change("src/a/x.py", "src/b/y.py", "src/wiring/w.py")
@@ -183,6 +212,8 @@ class ChangeCouplingTest(RegistryTestCase):
             (result["commits"] - before["commits"], result["skipped_large_commits"] - before["skipped_large_commits"]),
         )
         self.assertEqual([1, 1, 1], [pair["shared"] for pair in result["pairs"]])
+        self.assertEqual({"sha": self.git("rev-parse", "--short", "HEAD"), "subject": "change", "files": 4},
+                         result["skipped_large"][0])
 
     def test_a_module_that_no_longer_exists_is_left_out(self) -> None:
         self.change("src/a/x.py", "src/gone/y.py")

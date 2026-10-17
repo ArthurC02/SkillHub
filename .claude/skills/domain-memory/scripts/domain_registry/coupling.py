@@ -14,6 +14,7 @@ from .sources import run_git
 
 COMMIT_MARKER = "\x1e"
 SUBJECTS_SHOWN = 10
+SKIPPED_SHOWN = 20
 
 
 @dataclass(frozen=True)
@@ -35,6 +36,7 @@ class CouplingReading:
 
 @dataclass(frozen=True)
 class Commit:
+    sha: str
     subject: str
     files: frozenset[str]
 
@@ -50,15 +52,18 @@ def change_coupling(
     excluded = _subject_filter(reading.exclude_subjects)
     commits = _commits(repo_root, reading.since)
     wanted = [commit for commit in commits if not excluded(commit.subject)]
-    kept = [commit for commit in wanted if len(commit.files) <= limits.max_changeset]
+    kept, large = [], []
+    for commit in wanted:
+        (large if len(commit.files) > limits.max_changeset else kept).append(commit)
     module_for = _existing_module_finder(repo_root, roots, depth)
     revisions: Counter[str] = Counter()
     shared: defaultdict[tuple[str, str], list[str]] = defaultdict(list)
-    sweeping = 0
+    sweeping = []
     for commit in kept:
         modules = sorted({module for path in commit.files if (module := module_for(path))})
-        if limits.max_modules is not None and len(_counted(modules, reading)) > limits.max_modules:
-            sweeping += 1
+        counted = _counted(modules, reading)
+        if limits.max_modules is not None and len(counted) > limits.max_modules:
+            sweeping.append(_sweep(commit, counted, reading))
             continue
         revisions.update(modules)
         for pair in combinations(modules, 2):
@@ -72,14 +77,25 @@ def change_coupling(
     return {
         "commits": len(commits),
         "excluded_commits": len(commits) - len(wanted),
-        "skipped_large_commits": len(wanted) - len(kept),
-        "skipped_sweeping_commits": sweeping,
+        "skipped_large_commits": len(large),
+        "skipped_large": [
+            {"sha": commit.sha, "subject": commit.subject, "files": len(commit.files)} for commit in large[:SKIPPED_SHOWN]
+        ],
+        "skipped_sweeping_commits": len(sweeping),
+        "skipped_sweeping": sweeping[:SKIPPED_SHOWN],
         "modules": [{"module": module, "revisions": count} for module, count in sorted(revisions.items())],
         "pairs": sorted(
             (pair for pair in pairs if pair["degree"] >= limits.min_degree),
             key=lambda pair: (-pair["degree"], -pair["shared"], pair["modules"]),
         ),
     }
+
+
+def _sweep(commit: Commit, counted: list[str], reading: CouplingReading) -> dict[str, Any]:
+    sweep: dict[str, Any] = {"sha": commit.sha, "subject": commit.subject, "modules": counted}
+    if reading.context_paths:
+        sweep["contexts"] = sorted({context_of(module, reading.context_paths) for module in counted})
+    return sweep
 
 
 def _counted(modules: list[str], reading: CouplingReading) -> list[str]:
@@ -158,7 +174,7 @@ def module_of(path: str, roots: list[str], depth: int) -> str | None:
 
 def _commits(repo_root: Path, since: str | None) -> list[Commit]:
     arguments = ["-c", "core.quotepath=false", "log", "--no-merges", "--no-renames", "--name-only",
-                 "--format=%x1e%s"]
+                 "--format=%x1e%h %s"]
     if since:
         arguments.append(f"--since={since}")
     try:
@@ -172,5 +188,6 @@ def _commits(repo_root: Path, since: str | None) -> list[Commit]:
 
 
 def _commit(block: str) -> Commit:
-    subject, _, names = block.partition("\n")
-    return Commit(subject, frozenset(line for line in names.splitlines() if line.strip()))
+    header, _, names = block.partition("\n")
+    sha, _, subject = header.partition(" ")
+    return Commit(sha, subject, frozenset(line for line in names.splitlines() if line.strip()))
