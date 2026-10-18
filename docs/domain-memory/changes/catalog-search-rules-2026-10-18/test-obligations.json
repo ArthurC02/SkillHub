@@ -1,0 +1,142 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "catalog-search-rules-2026-10-18",
+  "proposal_id": "catalog-search-rules-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-an-uncovered-candidate-past-the-distance-cutoff-is-dropped",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-uncovered-candidate-past-the-distance-cutoff-is-dropped",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-uncovered-candidate-past-the-distance-cutoff-is-dropped"
+        }
+      ],
+      "expected_outcome": "A hybrid candidate farther than the cosine distance cutoff is dropped unless the lexical leg covered it or it has no vector.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestOnlyAnUncoveredRankedCandidateIsHeldToTheDistanceCutoff$ ./internal/skill/discovery/"
+    },
+    {
+      "id": "rule-hybrid-hits-rank-exact-name-then-covered-then-nearest",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-hybrid-hits-rank-exact-name-then-covered-then-nearest",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "hybrid-hits-rank-exact-name-then-covered-then-nearest"
+        }
+      ],
+      "expected_outcome": "Hybrid results are ordered exact name first, then lexically covered, then vector-ranked by nearest distance, with unranked last and the skill id as the final tiebreak.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestHybridHitsPinTheExactNameThenCoveredThenNearestAndUnrankedLast$ ./internal/skill/discovery/"
+    },
+    {
+      "id": "rule-an-embedding-failure-degrades-to-lexical-and-says-so",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-embedding-failure-degrades-to-lexical-and-says-so",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-embedding-failure-degrades-to-lexical-and-says-so"
+        }
+      ],
+      "expected_outcome": "When embeddings are missing or fail, search returns the lexical results and says it is degraded, rather than failing the request.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestSearchDegradesToFTSWhenEmbeddingFails$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-search-limit-is-1-to-100",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-search-limit-is-1-to-100",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-search-limit-is-1-to-100"
+        }
+      ],
+      "expected_outcome": "The search limit must be a whole number from 1 to 100; anything else is refused.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestSearchLimitOutsideTheSchemaIsRefused$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-search-query-is-at-most-2000-runes",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-search-query-is-at-most-2000-runes",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-search-query-is-at-most-2000-runes"
+        }
+      ],
+      "expected_outcome": "A search query longer than 2000 characters, counted in runes, is refused; exactly 2000 is accepted.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestQueryTooLongAcceptsExactlyTheRuneCap$ ./internal/skill/discovery/"
+    },
+    {
+      "id": "rule-a-truncated-search-says-so-and-counts-every-match",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-truncated-search-says-so-and-counts-every-match",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-truncated-search-says-so-and-counts-every-match"
+        }
+      ],
+      "expected_outcome": "Search fetches one row past the limit; when more than the limit match, it returns the limit, marks the page truncated and reports the full total.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestATruncatedSearchSaysHowManyMatchedAndNotJustThatThereWereMore$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-reference-search-records-no-search-event",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-reference-search-records-no-search-event",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-reference-search-records-no-search-event"
+        }
+      ],
+      "expected_outcome": "A search made for reference records no search_performed analytics event.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestPurposeReferenceWritesNoSearchPerformedEvent$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-an-explicitly-empty-filter-is-refused",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-explicitly-empty-filter-is-refused",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-explicitly-empty-filter-is-refused"
+        }
+      ],
+      "expected_outcome": "A filter given with an empty value is refused rather than treated as absent.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestParseFiltersRejectsExplicitEmptyValues$ ./internal/skill/discovery/"
+    },
+    {
+      "id": "rule-a-searchable-query-has-two-runes-and-a-letter-or-digit",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-searchable-query-has-two-runes-and-a-letter-or-digit",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-searchable-query-has-two-runes-and-a-letter-or-digit"
+        }
+      ],
+      "expected_outcome": "A query is searched only when it is valid text without control characters, has at least two characters and holds a letter or digit.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestIsComprehensible$ ./internal/skill/discovery/"
+    }
+  ]
+}

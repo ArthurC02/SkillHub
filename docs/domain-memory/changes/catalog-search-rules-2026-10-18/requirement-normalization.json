@@ -1,0 +1,61 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "catalog-search-rules-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed the search ranking, fallback, paging, query and filter rules the catalog Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context catalog lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-an-uncovered-candidate-past-the-distance-cutoff-is-dropped",
+      "statement": "A hybrid candidate farther than the cosine distance cutoff is dropped unless the lexical leg covered it or it has no vector."
+    },
+    {
+      "id": "enforced-hybrid-hits-rank-exact-name-then-covered-then-nearest",
+      "statement": "Hybrid results are ordered exact name first, then lexically covered, then vector-ranked by nearest distance, with unranked last and the skill id as the final tiebreak."
+    },
+    {
+      "id": "enforced-an-embedding-failure-degrades-to-lexical-and-says-so",
+      "statement": "When embeddings are missing or fail, search returns the lexical results and says it is degraded, rather than failing the request."
+    },
+    {
+      "id": "enforced-a-search-limit-is-1-to-100",
+      "statement": "The search limit must be a whole number from 1 to 100; anything else is refused."
+    },
+    {
+      "id": "enforced-a-search-query-is-at-most-2000-runes",
+      "statement": "A search query longer than 2000 characters, counted in runes, is refused; exactly 2000 is accepted."
+    },
+    {
+      "id": "enforced-a-truncated-search-says-so-and-counts-every-match",
+      "statement": "Search fetches one row past the limit; when more than the limit match, it returns the limit, marks the page truncated and reports the full total."
+    },
+    {
+      "id": "enforced-a-reference-search-records-no-search-event",
+      "statement": "A search made for reference records no search_performed analytics event."
+    },
+    {
+      "id": "enforced-an-explicitly-empty-filter-is-refused",
+      "statement": "A filter given with an empty value is refused rather than treated as absent."
+    },
+    {
+      "id": "enforced-a-searchable-query-has-two-runes-and-a-letter-or-digit",
+      "statement": "A query is searched only when it is valid text without control characters, has at least two characters and holds a letter or digit."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/disc_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/search_purpose_integration_test.go",
+    "apps/platform/internal/skill/discovery/facets_test.go",
+    "apps/platform/internal/skill/discovery/fusion.go",
+    "apps/platform/internal/skill/discovery/fusion_test.go",
+    "apps/platform/internal/skill/discovery/http.go",
+    "apps/platform/internal/skill/discovery/http_test.go",
+    "apps/platform/internal/skill/discovery/reason_test.go",
+    "apps/platform/internal/skill/discovery/service.go"
+  ]
+}

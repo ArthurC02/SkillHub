@@ -1,0 +1,183 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "catalog-search-rules-2026-10-18",
+  "proposal_id": "catalog-search-rules-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "5425cd28b00402feaa717409fcc37cb7dc1fbb73",
+    "registry_digest": "sha256:723046bfcd5abaf37dd5a4b588c334d0c6ea168886189ca07c0e63ea4e8d0031"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-uncovered-candidate-past-the-distance-cutoff-is-dropped",
+      "mutated_protection": "apps/platform/internal/skill/discovery/fusion.go:37: c.distance <= maxDistance -> c.distance <= maxDistance+1",
+      "failure_evidence": "=== RUN   TestOnlyAnUncoveredRankedCandidateIsHeldToTheDistanceCutoff\n    fusion_test.go:50: just past the cutoff: admitted = true, want false\n    fusion_test.go:57: admitted = [00000000-0000-0000-0000-000000000001 00000000-0000-0000-0000-000000000002], want only the near one\n--- FAIL: TestOnlyAnUncoveredRankedCandidateIsHeldToTheDistanceCutoff (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery\t3.432s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-hybrid-hits-rank-exact-name-then-covered-then-nearest",
+      "mutated_protection": "apps/platform/internal/skill/discovery/fusion.go:62: case a.covered != b.covered: return a.covered -> case a.covered != b.covered: return !a.covered",
+      "failure_evidence": "=== RUN   TestHybridHitsPinTheExactNameThenCoveredThenNearestAndUnrankedLast\n    fusion_test.go:126: order = [Excel-Freeze nearest middle pending covered covered-unranked], want [Excel-Freeze covered covered-unranked nearest middle pending]\n--- FAIL: TestHybridHitsPinTheExactNameThenCoveredThenNearestAndUnrankedLast (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery\t3.521s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-embedding-failure-degrades-to-lexical-and-says-so",
+      "mutated_protection": "apps/platform/internal/skill/discovery/service.go:231: if out.DegradedReason != \"\" { -> if out.DegradedReason != \"\" && false {",
+      "failure_evidence": "=== RUN   TestSearchDegradesToFTSWhenEmbeddingFails\n2026/10/18 14:19:49 WARN query embedding failed, falling back to FTS error=\"llmclient: /embed returned 502: {\\\"detail\\\":\\\"embedding provider error\\\"}\\n\"\n    disc_integration_test.go:731: degradation lost the lexical answer too: []\n--- FAIL: TestSearchDegradesToFTSWhenEmbeddingFails (0.12s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.793s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-search-limit-is-1-to-100",
+      "mutated_protection": "apps/platform/internal/skill/discovery/http.go:253: n < 1 || n > 100 -> n < 1 || n > 101",
+      "failure_evidence": "=== RUN   TestSearchLimitOutsideTheSchemaIsRefused\n    disc_integration_test.go:1467: public search\"&limit=101\": got 200, want 400\n    disc_integration_test.go:1467: workspace search\"&limit=101\": got 200, want 400\n--- FAIL: TestSearchLimitOutsideTheSchemaIsRefused (0.10s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.280s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-search-query-is-at-most-2000-runes",
+      "mutated_protection": "apps/platform/internal/skill/discovery/http.go:561: utf8.RuneCountInString(q) > maxQueryRunes { -> utf8.RuneCountInString(q) >= maxQueryRunes {",
+      "failure_evidence": "=== RUN   TestQueryTooLongAcceptsExactlyTheRuneCap\n    http_test.go:13: queryTooLong at exactly the rune cap = \"搜尋文字最多 2000 字\", want accepted\n--- FAIL: TestQueryTooLongAcceptsExactlyTheRuneCap (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery\t2.970s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-truncated-search-says-so-and-counts-every-match",
+      "mutated_protection": "apps/platform/internal/skill/discovery/service.go:247: if len(out.Hits) > int(limit) { -> if len(out.Hits) > int(limit)+1 {",
+      "failure_evidence": "el: Note:這個平台版本沒有這個值的說明,值照原樣顯示,不猜測它的意思。} Runtime:{Value: Label: Note:這個平台版本沒有這個值的說明,值照原樣顯示,不猜測它的意思。}} VerifiedAt: MatchReason:查詢與文件共同出現：uffish。 MatchReasonSource:template} {SkillID:b94876cd-5b85-406a-940e-670e8ea834af Name:uffish thing 0 Summary:uffish thing 0 summary Rank:<nil> RankNote:此次搜尋未使用語意向量,排序來自關鍵字比對分數,與相似度不同量綱,因此不提供分數。 Tier:{Value:indexed Label:已索引} Category:{Value:unassigned Label:尚未定值 Note:平台還沒決定使用者自己匯入的 Skill 怎麼取得分類(05 R-19),所以這一格是尚未定值,不是沒有用途。} Risk:{ScanStatus:unavailable Level:unknown Warnings:0 Disclosures:[] HasExternalURLs:false} Dependencies:[] Compatibility:{SpecValidation:{Value:unverified Label:未驗證 Note:} Capability:{Value: Label: Note:這個平台版本沒有這個值的說明,值照原樣顯示,不猜測它的意思。} Runtime:{Value: Label: Note:這個平台版本沒有這個值的說明,值照原樣顯示,不猜測它的意思。}} VerifiedAt: MatchReason:查詢與文件共同出現：uffish。 MatchReasonSource:template}] Degraded:true DegradedReason:embedding service not configured; lexical search only PartialIndex:false NoResults:false QuerySuggestion: FilteredOut:false Limit:1 Truncated:false Total:5}\n--- FAIL: TestATruncatedSearchSaysHowManyMatchedAndNotJustThatThereWereMore (0.11s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.888s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-reference-search-records-no-search-event",
+      "mutated_protection": "apps/platform/internal/skill/discovery/service.go:273: if purpose != searchForReference { -> if purpose != searchForReference || true {",
+      "failure_evidence": "=== RUN   TestPurposeReferenceWritesNoSearchPerformedEvent\n    search_purpose_integration_test.go:26: search_performed events after a purpose=reference search: 1, want 0\n    search_purpose_integration_test.go:35: search_performed events after one ordinary search in the same session: 2, want 1\n--- FAIL: TestPurposeReferenceWritesNoSearchPerformedEvent (0.14s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.519s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-explicitly-empty-filter-is-refused",
+      "mutated_protection": "apps/platform/internal/skill/discovery/http.go:278: exists && value == \"\" -> exists && value == \"\" && false",
+      "failure_evidence": "=== RUN   TestParseFiltersRejectsExplicitEmptyValues\n    facets_test.go:269: explicitly empty script filter was treated as absent\n    facets_test.go:269: explicitly empty validation filter was treated as absent\n    facets_test.go:269: explicitly empty agent filter was treated as absent\n    facets_test.go:269: explicitly empty tier filter was treated as absent\n--- FAIL: TestParseFiltersRejectsExplicitEmptyValues (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery\t3.425s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-searchable-query-has-two-runes-and-a-letter-or-digit",
+      "mutated_protection": "apps/platform/internal/skill/discovery/http.go:583: return utf8.RuneCountInString(q) >= 2 -> return utf8.RuneCountInString(q) >= 1",
+      "failure_evidence": "=== RUN   TestIsComprehensible\n    reason_test.go:163: \"a\" should not be searchable\n    reason_test.go:163: \"你\" should not be searchable\n    reason_test.go:163: \"1\" should not be searchable\n--- FAIL: TestIsComprehensible (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery\t3.785s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/disc_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/search_purpose_integration_test.go",
+    "apps/platform/internal/skill/discovery/facets_test.go",
+    "apps/platform/internal/skill/discovery/fusion.go",
+    "apps/platform/internal/skill/discovery/fusion_test.go",
+    "apps/platform/internal/skill/discovery/http.go",
+    "apps/platform/internal/skill/discovery/http_test.go",
+    "apps/platform/internal/skill/discovery/reason_test.go",
+    "apps/platform/internal/skill/discovery/service.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-an-uncovered-candidate-past-the-distance-cutoff-is-dropped",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestOnlyAnUncoveredRankedCandidateIsHeldToTheDistanceCutoff$ ./internal/skill/discovery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:46c7ea331183578dcd30cda94780c3f925b8624462a2aefbd0955fd26d6159a9",
+      "finished_at": "2026-10-18T06:24:46.024185Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-hybrid-hits-rank-exact-name-then-covered-then-nearest",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestHybridHitsPinTheExactNameThenCoveredThenNearestAndUnrankedLast$ ./internal/skill/discovery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:7be6d6b7eeceffe2e1a7b7eb17cf6de61e08340a5afbace118b98d5ead3c91ec",
+      "finished_at": "2026-10-18T06:24:53.139662Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-embedding-failure-degrades-to-lexical-and-says-so",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestSearchDegradesToFTSWhenEmbeddingFails$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:24cf9291feebfd63adb4b5c82d3ab9f5036ec72ba113a9d1707440560e31b3f1",
+      "finished_at": "2026-10-18T06:25:06.845132Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-search-limit-is-1-to-100",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestSearchLimitOutsideTheSchemaIsRefused$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:5fe6691ab6c4f00cbccc0a4a06f03766044d48b879c162b931e905b899106d5b",
+      "finished_at": "2026-10-18T06:25:22.329386Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-search-query-is-at-most-2000-runes",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestQueryTooLongAcceptsExactlyTheRuneCap$ ./internal/skill/discovery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f5b0814ca6fd75b0c37aa82d01e698e996e789b00852b0af3a284769e1be97b2",
+      "finished_at": "2026-10-18T06:25:34.167730Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-truncated-search-says-so-and-counts-every-match",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestATruncatedSearchSaysHowManyMatchedAndNotJustThatThereWereMore$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e3e9712b58ef8b75728a018051a4d1e758cef66675612c955328c83c6f084a0c",
+      "finished_at": "2026-10-18T06:25:44.755528Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-reference-search-records-no-search-event",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestPurposeReferenceWritesNoSearchPerformedEvent$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:69644b6d36652fc5a9b57368f146801e9f455db85c77c7e2d8b7f2050632b385",
+      "finished_at": "2026-10-18T06:25:57.519000Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-explicitly-empty-filter-is-refused",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestParseFiltersRejectsExplicitEmptyValues$ ./internal/skill/discovery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:49ea7752dda8155b900082e2ae2818a57c446062b7f3f6eeb70aefa85b77d6d3",
+      "finished_at": "2026-10-18T06:26:04.758511Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-searchable-query-has-two-runes-and-a-letter-or-digit",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestIsComprehensible$ ./internal/skill/discovery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:485427a1a383b0f20823220ad4c931231fd47646ae3a879f8383f5b0ddf7c26b",
+      "finished_at": "2026-10-18T06:26:10.332170Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
