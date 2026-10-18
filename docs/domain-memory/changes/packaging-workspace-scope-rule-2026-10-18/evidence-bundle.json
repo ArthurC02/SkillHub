@@ -1,0 +1,40 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "packaging-workspace-scope-rule-2026-10-18",
+  "proposal_id": "packaging-workspace-scope-rule-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "e152de5f5aa5e9db79dc21f3e142cbab90b0bc65",
+    "registry_digest": "sha256:479771bfb86a1af99211d9cee03974d7ddc6b28f2cafe0f8bdac47eb50046ac3"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-download-is-read-only-within-its-workspace",
+      "mutated_protection": "apps/platform/internal/foundation/persistence/db/gen/packaging.sql.go:235: WHERE da.workspace_id = $1 AND da.artifact_id = $2 AND a.deleted_at IS NULL -> WHERE $1::uuid IS NOT NULL AND da.artifact_id = $2 AND a.deleted_at IS NULL",
+      "failure_evidence": "=== RUN   TestAnotherWorkspaceCannotSeeOrFetchAnArtifact\n    download_integration_test.go:707: GET as a stranger: got 200, want 404\n2026/10/18 14:00:22 ERROR request failed on the server method=GET path=/downloads/250b6556-c7ec-4405-a5dd-9ea6326498b0/content status=500\n    download_integration_test.go:710: GET content as a stranger: got 500, want 404\n--- FAIL: TestAnotherWorkspaceCannotSeeOrFetchAnArtifact (0.22s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.261s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/download_integration_test.go",
+    "apps/platform/internal/skill/delivery/download.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-download-is-read-only-within-its-workspace",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnotherWorkspaceCannotSeeOrFetchAnArtifact$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:eeb2d0f036bcfcaa255d3ca803325b04bb9ac0b31992fac9e6ea4feffaf1bc8e",
+      "finished_at": "2026-10-18T06:01:37.655024Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

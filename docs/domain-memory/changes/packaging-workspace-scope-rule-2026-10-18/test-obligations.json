@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "packaging-workspace-scope-rule-2026-10-18",
+  "proposal_id": "packaging-workspace-scope-rule-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-a-download-is-read-only-within-its-workspace",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-download-is-read-only-within-its-workspace",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-download-is-read-only-within-its-workspace"
+        }
+      ],
+      "expected_outcome": "A download artifact is read by its id together with the asking Workspace, so another Workspace's artifact can be neither seen nor fetched.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnotherWorkspaceCannotSeeOrFetchAnArtifact$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

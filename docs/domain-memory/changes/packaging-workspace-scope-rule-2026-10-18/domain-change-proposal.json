@@ -1,0 +1,108 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "packaging-workspace-scope-rule-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "packaging-workspace-scope-rule-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-18T06:01:29.262216Z",
+  "verified_at": "2026-10-18T06:01:38.246593Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "e152de5f5aa5e9db79dc21f3e142cbab90b0bc65",
+    "registry_digest": "sha256:479771bfb86a1af99211d9cee03974d7ddc6b28f2cafe0f8bdac47eb50046ac3"
+  },
+  "affected_contexts": [
+    "packaging"
+  ],
+  "rule_ids": [
+    "a-download-is-read-only-within-its-workspace"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "packaging",
+    "invariant": "Only packaging serves download artifacts, always within the asking Workspace.",
+    "evidence": [
+      "apps/platform/internal/skill/delivery/download.go:159-170"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/delivery/download.go:159-170"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Dropping the Workspace id breaks the owner's reads too, so earlier counterfactuals could not isolate scoping. Weakening only the Workspace predicate in the generated query lets another Workspace's rows through while the owner's still match, and a stranger test catches it."
+    ],
+    "decision": "Record the scoping rule as reviewed citing the call that passes the Workspace and the stranger test; no product code change.",
+    "invariants_preserved": [
+      "A Workspace never reads or spends another Workspace's data."
+    ],
+    "rejected_alternatives": [
+      "Mutating the call to pass an empty Workspace id: it empties the owner's reads as well and proves nothing about strangers."
+    ],
+    "proof_obligations": [
+      "rule-a-download-is-read-only-within-its-workspace"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-download-is-read-only-within-its-workspace",
+        "statement": "A download artifact is read by its id together with the asking Workspace, so another Workspace's artifact can be neither seen nor fetched.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "A stranger asking for someone else's download gets 404."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/download.go",
+            "lines": {
+              "start": 159,
+              "end": 170
+            },
+            "excerpt_sha256": "sha256:54ca36308fa1e4a0e775cdecbb7c36ac1ffd7c6e0dc0275bedf51718235f0f63"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/download_integration_test.go",
+            "lines": {
+              "start": 699,
+              "end": 722
+            },
+            "content_sha256": "sha256:dbcc461ac418737f64412f3bcac55b7aa4eaefd1c5772f0a41f5c3eb4347b055",
+            "excerpt_sha256": "sha256:72a92157ee1237a85f6668fbe0e9d9139ba80b08119c3004fdac1c4b1503abee"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-18T06:01:37.914061Z",
+      "scope": "Record download Workspace scoping as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "e152de5f5aa5e9db79dc21f3e142cbab90b0bc65",
+        "registry_digest": "sha256:479771bfb86a1af99211d9cee03974d7ddc6b28f2cafe0f8bdac47eb50046ac3"
+      }
+    }
+  ]
+}

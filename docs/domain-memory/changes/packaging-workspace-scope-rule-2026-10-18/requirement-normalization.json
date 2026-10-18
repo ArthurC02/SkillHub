@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "packaging-workspace-scope-rule-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed that a download is read only within its Workspace.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context packaging lists the scoping rule as reviewed, proven by a stranger test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-download-is-read-only-within-its-workspace",
+      "statement": "A download artifact is read by its id together with the asking Workspace, so another Workspace's artifact can be neither seen nor fetched."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/download_integration_test.go",
+    "apps/platform/internal/skill/delivery/download.go"
+  ]
+}
