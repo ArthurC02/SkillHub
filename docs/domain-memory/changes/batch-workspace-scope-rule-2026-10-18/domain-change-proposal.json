@@ -3,12 +3,12 @@
   "proposal_id": "batch-workspace-scope-rule-2026-10-18",
   "proposer": "domain-memory-agent",
   "requirement_id": "batch-workspace-scope-rule-2026-10-18",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-18T06:00:53.697967Z",
   "verified_at": "2026-10-18T06:01:05.470111Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-18T06:01:07.863161Z",
+  "applied_at": "2026-10-18T06:01:14.662667Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "bcdaba79075e654b2bc352b63e33841569ec9d98",
@@ -104,5 +104,9 @@
         "registry_digest": "sha256:e94c7d903b327a430620f7aa4e2319cd75caceaaff76d3026317bf8302a1b9ef"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "7015c7de364995b87bfba6c257222521d8240e71",
+    "registry_digest": "sha256:7f617f5f5ca433bd63dc4aa858494a3d1bb8f032558947afed90f0d9ce8990cb"
+  }
 }
