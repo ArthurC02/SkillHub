@@ -8,7 +8,8 @@ from typing import Any
 
 from .common import ASSET_KEYS
 from .evidence import all_references, classifier, source_map_for, verifier
-from .sources import lies_under, run_git
+from .git import run_git
+from .sources import lies_under
 from .store import read_document
 
 COLLABORATION_ENDS = {

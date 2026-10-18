@@ -13,16 +13,20 @@ from .attestations import (
 )
 from .common import (
     EVIDENCE_FILE,
-    GIT_COMMAND_TIMEOUT_SECONDS,
+    OBLIGATIONS_FILE,
     PROPOSAL_FILE,
+    REQUIREMENT_FILE,
     completed_identifier,
+    find_record,
     iso_timestamp,
     load_json,
+    shown_path,
     utc_now,
     write_json,
 )
 from .counterfactual import OUTPUT_TAIL, decoded, is_go_test, no_test_passed, reports_tests, working_directory
 from .evidence import digest
+from .git import resolve_commit
 from .policy import approved_command_profiles, review_governance
 from .revision import StaleBaseError, base_registry_revision, require_current_registry_revision
 
@@ -37,7 +41,7 @@ def submit_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
         raise ValueError("only a draft proposal may be submitted")
     silent = [
         entry.get("id")
-        for entry in load_json(root / "test-obligations.json").get("obligations", [])
+        for entry in load_json(root / OBLIGATIONS_FILE).get("obligations", [])
         if isinstance(entry, dict) and is_go_test(argv := str(entry.get("check", "")).split()) and not reports_tests(argv)
     ]
     if silent:
@@ -97,7 +101,7 @@ def rebase_proposal(root: Path, registry_root: Path, repo_root: Path) -> dict[st
     if status not in REBASABLE_STATUSES:
         reason = NOT_REBASED.get(status, "only a submitted, verified or approved proposal is")
         raise ValueError(f"{_article(status)} {status} proposal is not rebased; {reason}")
-    shown = root.relative_to(repo_root).as_posix() if root.is_relative_to(repo_root) else str(root)
+    shown = shown_path(root, repo_root)
     if not _stale(proposal, registry_root, repo_root):
         return {
             "package": shown,
@@ -216,14 +220,14 @@ def verify_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
     proposal = load_json(path)
     if proposal.get("status") != "submitted":
         raise ValueError("only a submitted proposal may be verified")
-    missing = missing_approval_roles(load_json(root / "requirement-normalization.json"), proposal)
+    missing = missing_approval_roles(load_json(root / REQUIREMENT_FILE), proposal)
     if missing:
         raise ValueError(
             "a proposal is verified after its required approvals, which can be recorded only "
             "while it is submitted; first run record-approval for each of: " + ", ".join(missing)
         )
     require_current_registry_revision(proposal, registry_root, repo_root)
-    obligations = load_json(root / "test-obligations.json").get("obligations", [])
+    obligations = load_json(root / OBLIGATIONS_FILE).get("obligations", [])
     obligation_ids = {
         entry["id"]
         for entry in obligations
@@ -261,10 +265,8 @@ def record_test_result(
             f"the proposal is {status}: its test results are what verify-proposal checked, so they stay as they are; "
             "redraft it to record new ones"
         )
-    obligations = load_json(root / "test-obligations.json").get("obligations", [])
-    obligation = next(
-        (entry for entry in obligations if isinstance(entry, dict) and entry.get("id") == obligation_id), None
-    )
+    obligations = load_json(root / OBLIGATIONS_FILE).get("obligations", [])
+    obligation = find_record(obligations, obligation_id)
     if obligation is None:
         raise ValueError(f"test-obligations.json has no obligation {obligation_id}")
     command = (run.command or obligation.get("check") or "").strip()
@@ -332,14 +334,9 @@ def attest_signed_commit(root: Path, registry_root: Path, repo_root: Path, commi
     proposal = load_json(proposal_path(root))
     if proposal.get("base_registry_revision") is None:
         raise ValueError("submit the proposal first, so the attestation can bind to its base revision")
-    resolved = subprocess.run(
-        ["git", "-C", str(repo_root), "rev-parse", "--verify", f"{commit}^{{commit}}"],
-        capture_output=True, text=True, encoding="utf-8", check=False,
-        timeout=GIT_COMMAND_TIMEOUT_SECONDS,
-    )
-    if resolved.returncode != 0:
+    full = resolve_commit(repo_root, commit)
+    if full is None:
         raise ValueError(f"no commit {commit} in {repo_root}")
-    full = resolved.stdout.strip()
     errors = verify_git_signed_commit(
         {"commit": full}, repo_root, registry_root, governance["authorized_signers"]
     ) or commit_carries_proposal(repo_root, full, root, proposal)

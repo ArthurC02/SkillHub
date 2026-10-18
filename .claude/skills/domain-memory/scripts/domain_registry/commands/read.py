@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import io
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -27,18 +28,14 @@ from ..mcp_server import ServerRoots, serve
 from ..policy import policy_path, query_result_limit
 from ..readiness import assess_readiness
 from ..registry import (
-    CONSTRAINT_ASSETS,
-    MATCH_KINDS,
     asset_records,
     boundary_analysis,
     context_model,
     context_summary,
     coverage,
-    every_resolved_term,
-    prose_mentions,
-    ranked_lookup,
     record_by_id,
 )
+from ..search import CONSTRAINT_ASSETS, MATCH_KINDS, every_resolved_term, prose_mentions, ranked_lookup
 from ..sources import probe_sources
 from ..store import committed_documents, read_document
 from .common import print_json
@@ -319,7 +316,8 @@ def _one_mutation(args: argparse.Namespace) -> Mutation:
 def handle_mcp_serve(args: argparse.Namespace) -> int:
     from ..cli_commands import run_command
 
-    sys.stdin.reconfigure(encoding="utf-8")
+    if isinstance(sys.stdin, io.TextIOWrapper):
+        sys.stdin.reconfigure(encoding="utf-8")
     serve(ServerRoots(args.registry_root.resolve(), args.repo_root.resolve()), run_command)
     return 0
 

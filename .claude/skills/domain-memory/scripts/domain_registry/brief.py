@@ -6,18 +6,17 @@ from typing import Any
 
 from .audit import review_history, reviewing_proposals
 from .changes import packages_root, proof_of
-from .common import ASSET_KEYS
+from .common import ASSET_KEYS, FAILING_EVIDENCE
 from .dependents import dependents
 from .evidence import source_map_for
 from .impact import boundary_impact, touched_records
 from .registry import cited_paths, context_model, context_summary, record_by_id, summarized, verify_evidence
-from .revision import _committed_json
+from .revision import committed_json
 from .store import committed_documents, read_document
 
 FORMAT = "domain-memory-brief/v1"
 PROOF_KIND = "tests"
 CONFIRMED = "developer-confirmed"
-FAILING_EVIDENCE = ("stale", "unhashed", "missing", "invalid")
 CHANGED_CITATION = ("stale", "missing", "invalid")
 VERDICTS = {
     "unregistered-co-change": "Contexts changed together with no registered collaboration between them; register the interaction, "
@@ -154,7 +153,7 @@ def _registry_changes(root: Path, repo_root: Path, base: str) -> list[dict[str, 
 
 
 def _source_map_change(root: Path, repo_root: Path, base: str) -> dict[str, Any]:
-    _, then = _committed_json(repo_root, base, root / "source-map.json")
+    _, then = committed_json(repo_root, base, root / "source-map.json")
     then, now = then or {}, source_map_for(root)
     if then == now:
         return {"changed": False}

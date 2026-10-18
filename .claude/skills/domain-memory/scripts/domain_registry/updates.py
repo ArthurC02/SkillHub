@@ -11,12 +11,14 @@ from .changes import (
     validate_change_package,
 )
 from .common import (
+    APPLY_OPERATION,
     ASSET_KEYS,
     PROPOSAL_FILE,
     completed_identifier,
+    find_record,
+    is_reviewed,
     iso_timestamp,
     load_json,
-    record_status,
     updates_record,
     reject_duplicate_keys,
     review_field,
@@ -86,7 +88,7 @@ def reconcile_pending_update(registry_root: Path, repo_root: Path) -> str | None
 
 def _was_applied(registry_root: Path, proposal_id: str) -> bool:
         return any(
-        event.get("operation") == "apply-approved-updates" and event.get("proposal_id") == proposal_id
+        event.get("operation") == APPLY_OPERATION and event.get("proposal_id") == proposal_id
         for event in read_events(registry_root)
     )
 
@@ -106,21 +108,11 @@ def _reconciled(proposal_path: Path, proposal: dict[str, Any], registry_root: Pa
     return f"{proposal_id} was applied before an interruption and is now marked applied"
 
 
-def is_reviewed(
-    asset: str, document: dict[str, Any], record: dict[str, Any] | None
-) -> bool:
-    return record is not None and record_status(asset, document, record) == "reviewed"
-
-
 def asset_file_name(asset: str) -> str:
     name = f"{asset}.json"
     if name not in ASSET_KEYS:
         raise ValueError(f"unknown asset: {asset}")
     return name
-
-
-def find_record(records: list[dict[str, Any]], record_id: Any) -> dict[str, Any] | None:
-    return next((entry for entry in records if entry.get("id") == record_id), None)
 
 
 def put_record(
@@ -194,14 +186,6 @@ class Upserted:
     skipped_duplicate: list[dict[str, str]] = field(default_factory=list)
     status_dropped: list[str] = field(default_factory=list)
 
-    def reset(self) -> None:
-        self.created = 0
-        self.outside.clear()
-        self.same_evidence.clear()
-        self.skipped_reviewed.clear()
-        self.skipped_duplicate.clear()
-        self.status_dropped.clear()
-
 
 @dataclass(frozen=True)
 class Staging:
@@ -248,7 +232,6 @@ def upsert_candidate(
     result = Upserted()
 
     def mutate(staging: Path) -> None:
-        result.reset()
         document = read_document(staging, name)
         stage_candidates(document, asset, batch, Staging(source_map), result)
         write_document(staging, name, document)
@@ -422,7 +405,7 @@ def apply_approved_updates(
             mutate,
             accepted_digest,
             audit_event=lambda: {
-                "operation": "apply-approved-updates",
+                "operation": APPLY_OPERATION,
                 "proposal_id": proposal["proposal_id"],
                 "records": touched,
                 **rebased_revisions(base_revision, accepted_digest, registry_root, repo_root),

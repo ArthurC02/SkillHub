@@ -7,11 +7,10 @@ from pathlib import Path
 from typing import Any
 
 from .changes import init_change_package, parsed_update
-from .common import PROPOSAL_FILE
-from .common import load_json, write_json
+from .common import OBLIGATIONS_FILE, PROPOSAL_FILE, REQUIREMENT_FILE, load_json, shown_path, write_json
 from .evidence import all_references, with_references
 from .okf import contexts_named_by
-from .sources import run_git
+from .git import toplevel
 from .registry import asset_records
 
 CITATIONS_CURRENT = "citations-current"
@@ -29,7 +28,7 @@ def recitation_package(
     requirement_id, proposal_id, proposer = identifiers
     names = ", ".join(f"{asset}/{record['id']}" for asset, record in updates)
     init_change_package(output, requirement_id, proposal_id, proposer)
-    _fill(output / "requirement-normalization.json", {
+    _fill(output / REQUIREMENT_FILE, {
         "intent": f"Re-cite {names} "
         "after the code they cite moved or changed; the facts they state are unchanged.",
         "actor": proposer,
@@ -40,7 +39,7 @@ def recitation_package(
         }],
         "sources": cited,
     })
-    _fill(output / "test-obligations.json", {"obligations": [{
+    _fill(output / OBLIGATIONS_FILE, {"obligations": [{
         "id": "evidence-current",
         "source_type": "acceptance-criterion",
         "source_id": CITATIONS_CURRENT,
@@ -114,8 +113,8 @@ def _verify_command(registry_root: Path, cited: list[str]) -> str:
     top = _repository_top(registry_root)
     script = Path(__file__).resolve().parents[1] / "registry_tools.py"
     arguments = [
-        Path(sys.executable).stem, _shown(script, top), "verify-evidence",
-        "--registry-root", _shown(registry_root, top), "--repo-root", ".",
+        Path(sys.executable).stem, shown_path(script, top), "verify-evidence",
+        "--registry-root", shown_path(registry_root, top), "--repo-root", ".",
         *(argument for path in cited for argument in ("--path", path)),
     ]
     return shlex.join(arguments)
@@ -123,12 +122,6 @@ def _verify_command(registry_root: Path, cited: list[str]) -> str:
 
 def _repository_top(path: Path) -> Path | None:
     try:
-        result = run_git(path, "rev-parse", "--show-toplevel")
+        return toplevel(path)
     except (OSError, subprocess.TimeoutExpired):
         return None
-    return Path(result.stdout.strip()).resolve() if result.returncode == 0 else None
-
-
-def _shown(path: Path, top: Path | None) -> str:
-    resolved = path.resolve()
-    return resolved.relative_to(top).as_posix() if top and resolved.is_relative_to(top) else resolved.as_posix()

@@ -213,9 +213,7 @@ def mutate_registry(
                     event["operation_id"] = operation
                     append_locked(root, event)
                 except Exception:
-                    replace_path(registry_dir(root), staging_registry)
-                    replace_path(backup, registry_dir(root))
-                    journal.unlink(missing_ok=True)
+                    _restore_after_failed_audit(root, staging_registry, backup, journal)
                     raise
                 journal_value["phase"] = "audited"
                 write_json(journal, journal_value)
@@ -226,6 +224,12 @@ def mutate_registry(
             if staging.exists():
                 remove_tree(staging)
             raise
+
+
+def _restore_after_failed_audit(root: Path, staging_registry: Path, backup: Path, journal: Path) -> None:
+    replace_path(registry_dir(root), staging_registry)
+    replace_path(backup, registry_dir(root))
+    journal.unlink(missing_ok=True)
 
 
 def _install(staging_registry: Path, root: Path, backup: Path, journal: Path) -> None:

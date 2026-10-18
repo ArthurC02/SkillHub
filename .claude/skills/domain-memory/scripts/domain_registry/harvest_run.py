@@ -7,12 +7,23 @@ from typing import Any
 
 from .audit import append_locked
 from .changes import classify_all, init_change_package, unclassified_paths, validate_change_package
-from .common import EVIDENCE_FILE, PROPOSAL_FILE, load_json, write_json, writer_lock
+from .common import (
+    EVIDENCE_FILE,
+    OBLIGATIONS_FILE,
+    PROPOSAL_FILE,
+    is_reviewed,
+    iter_packages,
+    load_json,
+    shown_path,
+    write_json,
+    writer_lock,
+)
 from .counterfactual import counterfactual_suite
 from .evidence import citation, classified, function_span, source_map_for
-from .harvest_package import OBLIGATIONS_FILE, harvest_package, obligation_of, write_harvest_package
+from .harvest_package import harvest_package, obligation_of, write_harvest_package
 from .hitl import ObligationRun, record_approval, record_test_result, same_command, submit_proposal, verify_proposal
-from .registry import as_stored, is_reviewed, record_by_id
+from .registry import as_stored, record_by_id
+from .store import read_document
 from .transaction import remove_tree
 from .updates import add_promoted_evidence, promote_candidate, retract_candidate, upsert_candidate
 
@@ -149,12 +160,16 @@ def _proposal_or_none(package_root: Path) -> dict[str, Any] | None:
         return None
 
 
+def _reviewed(registry_root: Path, asset: str, record: dict[str, Any]) -> bool:
+    return is_reviewed(asset, read_document(registry_root, f"{asset}.json"), record)
+
+
 def _changed_since_submitted(run: Harvest, records: list[dict[str, Any] | None], proposal: dict[str, Any]) -> list[str]:
     promoted = {record_id for asset, record_id in _updated_records(proposal) if asset == "rules"}
     changed = {rule["id"] for rule in run.spec["rules"]} ^ promoted
     for record in records:
         existing = record_by_id(run.registry_root, "rules", record["id"])
-        if existing is None or (not is_reviewed(existing) and not _same_draft(existing, record)):
+        if existing is None or (not _reviewed(run.registry_root, "rules", existing) and not _same_draft(existing, record)):
             changed.add(record["id"])
     return sorted(changed)
 
@@ -230,7 +245,7 @@ def _span(span: Any) -> tuple[str, int, int] | None:
 def _shown(package_root: Path | None, repo_root: Path) -> str | None:
     if package_root is None:
         return None
-    return package_root.relative_to(repo_root).as_posix() if package_root.is_relative_to(repo_root) else str(package_root)
+    return shown_path(package_root, repo_root)
 
 
 def _records(run: Harvest) -> list[dict[str, Any] | None]:
@@ -293,7 +308,7 @@ def _candidates(run: Harvest, records: list[dict[str, Any] | None]) -> None:
     pending = []
     for record, shown in zip(records, run.rules, strict=True):
         existing = record_by_id(run.registry_root, "rules", record["id"])
-        if existing is not None and is_reviewed(existing):
+        if existing is not None and _reviewed(run.registry_root, "rules", existing):
             shown["record"] = "reproven" if _same_content(existing, record) else "amended"
         elif run.resumed_from is not None and existing is not None and _same_draft(existing, record):
             shown["record"] = "unchanged"
@@ -428,7 +443,7 @@ def discard_harvest(package_root: Path, registry_root: Path, repo_root: Path, re
     retracted, kept = [], []
     for asset, record_id in _updated_records(proposal):
         record = record_by_id(registry_root, asset, record_id)
-        if record is None or is_reviewed(record):
+        if record is None or _reviewed(registry_root, asset, record):
             continue
         if (asset, record_id) in named_elsewhere:
             kept.append(f"{asset}/{record_id}")
@@ -444,8 +459,7 @@ def discard_harvest(package_root: Path, registry_root: Path, repo_root: Path, re
 
 def _named_by_other_packages(package_root: Path) -> set[tuple[str, str]]:
     named = set()
-    for other in package_root.parent.iterdir():
-        proposal = _proposal_or_none(other) if other.is_dir() and other != package_root else None
-        if proposal is not None and proposal.get("status") != "superseded":
+    for other, proposal in iter_packages(package_root.parent):
+        if other != package_root and isinstance(proposal, dict) and proposal.get("status") != "superseded":
             named.update(_updated_records(proposal))
     return named

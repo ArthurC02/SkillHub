@@ -2,8 +2,11 @@ import io
 import subprocess
 import sys
 
-from .cli_commands import COUNTERFACTUAL_EXIT_CODES, COUNTERFACTUAL_FORMAT, execute, print_json
+from .cli_commands import execute
 from .cli_parser import UsageError, build_parser
+from .commands.common import print_json
+from .commands.read import COUNTERFACTUAL_EXIT_CODES
+from .counterfactual import FORMAT as COUNTERFACTUAL_FORMAT
 
 
 def main() -> int:

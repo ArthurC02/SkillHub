@@ -7,7 +7,6 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .common import (
-    GIT_COMMAND_TIMEOUT_SECONDS,
     completed_identifier,
     load_json,
     one_level_too_deep_hint,
@@ -15,6 +14,7 @@ from .common import (
     utc_now,
     writer_lock,
 )
+from .git import run_git
 
 SELECTED_KIND = "selected"
 EXCLUDED_DIRECTORIES = {
@@ -75,16 +75,7 @@ def ignored_relatives(root: Path, relatives: list[str]) -> set[str]:
         return set()
     relatives = _untracked(root, relatives)
     try:
-        result = subprocess.run(
-            ["git", "-C", str(root), "check-ignore", "-z", "--stdin"],
-            input=chr(0).join(relatives),
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="surrogateescape",
-            check=False,
-            timeout=GIT_COMMAND_TIMEOUT_SECONDS,
-        )
+        result = run_git(root, "check-ignore", "-z", "--stdin", stdin=chr(0).join(relatives))
     except (OSError, subprocess.TimeoutExpired):
         return set()
     if result.returncode not in (0, 1):
@@ -423,10 +414,6 @@ def source_kind_index(source_map: dict[str, Any]) -> Callable[[str], str]:
 def _containing_paths(path: str) -> list[str]:
     parts = path.split("/")
     return [owner for size in range(len(parts), 0, -1) if (owner := "/".join(parts[:size]))]
-
-
-def source_kind_for(source_map: dict[str, Any], cited_path: str) -> str:
-    return source_kind_index(source_map)(cited_path)
 
 
 def selected_source_map(
@@ -795,18 +782,6 @@ def lies_under(path: str, implementation_path: str) -> bool:
     return any(
         directories[start : start + len(owned)] == owned
         for start in range(len(directories) - len(owned) + 1)
-    )
-
-
-def run_git(root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["git", "-C", str(root), *arguments],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="surrogateescape",
-        check=False,
-        timeout=GIT_COMMAND_TIMEOUT_SECONDS,
     )
 
 

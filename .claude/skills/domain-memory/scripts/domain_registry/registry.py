@@ -1,10 +1,6 @@
-import json
-import re
 import shutil
 from collections import Counter
 from collections.abc import Callable
-from functools import cache
-from itertools import pairwise
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -16,6 +12,7 @@ from .common import (
     PROPOSAL_FILE,
     REGISTRY_STATUSES,
     REVIEW_REQUIRED_FIELDS,
+    is_reviewed,
     load_json,
     record_status,
     registry_dir,
@@ -32,8 +29,8 @@ from .evidence import (
     with_references,
     without_derived_keys,
 )
-from .okf import CONTEXT_RELATIONS, PROSE_FIELDS, RELATION_TARGETS, verified_by
-from .policy import query_result_limit, review_mode
+from .okf import verified_by
+from .policy import review_mode
 from .sources import lies_under, repository_files
 from .store import (
     MANIFEST,
@@ -503,12 +500,12 @@ def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list
     errors.extend(_validate_asset_records(documents, records, require_reviewed))
     errors.extend(cross_reference_errors(records))
     errors.extend(_validate_evidence(records, repo_root))
-    if repo_root is not None:
-        errors.extend(_implementation_path_errors(records.get("contexts.json", []), repo_root))
+    if repo_root is not None and "contexts.json" in documents:
+        errors.extend(_implementation_path_errors(documents["contexts.json"], repo_root))
     return errors
 
 
-def _implementation_path_errors(contexts: list[dict[str, Any]], repo_root: Path) -> list[str]:
+def _implementation_path_errors(contexts: dict[str, Any], repo_root: Path) -> list[str]:
     return [
         f"contexts/{identifier} implementation_path {path} lies over no file in the repository; "
         "after a move, relocate-evidence --from <old repository path> --to <new> proposes the new path, or correct it"
@@ -517,8 +514,9 @@ def _implementation_path_errors(contexts: list[dict[str, Any]], repo_root: Path)
     ]
 
 
-def unplaced_implementation_paths(contexts: list[dict[str, Any]], repo_root: Path) -> list[tuple[Any, str, bool]]:
-    placed = [(entry.get("id"), entry["implementation_path"], is_reviewed(entry)) for entry in contexts
+def unplaced_implementation_paths(document: dict[str, Any], repo_root: Path) -> list[tuple[Any, str, bool]]:
+    contexts = _records_of("contexts.json", document)
+    placed = [(entry.get("id"), entry["implementation_path"], is_reviewed("contexts", document, entry)) for entry in contexts
               if isinstance(entry.get("implementation_path"), str) and entry["implementation_path"].strip()]
     if not placed:
         return []
@@ -700,25 +698,19 @@ def declared_absences(contexts: list[dict[str, Any]]) -> dict[str, set[Any]]:
     return absent
 
 
-def is_reviewed(record: dict[str, Any]) -> bool:
-    return "reviewed" in (record.get("status"), record.get("review_status"))
-
-
 def as_stored(asset: str, record: dict[str, Any]) -> Any:
     review_keys = (review_field(asset), "review", "verified")
     return without_derived_keys({key: value for key, value in record.items() if key not in review_keys})
 
 
-def evidence_gaps(root: Path, records: dict[str, list[dict[str, Any]]] | None = None) -> list[dict[str, Any]]:
+def evidence_gaps(root: Path, documents: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     from .evidence import classify_all, unclassified_paths
 
     source_map = source_map_for(root)
     gaps = []
-    for name in sorted(ASSET_KEYS):
-        if records is None and not has_document(root, name):
-            continue
-        for record in records[name] if records is not None else asset_records(root, name):
-            if not is_reviewed(record):
+    for name in sorted(documents):
+        for record in _records_of(name, documents[name]):
+            if not is_reviewed(name.removesuffix(".json"), documents[name], record):
                 continue
             entry = {"asset": name.removesuffix(".json"), "id": record.get("id")}
             if not record.get("evidence"):
@@ -734,7 +726,8 @@ def evidence_gaps(root: Path, records: dict[str, list[dict[str, Any]]] | None = 
 
 
 def coverage(root: Path) -> dict[str, Any]:
-    records = {name: asset_records(root, name) if has_document(root, name) else [] for name in ASSET_KEYS}
+    documents = {name: read_document(root, name) for name in ASSET_KEYS if has_document(root, name)}
+    records = {name: _records_of(name, documents[name]) if name in documents else [] for name in ASSET_KEYS}
     contexts, vocabulary, aggregates, rules, contracts, events = (
         records[name] for name in ("contexts.json", "vocabulary.json", "aggregates.json", "rules.json",
                                    "contracts.json", "events.json")
@@ -761,236 +754,15 @@ def coverage(root: Path) -> dict[str, Any]:
             gap: [context for context in missing[gap] if context in absent[asset]]
             for asset, gap in ABSENCE_ASSETS.items()
         },
-        "evidence_gaps": evidence_gaps(root, records),
+        "evidence_gaps": evidence_gaps(root, documents),
     }
-
-
-def lookup(root: Path, asset: str, query: str) -> list[dict[str, Any]]:
-    return ranked_lookup(root, asset, query)[0]
-
-
-def ranked_lookup(root: Path, asset: str, query: str) -> tuple[list[dict[str, Any]], str]:
-    name = f"{asset}.json"
-    if name not in ASSET_KEYS:
-        raise ValueError(f"unknown asset: {asset}")
-    entries, limit = asset_records(root, name), query_result_limit(root)
-    needle = query.casefold()
-    phrase = [entry for entry in entries if needle in json.dumps(entry, ensure_ascii=False).casefold()]
-    if phrase:
-        return phrase[:limit], "phrase"
-    wanted = query_words(query)
-    held = [held_stems(" ".join(_strings(entry))) for entry in entries]
-    every = [
-        entry for entry, words in zip(entries, held, strict=True) if wanted and all(holds(word, words) for word in wanted)
-    ]
-    if every:
-        return every[:limit], "all-words"
-    common = {word for word in wanted if _is_common(sum(holds(word, words) for words in held), len(entries))}
-    shared = [
-        (sum(holds(word, words) for word in wanted if word not in common), entry)
-        for entry, words in zip(entries, held, strict=True)
-    ]
-    some = [entry for count, entry in sorted(shared, key=lambda pair: -pair[0]) if count]
-    if some:
-        return some[:limit], "some-words"
-    return [], "common-words" if common else "none"
-
-
-COMMON_SHARE = 4
-MIN_COMMON_RECORDS = 3
-
-
-def _is_common(holders: int, records: int) -> bool:
-    return holders >= MIN_COMMON_RECORDS and holders * COMMON_SHARE > records
-
-
-SUFFIXES = (
-    "ations", "ation", "ings", "ing", "ency", "ence", "ents", "ent", "ions", "ion", "ures", "ured", "ure", "ens", "en", "ed", "es", "s",
-    "e", "y",
-)
-MIN_STEM_LENGTH = 3
-STOP_WORDS = frozenset({
-    "a", "after", "an", "and", "are", "at", "be", "before", "by", "can", "do", "does", "for", "how", "in", "is", "it",
-    "of", "on", "or", "that", "the", "this", "to", "what", "when", "who", "with",
-})
-
-
-CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
-
-
-def _words(text: str) -> list[str]:
-    return [word for word in re.findall(r"[a-z0-9]+", CAMEL_BOUNDARY.sub(" ", text).casefold()) if word not in STOP_WORDS]
-
-
-def word_stems(text: str) -> set[str]:
-    return {_stem(word) for word in _words(text)}
-
-
-def held_stems(text: str) -> set[str]:
-    stems = [_stem(word) for word in _words(text)]
-    return {*stems, *(first + second for first, second in pairwise(stems))}
-
-
-def query_words(query: str) -> list[str]:
-    return list({_stem(word): word for word in _words(query)}.values())
-
-
-def holds(word: str, held: set[str]) -> bool:
-    return not _candidate_stems(word).isdisjoint(held)
-
-
-@cache
-def _candidate_stems(word: str) -> frozenset[str]:
-    return frozenset({
-        _stem(word), *(_stem(word[:split]) + _stem(word[split:]) for split in range(MIN_STEM_LENGTH, len(word) - 1))
-    })
-
-
-@cache
-def _stem(word: str) -> str:
-    return next(
-        (word[: -len(suffix)] for suffix in SUFFIXES
-         if word.endswith(suffix) and len(word) - len(suffix) >= MIN_STEM_LENGTH),
-        word,
-    )
-
-
-def _strings(value: Any) -> list[str]:
-    if isinstance(value, str):
-        return [value]
-    if isinstance(value, dict):
-        return [text for child in value.values() for text in _strings(child)]
-    if isinstance(value, list):
-        return [text for child in value for text in _strings(child)]
-    return []
 
 
 def record_by_id(root: Path, asset: str, identifier: str) -> dict[str, Any] | None:
     return read_record(root, f"{asset}.json", identifier)
 
 
-MATCH_KINDS = ("name", "synonym", "definition")
-
-
-def _match_kind(term: dict[str, Any], needle: str) -> str | None:
-    labels = {
-        "name": [str(term.get(field, "")).casefold() for field in ("id", "name")],
-        "synonym": [str(label).casefold() for label in term.get("synonyms") or []],
-    }
-    for kind, values in labels.items():
-        if any(value and (value in needle or needle in value) for value in values):
-            return kind
-    if needle in str(term.get("definition", "")).casefold():
-        return "definition"
-    return None
-
-
-def resolve_terms(
-    root: Path, query: str, context: str | None, *, with_mentions: bool = False
-) -> list[dict[str, Any]]:
-    return every_resolved_term(root, query, context, with_mentions=with_mentions)[: query_result_limit(root)]
-
-
-def every_resolved_term(
-    root: Path, query: str, context: str | None, *, with_mentions: bool = False
-) -> list[dict[str, Any]]:
-    needle = query.casefold()
-    matches = []
-    for term in asset_records(root, "vocabulary.json"):
-        if context is not None and context not in term.get("contexts", []):
-            continue
-        kind = _match_kind(term, needle)
-        if kind is not None:
-            matches.append({**term, "match_kind": kind})
-    matches.sort(key=lambda match: MATCH_KINDS.index(match["match_kind"]))
-    if matches and not with_mentions:
-        return matches
-    matched = {match["id"] for match in matches}
-    mentions = [
-        mention for mention in prose_mentions(root, needle)
-        if mention["asset"] != "vocabulary" or mention["id"] not in matched
-    ]
-    return matches + mentions
-
-
-def _reviewed_entries(root: Path, name: str) -> list[dict[str, Any]]:
-    document = read_document(root, name)
-    asset = name.removesuffix(".json")
-    return [
-        entry for entry in document.get(ASSET_KEYS[name], [])
-        if record_status(asset, document, entry) == "reviewed"
-    ]
-
-
-DEFINING_FIELDS = ("id", "name", "responsibility", "statement", "definition", "description")
-UNSEARCHED_FIELDS = ("status", "review_status")
-CONSTRAINT_ASSETS = ("rules", "contracts")
-
-
 SUMMARY_FIELDS = ("statement", "definition", "responsibility", "description", "name")
-SENTENCE_END = re.compile(r"(?<=[.!?])\s")
-
-
-def _mention(name: str, entry: dict[str, Any], fields: list[str]) -> dict[str, Any]:
-    asset = name.removesuffix(".json")
-    summary = next(
-        (entry[field] for field in (PROSE_FIELDS.get(asset), *SUMMARY_FIELDS) if isinstance(entry.get(field), str)), ""
-    )
-    return {
-        "match_kind": "mentioned", "asset": asset, "id": entry.get("id"), "status": "reviewed",
-        "contexts": _contexts_named(asset, entry), "summary": SENTENCE_END.split(summary.strip(), maxsplit=1)[0],
-        "fields": fields,
-    }
-
-
-def _contexts_named(asset: str, entry: dict[str, Any]) -> list[Any]:
-    if asset == "contexts":
-        return [entry.get("id")]
-    named = [
-        context
-        for field, value in entry.items()
-        if field in CONTEXT_RELATIONS
-        for context in (value if isinstance(value, list) else [value])
-    ]
-    return list(dict.fromkeys(named))
-
-
-def prose_mentions(root: Path, needle: str) -> list[dict[str, Any]]:
-    wanted = query_words(needle)
-    if not wanted:
-        return []
-    mentions = [
-        _mention(name, entry, fields)
-        for name in sorted(ASSET_KEYS)
-        if has_document(root, name)
-        for entry in _reviewed_entries(root, name)
-        if (fields := _mentioning_fields(entry, wanted))
-    ]
-    return sorted(
-        mentions,
-        key=lambda mention: (
-            not any(field in DEFINING_FIELDS for field in mention["fields"]),
-            mention["asset"] not in CONSTRAINT_ASSETS,
-        ),
-    )
-
-
-def _mentioning_fields(entry: dict[str, Any], wanted: list[str]) -> list[str]:
-    return [
-        field for field, value in entry.items()
-        if field not in UNSEARCHED_FIELDS
-        and any(all(holds(word, stems) for word in wanted) for stems in map(held_stems, _searchable(field, value)))
-    ]
-
-
-def _searchable(field: str, value: Any) -> list[str]:
-    if field == "id":
-        return [value.replace("-", " ")] if isinstance(value, str) else []
-    if isinstance(value, str):
-        return [value]
-    if isinstance(value, list) and field not in RELATION_TARGETS:
-        return [item for item in value if isinstance(item, str)]
-    return []
 
 
 def _records_where(
@@ -1003,9 +775,15 @@ def context_model(root: Path, identifier: str) -> dict[str, Any] | None:
     context = record_by_id(root, "contexts", identifier)
     if context is None:
         return None
-    contracts = asset_records(root, "contracts.json")
+    contracts = [
+        entry for entry in asset_records(root, "contracts.json")
+        if identifier == entry.get("producer_context") or identifier in entry.get("consumer_contexts", [])
+    ]
+    interactions = [
+        entry for entry in asset_records(root, "interactions.json")
+        if identifier in {entry.get("producer_context"), entry.get("consumer_context")}
+    ]
     rules = asset_records(root, "rules.json")
-    interactions = asset_records(root, "interactions.json")
     mode = review_mode(root)
     return {
         "usage": "constraint" if mode == "scm-verified" else "working-memory",
@@ -1020,15 +798,8 @@ def context_model(root: Path, identifier: str) -> dict[str, Any] | None:
             root, "aggregates.json", lambda entry: entry.get("context") == identifier
         ),
         "rules": [entry for entry in rules if identifier in entry.get("contexts", [])],
-        "contracts": [
-            entry
-            for entry in contracts
-            if identifier == entry.get("producer_context")
-            or identifier in entry.get("consumer_contexts", [])
-        ],
-        "interactions": [
-            entry for entry in interactions if identifier in {entry.get("producer_context"), entry.get("consumer_context")}
-        ],
+        "contracts": contracts,
+        "interactions": interactions,
         "events": _records_where(
             root, "events.json",
             lambda entry: entry.get("owner_context") == identifier or identifier in (entry.get("consumers") or []),
@@ -1046,12 +817,8 @@ def context_model(root: Path, identifier: str) -> dict[str, Any] | None:
 def _bound_rules(
     identifier: str, contracts: list[dict[str, Any]], interactions: list[dict[str, Any]], rules: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
-    collaborations = [
-        (f"contracts/{entry.get('id')}", entry) for entry in contracts
-        if identifier == entry.get("producer_context") or identifier in entry.get("consumer_contexts", [])
-    ] + [
+    collaborations = [(f"contracts/{entry.get('id')}", entry) for entry in contracts] + [
         (f"interactions/{entry.get('id')}", entry) for entry in interactions
-        if identifier in {entry.get("producer_context"), entry.get("consumer_context")}
     ]
     bound = []
     for rule in rules:

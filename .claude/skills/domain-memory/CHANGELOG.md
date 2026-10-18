@@ -2,6 +2,23 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.9
+
+### Changed
+
+- Every git and ssh-keygen command runs through one module, `git.py`, instead of nine hand-made wrappers spread over the source-map, store, attestation and signing code.
+- On Windows, a package outside the repository is shown as a forward-slash path in `ship-package`, `harvest`, `rebase-proposal` and the re-citation package, as `recite` already showed it.
+- Searching the Registry (`lookup`, `resolve-terms`, prose mentions) lives in its own module, `search.py`, with no change in behaviour.
+
+### Fixed
+
+- A git command that times out returns at the deadline: it stops the whole process tree git started (a hook, credential helper or fsmonitor) instead of waiting until that process lets go of the output. A process that detaches into its own session still escapes, and the call then returns after a five-second drain.
+- A Registry commit git cannot read is refused as `git could not read <commit>: <what git said>` instead of "subsection not found", and a listed file git reports missing is skipped instead of crashing the read.
+- A Change Package whose proposal is not valid JSON is named in the refusal of `coverage`, `get-record`, `brief`, `verify-audit` and `audit-attestations` (`Change Package <name> cannot be read: …`); `list-proposals` still lists it as an error row.
+- A stale base that cannot be compared says why: the commit does not hold the Registry, the committed Registry does not reproduce the recorded digest, or the base names no commit; each names `rebase-proposal`.
+- `coverage` counts a JSON-layout record as reviewed when its document says reviewed, as `stage_candidates` already did.
+- `mcp-serve` no longer crashes when its input stream cannot be re-encoded.
+
 ## 1.2.8
 
 ### Changed

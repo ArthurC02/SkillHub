@@ -1,10 +1,10 @@
-import subprocess
 import unittest
 from unittest.mock import patch
 
 from test_support import RegistryTestCase
 
 from domain_registry import sources
+from domain_registry.git import run_git
 from domain_registry.sources import ignored_relatives, selected_source_map, source_files
 
 ASKED = ["kept.md", "tracked.log", "hidden.log", "fresh.md", "scratch.log", "build/out.txt"]
@@ -29,9 +29,9 @@ class TrackedPrefilterTest(RegistryTestCase):
 
     def paths_sent_to_check_ignore(self, prefilter_size: int) -> tuple[set[str], list[str]]:
         with patch.object(sources, "TRACKED_PREFILTER_MIN_PATHS", prefilter_size), \
-                patch("domain_registry.sources.subprocess.run", wraps=subprocess.run) as run:
+                patch("domain_registry.sources.run_git", wraps=run_git) as run:
             found = ignored_relatives(self.repo, ASKED)
-        [sent] = [call.kwargs["input"] for call in run.call_args_list if "check-ignore" in call.args[0]]
+        [sent] = [call.kwargs["stdin"] for call in run.call_args_list if "check-ignore" in call.args]
         return found, sent.split(chr(0))
 
     def test_at_the_prefilter_size_only_paths_the_index_does_not_hold_go_to_check_ignore(self) -> None:
@@ -45,8 +45,13 @@ class TrackedPrefilterTest(RegistryTestCase):
         self.assertEqual(sent, ASKED)
 
     def test_when_git_cannot_list_the_index_check_ignore_still_answers_for_every_path(self) -> None:
+        def index_listing_fails(root: object, *arguments: str, **options: object) -> object:
+            if "ls-files" in arguments:
+                raise OSError("git vanished")
+            return run_git(root, *arguments, **options)
+
         with patch.object(sources, "TRACKED_PREFILTER_MIN_PATHS", 1), \
-                patch("domain_registry.sources.run_git", side_effect=OSError("git vanished")):
+                patch("domain_registry.sources.run_git", side_effect=index_listing_fails):
             self.assertEqual(ignored_relatives(self.repo, ASKED), IGNORED)
 
 

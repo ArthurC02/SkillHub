@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.cli_commands import policy_assignments
+from domain_registry.commands.governance import policy_assignments
 from domain_registry.registry import (
     coverage,
     migrate_registry,

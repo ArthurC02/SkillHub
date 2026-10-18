@@ -36,10 +36,12 @@ from domain_registry.registry import (
     init_registry,
     validate,
 )
+from domain_registry.search import _stem, _words, ranked_lookup
 from domain_registry.security import scan_report
 from domain_registry.sources import (
     discover_sources,
     selected_source_map,
+    source_kind_index,
     verify_source_map,
     write_source_map,
 )
@@ -95,6 +97,18 @@ def use_json_layout(root: Path) -> None:
     for name, document in documents.items():
         write_json(registry / name, document)
     write_json(registry / MANIFEST, manifest_document())
+
+
+def lookup(root: Path, asset: str, query: str) -> list[dict[str, Any]]:
+    return ranked_lookup(root, asset, query)[0]
+
+
+def word_stems(text: str) -> set[str]:
+    return {_stem(word) for word in _words(text)}
+
+
+def source_kind_for(source_map: dict[str, Any], cited_path: str) -> str:
+    return source_kind_index(source_map)(cited_path)
 
 
 def stored_policy_of(repo: Path) -> dict:

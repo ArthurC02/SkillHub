@@ -8,7 +8,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from domain_registry.audit import read_events, reviewing_proposals
-from domain_registry.common import ASSET_KEYS, registry_dir, write_json
+from domain_registry.common import ASSET_KEYS, registry_dir, shown_path, write_json
+from domain_registry.git import run_bounded
 from domain_registry.okf import encode
 from domain_registry.registry import init_registry, migrate_registry
 from domain_registry.revision import registry_digest
@@ -71,6 +72,23 @@ class WriteJsonTest(unittest.TestCase):
             (["value.json"], b'{"old": true}\n'),
             (sorted(entry.name for entry in self.path.parent.iterdir()), self.path.read_bytes()),
         )
+
+
+class ShownPathTest(unittest.TestCase):
+    def test_a_path_is_shown_relative_to_the_repository_inside_it_and_absolute_outside_always_with_slashes(self) -> None:
+        with tempfile.TemporaryDirectory() as repository, tempfile.TemporaryDirectory() as elsewhere:
+            top = Path(repository)
+            outside = str(Path(elsewhere, "changes", "pkg-1").resolve()).replace("\\", "/")
+            cases = (
+                ("inside, nested", top / "changes" / "pkg-1", top, "changes/pkg-1"),
+                ("inside, through ..", top / "changes" / ".." / "changes" / "pkg-1", top, "changes/pkg-1"),
+                ("the repository itself", top, top, "."),
+                ("outside", Path(elsewhere) / "changes" / "pkg-1", top, outside),
+                ("no repository", Path(elsewhere) / "changes" / "pkg-1", None, outside),
+            )
+            for label, path, root, expected in cases:
+                with self.subTest(label):
+                    self.assertEqual(expected, shown_path(path, root))
 
 
 class ConceptLayoutTest(RegistryTestCase):
@@ -262,6 +280,34 @@ class DigestAndHistoryTest(RegistryTestCase):
     def test_a_commit_without_the_registry_has_no_documents(self) -> None:
         self.assertIsNone(committed_documents(self.repo, self.head(), self.repo / "elsewhere", (MANIFEST,)))
         self.assertIsNone(committed_documents(self.repo, "f" * 40, self.repo / "memory", (MANIFEST,)))
+
+    def test_a_commit_git_cannot_read_is_refused_naming_the_commit_and_what_git_said(self) -> None:
+        commit = self.head()
+
+        def cat_file_fails(arguments: list[str], **options: object) -> subprocess.CompletedProcess:
+            if "cat-file" in arguments:
+                return subprocess.CompletedProcess(arguments, 128, b"", b"fatal: object store is locked\n")
+            return run_bounded(arguments, **options)
+
+        with patch("domain_registry.git.run_bounded", side_effect=cat_file_fails), \
+                self.assertRaises(ValueError) as refused:
+            committed_documents(self.repo, commit, self.repo / "memory", (MANIFEST, "rules.json"))
+        self.assertEqual(f"git could not read {commit}: fatal: object store is locked", str(refused.exception))
+
+    def test_a_listed_path_git_reports_missing_is_left_out_instead_of_breaking_the_read(self) -> None:
+        write_document(self.repo / "memory", "rules.json", {"rules": [ORDER_RULE]})
+        self.commit_all("one rule")
+        commit = self.head()
+
+        def lists_a_ghost(arguments: list[str], **options: object) -> subprocess.CompletedProcess:
+            result = run_bounded(arguments, **options)
+            if "ls-tree" in arguments:
+                return subprocess.CompletedProcess(arguments, 0, result.stdout + b"memory/registry/rules/ghost.md\0", b"")
+            return result
+
+        with patch("domain_registry.git.run_bounded", side_effect=lists_a_ghost):
+            documents = committed_documents(self.repo, commit, self.repo / "memory", (MANIFEST, "rules.json"))
+        self.assertEqual([ORDER_RULE], documents["rules.json"]["rules"])
 
     def head(self) -> str:
         return subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True).stdout.strip()

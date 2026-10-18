@@ -26,14 +26,13 @@ from domain_registry.sources import (
     refine_sources,
     selected_source_map,
     source_files,
-    source_kind_for,
     source_policy_report,
     verify_source_map,
     write_source_map,
 )
 from domain_registry.sources import discover_ci_tools
 from domain_registry.sources import source_snapshots
-from test_support import RegistryTestCase, stored_policy_of, use_json_layout
+from test_support import RegistryTestCase, source_kind_for, stored_policy_of, use_json_layout
 
 
 class SourcesTest(RegistryTestCase):

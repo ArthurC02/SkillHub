@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import re
-import subprocess
 from collections.abc import Callable
 from functools import cache
 from pathlib import Path
 from typing import Any
 
-from .common import GIT_COMMAND_TIMEOUT_SECONDS, MAX_EVIDENCE_BYTES, MAX_NESTING_DEPTH, load_json
+from .common import MAX_EVIDENCE_BYTES, MAX_NESTING_DEPTH, load_json
+from .git import run_git_bytes
 from .sources import source_kind_index
 
 
@@ -245,10 +245,7 @@ def staged_content(repo_root: Path) -> ContentReader:
     root = repo_root.resolve()
 
     def git(*arguments: str) -> bytes:
-        result = subprocess.run(
-            ["git", "-C", str(root), *arguments],
-            capture_output=True, check=False, timeout=GIT_COMMAND_TIMEOUT_SECONDS,
-        )
+        result = run_git_bytes(root, *arguments)
         if result.returncode != 0:
             reason = result.stderr.decode("utf-8", errors="replace").strip()
             raise ValueError(f"could not read the Git index of {root}: {reason}")

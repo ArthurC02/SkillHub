@@ -5,7 +5,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
-from ..common import load_json
+from ..common import FAILING_EVIDENCE, load_json
 from ..evidence import (
     citation,
     classified,
@@ -184,7 +184,7 @@ def handle_verify_evidence(args: argparse.Namespace) -> int:
     result = verify_evidence(args.registry_root.resolve(), repo_root, args.path, content_of)
     print_json(result)
     summary = result["summary"]
-    failing = ("stale", "unhashed", "missing", "invalid", *(("shifted",) if args.strict else ()))
+    failing = (*FAILING_EVIDENCE, *(("shifted",) if args.strict else ()))
     found = [f"{summary[status]} {status}" for status in failing if summary[status]]
     if found:
         print(

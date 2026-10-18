@@ -14,7 +14,9 @@ from .common import (
     CHANGE_CLASSIFICATIONS,
     CHANGE_PACKAGE_FILES,
     EVIDENCE_FILE,
+    OBLIGATIONS_FILE,
     PROPOSAL_FILE,
+    REQUIREMENT_FILE,
     CHANGE_PACKAGE_FORMATS,
     OBLIGATION_SOURCE_TYPES,
     OBLIGATION_STATUSES,
@@ -23,7 +25,9 @@ from .common import (
     change_template_dir,
     completed_identifier,
     iso_timestamp,
+    iter_packages,
     load_json,
+    readable_packages,
     record_status,
     utc_now,
     write_json,
@@ -596,7 +600,7 @@ def _registry_reference_errors(staged: dict[str, list[dict[str, Any]]], proposal
 
 
 def _identity_errors(documents: dict[str, dict[str, Any]]) -> list[str]:
-    requirement = documents["requirement-normalization.json"]
+    requirement = documents[REQUIREMENT_FILE]
     proposal = documents[PROPOSAL_FILE]
     errors = [
         f"{name} has an invalid format"
@@ -615,16 +619,12 @@ def _identity_errors(documents: dict[str, dict[str, Any]]) -> list[str]:
         errors.append("domain-change-proposal.json requires a completed proposer")
     errors.extend(
         f"{name} must reference the requirement_id"
-        for name in (
-            "domain-change-proposal.json",
-            "test-obligations.json",
-            "evidence-bundle.json",
-        )
+        for name in (PROPOSAL_FILE, OBLIGATIONS_FILE, EVIDENCE_FILE)
         if documents[name].get("requirement_id") != requirement_id
     )
     errors.extend(
         f"{name} must reference the proposal_id"
-        for name in ("test-obligations.json", "evidence-bundle.json")
+        for name in (OBLIGATIONS_FILE, EVIDENCE_FILE)
         if documents[name].get("proposal_id") != proposal_id
     )
     return errors
@@ -839,12 +839,9 @@ def packages_root(registry_root: Path, given: Path | None) -> Path | None:
 
 
 def obligations_proving(
-    changes_root: Path, proposal_id: str, source: tuple[str, str]
+    readable: list[tuple[Path, dict[str, Any]]], proposal_id: str, source: tuple[str, str]
 ) -> list[dict[str, Any]] | None:
-    packages = [
-        package for package in sorted(changes_root.iterdir())
-        if (package / PROPOSAL_FILE).is_file() and load_json(package / PROPOSAL_FILE).get("proposal_id") == proposal_id
-    ]
+    packages = [package for package, proposal in readable if proposal.get("proposal_id") == proposal_id]
     if not packages:
         return None
     return [
@@ -857,7 +854,7 @@ def obligations_proving(
 
 
 def _obligations(package: Path) -> list[Any]:
-    path = package / "test-obligations.json"
+    path = package / OBLIGATIONS_FILE
     return load_json(path).get("obligations", []) if path.is_file() else []
 
 
@@ -870,8 +867,9 @@ class Proof:
 
 def proof_of(changes_root: Path, proposals: list[str], source: tuple[str, str]) -> Proof:
     since: list[str] = []
+    readable = readable_packages(changes_root)
     for proposal_id in reversed(proposals):
-        found = obligations_proving(changes_root, proposal_id, source)
+        found = obligations_proving(readable, proposal_id, source)
         if found is None:
             return Proof(None, proposal_id, tuple(since))
         if found:
@@ -891,10 +889,8 @@ def _working_directories(package: Path) -> dict[Any, str]:
 
 def proven_sources(changes_root: Path) -> dict[Any, set[tuple[Any, Any]]]:
     proven: dict[Any, set[tuple[Any, Any]]] = {}
-    for package in sorted(changes_root.iterdir()):
-        if not (package / PROPOSAL_FILE).is_file():
-            continue
-        sources = proven.setdefault(load_json(package / PROPOSAL_FILE).get("proposal_id"), set())
+    for package, proposal in readable_packages(changes_root):
+        sources = proven.setdefault(proposal.get("proposal_id"), set())
         for entry in _obligations(package):
             if isinstance(entry, dict):
                 sources |= _covered_sources(entry)
@@ -964,11 +960,9 @@ def _covered_sources(obligation: dict[str, Any]) -> set[tuple[Any, Any]]:
 def list_proposals(changes_root: Path) -> list[dict[str, Any]]:
     rows = []
     replacements = {}
-    for package in sorted(path for path in changes_root.iterdir() if (path / PROPOSAL_FILE).is_file()):
-        try:
-            proposal = load_json(package / PROPOSAL_FILE)
-        except ValueError as error:
-            rows.append({"package": package.name, "error": str(error)})
+    for package, proposal in iter_packages(changes_root):
+        if isinstance(proposal, ValueError):
+            rows.append({"package": package.name, "error": str(proposal)})
             continue
         updates = proposal.get("registry_updates")
         moments = [proposal.get(field) for field in PROPOSAL_MOMENTS]

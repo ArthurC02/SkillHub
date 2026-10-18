@@ -1,13 +1,11 @@
 from pathlib import Path
 from typing import Any
 
-from .common import EVIDENCE_FILE, PROPOSAL_FILE, load_json, write_json
+from .common import EVIDENCE_FILE, OBLIGATIONS_FILE, PROPOSAL_FILE, REQUIREMENT_FILE, load_json, write_json
 from .counterfactual import OBLIGATION_PLACEHOLDER
 from .evidence import all_references
 from .hitl import same_command
 
-REQUIREMENT_FILE = "requirement-normalization.json"
-OBLIGATIONS_FILE = "test-obligations.json"
 PACKAGE_DOCUMENTS = (REQUIREMENT_FILE, OBLIGATIONS_FILE, PROPOSAL_FILE, EVIDENCE_FILE)
 REQUIREMENT_FIELDS = ("intent", "actor", "observable_outcome")
 DESIGN_FIELDS = ("domain_forces", "decision", "invariants_preserved", "rejected_alternatives")

@@ -7,14 +7,15 @@ from pathlib import Path
 from typing import Any
 
 from .common import (
+    APPLY_OPERATION,
     MAX_JSON_BYTES,
-    PROPOSAL_FILE,
     load_json,
+    readable_packages,
     reject_duplicate_keys,
     utc_now,
     write_json,
 )
-from .sources import run_git
+from .git import resolve_commit, run_git, toplevel
 from .store import has_registry
 
 MANIFEST_FORMAT = "domain-memory-audit/v1"
@@ -61,7 +62,7 @@ def read_events(root: Path) -> list[dict[str, Any]]:
 def review_history(root: Path) -> dict[str, list[str]]:
     history: dict[str, list[str]] = {}
     for event in read_events(root):
-        if event.get("operation") == "apply-approved-updates":
+        if event.get("operation") == APPLY_OPERATION:
             reviewed = dict.fromkeys(event.get("records", []), event.get("proposal_id"))
         elif event.get("operation") == "migrate-registry":
             reviewed = event.get("reviewed_by", {})
@@ -169,17 +170,16 @@ def anchor_error(root: Path, changes_root: Path | None, against: str | None) -> 
     if changes_root is not None:
         missing = _applied_without_event(root, changes_root)
         if missing:
-            return "applied proposals have no apply-approved-updates event in the audit log: " + ", ".join(missing)
+            return f"applied proposals have no {APPLY_OPERATION} event in the audit log: " + ", ".join(missing)
     return _committed_prefix_error(root, against) if against is not None else None
 
 
 def _applied_without_event(root: Path, changes_root: Path) -> list[str]:
     applied = {
-        event.get("proposal_id") for event in read_events(root) if event.get("operation") == "apply-approved-updates"
+        event.get("proposal_id") for event in read_events(root) if event.get("operation") == APPLY_OPERATION
     }
     missing = []
-    for package in sorted(path for path in changes_root.iterdir() if (path / PROPOSAL_FILE).is_file()):
-        proposal = load_json(package / PROPOSAL_FILE)
+    for package, proposal in readable_packages(changes_root):
         was_applied = "applied" in (proposal.get("status"), proposal.get("superseded_from_status"))
         if was_applied and proposal.get("proposal_id") not in applied:
             missing.append(f"{package.name} ({proposal.get('proposal_id')})")
@@ -187,10 +187,9 @@ def _applied_without_event(root: Path, changes_root: Path) -> list[str]:
 
 
 def _committed_prefix_error(root: Path, against: str) -> str | None:
-    top = run_git(root, "rev-parse", "--show-toplevel")
-    if top.returncode or run_git(root, "rev-parse", "--verify", "--quiet", f"{against}^{{commit}}").returncode:
+    shown = toplevel(root)
+    if shown is None or resolve_commit(root, against) is None:
         raise ValueError(f"git cannot resolve {against} from {root}")
-    shown = Path(top.stdout.strip()).resolve()
     manifest_path = audit_manifest_path(root).resolve().relative_to(shown).as_posix()
     committed = run_git(shown, "show", f"{against}:{manifest_path}")
     if committed.returncode:

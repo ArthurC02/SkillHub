@@ -6,10 +6,8 @@ import subprocess
 from pathlib import Path
 from typing import Any, TypeGuard
 
-from .common import (
-    ASSET_KEYS,
-    GIT_COMMAND_TIMEOUT_SECONDS,
-)
+from .common import ASSET_KEYS, find_record, registry_dir, shown_path
+from .git import run_git, run_git_bytes
 from .policy import existing_policy, policy_path
 from .registry import as_stored
 from .store import committed_documents, document_path, has_document, read_document
@@ -37,13 +35,7 @@ def _feed(digest: Any, name: str, content: bytes) -> None:
 
 def git_commit(repo_root: Path) -> str | None:
     try:
-        result = subprocess.run(
-            ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
-            capture_output=True,
-            check=False,
-            encoding="utf-8",
-            timeout=GIT_COMMAND_TIMEOUT_SECONDS,
-        )
+        result = run_git(repo_root, "rev-parse", "HEAD")
     except (OSError, subprocess.TimeoutExpired):
         return None
     if result.returncode != 0:
@@ -141,12 +133,9 @@ class StaleBaseError(ValueError):
     pass
 
 
-def _committed_json(repo_root: Path, commit: str, path: Path) -> tuple[bool, Any]:
+def committed_json(repo_root: Path, commit: str, path: Path) -> tuple[bool, Any]:
     relative = path.resolve().relative_to(repo_root.resolve()).as_posix()
-    shown = subprocess.run(
-        ["git", "-C", str(repo_root), "show", f"{commit}:{relative}"],
-        capture_output=True, check=False, timeout=GIT_COMMAND_TIMEOUT_SECONDS,
-    )
+    shown = run_git_bytes(repo_root, "show", f"{commit}:{relative}")
     if shown.returncode != 0:
         return False, None
     try:
@@ -159,28 +148,32 @@ def _committed_registry(root: Path, repo_root: Path, commit: str) -> tuple[dict[
     documents = committed_documents(repo_root, commit, root, REGISTRY_FILES)
     if documents is None:
         return None
-    _, policy = _committed_json(repo_root, commit, policy_path(root))
+    _, policy = committed_json(repo_root, commit, policy_path(root))
     return documents, policy
+
+
+CANNOT_COMPARE = (
+    "so the records this proposal touches cannot be compared; rebase-proposal restamps the proposal on the "
+    "current Registry"
+)
 
 
 def _base_documents(
     root: Path, repo_root: Path, base: dict[str, Any]
-) -> tuple[dict[str, Any], Any] | None:
+) -> tuple[dict[str, Any], Any] | str:
     commit = base.get("observed_commit")
-    rebuilt = None if commit is None else _committed_registry(root, repo_root, commit)
+    if commit is None:
+        return f"the base revision names no commit, {CANNOT_COMPARE}"
+    rebuilt = _committed_registry(root, repo_root, commit)
     if rebuilt is None:
-        return None
+        return (
+            f"commit {commit[:12]} does not hold the Registry at {shown_path(registry_dir(root), repo_root)}, "
+            f"{CANNOT_COMPARE}"
+        )
     documents, policy = rebuilt
     if _digest_of(documents, policy_path(root).name, policy) != base.get("committed_digest", base["registry_digest"]):
-        return None
+        return f"the Registry committed at {commit[:12]} does not reproduce the recorded base digest, {CANNOT_COMPARE}"
     return rebuilt
-
-
-def _record(documents: dict[str, Any], name: str, record_id: str) -> Any:
-    records = documents[name].get(ASSET_KEYS[name], [])
-    return next(
-        (r for r in records if isinstance(r, dict) and r.get("id") == record_id), None
-    )
 
 
 def _without_records(name: str, document: Any) -> Any:
@@ -222,11 +215,8 @@ def _changed_since_base(
     proposal: dict[str, Any], root: Path, repo_root: Path, base: dict[str, Any]
 ) -> str | None:
     rebuilt = _base_documents(root, repo_root, base)
-    if rebuilt is None:
-        return (
-            "the base Registry cannot be rebuilt from its observed commit, so the records "
-            "this proposal touches cannot be compared"
-        )
+    if isinstance(rebuilt, str):
+        return rebuilt
     then, then_policy = rebuilt
     now, now_policy = _current_documents(root)
     if then_policy != now_policy:
@@ -257,7 +247,7 @@ def _changed_record(
     shown = f"{name.removesuffix('.json')}/{record_id}"
     if name not in ASSET_KEYS:
         return f"{shown}, which this proposal touches, changed"
-    then, now = (_record(document, name, record_id) for document in documents)
+    then, now = (find_record(document[name].get(ASSET_KEYS[name], []), record_id) for document in documents)
     if then == now:
         return None
     if (name, record_id) not in written:

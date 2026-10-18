@@ -9,13 +9,14 @@ from typing import Any
 from .common import (
     ASSET_FORMATS,
     ASSET_KEYS,
-    GIT_COMMAND_TIMEOUT_SECONDS,
+    find_record,
     load_json,
     registry_dir,
     review_field,
     write_json,
 )
 from .evidence import without_derived_keys
+from .git import read_objects, run_git_bytes
 from .okf import OKF_VERSION, PROSE_FIELDS, TITLE_FIELDS, concept_path, decode, encode
 
 MANIFEST = "manifest.json"
@@ -92,8 +93,7 @@ def read_document(root: Path, name: str) -> dict[str, Any]:
 
 def read_record(root: Path, name: str, record_id: str) -> dict[str, Any] | None:
     if not is_concept_layout(root):
-        records = read_document(root, name).get(ASSET_KEYS[name], [])
-        return next((entry for entry in records if isinstance(entry, dict) and entry.get("id") == record_id), None)
+        return find_record(read_document(root, name).get(ASSET_KEYS[name], []), record_id)
     asset = asset_of(name)
     try:
         concept = registry_dir(root) / asset / _concept_file_name(asset, record_id)
@@ -212,10 +212,10 @@ def _first_sentence(prose: Any) -> str:
 
 def committed_documents(repo_root: Path, commit: str, root: Path, names: tuple[str, ...]) -> dict[str, Any] | None:
     registry = registry_dir(root).resolve().relative_to(repo_root.resolve()).as_posix()
-    listing = _git(repo_root, "ls-tree", "-r", "--name-only", "-z", commit, "--", registry)
-    if listing is None:
+    listing = run_git_bytes(repo_root, "ls-tree", "-r", "--name-only", "-z", commit, "--", registry)
+    if listing.returncode != 0:
         return None
-    paths = [path for path in listing.decode("utf-8", "surrogateescape").split("\0") if path]
+    paths = [path for path in listing.stdout.decode("utf-8", "surrogateescape").split("\0") if path]
     contents = _blobs(repo_root, commit, paths)
     if f"{registry}/{INDEX}" not in contents:
         return _committed_json_documents(contents, registry, names)
@@ -248,26 +248,11 @@ def _committed_json_documents(contents: dict[str, str], registry: str, names: tu
     return documents
 
 
-def _git(repo_root: Path, *arguments: str, stdin: bytes | None = None) -> bytes | None:
-    result = subprocess.run(
-        ["git", "-C", str(repo_root), *arguments],
-        input=stdin, capture_output=True, check=False, timeout=GIT_COMMAND_TIMEOUT_SECONDS,
-    )
-    return result.stdout if result.returncode == 0 else None
-
-
 def _blobs(repo_root: Path, commit: str, paths: list[str]) -> dict[str, str]:
-    if not paths:
-        return {}
-    request = "".join(f"{commit}:{path}\n" for path in paths).encode("utf-8", "surrogateescape")
-    output = _git(repo_root, "cat-file", "--batch", stdin=request) or b""
-    contents: dict[str, str] = {}
-    position = 0
-    for path in paths:
-        header_end = output.index(b"\n", position)
-        size = int(output[position:header_end].split()[2])
-        start = header_end + 1
-        contents[path] = output[start:start + size].decode("utf-8")
-        position = start + size + 1
-    return contents
+    try:
+        found = read_objects(repo_root, (f"{commit}:{path}" for path in paths))
+    except subprocess.CalledProcessError as error:
+        stderr = error.stderr.decode("utf-8", "replace").strip()
+        raise ValueError(f"git could not read {commit}: {stderr or error.returncode}") from error
+    return {path: found[f"{commit}:{path}"].decode("utf-8") for path in paths if f"{commit}:{path}" in found}
 

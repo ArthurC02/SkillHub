@@ -419,6 +419,27 @@ class CliProposalsTest(RegistryTestCase):
             json.loads(result.stdout),
         )
 
+    def test_a_package_whose_proposal_is_not_json_is_named_by_each_command_that_reads_proposals(self) -> None:
+        changes = self.repo / "changes"
+        for name, text in (("broken", "{not json"), ("good", json.dumps({"proposal_id": "GOOD", "status": "draft"}))):
+            (changes / name).mkdir(parents=True)
+            (changes / name / "domain-change-proposal.json").write_text(text, encoding="utf-8")
+        broken = (changes / "broken" / "domain-change-proposal.json").resolve()
+        memory = str(self.repo / "memory")
+        refusal = f"ERROR: Change Package broken cannot be read: invalid JSON: {broken}"
+        for label, arguments in (
+            ("coverage", ("coverage", "--registry-root", memory, "--changes-root", str(changes))),
+            ("verify-audit", ("verify-audit", "--registry-root", memory, "--changes-root", str(changes))),
+        ):
+            with self.subTest(label):
+                result = self.run_cli(*arguments)
+                self.assertEqual((1, "", refusal), (result.returncode, result.stdout, result.stderr.strip()))
+        listed = self.run_cli("list-proposals", "--changes-root", str(changes))
+        self.assertEqual(
+            [{"package": "broken", "error": f"invalid JSON: {broken}"}, "good"],
+            [row if "error" in row else row["package"] for row in json.loads(listed.stdout)],
+        )
+
     def test_list_proposals_flags_packages_sharing_a_proposal_id(self) -> None:
         changes = self.repo / "changes"
         for name, proposal_id in (("a", "same"), ("b", "same"), ("c", "other")):

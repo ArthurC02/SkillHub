@@ -13,11 +13,12 @@ HTTP_NOT_FOUND = 404
 
 from .common import (
     EVIDENCE_FILE,
-    GIT_COMMAND_TIMEOUT_SECONDS,
     PROPOSAL_FILE,
     completed_identifier,
     load_json,
+    readable_packages,
 )
+from .git import read_objects, run_bounded
 from .revision import valid_commit
 
 
@@ -139,11 +140,7 @@ def verify_external_scm(
 
 
 def _git(repo_root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["git", "-C", str(repo_root), *arguments],
-        capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
-        timeout=GIT_COMMAND_TIMEOUT_SECONDS,
-    )
+    return run_bounded(["git", "-C", str(repo_root), *arguments], errors="replace")
 
 
 UNRUNNABLE_PROGRAM = ("cannot spawn ", "cannot run ")
@@ -279,26 +276,10 @@ UNVERIFIED_PREFIX = "SCM governance verification"
 
 
 def _read_objects(repo_root: Path, names: list[str]) -> dict[str, bytes]:
-    asked = [name for name in dict.fromkeys(names) if "\n" not in name]
-    if not asked:
+    try:
+        return read_objects(repo_root, names)
+    except subprocess.CalledProcessError:
         return {}
-    result = subprocess.run(
-        ["git", "-C", str(repo_root), "cat-file", "--batch"],
-        input="".join(f"{name}\n" for name in asked).encode("utf-8"),
-        capture_output=True, check=False, timeout=GIT_COMMAND_TIMEOUT_SECONDS,
-    )
-    if result.returncode != 0:
-        return {}
-    found, output, offset = {}, result.stdout, 0
-    for name in asked:
-        header_end = output.index(b"\n", offset)
-        last_field = output[offset:header_end].rsplit(b" ", 1)[-1]
-        offset = header_end + 1
-        if last_field.isdigit():
-            size = int(last_field)
-            found[name] = output[offset:offset + size]
-            offset += size + 1
-    return found
 
 
 def _proposal_object(commit: str, relative: str) -> str:
@@ -344,9 +325,7 @@ def _attestation_verdict(
 
 def audit_attestations(repo_root: Path, changes_root: Path, token_env: str) -> list[dict[str, str]]:
     audited = []
-    for proposal_file in sorted(changes_root.glob(f"*/{PROPOSAL_FILE}")):
-        package = proposal_file.parent
-        proposal = load_json(proposal_file)
+    for package, proposal in readable_packages(changes_root) if changes_root.is_dir() else []:
         if proposal.get("status") not in AUDITED_STATUSES:
             continue
         evidence_file = package / EVIDENCE_FILE

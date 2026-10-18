@@ -5,7 +5,8 @@ import re
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from .git_hooks import hooks_dir, inside_repo
+from .common import shown_path
+from .git_hooks import hooks_dir
 from .sources import (
     discover_ci_markers,
     file_name,
@@ -164,7 +165,7 @@ def installed_hooks(root: Path) -> list[dict[str, str]]:
     if not hooks.is_dir():
         return []
     return [
-        gate("hooks", f"git:{entry.name}", inside_repo(entry, root))
+        gate("hooks", f"git:{entry.name}", shown_path(entry, root))
         for entry in sorted(hooks.iterdir())
         if entry.is_file() and "." not in entry.name
     ]

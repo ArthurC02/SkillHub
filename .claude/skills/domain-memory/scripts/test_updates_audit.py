@@ -179,8 +179,34 @@ class UpdatesAuditTest(RegistryTestCase):
             require_current_registry_revision(proposal, self.repo / "memory", self.repo),
         )
         proposal["base_registry_revision"]["committed_digest"] = "sha256:" + "0" * 64
-        with self.assertRaisesRegex(ValueError, "stale.*cannot be rebuilt"):
+        commit = proposal["base_registry_revision"]["observed_commit"]
+        with self.assertRaises(ValueError) as refused:
             require_current_registry_revision(proposal, self.repo / "memory", self.repo)
+        self.assertEqual(
+            "proposal base revision is stale; rebase-proposal, then obtain fresh approval: the Registry committed at "
+            f"{commit[:12]} does not reproduce the recorded base digest, so the records this proposal touches cannot "
+            "be compared; rebase-proposal restamps the proposal on the current Registry",
+            str(refused.exception),
+        )
+
+    def test_a_base_stamped_on_a_commit_before_the_registry_was_committed_names_that_commit(self) -> None:
+        self.git("rm", "-r", "-q", "--cached", "memory")
+        self.git("commit", "-qm", "untracks the registry")
+        before = self.git("rev-parse", "HEAD")
+        self.git("add", "memory")
+        self.git("commit", "-qm", "tracks the registry again")
+        proposal = {
+            "base_registry_revision": {"observed_commit": before, "registry_digest": "sha256:" + "1" * 64},
+            "registry_updates": [{"operation": "upsert", "asset": "rules", "record": DRAFTED_RULE}],
+        }
+        with self.assertRaises(ValueError) as refused:
+            require_current_registry_revision(proposal, self.repo / "memory", self.repo)
+        self.assertEqual(
+            f"proposal base revision is stale; rebase-proposal, then obtain fresh approval: commit {before[:12]} does "
+            "not hold the Registry at memory/registry, so the records this proposal touches cannot be compared; "
+            "rebase-proposal restamps the proposal on the current Registry",
+            str(refused.exception),
+        )
 
     def add_record_draft(self, record_id: str) -> None:
         record = self.write_record("rule.json", {**DRAFTED_RULE, "id": record_id})
@@ -193,7 +219,7 @@ class UpdatesAuditTest(RegistryTestCase):
             "registry_updates": [{"operation": "upsert", "asset": "rules", "record": {"id": "order-total"}}],
         }
         self.edit_registry("contexts.json", lambda value: value["contexts"][1].update(name="Invoicing"))
-        with self.assertRaisesRegex(ValueError, "stale.*cannot be rebuilt"):
+        with self.assertRaisesRegex(ValueError, "stale.*does not reproduce the recorded base digest"):
             require_current_registry_revision(proposal, self.repo / "memory", self.repo)
 
     def test_invalid_candidate_does_not_change_registry(self) -> None:

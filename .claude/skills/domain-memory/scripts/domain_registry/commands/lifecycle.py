@@ -13,7 +13,7 @@ from ..changes import (
     redraft_change_package,
     validate_change_package,
 )
-from ..common import EVIDENCE_FILE, PROPOSAL_FILE, REQUIREMENT_FILE, load_json
+from ..common import EVIDENCE_FILE, OBLIGATIONS_FILE, PROPOSAL_FILE, REQUIREMENT_FILE, load_json
 from ..evidence import citation, function_span
 from ..harvest import harvest_candidates
 from ..harvest_run import discard_harvest, harvest
@@ -28,7 +28,6 @@ from ..hitl import (
 )
 from ..recitation_package import recitation_package
 from ..registry import (
-    asset_records,
     cited_paths,
     init_registry,
     migrate_registry,
@@ -40,6 +39,7 @@ from ..registry import (
 )
 from ..relocate import line_range
 from ..ship import ship_package
+from ..store import read_document
 from ..transaction import recover_interrupted_update, transaction_path
 from ..updates import (
     add_promoted_evidence,
@@ -120,7 +120,7 @@ def _print_notes(notes: list[str]) -> None:
 def _note_unplaced(registry_root: Path, repo_root: Path) -> None:
     unplaced = [
         f"contexts/{identifier} implementation_path {path}"
-        for identifier, path, reviewed in unplaced_implementation_paths(asset_records(registry_root, "contexts.json"), repo_root)
+        for identifier, path, reviewed in unplaced_implementation_paths(read_document(registry_root, "contexts.json"), repo_root)
         if not reviewed
     ]
     if unplaced:
@@ -374,7 +374,7 @@ def _note_counterfactuals_off_cited_files(package_root: Path, registry_root: Pat
     checks = checks if isinstance(checks, list) else [checks] if isinstance(checks, dict) else []
     obligations = {
         entry.get("id"): entry
-        for entry in load_json(package_root / "test-obligations.json").get("obligations", []) if isinstance(entry, dict)
+        for entry in load_json(package_root / OBLIGATIONS_FILE).get("obligations", []) if isinstance(entry, dict)
     }
     updated = {
         update["record"].get("id"): update["record"]

@@ -10,7 +10,7 @@ from itertools import combinations
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from .sources import run_git
+from .git import run_git
 
 COMMIT_MARKER = "\x1e"
 SUBJECTS_SHOWN = 10

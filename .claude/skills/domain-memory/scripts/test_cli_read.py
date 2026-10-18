@@ -80,6 +80,16 @@ class CliReadTest(RegistryTestCase):
         self.assertNotIn("Traceback", result.stdout + result.stderr)
         self.assertTrue(result.stderr.startswith("ERROR: "), result.stderr)
 
+    def test_init_change_package_into_a_directory_that_holds_a_file_is_refused_and_keeps_the_file(self) -> None:
+        occupied = self.repo / "occupied"
+        occupied.mkdir()
+        (occupied / "note.txt").write_text("kept\n", encoding="utf-8")
+        result = self.run_cli("init-change-package", "--output", str(occupied))
+        self.assertEqual(
+            (1, "", f"ERROR: output directory is not empty: {occupied.resolve()}\n", ["note.txt"]),
+            (result.returncode, result.stdout, result.stderr, [entry.name for entry in occupied.iterdir()]),
+        )
+
     def test_a_git_command_that_times_out_ends_in_one_error_line_instead_of_a_traceback(self) -> None:
         arguments = [
             "export", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
@@ -87,7 +97,7 @@ class CliReadTest(RegistryTestCase):
         ]
         stdout, stderr = io.StringIO(), io.StringIO()
         with patch(
-            "domain_registry.store.subprocess.run", side_effect=subprocess.TimeoutExpired(["git", "ls-tree"], 15)
+            "domain_registry.git.run_bounded", side_effect=subprocess.TimeoutExpired(["git", "ls-tree"], 15)
         ), patch.object(sys, "argv", ["registry_tools", *arguments]), contextlib.redirect_stdout(
             stdout
         ), contextlib.redirect_stderr(stderr):

@@ -4,14 +4,14 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from .common import load_json
+from .common import APPLY_OPERATION, load_json, shown_path
 from .hitl import EVIDENCE_FILE, attest_signed_commit, finalize_proposal, proposal_path
 from .revision import StaleBaseError, require_current_registry_revision
-from .sources import run_git
+from .git import resolve_commit
 from .updates import apply_approved_updates
 
 FORMAT = "domain-memory-ship/v1"
-ATTEST, FINALIZE, APPLY = "attest-signed-commit", "finalize-proposal", "apply-approved-updates"
+ATTEST, FINALIZE, APPLY = "attest-signed-commit", "finalize-proposal", APPLY_OPERATION
 STEPS_FROM = {"approved": (APPLY,), "applied": ()}
 ALREADY_APPLIED = "nothing to do here; if the applied Registry change is not committed yet, sign a commit holding it, then push"
 NEXT_STEPS = {
@@ -30,7 +30,7 @@ def ship_package(
     package_root: Path, registry_root: Path, repo_root: Path, commit: str | None, verification_token_env: str = "GITHUB_TOKEN"
 ) -> dict[str, Any]:
     package_root, registry_root, repo_root = package_root.resolve(), registry_root.resolve(), repo_root.resolve()
-    report: dict[str, Any] = {"format": FORMAT, "package": _shown(package_root, repo_root), "completed": [], "errors": []}
+    report: dict[str, Any] = {"format": FORMAT, "package": shown_path(package_root, repo_root), "completed": [], "errors": []}
     proposal = load_json(proposal_path(package_root))
     status = proposal.get("status")
     actions: dict[str, Callable[[], Any]] = {
@@ -70,8 +70,7 @@ def _another_commit(package_root: Path, repo_root: Path, status: str, commit: st
     attested = (load_json(package_root / EVIDENCE_FILE).get("scm_attestation") or {}).get("commit")
     if commit is None or attested is None:
         return []
-    resolved = run_git(repo_root, "rev-parse", "--verify", f"{commit}^{{commit}}")
-    given = resolved.stdout.strip() if resolved.returncode == 0 else commit
+    given = resolve_commit(repo_root, commit) or commit
     if given == attested:
         return []
     return [f"{ATTEST}: the proposal is {status} with commit {attested}; {given} is another commit, so nothing was written"]
@@ -93,7 +92,3 @@ def _completed(
     if name == ATTEST:
         report["commit"] = result
     return True
-
-
-def _shown(package_root: Path, repo_root: Path) -> str:
-    return package_root.relative_to(repo_root).as_posix() if package_root.is_relative_to(repo_root) else str(package_root)

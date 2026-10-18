@@ -36,7 +36,6 @@ def harvest_candidates(
     result = Upserted()
 
     def mutate(staged: Path) -> None:
-        result.reset()
         for asset, batch in batches.items():
             if batch:
                 document = read_document(staged, f"{asset}.json")

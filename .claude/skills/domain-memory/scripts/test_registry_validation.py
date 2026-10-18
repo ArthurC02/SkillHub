@@ -13,9 +13,9 @@ from domain_registry.common import ASSET_KEYS, load_json
 from domain_registry.contracts import validate_schema
 from domain_registry.cli_commands import HANDLERS
 from domain_registry.cli_parser import build_parser
-from domain_registry.registry import lookup, migrate_evidence, validate, verify_evidence
+from domain_registry.registry import migrate_evidence, validate, verify_evidence
 from domain_registry.store import read_document, write_document
-from test_support import VERIFIED, RegistryTestCase, append_audit, scan_secrets, use_json_layout
+from test_support import VERIFIED, RegistryTestCase, append_audit, lookup, scan_secrets, use_json_layout
 
 
 class RegistryValidationTest(RegistryTestCase):

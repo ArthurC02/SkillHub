@@ -125,6 +125,27 @@ class ShipPackageTest(RegistryTestCase):
                                             "fresh approval: "), len(report["errors"])),
         )
 
+    def test_an_approved_package_whose_base_went_stale_stops_before_applying_and_names_rebase_proposal(self) -> None:
+        package, _ = self.verified_package_under_signed_governance()
+        signed = self.commit_everything("adds the Change Package", signed=True)
+        with patch("domain_registry.ship.apply_approved_updates", side_effect=ValueError("the disk was full")):
+            ship_package(package, self.repo / "memory", self.repo, signed)
+        self.edit_registry(
+            "rules.json",
+            lambda value: value["rules"].append(
+                {"id": "order-total", "contexts": ["orders"], "statement": "Another statement.", "evidence": []}
+            ),
+        )
+        self.commit_everything("adds a rival rule")
+        report = ship_package(package, self.repo / "memory", self.repo, signed)
+        self.assertEqual(
+            ([], "approved", True, True, 1),
+            (report["completed"], report["status"],
+             report["next"].startswith("the proposal base is stale; rebase-proposal, then record-approval"),
+             report["errors"][0].startswith("apply-approved-updates: proposal base revision is stale; rebase-proposal, "
+                                            "then obtain fresh approval: "), len(report["errors"])),
+        )
+
     def test_without_a_commit_the_pull_request_verifier_needs_its_attestation_written_first(self) -> None:
         package = self.draft_package()
         submit_proposal(package, self.repo / "memory", self.repo)

@@ -1,33 +1,18 @@
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 from .attestations import verify_git_signed_commit
-from .common import GIT_COMMAND_TIMEOUT_SECONDS, replace_path
+from .common import replace_path, shown_path
+from .git import run_git
 from .policy import review_governance, review_mode
 
 HOOK_MARKER = "domain-memory-pre-push"
 EMPTY_SHA = "0" * 40
 
 
-def inside_repo(path: Path, repo_root: Path) -> str:
-    resolved = path.resolve()
-    try:
-        return resolved.relative_to(repo_root.resolve()).as_posix()
-    except ValueError:
-        return resolved.as_posix()
-
-
 def hooks_dir(repo_root: Path) -> Path:
-    result = subprocess.run(
-        ["git", "-C", str(repo_root), "rev-parse", "--git-path", "hooks"],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        check=False,
-        timeout=GIT_COMMAND_TIMEOUT_SECONDS,
-    )
+    result = run_git(repo_root, "rev-parse", "--git-path", "hooks")
     if result.returncode != 0:
         return repo_root / ".git" / "hooks"
     reported = Path(result.stdout.strip())
@@ -79,7 +64,7 @@ def _install_hook(name: str, registry_root: Path, repo_root: Path, script: Path,
     header = (
         "#!/bin/sh\n"
         f"# {marker}\n"
-        f"tool='{inside_repo(script, repo_root)}'\n"
+        f"tool='{shown_path(script, repo_root)}'\n"
         f"memory='{relative}'\n"
         f"existing=\"$(git rev-parse --git-path hooks)/{backup.name}\" || exit 1\n"
     )

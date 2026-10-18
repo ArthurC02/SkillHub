@@ -299,14 +299,14 @@ class ReviewSigningTest(RegistryTestCase):
         ):
             with (
                 self.subTest(authorized=authorized[0]),
-                patch("domain_registry.attestations.subprocess.run", side_effect=[signed, changed]),
+                patch("domain_registry.attestations.run_bounded", side_effect=[signed, changed]),
             ):
                 self.assertEqual(
                     [],
                     verify_git_signed_commit(attestation, self.repo, registry_root, authorized),
                 )
         with patch(
-            "domain_registry.attestations.subprocess.run", side_effect=[signed, changed]
+            "domain_registry.attestations.run_bounded", side_effect=[signed, changed]
         ):
             self.assertEqual(
                 ["Git commit signer is not authorized by Domain Memory policy"],
@@ -321,14 +321,14 @@ class ReviewSigningTest(RegistryTestCase):
             [], 0, "[GNUPG:] VALIDSIG ABCD", ""
         )
         changed = subprocess.CompletedProcess([], 0, "docs/domain-memory/registry/rules.json\n", "")
-        with patch("domain_registry.attestations.subprocess.run", side_effect=[verified, changed]):
+        with patch("domain_registry.attestations.run_bounded", side_effect=[verified, changed]):
             self.assertEqual(
                 [],
                 verify_git_signed_commit(
                     attestation, self.repo, self.repo / "docs" / "domain-memory", ["ABCD"]
                 ),
             )
-        with patch("domain_registry.attestations.subprocess.run", return_value=verified):
+        with patch("domain_registry.attestations.run_bounded", return_value=verified):
             self.assertEqual(
                 ["Git commit signer is not authorized by Domain Memory policy"],
                 verify_git_signed_commit(

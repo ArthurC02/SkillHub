@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from .common import GIT_COMMAND_TIMEOUT_SECONDS
+from .git import run_bounded
 
 SIGNING_KEY_ENV = "DOMAIN_MEMORY_SIGNING_KEY"
 
@@ -36,10 +36,7 @@ def _restrict(path: Path) -> None:
 
 
 def _run(command: list[str], stdin: str | None = None) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        command, input=stdin, capture_output=True, text=True, encoding="utf-8", errors="replace",
-        check=False, timeout=GIT_COMMAND_TIMEOUT_SECONDS,
-    )
+    return run_bounded(command, stdin=stdin, errors="replace")
 
 
 def _generate(key_file: Path, principal: str) -> None:

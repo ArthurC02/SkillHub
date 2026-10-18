@@ -6,16 +6,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.registry import (
-    coverage,
-    lookup,
-    _is_common,
-    ranked_lookup,
-    word_stems,
-    resolve_terms,
-    verify_evidence,
-)
-from test_support import RegistryTestCase, use_json_layout
+from domain_registry.registry import coverage, verify_evidence
+from domain_registry.search import _is_common, ranked_lookup, resolve_terms
+from test_support import RegistryTestCase, lookup, use_json_layout, word_stems
 
 
 class RegistryLookupTest(RegistryTestCase):

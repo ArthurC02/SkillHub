@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import contextlib
 import io
 import json
@@ -12,6 +13,7 @@ from unittest.mock import patch
 
 from domain_registry import mcp_server
 from domain_registry.cli_commands import run_command
+from domain_registry.commands.read import handle_mcp_serve
 from domain_registry.mcp_server import READ_ONLY, McpServer, Parameter, ServerRoots, Tool, serve
 from test_support import RegistryTestCase
 
@@ -337,6 +339,16 @@ class CommandLineTest(McpServerTest):
             (result.returncode, result.stderr, [reply["id"] for reply in replies], replies[1]["result"]),
         )
         self.assertEqual("[]\n", replies[0]["result"]["content"][0]["text"])
+
+    def test_mcp_serve_on_an_input_stream_that_cannot_be_reconfigured_serves_it_as_given(self) -> None:
+        registry, repo = self.roots()
+        arguments = argparse.Namespace(registry_root=Path(registry), repo_root=Path(repo))
+        with patch.object(sys, "stdin", io.StringIO("")), \
+                patch("domain_registry.commands.read.serve") as served:
+            exit_code = handle_mcp_serve(arguments)
+        self.assertEqual(
+            (0, ServerRoots(Path(registry).resolve(), Path(repo).resolve())), (exit_code, served.call_args.args[0])
+        )
 
     def test_mcp_serve_reads_its_input_as_utf8_whatever_the_locale(self) -> None:
         registry, repo = self.roots()

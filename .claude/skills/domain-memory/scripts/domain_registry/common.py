@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -77,26 +78,44 @@ def record_status(asset: str, document: dict[str, Any], record: dict[str, Any]) 
     return record.get(review_field(asset), document.get("status"))
 
 
+def is_reviewed(asset: str, document: dict[str, Any], record: dict[str, Any] | None) -> bool:
+    return record is not None and record_status(asset, document, record) == "reviewed"
+
+
+def find_record(records: Any, record_id: Any) -> dict[str, Any] | None:
+    return next((entry for entry in records if isinstance(entry, dict) and entry.get("id") == record_id), None)
+
+
 def updates_record(update: Any, asset: str, record_id: Any) -> bool:
     return update.get("asset") == asset and (update.get("record") or {}).get("id") == record_id
 
 
+def shown_path(path: Path, top: Path | None) -> str:
+    resolved = path.resolve()
+    if top is not None and resolved.is_relative_to(top.resolve()):
+        return resolved.relative_to(top.resolve()).as_posix()
+    return resolved.as_posix()
+
+
 PROPOSAL_FILE = "domain-change-proposal.json"
 REQUIREMENT_FILE = "requirement-normalization.json"
+OBLIGATIONS_FILE = "test-obligations.json"
 EVIDENCE_FILE = "evidence-bundle.json"
+APPLY_OPERATION = "apply-approved-updates"
+FAILING_EVIDENCE = ("stale", "unhashed", "missing", "invalid")
 
 CHANGE_PACKAGE_FILES = (
-    "requirement-normalization.json",
+    REQUIREMENT_FILE,
     PROPOSAL_FILE,
-    "test-obligations.json",
+    OBLIGATIONS_FILE,
     EVIDENCE_FILE,
     "draft-pr.md",
 )
 
 CHANGE_PACKAGE_FORMATS = {
-    "requirement-normalization.json": "domain-requirement/v1",
+    REQUIREMENT_FILE: "domain-requirement/v1",
     PROPOSAL_FILE: "domain-change-proposal/v1",
-    "test-obligations.json": "domain-test-obligations/v1",
+    OBLIGATIONS_FILE: "domain-test-obligations/v1",
     EVIDENCE_FILE: "domain-evidence-bundle/v1",
 }
 
@@ -208,6 +227,27 @@ def load_json(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"JSON object required: {path}")
     return value
+
+
+def iter_packages(changes_root: Path) -> Iterator[tuple[Path, dict[str, Any] | ValueError]]:
+    for package in sorted(path for path in changes_root.iterdir() if (path / PROPOSAL_FILE).is_file()):
+        yield package, _proposal_or_error(package)
+
+
+def _proposal_or_error(package: Path) -> dict[str, Any] | ValueError:
+    try:
+        return load_json(package / PROPOSAL_FILE)
+    except ValueError as error:
+        return error
+
+
+def readable_packages(changes_root: Path) -> list[tuple[Path, dict[str, Any]]]:
+    packages = []
+    for package, proposal in iter_packages(changes_root):
+        if isinstance(proposal, ValueError):
+            raise ValueError(f"Change Package {package.name} cannot be read: {proposal}")
+        packages.append((package, proposal))
+    return packages
 
 
 def registry_dir(root: Path) -> Path:
