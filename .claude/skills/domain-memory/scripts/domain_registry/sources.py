@@ -753,9 +753,15 @@ def discovery_drift_note(result: dict[str, Any]) -> str | None:
         if result.get("status") == "discovery_drifted"
         else "run refresh-sources, then confirm-sources"
     )
+    changed_inside = len(result.get("content_changed", []))
+    inside = (
+        f"{_counted(changed_inside, 'selected source')} changed inside; verify-evidence checks the citations; "
+        if changed_inside
+        else ""
+    )
     return (
         f"NOTE: discovery drifted: {_counted(gone, 'listed path')} gone, "
-        f"{_counted(unlisted, 'matching path')} unlisted; {advice}"
+        f"{_counted(unlisted, 'matching path')} unlisted; {inside}{advice}"
     )
 
 

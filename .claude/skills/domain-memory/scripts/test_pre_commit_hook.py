@@ -231,6 +231,20 @@ class PreCommitHookTest(RegistryTestCase):
             (result.returncode, result.stderr),
         )
 
+    def test_the_rename_hint_does_not_depend_on_the_diff_renames_setting(self) -> None:
+        self.cited_source()
+        hook = self.install()
+        self.git("config", "diff.renames", "false")
+        self.git("mv", "src/a.py", "src/b.py")
+        result = self.commit_hook(hook)
+        self.assertEqual(
+            (1, MISSING_LINE_OF_A + "verify-evidence failed: 1 missing citation\n"
+                "src/a.py is renamed to src/b.py in this commit; run relocate-evidence --from src/a.py --to src/b.py\n"
+                f"{REFUSED_STALE}; the full report: verify-evidence --registry-root memory --repo-root . --staged "
+                "--path src/a.py --path src/b.py, or commit again with DOMAIN_MEMORY_HOOK_VERBOSE=1\n"),
+            (result.returncode, result.stderr),
+        )
+
     def test_a_rename_commits_once_relocate_evidence_has_moved_the_citations(self) -> None:
         self.cited_source()
         hook = self.install()

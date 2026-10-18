@@ -135,7 +135,7 @@ def install_pre_commit_hook(registry_root: Path, repo_root: Path, script: Path) 
     body = (
         _python_for_tool("pre-commit")
         + _run_existing_hook("pre-commit", "\"$existing\" \"$@\"")
-        + "changes=$(git -c core.quotepath=false diff --cached --name-status --diff-filter=ACMRD) || exit 1\n"
+        + "changes=$(git -c core.quotepath=false diff --cached --name-status --find-renames --diff-filter=ACMRD) || exit 1\n"
         "test -n \"$changes\" || exit 0\n"
         "staged=$(printf '%s\\n' \"$changes\" | cut -f2- | tr '\\t' '\\n')\n"
         "printf '%s\\n' \"$staged\" | while IFS= read -r path; do\n"

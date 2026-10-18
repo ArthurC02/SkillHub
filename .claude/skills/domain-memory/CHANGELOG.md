@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.93.0
+
+### Changed
+
+- The drift `NOTE:` of `verify-sources` says, when `content_changed` is non-empty, how many selected sources changed inside and that `verify-evidence` checks the citations, so nobody reads "no confirmation needed" as a claim that the confirmation covers the edited text. A confirmation covers which paths are sources; every cited span carries its own hash. Status and exit stay as they were, and the reference states that `refresh-listing` refuses only when the selection itself changed or the map is invalid or unverified.
+
+### Fixed
+
+- The pre-commit hook passes `--find-renames` to its staged diff, so the `relocate-evidence --from <old> --to <new>` hint prints whatever the user's `diff.renames` setting is; a rename was already refused either way.
+
 ## 0.92.0
 
 ### Fixed

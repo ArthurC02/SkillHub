@@ -100,6 +100,24 @@ class VerifySourcesDriftTest(RegistryTestCase):
             (result.returncode, json.loads(result.stdout)["status"], result.stderr.strip()),
         )
 
+    def test_an_edit_inside_a_selected_source_beside_drift_is_named_in_the_note_as_a_citation_matter(
+        self,
+    ) -> None:
+        source_map_path = self.map_with_tests("test_kept.py")
+        (self.repo / "docs" / "rules.md").write_text("revised\n", encoding="utf-8")
+        (self.repo / "tests" / "test_new.py").write_text("new\n", encoding="utf-8")
+        result = self.verify(source_map_path)
+        self.assertEqual(
+            (
+                0,
+                "discovery_drifted",
+                "NOTE: discovery drifted: 0 listed paths gone, 1 matching path unlisted; "
+                "1 selected source changed inside; verify-evidence checks the citations; "
+                "run refresh-listing (no confirmation needed)",
+            ),
+            (result.returncode, json.loads(result.stdout)["status"], result.stderr.strip()),
+        )
+
     def test_a_map_that_matches_discovery_is_current_with_empty_lists_and_no_note(self) -> None:
         source_map_path = self.map_with_tests("test_kept.py")
         result = self.verify(source_map_path)
