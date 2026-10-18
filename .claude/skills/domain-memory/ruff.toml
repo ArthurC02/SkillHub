@@ -1,12 +1,12 @@
 line-length = 100
 target-version = "py310"
-extend-exclude = ["evals"]
+extend-exclude = ["evals/**/fixtures"]
 
 [lint]
 select = ["F", "C90", "PLR", "SIM", "B", "RET", "ARG", "PLW", "PERF", "N", "FBT", "C4", "PIE", "RUF100"]
 
 [lint.per-file-ignores]
-"test_*.py" = ["PLR", "SIM", "B", "RET", "ARG", "PLW", "PERF", "N", "FBT", "C4", "PIE"]
+"test_*.py" = ["FBT"]
 
 [lint.mccabe]
 max-complexity = 10

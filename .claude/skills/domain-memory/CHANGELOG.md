@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.5
+
+### Changed
+
+- The lint ratchet now applies every selected rule family to the tests as well, except the boolean-argument rules (`FBT`), which tests trip by passing booleans to the product API; the fourteen findings that the old exemptions hid are fixed (nested `with` statements, unused mock arguments, one dict comprehension). The `evals` exclusion covers only the deliberately broken fixtures, so `check.py` is linted too.
+- A golden test pins the digest of an empty Registry to a literal, so a change to the canonical JSON that feeds `registry_digest` is caught before it turns every committed package's base stale.
+
 ## 1.2.4
 
 ### Fixed

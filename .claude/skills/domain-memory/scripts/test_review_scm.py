@@ -50,7 +50,7 @@ CHECK_RUNS_ENDPOINT = f"https://api.github.com/repos/acme/skills/commits/{'a' * 
 def github_serving(pull: object, reviews: object, checks: object):
     requested: list[str] = []
 
-    def serve(url: str, token: str) -> tuple[object, None]:
+    def serve(url: str, _token: str) -> tuple[object, None]:
         endpoint = url.partition("?")[0]
         requested.append(endpoint)
         if endpoint.endswith("/reviews"):
@@ -69,7 +69,7 @@ def github_serving(pull: object, reviews: object, checks: object):
 def github_paging(pages: dict[str, tuple[object, str | None]]):
     requested: list[str] = []
 
-    def serve(url: str, token: str) -> tuple[object, str | None]:
+    def serve(url: str, _token: str) -> tuple[object, str | None]:
         requested.append(url)
         return pages[url]
 
@@ -225,9 +225,11 @@ class ReviewScmTest(RegistryTestCase):
             [{"user": {"login": "reviewer"}, "state": "APPROVED"}],
             {"check_runs": [{"status": "completed", "conclusion": "success"}]},
         )
-        with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
-            with patch("domain_registry.attestations.github_page", side_effect=serve):
-                self.assertEqual([], verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"))
+        with (
+            patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}),
+            patch("domain_registry.attestations.github_page", side_effect=serve),
+        ):
+            self.assertEqual([], verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"))
         self.assertEqual(
             [PULL_ENDPOINT, PULL_ENDPOINT + "/reviews", CHECK_RUNS_ENDPOINT], requested
         )
@@ -239,12 +241,14 @@ class ReviewScmTest(RegistryTestCase):
             [{"user": {"login": "reviewer"}, "state": "APPROVED"}],
             {"check_runs": [{"status": "completed", "conclusion": "failure"}]},
         )
-        with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
-            with patch("domain_registry.attestations.github_page", side_effect=serve):
-                self.assertEqual(
-                    ["SCM attested commit has incomplete or unsuccessful checks"],
-                    verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"),
-                )
+        with (
+            patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}),
+            patch("domain_registry.attestations.github_page", side_effect=serve),
+        ):
+            self.assertEqual(
+                ["SCM attested commit has incomplete or unsuccessful checks"],
+                verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"),
+            )
 
     def test_each_external_scm_defect_is_named(self) -> None:
         attestation = {"provider": "github", "pull_request": PULL_REQUEST_URL, "commit": "a" * 40}
@@ -335,9 +339,11 @@ class ReviewScmTest(RegistryTestCase):
             [{"user": {"login": "reviewer"}, "state": "APPROVED"}],
             OSError("check-runs must not be requested"),
         )
-        with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
-            with patch("domain_registry.attestations.github_page", side_effect=serve):
-                self.assertEqual([], verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN", False))
+        with (
+            patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}),
+            patch("domain_registry.attestations.github_page", side_effect=serve),
+        ):
+            self.assertEqual([], verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN", False))
         self.assertEqual([PULL_ENDPOINT, PULL_ENDPOINT + "/reviews"], requested)
 
     def test_an_attesting_commit_must_carry_this_proposal_revision(self) -> None:
@@ -478,10 +484,12 @@ class ReviewScmTest(RegistryTestCase):
         evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
         verify_proposal(package, self.repo / "memory", self.repo)
         absent = ["Git commit does not carry this Change Package at proposal"]
-        with patch("domain_registry.hitl.verify_external_scm", return_value=[]), \
-                patch("domain_registry.hitl.github_commit_carries_proposal", return_value=absent):
-            with self.assertRaisesRegex(ValueError, "not externally verified: Git commit does not carry"):
-                finalize_proposal(package, self.repo / "memory", self.repo)
+        with (
+            patch("domain_registry.hitl.verify_external_scm", return_value=[]),
+            patch("domain_registry.hitl.github_commit_carries_proposal", return_value=absent),
+            self.assertRaisesRegex(ValueError, "not externally verified: Git commit does not carry"),
+        ):
+            finalize_proposal(package, self.repo / "memory", self.repo)
         proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
         self.assertEqual("verified", proposal["status"])
 

@@ -71,7 +71,7 @@ class PolicyTest(RegistryTestCase):
     def test_each_limit_accepts_one_and_refuses_zero(self) -> None:
         sound = stored_policy_of(self.repo)
         keys = ("max_file_count", "max_file_bytes", "max_total_bytes", "max_query_results")
-        roomy = {key: 5 for key in keys}
+        roomy = dict.fromkeys(keys, 5)
         for key in keys:
             with self.subTest(f"{key} of one"):
                 self.assertEqual([], validate_policy({**sound, "limits": {**roomy, key: 1}}))

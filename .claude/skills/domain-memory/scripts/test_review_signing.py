@@ -206,9 +206,11 @@ class ReviewSigningTest(RegistryTestCase):
         key_file = self.repo / "keys" / "signing-key"
         label = "PRIVATE KEY"
         material = f"-----BEGIN OPENSSH {label}-----\nnot a key\n"
-        with patch.dict("os.environ", {SIGNING_KEY_ENV: material}):
-            with self.assertRaisesRegex(ValueError, "readable OpenSSH private key"):
-                init_signing_key(self.repo, "probe@example.com", key_file)
+        with (
+            patch.dict("os.environ", {SIGNING_KEY_ENV: material}),
+            self.assertRaisesRegex(ValueError, "readable OpenSSH private key"),
+        ):
+            init_signing_key(self.repo, "probe@example.com", key_file)
         self.assertFalse(key_file.exists())
 
     def test_the_reported_result_never_carries_private_key_material(self) -> None:
@@ -283,17 +285,14 @@ class ReviewSigningTest(RegistryTestCase):
             ["arthur@example.com"],
             ["SHA256:HMt6j4Woy7Beu896pq7/ApyBUR9qPWi/JJXlPBOVvnk"],
         ):
-            with self.subTest(authorized=authorized[0]):
-                with patch(
-                    "domain_registry.attestations.subprocess.run",
-                    side_effect=[signed, changed],
-                ):
-                    self.assertEqual(
-                        [],
-                        verify_git_signed_commit(
-                            attestation, self.repo, registry_root, authorized
-                        ),
-                    )
+            with (
+                self.subTest(authorized=authorized[0]),
+                patch("domain_registry.attestations.subprocess.run", side_effect=[signed, changed]),
+            ):
+                self.assertEqual(
+                    [],
+                    verify_git_signed_commit(attestation, self.repo, registry_root, authorized),
+                )
         with patch(
             "domain_registry.attestations.subprocess.run", side_effect=[signed, changed]
         ):

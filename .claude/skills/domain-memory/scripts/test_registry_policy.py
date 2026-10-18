@@ -103,9 +103,8 @@ class RegistryPolicyTest(RegistryTestCase):
             parsed(field="ci_requirement", value="required", set=["review_mode=scm-verified"]),
             parsed(set=["review_mode"]),
         ):
-            with self.subTest(refused=vars(refused)):
-                with self.assertRaises(ValueError):
-                    policy_assignments(refused)
+            with self.subTest(refused=vars(refused)), self.assertRaises(ValueError):
+                policy_assignments(refused)
 
     def test_a_policy_can_leave_local_draft_only_for_external_review(self) -> None:
         amend_policy(

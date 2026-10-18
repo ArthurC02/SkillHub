@@ -488,7 +488,7 @@ class SourcesTest(RegistryTestCase):
              "unverified", "source map snapshots do not match selected_paths"),
             ("a path outside the repository", escaping, None,
              "invalid", "source path escapes repository: ../outside"),
-            ("a policy selecting other paths", lambda value: None, ["other"],
+            ("a policy selecting other paths", lambda _value: None, ["other"],
              "invalid", "policy selected_paths do not match the source map"),
         ]
         for label, change, policy_paths, status, reason in cases:

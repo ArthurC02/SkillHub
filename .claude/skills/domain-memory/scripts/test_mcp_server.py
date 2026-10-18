@@ -33,7 +33,7 @@ def request(identifier: object, method: str, **params: object) -> str:
     return json.dumps({"jsonrpc": "2.0", "id": identifier, "method": method, "params": params}, ensure_ascii=False)
 
 
-def raising_command(words: list[str]) -> int:
+def raising_command(_words: list[str]) -> int:
     raise RuntimeError("broken handler")
 
 

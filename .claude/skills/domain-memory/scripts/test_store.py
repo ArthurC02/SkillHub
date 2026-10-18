@@ -10,7 +10,7 @@ from unittest.mock import patch
 from domain_registry.audit import read_events, reviewing_proposals
 from domain_registry.common import ASSET_KEYS, registry_dir, write_json
 from domain_registry.okf import encode
-from domain_registry.registry import migrate_registry
+from domain_registry.registry import init_registry, migrate_registry
 from domain_registry.revision import registry_digest
 from domain_registry.store import (
     read_record,
@@ -227,6 +227,12 @@ class MigrationTest(RegistryTestCase):
 
 
 class DigestAndHistoryTest(RegistryTestCase):
+    def test_an_empty_registry_keeps_the_digest_committed_packages_were_stamped_with(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "memory"
+            init_registry(root)
+            self.assertEqual("sha256:4a0def5bc16e39e03b939ef5f61f4dcc0c3d89f4e54f27a967c216a14720a324", registry_digest(root))
+
     def test_the_digest_does_not_depend_on_record_order(self) -> None:
         self.legacy_registry_with([REFUND_RULE, ORDER_RULE])
         first = registry_digest(self.repo / "memory")

@@ -424,15 +424,16 @@ class CounterfactualTest(RepositoryCase):
 
     def test_a_suite_without_mutations_is_refused(self) -> None:
         for suite in ({}, {"mutations": []}, [], {"mutations": "x"}):
-            with self.subTest(suite):
-                with self.assertRaisesRegex(ValueError, "mutations is a non-empty list"):
-                    counterfactual_suite(self.repo, suite)
+            with self.subTest(suite), self.assertRaisesRegex(ValueError, "mutations is a non-empty list"):
+                counterfactual_suite(self.repo, suite)
 
     def test_a_passing_run_in_which_no_test_ran_proves_nothing(self) -> None:
         intact = TestRun(0, "Ran 0 tests in 0.000s\n\nOK")
-        with patch.object(counterfactual_module, "run_tests", side_effect=[intact]):
-            with self.assertRaisesRegex(ValueError, "^the tests pass before anything is broken, but unittest ran no test"):
-                self.break_rule("LIMIT = 200", "LIMIT = 201")
+        with (
+            patch.object(counterfactual_module, "run_tests", side_effect=[intact]),
+            self.assertRaisesRegex(ValueError, "^the tests pass before anything is broken, but unittest ran no test"),
+        ):
+            self.break_rule("LIMIT = 200", "LIMIT = 201")
         with patch.object(counterfactual_module, "run_tests", side_effect=[TestRun(0, "Ran 1 test in 0.0s\n\nOK"), intact]):
             result = self.break_rule("LIMIT = 200", "LIMIT = 201")
         self.assertEqual(
