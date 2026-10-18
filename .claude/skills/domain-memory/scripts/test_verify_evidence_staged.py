@@ -61,7 +61,8 @@ class VerifyStagedEvidenceTest(RegistryTestCase):
         code, report, stderr = self.verify_staged("src/a.py")
         self.assertEqual(
             (1, {"status": "missing", "path": "src/a.py"}, {"citations": 1, "exists": False},
-             "rules/cited-rule: src/a.py is missing\nverify-evidence failed: 1 missing citation\n"),
+             "rules/cited-rule: src/a.py is not in this commit; relocate-evidence if it moved, otherwise amend or "
+             "retire the record\nverify-evidence failed: 1 missing citation\n"),
             (code, {key: report["results"][0][key] for key in ("status", "path")}, report["paths"]["src/a.py"], stderr),
         )
 
@@ -94,6 +95,17 @@ class VerifyStagedEvidenceTest(RegistryTestCase):
             code, report, _ = self.verify_staged("src/a.py", repo_root=outside)
         self.assertEqual(1, code)
         self.assertTrue(report.startswith(f"ERROR: could not read the Git index of {outside}: "), report)
+
+    def test_without_staged_a_cited_file_missing_from_the_disk_keeps_the_unstaged_message(self) -> None:
+        (self.repo / "src" / "a.py").unlink()
+        result = self.run_cli(
+            "verify-evidence", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+            "--path", "src/a.py",
+        )
+        self.assertEqual(
+            (1, "missing", "verify-evidence failed: 1 missing citations; run recite on each to cite its current lines\n"),
+            (result.returncode, json.loads(result.stdout)["results"][0]["status"], result.stderr),
+        )
 
     def test_without_staged_the_disk_is_verified_and_the_message_is_unchanged(self) -> None:
         self.write("changed\ntwo\n")

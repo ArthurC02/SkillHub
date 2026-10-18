@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.92.0
+
+### Fixed
+
+- The pre-commit hook checks deletions and renames as well as additions and edits. Before, `git rm` of a cited file never reached `verify-evidence --staged`, and a rename was checked only under its new name, which nothing cites, so both commits went through and left every rule citing that file citing nothing. The hook now checks the old and new path of a rename and the path of a deletion, `verify-evidence --staged` says a missing citation's path "is not in this commit" and points at `relocate-evidence`, and the hook adds the exact `relocate-evidence --from <old> --to <new>` line for each rename. The reference also notes that a hook installed under a tracked `core.hooksPath` changes every clone's commits, so that install is the repository owner's decision.
+
 ## 0.91.0
 
 ### Added

@@ -25,7 +25,11 @@ STALE_FIRST_LINE_OF_A = (
     "rules/cited-rule: src/a.py:1-1 changed; check that its statement still holds; recite only if it does, "
     "otherwise amend it"
 )
-REFUSAL_OF_A = f"{STALE_FIRST_LINE_OF_A}\nverify-evidence failed: 1 stale citation\n{FULL_REPORT_OF_A}\n"
+MISSING_LINE_OF_A = (
+    "rules/cited-rule: src/a.py is not in this commit; relocate-evidence if it moved, "
+    "otherwise amend or retire the record\n"
+)
+REFUSAL_OF_A =f"{STALE_FIRST_LINE_OF_A}\nverify-evidence failed: 1 stale citation\n{FULL_REPORT_OF_A}\n"
 EXISTING_FROM_GIT = '="$(git rev-parse --git-path hooks)/pre-commit.domain-memory-existing" || exit 1\n'
 NO_PYTHON = "no Python 3.10 or later on PATH as python3 or python"
 NOTE = "NOTE: domain-memory pre-commit:"
@@ -197,12 +201,46 @@ class PreCommitHookTest(RegistryTestCase):
         result = self.commit_hook(hook, self.shims("exit 1"))
         self.assertEqual((0, ""), (result.returncode, result.stderr))
 
-    def test_a_commit_staging_only_a_deletion_needs_no_python(self) -> None:
+    def test_a_commit_staging_only_the_deletion_of_an_uncited_file_needs_no_python(self) -> None:
+        self.cited_source()
+        self.stage("notes/uncited.md", "anything\n")
+        self.commit_all("add uncited")
+        hook = self.install()
+        self.git("rm", "-q", "notes/uncited.md")
+        result = self.commit_hook(hook, self.shims("exit 1"))
+        self.assertEqual((0, ""), (result.returncode, result.stderr))
+
+    def test_deleting_a_cited_file_stops_the_commit_and_names_the_record_and_path(self) -> None:
         self.cited_source()
         hook = self.install()
         self.git("rm", "-q", "src/a.py")
-        result = self.commit_hook(hook, self.shims("exit 1"))
-        self.assertEqual((0, ""), (result.returncode, result.stderr))
+        result = self.commit_hook(hook)
+        self.assertEqual((1, MISSING_LINE_OF_A + f"verify-evidence failed: 1 missing citation\n{FULL_REPORT_OF_A}\n"),
+                         (result.returncode, result.stderr))
+
+    def test_renaming_a_cited_file_stops_the_commit_and_names_the_relocation(self) -> None:
+        self.cited_source()
+        hook = self.install()
+        self.git("mv", "src/a.py", "src/b.py")
+        result = self.commit_hook(hook)
+        self.assertEqual(
+            (1, MISSING_LINE_OF_A + "verify-evidence failed: 1 missing citation\n"
+                "src/a.py is renamed to src/b.py in this commit; run relocate-evidence --from src/a.py --to src/b.py\n"
+                f"{REFUSED_STALE}; the full report: verify-evidence --registry-root memory --repo-root . --staged "
+                "--path src/a.py --path src/b.py, or commit again with DOMAIN_MEMORY_HOOK_VERBOSE=1\n"),
+            (result.returncode, result.stderr),
+        )
+
+    def test_a_rename_commits_once_relocate_evidence_has_moved_the_citations(self) -> None:
+        self.cited_source()
+        hook = self.install()
+        self.git("mv", "src/a.py", "src/b.py")
+        relocated = self.run_cli("relocate-evidence", "--registry-root", str(self.repo / "memory"),
+                                 "--repo-root", str(self.repo), "--from", "src/a.py", "--to", "src/b.py")
+        proposal = json.loads(relocated.stdout)
+        self.seed("rules.json", [item["record"] for item in proposal["registry_updates"] + proposal["candidates"]])
+        result = self.commit_hook(hook)
+        self.assertEqual((0, f"{UNMAPPED_NOTE}\n"), (result.returncode, result.stderr))
 
     def test_a_cited_file_staged_where_no_python_works_stops_the_commit(self) -> None:
         self.cited_source()

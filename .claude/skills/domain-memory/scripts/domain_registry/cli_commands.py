@@ -726,6 +726,8 @@ def _failing_citation_line(item: dict) -> str:
     record = f"{item['asset']}/{item['id']}"
     if item["status"] == "stale":
         return f"{record}: {span} changed; check that its statement still holds; recite only if it does, otherwise amend it"
+    if item["status"] == "missing":
+        return f"{record}: {item['path']} is not in this commit; relocate-evidence if it moved, otherwise amend or retire the record"
     return f"{record}: {span} is {item['status']}" + (f"; {item['reason']}" if "reason" in item else "")
 
 
