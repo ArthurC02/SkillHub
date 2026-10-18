@@ -1,0 +1,249 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "credit-ledger-rules-2026-10-18",
+  "proposal_id": "credit-ledger-rules-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "9924ab39f2d8e34d2c626922a3f9902c4a6ce604",
+    "registry_digest": "sha256:a022d8f0ed6e126157e92cce14b196ee88798feb6ed4cbd28aff2f2b5ff54c51"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-start-statistics-older-than-their-shelf-life-are-not-trusted",
+      "mutated_protection": "apps/platform/internal/creator/credit/service.go:230: time.Since(stats.WindowEnd) > MaxStatisticsAge -> time.Since(stats.WindowEnd) > MaxStatisticsAge && false",
+      "failure_evidence": "=== RUN   TestStatisticsPastTheirShelfLifeFallBackToTheConservativeThreshold\n=== RUN   TestStatisticsPastTheirShelfLifeFallBackToTheConservativeThreshold/an_hour_inside_the_shelf_life\n=== RUN   TestStatisticsPastTheirShelfLifeFallBackToTheConservativeThreshold/an_hour_past_the_shelf_life\n    service_test.go:657: threshold = 39000 (estimated false), want 70 (estimated true)\n--- FAIL: TestStatisticsPastTheirShelfLifeFallBackToTheConservativeThreshold (0.00s)\n    --- PASS: TestStatisticsPastTheirShelfLifeFallBackToTheConservativeThreshold/an_hour_inside_the_shelf_life (0.00s)\n    --- FAIL: TestStatisticsPastTheirShelfLifeFallBackToTheConservativeThreshold/an_hour_past_the_shelf_life (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t2.139s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-start-statistics-need-the-minimum-sample-count",
+      "mutated_protection": "apps/platform/internal/creator/credit/service.go:230: stats.SampleCount < MinStatSamples -> stats.SampleCount <= MinStatSamples",
+      "failure_evidence": "=== RUN   TestCanStartUsesP95WithMarkupWhenEnoughSamples\n    service_test.go:271: Threshold = 70, want 39000 (30 USD p95 at 130% markup, 1000 micros per credit)\n--- FAIL: TestCanStartUsesP95WithMarkupWhenEnoughSamples (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t2.178s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-balance-exactly-at-the-start-threshold-may-start",
+      "mutated_protection": "apps/platform/internal/creator/credit/service.go:214: balance >= threshold -> balance > threshold",
+      "failure_evidence": "=== RUN   TestCanStartAllowsAStartExactlyAtTheThreshold\n    service_test.go:306: balance 70 against the fallback threshold 70: OK = false, want true\n--- FAIL: TestCanStartAllowsAStartExactlyAtTheThreshold (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t2.099s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-spend-is-recorded-even-after-its-request-was-cancelled",
+      "mutated_protection": "apps/platform/internal/creator/credit/service.go:69: context.WithoutCancel(ctx) -> ctx",
+      "failure_evidence": "=== RUN   TestASpendIsRecordedEvenWhenTheRequestThatMadeItWasCancelled\n    service_test.go:703: recording a spend after the caller went away: context canceled\n--- FAIL: TestASpendIsRecordedEvenWhenTheRequestThatMadeItWasCancelled (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t2.785s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-replayed-grant-applies-and-audits-once",
+      "mutated_protection": "apps/platform/internal/creator/credit/service.go:372: if !applied { -> if !applied && false {",
+      "failure_evidence": "=== RUN   TestReplayingAGrantKeyGrantsAndAuditsOnce\n    service_test.go:417: audit writes after the grant and its replay = 2, want 1\n--- FAIL: TestReplayingAGrantKeyGrantsAndAuditsOnce (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t2.475s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-only-the-session-statistic-sweeps-idle-sessions",
+      "mutated_protection": "apps/platform/internal/creator/credit/service.go:391: statKind == KindCreationSession && s.Config.SessionIdle > 0 -> s.Config.SessionIdle > 0",
+      "failure_evidence": "=== RUN   TestRecomputeStatisticsSweepsSessionSummariesOnlyForTheSessionKind\n=== RUN   TestRecomputeStatisticsSweepsSessionSummariesOnlyForTheSessionKind/a_session_statistic_sweeps_idle_sessions_first\n=== RUN   TestRecomputeStatisticsSweepsSessionSummariesOnlyForTheSessionKind/a_session_statistic_without_an_idle_window_does_not_sweep\n=== RUN   TestRecomputeStatisticsSweepsSessionSummariesOnlyForTheSessionKind/a_cost-event_statistic_leaves_the_sessions_alone\n    service_test.go:532: swept the session summaries 1 time(s), want 0\n--- FAIL: TestRecomputeStatisticsSweepsSessionSummariesOnlyForTheSessionKind (0.00s)\n    --- PASS: TestRecomputeStatisticsSweepsSessionSummariesOnlyForTheSessionKind/a_session_statistic_sweeps_idle_sessions_first (0.00s)\n    --- PASS: TestRecomputeStatisticsSweepsSessionSummariesOnlyForTheSessionKind/a_session_statistic_without_an_idle_window_does_not_sweep (0.00s)\n    --- FAIL: TestRecomputeStatisticsSweepsSessionSummariesOnlyForTheSessionKind/a_cost-event_statistic_leaves_the_sessions_alone (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t1.874s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-session-summary-is-estimated-if-any-step-was",
+      "mutated_protection": "apps/platform/internal/creator/credit/summary.go:32: summary.estimated || step.source == CostSourceEstimated -> step.source == CostSourceEstimated",
+      "failure_evidence": "=== RUN   TestASessionSummaryAddsEveryStepAndBelongsToWhoeverTookTheLastOne\n    summary_test.go:32: an estimated step marks the whole session estimated: summary = {sessionID:{Bytes:[9 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] Valid:true} userID:{Bytes:[1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] Valid:true} usdMicros:9000 steps:3 estimated:false lastStepAt:{Time:{wall:0 ext:63925243380 loc:<nil>} InfinityModifier:0 Valid:true}}, want {sessionID:{Bytes:[9 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] Valid:true} userID:{Bytes:[1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] Valid:true} usdMicros:9000 steps:3 estimated:true lastStepAt:{Time:{wall:0 ext:63925243380 loc:<nil>} InfinityModifier:0 Valid:true}}\n--- FAIL: TestASessionSummaryAddsEveryStepAndBelongsToWhoeverTookTheLastOne (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t2.315s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-markup-no-charge-can-use-is-refused-at-startup",
+      "mutated_protection": "apps/platform/internal/creator/credit/config.go:36: markupBps > MaxMarkupBps -> markupBps > MaxMarkupBps+1",
+      "failure_evidence": "=== RUN   TestNewConfigFailsClosedOnAMarkupNoChargeCanUse\n    config_test.go:69: CREDIT_MARKUP_BPS=1000001 must fail at startup: every charge would be refused and every call would go unbilled\n--- FAIL: TestNewConfigFailsClosedOnAMarkupNoChargeCanUse (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t1.975s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-debt-floor-above-zero-is-refused-at-startup",
+      "mutated_protection": "apps/platform/internal/creator/credit/config.go:40: floor > 0 -> floor > 1",
+      "failure_evidence": "=== RUN   TestNewConfigFailsClosedOnPositiveDebtFloor\n    config_test.go:18: a positive CREDIT_DEBT_FLOOR must fail closed: the floor caps how negative a balance may go\n--- FAIL: TestNewConfigFailsClosedOnPositiveDebtFloor (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t2.141s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-cost-event-needs-a-kind-and-an-idempotency-key",
+      "mutated_protection": "apps/platform/internal/creator/credit/service.go:66: if e.Kind == \"\" || e.IdempotencyKey == \"\" { -> if false {",
+      "failure_evidence": "=== RUN   TestACostEventWithoutAKindOrKeyIsRefused\n=== RUN   TestACostEventWithoutAKindOrKeyIsRefused/no_kind\n    refusals_test.go:24: RecordCost = <nil>, want ErrInvalid\n=== RUN   TestACostEventWithoutAKindOrKeyIsRefused/no_idempotency_key\n    refusals_test.go:24: RecordCost = <nil>, want ErrInvalid\n--- FAIL: TestACostEventWithoutAKindOrKeyIsRefused (0.00s)\n    --- FAIL: TestACostEventWithoutAKindOrKeyIsRefused/no_kind (0.00s)\n    --- FAIL: TestACostEventWithoutAKindOrKeyIsRefused/no_idempotency_key (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t2.126s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-charge-needs-a-kind-a-key-and-a-user",
+      "mutated_protection": "apps/platform/internal/creator/credit/service.go:112: if in.Kind == \"\" || in.IdempotencyKey == \"\" || !in.UserID.Valid { -> if !in.UserID.Valid {",
+      "failure_evidence": "=== RUN   TestAChargeWithoutAKindOrKeyIsRefused\n=== RUN   TestAChargeWithoutAKindOrKeyIsRefused/no_kind\n    refusals_test.go:46: Charge = <nil>, want ErrInvalid\n=== RUN   TestAChargeWithoutAKindOrKeyIsRefused/no_idempotency_key\n    refusals_test.go:46: Charge = <nil>, want ErrInvalid\n--- FAIL: TestAChargeWithoutAKindOrKeyIsRefused (0.00s)\n    --- FAIL: TestAChargeWithoutAKindOrKeyIsRefused/no_kind (0.00s)\n    --- FAIL: TestAChargeWithoutAKindOrKeyIsRefused/no_idempotency_key (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t2.435s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-purged-account-cannot-pass-the-start-check",
+      "mutated_protection": "apps/platform/internal/creator/credit/service.go:203: if err := s.checkAccount(ctx, nil, userID); err != nil { return StartCheck{}, err -> if err := s.checkAccount(ctx, nil, userID); err != nil && false { return StartCheck{}, err",
+      "failure_evidence": "=== RUN   TestAPurgedAccountCannotPassTheStartCheck\n=== RUN   TestAPurgedAccountCannotPassTheStartCheck/purged\n    refusals_test.go:72: CanStart = {OK:true Balance:1000 Threshold:70 Estimated:true}, <nil>; want refused with ErrAccountGone\n=== RUN   TestAPurgedAccountCannotPassTheStartCheck/missing\n    refusals_test.go:72: CanStart = {OK:true Balance:1000 Threshold:70 Estimated:true}, <nil>; want refused with ErrAccountGone\n--- FAIL: TestAPurgedAccountCannotPassTheStartCheck (0.00s)\n    --- FAIL: TestAPurgedAccountCannotPassTheStartCheck/purged (0.00s)\n    --- FAIL: TestAPurgedAccountCannotPassTheStartCheck/missing (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t2.712s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-statement-page-holds-at-most-the-page-size-and-says-when-more-remain",
+      "mutated_protection": "apps/platform/internal/creator/credit/service.go:465: if len(entries) > StatementPageSize { -> if len(entries) > StatementPageSize+1 {",
+      "failure_evidence": "=== RUN   TestAStatementPageHoldsAtMostThePageSizeAndSaysWhenMoreRemain\n    refusals_test.go:105: 51 stored: 51 entries, more=false; want 50, more=true\n--- FAIL: TestAStatementPageHoldsAtMostThePageSizeAndSaysWhenMoreRemain (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t2.196s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/creator/credit/config.go",
+    "apps/platform/internal/creator/credit/config_test.go",
+    "apps/platform/internal/creator/credit/refusals_test.go",
+    "apps/platform/internal/creator/credit/service.go",
+    "apps/platform/internal/creator/credit/service_test.go",
+    "apps/platform/internal/creator/credit/summary.go",
+    "apps/platform/internal/creator/credit/summary_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-start-statistics-older-than-their-shelf-life-are-not-trusted",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestStatisticsPastTheirShelfLifeFallBackToTheConservativeThreshold$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:795e1a3dfeca4092343df7acad00e8d22947b0fca5938528e123cbd6f934ac29",
+      "finished_at": "2026-10-18T08:43:32.541000Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-start-statistics-need-the-minimum-sample-count",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestCanStartUsesP95WithMarkupWhenEnoughSamples$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:47c3fdab0f074e6dc8be3bd83a1fcb23a4c71043262c922e1256db67b5d3fd9d",
+      "finished_at": "2026-10-18T08:43:36.099790Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-balance-exactly-at-the-start-threshold-may-start",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestCanStartAllowsAStartExactlyAtTheThreshold$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ad0edc75378e76e4d5288831cd5e4bd1601ca3d765cf47f72943cf11cc951148",
+      "finished_at": "2026-10-18T08:43:39.332956Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-spend-is-recorded-even-after-its-request-was-cancelled",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestASpendIsRecordedEvenWhenTheRequestThatMadeItWasCancelled$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:74220b19cbd978a88ff480f0c0fbbd96a86847132d224757b806c6afe1600934",
+      "finished_at": "2026-10-18T08:43:42.808572Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-replayed-grant-applies-and-audits-once",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestReplayingAGrantKeyGrantsAndAuditsOnce$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:fc19c83c5dab04fef3cf4d8c8a2424044a368398eb9e330bad8501c6485ede17",
+      "finished_at": "2026-10-18T08:43:46.112244Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-only-the-session-statistic-sweeps-idle-sessions",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestRecomputeStatisticsSweepsSessionSummariesOnlyForTheSessionKind$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:963aac25903ae2e280a91dd692b101e0acef9cce73d6ee51cfce02afc342ed42",
+      "finished_at": "2026-10-18T08:43:50.583563Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-session-summary-is-estimated-if-any-step-was",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestASessionSummaryAddsEveryStepAndBelongsToWhoeverTookTheLastOne$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:583f402c2467a21bf68a915fb5d9d60e7c4d5126be9333eeb5ca6ae0b6d2b268",
+      "finished_at": "2026-10-18T08:43:54.409267Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-markup-no-charge-can-use-is-refused-at-startup",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestNewConfigFailsClosedOnAMarkupNoChargeCanUse$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:fb51adcfb997825d5b435600016f0cea0bb5f5bd143e0e318b10288c8c55816b",
+      "finished_at": "2026-10-18T08:43:58.697307Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-debt-floor-above-zero-is-refused-at-startup",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestNewConfigFailsClosedOnPositiveDebtFloor$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:319d87030bdb47f9a9abce21307809e18127c85baf53d99d7b716ec7991499b0",
+      "finished_at": "2026-10-18T08:44:02.228322Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-cost-event-needs-a-kind-and-an-idempotency-key",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestACostEventWithoutAKindOrKeyIsRefused$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:48dfcc541d21c41b9119f4fa96cb63d742e40a5d049f89dfb97484462616cf65",
+      "finished_at": "2026-10-18T08:44:06.118788Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-charge-needs-a-kind-a-key-and-a-user",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAChargeWithoutAKindOrKeyIsRefused$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:d33ab6d310645c1e56ea4b7534fc148c7d9d56d60cd74ca9697c5e530e4309e3",
+      "finished_at": "2026-10-18T08:44:09.416820Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-purged-account-cannot-pass-the-start-check",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAPurgedAccountCannotPassTheStartCheck$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f387aee551c1ff6b18998122a4cfc597dc24c503a9e187b61aabbed279b8afbd",
+      "finished_at": "2026-10-18T08:44:13.726987Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-statement-page-holds-at-most-the-page-size-and-says-when-more-remain",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAStatementPageHoldsAtMostThePageSizeAndSaysWhenMoreRemain$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:c17311f4acc2e71080abb225124c21e20a9fb10c18c106e83a8d0be5606131f7",
+      "finished_at": "2026-10-18T08:44:17.744478Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

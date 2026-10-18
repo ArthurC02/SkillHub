@@ -1,0 +1,515 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "credit-ledger-rules-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "credit-ledger-rules-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-18T08:43:28.672663Z",
+  "verified_at": "2026-10-18T08:44:17.856923Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "9924ab39f2d8e34d2c626922a3f9902c4a6ce604",
+    "registry_digest": "sha256:a022d8f0ed6e126157e92cce14b196ee88798feb6ed4cbd28aff2f2b5ff54c51"
+  },
+  "affected_contexts": [
+    "credit"
+  ],
+  "rule_ids": [
+    "start-statistics-older-than-their-shelf-life-are-not-trusted",
+    "start-statistics-need-the-minimum-sample-count",
+    "a-balance-exactly-at-the-start-threshold-may-start",
+    "a-spend-is-recorded-even-after-its-request-was-cancelled",
+    "a-replayed-grant-applies-and-audits-once",
+    "only-the-session-statistic-sweeps-idle-sessions",
+    "a-session-summary-is-estimated-if-any-step-was",
+    "a-markup-no-charge-can-use-is-refused-at-startup",
+    "a-debt-floor-above-zero-is-refused-at-startup",
+    "a-cost-event-needs-a-kind-and-an-idempotency-key",
+    "a-charge-needs-a-kind-a-key-and-a-user",
+    "a-purged-account-cannot-pass-the-start-check",
+    "a-statement-page-holds-at-most-the-page-size-and-says-when-more-remain"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "credit",
+    "invariant": "Only credit decides whether a paid call may start and what it costs.",
+    "evidence": [
+      "apps/platform/internal/creator/credit/service.go:199-215"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: account facts and the cost store reach credit through injected ports.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/creator/credit/service.go:203-205"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A second extraction of the credit Context found enforced rules beyond the ten the Registry held, four of them guarded by no test."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; add the missing tests; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording the negative billing check: the reviewed unpriceable-amount rule already holds it."
+    ],
+    "proof_obligations": [
+      "rule-start-statistics-older-than-their-shelf-life-are-not-trusted",
+      "rule-start-statistics-need-the-minimum-sample-count",
+      "rule-a-balance-exactly-at-the-start-threshold-may-start",
+      "rule-a-spend-is-recorded-even-after-its-request-was-cancelled",
+      "rule-a-replayed-grant-applies-and-audits-once",
+      "rule-only-the-session-statistic-sweeps-idle-sessions",
+      "rule-a-session-summary-is-estimated-if-any-step-was",
+      "rule-a-markup-no-charge-can-use-is-refused-at-startup",
+      "rule-a-debt-floor-above-zero-is-refused-at-startup",
+      "rule-a-cost-event-needs-a-kind-and-an-idempotency-key",
+      "rule-a-charge-needs-a-kind-a-key-and-a-user",
+      "rule-a-purged-account-cannot-pass-the-start-check",
+      "rule-a-statement-page-holds-at-most-the-page-size-and-says-when-more-remain"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "start-statistics-older-than-their-shelf-life-are-not-trusted",
+        "statement": "A start threshold uses recorded cost statistics only while their window ended within the statistics shelf life; older statistics give the fixed fallback, marked estimated.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "Statistics whose window ended an hour past the shelf life give the fallback threshold, estimated."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 229,
+              "end": 237
+            },
+            "excerpt_sha256": "sha256:791cb610132d5e1c6c39e30dd0d4fcaee07b7f67f2ed96518677eddd7aafae6a"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 638,
+              "end": 661
+            },
+            "excerpt_sha256": "sha256:8c6e45e215e08486154ae89da50bca52bcd0a335c5334e2ec483daf5c749b5a3"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "start-statistics-need-the-minimum-sample-count",
+        "statement": "With fewer samples than the minimum the start threshold is the fixed fallback, marked estimated; exactly the minimum is enough.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "19 samples give the fallback; 20 samples give the p95 threshold."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 229,
+              "end": 232
+            },
+            "excerpt_sha256": "sha256:95b01e58392589dc79e9ba8ca380c3aa282372a8f469b297f33ac9666815d81d"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 259,
+              "end": 276
+            },
+            "excerpt_sha256": "sha256:6087d7bb434fef20a4856241821a6870fcf1e2f6474fe3bec83cbe3f147baebe"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-balance-exactly-at-the-start-threshold-may-start",
+        "statement": "A start is allowed when the balance is at or above the start threshold; one credit below is refused.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "With a threshold of 70, a balance of 70 may start and 69 may not."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 199,
+              "end": 215
+            },
+            "excerpt_sha256": "sha256:89d86c46f2967ecea8a38db26a6adf304699937c1e77f8bf3dd77bc9e0a8669a"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 292,
+              "end": 309
+            },
+            "excerpt_sha256": "sha256:7b99d21ab7b8cfcd893debf6475ebd06e3d934140e033931c93368ce19f6f331"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-spend-is-recorded-even-after-its-request-was-cancelled",
+        "statement": "Recording a cost event ignores the caller's cancellation and runs under its own deadline, so a client disconnect cannot lose a cost event.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "Recording with an already-cancelled request still stores the event."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 69,
+              "end": 71
+            },
+            "excerpt_sha256": "sha256:5147efde9535d9d029557db52bc53d164b3b6d42c0fcfafb4329f546d4029e34"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 694,
+              "end": 711
+            },
+            "excerpt_sha256": "sha256:fed2319cb9d340487d77f75e1bd5423d87ae5e169f8ff944d5019a141be03b53"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-replayed-grant-applies-and-audits-once",
+        "statement": "Replaying a grant under the same key returns the current balance and writes no second audit event.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "Granting twice with the same key returns 50 both times and writes one audit event."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 365,
+              "end": 382
+            },
+            "excerpt_sha256": "sha256:7b3500f9ce846197bcfd87fa53339199ff7ca5c53ee6cff128183c379665d253"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 398,
+              "end": 419
+            },
+            "excerpt_sha256": "sha256:ef5d04abbe1616793a579ae5cc1cd81c9ecd8266a93a826aef11d4c37e55a006"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-the-session-statistic-sweeps-idle-sessions",
+        "statement": "Recomputing statistics sweeps idle session summaries first only for the creation session statistic and only when an idle window is configured.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "Recomputing the creation step statistic sweeps no sessions."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 389,
+              "end": 395
+            },
+            "excerpt_sha256": "sha256:9e57aa60aaac878cda5e538c489cdd412317eae73ab47d644347b12aafaa4834"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 512,
+              "end": 536
+            },
+            "excerpt_sha256": "sha256:c9d3a601965214aa804f9e09b878002d4470772cec1cfc93719b40388a71190a"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-session-summary-is-estimated-if-any-step-was",
+        "statement": "A session cost summary adds every step, belongs to the user of the last step, and is estimated when any step's cost was estimated.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "Steps priced by gateway, estimate and gateway give an estimated summary of three steps."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/summary.go",
+            "lines": {
+              "start": 27,
+              "end": 37
+            },
+            "excerpt_sha256": "sha256:ef999a58374c928fec77b47e5d737261b2722266dab4c1533247b0973c83cfbf"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/summary_test.go",
+            "lines": {
+              "start": 10,
+              "end": 38
+            },
+            "excerpt_sha256": "sha256:ebb82513356d756f044d7b54821192392a33f7a44b74189611ee20628d6adf72"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-markup-no-charge-can-use-is-refused-at-startup",
+        "statement": "Configuration refuses a markup above the largest one a charge can bill, so the service never starts with every call unbillable.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "A markup of 1,000,001 bps is refused; 1,000,000 is accepted."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/config.go",
+            "lines": {
+              "start": 36,
+              "end": 38
+            },
+            "excerpt_sha256": "sha256:1c9caa6ab661e4a6896755f1c9e187e90055e57a31f9674b9fddf3595ac10f41"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/config_test.go",
+            "lines": {
+              "start": 67,
+              "end": 71
+            },
+            "excerpt_sha256": "sha256:9e4236288350d16db066209e538719a146f3b1d873b6b451509172d7494ce4fe"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-debt-floor-above-zero-is-refused-at-startup",
+        "statement": "Configuration refuses a debt floor above zero, which would demand a surplus before any spend.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "A floor of 1 is refused; 0 and -50 are accepted."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/config.go",
+            "lines": {
+              "start": 40,
+              "end": 42
+            },
+            "excerpt_sha256": "sha256:7ad5af62915b8c6cb17858d4ccedb8a7a4b68a0b9cdee7664e3a9d3e4a9d9058"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/config_test.go",
+            "lines": {
+              "start": 16,
+              "end": 23
+            },
+            "excerpt_sha256": "sha256:d636e93e678cbf4c052fae6d4da346bc2506af8b90b2c3de4b8c516051ca30e9"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-cost-event-needs-a-kind-and-an-idempotency-key",
+        "statement": "A cost event without a kind or an idempotency key is refused as invalid and nothing is recorded.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "Recording a cost event with an empty idempotency key returns ErrInvalid."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 66,
+              "end": 68
+            },
+            "excerpt_sha256": "sha256:709351caed8ed335c9839910a2415842814ee6a1d52f3c763d472a876aa9b230"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/refusals_test.go",
+            "lines": {
+              "start": 12,
+              "end": 31
+            },
+            "excerpt_sha256": "sha256:f6161c4201b988831e7e53de7d6ab4ab3e50a3db9f81f3ff0174b574eac18d39"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-charge-needs-a-kind-a-key-and-a-user",
+        "statement": "A charge without a kind, an idempotency key or a user is refused as invalid.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "A charge with an empty kind returns ErrInvalid."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 112,
+              "end": 114
+            },
+            "excerpt_sha256": "sha256:2496f84c4da33eafa5b496a8012dbfcbe62e13a9541237f2e94a393ba88eac62"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/refusals_test.go",
+            "lines": {
+              "start": 33,
+              "end": 53
+            },
+            "excerpt_sha256": "sha256:23227243f6f0bbc82a85e42254fea3f8cf6125eb3cfce5d3e261985c951c06c8"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-purged-account-cannot-pass-the-start-check",
+        "statement": "The start check refuses an account that account facts report missing or purged, before reading any balance.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "CanStart for a purged user returns ErrAccountGone."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 203,
+              "end": 205
+            },
+            "excerpt_sha256": "sha256:a4f6aaec98f88c561d62415cb395499753cc6d506dd5ae367ca7c33e4c268e3d"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/refusals_test.go",
+            "lines": {
+              "start": 55,
+              "end": 76
+            },
+            "excerpt_sha256": "sha256:a34bc54f9b7c67a2cf3195059266049efa01990b9ae17777d84379ab70d4754d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-statement-page-holds-at-most-the-page-size-and-says-when-more-remain",
+        "statement": "A credit statement returns at most one page of entries and says whether more remain, by asking for one entry past the page.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "With 51 entries a statement returns 50 and says more remain; with 50 it says none remain."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 461,
+              "end": 469
+            },
+            "excerpt_sha256": "sha256:0734baf9caef3676d4f395afb2bd899fb910ac2400f6065a172bba6611fbf131"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/refusals_test.go",
+            "lines": {
+              "start": 89,
+              "end": 111
+            },
+            "excerpt_sha256": "sha256:08bd42221a5031af88f93868f9c240e18b23622e85aa7a0db217cea391dbe6ac"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-18T08:44:17.756466Z",
+      "scope": "Record credit ledger rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "9924ab39f2d8e34d2c626922a3f9902c4a6ce604",
+        "registry_digest": "sha256:a022d8f0ed6e126157e92cce14b196ee88798feb6ed4cbd28aff2f2b5ff54c51"
+      }
+    }
+  ]
+}

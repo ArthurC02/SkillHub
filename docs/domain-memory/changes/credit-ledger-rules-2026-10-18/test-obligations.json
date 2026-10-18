@@ -1,0 +1,202 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "credit-ledger-rules-2026-10-18",
+  "proposal_id": "credit-ledger-rules-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-start-statistics-older-than-their-shelf-life-are-not-trusted",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-start-statistics-older-than-their-shelf-life-are-not-trusted",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "start-statistics-older-than-their-shelf-life-are-not-trusted"
+        }
+      ],
+      "expected_outcome": "A start threshold uses recorded cost statistics only while their window ended within the statistics shelf life; older statistics give the fixed fallback, marked estimated.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestStatisticsPastTheirShelfLifeFallBackToTheConservativeThreshold$ ./internal/creator/credit/"
+    },
+    {
+      "id": "rule-start-statistics-need-the-minimum-sample-count",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-start-statistics-need-the-minimum-sample-count",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "start-statistics-need-the-minimum-sample-count"
+        }
+      ],
+      "expected_outcome": "With fewer samples than the minimum the start threshold is the fixed fallback, marked estimated; exactly the minimum is enough.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestCanStartUsesP95WithMarkupWhenEnoughSamples$ ./internal/creator/credit/"
+    },
+    {
+      "id": "rule-a-balance-exactly-at-the-start-threshold-may-start",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-balance-exactly-at-the-start-threshold-may-start",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-balance-exactly-at-the-start-threshold-may-start"
+        }
+      ],
+      "expected_outcome": "A start is allowed when the balance is at or above the start threshold; one credit below is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestCanStartAllowsAStartExactlyAtTheThreshold$ ./internal/creator/credit/"
+    },
+    {
+      "id": "rule-a-spend-is-recorded-even-after-its-request-was-cancelled",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-spend-is-recorded-even-after-its-request-was-cancelled",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-spend-is-recorded-even-after-its-request-was-cancelled"
+        }
+      ],
+      "expected_outcome": "Recording a cost event ignores the caller's cancellation and runs under its own deadline, so a client disconnect cannot lose a cost event.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestASpendIsRecordedEvenWhenTheRequestThatMadeItWasCancelled$ ./internal/creator/credit/"
+    },
+    {
+      "id": "rule-a-replayed-grant-applies-and-audits-once",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-replayed-grant-applies-and-audits-once",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-replayed-grant-applies-and-audits-once"
+        }
+      ],
+      "expected_outcome": "Replaying a grant under the same key returns the current balance and writes no second audit event.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestReplayingAGrantKeyGrantsAndAuditsOnce$ ./internal/creator/credit/"
+    },
+    {
+      "id": "rule-only-the-session-statistic-sweeps-idle-sessions",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-only-the-session-statistic-sweeps-idle-sessions",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "only-the-session-statistic-sweeps-idle-sessions"
+        }
+      ],
+      "expected_outcome": "Recomputing statistics sweeps idle session summaries first only for the creation session statistic and only when an idle window is configured.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestRecomputeStatisticsSweepsSessionSummariesOnlyForTheSessionKind$ ./internal/creator/credit/"
+    },
+    {
+      "id": "rule-a-session-summary-is-estimated-if-any-step-was",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-session-summary-is-estimated-if-any-step-was",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-session-summary-is-estimated-if-any-step-was"
+        }
+      ],
+      "expected_outcome": "A session cost summary adds every step, belongs to the user of the last step, and is estimated when any step's cost was estimated.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestASessionSummaryAddsEveryStepAndBelongsToWhoeverTookTheLastOne$ ./internal/creator/credit/"
+    },
+    {
+      "id": "rule-a-markup-no-charge-can-use-is-refused-at-startup",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-markup-no-charge-can-use-is-refused-at-startup",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-markup-no-charge-can-use-is-refused-at-startup"
+        }
+      ],
+      "expected_outcome": "Configuration refuses a markup above the largest one a charge can bill, so the service never starts with every call unbillable.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestNewConfigFailsClosedOnAMarkupNoChargeCanUse$ ./internal/creator/credit/"
+    },
+    {
+      "id": "rule-a-debt-floor-above-zero-is-refused-at-startup",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-debt-floor-above-zero-is-refused-at-startup",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-debt-floor-above-zero-is-refused-at-startup"
+        }
+      ],
+      "expected_outcome": "Configuration refuses a debt floor above zero, which would demand a surplus before any spend.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestNewConfigFailsClosedOnPositiveDebtFloor$ ./internal/creator/credit/"
+    },
+    {
+      "id": "rule-a-cost-event-needs-a-kind-and-an-idempotency-key",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-cost-event-needs-a-kind-and-an-idempotency-key",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-cost-event-needs-a-kind-and-an-idempotency-key"
+        }
+      ],
+      "expected_outcome": "A cost event without a kind or an idempotency key is refused as invalid and nothing is recorded.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestACostEventWithoutAKindOrKeyIsRefused$ ./internal/creator/credit/"
+    },
+    {
+      "id": "rule-a-charge-needs-a-kind-a-key-and-a-user",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-charge-needs-a-kind-a-key-and-a-user",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-charge-needs-a-kind-a-key-and-a-user"
+        }
+      ],
+      "expected_outcome": "A charge without a kind, an idempotency key or a user is refused as invalid.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAChargeWithoutAKindOrKeyIsRefused$ ./internal/creator/credit/"
+    },
+    {
+      "id": "rule-a-purged-account-cannot-pass-the-start-check",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-purged-account-cannot-pass-the-start-check",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-purged-account-cannot-pass-the-start-check"
+        }
+      ],
+      "expected_outcome": "The start check refuses an account that account facts report missing or purged, before reading any balance.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAPurgedAccountCannotPassTheStartCheck$ ./internal/creator/credit/"
+    },
+    {
+      "id": "rule-a-statement-page-holds-at-most-the-page-size-and-says-when-more-remain",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-statement-page-holds-at-most-the-page-size-and-says-when-more-remain",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-statement-page-holds-at-most-the-page-size-and-says-when-more-remain"
+        }
+      ],
+      "expected_outcome": "A credit statement returns at most one page of entries and says whether more remain, by asking for one entry past the page.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAStatementPageHoldsAtMostThePageSizeAndSaysWhenMoreRemain$ ./internal/creator/credit/"
+    }
+  ]
+}

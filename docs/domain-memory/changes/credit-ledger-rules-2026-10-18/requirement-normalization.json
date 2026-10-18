@@ -1,0 +1,75 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "credit-ledger-rules-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed the start threshold, recording, grant replay, statistics, summary, configuration and statement rules the credit Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context credit lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-start-statistics-older-than-their-shelf-life-are-not-trusted",
+      "statement": "A start threshold uses recorded cost statistics only while their window ended within the statistics shelf life; older statistics give the fixed fallback, marked estimated."
+    },
+    {
+      "id": "enforced-start-statistics-need-the-minimum-sample-count",
+      "statement": "With fewer samples than the minimum the start threshold is the fixed fallback, marked estimated; exactly the minimum is enough."
+    },
+    {
+      "id": "enforced-a-balance-exactly-at-the-start-threshold-may-start",
+      "statement": "A start is allowed when the balance is at or above the start threshold; one credit below is refused."
+    },
+    {
+      "id": "enforced-a-spend-is-recorded-even-after-its-request-was-cancelled",
+      "statement": "Recording a cost event ignores the caller's cancellation and runs under its own deadline, so a client disconnect cannot lose a cost event."
+    },
+    {
+      "id": "enforced-a-replayed-grant-applies-and-audits-once",
+      "statement": "Replaying a grant under the same key returns the current balance and writes no second audit event."
+    },
+    {
+      "id": "enforced-only-the-session-statistic-sweeps-idle-sessions",
+      "statement": "Recomputing statistics sweeps idle session summaries first only for the creation session statistic and only when an idle window is configured."
+    },
+    {
+      "id": "enforced-a-session-summary-is-estimated-if-any-step-was",
+      "statement": "A session cost summary adds every step, belongs to the user of the last step, and is estimated when any step's cost was estimated."
+    },
+    {
+      "id": "enforced-a-markup-no-charge-can-use-is-refused-at-startup",
+      "statement": "Configuration refuses a markup above the largest one a charge can bill, so the service never starts with every call unbillable."
+    },
+    {
+      "id": "enforced-a-debt-floor-above-zero-is-refused-at-startup",
+      "statement": "Configuration refuses a debt floor above zero, which would demand a surplus before any spend."
+    },
+    {
+      "id": "enforced-a-cost-event-needs-a-kind-and-an-idempotency-key",
+      "statement": "A cost event without a kind or an idempotency key is refused as invalid and nothing is recorded."
+    },
+    {
+      "id": "enforced-a-charge-needs-a-kind-a-key-and-a-user",
+      "statement": "A charge without a kind, an idempotency key or a user is refused as invalid."
+    },
+    {
+      "id": "enforced-a-purged-account-cannot-pass-the-start-check",
+      "statement": "The start check refuses an account that account facts report missing or purged, before reading any balance."
+    },
+    {
+      "id": "enforced-a-statement-page-holds-at-most-the-page-size-and-says-when-more-remain",
+      "statement": "A credit statement returns at most one page of entries and says whether more remain, by asking for one entry past the page."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/creator/credit/config.go",
+    "apps/platform/internal/creator/credit/config_test.go",
+    "apps/platform/internal/creator/credit/refusals_test.go",
+    "apps/platform/internal/creator/credit/service.go",
+    "apps/platform/internal/creator/credit/service_test.go",
+    "apps/platform/internal/creator/credit/summary.go",
+    "apps/platform/internal/creator/credit/summary_test.go"
+  ]
+}
