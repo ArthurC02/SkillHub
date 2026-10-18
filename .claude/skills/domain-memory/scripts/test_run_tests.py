@@ -32,6 +32,11 @@ class RunTestsTest(unittest.TestCase):
             lines[-1].startswith("2 modules in ") and lines[-1].endswith("with 2 jobs; failed: test_two"),
         ))
 
+    def test_a_module_holding_no_tests_is_skipped_rather_than_failed(self) -> None:
+        code, output = self.run_in({"test_one": PASSING, "test_support": "import unittest\n"}, "--jobs", "2")
+        lines = output.splitlines()
+        self.assertEqual((0, "skip test_support", True), (code, lines[1][:17], lines[-1].endswith("failed: none")))
+
     def test_named_modules_run_alone_and_a_green_run_exits_zero(self) -> None:
         code, output = self.run_in({"test_one": PASSING, "test_two": FAILING}, "test_one")
         self.assertEqual((0, True, True), (code, "test_two" not in output.split("failed:")[0], output.rstrip().endswith("failed: none")))

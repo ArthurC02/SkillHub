@@ -165,7 +165,7 @@ class VerifySourcesDriftTest(RegistryTestCase):
                 "stale",
                 ["tests/test_new.py"],
                 "NOTE: discovery drifted: 0 listed paths gone, 1 matching path unlisted; "
-                "run refresh-sources, then confirm-sources",
+                "the selection is stale, so run refresh-sources, then confirm-sources",
             ),
             (
                 result.returncode,

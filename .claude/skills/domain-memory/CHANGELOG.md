@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.1.1
+
+### Fixed
+
+- `run_tests.py` marks a module in which no test ran as `skip` instead of `ok` or `FAIL`, so the helper module `test_support` no longer fails the run on Python 3.12 and later, where unittest exits 5 when it ran nothing. The line stays visible, so a module whose tests vanished is still noticed.
+- Two hints read as instructions an agent would follow literally. The pre-commit refusal now ends with `details: verify-evidence … --staged … prints the full report, as this hook does when DOMAIN_MEMORY_HOOK_VERBOSE is set` instead of telling the user to commit again with the variable set. The `verify-sources` drift NOTE for a map whose selection is not current says why it points at `refresh-sources`: `the selection is <status>, so run refresh-sources, then confirm-sources`; a `discovery_drifted` map keeps pointing at `refresh-listing`.
+
 ## 1.1.0
 
 ### Fixed

@@ -751,7 +751,7 @@ def discovery_drift_note(result: dict[str, Any]) -> str | None:
     advice = (
         "run refresh-listing (no confirmation needed)"
         if result.get("status") == "discovery_drifted"
-        else "run refresh-sources, then confirm-sources"
+        else f"the selection is {result.get('status')}, so run refresh-sources, then confirm-sources"
     )
     changed_inside = len(result.get("content_changed", []))
     inside = (

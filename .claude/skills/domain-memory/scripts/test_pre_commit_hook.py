@@ -18,8 +18,8 @@ TOOL = Path(__file__).resolve().parent / "registry_tools.py"
 REAL_PYTHON = Path(sys.executable).as_posix()
 REFUSED_STALE = "domain-memory pre-commit: a staged file no longer matches what the Registry cites from it"
 FULL_REPORT_OF_A = (
-    f"{REFUSED_STALE}; the full report: verify-evidence --registry-root memory --repo-root . --staged "
-    "--path src/a.py, or commit again with DOMAIN_MEMORY_HOOK_VERBOSE=1"
+    f"{REFUSED_STALE}; details: verify-evidence --registry-root memory --repo-root . --staged "
+    "--path src/a.py prints the full report, as this hook does when DOMAIN_MEMORY_HOOK_VERBOSE is set"
 )
 STALE_FIRST_LINE_OF_A = (
     "rules/cited-rule: src/a.py:1-1 changed; check that its statement still holds; recite only if it does, "
@@ -226,8 +226,9 @@ class PreCommitHookTest(RegistryTestCase):
         self.assertEqual(
             (1, MISSING_LINE_OF_A + "verify-evidence failed: 1 missing citation\n"
                 "src/a.py is renamed to src/b.py in this commit; run relocate-evidence --from src/a.py --to src/b.py\n"
-                f"{REFUSED_STALE}; the full report: verify-evidence --registry-root memory --repo-root . --staged "
-                "--path src/a.py --path src/b.py, or commit again with DOMAIN_MEMORY_HOOK_VERBOSE=1\n"),
+                f"{REFUSED_STALE}; details: verify-evidence --registry-root memory --repo-root . --staged "
+                "--path src/a.py --path src/b.py prints the full report, as this hook does when "
+                "DOMAIN_MEMORY_HOOK_VERBOSE is set\n"),
             (result.returncode, result.stderr),
         )
 
@@ -240,8 +241,9 @@ class PreCommitHookTest(RegistryTestCase):
         self.assertEqual(
             (1, MISSING_LINE_OF_A + "verify-evidence failed: 1 missing citation\n"
                 "src/a.py is renamed to src/b.py in this commit; run relocate-evidence --from src/a.py --to src/b.py\n"
-                f"{REFUSED_STALE}; the full report: verify-evidence --registry-root memory --repo-root . --staged "
-                "--path src/a.py --path src/b.py, or commit again with DOMAIN_MEMORY_HOOK_VERBOSE=1\n"),
+                f"{REFUSED_STALE}; details: verify-evidence --registry-root memory --repo-root . --staged "
+                "--path src/a.py --path src/b.py prints the full report, as this hook does when "
+                "DOMAIN_MEMORY_HOOK_VERBOSE is set\n"),
             (result.returncode, result.stderr),
         )
 

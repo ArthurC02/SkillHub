@@ -18,6 +18,15 @@ def test_modules(root: Path, chosen: list[str]) -> list[str]:
     return sorted(path.stem for path in root.glob("test_*.py"))
 
 
+FAILED, PASSED, NO_TESTS = "FAIL", "ok  ", "skip"
+
+
+def status_of(code: int, output: str) -> str:
+    if "Ran 0 tests" in output:
+        return NO_TESTS
+    return PASSED if code == 0 else FAILED
+
+
 def run_module(root: Path, python: str, module: str) -> tuple[str, int, str, float]:
     started = time.monotonic()
     completed = subprocess.run(
@@ -42,8 +51,9 @@ def main(argv: list[str] | None = None) -> int:
     failed = []
     for module, code, output, seconds in results:
         tail = " ".join(line for line in output.strip().splitlines()[-SUMMARY_TAIL:] if line.startswith(("Ran ", "OK", "FAILED")))
-        print(f"{'ok  ' if code == 0 else 'FAIL'} {module} {seconds:.1f}s {tail}")
-        if code != 0:
+        status = status_of(code, output)
+        print(f"{status} {module} {seconds:.1f}s {tail}")
+        if status == FAILED:
             failed.append(module)
             print(output, end="" if output.endswith("\n") else "\n")
     print(f"{len(modules)} modules in {time.monotonic() - started:.1f}s with {args.jobs} jobs; failed: {', '.join(failed) or 'none'}")
