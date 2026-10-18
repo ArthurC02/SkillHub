@@ -27,7 +27,7 @@ COMMAND_GROUPS = {
         "analyze-boundary", "boundary-impact", "validate", "coverage", "verify-evidence", "verify-sources",
         "verify-audit", "cite", "recite", "relocate-evidence", "upsert-candidate", "retract-candidate",
         "promote-candidate", "harvest", "discard-harvest", "init-change-package", "validate-change-package", "submit-proposal",
-        "record-test-result", "record-approval", "verify-proposal", "ship-package", "supersede-proposal",
+        "record-test-result", "record-approval", "verify-proposal", "rebase-proposal", "ship-package", "supersede-proposal",
         "list-proposals", "quality-gates", "counterfactual",
     ),
     "advanced": (
@@ -452,6 +452,10 @@ def _add_proposal_commands(commands: argparse._SubParsersAction) -> None:
     add_path(verify_parser, "--package-root")
     add_path(verify_parser, "--registry-root")
     add_path(verify_parser, "--repo-root")
+    rebase_parser = commands.add_parser("rebase-proposal", help="Restamp a stale proposal on the current Registry")
+    add_path(rebase_parser, "--package-root")
+    add_path(rebase_parser, "--registry-root")
+    add_path(rebase_parser, "--repo-root")
     result_parser = commands.add_parser("record-test-result", help="Record a test result")
     add_path(result_parser, "--package-root")
     add_path(result_parser, "--registry-root")

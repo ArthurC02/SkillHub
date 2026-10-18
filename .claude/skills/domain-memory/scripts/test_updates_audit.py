@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -14,6 +15,7 @@ from domain_registry.audit import anchor_error
 from domain_registry.audit import verify as verify_audit
 from domain_registry.registry import migrate_evidence
 from domain_registry.revision import (
+    base_registry_revision,
     current_registry_revision,
     registry_digest,
     require_current_registry_revision,
@@ -21,9 +23,12 @@ from domain_registry.revision import (
     valid_digest,
     valid_registry_revision,
 )
+from domain_registry.registry import init_registry
 from domain_registry.updates import upsert_candidate
 from domain_registry.store import read_document, write_document
 from test_support import RegistryTestCase, append_audit, applied_by, use_json_layout
+
+DRAFTED_RULE = {"id": "order-total", "contexts": ["orders"], "statement": "A total."}
 
 
 class UpdatesAuditTest(RegistryTestCase):
@@ -47,7 +52,10 @@ class UpdatesAuditTest(RegistryTestCase):
             value["contexts"][0]["name"] = "Purchases"
 
         def rule_written(value):
-            value["rules"].append({"id": "order-total", "contexts": ["orders"]})
+            value["rules"].append({"id": "order-total", "contexts": ["billing"]})
+
+        def rule_written_as_its_draft(value):
+            value["rules"].append({"id": "order-total", "contexts": ["orders"], "status": "candidate"})
 
         def context_list_annotated(value):
             value["note"] = "changed"
@@ -55,7 +63,9 @@ class UpdatesAuditTest(RegistryTestCase):
         cases = [
             ("an untouched record changed", "contexts.json", billing_renamed, None),
             ("a record it references changed", "contexts.json", orders_renamed, "contexts/orders"),
-            ("the record it writes changed", "rules.json", rule_written, "rules/order-total"),
+            ("the record it writes changed", "rules.json", rule_written,
+             "rules/order-total, which this proposal writes, changed since it was reviewed"),
+            ("the record it writes is present as its own draft", "rules.json", rule_written_as_its_draft, None),
             ("an asset changed outside its records", "contexts.json", context_list_annotated,
              "contexts.json changed outside its records"),
         ]
@@ -80,6 +90,101 @@ class UpdatesAuditTest(RegistryTestCase):
                 else:
                     with self.assertRaisesRegex(ValueError, f"stale.*{refusal}"):
                         require_current_registry_revision(proposal, self.repo / "memory", self.repo)
+
+    def test_a_removed_record_that_reappears_as_the_draft_is_stale(self) -> None:
+        use_json_layout(self.repo / "memory")
+        self.two_contexts()
+        self.seed("rules.json", [])
+        self.commit_everything("base")
+        draft = {"id": "order-total", "contexts": ["orders"]}
+        proposal = {
+            "base_registry_revision": current_registry_revision(self.repo / "memory", self.repo),
+            "registry_updates": [{"operation": "remove", "asset": "rules", "id": "order-total", "record": draft}],
+        }
+        self.edit_registry("rules.json", lambda value: value["rules"].append({**draft, "status": "candidate"}))
+        with self.assertRaisesRegex(ValueError, "stale.*rules/order-total, which this proposal touches, changed$"):
+            require_current_registry_revision(proposal, self.repo / "memory", self.repo)
+
+    def test_a_decision_draft_matches_its_record_apart_from_its_review_status(self) -> None:
+        use_json_layout(self.repo / "memory")
+        decision = {"id": "one-store", "statement": "Use one store.", "status": "accepted"}
+        for label, drafted, refusal in (
+            ("the draft is the record", decision, None),
+            ("the draft decided otherwise", {**decision, "status": "rejected"},
+             "decisions/one-store, which this proposal writes, changed since it was reviewed"),
+        ):
+            with self.subTest(label):
+                self.seed("decisions.json", [])
+                self.commit_everything("base")
+                proposal = {
+                    "base_registry_revision": current_registry_revision(self.repo / "memory", self.repo),
+                    "registry_updates": [{"operation": "upsert", "asset": "decisions", "record": decision}],
+                }
+                self.edit_registry(
+                    "decisions.json", lambda value, drafted=drafted: value["decisions"].append({**drafted, "review_status": "candidate"})
+                )
+                if refusal is None:
+                    self.assertEqual(
+                        registry_digest(self.repo / "memory"),
+                        require_current_registry_revision(proposal, self.repo / "memory", self.repo),
+                    )
+                else:
+                    with self.assertRaisesRegex(ValueError, f"stale.*{refusal}$"):
+                        require_current_registry_revision(proposal, self.repo / "memory", self.repo)
+
+    def test_the_base_stamps_the_tree_and_the_registry_its_commit_holds(self) -> None:
+        self.commit_everything("base")
+        committed = registry_digest(self.repo / "memory")
+        head = self.git("rev-parse", "HEAD")
+        self.add_context()
+        tree = registry_digest(self.repo / "memory")
+        self.assertNotEqual(committed, tree)
+        self.assertEqual(
+            {"observed_commit": head, "registry_digest": tree, "committed_digest": committed},
+            base_registry_revision(self.repo / "memory", self.repo),
+        )
+
+    def test_without_a_commit_or_a_committed_registry_the_base_stamps_the_tree_alone(self) -> None:
+        other = self.repo / "other"
+        init_registry(other)
+        self.assertEqual(
+            {"observed_commit": self.git("rev-parse", "HEAD"), "registry_digest": registry_digest(other)},
+            base_registry_revision(other, self.repo),
+            "a commit that holds no Registry",
+        )
+        fresh = self.repo / "fresh"
+        fresh.mkdir()
+        subprocess.run(["git", "init", "-q"], cwd=fresh, check=True)
+        init_registry(fresh / "memory")
+        self.assertEqual(
+            {"observed_commit": None, "registry_digest": registry_digest(fresh / "memory")},
+            base_registry_revision(fresh / "memory", fresh),
+            "a repository with no commit",
+        )
+
+    def test_a_base_submitted_from_uncommitted_drafts_is_rebuilt_from_its_commit(self) -> None:
+        def rename_billing(value):
+            next(context for context in value["contexts"] if context["id"] == "billing")["name"] = "Invoicing"
+
+        self.two_contexts()
+        self.commit_everything("base")
+        self.add_record_draft("order-total")
+        proposal = {
+            "base_registry_revision": base_registry_revision(self.repo / "memory", self.repo),
+            "registry_updates": [{"operation": "upsert", "asset": "rules", "record": DRAFTED_RULE}],
+        }
+        self.edit_registry("contexts.json", rename_billing)
+        self.assertEqual(
+            registry_digest(self.repo / "memory"),
+            require_current_registry_revision(proposal, self.repo / "memory", self.repo),
+        )
+        proposal["base_registry_revision"]["committed_digest"] = "sha256:" + "0" * 64
+        with self.assertRaisesRegex(ValueError, "stale.*cannot be rebuilt"):
+            require_current_registry_revision(proposal, self.repo / "memory", self.repo)
+
+    def add_record_draft(self, record_id: str) -> None:
+        record = self.write_record("rule.json", {**DRAFTED_RULE, "id": record_id})
+        upsert_candidate(self.repo / "memory", self.repo, "rules", record)
 
     def test_a_stale_base_that_was_never_committed_cannot_be_compared(self) -> None:
         self.two_contexts()

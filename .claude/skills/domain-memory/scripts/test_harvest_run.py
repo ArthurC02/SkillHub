@@ -458,10 +458,28 @@ class HarvestTest(RegistryTestCase):
         events = len(self.audit_lines())
         again = self.discard()
         self.assertEqual(
-            (1, f"ERROR: the package at {PACKAGE} is approved; only a draft or submitted harvest is discarded",
+            (1, f"ERROR: the package at {PACKAGE} is approved; only a draft, submitted or verified harvest is discarded",
              1, f"ERROR: no package at {PACKAGE}", "", events),
             (approved.returncode, approved.stderr.strip(), again.returncode, again.stderr.strip(), again.stdout,
              len(self.audit_lines())),
+        )
+
+    def test_discard_harvest_undoes_a_verified_harvest_and_still_refuses_an_applied_one(self) -> None:
+        self.confirm_src()
+        verified = harvest(self.repo / "memory", self.repo, self.spec(), None, "verified")["stopped_at"]
+        result = self.discard()
+        event = self.audit_lines()[-1]
+        self.assertEqual(
+            ("verified", 0, ["discard-harvest", [f"rules/{RULE_ID}"]], None, False),
+            (verified, result.returncode, [event["operation"], event["retracted"]],
+             record_by_id(self.repo / "memory", "rules", RULE_ID), (self.repo / PACKAGE).exists()),
+        )
+        harvest(self.repo / "memory", self.repo, self.spec(), None, "draft")
+        self.set_package_status("applied")
+        applied = self.discard()
+        self.assertEqual(
+            (1, f"ERROR: the package at {PACKAGE} is applied; only a draft, submitted or verified harvest is discarded", True),
+            (applied.returncode, applied.stderr.strip(), (self.repo / PACKAGE).exists()),
         )
 
 

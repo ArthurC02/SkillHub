@@ -10,10 +10,10 @@ from .audit import append_locked
 from .changes import classify_all, init_change_package, unclassified_paths, validate_change_package
 from .common import EVIDENCE_FILE, PROPOSAL_FILE, load_json, write_json, writer_lock
 from .counterfactual import counterfactual_suite
-from .evidence import citation, classified, function_span, source_map_for, without_derived_keys
+from .evidence import citation, classified, function_span, source_map_for
 from .harvest_package import OBLIGATIONS_FILE, harvest_package, obligation_of, write_harvest_package
 from .hitl import ObligationRun, record_approval, record_test_result, same_command, submit_proposal, verify_proposal
-from .registry import is_reviewed, record_by_id
+from .registry import as_stored, is_reviewed, record_by_id
 from .updates import add_promoted_evidence, promote_candidate, retract_candidate, upsert_candidate
 
 FORMAT = "domain-memory-harvest/v1"
@@ -26,6 +26,7 @@ SPAN_PARTS = 3
 RULE_DEFAULTS = {"cwd": None, "command_profile": "unit", "level": "unit", "timeout": DEFAULT_TIMEOUT_SECONDS}
 SUPERSEDING = ("amended", "reproven")
 UNFINISHED = ("draft", "submitted")
+DISCARDABLE = ("draft", "submitted", "verified")
 NOTHING_WRITTEN = {
     "spec": "no package was written; fix what the spec errors name, then run harvest again",
     "citation": "no package was written; confirm the sources the cited paths belong to, or cite others, then run harvest again",
@@ -316,11 +317,7 @@ def _same_content(existing: dict[str, Any], record: dict[str, Any]) -> bool:
 
 
 def _same_draft(existing: dict[str, Any], record: dict[str, Any]) -> bool:
-    return _as_stored(existing) == _as_stored(record)
-
-
-def _as_stored(record: dict[str, Any]) -> Any:
-    return without_derived_keys({key: value for key, value in record.items() if key not in ("status", "review", "verified")})
+    return as_stored("rules", existing) == as_stored("rules", record)
 
 
 def _cited_spans(evidence: list[Any]) -> set[tuple[Any, Any, Any]]:
@@ -425,8 +422,8 @@ def discard_harvest(package_root: Path, registry_root: Path, repo_root: Path, re
         raise ValueError("discarding a harvest requires the reason it is undone")
     proposal = load_json(package_root / PROPOSAL_FILE)
     status = proposal.get("status")
-    if status not in UNFINISHED:
-        raise ValueError(f"the package at {shown} is {status}; only a draft or submitted harvest is discarded")
+    if status not in DISCARDABLE:
+        raise ValueError(f"the package at {shown} is {status}; only a draft, submitted or verified harvest is discarded")
     named_elsewhere = _named_by_other_packages(package_root)
     retracted, kept = [], []
     for asset, record_id in _updated_records(proposal):

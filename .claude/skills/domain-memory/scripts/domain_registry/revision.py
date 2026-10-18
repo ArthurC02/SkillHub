@@ -11,6 +11,7 @@ from .common import (
     GIT_COMMAND_TIMEOUT_SECONDS,
 )
 from .policy import existing_policy, policy_path
+from .registry import as_stored
 from .store import committed_documents, document_path, has_document, read_document
 
 COMMIT_LENGTH = 40
@@ -93,6 +94,16 @@ def current_registry_revision(root: Path, repo_root: Path) -> dict[str, str | No
     }
 
 
+def base_registry_revision(root: Path, repo_root: Path) -> dict[str, str | None]:
+    revision = current_registry_revision(root, repo_root)
+    commit = revision["observed_commit"]
+    committed = None if commit is None else _committed_registry(root, repo_root, commit)
+    if committed is None:
+        return revision
+    documents, policy = committed
+    return {**revision, "committed_digest": _digest_of(documents, policy_path(root).name, policy)}
+
+
 def _digest_inside(root: Path, repo_root: Path) -> str:
     resolved_root = root.resolve()
     try:
@@ -123,7 +134,7 @@ def valid_registry_revision(value: Any) -> TypeGuard[dict[str, Any]]:
     )
 
 
-STALE_BASE = "proposal base revision is stale; rebase and obtain fresh approval"
+STALE_BASE = "proposal base revision is stale; rebase-proposal, then obtain fresh approval"
 
 
 def _committed_json(repo_root: Path, commit: str, path: Path) -> tuple[bool, Any]:
@@ -137,19 +148,25 @@ def _committed_json(repo_root: Path, commit: str, path: Path) -> tuple[bool, Any
     return True, json.loads(shown.stdout.decode("utf-8"))
 
 
-def _base_documents(
-    root: Path, repo_root: Path, base: dict[str, Any]
-) -> tuple[dict[str, Any], Any] | None:
-    commit = base.get("observed_commit")
-    if commit is None:
-        return None
+def _committed_registry(root: Path, repo_root: Path, commit: str) -> tuple[dict[str, Any], Any] | None:
     documents = committed_documents(repo_root, commit, root, REGISTRY_FILES)
     if documents is None:
         return None
     _, policy = _committed_json(repo_root, commit, policy_path(root))
-    if _digest_of(documents, policy_path(root).name, policy) != base["registry_digest"]:
-        return None
     return documents, policy
+
+
+def _base_documents(
+    root: Path, repo_root: Path, base: dict[str, Any]
+) -> tuple[dict[str, Any], Any] | None:
+    commit = base.get("observed_commit")
+    rebuilt = None if commit is None else _committed_registry(root, repo_root, commit)
+    if rebuilt is None:
+        return None
+    documents, policy = rebuilt
+    if _digest_of(documents, policy_path(root).name, policy) != base.get("committed_digest", base["registry_digest"]):
+        return None
+    return rebuilt
 
 
 def _record(documents: dict[str, Any], name: str, record_id: str) -> Any:
@@ -210,10 +227,38 @@ def _changed_since_base(
     for name in REGISTRY_FILES:
         if _without_records(name, then[name]) != _without_records(name, now[name]):
             return f"{name} changed outside its records"
+    written = _written_records(proposal)
     for name, record_id in sorted(_touched_records(proposal, then) | _touched_records(proposal, now)):
-        if name not in ASSET_KEYS or _record(then, name, record_id) != _record(now, name, record_id):
-            return f"{name.removesuffix('.json')}/{record_id}, which this proposal touches, changed"
+        changed = _changed_record(name, record_id, (then, now), written)
+        if changed:
+            return changed
     return None
+
+
+def _written_records(proposal: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
+    return {
+        (f"{update.get('asset')}.json", str(update["record"].get("id"))): update["record"]
+        for update in proposal.get("registry_updates") or []
+        if isinstance(update, dict) and update.get("operation") == "upsert" and isinstance(update.get("record"), dict)
+    }
+
+
+def _changed_record(
+    name: str, record_id: str, documents: tuple[dict[str, Any], dict[str, Any]],
+    written: dict[tuple[str, str], dict[str, Any]],
+) -> str | None:
+    shown = f"{name.removesuffix('.json')}/{record_id}"
+    if name not in ASSET_KEYS:
+        return f"{shown}, which this proposal touches, changed"
+    then, now = (_record(document, name, record_id) for document in documents)
+    if then == now:
+        return None
+    if (name, record_id) not in written:
+        return f"{shown}, which this proposal touches, changed"
+    asset = name.removesuffix(".json")
+    if isinstance(now, dict) and as_stored(asset, now) == as_stored(asset, written[(name, record_id)]):
+        return None
+    return f"{shown}, which this proposal writes, changed since it was reviewed"
 
 
 def require_current_registry_revision(

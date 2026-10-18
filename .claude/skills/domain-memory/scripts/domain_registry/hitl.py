@@ -15,7 +15,7 @@ from .common import EVIDENCE_FILE, PROPOSAL_FILE, completed_identifier, iso_time
 from .counterfactual import OUTPUT_TAIL, decoded, is_go_test, no_test_passed, reports_tests, working_directory
 from .evidence import digest
 from .policy import approved_command_profiles, review_governance
-from .revision import current_registry_revision, require_current_registry_revision
+from .revision import base_registry_revision, require_current_registry_revision
 
 
 def proposal_path(root: Path) -> Path:
@@ -38,7 +38,7 @@ def submit_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
         )
     if not completed_identifier(proposal.get("proposer")):
         raise ValueError("a proposal requires a proposer before submission")
-    revision = current_registry_revision(registry_root, repo_root)
+    revision = base_registry_revision(registry_root, repo_root)
     proposal["base_registry_revision"] = revision
     evidence_path = root / EVIDENCE_FILE
     evidence = load_json(evidence_path)
@@ -50,6 +50,56 @@ def submit_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
     proposal["submitted_at"] = utc_now()
     write_json(proposal_path(root), proposal)
     write_json(evidence_path, evidence)
+
+
+REBASABLE_STATUSES = ("submitted", "verified")
+PAST_APPROVAL = "it is past approval; supersede it and open a new draft"
+NOT_REBASED = {
+    "draft": "submit-proposal stamps its base",
+    "approved": PAST_APPROVAL,
+    "applied": PAST_APPROVAL,
+    "superseded": "it is retired; redraft-proposal opens a new draft from it",
+}
+AFTER_REBASE = (
+    "record-approval for each required role, verify-proposal, sign a commit holding the package, "
+    "then ship-package --commit <that commit>"
+)
+
+
+def rebase_proposal(root: Path, registry_root: Path, repo_root: Path) -> dict[str, Any]:
+    root, registry_root, repo_root = root.resolve(), registry_root.resolve(), repo_root.resolve()
+    proposal = load_json(proposal_path(root))
+    status = proposal.get("status")
+    if status not in REBASABLE_STATUSES:
+        raise ValueError(
+            f"a {status} proposal is not rebased; {NOT_REBASED.get(status, 'only a submitted or verified proposal is')}"
+        )
+    revision = base_registry_revision(registry_root, repo_root)
+    if revision == proposal.get("base_registry_revision"):
+        raise ValueError("the proposal base is current; nothing to rebase")
+    retired = sum(
+        1 for approval in proposal.get("approvals") or []
+        if isinstance(approval, dict) and approval.get("proposal_revision") == proposal.get("proposal_revision")
+    )
+    proposal.update(
+        base_registry_revision=revision, proposal_revision=proposal["proposal_revision"] + 1,
+        status="submitted", verified_at=None,
+    )
+    evidence_path = root / EVIDENCE_FILE
+    evidence = load_json(evidence_path)
+    attested = isinstance(evidence.get("scm_attestation"), dict)
+    evidence.update(registry_revision=revision, scm_attestation=None)
+    write_json(evidence_path, evidence)
+    write_json(proposal_path(root), proposal)
+    return {
+        "package": root.relative_to(repo_root).as_posix() if root.is_relative_to(repo_root) else str(root),
+        "status": "submitted",
+        "proposal_revision": proposal["proposal_revision"],
+        "base_registry_revision": revision,
+        "approvals_retired": retired,
+        "attestation_removed": attested,
+        "next": AFTER_REBASE,
+    }
 
 
 SUPERSEDABLE_STATUSES = {"draft", "submitted", "verified", "approved", "applied"}

@@ -19,6 +19,7 @@ from ..harvest import harvest_candidates
 from ..harvest_run import discard_harvest, harvest
 from ..hitl import (
     ObligationRun,
+    rebase_proposal,
     record_approval,
     record_test_result,
     submit_proposal,
@@ -312,6 +313,11 @@ def handle_verify_proposal(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_rebase_proposal(args: argparse.Namespace) -> int:
+    print_json(rebase_proposal(args.package_root, args.registry_root, args.repo_root))
+    return 0
+
+
 def handle_record_test_result(args: argparse.Namespace) -> int:
     record_test_result(
         args.package_root.resolve(), args.registry_root.resolve(), args.repo_root.resolve(),
@@ -424,6 +430,7 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "record-approval": handle_record_approval,
     "supersede-proposal": handle_supersede_proposal,
     "verify-proposal": handle_verify_proposal,
+    "rebase-proposal": handle_rebase_proposal,
     "record-test-result": handle_record_test_result,
     "ship-package": handle_ship_package,
     "validate-change-package": handle_validate_change_package,

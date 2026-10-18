@@ -2,6 +2,23 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.0
+
+### Fixed
+
+- A proposal's base revision now records, beside the digest of the Registry it was submitted against, `committed_digest`: the digest of the Registry its observed commit holds. A harvest writes its drafts and submits in one run, so the submitted-against digest always described uncommitted content and could never be rebuilt from the commit; once another package's apply or another harvest's drafts changed the Registry, the proposal was refused as "cannot be rebuilt" for good. The base is now rebuilt from the commit and compared, so several harvests can be open at once and ship in turn.
+- A record the proposal itself writes no longer counts as changed when the Registry holds it as the draft the reviewer saw. When it does differ, the refusal reads `<asset>/<id>, which this proposal writes, changed since it was reviewed`. Records the proposal removes or only names must still be as they were.
+- The stale-base refusal names its remedy: `proposal base revision is stale; rebase-proposal, then obtain fresh approval: <what changed>`. The apply step's own race refusal says `run ship-package again`, which is what it needs.
+
+### Added
+
+- `rebase-proposal --package-root <path> --registry-root <root> --repo-root <repo>` restamps a submitted or verified proposal on the current Registry: it raises `proposal_revision`, so earlier approvals stay as history and stop counting, removes the attestation that named the old revision, returns the proposal to `submitted` with its test results kept, and prints what to do next. It writes only the package and refuses a draft, approved, applied or superseded proposal, and one whose base is current.
+
+### Changed
+
+- `discard-harvest` also undoes a verified harvest that will not be shipped; approved and applied packages are still refused.
+- A package submitted before this version carries no `committed_digest`; it keeps the old check, and when the Registry changed after it was submitted from uncommitted drafts, `rebase-proposal` is the way forward.
+
 ## 1.1.1
 
 ### Fixed

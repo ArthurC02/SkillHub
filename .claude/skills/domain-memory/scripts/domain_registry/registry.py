@@ -19,6 +19,7 @@ from .common import (
     load_json,
     record_status,
     registry_dir,
+    review_field,
     template_dir,
 )
 from .evidence import (
@@ -701,6 +702,11 @@ def declared_absences(contexts: list[dict[str, Any]]) -> dict[str, set[Any]]:
 
 def is_reviewed(record: dict[str, Any]) -> bool:
     return "reviewed" in (record.get("status"), record.get("review_status"))
+
+
+def as_stored(asset: str, record: dict[str, Any]) -> Any:
+    review_keys = (review_field(asset), "review", "verified")
+    return without_derived_keys({key: value for key, value in record.items() if key not in review_keys})
 
 
 def evidence_gaps(root: Path, records: dict[str, list[dict[str, Any]]] | None = None) -> list[dict[str, Any]]:

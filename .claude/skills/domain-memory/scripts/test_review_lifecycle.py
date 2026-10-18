@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 import unittest
@@ -9,11 +10,12 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.changes import redraft_change_package, validate_change_package
+from domain_registry.changes import missing_approval_roles, redraft_change_package, validate_change_package
 from domain_registry.hitl import (
     ObligationRun,
     finalize_proposal,
     missing_attestation_message,
+    rebase_proposal,
     record_test_result,
     record_approval,
     submit_proposal,
@@ -23,7 +25,7 @@ from domain_registry.hitl import (
 from domain_registry.common import iso_timestamp
 from domain_registry.revision import registry_digest
 from domain_registry.store import read_document
-from domain_registry.updates import apply_approved_updates
+from domain_registry.updates import apply_approved_updates, promote_candidate, upsert_candidate
 from test_support import RegistryTestCase
 
 
@@ -233,8 +235,8 @@ class ReviewLifecycleTest(RegistryTestCase):
         with self.assertRaises(ValueError) as refused:
             verify_proposal(package, self.repo / "memory", self.repo)
         self.assertEqual(
-            "proposal base revision is stale; rebase and obtain fresh approval: "
-            "rules/order-total, which this proposal touches, changed",
+            "proposal base revision is stale; rebase-proposal, then obtain fresh approval: "
+            "rules/order-total, which this proposal writes, changed since it was reviewed",
             str(refused.exception),
         )
         self.assertEqual("submitted", self.proposal_in(package)["status"])
@@ -247,11 +249,122 @@ class ReviewLifecycleTest(RegistryTestCase):
         with self.assertRaises(ValueError) as refused:
             finalize_proposal(package, self.repo / "memory", self.repo)
         self.assertEqual(
-            "proposal base revision is stale; rebase and obtain fresh approval: "
-            "rules/order-total, which this proposal touches, changed",
+            "proposal base revision is stale; rebase-proposal, then obtain fresh approval: "
+            "rules/order-total, which this proposal writes, changed since it was reviewed",
             str(refused.exception),
         )
         self.assertEqual("verified", self.proposal_in(package)["status"])
+
+    def attest_by_pull_request(self, package: Path) -> None:
+        proposal = self.proposal_in(package)
+        evidence_path = package / "evidence-bundle.json"
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        evidence["scm_attestation"] = {
+            "provider": "github", "pull_request": "https://github.example/repo/pull/1",
+            "checks_url": "https://github.example/repo/actions/runs/1", "commit": "a" * 40, "status": "approved",
+            "proposal_revision": proposal["proposal_revision"], "base_registry_revision": proposal["base_registry_revision"],
+        }
+        evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+
+    def ship_by_pull_request(self, package: Path) -> None:
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        self.attest_by_pull_request(package)
+        verify_proposal(package, self.repo / "memory", self.repo)
+        with patch("domain_registry.hitl.verify_external_scm", return_value=[]), \
+                patch("domain_registry.hitl.github_commit_carries_proposal", return_value=[]):
+            finalize_proposal(package, self.repo / "memory", self.repo)
+        apply_approved_updates(package, self.repo / "memory", self.repo)
+
+    def drafted_beside(self, package: Path, proposal_id: str, rule_id: str) -> None:
+        for name in ("domain-change-proposal.json", "test-obligations.json", "evidence-bundle.json"):
+            document = json.loads((package / name).read_text(encoding="utf-8"))
+            document["proposal_id"] = proposal_id
+            if name == "domain-change-proposal.json":
+                document["registry_updates"] = []
+            (package / name).write_text(json.dumps(document), encoding="utf-8")
+        record = self.write_record(
+            f"{rule_id}.json",
+            {"id": rule_id, "contexts": ["orders"], "statement": f"The rule {rule_id} holds.", "evidence": ["README.md:1"]},
+        )
+        upsert_candidate(self.repo / "memory", self.repo, "rules", record)
+        promote_candidate(package, self.repo / "memory", "rules", rule_id)
+
+    def test_two_packages_submitted_over_each_others_uncommitted_drafts_both_apply(self) -> None:
+        first = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        self.commit_everything("context")
+        second = self.repo / "second"
+        shutil.copytree(first, second)
+        self.drafted_beside(first, "PRO-1", "order-total")
+        self.drafted_beside(second, "PRO-2", "order-count")
+        for package in (first, second):
+            submit_proposal(package, self.repo / "memory", self.repo)
+        self.commit_everything("both packages and their drafts")
+        for package in (first, second):
+            self.ship_by_pull_request(package)
+        rules = read_document(self.repo / "memory", "rules.json")["rules"]
+        self.assertEqual(
+            [("order-count", "reviewed"), ("order-total", "reviewed")],
+            sorted((rule["id"], rule["status"]) for rule in rules),
+        )
+        self.assertEqual(["applied", "applied"], [self.proposal_in(package)["status"] for package in (first, second)])
+
+    def test_rebasing_a_stale_verified_proposal_restamps_it_and_retires_its_approval_and_attestation(self) -> None:
+        package = self.draft_package()
+        self.submit_and_approve_after_committing(package)
+        submitted_base = self.proposal_in(package)["base_registry_revision"]
+        self.attest_by_pull_request(package)
+        verify_proposal(package, self.repo / "memory", self.repo)
+        tested = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))["test_results"]
+        self.another_apply_rewrites_the_proposed_rule()
+        expected_base = {
+            "observed_commit": subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True
+            ).stdout.strip(),
+            "registry_digest": registry_digest(self.repo / "memory"),
+            "committed_digest": submitted_base["registry_digest"],
+        }
+        self.assertEqual(
+            {"package": "proposal", "status": "submitted", "proposal_revision": 2, "base_registry_revision": expected_base,
+             "approvals_retired": 1, "attestation_removed": True,
+             "next": "record-approval for each required role, verify-proposal, sign a commit holding the package, "
+                     "then ship-package --commit <that commit>"},
+            rebase_proposal(package, self.repo / "memory", self.repo),
+        )
+        proposal = self.proposal_in(package)
+        evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
+        requirement = json.loads((package / "requirement-normalization.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            ("submitted", 2, expected_base, None, [1], expected_base, None, tested, ["domain-owner"]),
+            (proposal["status"], proposal["proposal_revision"], proposal["base_registry_revision"], proposal["verified_at"],
+             [approval["proposal_revision"] for approval in proposal["approvals"]], evidence["registry_revision"],
+             evidence["scm_attestation"], evidence["test_results"], missing_approval_roles(requirement, proposal)),
+        )
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        verify_proposal(package, self.repo / "memory", self.repo)
+        self.assertEqual("verified", self.proposal_in(package)["status"])
+
+    def test_a_proposal_outside_review_or_with_a_current_base_is_not_rebased(self) -> None:
+        package = self.submitted_package()
+        path = package / "domain-change-proposal.json"
+        submitted = path.read_bytes()
+        with self.assertRaisesRegex(ValueError, "^the proposal base is current; nothing to rebase$"):
+            rebase_proposal(package, self.repo / "memory", self.repo)
+        self.assertEqual(submitted, path.read_bytes())
+        past = "it is past approval; supersede it and open a new draft"
+        for status, reason in (
+            ("draft", "submit-proposal stamps its base"), ("approved", past), ("applied", past),
+            ("superseded", "it is retired; redraft-proposal opens a new draft from it"),
+        ):
+            with self.subTest(status):
+                proposal = json.loads(submitted)
+                proposal["status"] = status
+                path.write_text(json.dumps(proposal), encoding="utf-8")
+                self.edit_registry("contexts.json", lambda value, status=status: value["contexts"][0].update(name=f"Orders {status}"))
+                written = path.read_bytes()
+                with self.assertRaisesRegex(ValueError, f"^a {status} proposal is not rebased; {reason}$"):
+                    rebase_proposal(package, self.repo / "memory", self.repo)
+                self.assertEqual(written, path.read_bytes())
 
     def test_an_approval_of_another_revision_does_not_satisfy_verification(self) -> None:
         package = self.draft_package()

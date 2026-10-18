@@ -171,7 +171,7 @@ def mutate_registry(
         recover(root)
         if expected_digest is not None and registry_digest(root) != expected_digest:
             raise ValueError(
-                "registry revision changed before update; rebase and obtain fresh approval"
+                "registry revision changed before update; run ship-package again"
             )
         operation = uuid.uuid4().hex
         staging = root / f".domain-registry-stage-{operation}"

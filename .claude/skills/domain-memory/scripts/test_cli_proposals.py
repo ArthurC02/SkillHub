@@ -499,6 +499,23 @@ class CliProposalsTest(RegistryTestCase):
         self.assertEqual((0, {"current": 1, "shifted": 0}),
                          (result.returncode, {key: json.loads(result.stdout)["summary"][key] for key in ("current", "shifted")}))
 
+    def test_rebase_proposal_prints_the_restamped_package_and_a_refusal_goes_to_stderr(self) -> None:
+        package = self.submitted_package()
+        arguments = ("rebase-proposal", "--package-root", str(package), "--registry-root", str(self.repo / "memory"),
+                     "--repo-root", str(self.repo))
+        current = self.run_cli(*arguments)
+        self.edit_registry("contexts.json", lambda value: value["contexts"][0].update(name="Purchases"))
+        rebased = self.run_cli(*arguments)
+        printed = json.loads(rebased.stdout)
+        self.assertEqual(
+            (1, "ERROR: the proposal base is current; nothing to rebase", "",
+             0, ("proposal", "submitted", 2, 0, False), self.proposal_in(package)["base_registry_revision"]),
+            (current.returncode, current.stderr.strip(), current.stdout,
+             rebased.returncode, (printed["package"], printed["status"], printed["proposal_revision"],
+                                  printed["approvals_retired"], printed["attestation_removed"]),
+             printed["base_registry_revision"]),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
