@@ -3,12 +3,12 @@
   "proposal_id": "run-quota-workspace-scope-rule-2026-10-18",
   "proposer": "domain-memory-agent",
   "requirement_id": "run-quota-workspace-scope-rule-2026-10-18",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-18T06:02:02.494079Z",
   "verified_at": "2026-10-18T06:02:10.799145Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-18T06:02:13.042414Z",
+  "applied_at": "2026-10-18T06:02:20.159288Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "af2da4e0025a78420fdc57c1a1a6a9c745513009",
@@ -104,5 +104,9 @@
         "registry_digest": "sha256:5bd3cf258bdf4043c3b046c89c71cdbb6ba753e815dc0deecb0690d85d01e869"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "5ca2e03fcaa80a8466473ccad69d97932e200f9e",
+    "registry_digest": "sha256:d16adf1d2aa6ed7e259a5932720ec4ff0b7ff0b3df2932c6e68bed59cb36175a"
+  }
 }
