@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.86.0
+
+### Changed
+
+- `init-domain-memory` is about three times faster on a large repository with the same output. It walks the selected sources once per map instead of twice, stops asking git whether tracked files are ignored, since git never ignores them, and makes one file-system call per file instead of two. A test holds the walk count and the byte-identical output.
+- `references/registry-schema.md` states that an Aggregate's `invariants` are prose and not a link to rules; a Rule's own `aggregate` field is that link.
+
 ## 0.85.0
 
 ### Fixed

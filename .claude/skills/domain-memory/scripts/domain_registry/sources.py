@@ -2,7 +2,7 @@ import fnmatch
 import hashlib
 import os
 import subprocess
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -55,9 +55,25 @@ def git_ignored(root: Path, candidates: list[Path]) -> set[Path]:
     return {by_relative[entry] for entry in ignored_relatives(root, list(by_relative))}
 
 
+TRACKED_PREFILTER_MIN_PATHS = 512
+INDEX_TAGS_GIT_NEVER_IGNORES = ("H ", "M ")
+
+
+def _untracked(root: Path, relatives: list[str]) -> list[str]:
+    if len(relatives) < TRACKED_PREFILTER_MIN_PATHS:
+        return relatives
+    try:
+        listed = run_git(root, "ls-files", "-z", "-t")
+    except (OSError, subprocess.TimeoutExpired):
+        return relatives
+    tracked = {entry[2:] for entry in listed.stdout.split(chr(0)) if entry.startswith(INDEX_TAGS_GIT_NEVER_IGNORES)}
+    return [entry for entry in relatives if entry not in tracked]
+
+
 def ignored_relatives(root: Path, relatives: list[str]) -> set[str]:
     if not relatives or not (root / ".git").exists():
         return set()
+    relatives = _untracked(root, relatives)
     try:
         result = subprocess.run(
             ["git", "-C", str(root), "check-ignore", "-z", "--stdin"],
@@ -77,6 +93,10 @@ def ignored_relatives(root: Path, relatives: list[str]) -> set[str]:
 
 
 def relative(root: Path, path: Path) -> str:
+    prefix = str(root) + os.sep
+    text = str(path)
+    if text.startswith(prefix):
+        return text[len(prefix) :].replace(os.sep, "/")
     try:
         return path.relative_to(root).as_posix()
     except ValueError:
@@ -213,10 +233,29 @@ def policy_matches(path: str, include: list[str], exclude: list[str]) -> bool:
     return included and not excluded
 
 
-def _files_under(directory: Path) -> Iterator[Path]:
-    for parent, children, files in os.walk(directory):
-        children[:] = [name for name in children if name not in EXCLUDED_DIRECTORIES]
-        yield from (Path(parent, name) for name in files)
+def _directory_entries(directory: str) -> list[os.DirEntry[str]]:
+    try:
+        with os.scandir(directory) as entries:
+            return list(entries)
+    except OSError:
+        return []
+
+
+def _regular_files_under(directory: Path) -> Iterator[Path]:
+    pending = [str(directory)]
+    while pending:
+        for entry in _directory_entries(pending.pop()):
+            if entry.is_dir(follow_symlinks=False):
+                if entry.name not in EXCLUDED_DIRECTORIES:
+                    pending.append(entry.path)
+            elif entry.is_file(follow_symlinks=False):
+                yield Path(entry.path)
+
+
+def _regular_files(selected: Path) -> Iterable[Path]:
+    if selected.is_file():
+        return [] if selected.is_symlink() else [selected]
+    return _regular_files_under(selected)
 
 
 def source_files(
@@ -237,21 +276,22 @@ def source_files(
             continue
         roots.append(resolved)
     for resolved in roots:
-        candidates = [resolved] if resolved.is_file() else _files_under(resolved)
-        for candidate in candidates:
-            if candidate.is_file() and not candidate.is_symlink():
-                relative_path = relative(root, candidate)
-                if not in_excluded_directory(relative_path) and policy_matches(
-                    relative_path, include, exclude
-                ):
-                    files.add(candidate)
-    return sorted(files - git_ignored(root, sorted(files)))
+        for candidate in _regular_files(resolved):
+            relative_path = relative(root, candidate)
+            if not in_excluded_directory(relative_path) and policy_matches(
+                relative_path, include, exclude
+            ):
+                files.add(candidate)
+    return sorted(files - git_ignored(root, list(files)))
 
 
 def source_policy_report(
     root: Path, selected_paths: list[Path], policy: dict[str, Any]
 ) -> dict[str, Any]:
-    files = source_files(root, selected_paths, policy)
+    return _policy_report_of(root, source_files(root, selected_paths, policy), policy)
+
+
+def _policy_report_of(root: Path, files: list[Path], policy: dict[str, Any]) -> dict[str, Any]:
     limits = policy["limits"]
     sizes = {path: path.stat().st_size for path in files}
     total_bytes = sum(sizes.values())
@@ -286,13 +326,20 @@ def source_policy_report(
 def owned_source_files(
     root: Path, selected: list[str], policy: dict[str, Any] | None = None
 ) -> dict[str, list[Path]]:
-    files = source_files(root, [root / path for path in selected], policy)
+    return _owned_by_selection(root, selected, source_files(root, [root / path for path in selected], policy))
+
+
+def _owned_by_selection(root: Path, selected: list[str], files: list[Path]) -> dict[str, list[Path]]:
     resolved = [
         (path, (root / path).resolve(), (root / path).is_dir()) for path in selected
     ]
+    ancestors_of: dict[Path, set[Path]] = {}
     owner = {}
     for file in files:
-        parents = set(file.parents)
+        directory = file.parent
+        if directory not in ancestors_of:
+            ancestors_of[directory] = {directory, *directory.parents}
+        parents = ancestors_of[directory]
         for path, selected_path, is_directory in resolved:
             if (
                 file == selected_path
@@ -333,7 +380,10 @@ def selection_moved(recorded: dict[str, Any], current: dict[str, Any]) -> bool:
 def source_snapshots(
     root: Path, selected: list[str], policy: dict[str, Any] | None = None
 ) -> list[dict[str, Any]]:
-    owned = owned_source_files(root, selected, policy)
+    return _snapshots_of(root, selected, owned_source_files(root, selected, policy))
+
+
+def _snapshots_of(root: Path, selected: list[str], owned: dict[str, list[Path]]) -> list[dict[str, Any]]:
     return [source_snapshot(root, path, owned[path]) for path in selected]
 
 
@@ -395,21 +445,18 @@ def selected_source_map(
         raise ValueError("at least one source path is required")
     source_map = discover_sources(root)
     source_map["selection_status"] = "agent-asserted"
-    source_map["selected_paths"] = sorted(set(selected))
+    selected = source_map["selected_paths"] = sorted(set(selected))
+    files = source_files(root, [root / path for path in selected], policy)
     if policy:
-        report = source_policy_report(
-            root, [root / path for path in source_map["selected_paths"]], policy
-        )
+        report = _policy_report_of(root, files, policy)
         if report["errors"]:
             raise ValueError(
                 "source policy limits failed: " + "; ".join(report["errors"])
             )
         source_map["source_policy_report"] = report
     source_map["source_kinds"] = source_kinds(source_map)
-    source_map["git_state"] = git_state(root, source_map["selected_paths"])
-    source_map["source_snapshots"] = source_snapshots(
-        root, source_map["selected_paths"], policy
-    )
+    source_map["git_state"] = git_state(root, selected)
+    source_map["source_snapshots"] = _snapshots_of(root, selected, _owned_by_selection(root, selected, files))
     return source_map
 
 
