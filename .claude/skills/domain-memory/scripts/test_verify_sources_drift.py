@@ -42,7 +42,7 @@ class VerifySourcesDriftTest(RegistryTestCase):
                 ["tests/test_gone.py"],
                 ["tests/test_new.py"],
                 "NOTE: discovery drifted: 1 listed path gone, 1 matching path unlisted; "
-                "run refresh-sources, then confirm-sources",
+                "run refresh-listing (no confirmation needed)",
             ),
             (
                 result.returncode,
@@ -67,7 +67,7 @@ class VerifySourcesDriftTest(RegistryTestCase):
             (
                 ["tests/test_y_new.py", "tests/test_z_new.py"],
                 "NOTE: discovery drifted: 2 listed paths gone, 2 matching paths unlisted; "
-                "run refresh-sources, then confirm-sources",
+                "run refresh-listing (no confirmation needed)",
             ),
             (report["discovered_but_unlisted"], result.stderr.strip()),
         )
@@ -81,7 +81,7 @@ class VerifySourcesDriftTest(RegistryTestCase):
                 0,
                 "discovery_drifted",
                 "NOTE: discovery drifted: 0 listed paths gone, 1 matching path unlisted; "
-                "run refresh-sources, then confirm-sources",
+                "run refresh-listing (no confirmation needed)",
             ),
             (result.returncode, json.loads(result.stdout)["status"], result.stderr.strip()),
         )
@@ -95,7 +95,7 @@ class VerifySourcesDriftTest(RegistryTestCase):
                 0,
                 "discovery_drifted",
                 "NOTE: discovery drifted: 1 listed path gone, 0 matching paths unlisted; "
-                "run refresh-sources, then confirm-sources",
+                "run refresh-listing (no confirmation needed)",
             ),
             (result.returncode, json.loads(result.stdout)["status"], result.stderr.strip()),
         )
@@ -142,12 +142,18 @@ class VerifySourcesDriftTest(RegistryTestCase):
         result = self.verify(source_map_path)
         report = json.loads(result.stdout)
         self.assertEqual(
-            (1, "stale", ["tests/test_new.py"], True),
+            (
+                1,
+                "stale",
+                ["tests/test_new.py"],
+                "NOTE: discovery drifted: 0 listed paths gone, 1 matching path unlisted; "
+                "run refresh-sources, then confirm-sources",
+            ),
             (
                 result.returncode,
                 report["status"],
                 report["discovered_but_unlisted"],
-                "1 matching path unlisted" in result.stderr,
+                result.stderr.strip(),
             ),
         )
 
@@ -187,6 +193,144 @@ class VerifySourcesDriftTest(RegistryTestCase):
         self.assertEqual(
             (0, "Selection reset to agent-asserted; confirm these 2 selected sources: docs, extra.md"),
             (result.returncode, result.stdout.strip()),
+        )
+
+    def refresh_listing(self):
+        self.permit_sources()
+        return self.run_cli(
+            "refresh-listing", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo)
+        )
+
+    def stored_map(self) -> dict:
+        return json.loads((self.repo / "memory" / "source-map.json").read_text(encoding="utf-8"))
+
+    def recorded_operations(self) -> list[str]:
+        log = self.repo / "memory" / "audit" / "events.jsonl"
+        return [event["operation"] for event in self.audit_lines()] if log.is_file() else []
+
+    def without_listing(self, source_map: dict) -> dict:
+        return {key: value for key, value in source_map.items() if key not in ("source_groups", "missing_groups")}
+
+    def test_refresh_listing_replaces_only_the_listing_and_leaves_the_confirmation_standing(self) -> None:
+        source_map_path = self.map_with_tests("test_kept.py", "test_gone.py")
+        confirmed = self.stored_map() | {"selection_status": "developer-confirmed", "confirmed_by": "Ada", "confirmed_at": "2026-01-01T00:00:00Z"}
+        write_source_map(source_map_path, confirmed)
+        (self.repo / "tests" / "test_gone.py").unlink()
+        (self.repo / "tests" / "test_new.py").write_text("new\n", encoding="utf-8")
+        result = self.refresh_listing()
+        after = self.stored_map()
+        tests_group = next(group for group in after["source_groups"] if group["kind"] == "tests")
+        self.assertEqual(
+            (
+                0,
+                "Listing refreshed: +1 -1 discovered paths",
+                self.without_listing(confirmed),
+                ["tests/test_kept.py", "tests/test_new.py"],
+                {"operation": "refresh-listing", "added": ["tests/test_new.py"], "removed": ["tests/test_gone.py"]},
+            ),
+            (
+                result.returncode,
+                result.stdout.strip(),
+                self.without_listing(after),
+                tests_group["paths"],
+                {key: self.audit_lines()[-1][key] for key in ("operation", "added", "removed")},
+            ),
+        )
+
+    def test_a_map_refreshed_by_refresh_listing_verifies_current_without_a_note(self) -> None:
+        source_map_path = self.map_with_tests("test_kept.py", "test_gone.py")
+        (self.repo / "tests" / "test_gone.py").unlink()
+        (self.repo / "tests" / "test_new.py").write_text("new\n", encoding="utf-8")
+        self.refresh_listing()
+        result = self.verify(source_map_path)
+        report = json.loads(result.stdout)
+        self.assertEqual(
+            (0, "current", [], [], ""),
+            (
+                result.returncode,
+                report["status"],
+                report["discovered_but_gone"],
+                report["discovered_but_unlisted"],
+                result.stderr.strip(),
+            ),
+        )
+
+    def test_a_single_added_path_is_counted_in_the_singular_and_fills_the_group_it_was_missing(self) -> None:
+        self.selected_docs()
+        before = self.stored_map()
+        (self.repo / "tests").mkdir()
+        (self.repo / "tests" / "test_new.py").write_text("new\n", encoding="utf-8")
+        result = self.refresh_listing()
+        after = self.stored_map()
+        self.assertEqual(
+            (0, "Listing refreshed: +1 -0 discovered path", True, False, self.without_listing(before)),
+            (
+                result.returncode,
+                result.stdout.strip(),
+                "tests" in before["missing_groups"],
+                "tests" in after["missing_groups"],
+                self.without_listing(after),
+            ),
+        )
+
+    def test_refresh_listing_with_no_drift_writes_nothing(self) -> None:
+        source_map_path = self.map_with_tests("test_kept.py")
+        bytes_before = source_map_path.read_bytes()
+        mtime_before = source_map_path.stat().st_mtime_ns
+        operations_before = self.recorded_operations()
+        result = self.refresh_listing()
+        self.assertEqual(
+            (0, "Listing already current", bytes_before, mtime_before, operations_before),
+            (
+                result.returncode,
+                result.stdout.strip(),
+                source_map_path.read_bytes(),
+                source_map_path.stat().st_mtime_ns,
+                self.recorded_operations(),
+            ),
+        )
+
+    def test_refresh_listing_refuses_a_stale_selection_and_writes_nothing(self) -> None:
+        source_map_path = self.map_with_tests("test_kept.py")
+        (self.repo / "docs" / "extra.md").write_text("second\n", encoding="utf-8")
+        (self.repo / "tests" / "test_new.py").write_text("new\n", encoding="utf-8")
+        bytes_before = source_map_path.read_bytes()
+        operations_before = self.recorded_operations()
+        result = self.refresh_listing()
+        self.assertEqual(
+            (
+                1,
+                "ERROR: the selection is stale: docs; run refresh-sources, then confirm-sources",
+                "",
+                bytes_before,
+                operations_before,
+            ),
+            (
+                result.returncode,
+                result.stdout.strip(),
+                result.stderr.strip(),
+                source_map_path.read_bytes(),
+                self.recorded_operations(),
+            ),
+        )
+
+    def test_refresh_listing_refuses_an_unverified_selection_and_writes_nothing(self) -> None:
+        self.map_with_tests("test_kept.py")
+        source_map_path = self.repo / "memory" / "source-map.json"
+        write_source_map(source_map_path, {"source_groups": [{"kind": "tests", "paths": ["tests/test_kept.py"]}]})
+        (self.repo / "tests" / "test_new.py").write_text("new\n", encoding="utf-8")
+        bytes_before = source_map_path.read_bytes()
+        operations_before = self.recorded_operations()
+        result = self.refresh_listing()
+        self.assertEqual(
+            (
+                1,
+                "ERROR: the selection is unverified: source map has no snapshots; "
+                "run refresh-sources, then confirm-sources",
+                bytes_before,
+                operations_before,
+            ),
+            (result.returncode, result.stdout.strip(), source_map_path.read_bytes(), self.recorded_operations()),
         )
 
 

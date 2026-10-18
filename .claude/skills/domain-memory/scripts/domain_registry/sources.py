@@ -553,6 +553,47 @@ def refresh_sources(
     return source_map
 
 
+def _listed_paths(source_map: dict[str, Any]) -> set[str]:
+    return {
+        path
+        for group in source_map.get("source_groups", [])
+        for path in group.get("paths", [])
+    }
+
+
+def _selection_trouble(verdict: dict[str, Any]) -> str:
+    changed = ", ".join(source["path"] for source in verdict.get("changed_sources", []))
+    return str(verdict.get("reason") or changed or verdict["status"])
+
+
+def refresh_listing(
+    root: Path, repo_root: Path, policy: dict[str, Any] | None = None
+) -> dict[str, list[str]]:
+    path = root / "source-map.json"
+    if not path.is_file():
+        raise ValueError(
+            f"no source map at {path}: initialize the Domain Memory before refreshing its listing"
+        )
+    verdict = verify_source_map(repo_root, path, policy)
+    if verdict["status"] != "current":
+        raise ValueError(
+            f"the selection is {verdict['status']}: {_selection_trouble(verdict)}; "
+            "run refresh-sources, then confirm-sources"
+        )
+    source_map = load_json(path)
+    discovered = discover_sources(repo_root)
+    listed = _listed_paths(source_map)
+    current = _listed_paths(discovered)
+    change = {"added": sorted(current - listed), "removed": sorted(listed - current)}
+    if not change["added"] and not change["removed"]:
+        return change
+    source_map["source_groups"] = discovered["source_groups"]
+    source_map["missing_groups"] = discovered["missing_groups"]
+    with writer_lock(root):
+        write_and_audit(root, source_map, {"operation": "refresh-listing", **change})
+    return change
+
+
 def refine_sources(
     root: Path, repo_root: Path, selected_paths: list[Path], policy: dict[str, Any]
 ) -> dict[str, Any]:
@@ -707,9 +748,14 @@ def discovery_drift_note(result: dict[str, Any]) -> str | None:
     unlisted = len(result.get("discovered_but_unlisted", []))
     if not gone and not unlisted:
         return None
+    advice = (
+        "run refresh-listing (no confirmation needed)"
+        if result.get("status") == "discovery_drifted"
+        else "run refresh-sources, then confirm-sources"
+    )
     return (
         f"NOTE: discovery drifted: {_counted(gone, 'listed path')} gone, "
-        f"{_counted(unlisted, 'matching path')} unlisted; run refresh-sources, then confirm-sources"
+        f"{_counted(unlisted, 'matching path')} unlisted; {advice}"
     )
 
 

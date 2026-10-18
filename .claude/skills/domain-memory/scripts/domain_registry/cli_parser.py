@@ -37,7 +37,7 @@ COMMAND_GROUPS = {
         "list-proposals", "quality-gates", "counterfactual",
     ),
     "advanced": (
-        "discover-sources", "init-domain-memory", "confirm-sources", "refine-sources", "refresh-sources", "init",
+        "discover-sources", "init-domain-memory", "confirm-sources", "refine-sources", "refresh-sources", "refresh-listing", "init",
         "migrate-registry", "migrate-evidence", "recover-registry-update", "demote-local-reviews", "redraft-proposal",
         "export", "change-coupling", "compare-registry", "harvest-candidates", "governance-readiness",
         "init-signing-key", "amend-policy", "install-git-hitl-hook", "install-pre-commit-hook", "verify-git-governance", "validate-policy",
@@ -383,6 +383,9 @@ def _add_governance_commands(commands: argparse._SubParsersAction) -> None:
     refresh_parser = commands.add_parser("refresh-sources", help="Re-snapshot the selected sources")
     add_path(refresh_parser, "--registry-root")
     add_path(refresh_parser, "--repo-root")
+    listing_parser = commands.add_parser("refresh-listing", help="Refresh the discovered listing")
+    add_path(listing_parser, "--registry-root")
+    add_path(listing_parser, "--repo-root")
     refine_parser = commands.add_parser("refine-sources", help="Focus selected sources")
     add_path(refine_parser, "--registry-root")
     add_path(refine_parser, "--repo-root")

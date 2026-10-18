@@ -97,6 +97,7 @@ from .sources import (
     discover_sources,
     probe_sources,
     refine_sources,
+    refresh_listing,
     refresh_sources,
     discovery_drift_note,
     refresh_confirmation_notice,
@@ -852,6 +853,19 @@ def handle_refresh_sources(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_refresh_listing(args: argparse.Namespace) -> int:
+    registry_root = args.registry_root.resolve()
+    change = refresh_listing(
+        registry_root, args.repo_root.resolve(), existing_policy(registry_root)
+    )
+    added, removed = len(change["added"]), len(change["removed"])
+    if added or removed:
+        print(f"Listing refreshed: +{added} -{removed} discovered {'path' if added + removed == 1 else 'paths'}")
+    else:
+        print("Listing already current")
+    return 0
+
+
 def handle_refine_sources(args: argparse.Namespace) -> int:
     registry_root = args.registry_root.resolve()
     repo_root = args.repo_root.resolve()
@@ -1264,6 +1278,7 @@ HANDLERS = {
     "init-domain-memory": handle_init_domain_memory,
     "confirm-sources": handle_confirm_sources,
     "refresh-sources": handle_refresh_sources,
+    "refresh-listing": handle_refresh_listing,
     "refine-sources": handle_refine_sources,
     "amend-policy": handle_amend_policy,
     "init-signing-key": handle_init_signing_key,

@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.91.0
+
+### Added
+
+- `refresh-listing` rewrites only the discovery listing a source map keeps (`source_groups` and the `missing_groups` derived from it) to what discovery finds today, so new files appear and vanished ones drop out without resetting a developer's confirmation. It refuses and writes nothing unless the selection itself verifies as `current`, prints `Listing already current` when nothing drifted, and otherwise records an `added`/`removed` audit event and prints `Listing refreshed: +N -M discovered paths`.
+
+### Changed
+
+- The `NOTE:` that `verify-sources` prints for a `discovery_drifted` map points at `refresh-listing (no confirmation needed)` instead of `refresh-sources` then `confirm-sources`, because the listing is not evidence and a new test file should not force a fresh confirmation; a `stale` map keeps the two-command advice.
+
 ## 0.90.0
 
 ### Changed
