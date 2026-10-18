@@ -801,6 +801,40 @@ class CliTest(RegistryTestCase):
             (typo.returncode, typo.stderr.strip()),
         )
 
+    def test_validate_change_package_notes_a_counterfactual_that_mutates_a_file_the_rule_does_not_cite(self) -> None:
+        package = self.draft_package()
+        (self.repo / "src").mkdir()
+        (self.repo / "src" / "a.py").write_text("total >= 0\n", encoding="utf-8")
+        proposal_path = package / "domain-change-proposal.json"
+        proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
+        proposal["registry_updates"][0]["record"]["evidence"] = [citation(self.repo, "src/a.py", 1, 1)]
+        proposal["rule_ids"] = ["order-total"]
+        proposal["implementation_design"]["proof_obligations"].append("OB-2")
+        proposal_path.write_text(json.dumps(proposal), encoding="utf-8")
+        obligations_path = package / "test-obligations.json"
+        obligations = json.loads(obligations_path.read_text(encoding="utf-8"))
+        obligations["obligations"].append({
+            **obligations["obligations"][0], "id": "OB-2", "source_type": "rule", "source_id": "order-total",
+        })
+        obligations_path.write_text(json.dumps(obligations), encoding="utf-8")
+        evidence_path = package / "evidence-bundle.json"
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        evidence["counterfactual_check"]["obligation_id"] = "OB-2"
+        validate = ("validate-change-package", "--package-root", str(package), "--registry-root", str(self.repo / "memory"))
+        noted = {}
+        for label, mutated in (("elsewhere", "gen/query.sql:3: = $2 -> IS NOT NULL"), ("cited", "src/a.py:1: >= 0 -> >= -1")):
+            evidence["counterfactual_check"]["mutated_protection"] = mutated
+            evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+            shown = self.run_cli(*validate)
+            noted[label] = (shown.returncode, shown.stderr.strip())
+        self.assertEqual(
+            {"elsewhere": (0, "NOTE: the counterfactual for OB-2 mutates gen/query.sql, which order-total does not cite. "
+                              "That proves the rule only when the mutated line lies on the execution path of a cited line, "
+                              "as the query a cited call runs does; otherwise mutate a cited line."),
+             "cited": (0, "")},
+            noted,
+        )
+
     def test_validate_names_the_approved_packages_left_unapplied(self) -> None:
         changes = self.repo / "memory" / "changes"
         for name, status in (("a", "approved"), ("b", "applied"), ("c", "approved"), ("d", "verified")):

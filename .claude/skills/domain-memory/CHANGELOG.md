@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.72.0
+
+### Added
+
+- `validate-change-package` prints a NOTE when a counterfactual mutates a file that the rules its obligation proves do not cite; the pattern verification reference states when that split is right, with the Workspace-scoping case as the example: weaken the predicate in the query a cited call runs rather than the id the call passes, so only a stranger's rows leak.
+
 ## 0.71.0
 
 ### Changed

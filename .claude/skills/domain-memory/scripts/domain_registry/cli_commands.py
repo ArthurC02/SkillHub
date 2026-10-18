@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import re
 import json
 import shutil
 import sys
@@ -19,7 +20,7 @@ from .changes import (
     redraft_change_package,
     validate_change_package,
 )
-from .common import ASSET_KEYS, PROPOSAL_FILE, REQUIREMENT_FILE, load_json
+from .common import ASSET_KEYS, EVIDENCE_FILE, PROPOSAL_FILE, REQUIREMENT_FILE, load_json
 from .compare import compare_registries
 from .coupling import CouplingLimits, CouplingReading, change_coupling
 from .dependents import dependents
@@ -63,6 +64,7 @@ from .registry import (
     asset_records,
     unplaced_implementation_paths,
     boundary_analysis,
+    cited_paths,
     context_model,
     context_summary,
     coverage,
@@ -1050,9 +1052,49 @@ def handle_validate_change_package(args: argparse.Namespace) -> int:
         exit_code = report_errors(errors, "Change package is valid.")
         if not exit_code and not load_json(args.package_root / PROPOSAL_FILE).get("registry_updates"):
             print("NOTE: this package changes no Registry record; add the updates it is for, or supersede it.")
+        if not exit_code:
+            _note_counterfactuals_off_cited_files(
+                args.package_root, args.registry_root.resolve() if args.registry_root else None
+            )
         return exit_code
     unchecked = "" if errors else _unchecked_at(args.as_status, args.package_root)
     return report_errors(errors, f"Change package has everything {args.as_status} requires{unchecked}.")
+
+
+MUTATED_LOCATION = re.compile(r"^(?P<path>[^:\s]+):\d+: ")
+
+
+def _note_counterfactuals_off_cited_files(package_root: Path, registry_root: Path | None) -> None:
+    checks = load_json(package_root / EVIDENCE_FILE).get("counterfactual_check")
+    checks = checks if isinstance(checks, list) else [checks] if isinstance(checks, dict) else []
+    obligations = {
+        entry.get("id"): entry
+        for entry in load_json(package_root / "test-obligations.json").get("obligations", []) if isinstance(entry, dict)
+    }
+    updated = {
+        update["record"].get("id"): update["record"]
+        for update in load_json(package_root / PROPOSAL_FILE).get("registry_updates", [])
+        if isinstance(update, dict) and update.get("asset") == "rules" and isinstance(update.get("record"), dict)
+    }
+    for check in checks:
+        location = MUTATED_LOCATION.match(str(check.get("mutated_protection", "")))
+        obligation = obligations.get(check.get("obligation_id"))
+        if location is None or obligation is None:
+            continue
+        rule_ids = [
+            source["source_id"] for source in (obligation, *obligation.get("also_covers", []))
+            if isinstance(source, dict) and source.get("source_type") == "rule" and isinstance(source.get("source_id"), str)
+        ]
+        rules = [updated.get(rule_id) or (record_by_id(registry_root, "rules", rule_id) if registry_root else None)
+                 for rule_id in rule_ids]
+        cited = set().union(*(cited_paths(rule) for rule in rules if rule))
+        if rule_ids and location["path"] not in cited:
+            print(
+                f"NOTE: the counterfactual for {obligation.get('id')} mutates {location['path']}, which "
+                f"{', '.join(rule_ids)} does not cite. That proves the rule only when the mutated line lies on the "
+                "execution path of a cited line, as the query a cited call runs does; otherwise mutate a cited line.",
+                file=sys.stderr,
+            )
 
 
 def handle_coverage(args: argparse.Namespace) -> int:

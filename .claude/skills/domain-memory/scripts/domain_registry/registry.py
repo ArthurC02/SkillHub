@@ -1013,15 +1013,15 @@ def _bound_rules(
     for rule in rules:
         if identifier in rule.get("contexts", []):
             continue
-        cited = _cited_paths(rule)
-        via = [name for name, entry in collaborations if cited & _cited_paths(entry)]
+        cited = cited_paths(rule)
+        via = [name for name, entry in collaborations if cited & cited_paths(entry)]
         if via:
             bound.append({"rule": rule.get("id"), "contexts": rule.get("contexts", []), "statement": rule.get("statement"),
                           "via": via})
     return bound
 
 
-def _cited_paths(record: dict[str, Any]) -> set[str]:
+def cited_paths(record: dict[str, Any]) -> set[str]:
     return {
         reference["path"] for reference in all_references(record)
         if isinstance(reference, dict) and isinstance(reference.get("path"), str)
