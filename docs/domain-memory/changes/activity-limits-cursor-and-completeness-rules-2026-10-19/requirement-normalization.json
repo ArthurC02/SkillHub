@@ -1,0 +1,45 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "activity-limits-cursor-and-completeness-rules-2026-10-19",
+  "status": "draft",
+  "intent": "Record as reviewed further rules the activity Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context activity lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-the-activity-service-refuses-a-limit-outside-1-to-100",
+      "statement": "The activity service itself refuses a page limit below 1 or above 100, whatever its caller checked."
+    },
+    {
+      "id": "enforced-an-activity-cursor-rank-is-0-to-3",
+      "statement": "A cursor naming a priority rank outside 0 to 3 is refused as invalid, so a forged cursor cannot reach a rank the feed does not have."
+    },
+    {
+      "id": "enforced-an-activity-cursor-names-its-kind-and-source",
+      "statement": "A cursor without a kind or without a source id is refused as invalid."
+    },
+    {
+      "id": "enforced-an-unclassified-activity-item-ranks-lowest",
+      "statement": "An item whose classification the feed does not know ranks below needs-attention, in-progress and recent items."
+    },
+    {
+      "id": "enforced-a-served-activity-page-is-complete-and-names-every-source",
+      "statement": "A page the activity service serves says it is complete and names all contracted sources, even when it holds no items."
+    },
+    {
+      "id": "enforced-an-unavailable-activity-source-answers-503",
+      "statement": "When any activity source cannot be read, the request answers 503 with complete=false, the failed sources and no items."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/activity.go",
+    "apps/platform/internal/entrypoint/api/apiserver/activity_integration_test.go",
+    "apps/platform/internal/product/activity/limits_test.go",
+    "apps/platform/internal/product/activity/service.go",
+    "apps/platform/internal/product/activity/service_test.go"
+  ]
+}

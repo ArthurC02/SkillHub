@@ -1,0 +1,449 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "batch-report-counting-and-scope-rules-2026-10-19",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "batch-report-counting-and-scope-rules-2026-10-19",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-18T20:30:39.280674Z",
+  "verified_at": "2026-10-18T20:31:56.185533Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "5fdb3212f4a8ccbf4074691b5b8624c9694f3b28",
+    "registry_digest": "sha256:9f5bf02b3fd979cc8846ea6c69d98667906b3170b68677f85992cc86e2b5c7a8",
+    "committed_digest": "sha256:9e4a3f84e53c438cd6177de80aabcf5515419b59570088192f90ed60bf950ebb"
+  },
+  "affected_contexts": [
+    "batch"
+  ],
+  "rule_ids": [
+    "only-a-met-trial-counts-as-passed",
+    "only-judged-trials-enter-the-pass-rate",
+    "pass-at-k-is-unknown-until-the-trials-decide-it",
+    "a-batch-report-is-read-only-under-its-own-skill",
+    "a-skill-effect-is-reported-only-when-the-skill-was-withheld",
+    "a-paired-difference-needs-two-pairs-for-an-interval",
+    "a-paired-test-case-is-better-only-when-strictly-higher",
+    "a-failed-trial-run-waits-for-its-judging",
+    "a-pass-rate-interval-is-a-95-percent-wilson-interval",
+    "a-test-case-says-when-its-prompt-varied",
+    "a-trial-with-no-further-round-is-closed-not-failed"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "batch",
+    "invariant": "Only batch decides these rules.",
+    "evidence": [
+      "apps/platform/internal/trial/batch/batch_report.go:75-105"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/batch/batch_comparison.go:40-100"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A second extraction of the batch Context found enforced rules beyond the nine the Registry held, three guarded by no test."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; add the missing tests; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording claim ordering: it lives only in SQL, so no Go mutation proves it."
+    ],
+    "proof_obligations": [
+      "rule-only-a-met-trial-counts-as-passed",
+      "rule-only-judged-trials-enter-the-pass-rate",
+      "rule-pass-at-k-is-unknown-until-the-trials-decide-it",
+      "rule-a-batch-report-is-read-only-under-its-own-skill",
+      "rule-a-skill-effect-is-reported-only-when-the-skill-was-withheld",
+      "rule-a-paired-difference-needs-two-pairs-for-an-interval",
+      "rule-a-paired-test-case-is-better-only-when-strictly-higher",
+      "rule-a-failed-trial-run-waits-for-its-judging",
+      "rule-a-pass-rate-interval-is-a-95-percent-wilson-interval",
+      "rule-a-test-case-says-when-its-prompt-varied",
+      "rule-a-trial-with-no-further-round-is-closed-not-failed"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-a-met-trial-counts-as-passed",
+        "statement": "A trial counts as passed only when its outcome is met; a partially met trial is judged but not passed.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "Met, partially met and not met give 1 passed of 3 judged."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_report.go",
+            "lines": {
+              "start": 223,
+              "end": 225
+            },
+            "excerpt_sha256": "sha256:525759144f2f7793822c7fd283cc4e2ffc92209360ccf0494b12bae5a1898428"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/outcome_counting_test.go",
+            "lines": {
+              "start": 11,
+              "end": 26
+            },
+            "excerpt_sha256": "sha256:d818be8c9f35feaca48ef9e3b5ec92d3b94e52a973c2fd36884d3ad8f340327c"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-judged-trials-enter-the-pass-rate",
+        "statement": "Only judged trials enter a pass rate; running, pending, awaiting-answer and not-evaluated trials count in neither its numerator nor its denominator.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "Four judged and two running trials give a rate over four."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_report.go",
+            "lines": {
+              "start": 220,
+              "end": 222
+            },
+            "excerpt_sha256": "sha256:9fb83e409f4f0db918960f56a6fe4b7cce739cf0f7e00dbee09b071aa116093a"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch_test.go",
+            "lines": {
+              "start": 147,
+              "end": 181
+            },
+            "excerpt_sha256": "sha256:24cd351a1c08ff938035fb610be92d984aef28aed25026fc63801de5d9114834"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "pass-at-k-is-unknown-until-the-trials-decide-it",
+        "statement": "pass@k is true once any trial passes, false only when all k are judged and none passed, and unknown otherwise.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "One passed trial with the rest running gives pass@k true."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_report.go",
+            "lines": {
+              "start": 236,
+              "end": 237
+            },
+            "excerpt_sha256": "sha256:ac8b39d16d7b9da4d6810cba23e252c41be1f8cd6cbaf3de6652331c53f2a7f0"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch_test.go",
+            "lines": {
+              "start": 69,
+              "end": 89
+            },
+            "excerpt_sha256": "sha256:3934f014a914057bb1330226d9fc2734d2990e0ba38c84b4f72bf317d68bdf06"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-batch-report-is-read-only-under-its-own-skill",
+        "statement": "A batch report asked for under another Skill of the same Workspace answers not found.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "Reading a batch under a second Skill id gives 404."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_report.go",
+            "lines": {
+              "start": 84,
+              "end": 86
+            },
+            "excerpt_sha256": "sha256:cced6a85752bee1d61e7e9e7f7c24d6d2285d27306c3585337c0689f625129ed"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_scope_integration_test.go",
+            "lines": {
+              "start": 8,
+              "end": 33
+            },
+            "excerpt_sha256": "sha256:31e162ab9981a55bb6fcd43e06b766753242ecac7f10481eba52fe718dfb40e3"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-skill-effect-is-reported-only-when-the-skill-was-withheld",
+        "statement": "A batch report carries the skill-withheld arm and the skill effect only when the batch was created withholding the skill.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A batch created without withholding reports no skill_withheld and no skill_effect."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_report.go",
+            "lines": {
+              "start": 99,
+              "end": 103
+            },
+            "excerpt_sha256": "sha256:50ee445b0e048794517e887c09741114744f3b392fc5006fec2826f8658c5a4e"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_scope_integration_test.go",
+            "lines": {
+              "start": 8,
+              "end": 33
+            },
+            "excerpt_sha256": "sha256:31e162ab9981a55bb6fcd43e06b766753242ecac7f10481eba52fe718dfb40e3"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-paired-difference-needs-two-pairs-for-an-interval",
+        "statement": "A paired difference gets a confidence interval only from two or more pairs; one pair gives the difference alone.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "One pair gives a difference with no interval."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_comparison.go",
+            "lines": {
+              "start": 98,
+              "end": 100
+            },
+            "excerpt_sha256": "sha256:d8f1c068053ccd8e9733a22ebce9d557d5da5bcbfb94e06f9adcd9e83ced0fb8"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch_test.go",
+            "lines": {
+              "start": 134,
+              "end": 145
+            },
+            "excerpt_sha256": "sha256:333793f45297c1fac3f3a31a4c3f10dd5adbc015f6fb81408ca3a335da684702"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-paired-test-case-is-better-only-when-strictly-higher",
+        "statement": "A paired test case counts as better only when its rate is strictly higher, worse when strictly lower, and tied when equal.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "Rates 1 and 0.5 count as better; equal rates count as tied."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_comparison.go",
+            "lines": {
+              "start": 56,
+              "end": 60
+            },
+            "excerpt_sha256": "sha256:74862fafdb4566856e4276d335bd59d6ba79c0b54bbec79fe609d8af017489c0"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch_test.go",
+            "lines": {
+              "start": 216,
+              "end": 236
+            },
+            "excerpt_sha256": "sha256:75f0cd960cb1b9c1e9adcc19f4f351000e07487d423f3d18b8e8ce6039740baa"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-failed-trial-run-waits-for-its-judging",
+        "statement": "A trial whose run failed reads as running while its judging is under way, rather than as not evaluated.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A failed run with a judgement in progress reads running."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_report.go",
+            "lines": {
+              "start": 191,
+              "end": 192
+            },
+            "excerpt_sha256": "sha256:79f47126768499f2f7251956d9830c83b2e9e82a2fb835aa2863d2b264364d9e"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch_test.go",
+            "lines": {
+              "start": 183,
+              "end": 214
+            },
+            "excerpt_sha256": "sha256:037c9b8fdb16d0c498ffa2b18a83248df9ba8a5609323c405a96e8fbf6baa4f0"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-pass-rate-interval-is-a-95-percent-wilson-interval",
+        "statement": "A pass rate carries a 95 percent Wilson score interval, and none when nothing is judged.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "Two passed of four judged gives about [0.150, 0.850]."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_report.go",
+            "lines": {
+              "start": 29,
+              "end": 29
+            },
+            "excerpt_sha256": "sha256:14e4f3b8df6a1b982c4f5f8eababe38b1614ece72ff7b7104b3bf8c9874d484e"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch_test.go",
+            "lines": {
+              "start": 48,
+              "end": 67
+            },
+            "excerpt_sha256": "sha256:cb127ae8f3faac652aab33c76fbdffb9560c340386a2f22cc57d02c110d8a92f"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-test-case-says-when-its-prompt-varied",
+        "statement": "A test case is marked prompt-varied only when its trials started from more than one distinct prompt.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "Trials started from two different prompt hashes are marked varied."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_report.go",
+            "lines": {
+              "start": 228,
+              "end": 228
+            },
+            "excerpt_sha256": "sha256:fe231245072d9916891c87e20577cb9eeaf9226fd25498b4a0792aa09f76a2b7"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+            "lines": {
+              "start": 377,
+              "end": 440
+            },
+            "excerpt_sha256": "sha256:3f237b1777a5de90cab5c471d129c6993bbdd565ea58c2219063162e9ecd78ba"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-trial-with-no-further-round-is-closed-not-failed",
+        "statement": "A simulated answer refused because the conversation has no further round closes the trial instead of failing the batch.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A batch settles once no trial runs and no simulated answer is owed."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_simulated_user.go",
+            "lines": {
+              "start": 121,
+              "end": 123
+            },
+            "excerpt_sha256": "sha256:3303ef97e8f0a6ca334b691864f220c7ba3b46a28b1702a9a2af7ba96cce8ba7"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_simulated_user_integration_test.go",
+            "lines": {
+              "start": 137,
+              "end": 164
+            },
+            "excerpt_sha256": "sha256:2662404ad1de5b6e9e3ae5cd0067ca25eb349285894f5d6cf74d5a6fb21a53d0"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-18T20:31:55.890891Z",
+      "scope": "Record batch rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "5fdb3212f4a8ccbf4074691b5b8624c9694f3b28",
+        "registry_digest": "sha256:9f5bf02b3fd979cc8846ea6c69d98667906b3170b68677f85992cc86e2b5c7a8",
+        "committed_digest": "sha256:9e4a3f84e53c438cd6177de80aabcf5515419b59570088192f90ed60bf950ebb"
+      }
+    }
+  ]
+}

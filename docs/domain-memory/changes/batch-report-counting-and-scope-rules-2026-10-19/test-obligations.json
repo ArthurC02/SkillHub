@@ -1,0 +1,172 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "batch-report-counting-and-scope-rules-2026-10-19",
+  "proposal_id": "batch-report-counting-and-scope-rules-2026-10-19",
+  "obligations": [
+    {
+      "id": "rule-only-a-met-trial-counts-as-passed",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-only-a-met-trial-counts-as-passed",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "only-a-met-trial-counts-as-passed"
+        }
+      ],
+      "expected_outcome": "A trial counts as passed only when its outcome is met; a partially met trial is judged but not passed.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAPartlyMetTrialIsJudgedButNotPassed$ ./internal/trial/batch/"
+    },
+    {
+      "id": "rule-only-judged-trials-enter-the-pass-rate",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-only-judged-trials-enter-the-pass-rate",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "only-judged-trials-enter-the-pass-rate"
+        }
+      ],
+      "expected_outcome": "Only judged trials enter a pass rate; running, pending, awaiting-answer and not-evaluated trials count in neither its numerator nor its denominator.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheSkillEffectPairsEachTestCaseWithItsOwnTrialsWithoutTheSkill$ ./internal/trial/batch/"
+    },
+    {
+      "id": "rule-pass-at-k-is-unknown-until-the-trials-decide-it",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-pass-at-k-is-unknown-until-the-trials-decide-it",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "pass-at-k-is-unknown-until-the-trials-decide-it"
+        }
+      ],
+      "expected_outcome": "pass@k is true once any trial passes, false only when all k are judged and none passed, and unknown otherwise.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestPassAtKAndPassAllKAreUnknownUntilTheTrialsDecideThem$ ./internal/trial/batch/"
+    },
+    {
+      "id": "rule-a-batch-report-is-read-only-under-its-own-skill",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-batch-report-is-read-only-under-its-own-skill",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-batch-report-is-read-only-under-its-own-skill"
+        }
+      ],
+      "expected_outcome": "A batch report asked for under another Skill of the same Workspace answers not found.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestABatchReportIsReadOnlyUnderItsOwnSkillAndHasNoWithheldArmUnlessAsked$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-skill-effect-is-reported-only-when-the-skill-was-withheld",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-skill-effect-is-reported-only-when-the-skill-was-withheld",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-skill-effect-is-reported-only-when-the-skill-was-withheld"
+        }
+      ],
+      "expected_outcome": "A batch report carries the skill-withheld arm and the skill effect only when the batch was created withholding the skill.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestABatchReportIsReadOnlyUnderItsOwnSkillAndHasNoWithheldArmUnlessAsked$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-paired-difference-needs-two-pairs-for-an-interval",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-paired-difference-needs-two-pairs-for-an-interval",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-paired-difference-needs-two-pairs-for-an-interval"
+        }
+      ],
+      "expected_outcome": "A paired difference gets a confidence interval only from two or more pairs; one pair gives the difference alone.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestThePairedDifferenceCarriesItsStandardErrorInterval$ ./internal/trial/batch/"
+    },
+    {
+      "id": "rule-a-paired-test-case-is-better-only-when-strictly-higher",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-paired-test-case-is-better-only-when-strictly-higher",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-paired-test-case-is-better-only-when-strictly-higher"
+        }
+      ],
+      "expected_outcome": "A paired test case counts as better only when its rate is strictly higher, worse when strictly lower, and tied when equal.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestEachPairedTestCaseCountsOnceAsBetterWorseOrTied$ ./internal/trial/batch/"
+    },
+    {
+      "id": "rule-a-failed-trial-run-waits-for-its-judging",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-failed-trial-run-waits-for-its-judging",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-failed-trial-run-waits-for-its-judging"
+        }
+      ],
+      "expected_outcome": "A trial whose run failed reads as running while its judging is under way, rather than as not evaluated.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestATrialReadsAsItsVerdictOnceJudgedAndOtherwiseByHowItsRunEnded$ ./internal/trial/batch/"
+    },
+    {
+      "id": "rule-a-pass-rate-interval-is-a-95-percent-wilson-interval",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-pass-rate-interval-is-a-95-percent-wilson-interval",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-pass-rate-interval-is-a-95-percent-wilson-interval"
+        }
+      ],
+      "expected_outcome": "A pass rate carries a 95 percent Wilson score interval, and none when nothing is judged.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestThePassRateCarriesItsWilsonInterval$ ./internal/trial/batch/"
+    },
+    {
+      "id": "rule-a-test-case-says-when-its-prompt-varied",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-test-case-says-when-its-prompt-varied",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-test-case-says-when-its-prompt-varied"
+        }
+      ],
+      "expected_outcome": "A test case is marked prompt-varied only when its trials started from more than one distinct prompt.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheBatchReportCountsEachConversationAtItsEnd$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-trial-with-no-further-round-is-closed-not-failed",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-trial-with-no-further-round-is-closed-not-failed",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-trial-with-no-further-round-is-closed-not-failed"
+        }
+      ],
+      "expected_outcome": "A simulated answer refused because the conversation has no further round closes the trial instead of failing the batch.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestABatchSettlesOnceNoTrialIsRunningAndNoSimulatedAnswerIsOwed$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

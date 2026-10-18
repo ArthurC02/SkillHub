@@ -1,0 +1,218 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "creation-command-budget-and-reference-rules-2026-10-19",
+  "proposal_id": "creation-command-budget-and-reference-rules-2026-10-19",
+  "registry_revision": {
+    "observed_commit": "5fdb3212f4a8ccbf4074691b5b8624c9694f3b28",
+    "registry_digest": "sha256:a7e4e1cd0734c7cb83edf9f441b3dfcbf757fc5ad12b40048e493f9da72e61f5",
+    "committed_digest": "sha256:9e4a3f84e53c438cd6177de80aabcf5515419b59570088192f90ed60bf950ebb"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-creation-budget-only-rises-within-the-ceiling",
+      "mutated_protection": "apps/platform/internal/creator/creation/run_fetch_commands.go:71: budget <= p.BudgetUSD -> budget < p.BudgetUSD",
+      "failure_evidence": "=== RUN   TestRaisingTheBudgetMustGoUpAndStayWithinTheLimit\n    command_test.go:516: the same: err = <nil>, budget = 0.5\n--- FAIL: TestRaisingTheBudgetMustGoUpAndStayWithinTheLimit (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t2.526s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-raising-the-budget-revives-a-failed-creation",
+      "mutated_protection": "apps/platform/internal/creator/creation/run_fetch_commands.go:75: if current == StateFailed { -> if false && current == StateFailed {",
+      "failure_evidence": "=== RUN   TestRaisingTheBudgetRevivesAFailedSession\n    command_test.go:530: outcome = {state:failed queueStep:false transient:false materialize:}, err = <nil>\n--- FAIL: TestRaisingTheBudgetRevivesAFailedSession (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t6.977s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-creation-command-must-name-the-current-revision",
+      "mutated_protection": "apps/platform/internal/creator/creation/creation.go:286: row.Revision != c.ExpectedRevision -> row.Revision != c.ExpectedRevision && false",
+      "failure_evidence": "=== RUN   TestACommandForAnotherRevisionConflicts\n    command_test.go:67: expected revision 2 against revision 3: err = <nil>, want ErrConflict\n    command_test.go:67: expected revision 4 against revision 3: err = <nil>, want ErrConflict\n--- FAIL: TestACommandForAnotherRevisionConflicts (0.07s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t2.949s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-ended-creation-accepts-no-command",
+      "mutated_protection": "apps/platform/internal/creator/creation/creation.go:290: current.HasEnded() -> current.HasEnded() && false",
+      "failure_evidence": "=== RUN   TestAnEndedSessionAcceptsNoCommandNotEvenCancel\n    command_test.go:76: saved: err = <nil>, want ErrInvalidCommand\n    command_test.go:76: cancelled: err = <nil>, want ErrInvalidCommand\n--- FAIL: TestAnEndedSessionAcceptsNoCommandNotEvenCancel (0.06s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t3.511s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-while-the-model-holds-the-turn-only-cancel-and-stop-are-accepted",
+      "mutated_protection": "apps/platform/internal/creator/creation/creation.go:300: current.AwaitsTheModel() && c.Kind != commandCancel -> current.AwaitsTheModel() && false",
+      "failure_evidence": "=== RUN   TestWhileTheModelHoldsTheTurnOnlyCancelAndStopStepAreAccepted\n    command_test.go:106: queued message: err = <nil>, want creation: stale revision\n    command_test.go:106: queued confirm_brief: err = <nil>, want creation: stale revision\n    command_test.go:106: working message: err = <nil>, want creation: stale revision\n    command_test.go:106: working confirm_brief: err = <nil>, want creation: stale revision\n--- FAIL: TestWhileTheModelHoldsTheTurnOnlyCancelAndStopStepAreAccepted (0.05s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t3.564s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-creation-takes-at-most-its-approved-steps",
+      "mutated_protection": "apps/platform/internal/creator/creation/job.go:42: p.Steps < l.MaxSteps -> p.Steps <= l.MaxSteps",
+      "failure_evidence": "=== RUN   TestTheLastApprovedStepCanBeSpentAndNoneAfterIt\n=== RUN   TestTheLastApprovedStepCanBeSpentAndNoneAfterIt/one_step_left\n=== RUN   TestTheLastApprovedStepCanBeSpentAndNoneAfterIt/every_step_taken\n    step_cap_test.go:18: 8 of 8 steps taken with budget left: canSpend = true, want false\n--- FAIL: TestTheLastApprovedStepCanBeSpentAndNoneAfterIt (0.00s)\n    --- PASS: TestTheLastApprovedStepCanBeSpentAndNoneAfterIt/one_step_left (0.00s)\n    --- FAIL: TestTheLastApprovedStepCanBeSpentAndNoneAfterIt/every_step_taken (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t4.130s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-creation-makes-at-most-its-tool-call-ceiling",
+      "mutated_protection": "apps/platform/internal/creator/creation/tool_actions.go:18: e.Snapshot.ToolCalls >= e.Limits.MaxToolCalls -> e.Snapshot.ToolCalls > e.Limits.MaxToolCalls",
+      "failure_evidence": "=== RUN   TestProposalToolIntentRefusesAtTheToolCallCeiling\n    proposal_test.go:648: at the ceiling the call must not be charged: toolCalls=4 err=creation: capability unavailable\n--- FAIL: TestProposalToolIntentRefusesAtTheToolCallCeiling (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t3.052s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-creation-searches-the-catalogue-at-most-twice",
+      "mutated_protection": "apps/platform/internal/creator/creation/tool_actions.go:49: p.SearchRounds >= MaxSearchRounds -> p.SearchRounds > MaxSearchRounds",
+      "failure_evidence": "=== RUN   TestProposalStopsSearchingAfterTwoEmptyRounds\n    creation_test.go:622: a third search is answered without searching: state=\"\" rounds=2 tools=3 err=creation: capability unavailable\n--- FAIL: TestProposalStopsSearchingAfterTwoEmptyRounds (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t3.090s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-creation-selects-at-most-three-references",
+      "mutated_protection": "apps/platform/internal/creator/creation/reference_commands.go:27: len(c.ReferenceSkillIDs) > MaxReferences -> len(c.ReferenceSkillIDs) > MaxReferences+1",
+      "failure_evidence": "=== RUN   TestSelectingReferencesRefusesWhatItCannotResolve\n=== RUN   TestSelectingReferencesRefusesWhatItCannotResolve/more_than_three\n    command_test.go:251: err = <nil>, want creation: invalid command\n=== RUN   TestSelectingReferencesRefusesWhatItCannotResolve/no_resolver\n=== RUN   TestSelectingReferencesRefusesWhatItCannotResolve/the_same_skill_twice\n=== RUN   TestSelectingReferencesRefusesWhatItCannotResolve/a_skill_that_does_not_resolve\n--- FAIL: TestSelectingReferencesRefusesWhatItCannotResolve (0.00s)\n    --- FAIL: TestSelectingReferencesRefusesWhatItCannotResolve/more_than_three (0.00s)\n    --- PASS: TestSelectingReferencesRefusesWhatItCannotResolve/no_resolver (0.00s)\n    --- PASS: TestSelectingReferencesRefusesWhatItCannotResolve/the_same_skill_twice (0.00s)\n    --- PASS: TestSelectingReferencesRefusesWhatItCannotResolve/a_skill_that_does_not_resolve (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t4.372s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-creation-reference-is-selected-once",
+      "mutated_protection": "apps/platform/internal/creator/creation/reference_commands.go:36: if seen[sid] { -> if false && seen[sid] {",
+      "failure_evidence": "=== RUN   TestSelectingReferencesRefusesWhatItCannotResolve\n=== RUN   TestSelectingReferencesRefusesWhatItCannotResolve/more_than_three\n=== RUN   TestSelectingReferencesRefusesWhatItCannotResolve/no_resolver\n=== RUN   TestSelectingReferencesRefusesWhatItCannotResolve/the_same_skill_twice\n    command_test.go:251: err = <nil>, want creation: invalid command\n=== RUN   TestSelectingReferencesRefusesWhatItCannotResolve/a_skill_that_does_not_resolve\n--- FAIL: TestSelectingReferencesRefusesWhatItCannotResolve (0.00s)\n    --- PASS: TestSelectingReferencesRefusesWhatItCannotResolve/more_than_three (0.00s)\n    --- PASS: TestSelectingReferencesRefusesWhatItCannotResolve/no_resolver (0.00s)\n    --- FAIL: TestSelectingReferencesRefusesWhatItCannotResolve/the_same_skill_twice (0.00s)\n    --- PASS: TestSelectingReferencesRefusesWhatItCannotResolve/a_skill_that_does_not_resolve (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t3.195s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-adopting-a-reference-names-exactly-one-skill",
+      "mutated_protection": "apps/platform/internal/creator/creation/reference_commands.go:56: len(skillIDs) != 1 -> len(skillIDs) < 1",
+      "failure_evidence": "=== RUN   TestAdoptingNeedsOneListedSkillAndAnAdopter\n=== RUN   TestAdoptingNeedsOneListedSkillAndAnAdopter/no_adopter\n=== RUN   TestAdoptingNeedsOneListedSkillAndAnAdopter/two_skills\n    command_test.go:303: err = <nil>, want creation: invalid command\n=== RUN   TestAdoptingNeedsOneListedSkillAndAnAdopter/nobody_asked\n=== RUN   TestAdoptingNeedsOneListedSkillAndAnAdopter/not_listed\n=== RUN   TestAdoptingNeedsOneListedSkillAndAnAdopter/the_skill_is_gone\n=== RUN   TestAdoptingNeedsOneListedSkillAndAnAdopter/the_adopter_is_down\n--- FAIL: TestAdoptingNeedsOneListedSkillAndAnAdopter (0.00s)\n    --- PASS: TestAdoptingNeedsOneListedSkillAndAnAdopter/no_adopter (0.00s)\n    --- FAIL: TestAdoptingNeedsOneListedSkillAndAnAdopter/two_skills (0.00s)\n    --- PASS: TestAdoptingNeedsOneListedSkillAndAnAdopter/nobody_asked (0.00s)\n    --- PASS: TestAdoptingNeedsOneListedSkillAndAnAdopter/not_listed (0.00s)\n    --- PASS: TestAdoptingNeedsOneListedSkillAndAnAdopter/the_skill_is_gone (0.00s)\n    --- PASS: TestAdoptingNeedsOneListedSkillAndAnAdopter/the_adopter_is_down (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t3.446s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/creator/creation/command_test.go",
+    "apps/platform/internal/creator/creation/creation.go",
+    "apps/platform/internal/creator/creation/creation_test.go",
+    "apps/platform/internal/creator/creation/job.go",
+    "apps/platform/internal/creator/creation/proposal_test.go",
+    "apps/platform/internal/creator/creation/reference_commands.go",
+    "apps/platform/internal/creator/creation/run_fetch_commands.go",
+    "apps/platform/internal/creator/creation/step_cap_test.go",
+    "apps/platform/internal/creator/creation/tool_actions.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-creation-budget-only-rises-within-the-ceiling",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestRaisingTheBudgetMustGoUpAndStayWithinTheLimit$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:9ef6a72caec180c49989b38672967ec292e1e8ca4317c7b6fc98f1b5c053aecb",
+      "finished_at": "2026-10-18T20:35:56.737348Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-raising-the-budget-revives-a-failed-creation",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestRaisingTheBudgetRevivesAFailedSession$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:249c53863f1b22490b7d5812e1434338c6d5d010c05a42081f747fc66ae82e4a",
+      "finished_at": "2026-10-18T20:36:04.749691Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-creation-command-must-name-the-current-revision",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestACommandForAnotherRevisionConflicts$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:89db8ddad8e0eb4f3b4ad8003fbae3ec002fbfe2d9bfb8334137c4ec8bff532f",
+      "finished_at": "2026-10-18T20:36:12.715211Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-ended-creation-accepts-no-command",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnEndedSessionAcceptsNoCommandNotEvenCancel$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:486b5b49d13ceac936fe1302d1cd26d42f70e51905d07dfb9da7fdd121ae3561",
+      "finished_at": "2026-10-18T20:36:22.792192Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-while-the-model-holds-the-turn-only-cancel-and-stop-are-accepted",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestWhileTheModelHoldsTheTurnOnlyCancelAndStopStepAreAccepted$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e57e18d1335e236bd3ac111b3cc53d2ffedafd25949f8dd7579e7799b2a6364d",
+      "finished_at": "2026-10-18T20:36:34.263796Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-creation-takes-at-most-its-approved-steps",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheLastApprovedStepCanBeSpentAndNoneAfterIt$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:fefa45cbe926b0011c81857bb15594dcfee094467b5ab9ea9bd778170d86affa",
+      "finished_at": "2026-10-18T20:36:41.153967Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-creation-makes-at-most-its-tool-call-ceiling",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestProposalToolIntentRefusesAtTheToolCallCeiling$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4f02d94c7d91fcee7af76b3114324f962aaf066a06c09207716c4e36576e209f",
+      "finished_at": "2026-10-18T20:36:49.443390Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-creation-searches-the-catalogue-at-most-twice",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestProposalStopsSearchingAfterTwoEmptyRounds$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ea0a7351b10e17631c76d8d82d22db72bb65c34c2de32d3623c48f88c25211be",
+      "finished_at": "2026-10-18T20:36:56.799646Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-creation-selects-at-most-three-references",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestSelectingReferencesRefusesWhatItCannotResolve$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f36a757a85ea4058443c9f6e601337be7e8077926d889628e5f6c3c2016da157",
+      "finished_at": "2026-10-18T20:37:04.142030Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-creation-reference-is-selected-once",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestSelectingReferencesRefusesWhatItCannotResolve$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:8d78bec62a634bf74dddaf4a9c32abc757c9a6c1daa39cb3a6f137507e992ad9",
+      "finished_at": "2026-10-18T20:37:11.213179Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-adopting-a-reference-names-exactly-one-skill",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAdoptingNeedsOneListedSkillAndAnAdopter$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e99672fe3185763aa48483d74515db8cae0dbe51f9e20739bc5834ea0ebab28f",
+      "finished_at": "2026-10-18T20:37:17.363646Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

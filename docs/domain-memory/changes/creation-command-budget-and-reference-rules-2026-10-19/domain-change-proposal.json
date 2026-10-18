@@ -1,0 +1,449 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "creation-command-budget-and-reference-rules-2026-10-19",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "creation-command-budget-and-reference-rules-2026-10-19",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-18T20:35:44.051485Z",
+  "verified_at": "2026-10-18T20:37:17.786962Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "5fdb3212f4a8ccbf4074691b5b8624c9694f3b28",
+    "registry_digest": "sha256:a7e4e1cd0734c7cb83edf9f441b3dfcbf757fc5ad12b40048e493f9da72e61f5",
+    "committed_digest": "sha256:9e4a3f84e53c438cd6177de80aabcf5515419b59570088192f90ed60bf950ebb"
+  },
+  "affected_contexts": [
+    "creation"
+  ],
+  "rule_ids": [
+    "a-creation-budget-only-rises-within-the-ceiling",
+    "raising-the-budget-revives-a-failed-creation",
+    "a-creation-command-must-name-the-current-revision",
+    "an-ended-creation-accepts-no-command",
+    "while-the-model-holds-the-turn-only-cancel-and-stop-are-accepted",
+    "a-creation-takes-at-most-its-approved-steps",
+    "a-creation-makes-at-most-its-tool-call-ceiling",
+    "a-creation-searches-the-catalogue-at-most-twice",
+    "a-creation-selects-at-most-three-references",
+    "a-creation-reference-is-selected-once",
+    "adopting-a-reference-names-exactly-one-skill"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "creation",
+    "invariant": "Only creation decides these rules.",
+    "evidence": [
+      "apps/platform/internal/creator/creation/creation.go:280-305"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/creator/creation/job.go:36-41"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A second extraction of the creation Context found enforced rules beyond the ten the Registry held, one guarded only away from its boundary."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; add the missing tests; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording the stop-step refusal: no test reaches it yet."
+    ],
+    "proof_obligations": [
+      "rule-a-creation-budget-only-rises-within-the-ceiling",
+      "rule-raising-the-budget-revives-a-failed-creation",
+      "rule-a-creation-command-must-name-the-current-revision",
+      "rule-an-ended-creation-accepts-no-command",
+      "rule-while-the-model-holds-the-turn-only-cancel-and-stop-are-accepted",
+      "rule-a-creation-takes-at-most-its-approved-steps",
+      "rule-a-creation-makes-at-most-its-tool-call-ceiling",
+      "rule-a-creation-searches-the-catalogue-at-most-twice",
+      "rule-a-creation-selects-at-most-three-references",
+      "rule-a-creation-reference-is-selected-once",
+      "rule-adopting-a-reference-names-exactly-one-skill"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-creation-budget-only-rises-within-the-ceiling",
+        "statement": "Raising a creation budget is refused unless the new amount is finite, strictly above the current budget and within the ceiling.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "Raising 0.5 to 0.5 is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/run_fetch_commands.go",
+            "lines": {
+              "start": 71,
+              "end": 73
+            },
+            "excerpt_sha256": "sha256:f154f9f48c415d929c412cb87709ae595a28f6ae6d2192af54fc8e01bd7ed35a"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/command_test.go",
+            "lines": {
+              "start": 512,
+              "end": 524
+            },
+            "excerpt_sha256": "sha256:81824bf8ad0a6f5227c7865ffb9a6c56fbee07e55468b3745ed76ec98d75d3e5"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "raising-the-budget-revives-a-failed-creation",
+        "statement": "Raising the budget of a failed creation returns it to waiting for input; any other state is kept, and no step is queued.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "A failed session whose budget is raised waits for input."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/run_fetch_commands.go",
+            "lines": {
+              "start": 75,
+              "end": 77
+            },
+            "excerpt_sha256": "sha256:9f1c3b470804e0031ab34f87b7800cfa9e8e5b3e37dba9ad0f1ad526fadb7748"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/command_test.go",
+            "lines": {
+              "start": 526,
+              "end": 532
+            },
+            "excerpt_sha256": "sha256:4679675058ef31f6307f1485cc9f1e28e4412f594950f7626c767dda622ada63"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-creation-command-must-name-the-current-revision",
+        "statement": "A creation command is refused as a conflict unless its expected revision equals the stored one.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "A command for revision 2 against revision 3 conflicts."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/creation.go",
+            "lines": {
+              "start": 286,
+              "end": 288
+            },
+            "excerpt_sha256": "sha256:99edc738823808d985ab780dacd6b00dd9c746d18c73e021d80bd260dcfb3f6a"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/command_test.go",
+            "lines": {
+              "start": 63,
+              "end": 70
+            },
+            "excerpt_sha256": "sha256:5c71942845a7cfc3d5623519a6ac04a54f89488d74553cfb17de9688f9a4cdec"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-ended-creation-accepts-no-command",
+        "statement": "A saved or cancelled creation accepts no command, not even cancel.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "Cancelling a saved creation is refused as invalid."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/creation.go",
+            "lines": {
+              "start": 290,
+              "end": 292
+            },
+            "excerpt_sha256": "sha256:dde21a3732e6bedd399d7081f3edc0dbc55ff03c4a77682b60622bb26a393cf0"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/command_test.go",
+            "lines": {
+              "start": 72,
+              "end": 79
+            },
+            "excerpt_sha256": "sha256:04b8fddbfbcb82716f40aa4b956fbbadecfdd0a162f534a7b78db5b7e7d89d81"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "while-the-model-holds-the-turn-only-cancel-and-stop-are-accepted",
+        "statement": "While a creation is queued for or working with the model, only cancel and stop-step are accepted; other commands conflict.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "Answering a question while the model works conflicts."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/creation.go",
+            "lines": {
+              "start": 300,
+              "end": 302
+            },
+            "excerpt_sha256": "sha256:022428359262ed9fc6a4357ca45c92c8c6c3f5c388a39581707769114e60751a"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/command_test.go",
+            "lines": {
+              "start": 101,
+              "end": 110
+            },
+            "excerpt_sha256": "sha256:df295e6db55c705d30911735f422922e6b311446fd060b5eb79b3563679621e6"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-creation-takes-at-most-its-approved-steps",
+        "statement": "A creation may take a step only while it has taken fewer than its approved number of steps, even with budget left.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "With budget left, the last approved step is allowed and none after it."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/job.go",
+            "lines": {
+              "start": 42,
+              "end": 42
+            },
+            "excerpt_sha256": "sha256:ebc27436839a8223198d08adb2fc71a87462c09d90145f2af76329159e43bbf8"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/step_cap_test.go",
+            "lines": {
+              "start": 5,
+              "end": 22
+            },
+            "excerpt_sha256": "sha256:1dfc537fbd136ef793d52c16b30d14db9c705ae8483baa973f11842b6feb073a"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-creation-makes-at-most-its-tool-call-ceiling",
+        "statement": "At the tool-call ceiling a creation's tool request is refused and the count does not grow.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "A tool request at the ceiling is refused as over the limit."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/tool_actions.go",
+            "lines": {
+              "start": 18,
+              "end": 20
+            },
+            "excerpt_sha256": "sha256:f3327dd177f1f80f221fe351d9f111393a803db19f0fa391e4ff67c62bb6cc3d"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/proposal_test.go",
+            "lines": {
+              "start": 641,
+              "end": 650
+            },
+            "excerpt_sha256": "sha256:18d24ece48fa1c365edf0aa57c73dc1d28131af22f70531bbc2799d38c662ce1"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-creation-searches-the-catalogue-at-most-twice",
+        "statement": "A creation searches the catalogue at most twice; a third search is answered with a note and searches nothing.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "After two empty rounds a third search is not run."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/tool_actions.go",
+            "lines": {
+              "start": 49,
+              "end": 51
+            },
+            "excerpt_sha256": "sha256:52e9a5f1f3f0a6f22e1cbf561f5f2a7dccae6d35bd80a5b9b06b88b4f274430c"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/creation_test.go",
+            "lines": {
+              "start": 615,
+              "end": 623
+            },
+            "excerpt_sha256": "sha256:97976b97b4da3bcffee4a5b73675bbf3fd3162873a7bbf7c969354a244770aba"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-creation-selects-at-most-three-references",
+        "statement": "Selecting more than three reference Skills is refused.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "Selecting four references is refused as invalid."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/reference_commands.go",
+            "lines": {
+              "start": 27,
+              "end": 29
+            },
+            "excerpt_sha256": "sha256:7d268eae9083b828d8aa2d17d32c03d9ed96e72ffddc0355afe5e4d6d4a8ec36"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/command_test.go",
+            "lines": {
+              "start": 230,
+              "end": 255
+            },
+            "excerpt_sha256": "sha256:ba81276384498fe0aae8aac8011078e6f03e21e4cc614077aaee7ee93862732e"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-creation-reference-is-selected-once",
+        "statement": "Selecting the same reference Skill twice is refused.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "Selecting one skill twice is refused as invalid."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/reference_commands.go",
+            "lines": {
+              "start": 36,
+              "end": 38
+            },
+            "excerpt_sha256": "sha256:05ebe0b488f5c07a9f9027de57a98b16ff57519d3679404f6492dc662742b37b"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/command_test.go",
+            "lines": {
+              "start": 230,
+              "end": 255
+            },
+            "excerpt_sha256": "sha256:ba81276384498fe0aae8aac8011078e6f03e21e4cc614077aaee7ee93862732e"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "adopting-a-reference-names-exactly-one-skill",
+        "statement": "Adopting a reference names exactly one listed Skill.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "Adopting two skills at once is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/reference_commands.go",
+            "lines": {
+              "start": 56,
+              "end": 57
+            },
+            "excerpt_sha256": "sha256:9d6e71be2077ba415b2c4343f7c3e0ab7c0688f705dd786832da816167dd653f"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/command_test.go",
+            "lines": {
+              "start": 274,
+              "end": 307
+            },
+            "excerpt_sha256": "sha256:60cd4412071745c1d42626f208e05f073c4420dd3c2eb4316cc6f8c03119283b"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-18T20:37:17.368504Z",
+      "scope": "Record creation rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "5fdb3212f4a8ccbf4074691b5b8624c9694f3b28",
+        "registry_digest": "sha256:a7e4e1cd0734c7cb83edf9f441b3dfcbf757fc5ad12b40048e493f9da72e61f5",
+        "committed_digest": "sha256:9e4a3f84e53c438cd6177de80aabcf5515419b59570088192f90ed60bf950ebb"
+      }
+    }
+  ]
+}

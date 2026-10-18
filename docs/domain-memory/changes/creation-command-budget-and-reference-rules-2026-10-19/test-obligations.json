@@ -1,0 +1,172 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "creation-command-budget-and-reference-rules-2026-10-19",
+  "proposal_id": "creation-command-budget-and-reference-rules-2026-10-19",
+  "obligations": [
+    {
+      "id": "rule-a-creation-budget-only-rises-within-the-ceiling",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-creation-budget-only-rises-within-the-ceiling",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-creation-budget-only-rises-within-the-ceiling"
+        }
+      ],
+      "expected_outcome": "Raising a creation budget is refused unless the new amount is finite, strictly above the current budget and within the ceiling.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestRaisingTheBudgetMustGoUpAndStayWithinTheLimit$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-raising-the-budget-revives-a-failed-creation",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-raising-the-budget-revives-a-failed-creation",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "raising-the-budget-revives-a-failed-creation"
+        }
+      ],
+      "expected_outcome": "Raising the budget of a failed creation returns it to waiting for input; any other state is kept, and no step is queued.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestRaisingTheBudgetRevivesAFailedSession$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-a-creation-command-must-name-the-current-revision",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-creation-command-must-name-the-current-revision",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-creation-command-must-name-the-current-revision"
+        }
+      ],
+      "expected_outcome": "A creation command is refused as a conflict unless its expected revision equals the stored one.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestACommandForAnotherRevisionConflicts$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-an-ended-creation-accepts-no-command",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-ended-creation-accepts-no-command",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-ended-creation-accepts-no-command"
+        }
+      ],
+      "expected_outcome": "A saved or cancelled creation accepts no command, not even cancel.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnEndedSessionAcceptsNoCommandNotEvenCancel$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-while-the-model-holds-the-turn-only-cancel-and-stop-are-accepted",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-while-the-model-holds-the-turn-only-cancel-and-stop-are-accepted",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "while-the-model-holds-the-turn-only-cancel-and-stop-are-accepted"
+        }
+      ],
+      "expected_outcome": "While a creation is queued for or working with the model, only cancel and stop-step are accepted; other commands conflict.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestWhileTheModelHoldsTheTurnOnlyCancelAndStopStepAreAccepted$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-a-creation-takes-at-most-its-approved-steps",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-creation-takes-at-most-its-approved-steps",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-creation-takes-at-most-its-approved-steps"
+        }
+      ],
+      "expected_outcome": "A creation may take a step only while it has taken fewer than its approved number of steps, even with budget left.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheLastApprovedStepCanBeSpentAndNoneAfterIt$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-a-creation-makes-at-most-its-tool-call-ceiling",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-creation-makes-at-most-its-tool-call-ceiling",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-creation-makes-at-most-its-tool-call-ceiling"
+        }
+      ],
+      "expected_outcome": "At the tool-call ceiling a creation's tool request is refused and the count does not grow.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestProposalToolIntentRefusesAtTheToolCallCeiling$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-a-creation-searches-the-catalogue-at-most-twice",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-creation-searches-the-catalogue-at-most-twice",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-creation-searches-the-catalogue-at-most-twice"
+        }
+      ],
+      "expected_outcome": "A creation searches the catalogue at most twice; a third search is answered with a note and searches nothing.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestProposalStopsSearchingAfterTwoEmptyRounds$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-a-creation-selects-at-most-three-references",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-creation-selects-at-most-three-references",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-creation-selects-at-most-three-references"
+        }
+      ],
+      "expected_outcome": "Selecting more than three reference Skills is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestSelectingReferencesRefusesWhatItCannotResolve$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-a-creation-reference-is-selected-once",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-creation-reference-is-selected-once",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-creation-reference-is-selected-once"
+        }
+      ],
+      "expected_outcome": "Selecting the same reference Skill twice is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestSelectingReferencesRefusesWhatItCannotResolve$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-adopting-a-reference-names-exactly-one-skill",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-adopting-a-reference-names-exactly-one-skill",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "adopting-a-reference-names-exactly-one-skill"
+        }
+      ],
+      "expected_outcome": "Adopting a reference names exactly one listed Skill.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAdoptingNeedsOneListedSkillAndAnAdopter$ ./internal/creator/creation/"
+    }
+  ]
+}

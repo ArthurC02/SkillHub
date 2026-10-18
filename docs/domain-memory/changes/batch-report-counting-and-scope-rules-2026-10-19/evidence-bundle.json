@@ -1,0 +1,217 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "batch-report-counting-and-scope-rules-2026-10-19",
+  "proposal_id": "batch-report-counting-and-scope-rules-2026-10-19",
+  "registry_revision": {
+    "observed_commit": "5fdb3212f4a8ccbf4074691b5b8624c9694f3b28",
+    "registry_digest": "sha256:9f5bf02b3fd979cc8846ea6c69d98667906b3170b68677f85992cc86e2b5c7a8",
+    "committed_digest": "sha256:9e4a3f84e53c438cd6177de80aabcf5515419b59570088192f90ed60bf950ebb"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-only-a-met-trial-counts-as-passed",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_report.go:223: if trial.Outcome == TrialMet { -> if trial.Outcome == TrialMet || trial.Outcome == TrialPartiallyMet {",
+      "failure_evidence": "=== RUN   TestAPartlyMetTrialIsJudgedButNotPassed\n    outcome_counting_test.go:24: met, partially met and not met: 2 passed of 3 judged, want 1 of 3\n--- FAIL: TestAPartlyMetTrialIsJudgedButNotPassed (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/batch\t2.061s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-only-judged-trials-enter-the-pass-rate",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_report.go:220: if trial.Outcome.judged() { -> if true {",
+      "failure_evidence": "=== RUN   TestTheSkillEffectPairsEachTestCaseWithItsOwnTrialsWithoutTheSkill\n    batch_test.go:172: arms = 5/6 with and 1/6 without, want 5/6 and 1/4\n--- FAIL: TestTheSkillEffectPairsEachTestCaseWithItsOwnTrialsWithoutTheSkill (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/batch\t2.084s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-pass-at-k-is-unknown-until-the-trials-decide-it",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_report.go:236: case passed > 0: -> case passed > 1:",
+      "failure_evidence": "=== RUN   TestPassAtKAndPassAllKAreUnknownUntilTheTrialsDecideThem\n    batch_test.go:83: one passed, the rest still running: pass@k = unknown, want true\n--- FAIL: TestPassAtKAndPassAllKAreUnknownUntilTheTrialsDecideThem (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/batch\t2.076s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-report-is-read-only-under-its-own-skill",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_report.go:84: if batch.SkillID != skillID { -> if batch.SkillID != skillID && false {",
+      "failure_evidence": "=== RUN   TestABatchReportIsReadOnlyUnderItsOwnSkillAndHasNoWithheldArmUnlessAsked\n    evaluation_batch_scope_integration_test.go:31: the batch read under another skill of the same workspace: got 200 map[batch:map[created_at:2026-10-18T20:27:41Z id:12f1f522-ea38-4bec-89a0-572fcfcc43a1 skill_id:22707d69-4e12-4bde-a9e6-cbccc4670373 skill_version_id:2f2a21f5-0bfb-4246-afad-21028c5b3439 status:launched trials:1 with_skill_withheld:false] judged:0 passed:0 test_cases:[map[judged:0 passed:0 prompt_varied_across:false test_case_id:08ce3df5-f40c-4c30-8e78-730f1b507d35 trials:[map[end_run_id:2824bd16-b5f1-44bc-bf6c-aed5ab80c592 outcome:running run_id:2824bd16-b5f1-44bc-bf6c-aed5ab80c592 trial:1]]]] test_cases_all_passed:0 test_cases_decided:0], want 404\n--- FAIL: TestABatchReportIsReadOnlyUnderItsOwnSkillAndHasNoWithheldArmUnlessAsked (0.24s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t7.101s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-skill-effect-is-reported-only-when-the-skill-was-withheld",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_report.go:99: if batch.WithSkillWithheld { -> if batch.WithSkillWithheld || true {",
+      "failure_evidence": "=== RUN   TestABatchReportIsReadOnlyUnderItsOwnSkillAndHasNoWithheldArmUnlessAsked\n    evaluation_batch_scope_integration_test.go:25: a batch created without withholding the skill reports skill_withheld = map[judged:0 passed:0 test_cases:[] test_cases_all_passed:0 test_cases_decided:0]\n    evaluation_batch_scope_integration_test.go:25: a batch created without withholding the skill reports skill_effect = map[better:0 paired:0 tied:0 unpaired:1 worse:0]\n--- FAIL: TestABatchReportIsReadOnlyUnderItsOwnSkillAndHasNoWithheldArmUnlessAsked (0.40s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.876s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-paired-difference-needs-two-pairs-for-an-interval",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_comparison.go:98: if n < 2 { -> if n < 1 {",
+      "failure_evidence": "=== RUN   TestThePairedDifferenceCarriesItsStandardErrorInterval\n    batch_test.go:139: one pair: 0x34da4f50ef90 &{NaN NaN}, want the difference without an interval\n--- FAIL: TestThePairedDifferenceCarriesItsStandardErrorInterval (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/batch\t2.693s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-paired-test-case-is-better-only-when-strictly-higher",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_comparison.go:56: case d > 0: -> case d > 1:",
+      "failure_evidence": "=== RUN   TestEachPairedTestCaseCountsOnceAsBetterWorseOrTied\n    batch_test.go:231: pairing = {Paired:3 Unpaired:1 Difference:0x25727021a4b8 Difference95:0x25727021a4c0 Better:0 Worse:1 Tied:2}, want one better, one worse, one tied and one unpaired\n--- FAIL: TestEachPairedTestCaseCountsOnceAsBetterWorseOrTied (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/batch\t2.381s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-failed-trial-run-waits-for-its-judging",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_report.go:191: case end.Failed: -> case end.Failed && false:",
+      "failure_evidence": "=== RUN   TestATrialReadsAsItsVerdictOnceJudgedAndOtherwiseByHowItsRunEnded\n    batch_test.go:211: a failed run waits for its judging: got \"not_evaluated\" <nil>, want \"running\"\n--- FAIL: TestATrialReadsAsItsVerdictOnceJudgedAndOtherwiseByHowItsRunEnded (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/batch\t2.480s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-pass-rate-interval-is-a-95-percent-wilson-interval",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_report.go:29: const normalZ95 = 1.959963984540054 -> const normalZ95 = 1.64",
+      "failure_evidence": "=== RUN   TestThePassRateCarriesItsWilsonInterval\n    batch_test.go:64: every trial passed: rate 1 interval {Low:0.788046904551759 High:1}, want 1 [0.7225, 1]\n    batch_test.go:64: none passed: rate 0 interval {Low:0 High:0.2119530954482411}, want 0 [0, 0.2775]\n    batch_test.go:64: one of two: rate 0.5 interval {Low:0.12134303307457817 High:0.8786569669254218}, want 0.5 [0.0945, 0.9055]\n--- FAIL: TestThePassRateCarriesItsWilsonInterval (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/batch\t1.948s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-test-case-says-when-its-prompt-varied",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_report.go:228: result.PromptVariedAcross = len(prompts) > 1 -> result.PromptVariedAcross = len(prompts) > 2",
+      "failure_evidence": "=== RUN   TestTheBatchReportCountsEachConversationAtItsEnd\n    evaluation_batch_integration_test.go:433: test case = map[judged:2 pass_all_k:false pass_at_k:true passed:1 prompt_varied_across:false test_case_id:46d0b99d-4aae-470e-8c04-19298e5e5767 trials:[map[end_run_id:983dd33e-a894-4708-8a85-73b8b14314d7 outcome:met run_id:983dd33e-a894-4708-8a85-73b8b14314d7 trial:1] map[end_run_id:aaaa59bd-e9c7-447a-9b20-0b32c7d795e1 outcome:not_met run_id:aaaa59bd-e9c7-447a-9b20-0b32c7d795e1 trial:2]]], want {testCaseID:46d0b99d-4aae-470e-8c04-19298e5e5767 outcomes:[met not_met] passed:1 judged:2 passAtK:true passAllK:false varied:true}\n--- FAIL: TestTheBatchReportCountsEachConversationAtItsEnd (0.40s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.233s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-trial-with-no-further-round-is-closed-not-failed",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_simulated_user.go:121: if errors.Is(err, ErrNoFurtherRound) { -> if errors.Is(err, ErrNoFurtherRound) && false {",
+      "failure_evidence": "=== RUN   TestABatchSettlesOnceNoTrialIsRunningAndNoSimulatedAnswerIsOwed\n    evaluation_simulated_user_integration_test.go:155: this trial's conversation cannot take another answer\n--- FAIL: TestABatchSettlesOnceNoTrialIsRunningAndNoSimulatedAnswerIsOwed (0.18s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.604s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_scope_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_simulated_user_integration_test.go",
+    "apps/platform/internal/trial/batch/batch_comparison.go",
+    "apps/platform/internal/trial/batch/batch_report.go",
+    "apps/platform/internal/trial/batch/batch_simulated_user.go",
+    "apps/platform/internal/trial/batch/batch_test.go",
+    "apps/platform/internal/trial/batch/outcome_counting_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-only-a-met-trial-counts-as-passed",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAPartlyMetTrialIsJudgedButNotPassed$ ./internal/trial/batch/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:3d9089fbdd99654cd4cf70e38b23f2c0d76bc44da7990a444c170a9c8ba167bc",
+      "finished_at": "2026-10-18T20:30:44.784845Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-only-judged-trials-enter-the-pass-rate",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheSkillEffectPairsEachTestCaseWithItsOwnTrialsWithoutTheSkill$ ./internal/trial/batch/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:22c958eb84cb2cfb35e7cb63760b158df80d086cc55698db30825a2df05eacdc",
+      "finished_at": "2026-10-18T20:30:51.210697Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-pass-at-k-is-unknown-until-the-trials-decide-it",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestPassAtKAndPassAllKAreUnknownUntilTheTrialsDecideThem$ ./internal/trial/batch/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:aec456df3979d8f8a9592dbf8e1ed51e1c1587ad80b4d909dc73d5db765b41bb",
+      "finished_at": "2026-10-18T20:30:56.318543Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-batch-report-is-read-only-under-its-own-skill",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestABatchReportIsReadOnlyUnderItsOwnSkillAndHasNoWithheldArmUnlessAsked$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:c6028463d6f5f3dde6974433252bb96de9e93f9e5b762e95611dd5acd17b40cc",
+      "finished_at": "2026-10-18T20:31:06.324190Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-skill-effect-is-reported-only-when-the-skill-was-withheld",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestABatchReportIsReadOnlyUnderItsOwnSkillAndHasNoWithheldArmUnlessAsked$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:07a86cc02d380f0819caf4ddc4a225c769ec4180eb03b105f5d64657dc795057",
+      "finished_at": "2026-10-18T20:31:18.478843Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-paired-difference-needs-two-pairs-for-an-interval",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestThePairedDifferenceCarriesItsStandardErrorInterval$ ./internal/trial/batch/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:2a55bafe1e4473ac40efc4a55f8f9f4359b0103186ffaa1977dd3df1d13a7db4",
+      "finished_at": "2026-10-18T20:31:22.368877Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-paired-test-case-is-better-only-when-strictly-higher",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestEachPairedTestCaseCountsOnceAsBetterWorseOrTied$ ./internal/trial/batch/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:28927b554036efd4a75dcdda556aaac4c07e442b1f16e4e3d0dd1ea6bf928883",
+      "finished_at": "2026-10-18T20:31:26.770500Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-failed-trial-run-waits-for-its-judging",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestATrialReadsAsItsVerdictOnceJudgedAndOtherwiseByHowItsRunEnded$ ./internal/trial/batch/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:613f40927593f2afd2e7713a81f332997f3e0d9541ea7ab612b770be779acd90",
+      "finished_at": "2026-10-18T20:31:32.277578Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-pass-rate-interval-is-a-95-percent-wilson-interval",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestThePassRateCarriesItsWilsonInterval$ ./internal/trial/batch/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:c07f6e5806d6065303c7eff7b2c22af2a59cf4b0fe7f4a7ac5ff07dc77f73dbf",
+      "finished_at": "2026-10-18T20:31:37.156634Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-test-case-says-when-its-prompt-varied",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheBatchReportCountsEachConversationAtItsEnd$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:5cf1e1e3d205e5641ca7c6cadd489a9e24d8b102e766d2b4e6280eb69414725b",
+      "finished_at": "2026-10-18T20:31:46.496662Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-trial-with-no-further-round-is-closed-not-failed",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestABatchSettlesOnceNoTrialIsRunningAndNoSimulatedAnswerIsOwed$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:5a59ef9780176eec4aea5cb076fe3fcf3fe151d21d80899af4234c579ccce36b",
+      "finished_at": "2026-10-18T20:31:55.886048Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

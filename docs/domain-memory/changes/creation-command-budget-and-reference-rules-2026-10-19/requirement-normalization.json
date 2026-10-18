@@ -1,0 +1,69 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "creation-command-budget-and-reference-rules-2026-10-19",
+  "status": "draft",
+  "intent": "Record as reviewed further rules the creation Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context creation lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-creation-budget-only-rises-within-the-ceiling",
+      "statement": "Raising a creation budget is refused unless the new amount is finite, strictly above the current budget and within the ceiling."
+    },
+    {
+      "id": "enforced-raising-the-budget-revives-a-failed-creation",
+      "statement": "Raising the budget of a failed creation returns it to waiting for input; any other state is kept, and no step is queued."
+    },
+    {
+      "id": "enforced-a-creation-command-must-name-the-current-revision",
+      "statement": "A creation command is refused as a conflict unless its expected revision equals the stored one."
+    },
+    {
+      "id": "enforced-an-ended-creation-accepts-no-command",
+      "statement": "A saved or cancelled creation accepts no command, not even cancel."
+    },
+    {
+      "id": "enforced-while-the-model-holds-the-turn-only-cancel-and-stop-are-accepted",
+      "statement": "While a creation is queued for or working with the model, only cancel and stop-step are accepted; other commands conflict."
+    },
+    {
+      "id": "enforced-a-creation-takes-at-most-its-approved-steps",
+      "statement": "A creation may take a step only while it has taken fewer than its approved number of steps, even with budget left."
+    },
+    {
+      "id": "enforced-a-creation-makes-at-most-its-tool-call-ceiling",
+      "statement": "At the tool-call ceiling a creation's tool request is refused and the count does not grow."
+    },
+    {
+      "id": "enforced-a-creation-searches-the-catalogue-at-most-twice",
+      "statement": "A creation searches the catalogue at most twice; a third search is answered with a note and searches nothing."
+    },
+    {
+      "id": "enforced-a-creation-selects-at-most-three-references",
+      "statement": "Selecting more than three reference Skills is refused."
+    },
+    {
+      "id": "enforced-a-creation-reference-is-selected-once",
+      "statement": "Selecting the same reference Skill twice is refused."
+    },
+    {
+      "id": "enforced-adopting-a-reference-names-exactly-one-skill",
+      "statement": "Adopting a reference names exactly one listed Skill."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/creator/creation/command_test.go",
+    "apps/platform/internal/creator/creation/creation.go",
+    "apps/platform/internal/creator/creation/creation_test.go",
+    "apps/platform/internal/creator/creation/job.go",
+    "apps/platform/internal/creator/creation/proposal_test.go",
+    "apps/platform/internal/creator/creation/reference_commands.go",
+    "apps/platform/internal/creator/creation/run_fetch_commands.go",
+    "apps/platform/internal/creator/creation/step_cap_test.go",
+    "apps/platform/internal/creator/creation/tool_actions.go"
+  ]
+}

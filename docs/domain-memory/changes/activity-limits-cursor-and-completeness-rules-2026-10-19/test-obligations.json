@@ -1,0 +1,97 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "activity-limits-cursor-and-completeness-rules-2026-10-19",
+  "proposal_id": "activity-limits-cursor-and-completeness-rules-2026-10-19",
+  "obligations": [
+    {
+      "id": "rule-the-activity-service-refuses-a-limit-outside-1-to-100",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-activity-service-refuses-a-limit-outside-1-to-100",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-activity-service-refuses-a-limit-outside-1-to-100"
+        }
+      ],
+      "expected_outcome": "The activity service itself refuses a page limit below 1 or above 100, whatever its caller checked.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheServiceRefusesALimitOutsideOneToAHundred$ ./internal/product/activity/"
+    },
+    {
+      "id": "rule-an-activity-cursor-rank-is-0-to-3",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-activity-cursor-rank-is-0-to-3",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-activity-cursor-rank-is-0-to-3"
+        }
+      ],
+      "expected_outcome": "A cursor naming a priority rank outside 0 to 3 is refused as invalid, so a forged cursor cannot reach a rank the feed does not have.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAWellFormedCursorWithAnImpossibleFieldIsRefused$ ./internal/product/activity/"
+    },
+    {
+      "id": "rule-an-activity-cursor-names-its-kind-and-source",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-activity-cursor-names-its-kind-and-source",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-activity-cursor-names-its-kind-and-source"
+        }
+      ],
+      "expected_outcome": "A cursor without a kind or without a source id is refused as invalid.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAWellFormedCursorWithAnImpossibleFieldIsRefused$ ./internal/product/activity/"
+    },
+    {
+      "id": "rule-an-unclassified-activity-item-ranks-lowest",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-unclassified-activity-item-ranks-lowest",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-unclassified-activity-item-ranks-lowest"
+        }
+      ],
+      "expected_outcome": "An item whose classification the feed does not know ranks below needs-attention, in-progress and recent items.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnUnclassifiedItemSortsAfterARecentOne$ ./internal/product/activity/"
+    },
+    {
+      "id": "rule-a-served-activity-page-is-complete-and-names-every-source",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-served-activity-page-is-complete-and-names-every-source",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-served-activity-page-is-complete-and-names-every-source"
+        }
+      ],
+      "expected_outcome": "A page the activity service serves says it is complete and names all contracted sources, even when it holds no items.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestListReturnsAnExplicitCompleteEmptyPage$ ./internal/product/activity/"
+    },
+    {
+      "id": "rule-an-unavailable-activity-source-answers-503",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-unavailable-activity-source-answers-503",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-unavailable-activity-source-answers-503"
+        }
+      ],
+      "expected_outcome": "When any activity source cannot be read, the request answers 503 with complete=false, the failed sources and no items.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestWorkspaceActivityFailsClosedWhenAnOwnerReaderFails$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

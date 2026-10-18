@@ -1,0 +1,129 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "activity-limits-cursor-and-completeness-rules-2026-10-19",
+  "proposal_id": "activity-limits-cursor-and-completeness-rules-2026-10-19",
+  "registry_revision": {
+    "observed_commit": "5fdb3212f4a8ccbf4074691b5b8624c9694f3b28",
+    "registry_digest": "sha256:681c94bf1d5d3ad82f02a7c776832a6755a533e74f2b1870653c0b1b91ff2f96",
+    "committed_digest": "sha256:9e4a3f84e53c438cd6177de80aabcf5515419b59570088192f90ed60bf950ebb"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-activity-service-refuses-a-limit-outside-1-to-100",
+      "mutated_protection": "apps/platform/internal/product/activity/service.go:162: limit < 1 || limit > 100 -> limit < 1 || limit > 101",
+      "failure_evidence": "=== RUN   TestTheServiceRefusesALimitOutsideOneToAHundred\n    limits_test.go:20: limit 101: err = <nil>, want accepted = false\n--- FAIL: TestTheServiceRefusesALimitOutsideOneToAHundred (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/activity\t0.987s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-activity-cursor-rank-is-0-to-3",
+      "mutated_protection": "apps/platform/internal/product/activity/service.go:313: value.Rank > 3 -> value.Rank > 4",
+      "failure_evidence": "=== RUN   TestAWellFormedCursorWithAnImpossibleFieldIsRefused\n=== RUN   TestAWellFormedCursorWithAnImpossibleFieldIsRefused/the_lowest_rank\n=== RUN   TestAWellFormedCursorWithAnImpossibleFieldIsRefused/a_rank_past_the_lowest\n    limits_test.go:46: err = <nil>, want ErrInvalidCursor\n=== RUN   TestAWellFormedCursorWithAnImpossibleFieldIsRefused/no_source_id\n=== RUN   TestAWellFormedCursorWithAnImpossibleFieldIsRefused/no_kind\n--- FAIL: TestAWellFormedCursorWithAnImpossibleFieldIsRefused (0.00s)\n    --- PASS: TestAWellFormedCursorWithAnImpossibleFieldIsRefused/the_lowest_rank (0.00s)\n    --- FAIL: TestAWellFormedCursorWithAnImpossibleFieldIsRefused/a_rank_past_the_lowest (0.00s)\n    --- PASS: TestAWellFormedCursorWithAnImpossibleFieldIsRefused/no_source_id (0.00s)\n    --- PASS: TestAWellFormedCursorWithAnImpossibleFieldIsRefused/no_kind (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/activity\t1.339s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-activity-cursor-names-its-kind-and-source",
+      "mutated_protection": "apps/platform/internal/product/activity/service.go:313: value.Kind == \"\" || value.SourceID == \"\" -> value.Kind == \"\" && value.SourceID == \"\"",
+      "failure_evidence": "=== RUN   TestAWellFormedCursorWithAnImpossibleFieldIsRefused\n=== RUN   TestAWellFormedCursorWithAnImpossibleFieldIsRefused/the_lowest_rank\n=== RUN   TestAWellFormedCursorWithAnImpossibleFieldIsRefused/a_rank_past_the_lowest\n=== RUN   TestAWellFormedCursorWithAnImpossibleFieldIsRefused/no_source_id\n    limits_test.go:46: err = <nil>, want ErrInvalidCursor\n=== RUN   TestAWellFormedCursorWithAnImpossibleFieldIsRefused/no_kind\n    limits_test.go:46: err = <nil>, want ErrInvalidCursor\n--- FAIL: TestAWellFormedCursorWithAnImpossibleFieldIsRefused (0.00s)\n    --- PASS: TestAWellFormedCursorWithAnImpossibleFieldIsRefused/the_lowest_rank (0.00s)\n    --- PASS: TestAWellFormedCursorWithAnImpossibleFieldIsRefused/a_rank_past_the_lowest (0.00s)\n    --- FAIL: TestAWellFormedCursorWithAnImpossibleFieldIsRefused/no_source_id (0.00s)\n    --- FAIL: TestAWellFormedCursorWithAnImpossibleFieldIsRefused/no_kind (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/activity\t2.881s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-unclassified-activity-item-ranks-lowest",
+      "mutated_protection": "apps/platform/internal/product/activity/service.go:366: return neutralRank -> return 0",
+      "failure_evidence": "=== RUN   TestAnUnclassifiedItemSortsAfterARecentOne\n    limits_test.go:57: an unclassified item sorted before a recent one; it must rank lowest\n--- FAIL: TestAnUnclassifiedItemSortsAfterARecentOne (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/activity\t1.417s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-served-activity-page-is-complete-and-names-every-source",
+      "mutated_protection": "apps/platform/internal/product/activity/service.go:182: Complete: true -> Complete: false",
+      "failure_evidence": "=== RUN   TestListReturnsAnExplicitCompleteEmptyPage\n    service_test.go:117: page = {Complete:false Sources:[run evaluation creation packaging publishing] Items:[] NextCursor:}\n--- FAIL: TestListReturnsAnExplicitCompleteEmptyPage (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/activity\t1.528s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-unavailable-activity-source-answers-503",
+      "mutated_protection": "apps/platform/internal/entrypoint/api/apiserver/activity.go:60: http.StatusServiceUnavailable -> http.StatusOK",
+      "failure_evidence": "=== RUN   TestWorkspaceActivityFailsClosedWhenAnOwnerReaderFails\n    activity_integration_test.go:120: status = 200, body = map[complete:false error:完整活動目前無法讀取，請稍後再試。 unavailable_sources:[publishing]]\n--- FAIL: TestWorkspaceActivityFailsClosedWhenAnOwnerReaderFails (0.09s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t9.975s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/activity.go",
+    "apps/platform/internal/entrypoint/api/apiserver/activity_integration_test.go",
+    "apps/platform/internal/product/activity/limits_test.go",
+    "apps/platform/internal/product/activity/service.go",
+    "apps/platform/internal/product/activity/service_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-the-activity-service-refuses-a-limit-outside-1-to-100",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheServiceRefusesALimitOutsideOneToAHundred$ ./internal/product/activity/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e25414d3d3179369f444dbec8538020da03ca9b0b310d23fc779bbb454e7b982",
+      "finished_at": "2026-10-18T20:25:12.697250Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-activity-cursor-rank-is-0-to-3",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAWellFormedCursorWithAnImpossibleFieldIsRefused$ ./internal/product/activity/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b962719d7028a997412a7700e40e1f304dafcc52190a487807532e448ffc6ca6",
+      "finished_at": "2026-10-18T20:25:18.664271Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-activity-cursor-names-its-kind-and-source",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAWellFormedCursorWithAnImpossibleFieldIsRefused$ ./internal/product/activity/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:19cf0ca20a73d36c4903a1242f98aa7690b4b5ab9d5d7700190a168017fbc019",
+      "finished_at": "2026-10-18T20:25:24.835013Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-unclassified-activity-item-ranks-lowest",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnUnclassifiedItemSortsAfterARecentOne$ ./internal/product/activity/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:2ee7f9a160aef7a9059cd47e24ba009bd2f38bc505faff936a844e8410221c30",
+      "finished_at": "2026-10-18T20:25:30.778443Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-served-activity-page-is-complete-and-names-every-source",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestListReturnsAnExplicitCompleteEmptyPage$ ./internal/product/activity/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:5fb2c44526b264da19bce3f27f07788c60ab4e42801479a7f3a7b7ea1e18fac0",
+      "finished_at": "2026-10-18T20:25:35.879509Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-unavailable-activity-source-answers-503",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestWorkspaceActivityFailsClosedWhenAnOwnerReaderFails$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:8724b9bbd029a5d9acc0463d4cc79d513335f32aacdbf429d40db0401fb8e8d0",
+      "finished_at": "2026-10-18T20:25:53.983766Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
