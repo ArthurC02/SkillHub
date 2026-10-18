@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.83.0
+
+### Changed
+
+- Commands are grouped into everyday, advanced and legacy in `references/script-api.md` and in `registry_tools.py --help`, from one table in the parser that a test keeps in step with the reference. `fill-harvest-package`, `attest-signed-commit`, `finalize-proposal` and `apply-approved-updates` are legacy, because `harvest` and `ship-package` run them; they still work, print a NOTE on stderr naming the replacement, and are removed in 1.0.0.
+- `validate` and `validate-change-package` print a NOTE for a `consistency` other than `synchronous` or `eventual`, naming the record or package, without failing. A Contract's `kind` and an Interaction's `delivery` stay free prose; the schema page says why.
+
 ## 0.82.0
 
 ### Added

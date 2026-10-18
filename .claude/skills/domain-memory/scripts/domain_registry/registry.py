@@ -13,8 +13,10 @@ from .common import (
     ASSET_KEYS,
     CLOSED_FIELDS,
     CONTEXT_SUBDOMAINS,
+    PROPOSAL_FILE,
     REGISTRY_STATUSES,
     REVIEW_REQUIRED_FIELDS,
+    load_json,
     record_status,
     registry_dir,
     template_dir,
@@ -53,6 +55,7 @@ ABSENCE_ASSETS = {
     "contracts": "without_contract",
     "events": "without_event",
 }
+KNOWN_CONSISTENCIES = ("synchronous", "eventual")
 
 
 def init_registry(output: Path) -> None:
@@ -131,6 +134,35 @@ def _copy_missing_templates(target: Path) -> list[str]:
 
 def asset_records(root: Path, name: str) -> list[dict[str, Any]]:
     return _records_of(name, read_document(root, name))
+
+
+def registry_consistency_notes(root: Path) -> list[str]:
+    return consistency_notes(
+        [(f"interactions/{record.get('id')}", record) for record in asset_records(root, "interactions.json")]
+    )
+
+
+def package_consistency_notes(package_root: Path) -> list[str]:
+    proposal = load_json(package_root / PROPOSAL_FILE)
+    interactions = [
+        update.get("record") for update in proposal.get("registry_updates", [])
+        if isinstance(update, dict) and update.get("asset") == "interactions"
+    ]
+    return consistency_notes([
+        (f"{package_root.name} boundary_decision", proposal.get("boundary_decision")),
+        *((f"{package_root.name} interactions/{record.get('id')}", record)
+          for record in interactions if isinstance(record, dict)),
+    ])
+
+
+def consistency_notes(holders: list[tuple[str, Any]]) -> list[str]:
+    return [
+        f'NOTE: {where} consistency "{holder["consistency"]}" is not one of the known values '
+        f'{", ".join(KNOWN_CONSISTENCIES)}; it is accepted as written, but a reader looking for those values misses it.'
+        for where, holder in holders
+        if isinstance(holder, dict) and isinstance(holder.get("consistency"), str)
+        and holder["consistency"] not in KNOWN_CONSISTENCIES
+    ]
 
 
 def _records_of(name: str, document: dict[str, Any]) -> list[dict[str, Any]]:

@@ -6,7 +6,7 @@ Use a Domain Change Proposal for a change that adds or changes an Aggregate, rul
 | --- | --- | --- |
 | `draft` | Evidence and design are still being assembled. | Run `submit-proposal` only after affected Contexts, risks, and open questions are explicit. |
 | `submitted` | Awaiting evidence collection and required review against a Registry revision. | Record each human approval, then run `verify-proposal`. |
-| `verified` | Every planned obligation has a supplied passing, digest-backed test attestation. | Add SCM proof and run `finalize-proposal`. |
+| `verified` | Every planned obligation has a supplied passing, digest-backed test attestation. | Sign the commit that holds the package and run `ship-package --commit <sha>`, which attests, finalizes and applies. |
 | `approved` | A named authority accepted this verified proposal against its recorded base revision. | Apply within its approved scope. |
 | `rejected` | The proposal must not be implemented. | Create a new draft; do not overwrite the rejected record. |
 | `superseded` | Evidence or a decision overtook this proposal before it was applied, or a later proposal replaced it. | Run `supersede-proposal` with a reason, and `--superseded-by` once the replacement has an id. Create the replacement as a new draft. |

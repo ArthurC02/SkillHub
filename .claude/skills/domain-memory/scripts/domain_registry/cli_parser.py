@@ -1,4 +1,5 @@
 import argparse
+import textwrap
 from pathlib import Path
 from typing import NoReturn
 
@@ -20,6 +21,40 @@ ASSET_CHOICES = [name.removesuffix(".json") for name in ASSET_KEYS]
 SINGULAR_ASSETS = {
     asset.removesuffix("ies") + "y" if asset.endswith("ies") else asset.removesuffix("s"): asset for asset in ASSET_CHOICES
 }
+LEGACY_REPLACEMENTS = {
+    "fill-harvest-package": "harvest --spec <file>",
+    "attest-signed-commit": "ship-package --commit <sha>",
+    "finalize-proposal": "ship-package",
+    "apply-approved-updates": "ship-package",
+}
+COMMAND_GROUPS = {
+    "everyday": (
+        "readiness", "probe", "lookup", "resolve-terms", "get-context", "get-record", "dependents", "brief",
+        "analyze-boundary", "boundary-impact", "validate", "coverage", "verify-evidence", "verify-sources",
+        "verify-audit", "cite", "recite", "relocate-evidence", "upsert-candidate", "retract-candidate",
+        "promote-candidate", "harvest", "init-change-package", "validate-change-package", "submit-proposal",
+        "record-test-result", "record-approval", "verify-proposal", "ship-package", "supersede-proposal",
+        "list-proposals", "quality-gates", "counterfactual",
+    ),
+    "advanced": (
+        "discover-sources", "init-domain-memory", "confirm-sources", "refine-sources", "refresh-sources", "init",
+        "migrate-registry", "migrate-evidence", "recover-registry-update", "demote-local-reviews", "redraft-proposal",
+        "export", "change-coupling", "compare-registry", "harvest-candidates", "governance-readiness",
+        "init-signing-key", "amend-policy", "install-git-hitl-hook", "install-pre-commit-hook", "verify-git-governance", "validate-policy",
+        "verify-scm-attestation", "audit-attestations", "scan-secrets", "validate-contract",
+    ),
+    "legacy": tuple(LEGACY_REPLACEMENTS),
+}
+
+
+def command_groups_text() -> str:
+    return "\n\n".join(
+        textwrap.fill(
+            f"{group.capitalize()} commands: {', '.join(names)}.", width=100, subsequent_indent="  ",
+            break_on_hyphens=False,
+        )
+        for group, names in COMMAND_GROUPS.items()
+    ) + "\n\nA legacy command still runs, prints a NOTE naming its replacement, and is removed in 1.0.0."
 
 
 def add_path(parser: argparse.ArgumentParser, name: str, required: bool = True) -> None:  # noqa: FBT001, FBT002
@@ -58,7 +93,8 @@ class CliParser(argparse.ArgumentParser):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = CliParser(
-        description="Initialize, validate, or assess a file-backed Domain Registry."
+        description="Initialize, validate, or assess a file-backed Domain Registry.",
+        epilog=command_groups_text(), formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     commands = parser.add_subparsers(dest="command", required=True, metavar="command")
     for add_commands in (

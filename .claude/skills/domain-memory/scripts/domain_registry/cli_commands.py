@@ -63,10 +63,13 @@ from .harvest_run import harvest
 from .ship import ship_package
 from .impact import boundary_impact, registered_collaborations
 from .relocate import Recitation, line_range, recite, relocate_evidence
+from .cli_parser import LEGACY_REPLACEMENTS
 from .registry import (
     CONSTRAINT_ASSETS,
     MATCH_KINDS,
     asset_records,
+    package_consistency_notes,
+    registry_consistency_notes,
     unplaced_implementation_paths,
     boundary_analysis,
     cited_paths,
@@ -203,9 +206,16 @@ def handle_validate(args: argparse.Namespace) -> int:
     )
     exit_code = report_errors(errors, "Registry is valid.")
     _note_unsettled(args.registry_root.resolve())
+    if exit_code == 0:
+        _print_notes(registry_consistency_notes(args.registry_root.resolve()))
     if exit_code == 0 and args.repo_root:
         _note_unplaced(args.registry_root.resolve(), args.repo_root.resolve())
     return exit_code
+
+
+def _print_notes(notes: list[str]) -> None:
+    for note in notes:
+        print(note, file=sys.stderr)
 
 
 def _note_unplaced(registry_root: Path, repo_root: Path) -> None:
@@ -1083,6 +1093,7 @@ def handle_validate_change_package(args: argparse.Namespace) -> int:
             _note_counterfactuals_off_cited_files(
                 args.package_root, args.registry_root.resolve() if args.registry_root else None
             )
+            _print_notes(package_consistency_notes(args.package_root))
         return exit_code
     unchecked = "" if errors else _unchecked_at(args.as_status, args.package_root)
     return report_errors(errors, f"Change package has everything {args.as_status} requires{unchecked}.")
@@ -1245,4 +1256,9 @@ HANDLERS = {
 
 
 def execute(args: argparse.Namespace) -> int:
+    if args.command in LEGACY_REPLACEMENTS:
+        print(
+            f"NOTE: {args.command} is legacy; use {LEGACY_REPLACEMENTS[args.command]}; it is removed in 1.0.0",
+            file=sys.stderr,
+        )
     return HANDLERS[args.command](args)

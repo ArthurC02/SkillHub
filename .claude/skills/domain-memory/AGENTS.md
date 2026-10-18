@@ -25,8 +25,7 @@ A fact moves along one of three paths, and only the scripts write:
    1. `submit-proposal` freezes the package against the Registry's current revision.
    2. `record-approval` records each reviewer, and `record-test-result` records each planned test.
    3. `verify-proposal` checks the test results.
-   4. `finalize-proposal` checks proof from outside the package: a merged pull request or a signed commit, as the policy says.
-   5. `apply-approved-updates` writes the package. Only then is a record `reviewed`.
+   4. `ship-package` checks proof from outside the package, a merged pull request or a signed commit as the policy says, then writes the package. Only then is a record `reviewed`.
 
 Every write takes the same route. It takes a lock, copies the Registry aside, applies the change to the copy, and validates the whole copy. A write that adds a new error is refused. A valid copy is swapped in and the write is appended to the audit chain. An interrupted write is finished or rolled back by `recover-registry-update`.
 

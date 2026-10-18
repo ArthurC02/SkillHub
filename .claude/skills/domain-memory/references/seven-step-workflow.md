@@ -53,7 +53,7 @@ Copy [test-obligations.json](../templates/test-obligations.json). Map every acce
 
 ## Step 7: Prepare, verify, and review the package
 
-Create an [evidence bundle](../templates/evidence-bundle.json) and [Draft PR description](../templates/draft-pr.md). Include the requirement, proposal, registry revision, approvals, executed checks, failures, and residual risks. Run `validate-change-package --package-root <path> --registry-root <root>` before presenting the package. Run `apply-approved-updates` only when the package is approved and Registry records must change. A Skill can prepare this package; repository write, PR creation, merge, and deployment remain subject to the user's authorization and the repository's own controls.
+Create an [evidence bundle](../templates/evidence-bundle.json) and [Draft PR description](../templates/draft-pr.md). Include the requirement, proposal, registry revision, approvals, executed checks, failures, and residual risks. Run `validate-change-package --package-root <path> --registry-root <root>` before presenting the package. Run `ship-package` only when the package is verified and Registry records must change; it attests the signed commit, finalizes and applies. A Skill can prepare this package; repository write, PR creation, merge, and deployment remain subject to the user's authorization and the repository's own controls.
 
 ## Harvesting proven rules from existing code
 
@@ -66,7 +66,7 @@ DM="python3 <path>/registry_tools.py"
 $DM counterfactual --repo-root . --file <enforcing file> --find '<protection>' --replace '<broken protection>' --test-command '<check>' --cwd <directory> --obligation-id <obligation>
 ```
 
-Several rules at once go through `counterfactual --suite <json>`, one entry per rule with its `obligation_id`, one intact run per test command. Continue only when every verdict is `killed`. Keep each whole output and give it, with the rule's check and the package's ownership, boundary and design decisions, to `fill-harvest-package`, which writes the criteria, obligations, proof obligations, sources and `counterfactual_check` list and refuses a rule whose counterfactual was not killed or ran another command than its check. A rule whose mutation survives is either untested or not the rule it claims: write the test, or leave the rule out and say why in `rejected_alternatives`.
+Several rules at once go through `counterfactual --suite <json>`, one entry per rule with its `obligation_id`, one intact run per test command. Continue only when every verdict is `killed`. Keep each whole output and give it, with the rule's check and the package's ownership, boundary and design decisions, to `fill-harvest-package` (legacy: `harvest --spec` runs this step), which writes the criteria, obligations, proof obligations, sources and `counterfactual_check` list and refuses a rule whose counterfactual was not killed or ran another command than its check. A rule whose mutation survives is either untested or not the rule it claims: write the test, or leave the rule out and say why in `rejected_alternatives`.
 
 After `submit-proposal`, `record-test-result` for each obligation, `record-approval` and `verify-proposal`, the `git-signed-commit` verifier needs three more steps. They take no decisions, but they must run in this order, because the attestation names the signed commit that carries the verified package; `ship-package` is `attest-signed-commit`, `finalize-proposal` and `apply-approved-updates` in that order, stopping at the first refusal:
 
