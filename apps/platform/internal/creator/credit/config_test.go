@@ -14,8 +14,11 @@ func TestNewConfigAcceptsDefaults(t *testing.T) {
 }
 
 func TestNewConfigFailsClosedOnPositiveDebtFloor(t *testing.T) {
-	if _, err := NewConfig(0.001, 13000, 10, 70); err == nil {
+	if _, err := NewConfig(0.001, 13000, 1, 70); err == nil {
 		t.Fatal("a positive CREDIT_DEBT_FLOOR must fail closed: the floor caps how negative a balance may go")
+	}
+	if _, err := NewConfig(0.001, 13000, 0, 70); err != nil {
+		t.Fatalf("CREDIT_DEBT_FLOOR=0 allows no debt and must be accepted: %v", err)
 	}
 }
 
