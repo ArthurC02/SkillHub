@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.76.0
+
+### Added
+
+- `ship-package --package-root <path> --registry-root <root> --repo-root <repo> [--commit <sha>]` runs the tail of a review in one call: `attest-signed-commit` for the given commit, then `finalize-proposal` and `apply-approved-updates`, stopping at the first step that refuses and naming it. Without `--commit` it starts at `finalize-proposal`, for an attestation written by hand. The report lists the steps completed, the proposal's status afterwards and the next step; it writes the package and the Registry, never git.
+
+### Changed
+
+- `harvest` reports a refused spec or citation as it reports every other stop: `stopped_at` is `spec` or `citation`, `errors` names each gap or path, and `next` says what to do; citations are checked before any counterfactual runs. `package` is null whenever the run stopped before writing. A reviewed rule whose statement, examples, contexts and cited spans are unchanged is reported `reproven` rather than `amended`, so a reviewer knows the package carries fresh proof and no new content.
+
 ## 0.75.0
 
 ### Added

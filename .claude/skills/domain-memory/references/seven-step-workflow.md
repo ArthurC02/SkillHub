@@ -68,14 +68,12 @@ $DM counterfactual --repo-root . --file <enforcing file> --find '<protection>' -
 
 Several rules at once go through `counterfactual --suite <json>`, one entry per rule with its `obligation_id`, one intact run per test command. Continue only when every verdict is `killed`. Keep each whole output and give it, with the rule's check and the package's ownership, boundary and design decisions, to `fill-harvest-package`, which writes the criteria, obligations, proof obligations, sources and `counterfactual_check` list and refuses a rule whose counterfactual was not killed or ran another command than its check. A rule whose mutation survives is either untested or not the rule it claims: write the test, or leave the rule out and say why in `rejected_alternatives`.
 
-After `submit-proposal`, `record-test-result` for each obligation, `record-approval` and `verify-proposal`, the `git-signed-commit` verifier needs five more steps. They take no decisions, but they must run in this order, because the attestation names the signed commit that carries the verified package:
+After `submit-proposal`, `record-test-result` for each obligation, `record-approval` and `verify-proposal`, the `git-signed-commit` verifier needs three more steps. They take no decisions, but they must run in this order, because the attestation names the signed commit that carries the verified package; `ship-package` is `attest-signed-commit`, `finalize-proposal` and `apply-approved-updates` in that order, stopping at the first refusal:
 
 ```sh
 P=<package directory>; R=<registry root>
 git add "$P" && git commit -S -m "docs(domain-memory): propose <package>"
-$DM attest-signed-commit --package-root "$P" --registry-root "$R" --repo-root . --commit "$(git rev-parse HEAD)"
-$DM finalize-proposal --package-root "$P" --registry-root "$R" --repo-root .
-$DM apply-approved-updates --package-root "$P" --registry-root "$R" --repo-root .
+$DM ship-package --package-root "$P" --registry-root "$R" --repo-root . --commit "$(git rev-parse HEAD)"
 git add "$P" "$R" && git commit -S -m "docs(domain-memory): apply <package>"
 git pull --no-rebase && git push
 ```

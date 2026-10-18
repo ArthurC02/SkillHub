@@ -6,6 +6,7 @@ import unittest
 
 from domain_registry.changes import validate_change_package
 from domain_registry.common import load_json
+from domain_registry.evidence import citation
 from domain_registry.harvest_run import harvest, spec_errors
 from domain_registry.registry import record_by_id
 from domain_registry.sources import selected_source_map, write_source_map
@@ -86,7 +87,7 @@ class HarvestTest(RegistryTestCase):
              [result["obligation_id"] for result in evidence["test_results"]],
              [approval["role"] for approval in proposal["approvals"]], len(evidence["counterfactual_check"])),
         )
-        self.assertIn("attest-signed-commit", report["next"])
+        self.assertIn("ship-package --commit", report["next"])
 
     def test_without_an_approval_the_run_stops_submitted_and_says_what_is_left(self) -> None:
         self.confirm_src()
@@ -115,10 +116,10 @@ class HarvestTest(RegistryTestCase):
         spec["rules"][0]["mutate"] = {"file": "src/rule.py", "find": "CAP = 12", "replace": "CAP = 13"}
         report = harvest(self.repo / "memory", self.repo, spec, None, "verified")
         self.assertEqual(
-            ("counterfactual", "survived", 1, False, None),
+            ("counterfactual", "survived", 1, False, None, None),
             (report["stopped_at"], report["rules"][0]["counterfactual"], len(report["errors"]),
              (self.repo / "memory" / "changes" / "orders-length-rule").exists(),
-             record_by_id(self.repo / "memory", "rules", RULE_ID)),
+             record_by_id(self.repo / "memory", "rules", RULE_ID), report["package"]),
         )
         self.assertTrue(report["errors"][0].startswith(f"{RULE_ID}: the counterfactual is survived:"))
 
@@ -137,16 +138,68 @@ class HarvestTest(RegistryTestCase):
             (report["rules"][0]["record"], proposal["supersedes"], update["record"]["evidence"][-1]["path"], report["stopped_at"]),
         )
 
-    def test_evidence_outside_every_discovered_source_is_refused_by_path_before_anything_is_written(self) -> None:
+    def test_evidence_outside_every_discovered_source_is_refused_by_path_before_any_test_runs(self) -> None:
         self.confirm_src()
         (self.repo / "notes.txt").write_text("the limit is 200", encoding="utf-8")
         spec = self.spec()
         spec["rules"][0]["enforcing"] = ["notes.txt:1-1"]
-        with self.assertRaisesRegex(ValueError, f"^{RULE_ID} cites notes.txt outside the confirmed sources"):
-            harvest(self.repo / "memory", self.repo, spec, None, "draft")
+        report = harvest(self.repo / "memory", self.repo, spec, None, "draft")
         self.assertEqual(
-            (False, None),
-            ((self.repo / "memory" / "changes" / "orders-length-rule").exists(), record_by_id(self.repo / "memory", "rules", RULE_ID)),
+            ("citation", None, [{"id": RULE_ID, "obligation": f"rule-{RULE_ID}"}], 1, False, None),
+            (report["stopped_at"], report["package"], report["rules"], len(report["errors"]),
+             (self.repo / "memory" / "changes" / "orders-length-rule").exists(), record_by_id(self.repo / "memory", "rules", RULE_ID)),
+        )
+        self.assertTrue(report["errors"][0].startswith(f"{RULE_ID} cites notes.txt outside the confirmed sources"))
+        self.assertIn("confirm the sources the cited paths belong to", report["next"])
+
+    def test_a_test_the_file_does_not_define_is_named_before_any_test_runs(self) -> None:
+        self.confirm_src()
+        spec = self.spec()
+        spec["rules"][0]["test"] = "test_nothing"
+        report = harvest(self.repo / "memory", self.repo, spec, None, "verified")
+        self.assertEqual(
+            ("citation", [f"{RULE_ID}: src/tests/test_rule.py defines no Go func or Python def named test_nothing"], None),
+            (report["stopped_at"], report["errors"], report["package"]),
+        )
+
+    def test_a_reviewed_rule_with_the_same_spans_but_another_example_is_amended(self) -> None:
+        self.confirm_src()
+        self.seed("rules.json", [{
+            "id": RULE_ID, "contexts": ["orders"], "statement": "A length past the limit is refused.", "examples": ["200 is accepted."],
+            "status": "reviewed", "verified": VERIFIED, "evidence": [
+                citation(self.repo, "src/rule.py", 1, 1), citation(self.repo, "src/rule.py", 5, 6), citation(self.repo, "src/tests/test_rule.py", 10, 11),
+            ],
+        }])
+        applied_by(self.repo / "memory", "PRO-1", f"rules/{RULE_ID}")
+        report = harvest(self.repo / "memory", self.repo, self.spec(), None, "draft")
+        self.assertEqual(("amended", []), (report["rules"][0]["record"], report["errors"]))
+
+    def test_a_reviewed_rule_with_the_same_example_but_fewer_cited_spans_is_amended(self) -> None:
+        self.confirm_src()
+        self.seed("rules.json", [{
+            "id": RULE_ID, "contexts": ["orders"], "statement": "A length past the limit is refused.", "examples": ["201 is refused."],
+            "status": "reviewed", "verified": VERIFIED, "evidence": [
+                citation(self.repo, "src/rule.py", 1, 1), citation(self.repo, "src/tests/test_rule.py", 10, 11),
+            ],
+        }])
+        applied_by(self.repo / "memory", "PRO-1", f"rules/{RULE_ID}")
+        report = harvest(self.repo / "memory", self.repo, self.spec(), None, "draft")
+        self.assertEqual(("amended", []), (report["rules"][0]["record"], report["errors"]))
+
+    def test_a_reviewed_rule_whose_content_is_unchanged_is_reported_reproven(self) -> None:
+        self.confirm_src()
+        self.seed("rules.json", [{
+            "id": RULE_ID, "contexts": ["orders"], "statement": "A length past the limit is refused.", "examples": ["201 is refused."],
+            "status": "reviewed", "verified": VERIFIED, "evidence": [
+                citation(self.repo, "src/rule.py", 1, 1), citation(self.repo, "src/rule.py", 5, 6), citation(self.repo, "src/tests/test_rule.py", 10, 11),
+            ],
+        }])
+        applied_by(self.repo / "memory", "PRO-1", f"rules/{RULE_ID}")
+        report = harvest(self.repo / "memory", self.repo, self.spec(), None, "draft")
+        proposal = load_json(self.repo / "memory" / "changes" / "orders-length-rule" / "domain-change-proposal.json")
+        self.assertEqual(
+            ("reproven", ["PRO-1"], [], "draft"),
+            (report["rules"][0]["record"], proposal["supersedes"], report["errors"], report["stopped_at"]),
         )
 
     def test_a_spec_with_gaps_names_each_gap(self) -> None:
@@ -167,8 +220,11 @@ class HarvestTest(RegistryTestCase):
              "rules[2]: must be an object"],
             spec_errors(spec),
         )
-        with self.assertRaisesRegex(ValueError, "^the harvest spec cannot run: name must be text"):
-            harvest(self.repo / "memory", self.repo, {}, None, "draft")
+        report = harvest(self.repo / "memory", self.repo, {}, None, "draft")
+        self.assertEqual(
+            ("spec", "name must be text", None, [], "no package was written; fix what the spec errors name, then run harvest again"),
+            (report["stopped_at"], report["errors"][0], report["package"], report["rules"], report["next"]),
+        )
 
     def test_the_command_prints_the_report_and_exits_one_when_a_stage_fails(self) -> None:
         self.confirm_src()
