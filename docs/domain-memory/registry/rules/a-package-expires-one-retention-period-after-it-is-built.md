@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-18T16:04:44.915924Z"
 sources:
   - resource: "apps/platform/internal/skill/delivery/packaging.go#L879-883"
     excerpt_sha256: "sha256:40c35de0bd0736573ccb035a2d38728b1daf2b94028543642c520b3bc329f5c1"

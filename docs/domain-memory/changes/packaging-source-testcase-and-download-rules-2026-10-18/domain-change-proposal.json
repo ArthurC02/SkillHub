@@ -3,12 +3,12 @@
   "proposal_id": "packaging-source-testcase-and-download-rules-2026-10-18",
   "proposer": "domain-memory-agent",
   "requirement_id": "packaging-source-testcase-and-download-rules-2026-10-18",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-18T16:02:46.820389Z",
   "verified_at": "2026-10-18T16:04:45.145790Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-18T16:05:33.968611Z",
+  "applied_at": "2026-10-18T16:05:43.597462Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "8c7a8a47c301c16603d3b1cb12ebeac41d953731",
@@ -375,5 +375,9 @@
         "registry_digest": "sha256:f115f24612d0d5d3ac4b7c1668b54cf2e41e9f750e93252b2dfabc45360ed5d4"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "75757cd8571ca95bd0c90a46127fe14020af0479",
+    "registry_digest": "sha256:a9202a451e04cf1b06210b282d236a12ded33d291d4bd89e1a41ec6c83c6cde9"
+  }
 }
