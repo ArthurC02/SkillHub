@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -772,5 +774,28 @@ func TestOnlyAnExcerptCutIsNarrow(t *testing.T) {
 	}
 	if !batchWideCut([]string{"trace_digest.entries[].excerpt", "final_output"}) {
 		t.Error("one batch-wide cut among narrow ones is still batch-wide")
+	}
+}
+
+func TestTheJudgeSeesAtMostTwentyCriteriaAndSaysTheListWasCut(t *testing.T) {
+	for _, tc := range []struct {
+		given   int
+		wantCut bool
+	}{
+		{maxCriteria, false},
+		{maxCriteria + 1, true},
+	} {
+		m, _ := fixtureMaterial(true)
+		m.Criteria = nil
+		for i := range tc.given {
+			m.Criteria = append(m.Criteria, testlab.Criterion{ID: "c" + strconv.Itoa(i), Text: "criterion " + strconv.Itoa(i)})
+		}
+
+		req, _ := buildRequest(m, "")
+
+		cut := slices.Contains(req.Truncation, "criteria")
+		if len(req.Criteria) != maxCriteria || cut != tc.wantCut {
+			t.Errorf("%d criteria: sent %d, cut=%t; want %d sent, cut=%t", tc.given, len(req.Criteria), cut, maxCriteria, tc.wantCut)
+		}
 	}
 }
