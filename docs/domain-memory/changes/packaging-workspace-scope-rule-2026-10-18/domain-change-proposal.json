@@ -3,12 +3,12 @@
   "proposal_id": "packaging-workspace-scope-rule-2026-10-18",
   "proposer": "domain-memory-agent",
   "requirement_id": "packaging-workspace-scope-rule-2026-10-18",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-18T06:01:29.262216Z",
   "verified_at": "2026-10-18T06:01:38.246593Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-18T06:01:40.320141Z",
+  "applied_at": "2026-10-18T06:01:47.942446Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "e152de5f5aa5e9db79dc21f3e142cbab90b0bc65",
@@ -104,5 +104,9 @@
         "registry_digest": "sha256:479771bfb86a1af99211d9cee03974d7ddc6b28f2cafe0f8bdac47eb50046ac3"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "d9125e512109983ada07aefaf25587773eec36b2",
+    "registry_digest": "sha256:e7e24be7263a61a95b1fdd2f2ee40c81422ae483a26e8eb87e39d5762e174d83"
+  }
 }
