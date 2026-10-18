@@ -16,7 +16,7 @@ from ..changes import (
 from ..common import EVIDENCE_FILE, PROPOSAL_FILE, REQUIREMENT_FILE, load_json
 from ..evidence import citation, function_span
 from ..harvest import harvest_candidates
-from ..harvest_run import harvest
+from ..harvest_run import discard_harvest, harvest
 from ..hitl import (
     ObligationRun,
     record_approval,
@@ -401,6 +401,11 @@ def handle_harvest(args: argparse.Namespace) -> int:
     return 1 if report["errors"] else 0
 
 
+def handle_discard_harvest(args: argparse.Namespace) -> int:
+    print_json(discard_harvest(args.package_root, args.registry_root, args.repo_root, args.reason))
+    return 0
+
+
 HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "init": handle_init,
     "init-change-package": handle_init_change_package,
@@ -410,6 +415,7 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "upsert-candidate": handle_upsert_candidate,
     "harvest-candidates": handle_harvest_candidates,
     "harvest": handle_harvest,
+    "discard-harvest": handle_discard_harvest,
     "retract-candidate": handle_retract_candidate,
     "promote-candidate": handle_promote_candidate,
     "demote-local-reviews": handle_demote_local_reviews,

@@ -26,7 +26,7 @@ COMMAND_GROUPS = {
         "readiness", "probe", "lookup", "resolve-terms", "get-context", "get-record", "dependents", "brief",
         "analyze-boundary", "boundary-impact", "validate", "coverage", "verify-evidence", "verify-sources",
         "verify-audit", "cite", "recite", "relocate-evidence", "upsert-candidate", "retract-candidate",
-        "promote-candidate", "harvest", "init-change-package", "validate-change-package", "submit-proposal",
+        "promote-candidate", "harvest", "discard-harvest", "init-change-package", "validate-change-package", "submit-proposal",
         "record-test-result", "record-approval", "verify-proposal", "ship-package", "supersede-proposal",
         "list-proposals", "quality-gates", "counterfactual",
     ),
@@ -425,6 +425,11 @@ def _add_harvest_command(commands: argparse._SubParsersAction) -> None:
     add_path(prove_parser, "--spec")
     add_path(prove_parser, "--changes-root", required=False)
     prove_parser.add_argument("--through", choices=HARVEST_STAGES, default="draft")
+    discard_parser = commands.add_parser("discard-harvest", help="Undo a harvest that did not finish")
+    add_path(discard_parser, "--package-root")
+    add_path(discard_parser, "--registry-root")
+    add_path(discard_parser, "--repo-root")
+    discard_parser.add_argument("--reason", required=True)
 
 
 def _add_proposal_commands(commands: argparse._SubParsersAction) -> None:

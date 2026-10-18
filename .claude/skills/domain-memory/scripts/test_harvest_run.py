@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 import unittest
+from unittest import mock
 
-from domain_registry.changes import validate_change_package
-from domain_registry.common import load_json
+from domain_registry.changes import init_change_package, validate_change_package
+from domain_registry.common import load_json, write_json
+from domain_registry.counterfactual import counterfactual_suite
 from domain_registry.evidence import citation
 from domain_registry.harvest_run import harvest, spec_errors
 from domain_registry.registry import record_by_id
 from domain_registry.sources import selected_source_map, write_source_map
+from domain_registry.updates import promote_candidate
 from test_support import VERIFIED, RegistryTestCase, applied_by
 
 RULE = "LIMIT = 200\nCAP = 12\n\n\ndef refused(length):\n    return length > LIMIT\n\n\ndef fee(amount):\n    return min(amount, CAP)\n"
@@ -19,6 +23,13 @@ RULE_TEST = (
     "    def test_one_past_the_limit_is_refused(self):\n        self.assertTrue(refused(201))\n"
 )
 RULE_ID = "a-length-past-the-limit-is-refused"
+SECOND_RULE_ID = "a-length-at-the-limit-is-accepted"
+PACKAGE = "memory/changes/orders-length-rule"
+DATABASE_DOWN = "go test exited 1; only a passing run is recorded, and nothing was written:\nconnection refused"
+RESUME = (
+    f"the draft records and the package at {PACKAGE} are written; run the same harvest --spec again to resume from "
+    f"submitted, or discard-harvest --package-root {PACKAGE} to undo it"
+)
 
 
 class HarvestTest(RegistryTestCase):
@@ -53,6 +64,36 @@ class HarvestTest(RegistryTestCase):
                        "invariants_preserved": ["The limit holds."], "rejected_alternatives": ["Leave it unrecorded."]},
             "rules": [rule], **changes,
         }
+
+    def two_rule_spec(self) -> dict:
+        spec = self.spec()
+        spec["rules"].append({
+            "id": SECOND_RULE_ID, "statement": "A length at the limit is accepted.", "example": "200 is accepted.",
+            "enforcing": ["src/rule.py:5-6"], "test_file": "src/tests/test_rule.py", "test": "test_the_limit_itself_is_accepted",
+            "check": self.check, "mutate": {"file": "src/rule.py", "find": "return length > LIMIT", "replace": "return length >= LIMIT"},
+        })
+        return spec
+
+    def harvest_while_the_database_is_down(self, spec: dict) -> dict:
+        with mock.patch("domain_registry.harvest_run.record_test_result", side_effect=ValueError(DATABASE_DOWN)):
+            return harvest(self.repo / "memory", self.repo, spec, None, "verified")
+
+    def upserts(self) -> list[dict]:
+        return [event for event in self.audit_lines() if event["operation"] == "upsert-candidate" and event["asset"] == "rules"]
+
+    def package_file(self, name: str) -> dict:
+        return load_json(self.repo / PACKAGE / name)
+
+    def set_package_status(self, status: str) -> None:
+        proposal = self.package_file("domain-change-proposal.json")
+        proposal["status"] = status
+        write_json(self.repo / PACKAGE / "domain-change-proposal.json", proposal)
+
+    def discard(self, reason: str = "the harvest is abandoned"):
+        return self.run_cli(
+            "discard-harvest", "--package-root", str(self.repo / PACKAGE), "--registry-root", str(self.repo / "memory"),
+            "--repo-root", str(self.repo), "--reason", reason,
+        )
 
     def test_a_killed_counterfactual_leads_to_a_candidate_and_a_draft_that_passes_the_verified_preview(self) -> None:
         self.confirm_src()
@@ -89,14 +130,14 @@ class HarvestTest(RegistryTestCase):
         )
         self.assertIn("ship-package --commit", report["next"])
 
-    def test_without_an_approval_the_run_stops_submitted_and_says_what_is_left(self) -> None:
+    def test_without_an_approval_the_run_stops_tested_and_says_what_is_left(self) -> None:
         self.confirm_src()
         spec = self.spec()
         del spec["approval"]
         report = harvest(self.repo / "memory", self.repo, spec, None, "verified")
         proposal = load_json(self.repo / "memory" / "changes" / "orders-length-rule" / "domain-change-proposal.json")
         self.assertEqual(
-            ("submitted", ["no approval in the spec; record-approval, then verify-proposal"], "submitted"),
+            ("tested", ["no approval in the spec; record-approval, then verify-proposal"], "submitted"),
             (report["stopped_at"], report["errors"], proposal["status"]),
         )
 
@@ -241,6 +282,186 @@ class HarvestTest(RegistryTestCase):
         self.assertEqual(
             ((1, "counterfactual"), (0, "verified")),
             ((failed.returncode, json.loads(failed.stdout)["stopped_at"]), (passed.returncode, json.loads(passed.stdout)["stopped_at"])),
+        )
+
+    def test_a_test_command_failing_after_the_package_is_written_reports_the_package_and_how_to_resume(self) -> None:
+        self.confirm_src()
+        report = self.harvest_while_the_database_is_down(self.spec())
+        self.assertEqual(
+            (True, PACKAGE, False, "submitted", [DATABASE_DOWN], RESUME, "submitted"),
+            (report["written"], report["package"], report["resumed"], report["stopped_at"], report["errors"], report["next"],
+             self.package_file("domain-change-proposal.json")["status"]),
+        )
+
+    def test_the_command_prints_the_report_of_a_run_that_failed_after_writing_and_exits_one(self) -> None:
+        self.confirm_src()
+        spec_path = self.write_record("spec.json", self.spec(approval={"role": "developer", "reviewer": "domain-memory-agent"}))
+        result = self.run_cli("harvest", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+                              "--spec", str(spec_path), "--through", "verified")
+        report = json.loads(result.stdout)
+        self.assertEqual(
+            (1, "", True, PACKAGE, "tested", ["the proposer cannot approve the proposal"], RESUME.replace("from submitted", "from tested")),
+            (result.returncode, result.stderr, report["written"], report["package"], report["stopped_at"], report["errors"],
+             report["next"]),
+        )
+
+    def test_rerunning_the_same_spec_resumes_without_writing_its_unchanged_records_again(self) -> None:
+        self.confirm_src()
+        spec = self.two_rule_spec()
+        self.harvest_while_the_database_is_down(spec)
+        upserted = len(self.upserts())
+        report = harvest(self.repo / "memory", self.repo, spec, None, "verified")
+        self.assertEqual(
+            (2, 0, True, PACKAGE, ["unchanged", "unchanged"], "verified", [], "verified", 2, 1),
+            (upserted, len(self.upserts()) - upserted, report["resumed"], report["package"],
+             [rule["record"] for rule in report["rules"]],
+             report["stopped_at"], report["errors"], self.package_file("domain-change-proposal.json")["status"],
+             len(self.package_file("evidence-bundle.json")["test_results"]),
+             len(self.package_file("domain-change-proposal.json")["approvals"])),
+        )
+
+    def test_rerunning_after_one_statement_changed_revises_that_record_alone(self) -> None:
+        self.confirm_src()
+        spec = self.two_rule_spec()
+        harvest(self.repo / "memory", self.repo, spec, None, "draft")
+        upserted = len(self.upserts())
+        spec["rules"][0]["statement"] = "A length above the limit is refused."
+        report = harvest(self.repo / "memory", self.repo, spec, None, "draft")
+        updates = {update["record"]["id"]: update["record"]["statement"]
+                   for update in self.package_file("domain-change-proposal.json")["registry_updates"]}
+        criteria = {criterion["id"]: criterion["statement"]
+                    for criterion in self.package_file("requirement-normalization.json")["acceptance_criteria"]}
+        self.assertEqual(
+            (["revised", "unchanged"], [RULE_ID], True, "draft", [],
+             {RULE_ID: "A length above the limit is refused.", SECOND_RULE_ID: "A length at the limit is accepted."},
+             {f"enforced-{RULE_ID}": "A length above the limit is refused.",
+              f"enforced-{SECOND_RULE_ID}": "A length at the limit is accepted."}),
+            ([rule["record"] for rule in report["rules"]], [event["record_id"] for event in self.upserts()[upserted:]],
+             report["resumed"], report["stopped_at"], report["errors"], updates, criteria),
+        )
+
+    def test_rerunning_an_unchanged_draft_with_the_same_counterfactual_output_leaves_every_package_file_unwritten(self) -> None:
+        self.confirm_src()
+        outputs = []
+
+        def recorded(*arguments):
+            outputs.append(counterfactual_suite(*arguments))
+            return outputs[-1]
+
+        with mock.patch("domain_registry.harvest_run.counterfactual_suite", side_effect=recorded):
+            harvest(self.repo / "memory", self.repo, self.spec(), None, "draft")
+        written = {path.name: path.stat().st_mtime_ns for path in (self.repo / PACKAGE).iterdir()}
+        with mock.patch("domain_registry.harvest_run.counterfactual_suite", return_value=outputs[0]):
+            report = harvest(self.repo / "memory", self.repo, self.spec(), None, "draft")
+        self.assertEqual(
+            (True, "draft", [], 5, written),
+            (report["resumed"], report["stopped_at"], report["errors"], len(written),
+             {path.name: path.stat().st_mtime_ns for path in (self.repo / PACKAGE).iterdir()}),
+        )
+
+    def test_a_directory_holding_another_package_or_none_is_refused_before_anything_is_written(self) -> None:
+        self.confirm_src()
+        for name, prepare in (
+            ("another package", lambda path: init_change_package(path, "other", "other", "someone")),
+            ("a stray file", lambda path: (path.mkdir(parents=True), (path / "notes.txt").write_text("x", encoding="utf-8"))),
+        ):
+            with self.subTest(name):
+                package = self.repo / PACKAGE
+                prepare(package)
+                events, record = len(self.audit_lines()), record_by_id(self.repo / "memory", "rules", RULE_ID)
+                report = harvest(self.repo / "memory", self.repo, self.spec(), None, "verified")
+                observed = (report["stopped_at"], report["written"], report["package"], len(self.audit_lines()),
+                            record_by_id(self.repo / "memory", "rules", RULE_ID), "counterfactual" in report["rules"][0],
+                            report["errors"][0].startswith(f"output directory is not empty: {PACKAGE}; ") if report["errors"] else None)
+                shutil.rmtree(package)
+                self.assertEqual(("package", False, None, events, record, False, True), observed)
+
+    def test_a_finished_package_is_refused_and_not_rerun(self) -> None:
+        self.confirm_src()
+        harvest(self.repo / "memory", self.repo, self.spec(), None, "verified")
+        for status in ("verified", "approved"):
+            with self.subTest(status):
+                self.set_package_status(status)
+                events = len(self.audit_lines())
+                report = harvest(self.repo / "memory", self.repo, self.spec(), None, "verified")
+                self.assertEqual(
+                    ("package", [f"the package at {PACKAGE} is {status}; a finished harvest is not re-run"], events, status),
+                    (report["stopped_at"], report["errors"], len(self.audit_lines()),
+                     self.package_file("domain-change-proposal.json")["status"]),
+                )
+
+    def test_resuming_keeps_a_recorded_passing_result_and_approval_instead_of_recording_them_again(self) -> None:
+        self.confirm_src()
+        with mock.patch("domain_registry.harvest_run.verify_proposal", side_effect=ValueError("the registry moved")):
+            failed = harvest(self.repo / "memory", self.repo, self.spec(), None, "verified")
+        [result] = self.package_file("evidence-bundle.json")["test_results"]
+        [approval] = self.package_file("domain-change-proposal.json")["approvals"]
+        report = harvest(self.repo / "memory", self.repo, self.spec(), None, "verified")
+        self.assertEqual(
+            ("tested", ["the registry moved"], "verified", [], [result], [approval]),
+            (failed["stopped_at"], failed["errors"], report["stopped_at"], report["errors"],
+             self.package_file("evidence-bundle.json")["test_results"], self.package_file("domain-change-proposal.json")["approvals"]),
+        )
+
+    def test_a_submitted_package_whose_rule_changed_is_refused_before_anything_is_written(self) -> None:
+        self.confirm_src()
+        spec = self.spec()
+        self.harvest_while_the_database_is_down(spec)
+        events = len(self.audit_lines())
+        spec["rules"][0]["statement"] = "A length above the limit is refused."
+        report = harvest(self.repo / "memory", self.repo, spec, None, "verified")
+        self.assertEqual(
+            ("package", [f"the package at {PACKAGE} is submitted and {RULE_ID} changed since, but a submitted package is "
+                         f"frozen; discard-harvest --package-root {PACKAGE}, then run harvest again"], events, False),
+            (report["stopped_at"], report["errors"], len(self.audit_lines()), report["resumed"]),
+        )
+
+    def test_discard_harvest_retracts_its_drafts_removes_the_package_and_leaves_a_reviewed_rule(self) -> None:
+        self.confirm_src()
+        self.seed("rules.json", [{
+            "id": RULE_ID, "contexts": ["orders"], "statement": "A length past the limit is refused.",
+            "status": "reviewed", "verified": VERIFIED, "evidence": ["src/rule.py:1"],
+        }])
+        applied_by(self.repo / "memory", "PRO-1", f"rules/{RULE_ID}")
+        harvest(self.repo / "memory", self.repo, self.two_rule_spec(), None, "draft")
+        result = self.discard()
+        event = self.audit_lines()[-1]
+        self.assertEqual(
+            (0, {"operation": "discard-harvest", "package": PACKAGE, "retracted": [f"rules/{SECOND_RULE_ID}"], "kept": [],
+                 "reason": "the harvest is abandoned"},
+             "discard-harvest", [f"rules/{SECOND_RULE_ID}"], [], False, "reviewed", None, "retract-candidate"),
+            (result.returncode, json.loads(result.stdout), event["operation"], event["retracted"], event["kept"],
+             (self.repo / PACKAGE).exists(), record_by_id(self.repo / "memory", "rules", RULE_ID)["status"],
+             record_by_id(self.repo / "memory", "rules", SECOND_RULE_ID), self.audit_lines()[-2]["operation"]),
+        )
+
+    def test_discard_harvest_keeps_a_draft_another_package_names(self) -> None:
+        self.confirm_src()
+        harvest(self.repo / "memory", self.repo, self.spec(), None, "draft")
+        other = self.repo / "memory" / "changes" / "other"
+        init_change_package(other, "other", "other", "someone")
+        promote_candidate(other, self.repo / "memory", "rules", RULE_ID)
+        result = self.discard()
+        self.assertEqual(
+            (0, [], [f"rules/{RULE_ID}"], "candidate", False),
+            (result.returncode, json.loads(result.stdout)["retracted"], json.loads(result.stdout)["kept"],
+             record_by_id(self.repo / "memory", "rules", RULE_ID)["status"], (self.repo / PACKAGE).exists()),
+        )
+
+    def test_discard_harvest_refuses_a_second_run_and_a_finished_package(self) -> None:
+        self.confirm_src()
+        harvest(self.repo / "memory", self.repo, self.spec(), None, "draft")
+        self.set_package_status("approved")
+        approved = self.discard()
+        self.set_package_status("draft")
+        self.discard()
+        events = len(self.audit_lines())
+        again = self.discard()
+        self.assertEqual(
+            (1, f"ERROR: the package at {PACKAGE} is approved; only a draft or submitted harvest is discarded",
+             1, f"ERROR: no package at {PACKAGE}", "", events),
+            (approved.returncode, approved.stderr.strip(), again.returncode, again.stderr.strip(), again.stdout,
+             len(self.audit_lines())),
         )
 
 

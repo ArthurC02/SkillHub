@@ -57,7 +57,7 @@ Create an [evidence bundle](../templates/evidence-bundle.json) and [Draft PR des
 
 ## Harvesting proven rules from existing code
 
-`harvest --spec <file> [--through verified]` runs the whole loop below from one spec, one entry per rule, and stops before the signed commit; the steps are spelled out here for a rule that needs a hand on one of them.
+`harvest --spec <file> [--through verified]` runs the whole loop below from one spec, one entry per rule, and stops before the signed commit; the steps are spelled out here for a rule that needs a hand on one of them. When a step fails after the package is written, running the same spec again resumes from where it stopped without writing the unchanged records again, and `discard-harvest --package-root <package>` undoes a harvest that will not be finished.
 
 When reviewed rules are drawn from code that already enforces them rather than from a new requirement, start from the Contexts with the fewest reviewed rules in `coverage`'s `rules_by_context`. For each rule, cite the code that enforces it and, with `cite --function`, the test that proves it; record it with `upsert-candidate` and promote it into one package. Its `check` runs only that test, with `-v` for Go. Then show that every rule can fail before anything is submitted, once per rule:
 

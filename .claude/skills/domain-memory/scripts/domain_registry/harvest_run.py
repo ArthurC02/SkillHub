@@ -1,18 +1,20 @@
 from __future__ import annotations
 
+import shutil
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .audit import append_locked
 from .changes import classify_all, init_change_package, unclassified_paths, validate_change_package
-from .common import write_json
+from .common import EVIDENCE_FILE, PROPOSAL_FILE, load_json, write_json, writer_lock
 from .counterfactual import counterfactual_suite
-from .evidence import citation, classified, function_span, source_map_for
-from .harvest_package import harvest_package, obligation_of, write_harvest_package
-from .hitl import ObligationRun, record_approval, record_test_result, submit_proposal, verify_proposal
+from .evidence import citation, classified, function_span, source_map_for, without_derived_keys
+from .harvest_package import OBLIGATIONS_FILE, harvest_package, obligation_of, write_harvest_package
+from .hitl import ObligationRun, record_approval, record_test_result, same_command, submit_proposal, verify_proposal
 from .registry import is_reviewed, record_by_id
-from .updates import add_promoted_evidence, promote_candidate, upsert_candidate
+from .updates import add_promoted_evidence, promote_candidate, retract_candidate, upsert_candidate
 
 FORMAT = "domain-memory-harvest/v1"
 STAGES = ("draft", "verified")
@@ -23,10 +25,24 @@ DEFAULT_TIMEOUT_SECONDS = 600
 SPAN_PARTS = 3
 RULE_DEFAULTS = {"cwd": None, "command_profile": "unit", "level": "unit", "timeout": DEFAULT_TIMEOUT_SECONDS}
 SUPERSEDING = ("amended", "reproven")
+UNFINISHED = ("draft", "submitted")
 NOTHING_WRITTEN = {
     "spec": "no package was written; fix what the spec errors name, then run harvest again",
     "citation": "no package was written; confirm the sources the cited paths belong to, or cite others, then run harvest again",
+    "package": (
+        "nothing was written; give the spec another name, or, when the error says the harvest there did not finish, "
+        "discard-harvest that package, then run harvest again"
+    ),
     "counterfactual": "no package was written; make each counterfactual killed, then run harvest again",
+}
+NEXT_STEPS = {
+    "draft": (
+        "the draft package passes the submitted preview; run harvest --through verified, or submit-proposal, "
+        "record-test-result per obligation, record-approval and verify-proposal"
+    ),
+    "submitted": "the proposal is submitted; run harvest --through verified to record its test results, approval and verification",
+    "tested": "the proposal is submitted with its test results; record-approval, then verify-proposal",
+    "verified": "sign a commit holding the package, then ship-package --commit <that commit>",
 }
 
 
@@ -41,15 +57,19 @@ class Harvest:
     errors: list[str] = field(default_factory=list)
     stopped_at: str = "spec"
     written: bool = False
+    resumed_from: str | None = None
+    interrupted: bool = False
 
     def report(self) -> dict[str, Any]:
         return {
             "format": FORMAT,
             "package": _shown(self.package_root, self.repo_root) if self.written else None,
+            "written": self.written,
+            "resumed": self.resumed_from is not None,
             "stopped_at": self.stopped_at,
             "rules": self.rules,
             "errors": self.errors,
-            "next": _next_step(self.stopped_at, failed=bool(self.errors)),
+            "next": _next_step(self),
         }
 
 
@@ -63,20 +83,88 @@ def harvest(registry_root: Path, repo_root: Path, spec: Any, changes_root: Path 
     records = _records(run)
     if run.errors:
         return run.report()
+    run.stopped_at = "package"
+    _check_package_directory(run, records)
+    if run.errors:
+        return run.report()
     run.stopped_at = "counterfactual"
     verdicts = _counterfactuals(run)
     if run.errors:
         return run.report()
-    _candidates(run, records)
-    _package(run, verdicts)
-    run.stopped_at = "draft"
-    preview = validate_change_package(run.package_root, registry_root, "submitted", repo_root)
-    if preview:
-        run.errors += [f"once submitted: {error}" for error in preview]
-        return run.report()
-    if through == "verified":
-        _verify(run)
+    try:
+        _write(run, records, verdicts)
+    except (ValueError, OSError) as error:
+        if not run.written:
+            raise
+        run.errors.append(str(error))
+        run.interrupted = True
     return run.report()
+
+
+def _write(run: Harvest, records: list[dict[str, Any] | None], verdicts: dict[str, dict[str, Any]]) -> None:
+    run.written = run.resumed_from is not None
+    run.stopped_at = "submitted" if run.resumed_from == "submitted" else "draft"
+    _candidates(run, records)
+    if run.resumed_from != "submitted":
+        _package(run, verdicts)
+        preview = validate_change_package(run.package_root, run.registry_root, "submitted", run.repo_root)
+        if preview:
+            run.errors += [f"once submitted: {error}" for error in preview]
+            return
+    if run.through == "verified":
+        _verify(run)
+
+
+def _check_package_directory(run: Harvest, records: list[dict[str, Any] | None]) -> None:
+    package_root, name = run.package_root, run.spec["name"]
+    if not package_root.is_dir() or not any(package_root.iterdir()):
+        return
+    shown = _shown(package_root, run.repo_root)
+    proposal = _proposal_or_none(package_root)
+    if proposal is None or proposal.get("proposal_id") != name:
+        run.errors.append(
+            f"output directory is not empty: {shown}; it holds no package of the harvest {name}, so give the spec "
+            "another name or move what is there"
+        )
+        return
+    status = proposal.get("status")
+    if status not in UNFINISHED:
+        run.errors.append(f"the package at {shown} is {status}; a finished harvest is not re-run")
+        return
+    changed = _changed_since_submitted(run, records, proposal) if status == "submitted" else []
+    if changed:
+        run.errors.append(
+            f"the package at {shown} is submitted and {', '.join(changed)} changed since, but a submitted package is "
+            f"frozen; discard-harvest --package-root {shown}, then run harvest again"
+        )
+        return
+    run.resumed_from = status
+
+
+def _proposal_or_none(package_root: Path) -> dict[str, Any] | None:
+    try:
+        return load_json(package_root / PROPOSAL_FILE)
+    except ValueError:
+        return None
+
+
+def _changed_since_submitted(run: Harvest, records: list[dict[str, Any] | None], proposal: dict[str, Any]) -> list[str]:
+    promoted = {record_id for asset, record_id in _updated_records(proposal) if asset == "rules"}
+    changed = {rule["id"] for rule in run.spec["rules"]} ^ promoted
+    for record in records:
+        existing = record_by_id(run.registry_root, "rules", record["id"])
+        if existing is None or (not is_reviewed(existing) and not _same_draft(existing, record)):
+            changed.add(record["id"])
+    return sorted(changed)
+
+
+def _updated_records(proposal: dict[str, Any]) -> list[tuple[str, str]]:
+    updates = proposal.get("registry_updates")
+    return [
+        (update["asset"], update["record"]["id"]) for update in (updates if isinstance(updates, list) else [])
+        if isinstance(update, dict) and isinstance(update.get("asset"), str) and isinstance(update.get("record"), dict)
+        and isinstance(update["record"].get("id"), str)
+    ]
 
 
 def spec_errors(spec: Any) -> list[str]:
@@ -206,6 +294,8 @@ def _candidates(run: Harvest, records: list[dict[str, Any] | None]) -> None:
         existing = record_by_id(run.registry_root, "rules", record["id"])
         if existing is not None and is_reviewed(existing):
             shown["record"] = "reproven" if _same_content(existing, record) else "amended"
+        elif run.resumed_from is not None and existing is not None and _same_draft(existing, record):
+            shown["record"] = "unchanged"
         else:
             pending.append((record, shown))
     with tempfile.TemporaryDirectory() as temporary:
@@ -225,6 +315,14 @@ def _same_content(existing: dict[str, Any], record: dict[str, Any]) -> bool:
     )
 
 
+def _same_draft(existing: dict[str, Any], record: dict[str, Any]) -> bool:
+    return _as_stored(existing) == _as_stored(record)
+
+
+def _as_stored(record: dict[str, Any]) -> Any:
+    return without_derived_keys({key: value for key, value in record.items() if key not in ("status", "review", "verified")})
+
+
 def _cited_spans(evidence: list[Any]) -> set[tuple[Any, Any, Any]]:
     spans = set()
     for reference in evidence:
@@ -238,10 +336,13 @@ def _cited_spans(evidence: list[Any]) -> set[tuple[Any, Any, Any]]:
 
 def _package(run: Harvest, verdicts: dict[str, dict[str, Any]]) -> None:
     spec, package_root = run.spec, run.package_root
-    init_change_package(package_root, spec["name"], spec["name"], spec["proposer"])
-    run.written = True
+    if run.resumed_from is None:
+        init_change_package(package_root, spec["name"], spec["name"], spec["proposer"])
+        run.written = True
+    promoted = {record_id for asset, record_id in _updated_records(load_json(package_root / PROPOSAL_FILE)) if asset == "rules"}
     for rule, shown in zip(spec["rules"], run.rules, strict=True):
-        promote_candidate(package_root, run.registry_root, "rules", rule["id"], amend=shown["record"] in SUPERSEDING)
+        if rule["id"] not in promoted or shown["record"] in ("created", "revised"):
+            promote_candidate(package_root, run.registry_root, "rules", rule["id"], amend=shown["record"] in SUPERSEDING)
         if shown["record"] in SUPERSEDING:
             add_promoted_evidence(package_root, "rules", rule["id"], (shown["test_citation"],))
     fill = {
@@ -252,36 +353,102 @@ def _package(run: Harvest, verdicts: dict[str, dict[str, Any]]) -> None:
         "requirement": {"intent": spec["intent"], "actor": spec.get("actor", "coding-agent"), "observable_outcome": spec["outcome"]},
         **{target: spec[name] for name, target in DECISIONS},
     }
-    write_harvest_package(package_root, harvest_package(package_root, fill))
+    documents = harvest_package(package_root, fill)
+    if any(document != load_json(package_root / name) for name, document in documents.items()):
+        write_harvest_package(package_root, documents)
 
 
 def _verify(run: Harvest) -> None:
     spec, package_root = run.spec, run.package_root
-    submit_proposal(package_root, run.registry_root, run.repo_root)
+    if load_json(package_root / PROPOSAL_FILE).get("status") == "draft":
+        submit_proposal(package_root, run.registry_root, run.repo_root)
     run.stopped_at = "submitted"
+    tested = _already_tested(package_root)
     for rule in spec["rules"]:
+        if obligation_of(rule["id"]) in tested:
+            continue
         record_test_result(
             package_root, run.registry_root, run.repo_root,
             ObligationRun(obligation_of(rule["id"]), None, _setting(spec, rule, "command_profile"), _setting(spec, rule, "cwd")),
             _setting(spec, rule, "timeout"),
         )
+    run.stopped_at = "tested"
     approval = spec.get("approval")
     if approval is None:
         run.errors.append("no approval in the spec; record-approval, then verify-proposal")
         return
-    record_approval(package_root, approval["role"], approval["reviewer"], spec["scope"], None)
+    if not _already_approved(package_root, approval):
+        record_approval(package_root, approval["role"], approval["reviewer"], spec["scope"], None)
     verify_proposal(package_root, run.registry_root, run.repo_root)
     run.stopped_at = "verified"
 
 
-def _next_step(stopped_at: str, *, failed: bool) -> str:
-    if stopped_at in NOTHING_WRITTEN:
-        return NOTHING_WRITTEN[stopped_at]
-    if failed and stopped_at == "draft":
+def _already_tested(package_root: Path) -> set[str]:
+    checks = {
+        entry.get("id"): entry.get("check")
+        for entry in load_json(package_root / OBLIGATIONS_FILE).get("obligations", []) if isinstance(entry, dict)
+    }
+    return {
+        result["obligation_id"] for result in load_json(package_root / EVIDENCE_FILE).get("test_results", [])
+        if isinstance(result, dict) and result.get("status") == "passed" and result.get("obligation_id") in checks
+        and same_command(str(result.get("evidence")), checks[result["obligation_id"]])
+    }
+
+
+def _already_approved(package_root: Path, approval: dict[str, Any]) -> bool:
+    return any(
+        isinstance(entry, dict) and entry.get("role") == approval["role"] and entry.get("reviewer") == approval["reviewer"]
+        for entry in load_json(package_root / PROPOSAL_FILE).get("approvals", [])
+    )
+
+
+def _next_step(run: Harvest) -> str:
+    if run.stopped_at in NOTHING_WRITTEN:
+        return NOTHING_WRITTEN[run.stopped_at]
+    if run.interrupted:
+        shown = _shown(run.package_root, run.repo_root)
+        return (
+            f"the draft records and the package at {shown} are written; run the same harvest --spec again to resume "
+            f"from {run.stopped_at}, or discard-harvest --package-root {shown} to undo it"
+        )
+    if run.errors and run.stopped_at == "draft":
         return "the draft package is written; fix what the preview names, then validate-change-package --as-status submitted"
-    if stopped_at == "draft":
-        return ("the draft package passes the submitted preview; run harvest --through verified, or submit-proposal, "
-                "record-test-result per obligation, record-approval and verify-proposal")
-    if stopped_at == "submitted":
-        return "the proposal is submitted with its test results; record-approval, then verify-proposal"
-    return "sign a commit holding the package, then ship-package --commit <that commit>"
+    return NEXT_STEPS[run.stopped_at]
+
+
+def discard_harvest(package_root: Path, registry_root: Path, repo_root: Path, reason: str) -> dict[str, Any]:
+    package_root, registry_root, repo_root = package_root.resolve(), registry_root.resolve(), repo_root.resolve()
+    shown = _shown(package_root, repo_root)
+    if not (package_root / PROPOSAL_FILE).is_file():
+        raise ValueError(f"no package at {shown}")
+    if not reason.strip():
+        raise ValueError("discarding a harvest requires the reason it is undone")
+    proposal = load_json(package_root / PROPOSAL_FILE)
+    status = proposal.get("status")
+    if status not in UNFINISHED:
+        raise ValueError(f"the package at {shown} is {status}; only a draft or submitted harvest is discarded")
+    named_elsewhere = _named_by_other_packages(package_root)
+    retracted, kept = [], []
+    for asset, record_id in _updated_records(proposal):
+        record = record_by_id(registry_root, asset, record_id)
+        if record is None or is_reviewed(record):
+            continue
+        if (asset, record_id) in named_elsewhere:
+            kept.append(f"{asset}/{record_id}")
+            continue
+        retract_candidate(registry_root, repo_root, asset, record_id, reason)
+        retracted.append(f"{asset}/{record_id}")
+    shutil.rmtree(package_root)
+    event = {"operation": "discard-harvest", "package": shown, "retracted": retracted, "kept": kept, "reason": reason.strip()}
+    with writer_lock(registry_root):
+        append_locked(registry_root, event)
+    return event
+
+
+def _named_by_other_packages(package_root: Path) -> set[tuple[str, str]]:
+    named = set()
+    for other in package_root.parent.iterdir():
+        proposal = _proposal_or_none(other) if other.is_dir() and other != package_root else None
+        if proposal is not None and proposal.get("status") != "superseded":
+            named.update(_updated_records(proposal))
+    return named

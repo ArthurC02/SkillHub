@@ -2,6 +2,22 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.1.0
+
+### Fixed
+
+- A harvest that fails after its package is written prints its report instead of exiting with only the error of the step that failed: `written` true, `package`, the stage it stopped at and, in `next`, the resume and the undo; it still exits 1. Before, a test command whose database was down left the draft records and the package behind with the step's own "nothing was written".
+- A harvest whose package directory holds something other than this spec's package, or holds the package of a finished harvest, is refused before any record is written or any counterfactual runs. Before, it wrote every draft record and then failed with "output directory is not empty".
+
+### Changed
+
+- Running the same harvest spec again over its own `draft` or `submitted` package resumes it (`resumed` true): a draft record that would be written unchanged is not written again (`record` `unchanged`, no audit event), a rule already in the package is not promoted again, the fill is written only when it differs, a submitted package is not submitted again, and a passing test result of the obligation's check and an approval by the same role and reviewer are kept. A submitted package whose rules changed since is refused, because its content is frozen.
+- `stopped_at` tells the verified stages apart: `submitted` while test results are pending, `tested` once every result is recorded and the approval or verification is pending. A run without an approval stops at `tested`. The report always carries `written` and `resumed`.
+
+### Added
+
+- `discard-harvest --package-root <path> --registry-root <root> --repo-root <repo> --reason <text>` undoes a harvest that did not finish: it refuses anything but a draft or submitted package, retracts the package's draft records (leaving reviewed ones and drafts another package names), removes the package directory and appends one `discard-harvest` audit event naming what it retracted and kept.
+
 ## 1.0.0
 
 ### Changed
