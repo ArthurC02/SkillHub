@@ -126,7 +126,7 @@ class CliTest(RegistryTestCase):
         self.assertNotIn(self.repo.resolve().as_posix(), content)
         self.assertIn("tool='registry_tools.py'", content)
         self.assertIn(
-            "existing='.githooks/pre-push.domain-memory-existing'", content
+            'existing="$(git rev-parse --git-path hooks)/pre-push.domain-memory-existing" || exit 1\n', content
         )
 
     def test_an_existing_hook_reading_stdin_does_not_disarm_the_check(self) -> None:

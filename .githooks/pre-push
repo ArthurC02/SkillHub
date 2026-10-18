@@ -2,7 +2,7 @@
 # domain-memory-pre-push
 tool='.claude/skills/domain-memory/scripts/registry_tools.py'
 memory='docs/domain-memory'
-existing='.githooks/pre-push.domain-memory-existing'
+existing="$(git rev-parse --git-path hooks)/pre-push.domain-memory-existing" || exit 1
 refs=$(cat)
 python_for_tool() {
   for candidate in python3 python; do

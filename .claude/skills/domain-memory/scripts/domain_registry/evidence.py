@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import re
+import subprocess
 from collections.abc import Callable
 from functools import cache
 from pathlib import Path
 from typing import Any
 
-from .common import MAX_EVIDENCE_BYTES, MAX_NESTING_DEPTH, load_json
+from .common import GIT_COMMAND_TIMEOUT_SECONDS, MAX_EVIDENCE_BYTES, MAX_NESTING_DEPTH, load_json
 from .sources import source_kind_index
 
 
@@ -237,14 +238,61 @@ def verify(reference: Any, repo_root: Path) -> dict[str, Any]:
     return verifier(repo_root)(reference)
 
 
-def verifier(repo_root: Path) -> Callable[[Any], dict[str, Any]]:
+ContentReader = Callable[[str], bytes | None]
+
+
+def staged_content(repo_root: Path) -> ContentReader:
+    root = repo_root.resolve()
+
+    def git(*arguments: str) -> bytes:
+        result = subprocess.run(
+            ["git", "-C", str(root), *arguments],
+            capture_output=True, check=False, timeout=GIT_COMMAND_TIMEOUT_SECONDS,
+        )
+        if result.returncode != 0:
+            reason = result.stderr.decode("utf-8", errors="replace").strip()
+            raise ValueError(f"could not read the Git index of {root}: {reason}")
+        return result.stdout
+
+    @cache
+    def read(path_text: str) -> bytes | None:
+        wanted = path_text.encode("utf-8")
+        for entry in git("ls-files", "--stage", "-z", "--", f":(literal){path_text}").split(b"\0"):
+            meta, _, listed = entry.partition(b"\t")
+            mode, _, rest = meta.partition(b" ")
+            blob, _, stage = rest.partition(b" ")
+            if listed == wanted and stage == b"0" and mode.startswith(b"100"):
+                return git("cat-file", "blob", blob.decode("ascii"))
+        return None
+
+    return read
+
+
+def _rows_from(root: Path, path_text: str, content_of: ContentReader) -> dict[str, Any] | list[str]:
+    if not (root / path_text).resolve().is_relative_to(root):
+        return {"status": "invalid", "reason": "evidence path escapes repository"}
+    content = content_of(path_text)
+    if content is None:
+        return {"status": "missing", "path": path_text}
+    if len(content) > MAX_EVIDENCE_BYTES:
+        return {"status": "invalid", "reason": f"evidence source exceeds {MAX_EVIDENCE_BYTES} bytes", "path": path_text}
+    return content.decode("utf-8", errors="replace").splitlines(keepends=True)
+
+
+def _disk_rows(root: Path, path_text: str) -> dict[str, Any] | list[str]:
+    path = (root / path_text).resolve()
+    return _source_verdict(path, path_text, root) or _read_lines(path)[1]
+
+
+def verifier(repo_root: Path, content_of: ContentReader | None = None) -> Callable[[Any], dict[str, Any]]:
     root = repo_root.resolve()
     sources: dict[str, dict[str, Any] | list[str]] = {}
 
     def source(path_text: str) -> dict[str, Any] | list[str]:
         if path_text not in sources:
-            path = (root / path_text).resolve()
-            sources[path_text] = _source_verdict(path, path_text, root) or _read_lines(path)[1]
+            sources[path_text] = (
+                _disk_rows(root, path_text) if content_of is None else _rows_from(root, path_text, content_of)
+            )
         return sources[path_text]
 
     def check(reference: Any) -> dict[str, Any]:

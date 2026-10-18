@@ -28,7 +28,7 @@ from .dependents import dependents
 from .contracts import validate_schema
 from .counterfactual import FORMAT as COUNTERFACTUAL_FORMAT
 from .counterfactual import FailingBaselineError, Mutation, Proof, counterfactual, counterfactual_suite
-from .evidence import citation, classified, function_span, repeated_note, source_map_for
+from .evidence import citation, classified, function_span, repeated_note, source_map_for, staged_content
 from .gates import quality_gates
 from .git_hooks import (
     governance_readiness,
@@ -719,15 +719,35 @@ def handle_readiness(args: argparse.Namespace) -> int:
     return 0
 
 
+def _failing_citation_line(item: dict) -> str:
+    lines = item.get("cited_lines")
+    span = item.get("path", "its evidence") + (f":{lines['start']}-{lines['end']}" if lines else "")
+    record = f"{item['asset']}/{item['id']}"
+    if item["status"] == "stale":
+        return f"{record}: {span} changed; check that its statement still holds; recite only if it does, otherwise amend it"
+    return f"{record}: {span} is {item['status']}" + (f"; {item['reason']}" if "reason" in item else "")
+
+
+def _staged_failure(result: dict, failing: tuple[str, ...], found: list[str]) -> str:
+    count = sum(result["summary"][status] for status in failing)
+    return "\n".join([
+        *(_failing_citation_line(item) for item in result["results"] if item["status"] in failing),
+        f"verify-evidence failed: {', '.join(found)} citation{'' if count == 1 else 's'}",
+    ])
+
+
 def handle_verify_evidence(args: argparse.Namespace) -> int:
-    result = verify_evidence(args.registry_root.resolve(), args.repo_root.resolve(), args.path)
+    repo_root = args.repo_root.resolve()
+    content_of = staged_content(repo_root) if args.staged else None
+    result = verify_evidence(args.registry_root.resolve(), repo_root, args.path, content_of)
     print_json(result)
     summary = result["summary"]
     failing = ("stale", "unhashed", "missing", "invalid", *(("shifted",) if args.strict else ()))
     found = [f"{summary[status]} {status}" for status in failing if summary[status]]
     if found:
         print(
-            f"verify-evidence failed: {', '.join(found)} citations; run recite on each to cite its current lines",
+            _staged_failure(result, failing, found) if args.staged
+            else f"verify-evidence failed: {', '.join(found)} citations; run recite on each to cite its current lines",
             file=sys.stderr,
         )
     return int(bool(found))

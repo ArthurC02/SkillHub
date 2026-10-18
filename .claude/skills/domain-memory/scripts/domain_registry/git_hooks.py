@@ -80,7 +80,7 @@ def _install_hook(name: str, registry_root: Path, repo_root: Path, script: Path,
         f"# {marker}\n"
         f"tool='{inside_repo(script, repo_root)}'\n"
         f"memory='{relative}'\n"
-        f"existing='{inside_repo(backup, repo_root)}'\n"
+        f"existing=\"$(git rev-parse --git-path hooks)/{backup.name}\" || exit 1\n"
     )
     hook.write_text(header + body, encoding="utf-8", newline="\n")
     hook.chmod(hook.stat().st_mode | 0o111)
@@ -137,7 +137,9 @@ def install_pre_commit_hook(registry_root: Path, repo_root: Path, script: Path) 
         + _run_existing_hook("pre-commit", "\"$existing\" \"$@\"")
         + "staged=$(git -c core.quotepath=false diff --cached --name-only --diff-filter=ACMR) || exit 1\n"
         "test -n \"$staged\" || exit 0\n"
-        "printf '%s\\n' \"$staged\" | git grep -qF --untracked -f - -- \"$memory\"\n"
+        "printf '%s\\n' \"$staged\" | while IFS= read -r path; do\n"
+        "  printf '\"path\": \"%s\"\\nresource: \"%s#L\\npath: \"%s\"\\npath: %s\\n' \"$path\" \"$path\" \"$path\" \"$path\"\n"
+        "done | git grep -qF --untracked -f - -- \"$memory/registry\" \"$memory/source-map.json\"\n"
         "case $? in\n"
         "  0) ;;\n"
         "  1) exit 0 ;;\n"
@@ -148,9 +150,14 @@ def install_pre_commit_hook(registry_root: Path, repo_root: Path, script: Path) 
         "$staged\n"
         "EOF\n"
         "py=$(python_for_tool) || exit 1\n"
-        "if ! report=$(\"$py\" \"$tool\" verify-evidence --registry-root \"$memory\" --repo-root . \"$@\" 2>&1); then\n"
-        "  printf '%s\\n' \"$report\" >&2\n"
-        "  echo 'domain-memory pre-commit: a staged file no longer matches what the Registry cites from it' >&2\n"
+        "if ! report=$(\"$py\" \"$tool\" verify-evidence --registry-root \"$memory\" --repo-root . --staged \"$@\"); then\n"
+        "  case \"${DOMAIN_MEMORY_HOOK_VERBOSE:+verbose}$report\" in\n"
+        "    '{'*) ;;\n"
+        "    *) printf '%s\\n' \"$report\" >&2 ;;\n"
+        "  esac\n"
+        "  echo \"domain-memory pre-commit: a staged file no longer matches what the Registry cites from it;"
+        " the full report: verify-evidence --registry-root $memory --repo-root . --staged $*,"
+        " or commit again with DOMAIN_MEMORY_HOOK_VERBOSE=1\" >&2\n"
         "  exit 1\n"
         "fi\n"
         "git rev-parse -q --verify HEAD >/dev/null || exit 0\n"

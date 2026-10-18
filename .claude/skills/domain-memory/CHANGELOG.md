@@ -2,6 +2,15 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.89.0
+
+### Fixed
+
+- The pre-commit hook checks what the commit will contain. It runs `verify-evidence --staged`, which reads each cited file from the Git index, so a weakened line no longer slips through because the disk holds the original. `--staged` counts an index entry only at stage 0, as a regular file, at the exact path; anything else is `missing`, and an index Git cannot read is an error.
+- The hook finds the hook it chains to through Git at run time (`git rev-parse --git-path hooks`), so it, and the pre-push hook's chained hook, run from a linked worktree too.
+- A refusal names each record and cited span and asks you to check the statement before reciting; the full JSON report appears only with `DOMAIN_MEMORY_HOOK_VERBOSE` set, while an `ERROR:` line is always shown.
+- Python starts only when a staged path appears as a citation or source path in the Registry's `registry/` directory or `source-map.json`, not when it is merely mentioned in a package's prose.
+
 ## 0.88.0
 
 ### Changed

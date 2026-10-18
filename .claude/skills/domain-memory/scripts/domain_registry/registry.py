@@ -22,6 +22,7 @@ from .common import (
     template_dir,
 )
 from .evidence import (
+    ContentReader,
     all_references,
     classifier,
     migrate_legacy,
@@ -602,11 +603,13 @@ def _synonym_errors(
 EVIDENCE_STATUSES = ("current", "shifted", "stale", "unhashed", "missing", "invalid", "legacy-unverified")
 
 
-def verify_evidence(root: Path, repo_root: Path, paths: list[str] | None = None) -> dict[str, Any]:
+def verify_evidence(
+    root: Path, repo_root: Path, paths: list[str] | None = None, content_of: ContentReader | None = None
+) -> dict[str, Any]:
     source_map = source_map_for(root)
     paths = [PurePosixPath(Path(path).as_posix()).as_posix() for path in paths] if paths else None
     wanted = set(paths or ())
-    classify, check = classifier(source_map), verifier(repo_root)
+    classify, check = classifier(source_map), verifier(repo_root, content_of)
     results = [
         {"asset": name.removesuffix(".json"), "id": entry.get("id"), **check(classify(reference))}
         for name in ASSET_KEYS
@@ -622,7 +625,10 @@ def verify_evidence(root: Path, repo_root: Path, paths: list[str] | None = None)
     if paths:
         citations = Counter(item.get("path") for item in results)
         report["paths"] = {
-            path: {"citations": citations[path], "exists": (repo_root / path).is_file()}
+            path: {
+                "citations": citations[path],
+                "exists": (repo_root / path).is_file() if content_of is None else content_of(path) is not None,
+            }
             for path in paths
         }
     return report

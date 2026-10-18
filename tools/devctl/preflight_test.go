@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -195,8 +196,9 @@ func TestTheRepoHookRunsPreflight(t *testing.T) {
 
 func hooksReferencedBy(script, entry string) []string {
 	split := func(r rune) bool { return r == '\'' || r == '"' || r == '\n' || r == ' ' || r == '\t' }
+	besideEntry := strings.ReplaceAll(script, "$(git rev-parse --git-path hooks)", path.Dir(entry))
 	var found []string
-	for _, field := range strings.FieldsFunc(script, split) {
+	for _, field := range strings.FieldsFunc(besideEntry, split) {
 		if !strings.HasPrefix(field, ".githooks/") || field == entry {
 			continue
 		}
