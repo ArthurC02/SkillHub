@@ -1,0 +1,76 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "analytics-retention-and-feedback-rules-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed the feedback, funnel, retention, disclosure and visit rules the analytics Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context analytics lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-feedback-build-id-is-kept-only-when-short-and-nonblank",
+      "statement": "A reported build id is kept only when it is non-blank and at most 64 bytes; otherwise it is dropped and the report is still accepted."
+    },
+    {
+      "id": "enforced-feedback-naming-a-run-fails-closed-without-the-ownership-reader",
+      "statement": "A feedback report that names a run is refused with a server error when the run ownership reader is not wired, and nothing is stored."
+    },
+    {
+      "id": "enforced-the-funnel-counts-downloads-per-workspace-and-other-stages-per-session",
+      "statement": "The daily funnel counts downloads as distinct Workspaces and every other stage as distinct sessions."
+    },
+    {
+      "id": "enforced-analytics-events-past-retention-are-deleted-and-the-cutoff-row-kept",
+      "statement": "Maintenance deletes analytics events strictly older than the retention window; an event exactly at the cutoff is kept."
+    },
+    {
+      "id": "enforced-feedback-past-retention-is-purged-and-newer-kept",
+      "statement": "Purging feedback removes only reports created before the retention window, and the preview counts exactly what the purge removes."
+    },
+    {
+      "id": "enforced-a-query-script-buckets-han-kana-and-hangul-together",
+      "statement": "A search query is recorded only by its script bucket, with Han, Hiragana, Katakana and Hangul all bucketed as han; the text itself is never stored."
+    },
+    {
+      "id": "enforced-the-retention-disclosure-rounds-a-partial-day-up",
+      "statement": "The public retention disclosure reports whole days rounded up, so a window under a day reads as one day, never zero."
+    },
+    {
+      "id": "enforced-feedback-without-a-retention-window-is-disclosed-as-kept-until-set",
+      "statement": "When no feedback retention window is set, the disclosure shows no day count and says reports are kept until one is set, never zero days."
+    },
+    {
+      "id": "enforced-a-visit-starts-only-on-a-new-utc-date",
+      "statement": "A visit starts, and its cookie is reissued, only when the request has no visit cookie or one dated before today in UTC."
+    },
+    {
+      "id": "enforced-partition-maintenance-deletes-no-analytics-without-a-retention-window",
+      "statement": "Partition maintenance without a positive retention window is refused and deletes no analytics events, since a zero window would delete everything."
+    },
+    {
+      "id": "enforced-the-feedback-message-limit-counts-characters",
+      "statement": "The feedback message limit counts characters, not bytes, so 2000 Chinese characters are accepted."
+    },
+    {
+      "id": "enforced-a-feedback-body-is-at-most-8-kib",
+      "statement": "A feedback request body over 8 KiB is refused before any field is read."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/analytics_retention_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/feedback_limits_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/trends_integration_test.go",
+    "apps/platform/internal/product/learning/analytics.go",
+    "apps/platform/internal/product/learning/analytics_test.go",
+    "apps/platform/internal/product/learning/feedback.go",
+    "apps/platform/internal/product/learning/feedback_characterization_test.go",
+    "apps/platform/internal/product/learning/partitions.go",
+    "apps/platform/internal/product/learning/policy.go",
+    "apps/platform/internal/product/learning/policy_test.go"
+  ]
+}

@@ -1,0 +1,187 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "analytics-retention-and-feedback-rules-2026-10-18",
+  "proposal_id": "analytics-retention-and-feedback-rules-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-a-feedback-build-id-is-kept-only-when-short-and-nonblank",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-feedback-build-id-is-kept-only-when-short-and-nonblank",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-feedback-build-id-is-kept-only-when-short-and-nonblank"
+        }
+      ],
+      "expected_outcome": "A reported build id is kept only when it is non-blank and at most 64 bytes; otherwise it is dropped and the report is still accepted.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestReportedBuildIDKeepsOnlyANonEmptyIDWithinTheLimit$ ./internal/product/learning/"
+    },
+    {
+      "id": "rule-feedback-naming-a-run-fails-closed-without-the-ownership-reader",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-feedback-naming-a-run-fails-closed-without-the-ownership-reader",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "feedback-naming-a-run-fails-closed-without-the-ownership-reader"
+        }
+      ],
+      "expected_outcome": "A feedback report that names a run is refused with a server error when the run ownership reader is not wired, and nothing is stored.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestFeedbackWithRunIDFailsClosedWithoutTheOwnerReader$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-the-funnel-counts-downloads-per-workspace-and-other-stages-per-session",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-funnel-counts-downloads-per-workspace-and-other-stages-per-session",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-funnel-counts-downloads-per-workspace-and-other-stages-per-session"
+        }
+      ],
+      "expected_outcome": "The daily funnel counts downloads as distinct Workspaces and every other stage as distinct sessions.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestFunnelTrendCountsEachStageAtItsOwnGrain$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-analytics-events-past-retention-are-deleted-and-the-cutoff-row-kept",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-analytics-events-past-retention-are-deleted-and-the-cutoff-row-kept",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "analytics-events-past-retention-are-deleted-and-the-cutoff-row-kept"
+        }
+      ],
+      "expected_outcome": "Maintenance deletes analytics events strictly older than the retention window; an event exactly at the cutoff is kept.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnalyticsRowsPastRetentionAreDeletedWhileTheirMonthIsStillKept$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-feedback-past-retention-is-purged-and-newer-kept",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-feedback-past-retention-is-purged-and-newer-kept",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "feedback-past-retention-is-purged-and-newer-kept"
+        }
+      ],
+      "expected_outcome": "Purging feedback removes only reports created before the retention window, and the preview counts exactly what the purge removes.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestARetentionPreviewCountsWhatThePurgeThenRemoves$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-query-script-buckets-han-kana-and-hangul-together",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-query-script-buckets-han-kana-and-hangul-together",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-query-script-buckets-han-kana-and-hangul-together"
+        }
+      ],
+      "expected_outcome": "A search query is recorded only by its script bucket, with Han, Hiragana, Katakana and Hangul all bucketed as han; the text itself is never stored.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestQueryScriptBuckets$ ./internal/product/learning/"
+    },
+    {
+      "id": "rule-the-retention-disclosure-rounds-a-partial-day-up",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-retention-disclosure-rounds-a-partial-day-up",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-retention-disclosure-rounds-a-partial-day-up"
+        }
+      ],
+      "expected_outcome": "The public retention disclosure reports whole days rounded up, so a window under a day reads as one day, never zero.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestARetentionWindowShorterThanADayIsNotReportedAsZero$ ./internal/product/learning/"
+    },
+    {
+      "id": "rule-feedback-without-a-retention-window-is-disclosed-as-kept-until-set",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-feedback-without-a-retention-window-is-disclosed-as-kept-until-set",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "feedback-without-a-retention-window-is-disclosed-as-kept-until-set"
+        }
+      ],
+      "expected_outcome": "When no feedback retention window is set, the disclosure shows no day count and says reports are kept until one is set, never zero days.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestDataRetentionSaysSoWhenFeedbackHasNoWindow$ ./internal/product/learning/"
+    },
+    {
+      "id": "rule-a-visit-starts-only-on-a-new-utc-date",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-visit-starts-only-on-a-new-utc-date",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-visit-starts-only-on-a-new-utc-date"
+        }
+      ],
+      "expected_outcome": "A visit starts, and its cookie is reissued, only when the request has no visit cookie or one dated before today in UTC.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestVisitBoundaryRecognizesANewUTCDate$ ./internal/product/learning/"
+    },
+    {
+      "id": "rule-partition-maintenance-deletes-no-analytics-without-a-retention-window",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-partition-maintenance-deletes-no-analytics-without-a-retention-window",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "partition-maintenance-deletes-no-analytics-without-a-retention-window"
+        }
+      ],
+      "expected_outcome": "Partition maintenance without a positive retention window is refused and deletes no analytics events, since a zero window would delete everything.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestPartitionMaintenanceWithoutARetentionWindowDeletesNoEvents$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-the-feedback-message-limit-counts-characters",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-feedback-message-limit-counts-characters",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-feedback-message-limit-counts-characters"
+        }
+      ],
+      "expected_outcome": "The feedback message limit counts characters, not bytes, so 2000 Chinese characters are accepted.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheFeedbackMessageLimitCountsCharactersNotBytes$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-feedback-body-is-at-most-8-kib",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-feedback-body-is-at-most-8-kib",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-feedback-body-is-at-most-8-kib"
+        }
+      ],
+      "expected_outcome": "A feedback request body over 8 KiB is refused before any field is read.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAFeedbackBodyOverEightKiBIsRefused$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

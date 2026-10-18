@@ -1,0 +1,237 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "analytics-retention-and-feedback-rules-2026-10-18",
+  "proposal_id": "analytics-retention-and-feedback-rules-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "85bbe62c3a6d4bc638908b58acbb1e3b13abb892",
+    "registry_digest": "sha256:3aaaa073cfc9201c4ce1c49e696b190044b73d941a91bad472b4a4f842a20741"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-feedback-build-id-is-kept-only-when-short-and-nonblank",
+      "mutated_protection": "apps/platform/internal/product/learning/feedback.go:152: len(build) <= 64 -> len(build) <= 65",
+      "failure_evidence": "=== RUN   TestReportedBuildIDKeepsOnlyANonEmptyIDWithinTheLimit\n=== RUN   TestReportedBuildIDKeepsOnlyANonEmptyIDWithinTheLimit/an_id_of_exactly_64_bytes_is_kept\n=== RUN   TestReportedBuildIDKeepsOnlyANonEmptyIDWithinTheLimit/an_id_of_65_bytes_is_dropped\n    feedback_characterization_test.go:44: got \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\", want nothing recorded\n=== RUN   TestReportedBuildIDKeepsOnlyANonEmptyIDWithinTheLimit/surrounding_space_is_trimmed\n=== RUN   TestReportedBuildIDKeepsOnlyANonEmptyIDWithinTheLimit/a_blank_id_is_dropped\n--- FAIL: TestReportedBuildIDKeepsOnlyANonEmptyIDWithinTheLimit (0.00s)\n    --- PASS: TestReportedBuildIDKeepsOnlyANonEmptyIDWithinTheLimit/an_id_of_exactly_64_bytes_is_kept (0.00s)\n    --- FAIL: TestReportedBuildIDKeepsOnlyANonEmptyIDWithinTheLimit/an_id_of_65_bytes_is_dropped (0.00s)\n    --- PASS: TestReportedBuildIDKeepsOnlyANonEmptyIDWithinTheLimit/surrounding_space_is_trimmed (0.00s)\n    --- PASS: TestReportedBuildIDKeepsOnlyANonEmptyIDWithinTheLimit/a_blank_id_is_dropped (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/learning\t3.606s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-feedback-naming-a-run-fails-closed-without-the-ownership-reader",
+      "mutated_protection": "apps/platform/internal/product/learning/feedback.go:126: if h.Svc.RunBelongsToWorkspace == nil { -> if false && h.Svc.RunBelongsToWorkspace == nil {",
+      "failure_evidence": "x.LogServerErrors.func1({0x7ff631ad5968, 0x199557c1e0f0}, 0x199557e88000)\n\tC:/Users/a8022/OneDrive/Desktop/SkillHub/apps/platform/internal/foundation/runtime/httpx/server_errors.go:11 +0xb3\nnet/http.HandlerFunc.ServeHTTP(0x7ff62ff4f840?, {0x7ff631ad5968?, 0x199557c1e0f0?}, 0x199557cd9ae8?)\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/net/http/server.go:2358 +0x29\nnet/http.serverHandler.ServeHTTP({0x10?}, {0x7ff631ad5968?, 0x199557c1e0f0?}, 0x1?)\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/net/http/server.go:3436 +0x8e\nnet/http.(*conn).serve(0x199557dde240, {0x7ff631ad7f98, 0x199557e996e0})\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/net/http/server.go:2157 +0x6dc\ncreated by net/http.(*Server).Serve in goroutine 99\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/net/http/server.go:3604 +0x4fd\n    beta_integration_test.go:705: Post \"http://127.0.0.1:57562/feedback\": EOF\n--- FAIL: TestFeedbackWithRunIDFailsClosedWithoutTheOwnerReader (0.20s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t7.931s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-funnel-counts-downloads-per-workspace-and-other-stages-per-session",
+      "mutated_protection": "apps/platform/internal/product/learning/analytics.go:217: return event == EventDownloadStarted -> return false",
+      "failure_evidence": "=== RUN   TestFunnelTrendCountsEachStageAtItsOwnGrain\n    trends_integration_test.go:278: download_started count on 2026-10-18: grew by 3, want 1\n--- FAIL: TestFunnelTrendCountsEachStageAtItsOwnGrain (0.21s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t10.244s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-analytics-events-past-retention-are-deleted-and-the-cutoff-row-kept",
+      "mutated_protection": "apps/platform/internal/foundation/persistence/db/gen/beta.sql.go:122: DELETE FROM analytics_events WHERE occurred_at < $1 -> DELETE FROM analytics_events WHERE occurred_at <= $1",
+      "failure_evidence": "=== RUN   TestAnalyticsRowsPastRetentionAreDeletedWhileTheirMonthIsStillKept\n    analytics_retention_integration_test.go:48: rows for retention-at-cutoff after maintenance = 0, want 1\n--- FAIL: TestAnalyticsRowsPastRetentionAreDeletedWhileTheirMonthIsStillKept (0.16s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t11.879s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-feedback-past-retention-is-purged-and-newer-kept",
+      "mutated_protection": "apps/platform/internal/foundation/persistence/db/gen/beta.sql.go:134: DELETE FROM feedback_reports WHERE created_at < $1 -> DELETE FROM feedback_reports WHERE created_at > $1",
+      "failure_evidence": "=== RUN   TestARetentionPreviewCountsWhatThePurgeThenRemoves\n    platform_agent_proposals_integration_test.go:729: feedback purge removed 1 (<nil>), the preview said 2\n--- FAIL: TestARetentionPreviewCountsWhatThePurgeThenRemoves (0.02s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.757s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-query-script-buckets-han-kana-and-hangul-together",
+      "mutated_protection": "apps/platform/internal/product/learning/analytics.go:190: unicode.Is(unicode.Hangul, r) -> false",
+      "failure_evidence": "=== RUN   TestQueryScriptBuckets\n    analytics_test.go:50: queryScript(\"요약해 주세요\") = \"other\", want \"han\"\n--- FAIL: TestQueryScriptBuckets (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/learning\t2.985s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-retention-disclosure-rounds-a-partial-day-up",
+      "mutated_protection": "apps/platform/internal/product/learning/policy.go:15: if retention%day != 0 { -> if false && retention%day != 0 {",
+      "failure_evidence": "=== RUN   TestARetentionWindowShorterThanADayIsNotReportedAsZero\n    policy_test.go:100: retention_days = 0 for a 12-hour window, want 1\n--- FAIL: TestARetentionWindowShorterThanADayIsNotReportedAsZero (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/learning\t3.115s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-feedback-without-a-retention-window-is-disclosed-as-kept-until-set",
+      "mutated_protection": "apps/platform/internal/product/learning/policy.go:11: if retention <= 0 { -> if retention < 0 {",
+      "failure_evidence": "=== RUN   TestDataRetentionSaysSoWhenFeedbackHasNoWindow\n    policy_test.go:173: retention_days = 0 with FEEDBACK_RETENTION unset, want null\n    policy_test.go:177: the note does not say the reports are kept indefinitely and which variable would change that: \"\"\n--- FAIL: TestDataRetentionSaysSoWhenFeedbackHasNoWindow (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/learning\t5.800s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-visit-starts-only-on-a-new-utc-date",
+      "mutated_protection": "apps/platform/internal/product/learning/analytics.go:111: err != nil || c.Value != now -> err != nil || c.Value == now",
+      "failure_evidence": "=== RUN   TestVisitBoundaryRecognizesANewUTCDate\n    analytics_test.go:21: a second request on the same UTC day became another visit\n--- FAIL: TestVisitBoundaryRecognizesANewUTCDate (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/learning\t3.019s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-partition-maintenance-deletes-no-analytics-without-a-retention-window",
+      "mutated_protection": "apps/platform/internal/product/learning/partitions.go:28: if retention <= 0 { -> if retention < 0 {",
+      "failure_evidence": "=== RUN   TestPartitionMaintenanceWithoutARetentionWindowDeletesNoEvents\n    analytics_retention_integration_test.go:82: maintenance with no retention window left 0 of 1 events\n--- FAIL: TestPartitionMaintenanceWithoutARetentionWindowDeletesNoEvents (0.05s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.843s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-feedback-message-limit-counts-characters",
+      "mutated_protection": "apps/platform/internal/product/learning/feedback.go:110: len([]rune(message)) > maxFeedbackMessage -> len(message) > maxFeedbackMessage",
+      "failure_evidence": "=== RUN   TestTheFeedbackMessageLimitCountsCharactersNotBytes\n    feedback_limits_integration_test.go:18: 2000 Chinese characters: got 400, want 204\n--- FAIL: TestTheFeedbackMessageLimitCountsCharactersNotBytes (0.35s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t10.547s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-feedback-body-is-at-most-8-kib",
+      "mutated_protection": "apps/platform/internal/product/learning/feedback.go:21: maxFeedbackBodyBytes = 8192 -> maxFeedbackBodyBytes = 8192000",
+      "failure_evidence": "=== RUN   TestAFeedbackBodyOverEightKiBIsRefused\n    feedback_limits_integration_test.go:35: a body over 8 KiB: got 204, want 400\n--- FAIL: TestAFeedbackBodyOverEightKiBIsRefused (1.01s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t10.792s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/analytics_retention_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/feedback_limits_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/trends_integration_test.go",
+    "apps/platform/internal/product/learning/analytics.go",
+    "apps/platform/internal/product/learning/analytics_test.go",
+    "apps/platform/internal/product/learning/feedback.go",
+    "apps/platform/internal/product/learning/feedback_characterization_test.go",
+    "apps/platform/internal/product/learning/partitions.go",
+    "apps/platform/internal/product/learning/policy.go",
+    "apps/platform/internal/product/learning/policy_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-feedback-build-id-is-kept-only-when-short-and-nonblank",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestReportedBuildIDKeepsOnlyANonEmptyIDWithinTheLimit$ ./internal/product/learning/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f077c4bc75eb9b0e347466141330b13c35a263889d988298b28f17a8697b1cf1",
+      "finished_at": "2026-10-18T10:05:02.077718Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-feedback-naming-a-run-fails-closed-without-the-ownership-reader",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestFeedbackWithRunIDFailsClosedWithoutTheOwnerReader$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:0e5104108ea3f033aebaedf18716fabb2db635725c61d3c172168d2d4fa49d6b",
+      "finished_at": "2026-10-18T10:05:35.383062Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-the-funnel-counts-downloads-per-workspace-and-other-stages-per-session",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestFunnelTrendCountsEachStageAtItsOwnGrain$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:d099ec60757414bc867f365ed4ada9a63d9390904c06e89824dd58413f0237a4",
+      "finished_at": "2026-10-18T10:06:19.517482Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-analytics-events-past-retention-are-deleted-and-the-cutoff-row-kept",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnalyticsRowsPastRetentionAreDeletedWhileTheirMonthIsStillKept$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:1ce2a59bf564740b0913fc6e95387d06ccbdfe31b59d6140f90a5c2ce97967c9",
+      "finished_at": "2026-10-18T10:06:57.734429Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-feedback-past-retention-is-purged-and-newer-kept",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestARetentionPreviewCountsWhatThePurgeThenRemoves$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4f5360746b0c465d32854bed14c6763c3f4c7e413ff1baee3e2fd711858f119a",
+      "finished_at": "2026-10-18T10:07:22.085437Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-query-script-buckets-han-kana-and-hangul-together",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestQueryScriptBuckets$ ./internal/product/learning/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:8c43c58f1ff4f8660794614f3347b85d933b6ffd6af606d390fce89374bfcaf5",
+      "finished_at": "2026-10-18T10:08:04.358176Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-the-retention-disclosure-rounds-a-partial-day-up",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestARetentionWindowShorterThanADayIsNotReportedAsZero$ ./internal/product/learning/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:1a2a5c480d0491fae01c3265e942e06e5ce0e655e2358fe5a410319e4cbe0e7f",
+      "finished_at": "2026-10-18T10:08:30.489535Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-feedback-without-a-retention-window-is-disclosed-as-kept-until-set",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestDataRetentionSaysSoWhenFeedbackHasNoWindow$ ./internal/product/learning/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:25894b1b5ac88ba2c21d7211e33724123d0cb1135325c90d150ffd193bbbc58d",
+      "finished_at": "2026-10-18T10:08:56.367358Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-visit-starts-only-on-a-new-utc-date",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestVisitBoundaryRecognizesANewUTCDate$ ./internal/product/learning/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:1022df8931fe35746dddd59c21bd6bb900a8d51857c8b1eee2d493fff4d28497",
+      "finished_at": "2026-10-18T10:09:10.567964Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-partition-maintenance-deletes-no-analytics-without-a-retention-window",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestPartitionMaintenanceWithoutARetentionWindowDeletesNoEvents$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:c12028b8d3d58fed9c8a2eb4ba2da151f0d0d25f847f0c90187c490b66c81ab8",
+      "finished_at": "2026-10-18T10:09:38.249676Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-the-feedback-message-limit-counts-characters",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheFeedbackMessageLimitCountsCharactersNotBytes$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:52cb6d079e6e3ea177d53218780af46473831995f94d117fd6fec28de49466be",
+      "finished_at": "2026-10-18T10:10:24.430434Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-feedback-body-is-at-most-8-kib",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAFeedbackBodyOverEightKiBIsRefused$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:521a4f72c82018a3093aed0237779921c5998c87cd889e07487562613033f590",
+      "finished_at": "2026-10-18T10:10:47.972346Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

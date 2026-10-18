@@ -1,0 +1,489 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "analytics-retention-and-feedback-rules-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "analytics-retention-and-feedback-rules-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-18T10:04:40.296000Z",
+  "verified_at": "2026-10-18T10:10:48.209326Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "85bbe62c3a6d4bc638908b58acbb1e3b13abb892",
+    "registry_digest": "sha256:3aaaa073cfc9201c4ce1c49e696b190044b73d941a91bad472b4a4f842a20741"
+  },
+  "affected_contexts": [
+    "analytics"
+  ],
+  "rule_ids": [
+    "a-feedback-build-id-is-kept-only-when-short-and-nonblank",
+    "feedback-naming-a-run-fails-closed-without-the-ownership-reader",
+    "the-funnel-counts-downloads-per-workspace-and-other-stages-per-session",
+    "analytics-events-past-retention-are-deleted-and-the-cutoff-row-kept",
+    "feedback-past-retention-is-purged-and-newer-kept",
+    "a-query-script-buckets-han-kana-and-hangul-together",
+    "the-retention-disclosure-rounds-a-partial-day-up",
+    "feedback-without-a-retention-window-is-disclosed-as-kept-until-set",
+    "a-visit-starts-only-on-a-new-utc-date",
+    "partition-maintenance-deletes-no-analytics-without-a-retention-window",
+    "the-feedback-message-limit-counts-characters",
+    "a-feedback-body-is-at-most-8-kib"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "analytics",
+    "invariant": "Only analytics decides what product events and feedback are kept and for how long.",
+    "evidence": [
+      "apps/platform/internal/product/learning/partitions.go:26-33"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: run ownership reaches analytics through an injected reader.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/product/learning/feedback.go:125-134"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A second extraction of the analytics Context found enforced rules beyond the nine the Registry held, several guarded by no test."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; add the missing tests; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording the missing-session 401 in the feedback handler: the route is already wrapped in RequireSession, so its mutation is equivalent."
+    ],
+    "proof_obligations": [
+      "rule-a-feedback-build-id-is-kept-only-when-short-and-nonblank",
+      "rule-feedback-naming-a-run-fails-closed-without-the-ownership-reader",
+      "rule-the-funnel-counts-downloads-per-workspace-and-other-stages-per-session",
+      "rule-analytics-events-past-retention-are-deleted-and-the-cutoff-row-kept",
+      "rule-feedback-past-retention-is-purged-and-newer-kept",
+      "rule-a-query-script-buckets-han-kana-and-hangul-together",
+      "rule-the-retention-disclosure-rounds-a-partial-day-up",
+      "rule-feedback-without-a-retention-window-is-disclosed-as-kept-until-set",
+      "rule-a-visit-starts-only-on-a-new-utc-date",
+      "rule-partition-maintenance-deletes-no-analytics-without-a-retention-window",
+      "rule-the-feedback-message-limit-counts-characters",
+      "rule-a-feedback-body-is-at-most-8-kib"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-feedback-build-id-is-kept-only-when-short-and-nonblank",
+        "statement": "A reported build id is kept only when it is non-blank and at most 64 bytes; otherwise it is dropped and the report is still accepted.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "A 65-character build id is stored as absent; a 64-character one is kept."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/feedback.go",
+            "lines": {
+              "start": 151,
+              "end": 156
+            },
+            "excerpt_sha256": "sha256:87f36fb780867641c54c1b081537c1668215a633b7de8953b4e0d09a8ab2cb93"
+          },
+          {
+            "path": "apps/platform/internal/product/learning/feedback_characterization_test.go",
+            "lines": {
+              "start": 30,
+              "end": 47
+            },
+            "excerpt_sha256": "sha256:cf451702b84ee8d905119f0f1fda430f335dcc316d0e395f244b4fbf01fdbbb0"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "feedback-naming-a-run-fails-closed-without-the-ownership-reader",
+        "statement": "A feedback report that names a run is refused with a server error when the run ownership reader is not wired, and nothing is stored.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "Without the reader, a report naming a valid run id answers 500 and stores no row."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/feedback.go",
+            "lines": {
+              "start": 125,
+              "end": 134
+            },
+            "excerpt_sha256": "sha256:def305b679e2bff093c10827625a3710c38ae12182e54d957bcae08105529271"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go",
+            "lines": {
+              "start": 698,
+              "end": 712
+            },
+            "excerpt_sha256": "sha256:6c7f00d7dd276fed95a599c1f5daf6908a69637baa0ba5232f7143ce28cbe536"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-funnel-counts-downloads-per-workspace-and-other-stages-per-session",
+        "statement": "The daily funnel counts downloads as distinct Workspaces and every other stage as distinct sessions.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "Two sessions of one Workspace downloading count as one download."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/analytics.go",
+            "lines": {
+              "start": 216,
+              "end": 218
+            },
+            "excerpt_sha256": "sha256:9678ff58dfbf0b671b58ac038f3b4d705870a2dafee371e3f510076d47d9284e"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/trends_integration_test.go",
+            "lines": {
+              "start": 244,
+              "end": 298
+            },
+            "excerpt_sha256": "sha256:d44df36ed33b88d976120154604575964a17d281d9c6836549af73edeaf5ce6f"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "analytics-events-past-retention-are-deleted-and-the-cutoff-row-kept",
+        "statement": "Maintenance deletes analytics events strictly older than the retention window; an event exactly at the cutoff is kept.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "With a ten-day window, an event one second before the cutoff is deleted and one at the cutoff is kept."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/partitions.go",
+            "lines": {
+              "start": 26,
+              "end": 33
+            },
+            "excerpt_sha256": "sha256:990c849bcaa927329ecd2829d32c19399066342c195f8baec3f5b72bc988bf69"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/analytics_retention_integration_test.go",
+            "lines": {
+              "start": 11,
+              "end": 51
+            },
+            "excerpt_sha256": "sha256:41080d03047fe15046f0d532b6041a4d6dc57addc79bfad19d26d9d4070e1ed3"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "feedback-past-retention-is-purged-and-newer-kept",
+        "statement": "Purging feedback removes only reports created before the retention window, and the preview counts exactly what the purge removes.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "With a 90-day window, reports aged 100 and 91 days are removed and a fresh one stays."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/feedback.go",
+            "lines": {
+              "start": 184,
+              "end": 193
+            },
+            "excerpt_sha256": "sha256:400e15fff87bba67e02938629c2bd4c61bde74dce82e6791a217e0a1a1d895bf"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go",
+            "lines": {
+              "start": 710,
+              "end": 739
+            },
+            "excerpt_sha256": "sha256:364a963d8ed718922dca007e22d493f3ded277895e120bdedbe475abd5ad4c69"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-query-script-buckets-han-kana-and-hangul-together",
+        "statement": "A search query is recorded only by its script bucket, with Han, Hiragana, Katakana and Hangul all bucketed as han; the text itself is never stored.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "A Hangul query is bucketed han."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/analytics.go",
+            "lines": {
+              "start": 185,
+              "end": 206
+            },
+            "excerpt_sha256": "sha256:b282bc4324733cf13bc0628b8aab795909ee26f7c9cefaf90046bf6dc29f0442"
+          },
+          {
+            "path": "apps/platform/internal/product/learning/analytics_test.go",
+            "lines": {
+              "start": 38,
+              "end": 53
+            },
+            "excerpt_sha256": "sha256:23a32cbf48b88c97eaf7442a6ae99070728285d77526ca6580108fa7e256b539"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-retention-disclosure-rounds-a-partial-day-up",
+        "statement": "The public retention disclosure reports whole days rounded up, so a window under a day reads as one day, never zero.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "A twelve-hour window is disclosed as one day."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/policy.go",
+            "lines": {
+              "start": 10,
+              "end": 18
+            },
+            "excerpt_sha256": "sha256:4ff6c919d41d9b3fe48f2364bd739c7c7cd84ac93f3896e1e25b10fb44916a42"
+          },
+          {
+            "path": "apps/platform/internal/product/learning/policy_test.go",
+            "lines": {
+              "start": 88,
+              "end": 102
+            },
+            "excerpt_sha256": "sha256:bde829d456cd603857db5e37adb64e00bdb62d370c3ae1f32f5c2dfdd3cce64d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "feedback-without-a-retention-window-is-disclosed-as-kept-until-set",
+        "statement": "When no feedback retention window is set, the disclosure shows no day count and says reports are kept until one is set, never zero days.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "With no window, retention_days is null and a note names the setting."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/policy.go",
+            "lines": {
+              "start": 10,
+              "end": 13
+            },
+            "excerpt_sha256": "sha256:d0d1f13e9be1d9e34422a21d004e6a0c50128274d896ac4cfb15095c0326b950"
+          },
+          {
+            "path": "apps/platform/internal/product/learning/policy_test.go",
+            "lines": {
+              "start": 158,
+              "end": 179
+            },
+            "excerpt_sha256": "sha256:c6f370fca0c97ff9383783c0eee6a07686ddd2140693a83a30cadf05dc3db3e9"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-visit-starts-only-on-a-new-utc-date",
+        "statement": "A visit starts, and its cookie is reissued, only when the request has no visit cookie or one dated before today in UTC.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "A second request the same UTC day is not a new visit; the first after UTC midnight is."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/analytics.go",
+            "lines": {
+              "start": 109,
+              "end": 112
+            },
+            "excerpt_sha256": "sha256:9783ded5fd7362c53430a70403df577aca4256d4e02a8fdb86b62e529a8fa9b5"
+          },
+          {
+            "path": "apps/platform/internal/product/learning/analytics_test.go",
+            "lines": {
+              "start": 13,
+              "end": 26
+            },
+            "excerpt_sha256": "sha256:b5701d783edd736e4f91e0cdc678d79ff30f5c670a18871460668f880a7e16d5"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "partition-maintenance-deletes-no-analytics-without-a-retention-window",
+        "statement": "Partition maintenance without a positive retention window is refused and deletes no analytics events, since a zero window would delete everything.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "Maintenance with a zero window reports an error and leaves every event."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/partitions.go",
+            "lines": {
+              "start": 26,
+              "end": 33
+            },
+            "excerpt_sha256": "sha256:990c849bcaa927329ecd2829d32c19399066342c195f8baec3f5b72bc988bf69"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/analytics_retention_integration_test.go",
+            "lines": {
+              "start": 53,
+              "end": 84
+            },
+            "excerpt_sha256": "sha256:25e6986fbea75a598489770f3f3e63927179450807a5ac46f151f2050ea2463c"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-feedback-message-limit-counts-characters",
+        "statement": "The feedback message limit counts characters, not bytes, so 2000 Chinese characters are accepted.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "A 2000-character Chinese message is accepted; 2001 are refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/feedback.go",
+            "lines": {
+              "start": 109,
+              "end": 113
+            },
+            "excerpt_sha256": "sha256:c6aab9ace0f515da994f241b75d035e9c9e248dec2beeddc5b86d1c1069d94b2"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/feedback_limits_integration_test.go",
+            "lines": {
+              "start": 11,
+              "end": 26
+            },
+            "excerpt_sha256": "sha256:631f403c2acfd51a9f785b1fe5454d79db40e3ee8e961ba00572bdf444906a49"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-feedback-body-is-at-most-8-kib",
+        "statement": "A feedback request body over 8 KiB is refused before any field is read.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "A body padded past 8 KiB answers 400 and stores nothing."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/feedback.go",
+            "lines": {
+              "start": 19,
+              "end": 22
+            },
+            "excerpt_sha256": "sha256:cd43a2d1e86b25e6e2ff0a72f49b04b710d3c8a6d17f1b6d6f1123e6fb1660be"
+          },
+          {
+            "path": "apps/platform/internal/product/learning/feedback.go",
+            "lines": {
+              "start": 101,
+              "end": 104
+            },
+            "excerpt_sha256": "sha256:ced8c7447ff8550d084d1af336fb72253daa3eb2868ecc2fb9a2128a8dd79195"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/feedback_limits_integration_test.go",
+            "lines": {
+              "start": 28,
+              "end": 40
+            },
+            "excerpt_sha256": "sha256:4dd2ac094ef3e9db2b2ac19dcd5ecc68e20fe3edbeb3b28388749b278df6e38f"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-18T10:10:47.982008Z",
+      "scope": "Record analytics retention and feedback rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "85bbe62c3a6d4bc638908b58acbb1e3b13abb892",
+        "registry_digest": "sha256:3aaaa073cfc9201c4ce1c49e696b190044b73d941a91bad472b4a4f842a20741"
+      }
+    }
+  ]
+}
