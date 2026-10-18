@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import unittest
 
 from domain_registry.brief import brief_for_change, brief_for_record, to_markdown
 from domain_registry.evidence import citation
-from test_support import RegistryTestCase
+from test_support import RegistryTestCase, applied_by
 
 INTERACTION = {"id": "orders-bill", "producer_context": "orders", "consumer_context": "billing", "description": "Orders asks billing to invoice."}
 RULE = {"id": "order-total", "contexts": ["orders"], "statement": "An order total is non-negative."}
+SECOND_RULE = {"id": "order-min", "contexts": ["orders"], "statement": "An order has at least one line."}
+CHECK = "python -m unittest test_orders"
 
 
 class BriefTest(RegistryTestCase):
@@ -32,15 +35,16 @@ class ChangeBriefTest(BriefTest):
         self.assertEqual(
             ("boundary-evidence-changed", 1, ["orders"], ["src/orders/port.py"], "Own orders.", ["order-total"],
              "interactions", "orders-bill", "candidate", ["src/orders/port.py"], ["src/orders/port.py:1-1"],
-             [("contexts", "billing"), ("contexts", "orders")], ("rules", "order-total", ["src/orders/port.py:1-1"], ["src/orders/port.py"]),
-             2, {"citations": 2, "exists": True}),
+             [("contexts", "billing"), ("contexts", "orders")],
+             ("rules", "order-total", ["src/orders/port.py:1-1"], ["src/orders/port.py"], None, None, False),
+             2, {"citations": 2, "exists": True}, []),
             (brief["verdict"], brief["subject"]["changed_files"], [context["id"] for context in brief["contexts"]],
              brief["contexts"][0]["changed_files"], brief["contexts"][0]["model"]["context"]["summary"],
              [rule["id"] for rule in brief["contexts"][0]["model"]["rules"]],
              record["asset"], record["id"], record["status"], record["changed_evidence"], record["touched_evidence"],
              [(item["asset"], item["id"]) for item in record["dependents"]],
-             (rule["asset"], rule["id"], rule["touched_evidence"], rule["changed_evidence"]),
-             brief["evidence"]["summary"]["stale"], brief["evidence"]["paths"]["src/orders/port.py"]),
+             (rule["asset"], rule["id"], rule["touched_evidence"], rule["changed_evidence"], rule["check"], rule["cwd"], "check" in record),
+             brief["evidence"]["summary"]["stale"], brief["evidence"]["paths"]["src/orders/port.py"], brief["registry_changes"]),
         )
         self.assertEqual(
             ["A collaboration's cited lines changed; re-read each record below, and recite only what the code still states.",
@@ -48,7 +52,7 @@ class ChangeBriefTest(BriefTest):
              "Orders asks billing to invoice.",
              "rules/order-total cites src/orders/port.py at lines that changed; check that its statement still holds before reciting: "
              "An order total is non-negative.",
-             "1 rules cite lines this change touched; re-run their checks, which get-record names.",
+             "1 rule cites lines this change touched; re-run their checks, which get-record names.",
              "2 stale citations of the changed files; recite only a record whose statement still holds."],
             brief["attention"],
         )
@@ -64,7 +68,8 @@ class ChangeBriefTest(BriefTest):
             ("no-cross-context-change", "rules", "order-total", ["src/orders/port_test.py:1-2"], 1,
              ["The change stays inside one Context.",
               "rules/order-total cites src/orders/port_test.py:1-2, which the change overlaps; re-read it.",
-              "1 rules cite lines this change touched; re-run their checks, which get-record names."]),
+              "1 rule cites lines this change touched; re-run their checks, which get-record names.",
+              "rules: 1 record changed in this range, without a reviewing proposal."]),
             (brief["verdict"], rule["asset"], rule["id"], rule["touched_evidence"], brief["evidence"]["summary"]["current"], brief["attention"]),
         )
 
@@ -108,6 +113,102 @@ class ChangeBriefTest(BriefTest):
             self.assertIn(expected, markdown)
 
 
+    def prove(self, rule_id: str) -> None:
+        package = self.repo / "memory" / "changes" / "pro-1"
+        package.mkdir(parents=True)
+        for name, value in (
+            ("domain-change-proposal.json", {"proposal_id": "PRO-1"}),
+            ("test-obligations.json", {"obligations": [{"id": "OB-1", "source_type": "rule", "source_id": rule_id, "check": CHECK}]}),
+            ("evidence-bundle.json", {"test_results": [{"obligation_id": "OB-1", "working_directory": "src/orders"}]}),
+        ):
+            (package / name).write_text(json.dumps(value), encoding="utf-8")
+        applied_by(self.repo / "memory", "PRO-1", f"rules/{rule_id}")
+        self.commit_all("proved")
+
+    def test_one_rule_and_one_stale_citation_are_counted_in_the_singular(self) -> None:
+        self.two_mapped_contexts(rules=[RULE])
+        self.change("src/orders/port.py")
+        brief = brief_for_change(self.repo / "memory", self.repo, "HEAD")
+        self.assertEqual(
+            ["The change stays inside one Context.",
+             "rules/order-total cites src/orders/port.py at lines that changed; check that its statement still holds before reciting: "
+             "An order total is non-negative.",
+             "1 rule cites lines this change touched; re-run their checks, which get-record names.",
+             "1 stale citation of the changed files; recite only a record whose statement still holds."],
+            brief["attention"],
+        )
+
+    def test_a_rule_proved_by_a_package_beside_the_registry_carries_its_check_and_says_to_run_it(self) -> None:
+        self.two_mapped_contexts(rules=[RULE])
+        self.prove("order-total")
+        self.change("src/orders/port.py")
+        brief = brief_for_change(self.repo / "memory", self.repo, "HEAD")
+        [rule] = brief["records"]
+        self.assertEqual(
+            (CHECK, "src/orders", "1 rule cites lines this change touched; run the checks listed on them."),
+            (rule["check"], rule["cwd"], brief["attention"][2]),
+        )
+
+    def test_when_one_of_two_rules_has_no_proving_package_its_check_is_null_and_get_record_is_named(self) -> None:
+        self.two_mapped_contexts(rules=[RULE, SECOND_RULE])
+        self.prove("order-total")
+        self.change("src/orders/port.py")
+        brief = brief_for_change(self.repo / "memory", self.repo, "HEAD")
+        self.assertEqual(
+            ([("order-min", None, None), ("order-total", CHECK, "src/orders")],
+             ["2 rules cite lines this change touched; re-run their checks, which get-record names.",
+              "2 stale citations of the changed files; recite only a record whose statement still holds."]),
+            ([(rule["id"], rule["check"], rule["cwd"]) for rule in brief["records"]], brief["attention"][3:]),
+        )
+
+    def test_records_added_amended_and_removed_in_the_range_name_the_proposal_that_last_reviewed_them(self) -> None:
+        kept = {"id": "kept", "contexts": ["orders"], "statement": "Kept.", "evidence": []}
+        self.two_mapped_contexts(rules=[
+            kept, {"id": "amended", "contexts": ["orders"], "statement": "Before.", "evidence": []},
+            {"id": "removed", "contexts": ["orders"], "statement": "Removed.", "evidence": []},
+        ])
+        self.seed("rules.json", [
+            kept, {"id": "amended", "contexts": ["orders"], "statement": "After.", "evidence": []},
+            {"id": "added", "contexts": ["orders"], "statement": "Added.", "status": "reviewed", "evidence": []},
+        ])
+        applied_by(self.repo / "memory", "PRO-1", "rules/amended", "rules/added")
+        brief = brief_for_change(self.repo / "memory", self.repo, "HEAD")
+        self.assertEqual(
+            ([{"asset": "rules", "id": "added", "change": "added", "status": "reviewed", "summary": "Added.", "through": "PRO-1"},
+              {"asset": "rules", "id": "amended", "change": "amended", "status": "candidate", "summary": "After.", "through": "PRO-1"},
+              {"asset": "rules", "id": "removed", "change": "removed", "status": "candidate", "summary": "Removed.", "through": None}],
+             ["rules: 2 records changed in this range, last reviewed through PRO-1.",
+              "rules: 1 record changed in this range, without a reviewing proposal."]),
+            (brief["registry_changes"], brief["attention"][-2:]),
+        )
+
+    def test_a_registry_absent_at_the_base_lists_every_record_as_added(self) -> None:
+        super().two_mapped_contexts()
+        (self.repo / ".git" / "info" / "exclude").write_text("memory/\n", encoding="utf-8")
+        subprocess.run(["git", "rm", "-r", "-q", "--cached", "memory"], cwd=self.repo, check=True)
+        self.commit_all("untracks the registry")
+        brief = brief_for_change(self.repo / "memory", self.repo, "HEAD")
+        self.assertEqual(
+            ([("contexts", "billing", "added", "candidate", "Own invoices.", None),
+              ("contexts", "orders", "added", "candidate", "Own orders.", None)],
+             "contexts: 2 records changed in this range, without a reviewing proposal."),
+            ([(change["asset"], change["id"], change["change"], change["status"], change["summary"], change["through"])
+              for change in brief["registry_changes"]], brief["attention"][-1]),
+        )
+
+    def test_the_markdown_brief_lists_registry_changes_and_the_check_on_each_rule(self) -> None:
+        self.two_mapped_contexts(rules=[RULE, SECOND_RULE])
+        self.prove("order-total")
+        self.change("src/orders/port.py")
+        markdown = to_markdown(brief_for_change(self.repo / "memory", self.repo, "HEAD~2"))
+        for expected in ("## Registry changes\n\n"
+                         "- added without a reviewing proposal: rules/order-min (candidate): An order has at least one line.\n"
+                         "- added through PRO-1: rules/order-total (candidate): An order total is non-negative.\n",
+                         f"Check: `{CHECK}` in `src/orders`", "Check: none known; get-record names what proves it"):
+            self.assertIn(expected, markdown)
+        self.assertIn("## Registry changes\n\n- none\n", to_markdown(brief_for_change(self.repo / "memory", self.repo, "HEAD")))
+
+
 class RecordBriefTest(BriefTest):
     def test_a_candidate_rule_is_briefed_with_its_contexts_dependents_and_verified_citations(self) -> None:
         self.two_mapped_contexts(rules=[RULE])
@@ -116,10 +217,21 @@ class RecordBriefTest(BriefTest):
             ({"id": "order-total", "status": "candidate", "summary": "An order total is non-negative.", "asset": "rules"},
              ["orders"], [("contexts", "orders", "candidate")], 1,
              ["The record is candidate, not a reviewed constraint.",
-              "1 records reach it through relations and may need the same change; they are listed."]),
+              "1 record reaches it through relations and may need the same change; they are listed."]),
             (brief["record"], [context["id"] for context in brief["contexts"]],
              [(item["asset"], item["id"], item["status"]) for item in brief["dependents"]], brief["evidence"]["summary"]["current"],
              brief["attention"]),
+        )
+
+    def test_two_records_reaching_a_rule_and_one_stale_citation_are_counted_by_number(self) -> None:
+        self.two_mapped_contexts(rules=[{**RULE, "contexts": ["orders", "billing"]}])
+        self.change("src/orders/port.py")
+        brief = brief_for_record(self.repo / "memory", self.repo, "rules", "order-total")
+        self.assertEqual(
+            ["The record is candidate, not a reviewed constraint.",
+             "2 records reach it through relations and may need the same change; they are listed.",
+             "1 stale citation; recite them before relying on the record."],
+            brief["attention"],
         )
 
     def test_a_record_that_cites_nothing_is_said_to_be_unverifiable(self) -> None:

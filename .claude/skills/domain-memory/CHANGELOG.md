@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.81.0
+
+### Changed
+
+- `brief --base` counts in the singular when there is one ("1 rule cites", "1 stale citation"). It lists under `registry_changes` the records the range added, amended or removed, each with the proposal that last reviewed it, and gives one attention line per asset and proposal. Each listed rule carries the check that proves it and the directory to run it in, so a reviewer runs the named test instead of looking it up with `get-record`.
+
 ## 0.80.0
 
 ### Added

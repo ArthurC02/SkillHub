@@ -15,6 +15,7 @@ from .changes import (
     init_change_package,
     list_proposals,
     missing_approval_roles,
+    packages_root,
     proof_of,
     rule_coverage,
     redraft_change_package,
@@ -222,7 +223,7 @@ def _note_unplaced(registry_root: Path, repo_root: Path) -> None:
 
 
 def _note_unsettled(registry_root: Path) -> None:
-    changes_root = _changes_root(registry_root, None)
+    changes_root = packages_root(registry_root, None)
     rows = list_proposals(changes_root) if changes_root is not None else []
     pending = [row["proposal_id"] for row in rows if row.get("status") == "approved"]
     dangling = [f"{row['proposal_id']} (by {row['superseded_by']})" for row in rows if row.get("superseded_by_unknown")]
@@ -342,7 +343,7 @@ def handle_get_record(args: argparse.Namespace) -> int:
     if result is None:
         known = asset_records(root, f"{args.asset}.json")
         raise ValueError(f"{args.asset} record not found: {args.id}{_did_you_mean(args.id, known)}")
-    changes_root = _changes_root(root, args.changes_root)
+    changes_root = packages_root(root, args.changes_root)
     if changes_root is not None and args.asset in PROVEN_ASSETS:
         result = _with_proofs(root, changes_root, args.asset, args.id, result)
     print_json(result)
@@ -350,13 +351,6 @@ def handle_get_record(args: argparse.Namespace) -> int:
 
 
 PROVEN_ASSETS = ("rules", "contracts")
-
-
-def _changes_root(registry_root: Path, given: Path | None) -> Path | None:
-    if given is not None:
-        return given.resolve()
-    beside = registry_root / "changes"
-    return beside if beside.is_dir() else None
 
 
 
@@ -1121,7 +1115,7 @@ def _note_counterfactuals_off_cited_files(package_root: Path, registry_root: Pat
 
 def handle_coverage(args: argparse.Namespace) -> int:
     root = args.registry_root.resolve()
-    changes_root = _changes_root(root, args.changes_root)
+    changes_root = packages_root(root, args.changes_root)
     print_json({**coverage(root), **rule_coverage(root, changes_root)})
     if changes_root is None:
         print(f"NOTE: no Change Packages at {root / 'changes'}; pass --changes-root to count the rules a test proves.",

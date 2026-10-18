@@ -831,6 +831,13 @@ def _cited_file(item: Any) -> str | None:
     return match["path"] if match and "/" in match["path"] else None
 
 
+def packages_root(registry_root: Path, given: Path | None) -> Path | None:
+    if given is not None:
+        return given.resolve()
+    beside = registry_root / "changes"
+    return beside if beside.is_dir() else None
+
+
 def obligations_proving(
     changes_root: Path, proposal_id: str, source: tuple[str, str]
 ) -> list[dict[str, Any]] | None:
