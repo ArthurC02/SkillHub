@@ -3,12 +3,12 @@
   "proposal_id": "activity-limits-cursor-and-completeness-rules-2026-10-19",
   "proposer": "domain-memory-agent",
   "requirement_id": "activity-limits-cursor-and-completeness-rules-2026-10-19",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-18T20:25:05.197953Z",
   "verified_at": "2026-10-18T20:25:54.351953Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-18T20:37:45.947472Z",
+  "applied_at": "2026-10-18T20:37:53.202917Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "5fdb3212f4a8ccbf4074691b5b8624c9694f3b28",
@@ -275,5 +275,9 @@
         "committed_digest": "sha256:9e4a3f84e53c438cd6177de80aabcf5515419b59570088192f90ed60bf950ebb"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "eca3dce944a35419bb3ebe2083e0a621303e697f",
+    "registry_digest": "sha256:b69d7256466fa78890f7f0babde42244983daf7ef2412bb18dd15df4be7f644e"
+  }
 }

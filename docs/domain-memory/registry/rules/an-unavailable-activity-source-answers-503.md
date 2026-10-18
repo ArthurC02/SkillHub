@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-18T20:25:53.992082Z"
 sources:
   - resource: "apps/platform/internal/entrypoint/api/apiserver/activity.go#L60-60"
     excerpt_sha256: "sha256:fe57b8bf19df5a95d5f113c5409586c564371c4bbbb3897fb496a1fe459e5e0b"

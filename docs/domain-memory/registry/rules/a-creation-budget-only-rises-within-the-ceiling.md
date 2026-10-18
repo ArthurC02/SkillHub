@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-18T20:37:17.368504Z"
 sources:
   - resource: "apps/platform/internal/creator/creation/run_fetch_commands.go#L71-73"
     excerpt_sha256: "sha256:f154f9f48c415d929c412cb87709ae595a28f6ae6d2192af54fc8e01bd7ed35a"

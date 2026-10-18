@@ -3,12 +3,12 @@
   "proposal_id": "creation-command-budget-and-reference-rules-2026-10-19",
   "proposer": "domain-memory-agent",
   "requirement_id": "creation-command-budget-and-reference-rules-2026-10-19",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-18T20:35:44.051485Z",
   "verified_at": "2026-10-18T20:37:17.786962Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-18T20:38:07.757619Z",
+  "applied_at": "2026-10-18T20:38:15.058540Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "5fdb3212f4a8ccbf4074691b5b8624c9694f3b28",
@@ -445,5 +445,9 @@
         "committed_digest": "sha256:9e4a3f84e53c438cd6177de80aabcf5515419b59570088192f90ed60bf950ebb"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "eca3dce944a35419bb3ebe2083e0a621303e697f",
+    "registry_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+  }
 }

@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-18T20:31:55.890891Z"
 sources:
   - resource: "apps/platform/internal/trial/batch/batch_comparison.go#L56-60"
     excerpt_sha256: "sha256:74862fafdb4566856e4276d335bd59d6ba79c0b54bbec79fe609d8af017489c0"

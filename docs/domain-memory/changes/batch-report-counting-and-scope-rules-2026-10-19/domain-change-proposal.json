@@ -3,12 +3,12 @@
   "proposal_id": "batch-report-counting-and-scope-rules-2026-10-19",
   "proposer": "domain-memory-agent",
   "requirement_id": "batch-report-counting-and-scope-rules-2026-10-19",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-18T20:30:39.280674Z",
   "verified_at": "2026-10-18T20:31:56.185533Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-18T20:37:56.805924Z",
+  "applied_at": "2026-10-18T20:38:04.424781Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "5fdb3212f4a8ccbf4074691b5b8624c9694f3b28",
@@ -445,5 +445,9 @@
         "committed_digest": "sha256:9e4a3f84e53c438cd6177de80aabcf5515419b59570088192f90ed60bf950ebb"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "eca3dce944a35419bb3ebe2083e0a621303e697f",
+    "registry_digest": "sha256:f08fd2cd87e2468514a2593efd8703e5a98d64bb7ee494a862eae391a1e5c02a"
+  }
 }
