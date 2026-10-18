@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.80.0
+
+### Added
+
+- `scripts/run_tests.py [--jobs N] [module ...]` runs each test module in its own interpreter, several at a time, and prints one line per module with its summary and the failing modules' output in full; the plugin's suite had grown to ten minutes when run in one process.
+
+### Changed
+
+- The four largest test files (review, updates, CLI, registry) are split into topic files of at most about 570 lines each; test names, bodies and count are unchanged, and the one helper two files share, `sign_a_commit_changing`, moved into the shared `RegistryTestCase`, so a failing test points at a small file named for what it covers.
+
 ## 0.79.0
 
 ### Changed

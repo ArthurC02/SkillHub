@@ -977,3 +977,17 @@ class RegistryTestCase(unittest.TestCase):
                 {"id": "draft", "name": "Draft", "responsibility": "Drafts suggestions.", "status": "candidate"},
             ],
         )
+
+    def sign_a_commit_changing(self, relative: str) -> str:
+        path = self.repo / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(relative, encoding="utf-8")
+        subprocess.run(["git", "add", relative], cwd=self.repo, check=True)
+        subprocess.run(
+            ["git", "-c", "user.name=Probe", "-c", "user.email=probe@example.com",
+             "commit", "-qS", "-m", f"change {relative}"],
+            cwd=self.repo, check=True,
+        )
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True,
+        ).stdout.strip()
