@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from .audit import review_history, reviewing_proposals
+from .changes import packages_root, proof_of
+from .common import ASSET_KEYS
 from .dependents import dependents
 from .impact import boundary_impact, touched_records
 from .registry import cited_paths, context_model, context_summary, record_by_id, summarized, verify_evidence
-from .store import read_document
+from .store import committed_documents, read_document
 
 FORMAT = "domain-memory-brief/v1"
 FAILING_EVIDENCE = ("stale", "unhashed", "missing", "invalid")
@@ -36,12 +40,16 @@ def brief_for_change(root: Path, repo_root: Path, base: str) -> dict[str, Any]:
         if item["status"] in CHANGED_CITATION:
             changed = touched.setdefault((item["asset"], item["id"]), {}).setdefault("changed_evidence", [])
             changed[:] = sorted({*changed, item["path"]})
+    proofs = (review_history(root), packages_root(root, None))
     brief = {
         "format": FORMAT,
         "subject": {"base": base, "changed_files": impact["changed_files"]},
         "verdict": impact["verdict"],
         "contexts": [_context(root, identifier, files) for identifier, files in impact["contexts_touched"].items()],
-        "records": [_record(root, asset, record_id, notes) for (asset, record_id), notes in sorted(touched.items(), key=str)],
+        "records": [
+            _with_check(_record(root, asset, record_id, notes), *proofs) for (asset, record_id), notes in sorted(touched.items(), key=str)
+        ],
+        "registry_changes": _registry_changes(root, repo_root, base),
         "evidence": _evidence(evidence),
         "outside_every_context": impact["cited_outside_contexts"],
     }
@@ -83,6 +91,8 @@ def to_markdown(brief: dict[str, Any]) -> str:
         lines += ["## Records to re-read", ""]
         for record in brief["records"]:
             lines += _record_lines(record)
+    if "registry_changes" in brief:
+        lines += ["## Registry changes", "", *_registry_change_lines(brief["registry_changes"]), ""]
     if brief.get("dependents") is not None:
         lines += ["## Dependents", "", *(_dependent_lines(brief["dependents"])), ""]
     lines += ["## Evidence", "", *_evidence_lines(brief["evidence"]), ""]
@@ -103,6 +113,45 @@ def _record(root: Path, asset: str, record_id: Any, notes: dict[str, Any]) -> di
     shown = {**_summarized(root, asset, record), "asset": asset, **notes} if record is not None else {"id": record_id, "asset": asset, **notes}
     shown["dependents"] = _with_status(root, dependents(root, asset, record_id)["reached"]) if record is not None else []
     return shown
+
+
+def _with_check(record: dict[str, Any], history: dict[str, list[str]], changes_root: Path | None) -> dict[str, Any]:
+    if record["asset"] != "rules":
+        return record
+    proposals = history.get(f"rules/{record['id']}")
+    obligations = proof_of(changes_root, proposals, ("rule", record["id"])).obligations if changes_root and proposals else None
+    if not obligations:
+        return {**record, "check": None, "cwd": None}
+    return {**record, "check": obligations[0]["check"], "cwd": obligations[0]["working_directory"]}
+
+
+def _registry_changes(root: Path, repo_root: Path, base: str) -> list[dict[str, Any]]:
+    before = committed_documents(repo_root, base, root, tuple(ASSET_KEYS)) or {}
+    through = reviewing_proposals(root)
+    changes = []
+    for name, key in ASSET_KEYS.items():
+        asset = name.removesuffix(".json")
+        then_document, now_document = before.get(name) or {}, read_document(root, name)
+        then, now = _by_id(then_document.get(key)), _by_id(now_document.get(key))
+        for record_id in sorted(then.keys() | now.keys(), key=str):
+            if record_id not in now:
+                change, record, document = "removed", then[record_id], then_document
+            elif record_id not in then or then[record_id] != now[record_id]:
+                change, record, document = "added" if record_id not in then else "amended", now[record_id], now_document
+            else:
+                continue
+            shown = summarized(record)
+            changes.append({"asset": asset, "id": record_id, "change": change, "status": shown["status"] or document.get("status"),
+                            "summary": shown["summary"], "through": through.get(f"{asset}/{record_id}")})
+    return changes
+
+
+def _by_id(records: Any) -> dict[Any, dict[str, Any]]:
+    return {record.get("id"): record for record in records or [] if isinstance(record, dict)}
+
+
+def _counted(count: int, noun: str) -> str:
+    return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
 
 
 def _summarized(root: Path, asset: str, record: dict[str, Any]) -> dict[str, Any]:
@@ -129,10 +178,14 @@ def _evidence(report: dict[str, Any] | None) -> dict[str, Any] | None:
     return {"summary": {key: value for key, value in report["summary"].items() if key != "by_source_kind"}, "paths": report.get("paths", {})}
 
 
-def _failing(evidence: dict[str, Any] | None) -> list[str]:
+def _failing(evidence: dict[str, Any] | None) -> str:
     if evidence is None:
-        return []
-    return [f"{evidence['summary'][status]} {status}" for status in FAILING_EVIDENCE if evidence["summary"].get(status)]
+        return ""
+    counts = {status: evidence["summary"][status] for status in FAILING_EVIDENCE if evidence["summary"].get(status)}
+    if not counts:
+        return ""
+    noun = "citation" if sum(counts.values()) == 1 else "citations"
+    return f"{', '.join(f'{count} {status}' for status, count in counts.items())} {noun}"
 
 
 def _change_attention(brief: dict[str, Any]) -> list[str]:
@@ -152,9 +205,16 @@ def _change_attention(brief: dict[str, Any]) -> list[str]:
     ]
     rules = [record for record in brief["records"] if record["asset"] == "rules"]
     if rules:
-        attention.append(f"{len(rules)} rules cite lines this change touched; re-run their checks, which get-record names.")
+        verb = "cites" if len(rules) == 1 else "cite"
+        then = "run the checks listed on them" if all(rule["check"] for rule in rules) else "re-run their checks, which get-record names"
+        attention.append(f"{_counted(len(rules), 'rule')} {verb} lines this change touched; {then}.")
     if failing := _failing(brief["evidence"]):
-        attention.append(f"{', '.join(failing)} citations of the changed files; recite only a record whose statement still holds.")
+        attention.append(f"{failing} of the changed files; recite only a record whose statement still holds.")
+    groups = Counter((change["asset"], change["through"]) for change in brief["registry_changes"])
+    attention += [
+        f"{asset}: {_counted(count, 'record')} changed in this range, {'last reviewed ' if through else ''}{_reviewed_through(through)}."
+        for (asset, through), count in groups.items()
+    ]
     return attention
 
 
@@ -163,12 +223,13 @@ def _record_attention(brief: dict[str, Any]) -> list[str]:
     attention = []
     if record["status"] != "reviewed":
         attention.append(f"The record is {record['status']}, not a reviewed constraint.")
-    if brief["dependents"]:
-        attention.append(f"{len(brief['dependents'])} records reach it through relations and may need the same change; they are listed.")
+    if reached := len(brief["dependents"]):
+        verb = "reaches" if reached == 1 else "reach"
+        attention.append(f"{_counted(reached, 'record')} {verb} it through relations and may need the same change; they are listed.")
     if brief["evidence"] is None:
         attention.append("The record cites nothing; it cannot be verified against the code.")
     elif failing := _failing(brief["evidence"]):
-        attention.append(f"{', '.join(failing)} citations; recite them before relying on the record.")
+        attention.append(f"{failing}; recite them before relying on the record.")
     return attention or ["Nothing stands out; the record is reviewed, cited and verified."]
 
 
@@ -196,7 +257,18 @@ def _record_lines(record: dict[str, Any]) -> list[str]:
     for key in ("changed_evidence", "touched_evidence"):
         if key in record:
             lines += [f"{key.replace('_', ' ')}: {', '.join(record[key])}", ""]
+    if "check" in record:
+        shown = f"`{record['check']}` in `{record['cwd']}`" if record["check"] else "none known; get-record names what proves it"
+        lines += [f"Check: {shown}", ""]
     return [*lines, "Dependents:", *_dependent_lines(record["dependents"]), ""]
+
+
+def _registry_change_lines(changes: list[dict[str, Any]]) -> list[str]:
+    return [f"- {change['change']} {_reviewed_through(change['through'])}: {_line(change)}" for change in changes] or ["- none"]
+
+
+def _reviewed_through(proposal: str | None) -> str:
+    return f"through {proposal}" if proposal else "without a reviewing proposal"
 
 
 def _dependent_lines(reached: list[dict[str, Any]]) -> list[str]:
