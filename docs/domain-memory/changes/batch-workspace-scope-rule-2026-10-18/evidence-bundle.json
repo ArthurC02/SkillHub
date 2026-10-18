@@ -1,0 +1,40 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "batch-workspace-scope-rule-2026-10-18",
+  "proposal_id": "batch-workspace-scope-rule-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "bcdaba79075e654b2bc352b63e33841569ec9d98",
+    "registry_digest": "sha256:e94c7d903b327a430620f7aa4e2319cd75caceaaff76d3026317bf8302a1b9ef"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-is-read-only-within-its-workspace",
+      "mutated_protection": "apps/platform/internal/foundation/persistence/db/gen/evaluation_batches.sql.go:51: FROM evaluation_batches WHERE id = $1 AND workspace_id = $2 -> FROM evaluation_batches WHERE id = $1 AND $2::uuid IS NOT NULL",
+      "failure_evidence": "--- FAIL: TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources (2.77s)\n    --- PASS: TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources/GET_/api/skills/{id} (0.01s)\n    --- PASS: TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources/GET_/api/skills/{id}/files (0.00s)\n    --- PASS: TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources/GET_/skills/{id}/versions (0.00s)\n    --- FAIL: TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources/GET_/skills/{id}/evaluation-batches/{batchId} (0.01s)\n    --- FAIL: TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources/GET_/skills/{id}/evaluation-batches/{batchId}/comparison (0.01s)\n...\n00s)\n    --- PASS: TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources/PUT_/admin/agents/proposals/{id}/decision (0.00s)\n    --- PASS: TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources/PUT_/admin/agents/{name}/enabled (0.00s)\n    --- PASS: TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources/PUT_/admin/agents/{name}/spend-cap (0.00s)\n    --- PASS: TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources/POST_/skills/{id}/runs/preflight/confirm (0.00s)\n    --- PASS: TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources/POST_/evaluation/graders/{id}/versions (0.00s)\n    --- PASS: TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources/POST_/admin/evaluation/graders/{id}/versions (0.00s)\n    --- PASS: TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources/POST_/skills/{id}/evaluation-batches (0.00s)\n    --- PASS: TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources/POST_/skills/{id}/runs (0.00s)\n    --- PASS: TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources/PUT_/runs/{id}/evaluation/feedback (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.576s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/authz_stranger_matrix_integration_test.go",
+    "apps/platform/internal/trial/batch/batch.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-batch-is-read-only-within-its-workspace",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f1904bd7c008aa879eac6c6f357c175831a88f490cefe5e0c03c41e517638be5",
+      "finished_at": "2026-10-18T06:01:04.844152Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

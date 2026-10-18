@@ -2,6 +2,7 @@
 
 - [a-balance-never-goes-below-the-lowest-stored-balance](/rules/a-balance-never-goes-below-the-lowest-stored-balance) — An entry that would take a balance below MinBalanceCredits is refused with ErrBalanceOutOfRange and nothing is applied; landing exactly on the minimum is appli….
 - [a-batch-has-1-to-10-trials-and-1-to-50-distinct-test-cases](/rules/a-batch-has-1-to-10-trials-and-1-to-50-distinct-test-cases) — A batch is refused before anything is saved unless it has 1 to 10 trials and 1 to 50 test cases with no test case repeated.
+- [a-batch-is-read-only-within-its-workspace](/rules/a-batch-is-read-only-within-its-workspace) — A batch is read by its id together with the asking Workspace, so another Workspace's batch reads as not found.
 - [a-batch-needs-every-test-case-confirmed](/rules/a-batch-needs-every-test-case-confirmed) — A batch is refused as a whole, naming every unconfirmed test case, when any of its test cases lacks confirmed run permissions.
 - [a-batch-settles-only-when-no-trial-is-open](/rules/a-batch-settles-only-when-no-trial-is-open) — A batch is marked settled only once none of its trials is still running or owed an answer.
 - [a-batch-whose-creator-is-gone-stops](/rules/a-batch-whose-creator-is-gone-stops) — When a batch's creator no longer exists, the batch stops as creator_gone instead of starting another trial with no actor.

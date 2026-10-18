@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "batch-workspace-scope-rule-2026-10-18",
+  "proposal_id": "batch-workspace-scope-rule-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-a-batch-is-read-only-within-its-workspace",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-batch-is-read-only-within-its-workspace",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-batch-is-read-only-within-its-workspace"
+        }
+      ],
+      "expected_outcome": "A batch is read by its id together with the asking Workspace, so another Workspace's batch reads as not found.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

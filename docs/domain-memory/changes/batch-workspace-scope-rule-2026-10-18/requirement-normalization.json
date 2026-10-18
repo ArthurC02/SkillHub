@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "batch-workspace-scope-rule-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed that a batch is read only within its Workspace.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context batch lists the scoping rule as reviewed, proven by a stranger test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-batch-is-read-only-within-its-workspace",
+      "statement": "A batch is read by its id together with the asking Workspace, so another Workspace's batch reads as not found."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/authz_stranger_matrix_integration_test.go",
+    "apps/platform/internal/trial/batch/batch.go"
+  ]
+}

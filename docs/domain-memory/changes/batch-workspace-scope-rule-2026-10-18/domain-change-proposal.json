@@ -1,0 +1,108 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "batch-workspace-scope-rule-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "batch-workspace-scope-rule-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-18T06:00:53.697967Z",
+  "verified_at": "2026-10-18T06:01:05.470111Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "bcdaba79075e654b2bc352b63e33841569ec9d98",
+    "registry_digest": "sha256:e94c7d903b327a430620f7aa4e2319cd75caceaaff76d3026317bf8302a1b9ef"
+  },
+  "affected_contexts": [
+    "batch"
+  ],
+  "rule_ids": [
+    "a-batch-is-read-only-within-its-workspace"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "batch",
+    "invariant": "Only batch reads its batches, always within the asking Workspace.",
+    "evidence": [
+      "apps/platform/internal/trial/batch/batch.go:304-313"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/batch/batch.go:304-313"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Dropping the Workspace id breaks the owner's reads too, so earlier counterfactuals could not isolate scoping. Weakening only the Workspace predicate in the generated query lets another Workspace's rows through while the owner's still match, and a stranger test catches it."
+    ],
+    "decision": "Record the scoping rule as reviewed citing the call that passes the Workspace and the stranger test; no product code change.",
+    "invariants_preserved": [
+      "A Workspace never reads or spends another Workspace's data."
+    ],
+    "rejected_alternatives": [
+      "Mutating the call to pass an empty Workspace id: it empties the owner's reads as well and proves nothing about strangers."
+    ],
+    "proof_obligations": [
+      "rule-a-batch-is-read-only-within-its-workspace"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-batch-is-read-only-within-its-workspace",
+        "statement": "A batch is read by its id together with the asking Workspace, so another Workspace's batch reads as not found.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A stranger asking for someone else's batch report gets 404."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 304,
+              "end": 313
+            },
+            "excerpt_sha256": "sha256:bd1d7e3044d606e40203e3bb190cdc916ee6d33610fdf7d1f9ed3c167720e618"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/authz_stranger_matrix_integration_test.go",
+            "lines": {
+              "start": 396,
+              "end": 446
+            },
+            "content_sha256": "sha256:a7c3dad2181e03f2d3d6905dfd40c6e66759d916941213f1598c9f47574e66fe",
+            "excerpt_sha256": "sha256:180e6d234429ccc17ef69786ec69cb0f51b06a1a87f78aa68e3684f1e9c1928e"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-18T06:01:05.127132Z",
+      "scope": "Record batch Workspace scoping as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "bcdaba79075e654b2bc352b63e33841569ec9d98",
+        "registry_digest": "sha256:e94c7d903b327a430620f7aa4e2319cd75caceaaff76d3026317bf8302a1b9ef"
+      }
+    }
+  ]
+}
