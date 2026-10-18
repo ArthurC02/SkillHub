@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.4
+
+### Fixed
+
+- `rebase-proposal` on a proposal whose base is current prints the package with `note` `the proposal base is current; nothing was written` and `next` for its status, and exits 0, in place of `ERROR: the proposal base is current; nothing to rebase` with exit 1: a current base is the same harmless no-op as a verified package under `verify-proposal`, and a script that rebases defensively before shipping must not read it as a failure. A draft, applied or superseded proposal is still refused, since each needs another command.
+
 ## 1.2.3
 
 ### Fixed

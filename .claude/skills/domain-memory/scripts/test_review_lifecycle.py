@@ -352,9 +352,11 @@ class ReviewLifecycleTest(RegistryTestCase):
         submitted = path.read_bytes()
         self.commit_everything("a commit on top that touches nothing the proposal names")
         self.edit_registry("contexts.json", lambda value: value["contexts"].append({"id": "billing", "name": "Billing"}))
-        with self.assertRaisesRegex(ValueError, "^the proposal base is current; nothing to rebase$"):
-            rebase_proposal(package, self.repo / "memory", self.repo)
-        self.assertEqual(submitted, path.read_bytes())
+        current = rebase_proposal(package, self.repo / "memory", self.repo)
+        self.assertEqual(
+            ("the proposal base is current; nothing was written", "submitted", 1, submitted),
+            (current["note"], current["status"], current["proposal_revision"], path.read_bytes()),
+        )
         for status, refusal in (
             ("draft", "a draft proposal is not rebased; submit-proposal stamps its base"),
             ("applied", "an applied proposal is not rebased; it is applied; supersede it and open a new draft"),

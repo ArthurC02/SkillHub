@@ -508,9 +508,11 @@ class CliProposalsTest(RegistryTestCase):
         rebased = self.run_cli(*arguments)
         printed = json.loads(rebased.stdout)
         self.assertEqual(
-            (1, "ERROR: the proposal base is current; nothing to rebase", "",
+            (0, "", ("the proposal base is current; nothing was written", "submitted", 1,
+                     "record-approval for each required role, then verify-proposal"),
              0, ("proposal", "submitted", 2, 0, False), self.proposal_in(package)["base_registry_revision"]),
-            (current.returncode, current.stderr.strip(), current.stdout,
+            (current.returncode, current.stderr,
+             tuple(json.loads(current.stdout)[key] for key in ("note", "status", "proposal_revision", "next")),
              rebased.returncode, (printed["package"], printed["status"], printed["proposal_revision"],
                                   printed["approvals_retired"], printed["attestation_removed"]),
              printed["base_registry_revision"]),

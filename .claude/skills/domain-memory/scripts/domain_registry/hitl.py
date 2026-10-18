@@ -58,6 +58,11 @@ NOT_REBASED = {
     "applied": "it is applied; supersede it and open a new draft",
     "superseded": "it is retired; redraft-proposal opens a new draft from it",
 }
+NEXT_WHEN_CURRENT = {
+    "submitted": "record-approval for each required role, then verify-proposal",
+    "verified": "sign a commit holding the package, then ship-package --commit <that commit>",
+    "approved": "run ship-package to apply it",
+}
 AFTER_REBASE = (
     "record-approval for each required role, verify-proposal, sign a commit holding the package, "
     "then ship-package --commit <that commit>"
@@ -85,8 +90,16 @@ def rebase_proposal(root: Path, registry_root: Path, repo_root: Path) -> dict[st
     if status not in REBASABLE_STATUSES:
         reason = NOT_REBASED.get(status, "only a submitted, verified or approved proposal is")
         raise ValueError(f"{_article(status)} {status} proposal is not rebased; {reason}")
+    shown = root.relative_to(repo_root).as_posix() if root.is_relative_to(repo_root) else str(root)
     if not _stale(proposal, registry_root, repo_root):
-        raise ValueError("the proposal base is current; nothing to rebase")
+        return {
+            "package": shown,
+            "status": status,
+            "proposal_revision": proposal.get("proposal_revision"),
+            "base_registry_revision": proposal.get("base_registry_revision"),
+            "note": "the proposal base is current; nothing was written",
+            "next": NEXT_WHEN_CURRENT[status],
+        }
     revision = base_registry_revision(registry_root, repo_root)
     retired = sum(
         1 for approval in proposal.get("approvals") or []
@@ -103,7 +116,7 @@ def rebase_proposal(root: Path, registry_root: Path, repo_root: Path) -> dict[st
     write_json(evidence_path, evidence)
     write_json(proposal_path(root), proposal)
     return {
-        "package": root.relative_to(repo_root).as_posix() if root.is_relative_to(repo_root) else str(root),
+        "package": shown,
         "status": "submitted",
         "proposal_revision": proposal["proposal_revision"],
         "base_registry_revision": revision,
