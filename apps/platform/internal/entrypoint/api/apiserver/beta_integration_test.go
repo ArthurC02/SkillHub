@@ -231,6 +231,25 @@ func TestRunsThatNeverReachedPreparingDoNotCount(t *testing.T) {
 	}
 }
 
+func TestOneWorkspacesRunsNeverSpendAnotherWorkspacesAllowance(t *testing.T) {
+	pool := requireDB(t)
+	limits := policy.QuotaLimits{Daily: 10, Window: 10, FirstWindow: 10, WindowDays: 30}
+	a := betaAPI(t, pool, limits, nil, 0)
+	alice := newFixture(t, a, pool, "alice-quota-isolation")
+	bob := newFixture(t, a, pool, "bob-quota-isolation")
+	prepared := time.Now().Add(-time.Hour)
+	for range 3 {
+		seedBetaRun(t, pool, alice, "succeeded", nil, &prepared)
+	}
+
+	if _, q := alice.quota(t); q.RemainingWindow != 7 {
+		t.Fatalf("alice's own runs left %d of 10, want 7", q.RemainingWindow)
+	}
+	if _, q := bob.quota(t); q.RemainingWindow != 10 || q.RemainingToday != 10 {
+		t.Errorf("bob has %d today and %d this window, want the whole allowance: alice's runs are not his", q.RemainingToday, q.RemainingWindow)
+	}
+}
+
 func TestTwoSimultaneousRunsCannotBothTakeTheLastSlot(t *testing.T) {
 	pool := requireDB(t)
 	limits := policy.QuotaLimits{Daily: 50, Window: 50, FirstWindow: 50, WindowDays: 30}
