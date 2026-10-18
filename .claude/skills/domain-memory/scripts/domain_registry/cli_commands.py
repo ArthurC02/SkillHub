@@ -32,6 +32,7 @@ from .evidence import citation, classified, function_span, repeated_note, source
 from .gates import quality_gates
 from .git_hooks import (
     governance_readiness,
+    install_pre_commit_hook,
     install_pre_push_hook,
     verify_git_governance,
 )
@@ -928,6 +929,16 @@ def handle_install_git_hitl_hook(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_install_pre_commit_hook(args: argparse.Namespace) -> int:
+    hook = install_pre_commit_hook(
+        args.registry_root.resolve(),
+        args.repo_root.resolve(),
+        Path(__file__).parents[1] / "registry_tools.py",
+    )
+    print(f"Installed Domain Memory pre-commit hook: {hook}")
+    return 0
+
+
 def handle_governance_readiness(args: argparse.Namespace) -> int:
     result = governance_readiness(
         args.registry_root.resolve(), args.repo_root.resolve()
@@ -1217,6 +1228,7 @@ HANDLERS = {
     "verify-scm-attestation": handle_verify_scm_attestation,
     "verify-git-governance": handle_verify_git_governance,
     "install-git-hitl-hook": handle_install_git_hitl_hook,
+    "install-pre-commit-hook": handle_install_pre_commit_hook,
     "governance-readiness": handle_governance_readiness,
     "verify-audit": handle_verify_audit,
     "submit-proposal": handle_submit_proposal,

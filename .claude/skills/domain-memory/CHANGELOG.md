@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.82.0
+
+### Added
+
+- `install-pre-commit-hook --registry-root <root> --repo-root <repo>` installs a POSIX `sh` pre-commit hook. It refuses a commit when a staged file's Registry citations are stale, missing, unhashed or invalid, naming those records and paths, and when the commit is allowed prints any `boundary-impact` verdict other than `no-cross-context-change` as a NOTE that never refuses. A commit that stages no file the Registry names runs no Python. The pre-push and pre-commit installers share one installer, one interpreter search and one way of chaining an existing hook; the generated pre-push hook is unchanged byte for byte. The hook reads files as they are on disk, not as staged, and does not check a deleted cited file.
+
 ## 0.81.0
 
 ### Changed
