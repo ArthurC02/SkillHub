@@ -4,16 +4,17 @@ from pathlib import Path
 from typing import Any
 
 from .dependents import dependents
-from .impact import boundary_impact
+from .impact import boundary_impact, touched_records
 from .registry import cited_paths, context_model, context_summary, record_by_id, summarized, verify_evidence
 from .store import read_document
 
 FORMAT = "domain-memory-brief/v1"
 FAILING_EVIDENCE = ("stale", "unhashed", "missing", "invalid")
+CHANGED_CITATION = ("stale", "missing", "invalid")
 VERDICTS = {
     "unregistered-co-change": "Contexts changed together with no registered collaboration between them; register the interaction, "
                               "contract or dependency policy, or split the change.",
-    "boundary-evidence-changed": "A collaboration's cited lines changed; re-read each record below, then recite or revise it.",
+    "boundary-evidence-changed": "A collaboration's cited lines changed; re-read each record below, and recite only what the code still states.",
     "registered-co-change": "Contexts changed together through registered collaborations; check that each one below still holds.",
     "no-cross-context-change": "The change stays inside one Context.",
     "unknown": "No Context records an implementation_path, so the changed files cannot be mapped to Contexts.",
@@ -24,13 +25,17 @@ CONTEXT_LISTS = ("contexts", "consumer_contexts", "consumers")
 
 def brief_for_change(root: Path, repo_root: Path, base: str) -> dict[str, Any]:
     impact = boundary_impact(root, repo_root, base)
-    touched = {(entry["asset"], entry["id"]): {} for entry in impact["boundary_evidence_touched"]}
-    for entry in impact["boundary_evidence_touched"]:
-        touched[(entry["asset"], entry["id"])]["touched_evidence"] = entry["touched_evidence"]
+    touched: dict[tuple[str, Any], dict[str, Any]] = {}
+    for entry in [*touched_records(root, repo_root, base), *impact["boundary_evidence_touched"]]:
+        touched.setdefault((entry["asset"], entry["id"]), {})["touched_evidence"] = entry["touched_evidence"]
     for entry in impact["boundary_evidence_changed"]:
         touched.setdefault((entry["asset"], entry["id"]), {})["changed_evidence"] = entry["changed_evidence"]
     changed_paths = sorted({path for files in impact["contexts_touched"].values() for path in files} | set(impact["outside_every_context"]))
     evidence = verify_evidence(root, repo_root, changed_paths) if changed_paths else None
+    for item in (evidence or {}).get("results", []):
+        if item["status"] in CHANGED_CITATION:
+            changed = touched.setdefault((item["asset"], item["id"]), {}).setdefault("changed_evidence", [])
+            changed[:] = sorted({*changed, item["path"]})
     brief = {
         "format": FORMAT,
         "subject": {"base": base, "changed_files": impact["changed_files"]},
@@ -135,15 +140,21 @@ def _change_attention(brief: dict[str, Any]) -> list[str]:
     for record in brief["records"]:
         name = f"{record['asset']}/{record['id']}"
         if "changed_evidence" in record:
-            attention.append(f"{name} cites {', '.join(record['changed_evidence'])} at lines that changed; recite or revise it.")
+            attention.append(
+                f"{name} cites {', '.join(record['changed_evidence'])} at lines that changed; check that its statement still holds "
+                f"before reciting: {record.get('summary')}"
+            )
         elif "touched_evidence" in record:
             attention.append(f"{name} cites {', '.join(record['touched_evidence'])}, which the change overlaps; re-read it.")
     attention += [
         f"{entry['path']} lies outside every Context but is cited by {', '.join(entry['cited_by'])}; place it or move the citation."
         for entry in brief["outside_every_context"]
     ]
+    rules = [record for record in brief["records"] if record["asset"] == "rules"]
+    if rules:
+        attention.append(f"{len(rules)} rules cite lines this change touched; re-run their checks, which get-record names.")
     if failing := _failing(brief["evidence"]):
-        attention.append(f"{', '.join(failing)} citations of the changed files; recite them before relying on the records.")
+        attention.append(f"{', '.join(failing)} citations of the changed files; recite only a record whose statement still holds.")
     return attention
 
 

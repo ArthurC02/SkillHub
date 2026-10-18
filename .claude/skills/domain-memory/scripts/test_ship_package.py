@@ -51,10 +51,11 @@ class ShipPackageTest(RegistryTestCase):
         without_commit = ship_package(package, self.repo / "memory", self.repo, None)
         self.assertEqual(
             ([], [], "applied", "already applied; nothing was written", [], [], "already applied; nothing was written",
-             events_before, evidence_before),
+             events_before, evidence_before,
+             "nothing to do here; if the applied Registry change is not committed yet, sign a commit holding it, then push"),
             (again["completed"], again["errors"], again["status"], again["note"], without_commit["completed"], without_commit["errors"],
              without_commit["note"], (self.repo / "memory" / "audit" / "events.jsonl").read_text(encoding="utf-8"),
-             (package / "evidence-bundle.json").read_bytes()),
+             (package / "evidence-bundle.json").read_bytes(), again["next"]),
         )
 
     def test_shipping_an_applied_package_with_another_commit_is_refused_and_writes_nothing(self) -> None:
@@ -62,7 +63,7 @@ class ShipPackageTest(RegistryTestCase):
         signed = self.commit_everything("adds the Change Package", signed=True)
         ship_package(package, self.repo / "memory", self.repo, signed)
         evidence_before = (package / "evidence-bundle.json").read_bytes()
-        report = ship_package(package, self.repo / "memory", self.repo, unsigned)
+        report = ship_package(package, self.repo / "memory", self.repo, unsigned[:9])
         self.assertEqual(
             ([], [f"attest-signed-commit: the proposal is applied with commit {signed}; {unsigned} is another commit, so nothing was written"],
              "applied", evidence_before),

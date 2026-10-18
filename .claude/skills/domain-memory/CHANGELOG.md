@@ -2,6 +2,14 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.79.0
+
+### Changed
+
+- `brief --base` lists every record, of any asset, whose cited lines the change touches, test citations included, each with the spans touched and the files whose cited excerpt changed, and adds one attention line counting the rules whose checks should run again. It used to list only collaboration records, so a change to the tests that prove fourteen rules showed an empty record list, and a weakened rule was reported as one stale citation to recite.
+- The attention line for changed evidence says to check that the record's statement still holds before reciting, and quotes the statement; the review-change capability says the same: `recite` is never the default answer to a stale citation.
+- `ship-package` on an already applied package says in `next` that there is nothing to do but commit what may still be uncommitted, and a refused `--commit` is echoed resolved in full beside the attested one.
+
 ## 0.78.0
 
 ### Added
