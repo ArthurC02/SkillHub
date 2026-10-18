@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.85.0
+
+### Fixed
+
+- `verify-sources` reports `discovered_but_unlisted`, the paths discovery would place in a group today that the map does not list, beside `discovered_but_gone`. When either is non-empty, a map that would be `current` reports `discovery_drifted`, still with exit 0 because the listing is not evidence, with one `NOTE:` on stderr carrying both counts and pointing at `refresh-sources` then `confirm-sources`; `stale` is never replaced and the hash fields keep their own verdict.
+- `refresh-sources` prints `Selection reset to agent-asserted; confirm these N selected sources: <paths>` instead of saying the sources require confirmation, because the paths are the selection whose confirmation it reset, not files that changed.
+
 ## 0.84.0
 
 ### Added

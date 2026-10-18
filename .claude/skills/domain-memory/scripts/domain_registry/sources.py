@@ -625,6 +625,56 @@ def _discovered_but_gone(root: Path, source_map: dict[str, Any]) -> list[str]:
     )
 
 
+def _discovered_but_unlisted(root: Path, source_map: dict[str, Any]) -> list[str]:
+    listed = {
+        path
+        for group in source_map.get("source_groups", [])
+        for path in group.get("paths", [])
+    }
+    discovered = {
+        path
+        for group in discover_sources(root)["source_groups"]
+        for path in group["paths"]
+    }
+    return sorted(discovered - listed)
+
+
+def verify_against_discovery(
+    root: Path, source_map_path: Path, policy: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    result = verify_source_map(root, source_map_path, policy)
+    if "discovered_but_gone" not in result:
+        return result
+    unlisted = _discovered_but_unlisted(root.resolve(), load_json(source_map_path))
+    drifted = bool(result["discovered_but_gone"] or unlisted)
+    status = "discovery_drifted" if drifted and result["status"] == "current" else result["status"]
+    return result | {"status": status, "discovered_but_unlisted": unlisted}
+
+
+def _counted(count: int, noun: str) -> str:
+    return f"{count} {noun}{'' if count == 1 else 's'}"
+
+
+def discovery_drift_note(result: dict[str, Any]) -> str | None:
+    gone = len(result.get("discovered_but_gone", []))
+    unlisted = len(result.get("discovered_but_unlisted", []))
+    if not gone and not unlisted:
+        return None
+    return (
+        f"NOTE: discovery drifted: {_counted(gone, 'listed path')} gone, "
+        f"{_counted(unlisted, 'matching path')} unlisted; run refresh-sources, then confirm-sources"
+    )
+
+
+def refresh_confirmation_notice(selected_paths: list[str]) -> str:
+    count = len(selected_paths)
+    demonstrative = "this" if count == 1 else "these"
+    return (
+        f"Selection reset to agent-asserted; confirm {demonstrative} {_counted(count, 'selected source')}: "
+        + ", ".join(selected_paths)
+    )
+
+
 def write_source_map(path: Path, source_map: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     write_json(path, source_map)

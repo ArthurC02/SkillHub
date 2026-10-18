@@ -98,8 +98,10 @@ from .sources import (
     probe_sources,
     refine_sources,
     refresh_sources,
+    discovery_drift_note,
+    refresh_confirmation_notice,
     selected_source_map,
-    verify_source_map,
+    verify_against_discovery,
     write_source_map,
 )
 from .transaction import recover_interrupted_update, transaction_path
@@ -692,11 +694,13 @@ def handle_discover_sources(args: argparse.Namespace) -> int:
 
 def handle_verify_sources(args: argparse.Namespace) -> int:
     policy = load_json(args.policy.resolve()) if args.policy else None
-    result = verify_source_map(
+    result = verify_against_discovery(
         args.repo_root.resolve(), args.source_map.resolve(), policy
     )
     print_json(result)
-    return 0 if result["status"] == "current" else 1
+    if note := discovery_drift_note(result):
+        print(note, file=sys.stderr)
+    return 0 if result["status"] in ("current", "discovery_drifted") else 1
 
 
 def handle_probe(args: argparse.Namespace) -> int:
@@ -824,10 +828,7 @@ def handle_refresh_sources(args: argparse.Namespace) -> int:
     source_map = refresh_sources(
         registry_root, args.repo_root.resolve(), existing_policy(registry_root)
     )
-    print(
-        "Sources refreshed and require developer confirmation: "
-        + ", ".join(source_map["selected_paths"])
-    )
+    print(refresh_confirmation_notice(source_map["selected_paths"]))
     return 0
 
 
