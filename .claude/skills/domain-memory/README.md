@@ -11,7 +11,7 @@ python -m unittest discover -s scripts -p "test_*.py"
 ruff check .
 ```
 
-The suite takes several minutes. While working on one area, run its file from `scripts/`, for example `python -m unittest test_evidence`. Each file covers the modules it is named after: `test_registry` (registry, common, contracts), `test_evidence` (evidence, relocate), `test_sources` (sources, readiness, security, impact), `test_changes` (changes, counterfactual), `test_review` (hitl, attestations, signing, git_hooks), `test_updates` (updates, transaction, audit, revision), `test_policy`, `test_cli` (the command line end to end) and `test_implementation_checks` (gates). Shared fixtures live in `test_support.py`. Run the whole suite before shipping.
+The suite takes several minutes. While working on one area, run its file from `scripts/`, for example `python -m unittest test_evidence`. Each file covers the modules it is named after: `test_registry_*` (validation, lookup, context model, policy), `test_evidence` (evidence, relocate), `test_sources` (sources, readiness, security, impact), `test_changes` (changes, counterfactual), `test_review_*` (scm, signing, lifecycle, test results), `test_updates_*` (audit, recovery, promotion, records), `test_policy`, `test_cli` and `test_cli_*` (the command line end to end: read, cite, proposals) and `test_implementation_checks` (gates). `python3 scripts/run_tests.py --jobs 4` runs every module in parallel. Shared fixtures live in `test_support.py`. Run the whole suite before shipping.
 
 ## How the code is laid out
 

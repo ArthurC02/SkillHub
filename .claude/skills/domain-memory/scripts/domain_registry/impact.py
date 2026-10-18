@@ -68,11 +68,19 @@ def _cited_ranges(entry: dict[str, Any]) -> list[tuple[str, int, int]]:
     ]
 
 
+def touched_records(root: Path, repo_root: Path, base: str) -> list[dict[str, Any]]:
+    tracked, untracked = _changes(repo_root, base)
+    records = {name: _records_with_status(root, name) for name in ASSET_KEYS}
+    cited = {path for entries in records.values() for entry in entries for path, _, _ in _cited_ranges(entry)}
+    hunks = _hunks(repo_root, base, sorted(cited & tracked)) | dict.fromkeys(cited & untracked, WHOLE_FILE)
+    return _evidence_overlapping(records, hunks, ASSET_KEYS)
+
+
 def _evidence_overlapping(
-    records: dict[str, list[dict[str, Any]]], hunks: dict[str, list[tuple[int, int]]]
+    records: dict[str, list[dict[str, Any]]], hunks: dict[str, list[tuple[int, int]]], names: Any = COLLABORATION_ENDS
 ) -> list[dict[str, Any]]:
     touched = []
-    for name in COLLABORATION_ENDS:
+    for name in names:
         for entry in records[name]:
             overlapping = sorted({
                 f"{path}:{start}-{end}"

@@ -28,23 +28,44 @@ class ChangeBriefTest(BriefTest):
         self.two_mapped_contexts(interactions=[INTERACTION], rules=[RULE])
         self.change("src/orders/port.py")
         brief = brief_for_change(self.repo / "memory", self.repo, "HEAD")
-        [record] = brief["records"]
+        record, rule = brief["records"]
         self.assertEqual(
             ("boundary-evidence-changed", 1, ["orders"], ["src/orders/port.py"], "Own orders.", ["order-total"],
              "interactions", "orders-bill", "candidate", ["src/orders/port.py"], ["src/orders/port.py:1-1"],
-             [("contexts", "billing"), ("contexts", "orders")], 2, {"citations": 2, "exists": True}),
+             [("contexts", "billing"), ("contexts", "orders")], ("rules", "order-total", ["src/orders/port.py:1-1"], ["src/orders/port.py"]),
+             2, {"citations": 2, "exists": True}),
             (brief["verdict"], brief["subject"]["changed_files"], [context["id"] for context in brief["contexts"]],
              brief["contexts"][0]["changed_files"], brief["contexts"][0]["model"]["context"]["summary"],
              [rule["id"] for rule in brief["contexts"][0]["model"]["rules"]],
              record["asset"], record["id"], record["status"], record["changed_evidence"], record["touched_evidence"],
              [(item["asset"], item["id"]) for item in record["dependents"]],
+             (rule["asset"], rule["id"], rule["touched_evidence"], rule["changed_evidence"]),
              brief["evidence"]["summary"]["stale"], brief["evidence"]["paths"]["src/orders/port.py"]),
         )
         self.assertEqual(
-            ["A collaboration's cited lines changed; re-read each record below, then recite or revise it.",
-             "interactions/orders-bill cites src/orders/port.py at lines that changed; recite or revise it.",
-             "2 stale citations of the changed files; recite them before relying on the records."],
+            ["A collaboration's cited lines changed; re-read each record below, and recite only what the code still states.",
+             "interactions/orders-bill cites src/orders/port.py at lines that changed; check that its statement still holds before reciting: "
+             "Orders asks billing to invoice.",
+             "rules/order-total cites src/orders/port.py at lines that changed; check that its statement still holds before reciting: "
+             "An order total is non-negative.",
+             "1 rules cite lines this change touched; re-run their checks, which get-record names.",
+             "2 stale citations of the changed files; recite only a record whose statement still holds."],
             brief["attention"],
+        )
+
+    def test_a_rule_citing_a_test_file_added_in_the_range_is_listed_with_the_lines_the_change_touched(self) -> None:
+        super().two_mapped_contexts()
+        (self.repo / "src/orders/port_test.py").write_text("def test_limit():\n    assert True\n", encoding="utf-8")
+        self.seed("rules.json", [{**RULE, "evidence": [citation(self.repo, "src/orders/port.py", 1, 1), citation(self.repo, "src/orders/port_test.py", 1, 2)]}])
+        self.commit_all("adds the test and the rule")
+        brief = brief_for_change(self.repo / "memory", self.repo, "HEAD~1")
+        [rule] = brief["records"]
+        self.assertEqual(
+            ("no-cross-context-change", "rules", "order-total", ["src/orders/port_test.py:1-2"], 1,
+             ["The change stays inside one Context.",
+              "rules/order-total cites src/orders/port_test.py:1-2, which the change overlaps; re-read it.",
+              "1 rules cite lines this change touched; re-run their checks, which get-record names."]),
+            (brief["verdict"], rule["asset"], rule["id"], rule["touched_evidence"], brief["evidence"]["summary"]["current"], brief["attention"]),
         )
 
     def test_a_change_inside_one_context_with_nothing_cited_has_one_line_of_attention(self) -> None:
@@ -62,11 +83,8 @@ class ChangeBriefTest(BriefTest):
         self.commit_all("readme")
         self.change("README.md")
         brief = brief_for_change(self.repo / "memory", self.repo, "HEAD")
-        self.assertEqual(
-            [{"path": "README.md", "cited_by": ["rules/order-total"]},
-             "README.md lies outside every Context but is cited by rules/order-total; place it or move the citation."],
-            [brief["outside_every_context"][0], brief["attention"][1]],
-        )
+        self.assertEqual([{"path": "README.md", "cited_by": ["rules/order-total"]}], brief["outside_every_context"])
+        self.assertIn("README.md lies outside every Context but is cited by rules/order-total; place it or move the citation.", brief["attention"])
 
     def test_without_implementation_paths_the_brief_says_files_cannot_be_mapped(self) -> None:
         self.add_context()
@@ -84,7 +102,7 @@ class ChangeBriefTest(BriefTest):
         self.change("src/orders/port.py")
         markdown = to_markdown(brief_for_change(self.repo / "memory", self.repo, "HEAD"))
         for expected in ("# Change brief: since HEAD", "**Verdict:** `boundary-evidence-changed`",
-                         "- interactions/orders-bill cites src/orders/port.py at lines that changed; recite or revise it.",
+                         "- interactions/orders-bill cites src/orders/port.py at lines that changed; check that its statement still holds before reciting: Orders asks billing to invoice.",
                          "### orders (candidate): Own orders.", "### interactions/orders-bill (candidate): Orders asks billing to invoice.",
                          "- contexts/orders (candidate): Own orders. via interactions/orders-bill.producer_context at depth 1", "- stale: 1"):
             self.assertIn(expected, markdown)

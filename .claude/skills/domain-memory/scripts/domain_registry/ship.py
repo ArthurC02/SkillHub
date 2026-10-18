@@ -12,6 +12,7 @@ from .updates import apply_approved_updates
 FORMAT = "domain-memory-ship/v1"
 ATTEST, FINALIZE, APPLY = "attest-signed-commit", "finalize-proposal", "apply-approved-updates"
 STEPS_FROM = {"approved": (APPLY,), "applied": ()}
+ALREADY_APPLIED = "nothing to do here; if the applied Registry change is not committed yet, sign a commit holding it, then push"
 NEXT_STEPS = {
     "applied": "the Registry is updated; sign a commit holding the package and the Registry, then push",
     "approved": "the proposal is approved but not applied; run apply-approved-updates, or ship-package again",
@@ -41,7 +42,9 @@ def ship_package(
             break
     status = load_json(proposal_path(package_root)).get("status")
     report["status"] = status
-    report["next"] = NEXT_STEPS.get(status, f"the proposal is {status}; ship-package works from a verified proposal")
+    report["next"] = ALREADY_APPLIED if "note" in report else NEXT_STEPS.get(
+        status, f"the proposal is {status}; ship-package works from a verified proposal"
+    )
     return report
 
 
@@ -53,7 +56,7 @@ def _another_commit(package_root: Path, repo_root: Path, status: str, commit: st
     given = resolved.stdout.strip() if resolved.returncode == 0 else commit
     if given == attested:
         return []
-    return [f"{ATTEST}: the proposal is {status} with commit {attested}; {commit} is another commit, so nothing was written"]
+    return [f"{ATTEST}: the proposal is {status} with commit {attested}; {given} is another commit, so nothing was written"]
 
 
 def _completed(report: dict[str, Any], name: str, step: Callable[[], Any]) -> bool:

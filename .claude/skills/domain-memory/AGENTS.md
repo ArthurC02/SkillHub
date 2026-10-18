@@ -95,6 +95,10 @@ The two re-cite commands print `registry_updates` and `supersedes` for a Change 
 - Never write a citation by hand. Hand-made line splitting verifies as `stale`, and a missing digest as `unhashed`.
 - Errors print `ERROR: <reason>` on stdout and exit non-zero. The reason names the fix, so read it before trying anything else.
 
+## Running the plugin's own tests
+
+`python3 scripts/run_tests.py --jobs 4` from the plugin directory runs every `scripts/test_*.py` in parallel and exits 1 when one fails; name modules to run a few. `python3 -m unittest discover -s scripts -p 'test_*.py'` still runs them in one process.
+
 ## Before you rely on anything here
 
 Run `readiness --repo-root <repo>` first. It distinguishes an empty repository, a greenfield design, a brownfield implementation, and a memory whose evidence has died. Its signals route your work; they are not domain facts.
