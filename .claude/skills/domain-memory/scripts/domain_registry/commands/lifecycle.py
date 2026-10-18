@@ -303,11 +303,14 @@ def handle_supersede_proposal(args: argparse.Namespace) -> int:
     return 0
 
 
+PAST_VERIFICATION = ("verified", "approved", "applied")
+
+
 def handle_verify_proposal(args: argparse.Namespace) -> int:
     package_root = args.package_root.resolve()
     proposal = load_json(package_root / PROPOSAL_FILE)
-    if proposal.get("status") == "verified":
-        print(f"already verified at revision {proposal.get('proposal_revision')}; nothing was written")
+    if proposal.get("status") in PAST_VERIFICATION:
+        print(f"already {proposal['status']} at revision {proposal.get('proposal_revision')}; nothing was written")
         return 0
     verify_proposal(package_root, args.registry_root.resolve(), args.repo_root.resolve())
     print("Proposal test evidence verified.")

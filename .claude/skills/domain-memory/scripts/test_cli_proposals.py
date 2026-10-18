@@ -528,6 +528,13 @@ class CliProposalsTest(RegistryTestCase):
             (first.returncode, first.stdout.strip(), again.returncode, again.stdout.strip(), again.stderr,
              self.proposal_in(package)["status"]),
         )
+        path = package / "domain-change-proposal.json"
+        path.write_text(json.dumps({**self.proposal_in(package), "status": "applied"}), encoding="utf-8")
+        shipped = self.run_cli(*arguments)
+        self.assertEqual(
+            (0, "already applied at revision 1; nothing was written", ""),
+            (shipped.returncode, shipped.stdout.strip(), shipped.stderr),
+        )
 
 
 if __name__ == "__main__":
