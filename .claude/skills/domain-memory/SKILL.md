@@ -18,6 +18,7 @@ Choose one focused capability:
 - **Design**: when a request is a material change, as the seven-step workflow defines it, prepare a reviewable Change Package. Use [domain-memory-design](skills/domain-memory-design/SKILL.md).
 - **Maintain**: after implementation or source drift, update the smallest affected asset as a candidate and preserve evidence. Use [domain-memory-maintain](skills/domain-memory-maintain/SKILL.md).
 - **Review**: before relying on domain facts or handing off work, validate the Registry, source evidence, audit chain, and proposal state. Use [domain-memory-review](skills/domain-memory-review/SKILL.md).
+- **Review a change**: when a branch is ready for review, read it through the model from one `brief` and decide whether it needs a Change Package, a recite, or nothing. Use [domain-memory-review-change](skills/domain-memory-review-change/SKILL.md).
 - **Implementation hygiene**: after Read or Design, and whenever a repository check forces a change, check that code expresses the reviewed boundary without turning generic style rules into Registry facts. Use [domain-memory-implementation-hygiene](skills/domain-memory-implementation-hygiene/SKILL.md).
 
 For a brownfield refactoring that preserves the reviewed model, use the [brownfield refactoring fast path](references/brownfield-refactoring.md) before opening a Change Package. It is a proof of preservation, not a shortcut around unknown ownership or changed contracts.

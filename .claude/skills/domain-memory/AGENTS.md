@@ -66,6 +66,7 @@ Commands that read or change the Registry take `--registry-root <root>`: the dir
 | Know what this repository has | `readiness --repo-root <repo>`; `extract` means code exists and the Registry holds no record yet |
 | Start a Domain Memory | `init-domain-memory`, which records the destination, sources and policy choices a Registry needs; `init` only copies an empty skeleton that can never hold a reviewed record |
 | Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`, and before changing a record `dependents --asset <asset> --id <id>` for what else it may touch; a `mentioned` match is prose in a reviewed record, not a term |
+| Review a branch for what it does to the model | the `domain-memory-review-change` capability: `brief --base <branch point> --markdown`, then the verdict table and the attention list decide what to ask for |
 | Read one brief before a review or a change | `brief --base <branch point>` or `brief --asset <asset> --id <id>`, `--markdown` for the pull request: verdict, Contexts touched, records to re-read with their dependents, citation verification and an attention list |
 | See which boundaries your change touches | `boundary-impact --base <branch point>`; `unknown` means no Context records an `implementation_path`, so it cannot map files to Contexts |
 | Check the Registry's shape and references | `validate`; it does not check that citations still match the code, which is `verify-evidence` |
@@ -104,7 +105,7 @@ Not every package is a Context. A Context owns domain rules and the data they de
 
 ## Choosing what to do
 
-[SKILL.md](SKILL.md) beside this file is where the work is chosen. In the complete package it routes the four lifecycle capabilities and the hygiene check to a page under `skills/`; in a standalone bundle it is the one capability the bundle carries. It is plain Markdown, so read it whether or not your host has a concept of Skills.
+[SKILL.md](SKILL.md) beside this file is where the work is chosen. In the complete package it routes the four lifecycle capabilities, the hygiene check and the change review to a page under `skills/`; in a standalone bundle it is the one capability the bundle carries. It is plain Markdown, so read it whether or not your host has a concept of Skills.
 
 [references/script-api.md](references/script-api.md) is the command surface and what each command guarantees. [references/host-integration.md](references/host-integration.md) is for wiring this into a host that dispatches work to several Agents.
 
