@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -17,6 +18,27 @@ func TestPurgesRefuseWithoutTheReferenceReads(t *testing.T) {
 	}
 	if _, err := (&Service{}).PurgeDeletedSkills(ctx, time.Hour, 10); err == nil {
 		t.Error("PurgeDeletedSkills ran without knowing what still references a skill")
+	}
+}
+
+func TestEachReferenceReadIsRequiredBeforeAPurge(t *testing.T) {
+	var read ReferenceRead = func(context.Context, gen.DBTX, []pgtype.UUID) ([]pgtype.UUID, error) { return nil, nil }
+	for _, tc := range []struct {
+		missing string
+		service Service
+	}{
+		{"runs", Service{VersionsInDownloads: read, VersionsInBundles: read, SkillsWithTestCases: read}},
+		{"downloads", Service{VersionsInRuns: read, VersionsInBundles: read, SkillsWithTestCases: read}},
+		{"bundles", Service{VersionsInRuns: read, VersionsInDownloads: read, SkillsWithTestCases: read}},
+		{"test cases", Service{VersionsInRuns: read, VersionsInDownloads: read, VersionsInBundles: read}},
+	} {
+		if err := tc.service.requirePurgeReads(); !errors.Is(err, errPurgeReadsNotInjected) {
+			t.Errorf("without the %s read: err = %v, want errPurgeReadsNotInjected", tc.missing, err)
+		}
+	}
+	all := Service{VersionsInRuns: read, VersionsInDownloads: read, VersionsInBundles: read, SkillsWithTestCases: read}
+	if err := all.requirePurgeReads(); err != nil {
+		t.Errorf("with every read injected: err = %v, want nil", err)
 	}
 }
 
