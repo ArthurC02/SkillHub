@@ -3,12 +3,12 @@
   "proposal_id": "registry-curation-fork-and-content-rules-2026-10-18",
   "proposer": "domain-memory-agent",
   "requirement_id": "registry-curation-fork-and-content-rules-2026-10-18",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-18T10:45:47.298837Z",
   "verified_at": "2026-10-18T10:52:30.454438Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-18T10:53:19.896289Z",
+  "applied_at": "2026-10-18T10:53:46.547086Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "37ec90dd9c775e9a45d3b78e47f70da2c8e181ad",
@@ -629,5 +629,9 @@
         "registry_digest": "sha256:276a6c2c052748e9dbf7c7ece85b085f8543c6604f98e82e804086fd183fcd9a"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "b18b5df9e7ebf88aabef22a053841d50e9177dd8",
+    "registry_digest": "sha256:72f486611395b2252798dead7e8668ded5c9b3d003c4143f263a13916bc70fbe"
+  }
 }

@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-18T10:52:30.207485Z"
 sources:
   - resource: "apps/platform/internal/skill/library/governance/restriction.go#L118-132"
     excerpt_sha256: "sha256:dc58dec1c0bba20d343f1f8780efeece4343313640b9915b10c821b0048a41a4"
