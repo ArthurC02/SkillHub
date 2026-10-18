@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .common import ASSET_KEYS
-from .evidence import all_references, verifier
+from .evidence import all_references, classifier, source_map_for, verifier
 from .sources import lies_under, run_git
 from .store import read_document
 
@@ -205,4 +205,10 @@ def _cited(root: Path, paths: set[str]) -> list[dict[str, Any]]:
                 cited = reference.get("path") if isinstance(reference, dict) else reference
                 if cited in paths:
                     citing.setdefault(cited, set()).add(f"{name.removesuffix('.json')}/{entry.get('id')}")
-    return [{"path": path, "cited_by": sorted(records)} for path, records in sorted(citing.items())]
+    if not citing:
+        return []
+    kind_of = classifier(source_map_for(root))
+    return [
+        {"path": path, "cited_by": sorted(records), "cited_as": kind_of({"path": path}).get("source_kind")}
+        for path, records in sorted(citing.items())
+    ]

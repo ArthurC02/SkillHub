@@ -293,7 +293,7 @@ class SourcesTest(RegistryTestCase):
                                  contracts=[{"id": "api", "producer_context": "orders", "evidence": cited}])
         impact = self.change("contracts/api.yaml", "docs/note.md", "src/orders/port.py")
         self.assertEqual(
-            (3, 1, [{"path": "contracts/api.yaml", "cited_by": ["contracts/api", "rules/r"]}]),
+            (3, 1, [{"path": "contracts/api.yaml", "cited_by": ["contracts/api", "rules/r"], "cited_as": None}]),
             (impact["changed_files"], impact["mapped_files"], impact["cited_outside_contexts"]),
         )
 

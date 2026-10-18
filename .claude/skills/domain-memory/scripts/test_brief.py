@@ -6,6 +6,7 @@ import unittest
 
 from domain_registry.brief import brief_for_change, brief_for_record, to_markdown
 from domain_registry.evidence import citation
+from domain_registry.sources import confirm_sources, refresh_sources, selected_source_map, write_source_map
 from test_support import RegistryTestCase, applied_by
 
 INTERACTION = {"id": "orders-bill", "producer_context": "orders", "consumer_context": "billing", "description": "Orders asks billing to invoice."}
@@ -78,18 +79,91 @@ class ChangeBriefTest(BriefTest):
         self.change("src/orders/new.py")
         brief = brief_for_change(self.repo / "memory", self.repo, "HEAD")
         self.assertEqual(
-            ("no-cross-context-change", ["The change stays inside one Context."], [], {"citations": 0, "exists": True}),
-            (brief["verdict"], brief["attention"], brief["records"], brief["evidence"]["paths"]["src/orders/new.py"]),
+            ("no-cross-context-change", ["The change stays inside one Context."], [], {"citations": 0, "exists": True}, {"changed": False}),
+            (brief["verdict"], brief["attention"], brief["records"], brief["evidence"]["paths"]["src/orders/new.py"], brief["source_map"]),
         )
 
-    def test_a_file_outside_every_context_that_a_record_cites_is_called_out(self) -> None:
+    def test_a_file_outside_every_context_of_unknown_kind_that_a_record_cites_is_called_out(self) -> None:
         self.two_mapped_contexts(rules=[{**RULE, "evidence": [{"path": "README.md", "lines": {"start": 1, "end": 1}}]}])
         (self.repo / "README.md").write_text("new\n", encoding="utf-8")
         self.commit_all("readme")
         self.change("README.md")
         brief = brief_for_change(self.repo / "memory", self.repo, "HEAD")
-        self.assertEqual([{"path": "README.md", "cited_by": ["rules/order-total"]}], brief["outside_every_context"])
+        self.assertEqual([{"path": "README.md", "cited_by": ["rules/order-total"], "cited_as": None}], brief["outside_every_context"])
         self.assertIn("README.md lies outside every Context but is cited by rules/order-total; place it or move the citation.", brief["attention"])
+
+    def cited_outside_every_context(self, path: str) -> dict:
+        self.two_mapped_contexts(rules=[{**RULE, "evidence": [{"path": path, "lines": {"start": 1, "end": 1}}]}])
+        (self.repo / path).parent.mkdir(parents=True, exist_ok=True)
+        (self.repo / path).write_text("v1\n", encoding="utf-8")
+        self.committed_source_map()
+        self.change(path)
+        return brief_for_change(self.repo / "memory", self.repo, "HEAD")
+
+    def test_a_file_outside_every_context_cited_as_enforcing_evidence_is_called_out_with_its_kind(self) -> None:
+        brief = self.cited_outside_every_context("src/shared/money.py")
+        self.assertEqual(
+            [{"path": "src/shared/money.py", "cited_by": ["rules/order-total"], "cited_as": "implementation"}], brief["outside_every_context"]
+        )
+        self.assertIn(
+            "src/shared/money.py lies outside every Context but is cited by rules/order-total; place it or move the citation.", brief["attention"]
+        )
+
+    def test_a_test_file_outside_every_context_cited_only_as_proof_is_listed_without_an_action(self) -> None:
+        brief = self.cited_outside_every_context("api/server_test.py")
+        self.assertEqual(
+            ([{"path": "api/server_test.py", "cited_by": ["rules/order-total"], "cited_as": "tests"}], []),
+            (brief["outside_every_context"], [line for line in brief["attention"] if "outside every Context" in line]),
+        )
+
+    def test_a_source_map_refreshed_and_confirmed_in_the_range_names_who_confirmed_it_and_the_discovered_files(self) -> None:
+        self.two_mapped_contexts()
+        (self.repo / "tests").mkdir()
+        (self.repo / "tests/test_old.py").write_text("old\n", encoding="utf-8")
+        self.committed_source_map()
+        (self.repo / "tests/test_old.py").unlink()
+        for name in ("test_new.py", "test_more.py"):
+            (self.repo / "tests" / name).write_text("new\n", encoding="utf-8")
+        refresh_sources(self.repo / "memory", self.repo)
+        confirm_sources(self.repo / "memory", self.repo, "human:ann")
+        brief = brief_for_change(self.repo / "memory", self.repo, "HEAD")
+        line = "source map re-confirmed in this range by human:ann (+2 −1 discovered files)"
+        self.assertEqual(
+            ({"changed": True, "confirmed_by": "human:ann", "confirmation": "developer-confirmed", "discovered_added": 2, "discovered_removed": 1},
+             line),
+            (brief["source_map"], brief["attention"][-1]),
+        )
+        self.assertIn(f"## Source map\n\n- {line}\n", to_markdown(brief))
+
+    def test_a_source_map_written_in_the_range_without_confirmation_says_it_is_not_confirmed(self) -> None:
+        self.two_mapped_contexts()
+        (self.repo / "docs").mkdir()
+        (self.repo / "docs/kept.md").write_text("kept", encoding="utf-8")
+        write_source_map(self.repo / "memory" / "source-map.json", selected_source_map(self.repo, [self.repo / "docs"]))
+        brief = brief_for_change(self.repo / "memory", self.repo, "HEAD")
+        self.assertEqual(
+            ({"changed": True, "confirmed_by": None, "confirmation": "agent-asserted", "discovered_added": 1, "discovered_removed": 0},
+             "source map changed in this range and is agent-asserted, not confirmed (+1 −0 discovered file)"),
+            (brief["source_map"], brief["attention"][-1]),
+        )
+
+    def test_a_source_map_removed_in_the_range_is_said_to_be_removed(self) -> None:
+        self.two_mapped_contexts()
+        self.committed_source_map().unlink()
+        brief = brief_for_change(self.repo / "memory", self.repo, "HEAD")
+        self.assertEqual(
+            ({"changed": True, "confirmed_by": None, "confirmation": "removed", "discovered_added": 0, "discovered_removed": 1},
+             "source map changed in this range and is removed, not confirmed (+0 −1 discovered file)"),
+            (brief["source_map"], brief["attention"][-1]),
+        )
+
+    def test_a_source_map_unchanged_in_the_range_adds_no_line_and_no_markdown_section(self) -> None:
+        self.two_mapped_contexts()
+        self.committed_source_map()
+        self.change("src/orders/new.py")
+        brief = brief_for_change(self.repo / "memory", self.repo, "HEAD")
+        self.assertEqual(({"changed": False}, ["The change stays inside one Context."]), (brief["source_map"], brief["attention"]))
+        self.assertNotIn("## Source map", to_markdown(brief))
 
     def test_without_implementation_paths_the_brief_says_files_cannot_be_mapped(self) -> None:
         self.add_context()

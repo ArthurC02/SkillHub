@@ -8,11 +8,15 @@ from .audit import review_history, reviewing_proposals
 from .changes import packages_root, proof_of
 from .common import ASSET_KEYS
 from .dependents import dependents
+from .evidence import source_map_for
 from .impact import boundary_impact, touched_records
 from .registry import cited_paths, context_model, context_summary, record_by_id, summarized, verify_evidence
+from .revision import _committed_json
 from .store import committed_documents, read_document
 
 FORMAT = "domain-memory-brief/v1"
+PROOF_KIND = "tests"
+CONFIRMED = "developer-confirmed"
 FAILING_EVIDENCE = ("stale", "unhashed", "missing", "invalid")
 CHANGED_CITATION = ("stale", "missing", "invalid")
 VERDICTS = {
@@ -50,6 +54,7 @@ def brief_for_change(root: Path, repo_root: Path, base: str) -> dict[str, Any]:
             _with_check(_record(root, asset, record_id, notes), *proofs) for (asset, record_id), notes in sorted(touched.items(), key=str)
         ],
         "registry_changes": _registry_changes(root, repo_root, base),
+        "source_map": _source_map_change(root, repo_root, base),
         "evidence": _evidence(evidence),
         "outside_every_context": impact["cited_outside_contexts"],
     }
@@ -93,6 +98,8 @@ def to_markdown(brief: dict[str, Any]) -> str:
             lines += _record_lines(record)
     if "registry_changes" in brief:
         lines += ["## Registry changes", "", *_registry_change_lines(brief["registry_changes"]), ""]
+    if brief.get("source_map", {}).get("changed"):
+        lines += ["## Source map", "", f"- {_source_map_line(brief['source_map'])}", ""]
     if brief.get("dependents") is not None:
         lines += ["## Dependents", "", *(_dependent_lines(brief["dependents"])), ""]
     lines += ["## Evidence", "", *_evidence_lines(brief["evidence"]), ""]
@@ -144,6 +151,28 @@ def _registry_changes(root: Path, repo_root: Path, base: str) -> list[dict[str, 
             changes.append({"asset": asset, "id": record_id, "change": change, "status": shown["status"] or document.get("status"),
                             "summary": shown["summary"], "through": through.get(f"{asset}/{record_id}")})
     return changes
+
+
+def _source_map_change(root: Path, repo_root: Path, base: str) -> dict[str, Any]:
+    _, then = _committed_json(repo_root, base, root / "source-map.json")
+    then, now = then or {}, source_map_for(root)
+    if then == now:
+        return {"changed": False}
+    before, after = _discovered(then), _discovered(now)
+    return {"changed": True, "confirmed_by": now.get("confirmed_by"), "confirmation": now.get("selection_status") if now else "removed",
+            "discovered_added": len(after - before), "discovered_removed": len(before - after)}
+
+
+def _discovered(source_map: dict[str, Any]) -> set[str]:
+    return {path for group in source_map.get("source_groups") or [] for path in group.get("paths") or []}
+
+
+def _source_map_line(change: dict[str, Any]) -> str:
+    added, removed = change["discovered_added"], change["discovered_removed"]
+    counts = f"(+{added} −{removed} discovered {'file' if added + removed == 1 else 'files'})"
+    if change["confirmation"] == CONFIRMED:
+        return f"source map re-confirmed in this range by {change['confirmed_by']} {counts}"
+    return f"source map changed in this range and is {change['confirmation']}, not confirmed {counts}"
 
 
 def _by_id(records: Any) -> dict[Any, dict[str, Any]]:
@@ -202,6 +231,7 @@ def _change_attention(brief: dict[str, Any]) -> list[str]:
     attention += [
         f"{entry['path']} lies outside every Context but is cited by {', '.join(entry['cited_by'])}; place it or move the citation."
         for entry in brief["outside_every_context"]
+        if entry["cited_as"] != PROOF_KIND
     ]
     rules = [record for record in brief["records"] if record["asset"] == "rules"]
     if rules:
@@ -215,6 +245,8 @@ def _change_attention(brief: dict[str, Any]) -> list[str]:
         f"{asset}: {_counted(count, 'record')} changed in this range, {'last reviewed ' if through else ''}{_reviewed_through(through)}."
         for (asset, through), count in groups.items()
     ]
+    if brief["source_map"]["changed"]:
+        attention.append(_source_map_line(brief["source_map"]))
     return attention
 
 

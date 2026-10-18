@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.87.0
+
+### Fixed
+
+- `brief --base` no longer asks a reviewer to place a test file that lies outside every Context when that file is only cited as a rule's proof. Each such file is still listed under `outside_every_context`, now with `cited_as`, the path's kind in the source map, and only files not of kind `tests` get the "place it or move the citation" line; an unknown kind keeps it.
+
+### Added
+
+- The change brief carries `source_map`: whether `source-map.json` changed inside the range, who confirmed it or that nobody did, and how many discovered files it gained and lost, as one attention line and a "Source map" section in the markdown. A re-snapshot that widens what counts as evidence can no longer pass review unseen.
+
 ## 0.86.0
 
 ### Changed
