@@ -3,12 +3,12 @@
   "proposal_id": "analytics-retention-and-feedback-rules-2026-10-18",
   "proposer": "domain-memory-agent",
   "requirement_id": "analytics-retention-and-feedback-rules-2026-10-18",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-18T10:04:40.296000Z",
   "verified_at": "2026-10-18T10:10:48.209326Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-18T10:11:26.287794Z",
+  "applied_at": "2026-10-18T10:11:46.873759Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "85bbe62c3a6d4bc638908b58acbb1e3b13abb892",
@@ -485,5 +485,9 @@
         "registry_digest": "sha256:3aaaa073cfc9201c4ce1c49e696b190044b73d941a91bad472b4a4f842a20741"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "a2f8318ad2682a249f19effca293b2e93b98b78a",
+    "registry_digest": "sha256:e627aa9d5646ceb39a22005296f853232dfd320e7ad6a9b01d7196e4c3b222d5"
+  }
 }

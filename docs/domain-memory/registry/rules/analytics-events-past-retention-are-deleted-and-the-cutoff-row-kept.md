@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-18T10:10:47.982008Z"
 sources:
   - resource: "apps/platform/internal/product/learning/partitions.go#L26-33"
     excerpt_sha256: "sha256:990c849bcaa927329ecd2829d32c19399066342c195f8baec3f5b72bc988bf69"

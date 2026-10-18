@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-18T10:10:47.982008Z"
 sources:
   - resource: "apps/platform/internal/product/learning/analytics.go#L109-112"
     excerpt_sha256: "sha256:9783ded5fd7362c53430a70403df577aca4256d4e02a8fdb86b62e529a8fa9b5"
