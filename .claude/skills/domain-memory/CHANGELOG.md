@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.75.0
+
+### Added
+
+- `harvest --spec <file> [--through draft|verified]` runs the harvest loop from one spec: every counterfactual first, as one suite, writing nothing unless each is killed; then citations of the enforcing lines and the proving test, a candidate per rule (a reviewed rule is amended and its reviewer superseded), the Change Package, its promotion and fill, and a `--as-status verified` preview; `--through verified` adds submission, each obligation's test result, the approval and verification. The report names each rule's verdict and record outcome, where the run stopped and what comes next; the signed commit stays with the signer.
+
 ## 0.74.0
 
 ### Added

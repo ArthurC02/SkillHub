@@ -5,6 +5,7 @@ from typing import NoReturn
 from .changes import PREVIEW_STATUSES
 from .common import ASSET_KEYS
 from .counterfactual import DEFAULT_TIMEOUT_SECONDS
+from .harvest_run import STAGES as HARVEST_STAGES
 from .policy import (
     AMENDABLE_FIELDS,
     CI_REQUIREMENTS,
@@ -105,6 +106,12 @@ def _add_harvest_command(commands: argparse._SubParsersAction) -> None:
     add_path(fill_parser, "--package-root")
     add_path(fill_parser, "--spec")
     fill_parser.add_argument("--dry-run", action="store_true", help="print the four documents instead of writing them")
+    prove_parser = commands.add_parser("harvest", help="Prove and package harvested rules")
+    add_path(prove_parser, "--registry-root")
+    add_path(prove_parser, "--repo-root")
+    add_path(prove_parser, "--spec")
+    add_path(prove_parser, "--changes-root", required=False)
+    prove_parser.add_argument("--through", choices=HARVEST_STAGES, default="draft")
 
 
 def _add_history_commands(commands: argparse._SubParsersAction) -> None:

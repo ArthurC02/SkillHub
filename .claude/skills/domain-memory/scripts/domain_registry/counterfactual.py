@@ -368,12 +368,19 @@ def counterfactual_suite(repo_root: Path, suite: Any) -> dict[str, Any]:
 def _suite_result(
     root: Path, entry: Any, suite: dict[str, Any], index: int, intact_runs: dict[tuple[str, Path, int], TestRun]
 ) -> dict[str, Any]:
+    identity = {
+        key: entry.get(key) for key in ("obligation_id", "file", "test_command")
+        if isinstance(entry, dict) and (isinstance(entry.get(key), str) or (key == "test_command" and isinstance(suite.get(key), str)))
+    }
+    if "test_command" in identity and identity["test_command"] is None:
+        identity["test_command"] = suite["test_command"]
     try:
         mutation, proof = _suite_entry(entry, suite, index)
-        return _prove(root, mutation, proof, intact_runs)
+        result = _prove(root, mutation, proof, intact_runs)
+        return {**result, "entry": index, **({"obligation_id": proof.obligation_id} if proof.obligation_id else {})}
     except (ValueError, OSError) as error:
         details = error.details if isinstance(error, FailingBaselineError) else {}
-        return {"format": FORMAT, "entry": index, "verdict": "error", "reason": str(error), **details}
+        return {"format": FORMAT, "entry": index, **identity, "verdict": "error", "reason": str(error), **details}
 
 
 def _suite_entry(entry: Any, suite: dict[str, Any], index: int) -> tuple[Mutation, Proof]:

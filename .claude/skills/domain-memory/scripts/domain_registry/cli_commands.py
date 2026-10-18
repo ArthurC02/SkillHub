@@ -56,6 +56,7 @@ from .readiness import assess_readiness
 from .recitation_package import recitation_package
 from .harvest import harvest_candidates
 from .harvest_package import harvest_package, write_harvest_package
+from .harvest_run import harvest
 from .impact import boundary_impact, registered_collaborations
 from .relocate import Recitation, line_range, recite, relocate_evidence
 from .registry import (
@@ -1112,6 +1113,15 @@ def handle_quality_gates(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_harvest(args: argparse.Namespace) -> int:
+    report = harvest(
+        args.registry_root, args.repo_root, load_json(args.spec),
+        args.changes_root.resolve() if args.changes_root else None, args.through,
+    )
+    print_json(report)
+    return 1 if report["errors"] else 0
+
+
 def handle_counterfactual(args: argparse.Namespace) -> int:
     try:
         if args.suite is not None:
@@ -1167,6 +1177,7 @@ HANDLERS = {
     "upsert-candidate": handle_upsert_candidate,
     "harvest-candidates": handle_harvest_candidates,
     "fill-harvest-package": handle_fill_harvest_package,
+    "harvest": handle_harvest,
     "retract-candidate": handle_retract_candidate,
     "promote-candidate": handle_promote_candidate,
     "apply-approved-updates": handle_apply_approved_updates,

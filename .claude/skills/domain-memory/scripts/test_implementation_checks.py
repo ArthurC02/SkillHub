@@ -401,6 +401,12 @@ class CounterfactualTest(RepositoryCase):
              result["results"][2]["entry"], result["results"][3]["entry"]),
         )
         self.assertIn("occurs 0 times", result["results"][2]["reason"])
+        self.assertEqual(
+            ({"obligation_id": "OB-1", "entry": 1, "file": "rule.py", "test_command": RUN_TESTS},
+             {"entry": 3, "file": "rule.py", "test_command": RUN_TESTS}),
+            ({key: result["results"][0][key] for key in ("obligation_id", "entry", "file", "test_command")},
+             {key: result["results"][2][key] for key in ("entry", "file", "test_command")}),
+        )
         self.assertIn("mutations[4] must be an object", result["results"][3]["reason"])
         self.assertIn("mutations[5] needs replace", result["results"][4]["reason"])
         self.assert_untouched()
