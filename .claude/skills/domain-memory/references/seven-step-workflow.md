@@ -10,7 +10,16 @@ The workflow is continuous: the Registry is the input to implementation and the 
 
 ## Before Step 0: Map repository sources
 
-Run `discover-sources --repo-root <repo>` without writing output. Present the candidate paths to the developer and ask which paths should be trusted as Domain Memory sources and where the Registry should live inside the repository. Do not choose a default directory. Once the developer has explicitly chosen both, run `init-domain-memory --repo-root <repo> --output <chosen-path> --source <chosen-source> --storage-mode tracked --data-classification internal --review-mode local-draft-only --source-authority <developer>`, giving `--source` once for every selected source. `tracked` keeps the Registry in Git; `internal` suits a repository whose code is not public; `local-draft-only` holds candidates until `amend-policy` names who approves; `--source-authority` is the person who chose the sources. Without a person to ask, select the repository instructions and the directories that hold the code you are asked to extract, record nothing reviewed, and leave `confirm-sources` to the developer. Read every selected repository-instruction path before reading other groups. The resulting source map is a deterministic inventory; it cannot establish domain ownership or rule truth.
+Run `discover-sources --repo-root <repo>` without writing output. Present the candidate paths to the developer and ask which paths should be trusted as Domain Memory sources and where the Registry should live inside the repository. Do not choose a default directory.
+
+Once the developer has explicitly chosen both, run `init-domain-memory --repo-root <repo> --output <chosen-path> --source <chosen-source> --storage-mode tracked --data-classification internal --review-mode local-draft-only --source-authority <developer>`, giving `--source` once for every selected source:
+
+- `tracked` keeps the Registry in Git;
+- `internal` suits a repository whose code is not public;
+- `local-draft-only` holds candidates until `amend-policy` names who approves;
+- `--source-authority` is the person who chose the sources.
+
+Without a person to ask, select the repository instructions and the directories that hold the code you are asked to extract, record nothing reviewed, and leave `confirm-sources` to the developer. Read every selected repository-instruction path before reading other groups. The resulting source map is a deterministic inventory; it cannot establish domain ownership or rule truth.
 
 ## Step 0: Normalize the requirement
 
@@ -49,7 +58,13 @@ For an API or event contract, record in the proposal's `contract_change` the pro
 
 ## Step 6: Derive test obligations
 
-Complete the package's [test-obligations.json](../templates/test-obligations.json). Map every acceptance criterion, invariant, contract promise, and material failure mode to an observable assertion. An obligation's `source_type` names what it is derived from and must be `acceptance-criterion`, `rule`, `contract` or `invariant`; the kind of check it runs belongs in `level`, where aggregate, integration, architecture and security checks appear only when the proposal changes them. Every acceptance criterion, and every rule and contract the proposal names, needs an obligation carrying its id. When one check proves several of them, list the others in that obligation's `also_covers` as `{"source_type": ..., "source_id": ...}` entries rather than repeating the obligation, so `record-test-result` runs the check once. An `also_covers` entry must name an acceptance criterion of the requirement or a rule or contract the proposal lists, or an invariant; any other id is refused by name, since it would cover nothing. A green implementation test alone does not prove a changed invariant.
+Complete the package's [test-obligations.json](../templates/test-obligations.json). Map every acceptance criterion, invariant, contract promise, and material failure mode to an observable assertion.
+
+- An obligation's `source_type` names what it is derived from and must be `acceptance-criterion`, `rule`, `contract` or `invariant`; the kind of check it runs belongs in `level`, where aggregate, integration, architecture and security checks appear only when the proposal changes them.
+- Every acceptance criterion, and every rule and contract the proposal names, needs an obligation carrying its id.
+- When one check proves several of them, list the others in that obligation's `also_covers` as `{"source_type": ..., "source_id": ...}` entries rather than repeating the obligation, so `record-test-result` runs the check once.
+- An `also_covers` entry must name an acceptance criterion of the requirement or a rule or contract the proposal lists, or an invariant; any other id is refused by name, since it would cover nothing.
+- A green implementation test alone does not prove a changed invariant.
 
 ## Step 7: Prepare, verify, and review the package
 
@@ -66,7 +81,52 @@ DM="python3 <path>/registry_tools.py"
 $DM counterfactual --repo-root . --file <enforcing file> --find '<protection>' --replace '<broken protection>' --test-command '<check>' --cwd <directory> --obligation-id <obligation>
 ```
 
-Several rules at once go through `counterfactual --suite <json>`, one entry per rule with its `obligation_id`, one intact run per test command. Continue only when every verdict is `killed`. `harvest --spec` keeps each whole output and, with the rule's check and the spec's ownership, boundary and design decisions, writes the criteria, obligations, proof obligations, sources and `counterfactual_check` list; it writes nothing while a rule's counterfactual is not killed. A rule whose mutation survives is either untested or not the rule it claims: write the test, or leave the rule out and say why in `rejected_alternatives`.
+Several rules at once go through `counterfactual --suite <json>`, one entry per rule with its `obligation_id`. The file holds:
+
+- at the top level, `test_command`, `cwd`, `timeout`, `expect` and `mutations`;
+- in each entry of `mutations`, `file`, `find`, `replace`, `test_command`, `cwd`, `timeout`, `expect` and `obligation_id`; an entry inherits the top-level values it leaves out.
+
+The intact run is made once per distinct command and directory, and each mutation is judged and restored before the next. Continue only when every verdict is `killed`. `harvest --spec` keeps each whole output and writes nothing while a rule's counterfactual is not killed. A rule whose mutation survives is either untested or not the rule it claims: write the test, or leave the rule out and say why in `rejected_alternatives`.
+
+### The harvest spec
+
+`harvest --spec` reads one JSON object that names the package and its rules.
+
+The package:
+
+- `name`, also the requirement and proposal id, `context`, `proposer`, `intent`, `outcome` and `scope`;
+- the `ownership`, `boundary` and `design` decisions;
+- an optional `approval` with `role` and `reviewer`.
+
+Each entry of `rules`:
+
+- `id`, `statement`, and `example` or `examples`;
+- `enforcing` spans, each `[path, start, end]` or `path:start-end`;
+- the proving test as `test_file` and `test`, and the full `check` that runs it with an optional `cwd`, `command_profile` and `level`;
+- `mutate`, with `file`, `find`, `replace` and an optional `expect`.
+
+### What a harvest writes
+
+Each rule is written as a candidate, or a reviewed one is marked `amended`, or `reproven` when its statement, examples, contexts and cited spans are unchanged and only the proof is new, so the package supersedes its reviewer. The package starts under `<changes-root>/<name>`; each rule is promoted with the test citation, and the package is filled and previewed `--as-status submitted`.
+
+Filling writes one acceptance criterion `enforced-<id>` and one test obligation `rule-<id>` per rule, the obligation covering the rule through `also_covers` and running the rule's check. It replaces the criteria, obligations, `rule_ids`, `affected_contexts`, `proof_obligations`, the sources (every file the rules cite) and the evidence's `counterfactual_check` list from the counterfactuals it ran and the spec's decisions.
+
+### Resuming a harvest
+
+A step that fails after the package is written, such as a test command whose database is down, is reported, not thrown. Before any counterfactual runs, a directory holding something other than this spec's package is refused, and so is this spec's package once it is past `submitted`, since a finished harvest is not re-run.
+
+Running the same spec again over its own `draft` or `submitted` package resumes it:
+
+- a draft record whose content is what the run would write is not written again and is reported `unchanged`;
+- a rule already in the package is not promoted again;
+- the fill is written only when it differs;
+- a submitted package is not submitted again;
+- an obligation with a passing result of its check is not run again;
+- an approval by the same role and reviewer is not recorded again.
+
+A submitted package whose rules changed since is refused, because its content is frozen.
+
+### Signing and shipping a harvest
 
 After `submit-proposal`, `record-test-result` for each obligation, `record-approval` and `verify-proposal`, the `git-signed-commit` verifier needs a signed commit before and after `ship-package`, in this order, because the attestation names the signed commit that carries the verified package; `ship-package` attests the signed commit, finalizes the proposal and applies it, in that order, stopping at the first refusal:
 
@@ -79,6 +139,8 @@ git pull --no-rebase && git push
 ```
 
 Upstream work comes in with a merge, never a rebase: a rebase rewrites both signed commits, and the attestation would name a commit that no longer carries the package. The signatures stay with the person or host whose key the policy authorizes. When `ship-package` refuses the proposal because its base revision is stale, run `rebase-proposal`, record the approvals again, `verify-proposal`, and sign a new commit holding the package for `ship-package`: the old approvals and the old signed commit name the previous revision.
+
+### Re-proving a reviewed rule
 
 A rule already reviewed, such as one whose reviewing package records no test obligation, is re-proven the same way after `promote-candidate --amend --repo-root . --cite-function <test file>:<test name>` puts it into the draft with the citation of its test and names the package it supersedes. A rule that a dependency gate enforces rather than a test, such as a forbidden import between Contexts, is proven by an obligation with `level: architecture` whose `check` runs the gate; its counterfactual adds a blank import of the forbidden package, `_ "<package>"`, which still builds, so the gate is what fails.
 

@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.8
+
+### Changed
+
+- The command reference's longest rows now hold only the contract (flags, verdicts, exit codes, output keys, refusal texts). The reasoning moved to the pages that carry each topic: the harvest spec and resume rules to the seven-step workflow, the pairing and threshold reasoning to extraction, the citation advice to the evidence rules, and the notes on `brief`, the pre-commit hook and `mcp-serve` to a section at the end of the reference.
+- `init-change-package` and `validate-change-package` are one row each. The `probe` row states its exit codes (0 current, 1 any other status, 2 absent). The long paragraphs in six reference pages are split into one rule per bullet.
+
 ## 1.2.7
 
 ### Fixed
