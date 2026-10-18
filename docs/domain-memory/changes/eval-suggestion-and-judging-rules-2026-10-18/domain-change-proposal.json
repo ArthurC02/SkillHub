@@ -3,12 +3,12 @@
   "proposal_id": "eval-suggestion-and-judging-rules-2026-10-18",
   "proposer": "domain-memory-agent",
   "requirement_id": "eval-suggestion-and-judging-rules-2026-10-18",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-18T09:23:44.291523Z",
   "verified_at": "2026-10-18T09:26:27.998684Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-18T09:26:50.092806Z",
+  "applied_at": "2026-10-18T09:27:01.846269Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "5f6c1cf5df83083265cf4a5d4bf8d332bb42dfb7",
@@ -546,5 +546,9 @@
         "registry_digest": "sha256:817bff3e2a64221d502fe23a6a0f2a36e2a03f7ace6f12bac020b37f5619ef56"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "5c8739ebe0eb10036ba2032203e11e8b9fb30a3f",
+    "registry_digest": "sha256:930fca0b59d3daf8795be318b8c7bfd0c47e131d26ce211187563dc82e563771"
+  }
 }

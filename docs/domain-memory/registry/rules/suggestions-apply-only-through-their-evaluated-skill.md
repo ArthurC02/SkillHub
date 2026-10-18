@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-18T09:26:27.855880Z"
 sources:
   - resource: "apps/platform/internal/trial/improvement/apply.go#L456-463"
     excerpt_sha256: "sha256:f40bf094cb7ca02a90a92de8e08ee6b09264b869e2b46627be8b6915b70a3d09"
