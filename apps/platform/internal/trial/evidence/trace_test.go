@@ -282,6 +282,32 @@ func TestEventsSortByTheInstantAndNotItsFormattedString(t *testing.T) {
 	}
 }
 
+func TestEventsAtTheSameInstantSortBySourceThenAttemptThenSeq(t *testing.T) {
+	at := time.Date(2026, 8, 26, 12, 0, 45, 0, time.UTC)
+	view := func(source string, attempt int, seq int64) EventView {
+		return EventView{EmittedBy: source, Attempt: attempt, Seq: seq, occurredAt: at}
+	}
+	cases := []struct {
+		name          string
+		first, second EventView
+	}{
+		{"the source decides first", view("llm_service", 2, 9), view("sandbox", 1, 1)},
+		{"then the attempt", view("sandbox", 1, 9), view("sandbox", 2, 1)},
+		{"then the seq", view("sandbox", 1, 1), view("sandbox", 1, 2)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			events := []EventView{c.second, c.first}
+			sortEventViews(events)
+			got := events[0]
+			if got.EmittedBy != c.first.EmittedBy || got.Attempt != c.first.Attempt || got.Seq != c.first.Seq {
+				t.Errorf("got %s/%d/%d first, want %s/%d/%d", got.EmittedBy, got.Attempt, got.Seq,
+					c.first.EmittedBy, c.first.Attempt, c.first.Seq)
+			}
+		})
+	}
+}
+
 func TestNothingWasCollected(t *testing.T) {
 	started := RunState{Status: "succeeded", Started: true}
 	neverStarted := RunState{Status: "refused"}

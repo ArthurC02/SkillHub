@@ -980,6 +980,33 @@ func TestOnlyCuratedTestCasesTravelAndTheRestAreNamed(t *testing.T) {
 	assertACuratedPortableCaseWithoutRunData(t, zipEntries(t, a, hash))
 }
 
+func TestACuratedTestCaseStaysOutWhenTheUserOptsOut(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	curator := a.login(t, "opt-out-curator")
+	makeCatalog(t, pool, curator.workspaceID)
+	skillID, versionID := packagedSkill(t, a, pool, curator, "opt-out-curated-skill")
+	caseID := seedTestCase(t, pool, curator.workspaceID, skillID)
+
+	var preview map[string]any
+	if code := getJSON(t, curator.Client,
+		curator.base+packagingPath(skillID, versionID)+"/preview?target=standard&include_test_cases=false",
+		&preview); code != http.StatusOK {
+		t.Fatalf("GET preview: got %d", code)
+	}
+	if n := len(preview["included_test_cases"].([]any)); n != 0 {
+		t.Errorf("%d curated test cases were packaged although the user opted out", n)
+	}
+	excluded, _ := preview["excluded_test_cases"].([]any)
+	if len(excluded) != 1 {
+		t.Fatalf("excluded test cases = %v, want the one curated case", excluded)
+	}
+	row := excluded[0].(map[string]any)
+	if row["test_case_id"] != caseID || row["reason"] != "user_opted_out" {
+		t.Errorf("excluded = %v, want case %s with reason user_opted_out", row, caseID)
+	}
+}
+
 func assertUncuratedCasesExcludedWithTheirReasons(t *testing.T, preview map[string]any, withFile string) {
 	t.Helper()
 	excluded, _ := preview["excluded_test_cases"].([]any)

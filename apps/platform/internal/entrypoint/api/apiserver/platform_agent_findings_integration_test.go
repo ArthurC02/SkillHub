@@ -286,6 +286,38 @@ func TestAReportLeavesClosedFindingsAloneUntilAResolvedOneComesBack(t *testing.T
 	}
 }
 
+func TestAResolvedFindingIsReopenedOnlyWhenLastSeenWithinThirtyDays(t *testing.T) {
+	cases := []struct {
+		name       string
+		lastSeen   string
+		wantRows   int
+		wantStatus string
+	}{
+		{"just inside the window", "30 days - 1 hour", 1, "open"},
+		{"just past the window", "30 days + 1 hour", 2, "resolved"},
+	}
+	for i, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			w := newFindingWorld(t, "agent-findings-window-"+string(rune('a'+i)))
+			w.report(attention("purge is late", "/jobs/purge/overdue"))
+			purge := w.findings()[0].id
+			if code, _ := w.move(purge, "resolved", "rotated the job"); code != http.StatusNoContent {
+				t.Fatalf("resolve: %d", code)
+			}
+			if _, err := testPool.Exec(context.Background(),
+				`UPDATE platform_agent_findings SET last_seen_at = now() - $2::interval WHERE id = $1`, purge, c.lastSeen); err != nil {
+				t.Fatal(err)
+			}
+
+			w.report(attention("purge is late again", "/jobs/purge/overdue"))
+			got := w.findings()
+			if len(got) != c.wantRows || got[0].status != c.wantStatus {
+				t.Fatalf("last seen %s ago: %+v, want %d finding(s) with the first %s", c.lastSeen, got, c.wantRows, c.wantStatus)
+			}
+		})
+	}
+}
+
 func TestOperatorsListLiveFindingsWithCountsAndReadOneWithItsHistory(t *testing.T) {
 	w := newFindingWorld(t, "agent-findings-read")
 	w.report(attention("purge is late", "/jobs/purge/overdue"), attention("rotate is late", "/jobs/rotate/overdue"))

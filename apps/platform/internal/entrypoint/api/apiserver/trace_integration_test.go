@@ -199,7 +199,7 @@ func TestATraceCursorIsRefusedWhicheverViewWasAskedFor(t *testing.T) {
 	runID := seedRun(t, pool, c.workspaceID, seedSkill(t, pool, c.workspaceID, "trace-cursor-skill"))
 
 	for _, mode := range []string{"", "general", "advanced"} {
-		for _, after := range []string{"-5", "not-a-number"} {
+		for _, after := range []string{"-1", "not-a-number"} {
 			url := fmt.Sprintf("%s/runs/%s/trace?after=%s", c.base, runID, after)
 			if mode != "" {
 				url += "&mode=" + mode
