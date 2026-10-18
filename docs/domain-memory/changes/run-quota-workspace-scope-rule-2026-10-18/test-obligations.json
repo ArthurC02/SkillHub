@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "run-quota-workspace-scope-rule-2026-10-18",
+  "proposal_id": "run-quota-workspace-scope-rule-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-an-allowance-counts-only-its-own-workspaces-runs",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-allowance-counts-only-its-own-workspaces-runs",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-allowance-counts-only-its-own-workspaces-runs"
+        }
+      ],
+      "expected_outcome": "A Workspace's run allowance counts only its own runs, so another Workspace's runs never spend it.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestOneWorkspacesRunsNeverSpendAnotherWorkspacesAllowance$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

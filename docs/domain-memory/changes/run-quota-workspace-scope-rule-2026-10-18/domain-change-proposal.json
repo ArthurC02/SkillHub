@@ -1,0 +1,108 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-quota-workspace-scope-rule-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "run-quota-workspace-scope-rule-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-18T06:02:02.494079Z",
+  "verified_at": "2026-10-18T06:02:10.799145Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "af2da4e0025a78420fdc57c1a1a6a9c745513009",
+    "registry_digest": "sha256:5bd3cf258bdf4043c3b046c89c71cdbb6ba753e815dc0deecb0690d85d01e869"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [
+    "an-allowance-counts-only-its-own-workspaces-runs"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Only run counts the runs that spend a Workspace's allowance.",
+    "evidence": [
+      "apps/platform/internal/trial/execution/quota.go:73-80"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/execution/quota.go:73-80"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Dropping the Workspace id breaks the owner's reads too, so earlier counterfactuals could not isolate scoping. Weakening only the Workspace predicate in the generated query lets another Workspace's rows through while the owner's still match, and a stranger test catches it."
+    ],
+    "decision": "Record the scoping rule as reviewed citing the call that passes the Workspace and the stranger test; no product code change.",
+    "invariants_preserved": [
+      "A Workspace never reads or spends another Workspace's data."
+    ],
+    "rejected_alternatives": [
+      "Mutating the call to pass an empty Workspace id: it empties the owner's reads as well and proves nothing about strangers."
+    ],
+    "proof_obligations": [
+      "rule-an-allowance-counts-only-its-own-workspaces-runs"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-allowance-counts-only-its-own-workspaces-runs",
+        "statement": "A Workspace's run allowance counts only its own runs, so another Workspace's runs never spend it.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "After alice runs three times, bob still has his whole allowance."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/quota.go",
+            "lines": {
+              "start": 73,
+              "end": 80
+            },
+            "excerpt_sha256": "sha256:7a191da88de1d14f4ae6ccbc8273634be9fbe1270b98e409356490e4afda90eb"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go",
+            "lines": {
+              "start": 234,
+              "end": 251
+            },
+            "content_sha256": "sha256:980f7db144bf7e47b268a7f0234fafc03f913e3f5f69b069ccb3dfcf141ec348",
+            "excerpt_sha256": "sha256:4c20906aa085ffe628cd92ebba5768b0173304623cd4362a721efa0729e142d3"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-18T06:02:10.436002Z",
+      "scope": "Record run quota Workspace scoping as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "af2da4e0025a78420fdc57c1a1a6a9c745513009",
+        "registry_digest": "sha256:5bd3cf258bdf4043c3b046c89c71cdbb6ba753e815dc0deecb0690d85d01e869"
+      }
+    }
+  ]
+}

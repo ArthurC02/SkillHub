@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "run-quota-workspace-scope-rule-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed that a Workspace's allowance counts only its own runs.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context run lists the scoping rule as reviewed, proven by a stranger test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-an-allowance-counts-only-its-own-workspaces-runs",
+      "statement": "A Workspace's run allowance counts only its own runs, so another Workspace's runs never spend it."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go",
+    "apps/platform/internal/trial/execution/quota.go"
+  ]
+}

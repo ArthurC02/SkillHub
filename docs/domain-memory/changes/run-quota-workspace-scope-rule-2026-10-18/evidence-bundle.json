@@ -1,0 +1,40 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-quota-workspace-scope-rule-2026-10-18",
+  "proposal_id": "run-quota-workspace-scope-rule-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "af2da4e0025a78420fdc57c1a1a6a9c745513009",
+    "registry_digest": "sha256:5bd3cf258bdf4043c3b046c89c71cdbb6ba753e815dc0deecb0690d85d01e869"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-allowance-counts-only-its-own-workspaces-runs",
+      "mutated_protection": "apps/platform/internal/foundation/persistence/db/gen/beta.sql.go:91: WHERE t.workspace_id = $1 AND t.to_status = $2 AND t.occurred_at > $3 AND r.workspace_id = $1 -> WHERE $1::uuid IS NOT NULL AND t.to_status = $2 AND t.occurred_at > $3 AND true",
+      "failure_evidence": "=== RUN   TestOneWorkspacesRunsNeverSpendAnotherWorkspacesAllowance\n    beta_integration_test.go:249: bob has 7 today and 7 this window, want the whole allowance: alice's runs are not his\n--- FAIL: TestOneWorkspacesRunsNeverSpendAnotherWorkspacesAllowance (0.16s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t3.837s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go",
+    "apps/platform/internal/trial/execution/quota.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-an-allowance-counts-only-its-own-workspaces-runs",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestOneWorkspacesRunsNeverSpendAnotherWorkspacesAllowance$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:48b822db33f395a91ba18105da660b17d560992a1f7a8a853d698e67c9a52de8",
+      "finished_at": "2026-10-18T06:02:10.170481Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

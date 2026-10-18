@@ -108,6 +108,7 @@
 - [an-activity-page-holds-at-most-its-limit](/rules/an-activity-page-holds-at-most-its-limit) — A page never holds more items than its limit; a next cursor is issued only while items remain.
 - [an-activity-page-limit-is-1-to-100](/rules/an-activity-page-limit-is-1-to-100) — The activity feed refuses a page limit outside 1 to 100 with 400.
 - [an-agent-proposes-only-actions-its-definition-lists](/rules/an-agent-proposes-only-actions-its-definition-lists) — A platform agent conclusion that proposes an action outside its definition's action list fails as a whole, so nothing is recorded.
+- [an-allowance-counts-only-its-own-workspaces-runs](/rules/an-allowance-counts-only-its-own-workspaces-runs) — A Workspace's run allowance counts only its own runs, so another Workspace's runs never spend it.
 - [an-allowance-needs-a-window-and-a-ceiling](/rules/an-allowance-needs-a-window-and-a-ceiling) — An allowance is enforced only when it has a window length and at least one ceiling; a zero or partial configuration refuses nothing.
 - [an-applied-acceptance-is-final](/rules/an-applied-acceptance-is-final) — Once a suggestion has gone into a Skill version its acceptance cannot be withdrawn; rejecting it is refused as acceptance_is_final.
 - [an-approval-names-the-snapshot-digest-its-reviewer-saw](/rules/an-approval-names-the-snapshot-digest-its-reviewer-saw) — An approval is refused as stale and records nothing unless it names the search snapshot digest the reviewer saw; a revocation needs no such proof.
