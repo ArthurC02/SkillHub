@@ -37,7 +37,7 @@ class CliTest(RegistryTestCase):
         before = (self.repo / "memory" / "source-map.json").read_bytes()
         result = self.refine("--remove", "fact.md")
         self.assertEqual(1, result.returncode)
-        self.assertIn("cannot remove a source that is not selected: fact.md", result.stdout)
+        self.assertIn("cannot remove a source that is not selected: fact.md", result.stderr)
         self.assertEqual(before, (self.repo / "memory" / "source-map.json").read_bytes())
 
     def test_refining_takes_a_whole_selection_or_changes_to_it_but_not_both(self) -> None:
@@ -46,7 +46,7 @@ class CliTest(RegistryTestCase):
             with self.subTest(label):
                 result = self.refine(*arguments)
                 self.assertEqual(1, result.returncode)
-                self.assertIn("with --source, or change it with --add and --remove, not both", result.stdout)
+                self.assertIn("with --source, or change it with --add and --remove, not both", result.stderr)
 
     def test_the_command_line_runs_the_obligation_check_when_given_no_command(self) -> None:
         package = self.draft_package()
@@ -292,7 +292,7 @@ class CliTest(RegistryTestCase):
             "<identity>",
         )
         self.assertEqual(result.returncode, 1)
-        self.assertIn("ERROR", result.stdout)
+        self.assertIn("ERROR", result.stderr)
         self.assertNotIn("Traceback", result.stderr)
 
     def test_a_malformed_json_argument_reports_an_error_instead_of_a_traceback(
@@ -302,7 +302,7 @@ class CliTest(RegistryTestCase):
         malformed.write_text("{", encoding="utf-8")
         result = self.run_cli("validate-policy", "--policy", str(malformed))
         self.assertEqual(result.returncode, 1)
-        self.assertIn("ERROR", result.stdout)
+        self.assertIn("ERROR", result.stderr)
         self.assertNotIn("Traceback", result.stderr)
 
     def file_bytes(self) -> dict[str, bytes]:
@@ -319,7 +319,7 @@ class CliTest(RegistryTestCase):
             tasks.setdefault(command, task.strip())
         [subcommands] = [action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)]
         helps = {choice.dest: choice.help for choice in subcommands._choices_actions}
-        self.assertEqual((65, tasks), (len(helps), helps))
+        self.assertEqual((61, tasks), (len(helps), helps))
 
     def test_readiness_command_returns_json_without_writing(self) -> None:
         before = self.file_bytes()
@@ -350,7 +350,7 @@ class CliTest(RegistryTestCase):
             "test",
         )
         self.assertEqual(result.returncode, 1)
-        self.assertIn("not empty", result.stdout)
+        self.assertIn("not empty", result.stderr)
 
     def test_initializing_a_fresh_destination_writes_the_registry_and_its_policy(
         self,

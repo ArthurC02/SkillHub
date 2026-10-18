@@ -245,7 +245,7 @@ class ChangeCouplingTest(RegistryTestCase):
                               "--min-revisions", "1", "--min-shared", "1")
         self.assertEqual([["src/a", "src/b"]], [pair["modules"] for pair in json.loads(result.stdout)["pairs"]])
         refused = self.run_cli("change-coupling", "--repo-root", str(self.repo), "--depth", "0")
-        self.assertEqual((1, "ERROR: change-coupling --depth must be at least 1"), (refused.returncode, refused.stdout.strip()))
+        self.assertEqual((1, "ERROR: change-coupling --depth must be at least 1"), (refused.returncode, refused.stderr.strip()))
 
     def test_the_command_explains_a_pair_by_the_registered_interaction_between_its_contexts(self) -> None:
         self.seed("contexts.json", [{"id": "alpha", "implementation_path": "src/a"}, {"id": "beta", "implementation_path": "src/b"}])

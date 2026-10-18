@@ -42,7 +42,7 @@ Four checks keep the facts honest over time:
 python3 scripts/registry_tools.py <command> [options]
 ```
 
-Python 3.10 or later, its standard library, and `git` on the path. Call the interpreter by the name your system gives it: `python3` on most Linux and macOS systems, `python` on Windows, where `python3` is often a store stub. Nothing to install, no environment to prepare, and the script runs from any working directory. Output is JSON except for success and error lines. A non-zero exit is a refusal that names its reason; read the reason rather than retrying.
+Python 3.10 or later, its standard library, and `git` on the path. Call the interpreter by the name your system gives it: `python3` on most Linux and macOS systems, `python` on Windows, where `python3` is often a store stub. Nothing to install, no environment to prepare, and the script runs from any working directory. Output is JSON except for success lines. A refusal prints `ERROR: <reason>` on stderr and exits non-zero, so stdout carries only the command's output; read the reason rather than retrying.
 
 Commands that read or change the Registry take `--registry-root <root>`: the directory that holds `registry/`, `source-map.json` and the policy, not `registry/` itself. Commands that read repository files take `--repo-root <repo>`. Some take only one of the two: `quality-gates` takes only `--repo-root`, `readiness` needs only `--repo-root`, and `coverage` and the read commands take only `--registry-root`. The table below leaves both flags out, and `<command> --help` lists the exact flags.
 
@@ -84,7 +84,7 @@ It offers no command that writes; candidates and Change Packages stay on the com
 | Re-cite after moving code | `relocate-evidence --from <old> --to <new>`; pass the path as the repository holds it; a Context whose `implementation_path` ends `from` gets its new path in the same output |
 | Re-cite after editing code in place | `recite --asset <asset> --id <id> --path <file> --lines <a>-<b>`; when the record cites the file more than once, name the old citation with `--replace <file>:<a>-<b>`, and leave out `--lines` if the code kept those lines; add `--onto <file>` holding what an earlier `relocate-evidence` or `recite` printed, and the output is that file with this record re-cited in it, so one record never gets two competing updates |
 | Put a re-citation through review | `init-change-package --recitation <file printed by recite or relocate-evidence> --requirement-id <id> --proposal-id <id> --proposer <you>` writes the whole package; then submit it, record its one test result, and review it as usual |
-| Finish a verified package after its signed commit | `ship-package --commit <sha>`: attest-signed-commit, finalize-proposal and apply-approved-updates in order, stopping at the first refusal; no git writes |
+| Finish a verified package after its signed commit | `ship-package --commit <sha>`: attests the signed commit, finalizes the proposal and applies it, in that order, stopping at the first refusal; no git writes |
 | Prove rules the code already enforces and package them | `harvest --spec <file> [--through verified]`: counterfactual per rule, candidate, package, preview, and on request submit, test results, approval and verify; stops before the signed commit |
 | Extract the model from a requirement, code or a change | follow `skills/domain-memory-extract`; `change-coupling --repo-root <repo> --root <code root>` shows which modules change together, and `compare-registry` scores an extraction against a reviewed Registry |
 | Propose a new fact | `cite --show`, then `upsert-candidate --asset <asset> --record-file <file>`; give `--record-file` once per record |
@@ -103,7 +103,7 @@ The two re-cite commands print `registry_updates` and `supersedes` for a Change 
 - Cite lines whose text occurs once in the file. A citation whose text repeats elsewhere in the file goes `stale` at the next edit, because nothing can tell the copies apart. `cite` and `recite` print a NOTE when that happens; widen the span to the enclosing block.
 - Once a commit is signed or attested, it must reach the remote unchanged. Take in upstream work with a merge (`git pull --no-rebase`), not a rebase: a rebase rewrites the commit without its signature, and an attestation naming it then names a commit that no longer exists.
 - Never write a citation by hand. Hand-made line splitting verifies as `stale`, and a missing digest as `unhashed`.
-- Errors print `ERROR: <reason>` on stdout and exit non-zero. The reason names the fix, so read it before trying anything else.
+- Errors print `ERROR: <reason>` on stderr and exit non-zero. The reason names the fix, so read it before trying anything else.
 
 ## Running the plugin's own tests
 

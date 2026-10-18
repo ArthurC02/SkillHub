@@ -331,7 +331,7 @@ class RecordBriefTest(BriefTest):
         self.assertEqual(
             ((1, "ERROR: brief needs --base <revision>, or --asset <asset> --id <id>, not both"), 1,
              (0, "domain-memory-brief/v1", {"asset": "rules", "id": "order-total"}), (0, "# Change brief: since HEAD")),
-            ((neither.returncode, neither.stdout.strip()), both.returncode,
+            ((neither.returncode, neither.stderr.strip()), both.returncode,
              (as_json.returncode, json.loads(as_json.stdout)["format"], json.loads(as_json.stdout)["subject"]),
              (as_markdown.returncode, as_markdown.stdout.splitlines()[0])),
         )

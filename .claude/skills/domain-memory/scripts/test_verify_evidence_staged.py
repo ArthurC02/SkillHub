@@ -92,9 +92,9 @@ class VerifyStagedEvidenceTest(RegistryTestCase):
             outside = Path(elsewhere).resolve()
             (outside / "src").mkdir()
             (outside / "src" / "a.py").write_text("one\ntwo\n", encoding="utf-8")
-            code, report, _ = self.verify_staged("src/a.py", repo_root=outside)
-        self.assertEqual(1, code)
-        self.assertTrue(report.startswith(f"ERROR: could not read the Git index of {outside}: "), report)
+            code, report, stderr = self.verify_staged("src/a.py", repo_root=outside)
+        self.assertEqual((1, ""), (code, report))
+        self.assertTrue(stderr.startswith(f"ERROR: could not read the Git index of {outside}: "), stderr)
 
     def test_without_staged_a_cited_file_missing_from_the_disk_keeps_the_unstaged_message(self) -> None:
         (self.repo / "src" / "a.py").unlink()

@@ -75,7 +75,7 @@ class UpdatesPromotionTest(RegistryTestCase):
         self.select_docs_as_sources()
         package = self.draft_package()
         self.cite_in_proposal(package, "README.md")
-        refusal = ("rules/order-total cites README.md outside the confirmed sources, so apply-approved-updates would "
+        refusal = ("rules/order-total cites README.md outside the confirmed sources, so ship-package would "
                    "refuse to review it; cite a confirmed source, or have the developer select that path")
         with self.assertRaisesRegex(ValueError, re.escape(refusal)):
             submit_proposal(package, self.repo / "memory", self.repo)

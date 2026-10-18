@@ -166,7 +166,7 @@ class RecitationPackageTest(RegistryTestCase):
                 given = [item for flag, value in complete.items() if flag != omitted for item in (flag, value)]
                 refused = self.run_cli(*base, *given)
                 self.assertEqual(1, refused.returncode, refused.stdout)
-                self.assertIn(refusal, refused.stdout)
+                self.assertIn(refusal, refused.stderr)
                 self.assertFalse((self.repo / "changes").exists())
         created = self.run_cli(*base, *[item for pair in complete.items() for item in pair])
         self.assertEqual(0, created.returncode, created.stdout + created.stderr)

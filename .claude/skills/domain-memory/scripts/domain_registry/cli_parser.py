@@ -21,12 +21,6 @@ ASSET_CHOICES = [name.removesuffix(".json") for name in ASSET_KEYS]
 SINGULAR_ASSETS = {
     asset.removesuffix("ies") + "y" if asset.endswith("ies") else asset.removesuffix("s"): asset for asset in ASSET_CHOICES
 }
-LEGACY_REPLACEMENTS = {
-    "fill-harvest-package": "harvest --spec <file>",
-    "attest-signed-commit": "ship-package --commit <sha>",
-    "finalize-proposal": "ship-package",
-    "apply-approved-updates": "ship-package",
-}
 COMMAND_GROUPS = {
     "everyday": (
         "readiness", "probe", "lookup", "resolve-terms", "get-context", "get-record", "dependents", "brief",
@@ -43,15 +37,10 @@ COMMAND_GROUPS = {
         "init-signing-key", "amend-policy", "install-git-hitl-hook", "install-pre-commit-hook", "verify-git-governance", "validate-policy",
         "verify-scm-attestation", "audit-attestations", "scan-secrets", "validate-contract", "mcp-serve",
     ),
-    "legacy": tuple(LEGACY_REPLACEMENTS),
 }
 
 
 COMMAND_ORDER = {name: position for position, name in enumerate(name for names in COMMAND_GROUPS.values() for name in names)}
-
-
-def legacy_help(command: str, label: str) -> str:
-    return f"{label} (legacy: use {LEGACY_REPLACEMENTS[command]})"
 
 
 def command_groups_text() -> str:
@@ -61,7 +50,7 @@ def command_groups_text() -> str:
             break_on_hyphens=False,
         )
         for group, names in COMMAND_GROUPS.items()
-    ) + "\n\nA legacy command still runs, prints a NOTE naming its replacement, and is removed in 1.0.0."
+    )
 
 
 def add_path(parser: argparse.ArgumentParser, name: str, required: bool = True) -> None:  # noqa: FBT001, FBT002
@@ -400,10 +389,6 @@ def _add_candidate_commands(commands: argparse._SubParsersAction) -> None:
     retract_parser.add_argument("--id", required=True)
     retract_parser.add_argument("--reason", required=True)
     _add_promote_command(commands)
-    apply_updates_parser = commands.add_parser("apply-approved-updates", help=legacy_help("apply-approved-updates", "Apply an approved change"))
-    add_path(apply_updates_parser, "--package-root")
-    add_path(apply_updates_parser, "--registry-root")
-    add_path(apply_updates_parser, "--repo-root")
 
 
 def _add_promote_command(commands: argparse._SubParsersAction) -> None:
@@ -434,10 +419,6 @@ def _add_harvest_command(commands: argparse._SubParsersAction) -> None:
         "--context-map", action="append", default=[], help="repeatable CANDIDATE=GOLD, over the pairing found by path or name"
     )
     harvest_parser.add_argument("--keep-duplicates", action="store_true")
-    fill_parser = commands.add_parser("fill-harvest-package", help=legacy_help("fill-harvest-package", "Fill a rule harvest package"))
-    add_path(fill_parser, "--package-root")
-    add_path(fill_parser, "--spec")
-    fill_parser.add_argument("--dry-run", action="store_true", help="print the four documents instead of writing them")
     prove_parser = commands.add_parser("harvest", help="Prove and package harvested rules")
     add_path(prove_parser, "--registry-root")
     add_path(prove_parser, "--repo-root")
@@ -480,11 +461,6 @@ def _add_proposal_commands(commands: argparse._SubParsersAction) -> None:
     )
     result_parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT_SECONDS)
     result_parser.add_argument("--cwd")
-    attest_parser = commands.add_parser("attest-signed-commit", help=legacy_help("attest-signed-commit", "Attest a signed commit"))
-    add_path(attest_parser, "--package-root")
-    add_path(attest_parser, "--registry-root")
-    add_path(attest_parser, "--repo-root")
-    attest_parser.add_argument("--commit", required=True)
     ship_parser = commands.add_parser("ship-package", help="Attest, finalize and apply a verified package")
     add_path(ship_parser, "--package-root")
     add_path(ship_parser, "--registry-root")
@@ -494,11 +470,6 @@ def _add_proposal_commands(commands: argparse._SubParsersAction) -> None:
 
 
 def _add_proposal_check_commands(commands: argparse._SubParsersAction) -> None:
-    finalize_parser = commands.add_parser("finalize-proposal", help=legacy_help("finalize-proposal", "Finalize approval"))
-    add_path(finalize_parser, "--package-root")
-    add_path(finalize_parser, "--registry-root", required=False)
-    add_path(finalize_parser, "--repo-root", required=False)
-    finalize_parser.add_argument("--verification-token-env", default="GITHUB_TOKEN")
     package_validate_parser = commands.add_parser("validate-change-package", help="Validate a Change Package")
     add_path(package_validate_parser, "--package-root")
     add_path(package_validate_parser, "--registry-root", required=False)

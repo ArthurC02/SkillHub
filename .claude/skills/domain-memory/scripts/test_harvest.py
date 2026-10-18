@@ -139,7 +139,7 @@ class HarvestTest(RegistryTestCase):
     def test_the_command_refuses_a_pairing_not_written_candidate_equals_gold(self) -> None:
         result = self.run_cli("harvest-candidates", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
                               "--from-root", str(self.scratch), "--context-map", "commerce")
-        self.assertEqual((1, "ERROR: --context-map takes CANDIDATE=GOLD, got commerce"), (result.returncode, result.stdout.strip()))
+        self.assertEqual((1, "ERROR: --context-map takes CANDIDATE=GOLD, got commerce"), (result.returncode, result.stderr.strip()))
 
     def test_the_command_prints_what_it_harvested(self) -> None:
         self.extract(contexts=[{"id": "billing", "name": "Billing", "responsibility": "Bill."}])

@@ -9,7 +9,7 @@ from ..changes import list_proposals, packages_root
 
 def report_errors(errors: list[str], success_message: str) -> int:
     if errors:
-        print("\n".join(f"ERROR: {error}" for error in errors))
+        print("\n".join(f"ERROR: {error}" for error in errors), file=sys.stderr)
         return 1
     print(success_message)
     return 0
@@ -33,14 +33,14 @@ def note_unsettled(registry_root: Path) -> None:
     if pending:
         print(
             f"NOTE: {len(pending)} approved Change Package{'' if len(pending) == 1 else 's'} not applied: "
-            f"{', '.join(map(str, pending))}. Apply each with apply-approved-updates; retire one that cannot be "
+            f"{', '.join(map(str, pending))}. Apply each with ship-package; retire one that cannot be "
             "applied with supersede-proposal, and redraft-proposal carries its work into a new draft.",
             file=sys.stderr,
         )
 
 
 OUTSIDE_SOURCES_CONSEQUENCE = (
-    "A candidate may rest on it, but apply-approved-updates refuses to review a record whose evidence rests "
+    "A candidate may rest on it, but ship-package refuses to review a record whose evidence rests "
     "outside the confirmed sources; cite a source the corpus covers, or have the developer confirm this path "
     "before the record is reviewed."
 )

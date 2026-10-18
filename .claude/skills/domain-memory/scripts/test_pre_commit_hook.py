@@ -145,7 +145,7 @@ class PreCommitHookTest(RegistryTestCase):
         hook = self.install()
         self.stage("src/a.py", "changed\ntwo\n")
         environment = self.shims(
-            f'test "$2" = verify-evidence && {{ echo "ERROR: index unreadable"; exit 1; }}\nexec "{REAL_PYTHON}" "$@"'
+            f'test "$2" = verify-evidence && {{ echo "ERROR: index unreadable" >&2; exit 1; }}\nexec "{REAL_PYTHON}" "$@"'
         )
         result = self.commit_hook(hook, environment)
         self.assertEqual((1, f"ERROR: index unreadable\n{FULL_REPORT_OF_A}\n"), (result.returncode, result.stderr))

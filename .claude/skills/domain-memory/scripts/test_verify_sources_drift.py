@@ -325,8 +325,8 @@ class VerifySourcesDriftTest(RegistryTestCase):
             ),
             (
                 result.returncode,
-                result.stdout.strip(),
                 result.stderr.strip(),
+                result.stdout.strip(),
                 source_map_path.read_bytes(),
                 self.recorded_operations(),
             ),
@@ -348,7 +348,7 @@ class VerifySourcesDriftTest(RegistryTestCase):
                 bytes_before,
                 operations_before,
             ),
-            (result.returncode, result.stdout.strip(), source_map_path.read_bytes(), self.recorded_operations()),
+            (result.returncode, result.stderr.strip(), source_map_path.read_bytes(), self.recorded_operations()),
         )
 
 

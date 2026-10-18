@@ -15,7 +15,7 @@ STEPS_FROM = {"approved": (APPLY,), "applied": ()}
 ALREADY_APPLIED = "nothing to do here; if the applied Registry change is not committed yet, sign a commit holding it, then push"
 NEXT_STEPS = {
     "applied": "the Registry is updated; sign a commit holding the package and the Registry, then push",
-    "approved": "the proposal is approved but not applied; run apply-approved-updates, or ship-package again",
+    "approved": "the proposal is approved but not applied; run ship-package again",
     "verified": "the proposal is verified; ship-package --commit <the signed commit that carries the package>",
     "submitted": "the proposal is submitted again; correct what finalize named, verify-proposal, then ship-package",
 }

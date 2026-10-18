@@ -54,7 +54,7 @@ A field whose value the source does not show is left out, never filled with a pl
 
 Build each entry in `evidence` with `cite` rather than by hand.
 
-`upsert-candidate` writes every record as a candidate whatever the submitted file says, because the command exists for machine-written records and a machine does not decide that a record has been reviewed. A record becomes reviewed only through an approved Change Package applied by `apply-approved-updates`.
+`upsert-candidate` writes every record as a candidate whatever the submitted file says, because the command exists for machine-written records and a machine does not decide that a record has been reviewed. A record becomes reviewed only through an approved Change Package applied by `ship-package`.
 
 ## Concept files
 
@@ -86,6 +86,6 @@ sources:
 
 The frontmatter uses a subset of YAML: `key: value` lines, nested by two spaces, `- ` items, and values either plain or in double quotes. A hand edit that goes beyond it, such as single quotes or `[a, b]`, is refused with its line number.
 
-The supplied validator checks file shape, asset formats, status values, IDs, Context references, contract references, and optional structured evidence. Reviewed records must contain their type-specific fields, evidence, and `verified`, which `apply-approved-updates` writes from the approved Change Package. A record still holding an older `review` block is refused until `migrate-registry` refines it. Use `validate --require-reviewed` before a change may rely only on reviewed records. The validator cannot confirm that a definition, owner, rule, or approval is true; review those claims against their authority.
+The supplied validator checks file shape, asset formats, status values, IDs, Context references, contract references, and optional structured evidence. Reviewed records must contain their type-specific fields, evidence, and `verified`, which `ship-package` writes from the approved Change Package. A record still holding an older `review` block is refused until `migrate-registry` refines it. Use `validate --require-reviewed` before a change may rely only on reviewed records. The validator cannot confirm that a definition, owner, rule, or approval is true; review those claims against their authority.
 
 For a time-bound rule or contract, record an ISO-8601 effective range. For an unknown owner or date, record `unknown`; do not omit the field or substitute a technical implementer.

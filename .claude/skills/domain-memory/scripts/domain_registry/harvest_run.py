@@ -171,7 +171,7 @@ def _record(run: Harvest, rule: dict[str, Any], source_map: dict[str, Any]) -> d
     outside = unclassified_paths(classify_all({"evidence": evidence}, source_map))
     if outside:
         run.errors.append(
-            f"{rule['id']} cites {', '.join(outside)} outside the confirmed sources; apply-approved-updates would refuse "
+            f"{rule['id']} cites {', '.join(outside)} outside the confirmed sources; ship-package would refuse "
             "to review it, so confirm those sources first or cite others"
         )
         return None

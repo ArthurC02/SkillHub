@@ -241,7 +241,7 @@ class UpdatesAuditTest(RegistryTestCase):
             (1, "applied proposals have no apply-approved-updates event in the audit log: lost (LOST)", 1,
              "ERROR: git cannot resolve no-such-ref from"),
             (anchored.returncode, json.loads(anchored.stdout)["reason"], unresolved.returncode,
-             unresolved.stdout.strip().split(" from ")[0] + " from"),
+             unresolved.stderr.strip().split(" from ")[0] + " from"),
         )
 
     def committed_log(self, count: int) -> Path:

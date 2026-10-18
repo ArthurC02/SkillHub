@@ -299,7 +299,7 @@ class ReviewLifecycleTest(RegistryTestCase):
         signed = missing_attestation_message("git-signed-commit")
         self.assertIn("after the signed commit that adds this Change Package and changes the Domain Memory files exists", signed)
         self.assertIn('provider "git-signed-commit"', signed)
-        self.assertIn("run attest-signed-commit --commit", signed)
+        self.assertIn("run ship-package --commit", signed)
         self.assertNotIn("pull_request", signed)
         self.assertIn("names no review verifier", missing_attestation_message("none"))
 

@@ -321,13 +321,13 @@ class CompareCommandTest(RegistryTestCase):
         refused = self.run_cli(*arguments, "nosuch")
         self.assertEqual(
             (0, "NOTE: no candidate Context pairs with orders", 1, "ERROR: no Context nosuch in the gold Registry"),
-            (noted.returncode, noted.stderr.split(",")[0], refused.returncode, refused.stdout.strip()),
+            (noted.returncode, noted.stderr.split(",")[0], refused.returncode, refused.stderr.strip()),
         )
 
     def test_a_gold_commit_without_a_repository_root_is_refused(self) -> None:
         result = self.run_cli("compare-registry", "--gold-root", str(self.repo / "memory"), "--gold-commit", "HEAD",
                               "--candidate-root", str(self.repo / "memory"))
-        self.assertEqual((1, "ERROR: compare-registry --gold-commit needs --repo-root"), (result.returncode, result.stdout.strip()))
+        self.assertEqual((1, "ERROR: compare-registry --gold-commit needs --repo-root"), (result.returncode, result.stderr.strip()))
 
 
 if __name__ == "__main__":

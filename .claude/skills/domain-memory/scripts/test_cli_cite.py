@@ -56,7 +56,7 @@ class CliCiteTest(RegistryTestCase):
         self.assertEqual("unclassified", reference["source_kind"])
         self.assertEqual({"path", "lines", "content_sha256", "excerpt_sha256", "source_kind"}, set(reference))
         self.assertIn("db/queries.sql is outside the confirmed sources", result.stderr)
-        self.assertIn("apply-approved-updates refuses to review", result.stderr)
+        self.assertIn("ship-package refuses to review", result.stderr)
 
     def test_citing_a_selected_path_no_discovery_group_classifies_is_selected_and_silent(self) -> None:
         self.cited_file()
@@ -98,7 +98,7 @@ class CliCiteTest(RegistryTestCase):
                         ("--function", "f", "--lines", "1-2"), ("--function", "f", "--start", "1", "--end", "2"), ()):
             with self.subTest(options):
                 self.assertEqual("ERROR: cite takes --lines START-END, --start and --end, or --function NAME",
-                                 self.cite(*options).stdout.strip())
+                                 self.cite(*options).stderr.strip())
 
     def test_cite_finds_the_span_of_a_go_func_or_python_def_by_name(self) -> None:
         (self.repo / "total_test.go").write_text(
@@ -129,7 +129,7 @@ class CliCiteTest(RegistryTestCase):
             ("open.go", "Open", "ERROR: open.go: the body of Open starting on line 3 does not end; cite it with --lines"),
         ):
             with self.subTest(refusal):
-                self.assertEqual(refusal, self.cite("--path", path, "--function", name).stdout.strip())
+                self.assertEqual(refusal, self.cite("--path", path, "--function", name).stderr.strip())
 
     def test_output_lines_end_in_a_line_feed_on_every_platform(self) -> None:
         (self.repo / "notes.md").write_bytes(b"one\ntwo\nthree\n")
@@ -165,7 +165,7 @@ class CliCiteTest(RegistryTestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("files the confirmed source map does not cover: notes.md", result.stderr)
-        self.assertIn("apply-approved-updates refuses to review", result.stderr)
+        self.assertIn("ship-package refuses to review", result.stderr)
         self.assertEqual("Candidate record created.", result.stdout.strip())
 
     def upsert_with(self, **fields: object) -> subprocess.CompletedProcess:
@@ -204,7 +204,7 @@ class CliCiteTest(RegistryTestCase):
         self.pending_marker("superseded", applied=False)
         result = self.run_cli("recover-registry-update", "--registry-root", str(self.repo / "memory"))
         self.assertEqual(1, result.returncode)
-        self.assertIn("ERROR: a pending apply remains; rerun with --repo-root", result.stdout)
+        self.assertIn("ERROR: a pending apply remains; rerun with --repo-root", result.stderr)
         self.assertTrue(self.marker().exists())
 
     def test_recovery_with_a_repo_root_reconciles_a_pending_apply(self) -> None:
@@ -265,7 +265,7 @@ class CliCiteTest(RegistryTestCase):
                     "--asset", "rules", "--id", "rule", "--path", "src/a.py", *replace,
                 )
                 self.assertEqual(1, result.returncode, result.stdout)
-                self.assertIn("recite needs --lines, unless --replace names lines of the same file", result.stdout)
+                self.assertIn("recite needs --lines, unless --replace names lines of the same file", result.stderr)
 
     def test_reciting_lines_that_repeat_in_the_file_says_to_widen_them(self) -> None:
         self.cited_rule("reviewed", (2, 2))

@@ -61,7 +61,7 @@ class DependentsTest(RegistryTestCase):
         shown = self.run_cli("dependents", "--registry-root", str(self.repo / "memory"), "--asset", "rules", "--id", "tot")
         self.assertEqual(
             (1, "ERROR: rules record not found: tot; did you mean total?"),
-            (shown.returncode, shown.stdout.strip()),
+            (shown.returncode, shown.stderr.strip()),
         )
 
 

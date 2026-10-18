@@ -16,12 +16,9 @@ from ..changes import (
 from ..common import EVIDENCE_FILE, PROPOSAL_FILE, REQUIREMENT_FILE, load_json
 from ..evidence import citation, function_span
 from ..harvest import harvest_candidates
-from ..harvest_package import harvest_package, write_harvest_package
 from ..harvest_run import harvest
 from ..hitl import (
     ObligationRun,
-    attest_signed_commit,
-    finalize_proposal,
     record_approval,
     record_test_result,
     submit_proposal,
@@ -45,7 +42,6 @@ from ..ship import ship_package
 from ..transaction import recover_interrupted_update, transaction_path
 from ..updates import (
     add_promoted_evidence,
-    apply_approved_updates,
     demote_local_reviews,
     promote_candidate,
     reconcile_pending_update,
@@ -129,7 +125,7 @@ def _note_unplaced(registry_root: Path, repo_root: Path) -> None:
     if unplaced:
         print(
             f"NOTE: {', '.join(unplaced)} {'lies' if len(unplaced) == 1 else 'lie'} over no file in the repository; "
-            "a candidate may name code to come, and apply-approved-updates refuses to review it until code is there "
+            "a candidate may name code to come, and ship-package refuses to review it until code is there "
             "or the path is corrected.",
             file=sys.stderr,
         )
@@ -178,7 +174,7 @@ def handle_promote_candidate(args: argparse.Namespace) -> int:
         add_promoted_evidence(args.package_root.resolve(), args.asset, args.id, citations)
     print(
         f"{args.asset}/{args.id} is in registry_updates; "
-        "apply-approved-updates reviews it once the proposal is approved."
+        "ship-package reviews it once the proposal is approved."
     )
     if superseded is not None:
         print(f"NOTE: the package supersedes {superseded}, which reviewed it; change the record in registry_updates, "
@@ -219,17 +215,6 @@ def handle_upsert_candidate(args: argparse.Namespace) -> int:
     return 0
 
 
-def handle_fill_harvest_package(args: argparse.Namespace) -> int:
-    package_root = args.package_root.resolve()
-    documents = harvest_package(package_root, load_json(args.spec.resolve()))
-    if args.dry_run:
-        print_json(documents)
-        return 0
-    write_harvest_package(package_root, documents)
-    print(f"Filled {package_root} from the spec; submit-proposal validates it, or run validate-change-package first.")
-    return 0
-
-
 def handle_harvest_candidates(args: argparse.Namespace) -> int:
     context_map = {}
     for entry in args.context_map:
@@ -261,16 +246,6 @@ def _upsert_summary(count: int, created: int) -> str:
     return f"{count} candidate records written: {created} created, {count - created} updated."
 
 
-def handle_apply_approved_updates(args: argparse.Namespace) -> int:
-    apply_approved_updates(
-        args.package_root.resolve(),
-        args.registry_root.resolve(),
-        args.repo_root.resolve(),
-    )
-    print("Approved registry updates applied.")
-    return 0
-
-
 def handle_recover_registry_update(args: argparse.Namespace) -> int:
     root = args.registry_root.resolve()
     interrupted = transaction_path(root).is_file()
@@ -281,7 +256,7 @@ def handle_recover_registry_update(args: argparse.Namespace) -> int:
         print(f"Pending apply reconciled: {outcome}." if outcome else "No pending apply to reconcile.")
         return 0
     if reconciliation_path(root).is_file():
-        print("ERROR: a pending apply remains; rerun with --repo-root to reconcile it")
+        print("ERROR: a pending apply remains; rerun with --repo-root to reconcile it", file=sys.stderr)
         return 1
     return 0
 
@@ -346,32 +321,10 @@ def handle_record_test_result(args: argparse.Namespace) -> int:
     return 0
 
 
-def handle_attest_signed_commit(args: argparse.Namespace) -> int:
-    commit = attest_signed_commit(
-        args.package_root.resolve(), args.registry_root.resolve(), args.repo_root.resolve(),
-        args.commit,
-    )
-    print(f"Attested with signed commit {commit}.")
-    return 0
-
-
 def handle_ship_package(args: argparse.Namespace) -> int:
     report = ship_package(args.package_root, args.registry_root, args.repo_root, args.commit, args.verification_token_env)
     print_json(report)
     return 1 if report["errors"] else 0
-
-
-def handle_finalize_proposal(args: argparse.Namespace) -> int:
-    if args.registry_root is None or args.repo_root is None:
-        raise ValueError("finalize-proposal requires --registry-root and --repo-root")
-    finalize_proposal(
-        args.package_root.resolve(),
-        args.registry_root.resolve(),
-        args.repo_root.resolve(),
-        args.verification_token_env,
-    )
-    print("Proposal approved.")
-    return 0
 
 
 def _unchecked_at(status: str, package_root: Path) -> str:
@@ -456,11 +409,9 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "migrate-registry": handle_migrate_registry,
     "upsert-candidate": handle_upsert_candidate,
     "harvest-candidates": handle_harvest_candidates,
-    "fill-harvest-package": handle_fill_harvest_package,
     "harvest": handle_harvest,
     "retract-candidate": handle_retract_candidate,
     "promote-candidate": handle_promote_candidate,
-    "apply-approved-updates": handle_apply_approved_updates,
     "demote-local-reviews": handle_demote_local_reviews,
     "recover-registry-update": handle_recover_registry_update,
     "submit-proposal": handle_submit_proposal,
@@ -468,8 +419,6 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "supersede-proposal": handle_supersede_proposal,
     "verify-proposal": handle_verify_proposal,
     "record-test-result": handle_record_test_result,
-    "attest-signed-commit": handle_attest_signed_commit,
     "ship-package": handle_ship_package,
-    "finalize-proposal": handle_finalize_proposal,
     "validate-change-package": handle_validate_change_package,
 }

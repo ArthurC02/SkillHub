@@ -31,7 +31,7 @@ def harvest_package(package_root: Path, spec: dict[str, Any]) -> dict[str, dict[
     documents = {name: load_json(package_root / name) for name in PACKAGE_DOCUMENTS}
     proposal = documents[PROPOSAL_FILE]
     if proposal.get("status") != "draft":
-        raise ValueError(f"the package is {proposal.get('status')}; fill-harvest-package fills a draft")
+        raise ValueError(f"the package is {proposal.get('status')}; harvest --spec fills a draft")
     rules = _promoted_rules(proposal)
     if not rules:
         raise ValueError("the package promotes no rule; run promote-candidate for each harvested rule first")

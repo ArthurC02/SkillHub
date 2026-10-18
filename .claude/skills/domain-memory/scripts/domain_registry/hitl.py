@@ -248,7 +248,7 @@ def attest_signed_commit(root: Path, registry_root: Path, repo_root: Path, commi
     governance = review_governance(registry_root)
     if governance["verifier"] != "git-signed-commit":
         raise ValueError(
-            f"attest-signed-commit is for the git-signed-commit verifier; this policy uses "
+            f"--commit is for the git-signed-commit verifier; this policy uses "
             f"{governance['verifier']}"
         )
     proposal = load_json(proposal_path(root))
@@ -288,7 +288,7 @@ ATTESTATION_STEPS = {
     ),
     "git-signed-commit": (
         "after the signed commit that adds this Change Package and changes the Domain Memory files "
-        "exists, run attest-signed-commit --commit <that commit>; it checks the signature and the "
+        "exists, run ship-package --commit <that commit>; it checks the signature and the "
         'package, and writes scm_attestation with provider "git-signed-commit"'
     ),
 }

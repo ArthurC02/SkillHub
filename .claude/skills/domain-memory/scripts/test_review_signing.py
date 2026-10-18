@@ -40,15 +40,15 @@ class ReviewSigningTest(RegistryTestCase):
         outside = self.sign_a_commit_changing("src/c.txt")
         verify = ("verify-git-governance", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo))
         for given, stdin, expected in (
-            (("--stdin",), f"{first}\n{second}\n", (0, "Git governance is valid for 2 commits.")),
-            (("--commit", first), None, (0, "Git governance is valid for 1 commit.")),
+            (("--stdin",), f"{first}\n{second}\n", (0, "Git governance is valid for 2 commits.", "")),
+            (("--commit", first), None, (0, "Git governance is valid for 1 commit.", "")),
             (("--stdin",), f"{first}\n{outside}\n",
-             (1, f"ERROR: {outside}: Git commit does not change Domain Memory files")),
-            (("--stdin",), "", (1, "ERROR: no commit to verify")),
+             (1, "", f"ERROR: {outside}: Git commit does not change Domain Memory files")),
+            (("--stdin",), "", (1, "", "ERROR: no commit to verify")),
         ):
-            with self.subTest(expected[1]):
+            with self.subTest(expected[1] or expected[2]):
                 completed = self.run_cli(*verify, *given, stdin=stdin)
-                self.assertEqual(expected, (completed.returncode, completed.stdout.strip()))
+                self.assertEqual(expected, (completed.returncode, completed.stdout.strip(), completed.stderr.strip()))
         (self.repo / "memory" / "changes" / "a").mkdir(parents=True)
         (self.repo / "memory" / "changes" / "a" / "domain-change-proposal.json").write_text(
             json.dumps({"proposal_id": "PRO-a", "status": "approved"}), encoding="utf-8"

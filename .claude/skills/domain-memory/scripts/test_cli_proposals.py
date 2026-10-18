@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.changes import init_change_package, validate_change_package
 from domain_registry.evidence import citation
+from domain_registry.harvest_package import harvest_package, write_harvest_package
 from domain_registry.hitl import record_approval
 from test_support import RegistryTestCase, applied_by
 
@@ -81,7 +82,7 @@ class CliProposalsTest(RegistryTestCase):
                    "--asset", "rules", "--id", "order-total")
         for alone in (("--cite", "README.md:1-1"), ("--cite-function", "total_test.py:test_total")):
             with self.subTest(alone):
-                self.assertEqual("ERROR: --cite and --cite-function need --repo-root", self.run_cli(*promote, *alone).stdout.strip())
+                self.assertEqual("ERROR: --cite and --cite-function need --repo-root", self.run_cli(*promote, *alone).stderr.strip())
         cited = ("--repo-root", str(self.repo), "--cite", "README.md:1-1", "--cite", "README.md:1-1",
                  "--cite-function", "total_test.py:test_total")
         self.assertEqual(0, self.run_cli(*promote, *cited).returncode)
@@ -112,10 +113,18 @@ class CliProposalsTest(RegistryTestCase):
         path.write_text(json.dumps(spec), encoding="utf-8")
         return path
 
-    def fill(self, package: Path, spec: Path, *options: str) -> subprocess.CompletedProcess:
-        return self.run_cli("fill-harvest-package", "--package-root", str(package), "--spec", str(spec), *options)
+    def fill(self, package: Path, spec: Path, *, write: bool = True) -> dict:
+        documents = harvest_package(package, json.loads(spec.read_text(encoding="utf-8")))
+        if write:
+            write_harvest_package(package, documents)
+        return documents
 
-    def test_fill_harvest_package_maps_each_promoted_rule_to_a_criterion_an_obligation_and_its_counterfactual(self) -> None:
+    def fill_refusal(self, package: Path, spec: Path, *, write: bool = True) -> str:
+        with self.assertRaises(ValueError) as refused:
+            self.fill(package, spec, write=write)
+        return str(refused.exception)
+
+    def test_filling_a_harvest_package_maps_each_promoted_rule_to_a_criterion_an_obligation_and_its_counterfactual(self) -> None:
         package = self.draft_package()
         proposal_path = package / "domain-change-proposal.json"
         proposal_path.write_text(
@@ -126,11 +135,11 @@ class CliProposalsTest(RegistryTestCase):
             json.dumps({**json.loads(evidence_path.read_text(encoding="utf-8")), "test_results": []}), encoding="utf-8"
         )
         before = {path.name: path.read_bytes() for path in package.iterdir()}
-        dry = self.fill(package, self.harvest_spec(), "--dry-run")
-        self.assertEqual((0, before), (dry.returncode, {path.name: path.read_bytes() for path in package.iterdir()}))
-        self.assertEqual(0, self.fill(package, self.harvest_spec()).returncode)
+        dry = self.fill(package, self.harvest_spec(), write=False)
+        self.assertEqual(before, {path.name: path.read_bytes() for path in package.iterdir()})
+        self.fill(package, self.harvest_spec())
         written = {path.name: json.loads(path.read_text(encoding="utf-8")) for path in package.glob("*.json")}
-        self.assertEqual(json.loads(dry.stdout), {name: written[name] for name in json.loads(dry.stdout)})
+        self.assertEqual(dry, {name: written[name] for name in dry})
         requirement, obligations = written["requirement-normalization.json"], written["test-obligations.json"]
         proposal, evidence = written["domain-change-proposal.json"], written["evidence-bundle.json"]
         self.assertEqual(
@@ -156,7 +165,7 @@ class CliProposalsTest(RegistryTestCase):
              validate_change_package(package, None)),
         )
 
-    def test_fill_harvest_package_refuses_a_rule_it_cannot_show_proven_and_dry_run_refuses_alike(self) -> None:
+    def test_filling_a_harvest_package_refuses_a_rule_it_cannot_show_proven_and_a_dry_fill_refuses_alike(self) -> None:
         package = self.draft_package()
         killed = json.loads(self.harvest_spec().read_text(encoding="utf-8"))["rules"]["order-total"]["counterfactual"]
         for label, changes, refusal in (
@@ -172,30 +181,29 @@ class CliProposalsTest(RegistryTestCase):
              "rules.order-total: the counterfactual names obligation rule-other, not rule-order-total"),
         ):
             spec = self.harvest_spec(**changes)
-            for options in ((), ("--dry-run",)):
-                with self.subTest(label=label, options=options):
-                    result = self.fill(package, spec, *options)
-                    self.assertEqual((1, True), (result.returncode, refusal in result.stdout))
+            for write in (True, False):
+                with self.subTest(label=label, write=write):
+                    self.assertIn(refusal, self.fill_refusal(package, spec, write=write))
         spec = json.loads(self.harvest_spec().read_text(encoding="utf-8"))
         spec["rules"]["extra-rule"] = spec["rules"].pop("order-total")
         (self.repo / "spec.json").write_text(json.dumps(spec), encoding="utf-8")
         self.assertEqual(
-            "ERROR: the harvest spec cannot fill this package: rules.order-total is missing; "
+            "the harvest spec cannot fill this package: rules.order-total is missing; "
             "rules.extra-rule names a rule the package does not promote",
-            self.fill(package, self.repo / "spec.json").stdout.strip(),
+            self.fill_refusal(package, self.repo / "spec.json"),
         )
 
-    def test_fill_harvest_package_fills_only_a_draft_that_promotes_a_rule(self) -> None:
+    def test_filling_a_harvest_package_fills_only_a_draft_that_promotes_a_rule(self) -> None:
         package = self.draft_package()
         proposal_path = package / "domain-change-proposal.json"
         proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
         for status, updates, refusal in (
-            ("submitted", proposal["registry_updates"], "ERROR: the package is submitted; fill-harvest-package fills a draft"),
-            ("draft", [], "ERROR: the package promotes no rule; run promote-candidate for each harvested rule first"),
+            ("submitted", proposal["registry_updates"], "the package is submitted; harvest --spec fills a draft"),
+            ("draft", [], "the package promotes no rule; run promote-candidate for each harvested rule first"),
         ):
             with self.subTest(refusal):
                 proposal_path.write_text(json.dumps({**proposal, "status": status, "registry_updates": updates}), encoding="utf-8")
-                self.assertEqual(refusal, self.fill(package, self.harvest_spec()).stdout.strip())
+                self.assertEqual(refusal, self.fill_refusal(package, self.harvest_spec()))
 
     def test_get_record_looks_for_packages_beside_the_registry_only_for_rules_and_contracts(self) -> None:
         self.seed("rules.json", [{"id": "r", "contexts": ["orders"], "statement": "x"}])
@@ -254,7 +262,7 @@ class CliProposalsTest(RegistryTestCase):
         self.assertEqual(
             (0, "Registry is valid.",
              "NOTE: contexts/billing implementation_path src/billing, contexts/orders implementation_path src/orders lie "
-             "over no file in the repository; a candidate may name code to come, and apply-approved-updates refuses to "
+             "over no file in the repository; a candidate may name code to come, and ship-package refuses to "
              "review it until code is there or the path is corrected."),
             (validated.returncode, validated.stdout.strip(), validated.stderr.strip()),
         )
@@ -328,13 +336,13 @@ class CliProposalsTest(RegistryTestCase):
         validate = ("validate", "--registry-root", str(self.repo / "memory"))
         validated = self.run_cli(*validate)
         self.assertEqual(
-            (0, "Registry is valid.", "NOTE: 2 approved Change Packages not applied: PRO-a, PRO-c. Apply each with apply-approved-updates; retire one that cannot be applied with supersede-proposal, and redraft-proposal carries its work into a new draft."),
+            (0, "Registry is valid.", "NOTE: 2 approved Change Packages not applied: PRO-a, PRO-c. Apply each with ship-package; retire one that cannot be applied with supersede-proposal, and redraft-proposal carries its work into a new draft."),
             (validated.returncode, validated.stdout.strip(), validated.stderr.strip()),
         )
         (changes / "c" / "domain-change-proposal.json").write_text(
             json.dumps({"proposal_id": "PRO-c", "status": "superseded"}), encoding="utf-8"
         )
-        self.assertEqual("NOTE: 1 approved Change Package not applied: PRO-a. Apply each with apply-approved-updates; retire one that cannot be applied with supersede-proposal, and redraft-proposal carries its work into a new draft.", self.run_cli(*validate).stderr.strip())
+        self.assertEqual("NOTE: 1 approved Change Package not applied: PRO-a. Apply each with ship-package; retire one that cannot be applied with supersede-proposal, and redraft-proposal carries its work into a new draft.", self.run_cli(*validate).stderr.strip())
         (changes / "a" / "domain-change-proposal.json").write_text(
             json.dumps({"proposal_id": "PRO-a", "status": "applied"}), encoding="utf-8"
         )

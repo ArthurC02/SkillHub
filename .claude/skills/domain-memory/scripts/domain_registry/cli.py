@@ -16,7 +16,7 @@ def main() -> int:
     try:
         return execute(args)
     except (ValueError, OSError) as error:
-        print(f"ERROR: {error}")
+        print(f"ERROR: {error}", file=sys.stderr)
         return 1
 
 

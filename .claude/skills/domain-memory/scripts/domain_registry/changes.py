@@ -773,7 +773,7 @@ def unconfirmed_evidence_errors(proposal: dict[str, Any], registry_root: Path) -
         if outside:
             errors.append(
                 f"{update.asset}/{update.record_id} cites {', '.join(outside)} outside the confirmed sources, so "
-                "apply-approved-updates would refuse to review it; cite a confirmed source, or have the developer "
+                "ship-package would refuse to review it; cite a confirmed source, or have the developer "
                 "select that path"
             )
     return errors

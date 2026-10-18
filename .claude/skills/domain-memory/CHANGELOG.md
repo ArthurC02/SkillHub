@@ -2,6 +2,17 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.0.0
+
+### Changed
+
+- A refusal prints `ERROR: <reason>` on stderr instead of stdout, with the same text and exit 1, so stdout carries only a command's output and a host no longer has to parse refusals out of the data. This covers the `ERROR:` lines of `validate`, `validate-policy`, `validate-change-package`, `verify-scm-attestation`, `verify-git-governance` and `recover-registry-update` too. The pre-commit hook no longer re-prints a captured `ERROR:` line, since it already reaches the terminal.
+- Messages that told the user to run a removed command now name its replacement: "Apply each with ship-package", "run ship-package again", "run ship-package --commit <that commit>", "harvest --spec fills a draft", and the apply step's refusals read "ship-package refuses to review".
+
+### Removed
+
+- `fill-harvest-package`, `attest-signed-commit`, `finalize-proposal` and `apply-approved-updates`, legacy since 0.83.0, are gone. Use `harvest --spec <file>` for the first and `ship-package` (with `--commit <sha>` for a signed commit) for the other three. The names are now an unknown-command usage error. Audit events and `ship-package`'s step names keep the old names, because committed Registries hold those events and `verify-audit` reads them.
+
 ## 0.96.0
 
 ### Fixed

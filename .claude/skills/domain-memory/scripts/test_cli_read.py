@@ -44,7 +44,7 @@ class CliReadTest(RegistryTestCase):
             "upsert-candidate", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
             "--asset", "rules", "--record-file", str(missing),
         )
-        self.assertEqual((1, f"ERROR: no such record file: {missing.resolve()}"), (result.returncode, result.stdout.strip()))
+        self.assertEqual((1, f"ERROR: no such record file: {missing.resolve()}"), (result.returncode, result.stderr.strip()))
 
     def test_the_probe_on_a_root_one_level_too_deep_names_the_likely_root(self) -> None:
         self.committed_source_map()
@@ -63,7 +63,7 @@ class CliReadTest(RegistryTestCase):
         result = self.run_cli("init-change-package", "--output", str(occupied))
         self.assertEqual(1, result.returncode)
         self.assertNotIn("Traceback", result.stdout + result.stderr)
-        self.assertTrue(result.stdout.startswith("ERROR: "), result.stdout)
+        self.assertTrue(result.stderr.startswith("ERROR: "), result.stderr)
 
     def test_export_prints_every_asset_document_by_asset_name(self) -> None:
         rule = {"id": "order-total", "statement": "An order total is never negative.", "status": "candidate"}
@@ -100,7 +100,7 @@ class CliReadTest(RegistryTestCase):
             with self.subTest(label):
                 result = self.run_cli("export", "--registry-root", root, *extra)
                 self.assertEqual(1, result.returncode)
-                self.assertEqual(message, result.stdout.strip())
+                self.assertEqual(message, result.stderr.strip())
 
     def test_a_committed_json_asset_that_is_not_json_is_named(self) -> None:
         use_json_layout(self.repo / "memory")
@@ -109,7 +109,7 @@ class CliReadTest(RegistryTestCase):
         result = self.run_cli("export", "--registry-root", str(self.repo / "memory"),
                               "--repo-root", str(self.repo), "--commit", "HEAD")
         self.assertEqual(1, result.returncode)
-        self.assertTrue(result.stdout.startswith("ERROR: memory/registry/rules.json is not JSON: "), result.stdout)
+        self.assertTrue(result.stderr.startswith("ERROR: memory/registry/rules.json is not JSON: "), result.stderr)
 
     def test_the_module_entry_point_runs_the_command_instead_of_exiting_quietly(
         self,
@@ -213,10 +213,17 @@ class CliReadTest(RegistryTestCase):
              "ERROR: rules record not found: one-live-account-per-mail; did you mean one-live-account-per-email?",
              "ERROR: context not found: billing",
              "ERROR: rules record not found: one-live; did you mean one-live-account-per-email?"],
-            [self.run_cli("get-context", "--registry-root", memory, "--id", "evals").stdout.strip(),
-             self.run_cli("get-record", "--registry-root", memory, "--asset", "rules", "--id", "one-live-account-per-mail").stdout.strip(),
-             self.run_cli("get-context", "--registry-root", memory, "--id", "billing").stdout.strip(),
-             self.run_cli("get-record", "--registry-root", memory, "--asset", "rules", "--id", "one-live").stdout.strip()],
+            [self.run_cli("get-context", "--registry-root", memory, "--id", "evals").stderr.strip(),
+             self.run_cli("get-record", "--registry-root", memory, "--asset", "rules", "--id", "one-live-account-per-mail").stderr.strip(),
+             self.run_cli("get-context", "--registry-root", memory, "--id", "billing").stderr.strip(),
+             self.run_cli("get-record", "--registry-root", memory, "--asset", "rules", "--id", "one-live").stderr.strip()],
+        )
+
+    def test_a_refusal_prints_its_error_on_stderr_and_nothing_on_stdout(self) -> None:
+        self.seed("rules.json", [{"id": "order-total", "contexts": ["orders"], "statement": "x"}])
+        result = self.run_cli("get-record", "--registry-root", str(self.repo / "memory"), "--asset", "rules", "--id", "nothing")
+        self.assertEqual(
+            (1, "", "ERROR: rules record not found: nothing\n"), (result.returncode, result.stdout, result.stderr)
         )
 
     def test_get_record_says_a_candidate_has_no_proving_obligation_yet(self) -> None:
