@@ -14,6 +14,18 @@ Use a Domain Change Proposal for a material change, as [the seven-step workflow]
 
 A proposal in any status other than `rejected` or `superseded` may be superseded. Withdrawing it silently, or editing a submitted proposal back into a draft, destroys what the package exists to carry: why a conclusion was reached and why it stopped holding. The superseded record keeps the status it died in, the reason, and the replacement.
 
-Record each approval with the reviewer role, reviewer identity, timestamp, scope, proposal revision, and base Registry revision. `record-approval` rejects self-approval and duplicate approval of the same revision. The base revision contains the observed Git HEAD, the digest of the Registry as submitted against, and `committed_digest`, the digest of the Registry that commit holds, for the concurrency check. When the submitted-against digest has changed, verification, finalization and application rebuild the base Registry from that commit, and accept the Proposal only if the rebuilt Registry reproduces `committed_digest` (or, for a base without `committed_digest`, the submitted-against digest) and the policy, the manifest, every asset outside its records, the records the Proposal removes and the records those name are unchanged, and each record the Proposal writes is unchanged or is the Proposal's own record as stored. Anything else is refused as stale, naming what changed; `rebase-proposal` restamps the Proposal on the current Registry and retires its approvals, so it is approved, verified and signed again. An unrelated Git commit, another Proposal's apply or another Proposal's drafts therefore do not invalidate it. Application installs against the digest it just compared, so a write in between is still refused, and its audit event records the revision it applied on top of, with the Proposal's base beside it when they differ.
+Record each approval with the reviewer role, reviewer identity, timestamp, scope, proposal revision, and base Registry revision. `record-approval` rejects self-approval and duplicate approval of the same revision.
+
+The base revision and the stale check:
+
+- The base revision contains the observed Git HEAD, the digest of the Registry as submitted against, and `committed_digest`, the digest of the Registry that commit holds, for the concurrency check.
+- When the submitted-against digest has changed, verification, finalization and application rebuild the base Registry from that commit, and accept the Proposal only if both of these hold:
+  - the rebuilt Registry reproduces `committed_digest` (or, for a base without `committed_digest`, the submitted-against digest), and the policy, the manifest, every asset outside its records, the records the Proposal removes and the records those name are unchanged;
+  - each record the Proposal writes is unchanged or is the Proposal's own record as stored.
+- Anything else is refused as stale, naming what changed; `rebase-proposal` restamps the Proposal on the current Registry and retires its approvals, so it is approved, verified and signed again.
+- An unrelated Git commit, another Proposal's apply or another Proposal's drafts therefore do not invalidate it.
+- Application installs against the digest it just compared, so a write in between is still refused, and its audit event records the revision it applied on top of, with the Proposal's base beside it when they differ.
+
+`ship-package` classifies the citations of each promoted record against the selected sources, and refuses a record citing a path outside them, since a reviewed fact rests on a corpus a developer confirmed.
 
 The Skill prepares proposals and identifies required review. It must not fabricate approval, treat a comment as approval, or bypass repository, CI, change-management, or deployment controls.

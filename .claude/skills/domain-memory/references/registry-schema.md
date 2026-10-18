@@ -36,7 +36,15 @@ An Interaction's `consistency`, and a Change Package's `boundary_decision.consis
 
 A Context's abilities live in the Capability asset, one record each, not in a field on the Context: one fact with two homes drifts, and only the asset can carry its own evidence and status.
 
-A Context may say where it lives and what it owns in the surrounding process. `subdomain` is one of `core`, `supporting` or `generic`, the strategic classification that decides how much the boundary is worth defending; a shared kernel is not a kind of Context but a relationship between two, recorded as `relationship: shared-kernel` on their Interaction. `implementation_path` is the directory its code occupies, such as `apps/platform/internal/trial/execution`; a file belongs to it when that directory sequence occurs anywhere among the file's directories, so `internal/trial/execution` owns the same files, and `validate --repo-root` refuses a reviewed Context's path under which no repository file lies and notes a candidate's; two Contexts may not claim the same path or a path inside another's, because code belongs to one Context, while sibling directories that merely share a name prefix do not overlap. `requirement_prefixes` lists the requirement-ID prefixes the Context owns. All three are optional; a Registry that does not track code layout omits them.
+A Context may say where it lives and what it owns in the surrounding process:
+
+- `subdomain` is one of `core`, `supporting` or `generic`, the strategic classification that decides how much the boundary is worth defending; a shared kernel is not a kind of Context but a relationship between two, recorded as `relationship: shared-kernel` on their Interaction.
+- `implementation_path` is the directory its code occupies, such as `apps/platform/internal/trial/execution`; a file belongs to it when that directory sequence occurs anywhere among the file's directories, so `internal/trial/execution` owns the same files.
+- `validate --repo-root` refuses a reviewed Context's path under which no repository file lies and notes a candidate's.
+- Two Contexts may not claim the same path or a path inside another's, because code belongs to one Context, while sibling directories that merely share a name prefix do not overlap.
+- `requirement_prefixes` lists the requirement-ID prefixes the Context owns.
+
+All three are optional; a Registry that does not track code layout omits them.
 
 A field whose value the source does not show is left out, never filled with a placeholder or a guess; the validator asks for what a reviewed record needs.
 
