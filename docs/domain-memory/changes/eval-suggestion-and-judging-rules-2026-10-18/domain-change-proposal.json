@@ -1,0 +1,550 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "eval-suggestion-and-judging-rules-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "eval-suggestion-and-judging-rules-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-18T09:23:44.291523Z",
+  "verified_at": "2026-10-18T09:26:27.998684Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "5f6c1cf5df83083265cf4a5d4bf8d332bb42dfb7",
+    "registry_digest": "sha256:817bff3e2a64221d502fe23a6a0f2a36e2a03f7ace6f12bac020b37f5619ef56"
+  },
+  "affected_contexts": [
+    "eval"
+  ],
+  "rule_ids": [
+    "at-most-ten-suggestions-are-stored-per-evaluation",
+    "no-model-call-without-citable-evidence",
+    "a-quote-under-twelve-runes-cannot-be-suggestion-evidence",
+    "the-suggestion-digest-lists-only-criteria-that-did-not-pass",
+    "info-findings-are-kept-out-of-the-suggestion-digest",
+    "a-repeated-suggestion-id-in-an-apply-counts-once",
+    "every-applied-suggestion-must-be-accepted",
+    "a-suggestion-of-another-evaluation-cannot-be-applied-through-this-one",
+    "suggestions-apply-only-through-their-evaluated-skill",
+    "two-suggestions-on-one-file-are-both-refused",
+    "nothing-applicable-builds-no-version",
+    "rebuilding-an-existing-version-records-its-suggestion-provenance",
+    "a-pass-is-never-recorded-on-incomplete-evidence",
+    "the-judge-sees-at-most-twenty-criteria-and-says-the-list-was-cut"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "eval",
+    "invariant": "Only eval decides what a suggestion may cite and when accepted suggestions become a version.",
+    "evidence": [
+      "apps/platform/internal/trial/improvement/apply.go:429-438"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: the suggester and the version builder reach eval through injected ports.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/improvement/suggest.go:43-53"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A second extraction of the eval Context found enforced rules beyond the nine the Registry held, several guarded by no test."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; add the missing tests; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording the unchanged-content guard in check(): the later empty-diff guard blocks with the same reason, so its mutation is equivalent.",
+      "Recording the met-run gate before the suggester call: a met verdict has every criterion passed, so with only informational findings the digest has nothing to cite and the zero-evidence gate already stops the call; weakening the gate alone changes nothing."
+    ],
+    "proof_obligations": [
+      "rule-at-most-ten-suggestions-are-stored-per-evaluation",
+      "rule-no-model-call-without-citable-evidence",
+      "rule-a-quote-under-twelve-runes-cannot-be-suggestion-evidence",
+      "rule-the-suggestion-digest-lists-only-criteria-that-did-not-pass",
+      "rule-info-findings-are-kept-out-of-the-suggestion-digest",
+      "rule-a-repeated-suggestion-id-in-an-apply-counts-once",
+      "rule-every-applied-suggestion-must-be-accepted",
+      "rule-a-suggestion-of-another-evaluation-cannot-be-applied-through-this-one",
+      "rule-suggestions-apply-only-through-their-evaluated-skill",
+      "rule-two-suggestions-on-one-file-are-both-refused",
+      "rule-nothing-applicable-builds-no-version",
+      "rule-rebuilding-an-existing-version-records-its-suggestion-provenance",
+      "rule-a-pass-is-never-recorded-on-incomplete-evidence",
+      "rule-the-judge-sees-at-most-twenty-criteria-and-says-the-list-was-cut"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "at-most-ten-suggestions-are-stored-per-evaluation",
+        "statement": "At most ten suggestions are stored for one evaluation; the rest are counted as dropped over the cap.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Twelve citable proposals store ten."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/suggest.go",
+            "lines": {
+              "start": 88,
+              "end": 91
+            },
+            "excerpt_sha256": "sha256:85ba48174c542f26f84bccf90af9a35dbad8d47c9553bf114cd392c234ccda6d"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/suggest_store_test.go",
+            "lines": {
+              "start": 68,
+              "end": 91
+            },
+            "excerpt_sha256": "sha256:bcb532ca76e65f5584a0db7bc6ce6cd65d193490a2fdb5e8d6a85c16ee1bb677"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "no-model-call-without-citable-evidence",
+        "statement": "When the verdict yields no citable evidence, suggestions are not requested and nothing is paid.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A not_met run whose findings carry no evidence makes no suggester call."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/suggest.go",
+            "lines": {
+              "start": 47,
+              "end": 53
+            },
+            "excerpt_sha256": "sha256:d465ec824cbe401b649e2a8d1661ca968bb9ee7b79f3e9f5bac6e82c34d337cc"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/suggest_store_test.go",
+            "lines": {
+              "start": 26,
+              "end": 38
+            },
+            "excerpt_sha256": "sha256:2276cdfd212d6e93c68a6ff6efca7ce36e4683f9a19b37543c16d93591e4c1c3"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-quote-under-twelve-runes-cannot-be-suggestion-evidence",
+        "statement": "A quote shorter than twelve characters cannot be matched to a verified excerpt as suggestion evidence.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Evidence \"e\" inside a verified excerpt is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/suggest.go",
+            "lines": {
+              "start": 187,
+              "end": 195
+            },
+            "excerpt_sha256": "sha256:64284e90acc16f59b195d0fac8bf1736d25a8bcf733e58297bfaad3590e95feb"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/suggest_test.go",
+            "lines": {
+              "start": 137,
+              "end": 170
+            },
+            "excerpt_sha256": "sha256:0b9735a84efbd2a96dfcaebd5ac1a0d96d3f6c45b2e6e194da60fdc95a2b2365"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-suggestion-digest-lists-only-criteria-that-did-not-pass",
+        "statement": "Passed criteria are left out of the suggestion digest, so their evidence cannot be cited for an improvement.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A passed criterion's excerpt is not in the digest."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/suggest.go",
+            "lines": {
+              "start": 254,
+              "end": 262
+            },
+            "excerpt_sha256": "sha256:b0d6d3a34ace3aa0d3a099f355ed83da0e955f044dc51599f8d8f088f4ed1c1a"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/suggest_store_test.go",
+            "lines": {
+              "start": 40,
+              "end": 66
+            },
+            "excerpt_sha256": "sha256:cc73bb66b0ceba6f8a592c4371428aaa668b34c26d71026d79d8b3fc1f4cde87"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "info-findings-are-kept-out-of-the-suggestion-digest",
+        "statement": "Informational findings are left out of the suggestion digest, so a disclosure cannot be quoted as proof of a problem.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "An info finding's excerpt is not in the digest."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/suggest.go",
+            "lines": {
+              "start": 268,
+              "end": 274
+            },
+            "excerpt_sha256": "sha256:0fcc239e2b9a7844b2e22c59ed8eeed66bab19404458f5da21329eb72f50d81d"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/suggest_store_test.go",
+            "lines": {
+              "start": 40,
+              "end": 66
+            },
+            "excerpt_sha256": "sha256:cc73bb66b0ceba6f8a592c4371428aaa668b34c26d71026d79d8b3fc1f4cde87"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-repeated-suggestion-id-in-an-apply-counts-once",
+        "statement": "An apply request that names the same suggestion twice applies it once.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "suggestion_ids [S, S] builds one version."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 471,
+              "end": 476
+            },
+            "excerpt_sha256": "sha256:4d58676a58d5382ee2a60a538a9892c8f630ccf020c22c5c8b401d99daf83dc5"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+            "lines": {
+              "start": 299,
+              "end": 366
+            },
+            "excerpt_sha256": "sha256:8f66fb5513b7ce1e8945797c22a28e9f52f91ceb9ac5999ba4fc973c8747856b"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "every-applied-suggestion-must-be-accepted",
+        "statement": "Applying a suggestion that is not accepted is refused, naming it, and no version is built.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Applying a pending suggestion answers 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 486,
+              "end": 488
+            },
+            "excerpt_sha256": "sha256:9bbf91046f9f69865287efad08cd2c4941a369faacf5fd8e1ab7f2178e95d2a3"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+            "lines": {
+              "start": 299,
+              "end": 366
+            },
+            "excerpt_sha256": "sha256:8f66fb5513b7ce1e8945797c22a28e9f52f91ceb9ac5999ba4fc973c8747856b"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-suggestion-of-another-evaluation-cannot-be-applied-through-this-one",
+        "statement": "A suggestion that belongs to another evaluation is not found when applied through this one.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Suggestion of evaluation E1 posted with E2 answers 404."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 477,
+              "end": 482
+            },
+            "excerpt_sha256": "sha256:60af0f4ad1dc8b9d63b511db3c49b512d853327b31db7bc1d30647b890cb0dd1"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggestion_apply_characterization_test.go",
+            "lines": {
+              "start": 44,
+              "end": 67
+            },
+            "excerpt_sha256": "sha256:6147934408299054a3ba62ce6962f2500ec7e8ab2019aa32c3cbd13df2fd53a2"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "suggestions-apply-only-through-their-evaluated-skill",
+        "statement": "Suggestions apply only under the skill their evaluation ran; another skill's id is not found.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Applying under an unrelated skill answers 404 and creates no version."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 456,
+              "end": 463
+            },
+            "excerpt_sha256": "sha256:f40bf094cb7ca02a90a92de8e08ee6b09264b869e2b46627be8b6915b70a3d09"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+            "lines": {
+              "start": 716,
+              "end": 742
+            },
+            "excerpt_sha256": "sha256:ea15402b78021d61301a03809502e700423868f826147fdf406d29108d07e332"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "two-suggestions-on-one-file-are-both-refused",
+        "statement": "When two selected suggestions target the same file, both are refused rather than the last one winning.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Two replacements of SKILL.md answer 422 listing both, and no version is built."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 518,
+              "end": 534
+            },
+            "excerpt_sha256": "sha256:5621af201592434ce12d84fafafe4a63300abc4d633bd0dbde5ab52624cc16b4"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+            "lines": {
+              "start": 565,
+              "end": 626
+            },
+            "excerpt_sha256": "sha256:f6b83c3c2e5ccdddf06bfdad1f67e9c4d9eeb2dad40b5887c395522d562d532d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "nothing-applicable-builds-no-version",
+        "statement": "When every selected suggestion is blocked, the apply returns the rejections and builds no version.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "All suggestions blocked answers 422 and the version count is unchanged."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 434,
+              "end": 438
+            },
+            "excerpt_sha256": "sha256:e3edd4f60510e178b0fadaeeb3d21b925c279aa5d2ebb6acaf898e79ef43ff10"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+            "lines": {
+              "start": 565,
+              "end": 626
+            },
+            "excerpt_sha256": "sha256:f6b83c3c2e5ccdddf06bfdad1f67e9c4d9eeb2dad40b5887c395522d562d532d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "rebuilding-an-existing-version-records-its-suggestion-provenance",
+        "statement": "When applying suggestions rebuilds an existing version, the suggestions are recorded against that version.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Restoring an earlier text records the suggestion as applied to the earlier version."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 584,
+              "end": 588
+            },
+            "excerpt_sha256": "sha256:11f3853cc4c76fd9536b1d730ca1fba76e0bca42a1c176af31d38b489d26fa7c"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+            "lines": {
+              "start": 470,
+              "end": 526
+            },
+            "excerpt_sha256": "sha256:54d0b65ca0cf0d1d222e01b4d2110a758fbc6439e45e37d80a9963a5a945d5f8"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-pass-is-never-recorded-on-incomplete-evidence",
+        "statement": "A passed criterion is recorded as undetermined when the trace is incomplete, the input was cut, or the evidence rests on a trimmed source.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A judge pass on a run with trace gaps is stored undetermined."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/judging/judge.go",
+            "lines": {
+              "start": 306,
+              "end": 310
+            },
+            "excerpt_sha256": "sha256:545cd336e59db78beb013d83b95a0ca4c680d69eb6537dfbc97c1460313bc81b"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/judging/judge_test.go",
+            "lines": {
+              "start": 450,
+              "end": 479
+            },
+            "excerpt_sha256": "sha256:3aec672df7d96812cf79d496b6062eda7ffb4b42779064c768349c7517953678"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-judge-sees-at-most-twenty-criteria-and-says-the-list-was-cut",
+        "statement": "The judge is sent at most twenty criteria, and a longer list is marked as cut so no pass rests on it.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A snapshot with 25 criteria sends 20 and records the cut."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/judging/judge.go",
+            "lines": {
+              "start": 118,
+              "end": 125
+            },
+            "excerpt_sha256": "sha256:59be6f055e55721da287d8349e952186618fda91203ee5a33373bf30691cc412"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/judging/judge_test.go",
+            "lines": {
+              "start": 780,
+              "end": 801
+            },
+            "excerpt_sha256": "sha256:b1ba9088cc6e00ea4ed4f657725e179c2cfbc5a87cacd539090828305d60ce1a"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-18T09:26:27.855880Z",
+      "scope": "Record eval suggestion and judging rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "5f6c1cf5df83083265cf4a5d4bf8d332bb42dfb7",
+        "registry_digest": "sha256:817bff3e2a64221d502fe23a6a0f2a36e2a03f7ace6f12bac020b37f5619ef56"
+      }
+    }
+  ]
+}

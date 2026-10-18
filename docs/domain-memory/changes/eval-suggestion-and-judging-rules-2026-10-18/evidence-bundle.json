@@ -1,0 +1,267 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "eval-suggestion-and-judging-rules-2026-10-18",
+  "proposal_id": "eval-suggestion-and-judging-rules-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "5f6c1cf5df83083265cf4a5d4bf8d332bb42dfb7",
+    "registry_digest": "sha256:817bff3e2a64221d502fe23a6a0f2a36e2a03f7ace6f12bac020b37f5619ef56"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-at-most-ten-suggestions-are-stored-per-evaluation",
+      "mutated_protection": "apps/platform/internal/trial/improvement/suggest.go:88: if stored == maxSuggestionsStore { -> if stored == maxSuggestionsStore+1 {",
+      "failure_evidence": "=== RUN   TestAtMostTenSuggestionsAreStoredPerEvaluation\n2026/10/18 17:16:50 INFO improvement proposals evaluation_id=3c2b2783-1400-4863-a4e0-eb9aba0f79bb proposed=12 stored=11 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=1\n    suggest_store_test.go:89: stored 11 of 12 suggestions, want 10\n--- FAIL: TestAtMostTenSuggestionsAreStoredPerEvaluation (0.16s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement\t5.093s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-no-model-call-without-citable-evidence",
+      "mutated_protection": "apps/platform/internal/trial/improvement/suggest.go:49: if len(refs) == 0 { -> if len(refs) < 0 {",
+      "failure_evidence": "=== RUN   TestNoSuggesterCallWithoutCitableEvidence\n2026/10/18 17:17:10 INFO improvement proposals evaluation_id=\"\" proposed=0 stored=0 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    suggest_store_test.go:36: suggester called 1 times for a verdict with nothing to cite, want 0\n--- FAIL: TestNoSuggesterCallWithoutCitableEvidence (0.06s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement\t4.721s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-quote-under-twelve-runes-cannot-be-suggestion-evidence",
+      "mutated_protection": "apps/platform/internal/trial/improvement/suggest.go:192: utf8.RuneCountInString(s) >= minQuoteRunes -> utf8.RuneCountInString(s) >= 1",
+      "failure_evidence": "=== RUN   TestSuggestionEvidenceIsAlwaysMintedByThePlatform\n    suggest_test.go:163: a generic one-character substring must not become evidence: [{\"kind\":\"trace_event\",\"trace_event_id\":\"0f0a1e6c-1c9a-4f8e-9a2b-1d5a2c7b3e01\",\"excerpt\":\"tool_call bash exited 1\",\"excerpt_truncated\":false,\"available\":true}]\n--- FAIL: TestSuggestionEvidenceIsAlwaysMintedByThePlatform (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement\t4.612s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-suggestion-digest-lists-only-criteria-that-did-not-pass",
+      "mutated_protection": "apps/platform/internal/trial/improvement/suggest.go:255: if r.Result == verdict.ResultPassed { -> if r.Result == verdict.ResultPassed && false {",
+      "failure_evidence": "=== RUN   TestTheDigestLeavesOutPassedCriteriaAndInfoFindings\n    suggest_store_test.go:59: allowlist = [{Kind:agent_output Match: ReattributedFrom: TraceEventID: OccurredAt: ArtifactPath: ByteRange:<nil> CharRange:<nil> Excerpt:the passed criterion quoted this line ExcerptTruncated:false Available:true} {Kind:agent_output Match: ReattributedFrom: TraceEventID: OccurredAt: ArtifactPath: ByteRange:<nil> CharRange:<nil> Excerpt:bash exited 1 while writing output.xlsx ExcerptTruncated:false Available:true}], want only the failed criterion's excerpt\n--- FAIL: TestTheDigestLeavesOutPassedCriteriaAndInfoFindings (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement\t6.799s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-info-findings-are-kept-out-of-the-suggestion-digest",
+      "mutated_protection": "apps/platform/internal/trial/improvement/suggest.go:269: if f.Severity == verdict.SeverityInfo { -> if f.Severity == verdict.SeverityInfo && false {",
+      "failure_evidence": "=== RUN   TestTheDigestLeavesOutPassedCriteriaAndInfoFindings\n    suggest_store_test.go:59: allowlist = [{Kind:agent_output Match: ReattributedFrom: TraceEventID: OccurredAt: ArtifactPath: ByteRange:<nil> CharRange:<nil> Excerpt:bash exited 1 while writing output.xlsx ExcerptTruncated:false Available:true} {Kind:agent_output Match: ReattributedFrom: TraceEventID: OccurredAt: ArtifactPath: ByteRange:<nil> CharRange:<nil> Excerpt:an informational finding quoted this one ExcerptTruncated:false Available:true}], want only the failed criterion's excerpt\n--- FAIL: TestTheDigestLeavesOutPassedCriteriaAndInfoFindings (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement\t3.460s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-repeated-suggestion-id-in-an-apply-counts-once",
+      "mutated_protection": "apps/platform/internal/trial/improvement/apply.go:473: if seenIDs[idText] { -> if seenIDs[idText] && false {",
+      "failure_evidence": "=== RUN   TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone\n2026/10/18 17:18:19 WARN improvement proposal has no matching verified evidence evaluation_id=45e761a5-6dd6-4394-a3a1-bcf241b4afe7 category=skill quote_runes=1 candidate_refs=1 quote_head=x\n2026/10/18 17:18:19 WARN improvement proposal has no matching verified evidence evaluation_id=45e761a5-6dd6-4394-a3a1-bcf241b4afe7 category=mcp quote_runes=1 candidate_refs=1 quote_head=x\n2026/10/18 17:18:19 INFO improvement proposals evaluation_id=45e761a5-6dd6-4394-a3a1-bcf241b4afe7 proposed=3 stored=1 dropped_no_evidence=2 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    suggestion_integration_test.go:338: apply: got 422 (not one of the suggestions could be applied, so no version was created)\n--- FAIL: TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone (0.34s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.391s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-every-applied-suggestion-must-be-accepted",
+      "mutated_protection": "apps/platform/internal/trial/improvement/apply.go:486: if Decision(sug.Decision) != DecisionAccepted { -> if Decision(sug.Decision) != DecisionAccepted && false {",
+      "failure_evidence": "=== RUN   TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone\n2026/10/18 17:18:29 WARN improvement proposal has no matching verified evidence evaluation_id=26cafcff-c619-4cd5-a4f6-f1488ec47098 category=skill quote_runes=1 candidate_refs=1 quote_head=x\n2026/10/18 17:18:29 WARN improvement proposal has no matching verified evidence evaluation_id=26cafcff-c619-4cd5-a4f6-f1488ec47098 category=mcp quote_runes=1 candidate_refs=1 quote_head=x\n2026/10/18 17:18:29 INFO improvement proposals evaluation_id=26cafcff-c619-4cd5-a4f6-f1488ec47098 proposed=3 stored=1 dropped_no_evidence=2 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    suggestion_integration_test.go:322: applying a pending suggestion: got 201 ()\n--- FAIL: TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone (0.34s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.647s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-suggestion-of-another-evaluation-cannot-be-applied-through-this-one",
+      "mutated_protection": "apps/platform/internal/trial/improvement/apply.go:480: (err == nil && sug.EvaluationID != evaluationID) -> (err == nil && sug.EvaluationID != evaluationID && false)",
+      "failure_evidence": "=== RUN   TestASuggestionFromAnotherEvaluationOfTheSameWorkspaceIsNotFound\n2026/10/18 17:18:54 INFO improvement proposals evaluation_id=99b00ee7-f834-49f7-a175-b114db5e59c1 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n2026/10/18 17:18:54 INFO improvement proposals evaluation_id=7273bf03-6bc7-4cbf-8c19-cc6ff02894a0 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    suggestion_apply_characterization_test.go:62: applying another evaluation's suggestion: got 422 {SkillID: VersionID: VersionNumber:0 ContentHash: Duplicate:false AppliedSuggestionIDs:[] RejectedSuggestions:[{SuggestionID:18e7de92-1a9d-483e-9baf-ad92fce83e6b BlockedReason:validation_blocked Message:with these changes applied the package no longer passes import validation}] Error:not one of the suggestions could be applied, so no version was created}, want 404 and no version\n--- FAIL: TestASuggestionFromAnotherEvaluationOfTheSameWorkspaceIsNotFound (0.51s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.526s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-suggestions-apply-only-through-their-evaluated-skill",
+      "mutated_protection": "apps/platform/internal/trial/improvement/apply.go:460: if base.skill.ID != skillID { -> if base.skill.ID != skillID && false {",
+      "failure_evidence": "=== RUN   TestApplyingSuggestionsAgainstAnUnrelatedSkillIsNotFound\n2026/10/18 17:19:20 INFO improvement proposals evaluation_id=15bce023-0749-49c5-984f-6711119ea8ee proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    suggestion_integration_test.go:737: apply with a skill the evaluation does not belong to: got 422, want 404\n--- FAIL: TestApplyingSuggestionsAgainstAnUnrelatedSkillIsNotFound (0.47s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.848s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-two-suggestions-on-one-file-are-both-refused",
+      "mutated_protection": "apps/platform/internal/trial/improvement/apply.go:528: if targetCounts[target] > 1 { -> if targetCounts[target] > 1 && false {",
+      "failure_evidence": "=== RUN   TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot\n2026/10/18 17:19:50 INFO improvement proposals evaluation_id=90d8ed13-7320-4d5d-88f1-bd13a5602b18 proposed=2 stored=2 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    suggestion_integration_test.go:597: apply competing replacements: got 201 ()\n--- FAIL: TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot (0.45s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.974s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-nothing-applicable-builds-no-version",
+      "mutated_protection": "apps/platform/internal/trial/improvement/apply.go:436: if len(plan.patches) == 0 { -> if len(plan.patches) < 0 {",
+      "failure_evidence": "=== RUN   TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot\n2026/10/18 17:20:08 INFO improvement proposals evaluation_id=6658632c-c44f-41ba-a71a-7d6abfd656cc proposed=2 stored=2 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    suggestion_integration_test.go:597: apply competing replacements: got 201 ()\n--- FAIL: TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot (0.78s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t12.548s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-rebuilding-an-existing-version-records-its-suggestion-provenance",
+      "mutated_protection": "apps/platform/internal/trial/improvement/apply.go:584: if res.Duplicate { -> if res.Duplicate && false {",
+      "failure_evidence": "=== RUN   TestSuggestionsThatRebuildAnExistingVersionAreRecordedAgainstThatVersion\n2026/10/18 17:20:32 INFO improvement proposals evaluation_id=dfe8104a-779b-4b23-93f3-69433553fecd proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n2026/10/18 17:20:32 INFO improvement proposals evaluation_id=29063100-61d2-4fca-91bc-3da699cb4341 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n2026/10/18 17:20:32 INFO improvement proposals evaluation_id=b1ee4da4-74d5-4305-ac3b-2ad84b62a90b proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    suggestion_integration_test.go:523: suggestion fe8ee3fc-3953-4fb1-8b96-cc2700a2dac1 applied_skill_version_id = \"\", want the version it rebuilt, \"625b565e-a677-46a4-9087-9230ff751f7c\"\n--- FAIL: TestSuggestionsThatRebuildAnExistingVersionAreRecordedAgainstThatVersion (0.74s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.855s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-pass-is-never-recorded-on-incomplete-evidence",
+      "mutated_protection": "apps/platform/internal/trial/improvement/judging/judge.go:306: if m.CannotRecordPass(result.Result) || -> if false && m.CannotRecordPass(result.Result) ||",
+      "failure_evidence": "=== RUN   TestAPassIsRefusedWhenTheEvidenceCouldBeIncomplete\n    judge_test.go:463: a trace with holes cannot support a pass (丙-1), got \"passed\"\n--- FAIL: TestAPassIsRefusedWhenTheEvidenceCouldBeIncomplete (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/judging\t3.270s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-judge-sees-at-most-twenty-criteria-and-says-the-list-was-cut",
+      "mutated_protection": "apps/platform/internal/trial/improvement/judging/judge.go:120: if len(criteria) == maxCriteria { -> if len(criteria) == maxCriteria+1 {",
+      "failure_evidence": "=== RUN   TestTheJudgeSeesAtMostTwentyCriteriaAndSaysTheListWasCut\n    judge_test.go:798: 21 criteria: sent 21, cut=false; want 20 sent, cut=true\n--- FAIL: TestTheJudgeSeesAtMostTwentyCriteriaAndSaysTheListWasCut (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/judging\t2.843s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/suggestion_apply_characterization_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+    "apps/platform/internal/trial/improvement/apply.go",
+    "apps/platform/internal/trial/improvement/judging/judge.go",
+    "apps/platform/internal/trial/improvement/judging/judge_test.go",
+    "apps/platform/internal/trial/improvement/suggest.go",
+    "apps/platform/internal/trial/improvement/suggest_store_test.go",
+    "apps/platform/internal/trial/improvement/suggest_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-at-most-ten-suggestions-are-stored-per-evaluation",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAtMostTenSuggestionsAreStoredPerEvaluation$ ./internal/trial/improvement/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:1e3ac9dc5da2c8081cd0062442ab6184089e05081f0611387e99ec9482fdbf0a",
+      "finished_at": "2026-10-18T09:23:52.157157Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-no-model-call-without-citable-evidence",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestNoSuggesterCallWithoutCitableEvidence$ ./internal/trial/improvement/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:335ec1a0cdc707492574112a1fe632787ac08fe68b50da301b0a34c4cd014bbe",
+      "finished_at": "2026-10-18T09:24:09.401607Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-quote-under-twelve-runes-cannot-be-suggestion-evidence",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestSuggestionEvidenceIsAlwaysMintedByThePlatform$ ./internal/trial/improvement/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4c5de3677d6724f06eb1a2ffe481d782598b2f146388f4d48abb05557141b793",
+      "finished_at": "2026-10-18T09:24:18.351084Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-the-suggestion-digest-lists-only-criteria-that-did-not-pass",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheDigestLeavesOutPassedCriteriaAndInfoFindings$ ./internal/trial/improvement/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:58935fdc50a432bd013f632564ea357b5ea15a15912f92bda95ac1004898bdd9",
+      "finished_at": "2026-10-18T09:24:26.877579Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-info-findings-are-kept-out-of-the-suggestion-digest",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheDigestLeavesOutPassedCriteriaAndInfoFindings$ ./internal/trial/improvement/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:02dfe03c635b07b399b0b088ee49f10e77797d6a83c318ef23806c978e0e2a8f",
+      "finished_at": "2026-10-18T09:24:37.540057Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-repeated-suggestion-id-in-an-apply-counts-once",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4e7eb3157070812083827fc26981aa1b899f6ad96eb8764907723d1899a59800",
+      "finished_at": "2026-10-18T09:24:48.117117Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-every-applied-suggestion-must-be-accepted",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e7106a389b6339c2d65b596a38b514353b73d781b519f50767ce6039f234d8dc",
+      "finished_at": "2026-10-18T09:25:11.100583Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-suggestion-of-another-evaluation-cannot-be-applied-through-this-one",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestASuggestionFromAnotherEvaluationOfTheSameWorkspaceIsNotFound$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:fbdf16fade2979b5547086f3e57d2b29ed0f1556b4627803ebcb78ab68bbee10",
+      "finished_at": "2026-10-18T09:25:21.224920Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-suggestions-apply-only-through-their-evaluated-skill",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestApplyingSuggestionsAgainstAnUnrelatedSkillIsNotFound$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ce5d41de2a1ada312348e6016673fb68cdc77d7b4f698e259866d734828c2be9",
+      "finished_at": "2026-10-18T09:25:33.275738Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-two-suggestions-on-one-file-are-both-refused",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:d89aff6e8e21da3bd1f1df6a8c602fc623884f5f88b7791753e59aea547547c5",
+      "finished_at": "2026-10-18T09:25:53.913858Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-nothing-applicable-builds-no-version",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:06eb812b0003e6c6eba9c70c20c6ed3d024bdc0ed6e221957ba034b92e332072",
+      "finished_at": "2026-10-18T09:26:04.926313Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-rebuilding-an-existing-version-records-its-suggestion-provenance",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestSuggestionsThatRebuildAnExistingVersionAreRecordedAgainstThatVersion$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:7a03131117f068762cbde3f62af3ab50fe87b530738abacc79dbcf3bcd9bddc1",
+      "finished_at": "2026-10-18T09:26:16.789234Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-pass-is-never-recorded-on-incomplete-evidence",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAPassIsRefusedWhenTheEvidenceCouldBeIncomplete$ ./internal/trial/improvement/judging/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:0ac5dc18c49c1bd84823937af01f3b9e0b6f79791e8b20bf23da7595ea85746d",
+      "finished_at": "2026-10-18T09:26:22.359178Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-the-judge-sees-at-most-twenty-criteria-and-says-the-list-was-cut",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheJudgeSeesAtMostTwentyCriteriaAndSaysTheListWasCut$ ./internal/trial/improvement/judging/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:0bdfc0e89104269a966cd5334527977624f5c57edf9ae08cae59ef96d802b4f8",
+      "finished_at": "2026-10-18T09:26:27.838854Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

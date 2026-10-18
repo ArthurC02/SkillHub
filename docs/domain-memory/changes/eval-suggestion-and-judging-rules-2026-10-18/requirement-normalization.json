@@ -1,0 +1,80 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "eval-suggestion-and-judging-rules-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed the suggestion request, digest, apply and judging rules the eval Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context eval lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-at-most-ten-suggestions-are-stored-per-evaluation",
+      "statement": "At most ten suggestions are stored for one evaluation; the rest are counted as dropped over the cap."
+    },
+    {
+      "id": "enforced-no-model-call-without-citable-evidence",
+      "statement": "When the verdict yields no citable evidence, suggestions are not requested and nothing is paid."
+    },
+    {
+      "id": "enforced-a-quote-under-twelve-runes-cannot-be-suggestion-evidence",
+      "statement": "A quote shorter than twelve characters cannot be matched to a verified excerpt as suggestion evidence."
+    },
+    {
+      "id": "enforced-the-suggestion-digest-lists-only-criteria-that-did-not-pass",
+      "statement": "Passed criteria are left out of the suggestion digest, so their evidence cannot be cited for an improvement."
+    },
+    {
+      "id": "enforced-info-findings-are-kept-out-of-the-suggestion-digest",
+      "statement": "Informational findings are left out of the suggestion digest, so a disclosure cannot be quoted as proof of a problem."
+    },
+    {
+      "id": "enforced-a-repeated-suggestion-id-in-an-apply-counts-once",
+      "statement": "An apply request that names the same suggestion twice applies it once."
+    },
+    {
+      "id": "enforced-every-applied-suggestion-must-be-accepted",
+      "statement": "Applying a suggestion that is not accepted is refused, naming it, and no version is built."
+    },
+    {
+      "id": "enforced-a-suggestion-of-another-evaluation-cannot-be-applied-through-this-one",
+      "statement": "A suggestion that belongs to another evaluation is not found when applied through this one."
+    },
+    {
+      "id": "enforced-suggestions-apply-only-through-their-evaluated-skill",
+      "statement": "Suggestions apply only under the skill their evaluation ran; another skill's id is not found."
+    },
+    {
+      "id": "enforced-two-suggestions-on-one-file-are-both-refused",
+      "statement": "When two selected suggestions target the same file, both are refused rather than the last one winning."
+    },
+    {
+      "id": "enforced-nothing-applicable-builds-no-version",
+      "statement": "When every selected suggestion is blocked, the apply returns the rejections and builds no version."
+    },
+    {
+      "id": "enforced-rebuilding-an-existing-version-records-its-suggestion-provenance",
+      "statement": "When applying suggestions rebuilds an existing version, the suggestions are recorded against that version."
+    },
+    {
+      "id": "enforced-a-pass-is-never-recorded-on-incomplete-evidence",
+      "statement": "A passed criterion is recorded as undetermined when the trace is incomplete, the input was cut, or the evidence rests on a trimmed source."
+    },
+    {
+      "id": "enforced-the-judge-sees-at-most-twenty-criteria-and-says-the-list-was-cut",
+      "statement": "The judge is sent at most twenty criteria, and a longer list is marked as cut so no pass rests on it."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/suggestion_apply_characterization_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+    "apps/platform/internal/trial/improvement/apply.go",
+    "apps/platform/internal/trial/improvement/judging/judge.go",
+    "apps/platform/internal/trial/improvement/judging/judge_test.go",
+    "apps/platform/internal/trial/improvement/suggest.go",
+    "apps/platform/internal/trial/improvement/suggest_store_test.go",
+    "apps/platform/internal/trial/improvement/suggest_test.go"
+  ]
+}

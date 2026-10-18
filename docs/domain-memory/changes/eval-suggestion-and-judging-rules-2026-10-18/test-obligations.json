@@ -1,0 +1,217 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "eval-suggestion-and-judging-rules-2026-10-18",
+  "proposal_id": "eval-suggestion-and-judging-rules-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-at-most-ten-suggestions-are-stored-per-evaluation",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-at-most-ten-suggestions-are-stored-per-evaluation",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "at-most-ten-suggestions-are-stored-per-evaluation"
+        }
+      ],
+      "expected_outcome": "At most ten suggestions are stored for one evaluation; the rest are counted as dropped over the cap.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAtMostTenSuggestionsAreStoredPerEvaluation$ ./internal/trial/improvement/"
+    },
+    {
+      "id": "rule-no-model-call-without-citable-evidence",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-no-model-call-without-citable-evidence",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "no-model-call-without-citable-evidence"
+        }
+      ],
+      "expected_outcome": "When the verdict yields no citable evidence, suggestions are not requested and nothing is paid.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestNoSuggesterCallWithoutCitableEvidence$ ./internal/trial/improvement/"
+    },
+    {
+      "id": "rule-a-quote-under-twelve-runes-cannot-be-suggestion-evidence",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-quote-under-twelve-runes-cannot-be-suggestion-evidence",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-quote-under-twelve-runes-cannot-be-suggestion-evidence"
+        }
+      ],
+      "expected_outcome": "A quote shorter than twelve characters cannot be matched to a verified excerpt as suggestion evidence.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestSuggestionEvidenceIsAlwaysMintedByThePlatform$ ./internal/trial/improvement/"
+    },
+    {
+      "id": "rule-the-suggestion-digest-lists-only-criteria-that-did-not-pass",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-suggestion-digest-lists-only-criteria-that-did-not-pass",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-suggestion-digest-lists-only-criteria-that-did-not-pass"
+        }
+      ],
+      "expected_outcome": "Passed criteria are left out of the suggestion digest, so their evidence cannot be cited for an improvement.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheDigestLeavesOutPassedCriteriaAndInfoFindings$ ./internal/trial/improvement/"
+    },
+    {
+      "id": "rule-info-findings-are-kept-out-of-the-suggestion-digest",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-info-findings-are-kept-out-of-the-suggestion-digest",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "info-findings-are-kept-out-of-the-suggestion-digest"
+        }
+      ],
+      "expected_outcome": "Informational findings are left out of the suggestion digest, so a disclosure cannot be quoted as proof of a problem.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheDigestLeavesOutPassedCriteriaAndInfoFindings$ ./internal/trial/improvement/"
+    },
+    {
+      "id": "rule-a-repeated-suggestion-id-in-an-apply-counts-once",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-repeated-suggestion-id-in-an-apply-counts-once",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-repeated-suggestion-id-in-an-apply-counts-once"
+        }
+      ],
+      "expected_outcome": "An apply request that names the same suggestion twice applies it once.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-every-applied-suggestion-must-be-accepted",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-every-applied-suggestion-must-be-accepted",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "every-applied-suggestion-must-be-accepted"
+        }
+      ],
+      "expected_outcome": "Applying a suggestion that is not accepted is refused, naming it, and no version is built.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-suggestion-of-another-evaluation-cannot-be-applied-through-this-one",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-suggestion-of-another-evaluation-cannot-be-applied-through-this-one",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-suggestion-of-another-evaluation-cannot-be-applied-through-this-one"
+        }
+      ],
+      "expected_outcome": "A suggestion that belongs to another evaluation is not found when applied through this one.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestASuggestionFromAnotherEvaluationOfTheSameWorkspaceIsNotFound$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-suggestions-apply-only-through-their-evaluated-skill",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-suggestions-apply-only-through-their-evaluated-skill",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "suggestions-apply-only-through-their-evaluated-skill"
+        }
+      ],
+      "expected_outcome": "Suggestions apply only under the skill their evaluation ran; another skill's id is not found.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestApplyingSuggestionsAgainstAnUnrelatedSkillIsNotFound$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-two-suggestions-on-one-file-are-both-refused",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-two-suggestions-on-one-file-are-both-refused",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "two-suggestions-on-one-file-are-both-refused"
+        }
+      ],
+      "expected_outcome": "When two selected suggestions target the same file, both are refused rather than the last one winning.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-nothing-applicable-builds-no-version",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-nothing-applicable-builds-no-version",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "nothing-applicable-builds-no-version"
+        }
+      ],
+      "expected_outcome": "When every selected suggestion is blocked, the apply returns the rejections and builds no version.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-rebuilding-an-existing-version-records-its-suggestion-provenance",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-rebuilding-an-existing-version-records-its-suggestion-provenance",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "rebuilding-an-existing-version-records-its-suggestion-provenance"
+        }
+      ],
+      "expected_outcome": "When applying suggestions rebuilds an existing version, the suggestions are recorded against that version.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestSuggestionsThatRebuildAnExistingVersionAreRecordedAgainstThatVersion$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-pass-is-never-recorded-on-incomplete-evidence",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-pass-is-never-recorded-on-incomplete-evidence",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-pass-is-never-recorded-on-incomplete-evidence"
+        }
+      ],
+      "expected_outcome": "A passed criterion is recorded as undetermined when the trace is incomplete, the input was cut, or the evidence rests on a trimmed source.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAPassIsRefusedWhenTheEvidenceCouldBeIncomplete$ ./internal/trial/improvement/judging/"
+    },
+    {
+      "id": "rule-the-judge-sees-at-most-twenty-criteria-and-says-the-list-was-cut",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-judge-sees-at-most-twenty-criteria-and-says-the-list-was-cut",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-judge-sees-at-most-twenty-criteria-and-says-the-list-was-cut"
+        }
+      ],
+      "expected_outcome": "The judge is sent at most twenty criteria, and a longer list is marked as cut so no pass rests on it.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheJudgeSeesAtMostTwentyCriteriaAndSaysTheListWasCut$ ./internal/trial/improvement/judging/"
+    }
+  ]
+}
