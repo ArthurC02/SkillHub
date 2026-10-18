@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.94.0
+
+### Changed
+
+- The command handlers are split by theme into a `domain_registry/commands/` package (`read`, `evidence`, `lifecycle`, `governance`, plus the helpers two themes share in `common`), and `cli_parser.py` registers its commands in the same four themes; a test holds each parser theme to exactly the commands whose handlers its module holds. `cli_commands.py` stays as the façade that merges them, so nothing that imports it changed. Behaviour and `--help` output are unchanged; the only visible difference is the order of command names in argparse's "invalid choice" error. The two hook installers resolve `registry_tools.py` from their new depth, and a test runs both and checks the hook's `tool=` line.
+
 ## 0.93.0
 
 ### Changed

@@ -15,7 +15,7 @@ The suite takes several minutes. While working on one area, run its file from `s
 
 ## How the code is laid out
 
-`scripts/registry_tools.py` is the only entry point. It calls `cli.main`, which builds the parser in `cli_parser.py` and dispatches to one `handle_*` function in `cli_commands.py`. A handler turns arguments into calls and prints the result; the rules belong in the modules below, all in `scripts/domain_registry/`:
+`scripts/registry_tools.py` is the only entry point. It calls `cli.main`, which builds the parser in `cli_parser.py` and dispatches to one `handle_*` function from `commands/read.py`, `commands/evidence.py`, `commands/lifecycle.py` or `commands/governance.py`, merged by the `cli_commands.py` façade. A handler turns arguments into calls and prints the result; the rules belong in the modules below, all in `scripts/domain_registry/`:
 
 | Module | Owns |
 | --- | --- |

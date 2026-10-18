@@ -5,8 +5,24 @@ import re
 import unittest
 from pathlib import Path
 
-from domain_registry.cli_parser import COMMAND_GROUPS, LEGACY_REPLACEMENTS, build_parser
+from domain_registry.cli_parser import (
+    COMMAND_GROUPS,
+    LEGACY_REPLACEMENTS,
+    _add_evidence_commands,
+    _add_governance_commands,
+    _add_lifecycle_commands,
+    _add_read_commands,
+    build_parser,
+)
+from domain_registry.commands import evidence, governance, lifecycle, read
 from test_support import RegistryTestCase
+
+THEMES = {
+    "read": (read, _add_read_commands),
+    "evidence": (evidence, _add_evidence_commands),
+    "lifecycle": (lifecycle, _add_lifecycle_commands),
+    "governance": (governance, _add_governance_commands),
+}
 
 REFERENCE = Path(__file__).parents[1] / "references" / "script-api.md"
 TABLE_HEADINGS = {"## Everyday commands": "everyday", "## Advanced commands": "advanced", "## Legacy commands": "legacy"}
@@ -16,6 +32,12 @@ ROW = re.compile(r"^\| [^|`]+? \| `([a-z][a-z-]*)")
 def parsed_commands() -> list[str]:
     [subcommands] = [action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)]
     return list(subcommands.choices)
+
+
+def registered_by(add_commands) -> list[str]:
+    subcommands = argparse.ArgumentParser().add_subparsers()
+    add_commands(subcommands)
+    return sorted(subcommands.choices)
 
 
 def documented_groups() -> dict[str, set[str]]:
@@ -36,6 +58,30 @@ class CommandGroupsTest(RegistryTestCase):
             ([], sorted(parsed_commands())),
             (sorted({name for name in members if members.count(name) > 1}), sorted(members)),
         )
+
+    def test_each_parser_theme_registers_exactly_the_commands_its_handler_module_holds(self) -> None:
+        self.assertEqual(
+            {theme: sorted(module.HANDLERS) for theme, (module, _) in THEMES.items()},
+            {theme: registered_by(add_commands) for theme, (_, add_commands) in THEMES.items()},
+        )
+
+    def test_every_parsed_command_has_a_handler_in_exactly_one_theme_module(self) -> None:
+        held = [command for module, _ in THEMES.values() for command in module.HANDLERS]
+        self.assertEqual(
+            ([], sorted(parsed_commands())),
+            (sorted({command for command in held if held.count(command) > 1}), sorted(held)),
+        )
+
+    def test_each_hook_installing_command_points_the_hook_at_the_entry_script(self) -> None:
+        (self.repo / ".git" / "hooks").mkdir(parents=True, exist_ok=True)
+        entry_script = (Path(__file__).resolve().parent / "registry_tools.py").as_posix()
+        for command, hook_name in (("install-git-hitl-hook", "pre-push"), ("install-pre-commit-hook", "pre-commit")):
+            result = self.run_cli(command, "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo))
+            hook = self.repo / ".git" / "hooks" / hook_name
+            self.assertEqual(
+                (0, f"tool='{entry_script}'"),
+                (result.returncode, hook.read_text(encoding="utf-8").splitlines()[2]),
+            )
 
     def test_each_command_is_documented_only_in_the_table_of_its_group(self) -> None:
         self.assertEqual(
