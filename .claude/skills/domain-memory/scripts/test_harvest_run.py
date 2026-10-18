@@ -10,7 +10,7 @@ from domain_registry.changes import init_change_package, validate_change_package
 from domain_registry.common import load_json, write_json
 from domain_registry.counterfactual import counterfactual_suite
 from domain_registry.evidence import citation
-from domain_registry.harvest_run import harvest, spec_errors
+from domain_registry.harvest_run import discard_harvest, harvest, spec_errors
 from domain_registry.registry import record_by_id
 from domain_registry.sources import selected_source_map, write_source_map
 from domain_registry.updates import promote_candidate
@@ -433,6 +433,17 @@ class HarvestTest(RegistryTestCase):
             (result.returncode, json.loads(result.stdout), event["operation"], event["retracted"], event["kept"],
              (self.repo / PACKAGE).exists(), record_by_id(self.repo / "memory", "rules", RULE_ID)["status"],
              record_by_id(self.repo / "memory", "rules", SECOND_RULE_ID), self.audit_lines()[-2]["operation"]),
+        )
+
+    def test_discard_harvest_while_another_writer_holds_the_lock_keeps_the_package_and_writes_no_event(self) -> None:
+        package = self.repo / PACKAGE
+        init_change_package(package, "orders-length-rule", "orders-length-rule", "someone")
+        events = len(self.audit_lines())
+        (self.repo / "memory" / ".domain-registry.lock").mkdir()
+        with self.assertRaisesRegex(ValueError, "^another Domain Registry update is in progress: "):
+            discard_harvest(package, self.repo / "memory", self.repo, "the harvest is abandoned")
+        self.assertEqual(
+            (True, events), ((package / "domain-change-proposal.json").is_file(), len(self.audit_lines()))
         )
 
     def test_discard_harvest_keeps_a_draft_another_package_names(self) -> None:

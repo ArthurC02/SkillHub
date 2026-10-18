@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -32,6 +31,7 @@ from ..sources import (
     verify_against_discovery,
     write_source_map,
 )
+from ..transaction import remove_tree
 from .common import OUTSIDE_SOURCES_CONSEQUENCE, print_json
 
 
@@ -217,32 +217,29 @@ def handle_init_domain_memory(args: argparse.Namespace) -> int:
         raise ValueError("output must be inside the repository")
     selected = sources_under(repo_root, args.source)
     preliminary = selected_source_map(repo_root, selected)
+    init_registry(output)
     try:
-        init_registry(output)
-    except FileExistsError as error:
-        raise ValueError(error) from error
-    write_policy(
-        output,
-        preliminary,
-        args.storage_mode,
-        args.data_classification,
-        args.review_mode,
-        args.source_authority,
-        args.include or ["**"],
-        args.exclude or [],
-        {
-            "verifier": args.review_verifier or "none",
-            "trigger": args.review_trigger or "none",
-            "ci_requirement": args.ci_requirement,
-            "authorized_signers": args.authorized_signer or [],
-        },
-    )
-    try:
+        write_policy(
+            output,
+            preliminary,
+            args.storage_mode,
+            args.data_classification,
+            args.review_mode,
+            args.source_authority,
+            args.include or ["**"],
+            args.exclude or [],
+            {
+                "verifier": args.review_verifier or "none",
+                "trigger": args.review_trigger or "none",
+                "ci_requirement": args.ci_requirement,
+                "authorized_signers": args.authorized_signer or [],
+            },
+        )
         source_map = selected_source_map(
             repo_root, selected, load_json(policy_path(output))
         )
     except ValueError:
-        shutil.rmtree(output)
+        remove_tree(output)
         raise
     write_source_map(output / "source-map.json", source_map)
     print(

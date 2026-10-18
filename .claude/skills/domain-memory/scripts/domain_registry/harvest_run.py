@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shutil
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -14,6 +13,7 @@ from .evidence import citation, classified, function_span, source_map_for
 from .harvest_package import OBLIGATIONS_FILE, harvest_package, obligation_of, write_harvest_package
 from .hitl import ObligationRun, record_approval, record_test_result, same_command, submit_proposal, verify_proposal
 from .registry import as_stored, is_reviewed, record_by_id
+from .transaction import remove_tree
 from .updates import add_promoted_evidence, promote_candidate, retract_candidate, upsert_candidate
 
 FORMAT = "domain-memory-harvest/v1"
@@ -435,10 +435,10 @@ def discard_harvest(package_root: Path, registry_root: Path, repo_root: Path, re
             continue
         retract_candidate(registry_root, repo_root, asset, record_id, reason)
         retracted.append(f"{asset}/{record_id}")
-    shutil.rmtree(package_root)
     event = {"operation": "discard-harvest", "package": shown, "retracted": retracted, "kept": kept, "reason": reason.strip()}
     with writer_lock(registry_root):
         append_locked(registry_root, event)
+        remove_tree(package_root)
     return event
 
 

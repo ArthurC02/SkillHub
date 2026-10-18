@@ -11,7 +11,13 @@ from urllib.parse import quote, urlparse
 
 HTTP_NOT_FOUND = 404
 
-from .common import EVIDENCE_FILE, PROPOSAL_FILE, completed_identifier, load_json
+from .common import (
+    EVIDENCE_FILE,
+    GIT_COMMAND_TIMEOUT_SECONDS,
+    PROPOSAL_FILE,
+    completed_identifier,
+    load_json,
+)
 from .revision import valid_commit
 
 
@@ -82,7 +88,7 @@ def _pull_request_state(
 def _pull_request_error(pull: Any, commit: Any) -> str | None:
     if not isinstance(pull, dict) or pull.get("state") != "closed" or not pull.get("merged_at"):
         return "SCM pull request is not merged"
-    if pull.get("head", {}).get("sha") != commit:
+    if (pull.get("head") or {}).get("sha") != commit:
         return "SCM pull request head does not match the attested commit"
     return None
 
@@ -92,7 +98,7 @@ def _has_current_approval(reviews: list[Any]) -> bool:
     for review in reviews:
         if not isinstance(review, dict):
             continue
-        user = review.get("user", {}).get("login")
+        user = (review.get("user") or {}).get("login")
         state = review.get("state")
         if isinstance(user, str) and isinstance(state, str):
             latest_reviews[user] = state
@@ -136,6 +142,7 @@ def _git(repo_root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", "-C", str(repo_root), *arguments],
         capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
+        timeout=GIT_COMMAND_TIMEOUT_SECONDS,
     )
 
 
@@ -278,7 +285,7 @@ def _read_objects(repo_root: Path, names: list[str]) -> dict[str, bytes]:
     result = subprocess.run(
         ["git", "-C", str(repo_root), "cat-file", "--batch"],
         input="".join(f"{name}\n" for name in asked).encode("utf-8"),
-        capture_output=True, check=False,
+        capture_output=True, check=False, timeout=GIT_COMMAND_TIMEOUT_SECONDS,
     )
     if result.returncode != 0:
         return {}

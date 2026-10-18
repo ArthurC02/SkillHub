@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -258,6 +259,12 @@ class RegistryValidationTest(RegistryTestCase):
         path = self.repo / "duplicate.json"
         path.write_text('{"status":"approved","status":"rejected"}\n', encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "invalid JSON"):
+            load_json(path)
+
+    def test_json_loader_refuses_nesting_deeper_than_the_parser_can_follow_naming_the_file(self) -> None:
+        path = self.repo / "nested.json"
+        path.write_text("[" * 200_000, encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, f"^invalid JSON: {re.escape(str(path))}$"):
             load_json(path)
 
     def test_requiring_reviewed_records_rejects_a_candidate_registry(self) -> None:

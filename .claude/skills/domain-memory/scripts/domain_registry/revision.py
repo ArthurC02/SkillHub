@@ -137,6 +137,10 @@ def valid_registry_revision(value: Any) -> TypeGuard[dict[str, Any]]:
 STALE_BASE = "proposal base revision is stale; rebase-proposal, then obtain fresh approval"
 
 
+class StaleBaseError(ValueError):
+    pass
+
+
 def _committed_json(repo_root: Path, commit: str, path: Path) -> tuple[bool, Any]:
     relative = path.resolve().relative_to(repo_root.resolve()).as_posix()
     shown = subprocess.run(
@@ -145,7 +149,10 @@ def _committed_json(repo_root: Path, commit: str, path: Path) -> tuple[bool, Any
     )
     if shown.returncode != 0:
         return False, None
-    return True, json.loads(shown.stdout.decode("utf-8"))
+    try:
+        return True, json.loads(shown.stdout.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError) as error:
+        raise ValueError(f"{commit}:{relative} is not valid JSON") from error
 
 
 def _committed_registry(root: Path, repo_root: Path, commit: str) -> tuple[dict[str, Any], Any] | None:
@@ -274,5 +281,5 @@ def require_current_registry_revision(
         return actual
     changed = _changed_since_base(proposal, root, repo_root, expected)
     if changed:
-        raise ValueError(f"{STALE_BASE}: {changed}")
+        raise StaleBaseError(f"{STALE_BASE}: {changed}")
     return actual

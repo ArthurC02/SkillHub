@@ -7,6 +7,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from .common import GIT_COMMAND_TIMEOUT_SECONDS
+
 SIGNING_KEY_ENV = "DOMAIN_MEMORY_SIGNING_KEY"
 
 
@@ -35,7 +37,8 @@ def _restrict(path: Path) -> None:
 
 def _run(command: list[str], stdin: str | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        command, input=stdin, capture_output=True, text=True, check=False
+        command, input=stdin, capture_output=True, text=True, encoding="utf-8", errors="replace",
+        check=False, timeout=GIT_COMMAND_TIMEOUT_SECONDS,
     )
 
 
@@ -47,8 +50,14 @@ def _generate(key_file: Path, principal: str) -> None:
         raise ValueError(f"ssh-keygen could not create a signing key: {result.stderr.strip()}")
 
 
+def _write_private(path: Path, text: str) -> None:
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, stat.S_IRUSR | stat.S_IWUSR)
+    with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text if text.endswith("\n") else text + "\n")
+
+
 def _adopt_from_environment(key_file: Path, material: str) -> None:
-    _write_verbatim(key_file, material.replace("\r\n", "\n").replace("\r", "\n"))
+    _write_private(key_file, material.replace("\r\n", "\n").replace("\r", "\n"))
     _restrict(key_file)
     result = _run(["ssh-keygen", "-y", "-f", str(key_file)])
     if result.returncode != 0:

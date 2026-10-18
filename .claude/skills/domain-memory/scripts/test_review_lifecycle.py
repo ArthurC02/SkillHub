@@ -22,8 +22,13 @@ from domain_registry.hitl import (
     supersede_proposal,
     verify_proposal,
 )
-from domain_registry.common import iso_timestamp
-from domain_registry.revision import registry_digest
+from domain_registry.common import iso_timestamp, write_json
+from domain_registry.revision import (
+    StaleBaseError,
+    base_registry_revision,
+    registry_digest,
+    require_current_registry_revision,
+)
 from domain_registry.store import read_document
 from domain_registry.updates import apply_approved_updates, promote_candidate, upsert_candidate
 from test_support import RegistryTestCase
@@ -73,7 +78,7 @@ class ReviewLifecycleTest(RegistryTestCase):
         supersede_proposal(package, "replaced", None)
         (self.repo / "used").mkdir()
         (self.repo / "used" / "note.txt").write_text("kept", encoding="utf-8")
-        with self.assertRaisesRegex(FileExistsError, "output directory is not empty: "):
+        with self.assertRaisesRegex(ValueError, "output directory is not empty: "):
             redraft_change_package(package, self.repo / "used", "PRO-2")
         self.assertEqual(["note.txt"], [entry.name for entry in (self.repo / "used").iterdir()])
         self.assertEqual("kept", (self.repo / "used" / "note.txt").read_text(encoding="utf-8"))
@@ -254,6 +259,79 @@ class ReviewLifecycleTest(RegistryTestCase):
             str(refused.exception),
         )
         self.assertEqual("verified", self.proposal_in(package)["status"])
+
+    def break_registry_updates(self, package: Path) -> Path:
+        path = package / "domain-change-proposal.json"
+        proposal = json.loads(path.read_text(encoding="utf-8"))
+        proposal["registry_updates"] = "not a list"
+        path.write_text(json.dumps(proposal), encoding="utf-8")
+        return path
+
+    def test_a_verification_the_package_fails_writes_nothing(self) -> None:
+        package = self.draft_package()
+        self.submit_and_approve_after_committing(package)
+        path = self.break_registry_updates(package)
+        before = path.read_bytes()
+        with patch("domain_registry.hitl.write_json", wraps=write_json) as written, self.assertRaisesRegex(
+            ValueError, "^verified proposal is invalid: domain-change-proposal.json registry_updates must be a list$"
+        ):
+            verify_proposal(package, self.repo / "memory", self.repo)
+        self.assertEqual(([], before), (written.call_args_list, path.read_bytes()))
+
+    def test_a_finalization_the_package_fails_writes_the_proposal_once_as_submitted_again(self) -> None:
+        package = self.draft_package()
+        self.submit_and_approve_after_committing(package)
+        self.attest_by_pull_request(package)
+        verify_proposal(package, self.repo / "memory", self.repo)
+        path = self.break_registry_updates(package)
+        with patch("domain_registry.hitl.verify_external_scm", return_value=[]), patch(
+            "domain_registry.hitl.github_commit_carries_proposal", return_value=[]
+        ), patch("domain_registry.hitl.write_json", wraps=write_json) as written, self.assertRaisesRegex(
+            ValueError,
+            "^proposal lacks required approvals or traceability, and is submitted again so it can be corrected, "
+            "then verified and finalized again: domain-change-proposal.json registry_updates must be a list$",
+        ):
+            finalize_proposal(package, self.repo / "memory", self.repo)
+        proposal = self.proposal_in(package)
+        self.assertEqual(
+            ([path], [("submitted", False)], "submitted", False),
+            ([call.args[0] for call in written.call_args_list],
+             [(call.args[1]["status"], "finalized_at" in call.args[1]) for call in written.call_args_list],
+             proposal["status"], "finalized_at" in proposal),
+        )
+
+    def test_a_stale_base_is_refused_as_a_stale_base_error_that_is_still_a_value_error(self) -> None:
+        package = self.draft_package()
+        self.submit_and_approve_after_committing(package)
+        self.another_apply_rewrites_the_proposed_rule()
+        with self.assertRaises(StaleBaseError) as refused:
+            require_current_registry_revision(self.proposal_in(package), self.repo / "memory", self.repo)
+        self.assertIsInstance(refused.exception, ValueError)
+        self.assertEqual(
+            "proposal base revision is stale; rebase-proposal, then obtain fresh approval: "
+            "rules/order-total, which this proposal writes, changed since it was reviewed",
+            str(refused.exception),
+        )
+
+    def test_a_committed_policy_that_is_not_json_is_refused_by_commit_and_path(self) -> None:
+        policy = self.repo / "memory" / "domain-memory-policy.json"
+        intact = policy.read_bytes()
+        policy.write_text("{not json", encoding="utf-8")
+        commit = self.commit_everything("broken policy")
+        policy.write_bytes(intact)
+        with self.assertRaisesRegex(ValueError, f"^{commit}:memory/domain-memory-policy.json is not valid JSON$"):
+            base_registry_revision(self.repo / "memory", self.repo)
+
+    def test_rebasing_a_proposal_whose_base_is_unreadable_is_refused_and_writes_nothing(self) -> None:
+        package = self.submitted_package()
+        path = package / "domain-change-proposal.json"
+        proposal = json.loads(path.read_text(encoding="utf-8"))
+        proposal["base_registry_revision"] = None
+        path.write_text(json.dumps(proposal), encoding="utf-8")
+        written = path.read_bytes()
+        with self.assertRaisesRegex(ValueError, "^proposal requires a Git commit and Registry digest base revision$"):
+            rebase_proposal(package, self.repo / "memory", self.repo)
+        self.assertEqual(written, path.read_bytes())
 
     def attest_by_pull_request(self, package: Path) -> None:
         proposal = self.proposal_in(package)

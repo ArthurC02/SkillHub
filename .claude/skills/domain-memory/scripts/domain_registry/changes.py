@@ -174,7 +174,7 @@ def init_change_package(
     if blank:
         raise ValueError(f"{', '.join(blank)} must not be blank")
     if output.exists() and any(output.iterdir()):
-        raise FileExistsError(f"output directory is not empty: {output}")
+        raise ValueError(f"output directory is not empty: {output}")
     if proposal_id is not None:
         _refuse_used_proposal_id(output, proposal_id)
     with _whole_package(output):
@@ -242,7 +242,7 @@ def redraft_change_package(source: Path, output: Path, proposal_id: str) -> None
     if not completed_identifier(proposal_id):
         raise ValueError("proposal_id must not be blank")
     if output.exists() and any(output.iterdir()):
-        raise FileExistsError(f"output directory is not empty: {output}")
+        raise ValueError(f"output directory is not empty: {output}")
     _refuse_used_proposal_id(output, proposal_id)
     replaced = load_json(source / PROPOSAL_FILE).get("proposal_id")
     with _whole_package(output):

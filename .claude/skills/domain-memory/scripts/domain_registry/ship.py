@@ -6,7 +6,7 @@ from typing import Any
 
 from .common import load_json
 from .hitl import EVIDENCE_FILE, attest_signed_commit, finalize_proposal, proposal_path
-from .revision import STALE_BASE, require_current_registry_revision
+from .revision import StaleBaseError, require_current_registry_revision
 from .sources import run_git
 from .updates import apply_approved_updates
 
@@ -43,21 +43,25 @@ def ship_package(
         report["errors"] += _another_commit(package_root, repo_root, status, commit)
         if not names and not report["errors"]:
             report["note"] = f"already {status}; nothing was written"
+    stale_steps: list[str] = []
     if status == "verified":
-        _completed(report, FINALIZE, lambda: require_current_registry_revision(proposal, registry_root, repo_root), record=False)
+        _completed(
+            report, FINALIZE, lambda: require_current_registry_revision(proposal, registry_root, repo_root),
+            stale_steps, record=False,
+        )
     for name in names:
-        if report["errors"] or not _completed(report, name, actions[name]):
+        if report["errors"] or not _completed(report, name, actions[name], stale_steps):
             break
     status = load_json(proposal_path(package_root)).get("status")
     report["status"] = status
-    report["next"] = _next_step(report, status)
+    report["next"] = _next_step(report, status, stale=bool(stale_steps))
     return report
 
 
-def _next_step(report: dict[str, Any], status: str) -> str:
+def _next_step(report: dict[str, Any], status: str, *, stale: bool) -> str:
     if "note" in report:
         return ALREADY_APPLIED
-    if any(STALE_BASE in error for error in report["errors"]):
+    if stale:
         return STALE_NEXT
     return NEXT_STEPS.get(status, f"the proposal is {status}; ship-package works from a verified proposal")
 
@@ -73,11 +77,15 @@ def _another_commit(package_root: Path, repo_root: Path, status: str, commit: st
     return [f"{ATTEST}: the proposal is {status} with commit {attested}; {given} is another commit, so nothing was written"]
 
 
-def _completed(report: dict[str, Any], name: str, step: Callable[[], Any], *, record: bool = True) -> bool:
+def _completed(
+    report: dict[str, Any], name: str, step: Callable[[], Any], stale_steps: list[str], *, record: bool = True
+) -> bool:
     try:
         result = step()
     except ValueError as error:
         report["errors"].append(f"{name}: {error}")
+        if isinstance(error, StaleBaseError):
+            stale_steps.append(name)
         return False
     if not record:
         return True

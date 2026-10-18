@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import stat
 import subprocess
 import sys
 import unittest
@@ -201,6 +203,16 @@ class ReviewSigningTest(RegistryTestCase):
             )
         self.assertEqual("environment", second["source"])
         self.assertEqual(first["fingerprint"], second["fingerprint"])
+
+    @unittest.skipUnless(os.name == "posix", "file modes are POSIX permissions")
+    def test_a_key_from_the_environment_is_created_readable_by_its_owner_alone(self) -> None:
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            init_signing_key(self.repo, "probe@example.com", self.repo / "keys" / "signing-key")
+        material = (self.repo / "keys" / "signing-key").read_text(encoding="utf-8")
+        adopted = self.repo / "adopted" / "signing-key"
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: material}), patch("domain_registry.signing._restrict"):
+            init_signing_key(self.repo, "probe@example.com", adopted)
+        self.assertEqual(0o600, stat.S_IMODE(adopted.stat().st_mode))
 
     def test_unreadable_key_material_leaves_no_key_behind(self) -> None:
         key_file = self.repo / "keys" / "signing-key"

@@ -185,6 +185,25 @@ class RegistryPolicyTest(RegistryTestCase):
             )
         self.assertEqual(self.stored_policy()["review_mode"], "scm-verified")
 
+    def test_an_initialization_whose_policy_is_refused_leaves_no_directory_so_the_corrected_run_succeeds(self) -> None:
+        (self.repo / "docs").mkdir(exist_ok=True)
+        (self.repo / "docs" / "rules.md").write_text("rules", encoding="utf-8")
+        destination = self.repo / "domain-memory"
+        arguments = [
+            "init-domain-memory", "--repo-root", str(self.repo), "--output", str(destination),
+            "--source", str(self.repo / "docs"), "--storage-mode", "ignored",
+            "--data-classification", "internal", "--review-mode", "local-draft-only", "--source-authority", "test",
+        ]
+        refused = self.run_cli(*arguments, "--review-verifier", "github-pr")
+        self.assertEqual(
+            (1, "ERROR: invalid policy: local-draft-only policy must not select a review verifier"),
+            (refused.returncode, refused.stderr.strip()),
+        )
+        self.assertFalse(destination.exists())
+        corrected = self.run_cli(*arguments)
+        self.assertEqual(0, corrected.returncode, corrected.stderr)
+        self.assertTrue((destination / "domain-memory-policy.json").is_file())
+
     def test_verify_evidence_names_the_record_of_each_citation_and_filters_by_path(self) -> None:
         use_json_layout(self.repo / "memory")
         self.seed_two_cited_rules()

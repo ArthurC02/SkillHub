@@ -1,4 +1,5 @@
 import io
+import subprocess
 import sys
 
 from .cli_commands import COUNTERFACTUAL_EXIT_CODES, COUNTERFACTUAL_FORMAT, execute, print_json
@@ -15,7 +16,7 @@ def main() -> int:
         return _refuse_usage(error)
     try:
         return execute(args)
-    except (ValueError, OSError) as error:
+    except (ValueError, OSError, subprocess.SubprocessError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1
 

@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 
 from .attestations import verify_git_signed_commit
-from .common import replace_path
+from .common import GIT_COMMAND_TIMEOUT_SECONDS, replace_path
 from .policy import review_governance, review_mode
 
 HOOK_MARKER = "domain-memory-pre-push"
@@ -26,6 +26,7 @@ def hooks_dir(repo_root: Path) -> Path:
         text=True,
         encoding="utf-8",
         check=False,
+        timeout=GIT_COMMAND_TIMEOUT_SECONDS,
     )
     if result.returncode != 0:
         return repo_root / ".git" / "hooks"

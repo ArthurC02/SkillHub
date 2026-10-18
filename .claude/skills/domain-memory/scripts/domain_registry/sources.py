@@ -83,6 +83,7 @@ def ignored_relatives(root: Path, relatives: list[str]) -> set[str]:
             encoding="utf-8",
             errors="surrogateescape",
             check=False,
+            timeout=GIT_COMMAND_TIMEOUT_SECONDS,
         )
     except (OSError, subprocess.TimeoutExpired):
         return set()

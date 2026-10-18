@@ -11,11 +11,20 @@ from .attestations import (
     verify_external_scm,
     verify_git_signed_commit,
 )
-from .common import EVIDENCE_FILE, PROPOSAL_FILE, completed_identifier, iso_timestamp, load_json, utc_now, write_json
+from .common import (
+    EVIDENCE_FILE,
+    GIT_COMMAND_TIMEOUT_SECONDS,
+    PROPOSAL_FILE,
+    completed_identifier,
+    iso_timestamp,
+    load_json,
+    utc_now,
+    write_json,
+)
 from .counterfactual import OUTPUT_TAIL, decoded, is_go_test, no_test_passed, reports_tests, working_directory
 from .evidence import digest
 from .policy import approved_command_profiles, review_governance
-from .revision import STALE_BASE, base_registry_revision, require_current_registry_revision
+from .revision import StaleBaseError, base_registry_revision, require_current_registry_revision
 
 
 def proposal_path(root: Path) -> Path:
@@ -76,9 +85,7 @@ def _article(word: Any) -> str:
 def _stale(proposal: dict[str, Any], registry_root: Path, repo_root: Path) -> bool:
     try:
         require_current_registry_revision(proposal, registry_root, repo_root)
-    except ValueError as error:
-        if not str(error).startswith(STALE_BASE):
-            raise
+    except StaleBaseError:
         return True
     return False
 
@@ -228,15 +235,12 @@ def verify_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
     )
     if errors:
         raise ValueError("proposal lacks verified test evidence: " + "; ".join(errors))
+    errors = validate_change_package(root, registry_root, "verified")
+    if errors:
+        raise ValueError("verified proposal is invalid: " + "; ".join(errors))
     proposal["status"] = "verified"
     proposal["verified_at"] = utc_now()
     write_json(path, proposal)
-    errors = validate_change_package(root, registry_root)
-    if errors:
-        proposal["status"] = "submitted"
-        proposal["verified_at"] = None
-        write_json(path, proposal)
-        raise ValueError("verified proposal is invalid: " + "; ".join(errors))
 
 
 @dataclass(frozen=True)
@@ -330,7 +334,8 @@ def attest_signed_commit(root: Path, registry_root: Path, repo_root: Path, commi
         raise ValueError("submit the proposal first, so the attestation can bind to its base revision")
     resolved = subprocess.run(
         ["git", "-C", str(repo_root), "rev-parse", "--verify", f"{commit}^{{commit}}"],
-        capture_output=True, text=True, check=False,
+        capture_output=True, text=True, encoding="utf-8", check=False,
+        timeout=GIT_COMMAND_TIMEOUT_SECONDS,
     )
     if resolved.returncode != 0:
         raise ValueError(f"no commit {commit} in {repo_root}")
@@ -404,15 +409,16 @@ def finalize_proposal(
         errors = ["policy has no review verifier"]
     if errors:
         raise ValueError("SCM governance is not externally verified: " + "; ".join(errors))
-    proposal["status"] = "approved"
-    proposal["finalized_at"] = utc_now()
-    write_json(path, proposal)
-    errors = validate_change_package(root, registry_root)
-    if errors:
-        proposal["status"] = "submitted"
-        proposal.pop("finalized_at", None)
+    errors = validate_change_package(root, registry_root, "approved")
+    if not errors:
+        proposal["status"] = "approved"
+        proposal["finalized_at"] = utc_now()
         write_json(path, proposal)
-        raise ValueError(
-            "proposal lacks required approvals or traceability, and is submitted again so it "
-            "can be corrected, then verified and finalized again: " + "; ".join(errors)
-        )
+        return
+    proposal["status"] = "submitted"
+    proposal.pop("finalized_at", None)
+    write_json(path, proposal)
+    raise ValueError(
+        "proposal lacks required approvals or traceability, and is submitted again so it "
+        "can be corrected, then verified and finalized again: " + "; ".join(errors)
+    )

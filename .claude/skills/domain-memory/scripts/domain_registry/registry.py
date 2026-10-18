@@ -62,7 +62,7 @@ KNOWN_CONSISTENCIES = ("synchronous", "eventual")
 
 def init_registry(output: Path) -> None:
     if output.exists() and any(output.iterdir()):
-        raise FileExistsError(f"output directory is not empty: {output}")
+        raise ValueError(f"output directory is not empty: {output}")
     create_concept_layout(output)
 
 

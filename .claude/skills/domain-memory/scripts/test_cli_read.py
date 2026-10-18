@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+from domain_registry.cli import main
 from domain_registry.evidence import citation
 from domain_registry.registry import asset_records
 from domain_registry.sources import probe_sources
@@ -75,6 +79,24 @@ class CliReadTest(RegistryTestCase):
         self.assertEqual(1, result.returncode)
         self.assertNotIn("Traceback", result.stdout + result.stderr)
         self.assertTrue(result.stderr.startswith("ERROR: "), result.stderr)
+
+    def test_a_git_command_that_times_out_ends_in_one_error_line_instead_of_a_traceback(self) -> None:
+        arguments = [
+            "export", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+            "--commit", "HEAD",
+        ]
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with patch(
+            "domain_registry.store.subprocess.run", side_effect=subprocess.TimeoutExpired(["git", "ls-tree"], 15)
+        ), patch.object(sys, "argv", ["registry_tools", *arguments]), contextlib.redirect_stdout(
+            stdout
+        ), contextlib.redirect_stderr(stderr):
+            exit_code = main()
+        self.assertEqual(1, exit_code)
+        self.assertEqual("", stdout.getvalue())
+        self.assertEqual(
+            "ERROR: Command '['git', 'ls-tree']' timed out after 15 seconds\n", stderr.getvalue()
+        )
 
     def test_export_prints_every_asset_document_by_asset_name(self) -> None:
         rule = {"id": "order-total", "statement": "An order total is never negative.", "status": "candidate"}

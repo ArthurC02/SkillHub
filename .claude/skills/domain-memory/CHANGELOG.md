@@ -2,6 +2,19 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.7
+
+### Fixed
+
+- A git or ssh-keygen call that hangs now gives up after the git timeout, and a timeout ends in one `ERROR:` line instead of a Python traceback.
+- `init-domain-memory` whose policy is refused no longer leaves a half-built Registry behind, so rerunning with corrected options works instead of failing with "output directory is not empty".
+- A stale proposal base is recognised by its error type rather than by matching message text, so `rebase-proposal` and `ship-package` keep telling a stale base from other errors if the wording changes.
+- `verify-proposal` and `finalize-proposal` validate the package before writing. An invalid package is never marked verified or approved on disk, not even briefly; a failed finalize still moves the proposal back to submitted, in one write.
+- `discard-harvest` records its audit event under the writer lock before removing the package, so a busy Registry leaves the package in place instead of deleting it without a record.
+- Deeply nested JSON is refused as `invalid JSON: <path>` instead of crashing; a committed policy that is not JSON is refused as `<commit>:<path> is not valid JSON`; and a GitHub review or pull request whose `user` or `head` is null is treated as no approval or a head mismatch instead of crashing.
+- A signing key taken from `DOMAIN_MEMORY_SIGNING_KEY` is created readable by its owner only, so there is no moment when other users can read it.
+- An occupied output directory is refused with the same `ValueError` everywhere, instead of `FileExistsError` in three places.
+
 ## 1.2.6
 
 ### Fixed
