@@ -3,12 +3,12 @@
   "proposal_id": "trace-envelope-paging-and-summary-rules-2026-10-18",
   "proposer": "domain-memory-agent",
   "requirement_id": "trace-envelope-paging-and-summary-rules-2026-10-18",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-18T14:12:10.058290Z",
   "verified_at": "2026-10-18T16:53:53.609840Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-18T16:54:13.902746Z",
+  "applied_at": "2026-10-18T16:54:21.093455Z",
   "proposal_revision": 2,
   "base_registry_revision": {
     "observed_commit": "b22ee8ffaecdf2b4896b6989e453058beedacb04",
@@ -735,5 +735,9 @@
         "committed_digest": "sha256:a9202a451e04cf1b06210b282d236a12ded33d291d4bd89e1a41ec6c83c6cde9"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "bd1f4ca82eb6ad74fc92bd116078b53ad36bd291",
+    "registry_digest": "sha256:f692de6f70cb2db07bdcc9291c0861f373bed2f571708c2fbbc91fe274eb6b55"
+  }
 }

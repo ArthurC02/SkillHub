@@ -3,12 +3,12 @@
   "proposal_id": "operations-findings-proposals-and-runs-rules-2026-10-18",
   "proposer": "domain-memory-agent",
   "requirement_id": "operations-findings-proposals-and-runs-rules-2026-10-18",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-18T15:58:06.904253Z",
   "verified_at": "2026-10-18T16:53:54.787071Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-18T16:54:23.462255Z",
+  "applied_at": "2026-10-18T16:54:29.968646Z",
   "proposal_revision": 2,
   "base_registry_revision": {
     "observed_commit": "b22ee8ffaecdf2b4896b6989e453058beedacb04",
@@ -447,5 +447,9 @@
         "committed_digest": "sha256:a9202a451e04cf1b06210b282d236a12ded33d291d4bd89e1a41ec6c83c6cde9"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "bd1f4ca82eb6ad74fc92bd116078b53ad36bd291",
+    "registry_digest": "sha256:9e4a3f84e53c438cd6177de80aabcf5515419b59570088192f90ed60bf950ebb"
+  }
 }
