@@ -516,6 +516,19 @@ class CliProposalsTest(RegistryTestCase):
              printed["base_registry_revision"]),
         )
 
+    def test_verify_proposal_run_again_on_a_verified_package_says_so_and_exits_zero(self) -> None:
+        package = self.submitted_package()
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        arguments = ("verify-proposal", "--package-root", str(package), "--registry-root", str(self.repo / "memory"),
+                     "--repo-root", str(self.repo))
+        first = self.run_cli(*arguments)
+        again = self.run_cli(*arguments)
+        self.assertEqual(
+            (0, "Proposal test evidence verified.", 0, "already verified at revision 1; nothing was written", "", "verified"),
+            (first.returncode, first.stdout.strip(), again.returncode, again.stdout.strip(), again.stderr,
+             self.proposal_in(package)["status"]),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

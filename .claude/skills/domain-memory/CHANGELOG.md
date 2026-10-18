@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.1
+
+### Fixed
+
+- `verify-proposal` run again on a verified package prints `already verified at revision <n>; nothing was written` and exits 0, as `ship-package` does for an applied one, instead of refusing with "only a submitted proposal may be verified"; a re-run after success is not a failure.
+
 ## 1.2.0
 
 ### Fixed
