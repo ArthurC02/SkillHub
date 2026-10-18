@@ -3,12 +3,12 @@
   "proposal_id": "catalog-search-rules-2026-10-18",
   "proposer": "domain-memory-agent",
   "requirement_id": "catalog-search-rules-2026-10-18",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-18T06:24:37.169542Z",
   "verified_at": "2026-10-18T06:26:11.269481Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-18T06:26:14.455974Z",
+  "applied_at": "2026-10-18T06:26:28.256574Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "5425cd28b00402feaa717409fcc37cb7dc1fbb73",
@@ -400,5 +400,9 @@
         "registry_digest": "sha256:723046bfcd5abaf37dd5a4b588c334d0c6ea168886189ca07c0e63ea4e8d0031"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "0754e319907cc9570d2fb291f1309ab047a761a9",
+    "registry_digest": "sha256:033a1324e2097dfc8fbc2925b09eaa13fa03f164ec591e7cd92a2d8510266295"
+  }
 }
