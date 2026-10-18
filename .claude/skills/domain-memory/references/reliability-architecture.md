@@ -1,8 +1,8 @@
 # Domain Memory reliability target architecture
 
-The target architecture for a public release. It makes the Registry a reviewable projection, not an authority that can invent domain facts, and separates trusted control, untrusted evidence, and verified state.
+The reliability architecture of the Registry. It makes the Registry a reviewable projection, not an authority that can invent domain facts, and separates trusted control, untrusted evidence, and verified state.
 
-The current local implementation provides policy-controlled source selection and limits, Registry digests, phase-aware journaled local writes with recovery, structured citation verification, test-attestation checks, a tamper-evident local audit chain with a checked head manifest, and SCM-artifact binding checks. It does **not** yet provide a provider API adapter, CI-run retrieval, an immutable remote audit store, a Merkle per-file source manifest, or general contract-diff adapters. The sections below are requirements for those future adapters, never a claim that they exist.
+The current local implementation provides policy-controlled source selection and limits, Registry digests, phase-aware journaled local writes with recovery, structured citation verification, test-attestation checks, a tamper-evident local audit chain with a checked head manifest, and SCM-artifact binding checks.
 
 ## Trust boundaries
 
@@ -28,9 +28,7 @@ Every reviewed evidence citation is an object, not only `path:line`:
 {
   "path": "docs/rules.md",
   "lines": {"start": 12, "end": 16},
-  "excerpt_sha256": "sha256:<cited-lines>",
-  "observed_commit": "<40-hex-sha-or-null>",
-  "observed_at": "<ISO-8601>"
+  "excerpt_sha256": "sha256:<cited-lines>"
 }
 ```
 
@@ -64,17 +62,13 @@ Changing proposal content, Registry content, cited evidence, or test configurati
 2. Build a complete proposed Registry in a temporary workspace.
 3. Run schema, reference, semantic policy, evidence, contract, and test-plan validation there.
 4. Acquire a per-Registry writer lock.
-5. Re-read the Registry manifest under that lock. If it differs from the expected digest, return `conflict` with no write.
+5. Re-read the Registry manifest under that lock. If it differs from the expected digest, refuse with `registry revision changed before update; run ship-package again` and write nothing.
 6. Apply the prepared patch through one recoverable transaction, then emit an update attestation containing old digest, new digest, proposal digest, and actor identity.
 7. Commit the patch through the repository's normal SCM workflow. Mark the proposal `applied` only after observing the committed revision or accepted merge result.
 
 The journal records `prepared`, `installed`, and `audited` phases. Recovery removes an uninstalled staging tree, rolls back an installed transaction with no matching audit operation, and completes cleanup when the audit operation is present; an incomplete pair is reported for manual reconciliation. The lock protects local writer races. Git is the collaboration and audit boundary: the Skill prepares a change, while protected branches, code owners, required checks, and stale-review invalidation decide whether it becomes shared truth.
 
 ## Git use and bounded history
-
-Normal read, validation, and update operations use only the current worktree, canonical Registry digest, and optional `git rev-parse HEAD`. They never invoke `git log`, ancestry walks, or an unbounded `git diff`.
-
-A future `history` command must require an explicit revision range and enforce maximum commits, bytes, duration, and a visited-SHA set. History is an explanatory query only; correctness must not depend on traversing it.
 
 The HEAD SHA is provenance metadata. It must not by itself invalidate a Proposal when the Registry digest and all cited evidence digests are unchanged; unrelated commits should not force needless reapproval.
 
@@ -92,15 +86,7 @@ All parsers reject unknown schema versions, duplicate identifiers after Unicode 
 
 Init asks whether Domain Memory is tracked, ignored, or stored externally, and its sensitivity and retention policy. Source text is not copied by default. Secret scanning runs before persistence; findings are reported without emitting secret values.
 
-The policy sets limits for file count, file size, total bytes, hash duration, query result count, and history traversal. Exceeding a limit produces a partial, explicitly incomplete result; it never silently omits material.
-
-## Rollout
-
-1. Introduce policy and canonical manifest in compatibility mode; existing Registries remain readable as `legacy-unverified`.
-2. Add record-level evidence objects, source manifests, and `verify-evidence`.
-3. Replace local claimed approvals and free-text test results with provider and CI attestations.
-4. Move reviewed-state updates to the compare-and-swap protocol and emit `applied` attestations.
-5. Add contract adapters, migration tooling, adversarial prompt-injection fixtures, and release compatibility tests.
+The policy sets limits for file count, file size, total bytes, and query result count. Exceeding a limit produces a partial, explicitly incomplete result; it never silently omits material.
 
 ## Policy is part of the revision
 

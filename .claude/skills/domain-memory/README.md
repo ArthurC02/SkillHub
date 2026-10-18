@@ -41,6 +41,6 @@ The suite takes several minutes. While working on one area, run its file from `s
 
 Three rules keep this shape. Once a Registry exists, its records change only through `mutate_registry`; every Registry read and write goes through `store.py`, so no other module knows the file layout. Every JSON document the plugin builds is written through `write_json`. A rule that two modules need lives once, in the lower one, and the other imports it.
 
-`ruff.toml` pins every finding that predates the lint gate with a line-level `noqa`. A new finding fails, and so does a `noqa` that no longer suppresses anything: simplify a pinned function and its marker has to go in the same change.
+`ruff.toml` pins every finding it tolerates with a line-level `noqa`. A new finding fails, and so does a `noqa` that no longer suppresses anything: simplify a pinned function and its marker has to go in the same change.
 
 Any change to what ships — everything except `evals/` and `scripts/test_*.py` — raises `version` in `.claude-plugin/plugin.json`, so installed copies see it, and adds an entry to `CHANGELOG.md`.

@@ -2,6 +2,18 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.6
+
+### Fixed
+
+- The documents now say what the code does: dependency policies take `forbidden`, `readiness` needs `--registry-root` to report `extract` or `dead`, and the output convention names the commands that print JSON or a sentence.
+- Quoted commands now carry the flags the parser requires, and a drifted reviewed record goes to a Change Package through `promote-candidate --amend` rather than to `upsert-candidate`, which refuses it.
+- The capability count, the definition of a material change, the lifecycle rows and the reliability reference now match the files and the commands that exist.
+
+### Changed
+
+- `probe` on a stale selection now says to run `refresh-sources` and then have a developer run `confirm-sources`, instead of "refresh before trusting it".
+
 ## 1.2.5
 
 ### Changed

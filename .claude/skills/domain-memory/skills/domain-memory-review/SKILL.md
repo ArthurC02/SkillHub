@@ -8,7 +8,7 @@ description: Check that Domain Registry facts, source evidence, audit history, p
 Use this before relying on a domain fact or handing work to another Agent.
 
 1. Run `validate --registry-root <root> --repo-root <repo>`, using `--require-reviewed` when implementation depends on reviewed facts.
-2. Run `verify-sources`, `verify-evidence`, and `verify-audit`.
+2. Run `verify-sources --repo-root <repo> --source-map <root>/source-map.json`, `verify-evidence --registry-root <root> --repo-root <repo>`, and `verify-audit --registry-root <root>`.
 3. Validate any Change Package and confirm its Registry revision, approvals, test attestations, and SCM evidence still match.
 4. Review the implementation handoff against the tactical reasoning questions: whether the complexity is earned, invariant ownership, consistency boundary, failure behavior, dependency direction, and observable proof. Require no particular language construct or file layout. See [tactical design reasoning](../../references/tactical-reasoning.md).
 5. Report stale, missing, invalid, ambiguous, or candidate facts as blockers or review gaps.

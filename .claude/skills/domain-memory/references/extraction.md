@@ -41,7 +41,7 @@ Treat the code as the evidence of current behavior, not of intent. Read the boun
 
 ## From a change
 
-Start from what moved: `boundary-impact --base <ref>` for the Contexts and evidence a change touched, `change-coupling --since <date>` for how the change pattern shifted, and the diff or the changed requirement itself. Then decide, element by element, whether the model changed: a term, the owner of a decision, an invariant or rule, a boundary or allowed dependency, an event or contract, or a capability. A refactoring that moves code and keeps all of these is not a model change; re-cite its evidence with `relocate-evidence` and record nothing new.
+Start from what moved: `boundary-impact --base <ref>` for the Contexts and evidence a change touched, `change-coupling --since <date>` for how the change pattern shifted, and the diff or the changed requirement itself. Then decide, element by element, whether the model changed: a term, the owner of a decision, an invariant or rule, a boundary or allowed dependency, an event or contract, or a capability. A change to who may decide a value, its bounds, or when it is decided is a rule change; moving a value from deployment configuration to a setting someone adjusts at run time is one. A refactoring that moves code and keeps all of these is not a model change; re-cite its evidence with `relocate-evidence` and record nothing new.
 
 ## What a record holds
 

@@ -42,9 +42,9 @@ Four checks keep the facts honest over time:
 python3 scripts/registry_tools.py <command> [options]
 ```
 
-Python 3.10 or later, its standard library, and `git` on the path. Call the interpreter by the name your system gives it: `python3` on most Linux and macOS systems, `python` on Windows, where `python3` is often a store stub. Nothing to install, no environment to prepare, and the script runs from any working directory. Output is JSON except for success lines. A refusal prints `ERROR: <reason>` on stderr and exits non-zero, so stdout carries only the command's output; read the reason rather than retrying.
+Python 3.10 or later, its standard library, and `git` on the path. Call the interpreter by the name your system gives it: `python3` on most Linux and macOS systems, `python` on Windows, where `python3` is often a store stub. Nothing to install, no environment to prepare, and the script runs from any working directory. What a command prints, and how it refuses, follows the three cases in [script-api.md](references/script-api.md#checks-on-the-code-being-written); read a refusal's reason rather than retrying.
 
-Commands that read or change the Registry take `--registry-root <root>`: the directory that holds `registry/`, `source-map.json` and the policy, not `registry/` itself. Commands that read repository files take `--repo-root <repo>`. Some take only one of the two: `quality-gates` takes only `--repo-root`, `readiness` needs only `--repo-root`, and `coverage` and the read commands take only `--registry-root`. The table below leaves both flags out, and `<command> --help` lists the exact flags.
+Commands that read or change the Registry take `--registry-root <root>`: the directory that holds `registry/`, `source-map.json` and the policy, not `registry/` itself. Commands that read repository files take `--repo-root <repo>`. Some take only one of the two: `quality-gates` takes only `--repo-root`, `readiness` needs only `--repo-root`, and the lookups (`lookup`, `resolve-terms`, `get-context`, `get-record`, `dependents`) take only `--registry-root`; `verify-sources` takes `--source-map` in its place. The table below leaves both flags out, and `<command> --help` lists the exact flags.
 
 ## Call it from a host as MCP
 
@@ -66,13 +66,15 @@ It offers no command that writes; candidates and Change Packages stay on the com
   - `stale`: the excerpt changed.
   - `unhashed`: the citation was not built by `cite`.
   - `missing`: the cited file is gone.
-- **Change Package**: the one way a reviewed record changes. It is a directory of four JSON files whose proposal moves `draft → submitted → verified → approved → applied`, or ends `superseded`. Once submitted, its content is frozen.
+  - `invalid`: the citation is malformed, points outside the repository, or cannot be read as cited.
+  - `legacy-unverified`: a plain `path:line` citation, which `migrate-evidence` converts.
+- **Change Package**: the one way a reviewed record changes. It is a directory of four JSON files and a Draft PR description whose proposal moves `draft → submitted → verified → approved → applied`, or ends `superseded`. Once submitted, its content is frozen.
 
 ## Common tasks
 
 | You want to | Run |
 | --- | --- |
-| Know what this repository has | `readiness --repo-root <repo>`; `extract` means code exists and the Registry holds no record yet |
+| Know what this repository has | `readiness --repo-root <repo> --registry-root <root>`; `extract` means code exists and the Registry at that root holds no record yet. Without `--registry-root` it cannot tell `extract` from `read-and-maintain`, or report `dead` |
 | Start a Domain Memory | `init-domain-memory`, which records the destination, sources and policy choices a Registry needs; `init` only copies an empty skeleton that can never hold a reviewed record |
 | Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`, and before changing a record `dependents --asset <asset> --id <id>` for what else it may touch; a `mentioned` match is prose in a reviewed record, not a term |
 | Review a branch for what it does to the model | the `domain-memory-review-change` capability: `brief --base <branch point> --markdown`, then the verdict table and the attention list decide what to ask for |
@@ -83,15 +85,15 @@ It offers no command that writes; candidates and Change Packages stay on the com
 | Check the evidence of files you edited | `verify-evidence --path <file>`; `stale` needs `recite` after you check the fact. `shifted` passes every check and needs no Change Package of its own: re-cite it with `relocate-evidence --from <file> --to <file>` in the next package that touches the record; a directory, or `.`, covers everything under it |
 | Re-cite after moving code | `relocate-evidence --from <old> --to <new>`; pass the path as the repository holds it; a Context whose `implementation_path` ends `from` gets its new path in the same output |
 | Re-cite after editing code in place | `recite --asset <asset> --id <id> --path <file> --lines <a>-<b>`; when the record cites the file more than once, name the old citation with `--replace <file>:<a>-<b>`, and leave out `--lines` if the code kept those lines; add `--onto <file>` holding what an earlier `relocate-evidence` or `recite` printed, and the output is that file with this record re-cited in it, so one record never gets two competing updates |
-| Put a re-citation through review | `init-change-package --recitation <file printed by recite or relocate-evidence> --requirement-id <id> --proposal-id <id> --proposer <you>` writes the whole package; then submit it, record its one test result, and review it as usual |
+| Put a re-citation through review | `init-change-package --output <dir> --recitation <file printed by recite or relocate-evidence> --requirement-id <id> --proposal-id <id> --proposer <you>` writes the whole package; then submit it, record its one test result, and review it as usual |
 | Rebase a stale proposal | `rebase-proposal --package-root <package>`, when verify, finalize or `ship-package` says the proposal base is stale: it restamps the base and retires the approvals; then `record-approval`, `verify-proposal`, a new signed commit holding the package, and `ship-package --commit <that commit>` |
-| Finish a verified package after its signed commit | `ship-package --commit <sha>`: attests the signed commit, finalizes the proposal and applies it, in that order, stopping at the first refusal; no git writes |
+| Finish a verified package after its signed commit | `ship-package --package-root <package> --commit <sha>`: attests the signed commit, finalizes the proposal and applies it, in that order, stopping at the first refusal; no git writes |
 | Prove rules the code already enforces and package them | `harvest --spec <file> [--through verified]`: counterfactual per rule, candidate, package, preview, and on request submit, test results, approval and verify; stops before the signed commit. After a failed step, run the same spec again to resume, or `discard-harvest --package-root <package>` to undo it, which also undoes a verified harvest that will not be shipped |
 | Extract the model from a requirement, code or a change | follow `skills/domain-memory-extract`; `change-coupling --repo-root <repo> --root <code root>` shows which modules change together, and `compare-registry` scores an extraction against a reviewed Registry |
 | Propose a new fact | `cite --show`, then `upsert-candidate --asset <asset> --record-file <file>`; give `--record-file` once per record |
 | Undo a candidate | `retract-candidate --asset <asset> --id <id> --reason <text>`; a reviewed record is withdrawn by a superseding proposal instead |
 | See every Change Package and its state | `list-proposals --changes-root <dir>` |
-| Change a reviewed fact | `init-change-package --requirement-id <id> --proposal-id <id> --proposer <you>`, add `registry_updates`, then `validate-change-package --as-status submitted --repo-root <repo>` before every transition; the lifecycle is in [references/script-api.md](references/script-api.md) |
+| Change a reviewed fact | `init-change-package --output <dir> --requirement-id <id> --proposal-id <id> --proposer <you>`, add `registry_updates`, then `validate-change-package --package-root <dir> --as-status <the next status>` before each transition; the lifecycle is in [references/script-api.md](references/script-api.md) |
 | Recover after a crash | `recover-registry-update --repo-root <repo>` |
 
 The two re-cite commands print `registry_updates` and `supersedes` for a Change Package. A record that is not reviewed comes back under `candidates`; pass it to `upsert-candidate`.
@@ -108,11 +110,11 @@ The two re-cite commands print `registry_updates` and `supersedes` for a Change 
 
 ## Running the plugin's own tests
 
-`python3 scripts/run_tests.py --jobs 4` from the plugin directory runs every `scripts/test_*.py` in parallel and exits 1 when one fails; name modules to run a few. `python3 -m unittest discover -s scripts -p 'test_*.py'` still runs them in one process.
+To change the plugin itself, read `README.md` in the complete package.
 
 ## Before you rely on anything here
 
-Run `readiness --repo-root <repo>` first. It distinguishes an empty repository, a greenfield design, a brownfield implementation, and a memory whose evidence has died. Its signals route your work; they are not domain facts.
+Run `readiness --repo-root <repo> [--registry-root <root>]` first, giving `--registry-root` whenever a Registry may exist. It distinguishes an empty repository, a greenfield design, a brownfield implementation, and a memory whose evidence has died. Its signals route your work; they are not domain facts.
 
 Treat only `reviewed` records as facts. A `candidate` is handoff material and authorizes no implementation. `reviewed-empty` means there is no model to depend on yet, so go back to the decisions, contracts, code, and tests.
 
@@ -120,7 +122,7 @@ Not every package is a Context. A Context owns domain rules and the data they de
 
 ## Choosing what to do
 
-[SKILL.md](SKILL.md) beside this file is where the work is chosen. In the complete package it routes the four lifecycle capabilities, the hygiene check and the change review to a page under `skills/`; in a standalone bundle it is the one capability the bundle carries. It is plain Markdown, so read it whether or not your host has a concept of Skills.
+[SKILL.md](SKILL.md) beside this file is where the work is chosen. In the complete package it routes the seven capabilities to a page under `skills/`; in a standalone bundle it is the one capability the bundle carries. It is plain Markdown, so read it whether or not your host has a concept of Skills.
 
 [references/script-api.md](references/script-api.md) is the command surface and what each command guarantees. [references/host-integration.md](references/host-integration.md) is for wiring this into a host that dispatches work to several Agents.
 

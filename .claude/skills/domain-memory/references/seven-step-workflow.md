@@ -1,12 +1,12 @@
 # Seven-step domain change workflow
 
-Start with `readiness --repo-root <repo>` and use the result only to choose the smallest next action, as [readiness](readiness.md) describes. It is a read-only filesystem observation; it never selects sources or changes the Registry.
+Start with `readiness --repo-root <repo> [--registry-root <root>]` and use the result only to choose the smallest next action, as [readiness](readiness.md) describes. It is a read-only filesystem observation; it never selects sources or changes the Registry.
 
 Use this workflow for a material change. A change is material when it changes an owner, a boundary, an invariant, a public or event contract, an event, a consistency rule or a material business rule, a regulated rule and an irreversible behaviour among them, or when it adds a cross-Context dependency; this is the one definition the other pages refer to. A routine implementation contained within one approved owner does not need the full workflow, but it still reads the Registry before coding and checks whether the implementation changed the domain documents afterward.
 
 A brownfield refactoring that preserves the reviewed model takes the [brownfield refactoring fast path](brownfield-refactoring.md), which escalates back here.
 
-The workflow is continuous: the Registry is the input to implementation and the implementation is evidence for the next Registry revision. A code change that leaves a changed owner, term, invariant, boundary, event, contract, or capability undocumented is not complete.
+The workflow is continuous: the Registry is the input to implementation and the implementation is evidence for the next Registry revision. A code change that leaves a model change, as [extraction](extraction.md#from-a-change) lists them, undocumented is not complete.
 
 ## Before Step 0: Map repository sources
 
@@ -14,7 +14,7 @@ Run `discover-sources --repo-root <repo>` without writing output. Present the ca
 
 ## Step 0: Normalize the requirement
 
-Run `init-change-package --output <package-root> --requirement-id <id> --proposal-id <id>`, then complete [requirement-normalization.json](../templates/requirement-normalization.json). Record the intended business outcome, observable acceptance criteria, candidate terms, unknowns, and risk flags. Flag `cross_context`, `public_contract`, `regulated_rule`, `sensitive_data`, `financial_decision`, and `irreversible_change` when applicable. Discovery may continue with unknowns; implementation may not assume their answers.
+Run `init-change-package --output <package-root> --requirement-id <id> --proposal-id <id> --proposer <you>`, then complete [requirement-normalization.json](../templates/requirement-normalization.json). Record the intended business outcome, observable acceptance criteria, candidate terms, unknowns, and risk flags. Flag `cross_context`, `public_contract`, `regulated_rule`, `sensitive_data`, `financial_decision`, and `irreversible_change` when applicable. Discovery may continue with unknowns; implementation may not assume their answers.
 
 ## Step 1: Discover the primary Context
 
@@ -41,19 +41,19 @@ If the decision changes consistency, specify the observable delay, retry behavio
 
 ## Step 4: Decide the event
 
-Reuse an existing event when it already expresses the committed business fact. Otherwise propose an event with its producer, consumers, version, payload classification, delivery expectation, and compatibility result. Do not name a database mutation or technical command as a domain event.
+Reuse an existing event when it already expresses the committed business fact. Otherwise propose an event in the proposal's `event_change`, with its producer, consumers, version, payload classification, delivery expectation, and compatibility result. Do not name a database mutation or technical command as a domain event.
 
 ## Step 5: Decide the contract
 
-For an API or event contract, record producer, consumers, version, compatibility policy, data classification, timeout or retry behavior where applicable, and breaking-change result. A contract change remains a proposal until its required review is recorded.
+For an API or event contract, record in the proposal's `contract_change` the producer, consumers, version, compatibility policy, data classification, timeout or retry behavior where applicable, and breaking-change result. A contract change remains a proposal until its required review is recorded.
 
 ## Step 6: Derive test obligations
 
-Copy [test-obligations.json](../templates/test-obligations.json). Map every acceptance criterion, invariant, contract promise, and material failure mode to an observable assertion. An obligation's `source_type` names what it is derived from and must be `acceptance-criterion`, `rule`, `contract` or `invariant`; the kind of check it runs belongs in `level`, where aggregate, integration, architecture and security checks appear only when the proposal changes them. Every acceptance criterion, and every rule and contract the proposal names, needs an obligation carrying its id. When one check proves several of them, list the others in that obligation's `also_covers` as `{"source_type": ..., "source_id": ...}` entries rather than repeating the obligation, so `record-test-result` runs the check once. An `also_covers` entry must name an acceptance criterion of the requirement or a rule or contract the proposal lists, or an invariant; any other id is refused by name, since it would cover nothing. A green implementation test alone does not prove a changed invariant.
+Complete the package's [test-obligations.json](../templates/test-obligations.json). Map every acceptance criterion, invariant, contract promise, and material failure mode to an observable assertion. An obligation's `source_type` names what it is derived from and must be `acceptance-criterion`, `rule`, `contract` or `invariant`; the kind of check it runs belongs in `level`, where aggregate, integration, architecture and security checks appear only when the proposal changes them. Every acceptance criterion, and every rule and contract the proposal names, needs an obligation carrying its id. When one check proves several of them, list the others in that obligation's `also_covers` as `{"source_type": ..., "source_id": ...}` entries rather than repeating the obligation, so `record-test-result` runs the check once. An `also_covers` entry must name an acceptance criterion of the requirement or a rule or contract the proposal lists, or an invariant; any other id is refused by name, since it would cover nothing. A green implementation test alone does not prove a changed invariant.
 
 ## Step 7: Prepare, verify, and review the package
 
-Create an [evidence bundle](../templates/evidence-bundle.json) and [Draft PR description](../templates/draft-pr.md). Include the requirement, proposal, registry revision, approvals, executed checks, failures, and residual risks. Run `validate-change-package --package-root <path> --registry-root <root>` before presenting the package. Run `ship-package` only when the package is verified and Registry records must change; it attests the signed commit, finalizes and applies. A Skill can prepare this package; repository write, PR creation, merge, and deployment remain subject to the user's authorization and the repository's own controls.
+Complete the package's [evidence bundle](../templates/evidence-bundle.json) and [Draft PR description](../templates/draft-pr.md). Include the requirement, proposal, registry revision, approvals, executed checks, failures, and residual risks. Run `validate-change-package --package-root <path> --registry-root <root>` before presenting the package. Run `ship-package` only when the package is verified and Registry records must change; it attests the signed commit, finalizes and applies. A Skill can prepare this package; repository write, PR creation, merge, and deployment remain subject to the user's authorization and the repository's own controls.
 
 ## Harvesting proven rules from existing code
 
@@ -68,7 +68,7 @@ $DM counterfactual --repo-root . --file <enforcing file> --find '<protection>' -
 
 Several rules at once go through `counterfactual --suite <json>`, one entry per rule with its `obligation_id`, one intact run per test command. Continue only when every verdict is `killed`. `harvest --spec` keeps each whole output and, with the rule's check and the spec's ownership, boundary and design decisions, writes the criteria, obligations, proof obligations, sources and `counterfactual_check` list; it writes nothing while a rule's counterfactual is not killed. A rule whose mutation survives is either untested or not the rule it claims: write the test, or leave the rule out and say why in `rejected_alternatives`.
 
-After `submit-proposal`, `record-test-result` for each obligation, `record-approval` and `verify-proposal`, the `git-signed-commit` verifier needs three more steps. They take no decisions, but they must run in this order, because the attestation names the signed commit that carries the verified package; `ship-package` attests the signed commit, finalizes the proposal and applies it, in that order, stopping at the first refusal:
+After `submit-proposal`, `record-test-result` for each obligation, `record-approval` and `verify-proposal`, the `git-signed-commit` verifier needs a signed commit before and after `ship-package`, in this order, because the attestation names the signed commit that carries the verified package; `ship-package` attests the signed commit, finalizes the proposal and applies it, in that order, stopping at the first refusal:
 
 ```sh
 P=<package directory>; R=<registry root>
@@ -80,7 +80,7 @@ git pull --no-rebase && git push
 
 Upstream work comes in with a merge, never a rebase: a rebase rewrites both signed commits, and the attestation would name a commit that no longer carries the package. The signatures stay with the person or host whose key the policy authorizes. When `ship-package` refuses the proposal because its base revision is stale, run `rebase-proposal`, record the approvals again, `verify-proposal`, and sign a new commit holding the package for `ship-package`: the old approvals and the old signed commit name the previous revision.
 
-A rule already reviewed, such as one from before test obligations were recorded, is re-proven the same way after `promote-candidate --amend --repo-root . --cite-function <test file>:<test name>` puts it into the draft with the citation of its test and names the package it supersedes. A rule that a dependency gate enforces rather than a test, such as a forbidden import between Contexts, is proven by an obligation with `level: architecture` whose `check` runs the gate; its counterfactual adds a blank import of the forbidden package, `_ "<package>"`, which still builds, so the gate is what fails.
+A rule already reviewed, such as one whose reviewing package records no test obligation, is re-proven the same way after `promote-candidate --amend --repo-root . --cite-function <test file>:<test name>` puts it into the draft with the citation of its test and names the package it supersedes. A rule that a dependency gate enforces rather than a test, such as a forbidden import between Contexts, is proven by an obligation with `level: architecture` whose `check` runs the gate; its counterfactual adds a blank import of the forbidden package, `_ "<package>"`, which still builds, so the gate is what fails.
 
 ## After implementation: reflect the model
 

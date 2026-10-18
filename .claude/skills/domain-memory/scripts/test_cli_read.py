@@ -57,6 +57,17 @@ class CliReadTest(RegistryTestCase):
         self.assertIn("points one directory too deep", summary.stdout)
         self.assertNotIn("Nothing is initialized here", summary.stdout)
 
+    def test_the_probe_of_a_moved_selection_names_the_commands_that_settle_it(self) -> None:
+        self.selection_with_two_sources()
+        (self.repo / "docs" / "added.md").write_text("added", encoding="utf-8")
+        root = self.repo / "memory"
+        summary = self.run_cli("probe", "--repo-root", str(self.repo), "--registry-root", str(root))
+        self.assertEqual(
+            (1, f"Domain Memory at {root}: stale. 1 sources moved (docs); "
+                "run refresh-sources, then have a developer run confirm-sources."),
+            (summary.returncode, summary.stdout.strip()),
+        )
+
     def test_a_file_system_error_ends_in_one_error_line_instead_of_a_traceback(self) -> None:
         occupied = self.repo / "occupied.txt"
         occupied.write_text("not a directory\n", encoding="utf-8")

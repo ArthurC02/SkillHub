@@ -7,7 +7,7 @@ description: Read a reviewed file-backed Domain Registry to guide implementation
 
 Use this before coding when a request uses a domain term or may cross a Context.
 
-1. In an unfamiliar repository, run `readiness --repo-root <repo>` first. It is read-only and routes only: `empty` and `greenfield` need source discovery or Design before any Registry read, and `dead` needs recovery. Do not call `probe` as the first command.
+1. In an unfamiliar repository, run `readiness --repo-root <repo> [--registry-root <root>]` first; without `--registry-root` it cannot report `extract` or `dead`. It is read-only and routes only: `empty` and `greenfield` need source discovery or Design before any Registry read, and `dead` needs recovery. Do not call `probe` as the first command.
 2. Run `probe --repo-root <repo> --registry-root <root>`.
 3. Run `validate --registry-root <root> --repo-root <repo>` and validate the policy.
 4. Resolve terms with `resolve-terms`, then inspect the owner with `get-context` and `get-record`; before changing a record, `dependents` lists what else the change may touch.

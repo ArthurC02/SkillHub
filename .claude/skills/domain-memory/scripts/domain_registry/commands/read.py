@@ -65,7 +65,7 @@ def probe_summary(result: dict, registry_root: Path) -> str:
         names = ", ".join(source["path"] for source in result["changed_sources"][:5])
         return (
             f"{where}: stale. {len(result['changed_sources'])} sources moved "
-            f"({names}); refresh before trusting it."
+            f"({names}); run refresh-sources, then have a developer run confirm-sources."
         )
     return f"{where}: {result['status']}. {result.get('reason', '')}".strip()
 

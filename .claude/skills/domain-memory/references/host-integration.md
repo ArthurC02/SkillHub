@@ -2,17 +2,18 @@
 
 Domain Memory is portable because its durable state is files in the repository and its behavior is Skills plus scripts. The Plugin manifest does not define `agents` or `subagents`; do not add either field.
 
-A plugin install and a direct Skill read of the Plugin root are different entry points. A host lists the installed Plugin's contents as the Skills under `skills/` and nothing else: the Plugin-root `SKILL.md` router is not a Skill under a plugin install, so an agent working through the installed plugin never sees the router page, its readiness-first instruction, or this file, which the router alone links to. Each leaf Skill's `description` is sufficient for a host to pick a capability, but no leaf Skill restates the readiness step below. To keep that step from being silently lost, a host must call `readiness` itself before dispatching to a Domain Memory Skill, or route through a direct read of the Plugin-root `SKILL.md` instead of the installed plugin.
+A plugin install and a direct Skill read of the Plugin root are different entry points. A host lists the installed Plugin's contents as the Skills under `skills/` and nothing else: the Plugin-root `SKILL.md` router is not a Skill under a plugin install, so an agent working through the installed plugin never sees the router page, its readiness-first instruction, or this file. Each leaf Skill's `description` is sufficient for a host to pick a capability, but no leaf Skill restates the readiness step below. To keep that step from being silently lost, a host must call `readiness` itself before dispatching to a Domain Memory Skill, or route through a direct read of the Plugin-root `SKILL.md` instead of the installed plugin.
 
-The host chooses execution. It may assign the four lifecycle capabilities to separate agents when it supports delegation, or run them in one agent in this order:
+The host chooses execution. It may assign the capabilities to separate agents when it supports delegation, or run them in one agent in this order:
 
 1. `domain-memory-read` before implementation, after `domain-memory-extract` when the Registry has not yet learned the requirement or the code it is about.
 2. `domain-memory-design` for a material change, as [the seven-step workflow](seven-step-workflow.md) defines it.
 3. `domain-memory-review` before handing the implementation off, and again after implementation when the result is material.
 4. `domain-memory-maintain` after implementation or source drift.
 5. `domain-memory-review` before relying on the maintained result.
+6. `domain-memory-review-change` before merging a branch.
 
-`domain-memory-implementation-hygiene` is a companion check on that sequence rather than a sixth step: the host runs it on a code change between Read or Design and the Review handoff. It reads the handoff and produces a routing decision, so a host that cannot delegate still runs it in the implementing context.
+`domain-memory-implementation-hygiene` is a companion check on that sequence rather than a seventh step: the host runs it on a code change between Read or Design and the Review handoff. It reads the handoff and produces a routing decision, so a host that cannot delegate still runs it in the implementing context.
 
 Delegated work must use the same repository, Registry, evidence rules, and Git review boundary. A subagent may prepare a proposal or evidence, but must not treat a candidate as reviewed or bypass the host's write and approval controls.
 
@@ -22,15 +23,15 @@ When delegation is available, pass the implementation handoff from Read or Desig
 
 A host that carries approvals must also prepare the authority behind them, once per repository and once per machine. `governance-readiness` reports what is still missing, and the API reference's *Preparing the approval authority* section covers both situations and the commands that settle them. Until that is done the Registry holds candidates, which is a legitimate state to work in and not a state to present as reviewed.
 
-The first repository event is readiness routing: run `readiness --repo-root <repo>` before any capability that expects a Registry. An empty or greenfield repository must go through source discovery and explicit Registry initialization before Read; do not call `probe` as the first command.
+The first repository event is readiness routing: run `readiness --repo-root <repo> [--registry-root <root>]` before any capability that expects a Registry. An empty or greenfield repository must go through source discovery and explicit Registry initialization before Read; do not call `probe` as the first command.
 
 The lifecycle adapter should wire these command groups to its own events:
 
 | Host event | Capability | Commands |
 | --- | --- | --- |
-| Before capability selection | Router | `readiness --repo-root <repo>` |
+| Before capability selection | Router | `readiness --repo-root <repo> [--registry-root <root>]` |
 | Empty or greenfield repository | Router / Design | `discover-sources`, explicit source choice, then `init-domain-memory`; use Design after initialization |
-| Brownfield repository before implementation | Read | `probe`, `validate --require-reviewed`, then term and Context lookup |
+| Brownfield repository before implementation | Read | `probe`, `validate`, then term and Context lookup; add `--require-reviewed` only when the change may rely on reviewed records alone |
 | Dead or unusable Registry | Router / Review | Stop, report the readiness block, and recover or reconfirm sources before relying on facts |
 | Before a material domain change | Design | `init-change-package`, package validation, and the seven-step workflow |
 | While implementing a code change | Implementation hygiene | No Registry command; read the implementation handoff, then route a material change, as the seven-step workflow defines it, to Design |
@@ -39,6 +40,7 @@ The lifecycle adapter should wire these command groups to its own events:
 | Before implementation handoff | Review | Registry, source, evidence, audit, and Change Package validation |
 | After implementation or source drift | Maintain | `verify-sources`, `verify-evidence`, `verify-audit`, then candidate or Change Package preparation |
 | Before relying on the result | Review | Registry, source, evidence, audit, and Change Package validation |
+| Before merging a branch | Review a change | `brief --registry-root <root> --repo-root <repo> --base <branch point> --markdown`; its verdict decides whether the branch needs a Change Package, a recite, or nothing |
 
 The host runs the two checks on a code change. An Agent told that a command exists seldom runs it unprompted, and the weaker the model the less often, so a host that leaves them to the coding Agent has the instruction without the check.
 

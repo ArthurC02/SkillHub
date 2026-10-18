@@ -1,6 +1,6 @@
 # Domain Registry schema
 
-The Registry is a file-backed, reviewable projection of domain knowledge, not a substitute for the authoritative policy, contract, or decision source. Every record should contain a stable `id`, cited `evidence`, and fields appropriate to its type. An asset-level `status` is the default for its records; a record can override it. Use `candidate` until the named review process or owner confirms it; use `reviewed` only after that confirmation.
+The Registry is a file-backed, reviewable projection of domain knowledge, not a substitute for the authoritative policy, contract, or decision source. Every record should contain a stable `id`, cited `evidence`, and fields appropriate to its type. A record's `status` defaults to `candidate`. Use `candidate` until the named review process or owner confirms it; use `reviewed` only after that confirmation.
 
 | Asset | Required domain meaning | Key fields beyond `id` and `status` |
 | --- | --- | --- |
