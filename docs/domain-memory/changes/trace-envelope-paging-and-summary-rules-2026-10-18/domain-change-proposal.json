@@ -6,13 +6,14 @@
   "status": "verified",
   "change_classification": "material",
   "submitted_at": "2026-10-18T14:12:10.058290Z",
-  "verified_at": "2026-10-18T15:04:37.620487Z",
+  "verified_at": "2026-10-18T16:53:53.609840Z",
   "finalized_at": null,
   "applied_at": null,
-  "proposal_revision": 1,
+  "proposal_revision": 2,
   "base_registry_revision": {
-    "observed_commit": "8ccb13ec0bd7b8755644a8903914e66a93406624",
-    "registry_digest": "sha256:c77ecb1c782994af2c58074a7cc040ee7280fb37c3cc534b65d5b0ad7e5a01cd"
+    "observed_commit": "b22ee8ffaecdf2b4896b6989e453058beedacb04",
+    "registry_digest": "sha256:a9202a451e04cf1b06210b282d236a12ded33d291d4bd89e1a41ec6c83c6cde9",
+    "committed_digest": "sha256:a9202a451e04cf1b06210b282d236a12ded33d291d4bd89e1a41ec6c83c6cde9"
   },
   "affected_contexts": [
     "trace"
@@ -719,6 +720,19 @@
       "base_registry_revision": {
         "observed_commit": "8ccb13ec0bd7b8755644a8903914e66a93406624",
         "registry_digest": "sha256:c77ecb1c782994af2c58074a7cc040ee7280fb37c3cc534b65d5b0ad7e5a01cd"
+      }
+    },
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-18T16:53:53.057386Z",
+      "scope": "Record trace rules as reviewed",
+      "proposal_revision": 2,
+      "base_registry_revision": {
+        "observed_commit": "b22ee8ffaecdf2b4896b6989e453058beedacb04",
+        "registry_digest": "sha256:a9202a451e04cf1b06210b282d236a12ded33d291d4bd89e1a41ec6c83c6cde9",
+        "committed_digest": "sha256:a9202a451e04cf1b06210b282d236a12ded33d291d4bd89e1a41ec6c83c6cde9"
       }
     }
   ]

@@ -3,20 +3,12 @@
   "requirement_id": "trace-envelope-paging-and-summary-rules-2026-10-18",
   "proposal_id": "trace-envelope-paging-and-summary-rules-2026-10-18",
   "registry_revision": {
-    "observed_commit": "8ccb13ec0bd7b8755644a8903914e66a93406624",
-    "registry_digest": "sha256:c77ecb1c782994af2c58074a7cc040ee7280fb37c3cc534b65d5b0ad7e5a01cd"
+    "observed_commit": "b22ee8ffaecdf2b4896b6989e453058beedacb04",
+    "registry_digest": "sha256:a9202a451e04cf1b06210b282d236a12ded33d291d4bd89e1a41ec6c83c6cde9",
+    "committed_digest": "sha256:a9202a451e04cf1b06210b282d236a12ded33d291d4bd89e1a41ec6c83c6cde9"
   },
   "approvals": [],
-  "scm_attestation": {
-    "provider": "git-signed-commit",
-    "commit": "75757cd8571ca95bd0c90a46127fe14020af0479",
-    "status": "approved",
-    "proposal_revision": 1,
-    "base_registry_revision": {
-      "observed_commit": "8ccb13ec0bd7b8755644a8903914e66a93406624",
-      "registry_digest": "sha256:c77ecb1c782994af2c58074a7cc040ee7280fb37c3cc534b65d5b0ad7e5a01cd"
-    }
-  },
+  "scm_attestation": null,
   "counterfactual_check": [
     {
       "status": "passed",
