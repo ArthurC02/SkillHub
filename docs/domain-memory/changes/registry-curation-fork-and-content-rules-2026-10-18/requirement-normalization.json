@@ -1,0 +1,93 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "registry-curation-fork-and-content-rules-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed the redistribution, curation, fork, purge, operator note and content rules the registry Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context registry lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-release-needs-the-licence-the-newest-version-records",
+      "statement": "Releasing a skill for redistribution is refused when the claimed licence differs from the one its newest version records, and the stored value is unchanged."
+    },
+    {
+      "id": "enforced-a-generated-skills-redistribution-is-permanent",
+      "statement": "A generated skill's redistribution can be neither blocked nor allowed; it stays generated."
+    },
+    {
+      "id": "enforced-only-a-catalogue-skill-can-be-curated",
+      "statement": "Curating a skill is refused when it is not in a catalogue Workspace, and its tier is unchanged."
+    },
+    {
+      "id": "enforced-withdrawing-curation-is-always-allowed",
+      "statement": "Withdrawing curation is allowed for any skill, inside a catalogue or not, and clears the curated version."
+    },
+    {
+      "id": "enforced-a-generated-skill-takes-only-generated-content",
+      "statement": "A version of uploaded content cannot be added to a generated skill; it is refused as a name collision and consumes no version number."
+    },
+    {
+      "id": "enforced-a-taken-down-skill-cannot-be-forked",
+      "statement": "Forking a taken-down skill finds nothing."
+    },
+    {
+      "id": "enforced-a-fork-carries-its-sources-access-restriction",
+      "statement": "A fork starts with its source's access restriction, so forking cannot get around a licensing hold."
+    },
+    {
+      "id": "enforced-a-source-skill-outlives-purge-while-a-fork-stays",
+      "statement": "A purge keeps a source skill while any fork of it stays, transitively down fork chains."
+    },
+    {
+      "id": "enforced-a-held-skill-is-not-purged",
+      "statement": "A purge keeps a skill that has test cases or a version referenced by a run, a download or a bundle."
+    },
+    {
+      "id": "enforced-a-fork-name-series-stays-flat",
+      "statement": "A fork of a fork reuses the base name instead of growing it, treating only an ordinal of two or more as a series number."
+    },
+    {
+      "id": "enforced-an-operator-note-is-at-most-the-cap",
+      "statement": "An operator note longer than the contract's cap is refused; a note of exactly the cap is accepted."
+    },
+    {
+      "id": "enforced-an-operator-note-is-counted-in-characters",
+      "statement": "The operator note cap counts characters, not bytes, so a note of Chinese characters up to the cap is accepted."
+    },
+    {
+      "id": "enforced-a-restriction-reason-must-be-known",
+      "statement": "Restricting a skill with a reason code outside the known set is refused, listing the known codes."
+    },
+    {
+      "id": "enforced-a-taken-down-skills-package-is-not-current",
+      "statement": "A taken-down skill's package is never reported as current content."
+    },
+    {
+      "id": "enforced-a-diff-refuses-a-version-of-another-skill",
+      "statement": "A version diff finds nothing when a named version belongs to another skill, even in the same Workspace."
+    },
+    {
+      "id": "enforced-a-text-diff-stops-at-one-mib-per-file",
+      "statement": "A file larger than 1 MiB on either side gets no text diff; exactly 1 MiB is diffed."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/skill_hardening_a5_integration_test.go",
+    "apps/platform/internal/skill/library/content_guards_test.go",
+    "apps/platform/internal/skill/library/diff.go",
+    "apps/platform/internal/skill/library/fork_source_characterization_test.go",
+    "apps/platform/internal/skill/library/governance/restriction.go",
+    "apps/platform/internal/skill/library/governance/restriction_test.go",
+    "apps/platform/internal/skill/library/purge.go",
+    "apps/platform/internal/skill/library/purge_test.go",
+    "apps/platform/internal/skill/library/registry.go",
+    "apps/platform/internal/skill/library/skill_root.go",
+    "apps/platform/internal/skill/library/skill_root_test.go",
+    "apps/platform/internal/skill/library/skill_store.go",
+    "apps/platform/internal/skill/library/write_test.go"
+  ]
+}

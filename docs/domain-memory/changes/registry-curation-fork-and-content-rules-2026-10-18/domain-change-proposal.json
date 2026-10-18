@@ -1,0 +1,633 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "registry-curation-fork-and-content-rules-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "registry-curation-fork-and-content-rules-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-18T10:45:47.298837Z",
+  "verified_at": "2026-10-18T10:52:30.454438Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "37ec90dd9c775e9a45d3b78e47f70da2c8e181ad",
+    "registry_digest": "sha256:276a6c2c052748e9dbf7c7ece85b085f8543c6604f98e82e804086fd183fcd9a"
+  },
+  "affected_contexts": [
+    "registry"
+  ],
+  "rule_ids": [
+    "a-release-needs-the-licence-the-newest-version-records",
+    "a-generated-skills-redistribution-is-permanent",
+    "only-a-catalogue-skill-can-be-curated",
+    "withdrawing-curation-is-always-allowed",
+    "a-generated-skill-takes-only-generated-content",
+    "a-taken-down-skill-cannot-be-forked",
+    "a-fork-carries-its-sources-access-restriction",
+    "a-source-skill-outlives-purge-while-a-fork-stays",
+    "a-held-skill-is-not-purged",
+    "a-fork-name-series-stays-flat",
+    "an-operator-note-is-at-most-the-cap",
+    "an-operator-note-is-counted-in-characters",
+    "a-restriction-reason-must-be-known",
+    "a-taken-down-skills-package-is-not-current",
+    "a-diff-refuses-a-version-of-another-skill",
+    "a-text-diff-stops-at-one-mib-per-file"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Only registry decides a skill's redistribution, curation and which versions stay.",
+    "evidence": [
+      "apps/platform/internal/skill/library/skill_root.go:241-261"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: the object store reaches registry through an injected port.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/library/diff.go:47-53"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A second extraction of the registry Context found enforced rules beyond the seven the Registry held, four of them guarded by no test."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; add the missing tests; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording the service-level licence claim completeness check: the aggregate repeats it, so weakening one alone is equivalent."
+    ],
+    "proof_obligations": [
+      "rule-a-release-needs-the-licence-the-newest-version-records",
+      "rule-a-generated-skills-redistribution-is-permanent",
+      "rule-only-a-catalogue-skill-can-be-curated",
+      "rule-withdrawing-curation-is-always-allowed",
+      "rule-a-generated-skill-takes-only-generated-content",
+      "rule-a-taken-down-skill-cannot-be-forked",
+      "rule-a-fork-carries-its-sources-access-restriction",
+      "rule-a-source-skill-outlives-purge-while-a-fork-stays",
+      "rule-a-held-skill-is-not-purged",
+      "rule-a-fork-name-series-stays-flat",
+      "rule-an-operator-note-is-at-most-the-cap",
+      "rule-an-operator-note-is-counted-in-characters",
+      "rule-a-restriction-reason-must-be-known",
+      "rule-a-taken-down-skills-package-is-not-current",
+      "rule-a-diff-refuses-a-version-of-another-skill",
+      "rule-a-text-diff-stops-at-one-mib-per-file"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-release-needs-the-licence-the-newest-version-records",
+        "statement": "Releasing a skill for redistribution is refused when the claimed licence differs from the one its newest version records, and the stored value is unchanged.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A release claiming Apache-2.0 for a version that records MIT is refused as license_mismatch."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 241,
+              "end": 261
+            },
+            "excerpt_sha256": "sha256:ffc78ce9143ac4a621091a8bcfce9647caaf5ad1fa552d6566ff398c6abaeb04"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root_test.go",
+            "lines": {
+              "start": 90,
+              "end": 140
+            },
+            "excerpt_sha256": "sha256:46b9015f8b3751330bbdb42a4f68b9d31445f11b10bbfa9c22e11accdd25ca30"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-generated-skills-redistribution-is-permanent",
+        "statement": "A generated skill's redistribution can be neither blocked nor allowed; it stays generated.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "Blocking a generated skill is refused as generated_is_permanent."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 257,
+              "end": 259
+            },
+            "excerpt_sha256": "sha256:379f25c145143a4aa7edfded05511263d62dc7653693cc9d1450eb32343b696a"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root_test.go",
+            "lines": {
+              "start": 90,
+              "end": 140
+            },
+            "excerpt_sha256": "sha256:46b9015f8b3751330bbdb42a4f68b9d31445f11b10bbfa9c22e11accdd25ca30"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-a-catalogue-skill-can-be-curated",
+        "statement": "Curating a skill is refused when it is not in a catalogue Workspace, and its tier is unchanged.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "Curating a skill imported into a user's own Workspace is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 276,
+              "end": 288
+            },
+            "excerpt_sha256": "sha256:dd3f3919b96b8b5f91d42de00fb04c7f5525102a3a3a9b298e3938bf31492494"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root_test.go",
+            "lines": {
+              "start": 142,
+              "end": 187
+            },
+            "excerpt_sha256": "sha256:17c908727240d50a32ce3ff9bf0a434ad68d64f882c9c26e650dfeaec0d021aa"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "withdrawing-curation-is-always-allowed",
+        "statement": "Withdrawing curation is allowed for any skill, inside a catalogue or not, and clears the curated version.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A curated skill that left the catalogue is withdrawn and its curated version cleared."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 263,
+              "end": 288
+            },
+            "excerpt_sha256": "sha256:0be422fbe37411f8965e9fff5d979978ec4697662ae03ac344c9f498db31a4fc"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root_test.go",
+            "lines": {
+              "start": 142,
+              "end": 187
+            },
+            "excerpt_sha256": "sha256:17c908727240d50a32ce3ff9bf0a434ad68d64f882c9c26e650dfeaec0d021aa"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-generated-skill-takes-only-generated-content",
+        "statement": "A version of uploaded content cannot be added to a generated skill; it is refused as a name collision and consumes no version number.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "Uploading a package named like a generated skill is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 184,
+              "end": 186
+            },
+            "excerpt_sha256": "sha256:f16cce83fddcc23cecbd24fb6c8c450a24781211818524a553627d692bb206be"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 301,
+              "end": 305
+            },
+            "excerpt_sha256": "sha256:482870060733a920948cc96ea252f8d84974e64b3f502266cd8f06c3b2327f30"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root_test.go",
+            "lines": {
+              "start": 351,
+              "end": 371
+            },
+            "excerpt_sha256": "sha256:6e3a9cf26e8a82b78e43e177455988e600ecf81cc5f5a6ced03420ce3f80ce08"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-taken-down-skill-cannot-be-forked",
+        "statement": "Forking a taken-down skill finds nothing.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "Forking a catalogue skill an operator took down answers not found."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/registry.go",
+            "lines": {
+              "start": 95,
+              "end": 97
+            },
+            "excerpt_sha256": "sha256:dc731f5fb105b3dbe00230e749236725a65ea88871386489208a38bfbfd7886b"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/fork_source_characterization_test.go",
+            "lines": {
+              "start": 62,
+              "end": 114
+            },
+            "excerpt_sha256": "sha256:8cadd6e93638b685c9abf4ae4b6661edc008c4f7e525c6d7bb9ae9f0f983e18a"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-fork-carries-its-sources-access-restriction",
+        "statement": "A fork starts with its source's access restriction, so forking cannot get around a licensing hold.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "Forking a skill held for licence review gives a held fork whose files answer 403."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 169,
+              "end": 178
+            },
+            "excerpt_sha256": "sha256:406ffe570d5690630bf40d018bf93c4f14a78a6aef4bafbe9cc2866b63bcf4d2"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/skill_hardening_a5_integration_test.go",
+            "lines": {
+              "start": 16,
+              "end": 56
+            },
+            "excerpt_sha256": "sha256:4373462396d014b7085cb48c6594ceb199a32793981b7f128c259f164128acdc"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-source-skill-outlives-purge-while-a-fork-stays",
+        "statement": "A purge keeps a source skill while any fork of it stays, transitively down fork chains.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A deleted skill forked by another user's live skill survives the sweep."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/purge.go",
+            "lines": {
+              "start": 233,
+              "end": 251
+            },
+            "excerpt_sha256": "sha256:b6ab54bc9c24068546ecdb5eddc307b944afe41fbecae8f67cbd045345872845"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/purge_test.go",
+            "lines": {
+              "start": 53,
+              "end": 95
+            },
+            "excerpt_sha256": "sha256:7ce143f0027e5271d25fbf28cb05b158f370d3f6c67c2755b12858ac6f1384a8"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-held-skill-is-not-purged",
+        "statement": "A purge keeps a skill that has test cases or a version referenced by a run, a download or a bundle.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A deleted skill past grace that has test cases survives the sweep."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/purge.go",
+            "lines": {
+              "start": 30,
+              "end": 32
+            },
+            "excerpt_sha256": "sha256:c2abe36b9b8910dce5fa36fa4d38ea43b9d698b61470cbf444fbd146ffd2c441"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/purge.go",
+            "lines": {
+              "start": 60,
+              "end": 88
+            },
+            "excerpt_sha256": "sha256:a2a7347ffc485b3861736cfb247141709c40470dbf73bbec6e3b177238bace13"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/purge_test.go",
+            "lines": {
+              "start": 23,
+              "end": 51
+            },
+            "excerpt_sha256": "sha256:280894e25a26feb7089be8921c52b7d5ac1d3225efa4834c3e5ba2772f28bcb3"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-fork-name-series-stays-flat",
+        "statement": "A fork of a fork reuses the base name instead of growing it, treating only an ordinal of two or more as a series number.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "Forking tidy-csv-fork-2 proposes tidy-csv-fork, while tidy-csv-fork-1 is a plain name."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/registry.go",
+            "lines": {
+              "start": 266,
+              "end": 297
+            },
+            "excerpt_sha256": "sha256:370b4cccfe01d3f9eaa253c64b7e4bdf6c58f019fe3d42658e5b5111e9812517"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/write_test.go",
+            "lines": {
+              "start": 49,
+              "end": 69
+            },
+            "excerpt_sha256": "sha256:6cfde76915fc31804b1ed9849100a56eb036fedd970dcf1b35d56e8f90aca1e5"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-operator-note-is-at-most-the-cap",
+        "statement": "An operator note longer than the contract's cap is refused; a note of exactly the cap is accepted.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A takedown note one character over the cap answers 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/governance/restriction.go",
+            "lines": {
+              "start": 142,
+              "end": 151
+            },
+            "excerpt_sha256": "sha256:4da7785316343e162a5b48d76ab76341163c87fcaa6bb1bb8ba038c26f90b0f2"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/governance/restriction_test.go",
+            "lines": {
+              "start": 86,
+              "end": 90
+            },
+            "excerpt_sha256": "sha256:36ef5ab036e207f1e17a4b797bd5fd4994bdb538265c550da897b8dc3aedad9c"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-operator-note-is-counted-in-characters",
+        "statement": "The operator note cap counts characters, not bytes, so a note of Chinese characters up to the cap is accepted.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A note of exactly the cap in Chinese characters is accepted; one more is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/governance/restriction.go",
+            "lines": {
+              "start": 142,
+              "end": 151
+            },
+            "excerpt_sha256": "sha256:4da7785316343e162a5b48d76ab76341163c87fcaa6bb1bb8ba038c26f90b0f2"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/governance/restriction_test.go",
+            "lines": {
+              "start": 92,
+              "end": 99
+            },
+            "excerpt_sha256": "sha256:61a653aaba4319979d49239f7749308769e82fff2e73c0ad52124f8b04e62657"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-restriction-reason-must-be-known",
+        "statement": "Restricting a skill with a reason code outside the known set is refused, listing the known codes.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "The reason 'invented' is refused as an unknown reason code."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/governance/restriction.go",
+            "lines": {
+              "start": 118,
+              "end": 132
+            },
+            "excerpt_sha256": "sha256:dc58dec1c0bba20d343f1f8780efeece4343313640b9915b10c821b0048a41a4"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/governance/restriction_test.go",
+            "lines": {
+              "start": 14,
+              "end": 72
+            },
+            "excerpt_sha256": "sha256:4bacb67d4339c6faa0522e958183e8b95ca051dc0d555f57a1621f89f47da8e6"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-taken-down-skills-package-is-not-current",
+        "statement": "A taken-down skill's package is never reported as current content.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "After a takedown, the current-package check for its newest version answers false."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/skill_store.go",
+            "lines": {
+              "start": 32,
+              "end": 34
+            },
+            "excerpt_sha256": "sha256:d5fd3029310c94182bbde8dd2c99c36eec9ff21c1494cfe57782348af43aa5ac"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/content_guards_test.go",
+            "lines": {
+              "start": 20,
+              "end": 44
+            },
+            "excerpt_sha256": "sha256:f0e0bd3e111b39090b3831e370fd1ff97adc4a3062ec27511bc2d1a83a1353f3"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-diff-refuses-a-version-of-another-skill",
+        "statement": "A version diff finds nothing when a named version belongs to another skill, even in the same Workspace.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "Diffing skill A against a version of skill B answers not found and reads no package."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/diff.go",
+            "lines": {
+              "start": 47,
+              "end": 53
+            },
+            "excerpt_sha256": "sha256:999651f074567595d3fce5c551169cbe080d3afb20af1379ab1ca2469286f027"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/content_guards_test.go",
+            "lines": {
+              "start": 46,
+              "end": 74
+            },
+            "excerpt_sha256": "sha256:010372b1c7653f7d51585c1d038354f8a04da190d14a723c4663544c7aa11ab9"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-text-diff-stops-at-one-mib-per-file",
+        "statement": "A file larger than 1 MiB on either side gets no text diff; exactly 1 MiB is diffed.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "Two 1 MiB files are diffed; a file one byte over is not."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/diff.go",
+            "lines": {
+              "start": 140,
+              "end": 143
+            },
+            "excerpt_sha256": "sha256:194475fe21d195276d75825d26aebd2393980e2d5d254c6d50a7210d68269019"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/content_guards_test.go",
+            "lines": {
+              "start": 76,
+              "end": 84
+            },
+            "excerpt_sha256": "sha256:90713c817e3b4f2fd0f259d5dd869b9a475c79f89435f87435525fa8018a6fef"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-18T10:52:30.207485Z",
+      "scope": "Record registry curation, fork and content rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "37ec90dd9c775e9a45d3b78e47f70da2c8e181ad",
+        "registry_digest": "sha256:276a6c2c052748e9dbf7c7ece85b085f8543c6604f98e82e804086fd183fcd9a"
+      }
+    }
+  ]
+}

@@ -1,0 +1,247 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "registry-curation-fork-and-content-rules-2026-10-18",
+  "proposal_id": "registry-curation-fork-and-content-rules-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-a-release-needs-the-licence-the-newest-version-records",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-release-needs-the-licence-the-newest-version-records",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-release-needs-the-licence-the-newest-version-records"
+        }
+      ],
+      "expected_outcome": "Releasing a skill for redistribution is refused when the claimed licence differs from the one its newest version records, and the stored value is unchanged.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-a-generated-skills-redistribution-is-permanent",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-generated-skills-redistribution-is-permanent",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-generated-skills-redistribution-is-permanent"
+        }
+      ],
+      "expected_outcome": "A generated skill's redistribution can be neither blocked nor allowed; it stays generated.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-only-a-catalogue-skill-can-be-curated",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-only-a-catalogue-skill-can-be-curated",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "only-a-catalogue-skill-can-be-curated"
+        }
+      ],
+      "expected_outcome": "Curating a skill is refused when it is not in a catalogue Workspace, and its tier is unchanged.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-withdrawing-curation-is-always-allowed",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-withdrawing-curation-is-always-allowed",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "withdrawing-curation-is-always-allowed"
+        }
+      ],
+      "expected_outcome": "Withdrawing curation is allowed for any skill, inside a catalogue or not, and clears the curated version.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-a-generated-skill-takes-only-generated-content",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-generated-skill-takes-only-generated-content",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-generated-skill-takes-only-generated-content"
+        }
+      ],
+      "expected_outcome": "A version of uploaded content cannot be added to a generated skill; it is refused as a name collision and consumes no version number.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAGeneratedSkillTakesOnlyGeneratedContent$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-a-taken-down-skill-cannot-be-forked",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-taken-down-skill-cannot-be-forked",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-taken-down-skill-cannot-be-forked"
+        }
+      ],
+      "expected_outcome": "Forking a taken-down skill finds nothing.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAForkReadsTheNewestVersionOfAVisibleLiveSkill$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-a-fork-carries-its-sources-access-restriction",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-fork-carries-its-sources-access-restriction",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-fork-carries-its-sources-access-restriction"
+        }
+      ],
+      "expected_outcome": "A fork starts with its source's access restriction, so forking cannot get around a licensing hold.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAForkCarriesTheLicensingHoldItWasForkedFrom$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-source-skill-outlives-purge-while-a-fork-stays",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-source-skill-outlives-purge-while-a-fork-stays",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-source-skill-outlives-purge-while-a-fork-stays"
+        }
+      ],
+      "expected_outcome": "A purge keeps a source skill while any fork of it stays, transitively down fork chains.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAForkKeepsItsSourceOnlyWhileTheForkItselfStays$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-a-held-skill-is-not-purged",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-held-skill-is-not-purged",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-held-skill-is-not-purged"
+        }
+      ],
+      "expected_outcome": "A purge keeps a skill that has test cases or a version referenced by a run, a download or a bundle.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAPurgeKeepsASkillWhileAnythingStillHoldsItOrOneOfItsVersions$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-a-fork-name-series-stays-flat",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-fork-name-series-stays-flat",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-fork-name-series-stays-flat"
+        }
+      ],
+      "expected_outcome": "A fork of a fork reuses the base name instead of growing it, treating only an ordinal of two or more as a series number.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestForkOrdinalParsingKeepsTheSeriesFlat$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-an-operator-note-is-at-most-the-cap",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-operator-note-is-at-most-the-cap",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-operator-note-is-at-most-the-cap"
+        }
+      ],
+      "expected_outcome": "An operator note longer than the contract's cap is refused; a note of exactly the cap is accepted.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestValidRestrictionNoteAcceptsExactlyTheByteCap$ ./internal/skill/library/governance/"
+    },
+    {
+      "id": "rule-an-operator-note-is-counted-in-characters",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-operator-note-is-counted-in-characters",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-operator-note-is-counted-in-characters"
+        }
+      ],
+      "expected_outcome": "The operator note cap counts characters, not bytes, so a note of Chinese characters up to the cap is accepted.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestARestrictionNoteIsCountedInCharacters$ ./internal/skill/library/governance/"
+    },
+    {
+      "id": "rule-a-restriction-reason-must-be-known",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-restriction-reason-must-be-known",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-restriction-reason-must-be-known"
+        }
+      ],
+      "expected_outcome": "Restricting a skill with a reason code outside the known set is refused, listing the known codes.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestRestrictionServiceRejectsInvalidInputBeforeDatabase$ ./internal/skill/library/governance/"
+    },
+    {
+      "id": "rule-a-taken-down-skills-package-is-not-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-taken-down-skills-package-is-not-current",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-taken-down-skills-package-is-not-current"
+        }
+      ],
+      "expected_outcome": "A taken-down skill's package is never reported as current content.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAPackageOfATakenDownSkillIsNotCurrent$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-a-diff-refuses-a-version-of-another-skill",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-diff-refuses-a-version-of-another-skill",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-diff-refuses-a-version-of-another-skill"
+        }
+      ],
+      "expected_outcome": "A version diff finds nothing when a named version belongs to another skill, even in the same Workspace.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestADiffRefusesAVersionOfAnotherSkill$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-a-text-diff-stops-at-one-mib-per-file",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-text-diff-stops-at-one-mib-per-file",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-text-diff-stops-at-one-mib-per-file"
+        }
+      ],
+      "expected_outcome": "A file larger than 1 MiB on either side gets no text diff; exactly 1 MiB is diffed.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestATextDiffStopsAtOneMiBPerFile$ ./internal/skill/library/"
+    }
+  ]
+}

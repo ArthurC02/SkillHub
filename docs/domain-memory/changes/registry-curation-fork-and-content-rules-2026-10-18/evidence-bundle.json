@@ -1,0 +1,306 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "registry-curation-fork-and-content-rules-2026-10-18",
+  "proposal_id": "registry-curation-fork-and-content-rules-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "37ec90dd9c775e9a45d3b78e47f70da2c8e181ad",
+    "registry_digest": "sha256:276a6c2c052748e9dbf7c7ece85b085f8543c6604f98e82e804086fd183fcd9a"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-release-needs-the-licence-the-newest-version-records",
+      "mutated_protection": "apps/platform/internal/skill/library/skill_root.go:253: case !claim.matches(s.newest.license): -> case false && !claim.matches(s.newest.license):",
+      "failure_evidence": "--- FAIL: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/self_supplied_is_provenance,_not_a_verdict (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/generated_is_provenance,_not_a_verdict (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/a_value_outside_the_vocabulary (0.00s)\n...\nTheLicenceItsNewestVersionRecords/releasing_without_a_licence_source (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/releasing_with_a_whitespace_expression (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/releasing_a_skill_that_has_no_version (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/releasing_when_the_newest_version_records_no_licence (0.00s)\n    --- FAIL: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/releasing_under_a_licence_the_version_does_not_record (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/releasing_under_the_recorded_licence,_any_case_and_padding (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/blocking_needs_no_licence_evidence (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/a_generated_skill_cannot_be_blocked (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/a_generated_skill_cannot_be_released_even_with_evidence (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t4.310s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-generated-skills-redistribution-is-permanent",
+      "mutated_protection": "apps/platform/internal/skill/library/skill_root.go:257: if s.Redistribution() == RedistributionGenerated { -> if false && s.Redistribution() == RedistributionGenerated {",
+      "failure_evidence": "--- FAIL: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/self_supplied_is_provenance,_not_a_verdict (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/generated_is_provenance,_not_a_verdict (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/a_value_outside_the_vocabulary (0.00s)\n...\nTheLicenceItsNewestVersionRecords/releasing_without_a_licence_source (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/releasing_with_a_whitespace_expression (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/releasing_a_skill_that_has_no_version (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/releasing_when_the_newest_version_records_no_licence (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/releasing_under_a_licence_the_version_does_not_record (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/releasing_under_the_recorded_licence,_any_case_and_padding (0.00s)\n    --- PASS: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/blocking_needs_no_licence_evidence (0.00s)\n    --- FAIL: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/a_generated_skill_cannot_be_blocked (0.00s)\n    --- FAIL: TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords/a_generated_skill_cannot_be_released_even_with_evidence (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t4.687s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-only-a-catalogue-skill-can-be-curated",
+      "mutated_protection": "apps/platform/internal/skill/library/skill_root.go:282: case !inCatalogue: -> case !inCatalogue && false:",
+      "failure_evidence": "ithdrawnFromAnySkill/withdrawing_clears_the_reviewed_version_even_outside_the_catalogue\n=== RUN   TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill/a_tier_the_column_does_not_hold_is_refused\n--- FAIL: TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill (0.00s)\n    --- PASS: TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill/curating_a_catalogue_skill_binds_its_newest_version (0.00s)\n    --- FAIL: TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill/a_skill_outside_the_catalogue_cannot_be_curated (0.00s)\n    --- PASS: TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill/a_catalogue_skill_without_a_version_has_nothing_to_review (0.00s)\n    --- PASS: TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill/withdrawing_clears_the_reviewed_version_even_outside_the_catalogue (0.00s)\n    --- PASS: TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill/a_tier_the_column_does_not_hold_is_refused (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t3.982s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-withdrawing-curation-is-always-allowed",
+      "mutated_protection": "apps/platform/internal/skill/library/skill_root.go:280: case to == CurationIndexed: -> case to == CurationIndexed && false:",
+      "failure_evidence": ", 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, Valid:false}}}\n=== RUN   TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill/a_tier_the_column_does_not_hold_is_refused\n--- FAIL: TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill (0.00s)\n    --- PASS: TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill/curating_a_catalogue_skill_binds_its_newest_version (0.00s)\n    --- PASS: TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill/a_skill_outside_the_catalogue_cannot_be_curated (0.00s)\n    --- PASS: TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill/a_catalogue_skill_without_a_version_has_nothing_to_review (0.00s)\n    --- FAIL: TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill/withdrawing_clears_the_reviewed_version_even_outside_the_catalogue (0.00s)\n    --- PASS: TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill/a_tier_the_column_does_not_hold_is_refused (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t5.901s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-generated-skill-takes-only-generated-content",
+      "mutated_protection": "apps/platform/internal/skill/library/skill_root.go:184: return generated || !s.Generated() -> return true",
+      "failure_evidence": " TestAGeneratedSkillTakesOnlyGeneratedContent/generated_content_on_a_skill_of_unknown_provenance\n=== RUN   TestAGeneratedSkillTakesOnlyGeneratedContent/uploaded_content_on_a_generated_skill\n    skill_root_test.go:368: events = []registry.Event{registry.SkillVersionAdded{VersionID:pgtype.UUID{Bytes:[16]uint8{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, Valid:false}, VersionNumber:1, ContentHash:\"h\", ImprovedBy:(*registry.Improvement)(nil)}}, want []registry.Event{registry.Refused{Reason:\"generated_name_collision\", Recorded:registry.LicenseClaim{Expression:\"\", Source:\"\"}}}\n--- FAIL: TestAGeneratedSkillTakesOnlyGeneratedContent (0.00s)\n    --- PASS: TestAGeneratedSkillTakesOnlyGeneratedContent/uploaded_content_on_an_uploaded_skill (0.00s)\n    --- PASS: TestAGeneratedSkillTakesOnlyGeneratedContent/generated_content_on_a_generated_skill (0.00s)\n    --- PASS: TestAGeneratedSkillTakesOnlyGeneratedContent/generated_content_on_a_skill_of_unknown_provenance (0.00s)\n    --- FAIL: TestAGeneratedSkillTakesOnlyGeneratedContent/uploaded_content_on_a_generated_skill (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t5.124s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-taken-down-skill-cannot-be-forked",
+      "mutated_protection": "apps/platform/internal/skill/library/registry.go:95: if src.TakedownAt.Valid { -> if src.TakedownAt.Valid && false {",
+      "failure_evidence": "OfAVisibleLiveSkill/own_skill_with_a_version\n=== RUN   TestAForkReadsTheNewestVersionOfAVisibleLiveSkill/own_skill_that_was_taken_down\n    fork_source_characterization_test.go:81: err = <nil>, want ErrNotFound\n=== RUN   TestAForkReadsTheNewestVersionOfAVisibleLiveSkill/own_skill_without_any_version\n=== RUN   TestAForkReadsTheNewestVersionOfAVisibleLiveSkill/another_workspace's_skill_outside_the_catalogue\n=== RUN   TestAForkReadsTheNewestVersionOfAVisibleLiveSkill/a_catalogue_skill_from_another_workspace\n--- FAIL: TestAForkReadsTheNewestVersionOfAVisibleLiveSkill (0.35s)\n    --- PASS: TestAForkReadsTheNewestVersionOfAVisibleLiveSkill/own_skill_with_a_version (0.12s)\n    --- FAIL: TestAForkReadsTheNewestVersionOfAVisibleLiveSkill/own_skill_that_was_taken_down (0.13s)\n    --- PASS: TestAForkReadsTheNewestVersionOfAVisibleLiveSkill/own_skill_without_any_version (0.03s)\n    --- PASS: TestAForkReadsTheNewestVersionOfAVisibleLiveSkill/another_workspace's_skill_outside_the_catalogue (0.03s)\n    --- PASS: TestAForkReadsTheNewestVersionOfAVisibleLiveSkill/a_catalogue_skill_from_another_workspace (0.04s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t7.275s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-fork-carries-its-sources-access-restriction",
+      "mutated_protection": "apps/platform/internal/skill/library/skill_root.go:173: AccessRestriction: source.AccessRestriction, -> AccessRestriction: nil,",
+      "failure_evidence": "=== RUN   TestAForkCarriesTheLicensingHoldItWasForkedFrom\n    skill_hardening_a5_integration_test.go:36: the fork reports no hold: <nil>\n    skill_hardening_a5_integration_test.go:46: the fork's access_restriction is NULL: forking is now the way around a licensing hold\n--- FAIL: TestAForkCarriesTheLicensingHoldItWasForkedFrom (0.24s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t9.041s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-source-skill-outlives-purge-while-a-fork-stays",
+      "mutated_protection": "apps/platform/internal/skill/library/purge.go:304: || !candidate[f.ForkID] -> || false",
+      "failure_evidence": "=== RUN   TestAForkKeepsItsSourceOnlyWhileTheForkItselfStays\n    purge_test.go:87: a fork outside the purge: retained 0 skills, want 1 (map[])\n    purge_test.go:91: a fork outside the purge: skill 1 was not retained\n    purge_test.go:87: a chain whose last fork is outside: retained 0 skills, want 2 (map[])\n    purge_test.go:91: a chain whose last fork is outside: skill 1 was not retained\n    purge_test.go:91: a chain whose last fork is outside: skill 2 was not retained\n--- FAIL: TestAForkKeepsItsSourceOnlyWhileTheForkItselfStays (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t4.870s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-held-skill-is-not-purged",
+      "mutated_protection": "apps/platform/internal/skill/library/purge.go:31: h.skills[c.skillID] || -> false && h.skills[c.skillID] ||",
+      "failure_evidence": "=== RUN   TestAPurgeKeepsASkillWhileAnythingStillHoldsItOrOneOfItsVersions\n    purge_test.go:48: the skill itself is held: keep = false, want true\n--- FAIL: TestAPurgeKeepsASkillWhileAnythingStillHoldsItOrOneOfItsVersions (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t12.447s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-fork-name-series-stays-flat",
+      "mutated_protection": "apps/platform/internal/skill/library/registry.go:293: err != nil || n < 2 -> err != nil || n < 1",
+      "failure_evidence": "=== RUN   TestForkOrdinalParsingKeepsTheSeriesFlat\n    write_test.go:66: cutForkOrdinal(\"tidy-csv-fork-1\") = (\"tidy-csv\", true), want (\"tidy-csv-fork-1\", false)\n--- FAIL: TestForkOrdinalParsingKeepsTheSeriesFlat (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t9.939s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-operator-note-is-at-most-the-cap",
+      "mutated_protection": "apps/platform/internal/skill/library/governance/restriction.go:147: utf8.RuneCountInString(note) > maxOperatorNoteChars -> utf8.RuneCountInString(note) >= maxOperatorNoteChars",
+      "failure_evidence": "=== RUN   TestValidRestrictionNoteAcceptsExactlyTheByteCap\n    restriction_test.go:88: a note at exactly the byte cap was rejected: note is too long\n--- FAIL: TestValidRestrictionNoteAcceptsExactlyTheByteCap (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library/governance\t5.977s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-operator-note-is-counted-in-characters",
+      "mutated_protection": "apps/platform/internal/skill/library/governance/restriction.go:147: utf8.RuneCountInString(note) > maxOperatorNoteChars -> len(note)+0*utf8.RuneCountInString(note) > maxOperatorNoteChars",
+      "failure_evidence": "=== RUN   TestARestrictionNoteIsCountedInCharacters\n    restriction_test.go:94: a note of exactly the cap in Chinese characters was rejected: note is too long\n--- FAIL: TestARestrictionNoteIsCountedInCharacters (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library/governance\t5.586s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-restriction-reason-must-be-known",
+      "mutated_protection": "apps/platform/internal/skill/library/governance/restriction.go:124: !slices.Contains(registry.RestrictionReasons(), reason) -> false && !slices.Contains(registry.RestrictionReasons(), reason)",
+      "failure_evidence": "--- FAIL: TestRestrictionServiceRejectsInvalidInputBeforeDatabase (0.00s)\n    --- PASS: TestRestrictionServiceRejectsInvalidInputBeforeDatabase/blank_reason (0.00s)\n    --- FAIL: TestRestrictionServiceRejectsInvalidInputBeforeDatabase/unknown_reason (0.00s)\npanic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]\n...\nance.(*Service).SetRestriction(0x35e471516990, {0x7ff707bd3208, 0x7ff707cba120}, {{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, ...}, ...}, ...)\n\tC:/Users/a8022/OneDrive/Desktop/SkillHub/apps/platform/internal/skill/library/governance/restriction.go:131 +0xf9\ngithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library/governance.TestRestrictionServiceRejectsInvalidInputBeforeDatabase.func2()\n\tC:/Users/a8022/OneDrive/Desktop/SkillHub/apps/platform/internal/skill/library/governance/restriction_test.go:27 +0x6b\ngithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library/governance.TestRestrictionServiceRejectsInvalidInputBeforeDatabase.func11(0x35e4713e6a00)\n\tC:/Users/a8022/OneDrive/Desktop/SkillHub/apps/platform/internal/skill/library/governance/restriction_test.go:66 +0x25\ntesting.tRunner(0x35e4713e6a00, 0x35e471516c00)\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/testing/testing.go:2195 +0xc3\ncreated by testing.(*T).Run in goroutine 62\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.windows-amd64/src/testing/testing.go:2260 +0x4b4\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library/governance\t10.795s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-taken-down-skills-package-is-not-current",
+      "mutated_protection": "apps/platform/internal/skill/library/skill_store.go:32: if skill.TakedownAt.Valid { -> if skill.TakedownAt.Valid && false {",
+      "failure_evidence": "=== RUN   TestAPackageOfATakenDownSkillIsNotCurrent\n    content_guards_test.go:42: current=true err=<nil> for a taken-down skill, want false/nil\n--- FAIL: TestAPackageOfATakenDownSkillIsNotCurrent (0.10s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t7.033s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-diff-refuses-a-version-of-another-skill",
+      "mutated_protection": "apps/platform/internal/skill/library/diff.go:50: (err == nil && v.SkillID != skillID) -> (err == nil && v.SkillID != skillID && false)",
+      "failure_evidence": "=== RUN   TestADiffRefusesAVersionOfAnotherSkill\n    content_guards_test.go:72: diffing another skill's version: err = the object store was reached, want ErrNotFound\n--- FAIL: TestADiffRefusesAVersionOfAnotherSkill (0.11s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t4.814s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-text-diff-stops-at-one-mib-per-file",
+      "mutated_protection": "apps/platform/internal/skill/library/diff.go:141: len(a) > maxDiffFileBytes || len(b) > maxDiffFileBytes || -> false && len(a) > maxDiffFileBytes || false && len(b) > maxDiffFileBytes ||",
+      "failure_evidence": "=== RUN   TestATextDiffStopsAtOneMiBPerFile\n    content_guards_test.go:82: a file one byte over 1 MiB was diffed\n--- FAIL: TestATextDiffStopsAtOneMiBPerFile (0.30s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t13.315s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/skill_hardening_a5_integration_test.go",
+    "apps/platform/internal/skill/library/content_guards_test.go",
+    "apps/platform/internal/skill/library/diff.go",
+    "apps/platform/internal/skill/library/fork_source_characterization_test.go",
+    "apps/platform/internal/skill/library/governance/restriction.go",
+    "apps/platform/internal/skill/library/governance/restriction_test.go",
+    "apps/platform/internal/skill/library/purge.go",
+    "apps/platform/internal/skill/library/purge_test.go",
+    "apps/platform/internal/skill/library/registry.go",
+    "apps/platform/internal/skill/library/skill_root.go",
+    "apps/platform/internal/skill/library/skill_root_test.go",
+    "apps/platform/internal/skill/library/skill_store.go",
+    "apps/platform/internal/skill/library/write_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-release-needs-the-licence-the-newest-version-records",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:dbc70cc26707ec424b3837ccdd66206ebc0a30b020c74845e81585f63a6f4c29",
+      "finished_at": "2026-10-18T10:45:58.787953Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-generated-skills-redistribution-is-permanent",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestReleasingASkillRequiresTheLicenceItsNewestVersionRecords$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4d65d7bd6a4405a812328ba52bb67d2c94552880c78be2f242c71eba6f77d34f",
+      "finished_at": "2026-10-18T10:46:09.491343Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-only-a-catalogue-skill-can-be-curated",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ca9060569e54bb9e193abcf7194a424118d0fae9dabdfe4062564a0406b61a2a",
+      "finished_at": "2026-10-18T10:46:21.620876Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-withdrawing-curation-is-always-allowed",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestCurationIsRecordedOnTheNewestVersionOfACatalogueSkillAndWithdrawnFromAnySkill$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:518376c378c8d9d7f1b4d13d4c9145f73cb677aad38d0845751bf2db500315be",
+      "finished_at": "2026-10-18T10:46:39.990879Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-generated-skill-takes-only-generated-content",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAGeneratedSkillTakesOnlyGeneratedContent$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:1fbded7a962b217dcd9fb0b745cd11acfba2f43ccf65b1e307c3deb65d3bf015",
+      "finished_at": "2026-10-18T10:46:53.144999Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-taken-down-skill-cannot-be-forked",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAForkReadsTheNewestVersionOfAVisibleLiveSkill$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:cc1226f6a5f60b4ea42a4938b2255d57b4822d3a7a918068db73b202b55a61b0",
+      "finished_at": "2026-10-18T10:47:07.802937Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-fork-carries-its-sources-access-restriction",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAForkCarriesTheLicensingHoldItWasForkedFrom$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:a97f35a0d8f236dce3353c0a7976bac1783b694c58eaaf901361489543ad6e73",
+      "finished_at": "2026-10-18T10:47:22.017325Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-source-skill-outlives-purge-while-a-fork-stays",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAForkKeepsItsSourceOnlyWhileTheForkItselfStays$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:c1f67c489f86dafb760c08d8cfaeadcb0f365a5bfe4518d9d06f5c79fe5225cd",
+      "finished_at": "2026-10-18T10:47:31.022248Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-held-skill-is-not-purged",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAPurgeKeepsASkillWhileAnythingStillHoldsItOrOneOfItsVersions$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:2727ed715889121e95a4bd04926cf0ce8de79713fc800192d1ec8b69edc247a7",
+      "finished_at": "2026-10-18T10:47:45.731547Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-fork-name-series-stays-flat",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestForkOrdinalParsingKeepsTheSeriesFlat$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:5d60f6b84c540374b168bf28dc74090ed21c67060365e3501a11820f6cdd1386",
+      "finished_at": "2026-10-18T10:48:21.017255Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-operator-note-is-at-most-the-cap",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestValidRestrictionNoteAcceptsExactlyTheByteCap$ ./internal/skill/library/governance/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:312552417fa6f80d0f66c21630e126a149e6b7c0811bb774ee0805faf0a71c60",
+      "finished_at": "2026-10-18T10:48:38.749604Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-operator-note-is-counted-in-characters",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestARestrictionNoteIsCountedInCharacters$ ./internal/skill/library/governance/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:5ea574643c7456ba6faa7e15f87fac01aa6b61a988ed04969f314417731b414e",
+      "finished_at": "2026-10-18T10:49:10.071419Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-restriction-reason-must-be-known",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestRestrictionServiceRejectsInvalidInputBeforeDatabase$ ./internal/skill/library/governance/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4f8258422bd5dcfffa61abd7bb75996ac72b6aba3a64cfb020231897c2be705c",
+      "finished_at": "2026-10-18T10:49:42.235273Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-taken-down-skills-package-is-not-current",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAPackageOfATakenDownSkillIsNotCurrent$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:675ed7d221d474b6ea99122d2083fa3e48f06b6107734c33fab2175704f9ddd8",
+      "finished_at": "2026-10-18T10:50:42.527993Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-diff-refuses-a-version-of-another-skill",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestADiffRefusesAVersionOfAnotherSkill$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:d9d7c2774dffba79f219fa6d852f23260b20938463e327433c19bd9caa98d7c6",
+      "finished_at": "2026-10-18T10:51:22.691820Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-text-diff-stops-at-one-mib-per-file",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestATextDiffStopsAtOneMiBPerFile$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:90d803977dab550cfcc1668560f4526d8cf01fd308131f807f9930640680a48e",
+      "finished_at": "2026-10-18T10:52:30.202587Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
