@@ -927,7 +927,7 @@ class CliTest(RegistryTestCase):
             tasks.setdefault(command, task.strip())
         [subcommands] = [action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)]
         helps = {choice.dest: choice.help for choice in subcommands._choices_actions}
-        self.assertEqual((61, tasks), (len(helps), helps))
+        self.assertEqual((62, tasks), (len(helps), helps))
 
     def test_readiness_command_returns_json_without_writing(self) -> None:
         before = self.file_bytes()

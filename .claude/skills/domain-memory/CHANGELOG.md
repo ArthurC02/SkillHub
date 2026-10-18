@@ -2,6 +2,17 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.77.0
+
+### Added
+
+- `brief --base <revision>` and `brief --asset <asset> --id <id>` compose one document to read before a review or a change: the boundary verdict, each Context touched with its changed files and summarized model, each collaboration record whose cited lines changed or overlap the change with the records that depend on it, the citation verification of the changed files, the cited files outside every Context, and an `attention` list with one line per thing to act on; for a record, its Contexts, dependents, verified citations and attention. `--markdown` renders it for a pull request.
+
+### Changed
+
+- `ship-package` can be run again: an `approved` proposal is only applied, an `applied` one reports `note` "already applied; nothing was written" with exit 0, and a `--commit` other than the attested one is refused before anything is written.
+- `harvest` names a faulty rule by its id, "rule <id>: statement must be text", and by its position, "rule 2", only when it has no id.
+
 ## 0.76.0
 
 ### Added

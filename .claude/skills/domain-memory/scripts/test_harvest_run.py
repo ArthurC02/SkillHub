@@ -210,14 +210,14 @@ class HarvestTest(RegistryTestCase):
              "rules must be a non-empty list"],
             spec_errors({}),
         )
-        spec = self.spec(approval={"role": "developer"}, rules=[{"id": "r", "enforcing": [["x", 1]], "mutate": {}, "level": 3}, 7])
+        spec = self.spec(approval={"role": "developer"}, rules=[{"id": "r", "enforcing": [["x", 1]], "mutate": {}, "level": 3}, 7, {**self.spec()["rules"][0], "id": ""}])
         self.assertEqual(
             ["approval must be an object with role and reviewer",
-             "rules[1]: statement must be text", "rules[1]: test_file must be text", "rules[1]: test must be text",
-             "rules[1]: check must be text",
-             "rules[1]: enforcing must be a non-empty list of [path, start, end] or path:start-end",
-             "rules[1]: mutate must be an object with file, find and replace", "rules[1]: level must be text",
-             "rules[2]: must be an object"],
+             "rule r: statement must be text", "rule r: test_file must be text", "rule r: test must be text",
+             "rule r: check must be text",
+             "rule r: enforcing must be a non-empty list of [path, start, end] or path:start-end",
+             "rule r: mutate must be an object with file, find and replace", "rule r: level must be text",
+             "rule 2: must be an object", "rule 3: id must be text"],
             spec_errors(spec),
         )
         report = harvest(self.repo / "memory", self.repo, {}, None, "draft")

@@ -41,6 +41,60 @@ class ShipPackageTest(RegistryTestCase):
         )
         self.assertIn("sign a commit holding the package and the Registry", report["next"])
 
+    def test_shipping_an_applied_package_again_with_the_same_commit_writes_nothing_and_succeeds(self) -> None:
+        package, _ = self.verified_package_under_signed_governance()
+        signed = self.commit_everything("adds the Change Package", signed=True)
+        ship_package(package, self.repo / "memory", self.repo, signed)
+        events_before = (self.repo / "memory" / "audit" / "events.jsonl").read_text(encoding="utf-8")
+        evidence_before = (package / "evidence-bundle.json").read_bytes()
+        again = ship_package(package, self.repo / "memory", self.repo, "HEAD")
+        without_commit = ship_package(package, self.repo / "memory", self.repo, None)
+        self.assertEqual(
+            ([], [], "applied", "already applied; nothing was written", [], [], "already applied; nothing was written",
+             events_before, evidence_before),
+            (again["completed"], again["errors"], again["status"], again["note"], without_commit["completed"], without_commit["errors"],
+             without_commit["note"], (self.repo / "memory" / "audit" / "events.jsonl").read_text(encoding="utf-8"),
+             (package / "evidence-bundle.json").read_bytes()),
+        )
+
+    def test_shipping_an_applied_package_with_another_commit_is_refused_and_writes_nothing(self) -> None:
+        package, unsigned = self.verified_package_under_signed_governance()
+        signed = self.commit_everything("adds the Change Package", signed=True)
+        ship_package(package, self.repo / "memory", self.repo, signed)
+        evidence_before = (package / "evidence-bundle.json").read_bytes()
+        report = ship_package(package, self.repo / "memory", self.repo, unsigned)
+        self.assertEqual(
+            ([], [f"attest-signed-commit: the proposal is applied with commit {signed}; {unsigned} is another commit, so nothing was written"],
+             "applied", evidence_before),
+            (report["completed"], report["errors"], report["status"], (package / "evidence-bundle.json").read_bytes()),
+        )
+        self.assertNotIn("note", report)
+
+    def test_an_approved_package_whose_apply_failed_is_applied_on_the_next_run_without_attesting_again(self) -> None:
+        package, _ = self.verified_package_under_signed_governance()
+        signed = self.commit_everything("adds the Change Package", signed=True)
+        with patch("domain_registry.ship.apply_approved_updates", side_effect=ValueError("the disk was full")):
+            first = ship_package(package, self.repo / "memory", self.repo, signed)
+        second = ship_package(package, self.repo / "memory", self.repo, signed)
+        self.assertEqual(
+            ((["attest-signed-commit", "finalize-proposal"], ["apply-approved-updates: the disk was full"], "approved"),
+             (["apply-approved-updates"], [], "applied")),
+            ((first["completed"], first["errors"], first["status"]), (second["completed"], second["errors"], second["status"])),
+        )
+        self.assertNotIn("commit", second)
+
+    def test_an_approved_package_is_not_applied_under_another_commit(self) -> None:
+        package, unsigned = self.verified_package_under_signed_governance()
+        signed = self.commit_everything("adds the Change Package", signed=True)
+        with patch("domain_registry.ship.apply_approved_updates", side_effect=ValueError("the disk was full")):
+            ship_package(package, self.repo / "memory", self.repo, signed)
+        report = ship_package(package, self.repo / "memory", self.repo, unsigned)
+        self.assertEqual(
+            ([], 1, "approved", None),
+            (report["completed"], len(report["errors"]), report["status"], record_by_id(self.repo / "memory", "rules", "order-total")),
+        )
+        self.assertTrue(report["errors"][0].startswith(f"attest-signed-commit: the proposal is approved with commit {signed}; {unsigned} is another commit"))
+
     def test_an_unsigned_commit_stops_before_finalizing_and_leaves_the_proposal_verified(self) -> None:
         package, unsigned = self.verified_package_under_signed_governance()
         report = ship_package(package, self.repo / "memory", self.repo, unsigned)

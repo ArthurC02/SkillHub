@@ -90,8 +90,12 @@ def spec_errors(spec: Any) -> list[str]:
     rules = spec.get("rules")
     if not isinstance(rules, list) or not rules:
         return [*errors, "rules must be a non-empty list"]
-    errors.extend(f"rules[{index}]: {error}" for index, rule in enumerate(rules, start=1) for error in _rule_errors(rule))
+    errors.extend(f"{_rule_name(index, rule)}: {error}" for index, rule in enumerate(rules, start=1) for error in _rule_errors(rule))
     return errors
+
+
+def _rule_name(index: int, rule: Any) -> str:
+    return f"rule {rule['id']}" if isinstance(rule, dict) and _text(rule.get("id")) else f"rule {index}"
 
 
 def _rule_errors(rule: Any) -> list[str]:

@@ -56,6 +56,7 @@ from .readiness import assess_readiness
 from .recitation_package import recitation_package
 from .harvest import harvest_candidates
 from .harvest_package import harvest_package, write_harvest_package
+from .brief import brief_for_change, brief_for_record, to_markdown
 from .harvest_run import harvest
 from .ship import ship_package
 from .impact import boundary_impact, registered_collaborations
@@ -471,6 +472,19 @@ def _note_repeated(repo_root: Path, cited: dict) -> None:
     note = repeated_note(repo_root, cited)
     if note:
         print(note, file=sys.stderr)
+
+
+def handle_brief(args: argparse.Namespace) -> int:
+    by_record = args.asset is not None or args.id is not None
+    if (args.base is None) == (not by_record) or (by_record and not (args.asset and args.id)):
+        raise ValueError("brief needs --base <revision>, or --asset <asset> --id <id>, not both")
+    root, repo_root = args.registry_root.resolve(), args.repo_root.resolve()
+    brief = brief_for_change(root, repo_root, args.base) if args.base else brief_for_record(root, repo_root, args.asset, args.id)
+    if args.markdown:
+        print(to_markdown(brief))
+    else:
+        print_json(brief)
+    return 0
 
 
 def handle_dependents(args: argparse.Namespace) -> int:
@@ -1175,6 +1189,7 @@ HANDLERS = {
     "get-context": handle_get_context,
     "get-record": handle_get_record,
     "dependents": handle_dependents,
+    "brief": handle_brief,
     "analyze-boundary": handle_analyze_boundary,
     "boundary-impact": handle_boundary_impact,
     "change-coupling": handle_change_coupling,

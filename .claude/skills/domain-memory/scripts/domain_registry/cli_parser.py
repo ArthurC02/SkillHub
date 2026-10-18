@@ -157,6 +157,13 @@ def _add_read_commands(commands: argparse._SubParsersAction) -> None:
     add_path(dependents_parser, "--registry-root")
     add_asset(dependents_parser)
     dependents_parser.add_argument("--id", required=True)
+    brief_parser = commands.add_parser("brief", help="Brief a change or a record")
+    add_path(brief_parser, "--registry-root")
+    add_path(brief_parser, "--repo-root")
+    brief_parser.add_argument("--base")
+    brief_parser.add_argument("--asset", choices=ASSET_CHOICES, type=asset_name)
+    brief_parser.add_argument("--id")
+    brief_parser.add_argument("--markdown", action="store_true")
 
 
 def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
