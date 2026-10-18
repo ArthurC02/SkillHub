@@ -26,7 +26,7 @@ from .coupling import CouplingLimits, CouplingReading, change_coupling
 from .dependents import dependents
 from .contracts import validate_schema
 from .counterfactual import FORMAT as COUNTERFACTUAL_FORMAT
-from .counterfactual import FailingBaselineError, Mutation, Proof, counterfactual
+from .counterfactual import FailingBaselineError, Mutation, Proof, counterfactual, counterfactual_suite
 from .evidence import citation, classified, function_span, repeated_note, source_map_for
 from .gates import quality_gates
 from .git_hooks import (
@@ -1114,9 +1114,13 @@ def handle_quality_gates(args: argparse.Namespace) -> int:
 
 def handle_counterfactual(args: argparse.Namespace) -> int:
     try:
+        if args.suite is not None:
+            suite = counterfactual_suite(args.repo_root, load_json(args.suite))
+            print_json(suite)
+            return max((COUNTERFACTUAL_EXIT_CODES[entry["verdict"]] for entry in suite["results"]), default=0)
         result = counterfactual(
             args.repo_root,
-            Mutation(args.file, args.find, args.replace),
+            _one_mutation(args),
             Proof(args.test_command, args.timeout, args.cwd, args.expect, args.obligation_id),
         )
     except (ValueError, OSError) as error:
@@ -1124,6 +1128,17 @@ def handle_counterfactual(args: argparse.Namespace) -> int:
         result = {"format": COUNTERFACTUAL_FORMAT, "verdict": "error", "reason": str(error), **details}
     print_json(result)
     return COUNTERFACTUAL_EXIT_CODES[result["verdict"]]
+
+
+def _one_mutation(args: argparse.Namespace) -> Mutation:
+    missing = [
+        name for name, value in (
+            ("--file", args.file), ("--find", args.find), ("--replace", args.replace), ("--test-command", args.test_command)
+        ) if value is None
+    ]
+    if missing:
+        raise ValueError(f"counterfactual needs {', '.join(missing)}, or --suite <json file> for several mutations")
+    return Mutation(args.file, args.find, args.replace)
 
 
 HANDLERS = {

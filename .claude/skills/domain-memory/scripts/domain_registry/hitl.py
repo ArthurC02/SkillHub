@@ -1,4 +1,3 @@
-import re
 import shlex
 import subprocess
 from dataclasses import dataclass
@@ -13,7 +12,7 @@ from .attestations import (
     verify_git_signed_commit,
 )
 from .common import EVIDENCE_FILE, PROPOSAL_FILE, completed_identifier, iso_timestamp, load_json, utc_now, write_json
-from .counterfactual import OUTPUT_TAIL, decoded, working_directory
+from .counterfactual import OUTPUT_TAIL, decoded, is_go_test, no_test_passed, reports_tests, working_directory
 from .evidence import digest
 from .policy import approved_command_profiles, review_governance
 from .revision import current_registry_revision, require_current_registry_revision
@@ -30,7 +29,7 @@ def submit_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
     silent = [
         entry.get("id")
         for entry in load_json(root / "test-obligations.json").get("obligations", [])
-        if isinstance(entry, dict) and _go_test(argv := str(entry.get("check", "")).split()) and not _reports_tests(argv)
+        if isinstance(entry, dict) and is_go_test(argv := str(entry.get("check", "")).split()) and not reports_tests(argv)
     ]
     if silent:
         raise ValueError(
@@ -115,44 +114,8 @@ def record_approval(
 
 RECORDABLE_STATUSES = {"draft", "submitted"}
 CI_LINK_PREFIX = "https://"
-GO_TEST_PASSED = re.compile(r'^\s*--- PASS: |"Action":"pass"[^\n]*"Test":"', re.MULTILINE)
-GO_NOTHING_RAN = re.compile(r"\[no tests to run\]|\[no test files\]")
-UNITTEST_RAN = re.compile(r"^Ran (\d+) tests? in ", re.MULTILINE)
-UNITTEST_SKIPPED = re.compile(r"skipped=(\d+)")
-PYTEST_SUMMARY = re.compile(
-    r"^=*\s*(\d+ (?:passed|failed|skipped|deselected|xfailed|xpassed|errors?|warnings?)(?:, \d+ \w+)*) in [\d.]+s",
-    re.MULTILINE,
-)
-
-
 def same_command(command: str, check: Any) -> bool:
     return isinstance(check, str) and command.split() == check.split()
-
-
-def _go_test(argv: list[str]) -> bool:
-    return bool(argv) and Path(argv[0]).stem == "go" and "test" in argv[1:]
-
-
-def _reports_tests(argv: list[str]) -> bool:
-    return any(argument in ("-v", "-json") or argument.startswith(("-v=", "-test.v")) for argument in argv)
-
-
-def no_test_passed(argv: list[str], output: str) -> str | None:
-    if _go_test(argv):
-        if not _reports_tests(argv):
-            return "go test without -v or -json does not say which tests passed, so a skipped test reads as a pass; add -v"
-        return None if GO_TEST_PASSED.search(output) else "no test passed: every test was skipped or none matched"
-    if GO_NOTHING_RAN.search(output) and not GO_TEST_PASSED.search(output):
-        return "go test found no test to run"
-    ran = UNITTEST_RAN.search(output)
-    if ran:
-        skipped = UNITTEST_SKIPPED.search(output)
-        if int(ran[1]) == 0 or (skipped and int(skipped[1]) >= int(ran[1])):
-            return "unittest ran no test that was not skipped"
-    summaries = PYTEST_SUMMARY.findall(output)
-    if summaries and "passed" not in summaries[-1]:
-        return f"pytest passed no test: {summaries[-1]}"
-    return None
 
 
 def _evidence_check_errors(evidence: dict[str, Any], obligations: list[Any]) -> list[str]:

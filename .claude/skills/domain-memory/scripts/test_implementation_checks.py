@@ -24,6 +24,7 @@ from domain_registry.counterfactual import (
     Proof,
     TestRun,
     counterfactual,
+    counterfactual_suite,
     decoded,
     failing_tests,
     failure_evidence,
@@ -383,6 +384,58 @@ class CounterfactualTest(RepositoryCase):
         self.assertEqual(result["verdict"], "inconclusive")
         self.assert_untouched()
 
+    def test_a_suite_judges_each_mutation_and_restores_the_file_between_them(self) -> None:
+        suite = {"test_command": RUN_TESTS, "mutations": [
+            {"file": "rule.py", "find": "LIMIT = 200", "replace": "LIMIT = 201", "obligation_id": "OB-1"},
+            {"file": "rule.py", "find": "CAP = 12", "replace": "CAP = 13"},
+            {"file": "rule.py", "find": "nope", "replace": "x"},
+            "not an object",
+            {"file": "rule.py", "find": "CAP"},
+        ]}
+        result = counterfactual_suite(self.repo, suite)
+        self.assertEqual(
+            (["killed", "survived", "error", "error", "error"],
+             {"killed": 1, "survived": 1, "inconclusive": 0, "error": 3}, "OB-1", 3, 4),
+            ([entry["verdict"] for entry in result["results"]], result["summary"],
+             result["results"][0]["counterfactual_check"]["obligation_id"],
+             result["results"][2]["entry"], result["results"][3]["entry"]),
+        )
+        self.assertIn("occurs 0 times", result["results"][2]["reason"])
+        self.assertIn("mutations[4] must be an object", result["results"][3]["reason"])
+        self.assertIn("mutations[5] needs replace", result["results"][4]["reason"])
+        self.assert_untouched()
+
+    def test_a_suite_runs_the_intact_tests_once_per_command(self) -> None:
+        runs = [TestRun(0, "Ran 2 tests in 0.1s\n\nOK"), TestRun(1, "FAIL: a"), TestRun(1, "FAIL: b")]
+        suite = {"test_command": "unused", "mutations": [
+            {"file": "rule.py", "find": "LIMIT = 200", "replace": "LIMIT = 201"},
+            {"file": "rule.py", "find": "CAP = 12", "replace": "CAP = 13"},
+        ]}
+        with patch.object(counterfactual_module, "run_tests", side_effect=runs) as run_tests:
+            result = counterfactual_suite(self.repo, suite)
+        self.assertEqual((["killed", "killed"], 3), ([entry["verdict"] for entry in result["results"]], run_tests.call_count))
+        self.assert_untouched()
+
+    def test_a_suite_without_mutations_is_refused(self) -> None:
+        for suite in ({}, {"mutations": []}, [], {"mutations": "x"}):
+            with self.subTest(suite):
+                with self.assertRaisesRegex(ValueError, "mutations is a non-empty list"):
+                    counterfactual_suite(self.repo, suite)
+
+    def test_a_passing_run_in_which_no_test_ran_proves_nothing(self) -> None:
+        intact = TestRun(0, "Ran 0 tests in 0.000s\n\nOK")
+        with patch.object(counterfactual_module, "run_tests", side_effect=[intact]):
+            with self.assertRaisesRegex(ValueError, "^the tests pass before anything is broken, but unittest ran no test"):
+                self.break_rule("LIMIT = 200", "LIMIT = 201")
+        with patch.object(counterfactual_module, "run_tests", side_effect=[TestRun(0, "Ran 1 test in 0.0s\n\nOK"), intact]):
+            result = self.break_rule("LIMIT = 200", "LIMIT = 201")
+        self.assertEqual(
+            ("inconclusive", "the tests passed on the broken file, but unittest ran no test that was not skipped; "
+                             "a run that judges nothing kills nothing"),
+            (result["verdict"], result["reason"]),
+        )
+        self.assert_untouched()
+
     def test_text_that_is_absent_is_refused(self) -> None:
         with self.assertRaisesRegex(ValueError, "occurs 0 times"):
             self.break_rule("LIMIT = 300", "LIMIT = 301")
@@ -683,6 +736,28 @@ class CommandLineTest(RepositoryCase):
             RUN_TESTS,
         )
 
+    def test_without_a_suite_the_mutation_options_are_required(self) -> None:
+        self.write("rule.py", RULE)
+        completed = self.run_tool("counterfactual", "--repo-root", str(self.repo), "--file", "rule.py")
+        self.assertEqual(
+            (3, "error", "counterfactual needs --find, --replace, --test-command, or --suite <json file> for several mutations"),
+            (completed.returncode, json.loads(completed.stdout)["verdict"], json.loads(completed.stdout)["reason"]),
+        )
+
+    def test_a_suite_exits_with_its_worst_verdict(self) -> None:
+        self.write("rule.py", RULE)
+        self.write("tests/__init__.py")
+        self.write("tests/test_rule.py", RULE_TEST)
+        suite = self.write("suite.json", json.dumps({"test_command": RUN_TESTS, "mutations": [
+            {"file": "rule.py", "find": "LIMIT = 200", "replace": "LIMIT = 201"},
+            {"file": "rule.py", "find": "CAP = 12", "replace": "CAP = 13"},
+        ]}))
+        completed = self.run_tool("counterfactual", "--repo-root", str(self.repo), "--suite", str(suite))
+        self.assertEqual(
+            (1, {"killed": 1, "survived": 1, "inconclusive": 0, "error": 0}),
+            (completed.returncode, json.loads(completed.stdout)["summary"]),
+        )
+
     def test_a_killed_rule_exits_zero(self) -> None:
         completed = self.counterfactual_run("LIMIT = 200", "LIMIT = 201")
         self.assertEqual((0, "killed"), (completed.returncode, json.loads(completed.stdout)["verdict"]))
@@ -722,7 +797,7 @@ class CommandLineTest(RepositoryCase):
         for arguments, reason in (
             (("--repo-root", str(self.repo), "--file", "rule.py", "--find", "a", "--replace", "b", "--test-command", "x",
               "--bogus"), "unrecognized arguments: --bogus"),
-            (("--repo-root", str(self.repo)), "the following arguments are required: --file"),
+            (("--repo-root", str(self.repo)), "counterfactual needs --file, --find, --replace, --test-command"),
         ):
             with self.subTest(reason):
                 completed = self.run_tool("counterfactual", *arguments)

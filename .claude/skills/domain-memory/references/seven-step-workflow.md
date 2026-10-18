@@ -64,7 +64,7 @@ DM="python3 <path>/registry_tools.py"
 $DM counterfactual --repo-root . --file <enforcing file> --find '<protection>' --replace '<broken protection>' --test-command '<check>' --cwd <directory> --obligation-id <obligation>
 ```
 
-Continue only when every verdict is `killed`. Keep each whole output and give it, with the rule's check and the package's ownership, boundary and design decisions, to `fill-harvest-package`, which writes the criteria, obligations, proof obligations, sources and `counterfactual_check` list and refuses a rule whose counterfactual was not killed or ran another command than its check. A rule whose mutation survives is either untested or not the rule it claims: write the test, or leave the rule out and say why in `rejected_alternatives`.
+Several rules at once go through `counterfactual --suite <json>`, one entry per rule with its `obligation_id`, one intact run per test command. Continue only when every verdict is `killed`. Keep each whole output and give it, with the rule's check and the package's ownership, boundary and design decisions, to `fill-harvest-package`, which writes the criteria, obligations, proof obligations, sources and `counterfactual_check` list and refuses a rule whose counterfactual was not killed or ran another command than its check. A rule whose mutation survives is either untested or not the rule it claims: write the test, or leave the rule out and say why in `rejected_alternatives`.
 
 After `submit-proposal`, `record-test-result` for each obligation, `record-approval` and `verify-proposal`, the `git-signed-commit` verifier needs five more steps. They take no decisions, but they must run in this order, because the attestation names the signed commit that carries the verified package:
 

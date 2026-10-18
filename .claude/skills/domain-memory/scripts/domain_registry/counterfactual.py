@@ -7,6 +7,7 @@ import shlex
 import subprocess
 import tempfile
 import time
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +17,8 @@ from .evidence import digest
 from .sources import EXCLUDED_DIRECTORIES
 
 FORMAT = "domain-memory-counterfactual/v1"
+SUITE_FORMAT = "domain-memory-counterfactual-suite/v1"
+VERDICTS = ("killed", "survived", "inconclusive", "error")
 SIDECAR_SUFFIX = ".counterfactual-original"
 OUTPUT_TAIL = 1200
 DEFAULT_TIMEOUT_SECONDS = 600
@@ -35,6 +38,42 @@ GO_FAILED_TEST = re.compile(r"^\s*--- FAIL: (\S+)", re.MULTILINE)
 GO_JSON_FAILED_TEST = re.compile(r'"Action":"fail"[^\n]*?"Test":"([^"]+)"')
 PYTEST_FAILED_TEST = re.compile(r"^(?:FAILED|ERROR) (\S+::\S+)|^(\S+::\S+) (?:FAILED|ERROR)", re.MULTILINE)
 UNITTEST_FAILED_TEST = re.compile(r"^(?:FAIL|ERROR): (\w+) \(([\w.]+)\)", re.MULTILINE)
+
+
+GO_TEST_PASSED = re.compile(r'^\s*--- PASS: |"Action":"pass"[^\n]*"Test":"', re.MULTILINE)
+GO_NOTHING_RAN = re.compile(r"\[no tests to run\]|\[no test files\]")
+UNITTEST_RAN = re.compile(r"^Ran (\d+) tests? in ", re.MULTILINE)
+UNITTEST_SKIPPED = re.compile(r"skipped=(\d+)")
+PYTEST_SUMMARY = re.compile(
+    r"^=*\s*(\d+ (?:passed|failed|skipped|deselected|xfailed|xpassed|errors?|warnings?)(?:, \d+ \w+)*) in [\d.]+s",
+    re.MULTILINE,
+)
+
+
+def is_go_test(argv: list[str]) -> bool:
+    return bool(argv) and Path(argv[0]).stem == "go" and "test" in argv[1:]
+
+
+def reports_tests(argv: list[str]) -> bool:
+    return any(argument in ("-v", "-json") or argument.startswith(("-v=", "-test.v")) for argument in argv)
+
+
+def no_test_passed(argv: list[str], output: str) -> str | None:
+    if is_go_test(argv):
+        if not reports_tests(argv):
+            return "go test without -v or -json does not say which tests passed, so a skipped test reads as a pass; add -v"
+        return None if GO_TEST_PASSED.search(output) else "no test passed: every test was skipped or none matched"
+    if GO_NOTHING_RAN.search(output) and not GO_TEST_PASSED.search(output):
+        return "go test found no test to run"
+    ran = UNITTEST_RAN.search(output)
+    if ran:
+        skipped = UNITTEST_SKIPPED.search(output)
+        if int(ran[1]) == 0 or (skipped and int(skipped[1]) >= int(ran[1])):
+            return "unittest ran no test that was not skipped"
+    summaries = PYTEST_SUMMARY.findall(output)
+    if summaries and "passed" not in summaries[-1]:
+        return f"pytest passed no test: {summaries[-1]}"
+    return None
 
 
 def failing_tests(output: str) -> list[str]:
@@ -244,16 +283,17 @@ def run_broken(
         restore(target, original, sidecar)
 
 
-def verdict_of(broken_run: TestRun, expect: str | None = None) -> tuple[str, str]:
+def verdict_of(broken_run: TestRun, expect: str | None = None, nothing_ran: str | None = None) -> tuple[str, str]:
     if broken_run.timed_out:
         return "inconclusive", "the tests gave no result in time"
     if broken_run.passed:
-        return "survived", (
+        return ("inconclusive", f"the tests passed on the broken file, but {nothing_ran}; a run that judges nothing "
+                "kills nothing") if nothing_ran else ("survived", (
             "the tests still pass with this change; either a test is missing, "
             "or the change does not break the protection (an equivalent mutation); if the test command "
             "selects only some tests, run it over the whole suite, where a kill names the protecting test "
             "in failing_tests"
-        )
+        ))
     if BUILD_FAILURE.search(broken_run.output):
         return "inconclusive", (
             "the broken code did not build, so no test judged it, whatever --expect matches; "
@@ -287,26 +327,95 @@ def _require_pattern(expect: str | None) -> None:
         raise ValueError(f"--expect is not a regular expression: {error}") from error
 
 
-def counterfactual(repo_root: Path, mutation: Mutation, proof: Proof) -> dict[str, Any]:
-    root = repo_root.resolve()
-    target = target_inside(root, mutation.file)
-    directory = working_directory(root, proof.cwd)
-    _require_pattern(proof.expect)
+def _refuse_leftovers(root: Path) -> None:
     leftovers = leftover_sidecars(root)
     if leftovers:
         raise ValueError(
             f"an earlier run left {', '.join(leftovers)}; each holds the original content of the file "
             "beside it, so restore from it and remove it before proving anything"
         )
+
+
+def _intact_run(directory: Path, proof: Proof, intact_runs: dict[tuple[str, Path, int], TestRun]) -> TestRun:
+    key = (proof.test_command, directory, proof.timeout)
+    if key not in intact_runs:
+        intact_runs[key] = run_tests(directory, proof.test_command, proof.timeout)
+    return intact_runs[key]
+
+
+def counterfactual(repo_root: Path, mutation: Mutation, proof: Proof) -> dict[str, Any]:
+    root = repo_root.resolve()
+    _refuse_leftovers(root)
+    return _prove(root, mutation, proof, {})
+
+
+def counterfactual_suite(repo_root: Path, suite: Any) -> dict[str, Any]:
+    root = repo_root.resolve()
+    mutations = suite.get("mutations") if isinstance(suite, dict) else None
+    if not isinstance(mutations, list) or not mutations:
+        raise ValueError("--suite must be a JSON object whose mutations is a non-empty list")
+    _refuse_leftovers(root)
+    intact_runs: dict[tuple[str, Path, int], TestRun] = {}
+    results = [_suite_result(root, entry, suite, index, intact_runs) for index, entry in enumerate(mutations, start=1)]
+    counted = Counter(result["verdict"] for result in results)
+    return {
+        "format": SUITE_FORMAT,
+        "results": results,
+        "summary": {verdict: counted.get(verdict, 0) for verdict in VERDICTS},
+    }
+
+
+def _suite_result(
+    root: Path, entry: Any, suite: dict[str, Any], index: int, intact_runs: dict[tuple[str, Path, int], TestRun]
+) -> dict[str, Any]:
+    try:
+        mutation, proof = _suite_entry(entry, suite, index)
+        return _prove(root, mutation, proof, intact_runs)
+    except (ValueError, OSError) as error:
+        details = error.details if isinstance(error, FailingBaselineError) else {}
+        return {"format": FORMAT, "entry": index, "verdict": "error", "reason": str(error), **details}
+
+
+def _suite_entry(entry: Any, suite: dict[str, Any], index: int) -> tuple[Mutation, Proof]:
+    if not isinstance(entry, dict):
+        raise ValueError(f"mutations[{index}] must be an object with file, find and replace")
+    values = {**{key: suite.get(key) for key in ("test_command", "cwd", "timeout", "expect")}, **entry}
+    missing = [key for key in ("file", "find", "replace", "test_command") if not isinstance(values.get(key), str)]
+    if missing:
+        raise ValueError(f"mutations[{index}] needs {', '.join(missing)}; test_command may be set once for the suite")
+    timeout = DEFAULT_TIMEOUT_SECONDS if values.get("timeout") is None else values["timeout"]
+    if not isinstance(timeout, int) or timeout < 1:
+        raise ValueError(f"mutations[{index}] timeout must be a positive number of seconds")
+    for key in ("cwd", "expect", "obligation_id"):
+        if values.get(key) is not None and not isinstance(values[key], str):
+            raise ValueError(f"mutations[{index}] {key} must be text")
+    return (
+        Mutation(Path(values["file"]), values["find"], values["replace"]),
+        Proof(values["test_command"], timeout, values.get("cwd"), values.get("expect"), values.get("obligation_id")),
+    )
+
+
+def _prove(
+    root: Path, mutation: Mutation, proof: Proof, intact_runs: dict[tuple[str, Path, int], TestRun]
+) -> dict[str, Any]:
+    target = target_inside(root, mutation.file)
+    directory = working_directory(root, proof.cwd)
+    _require_pattern(proof.expect)
     original = target.read_bytes()
     broken = mutated(original, mutation)
-    intact_run = run_tests(directory, proof.test_command, proof.timeout)
+    argv = shlex.split(proof.test_command)
+    intact_run = _intact_run(directory, proof, intact_runs)
     if not intact_run.passed:
         raise FailingBaselineError(intact_run.output)
+    nothing_ran = no_test_passed(argv, intact_run.output)
+    if nothing_ran:
+        raise ValueError(
+            f"the tests pass before anything is broken, but {nothing_ran}; a run that judges nothing can kill nothing"
+        )
     broken_run = run_broken(
         target, original, broken, lambda: run_tests(directory, proof.test_command, proof.timeout)
     )
-    verdict, reason = verdict_of(broken_run, proof.expect)
+    verdict, reason = verdict_of(broken_run, proof.expect, no_test_passed(argv, broken_run.output))
     restored = target.read_bytes() == original
     shown = target.relative_to(root).as_posix()
     line = line_of(original, mutation.find)

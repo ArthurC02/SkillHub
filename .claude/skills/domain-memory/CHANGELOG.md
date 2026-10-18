@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.74.0
+
+### Added
+
+- `counterfactual --suite <json file>` judges several mutations in one call: one intact run per test command, each file restored before the next mutation, an entry's refusal recorded as its own `error` result, a `summary` of the verdicts, and the worst verdict as the exit code.
+
+### Changed
+
+- `counterfactual` refuses an intact run that passes while running no test, `go test` without `-v` or `-json`, a unittest run of 0 tests or every test skipped, a pytest run in which nothing passed, and judges such a run on the broken file `inconclusive`; the same reading `record-test-result` already applied. A harness that ran `go test` without `-v` must add it.
+
 ## 0.73.0
 
 ### Changed

@@ -420,10 +420,11 @@ def _add_proposal_check_commands(commands: argparse._SubParsersAction) -> None:
     add_path(gates_parser, "--repo-root")
     counterfactual_parser = commands.add_parser("counterfactual", help="Break one protection and restore it")
     add_path(counterfactual_parser, "--repo-root")
-    add_path(counterfactual_parser, "--file")
-    counterfactual_parser.add_argument("--find", required=True)
-    counterfactual_parser.add_argument("--replace", required=True)
-    counterfactual_parser.add_argument("--test-command", required=True)
+    add_path(counterfactual_parser, "--file", required=False)
+    counterfactual_parser.add_argument("--find")
+    counterfactual_parser.add_argument("--replace")
+    counterfactual_parser.add_argument("--test-command")
+    add_path(counterfactual_parser, "--suite", required=False)
     counterfactual_parser.add_argument(
         "--timeout", type=int, default=DEFAULT_TIMEOUT_SECONDS
     )
