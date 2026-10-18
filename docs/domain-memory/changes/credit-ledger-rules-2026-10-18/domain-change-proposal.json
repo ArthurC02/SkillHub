@@ -3,12 +3,12 @@
   "proposal_id": "credit-ledger-rules-2026-10-18",
   "proposer": "domain-memory-agent",
   "requirement_id": "credit-ledger-rules-2026-10-18",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-18T08:43:28.672663Z",
   "verified_at": "2026-10-18T08:44:17.856923Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-18T08:44:38.541631Z",
+  "applied_at": "2026-10-18T08:44:47.514708Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "9924ab39f2d8e34d2c626922a3f9902c4a6ce604",
@@ -511,5 +511,9 @@
         "registry_digest": "sha256:a022d8f0ed6e126157e92cce14b196ee88798feb6ed4cbd28aff2f2b5ff54c51"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "4b44cc547f52e369df1f83061a693877484e7054",
+    "registry_digest": "sha256:ec5c89859ecc96a2bb93d3881d77a84e9505dcc16b37e58e525c55df0b3a9d8e"
+  }
 }
