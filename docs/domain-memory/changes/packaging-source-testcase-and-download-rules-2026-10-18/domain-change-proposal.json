@@ -1,0 +1,379 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "packaging-source-testcase-and-download-rules-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "packaging-source-testcase-and-download-rules-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-18T16:02:46.820389Z",
+  "verified_at": "2026-10-18T16:04:45.145790Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "8c7a8a47c301c16603d3b1cb12ebeac41d953731",
+    "registry_digest": "sha256:f115f24612d0d5d3ac4b7c1668b54cf2e41e9f750e93252b2dfabc45360ed5d4"
+  },
+  "affected_contexts": [
+    "packaging"
+  ],
+  "rule_ids": [
+    "a-skill-md-pointing-at-a-dropped-file-blocks-the-package",
+    "a-stored-source-that-no-longer-validates-is-not-packaged",
+    "a-plugin-member-version-belongs-to-its-skill",
+    "a-package-for-a-recipient-carries-no-test-cases",
+    "an-opted-out-package-carries-no-test-case",
+    "a-user-uploaded-dataset-keeps-its-test-case-out",
+    "a-shared-package-object-outlives-one-deleted-download",
+    "an-expired-or-purged-package-is-not-served",
+    "a-package-expires-one-retention-period-after-it-is-built"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "packaging",
+    "invariant": "Only packaging decides what a package carries and how long it is served.",
+    "evidence": [
+      "apps/platform/internal/skill/delivery/packaging.go:944-994"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: test cases reach packaging through the testlab service.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/delivery/testcase.go:97-163"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A second extraction of the packaging Context found enforced rules beyond the eleven the Registry held, six guarded by no test."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; add the missing tests; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording the HEAD-request rule of the download route: it is enforced by the API router, not by packaging."
+    ],
+    "proof_obligations": [
+      "rule-a-skill-md-pointing-at-a-dropped-file-blocks-the-package",
+      "rule-a-stored-source-that-no-longer-validates-is-not-packaged",
+      "rule-a-plugin-member-version-belongs-to-its-skill",
+      "rule-a-package-for-a-recipient-carries-no-test-cases",
+      "rule-an-opted-out-package-carries-no-test-case",
+      "rule-a-user-uploaded-dataset-keeps-its-test-case-out",
+      "rule-a-shared-package-object-outlives-one-deleted-download",
+      "rule-an-expired-or-purged-package-is-not-served",
+      "rule-a-package-expires-one-retention-period-after-it-is-built"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-skill-md-pointing-at-a-dropped-file-blocks-the-package",
+        "statement": "A package is refused when SKILL.md points at a file or directory the packager leaves out, since the download would miss what its own instructions use.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "SKILL.md linking node_modules/helper.js blocks the package as file_removed_by_packager."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/packaging.go",
+            "lines": {
+              "start": 974,
+              "end": 993
+            },
+            "excerpt_sha256": "sha256:0fe2028033dac70765a220a20543fd38a5cdf092e48f536b0c1c71cd62fbae71"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/source_rules_test.go",
+            "lines": {
+              "start": 46,
+              "end": 54
+            },
+            "excerpt_sha256": "sha256:ae062c864aabbcf0ea8f66a6fab575cbf5bf7c1895a1a22f6d83381ef9820c92"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-stored-source-that-no-longer-validates-is-not-packaged",
+        "statement": "A stored source that now fails import validation is not packaged, except for errors inside a directory the packager leaves out anyway.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "A SKILL.md without front matter blocks the package as validation_blocked."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/packaging.go",
+            "lines": {
+              "start": 957,
+              "end": 966
+            },
+            "excerpt_sha256": "sha256:661cdef401ae1f23569c32f6603071f7cae8f34fd9be7310382fbbd3693f4a60"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/source_rules_test.go",
+            "lines": {
+              "start": 66,
+              "end": 71
+            },
+            "excerpt_sha256": "sha256:2b807a32bc2f142f984aab60d2286bc21c7e861a4521ebbe606a9865dd9ca83f"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-plugin-member-version-belongs-to-its-skill",
+        "statement": "A plugin member whose version belongs to another Skill is answered not found, so one Skill's gates never apply to another's content.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "A member naming skill A with a version of skill B is not found."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/plugin.go",
+            "lines": {
+              "start": 130,
+              "end": 143
+            },
+            "excerpt_sha256": "sha256:04d9a52c09edbc06af28cd24f158fe80bc7830fb8bff3de74962c956d8ea9716"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/source_rules_test.go",
+            "lines": {
+              "start": 73,
+              "end": 92
+            },
+            "excerpt_sha256": "sha256:82d40426b7c06ef9cb276ca1410ae577012a997fc0babc8cbb6bf146487e78af"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-package-for-a-recipient-carries-no-test-cases",
+        "statement": "A package built for a recipient never selects test cases, whatever the include flag says.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "A recipient package asked to include test cases holds none."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/packaging.go",
+            "lines": {
+              "start": 338,
+              "end": 341
+            },
+            "excerpt_sha256": "sha256:07eac29f16383f2d1e877412053be34c075096d072763237963bfc6cfda6566c"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/source_rules_test.go",
+            "lines": {
+              "start": 94,
+              "end": 104
+            },
+            "excerpt_sha256": "sha256:77e8cf7685535968a2b9d7b4e6b0e87fb8e6691823f12fb150ab7db521bcbc69"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-opted-out-package-carries-no-test-case",
+        "statement": "When the user opts out of test cases, even curated cases stay out and are listed as user_opted_out.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "A catalogue Skill packaged without test cases lists its curated case as user_opted_out."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/testcase.go",
+            "lines": {
+              "start": 126,
+              "end": 131
+            },
+            "excerpt_sha256": "sha256:388f56d03a152c3a1270d5413761fc5abb4eee8f9acbeea0a3511fcd7caa6d37"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/packaging_integration_test.go",
+            "lines": {
+              "start": 983,
+              "end": 1008
+            },
+            "excerpt_sha256": "sha256:77e55701aa91c0bf8236fe122f847cc1f299f033117179756ef7be444e7c468c"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-user-uploaded-dataset-keeps-its-test-case-out",
+        "statement": "A test case from an uncurated source that carries a dataset stays out of the package as user_uploaded_dataset; one without a dataset stays out as not_curated.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "A user's own case with private.csv is excluded as user_uploaded_dataset."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/testcase.go",
+            "lines": {
+              "start": 132,
+              "end": 141
+            },
+            "excerpt_sha256": "sha256:154d5695c8dade24873636faffaea65c378986ef7b27255da95fb90f0279baee"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/packaging_integration_test.go",
+            "lines": {
+              "start": 938,
+              "end": 981
+            },
+            "excerpt_sha256": "sha256:0a33536ee092756a26aad508c2657e692e1cf71b756fcde1d444476415a1b57d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-shared-package-object-outlives-one-deleted-download",
+        "statement": "Deleting a download removes its stored object only when no other live artifact shares it.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "Deleting one of two live artifacts sharing an object keeps the object."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/download.go",
+            "lines": {
+              "start": 334,
+              "end": 348
+            },
+            "excerpt_sha256": "sha256:c82b77132a4b82fe96aed42ddcf0a43e47575c975ca449bbdcfe1ae78d3cbe0b"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/download_shared_object_integration_test.go",
+            "lines": {
+              "start": 9,
+              "end": 33
+            },
+            "excerpt_sha256": "sha256:23470d797a910cb4fa5f2d1888a9b33f7766f37779ce4590e136d30a1fd7cadb"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-expired-or-purged-package-is-not-served",
+        "statement": "A package is not served once it has expired, been purged or is not scan-available.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "Fetching an expired download answers gone."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/download.go",
+            "lines": {
+              "start": 208,
+              "end": 210
+            },
+            "excerpt_sha256": "sha256:d43408a8449614683e3c4c6f52c1369828da2b270d7a0857288af091184ce342"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/download_integration_test.go",
+            "lines": {
+              "start": 840,
+              "end": 878
+            },
+            "excerpt_sha256": "sha256:ec3eb6efb17f471fece2534707aa50b64200147b5f4767db5f1b76714f0e374c"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-package-expires-one-retention-period-after-it-is-built",
+        "statement": "A package expires exactly the configured retention after it is built.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "With a seven-day retention, a package built now expires in seven days."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/packaging.go",
+            "lines": {
+              "start": 879,
+              "end": 883
+            },
+            "excerpt_sha256": "sha256:40c35de0bd0736573ccb035a2d38728b1daf2b94028543642c520b3bc329f5c1"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/packaging_integration_test.go",
+            "lines": {
+              "start": 1262,
+              "end": 1308
+            },
+            "excerpt_sha256": "sha256:2453b3957dbcb8ab80d730a94833de1bbb4b458720f50d5ef3853284e34febc1"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-18T16:04:44.915924Z",
+      "scope": "Record packaging rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "8c7a8a47c301c16603d3b1cb12ebeac41d953731",
+        "registry_digest": "sha256:f115f24612d0d5d3ac4b7c1668b54cf2e41e9f750e93252b2dfabc45360ed5d4"
+      }
+    }
+  ]
+}

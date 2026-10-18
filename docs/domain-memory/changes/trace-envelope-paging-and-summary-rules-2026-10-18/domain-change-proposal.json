@@ -1,0 +1,725 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "trace-envelope-paging-and-summary-rules-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "trace-envelope-paging-and-summary-rules-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-18T14:12:10.058290Z",
+  "verified_at": "2026-10-18T15:04:37.620487Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "8ccb13ec0bd7b8755644a8903914e66a93406624",
+    "registry_digest": "sha256:c77ecb1c782994af2c58074a7cc040ee7280fb37c3cc534b65d5b0ad7e5a01cd"
+  },
+  "affected_contexts": [
+    "trace"
+  ],
+  "rule_ids": [
+    "evaluation-events-come-only-from-the-orchestrator",
+    "a-trace-seq-is-1-to-100000",
+    "a-trace-attempt-is-1-to-100000",
+    "a-trace-status-must-be-a-known-outcome",
+    "a-trace-schema-must-be-major-version-1",
+    "a-trace-producer-must-be-known",
+    "a-started-run-without-sandbox-events-is-incomplete",
+    "a-refused-trace-event-does-not-fail-its-batch",
+    "trace-retention-keeps-whole-months",
+    "trace-maintenance-without-retention-deletes-nothing",
+    "the-advanced-trace-pages-at-1000-events",
+    "evaluation-evidence-holds-at-most-500-tail-events",
+    "the-general-trace-lists-the-first-100-skills",
+    "the-general-trace-lists-the-first-100-errors",
+    "a-valid-run-total-replaces-summed-usage",
+    "only-a-succeeded-tool-call-counts-as-success",
+    "trace-events-at-one-instant-order-by-source-attempt-seq",
+    "a-trace-cursor-must-be-a-non-negative-number"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "trace",
+    "invariant": "Only trace decides which events are stored and how a run's trace is shown.",
+    "evidence": [
+      "apps/platform/internal/trial/evidence/event.go:131-145"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: run state reaches trace through an injected reader.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/evidence/service.go:57-62"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A second extraction of the trace Context found enforced rules beyond the ten the Registry held, four guarded by no test."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; add the missing tests; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording workspace scoping of the trace read: it is enforced by the injected run reader and SQL outside this package."
+    ],
+    "proof_obligations": [
+      "rule-evaluation-events-come-only-from-the-orchestrator",
+      "rule-a-trace-seq-is-1-to-100000",
+      "rule-a-trace-attempt-is-1-to-100000",
+      "rule-a-trace-status-must-be-a-known-outcome",
+      "rule-a-trace-schema-must-be-major-version-1",
+      "rule-a-trace-producer-must-be-known",
+      "rule-a-started-run-without-sandbox-events-is-incomplete",
+      "rule-a-refused-trace-event-does-not-fail-its-batch",
+      "rule-trace-retention-keeps-whole-months",
+      "rule-trace-maintenance-without-retention-deletes-nothing",
+      "rule-the-advanced-trace-pages-at-1000-events",
+      "rule-evaluation-evidence-holds-at-most-500-tail-events",
+      "rule-the-general-trace-lists-the-first-100-skills",
+      "rule-the-general-trace-lists-the-first-100-errors",
+      "rule-a-valid-run-total-replaces-summed-usage",
+      "rule-only-a-succeeded-tool-call-counts-as-success",
+      "rule-trace-events-at-one-instant-order-by-source-attempt-seq",
+      "rule-a-trace-cursor-must-be-a-non-negative-number"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "evaluation-events-come-only-from-the-orchestrator",
+        "statement": "evaluation_started and evaluation_completed events are refused unless the orchestrator emitted them, even from an otherwise known producer.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "An evaluation_completed event emitted by the sandbox is refused as invalid."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/event.go",
+            "lines": {
+              "start": 138,
+              "end": 139
+            },
+            "excerpt_sha256": "sha256:3942e9f42ca84b1395ba6c09f526f6eb7640743a2e855f01550771612ccdb90f"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/evaluation_event_test.go",
+            "lines": {
+              "start": 40,
+              "end": 48
+            },
+            "excerpt_sha256": "sha256:e7ae8465c931788850f0c23f8d54e31aa1a5e1c6098712a162031c9016e67de2"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-trace-seq-is-1-to-100000",
+        "statement": "An event's seq must be from 1 to 100000; a larger seq is refused.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "An event with seq 100001 is refused as invalid."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/event.go",
+            "lines": {
+              "start": 112,
+              "end": 115
+            },
+            "excerpt_sha256": "sha256:818d9d3ec796397abdc662a218e1b4d3264f4f5dd846a798dff95590f8392b20"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/trace_test.go",
+            "lines": {
+              "start": 175,
+              "end": 214
+            },
+            "excerpt_sha256": "sha256:e8af8b0f200535df46a9c978e734a7f0de0d6fa35668e2dedfb58ab3c7ce26d2"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-trace-attempt-is-1-to-100000",
+        "statement": "An event's attempt must be from 1 to 100000; a larger attempt is refused.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "An event with attempt 100001 is refused as invalid."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/event.go",
+            "lines": {
+              "start": 108,
+              "end": 111
+            },
+            "excerpt_sha256": "sha256:d66233cda994e8a27f9265c9e40806c7ad7eb7ca767712fcc51a39924831a8e3"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/trace_test.go",
+            "lines": {
+              "start": 175,
+              "end": 214
+            },
+            "excerpt_sha256": "sha256:e8af8b0f200535df46a9c978e734a7f0de0d6fa35668e2dedfb58ab3c7ce26d2"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-trace-status-must-be-a-known-outcome",
+        "statement": "An event whose status is not one of the known outcomes is refused.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "An event with status 'exploded' is refused as invalid."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/event.go",
+            "lines": {
+              "start": 141,
+              "end": 142
+            },
+            "excerpt_sha256": "sha256:bf7fac524bee552838535498210d509d3edfaded68712a57c6b93c8246c0eb9d"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/trace_test.go",
+            "lines": {
+              "start": 175,
+              "end": 214
+            },
+            "excerpt_sha256": "sha256:e8af8b0f200535df46a9c978e734a7f0de0d6fa35668e2dedfb58ab3c7ce26d2"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-trace-schema-must-be-major-version-1",
+        "statement": "An event is accepted only under a 1.x schema version; another major version is refused while additive minor versions are accepted.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "schema_version 2.0 is refused; 1.7 is accepted."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/event.go",
+            "lines": {
+              "start": 104,
+              "end": 105
+            },
+            "excerpt_sha256": "sha256:8a5124ccad973b1f97b4135664a5c3244b0a91715972c7a388c5d5669661e98b"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/event.go",
+            "lines": {
+              "start": 159,
+              "end": 161
+            },
+            "excerpt_sha256": "sha256:51b83b424fa0df583f8b58813b285b970c0fab9935dd3cd5e61809812dd9d376"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/trace_test.go",
+            "lines": {
+              "start": 175,
+              "end": 214
+            },
+            "excerpt_sha256": "sha256:e8af8b0f200535df46a9c978e734a7f0de0d6fa35668e2dedfb58ab3c7ce26d2"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-trace-producer-must-be-known",
+        "statement": "An event whose emitted_by is not a known producer is refused.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "An event emitted by 'browser' is refused as invalid."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/event.go",
+            "lines": {
+              "start": 133,
+              "end": 134
+            },
+            "excerpt_sha256": "sha256:5f5a68c8d0f5101d5794a037e18481269171149616d35d0d60ff2d2c0ec358c4"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/trace_test.go",
+            "lines": {
+              "start": 175,
+              "end": 214
+            },
+            "excerpt_sha256": "sha256:e8af8b0f200535df46a9c978e734a7f0de0d6fa35668e2dedfb58ab3c7ce26d2"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-started-run-without-sandbox-events-is-incomplete",
+        "statement": "A trace is not complete when the run started but no sandbox stream exists; a run that never started is not flagged.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "A succeeded run with only orchestrator events reads as incomplete."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/service.go",
+            "lines": {
+              "start": 57,
+              "end": 62
+            },
+            "excerpt_sha256": "sha256:949a54b286775eed380efd3862ce150eae433600f695d9b6562f5a123458efa2"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/trace_test.go",
+            "lines": {
+              "start": 311,
+              "end": 333
+            },
+            "excerpt_sha256": "sha256:b0b6f7d8ae87c4c9a452df1a5e17d0f1171c1c81449fee5203a61d9a3e208389"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-refused-trace-event-does-not-fail-its-batch",
+        "statement": "An invalid event is counted as rejected and skipped; the other events in the same batch are still stored.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "A batch with one event for another attempt stores the rest and reports one rejected."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/service.go",
+            "lines": {
+              "start": 89,
+              "end": 101
+            },
+            "excerpt_sha256": "sha256:0d81ebe449ce94330e2e79a881dda492101bf205d5f5f9c97e47279a1ca365f3"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/trace_integration_test.go",
+            "lines": {
+              "start": 602,
+              "end": 638
+            },
+            "excerpt_sha256": "sha256:728df401b9a0a8df88392eaeec840c728d77c5290f105073227ffc34cd976441"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "trace-retention-keeps-whole-months",
+        "statement": "Trace maintenance deletes events older than the first day of the month holding the retention cutoff; events of that month stay.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "With a cutoff in mid January, an event on 31 December is deleted and one on 1 January stays."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/partitions.go",
+            "lines": {
+              "start": 17,
+              "end": 23
+            },
+            "excerpt_sha256": "sha256:167bb5b39e7db2428a9aabdca01f9184313fa1306f68786e5da08bd64a587ed5"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/partitions.go",
+            "lines": {
+              "start": 34,
+              "end": 37
+            },
+            "excerpt_sha256": "sha256:f24c8367cf2ef2bff598700b70d73853238997e0c3e8bf9d7e62cf4b34b138d6"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/trace_retention_integration_test.go",
+            "lines": {
+              "start": 11,
+              "end": 54
+            },
+            "excerpt_sha256": "sha256:86db42c2cd414abe3cfbac87bc64ca77ca3547edc927f9b3fbd3f7ffd7012f86"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "trace-maintenance-without-retention-deletes-nothing",
+        "statement": "Trace partition maintenance without a positive retention window is refused and deletes no events.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "Maintenance with a zero window reports an error and leaves a year-2000 event in place."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/partitions.go",
+            "lines": {
+              "start": 17,
+              "end": 23
+            },
+            "excerpt_sha256": "sha256:167bb5b39e7db2428a9aabdca01f9184313fa1306f68786e5da08bd64a587ed5"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/trace_limits_integration_test.go",
+            "lines": {
+              "start": 40,
+              "end": 59
+            },
+            "excerpt_sha256": "sha256:9d1ff58e1cd00c4ce9952c78d442c79d44100b6e169ea6ef5f96f8b29b416f09"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-advanced-trace-pages-at-1000-events",
+        "statement": "The advanced trace returns at most 1000 events per page, says more remain, and gives a cursor that continues after the last one.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "Of 1001 events the first page holds 1000 with has_more, and the next page holds the last one."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/service.go",
+            "lines": {
+              "start": 424,
+              "end": 424
+            },
+            "excerpt_sha256": "sha256:eef45d0cbbcc4d38c8ef3470c8d5f881a46ca1a704303d85d956b72e7d473838"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/service.go",
+            "lines": {
+              "start": 441,
+              "end": 458
+            },
+            "excerpt_sha256": "sha256:e37d79c96a2533a5e774c9c53fbdb07f2b5ef679a1bcd3bb3e7d03ed95aba6ca"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/trace_limits_integration_test.go",
+            "lines": {
+              "start": 12,
+              "end": 38
+            },
+            "excerpt_sha256": "sha256:379aa8de57d909997a3e15c16da88a2fa67b246f5fce2c40031ba9ec69df7811"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "evaluation-evidence-holds-at-most-500-tail-events",
+        "statement": "The evidence an evaluation reads holds at most the last 500 events and is marked truncated and incomplete when more exist.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "A run with 1001 events gives the evaluation 500, truncated."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/service.go",
+            "lines": {
+              "start": 426,
+              "end": 431
+            },
+            "excerpt_sha256": "sha256:0877d82ddf3bfc152970ec1038412bb923f5ea9c5511b7a7226a8814dced971d"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/trace_integration_test.go",
+            "lines": {
+              "start": 471,
+              "end": 508
+            },
+            "excerpt_sha256": "sha256:1054bd4a9dc35633329190aabd366e4ab474448c21471c898cedd6bebe520dc5"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-general-trace-lists-the-first-100-skills",
+        "statement": "The general trace lists at most the first 100 skills used while still counting all of them.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "A run using 101 skills lists 100 and counts 101."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/general.go",
+            "lines": {
+              "start": 12,
+              "end": 14
+            },
+            "excerpt_sha256": "sha256:ef2bf7ad590106d2e2ac53418d4bfa64571b3225702bfd36a636dce2190e0869"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/general.go",
+            "lines": {
+              "start": 44,
+              "end": 48
+            },
+            "excerpt_sha256": "sha256:54ef7061c57b49ac0e8bab330f470d10687befdbe377f0f439c6294dc01568eb"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/general_test.go",
+            "lines": {
+              "start": 21,
+              "end": 40
+            },
+            "excerpt_sha256": "sha256:f41a8f5f999f41ca044563d09fdf7fb9445054b742ea0962c5fa172424208ef9"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-general-trace-lists-the-first-100-errors",
+        "statement": "The general trace lists at most the first 100 errors while still counting all of them.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "A run with 101 errors lists 100 and counts 101."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/general.go",
+            "lines": {
+              "start": 12,
+              "end": 14
+            },
+            "excerpt_sha256": "sha256:ef2bf7ad590106d2e2ac53418d4bfa64571b3225702bfd36a636dce2190e0869"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/general.go",
+            "lines": {
+              "start": 53,
+              "end": 57
+            },
+            "excerpt_sha256": "sha256:a589b88f373f50cfec8cb415d005e06741bbc1c2ea6fc7c010b62a82c8912098"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/general_test.go",
+            "lines": {
+              "start": 21,
+              "end": 40
+            },
+            "excerpt_sha256": "sha256:f41a8f5f999f41ca044563d09fdf7fb9445054b742ea0962c5fa172424208ef9"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-valid-run-total-replaces-summed-usage",
+        "statement": "Reported usage takes a readable run_total figure field by field and otherwise sums the per-call figures.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "A run_total of 900 tokens is reported instead of the 1000 summed from its calls."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/general.go",
+            "lines": {
+              "start": 90,
+              "end": 129
+            },
+            "excerpt_sha256": "sha256:b773dee9bc656cd7cecd64fef67b4709d09df8feb3e8e3e13cefd94e600da479"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/general_test.go",
+            "lines": {
+              "start": 115,
+              "end": 153
+            },
+            "excerpt_sha256": "sha256:8e814ce9395d34cb1bfd5954ff613149f399996e4d8fb0c53e91eeb6a60b2313"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-a-succeeded-tool-call-counts-as-success",
+        "statement": "A tool call counts as a success only when its outcome is succeeded.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "A tool call that timed out is counted but not as a success."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/general.go",
+            "lines": {
+              "start": 73,
+              "end": 82
+            },
+            "excerpt_sha256": "sha256:b8f24e42cee6199fa889b5cd9b9e13c78c485881f3aca53b667d20ddf98b0cd9"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/general_test.go",
+            "lines": {
+              "start": 42,
+              "end": 82
+            },
+            "excerpt_sha256": "sha256:161546fc75cbb450aa71af94243a0f51285616d2525cfcc90d7de079ef040e61"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "trace-events-at-one-instant-order-by-source-attempt-seq",
+        "statement": "Events that occurred at the same instant are ordered by producer, then attempt, then seq.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "Two sandbox events of attempt 1 at one instant list seq 1 before seq 2."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/service.go",
+            "lines": {
+              "start": 504,
+              "end": 518
+            },
+            "excerpt_sha256": "sha256:5f1b340cbf7aa30a231a1d11303465978868603156ddaa9c36d22efdb0f1e494"
+          },
+          {
+            "path": "apps/platform/internal/trial/evidence/trace_test.go",
+            "lines": {
+              "start": 285,
+              "end": 309
+            },
+            "excerpt_sha256": "sha256:3ece74ed1c69aa33d8c338f18950f82c7c901e49b11b810a41acd7ab180144f6"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-trace-cursor-must-be-a-non-negative-number",
+        "statement": "A trace cursor that is negative or not a number answers 400 in every view.",
+        "contexts": [
+          "trace"
+        ],
+        "examples": [
+          "after=-1 answers 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/http.go",
+            "lines": {
+              "start": 97,
+              "end": 104
+            },
+            "excerpt_sha256": "sha256:660d1818ed1354eb83ce0989cc57459a8a1dd887ae60ed4c602a9739e8068d32"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/trace_integration_test.go",
+            "lines": {
+              "start": 195,
+              "end": 218
+            },
+            "excerpt_sha256": "sha256:765ab21a08d1bd0c33d17038955140154fc195c4c269c5605c7b1586bded7fe4"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-18T15:04:37.509165Z",
+      "scope": "Record trace rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "8ccb13ec0bd7b8755644a8903914e66a93406624",
+        "registry_digest": "sha256:c77ecb1c782994af2c58074a7cc040ee7280fb37c3cc534b65d5b0ad7e5a01cd"
+      }
+    }
+  ]
+}

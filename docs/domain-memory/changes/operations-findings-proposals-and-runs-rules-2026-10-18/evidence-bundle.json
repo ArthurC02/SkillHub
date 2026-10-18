@@ -1,0 +1,202 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "operations-findings-proposals-and-runs-rules-2026-10-18",
+  "proposal_id": "operations-findings-proposals-and-runs-rules-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "8c7a8a47c301c16603d3b1cb12ebeac41d953731",
+    "registry_digest": "sha256:91ff34ca5d5b3b11f9d698e500fcb1041dbfdb4525803de7b82e7d267ae59cb1"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-closed-finding-reopens-only-within-30-days",
+      "mutated_protection": "apps/platform/internal/product/operations/findings.go:48: const findingMatchWindow = 30 * 24 * time.Hour -> const findingMatchWindow = 3650 * 24 * time.Hour",
+      "failure_evidence": "=== RUN   TestAResolvedFindingIsReopenedOnlyWhenLastSeenWithinThirtyDays\n=== RUN   TestAResolvedFindingIsReopenedOnlyWhenLastSeenWithinThirtyDays/just_inside_the_window\n=== RUN   TestAResolvedFindingIsReopenedOnlyWhenLastSeenWithinThirtyDays/just_past_the_window\n    platform_agent_findings_integration_test.go:315: last seen 30 days + 1 hour ago: [{id:{Bytes:[129 115 9 85 253 85 65 19 147 159 193 68 131 131 118 73] Valid:true} status:open title:purge is late again seenCount:2}], want 2 finding(s) with the first resolved\n--- FAIL: TestAResolvedFindingIsReopenedOnlyWhenLastSeenWithinThirtyDays (0.23s)\n    --- PASS: TestAResolvedFindingIsReopenedOnlyWhenLastSeenWithinThirtyDays/just_inside_the_window (0.13s)\n    --- FAIL: TestAResolvedFindingIsReopenedOnlyWhenLastSeenWithinThirtyDays/just_past_the_window (0.10s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.239s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-operator-change-note-is-at-most-1000-characters",
+      "mutated_protection": "apps/platform/internal/product/operations/handler.go:212: utf8.RuneCountInString(note) > maxNoteChars -> utf8.RuneCountInString(note) >= maxNoteChars",
+      "failure_evidence": "=== RUN   TestAnOperatorNoteIsAtMostTheCapCountedInCharacters\n=== RUN   TestAnOperatorNoteIsAtMostTheCapCountedInCharacters/exactly_the_cap\n    note_test.go:24: a note of 1000 characters: accepted = false, want true\n=== RUN   TestAnOperatorNoteIsAtMostTheCapCountedInCharacters/one_character_over\n--- FAIL: TestAnOperatorNoteIsAtMostTheCapCountedInCharacters (0.00s)\n    --- FAIL: TestAnOperatorNoteIsAtMostTheCapCountedInCharacters/exactly_the_cap (0.00s)\n    --- PASS: TestAnOperatorNoteIsAtMostTheCapCountedInCharacters/one_character_over (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/operations\t3.220s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-daily-report-must-have-items",
+      "mutated_protection": "apps/platform/internal/product/operations/daily_report.go:42: if len(report.Items) == 0 { -> if len(report.Items) == 0 && false {",
+      "failure_evidence": "--- FAIL: TestADailyReportMustBeWellFormedBeforeItsCitesCount (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/cites_the_second_tool_answer (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/attention_is_a_status (0.00s)\n    --- FAIL: TestADailyReportMustBeWellFormedBeforeItsCitesCount/no_items (0.00s)\n    --- FAIL: TestADailyReportMustBeWellFormedBeforeItsCitesCount/missing_items (0.00s)\n...\nunt/blank_text (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/no_cites (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/unknown_field (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/not_an_object (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/second_item_is_wrong (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/a_proposal_citing_a_fact (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/a_proposal_with_no_action (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/a_proposal_with_no_reason (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/a_proposal_citing_nothing (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/a_proposal_no_fact_offers (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/a_proposal_whose_name_is_a_fact_but_not_an_offer (0.00s)\n    --- PASS: TestADailyReportMustBeWellFormedBeforeItsCitesCount/a_proposal_citing_a_missing_fact (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/operations\t1.868s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-proposal-names-an-action-a-fact-offers",
+      "mutated_protection": "apps/platform/internal/product/operations/daily_report.go:66: if !slices.ContainsFunc(facts, -> if false && !slices.ContainsFunc(facts,",
+      "failure_evidence": "--- FAIL: TestEachAgentsEvalsAcceptOnlyReportsThatCiteTheSnapshot (0.00s)\n    --- PASS: TestEachAgentsEvalsAcceptOnlyReportsThatCiteTheSnapshot/daily-report (0.00s)\n        --- PASS: TestEachAgentsEvalsAcceptOnlyReportsThatCiteTheSnapshot/daily-report/every_item_cites_facts_in_the_snapshot (0.00s)\n        --- PASS: TestEachAgentsEvalsAcceptOnlyReportsThatCiteTheSnapshot/daily-report/a_job_the_snapshot_does_not_have (0.00s)\n...\ncceptOnlyReportsThatCiteTheSnapshot/daily-report/a_proposal_resting_on_the_facts_that_show_the_job_is_late (0.00s)\n        --- PASS: TestEachAgentsEvalsAcceptOnlyReportsThatCiteTheSnapshot/daily-report/a_proposal_resting_on_a_fact_the_snapshot_does_not_have (0.00s)\n    --- FAIL: TestEachAgentsEvalsAcceptOnlyReportsThatCiteTheSnapshot/exposure-review (0.00s)\n        --- PASS: TestEachAgentsEvalsAcceptOnlyReportsThatCiteTheSnapshot/exposure-review/each_item_cites_the_facts_it_rests_on (0.00s)\n        --- PASS: TestEachAgentsEvalsAcceptOnlyReportsThatCiteTheSnapshot/exposure-review/citing_a_publication_the_tool_did_not_return_is_rejected (0.00s)\n        --- PASS: TestEachAgentsEvalsAcceptOnlyReportsThatCiteTheSnapshot/exposure-review/an_item_without_cites_is_rejected (0.00s)\n        --- PASS: TestEachAgentsEvalsAcceptOnlyReportsThatCiteTheSnapshot/exposure-review/a_verdict_other_than_fine_or_attention_is_rejected (0.00s)\n        --- FAIL: TestEachAgentsEvalsAcceptOnlyReportsThatCiteTheSnapshot/exposure-review/proposing_an_exposure_decision_is_rejected_because_no_fact_offers_an_action (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/operations\t1.635s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-proposal-waits-24-hours",
+      "mutated_protection": "apps/platform/internal/product/operations/proposals.go:32: const proposalLifetime = 24 * time.Hour -> const proposalLifetime = 48 * time.Hour",
+      "failure_evidence": "=== RUN   TestAnAgentProposesOnlyARegisteredActionWithItsPreviewAndOnceWhileItIsLive\n    platform_agent_proposals_integration_test.go:136: proposals [{id:{Bytes:[252 34 57 145 255 114 73 158 147 136 3 129 73 236 148 37] Valid:true} action:run-test-proposal-audit tier:destructive status:proposed preview:{Counts:[{Key:audit_events_past_retention Count:42 AtMost:false}] BatchLimit:100} life:172800000000000}], want one destructive proposal waiting 24 hours\n--- FAIL: TestAnAgentProposesOnlyARegisteredActionWithItsPreviewAndOnceWhileItIsLive (0.10s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.056s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-running-proposal-is-abandoned-after-a-2-hour-lease",
+      "mutated_protection": "apps/platform/internal/product/operations/proposals.go:255: proposalRunLease = 2 * time.Hour -> proposalRunLease = 3 * time.Hour",
+      "failure_evidence": "=== RUN   TestAProposalWhoseRunnerVanishedFailsOnlyAfterItsLease\n    platform_agent_proposals_integration_test.go:453: abandoned proposal map[action:run-test-proposal-gone agent:agent-proposals-lease cites:[/jobs/purge/overdue] decided_at:2026-10-18T15:56:10Z decided_by_user_id:56ec275d-1e0c-4aab-b332-392e184814e3 decision_note:go ahead expires_at:2026-10-19T15:56:10Z id:3e0b4c71-82c7-4804-bbc7-40de6554346b preview:map[batch_limit:100 counts:<nil>] proposed_at:2026-10-18T15:56:10Z reason:a run_id:eb465efa-3a30-4988-b86b-4ca66373bb9f started_at:2026-10-18T13:56:09Z status:running tier:destructive], want failed saying the process stopped\n    platform_agent_proposals_integration_test.go:460: system failure audit events: 0, want 1\n--- FAIL: TestAProposalWhoseRunnerVanishedFailsOnlyAfterItsLease (0.18s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.588s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-releasing-an-unengaged-brake-records-nothing",
+      "mutated_protection": "apps/platform/internal/product/operations/agents.go:206: if err != nil || released == 0 { -> if err != nil || released == 0 && false {",
+      "failure_evidence": "=== RUN   TestTheAgentBrakeStopsRunsAndHoldsUntilReleased\n    platform_agents_integration_test.go:256: brake releases audited: 2, want 1 (a release of nothing is not audited)\n--- FAIL: TestTheAgentBrakeStopsRunsAndHoldsUntilReleased (0.09s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.163s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-halted-agent-cannot-start-a-run",
+      "mutated_protection": "apps/platform/internal/product/operations/runs.go:27: if errors.Is(err, pgx.ErrNoRows) { -> if errors.Is(err, pgx.ErrNoRows) && false {",
+      "failure_evidence": "=== RUN   TestDisablingAnAgentStopsItsRunBeforeTheNextStep\n    platform_agents_integration_test.go:178: a registered agent nobody enabled started a run: no rows in result set\n--- FAIL: TestDisablingAnAgentStopsItsRunBeforeTheNextStep (0.05s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.202s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-finished-agent-run-takes-no-more-steps",
+      "mutated_protection": "apps/platform/internal/product/operations/runs.go:38: if agentloop.Status(gate.Status) != agentloop.Running { -> if agentloop.Status(gate.Status) != agentloop.Running && false {",
+      "failure_evidence": "=== RUN   TestDisablingAnAgentStopsItsRunBeforeTheNextStep\n    platform_agents_integration_test.go:204: a stopped run took another step once its agent was enabled again: <nil>\n--- FAIL: TestDisablingAnAgentStopsItsRunBeforeTheNextStep (0.08s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.330s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-job-failing-silently-still-closes-its-proposal",
+      "mutated_protection": "apps/platform/internal/product/operations/proposals.go:236: if strings.TrimSpace(message) == \"\" { -> if strings.TrimSpace(message) == \"x\" {",
+      "failure_evidence": "=== RUN   TestAJobThatFailsWithoutAMessageStillClosesItsProposal\n    platform_agent_proposals_integration_test.go:470: finish: ERROR: new row for relation \"platform_agent_proposals\" violates check constraint \"platform_agent_proposals_check6\" (SQLSTATE 23514), want the proposal closed\n--- FAIL: TestAJobThatFailsWithoutAMessageStillClosesItsProposal (0.16s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.646s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/platform_agent_findings_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/platform_agents_integration_test.go",
+    "apps/platform/internal/product/operations/agents.go",
+    "apps/platform/internal/product/operations/daily_report.go",
+    "apps/platform/internal/product/operations/daily_report_test.go",
+    "apps/platform/internal/product/operations/findings.go",
+    "apps/platform/internal/product/operations/handler.go",
+    "apps/platform/internal/product/operations/note_test.go",
+    "apps/platform/internal/product/operations/proposals.go",
+    "apps/platform/internal/product/operations/runs.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-closed-finding-reopens-only-within-30-days",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAResolvedFindingIsReopenedOnlyWhenLastSeenWithinThirtyDays$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:7f9ba2209333d0ed0f4985a6e369f1b0097cdd56dc29561218f6da81902036b7",
+      "finished_at": "2026-10-18T15:58:18.271331Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-operator-change-note-is-at-most-1000-characters",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnOperatorNoteIsAtMostTheCapCountedInCharacters$ ./internal/product/operations/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f315ce04f8ee9b1f2952add6bcedfd6f89d54f014498c2185f85fd88fd9140a0",
+      "finished_at": "2026-10-18T15:58:21.995407Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-daily-report-must-have-items",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestADailyReportMustBeWellFormedBeforeItsCitesCount$ ./internal/product/operations/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:adac71261d17bb58cff71b4fcda4e8cbf0de9563a72c7ddd91e634b1fe86a409",
+      "finished_at": "2026-10-18T15:58:27.651864Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-proposal-names-an-action-a-fact-offers",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestEachAgentsEvalsAcceptOnlyReportsThatCiteTheSnapshot$ ./internal/product/operations/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:dd02aef0e90f8456f472e6e51e805b85ebeef9abdc2ccb401f14856969c5dd43",
+      "finished_at": "2026-10-18T15:58:38.383489Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-proposal-waits-24-hours",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnAgentProposesOnlyARegisteredActionWithItsPreviewAndOnceWhileItIsLive$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f3c5f06cc026664495e71f0cf9ec6e50542d822e6777e4ac18b751410ce39127",
+      "finished_at": "2026-10-18T15:58:46.133523Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-running-proposal-is-abandoned-after-a-2-hour-lease",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAProposalWhoseRunnerVanishedFailsOnlyAfterItsLease$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:aefcb376a828cddd91db2ff51b1eeb056378ae05a6cb521d642837a35e3a2a6a",
+      "finished_at": "2026-10-18T15:58:56.699259Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-releasing-an-unengaged-brake-records-nothing",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheAgentBrakeStopsRunsAndHoldsUntilReleased$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:954344c31c802ed4bd3974483be590a2d01e744aa160adce7c2f2686701729fd",
+      "finished_at": "2026-10-18T15:59:05.640481Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-halted-agent-cannot-start-a-run",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestDisablingAnAgentStopsItsRunBeforeTheNextStep$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:090cb5dc40448cc8b608eada201fa2069974c92353e3a602606a996933ab4f5b",
+      "finished_at": "2026-10-18T15:59:13.515924Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-finished-agent-run-takes-no-more-steps",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestDisablingAnAgentStopsItsRunBeforeTheNextStep$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f35c063341e1a99f26bd39fe5175a280f2354ea3a025e87b85fe36067d9ce1b3",
+      "finished_at": "2026-10-18T15:59:21.797469Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-job-failing-silently-still-closes-its-proposal",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAJobThatFailsWithoutAMessageStillClosesItsProposal$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b08e7279914d78cd6c32a513f74053dd0bd79e44db7e26d0259923e34eb0f789",
+      "finished_at": "2026-10-18T15:59:29.431830Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

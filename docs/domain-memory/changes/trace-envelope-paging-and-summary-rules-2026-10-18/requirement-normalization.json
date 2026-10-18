@@ -1,0 +1,99 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "trace-envelope-paging-and-summary-rules-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed the envelope, batch, retention, paging, evidence and summary rules the trace Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context trace lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-evaluation-events-come-only-from-the-orchestrator",
+      "statement": "evaluation_started and evaluation_completed events are refused unless the orchestrator emitted them, even from an otherwise known producer."
+    },
+    {
+      "id": "enforced-a-trace-seq-is-1-to-100000",
+      "statement": "An event's seq must be from 1 to 100000; a larger seq is refused."
+    },
+    {
+      "id": "enforced-a-trace-attempt-is-1-to-100000",
+      "statement": "An event's attempt must be from 1 to 100000; a larger attempt is refused."
+    },
+    {
+      "id": "enforced-a-trace-status-must-be-a-known-outcome",
+      "statement": "An event whose status is not one of the known outcomes is refused."
+    },
+    {
+      "id": "enforced-a-trace-schema-must-be-major-version-1",
+      "statement": "An event is accepted only under a 1.x schema version; another major version is refused while additive minor versions are accepted."
+    },
+    {
+      "id": "enforced-a-trace-producer-must-be-known",
+      "statement": "An event whose emitted_by is not a known producer is refused."
+    },
+    {
+      "id": "enforced-a-started-run-without-sandbox-events-is-incomplete",
+      "statement": "A trace is not complete when the run started but no sandbox stream exists; a run that never started is not flagged."
+    },
+    {
+      "id": "enforced-a-refused-trace-event-does-not-fail-its-batch",
+      "statement": "An invalid event is counted as rejected and skipped; the other events in the same batch are still stored."
+    },
+    {
+      "id": "enforced-trace-retention-keeps-whole-months",
+      "statement": "Trace maintenance deletes events older than the first day of the month holding the retention cutoff; events of that month stay."
+    },
+    {
+      "id": "enforced-trace-maintenance-without-retention-deletes-nothing",
+      "statement": "Trace partition maintenance without a positive retention window is refused and deletes no events."
+    },
+    {
+      "id": "enforced-the-advanced-trace-pages-at-1000-events",
+      "statement": "The advanced trace returns at most 1000 events per page, says more remain, and gives a cursor that continues after the last one."
+    },
+    {
+      "id": "enforced-evaluation-evidence-holds-at-most-500-tail-events",
+      "statement": "The evidence an evaluation reads holds at most the last 500 events and is marked truncated and incomplete when more exist."
+    },
+    {
+      "id": "enforced-the-general-trace-lists-the-first-100-skills",
+      "statement": "The general trace lists at most the first 100 skills used while still counting all of them."
+    },
+    {
+      "id": "enforced-the-general-trace-lists-the-first-100-errors",
+      "statement": "The general trace lists at most the first 100 errors while still counting all of them."
+    },
+    {
+      "id": "enforced-a-valid-run-total-replaces-summed-usage",
+      "statement": "Reported usage takes a readable run_total figure field by field and otherwise sums the per-call figures."
+    },
+    {
+      "id": "enforced-only-a-succeeded-tool-call-counts-as-success",
+      "statement": "A tool call counts as a success only when its outcome is succeeded."
+    },
+    {
+      "id": "enforced-trace-events-at-one-instant-order-by-source-attempt-seq",
+      "statement": "Events that occurred at the same instant are ordered by producer, then attempt, then seq."
+    },
+    {
+      "id": "enforced-a-trace-cursor-must-be-a-non-negative-number",
+      "statement": "A trace cursor that is negative or not a number answers 400 in every view."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/trace_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/trace_limits_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/trace_retention_integration_test.go",
+    "apps/platform/internal/trial/evidence/evaluation_event_test.go",
+    "apps/platform/internal/trial/evidence/event.go",
+    "apps/platform/internal/trial/evidence/general.go",
+    "apps/platform/internal/trial/evidence/general_test.go",
+    "apps/platform/internal/trial/evidence/http.go",
+    "apps/platform/internal/trial/evidence/partitions.go",
+    "apps/platform/internal/trial/evidence/service.go",
+    "apps/platform/internal/trial/evidence/trace_test.go"
+  ]
+}

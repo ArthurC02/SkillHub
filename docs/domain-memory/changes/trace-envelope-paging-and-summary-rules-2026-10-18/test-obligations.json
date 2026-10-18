@@ -1,0 +1,277 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "trace-envelope-paging-and-summary-rules-2026-10-18",
+  "proposal_id": "trace-envelope-paging-and-summary-rules-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-evaluation-events-come-only-from-the-orchestrator",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-evaluation-events-come-only-from-the-orchestrator",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "evaluation-events-come-only-from-the-orchestrator"
+        }
+      ],
+      "expected_outcome": "evaluation_started and evaluation_completed events are refused unless the orchestrator emitted them, even from an otherwise known producer.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnEvaluationEventFromTheSandboxIsRefused$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-a-trace-seq-is-1-to-100000",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-trace-seq-is-1-to-100000",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-trace-seq-is-1-to-100000"
+        }
+      ],
+      "expected_outcome": "An event's seq must be from 1 to 100000; a larger seq is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestValidateRejectsMalformedEnvelopes$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-a-trace-attempt-is-1-to-100000",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-trace-attempt-is-1-to-100000",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-trace-attempt-is-1-to-100000"
+        }
+      ],
+      "expected_outcome": "An event's attempt must be from 1 to 100000; a larger attempt is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestValidateRejectsMalformedEnvelopes$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-a-trace-status-must-be-a-known-outcome",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-trace-status-must-be-a-known-outcome",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-trace-status-must-be-a-known-outcome"
+        }
+      ],
+      "expected_outcome": "An event whose status is not one of the known outcomes is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestValidateRejectsMalformedEnvelopes$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-a-trace-schema-must-be-major-version-1",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-trace-schema-must-be-major-version-1",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-trace-schema-must-be-major-version-1"
+        }
+      ],
+      "expected_outcome": "An event is accepted only under a 1.x schema version; another major version is refused while additive minor versions are accepted.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestValidateRejectsMalformedEnvelopes$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-a-trace-producer-must-be-known",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-trace-producer-must-be-known",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-trace-producer-must-be-known"
+        }
+      ],
+      "expected_outcome": "An event whose emitted_by is not a known producer is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestValidateRejectsMalformedEnvelopes$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-a-started-run-without-sandbox-events-is-incomplete",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-started-run-without-sandbox-events-is-incomplete",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-started-run-without-sandbox-events-is-incomplete"
+        }
+      ],
+      "expected_outcome": "A trace is not complete when the run started but no sandbox stream exists; a run that never started is not flagged.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestNothingWasCollected$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-a-refused-trace-event-does-not-fail-its-batch",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-refused-trace-event-does-not-fail-its-batch",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-refused-trace-event-does-not-fail-its-batch"
+        }
+      ],
+      "expected_outcome": "An invalid event is counted as rejected and skipped; the other events in the same batch are still stored.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTraceIngestionRefusesWhatTheTokenDoesNotCover$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-trace-retention-keeps-whole-months",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-trace-retention-keeps-whole-months",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "trace-retention-keeps-whole-months"
+        }
+      ],
+      "expected_outcome": "Trace maintenance deletes events older than the first day of the month holding the retention cutoff; events of that month stay.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestDefaultPartitionTraceRowsOlderThanEveryKeptMonthAreDeletedAndTheKeptMonthStays$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-trace-maintenance-without-retention-deletes-nothing",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-trace-maintenance-without-retention-deletes-nothing",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "trace-maintenance-without-retention-deletes-nothing"
+        }
+      ],
+      "expected_outcome": "Trace partition maintenance without a positive retention window is refused and deletes no events.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTracePartitionMaintenanceWithoutARetentionWindowDeletesNoEvents$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-the-advanced-trace-pages-at-1000-events",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-advanced-trace-pages-at-1000-events",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-advanced-trace-pages-at-1000-events"
+        }
+      ],
+      "expected_outcome": "The advanced trace returns at most 1000 events per page, says more remain, and gives a cursor that continues after the last one.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheAdvancedTracePagesAtAThousandEventsAndPointsAtTheRest$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-evaluation-evidence-holds-at-most-500-tail-events",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-evaluation-evidence-holds-at-most-500-tail-events",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "evaluation-evidence-holds-at-most-500-tail-events"
+        }
+      ],
+      "expected_outcome": "The evidence an evaluation reads holds at most the last 500 events and is marked truncated and incomplete when more exist.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestEvaluationTraceSelectionIsBoundedAndCanonicallyOrdered$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-the-general-trace-lists-the-first-100-skills",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-general-trace-lists-the-first-100-skills",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-general-trace-lists-the-first-100-skills"
+        }
+      ],
+      "expected_outcome": "The general trace lists at most the first 100 skills used while still counting all of them.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheGeneralFoldShowsTheFirstHundredSkillsAndErrorsAndCountsThemAll$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-the-general-trace-lists-the-first-100-errors",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-general-trace-lists-the-first-100-errors",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-general-trace-lists-the-first-100-errors"
+        }
+      ],
+      "expected_outcome": "The general trace lists at most the first 100 errors while still counting all of them.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheGeneralFoldShowsTheFirstHundredSkillsAndErrorsAndCountsThemAll$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-a-valid-run-total-replaces-summed-usage",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-valid-run-total-replaces-summed-usage",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-valid-run-total-replaces-summed-usage"
+        }
+      ],
+      "expected_outcome": "Reported usage takes a readable run_total figure field by field and otherwise sums the per-call figures.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestUsagePrefersAValidRunTotalAndOtherwiseSumsTheRest$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-only-a-succeeded-tool-call-counts-as-success",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-only-a-succeeded-tool-call-counts-as-success",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "only-a-succeeded-tool-call-counts-as-success"
+        }
+      ],
+      "expected_outcome": "A tool call counts as a success only when its outcome is succeeded.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestToolCallsCountOnlySucceededAsSuccessAndIgnoreDurationsThatAreNotWholeMilliseconds$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-trace-events-at-one-instant-order-by-source-attempt-seq",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-trace-events-at-one-instant-order-by-source-attempt-seq",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "trace-events-at-one-instant-order-by-source-attempt-seq"
+        }
+      ],
+      "expected_outcome": "Events that occurred at the same instant are ordered by producer, then attempt, then seq.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestEventsAtTheSameInstantSortBySourceThenAttemptThenSeq$ ./internal/trial/evidence/"
+    },
+    {
+      "id": "rule-a-trace-cursor-must-be-a-non-negative-number",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-trace-cursor-must-be-a-non-negative-number",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-trace-cursor-must-be-a-non-negative-number"
+        }
+      ],
+      "expected_outcome": "A trace cursor that is negative or not a number answers 400 in every view.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestATraceCursorIsRefusedWhicheverViewWasAskedFor$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

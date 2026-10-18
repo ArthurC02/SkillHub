@@ -1,0 +1,60 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "packaging-source-testcase-and-download-rules-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed the source, plugin member, test case and download lifetime rules the packaging Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context packaging lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-skill-md-pointing-at-a-dropped-file-blocks-the-package",
+      "statement": "A package is refused when SKILL.md points at a file or directory the packager leaves out, since the download would miss what its own instructions use."
+    },
+    {
+      "id": "enforced-a-stored-source-that-no-longer-validates-is-not-packaged",
+      "statement": "A stored source that now fails import validation is not packaged, except for errors inside a directory the packager leaves out anyway."
+    },
+    {
+      "id": "enforced-a-plugin-member-version-belongs-to-its-skill",
+      "statement": "A plugin member whose version belongs to another Skill is answered not found, so one Skill's gates never apply to another's content."
+    },
+    {
+      "id": "enforced-a-package-for-a-recipient-carries-no-test-cases",
+      "statement": "A package built for a recipient never selects test cases, whatever the include flag says."
+    },
+    {
+      "id": "enforced-an-opted-out-package-carries-no-test-case",
+      "statement": "When the user opts out of test cases, even curated cases stay out and are listed as user_opted_out."
+    },
+    {
+      "id": "enforced-a-user-uploaded-dataset-keeps-its-test-case-out",
+      "statement": "A test case from an uncurated source that carries a dataset stays out of the package as user_uploaded_dataset; one without a dataset stays out as not_curated."
+    },
+    {
+      "id": "enforced-a-shared-package-object-outlives-one-deleted-download",
+      "statement": "Deleting a download removes its stored object only when no other live artifact shares it."
+    },
+    {
+      "id": "enforced-an-expired-or-purged-package-is-not-served",
+      "statement": "A package is not served once it has expired, been purged or is not scan-available."
+    },
+    {
+      "id": "enforced-a-package-expires-one-retention-period-after-it-is-built",
+      "statement": "A package expires exactly the configured retention after it is built."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/download_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/download_shared_object_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/packaging_integration_test.go",
+    "apps/platform/internal/skill/delivery/download.go",
+    "apps/platform/internal/skill/delivery/packaging.go",
+    "apps/platform/internal/skill/delivery/plugin.go",
+    "apps/platform/internal/skill/delivery/source_rules_test.go",
+    "apps/platform/internal/skill/delivery/testcase.go"
+  ]
+}

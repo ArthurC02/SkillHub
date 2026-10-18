@@ -1,0 +1,142 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "packaging-source-testcase-and-download-rules-2026-10-18",
+  "proposal_id": "packaging-source-testcase-and-download-rules-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-a-skill-md-pointing-at-a-dropped-file-blocks-the-package",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-skill-md-pointing-at-a-dropped-file-blocks-the-package",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-skill-md-pointing-at-a-dropped-file-blocks-the-package"
+        }
+      ],
+      "expected_outcome": "A package is refused when SKILL.md points at a file or directory the packager leaves out, since the download would miss what its own instructions use.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestASkillMDPointingAtAFileThePackagerDropsBlocksThePackage$ ./internal/skill/delivery/"
+    },
+    {
+      "id": "rule-a-stored-source-that-no-longer-validates-is-not-packaged",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-stored-source-that-no-longer-validates-is-not-packaged",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-stored-source-that-no-longer-validates-is-not-packaged"
+        }
+      ],
+      "expected_outcome": "A stored source that now fails import validation is not packaged, except for errors inside a directory the packager leaves out anyway.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAStoredSourceThatNoLongerValidatesIsNotPackaged$ ./internal/skill/delivery/"
+    },
+    {
+      "id": "rule-a-plugin-member-version-belongs-to-its-skill",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-plugin-member-version-belongs-to-its-skill",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-plugin-member-version-belongs-to-its-skill"
+        }
+      ],
+      "expected_outcome": "A plugin member whose version belongs to another Skill is answered not found, so one Skill's gates never apply to another's content.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAPluginMemberWhoseVersionBelongsToAnotherSkillIsNotFound$ ./internal/skill/delivery/"
+    },
+    {
+      "id": "rule-a-package-for-a-recipient-carries-no-test-cases",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-package-for-a-recipient-carries-no-test-cases",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-package-for-a-recipient-carries-no-test-cases"
+        }
+      ],
+      "expected_outcome": "A package built for a recipient never selects test cases, whatever the include flag says.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAPackageForARecipientNeverSelectsTestCases$ ./internal/skill/delivery/"
+    },
+    {
+      "id": "rule-an-opted-out-package-carries-no-test-case",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-opted-out-package-carries-no-test-case",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-opted-out-package-carries-no-test-case"
+        }
+      ],
+      "expected_outcome": "When the user opts out of test cases, even curated cases stay out and are listed as user_opted_out.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestACuratedTestCaseStaysOutWhenTheUserOptsOut$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-user-uploaded-dataset-keeps-its-test-case-out",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-user-uploaded-dataset-keeps-its-test-case-out",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-user-uploaded-dataset-keeps-its-test-case-out"
+        }
+      ],
+      "expected_outcome": "A test case from an uncurated source that carries a dataset stays out of the package as user_uploaded_dataset; one without a dataset stays out as not_curated.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestOnlyCuratedTestCasesTravelAndTheRestAreNamed$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-shared-package-object-outlives-one-deleted-download",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-shared-package-object-outlives-one-deleted-download",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-shared-package-object-outlives-one-deleted-download"
+        }
+      ],
+      "expected_outcome": "Deleting a download removes its stored object only when no other live artifact shares it.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestDeletingADownloadKeepsAnObjectAnotherLiveArtifactShares$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-an-expired-or-purged-package-is-not-served",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-expired-or-purged-package-is-not-served",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-expired-or-purged-package-is-not-served"
+        }
+      ],
+      "expected_outcome": "A package is not served once it has expired, been purged or is not scan-available.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnExpiredArtifactIsNotServedAndItsBytesAreSweptAway$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-package-expires-one-retention-period-after-it-is-built",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-package-expires-one-retention-period-after-it-is-built",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-package-expires-one-retention-period-after-it-is-built"
+        }
+      ],
+      "expected_outcome": "A package expires exactly the configured retention after it is built.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestThePreviewSaysHowLongThePackageIsKeptAndRefusesWhenNobodyDecided$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

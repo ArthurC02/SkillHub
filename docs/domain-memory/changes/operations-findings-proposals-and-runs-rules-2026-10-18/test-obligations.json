@@ -1,0 +1,157 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "operations-findings-proposals-and-runs-rules-2026-10-18",
+  "proposal_id": "operations-findings-proposals-and-runs-rules-2026-10-18",
+  "obligations": [
+    {
+      "id": "rule-a-closed-finding-reopens-only-within-30-days",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-closed-finding-reopens-only-within-30-days",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-closed-finding-reopens-only-within-30-days"
+        }
+      ],
+      "expected_outcome": "A new sighting reopens a closed finding only when it was last seen within 30 days; after that it opens a new finding.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAResolvedFindingIsReopenedOnlyWhenLastSeenWithinThirtyDays$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-an-operator-change-note-is-at-most-1000-characters",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-operator-change-note-is-at-most-1000-characters",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-operator-change-note-is-at-most-1000-characters"
+        }
+      ],
+      "expected_outcome": "An operator's note on an agent change is at most the contract's cap counted in characters; one more is refused with 400.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnOperatorNoteIsAtMostTheCapCountedInCharacters$ ./internal/product/operations/"
+    },
+    {
+      "id": "rule-a-daily-report-must-have-items",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-daily-report-must-have-items",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-daily-report-must-have-items"
+        }
+      ],
+      "expected_outcome": "A daily report with no items is rejected.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestADailyReportMustBeWellFormedBeforeItsCitesCount$ ./internal/product/operations/"
+    },
+    {
+      "id": "rule-a-proposal-names-an-action-a-fact-offers",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-proposal-names-an-action-a-fact-offers",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-proposal-names-an-action-a-fact-offers"
+        }
+      ],
+      "expected_outcome": "A report's proposal is rejected unless a fact a tool returned offers the action it names.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestEachAgentsEvalsAcceptOnlyReportsThatCiteTheSnapshot$ ./internal/product/operations/"
+    },
+    {
+      "id": "rule-a-proposal-waits-24-hours",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-proposal-waits-24-hours",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-proposal-waits-24-hours"
+        }
+      ],
+      "expected_outcome": "A proposed action waits 24 hours for a decision and then lapses.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnAgentProposesOnlyARegisteredActionWithItsPreviewAndOnceWhileItIsLive$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-running-proposal-is-abandoned-after-a-2-hour-lease",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-running-proposal-is-abandoned-after-a-2-hour-lease",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-running-proposal-is-abandoned-after-a-2-hour-lease"
+        }
+      ],
+      "expected_outcome": "A proposal still running two hours after it started is failed as abandoned; one inside the lease keeps running.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAProposalWhoseRunnerVanishedFailsOnlyAfterItsLease$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-releasing-an-unengaged-brake-records-nothing",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-releasing-an-unengaged-brake-records-nothing",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "releasing-an-unengaged-brake-records-nothing"
+        }
+      ],
+      "expected_outcome": "Releasing the brake when none is engaged succeeds without recording a brake-released audit event.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheAgentBrakeStopsRunsAndHoldsUntilReleased$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-halted-agent-cannot-start-a-run",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-halted-agent-cannot-start-a-run",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-halted-agent-cannot-start-a-run"
+        }
+      ],
+      "expected_outcome": "Starting a run for a disabled, unknown or braked agent is refused as halted and records no run.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestDisablingAnAgentStopsItsRunBeforeTheNextStep$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-finished-agent-run-takes-no-more-steps",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-finished-agent-run-takes-no-more-steps",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-finished-agent-run-takes-no-more-steps"
+        }
+      ],
+      "expected_outcome": "A run that has finished cannot take another step.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestDisablingAnAgentStopsItsRunBeforeTheNextStep$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-job-failing-silently-still-closes-its-proposal",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-job-failing-silently-still-closes-its-proposal",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-job-failing-silently-still-closes-its-proposal"
+        }
+      ],
+      "expected_outcome": "A maintenance job that fails with a blank message closes its proposal as failed with an outcome saying it failed without saying why.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAJobThatFailsWithoutAMessageStillClosesItsProposal$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

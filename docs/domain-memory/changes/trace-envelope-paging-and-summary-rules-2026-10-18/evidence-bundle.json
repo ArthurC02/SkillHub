@@ -1,0 +1,338 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "trace-envelope-paging-and-summary-rules-2026-10-18",
+  "proposal_id": "trace-envelope-paging-and-summary-rules-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "8ccb13ec0bd7b8755644a8903914e66a93406624",
+    "registry_digest": "sha256:c77ecb1c782994af2c58074a7cc040ee7280fb37c3cc534b65d5b0ad7e5a01cd"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-evaluation-events-come-only-from-the-orchestrator",
+      "mutated_protection": "apps/platform/internal/trial/evidence/event.go:138: && e.EmittedBy != SourceOrchestr: -> && e.EmittedBy != SourceOrchestr && false:",
+      "failure_evidence": "=== RUN   TestAnEvaluationEventFromTheSandboxIsRefused\n    evaluation_event_test.go:44: evaluation_started from sandbox must be refused: only the orchestrator evaluates\n    evaluation_event_test.go:44: evaluation_completed from sandbox must be refused: only the orchestrator evaluates\n    evaluation_event_test.go:44: evaluation_started from llm_service must be refused: only the orchestrator evaluates\n    evaluation_event_test.go:44: evaluation_completed from llm_service must be refused: only the orchestrator evaluates\n--- FAIL: TestAnEvaluationEventFromTheSandboxIsRefused (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.693s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-trace-seq-is-1-to-100000",
+      "mutated_protection": "apps/platform/internal/trial/evidence/event.go:114: case e.Seq > maxTraceSeq: -> case e.Seq > maxTraceSeq+1:",
+      "failure_evidence": "=== RUN   TestValidateRejectsMalformedEnvelopes\n    trace_test.go:211: seq above limit was accepted\n--- FAIL: TestValidateRejectsMalformedEnvelopes (0.05s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.495s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-trace-attempt-is-1-to-100000",
+      "mutated_protection": "apps/platform/internal/trial/evidence/event.go:110: case e.Attempt > maxTraceAttempt: -> case e.Attempt > maxTraceAttempt+1:",
+      "failure_evidence": "=== RUN   TestValidateRejectsMalformedEnvelopes\n    trace_test.go:211: attempt above limit was accepted\n--- FAIL: TestValidateRejectsMalformedEnvelopes (0.04s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t1.634s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-trace-status-must-be-a-known-outcome",
+      "mutated_protection": "apps/platform/internal/trial/evidence/event.go:141: case e.Status != nil && !statuses[*e.Status]: -> case e.Status != nil && !statuses[*e.Status] && false:",
+      "failure_evidence": "=== RUN   TestValidateRejectsMalformedEnvelopes\n    trace_test.go:211: unknown status was accepted\n--- FAIL: TestValidateRejectsMalformedEnvelopes (0.07s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.502s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-trace-schema-must-be-major-version-1",
+      "mutated_protection": "apps/platform/internal/trial/evidence/event.go:160: v[0] == '1' -> v[0] >= '1'",
+      "failure_evidence": "=== RUN   TestValidateRejectsMalformedEnvelopes\n    trace_test.go:211: future major was accepted\n--- FAIL: TestValidateRejectsMalformedEnvelopes (0.07s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.740s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-trace-producer-must-be-known",
+      "mutated_protection": "apps/platform/internal/trial/evidence/event.go:133: case !sources[e.EmittedBy]: -> case false && !sources[e.EmittedBy]:",
+      "failure_evidence": "=== RUN   TestValidateRejectsMalformedEnvelopes\n    trace_test.go:211: unknown producer was accepted\n--- FAIL: TestValidateRejectsMalformedEnvelopes (0.05s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.323s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-started-run-without-sandbox-events-is-incomplete",
+      "mutated_protection": "apps/platform/internal/trial/evidence/service.go:58: if !run.Started { -> if run.Started {",
+      "failure_evidence": "=== RUN   TestNothingWasCollected\n=== RUN   TestNothingWasCollected/the_workload_ran_and_no_stream_exists_at_all\n    trace_test.go:329: nothingWasCollected = false, want true\n=== RUN   TestNothingWasCollected/the_workload_ran_and_only_the_platform's_own_events_exist\n    trace_test.go:329: nothingWasCollected = false, want true\n=== RUN   TestNothingWasCollected/the_recorder_spoke\n=== RUN   TestNothingWasCollected/the_workload_never_started,_so_there_is_nothing_to_have_collected\n    trace_test.go:329: nothingWasCollected = true, want false\n--- FAIL: TestNothingWasCollected (0.00s)\n    --- FAIL: TestNothingWasCollected/the_workload_ran_and_no_stream_exists_at_all (0.00s)\n    --- FAIL: TestNothingWasCollected/the_workload_ran_and_only_the_platform's_own_events_exist (0.00s)\n    --- PASS: TestNothingWasCollected/the_recorder_spoke (0.00s)\n    --- FAIL: TestNothingWasCollected/the_workload_never_started,_so_there_is_nothing_to_have_collected (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t1.408s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-refused-trace-event-does-not-fail-its-batch",
+      "mutated_protection": "apps/platform/internal/trial/evidence/service.go:92: if errors.Is(err, ErrInvalid) { -> if false && errors.Is(err, ErrInvalid) {",
+      "failure_evidence": "=== RUN   TestTraceIngestionRefusesWhatTheTokenDoesNotCover\n2026/10/18 22:07:24 ERROR request failed on the server method=POST path=/internal/trace/cbe80a63-dda3-4438-9622-a36ef447e4ac.1.1792339644.2e9ccdbb8e144e3ae4a9dbbd94007fdf9bd6eea8852333046bf22dc74d958f04 status=500\n    trace_integration_test.go:619: cross-run event: got 500 {Received:0 Stored:0 Duplicate:0 Rejected:0 Reasons:[]}, want it rejected\n--- FAIL: TestTraceIngestionRefusesWhatTheTokenDoesNotCover (0.14s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.087s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-trace-retention-keeps-whole-months",
+      "mutated_protection": "apps/platform/internal/trial/evidence/partitions.go:36: cutoff.Month(), 1, 0 -> cutoff.Month(), 2, 0",
+      "failure_evidence": "=== RUN   TestDefaultPartitionTraceRowsOlderThanEveryKeptMonthAreDeletedAndTheKeptMonthStays\n    trace_retention_integration_test.go:51: default-partition rows with seq 2 after maintenance = 0, want 1\n--- FAIL: TestDefaultPartitionTraceRowsOlderThanEveryKeptMonthAreDeletedAndTheKeptMonthStays (0.15s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.857s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-trace-maintenance-without-retention-deletes-nothing",
+      "mutated_protection": "apps/platform/internal/trial/evidence/partitions.go:19: if retention <= 0 { -> if retention < 0 {",
+      "failure_evidence": "=== RUN   TestTracePartitionMaintenanceWithoutARetentionWindowDeletesNoEvents\n    trace_limits_integration_test.go:57: events left after a refused zero-window maintenance = 0, want 1\n--- FAIL: TestTracePartitionMaintenanceWithoutARetentionWindowDeletesNoEvents (0.25s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.762s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-advanced-trace-pages-at-1000-events",
+      "mutated_protection": "apps/platform/internal/trial/evidence/service.go:452: len(rows) > int(tracePageSize) -> len(rows) > int(tracePageSize)+1",
+      "failure_evidence": "=== RUN   TestTheAdvancedTracePagesAtAThousandEventsAndPointsAtTheRest\n    trace_limits_integration_test.go:30: first page: 200 with 1001 events, has_more=false, next_after=1001; want 1000 events, more to come and a cursor\n--- FAIL: TestTheAdvancedTracePagesAtAThousandEventsAndPointsAtTheRest (0.42s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.907s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-evaluation-evidence-holds-at-most-500-tail-events",
+      "mutated_protection": "apps/platform/internal/trial/evidence/service.go:427: evaluationTailEvents = int32(500) -> evaluationTailEvents = int32(501)",
+      "failure_evidence": "=== RUN   TestEvaluationTraceSelectionIsBoundedAndCanonicallyOrdered\n    trace_integration_test.go:503: bounded evaluation trace = 501 events, truncated=true complete=false\n--- FAIL: TestEvaluationTraceSelectionIsBoundedAndCanonicallyOrdered (0.37s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.843s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-general-trace-lists-the-first-100-skills",
+      "mutated_protection": "apps/platform/internal/trial/evidence/general.go:46: len(fold.summary.Skills) < generalSkillsShown -> len(fold.summary.Skills) <= generalSkillsShown",
+      "failure_evidence": "=== RUN   TestTheGeneralFoldShowsTheFirstHundredSkillsAndErrorsAndCountsThemAll\n    general_test.go:31: 101 activations: total 101, shown 101 ({Name:excel-insert Decision:activated Reason:})\n--- FAIL: TestTheGeneralFoldShowsTheFirstHundredSkillsAndErrorsAndCountsThemAll (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.290s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-general-trace-lists-the-first-100-errors",
+      "mutated_protection": "apps/platform/internal/trial/evidence/general.go:55: len(fold.summary.Errors) < generalErrorsShown -> len(fold.summary.Errors) <= generalErrorsShown",
+      "failure_evidence": "=== RUN   TestTheGeneralFoldShowsTheFirstHundredSkillsAndErrorsAndCountsThemAll\n    general_test.go:34: 101 errors: total 101, shown 101\n--- FAIL: TestTheGeneralFoldShowsTheFirstHundredSkillsAndErrorsAndCountsThemAll (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.142s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-valid-run-total-replaces-summed-usage",
+      "mutated_protection": "apps/platform/internal/trial/evidence/general.go:100: if row.Scope == usageScopeRunTotal { -> if row.Scope == usageScopeRunTotal && false {",
+      "failure_evidence": "seSumsTheRest/thirteen_integer_digits_are_not_a_cost\n--- FAIL: TestUsagePrefersAValidRunTotalAndOtherwiseSumsTheRest (0.00s)\n    --- PASS: TestUsagePrefersAValidRunTotalAndOtherwiseSumsTheRest/attempts_are_summed_and_the_last_one_names_the_model (0.00s)\n    --- FAIL: TestUsagePrefersAValidRunTotalAndOtherwiseSumsTheRest/a_valid_run_total_replaces_the_sums (0.00s)\n    --- FAIL: TestUsagePrefersAValidRunTotalAndOtherwiseSumsTheRest/an_unreadable_run_total_falls_back_to_the_sums_field_by_field (0.00s)\n    --- FAIL: TestUsagePrefersAValidRunTotalAndOtherwiseSumsTheRest/an_earlier_run_total_never_enters_the_fallback_sums (0.00s)\n    --- FAIL: TestUsagePrefersAValidRunTotalAndOtherwiseSumsTheRest/no_readable_cost_anywhere_is_no_cost (0.00s)\n    --- PASS: TestUsagePrefersAValidRunTotalAndOtherwiseSumsTheRest/a_float_sum_printed_to_its_last_digit_is_still_a_cost (0.00s)\n    --- PASS: TestUsagePrefersAValidRunTotalAndOtherwiseSumsTheRest/twenty-four_decimal_places_are_still_a_cost (0.00s)\n    --- PASS: TestUsagePrefersAValidRunTotalAndOtherwiseSumsTheRest/thirteen_integer_digits_are_not_a_cost (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.403s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-only-a-succeeded-tool-call-counts-as-success",
+      "mutated_protection": "apps/platform/internal/trial/evidence/general.go:79: if outcome == toolCallSucceeded { -> if outcome != toolCallSucceeded {",
+      "failure_evidence": "=== RUN   TestToolCallsCountOnlySucceededAsSuccessAndIgnoreDurationsThatAreNotWholeMilliseconds\n    general_test.go:56: counts = {Total:7 Succeeded:2 Failed:5 TotalMS:1000000000000001299 SlowestMS:999999999999999999 SlowestName:no-outcome ByName:map[bash:1 exponent:1 later-tie:1 negative:1 nineteen-digits:1 no-outcome:1 read:1]}, want 7 total, 5 succeeded, 2 failed\n--- FAIL: TestToolCallsCountOnlySucceededAsSuccessAndIgnoreDurationsThatAreNotWholeMilliseconds (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.191s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-trace-events-at-one-instant-order-by-source-attempt-seq",
+      "mutated_protection": "apps/platform/internal/trial/evidence/service.go:516: return events[i].Seq < events[j].Seq -> return events[i].Seq > events[j].Seq",
+      "failure_evidence": "=== RUN   TestEventsAtTheSameInstantSortBySourceThenAttemptThenSeq\n=== RUN   TestEventsAtTheSameInstantSortBySourceThenAttemptThenSeq/the_source_decides_first\n=== RUN   TestEventsAtTheSameInstantSortBySourceThenAttemptThenSeq/then_the_attempt\n=== RUN   TestEventsAtTheSameInstantSortBySourceThenAttemptThenSeq/then_the_seq\n    trace_test.go:304: got sandbox/1/2 first, want sandbox/1/1\n--- FAIL: TestEventsAtTheSameInstantSortBySourceThenAttemptThenSeq (0.00s)\n    --- PASS: TestEventsAtTheSameInstantSortBySourceThenAttemptThenSeq/the_source_decides_first (0.00s)\n    --- PASS: TestEventsAtTheSameInstantSortBySourceThenAttemptThenSeq/then_the_attempt (0.00s)\n    --- FAIL: TestEventsAtTheSameInstantSortBySourceThenAttemptThenSeq/then_the_seq (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence\t2.118s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-trace-cursor-must-be-a-non-negative-number",
+      "mutated_protection": "apps/platform/internal/trial/evidence/http.go:100: err != nil || after < 0 -> err != nil || after < -1",
+      "failure_evidence": "=== RUN   TestATraceCursorIsRefusedWhicheverViewWasAskedFor\n    trace_integration_test.go:213: after=\"-1\" mode=\"\": got 200, want 400 -- an unusable cursor was answered with a page\n    trace_integration_test.go:213: after=\"-1\" mode=\"general\": got 200, want 400 -- an unusable cursor was answered with a page\n    trace_integration_test.go:213: after=\"-1\" mode=\"advanced\": got 200, want 400 -- an unusable cursor was answered with a page\n--- FAIL: TestATraceCursorIsRefusedWhicheverViewWasAskedFor (0.14s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.163s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/trace_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/trace_limits_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/trace_retention_integration_test.go",
+    "apps/platform/internal/trial/evidence/evaluation_event_test.go",
+    "apps/platform/internal/trial/evidence/event.go",
+    "apps/platform/internal/trial/evidence/general.go",
+    "apps/platform/internal/trial/evidence/general_test.go",
+    "apps/platform/internal/trial/evidence/http.go",
+    "apps/platform/internal/trial/evidence/partitions.go",
+    "apps/platform/internal/trial/evidence/service.go",
+    "apps/platform/internal/trial/evidence/trace_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-evaluation-events-come-only-from-the-orchestrator",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnEvaluationEventFromTheSandboxIsRefused$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:0b5d8486e0abc0bd8b5a7e594c13ea10596b68759568a19ee3e16e2ce03e4c42",
+      "finished_at": "2026-10-18T14:12:16.200618Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-trace-seq-is-1-to-100000",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestValidateRejectsMalformedEnvelopes$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b171ef9b55d17c23170e32b2d8b73c91f7deaa4d90268450dc0eaafc82f4af1f",
+      "finished_at": "2026-10-18T14:12:23.825204Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-trace-attempt-is-1-to-100000",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestValidateRejectsMalformedEnvelopes$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:6da6776c6b46443e737f3b478140deb7e0711917d620e290a8678e0311d556bd",
+      "finished_at": "2026-10-18T14:12:28.883977Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-trace-status-must-be-a-known-outcome",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestValidateRejectsMalformedEnvelopes$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:806bf8120d1f23890b80cfefb798618187a07174e4f036bcb245a1912358ad6d",
+      "finished_at": "2026-10-18T14:12:45.306146Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-trace-schema-must-be-major-version-1",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestValidateRejectsMalformedEnvelopes$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:7263c13b77caf839812fcc7fa06adcdc9bec8c032f7256b046ed9a2b8c16cc21",
+      "finished_at": "2026-10-18T14:12:51.229154Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-trace-producer-must-be-known",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestValidateRejectsMalformedEnvelopes$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:9d201dd096d94606fdf92d3c53aaccb82edb2951cb578ba2489612e56208b7c3",
+      "finished_at": "2026-10-18T14:12:57.848744Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-started-run-without-sandbox-events-is-incomplete",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestNothingWasCollected$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f8d1ce85c1eef569dd350799844a3e73c23f8c205d4cdd60f64c1f4992eeb079",
+      "finished_at": "2026-10-18T14:13:03.409630Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-refused-trace-event-does-not-fail-its-batch",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTraceIngestionRefusesWhatTheTokenDoesNotCover$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:18372524e7b2f130c31fe03dfe84ef1c06a859d12c739d2386a8c7243f424142",
+      "finished_at": "2026-10-18T14:13:18.363239Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-trace-retention-keeps-whole-months",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestDefaultPartitionTraceRowsOlderThanEveryKeptMonthAreDeletedAndTheKeptMonthStays$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:8f2a38db7889082d8f2c598470469ebe55bdd481497f20716f6557d150a7f063",
+      "finished_at": "2026-10-18T15:03:39.933261Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-trace-maintenance-without-retention-deletes-nothing",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTracePartitionMaintenanceWithoutARetentionWindowDeletesNoEvents$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:61cc8023df43955d49f7df20d7ede45afe9c2c21672f649fd76a3f5e2a6b55d4",
+      "finished_at": "2026-10-18T15:03:47.591889Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-the-advanced-trace-pages-at-1000-events",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheAdvancedTracePagesAtAThousandEventsAndPointsAtTheRest$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:9e5edcd3e2ec1e92dd89a382ff68a227ac81ae198211c80dd4ffefb8ca486b15",
+      "finished_at": "2026-10-18T15:03:57.999772Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-evaluation-evidence-holds-at-most-500-tail-events",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestEvaluationTraceSelectionIsBoundedAndCanonicallyOrdered$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:a93d704a197d0ec672a86dbb36979fe7711ce3c8a427f448472f4846ec54fef5",
+      "finished_at": "2026-10-18T15:04:05.320110Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-the-general-trace-lists-the-first-100-skills",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheGeneralFoldShowsTheFirstHundredSkillsAndErrorsAndCountsThemAll$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:6ed669c696f8087a4ac70a0a9bc07bf38e6a1a1070aa07b7a62a2cdb17619c67",
+      "finished_at": "2026-10-18T15:04:09.564311Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-the-general-trace-lists-the-first-100-errors",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheGeneralFoldShowsTheFirstHundredSkillsAndErrorsAndCountsThemAll$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:1833e53293a6551049969a6403b066e40897d4283fa822b427862ce2527f5984",
+      "finished_at": "2026-10-18T15:04:15.104687Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-valid-run-total-replaces-summed-usage",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestUsagePrefersAValidRunTotalAndOtherwiseSumsTheRest$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:6fcca32501a55fd545f7dde72a5ab6d023474c02e012b31acc62df88993073a4",
+      "finished_at": "2026-10-18T15:04:21.007097Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-only-a-succeeded-tool-call-counts-as-success",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestToolCallsCountOnlySucceededAsSuccessAndIgnoreDurationsThatAreNotWholeMilliseconds$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:744123310a777daa054e89bc05a193a1bbe9b6e0b28cee6b55de0106f3c29042",
+      "finished_at": "2026-10-18T15:04:25.182232Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-trace-events-at-one-instant-order-by-source-attempt-seq",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestEventsAtTheSameInstantSortBySourceThenAttemptThenSeq$ ./internal/trial/evidence/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b9fb8c76723f26e8ead302879e04e00cf1eb753b9640ee37bdf6763a1ac7e7c3",
+      "finished_at": "2026-10-18T15:04:29.411874Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-trace-cursor-must-be-a-non-negative-number",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestATraceCursorIsRefusedWhicheverViewWasAskedFor$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:20b680a97d2f605c175e739a667e20e3372189f8b99322e054b2334ae5fd859a",
+      "finished_at": "2026-10-18T15:04:37.505063Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

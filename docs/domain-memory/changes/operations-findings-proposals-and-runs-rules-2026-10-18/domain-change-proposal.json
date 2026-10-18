@@ -1,0 +1,437 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "operations-findings-proposals-and-runs-rules-2026-10-18",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "operations-findings-proposals-and-runs-rules-2026-10-18",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-18T15:58:06.904253Z",
+  "verified_at": "2026-10-18T15:59:29.559270Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "8c7a8a47c301c16603d3b1cb12ebeac41d953731",
+    "registry_digest": "sha256:91ff34ca5d5b3b11f9d698e500fcb1041dbfdb4525803de7b82e7d267ae59cb1"
+  },
+  "affected_contexts": [
+    "operations"
+  ],
+  "rule_ids": [
+    "a-closed-finding-reopens-only-within-30-days",
+    "an-operator-change-note-is-at-most-1000-characters",
+    "a-daily-report-must-have-items",
+    "a-proposal-names-an-action-a-fact-offers",
+    "a-proposal-waits-24-hours",
+    "a-running-proposal-is-abandoned-after-a-2-hour-lease",
+    "releasing-an-unengaged-brake-records-nothing",
+    "a-halted-agent-cannot-start-a-run",
+    "a-finished-agent-run-takes-no-more-steps",
+    "a-job-failing-silently-still-closes-its-proposal"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "operations",
+    "invariant": "Only operations decides what platform agents may report, propose and run.",
+    "evidence": [
+      "apps/platform/internal/product/operations/proposals.go:32-32"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: maintenance jobs reach operations through registered actions.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/product/operations/runs.go:25-31"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A second extraction of the operations Context found enforced rules beyond the ten the Registry held, two guarded by no test."
+    ],
+    "decision": "Record the rules as reviewed citing code and test; add the missing tests; no product code change.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording proposal claim ordering: it lives only in SQL, so no Go mutation proves it."
+    ],
+    "proof_obligations": [
+      "rule-a-closed-finding-reopens-only-within-30-days",
+      "rule-an-operator-change-note-is-at-most-1000-characters",
+      "rule-a-daily-report-must-have-items",
+      "rule-a-proposal-names-an-action-a-fact-offers",
+      "rule-a-proposal-waits-24-hours",
+      "rule-a-running-proposal-is-abandoned-after-a-2-hour-lease",
+      "rule-releasing-an-unengaged-brake-records-nothing",
+      "rule-a-halted-agent-cannot-start-a-run",
+      "rule-a-finished-agent-run-takes-no-more-steps",
+      "rule-a-job-failing-silently-still-closes-its-proposal"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-closed-finding-reopens-only-within-30-days",
+        "statement": "A new sighting reopens a closed finding only when it was last seen within 30 days; after that it opens a new finding.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A finding resolved and last seen 30 days and an hour ago stays resolved and a second finding opens."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/findings.go",
+            "lines": {
+              "start": 48,
+              "end": 48
+            },
+            "excerpt_sha256": "sha256:b876a3f74ff31aba1ff3e06435e11cf67f4cbd8afbc43c009a3733a3f3d41995"
+          },
+          {
+            "path": "apps/platform/internal/product/operations/findings.go",
+            "lines": {
+              "start": 122,
+              "end": 124
+            },
+            "excerpt_sha256": "sha256:4f2970c1633d476def9f3407031c28b2f07dab2cd7dd1f6fce76a5eaa8c60fdf"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agent_findings_integration_test.go",
+            "lines": {
+              "start": 289,
+              "end": 319
+            },
+            "excerpt_sha256": "sha256:1ef713268eb446d182046a0607517cc51eb2f8b9789b95768a3d9a81626c8749"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-operator-change-note-is-at-most-1000-characters",
+        "statement": "An operator's note on an agent change is at most the contract's cap counted in characters; one more is refused with 400.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A note of exactly the cap in Chinese characters is accepted; one more is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/handler.go",
+            "lines": {
+              "start": 206,
+              "end": 217
+            },
+            "excerpt_sha256": "sha256:ba7cdcc4692dae9bb9f57d95b7de62dc7a46856cb2b5c39d554b558831539d56"
+          },
+          {
+            "path": "apps/platform/internal/product/operations/note_test.go",
+            "lines": {
+              "start": 10,
+              "end": 31
+            },
+            "excerpt_sha256": "sha256:6f4768109243225bd2a3fe4fda3cc8b786aa1a46508919986f17d2b6c6c2c72c"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-daily-report-must-have-items",
+        "statement": "A daily report with no items is rejected.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A report of an empty item list is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/daily_report.go",
+            "lines": {
+              "start": 42,
+              "end": 44
+            },
+            "excerpt_sha256": "sha256:33176ca0f95e8e4c8cf2067f496058bcd335157df4baf932bfcf59f82712130a"
+          },
+          {
+            "path": "apps/platform/internal/product/operations/daily_report_test.go",
+            "lines": {
+              "start": 105,
+              "end": 147
+            },
+            "excerpt_sha256": "sha256:044baace0461065579ec1c7d9564e28b3cb9e22028ceb1bda20950a9531a5bb9"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-proposal-names-an-action-a-fact-offers",
+        "statement": "A report's proposal is rejected unless a fact a tool returned offers the action it names.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "Proposing an action no returned fact offers fails the report."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/daily_report.go",
+            "lines": {
+              "start": 66,
+              "end": 68
+            },
+            "excerpt_sha256": "sha256:f37e66f6e9cf906c3beb08e30edd83bfbf5423a8ce47f5c0703fb55ff766f24c"
+          },
+          {
+            "path": "apps/platform/internal/product/operations/daily_report_test.go",
+            "lines": {
+              "start": 46,
+              "end": 71
+            },
+            "excerpt_sha256": "sha256:713fc408716a8673f260fbe0525b331263ae54026d9d65b4b0d0723bb5e61595"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-proposal-waits-24-hours",
+        "statement": "A proposed action waits 24 hours for a decision and then lapses.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A proposal made now expires 24 hours later."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/proposals.go",
+            "lines": {
+              "start": 32,
+              "end": 32
+            },
+            "excerpt_sha256": "sha256:9a3652e68c3f49e6fd6bc4d91421f59c6ed6cf80ffce5f3fb1e6469e60af311f"
+          },
+          {
+            "path": "apps/platform/internal/product/operations/proposals.go",
+            "lines": {
+              "start": 102,
+              "end": 106
+            },
+            "excerpt_sha256": "sha256:f12ec932990687296f5b9ee4f1b9299b7e84412767fc7726dc8a34706c127e88"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go",
+            "lines": {
+              "start": 126,
+              "end": 149
+            },
+            "excerpt_sha256": "sha256:170cfb346bb7da5da662b9c6233527d92a54076a2a40b22fefc2c52b5631440b"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-running-proposal-is-abandoned-after-a-2-hour-lease",
+        "statement": "A proposal still running two hours after it started is failed as abandoned; one inside the lease keeps running.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A proposal running for 2h01s fails; one at 1h59m59s keeps running."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/proposals.go",
+            "lines": {
+              "start": 254,
+              "end": 258
+            },
+            "excerpt_sha256": "sha256:2f0f56161722da877351b1edaea85468509b53996c8dfadec4b2d8eb9cb85fb3"
+          },
+          {
+            "path": "apps/platform/internal/product/operations/proposals.go",
+            "lines": {
+              "start": 260,
+              "end": 278
+            },
+            "excerpt_sha256": "sha256:91f7e39c69d2231d1a8fba9a2cc3fe4ac98c7ff54b65daf1330922a7e08da56d"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go",
+            "lines": {
+              "start": 434,
+              "end": 462
+            },
+            "excerpt_sha256": "sha256:fa04e6e00c16e07f292f77331a4f987ebd670421ad3039a98da77f95949140a4"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "releasing-an-unengaged-brake-records-nothing",
+        "statement": "Releasing the brake when none is engaged succeeds without recording a brake-released audit event.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A second release adds no brake_released event."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/agents.go",
+            "lines": {
+              "start": 203,
+              "end": 214
+            },
+            "excerpt_sha256": "sha256:f483f5c5d2072f5b1177577b0307267473ff2dff0c43b63f849649bbc402884a"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agents_integration_test.go",
+            "lines": {
+              "start": 214,
+              "end": 258
+            },
+            "excerpt_sha256": "sha256:87547b2a40c77885bd8df33135e62fb7bcc70b9bb558c1bc463acd36bc926a24"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-halted-agent-cannot-start-a-run",
+        "statement": "Starting a run for a disabled, unknown or braked agent is refused as halted and records no run.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A disabled agent's start answers halted."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/runs.go",
+            "lines": {
+              "start": 25,
+              "end": 31
+            },
+            "excerpt_sha256": "sha256:da9810adf7a3fcb6d44edb313528cd30c3efb4e0958c6fb0af4886ea23b99a90"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agents_integration_test.go",
+            "lines": {
+              "start": 168,
+              "end": 212
+            },
+            "excerpt_sha256": "sha256:c05a77d6b18c1503df9e71320b54eee6295bc8bf5bfb9a47d0c4de0d18086a6f"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-finished-agent-run-takes-no-more-steps",
+        "statement": "A run that has finished cannot take another step.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "Stepping a run after it finished answers run finished."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/runs.go",
+            "lines": {
+              "start": 38,
+              "end": 40
+            },
+            "excerpt_sha256": "sha256:961a6abea3226cb0a412d101300da6088277cbff82ee17c0bcb8d057e26b5ce5"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agents_integration_test.go",
+            "lines": {
+              "start": 168,
+              "end": 212
+            },
+            "excerpt_sha256": "sha256:c05a77d6b18c1503df9e71320b54eee6295bc8bf5bfb9a47d0c4de0d18086a6f"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-job-failing-silently-still-closes-its-proposal",
+        "statement": "A maintenance job that fails with a blank message closes its proposal as failed with an outcome saying it failed without saying why.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A job error of '' closes the proposal as failed."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/proposals.go",
+            "lines": {
+              "start": 231,
+              "end": 238
+            },
+            "excerpt_sha256": "sha256:df09f74be9edddff5127675954f11c26e231b676f900df19f6f9b9deeb657a93"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go",
+            "lines": {
+              "start": 464,
+              "end": 476
+            },
+            "excerpt_sha256": "sha256:d7423006eb5f9e0bfa919bc9a00e6a0a6a70edf0bd2f5caedfa381b969466213"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-18T15:59:29.446208Z",
+      "scope": "Record operations rules as reviewed",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "8c7a8a47c301c16603d3b1cb12ebeac41d953731",
+        "registry_digest": "sha256:91ff34ca5d5b3b11f9d698e500fcb1041dbfdb4525803de7b82e7d267ae59cb1"
+      }
+    }
+  ]
+}

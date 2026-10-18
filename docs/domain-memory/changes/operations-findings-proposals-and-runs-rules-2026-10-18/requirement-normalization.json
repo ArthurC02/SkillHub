@@ -1,0 +1,67 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "operations-findings-proposals-and-runs-rules-2026-10-18",
+  "status": "draft",
+  "intent": "Record as reviewed the finding, note, report, proposal and agent run rules the operations Context enforces and tests.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context operations lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-closed-finding-reopens-only-within-30-days",
+      "statement": "A new sighting reopens a closed finding only when it was last seen within 30 days; after that it opens a new finding."
+    },
+    {
+      "id": "enforced-an-operator-change-note-is-at-most-1000-characters",
+      "statement": "An operator's note on an agent change is at most the contract's cap counted in characters; one more is refused with 400."
+    },
+    {
+      "id": "enforced-a-daily-report-must-have-items",
+      "statement": "A daily report with no items is rejected."
+    },
+    {
+      "id": "enforced-a-proposal-names-an-action-a-fact-offers",
+      "statement": "A report's proposal is rejected unless a fact a tool returned offers the action it names."
+    },
+    {
+      "id": "enforced-a-proposal-waits-24-hours",
+      "statement": "A proposed action waits 24 hours for a decision and then lapses."
+    },
+    {
+      "id": "enforced-a-running-proposal-is-abandoned-after-a-2-hour-lease",
+      "statement": "A proposal still running two hours after it started is failed as abandoned; one inside the lease keeps running."
+    },
+    {
+      "id": "enforced-releasing-an-unengaged-brake-records-nothing",
+      "statement": "Releasing the brake when none is engaged succeeds without recording a brake-released audit event."
+    },
+    {
+      "id": "enforced-a-halted-agent-cannot-start-a-run",
+      "statement": "Starting a run for a disabled, unknown or braked agent is refused as halted and records no run."
+    },
+    {
+      "id": "enforced-a-finished-agent-run-takes-no-more-steps",
+      "statement": "A run that has finished cannot take another step."
+    },
+    {
+      "id": "enforced-a-job-failing-silently-still-closes-its-proposal",
+      "statement": "A maintenance job that fails with a blank message closes its proposal as failed with an outcome saying it failed without saying why."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/platform_agent_findings_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/platform_agents_integration_test.go",
+    "apps/platform/internal/product/operations/agents.go",
+    "apps/platform/internal/product/operations/daily_report.go",
+    "apps/platform/internal/product/operations/daily_report_test.go",
+    "apps/platform/internal/product/operations/findings.go",
+    "apps/platform/internal/product/operations/handler.go",
+    "apps/platform/internal/product/operations/note_test.go",
+    "apps/platform/internal/product/operations/proposals.go",
+    "apps/platform/internal/product/operations/runs.go"
+  ]
+}

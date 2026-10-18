@@ -1,0 +1,182 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "packaging-source-testcase-and-download-rules-2026-10-18",
+  "proposal_id": "packaging-source-testcase-and-download-rules-2026-10-18",
+  "registry_revision": {
+    "observed_commit": "8c7a8a47c301c16603d3b1cb12ebeac41d953731",
+    "registry_digest": "sha256:f115f24612d0d5d3ac4b7c1668b54cf2e41e9f750e93252b2dfabc45360ed5d4"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-skill-md-pointing-at-a-dropped-file-blocks-the-package",
+      "mutated_protection": "apps/platform/internal/skill/delivery/packaging.go:988: if len(broke) > 0 { -> if len(broke) > 1 {",
+      "failure_evidence": "=== RUN   TestASkillMDPointingAtAFileThePackagerDropsBlocksThePackage\n    source_rules_test.go:52: blocked reason = \"\", want \"file_removed_by_packager\" for a referenced file the packager drops\n--- FAIL: TestASkillMDPointingAtAFileThePackagerDropsBlocksThePackage (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery\t2.499s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-stored-source-that-no-longer-validates-is-not-packaged",
+      "mutated_protection": "apps/platform/internal/skill/delivery/packaging.go:958: !pathUsesExcludedDir(finding.Path) -> pathUsesExcludedDir(finding.Path)",
+      "failure_evidence": "=== RUN   TestAStoredSourceThatNoLongerValidatesIsNotPackaged\n    source_rules_test.go:69: blocked reason = \"\", validation blocked = false; want \"validation_blocked\" and true\n--- FAIL: TestAStoredSourceThatNoLongerValidatesIsNotPackaged (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery\t1.902s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-plugin-member-version-belongs-to-its-skill",
+      "mutated_protection": "apps/platform/internal/skill/delivery/plugin.go:141: if !found || version.SkillID != skill.ID { -> if !found || version.SkillID != skill.ID && false {",
+      "failure_evidence": "=== RUN   TestAPluginMemberWhoseVersionBelongsToAnotherSkillIsNotFound\n    source_rules_test.go:90: a member naming another skill's version: err = stored package unreadable: missing packages/other.zip, want ErrNotFound\n--- FAIL: TestAPluginMemberWhoseVersionBelongsToAnotherSkillIsNotFound (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery\t2.293s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-package-for-a-recipient-carries-no-test-cases",
+      "mutated_protection": "apps/platform/internal/skill/delivery/packaging.go:339: if p.forRecipient { -> if p.forRecipient && false {",
+      "failure_evidence": "=== RUN   TestAPackageForARecipientNeverSelectsTestCases\n    source_rules_test.go:101: recipient package: 0 files, 0 included, 0 excluded, err testlab: persistence is not configured; want the files unchanged and no test cases\n--- FAIL: TestAPackageForARecipientNeverSelectsTestCases (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery\t2.671s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-opted-out-package-carries-no-test-case",
+      "mutated_protection": "apps/platform/internal/skill/delivery/testcase.go:127: case !include: -> case !include && false:",
+      "failure_evidence": "=== RUN   TestACuratedTestCaseStaysOutWhenTheUserOptsOut\n    packaging_integration_test.go:998: 1 curated test cases were packaged although the user opted out\n    packaging_integration_test.go:1002: excluded test cases = [], want the one curated case\n--- FAIL: TestACuratedTestCaseStaysOutWhenTheUserOptsOut (0.13s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.100s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-user-uploaded-dataset-keeps-its-test-case-out",
+      "mutated_protection": "apps/platform/internal/skill/delivery/testcase.go:132: case !src.curated && len(datasets) > 0: -> case !src.curated && len(datasets) > 1:",
+      "failure_evidence": "=== RUN   TestOnlyCuratedTestCasesTravelAndTheRestAreNamed\n    packaging_integration_test.go:964: exclusion reason for the case carrying a file = \"not_curated\", want user_uploaded_dataset\n--- FAIL: TestOnlyCuratedTestCasesTravelAndTheRestAreNamed (0.28s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.921s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-shared-package-object-outlives-one-deleted-download",
+      "mutated_protection": "apps/platform/internal/skill/delivery/download.go:338: if err == nil && live == 0 { -> if err == nil && live >= 0 {",
+      "failure_evidence": "=== RUN   TestDeletingADownloadKeepsAnObjectAnotherLiveArtifactShares\n    download_shared_object_integration_test.go:31: object \"downloads/bb364429-c0c9-4c0c-9d9d-96ca53c42c88/edec09223c0012c7a8f5f895a0b49bab3e5ab1361cd582202a962cab40165f6f.zip\" was removed although another live artifact still shares it\n--- FAIL: TestDeletingADownloadKeepsAnObjectAnotherLiveArtifactShares (0.14s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.396s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-expired-or-purged-package-is-not-served",
+      "mutated_protection": "apps/platform/internal/skill/delivery/download.go:208: row.PurgedAt, row.ExpiresAt, time.Now()) { -> row.PurgedAt, row.ExpiresAt, time.Now().Add(-1000000*time.Hour)) {",
+      "failure_evidence": "=== RUN   TestAnExpiredArtifactIsNotServedAndItsBytesAreSweptAway\n    download_integration_test.go:856: an expired artifact is still being served\n--- FAIL: TestAnExpiredArtifactIsNotServedAndItsBytesAreSweptAway (0.14s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.554s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-package-expires-one-retention-period-after-it-is-built",
+      "mutated_protection": "apps/platform/internal/skill/delivery/packaging.go:881: time.Now().Add(retention) -> time.Now().Add(retention * 2)",
+      "failure_evidence": "=== RUN   TestThePreviewSaysHowLongThePackageIsKeptAndRefusesWhenNobodyDecided\n    packaging_integration_test.go:1298: the preview promised 72h0m0s of retention but the artifact expires in 143h59m59.5820806s\n2026/10/19 00:02:06 ERROR packaging is unavailable because this deployment is not configured error=\"download artifact retention is not configured\"\n2026/10/19 00:02:06 ERROR request failed on the server method=GET path=/skills/a0fa3d25-c2d1-4def-b79e-7462ef55e53c/versions/597c4eb5-dccc-4356-a257-7aa2b27e7430/packaging/preview status=503\n2026/10/19 00:02:06 ERROR packaging is unavailable because this deployment is not configured error=\"download artifact retention is not configured\"\n2026/10/19 00:02:06 ERROR request failed on the server method=POST path=/skills/a0fa3d25-c2d1-4def-b79e-7462ef55e53c/versions/597c4eb5-dccc-4356-a257-7aa2b27e7430/packaging status=503\n--- FAIL: TestThePreviewSaysHowLongThePackageIsKeptAndRefusesWhenNobodyDecided (0.28s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.459s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/download_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/download_shared_object_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/packaging_integration_test.go",
+    "apps/platform/internal/skill/delivery/download.go",
+    "apps/platform/internal/skill/delivery/packaging.go",
+    "apps/platform/internal/skill/delivery/plugin.go",
+    "apps/platform/internal/skill/delivery/source_rules_test.go",
+    "apps/platform/internal/skill/delivery/testcase.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-skill-md-pointing-at-a-dropped-file-blocks-the-package",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestASkillMDPointingAtAFileThePackagerDropsBlocksThePackage$ ./internal/skill/delivery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:865648b5eb8110e8c06e3ea147c787108d8940d7401f01e72fa0e44ffcef75ce",
+      "finished_at": "2026-10-18T16:02:56.592210Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-stored-source-that-no-longer-validates-is-not-packaged",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAStoredSourceThatNoLongerValidatesIsNotPackaged$ ./internal/skill/delivery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4bbc2f26be6a77b54d34b92fd08109784fe5b64ec130cfb24baa80515e2a6e94",
+      "finished_at": "2026-10-18T16:03:06.948042Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-plugin-member-version-belongs-to-its-skill",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAPluginMemberWhoseVersionBelongsToAnotherSkillIsNotFound$ ./internal/skill/delivery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:fb674817528739e66a79e4a30d8a45c1cf07d1dba539c4d88529a6d2767ea8ad",
+      "finished_at": "2026-10-18T16:03:16.684729Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-package-for-a-recipient-carries-no-test-cases",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAPackageForARecipientNeverSelectsTestCases$ ./internal/skill/delivery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ac31ea0de21b511c9e6fd54885a821eecf821f11e33728535012562ef2ec9aec",
+      "finished_at": "2026-10-18T16:03:26.627137Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-opted-out-package-carries-no-test-case",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestACuratedTestCaseStaysOutWhenTheUserOptsOut$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:419e11983961d35859b4334c65973dbb6d65bc15fa6196c4cdfba1bacb1e8a28",
+      "finished_at": "2026-10-18T16:03:43.725223Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-user-uploaded-dataset-keeps-its-test-case-out",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestOnlyCuratedTestCasesTravelAndTheRestAreNamed$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f69aae525c25c097fc1b006af8749d21803c7bac6bf8cca673b6c7ae7a1379b8",
+      "finished_at": "2026-10-18T16:03:59.626669Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-shared-package-object-outlives-one-deleted-download",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestDeletingADownloadKeepsAnObjectAnotherLiveArtifactShares$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:adf032a13953bb6e50567add85c0dd3958aab644b0f317a3940fabe5a1c55629",
+      "finished_at": "2026-10-18T16:04:15.029714Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-expired-or-purged-package-is-not-served",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnExpiredArtifactIsNotServedAndItsBytesAreSweptAway$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:35c21d4a09bf84ad365778eaa9636c5214ea358b379549ab5fd0785dc6588dc4",
+      "finished_at": "2026-10-18T16:04:29.911785Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-package-expires-one-retention-period-after-it-is-built",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestThePreviewSaysHowLongThePackageIsKeptAndRefusesWhenNobodyDecided$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:7d6eaa2c7008ba88944cfb6f8ad37661a5c189756e7147f137b26bf0367e3b44",
+      "finished_at": "2026-10-18T16:04:44.910498Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
