@@ -411,6 +411,12 @@ def _add_proposal_commands(commands: argparse._SubParsersAction) -> None:
     add_path(attest_parser, "--registry-root")
     add_path(attest_parser, "--repo-root")
     attest_parser.add_argument("--commit", required=True)
+    ship_parser = commands.add_parser("ship-package", help="Attest, finalize and apply a verified package")
+    add_path(ship_parser, "--package-root")
+    add_path(ship_parser, "--registry-root")
+    add_path(ship_parser, "--repo-root")
+    ship_parser.add_argument("--commit")
+    ship_parser.add_argument("--verification-token-env", default="GITHUB_TOKEN")
 
 
 def _add_proposal_check_commands(commands: argparse._SubParsersAction) -> None:

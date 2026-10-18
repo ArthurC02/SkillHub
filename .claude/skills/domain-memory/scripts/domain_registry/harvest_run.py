@@ -22,24 +22,30 @@ DECISIONS = (("ownership", "ownership_decision"), ("boundary", "boundary_decisio
 DEFAULT_TIMEOUT_SECONDS = 600
 SPAN_PARTS = 3
 RULE_DEFAULTS = {"cwd": None, "command_profile": "unit", "level": "unit", "timeout": DEFAULT_TIMEOUT_SECONDS}
+SUPERSEDING = ("amended", "reproven")
+NOTHING_WRITTEN = {
+    "spec": "no package was written; fix what the spec errors name, then run harvest again",
+    "citation": "no package was written; confirm the sources the cited paths belong to, or cite others, then run harvest again",
+    "counterfactual": "no package was written; make each counterfactual killed, then run harvest again",
+}
 
 
 @dataclass
 class Harvest:
     registry_root: Path
     repo_root: Path
-    spec: dict[str, Any]
-    package_root: Path
+    spec: Any
+    package_root: Path | None
     through: str
     rules: list[dict[str, Any]] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
-    stopped_at: str = "counterfactual"
+    stopped_at: str = "spec"
+    written: bool = False
 
     def report(self) -> dict[str, Any]:
         return {
             "format": FORMAT,
-            "package": self.package_root.relative_to(self.repo_root).as_posix()
-            if self.package_root.is_relative_to(self.repo_root) else str(self.package_root),
+            "package": _shown(self.package_root, self.repo_root) if self.written else None,
             "stopped_at": self.stopped_at,
             "rules": self.rules,
             "errors": self.errors,
@@ -49,18 +55,22 @@ class Harvest:
 
 def harvest(registry_root: Path, repo_root: Path, spec: Any, changes_root: Path | None, through: str) -> dict[str, Any]:
     registry_root, repo_root = registry_root.resolve(), repo_root.resolve()
-    problems = spec_errors(spec)
-    if problems:
-        raise ValueError("the harvest spec cannot run: " + "; ".join(problems))
-    package_root = (changes_root or registry_root / "changes") / spec["name"]
-    run = Harvest(registry_root, repo_root, spec, package_root, through)
+    run = Harvest(registry_root, repo_root, spec, None, through, errors=spec_errors(spec))
+    if run.errors:
+        return run.report()
+    run.package_root = (changes_root or registry_root / "changes") / spec["name"]
+    run.stopped_at = "citation"
+    records = _records(run)
+    if run.errors:
+        return run.report()
+    run.stopped_at = "counterfactual"
     verdicts = _counterfactuals(run)
     if run.errors:
         return run.report()
-    _candidates(run)
+    _candidates(run, records)
     _package(run, verdicts)
     run.stopped_at = "draft"
-    preview = validate_change_package(package_root, registry_root, "submitted", repo_root)
+    preview = validate_change_package(run.package_root, registry_root, "submitted", repo_root)
     if preview:
         run.errors += [f"once submitted: {error}" for error in preview]
         return run.report()
@@ -124,6 +134,50 @@ def _span(span: Any) -> tuple[str, int, int] | None:
     return None
 
 
+def _shown(package_root: Path | None, repo_root: Path) -> str | None:
+    if package_root is None:
+        return None
+    return package_root.relative_to(repo_root).as_posix() if package_root.is_relative_to(repo_root) else str(package_root)
+
+
+def _records(run: Harvest) -> list[dict[str, Any] | None]:
+    source_map = source_map_for(run.registry_root)
+    records = []
+    for rule in run.spec["rules"]:
+        shown = {"id": rule["id"], "obligation": obligation_of(rule["id"])}
+        run.rules.append(shown)
+        record = _record(run, rule, source_map)
+        if record is not None:
+            shown["test_citation"] = record["evidence"][-1]
+        records.append(record)
+    return records
+
+
+def _record(run: Harvest, rule: dict[str, Any], source_map: dict[str, Any]) -> dict[str, Any] | None:
+    try:
+        start, end = function_span(run.repo_root, rule["test_file"], rule["test"])
+        evidence = [
+            classified(citation(run.repo_root, path, first, last), source_map)
+            for path, first, last in (_span(span) for span in rule["enforcing"])
+        ]
+        evidence.append(classified(citation(run.repo_root, rule["test_file"], start, end), source_map))
+    except ValueError as error:
+        run.errors.append(f"{rule['id']}: {error}")
+        return None
+    outside = unclassified_paths(classify_all({"evidence": evidence}, source_map))
+    if outside:
+        run.errors.append(
+            f"{rule['id']} cites {', '.join(outside)} outside the confirmed sources; apply-approved-updates would refuse "
+            "to review it, so confirm those sources first or cite others"
+        )
+        return None
+    examples = rule.get("examples") if isinstance(rule.get("examples"), list) else [rule["example"]] if rule.get("example") else []
+    return {
+        "id": rule["id"], "contexts": [run.spec["context"]], "statement": rule["statement"],
+        **({"examples": examples} if examples else {}), "status": "candidate", "evidence": evidence,
+    }
+
+
 def _counterfactuals(run: Harvest) -> dict[str, dict[str, Any]]:
     suite = {"mutations": [
         {
@@ -134,62 +188,57 @@ def _counterfactuals(run: Harvest) -> dict[str, dict[str, Any]]:
     ]}
     results = counterfactual_suite(run.repo_root, suite)["results"]
     verdicts = {}
-    for rule, result in zip(run.spec["rules"], results, strict=True):
+    for rule, shown, result in zip(run.spec["rules"], run.rules, results, strict=True):
         verdicts[rule["id"]] = result
-        run.rules.append({"id": rule["id"], "counterfactual": result["verdict"], "obligation": obligation_of(rule["id"])})
+        shown["counterfactual"] = result["verdict"]
         if result["verdict"] != "killed":
             run.errors.append(f"{rule['id']}: the counterfactual is {result['verdict']}: {result.get('reason')}")
     return verdicts
 
 
-def _candidates(run: Harvest) -> None:
-    source_map = source_map_for(run.registry_root)
-    records = []
-    for rule, shown in zip(run.spec["rules"], run.rules, strict=True):
-        shown["test_citation"] = _test_citation(run.repo_root, rule, source_map)
-        record = _record(run, rule, source_map, shown["test_citation"])
-        existing = record_by_id(run.registry_root, "rules", rule["id"])
+def _candidates(run: Harvest, records: list[dict[str, Any] | None]) -> None:
+    pending = []
+    for record, shown in zip(records, run.rules, strict=True):
+        existing = record_by_id(run.registry_root, "rules", record["id"])
         if existing is not None and is_reviewed(existing):
-            shown["record"] = "amended"
+            shown["record"] = "reproven" if _same_content(existing, record) else "amended"
         else:
-            records.append((record, shown))
+            pending.append((record, shown))
     with tempfile.TemporaryDirectory() as temporary:
-        for index, (record, shown) in enumerate(records):
+        for index, (record, shown) in enumerate(pending):
             path = Path(temporary) / f"{index}-{record['id']}.json"
             write_json(path, record)
             upserted = upsert_candidate(run.registry_root, run.repo_root, "rules", path)
             shown["record"] = "created" if upserted.created else "revised"
 
 
-def _test_citation(repo_root: Path, rule: dict[str, Any], source_map: dict[str, Any]) -> dict[str, Any]:
-    start, end = function_span(repo_root, rule["test_file"], rule["test"])
-    return classified(citation(repo_root, rule["test_file"], start, end), source_map)
+def _same_content(existing: dict[str, Any], record: dict[str, Any]) -> bool:
+    return (
+        existing.get("statement") == record["statement"]
+        and sorted(existing.get("contexts") or []) == sorted(record["contexts"])
+        and (existing.get("examples") or []) == (record.get("examples") or [])
+        and _cited_spans(existing.get("evidence") or []) == _cited_spans(record["evidence"])
+    )
 
 
-def _record(run: Harvest, rule: dict[str, Any], source_map: dict[str, Any], test_citation: dict[str, Any]) -> dict[str, Any]:
-    evidence = [
-        classified(citation(run.repo_root, path, start, end), source_map)
-        for path, start, end in (_span(span) for span in rule["enforcing"])
-    ]
-    outside = unclassified_paths(classify_all({"evidence": [*evidence, test_citation]}, source_map))
-    if outside:
-        raise ValueError(
-            f"{rule['id']} cites {', '.join(outside)} outside the confirmed sources; apply-approved-updates would refuse "
-            "to review it, so confirm those sources first or cite others"
-        )
-    examples = rule.get("examples") if isinstance(rule.get("examples"), list) else [rule["example"]] if rule.get("example") else []
-    return {
-        "id": rule["id"], "contexts": [run.spec["context"]], "statement": rule["statement"],
-        **({"examples": examples} if examples else {}), "status": "candidate", "evidence": [*evidence, test_citation],
-    }
+def _cited_spans(evidence: list[Any]) -> set[tuple[Any, Any, Any]]:
+    spans = set()
+    for reference in evidence:
+        if isinstance(reference, dict):
+            lines = reference.get("lines") or {}
+            spans.add((reference.get("path"), lines.get("start"), lines.get("end")))
+        else:
+            spans.add(_span(reference))
+    return spans
 
 
 def _package(run: Harvest, verdicts: dict[str, dict[str, Any]]) -> None:
     spec, package_root = run.spec, run.package_root
     init_change_package(package_root, spec["name"], spec["name"], spec["proposer"])
+    run.written = True
     for rule, shown in zip(spec["rules"], run.rules, strict=True):
-        promote_candidate(package_root, run.registry_root, "rules", rule["id"], amend=shown["record"] == "amended")
-        if shown["record"] == "amended":
+        promote_candidate(package_root, run.registry_root, "rules", rule["id"], amend=shown["record"] in SUPERSEDING)
+        if shown["record"] in SUPERSEDING:
             add_promoted_evidence(package_root, "rules", rule["id"], (shown["test_citation"],))
     fill = {
         "rules": {
@@ -222,8 +271,8 @@ def _verify(run: Harvest) -> None:
 
 
 def _next_step(stopped_at: str, *, failed: bool) -> str:
-    if stopped_at == "counterfactual":
-        return "no package was written; make each counterfactual killed, then run harvest again"
+    if stopped_at in NOTHING_WRITTEN:
+        return NOTHING_WRITTEN[stopped_at]
     if failed and stopped_at == "draft":
         return "the draft package is written; fix what the preview names, then validate-change-package --as-status submitted"
     if stopped_at == "draft":
@@ -231,5 +280,4 @@ def _next_step(stopped_at: str, *, failed: bool) -> str:
                 "record-test-result per obligation, record-approval and verify-proposal")
     if stopped_at == "submitted":
         return "the proposal is submitted with its test results; record-approval, then verify-proposal"
-    return "sign a commit holding the package, then attest-signed-commit, finalize-proposal and apply-approved-updates"
-
+    return "sign a commit holding the package, then ship-package --commit <that commit>"

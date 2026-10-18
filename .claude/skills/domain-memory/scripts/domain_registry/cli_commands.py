@@ -57,6 +57,7 @@ from .recitation_package import recitation_package
 from .harvest import harvest_candidates
 from .harvest_package import harvest_package, write_harvest_package
 from .harvest_run import harvest
+from .ship import ship_package
 from .impact import boundary_impact, registered_collaborations
 from .relocate import Recitation, line_range, recite, relocate_evidence
 from .registry import (
@@ -1008,6 +1009,12 @@ def handle_attest_signed_commit(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_ship_package(args: argparse.Namespace) -> int:
+    report = ship_package(args.package_root, args.registry_root, args.repo_root, args.commit, args.verification_token_env)
+    print_json(report)
+    return 1 if report["errors"] else 0
+
+
 def handle_audit_attestations(args: argparse.Namespace) -> int:
     findings = audit_attestations(
         args.repo_root.resolve(), args.changes_root.resolve(), args.verification_token_env
@@ -1209,6 +1216,7 @@ HANDLERS = {
     "verify-proposal": handle_verify_proposal,
     "record-test-result": handle_record_test_result,
     "attest-signed-commit": handle_attest_signed_commit,
+    "ship-package": handle_ship_package,
     "audit-attestations": handle_audit_attestations,
     "finalize-proposal": handle_finalize_proposal,
     "validate-change-package": handle_validate_change_package,
