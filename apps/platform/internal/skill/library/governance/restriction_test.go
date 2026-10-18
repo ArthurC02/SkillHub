@@ -88,3 +88,12 @@ func TestValidRestrictionNoteAcceptsExactlyTheByteCap(t *testing.T) {
 		t.Errorf("a note at exactly the byte cap was rejected: %v", err)
 	}
 }
+
+func TestARestrictionNoteIsCountedInCharacters(t *testing.T) {
+	if _, err := validRestrictionNote(strings.Repeat("字", maxOperatorNoteChars)); err != nil {
+		t.Errorf("a note of exactly the cap in Chinese characters was rejected: %v", err)
+	}
+	if _, err := validRestrictionNote(strings.Repeat("字", maxOperatorNoteChars+1)); err == nil {
+		t.Error("a note one character over the cap was accepted")
+	}
+}
