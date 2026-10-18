@@ -1090,8 +1090,8 @@ def _note_counterfactuals_off_cited_files(package_root: Path, registry_root: Pat
         cited = set().union(*(cited_paths(rule) for rule in rules if rule))
         if rule_ids and location["path"] not in cited:
             print(
-                f"NOTE: the counterfactual for {obligation.get('id')} mutates {location['path']}, which "
-                f"{', '.join(rule_ids)} does not cite. That proves the rule only when the mutated line lies on the "
+                f"NOTE: the counterfactual proving {', '.join(rule_ids)} mutates {location['path']}, which the rule "
+                "does not cite. That proves the rule only when the mutated line lies on the "
                 "execution path of a cited line, as the query a cited call runs does; otherwise mutate a cited line.",
                 file=sys.stderr,
             )

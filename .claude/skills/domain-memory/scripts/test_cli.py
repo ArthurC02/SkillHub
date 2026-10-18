@@ -828,7 +828,7 @@ class CliTest(RegistryTestCase):
             shown = self.run_cli(*validate)
             noted[label] = (shown.returncode, shown.stderr.strip())
         self.assertEqual(
-            {"elsewhere": (0, "NOTE: the counterfactual for OB-2 mutates gen/query.sql, which order-total does not cite. "
+            {"elsewhere": (0, "NOTE: the counterfactual proving order-total mutates gen/query.sql, which the rule does not cite. "
                               "That proves the rule only when the mutated line lies on the execution path of a cited line, "
                               "as the query a cited call runs does; otherwise mutate a cited line."),
              "cited": (0, "")},
