@@ -2,6 +2,14 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.88.0
+
+### Changed
+
+- The command list printed by `--help` follows the three groups, Everyday, then Advanced, then Legacy, instead of the order the commands were registered in. Each legacy command's one-line help ends with `(legacy: use <replacement>)`, so it is marked on the first screen and not only in the epilog; the reference's legacy rows carry the same label.
+- `init-domain-memory --output` says in its help that the directory must lie inside the repository, which the command has always required.
+- The brief's source-map attention line counts removed files with an ASCII minus (`+110 -3`), not U+2212, so a consumer printing it on a narrow Windows console no longer fails.
+
 ## 0.87.0
 
 ### Fixed

@@ -127,7 +127,7 @@ class ChangeBriefTest(BriefTest):
         refresh_sources(self.repo / "memory", self.repo)
         confirm_sources(self.repo / "memory", self.repo, "human:ann")
         brief = brief_for_change(self.repo / "memory", self.repo, "HEAD")
-        line = "source map re-confirmed in this range by human:ann (+2 −1 discovered files)"
+        line = "source map re-confirmed in this range by human:ann (+2 -1 discovered files)"
         self.assertEqual(
             ({"changed": True, "confirmed_by": "human:ann", "confirmation": "developer-confirmed", "discovered_added": 2, "discovered_removed": 1},
              line),
@@ -143,7 +143,7 @@ class ChangeBriefTest(BriefTest):
         brief = brief_for_change(self.repo / "memory", self.repo, "HEAD")
         self.assertEqual(
             ({"changed": True, "confirmed_by": None, "confirmation": "agent-asserted", "discovered_added": 1, "discovered_removed": 0},
-             "source map changed in this range and is agent-asserted, not confirmed (+1 −0 discovered file)"),
+             "source map changed in this range and is agent-asserted, not confirmed (+1 -0 discovered file)"),
             (brief["source_map"], brief["attention"][-1]),
         )
 
@@ -153,7 +153,7 @@ class ChangeBriefTest(BriefTest):
         brief = brief_for_change(self.repo / "memory", self.repo, "HEAD")
         self.assertEqual(
             ({"changed": True, "confirmed_by": None, "confirmation": "removed", "discovered_added": 0, "discovered_removed": 1},
-             "source map changed in this range and is removed, not confirmed (+0 −1 discovered file)"),
+             "source map changed in this range and is removed, not confirmed (+0 -1 discovered file)"),
             (brief["source_map"], brief["attention"][-1]),
         )
 

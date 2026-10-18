@@ -67,6 +67,20 @@ class CommandGroupsTest(RegistryTestCase):
             "Legacy commands: fill-harvest-package, attest-signed-commit, finalize-proposal, apply-approved-updates.", flat
         )
 
+    def test_help_lists_the_commands_in_the_order_of_the_groups(self) -> None:
+        result = self.run_cli("--help")
+        listed = re.findall(r"^    ([a-z][a-z-]*)(?:  |$)", result.stdout.split("positional arguments:")[1], re.MULTILINE)
+        self.assertEqual([name for names in COMMAND_GROUPS.values() for name in names], listed)
+
+    def test_only_a_legacy_command_help_names_its_replacement(self) -> None:
+        [subcommands] = [action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)]
+        helps = {action.dest: action.help for action in subcommands._choices_actions}
+        marked = {name: text for name, text in helps.items() if "(legacy:" in text}
+        self.assertEqual(
+            {name: f"(legacy: use {replacement})" for name, replacement in LEGACY_REPLACEMENTS.items()},
+            {name: text[text.index("(legacy:"):] for name, text in marked.items()},
+        )
+
     def test_a_legacy_command_notes_its_replacement_on_stderr_and_still_runs(self) -> None:
         result = self.run_cli(
             "apply-approved-updates", "--package-root", str(self.draft_package()),

@@ -169,7 +169,7 @@ def _discovered(source_map: dict[str, Any]) -> set[str]:
 
 def _source_map_line(change: dict[str, Any]) -> str:
     added, removed = change["discovered_added"], change["discovered_removed"]
-    counts = f"(+{added} −{removed} discovered {'file' if added + removed == 1 else 'files'})"
+    counts = f"(+{added} -{removed} discovered {'file' if added + removed == 1 else 'files'})"
     if change["confirmation"] == CONFIRMED:
         return f"source map re-confirmed in this range by {change['confirmed_by']} {counts}"
     return f"source map changed in this range and is {change['confirmation']}, not confirmed {counts}"

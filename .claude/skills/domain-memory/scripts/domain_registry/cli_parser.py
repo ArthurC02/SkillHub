@@ -47,6 +47,13 @@ COMMAND_GROUPS = {
 }
 
 
+COMMAND_ORDER = {name: position for position, name in enumerate(name for names in COMMAND_GROUPS.values() for name in names)}
+
+
+def legacy_help(command: str, label: str) -> str:
+    return f"{label} (legacy: use {LEGACY_REPLACEMENTS[command]})"
+
+
 def command_groups_text() -> str:
     return "\n\n".join(
         textwrap.fill(
@@ -103,6 +110,7 @@ def build_parser() -> argparse.ArgumentParser:
         _add_history_commands, _add_harvest_command, _add_mcp_command,
     ):
         add_commands(commands)
+    commands._choices_actions.sort(key=lambda action: COMMAND_ORDER[action.dest])
     return parser
 
 
@@ -138,7 +146,7 @@ def _add_harvest_command(commands: argparse._SubParsersAction) -> None:
         "--context-map", action="append", default=[], help="repeatable CANDIDATE=GOLD, over the pairing found by path or name"
     )
     harvest_parser.add_argument("--keep-duplicates", action="store_true")
-    fill_parser = commands.add_parser("fill-harvest-package", help="Fill a rule harvest package")
+    fill_parser = commands.add_parser("fill-harvest-package", help=legacy_help("fill-harvest-package", "Fill a rule harvest package"))
     add_path(fill_parser, "--package-root")
     add_path(fill_parser, "--spec")
     fill_parser.add_argument("--dry-run", action="store_true", help="print the four documents instead of writing them")
@@ -304,7 +312,7 @@ def _add_record_and_source_commands(commands: argparse._SubParsersAction) -> Non
     retract_parser.add_argument("--id", required=True)
     retract_parser.add_argument("--reason", required=True)
     _add_promote_command(commands)
-    apply_updates_parser = commands.add_parser("apply-approved-updates", help="Apply an approved change")
+    apply_updates_parser = commands.add_parser("apply-approved-updates", help=legacy_help("apply-approved-updates", "Apply an approved change"))
     add_path(apply_updates_parser, "--package-root")
     add_path(apply_updates_parser, "--registry-root")
     add_path(apply_updates_parser, "--repo-root")
@@ -334,7 +342,9 @@ def _add_record_and_source_commands(commands: argparse._SubParsersAction) -> Non
 def _add_governance_commands(commands: argparse._SubParsersAction) -> None:
     memory_init_parser = commands.add_parser("init-domain-memory", help="Start a Registry from human choices: the entry point")
     add_path(memory_init_parser, "--repo-root")
-    add_path(memory_init_parser, "--output")
+    memory_init_parser.add_argument(
+        "--output", required=True, type=Path, help="Registry directory to create, inside the repository",
+    )
     memory_init_parser.add_argument(
         "--source", required=True, action="append", type=Path, help="repeatable"
     )
@@ -458,7 +468,7 @@ def _add_proposal_commands(commands: argparse._SubParsersAction) -> None:
     )
     result_parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT_SECONDS)
     result_parser.add_argument("--cwd")
-    attest_parser = commands.add_parser("attest-signed-commit", help="Attest a signed commit")
+    attest_parser = commands.add_parser("attest-signed-commit", help=legacy_help("attest-signed-commit", "Attest a signed commit"))
     add_path(attest_parser, "--package-root")
     add_path(attest_parser, "--registry-root")
     add_path(attest_parser, "--repo-root")
@@ -476,7 +486,7 @@ def _add_proposal_check_commands(commands: argparse._SubParsersAction) -> None:
     add_path(audit_attestations_parser, "--repo-root")
     add_path(audit_attestations_parser, "--changes-root")
     audit_attestations_parser.add_argument("--verification-token-env", default="GITHUB_TOKEN")
-    finalize_parser = commands.add_parser("finalize-proposal", help="Finalize approval")
+    finalize_parser = commands.add_parser("finalize-proposal", help=legacy_help("finalize-proposal", "Finalize approval"))
     add_path(finalize_parser, "--package-root")
     add_path(finalize_parser, "--registry-root", required=False)
     add_path(finalize_parser, "--repo-root", required=False)
