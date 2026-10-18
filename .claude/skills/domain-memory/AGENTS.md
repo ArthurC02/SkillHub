@@ -46,6 +46,16 @@ Python 3.10 or later, its standard library, and `git` on the path. Call the inte
 
 Commands that read or change the Registry take `--registry-root <root>`: the directory that holds `registry/`, `source-map.json` and the policy, not `registry/` itself. Commands that read repository files take `--repo-root <repo>`. Some take only one of the two: `quality-gates` takes only `--repo-root`, `readiness` needs only `--repo-root`, and `coverage` and the read commands take only `--registry-root`. The table below leaves both flags out, and `<command> --help` lists the exact flags.
 
+## Call it from a host as MCP
+
+`mcp-serve` offers the read commands as tools to a host that speaks the Model Context Protocol, so the host calls them without starting the script for each one. Register it as a stdio server, with `python` in place of `python3` on Windows:
+
+```json
+{"command": "python3", "args": ["<path>/scripts/registry_tools.py", "mcp-serve", "--registry-root", "<root>", "--repo-root", "<repo>"]}
+```
+
+It offers no command that writes; candidates and Change Packages stay on the command line.
+
 ## Words you will meet
 
 - **Registry**: one Markdown concept file per record under `<root>/registry/<asset>/`. The asset name is the folder name, such as `contexts`, `rules`, `contracts`, `vocabulary` or `dependency-policies`, and messages name a record as `<asset>/<id>`. Read it through the commands, never its files.

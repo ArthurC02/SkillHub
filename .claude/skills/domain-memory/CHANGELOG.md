@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.84.0
+
+### Added
+
+- `mcp-serve` runs a Model Context Protocol server on standard input and output, built on the standard library alone, and offers thirteen read commands as tools: `get-context`, `get-record`, `resolve-terms`, `lookup`, `dependents`, `coverage`, `brief`, `boundary-impact`, `verify-evidence`, `validate`, `readiness`, `list-proposals` and `validate-change-package`. No command that writes is offered, and a test holds the exposed set to a literal read-only list. The Registry and repository roots are the server's own arguments, never the client's; a path argument outside the repository is refused. Each tool runs the command's own handler, so its checks and NOTEs come back unchanged: stdout as the first text, a NOTE as the second, and a refusal or a wrong argument as a tool error the model can read. The server speaks the 2026-07-28 per-request protocol with `server/discover` and the older `initialize` handshake, answers `ping`, replies to a malformed line with a parse error and keeps serving, and exits 0 at end of input.
+
 ## 0.83.0
 
 ### Changed

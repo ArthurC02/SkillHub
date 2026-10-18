@@ -41,7 +41,7 @@ COMMAND_GROUPS = {
         "migrate-registry", "migrate-evidence", "recover-registry-update", "demote-local-reviews", "redraft-proposal",
         "export", "change-coupling", "compare-registry", "harvest-candidates", "governance-readiness",
         "init-signing-key", "amend-policy", "install-git-hitl-hook", "install-pre-commit-hook", "verify-git-governance", "validate-policy",
-        "verify-scm-attestation", "audit-attestations", "scan-secrets", "validate-contract",
+        "verify-scm-attestation", "audit-attestations", "scan-secrets", "validate-contract", "mcp-serve",
     ),
     "legacy": tuple(LEGACY_REPLACEMENTS),
 }
@@ -100,7 +100,7 @@ def build_parser() -> argparse.ArgumentParser:
     for add_commands in (
         _add_registry_commands, _add_evidence_commands, _add_record_and_source_commands, _add_governance_commands,
         _add_review_governance_commands, _add_proposal_commands, _add_proposal_check_commands,
-        _add_history_commands, _add_harvest_command,
+        _add_history_commands, _add_harvest_command, _add_mcp_command,
     ):
         add_commands(commands)
     return parser
@@ -148,6 +148,12 @@ def _add_harvest_command(commands: argparse._SubParsersAction) -> None:
     add_path(prove_parser, "--spec")
     add_path(prove_parser, "--changes-root", required=False)
     prove_parser.add_argument("--through", choices=HARVEST_STAGES, default="draft")
+
+
+def _add_mcp_command(commands: argparse._SubParsersAction) -> None:
+    serve_parser = commands.add_parser("mcp-serve", help="Serve the read commands to a host over MCP")
+    add_path(serve_parser, "--registry-root")
+    add_path(serve_parser, "--repo-root")
 
 
 def _add_history_commands(commands: argparse._SubParsersAction) -> None:

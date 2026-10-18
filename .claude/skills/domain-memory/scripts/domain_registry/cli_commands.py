@@ -62,6 +62,8 @@ from .brief import brief_for_change, brief_for_record, to_markdown
 from .harvest_run import harvest
 from .ship import ship_package
 from .impact import boundary_impact, registered_collaborations
+from .cli_parser import build_parser
+from .mcp_server import ServerRoots, serve
 from .relocate import Recitation, line_range, recite, relocate_evidence
 from .cli_parser import LEGACY_REPLACEMENTS
 from .registry import (
@@ -1188,7 +1190,18 @@ def _one_mutation(args: argparse.Namespace) -> Mutation:
     return Mutation(args.file, args.find, args.replace)
 
 
+def handle_mcp_serve(args: argparse.Namespace) -> int:
+    sys.stdin.reconfigure(encoding="utf-8")
+    serve(ServerRoots(args.registry_root.resolve(), args.repo_root.resolve()), run_command)
+    return 0
+
+
+def run_command(words: list[str]) -> int:
+    return execute(build_parser().parse_args(words))
+
+
 HANDLERS = {
+    "mcp-serve": handle_mcp_serve,
     "quality-gates": handle_quality_gates,
     "counterfactual": handle_counterfactual,
     "list-proposals": handle_list_proposals,
