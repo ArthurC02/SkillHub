@@ -6,6 +6,7 @@ from typing import Any
 
 from .common import load_json
 from .hitl import EVIDENCE_FILE, attest_signed_commit, finalize_proposal, proposal_path
+from .revision import STALE_BASE, require_current_registry_revision
 from .sources import run_git
 from .updates import apply_approved_updates
 
@@ -19,6 +20,10 @@ NEXT_STEPS = {
     "verified": "the proposal is verified; ship-package --commit <the signed commit that carries the package>",
     "submitted": "the proposal is submitted again; correct what finalize named, verify-proposal, then ship-package",
 }
+STALE_NEXT = (
+    "the proposal base is stale; rebase-proposal, then record-approval, verify-proposal, sign a commit holding the "
+    "package, and ship-package --commit <that commit>"
+)
 
 
 def ship_package(
@@ -26,7 +31,8 @@ def ship_package(
 ) -> dict[str, Any]:
     package_root, registry_root, repo_root = package_root.resolve(), registry_root.resolve(), repo_root.resolve()
     report: dict[str, Any] = {"format": FORMAT, "package": _shown(package_root, repo_root), "completed": [], "errors": []}
-    status = load_json(proposal_path(package_root)).get("status")
+    proposal = load_json(proposal_path(package_root))
+    status = proposal.get("status")
     actions: dict[str, Callable[[], Any]] = {
         ATTEST: lambda: attest_signed_commit(package_root, registry_root, repo_root, commit),
         FINALIZE: lambda: finalize_proposal(package_root, registry_root, repo_root, verification_token_env),
@@ -37,15 +43,23 @@ def ship_package(
         report["errors"] += _another_commit(package_root, repo_root, status, commit)
         if not names and not report["errors"]:
             report["note"] = f"already {status}; nothing was written"
+    if status == "verified":
+        _completed(report, FINALIZE, lambda: require_current_registry_revision(proposal, registry_root, repo_root), record=False)
     for name in names:
         if report["errors"] or not _completed(report, name, actions[name]):
             break
     status = load_json(proposal_path(package_root)).get("status")
     report["status"] = status
-    report["next"] = ALREADY_APPLIED if "note" in report else NEXT_STEPS.get(
-        status, f"the proposal is {status}; ship-package works from a verified proposal"
-    )
+    report["next"] = _next_step(report, status)
     return report
+
+
+def _next_step(report: dict[str, Any], status: str) -> str:
+    if "note" in report:
+        return ALREADY_APPLIED
+    if any(STALE_BASE in error for error in report["errors"]):
+        return STALE_NEXT
+    return NEXT_STEPS.get(status, f"the proposal is {status}; ship-package works from a verified proposal")
 
 
 def _another_commit(package_root: Path, repo_root: Path, status: str, commit: str | None) -> list[str]:
@@ -59,12 +73,14 @@ def _another_commit(package_root: Path, repo_root: Path, status: str, commit: st
     return [f"{ATTEST}: the proposal is {status} with commit {attested}; {given} is another commit, so nothing was written"]
 
 
-def _completed(report: dict[str, Any], name: str, step: Callable[[], Any]) -> bool:
+def _completed(report: dict[str, Any], name: str, step: Callable[[], Any], *, record: bool = True) -> bool:
     try:
         result = step()
     except ValueError as error:
         report["errors"].append(f"{name}: {error}")
         return False
+    if not record:
+        return True
     report["completed"].append(name)
     if name == ATTEST:
         report["commit"] = result

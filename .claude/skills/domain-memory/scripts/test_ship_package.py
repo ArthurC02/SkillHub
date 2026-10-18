@@ -107,6 +107,24 @@ class ShipPackageTest(RegistryTestCase):
         self.assertNotIn("commit", report)
         self.assertIn("ship-package --commit", report["next"])
 
+    def test_a_stale_base_stops_before_attesting_and_names_rebase_proposal(self) -> None:
+        package, _ = self.verified_package_under_signed_governance()
+        self.edit_registry(
+            "rules.json",
+            lambda value: value["rules"].append(
+                {"id": "order-total", "contexts": ["orders"], "statement": "Another statement.", "evidence": []}
+            ),
+        )
+        signed = self.commit_everything("adds the Change Package and a rival rule", signed=True)
+        report = ship_package(package, self.repo / "memory", self.repo, signed)
+        self.assertEqual(
+            ([], "verified", None, True, True, 1),
+            (report["completed"], report["status"], load_json(package / "evidence-bundle.json").get("scm_attestation"),
+             report["next"].startswith("the proposal base is stale; rebase-proposal, then record-approval"),
+             report["errors"][0].startswith("finalize-proposal: proposal base revision is stale; rebase-proposal, then obtain "
+                                            "fresh approval: "), len(report["errors"])),
+        )
+
     def test_without_a_commit_the_pull_request_verifier_needs_its_attestation_written_first(self) -> None:
         package = self.draft_package()
         submit_proposal(package, self.repo / "memory", self.repo)

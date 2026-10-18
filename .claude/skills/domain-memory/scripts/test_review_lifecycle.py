@@ -345,16 +345,20 @@ class ReviewLifecycleTest(RegistryTestCase):
         self.assertEqual("verified", self.proposal_in(package)["status"])
 
     def test_a_proposal_outside_review_or_with_a_current_base_is_not_rebased(self) -> None:
-        package = self.submitted_package()
+        package = self.draft_package()
+        self.commit_everything("draft")
+        submit_proposal(package, self.repo / "memory", self.repo)
         path = package / "domain-change-proposal.json"
         submitted = path.read_bytes()
+        self.commit_everything("a commit on top that touches nothing the proposal names")
+        self.edit_registry("contexts.json", lambda value: value["contexts"].append({"id": "billing", "name": "Billing"}))
         with self.assertRaisesRegex(ValueError, "^the proposal base is current; nothing to rebase$"):
             rebase_proposal(package, self.repo / "memory", self.repo)
         self.assertEqual(submitted, path.read_bytes())
-        past = "it is past approval; supersede it and open a new draft"
-        for status, reason in (
-            ("draft", "submit-proposal stamps its base"), ("approved", past), ("applied", past),
-            ("superseded", "it is retired; redraft-proposal opens a new draft from it"),
+        for status, refusal in (
+            ("draft", "a draft proposal is not rebased; submit-proposal stamps its base"),
+            ("applied", "an applied proposal is not rebased; it is applied; supersede it and open a new draft"),
+            ("superseded", "a superseded proposal is not rebased; it is retired; redraft-proposal opens a new draft from it"),
         ):
             with self.subTest(status):
                 proposal = json.loads(submitted)
@@ -362,9 +366,23 @@ class ReviewLifecycleTest(RegistryTestCase):
                 path.write_text(json.dumps(proposal), encoding="utf-8")
                 self.edit_registry("contexts.json", lambda value, status=status: value["contexts"][0].update(name=f"Orders {status}"))
                 written = path.read_bytes()
-                with self.assertRaisesRegex(ValueError, f"^a {status} proposal is not rebased; {reason}$"):
+                with self.assertRaisesRegex(ValueError, f"^{refusal}$"):
                     rebase_proposal(package, self.repo / "memory", self.repo)
                 self.assertEqual(written, path.read_bytes())
+
+    def test_a_stale_approved_proposal_is_rebased_back_to_submitted(self) -> None:
+        package = self.submitted_package()
+        path = package / "domain-change-proposal.json"
+        proposal = json.loads(path.read_text(encoding="utf-8"))
+        proposal.update(status="approved", finalized_at="2026-10-19T00:00:00Z")
+        path.write_text(json.dumps(proposal), encoding="utf-8")
+        self.edit_registry("contexts.json", lambda value: value["contexts"][0].update(name="Purchases"))
+        printed = rebase_proposal(package, self.repo / "memory", self.repo)
+        rebased = self.proposal_in(package)
+        self.assertEqual(
+            ("submitted", 2, None, "submitted"),
+            (printed["status"], rebased["proposal_revision"], rebased["finalized_at"], rebased["status"]),
+        )
 
     def test_an_approval_of_another_revision_does_not_satisfy_verification(self) -> None:
         package = self.draft_package()

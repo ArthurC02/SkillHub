@@ -2,6 +2,17 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.3
+
+### Fixed
+
+- `rebase-proposal` judges "current" by the stale check verify, finalize and apply run, not by equality of the whole base revision. Before, a commit on top that touched nothing the proposal names, or a pre-1.2.0 base without `committed_digest`, made it rebase a current proposal and retire a valid approval.
+- `ship-package` runs the stale check before attesting, so a stale base stops with nothing written instead of leaving an attestation behind, and its `next` then names `rebase-proposal` and the steps after it.
+
+### Changed
+
+- `rebase-proposal` also takes an `approved` proposal, since its approval and attestation bind to the base that went stale; it returns to `submitted` with `finalized_at` cleared. Only a draft, applied or superseded proposal is refused.
+
 ## 1.2.2
 
 ### Fixed

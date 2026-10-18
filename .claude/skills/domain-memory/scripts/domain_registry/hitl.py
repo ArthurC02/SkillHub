@@ -15,7 +15,7 @@ from .common import EVIDENCE_FILE, PROPOSAL_FILE, completed_identifier, iso_time
 from .counterfactual import OUTPUT_TAIL, decoded, is_go_test, no_test_passed, reports_tests, working_directory
 from .evidence import digest
 from .policy import approved_command_profiles, review_governance
-from .revision import base_registry_revision, require_current_registry_revision
+from .revision import STALE_BASE, base_registry_revision, require_current_registry_revision
 
 
 def proposal_path(root: Path) -> Path:
@@ -52,12 +52,10 @@ def submit_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
     write_json(evidence_path, evidence)
 
 
-REBASABLE_STATUSES = ("submitted", "verified")
-PAST_APPROVAL = "it is past approval; supersede it and open a new draft"
+REBASABLE_STATUSES = ("submitted", "verified", "approved")
 NOT_REBASED = {
     "draft": "submit-proposal stamps its base",
-    "approved": PAST_APPROVAL,
-    "applied": PAST_APPROVAL,
+    "applied": "it is applied; supersede it and open a new draft",
     "superseded": "it is retired; redraft-proposal opens a new draft from it",
 }
 AFTER_REBASE = (
@@ -66,24 +64,37 @@ AFTER_REBASE = (
 )
 
 
+def _article(word: Any) -> str:
+    return "an" if str(word)[:1] in "aeiou" else "a"
+
+
+def _stale(proposal: dict[str, Any], registry_root: Path, repo_root: Path) -> bool:
+    try:
+        require_current_registry_revision(proposal, registry_root, repo_root)
+    except ValueError as error:
+        if not str(error).startswith(STALE_BASE):
+            raise
+        return True
+    return False
+
+
 def rebase_proposal(root: Path, registry_root: Path, repo_root: Path) -> dict[str, Any]:
     root, registry_root, repo_root = root.resolve(), registry_root.resolve(), repo_root.resolve()
     proposal = load_json(proposal_path(root))
     status = proposal.get("status")
     if status not in REBASABLE_STATUSES:
-        raise ValueError(
-            f"a {status} proposal is not rebased; {NOT_REBASED.get(status, 'only a submitted or verified proposal is')}"
-        )
-    revision = base_registry_revision(registry_root, repo_root)
-    if revision == proposal.get("base_registry_revision"):
+        reason = NOT_REBASED.get(status, "only a submitted, verified or approved proposal is")
+        raise ValueError(f"{_article(status)} {status} proposal is not rebased; {reason}")
+    if not _stale(proposal, registry_root, repo_root):
         raise ValueError("the proposal base is current; nothing to rebase")
+    revision = base_registry_revision(registry_root, repo_root)
     retired = sum(
         1 for approval in proposal.get("approvals") or []
         if isinstance(approval, dict) and approval.get("proposal_revision") == proposal.get("proposal_revision")
     )
     proposal.update(
         base_registry_revision=revision, proposal_revision=proposal["proposal_revision"] + 1,
-        status="submitted", verified_at=None,
+        status="submitted", verified_at=None, finalized_at=None,
     )
     evidence_path = root / EVIDENCE_FILE
     evidence = load_json(evidence_path)
