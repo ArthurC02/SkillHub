@@ -64,7 +64,7 @@ class HandshakeTest(McpServerTest):
         [reply] = self.exchange(request(1, "initialize", protocolVersion="2025-06-18", capabilities={}))
         self.assertEqual(
             {"jsonrpc": "2.0", "id": 1, "result": {
-                "resultType": "complete", "protocolVersion": "2025-06-18", "capabilities": {"tools": {"listChanged": False}},
+                "protocolVersion": "2025-06-18", "capabilities": {"tools": {"listChanged": False}},
                 "serverInfo": {"name": "domain-memory", "version": PLUGIN_VERSION},
             }},
             reply,
@@ -107,8 +107,18 @@ class HandshakeTest(McpServerTest):
 
     def test_notifications_get_no_reply_and_ping_gets_an_empty_result(self) -> None:
         self.assertEqual(
-            [{"jsonrpc": "2.0", "id": 7, "result": {"resultType": "complete"}}],
+            [{"jsonrpc": "2.0", "id": 7, "result": {}}],
             self.exchange(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}), request(7, "ping")),
+        )
+
+    def test_a_result_carries_result_type_only_when_the_request_declared_its_version(self) -> None:
+        replies = self.exchange(
+            request(1, "initialize", protocolVersion="2025-06-18", capabilities={}), request(2, "tools/list"),
+            request(3, "ping"), request(4, "tools/list", _meta=MODERN_META), request(5, "ping", _meta=MODERN_META),
+        )
+        self.assertEqual(
+            [(1, False), (2, False), (3, False), (4, True), (5, True)],
+            [(reply["id"], "resultType" in reply["result"]) for reply in replies],
         )
 
     def test_requests_before_initialize_and_a_repeated_initialize_are_answered(self) -> None:
@@ -150,7 +160,7 @@ class ToolListTest(McpServerTest):
     def test_tools_list_names_only_the_tools_key_and_an_object_schema_only_where_output_is_always_an_object(self) -> None:
         [reply] = self.exchange(request(1, "tools/list"))
         tools = {tool["name"]: tool for tool in reply["result"]["tools"]}
-        self.assertEqual({"resultType", "tools"}, set(reply["result"]))
+        self.assertEqual({"tools"}, set(reply["result"]))
         self.assertEqual(
             {"name": "coverage",
              "description": "Report modelling gaps: Contexts without records, unproven rules, records without evidence.",
@@ -172,7 +182,7 @@ class ToolCallTest(McpServerTest):
         printed = self.cli("get-context", "--id", "orders")
         self.assertEqual("orders", json.loads(printed)["context"]["id"])
         self.assertEqual(
-            {"resultType": "complete", "content": [{"type": "text", "text": printed}], "isError": False,
+            {"content": [{"type": "text", "text": printed}], "isError": False,
              "structuredContent": json.loads(printed)},
             self.call("get_context", {"id": "orders"}),
         )
@@ -215,7 +225,7 @@ class ToolCallTest(McpServerTest):
 class ToolErrorTest(McpServerTest):
     def test_a_refusal_inside_a_tool_is_a_tool_error_carrying_its_message(self) -> None:
         self.assertEqual(
-            {"resultType": "complete", "content": [{"type": "text", "text": "ERROR: context not found: nope\n"}], "isError": True},
+            {"content": [{"type": "text", "text": "ERROR: context not found: nope\n"}], "isError": True},
             self.call("get_context", {"id": "nope"}),
         )
 
@@ -235,7 +245,7 @@ class ToolErrorTest(McpServerTest):
         ]
         for name, tool, arguments, message in cases:
             with self.subTest(name):
-                self.assertEqual({"resultType": "complete", "content": [{"type": "text", "text": message}], "isError": True},
+                self.assertEqual({"content": [{"type": "text", "text": message}], "isError": True},
                                  self.call(tool, arguments))
 
     def test_a_read_the_file_system_refuses_is_a_tool_error(self) -> None:
@@ -250,7 +260,7 @@ class ToolErrorTest(McpServerTest):
         ]
         for name, tool, arguments, message in cases:
             with self.subTest(name):
-                self.assertEqual({"resultType": "complete", "content": [{"type": "text", "text": message}], "isError": True},
+                self.assertEqual({"content": [{"type": "text", "text": message}], "isError": True},
                                  self.call(tool, arguments))
 
     def test_missing_required_arguments_are_named_in_alphabetical_order_not_declaration_order(self) -> None:
@@ -295,7 +305,7 @@ class ToolErrorTest(McpServerTest):
             replies = self.exchange(request(1, "tools/call", name="coverage", arguments={}), request(2, "ping"), run=raising_command)
         self.assertEqual(
             [{"jsonrpc": "2.0", "id": 1, "error": {"code": -32603, "message": "Internal error: broken handler"}},
-             {"jsonrpc": "2.0", "id": 2, "result": {"resultType": "complete"}}],
+             {"jsonrpc": "2.0", "id": 2, "result": {}}],
             replies,
         )
         self.assertEqual("mcp-serve: tools/call failed: RuntimeError('broken handler')\n", logged.getvalue())
@@ -310,7 +320,7 @@ class CommandLineTest(McpServerTest):
         )
         replies = [json.loads(line) for line in result.stdout.splitlines()]
         self.assertEqual(
-            (0, "", [1, 2], {"resultType": "complete"}),
+            (0, "", [1, 2], {}),
             (result.returncode, result.stderr, [reply["id"] for reply in replies], replies[1]["result"]),
         )
         self.assertEqual("[]\n", replies[0]["result"]["content"][0]["text"])

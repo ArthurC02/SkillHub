@@ -212,11 +212,11 @@ def _is_request(message: object) -> bool:
     )
 
 
-def _check_protocol_version(method: str, params: dict) -> None:
+def _declares_its_version(method: str, params: dict) -> bool:
     meta = params.get("_meta") if isinstance(params.get("_meta"), dict) else {}
     requested = meta.get(VERSION_KEY)
     if requested is None and method != "server/discover":
-        return
+        return False
     if requested is None or CAPABILITIES_KEY not in meta:
         raise ProtocolError(INVALID_PARAMS, f"a request must carry _meta {VERSION_KEY} and {CAPABILITIES_KEY}")
     if requested not in SUPPORTED_VERSIONS:
@@ -224,6 +224,7 @@ def _check_protocol_version(method: str, params: dict) -> None:
             UNSUPPORTED_VERSION, "Unsupported protocol version",
             {"supported": list(SUPPORTED_VERSIONS), "requested": requested},
         )
+    return True
 
 
 class McpServer:
@@ -241,17 +242,19 @@ class McpServer:
             return _error(identifier, INVALID_REQUEST, "Invalid Request: expected an object with a method and object params")
         if "id" not in message:
             return None
+        params = message.get("params", {})
         try:
-            result = self.result(message["method"], message.get("params", {}))
+            per_request = _declares_its_version(message["method"], params)
+            result = self.result(message["method"], params)
         except ProtocolError as error:
             return _error(message["id"], error.code, str(error), error.data)
         except Exception as error:
             print(f"mcp-serve: {message['method']} failed: {error!r}", file=sys.stderr)
             return _error(message["id"], INTERNAL_ERROR, f"Internal error: {error}")
-        return {"jsonrpc": "2.0", "id": message["id"], "result": {"resultType": "complete", **result}}
+        shaped = {"resultType": "complete", **result} if per_request else result
+        return {"jsonrpc": "2.0", "id": message["id"], "result": shaped}
 
     def result(self, method: str, params: dict) -> dict[str, Any]:
-        _check_protocol_version(method, params)
         if method == "initialize":
             requested = params.get("protocolVersion")
             version = requested if requested in LEGACY_VERSIONS else LEGACY_VERSIONS[0]

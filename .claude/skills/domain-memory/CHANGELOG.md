@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.95.0
+
+### Fixed
+
+- `mcp-serve` adds `resultType` to a result only when the request declared its protocol version in `_meta` (the 2026-07-28 per-request shape) or is `server/discover`. A session negotiated through `initialize` on 2024-11-05 to 2025-11-25 gets the plain result shape those revisions define; a strict client of 2025-06-18 read the stray `resultType` as the newer cacheable-result shape, demanded `ttlMs` and `cacheScope`, and loaded no tools.
+
 ## 0.94.0
 
 ### Changed
