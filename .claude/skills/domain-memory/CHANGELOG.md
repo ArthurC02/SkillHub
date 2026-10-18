@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.90.0
+
+### Changed
+
+- `mcp-serve` checks a tool's required arguments before running the command. A missing one is reported as the JSON argument the host sent (`get_context: argument id is required`, plural and sorted when several are missing), not as a command-line flag. A command that succeeds and prints a JSON object also returns that object as `structuredContent` beside the unchanged text; the seven tools that always print an object declare an object `outputSchema`, so hosts on 2025-06-18 or later can read results without parsing text. The reference says the server keeps no session: it answers requests sent before `initialize` and accepts a repeated one, which the published lifecycle allows and whose refusal code the newest revision forbids.
+
 ## 0.89.0
 
 ### Fixed

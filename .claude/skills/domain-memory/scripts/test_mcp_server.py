@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from domain_registry import mcp_server
 from domain_registry.cli_commands import run_command
-from domain_registry.mcp_server import READ_ONLY, ServerRoots, serve
+from domain_registry.mcp_server import READ_ONLY, McpServer, Parameter, ServerRoots, Tool, serve
 from test_support import RegistryTestCase
 
 PLUGIN_VERSION = json.loads((Path(__file__).parents[1] / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
@@ -111,6 +111,17 @@ class HandshakeTest(McpServerTest):
             self.exchange(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}), request(7, "ping")),
         )
 
+    def test_requests_before_initialize_and_a_repeated_initialize_are_answered(self) -> None:
+        replies = self.exchange(
+            request(1, "tools/list"), request(2, "initialize", protocolVersion="2025-06-18", capabilities={}),
+            request(3, "initialize", protocolVersion="2025-03-26", capabilities={}),
+        )
+        self.assertEqual(
+            [(1, 13), (2, "2025-06-18"), (3, "2025-03-26")],
+            [(reply["id"], len(reply["result"]["tools"]) if reply["id"] == 1 else reply["result"]["protocolVersion"])
+             for reply in replies],
+        )
+
 
 class ToolListTest(McpServerTest):
     def test_tools_list_offers_exactly_the_read_only_commands_and_no_mutating_one(self) -> None:
@@ -136,14 +147,33 @@ class ToolListTest(McpServerTest):
              schemas["boundary_impact"]["required"], schemas["coverage"]),
         )
 
+    def test_tools_list_names_only_the_tools_key_and_an_object_schema_only_where_output_is_always_an_object(self) -> None:
+        [reply] = self.exchange(request(1, "tools/list"))
+        tools = {tool["name"]: tool for tool in reply["result"]["tools"]}
+        self.assertEqual({"resultType", "tools"}, set(reply["result"]))
+        self.assertEqual(
+            {"name": "coverage",
+             "description": "Report modelling gaps: Contexts without records, unproven rules, records without evidence.",
+             "inputSchema": {"type": "object", "properties": {}, "required": [], "additionalProperties": False},
+             "annotations": {"readOnlyHint": True, "destructiveHint": False, "openWorldHint": False},
+             "outputSchema": {"type": "object",
+                              "description": "The JSON object coverage prints, as references/script-api.md describes it."}},
+            tools["coverage"],
+        )
+        self.assertEqual(
+            {"get_context", "get_record", "dependents", "coverage", "boundary_impact", "verify_evidence", "readiness"},
+            {name for name, tool in tools.items() if "outputSchema" in tool},
+        )
+
 
 class ToolCallTest(McpServerTest):
-    def test_get_context_returns_exactly_what_the_command_prints(self) -> None:
+    def test_get_context_returns_exactly_what_the_command_prints_and_the_same_object_structured(self) -> None:
         self.two_mapped_contexts()
         printed = self.cli("get-context", "--id", "orders")
         self.assertEqual("orders", json.loads(printed)["context"]["id"])
         self.assertEqual(
-            {"resultType": "complete", "content": [{"type": "text", "text": printed}], "isError": False},
+            {"resultType": "complete", "content": [{"type": "text", "text": printed}], "isError": False,
+             "structuredContent": json.loads(printed)},
             self.call("get_context", {"id": "orders"}),
         )
 
@@ -152,10 +182,12 @@ class ToolCallTest(McpServerTest):
         self.change("src/orders/port.py")
         markdown = self.cli("brief", "--base", "HEAD", "--markdown", repo=True)
         result = self.call("brief", {"base": "HEAD", "markdown": True})
-        self.assertEqual((markdown, False), (result["content"][0]["text"], result["isError"]))
+        self.assertEqual((markdown, False, None),
+                         (result["content"][0]["text"], result["isError"], result.get("structuredContent")))
         self.assertFalse(markdown.startswith("{"))
         plain = self.call("brief", {"base": "HEAD", "markdown": False})
         self.assertEqual("no-cross-context-change", json.loads(plain["content"][0]["text"])["verdict"])
+        self.assertEqual(json.loads(plain["content"][0]["text"]), plain["structuredContent"])
 
     def test_resolve_terms_passes_every_query_in_order(self) -> None:
         self.two_contexts()
@@ -170,7 +202,8 @@ class ToolCallTest(McpServerTest):
 
     def test_a_note_the_command_writes_on_stderr_comes_back_as_a_second_text(self) -> None:
         result = self.call("lookup", {"asset": "rules", "query": "zzz"})
-        self.assertEqual(("[]\n", False), (result["content"][0]["text"], result["isError"]))
+        self.assertEqual(("[]\n", False, None),
+                         (result["content"][0]["text"], result["isError"], result.get("structuredContent")))
         self.assertTrue(result["content"][1]["text"].startswith('NOTE: no rules record mentions "zzz"'), result["content"])
 
     def test_list_proposals_reads_a_directory_given_relative_to_the_repository(self) -> None:
@@ -209,10 +242,29 @@ class ToolErrorTest(McpServerTest):
         result = self.call("list_proposals", {"changes_root": "absent"})
         self.assertEqual((True, "ERROR: "), (result["isError"], result["content"][0]["text"][:7]))
 
-    def test_a_missing_required_argument_is_a_tool_error_naming_it(self) -> None:
-        result = self.call("get_context", {})
-        self.assertEqual(True, result["isError"])
-        self.assertIn("the following arguments are required: --id", result["content"][0]["text"])
+    def test_missing_required_arguments_are_tool_errors_naming_them_as_json_arguments(self) -> None:
+        cases = [
+            ("one", "get_context", {}, "ERROR: get_context: argument id is required\n"),
+            ("two, sorted", "get_record", {}, "ERROR: get_record: arguments asset, id are required\n"),
+            ("one of two", "lookup", {"query": "order"}, "ERROR: lookup: argument asset is required\n"),
+        ]
+        for name, tool, arguments, message in cases:
+            with self.subTest(name):
+                self.assertEqual({"resultType": "complete", "content": [{"type": "text", "text": message}], "isError": True},
+                                 self.call(tool, arguments))
+
+    def test_missing_required_arguments_are_named_in_alphabetical_order_not_declaration_order(self) -> None:
+        declared_backwards = Tool("probe", "Probe.", (), (Parameter("zone", required=True), Parameter("area", required=True)))
+        server = McpServer(ServerRoots(self.repo, self.repo), run_command)
+        with self.assertRaisesRegex(ValueError, r"^probe: arguments area, zone are required$"):
+            server.command_line(declared_backwards, {})
+
+    def test_a_failing_command_that_prints_a_json_object_returns_no_structured_content(self) -> None:
+        self.seed_two_cited_rules()
+        result = self.call("verify_evidence", {"strict": True})
+        self.assertEqual((True, 1, None),
+                         (result["isError"], json.loads(result["content"][0]["text"])["summary"]["shifted"],
+                          result.get("structuredContent")))
 
     def test_unknown_tools_methods_and_non_object_arguments_are_json_rpc_errors(self) -> None:
         cases = [

@@ -84,13 +84,14 @@ class Tool:
     description: str
     roots: tuple[str, ...]
     parameters: tuple[Parameter, ...] = ()
+    prints_object: bool = False
 
     @property
     def name(self) -> str:
         return self.command.replace("-", "_")
 
     def listing(self) -> dict[str, Any]:
-        return {
+        listing = {
             "name": self.name,
             "description": self.description,
             "inputSchema": {
@@ -101,6 +102,12 @@ class Tool:
             },
             "annotations": {"readOnlyHint": True, "destructiveHint": False, "openWorldHint": False},
         }
+        if self.prints_object:
+            listing["outputSchema"] = {
+                "type": "object",
+                "description": f"The JSON object {self.command} prints, as references/script-api.md describes it.",
+            }
+        return listing
 
 
 ASSET = Parameter("asset", required=True, choices=tuple(ASSET_CHOICES))
@@ -108,29 +115,29 @@ RECORD_ID = Parameter("id", required=True)
 
 TOOLS = (
     Tool("get-context", "Retrieve a Context model: its vocabulary, aggregates, rules, contracts and collaborations.",
-         (REGISTRY_ROOT,), (RECORD_ID, Parameter("summary", "boolean"))),
+         (REGISTRY_ROOT,), (RECORD_ID, Parameter("summary", "boolean")), prints_object=True),
     Tool("get-record", "Retrieve one Registry record exactly as stored, with the tests that prove a reviewed rule or contract.",
-         (REGISTRY_ROOT,), (ASSET, RECORD_ID)),
+         (REGISTRY_ROOT,), (ASSET, RECORD_ID), prints_object=True),
     Tool("resolve-terms", "Resolve vocabulary: which reviewed term each query names, and which records mention it.",
          (REGISTRY_ROOT,),
          (Parameter("query", "array", required=True), Parameter("context"), Parameter("with_mentions", "boolean"))),
     Tool("lookup", "Search one asset of the Registry by text.", (REGISTRY_ROOT,),
          (ASSET, Parameter("query", required=True))),
     Tool("dependents", "Follow a record's relations: every record a change to it may touch.", (REGISTRY_ROOT,),
-         (ASSET, RECORD_ID)),
+         (ASSET, RECORD_ID), prints_object=True),
     Tool("coverage", "Report modelling gaps: Contexts without records, unproven rules, records without evidence.",
-         (REGISTRY_ROOT,)),
+         (REGISTRY_ROOT,), prints_object=True),
     Tool("brief", "Brief a change since a base revision, or one record given by asset and id, before review.",
          BOTH_ROOTS,
          (Parameter("base"), Parameter("asset", choices=tuple(ASSET_CHOICES)), Parameter("id"),
           Parameter("markdown", "boolean"))),
     Tool("boundary-impact", "Find the Context boundaries a change since a base revision touches.", BOTH_ROOTS,
-         (Parameter("base", required=True),)),
+         (Parameter("base", required=True),), prints_object=True),
     Tool("verify-evidence", "Verify that the Registry's citations still match the code, for every file or the given paths.",
-         BOTH_ROOTS, (Parameter("path", "array"), Parameter("strict", "boolean"))),
+         BOTH_ROOTS, (Parameter("path", "array"), Parameter("strict", "boolean")), prints_object=True),
     Tool("validate", "Validate the Registry's shape and references.", BOTH_ROOTS,
          (Parameter("require_reviewed", "boolean"),)),
-    Tool("readiness", "Assess what Domain Memory work this repository is ready for.", BOTH_ROOTS),
+    Tool("readiness", "Assess what Domain Memory work this repository is ready for.", BOTH_ROOTS, prints_object=True),
     Tool("list-proposals", "List the Change Packages under a directory with their state.", (),
          (Parameter("changes_root", required=True, inside_repository=True),)),
     Tool("validate-change-package", "Validate a Change Package, or preview what the next stage still needs.",
@@ -187,6 +194,14 @@ def _error(identifier: object, code: int, message: str, data: object = None) -> 
     if data is not None:
         error["data"] = data
     return {"jsonrpc": "2.0", "id": identifier, "error": error}
+
+
+def _json_object(printed: str) -> dict[str, Any] | None:
+    try:
+        parsed = json.loads(printed)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 def _is_request(message: object) -> bool:
@@ -269,7 +284,11 @@ class McpServer:
                 print(f"ERROR: {error}")
                 exit_code = 1
         content = [{"type": "text", "text": text} for text in (printed.getvalue(), noted.getvalue()) if text]
-        return {"content": content, "isError": exit_code != 0}
+        result: dict[str, Any] = {"content": content, "isError": exit_code != 0}
+        structured = None if exit_code else _json_object(printed.getvalue())
+        if structured is not None:
+            result["structuredContent"] = structured
+        return result
 
     def command_line(self, tool: Tool, arguments: dict[str, object]) -> list[str]:
         known = {parameter.name: parameter for parameter in tool.parameters}
@@ -277,6 +296,12 @@ class McpServer:
         if unknown:
             raise ValueError(
                 f"{tool.name} takes no argument {', '.join(unknown)}; it takes {', '.join(known) or 'none'}"
+            )
+        missing = sorted(parameter.name for parameter in tool.parameters if parameter.required and parameter.name not in arguments)
+        if missing:
+            raise ValueError(
+                f"{tool.name}: argument {missing[0]} is required" if len(missing) == 1
+                else f"{tool.name}: arguments {', '.join(missing)} are required"
             )
         words = [tool.command]
         for flag in tool.roots:
