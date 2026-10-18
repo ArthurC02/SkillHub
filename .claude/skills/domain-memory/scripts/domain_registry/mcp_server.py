@@ -13,6 +13,8 @@ from .changes import PREVIEW_STATUSES
 from .cli_parser import ASSET_CHOICES, UsageError
 
 MODERN_VERSIONS = ("2026-07-28",)
+CACHEABLE_METHODS = ("server/discover", "tools/list")
+CACHE_HINTS = {"ttlMs": 300_000, "cacheScope": "public"}
 LEGACY_VERSIONS = ("2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05")
 SUPPORTED_VERSIONS = (*MODERN_VERSIONS, *LEGACY_VERSIONS)
 VERSION_KEY = "io.modelcontextprotocol/protocolVersion"
@@ -251,7 +253,8 @@ class McpServer:
         except Exception as error:
             print(f"mcp-serve: {message['method']} failed: {error!r}", file=sys.stderr)
             return _error(message["id"], INTERNAL_ERROR, f"Internal error: {error}")
-        shaped = {"resultType": "complete", **result} if per_request else result
+        hints = CACHE_HINTS if message["method"] in CACHEABLE_METHODS else {}
+        shaped = {"resultType": "complete", **result, **hints} if per_request else result
         return {"jsonrpc": "2.0", "id": message["id"], "result": shaped}
 
     def result(self, method: str, params: dict) -> dict[str, Any]:

@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.96.0
+
+### Fixed
+
+- `mcp-serve` puts the caching hints the 2026-07-28 revision requires, `ttlMs` 300000 and `cacheScope` `public`, on `server/discover` and `tools/list` results of a per-request session. A real host that discovers and lists without `initialize` rejected the list without them and loaded no tools; a session negotiated through `initialize` is unchanged.
+
 ## 0.95.0
 
 ### Fixed

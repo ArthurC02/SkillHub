@@ -85,9 +85,22 @@ class HandshakeTest(McpServerTest):
         [reply] = self.exchange(request("d", "server/discover", _meta=MODERN_META))
         self.assertEqual(
             {"resultType": "complete", "supportedVersions": EVERY_VERSION, "capabilities": {"tools": {"listChanged": False}},
-             "_meta": {"io.modelcontextprotocol/serverInfo": {"name": "domain-memory", "version": PLUGIN_VERSION}}},
+             "_meta": {"io.modelcontextprotocol/serverInfo": {"name": "domain-memory", "version": PLUGIN_VERSION}},
+             "ttlMs": 300000, "cacheScope": "public"},
             reply["result"],
         )
+
+    def test_a_host_that_discovers_then_lists_without_initialize_gets_the_cache_hints_it_requires(self) -> None:
+        replies = self.exchange(
+            request(0, "server/discover", _meta=MODERN_META), request(1, "tools/list", _meta=MODERN_META),
+            request(2, "tools/list"), request(3, "ping", _meta=MODERN_META),
+        )
+        self.assertEqual(
+            [(0, 300000, "public", "complete"), (1, 300000, "public", "complete"), (2, None, None, None), (3, None, None, "complete")],
+            [(reply["id"], reply["result"].get("ttlMs"), reply["result"].get("cacheScope"), reply["result"].get("resultType"))
+             for reply in replies],
+        )
+        self.assertEqual(13, len(replies[1]["result"]["tools"]))
 
     def test_a_modern_request_with_an_unsupported_or_incomplete_meta_is_refused(self) -> None:
         cases = [
