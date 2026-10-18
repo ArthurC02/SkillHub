@@ -67,8 +67,19 @@ class CliReadTest(RegistryTestCase):
         root = self.repo / "memory"
         summary = self.run_cli("probe", "--repo-root", str(self.repo), "--registry-root", str(root))
         self.assertEqual(
-            (1, f"Domain Memory at {root}: stale. 1 sources moved (docs); "
+            (1, f"Domain Memory at {root}: stale. 1 selected sources gained, lost or renamed files (docs); "
                 "run refresh-sources, then have a developer run confirm-sources."),
+            (summary.returncode, summary.stdout.strip()),
+        )
+
+    def test_the_probe_of_a_selection_changed_only_inside_stays_current_and_points_at_verify_evidence(self) -> None:
+        self.selection_with_two_sources()
+        (self.repo / "docs" / "kept.md").write_text("edited", encoding="utf-8")
+        root = self.repo / "memory"
+        summary = self.run_cli("probe", "--repo-root", str(self.repo), "--registry-root", str(root))
+        self.assertEqual(
+            (0, f"Domain Memory at {root}: current, agent-asserted, established by hash; "
+                "1 selected sources changed inside (docs); verify-evidence checks the citations."),
             (summary.returncode, summary.stdout.strip()),
         )
 

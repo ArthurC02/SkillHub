@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.git import run_bounded
+from domain_registry.git import TIMEOUT_VARIABLE, deadline_seconds, run_bounded
 
 DEADLINE_SECONDS = 2
 RETURNS_WITHIN_SECONDS = 10
@@ -53,16 +53,46 @@ class BoundedCommandTest(unittest.TestCase):
             script, pid_file = Path(temporary) / "hang.py", Path(temporary) / "grandchild.pid"
             script.write_text(HANGING_COMMAND.format(sleep=GRANDCHILD_SLEEP_SECONDS), encoding="utf-8")
             started = time.monotonic()
-            with patch("domain_registry.git.GIT_COMMAND_TIMEOUT_SECONDS", DEADLINE_SECONDS), \
+            with patch.dict(os.environ, {TIMEOUT_VARIABLE: str(DEADLINE_SECONDS)}), \
                     self.assertRaises(subprocess.TimeoutExpired) as stopped:
                 run_bounded([sys.executable, str(script), str(pid_file)], errors="replace")
             elapsed = time.monotonic() - started
             grandchild = int(pid_file.read_text(encoding="utf-8"))
             self.assertEqual(
-                (f"timed out after {DEADLINE_SECONDS} seconds", True, True),
+                (f"timed out after {DEADLINE_SECONDS} seconds; set {TIMEOUT_VARIABLE} to a larger number of "
+                 "seconds to wait longer", True, True),
                 (str(stopped.exception).split("' ")[-1], elapsed < RETURNS_WITHIN_SECONDS,
                  gone_within(grandchild, GONE_WITHIN_SECONDS)),
             )
+
+    def test_a_git_read_that_times_out_says_a_rerun_is_safe(self) -> None:
+        with patch.dict(os.environ, {TIMEOUT_VARIABLE: "1"}), \
+                patch("domain_registry.git.subprocess.Popen") as popen,                 patch("domain_registry.git._kill_process_tree"):
+            popen.return_value.communicate.side_effect = [subprocess.TimeoutExpired(["git"], 1), (b"", b"")]
+            with self.assertRaises(subprocess.TimeoutExpired) as stopped:
+                run_bounded(["git", "-C", "repo", "ls-tree", "HEAD"])
+        self.assertEqual(
+            "Command '['git', '-C', 'repo', 'ls-tree', 'HEAD']' timed out after 1 seconds; nothing was written, so "
+            f"it is safe to run again; set {TIMEOUT_VARIABLE} to a larger number of seconds to wait longer",
+            str(stopped.exception),
+        )
+
+    def test_the_deadline_is_fifteen_seconds_unless_the_variable_gives_a_positive_number(self) -> None:
+        for given, expected in (
+            (None, 15), ("2", 2), ("2.5", 2.5), ("0", "must be a positive number of seconds, not '0'"),
+            ("-1", "must be a positive number of seconds, not '-1'"),
+            ("soon", "must be a positive number of seconds, not 'soon'"),
+        ):
+            with self.subTest(given=given), patch.dict(os.environ, {}, clear=False):
+                os.environ.pop(TIMEOUT_VARIABLE, None)
+                if given is not None:
+                    os.environ[TIMEOUT_VARIABLE] = given
+                if isinstance(expected, str):
+                    with self.assertRaises(ValueError) as refused:
+                        deadline_seconds()
+                    self.assertEqual(f"{TIMEOUT_VARIABLE} {expected}", str(refused.exception))
+                else:
+                    self.assertEqual(expected, deadline_seconds())
 
     def test_a_command_that_finishes_in_time_returns_its_exit_code_and_output(self) -> None:
         finished = run_bounded([sys.executable, "-c", "import sys; print('out'); sys.exit(3)"], errors="replace")

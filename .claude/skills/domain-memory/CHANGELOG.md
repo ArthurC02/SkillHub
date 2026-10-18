@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.10
+
+### Changed
+
+- `probe` on a stale selection says that selected sources gained, lost or renamed files, which is what `verify-sources` reports, instead of "moved"; and a current selection whose files changed only inside is reported with their count and `verify-evidence` named, where before the sentence said nothing.
+
+### Fixed
+
+- The git deadline can be raised: `DOMAIN_MEMORY_GIT_TIMEOUT` gives the number of seconds, default 15, and a value that is not a positive number is refused before any command starts. The timeout refusal names the variable and, for a git read, says that nothing was written, so running the command again is safe.
+
 ## 1.2.9
 
 ### Changed

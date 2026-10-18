@@ -54,17 +54,23 @@ def probe_summary(result: dict, registry_root: Path) -> str:
             "a developer decides whether to create one."
         )
     if result["status"] == "current":
-        return (
-            f"{where}: current, {result['selection_status']}, "
-            f"established by {result['checked']}."
+        changed_inside = result.get("content_changed", [])
+        inside = (
+            f"; {len(changed_inside)} selected sources changed inside ({_named(changed_inside)}); "
+            "verify-evidence checks the citations"
+            if changed_inside else ""
         )
+        return f"{where}: current, {result['selection_status']}, established by {result['checked']}{inside}."
     if result["status"] == "stale":
-        names = ", ".join(source["path"] for source in result["changed_sources"][:5])
         return (
-            f"{where}: stale. {len(result['changed_sources'])} sources moved "
-            f"({names}); run refresh-sources, then have a developer run confirm-sources."
+            f"{where}: stale. {len(result['changed_sources'])} selected sources gained, lost or renamed files "
+            f"({_named(result['changed_sources'])}); run refresh-sources, then have a developer run confirm-sources."
         )
     return f"{where}: {result['status']}. {result.get('reason', '')}".strip()
+
+
+def _named(sources: list[dict]) -> str:
+    return ", ".join(source["path"] for source in sources[:5])
 
 
 def handle_lookup(args: argparse.Namespace) -> int:
