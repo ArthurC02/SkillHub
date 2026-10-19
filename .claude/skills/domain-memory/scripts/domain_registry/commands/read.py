@@ -36,7 +36,7 @@ from ..registry import (
     record_by_id,
 )
 from ..search import CONSTRAINT_ASSETS, MATCH_KINDS, every_resolved_term, prose_mentions, ranked_lookup
-from ..sources import counted, probe_sources
+from ..sources import REFRESH_LISTING_ADVICE, counted, probe_sources
 from ..store import committed_documents, read_document
 from .common import print_json
 
@@ -63,7 +63,7 @@ def probe_summary(result: dict, registry_root: Path) -> str:
         gone, unlisted = len(result.get("discovered_but_gone", [])), len(result.get("discovered_but_unlisted", []))
         drifted = (
             f"; discovery drifted: {counted(gone, 'listed path')} gone, {counted(unlisted, 'matching path')} "
-            "unlisted; run refresh-listing (no confirmation needed)"
+            f"unlisted; {REFRESH_LISTING_ADVICE}"
             if result["status"] == "discovery_drifted" else ""
         )
         return f"{where}: current, {result['selection_status']}, established by {result['checked']}{inside}{drifted}."

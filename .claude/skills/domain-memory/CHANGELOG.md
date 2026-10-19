@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.12
+
+### Changed
+
+- The discovery-drift advice of `probe` and `verify-sources` reads `run refresh-listing --registry-root <root> --repo-root <repo> (no confirmation needed)`, naming the flags the command takes, since the reader otherwise copies the flags of the command that printed it.
+
 ## 1.2.11
 
 ### Fixed
