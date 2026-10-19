@@ -13,6 +13,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.cli import main
+from domain_registry.common import DOMAIN_MEMORY_HINT
 from domain_registry.evidence import citation
 from domain_registry.registry import asset_records
 from domain_registry.sources import probe_sources, shown_argument
@@ -91,6 +92,26 @@ class CliReadTest(RegistryTestCase):
         self.assertEqual(
             (0, 0, f"Domain Memory at {root}: current, agent-asserted, established by git."),
             (refreshed.returncode, after.returncode, after.stdout.strip()),
+        )
+
+    def test_a_registry_root_beside_the_real_one_is_refused_with_the_real_one_named_and_nothing_created(self) -> None:
+        self.committed_source_map()
+        memory, typo = self.repo / "memory", self.repo / "memory" / "typo"
+        for given in (typo, self.repo):
+            with self.subTest(given.name):
+                result = self.run_cli("refresh-listing", "--registry-root", str(given), "--repo-root", str(self.repo))
+                self.assertEqual(
+                    (1, f"ERROR: no Domain Memory at {given}: {DOMAIN_MEMORY_HINT}; did you mean {memory.as_posix()}?\n",
+                     False),
+                    (result.returncode, result.stderr, typo.exists()),
+                )
+
+    def test_the_probe_of_a_root_with_no_domain_memory_nearby_says_to_check_the_option_before_initializing(self) -> None:
+        nowhere = self.repo / "nowhere"
+        summary = self.run_cli("probe", "--repo-root", str(self.repo), "--registry-root", str(nowhere))
+        self.assertEqual(
+            (2, f"Domain Memory at {nowhere}: none; {DOMAIN_MEMORY_HINT}."),
+            (summary.returncode, summary.stdout.strip()),
         )
 
     def test_an_advised_path_is_posix_and_quoted_only_when_it_holds_a_space(self) -> None:

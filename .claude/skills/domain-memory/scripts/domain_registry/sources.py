@@ -7,6 +7,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .common import (
+    domain_memory_hint,
     completed_identifier,
     load_json,
     one_level_too_deep_hint,
@@ -453,9 +454,7 @@ def confirm_sources(
 ) -> dict[str, Any]:
     path = root / "source-map.json"
     if not path.is_file():
-        raise ValueError(
-            f"no source map at {path}: initialize the Domain Memory before confirming its sources"
-        )
+        raise ValueError(f"no Domain Memory at {root}: {domain_memory_hint(root)}")
     if not completed_identifier(confirmed_by):
         raise ValueError(
             "confirming sources records who chose them, so it needs the developer's own identity as they gave it. "
@@ -496,10 +495,7 @@ def confirm_sources(
 def _selected_paths(root: Path) -> list[str]:
     path = root / "source-map.json"
     if not path.is_file():
-        raise ValueError(
-            f"no source map at {path}: "
-            "initialize the Domain Memory before refreshing it"
-        )
+        raise ValueError(f"no Domain Memory at {root}: {domain_memory_hint(root)}")
     selected = load_json(path).get("selected_paths")
     if not isinstance(selected, list) or not all(
         isinstance(item, str) and item.strip() for item in selected
@@ -559,9 +555,7 @@ def refresh_listing(
 ) -> dict[str, list[str]]:
     path = root / "source-map.json"
     if not path.is_file():
-        raise ValueError(
-            f"no source map at {path}: initialize the Domain Memory before refreshing its listing"
-        )
+        raise ValueError(f"no Domain Memory at {root}: {domain_memory_hint(root)}")
     verdict = verify_source_map(repo_root, path, policy)
     if verdict["status"] != "current":
         raise ValueError(

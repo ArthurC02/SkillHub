@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.14
+
+### Fixed
+
+- A refusal on a missing source map or `registry/` no longer ends with "initialize the Domain Memory before ...", which led an agent with a mistyped `--registry-root` to create a second, empty Registry at the wrong path. Every such refusal (`confirm-sources`, `refresh-sources`, `refresh-listing`, the Registry reads and `validate`, and `probe`'s "none" line) now ends "check --registry-root (a Registry holds registry/ and source-map.json); initialize one only if this repository has none yet", and names a Domain Memory found one directory up or down from the path given: "; did you mean <path>?". The sentence for a root that is the `registry/` directory itself is replaced by that did-you-mean.
+
 ## 1.2.13
 
 ### Fixed

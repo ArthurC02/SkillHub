@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .common import (
+    domain_memory_hint,
     ASSET_FORMATS,
     ASSET_KEYS,
     find_record,
@@ -65,10 +66,10 @@ def has_registry(root: Path) -> bool:
 
 
 def missing_registry(root: Path) -> str:
-    message = f"no Domain Registry at {root}: it holds neither registry/{INDEX} nor registry/{MANIFEST}"
-    if root.name == "registry" and has_registry(root.parent):
-        return f"{message}; {root} is the registry/ directory itself, so pass the directory that contains it, {root.parent}"
-    return message
+    return (
+        f"no Domain Registry at {root}: it holds neither registry/{INDEX} nor registry/{MANIFEST}; "
+        f"{domain_memory_hint(root)}"
+    )
 
 
 def manifest_document() -> dict[str, Any]:
