@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.21
+
+### Fixed
+
+- `scan-secrets` walked the whole directory tree, so inside a repository it read ignored paths such as virtual environments and build caches, took minutes, hit its limits, and reported third-party code as findings. Inside a repository it now reads the files git tracks or would add (`git ls-files --cached --others --exclude-standard`) and walks the directory only outside one.
+- A binary file, recognized by a NUL byte in its first 8 KiB, is read no further instead of being searched line by line.
+
 ## 1.2.20
 
 ### Changed

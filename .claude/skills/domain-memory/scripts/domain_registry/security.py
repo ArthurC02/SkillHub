@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from .git import run_git
 
 PATTERNS = {
     "private-key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
@@ -19,6 +22,8 @@ UNSCANNED_DIRECTORIES = {".git", "node_modules", ".venv"}
 MAX_SCAN_FILES = 50_000
 MAX_SCAN_BYTES = 512 * 1024 * 1024
 MAX_FILE_BYTES = 1_048_576
+BINARY_PROBE_BYTES = 8192
+BINARY_PROBE_BYTES = 8192
 MAX_REPORTED_SKIPS = 1_000
 
 
@@ -51,8 +56,12 @@ class Scan:
 
     def read(self, path: Path) -> None:
         shown = path.relative_to(self.root).as_posix()
-        with path.open(encoding="utf-8", errors="ignore") as source:
-            for number, line in enumerate(source, 1):
+        with path.open("rb") as source:
+            if b"\0" in source.read(BINARY_PROBE_BYTES):
+                return
+            source.seek(0)
+            for number, raw in enumerate(source, 1):
+                line = raw.decode("utf-8", errors="ignore")
                 self.findings.extend(
                     {"path": shown, "line": number, "kind": kind}
                     for kind, pattern in PATTERNS.items()
@@ -61,6 +70,31 @@ class Scan:
 
 
 def _scannable_files(root: Path, scan: Scan):
+    listed = _files_known_to_git(root)
+    if listed is None:
+        yield from _walked_files(root, scan)
+        return
+    for entry in listed:
+        path = root / entry
+        if any(part in UNSCANNED_DIRECTORIES for part in Path(entry).parts):
+            continue
+        if path.is_symlink():
+            scan.skip(path, "symlink")
+        elif path.is_file():
+            yield path
+
+
+def _files_known_to_git(root: Path) -> list[str] | None:
+    try:
+        result = run_git(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    return [entry for entry in result.stdout.split("\0") if entry]
+
+
+def _walked_files(root: Path, scan: Scan):
     for directory, children, files in os.walk(root):
         here = Path(directory)
         kept = []

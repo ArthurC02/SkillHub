@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 import tempfile
 import unittest
@@ -11,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.common import load_json
 from domain_registry.evidence import digest
+from domain_registry.git import toplevel
 from domain_registry.impact import boundary_impact
 from domain_registry.policy import validate_policy
 from domain_registry.readiness import assess_readiness
@@ -877,6 +879,39 @@ class SourcesTest(RegistryTestCase):
         report = scan_report(secrets)
         self.assertEqual("incomplete", report["status"])
         self.assertEqual("file-too-large", report["skipped"][0]["reason"])
+
+    def test_a_secret_scan_inside_a_repository_leaves_ignored_paths_unread_and_stays_complete(self) -> None:
+        secrets = self.repo / "leaky"
+        (secrets / "ignored").mkdir(parents=True)
+        (secrets / ".gitignore").write_text("/ignored/\n", encoding="utf-8")
+        (secrets / "ignored" / "leak.env").write_bytes(b"ghp_" + b"g" * 30)
+        (secrets / "kept.env").write_bytes(b"ghp_" + b"h" * 30)
+        report = scan_report(secrets)
+        self.assertEqual(
+            ("complete", [{"path": "kept.env", "line": 1, "kind": "github-token"}], 2, 0),
+            (report["status"], report["findings"], report["scanned_files"], report["skipped_count"]),
+        )
+
+    def test_a_secret_scan_reads_no_further_into_a_file_that_is_binary_by_content(self) -> None:
+        secrets = self.repo / "leaky"
+        secrets.mkdir()
+        (secrets / "cache.bin").write_bytes(b"\0PK\n" + b"ghp_" + b"i" * 30 + b"\n")
+        (secrets / "text.env").write_bytes(b"ghp_" + b"j" * 30)
+        report = scan_report(secrets)
+        self.assertEqual(
+            ("complete", [{"path": "text.env", "line": 1, "kind": "github-token"}]),
+            (report["status"], report["findings"]),
+        )
+
+    def test_a_secret_scan_outside_a_repository_walks_the_directory(self) -> None:
+        plain = self.repo.parent / f"{self.repo.name}-plain"
+        plain.mkdir()
+        self.addCleanup(shutil.rmtree, plain)
+        (plain / "ci.env").write_bytes(b"ghp_" + b"k" * 30)
+        self.assertEqual(
+            (None, [{"path": "ci.env", "line": 1, "kind": "github-token"}]),
+            (toplevel(plain), scan_report(plain)["findings"]),
+        )
 
     def test_readiness_calls_a_repository_without_product_sources_empty(self) -> None:
         result = assess_readiness(self.repo)
