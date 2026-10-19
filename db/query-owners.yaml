@@ -631,14 +631,14 @@ retention:
   evaluation_grader_versions: with_owner deleted with its grader
   artifacts: expire objects past retention, maintenance purge-run-artifacts marks the row
   download_artifacts: expire objects past DOWNLOAD_ARTIFACT_RETENTION, the row stays
-  download_records: keep
+  download_records: with_owner deleted by account purge
   publishers: keep
-  publications: keep
-  publication_releases: keep
-  bundles: keep
-  bundle_versions: keep
-  bundle_members: keep
-  exposure_reviews: keep
+  publications: with_owner deleted by account purge; the publisher row stays
+  publication_releases: with_owner deleted with its publication
+  bundles: with_owner deleted by account purge
+  bundle_versions: with_owner deleted with its bundle
+  bundle_members: with_owner deleted with its bundle version
+  exposure_reviews: with_owner deleted with its publication
   download_artifact_members: keep
   download_object_cleanup_intents: transient deleted once the object is gone
   evaluations: archivable

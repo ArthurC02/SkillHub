@@ -962,7 +962,7 @@ Skill 執行時可以用平台的兩個工具補 Context：提問工具把只有
 
 允收準則：
 
-- Given 一個 Workspace 有若干筆 `credit_entries`，When 讀取該 Workspace 的 Credit 餘額，Then 回傳值等於該 Workspace 名下全部分錄金額的代數和。有一條測試證明：對同一個 Workspace 寫入一組已知金額的 `debit`／`grant`／`adjustment` 分錄後，讀出的餘額與手算的和相等。
+- Credit 屬於帳號，不屬於 Workspace：從 Workspace 發起的消費與營運者發放，都記到該 Workspace 擁有者的帳號。Given 一個帳號有若干筆 `credit_entries`，When 讀取該帳號的 Credit 餘額，Then 回傳值等於該帳號名下全部分錄金額的代數和。有一條測試證明：對同一個帳號寫入一組已知金額的 `debit`／`grant`／`adjustment` 分錄後，讀出的餘額與手算的和相等。
 - 分錄一經寫入不可修改（同 `skill_versions` 等表的既有不可變紀律，鐵律 4）。有一條測試證明：對既有分錄列的 `UPDATE`／`DELETE` 被資料庫拒絕（比照 `db/tests/immutability_test.sql` 的既有形狀）；更正一律以新的 `adjustment` 分錄表達，不得原地改寫。
 - 每一筆扣點分錄必須指向產生它的那一筆 `cost_events`。有一條測試證明：插入一筆沒有對應 `cost_events` 的扣點分錄被拒絕。
 - 物化的餘額欄位與分錄之和的同步為交易內同步（同[Credit 計量與扣款](../adr/README.md#credit-計量與扣款)決策 4）。有一條測試證明：分錄寫入與物化欄位更新在同一個資料庫交易內；交易中止時兩者都不生效，不出現「分錄寫了、餘額沒動」或反過來的中間狀態。
@@ -974,7 +974,7 @@ Skill 執行時可以用平台的兩個工具補 Context：提問工具把只有
 
 - 換算公式為「扣除額 = 無條件進位（`cost_events` 的 `usd_micros` × 當時生效的加成 ÷ 面額）」，面額與加成為部署設定值，出貨預設面額 1 credit = US$0.001、加成 1.3（存 basis points，13000）。有一條測試證明：對一組已知 `usd_micros` 輸入，換算結果等於手算的無條件進位值，且挑一組刻意落在非整數邊界的輸入時，斷言結果不等於四捨五入或無條件捨去會得出的值。
 - 每一筆分錄記下寫入當時生效的面額與加成值，不引用設定的即時值。有一條測試證明：寫入一筆分錄後修改部署設定的加成值，重讀該筆舊分錄記錄的加成值不變。
-- 讀不到平台實際成本時（呼叫本身失敗於回報成本之前，或閘道未回報），以呼叫前的預留額計算扣除額，並在對應的 `cost_events`／`credit_entries` 上標記 `estimated`。有一條測試證明：對回報成本為空的一次呼叫，扣除額等於預留額換算後的進位值，且不等於 0（同既有 `settleCost` 對 `UsageUnknown` 的既有處理，絕不因讀不到成本而視為免費）。
+- 讀不到平台實際成本時（呼叫本身失敗於回報成本之前，或閘道未回報），只寫一筆以呼叫前預留額計值、標記 `estimated` 的 `cost_events`，**不寫扣點分錄**，餘額不變（[`05` R-85](05-pending-rulings.md)）。有一條測試證明：對回報成本為空的一次呼叫，成本事件記下預留額且標記為估計值，而該帳號的分錄筆數與餘額都不變。
 
 #### CRED-003：消費三道閘——開始前、每步負債下限、既有單場上限不變
 
@@ -1498,7 +1498,7 @@ Skill 執行時可以用平台的兩個工具補 Context：提問工具把只有
 允收準則：
 
 - 角色只有兩種：**`member`**（預設，權限完全由 Workspace Scope 決定）與 **`operator`**（平台管理員）。角色是平台層屬性，不是 Workspace 成員屬性。
-- **operator 可以做的事，窮舉如下**：①變更目錄項的可見性（下架／恢復）；②停用某個 Skill Version，使其不得被新的 Run 引用；③白名單的新增、否決與下架異動（`CONTENT-001`）；**④變更一個 Skill 的再散布判定（`skills.redistribution`），並且只有這一項在改成 `allowed` 時必須具名它依據的授權證據**（`license_expression` ＋來源層級，且必須與該 Skill 最新版本凍結的快照相符，見[打包、授權溯源與散布](../adr/README.md#打包授權溯源與散布)）。清單以外的動作一律不因 operator 身分而被允許。<br>**這句窮舉管的是什麼**（[`05` R-84](05-pending-rulings.md)）：它窮舉的是**跨 Workspace 作用在他人內容上的動作**，不是「operator 這個身分做過的每一件事」。派送煞車（`SEC-012`）與模型呼叫逾時（`OPS-009`）都不在清單上、也不該被加進來——它們改的是平台對自己的能力提供者的行為，一格 Workspace 資料都不碰，各自的允收準則在自己的需求裡。**分界線是「這個動作會不會改變別人看得到或拿得到的東西」**：會，就要進這張清單；不會，就是平台維運開關，另立需求並照樣寫稽核。**窮舉清單只在有人回來加行的時候才是窮舉的**，所以加的不只是一行，是這句界定。<br>**實作狀態**：①**完整下架已落地**——`PUT /admin/skills/{id}/takedown`（`RequireOperator`）寫的是與 owner-scoped `POST /skills/{id}/takedown` **同一個 `takedown_at`**，所以 410 與搜尋排除只有一套，符合本節末條「不得為 operator 另開第二套」；較輕等級「授權受限展示」見下方追加小節與 `03` `SEC-011`。④**已落地**（`PUT /admin/skills/{id}/redistribution`）。**②③ 仍未實作**：`router.go` 的 `RequireOperator` 路由今天只有 restriction 兩條、redistribution、takedown 與 `SEC-012` 的三條派送開關，**沒有「停用某個 Skill Version」也沒有白名單異動的端點**。窮舉清單本身不因未實作而縮減：它界定的是「即使實作了也不得超出」的上界。
+- **operator 可以做的事，窮舉如下**：①變更目錄項的可見性（下架／恢復）；②停用某個 Skill Version，使其不得被新的 Run 引用；③白名單的新增、否決與下架異動（`CONTENT-001`）；**④變更一個 Skill 的再散布判定（`skills.redistribution`），並且只有這一項在改成 `allowed` 時必須具名它依據的授權證據**（`license_expression` ＋來源層級，且必須與該 Skill 最新版本凍結的快照相符，見[打包、授權溯源與散布](../adr/README.md#打包授權溯源與散布)）。清單以外的動作一律不因 operator 身分而被允許。<br>**這句窮舉管的是什麼**（[`05` R-84](05-pending-rulings.md)）：它窮舉的是**跨 Workspace 作用在他人內容上的動作**，不是「operator 這個身分做過的每一件事」。派送煞車（`SEC-012`）與模型呼叫逾時（`OPS-009`）都不在清單上、也不該被加進來——它們改的是平台對自己的能力提供者的行為，一格 Workspace 資料都不碰，各自的允收準則在自己的需求裡。**分界線是「這個動作會不會改變別人看得到或拿得到的東西」**：會，就要進這張清單；不會，就是平台維運開關，另立需求並照樣寫稽核。**窮舉清單只在有人回來加行的時候才是窮舉的**，所以加的不只是一行，是這句界定。<br>**實作狀態**：①**完整下架已落地**——`PUT /admin/skills/{id}/takedown`（`RequireOperator`）寫的是與 owner-scoped `POST /skills/{id}/takedown` **同一個 `takedown_at`**，所以 410 與搜尋排除只有一套，符合本節末條「不得為 operator 另開第二套」；**①的「恢復」未實作**，營運者與擁有者都沒有恢復路由，今天只能清欄位再跑 `maintenance reindex`；較輕等級「授權受限展示」見下方追加小節與 `03` `SEC-011`。④**已落地**（`PUT /admin/skills/{id}/redistribution`）。**②③ 仍未實作**：`router.go` 的 `RequireOperator` 路由今天只有 restriction 兩條、redistribution、takedown 與 `SEC-012` 的三條派送開關，**沒有「停用某個 Skill Version」也沒有白名單異動的端點**。窮舉清單本身不因未實作而縮減：它界定的是「即使實作了也不得超出」的上界。
 - **operator 不得讀取任何 Workspace 私有資料**（最小權力原則，NFR-001）：Fork 內容、Test Case、Dataset、Run、Trace、Artifact 與下載紀錄一律不可讀；operator 身分**不擴充 Workspace Scope**，不得作為繞過鐵律 3 的路徑。需要私有資料才能判斷的案件（例如濫用檢舉），必須另立需求與另一套授權，不在本需求範圍。
 - **operator 不得代表使用者發起、取消或修改 Run**，亦不得建立、修改或刪除 Skill Version 與歷史 Run——下架只改變可見性與可下載性（`CONTENT-009`）。既有 Run 仍可追溯其使用的版本。
 - 每一個 operator 動作寫入 audit event（`CORE-008`），至少含：動作者、時間、對象（skill／skill_version／白名單條目 id）、動作、**理由（必填，空字串不成立）**、**變更前後的狀態**（**放寬措辭**：④ 改的不是可見性而是再散布判定，原句照字面讀會要求一個不存在的欄位；改成「該動作所改變的那個狀態的前後值」，①②③ 的判定一格未變）。**④ 另含它依據的授權證據**，而稽核記的是**快照的值**不是操作者送出的字串——兩者只差大小寫，而差的正好是「所有以 `repo-license-file` 為據放行的 Skill」那句 SQL 要對的那一格（見[打包、授權溯源與散布](../adr/README.md#打包授權溯源與散布)）。稽核事件不可由 operator 自行刪改。
