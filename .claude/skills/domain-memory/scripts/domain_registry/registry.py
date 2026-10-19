@@ -487,7 +487,7 @@ def _validate_evidence(
 
 def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list[str]:  # noqa: FBT001
     if not has_registry(root):
-        return [missing_registry(root)]
+        return [missing_registry(root, repo_root)]
     errors: list[str] = []
     if require_reviewed and review_mode(root) != "scm-verified":
         errors.append("local-draft-only Domain Memory cannot satisfy --require-reviewed")

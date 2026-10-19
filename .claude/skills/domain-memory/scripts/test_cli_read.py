@@ -140,6 +140,8 @@ class CliReadTest(RegistryTestCase):
         deeper = self.repo / "docs" / "dm"
         deeper.mkdir(parents=True)
         shutil.copy(self.repo / "memory" / "source-map.json", deeper / "source-map.json")
+        (self.repo / "docs" / "stray").mkdir()
+        shutil.copy(self.repo / "memory" / "source-map.json", self.repo / "docs" / "stray" / "foo-source-map.json")
         result = self.run_cli("refresh-listing", "--registry-root", str(self.repo), "--repo-root", str(self.repo))
         self.assertEqual(
             (1, f"ERROR: no Domain Memory at .: {DOMAIN_MEMORY_HINT}; Domain Memories in this repository: docs/dm, memory\n"),

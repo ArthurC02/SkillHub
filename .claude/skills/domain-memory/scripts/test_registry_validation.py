@@ -216,8 +216,8 @@ class RegistryValidationTest(RegistryTestCase):
         inner = self.repo / "memory" / "registry"
         self.assertEqual(
             [
-                f"no Domain Registry at {inner.resolve().as_posix()}: it holds neither registry/index.md nor "
-                f"registry/manifest.json; {DOMAIN_MEMORY_HINT}; did you mean {(self.repo / 'memory').resolve().as_posix()}?"
+                f"no Domain Registry at memory/registry: it holds neither registry/index.md nor "
+                f"registry/manifest.json; {DOMAIN_MEMORY_HINT}; did you mean memory?"
             ],
             validate(inner, self.repo, False),
         )
@@ -241,6 +241,11 @@ class RegistryValidationTest(RegistryTestCase):
             [f"no Domain Registry at {elsewhere.resolve().as_posix()}: it holds neither registry/index.md nor "
              f"registry/manifest.json; {DOMAIN_MEMORY_HINT}; did you mean {memory.resolve().as_posix()}?"],
             validate(elsewhere, None, False),
+        )
+        self.assertEqual(
+            [f"no Domain Registry at elsewhere: it holds neither registry/index.md nor registry/manifest.json; "
+             f"{DOMAIN_MEMORY_HINT}; did you mean memory?"],
+            validate(elsewhere, self.repo, False),
         )
         with self.assertRaisesRegex(ValueError, "^no Domain Registry at "):
             read_document(elsewhere, "contexts.json")

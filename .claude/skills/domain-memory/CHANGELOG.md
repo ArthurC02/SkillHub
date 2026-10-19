@@ -2,6 +2,17 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.19
+
+### Added
+
+- The pre-push and pre-commit hooks export `git config domain-memory.git-timeout` as `DOMAIN_MEMORY_GIT_TIMEOUT` when the environment does not set it, so a slow machine sets the git limit once for every hook run.
+
+### Fixed
+
+- The did-you-mean search matched any file whose name ends in `source-map.json`, so a `foo-source-map.json` could put a folder that holds no Domain Memory in the suggestion, and it missed a Registry that has no source map yet; it now asks git for files named exactly `source-map.json`, `registry/index.md` or `registry/manifest.json`, the same marks `holds_domain_memory` reads on disk.
+- `validate` printed its no-Registry refusal with absolute paths while `probe` and `confirm-sources` printed paths relative to the repository; given `--repo-root` it now prints the same relative form (`no Domain Registry at elsewhere: ...; did you mean memory?`).
+
 ## 1.2.18
 
 ### Fixed

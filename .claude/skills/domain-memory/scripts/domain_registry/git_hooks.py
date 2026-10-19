@@ -67,6 +67,9 @@ def _install_hook(name: str, registry_root: Path, repo_root: Path, script: Path,
         f"tool='{shown_path(script, repo_root)}'\n"
         f"memory='{relative}'\n"
         f"existing=\"$(git rev-parse --git-path hooks)/{backup.name}\" || exit 1\n"
+        "test -n \"$DOMAIN_MEMORY_GIT_TIMEOUT\" || DOMAIN_MEMORY_GIT_TIMEOUT=$(git config --get domain-memory.git-timeout)"
+        " || unset DOMAIN_MEMORY_GIT_TIMEOUT\n"
+        "export DOMAIN_MEMORY_GIT_TIMEOUT\n"
     )
     hook.write_text(header + body, encoding="utf-8", newline="\n")
     hook.chmod(hook.stat().st_mode | 0o111)

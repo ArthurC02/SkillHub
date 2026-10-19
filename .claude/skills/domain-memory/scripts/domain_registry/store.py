@@ -13,6 +13,7 @@ from .common import (
     load_json,
     registry_dir,
     review_field,
+    shown_path,
     write_json,
 )
 from .evidence import without_derived_keys
@@ -65,10 +66,10 @@ def has_registry(root: Path) -> bool:
     return is_concept_layout(root) or (registry_dir(root) / MANIFEST).is_file()
 
 
-def missing_registry(root: Path) -> str:
+def missing_registry(root: Path, repo_root: Path | None = None) -> str:
     return (
-        f"no Domain Registry at {root.resolve().as_posix()}: it holds neither registry/{INDEX} nor registry/{MANIFEST}; "
-        f"{domain_memory_hint(root)}"
+        f"no Domain Registry at {shown_path(root, repo_root)}: it holds neither registry/{INDEX} nor registry/{MANIFEST}; "
+        f"{domain_memory_hint(root, repo_root)}"
     )
 
 

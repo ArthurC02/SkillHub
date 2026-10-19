@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.evidence import citation
-from domain_registry.git_hooks import install_pre_commit_hook, install_pre_push_hook
+from domain_registry.git_hooks import EMPTY_SHA, install_pre_commit_hook, install_pre_push_hook
 from test_support import RegistryTestCase, use_json_layout
 
 TOOL = Path(__file__).resolve().parent / "registry_tools.py"
@@ -441,6 +441,34 @@ class PreCommitHookTest(RegistryTestCase):
             capture_output=True, text=True, encoding="utf-8", check=False,
         )
         self.assertEqual((1, "existing-push-refused\n"), (result.returncode, result.stderr))
+
+    def test_the_pre_push_hook_takes_the_git_timeout_from_git_config_unless_the_environment_sets_it(self) -> None:
+        (self.repo / ".git" / "hooks").mkdir(parents=True, exist_ok=True)
+        hook = install_pre_push_hook(self.repo / "memory", self.repo, TOOL)
+        self.stage("memory/registry/rules.json", "{}\n")
+        subprocess.run(
+            ["git", "-c", "user.name=T", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false",
+             "commit", "-qm", "registry change"], cwd=self.repo, check=True,
+        )
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        shims = self.shims('case $1 in -c) exit 0 ;; esac\necho "timeout=$DOMAIN_MEMORY_GIT_TIMEOUT" >&2\nexit 1')
+        for label, configured, environment, expected in (
+            ("config only", "42", {}, "timeout=42\n"),
+            ("environment wins", "42", {"DOMAIN_MEMORY_GIT_TIMEOUT": "7"}, "timeout=7\n"),
+            ("neither", None, {}, "timeout=\n"),
+        ):
+            with self.subTest(label):
+                subprocess.run(["git", "config", "--unset", "domain-memory.git-timeout"], cwd=self.repo, check=False)
+                if configured is not None:
+                    subprocess.run(["git", "config", "domain-memory.git-timeout", configured], cwd=self.repo, check=True)
+                result = subprocess.run(
+                    ["sh", str(hook), "origin", "https://example.com/repo.git"], cwd=self.repo,
+                    input=f"refs/heads/main {head} refs/heads/main {EMPTY_SHA}\n",
+                    env={**shims, **environment}, capture_output=True, text=True, encoding="utf-8", check=False,
+                )
+                self.assertEqual((1, expected), (result.returncode, result.stderr))
 
     def test_a_hooks_directory_git_cannot_name_stops_the_commit(self) -> None:
         hook = self.install()

@@ -6,6 +6,8 @@ from pathlib import Path
 from .common import DOMAIN_MEMORY_HINT, holds_domain_memory, shown_path
 from .git import run_git
 
+DOMAIN_MEMORY_MARKERS = (":(glob)**/source-map.json", ":(glob)**/registry/index.md", ":(glob)**/registry/manifest.json")
+
 
 def domain_memory_hint(root: Path, repo_root: Path | None = None) -> str:
     asked = root.resolve()
@@ -20,20 +22,26 @@ def domain_memory_hint(root: Path, repo_root: Path | None = None) -> str:
 
 def _candidates(asked: Path, repo_root: Path | None) -> list[Path]:
     if repo_root is not None:
-        listed = _source_maps_known_to_git(repo_root)
+        listed = _domain_memories_known_to_git(repo_root)
         if listed is not None:
-            return sorted({path.parent.resolve() for path in listed})
+            return sorted({place.resolve() for place in listed})
     return [place for place in _neighbours(asked) if holds_domain_memory(place)]
 
 
-def _source_maps_known_to_git(repo_root: Path) -> list[Path] | None:
+def _domain_memories_known_to_git(repo_root: Path) -> list[Path] | None:
     try:
-        result = run_git(repo_root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "*source-map.json")
+        result = run_git(
+            repo_root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", *DOMAIN_MEMORY_MARKERS
+        )
     except (OSError, subprocess.TimeoutExpired):
         return None
     if result.returncode != 0:
         return None
-    return [repo_root / path for path in result.stdout.split("\0") if path]
+    return [_home_of(repo_root / path) for path in result.stdout.split("\0") if path]
+
+
+def _home_of(marker: Path) -> Path:
+    return marker.parent if marker.name == "source-map.json" else marker.parent.parent
 
 
 def _neighbours(asked: Path) -> list[Path]:
