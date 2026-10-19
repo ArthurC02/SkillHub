@@ -3,12 +3,12 @@
   "proposal_id": "patrol-shift-recite",
   "proposer": "domain-memory-agent",
   "requirement_id": "patrol-shift-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-19T17:24:31.327568Z",
   "verified_at": "2026-10-19T17:32:51.146790Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-19T17:32:54.222394Z",
+  "applied_at": "2026-10-19T17:33:19.740765Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "3075ed5ae7f6e0d59fa01c1501532eb583eea21f",
@@ -403,5 +403,9 @@
     "purge-interactions-cite-steps",
     "receiver-free-recite",
     "registry-harvest-rules-2026-10-17"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "3a045baa7caa726d8412d69af85aff5ec85cf3d9",
+    "registry_digest": "sha256:a52f0e3a92150bfe9a694fb3e90471355dea5b73cdd3013223d45ab0b076ffd8"
+  }
 }

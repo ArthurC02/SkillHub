@@ -3,10 +3,10 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-16T16:32:08.394666Z"
+    at: "2026-10-19T17:32:50.132592Z"
 sources:
   - resource: "apps/platform/internal/creator/workspace/purge.go#L47-63"
-    excerpt_sha256: "sha256:d588cbf6256bba6e28af204b6b7465dbf9cd229c111fe73349df0f3a5f3b4f15"
+    excerpt_sha256: "sha256:08883f79a76b940a13d0ad173dec7ceb803ed9732911f9cb8574e5bcd7fb22fc"
   - resource: "apps/platform/internal/creator/workspace/purge.go#L78-99"
     excerpt_sha256: "sha256:b2cddd12981e24193eb23240c8570879ad52e8cb7756935e9233f978188ca0c3"
 ---
