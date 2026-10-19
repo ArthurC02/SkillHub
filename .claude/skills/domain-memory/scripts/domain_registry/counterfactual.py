@@ -41,6 +41,8 @@ UNITTEST_FAILED_TEST = re.compile(r"^(?:FAIL|ERROR): (\w+) \(([\w.]+)\)", re.MUL
 
 
 GO_TEST_PASSED = re.compile(r'^\s*--- PASS: |"Action":"pass"[^\n]*"Test":"', re.MULTILINE)
+GO_SKIPPED_TEST = re.compile(r'^\s*--- SKIP: |"Action":"skip"[^\n]*"Test":"', re.MULTILINE)
+GO_SKIP_REASON = re.compile(r"^\s+\S+\.go:\d+: (.+)\n\s*--- SKIP: ", re.MULTILINE)
 GO_NOTHING_RAN = re.compile(r"\[no tests to run\]|\[no test files\]")
 UNITTEST_RAN = re.compile(r"^Ran (\d+) tests? in ", re.MULTILINE)
 UNITTEST_SKIPPED = re.compile(r"skipped=(\d+)")
@@ -62,7 +64,7 @@ def no_test_passed(argv: list[str], output: str) -> str | None:
     if is_go_test(argv):
         if not reports_tests(argv):
             return "go test without -v or -json does not say which tests passed, so a skipped test reads as a pass; add -v"
-        return None if GO_TEST_PASSED.search(output) else "no test passed: every test was skipped or none matched"
+        return None if GO_TEST_PASSED.search(output) else _no_go_test_passed(output)
     if GO_NOTHING_RAN.search(output) and not GO_TEST_PASSED.search(output):
         return "go test found no test to run"
     ran = UNITTEST_RAN.search(output)
@@ -74,6 +76,15 @@ def no_test_passed(argv: list[str], output: str) -> str | None:
     if summaries and "passed" not in summaries[-1]:
         return f"pytest passed no test: {summaries[-1]}"
     return None
+
+
+def _no_go_test_passed(output: str) -> str:
+    skipped = len(GO_SKIPPED_TEST.findall(output))
+    if not skipped:
+        return "no test passed: no test matched"
+    reason = GO_SKIP_REASON.search(output)
+    said = f", the first because {reason[1].strip()}" if reason else ""
+    return f"no test passed: every test was skipped ({skipped}){said}"
 
 
 def failing_tests(output: str) -> list[str]:

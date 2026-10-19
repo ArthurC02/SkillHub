@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.25
+
+### Changed
+
+- When a `go test -v` or `-json` run passes no test, the refusal now says why: `no test passed: every test was skipped (<count>), the first because <the skip's own message>` when tests were skipped, so a test that skips itself for a missing environment variable names it, and `no test passed: no test matched` otherwise. It used to say `no test passed: every test was skipped or none matched` in both cases.
+
 ## 1.2.24
 
 ### Fixed

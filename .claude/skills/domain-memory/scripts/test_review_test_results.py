@@ -212,11 +212,17 @@ class ReviewTestResultsTest(RegistryTestCase):
         go_requires_v = (
             "go test without -v or -json does not say which tests passed, so a skipped test reads as a pass; add -v"
         )
-        none_passed = "no test passed: every test was skipped or none matched"
+        skipped_one = "no test passed: every test was skipped (1)"
+        none_matched = "no test passed: no test matched"
         unittest_none = "unittest ran no test that was not skipped"
         for command, output, expected in (
             ("go test -v ./...", "=== RUN   TestA\n--- PASS: TestA (0.00s)\nok  p 0.1s\n", None),
-            ("go test -v ./...", "=== RUN   TestA\n--- SKIP: TestA (0.00s)\nok  p 0.1s\n", none_passed),
+            ("go test -v ./...", "=== RUN   TestA\n--- SKIP: TestA (0.00s)\nok  p 0.1s\n", skipped_one),
+            ("go test -v ./...",
+             "=== RUN   TestA\n    rule_test.go:12: DATABASE_URL is not set\n--- SKIP: TestA (0.00s)\n"
+             "=== RUN   TestB\n    rule_test.go:30: DATABASE_URL is not set\n--- SKIP: TestB (0.00s)\nok  p 0.1s\n",
+             "no test passed: every test was skipped (2), the first because DATABASE_URL is not set"),
+            ("go test -v -run ^TestNothing$ ./...", "ok  p 0.1s\n", none_matched),
             ("go test -v=true ./...", "    --- PASS: TestA/sub (0.00s)\n", None),
             ("go test -test.v ./...", "--- PASS: TestA (0.00s)\n", None),
             ("go test ./...", "ok  p 0.1s\n", go_requires_v),
@@ -224,7 +230,8 @@ class ReviewTestResultsTest(RegistryTestCase):
             ("C:/Go/bin/go.exe test ./...", "ok  p 0.1s\n", go_requires_v),
             ("go vet ./...", "", None),
             ("go test -json ./...", '{"Action":"pass","Package":"p","Test":"TestA","Elapsed":0}\n', None),
-            ("go test -json ./...", '{"Action":"pass","Package":"p","Elapsed":0}\n', none_passed),
+            ("go test -json ./...", '{"Action":"pass","Package":"p","Elapsed":0}\n', none_matched),
+            ("go test -json ./...", '{"Action":"skip","Package":"p","Test":"TestA","Elapsed":0}\n', skipped_one),
             ("task test", "ok  p 0.1s [no tests to run]\n", "go test found no test to run"),
             ("task test", "?   p [no test files]\n", "go test found no test to run"),
             ("task test", "--- PASS: TestA (0.00s)\nok  a 0.1s\nok  b 0.1s [no tests to run]\n", None),
