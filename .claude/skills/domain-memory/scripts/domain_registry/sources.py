@@ -727,20 +727,29 @@ def verify_against_discovery(
     return result | {"status": status, "discovered_but_unlisted": unlisted}
 
 
-REFRESH_LISTING_ADVICE = "run refresh-listing --registry-root <root> --repo-root <repo> (no confirmation needed)"
+def shown_argument(path: Path) -> str:
+    text = path.as_posix()
+    return f'"{text}"' if " " in text else text
+
+
+def refresh_listing_advice(registry_root: Path, repo_root: Path) -> str:
+    return (
+        f"run refresh-listing --registry-root {shown_argument(registry_root)} "
+        f"--repo-root {shown_argument(repo_root)} (no confirmation needed)"
+    )
 
 
 def counted(count: int, noun: str) -> str:
     return f"{count} {noun}{'' if count == 1 else 's'}"
 
 
-def discovery_drift_note(result: dict[str, Any]) -> str | None:
+def discovery_drift_note(result: dict[str, Any], registry_root: Path, repo_root: Path) -> str | None:
     gone = len(result.get("discovered_but_gone", []))
     unlisted = len(result.get("discovered_but_unlisted", []))
     if not gone and not unlisted:
         return None
     advice = (
-        REFRESH_LISTING_ADVICE
+        refresh_listing_advice(registry_root, repo_root)
         if result.get("status") == "discovery_drifted"
         else f"the selection is {result.get('status')}, so run refresh-sources, then confirm-sources"
     )

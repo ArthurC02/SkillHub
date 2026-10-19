@@ -154,7 +154,7 @@ def handle_verify_sources(args: argparse.Namespace) -> int:
         args.repo_root.resolve(), args.source_map.resolve(), policy
     )
     print_json(result)
-    if note := discovery_drift_note(result):
+    if note := discovery_drift_note(result, args.source_map.parent, args.repo_root):
         print(note, file=sys.stderr)
     return 0 if result["status"] in ("current", "discovery_drifted") else 1
 

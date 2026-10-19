@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.13
+
+### Fixed
+
+- The discovery-drift advice of `probe` and `verify-sources` prints the real paths, as given on the command line and with forward slashes, quoted only when a value holds a space, so the line pastes as a working `refresh-listing` command; before, it printed `<root>` and `<repo>` as placeholders.
+
 ## 1.2.12
 
 ### Changed

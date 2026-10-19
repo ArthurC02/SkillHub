@@ -36,7 +36,7 @@ from ..registry import (
     record_by_id,
 )
 from ..search import CONSTRAINT_ASSETS, MATCH_KINDS, every_resolved_term, prose_mentions, ranked_lookup
-from ..sources import REFRESH_LISTING_ADVICE, counted, probe_sources
+from ..sources import counted, probe_sources, refresh_listing_advice
 from ..store import committed_documents, read_document
 from .common import print_json
 
@@ -44,7 +44,7 @@ from .common import print_json
 COUNTERFACTUAL_EXIT_CODES = {"killed": 0, "survived": 1, "inconclusive": 2, "error": 3}
 
 
-def probe_summary(result: dict, registry_root: Path) -> str:
+def probe_summary(result: dict, registry_root: Path, repo_root: Path) -> str:
     where = f"Domain Memory at {registry_root}"
     if result["status"] == "absent" and "hint" in result:
         return f"{where}: no source map here, but {result['hint']}."
@@ -63,7 +63,7 @@ def probe_summary(result: dict, registry_root: Path) -> str:
         gone, unlisted = len(result.get("discovered_but_gone", [])), len(result.get("discovered_but_unlisted", []))
         drifted = (
             f"; discovery drifted: {counted(gone, 'listed path')} gone, {counted(unlisted, 'matching path')} "
-            f"unlisted; {REFRESH_LISTING_ADVICE}"
+            f"unlisted; {refresh_listing_advice(registry_root, repo_root)}"
             if result["status"] == "discovery_drifted" else ""
         )
         return f"{where}: current, {result['selection_status']}, established by {result['checked']}{inside}{drifted}."
@@ -267,7 +267,7 @@ def handle_probe(args: argparse.Namespace) -> int:
     result = probe_sources(
         args.repo_root.resolve(), registry_root / "source-map.json", policy
     )
-    print(probe_summary(result, args.registry_root))
+    print(probe_summary(result, args.registry_root, args.repo_root))
     return {"current": 0, "discovery_drifted": 0, "absent": 2}.get(result["status"], 1)
 
 

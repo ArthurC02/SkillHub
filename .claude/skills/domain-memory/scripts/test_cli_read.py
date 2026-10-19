@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import shlex
 import subprocess
 import sys
 import unittest
@@ -14,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from domain_registry.cli import main
 from domain_registry.evidence import citation
 from domain_registry.registry import asset_records
-from domain_registry.sources import probe_sources
+from domain_registry.sources import probe_sources, shown_argument
 from test_support import RegistryTestCase, use_json_layout
 
 
@@ -80,9 +81,22 @@ class CliReadTest(RegistryTestCase):
         summary = self.run_cli("probe", "--repo-root", str(self.repo), "--registry-root", str(root))
         self.assertEqual(
             (0, f"Domain Memory at {root}: current, agent-asserted, established by git; discovery drifted: "
-                "0 listed paths gone, 1 matching path unlisted; run refresh-listing --registry-root <root> "
-                "--repo-root <repo> (no confirmation needed)."),
+                f"0 listed paths gone, 1 matching path unlisted; run refresh-listing --registry-root {root.as_posix()} "
+                f"--repo-root {self.repo.as_posix()} (no confirmation needed)."),
             (summary.returncode, summary.stdout.strip()),
+        )
+        advised = summary.stdout.strip().split("; run ")[-1].removesuffix(" (no confirmation needed).")
+        refreshed = self.run_cli(*shlex.split(advised))
+        after = self.run_cli("probe", "--repo-root", str(self.repo), "--registry-root", str(root))
+        self.assertEqual(
+            (0, 0, f"Domain Memory at {root}: current, agent-asserted, established by git."),
+            (refreshed.returncode, after.returncode, after.stdout.strip()),
+        )
+
+    def test_an_advised_path_is_posix_and_quoted_only_when_it_holds_a_space(self) -> None:
+        self.assertEqual(
+            ('"C:/with space/memory"', "C:/plain/memory"),
+            (shown_argument(Path("C:/with space/memory")), shown_argument(Path(r"C:\plain\memory"))),
         )
 
     def test_the_probe_of_a_selection_changed_only_inside_stays_current_and_points_at_verify_evidence(self) -> None:

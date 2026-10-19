@@ -42,7 +42,8 @@ class VerifySourcesDriftTest(RegistryTestCase):
                 ["tests/test_gone.py"],
                 ["tests/test_new.py"],
                 "NOTE: discovery drifted: 1 listed path gone, 1 matching path unlisted; "
-                "run refresh-listing --registry-root <root> --repo-root <repo> (no confirmation needed)",
+                f"run refresh-listing --registry-root {source_map_path.parent.as_posix()} "
+                f"--repo-root {self.repo.as_posix()} (no confirmation needed)",
             ),
             (
                 result.returncode,
@@ -67,7 +68,8 @@ class VerifySourcesDriftTest(RegistryTestCase):
             (
                 ["tests/test_y_new.py", "tests/test_z_new.py"],
                 "NOTE: discovery drifted: 2 listed paths gone, 2 matching paths unlisted; "
-                "run refresh-listing --registry-root <root> --repo-root <repo> (no confirmation needed)",
+                f"run refresh-listing --registry-root {source_map_path.parent.as_posix()} "
+                f"--repo-root {self.repo.as_posix()} (no confirmation needed)",
             ),
             (report["discovered_but_unlisted"], result.stderr.strip()),
         )
@@ -81,7 +83,8 @@ class VerifySourcesDriftTest(RegistryTestCase):
                 0,
                 "discovery_drifted",
                 "NOTE: discovery drifted: 0 listed paths gone, 1 matching path unlisted; "
-                "run refresh-listing --registry-root <root> --repo-root <repo> (no confirmation needed)",
+                f"run refresh-listing --registry-root {source_map_path.parent.as_posix()} "
+                f"--repo-root {self.repo.as_posix()} (no confirmation needed)",
             ),
             (result.returncode, json.loads(result.stdout)["status"], result.stderr.strip()),
         )
@@ -95,7 +98,8 @@ class VerifySourcesDriftTest(RegistryTestCase):
                 0,
                 "discovery_drifted",
                 "NOTE: discovery drifted: 1 listed path gone, 0 matching paths unlisted; "
-                "run refresh-listing --registry-root <root> --repo-root <repo> (no confirmation needed)",
+                f"run refresh-listing --registry-root {source_map_path.parent.as_posix()} "
+                f"--repo-root {self.repo.as_posix()} (no confirmation needed)",
             ),
             (result.returncode, json.loads(result.stdout)["status"], result.stderr.strip()),
         )
@@ -113,7 +117,8 @@ class VerifySourcesDriftTest(RegistryTestCase):
                 "discovery_drifted",
                 "NOTE: discovery drifted: 0 listed paths gone, 1 matching path unlisted; "
                 "1 selected source changed inside; verify-evidence checks the citations; "
-                "run refresh-listing --registry-root <root> --repo-root <repo> (no confirmation needed)",
+                f"run refresh-listing --registry-root {source_map_path.parent.as_posix()} "
+                f"--repo-root {self.repo.as_posix()} (no confirmation needed)",
             ),
             (result.returncode, json.loads(result.stdout)["status"], result.stderr.strip()),
         )
