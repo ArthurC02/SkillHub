@@ -333,9 +333,12 @@ class RegistryValidationTest(RegistryTestCase):
         (secrets / "call.go").write_text("token = pointerUnescaper.Replace(token)\n", encoding="utf-8")
         (secrets / "member.go").write_text("token = someLongerIdentifierName.Field\n", encoding="utf-8")
         (secrets / "index.py").write_text("password = passwordsByUserName[name]\n", encoding="utf-8")
-        (secrets / "literal.py").write_text('TOKEN = "measure-local-2026-09-06"\n', encoding="utf-8")
+        (secrets / "literal.py").write_text("TOKEN = " + '"' + "measure-local-2026-09-06" + '"\n', encoding="utf-8")
         (secrets / "bare.env").write_text("TOKEN=" + "z" * 20 + "\n", encoding="utf-8")
         self.assertEqual(["bare.env", "literal.py"], sorted(finding["path"] for finding in scan_secrets(secrets)))
+
+    def test_the_plugin_itself_carries_nothing_the_secret_scanner_reports(self) -> None:
+        self.assertEqual([], scan_secrets(Path(__file__).resolve().parents[1]))
 
     def test_a_secret_finding_never_carries_the_secret(self) -> None:
         secrets = self.repo / "leaky"
