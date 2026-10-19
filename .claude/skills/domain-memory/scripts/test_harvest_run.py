@@ -7,11 +7,12 @@ import unittest
 from unittest import mock
 
 from domain_registry.changes import init_change_package, validate_change_package
+from domain_registry.commands.evidence import package_overlay
 from domain_registry.common import load_json, write_json
 from domain_registry.counterfactual import counterfactual_suite
 from domain_registry.evidence import citation
 from domain_registry.harvest_run import discard_harvest, harvest, spec_errors
-from domain_registry.registry import record_by_id
+from domain_registry.registry import record_by_id, verify_evidence
 from domain_registry.sources import selected_source_map, write_source_map
 from domain_registry.updates import promote_candidate
 from test_support import VERIFIED, RegistryTestCase, applied_by
@@ -73,6 +74,18 @@ class HarvestTest(RegistryTestCase):
             "check": self.check, "mutate": {"file": "src/rule.py", "find": "return length > LIMIT", "replace": "return length >= LIMIT"},
         })
         return spec
+
+    def stale_citation(self, relative: str, start: int, end: int, old: str, new: str) -> dict:
+        path = self.repo / relative
+        text = path.read_text(encoding="utf-8")
+        path.write_text(text.replace(old, new), encoding="utf-8")
+        try:
+            return citation(self.repo, relative, start, end)
+        finally:
+            path.write_text(text, encoding="utf-8")
+
+    def cited_spans(self, evidence: list[dict]) -> list[tuple[str, int, int]]:
+        return [(entry["path"], entry["lines"]["start"], entry["lines"]["end"]) for entry in evidence]
 
     def harvest_while_the_database_is_down(self, spec: dict) -> dict:
         with mock.patch("domain_registry.harvest_run.record_test_result", side_effect=ValueError(DATABASE_DOWN)):
@@ -177,6 +190,42 @@ class HarvestTest(RegistryTestCase):
         self.assertEqual(
             ("amended", ["PRO-1"], "src/tests/test_rule.py", "draft"),
             (report["rules"][0]["record"], proposal["supersedes"], update["record"]["evidence"][-1]["path"], report["stopped_at"]),
+        )
+
+    def test_an_amended_rule_cites_its_lines_afresh_and_keeps_no_stale_citation_so_the_package_verifies(self) -> None:
+        self.confirm_src()
+        self.seed("rules.json", [{
+            "id": RULE_ID, "contexts": ["orders"], "statement": "A length past the limit is refused.", "examples": ["201 is refused."],
+            "status": "reviewed", "verified": VERIFIED, "evidence": [
+                self.stale_citation("src/rule.py", 1, 6, "LIMIT = 200", "LIMIT = 100"),
+                self.stale_citation("src/tests/test_rule.py", 10, 11, "201", "202"),
+            ],
+        }])
+        applied_by(self.repo / "memory", "PRO-1", f"rules/{RULE_ID}")
+        report = harvest(self.repo / "memory", self.repo, self.spec(), None, "verified")
+        package = self.repo / "memory" / "changes" / "orders-length-rule"
+        [update] = load_json(package / "domain-change-proposal.json")["registry_updates"]
+        verified = verify_evidence(self.repo / "memory", self.repo, overlay=package_overlay(package))
+        self.assertEqual(
+            ("amended", "verified", [],
+             [("src/rule.py", 1, 1), ("src/rule.py", 5, 6), ("src/tests/test_rule.py", 10, 11)], ["current"] * 3),
+            (report["rules"][0]["record"], report["stopped_at"], report["errors"],
+             self.cited_spans(update["record"]["evidence"]), [result["status"] for result in verified["results"]]),
+        )
+
+    def test_an_amended_rule_carries_the_spec_s_statement_and_examples_in_place_of_the_reviewed_ones(self) -> None:
+        self.confirm_src()
+        self.seed("rules.json", [{
+            "id": RULE_ID, "contexts": ["orders"], "statement": "Long input is turned away.", "examples": ["300 is refused."],
+            "status": "reviewed", "verified": VERIFIED, "evidence": ["src/rule.py:1"],
+        }])
+        applied_by(self.repo / "memory", "PRO-1", f"rules/{RULE_ID}")
+        report = harvest(self.repo / "memory", self.repo, self.spec(), None, "draft")
+        [update] = load_json(self.repo / "memory" / "changes" / "orders-length-rule" / "domain-change-proposal.json")["registry_updates"]
+        self.assertEqual(
+            ("amended", "A length past the limit is refused.", ["201 is refused."], ["orders"], 3),
+            (report["rules"][0]["record"], update["record"]["statement"], update["record"]["examples"],
+             update["record"]["contexts"], len(update["record"]["evidence"])),
         )
 
     def test_evidence_outside_every_discovered_source_is_refused_by_path_before_any_test_runs(self) -> None:

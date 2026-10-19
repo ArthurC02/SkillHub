@@ -107,7 +107,7 @@ Each entry of `rules`:
 
 ### What a harvest writes
 
-Each rule is written as a candidate, or a reviewed one is marked `amended`, or `reproven` when its statement, examples, contexts and cited spans are unchanged and only the proof is new, so the package supersedes its reviewer. The package starts under `<changes-root>/<name>`; each rule is promoted with the test citation, and the package is filled and previewed `--as-status submitted`.
+Each rule is written as a candidate, or a reviewed one is marked `amended`, or `reproven` when its statement, examples, contexts and cited spans are unchanged and only the proof is new, so the package supersedes its reviewer. The package starts under `<changes-root>/<name>`; a candidate is promoted as it stands, and an amended or reproven rule is promoted with the spec's statement, examples, contexts and citations, each cited afresh from the lines as they are now, in place of what the reviewed record held, so no stale citation survives into the package; then the package is filled and previewed `--as-status submitted`.
 
 Filling writes one acceptance criterion `enforced-<id>` and one test obligation `rule-<id>` per rule, the obligation covering the rule through `also_covers` and running the rule's check. It replaces the criteria, obligations, `rule_ids`, `affected_contexts`, `proof_obligations`, the sources (every file the rules cite) and the evidence's `counterfactual_check` list from the counterfactuals it ran and the spec's decisions.
 

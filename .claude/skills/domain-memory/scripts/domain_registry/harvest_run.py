@@ -25,7 +25,7 @@ from .hitl import ObligationRun, record_approval, record_test_result, same_comma
 from .registry import as_stored, record_by_id
 from .store import read_document
 from .transaction import remove_tree
-from .updates import add_promoted_evidence, promote_candidate, retract_candidate, upsert_candidate
+from .updates import promote_candidate, replace_promoted_fields, retract_candidate, upsert_candidate
 
 FORMAT = "domain-memory-harvest/v1"
 STAGES = ("draft", "verified")
@@ -36,6 +36,7 @@ DEFAULT_TIMEOUT_SECONDS = 600
 SPAN_PARTS = 3
 RULE_DEFAULTS = {"cwd": None, "command_profile": "unit", "level": "unit", "timeout": DEFAULT_TIMEOUT_SECONDS}
 SUPERSEDING = ("amended", "reproven")
+HARVESTED_FIELDS = ("statement", "contexts", "examples", "evidence")
 UNFINISHED = ("draft", "submitted")
 DISCARDABLE = ("draft", "submitted", "verified")
 NOTHING_WRITTEN = {
@@ -118,7 +119,7 @@ def _write(run: Harvest, records: list[dict[str, Any] | None], verdicts: dict[st
     run.stopped_at = "submitted" if run.resumed_from == "submitted" else "draft"
     _candidates(run, records)
     if run.resumed_from != "submitted":
-        _package(run, verdicts)
+        _package(run, records, verdicts)
         preview = validate_change_package(run.package_root, run.registry_root, "submitted", run.repo_root)
         if preview:
             run.errors += [f"once submitted: {error}" for error in preview]
@@ -346,17 +347,17 @@ def _cited_spans(evidence: list[Any]) -> set[tuple[Any, Any, Any]]:
     return spans
 
 
-def _package(run: Harvest, verdicts: dict[str, dict[str, Any]]) -> None:
+def _package(run: Harvest, records: list[dict[str, Any] | None], verdicts: dict[str, dict[str, Any]]) -> None:
     spec, package_root = run.spec, run.package_root
     if run.resumed_from is None:
         init_change_package(package_root, spec["name"], spec["name"], spec["proposer"])
         run.written = True
     promoted = {record_id for asset, record_id in _updated_records(load_json(package_root / PROPOSAL_FILE)) if asset == "rules"}
-    for rule, shown in zip(spec["rules"], run.rules, strict=True):
+    for rule, shown, record in zip(spec["rules"], run.rules, records, strict=True):
         if rule["id"] not in promoted or shown["record"] in ("created", "revised"):
             promote_candidate(package_root, run.registry_root, "rules", rule["id"], amend=shown["record"] in SUPERSEDING)
         if shown["record"] in SUPERSEDING:
-            add_promoted_evidence(package_root, "rules", rule["id"], (shown["test_citation"],))
+            replace_promoted_fields(package_root, "rules", rule["id"], {name: record.get(name) for name in HARVESTED_FIELDS})
     fill = {
         "rules": {
             rule["id"]: {"check": rule["check"], "level": _setting(spec, rule, "level"), "counterfactual": verdicts[rule["id"]]}

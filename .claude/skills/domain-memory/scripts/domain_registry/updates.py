@@ -487,6 +487,16 @@ def add_promoted_evidence(
     write_json(path, proposal)
 
 
+def replace_promoted_fields(package_root: Path, asset: str, record_id: str, fields: dict[str, Any]) -> None:
+    path = package_root / PROPOSAL_FILE
+    proposal = load_json(path)
+    for update in proposal.get("registry_updates", []):
+        if updates_record(update, asset, record_id) and isinstance(update.get("record"), dict):
+            kept = {key: value for key, value in update["record"].items() if key not in fields}
+            update["record"] = {**kept, **{key: value for key, value in fields.items() if value is not None}}
+    write_json(path, proposal)
+
+
 def _with_superseded(supersedes: Any, proposal_id: str) -> list[Any]:
     named = [supersedes] if isinstance(supersedes, str) else list(supersedes) if isinstance(supersedes, list) else []
     return named if proposal_id in named else [*named, proposal_id]
