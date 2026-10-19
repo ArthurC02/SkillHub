@@ -5,7 +5,8 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
-from ..common import FAILING_EVIDENCE, load_json
+from ..changes import parsed_update
+from ..common import FAILING_EVIDENCE, PROPOSAL_FILE, load_json
 from ..evidence import (
     citation,
     classified,
@@ -181,7 +182,8 @@ def _staged_failure(result: dict, failing: tuple[str, ...], found: list[str]) ->
 def handle_verify_evidence(args: argparse.Namespace) -> int:
     repo_root = args.repo_root.resolve()
     content_of = staged_content(repo_root) if args.staged else None
-    result = verify_evidence(args.registry_root.resolve(), repo_root, args.path, content_of)
+    overlay = package_overlay(args.package_root.resolve()) if args.package_root else None
+    result = verify_evidence(args.registry_root.resolve(), repo_root, args.path, content_of, overlay)
     print_json(result)
     summary = result["summary"]
     failing = (*FAILING_EVIDENCE, *(("shifted",) if args.strict else ()))
@@ -193,6 +195,14 @@ def handle_verify_evidence(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
     return int(bool(found))
+
+
+def package_overlay(package_root: Path) -> dict[str, dict[str, dict | None]]:
+    overlay: dict[str, dict[str, dict | None]] = {}
+    for raw in load_json(package_root / PROPOSAL_FILE).get("registry_updates") or []:
+        update = parsed_update(raw)
+        overlay.setdefault(update.document_name, {})[update.record_id] = update.record
+    return overlay
 
 
 def handle_migrate_evidence(args: argparse.Namespace) -> int:

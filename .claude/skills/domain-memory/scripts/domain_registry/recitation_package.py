@@ -46,7 +46,7 @@ def recitation_package(
         "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
         "level": "architecture",
         "status": "planned",
-        "check": _verify_command(registry_root, cited),
+        "check": _verify_command(registry_root, output, cited),
     }]})
     _fill(output / PROPOSAL_FILE, {
         "change_classification": "routine",
@@ -109,12 +109,13 @@ def _without_evidence(record: dict[str, Any]) -> Any:
     return with_references({key: value for key, value in record.items() if key not in ("review", "verified")}, lambda _: None)
 
 
-def _verify_command(registry_root: Path, cited: list[str]) -> str:
+def _verify_command(registry_root: Path, package_root: Path, cited: list[str]) -> str:
     top = _repository_top(registry_root)
     script = Path(__file__).resolve().parents[1] / "registry_tools.py"
     arguments = [
         Path(sys.executable).stem, shown_path(script, top), "verify-evidence",
         "--registry-root", shown_path(registry_root, top), "--repo-root", ".",
+        "--package-root", shown_path(package_root, top),
         *(argument for path in cited for argument in ("--path", path)),
     ]
     return shlex.join(arguments)
