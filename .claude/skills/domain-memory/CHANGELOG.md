@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.15
+
+### Fixed
+
+- The test of the advised-path quoting built its sample path with Windows separators, which a POSIX file system keeps as literal characters, so the plugin's test suite failed on Linux from 1.2.13; the sample is now built from path segments. No product change.
+
 ## 1.2.14
 
 ### Fixed

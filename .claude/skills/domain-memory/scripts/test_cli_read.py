@@ -116,8 +116,8 @@ class CliReadTest(RegistryTestCase):
 
     def test_an_advised_path_is_posix_and_quoted_only_when_it_holds_a_space(self) -> None:
         self.assertEqual(
-            ('"C:/with space/memory"', "C:/plain/memory"),
-            (shown_argument(Path("C:/with space/memory")), shown_argument(Path(r"C:\plain\memory"))),
+            ('"docs/with space/memory"', "docs/plain/memory"),
+            (shown_argument(Path("docs", "with space", "memory")), shown_argument(Path("docs", "plain", "memory"))),
         )
 
     def test_the_probe_of_a_selection_changed_only_inside_stays_current_and_points_at_verify_evidence(self) -> None:
