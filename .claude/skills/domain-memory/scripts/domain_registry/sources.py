@@ -130,12 +130,12 @@ def file_name(relative_path: str) -> str:
     return relative_path.rpartition("/")[2]
 
 
-INSTRUCTION_FILE_NAMES = {"AGENTS.md", "CLAUDE.md"}
+INSTRUCTION_FILE_NAME = "AGENTS.md"
 BOUNDARY_BASES = tuple(f"{base}/" for base in IMPLEMENTATION_ROOTS)
 
 
 def _instruction_candidates(files: list[str]) -> list[str]:
-    return sorted(entry for entry in files if file_name(entry) in INSTRUCTION_FILE_NAMES)
+    return sorted(entry for entry in files if file_name(entry) == INSTRUCTION_FILE_NAME)
 
 
 def _boundary_candidates(files: list[str]) -> list[str]:

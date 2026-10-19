@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.26
+
+### Removed
+
+- `discover-sources` no longer lists `CLAUDE.md` as a repository instruction file. The instruction source is `AGENTS.md` at any depth, the file name every coding agent reads; one host's own instruction file is that host's concern, and the Plugin carries nothing that belongs to one host.
+
 ## 1.2.25
 
 ### Changed

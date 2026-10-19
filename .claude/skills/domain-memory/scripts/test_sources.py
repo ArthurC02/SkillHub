@@ -401,13 +401,15 @@ class SourcesTest(RegistryTestCase):
         self.assertIn("not a statement of the business domain", group["authority"])
         self.assertIn("loses its evidence", group["caution"])
 
-    def test_discovery_lists_both_instruction_file_names(self) -> None:
+    def test_discovery_lists_agents_md_in_every_directory_and_no_host_specific_instruction_file(self) -> None:
         (self.repo / "AGENTS.md").write_text("How agents work here.", encoding="utf-8")
         (self.repo / "web").mkdir()
+        (self.repo / "web" / "AGENTS.md").write_text("How the web app is built.", encoding="utf-8")
         (self.repo / "web" / "CLAUDE.md").write_text("@AGENTS.md", encoding="utf-8")
+        (self.repo / "web" / "GEMINI.md").write_text("@AGENTS.md", encoding="utf-8")
         self.assertEqual(
             self.discovery_groups("repository_instructions"),
-            ["AGENTS.md", "web/CLAUDE.md"],
+            ["AGENTS.md", "web/AGENTS.md"],
         )
 
     def test_a_package_doc_outside_the_implementation_roots_is_not_a_boundary(
@@ -714,10 +716,10 @@ class SourcesTest(RegistryTestCase):
         self.assertEqual(["apps/x/my space_test.go"], self.discovery_groups("tests"))
 
     def test_discovery_keeps_an_instruction_file_in_a_directory_with_an_accented_letter_and_a_space(self) -> None:
-        self.write_files("café/AGENTS.md", "my docs/CLAUDE.md", "資料/AGENTS.md")
+        self.write_files("café/AGENTS.md", "my docs/AGENTS.md", "資料/AGENTS.md")
         self.ignore("資料/")
         self.assertEqual(
-            ["café/AGENTS.md", "my docs/CLAUDE.md"],
+            ["café/AGENTS.md", "my docs/AGENTS.md"],
             self.discovery_groups("repository_instructions"),
         )
 
