@@ -327,6 +327,16 @@ class RegistryValidationTest(RegistryTestCase):
             sorted(finding["path"] for finding in findings),
         )
 
+    def test_the_generic_secret_pattern_takes_a_literal_or_a_bare_value_but_not_a_call_member_or_index(self) -> None:
+        secrets = self.repo / "leaky"
+        secrets.mkdir()
+        (secrets / "call.go").write_text("token = pointerUnescaper.Replace(token)\n", encoding="utf-8")
+        (secrets / "member.go").write_text("token = someLongerIdentifierName.Field\n", encoding="utf-8")
+        (secrets / "index.py").write_text("password = passwordsByUserName[name]\n", encoding="utf-8")
+        (secrets / "literal.py").write_text('TOKEN = "measure-local-2026-09-06"\n', encoding="utf-8")
+        (secrets / "bare.env").write_text("TOKEN=" + "z" * 20 + "\n", encoding="utf-8")
+        self.assertEqual(["bare.env", "literal.py"], sorted(finding["path"] for finding in scan_secrets(secrets)))
+
     def test_a_secret_finding_never_carries_the_secret(self) -> None:
         secrets = self.repo / "leaky"
         secrets.mkdir()

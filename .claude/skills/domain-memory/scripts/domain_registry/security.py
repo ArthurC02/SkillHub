@@ -15,7 +15,8 @@ PATTERNS = {
     "aws-access-key": re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
     "slack-token": re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}\b"),
     "generic-secret": re.compile(
-        r"(?i)\b(?:api[_-]?key|secret|password|token)\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{16,}"
+        r"(?i)\b(?:api[_-]?key|secret|password|token)\s*[:=]\s*"
+        r"(?:['\"][A-Za-z0-9_\-]{16,}['\"]|[A-Za-z0-9_\-]{16,}(?![A-Za-z0-9_\-.(\[]))"
     ),
 }
 UNSCANNED_DIRECTORIES = {".git", "node_modules", ".venv"}

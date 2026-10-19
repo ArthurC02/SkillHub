@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.22
+
+### Fixed
+
+- The `generic-secret` kind of `scan-secrets` fired on any assignment to a secret-sounding name, including `token = unescaper.Replace(token)`; it now takes a quoted literal or a bare value and leaves a call, a member access or an index on the right-hand side alone.
+- The API reference said exit 2 means an incomplete scan; it means an incomplete scan that found nothing, since a finding exits 1 either way.
+
 ## 1.2.21
 
 ### Fixed
