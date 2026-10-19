@@ -489,7 +489,7 @@ jobs:
         shell: bash
         run: >-
           bash tools/ci/report-failure.sh 'Domain Memory plugin tests on Windows'
-          python -m unittest discover -s .claude/skills/domain-memory/scripts -p 'test_*.py'
+          python .claude/skills/domain-memory/scripts/run_tests.py --jobs 4
 
   sandbox-windows:
     needs: changes
