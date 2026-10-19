@@ -4,6 +4,7 @@ import contextlib
 import io
 import json
 import shlex
+import shutil
 import subprocess
 import sys
 import unittest
@@ -96,22 +97,44 @@ class CliReadTest(RegistryTestCase):
 
     def test_a_registry_root_beside_the_real_one_is_refused_with_the_real_one_named_and_nothing_created(self) -> None:
         self.committed_source_map()
-        memory, typo = self.repo / "memory", self.repo / "memory" / "typo"
-        for given in (typo, self.repo):
-            with self.subTest(given.name):
+        typo = self.repo / "memory" / "typo"
+        for given, shown in ((typo, "memory/typo"), (self.repo, ".")):
+            with self.subTest(shown):
                 result = self.run_cli("refresh-listing", "--registry-root", str(given), "--repo-root", str(self.repo))
                 self.assertEqual(
-                    (1, f"ERROR: no Domain Memory at {given.resolve()}: {DOMAIN_MEMORY_HINT}; did you mean {memory.resolve().as_posix()}?\n",
-                     False),
+                    (1, f"ERROR: no Domain Memory at {shown}: {DOMAIN_MEMORY_HINT}; did you mean memory?\n", False),
                     (result.returncode, result.stderr, typo.exists()),
                 )
 
     def test_the_probe_of_a_root_with_no_domain_memory_nearby_says_to_check_the_option_before_initializing(self) -> None:
-        nowhere = self.repo / "nowhere"
-        summary = self.run_cli("probe", "--repo-root", str(self.repo), "--registry-root", str(nowhere))
+        bare = self.repo / "bare"
+        bare.mkdir()
+        nowhere = bare / "nowhere"
+        summary = self.run_cli("probe", "--repo-root", str(bare), "--registry-root", str(nowhere))
         self.assertEqual(
             (2, f"Domain Memory at {nowhere}: none; {DOMAIN_MEMORY_HINT}."),
             (summary.returncode, summary.stdout.strip()),
+        )
+
+    def test_a_sibling_typo_and_the_repository_root_are_pointed_at_the_one_registry_the_repository_holds(self) -> None:
+        self.committed_source_map()
+        for given, shown in ((self.repo / "memry", "memry"), (self.repo, ".")):
+            with self.subTest(shown):
+                result = self.run_cli("refresh-listing", "--registry-root", str(given), "--repo-root", str(self.repo))
+                self.assertEqual(
+                    (1, f"ERROR: no Domain Memory at {shown}: {DOMAIN_MEMORY_HINT}; did you mean memory?\n"),
+                    (result.returncode, result.stderr),
+                )
+
+    def test_a_repository_with_several_registries_lists_them_including_one_two_levels_down(self) -> None:
+        self.committed_source_map()
+        deeper = self.repo / "docs" / "dm"
+        deeper.mkdir(parents=True)
+        shutil.copy(self.repo / "memory" / "source-map.json", deeper / "source-map.json")
+        result = self.run_cli("refresh-listing", "--registry-root", str(self.repo), "--repo-root", str(self.repo))
+        self.assertEqual(
+            (1, f"ERROR: no Domain Memory at .: {DOMAIN_MEMORY_HINT}; Domain Memories in this repository: docs/dm, memory\n"),
+            (result.returncode, result.stderr),
         )
 
     def test_an_advised_path_is_posix_and_quoted_only_when_it_holds_a_space(self) -> None:

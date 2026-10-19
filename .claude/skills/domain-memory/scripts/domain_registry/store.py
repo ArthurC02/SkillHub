@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any
 
 from .common import (
-    domain_memory_hint,
     ASSET_FORMATS,
     ASSET_KEYS,
     find_record,
@@ -18,6 +17,7 @@ from .common import (
 )
 from .evidence import without_derived_keys
 from .git import read_objects, run_git_bytes
+from .locate import domain_memory_hint
 from .okf import OKF_VERSION, PROSE_FIELDS, TITLE_FIELDS, concept_path, decode, encode
 
 MANIFEST = "manifest.json"
@@ -67,7 +67,7 @@ def has_registry(root: Path) -> bool:
 
 def missing_registry(root: Path) -> str:
     return (
-        f"no Domain Registry at {root}: it holds neither registry/{INDEX} nor registry/{MANIFEST}; "
+        f"no Domain Registry at {root.resolve().as_posix()}: it holds neither registry/{INDEX} nor registry/{MANIFEST}; "
         f"{domain_memory_hint(root)}"
     )
 

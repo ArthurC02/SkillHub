@@ -7,7 +7,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .common import (
-    domain_memory_hint,
+    shown_path,
     completed_identifier,
     load_json,
     one_level_too_deep_hint,
@@ -15,6 +15,7 @@ from .common import (
     utc_now,
     writer_lock,
 )
+from .locate import domain_memory_hint
 from .git import run_git
 
 SELECTED_KIND = "selected"
@@ -454,7 +455,7 @@ def confirm_sources(
 ) -> dict[str, Any]:
     path = root / "source-map.json"
     if not path.is_file():
-        raise ValueError(f"no Domain Memory at {root}: {domain_memory_hint(root)}")
+        raise ValueError(_no_domain_memory(root, repo_root))
     if not completed_identifier(confirmed_by):
         raise ValueError(
             "confirming sources records who chose them, so it needs the developer's own identity as they gave it. "
@@ -492,10 +493,14 @@ def confirm_sources(
     return source_map
 
 
-def _selected_paths(root: Path) -> list[str]:
+def _no_domain_memory(root: Path, repo_root: Path) -> str:
+    return f"no Domain Memory at {shown_path(root, repo_root)}: {domain_memory_hint(root, repo_root)}"
+
+
+def _selected_paths(root: Path, repo_root: Path) -> list[str]:
     path = root / "source-map.json"
     if not path.is_file():
-        raise ValueError(f"no Domain Memory at {root}: {domain_memory_hint(root)}")
+        raise ValueError(_no_domain_memory(root, repo_root))
     selected = load_json(path).get("selected_paths")
     if not isinstance(selected, list) or not all(
         isinstance(item, str) and item.strip() for item in selected
@@ -507,7 +512,7 @@ def _selected_paths(root: Path) -> list[str]:
 def adjusted_selection(
     root: Path, repo_root: Path, add: list[Path], remove: list[Path]
 ) -> list[Path]:
-    selected = _selected_paths(root)
+    selected = _selected_paths(root, repo_root)
     repo = repo_root.resolve()
     removing = {relative(repo, path.resolve()) for path in remove}
     unselected = sorted(removing - set(selected))
@@ -521,7 +526,7 @@ def adjusted_selection(
 def refresh_sources(
     root: Path, repo_root: Path, policy: dict[str, Any] | None = None
 ) -> dict[str, Any]:
-    selected = _selected_paths(root)
+    selected = _selected_paths(root, repo_root)
     source_map = selected_source_map(
         repo_root, [repo_root / item for item in selected], policy
     )
@@ -555,7 +560,7 @@ def refresh_listing(
 ) -> dict[str, list[str]]:
     path = root / "source-map.json"
     if not path.is_file():
-        raise ValueError(f"no Domain Memory at {root}: {domain_memory_hint(root)}")
+        raise ValueError(_no_domain_memory(root, repo_root))
     verdict = verify_source_map(repo_root, path, policy)
     if verdict["status"] != "current":
         raise ValueError(

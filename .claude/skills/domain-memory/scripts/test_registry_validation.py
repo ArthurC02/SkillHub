@@ -216,8 +216,8 @@ class RegistryValidationTest(RegistryTestCase):
         inner = self.repo / "memory" / "registry"
         self.assertEqual(
             [
-                f"no Domain Registry at {inner}: it holds neither registry/index.md nor registry/manifest.json; "
-                f"{DOMAIN_MEMORY_HINT}; did you mean {(self.repo / 'memory').as_posix()}?"
+                f"no Domain Registry at {inner.resolve().as_posix()}: it holds neither registry/index.md nor "
+                f"registry/manifest.json; {DOMAIN_MEMORY_HINT}; did you mean {(self.repo / 'memory').resolve().as_posix()}?"
             ],
             validate(inner, self.repo, False),
         )
@@ -236,20 +236,21 @@ class RegistryValidationTest(RegistryTestCase):
         with self.assertRaises(ValueError) as refused:
             load_json(missing)
         self.assertEqual(f"JSON file required: {missing}", str(refused.exception))
-        elsewhere = self.repo / "elsewhere"
+        elsewhere, memory = self.repo / "elsewhere", self.repo / "memory"
         self.assertEqual(
-            [f"no Domain Registry at {elsewhere}: it holds neither registry/index.md nor registry/manifest.json; "
-             f"{DOMAIN_MEMORY_HINT}"],
+            [f"no Domain Registry at {elsewhere.resolve().as_posix()}: it holds neither registry/index.md nor "
+             f"registry/manifest.json; {DOMAIN_MEMORY_HINT}; did you mean {memory.resolve().as_posix()}?"],
             validate(elsewhere, None, False),
         )
         with self.assertRaisesRegex(ValueError, "^no Domain Registry at "):
             read_document(elsewhere, "contexts.json")
-        memory = self.repo / "memory"
-        for beside, nearby in ((memory / "other", f"; did you mean {memory.as_posix()}?"), (elsewhere / "registry", "")):
+        for beside, nearby in (
+            (memory / "other", f"; did you mean {memory.resolve().as_posix()}?"), (elsewhere / "registry", ""),
+        ):
             with self.subTest(beside.as_posix()):
                 self.assertEqual(
-                    [f"no Domain Registry at {beside}: it holds neither registry/index.md nor registry/manifest.json; "
-                     f"{DOMAIN_MEMORY_HINT}{nearby}"],
+                    [f"no Domain Registry at {beside.resolve().as_posix()}: it holds neither registry/index.md nor "
+                     f"registry/manifest.json; {DOMAIN_MEMORY_HINT}{nearby}"],
                     validate(beside, None, False),
                 )
 

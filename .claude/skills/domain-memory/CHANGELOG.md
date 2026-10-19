@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.17
+
+### Fixed
+
+- A refusal for a root that holds no Domain Memory looked only at the parent and the children of the root it was given, so a typo beside the Registry, or the repository root itself, got no did-you-mean. When the repository root is known the refusal now asks git for every source-map.json the repository holds, at any depth: exactly one is offered as a did-you-mean, and several are listed as "Domain Memories in this repository: a, b". Outside a repository the siblings of the given root join its parent and children in the search.
+- The same refusal printed the given root in the platform's separator while the did-you-mean used forward slashes; both now print as a forward-slash path relative to the repository root when it is known (`no Domain Memory at memry: ...; did you mean memory?`), and as an absolute forward-slash path otherwise.
+
 ## 1.2.16
 
 ### Fixed

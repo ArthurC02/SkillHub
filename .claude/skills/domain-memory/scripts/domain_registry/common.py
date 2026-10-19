@@ -212,16 +212,6 @@ def holds_domain_memory(path: Path) -> bool:
     return (path / "source-map.json").is_file() or (path / "registry").is_dir()
 
 
-def domain_memory_hint(root: Path) -> str:
-    nearby = next((place for place in _neighbours(root) if holds_domain_memory(place)), None)
-    return DOMAIN_MEMORY_HINT if nearby is None else f"{DOMAIN_MEMORY_HINT}; did you mean {nearby.as_posix()}?"
-
-
-def _neighbours(root: Path) -> list[Path]:
-    children = sorted(child for child in root.iterdir() if child.is_dir()) if root.is_dir() else []
-    return [root.parent, *children]
-
-
 def one_level_too_deep_hint(path: Path) -> str:
     nearby = path.parent.parent / path.name
     if not nearby.is_file():
