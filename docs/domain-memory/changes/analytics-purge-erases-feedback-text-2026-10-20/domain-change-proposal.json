@@ -1,0 +1,116 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "analytics-purge-erases-feedback-text-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "analytics-purge-erases-feedback-text-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-19T18:28:48.068094Z",
+  "verified_at": "2026-10-19T18:28:58.183549Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "b5ababf7839463753ee98edf99c5f308db63a988",
+    "registry_digest": "sha256:a52f0e3a92150bfe9a694fb3e90471355dea5b73cdd3013223d45ab0b076ffd8",
+    "committed_digest": "sha256:a52f0e3a92150bfe9a694fb3e90471355dea5b73cdd3013223d45ab0b076ffd8"
+  },
+  "affected_contexts": [
+    "analytics"
+  ],
+  "rule_ids": [
+    "an-account-purge-de-identifies-feedback"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "analytics",
+    "invariant": "Only analytics decides these rules.",
+    "evidence": [
+      "apps/platform/internal/product/learning/purge.go:12-19"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/creator/workspace/purge.go:49-49"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Account purge kept the user's own feedback words and a Run link that led back to the workspace."
+    ],
+    "decision": "Erase the text, page and Run link at purge; keep kind and time for counting.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Deleting the report rows: the kind and time are what the funnel counts."
+    ],
+    "proof_obligations": [
+      "rule-an-account-purge-de-identifies-feedback"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-account-purge-de-identifies-feedback",
+        "statement": "Purging an account detaches its funnel events from the Workspace and user, and erases its feedback reports' text, page and Run link, keeping only each report's kind and time for counting.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "After the purge a report that said 'I wanted a python profile' on /runs/x keeps its kind need_signal and its time, with no message, page, Run, Workspace or user."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/purge.go",
+            "lines": {
+              "start": 17,
+              "end": 18
+            },
+            "content_sha256": "sha256:28b0ed673877326ae1ea745cd8cfe01567b3b88e69b6685eb09bea3bb32a253a",
+            "excerpt_sha256": "sha256:9686aa9ce581038f04d9a0024d00dacf479af0be3a38e66b4999da6d0269a5c5",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go",
+            "lines": {
+              "start": 587,
+              "end": 635
+            },
+            "content_sha256": "sha256:d407040be159f419520c4de11b33535dfbaea312785646c2ac96e686fe38cd97",
+            "excerpt_sha256": "sha256:9ba2ed4f41cdfa8d5b5ceddd880ccb934ef166c8027f305ff4173a2d27211e5e",
+            "source_kind": "tests"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-19T18:28:57.949881Z",
+      "scope": "Record analytics rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "b5ababf7839463753ee98edf99c5f308db63a988",
+        "registry_digest": "sha256:a52f0e3a92150bfe9a694fb3e90471355dea5b73cdd3013223d45ab0b076ffd8",
+        "committed_digest": "sha256:a52f0e3a92150bfe9a694fb3e90471355dea5b73cdd3013223d45ab0b076ffd8"
+      }
+    }
+  ],
+  "supersedes": [
+    "analytics-harvest-rules-2026-10-17"
+  ]
+}

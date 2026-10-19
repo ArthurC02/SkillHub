@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "identity-operator-erasure-2026-10-20",
+  "proposal_id": "identity-operator-erasure-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-an-operator-erasure-skips-the-deletion-grace",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-operator-erasure-skips-the-deletion-grace",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-operator-erasure-skips-the-deletion-grace"
+        }
+      ],
+      "expected_outcome": "An operator may register an erasure for an account on its holder's behalf, with a reason; it requests deletion if none is pending, keeps an earlier request time, and lets the next purge sweep take the account without waiting out the 30-day grace. The holder cancelling the deletion withdraws it, and an account already purging or deleted refuses it.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestADeletionRequestStampsOnlyAFreshRequestAndNeitherChangeReachesAPurgingOrDeletedAccount$ ./internal/creator/workspace/"
+    }
+  ]
+}

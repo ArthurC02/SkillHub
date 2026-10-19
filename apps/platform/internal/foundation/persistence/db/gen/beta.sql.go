@@ -155,7 +155,8 @@ func (q *Queries) DetachWorkspaceAnalytics(ctx context.Context, workspaceID pgty
 }
 
 const detachWorkspaceFeedback = `-- name: DetachWorkspaceFeedback :execrows
-UPDATE feedback_reports SET workspace_id = NULL, user_id = NULL
+UPDATE feedback_reports
+SET workspace_id = NULL, user_id = NULL, message = NULL, page_path = NULL, run_id = NULL
 WHERE workspace_id = $1
 `
 
@@ -254,7 +255,7 @@ func (q *Queries) InsertAnalyticsEvent(ctx context.Context, arg InsertAnalyticsE
 
 const insertFeedbackReport = `-- name: InsertFeedbackReport :exec
 INSERT INTO feedback_reports (workspace_id, user_id, kind, message, page_path, run_id, build_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4::text, $5, $6, $7)
 `
 
 type InsertFeedbackReportParams struct {

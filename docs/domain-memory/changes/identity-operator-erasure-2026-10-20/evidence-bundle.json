@@ -1,0 +1,41 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "identity-operator-erasure-2026-10-20",
+  "proposal_id": "identity-operator-erasure-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "b5ababf7839463753ee98edf99c5f308db63a988",
+    "registry_digest": "sha256:550e72a5439031e3899f6435fa74ed0e8ce21bdcf9c383013629a0183a8e4bae",
+    "committed_digest": "sha256:a52f0e3a92150bfe9a694fb3e90471355dea5b73cdd3013223d45ab0b076ffd8"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-operator-erasure-skips-the-deletion-grace",
+      "mutated_protection": "apps/platform/internal/creator/workspace/account.go:58: a.erasureExpeditedAt, a.purgeAttemptedAt = pgtype.Timestamptz{Time: now, Valid: true}, pgtype.Timestamptz{} -> a.purgeAttemptedAt = pgtype.Timestamptz{}",
+      "failure_evidence": "ll:0 ext:63925243200 loc:<nil>} InfinityModifier:0 Valid:true}}\n    account_test.go:68: an expedited erasure keeps the earlier request and clears its attempt: account = {deletedAt:{Time:{wall:0 ext:0 loc:<nil>} InfinityModifier:0 Valid:false} purgeStartedAt:{Time:{wall:0 ext:0 loc:<nil>} InfinityModifier:0 Valid:false} deletionRequestedAt:{Time:{wall:0 ext:63925239600 loc:<nil>} InfinityModifier:0 Valid:true} purgeAttemptedAt:{Time:{wall:0 ext:0 loc:<nil>} InfinityModifier:0 Valid:false} erasureExpeditedAt:{Time:{wall:0 ext:0 loc:<nil>} InfinityModifier:0 Valid:false}}, want {deletedAt:{Time:{wall:0 ext:0 loc:<nil>} InfinityModifier:0 Valid:false} purgeStartedAt:{Time:{wall:0 ext:0 loc:<nil>} InfinityModifier:0 Valid:false} deletionRequestedAt:{Time:{wall:0 ext:63925239600 loc:<nil>} InfinityModifier:0 Valid:true} purgeAttemptedAt:{Time:{wall:0 ext:0 loc:<nil>} InfinityModifier:0 Valid:false} erasureExpeditedAt:{Time:{wall:0 ext:63925243200 loc:<nil>} InfinityModifier:0 Valid:true}}\n--- FAIL: TestADeletionRequestStampsOnlyAFreshRequestAndNeitherChangeReachesAPurgingOrDeletedAccount (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace\t2.460s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/creator/workspace/account.go",
+    "apps/platform/internal/creator/workspace/account_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-an-operator-erasure-skips-the-deletion-grace",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestADeletionRequestStampsOnlyAFreshRequestAndNeitherChangeReachesAPurgingOrDeletedAccount$ ./internal/creator/workspace/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e6d7a1dd2bc4c1d1e5d71dae6359fc5b16bdbd203fd343511795b1577de8eb75",
+      "finished_at": "2026-10-19T18:29:46.115150Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

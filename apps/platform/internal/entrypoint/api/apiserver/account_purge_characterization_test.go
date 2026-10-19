@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
@@ -207,5 +208,41 @@ func TestAnAccountWhoseDeletionIsWithdrawnMidSweepIsLeftAlone(t *testing.T) {
 	if got := countRow(t, pool, "SELECT count(*) FROM users WHERE id = $1 AND purge_started_at IS NULL",
 		mustUUID(t, alice.userID)); got != 1 {
 		t.Error("the withdrawn account was marked as purging")
+	}
+}
+
+func TestAnOperatorErasureSkipsTheGraceThatAnOwnDeletionWaitsOut(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	operator := a.login(t, uniqueWorklistLabel("erasure-operator"))
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	erased := a.login(t, uniqueWorklistLabel("erasure-requested"))
+	waiting := a.login(t, uniqueWorklistLabel("erasure-own-delete"))
+
+	if code := waiting.status(t, http.MethodDelete, "/me"); code != http.StatusOK {
+		t.Fatalf("DELETE /me: got %d", code)
+	}
+	if code, _ := operatorCall(t, operator, http.MethodPost, "/admin/accounts/"+erased.userID+"/erasure", `{"reason":" "}`); code != http.StatusBadRequest {
+		t.Fatalf("an erasure without a reason: got %d, want 400", code)
+	}
+	if code, out := operatorCall(t, operator, http.MethodPost, "/admin/accounts/"+erased.userID+"/erasure", `{"reason":"emailed erasure request"}`); code != http.StatusAccepted {
+		t.Fatalf("operator erasure: got %d (%v), want 202", code, out)
+	}
+	if got := countRow(t, pool, "SELECT count(*) FROM audit_events WHERE action = 'account.erasure_expedited' AND resource_id = $1 AND actor_user_id = $2",
+		mustUUID(t, erased.userID), mustUUID(t, operator.userID)); got != 1 {
+		t.Fatalf("the erasure left %d audit events naming the operator, want 1", got)
+	}
+
+	if _, err := a.auth.Service.PurgeExpiredAccounts(context.Background(), &recordingStore{}, identity.AccountDeletionGrace, 100); err != nil {
+		t.Fatal(err)
+	}
+	if got := countRow(t, pool, "SELECT count(*) FROM users WHERE id = $1 AND deleted_at IS NOT NULL", mustUUID(t, erased.userID)); got != 1 {
+		t.Error("the expedited account was not purged by the sweep that same day")
+	}
+	if got := countRow(t, pool, "SELECT count(*) FROM users WHERE id = $1 AND deleted_at IS NULL", mustUUID(t, waiting.userID)); got != 1 {
+		t.Error("an account deleted by its owner today was purged before its grace ended")
+	}
+	if code, _ := operatorCall(t, operator, http.MethodPost, "/admin/accounts/"+erased.userID+"/erasure", `{"reason":"again"}`); code != http.StatusConflict {
+		t.Errorf("erasing a purged account: got %d, want 409", code)
 	}
 }

@@ -9944,6 +9944,37 @@ func (s *EvidenceRefReattributedFrom) UnmarshalText(data []byte) error {
 	}
 }
 
+// ExpediteAccountErasureAccepted is response for ExpediteAccountErasure operation.
+type ExpediteAccountErasureAccepted struct{}
+
+func (*ExpediteAccountErasureAccepted) expediteAccountErasureRes() {}
+
+type ExpediteAccountErasureBadRequest Error
+
+func (*ExpediteAccountErasureBadRequest) expediteAccountErasureRes() {}
+
+type ExpediteAccountErasureConflict Error
+
+func (*ExpediteAccountErasureConflict) expediteAccountErasureRes() {}
+
+type ExpediteAccountErasureNotFound Error
+
+func (*ExpediteAccountErasureNotFound) expediteAccountErasureRes() {}
+
+type ExpediteAccountErasureReq struct {
+	Reason string `json:"reason"`
+}
+
+// GetReason returns the value of Reason.
+func (s *ExpediteAccountErasureReq) GetReason() string {
+	return s.Reason
+}
+
+// SetReason sets the value of Reason.
+func (s *ExpediteAccountErasureReq) SetReason(val string) {
+	s.Reason = val
+}
+
 type ExportBundleForbidden Error
 
 func (*ExportBundleForbidden) exportBundleRes() {}

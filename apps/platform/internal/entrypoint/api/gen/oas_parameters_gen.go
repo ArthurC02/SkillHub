@@ -163,6 +163,11 @@ type DownloadArtifactContentParams struct {
 	ArtifactId uuid.UUID
 }
 
+// ExpediteAccountErasureParams is parameters of expediteAccountErasure operation.
+type ExpediteAccountErasureParams struct {
+	UserID uuid.UUID
+}
+
 // ExportBundleParams is parameters of exportBundle operation.
 type ExportBundleParams struct {
 	// The Bundle Version to export; the newest when absent.

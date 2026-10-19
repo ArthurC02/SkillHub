@@ -210,6 +210,7 @@
 - [an-ingestion-token-expires](/rules/an-ingestion-token-expires) — A trace ingestion token is a signed grant for one Run attempt; it expires after its time to live, and a tampered or expired token is refused.
 - [an-oauth-callback-needs-its-state-cookie](/rules/an-oauth-callback-needs-its-state-cookie) — A GitHub login callback is refused with 401 before any code exchange unless its state matches the state cookie set when the login began.
 - [an-operator-change-note-is-at-most-1000-characters](/rules/an-operator-change-note-is-at-most-1000-characters) — An operator's note on an agent change is at most the contract's cap counted in characters; one more is refused with 400.
+- [an-operator-erasure-skips-the-deletion-grace](/rules/an-operator-erasure-skips-the-deletion-grace) — An operator may register an erasure for an account on its holder's behalf, with a reason; it requests deletion if none is pending, keeps an earlier request tim….
 - [an-operator-note-is-at-most-the-cap](/rules/an-operator-note-is-at-most-the-cap) — An operator note longer than the contract's cap is refused; a note of exactly the cap is accepted.
 - [an-operator-note-is-counted-in-characters](/rules/an-operator-note-is-counted-in-characters) — The operator note cap counts characters, not bytes, so a note of Chinese characters up to the cap is accepted.
 - [an-opted-out-package-carries-no-test-case](/rules/an-opted-out-package-carries-no-test-case) — When the user opts out of test cases, even curated cases stay out and are listed as user_opted_out.

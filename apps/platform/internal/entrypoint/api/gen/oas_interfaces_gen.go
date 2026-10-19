@@ -141,6 +141,10 @@ type EngagePlatformAgentBrakeRes interface {
 	engagePlatformAgentBrakeRes()
 }
 
+type ExpediteAccountErasureRes interface {
+	expediteAccountErasureRes()
+}
+
 type ExportBundleRes interface {
 	exportBundleRes()
 }

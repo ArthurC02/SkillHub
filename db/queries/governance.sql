@@ -21,13 +21,14 @@ LIMIT @page_limit OFFSET @page_offset;
 DELETE FROM audit_events WHERE created_at < $1;
 
 -- name: LockAccountLifecycle :one
-SELECT deleted_at, purge_started_at, deletion_requested_at, purge_attempted_at
+SELECT deleted_at, purge_started_at, deletion_requested_at, purge_attempted_at, erasure_expedited_at
 FROM users WHERE id = $1 FOR UPDATE;
 
 -- name: SaveAccountDeletionRequest :one
 UPDATE users
 SET deletion_requested_at = sqlc.narg(deletion_requested_at),
     purge_attempted_at = sqlc.narg(purge_attempted_at),
+    erasure_expedited_at = sqlc.narg(erasure_expedited_at),
     updated_at = now()
 WHERE id = @id AND deleted_at IS NULL AND purge_started_at IS NULL
 RETURNING *;
@@ -37,7 +38,7 @@ WITH candidates AS (
     SELECT pending.id FROM users pending
     WHERE pending.deleted_at IS NULL
       AND pending.deletion_requested_at IS NOT NULL
-      AND pending.deletion_requested_at <= sqlc.arg(cutoff)
+      AND (pending.deletion_requested_at <= sqlc.arg(cutoff) OR pending.erasure_expedited_at IS NOT NULL)
 	  AND (pending.purge_attempted_at IS NULL OR pending.purge_attempted_at < now() - @claim_lease::interval)
     ORDER BY pending.purge_attempted_at NULLS FIRST, pending.purge_attempted_at,
              pending.deletion_requested_at, pending.id
@@ -49,7 +50,7 @@ RETURNING u.id;
 
 -- name: MarkAccountPurgeStarted :execrows
 UPDATE users SET purge_started_at = coalesce(purge_started_at, now()), updated_at = now()
-WHERE id = @id AND deleted_at IS NULL AND deletion_requested_at <= @cutoff;
+WHERE id = @id AND deleted_at IS NULL AND (deletion_requested_at <= @cutoff OR erasure_expedited_at IS NOT NULL);
 
 -- name: ListWorkspaceDatasetObjectKeys :many
 SELECT d.object_key FROM datasets d WHERE d.workspace_id = $1

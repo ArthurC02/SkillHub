@@ -29,12 +29,13 @@ INSERT INTO analytics_events (
 UPDATE analytics_events SET workspace_id = NULL WHERE workspace_id = $1;
 
 -- name: DetachWorkspaceFeedback :execrows
-UPDATE feedback_reports SET workspace_id = NULL, user_id = NULL
+UPDATE feedback_reports
+SET workspace_id = NULL, user_id = NULL, message = NULL, page_path = NULL, run_id = NULL
 WHERE workspace_id = $1;
 
 -- name: InsertFeedbackReport :exec
 INSERT INTO feedback_reports (workspace_id, user_id, kind, message, page_path, run_id, build_id)
-VALUES (@workspace_id, @user_id, @kind, @message, @page_path, @run_id, @build_id);
+VALUES (@workspace_id, @user_id, @kind, sqlc.arg(message)::text, @page_path, @run_id, @build_id);
 
 -- name: RunInWorkspace :one
 SELECT EXISTS (SELECT 1 FROM runs WHERE id = $1 AND workspace_id = $2);

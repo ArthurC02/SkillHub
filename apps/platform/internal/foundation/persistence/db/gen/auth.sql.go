@@ -85,7 +85,7 @@ func (q *Queries) DeleteSession(ctx context.Context, tokenHash []byte) error {
 }
 
 const getSessionWithUser = `-- name: GetSessionWithUser :one
-SELECT s.expires_at AS session_expires_at, u.id, u.email, u.display_name, u.created_at, u.updated_at, u.deleted_at, u.deletion_requested_at, u.purge_attempted_at, u.purge_started_at,
+SELECT s.expires_at AS session_expires_at, u.id, u.email, u.display_name, u.created_at, u.updated_at, u.deleted_at, u.deletion_requested_at, u.purge_attempted_at, u.purge_started_at, u.erasure_expedited_at,
        w.id AS owned_workspace, w.name AS owned_workspace_name, w.created_at AS owned_workspace_created_at,
        w.updated_at AS owned_workspace_updated_at, w.is_catalog AS owned_workspace_is_catalog
 FROM sessions s
@@ -118,6 +118,7 @@ func (q *Queries) GetSessionWithUser(ctx context.Context, tokenHash []byte) (Get
 		&i.User.DeletionRequestedAt,
 		&i.User.PurgeAttemptedAt,
 		&i.User.PurgeStartedAt,
+		&i.User.ErasureExpeditedAt,
 		&i.OwnedWorkspace,
 		&i.OwnedWorkspaceName,
 		&i.OwnedWorkspaceCreatedAt,
@@ -128,7 +129,7 @@ func (q *Queries) GetSessionWithUser(ctx context.Context, tokenHash []byte) (Get
 }
 
 const getUserByIdentity = `-- name: GetUserByIdentity :one
-SELECT u.id, u.email, u.display_name, u.created_at, u.updated_at, u.deleted_at, u.deletion_requested_at, u.purge_attempted_at, u.purge_started_at FROM users u
+SELECT u.id, u.email, u.display_name, u.created_at, u.updated_at, u.deleted_at, u.deletion_requested_at, u.purge_attempted_at, u.purge_started_at, u.erasure_expedited_at FROM users u
 JOIN user_identities i ON i.user_id = u.id
 WHERE i.provider = $1 AND i.provider_user_id = $2
 `
@@ -151,6 +152,7 @@ func (q *Queries) GetUserByIdentity(ctx context.Context, arg GetUserByIdentityPa
 		&i.DeletionRequestedAt,
 		&i.PurgeAttemptedAt,
 		&i.PurgeStartedAt,
+		&i.ErasureExpeditedAt,
 	)
 	return i, err
 }

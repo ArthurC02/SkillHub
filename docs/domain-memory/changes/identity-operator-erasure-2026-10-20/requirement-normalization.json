@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "identity-operator-erasure-2026-10-20",
+  "status": "draft",
+  "intent": "Record the identity rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context identity lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-an-operator-erasure-skips-the-deletion-grace",
+      "statement": "An operator may register an erasure for an account on its holder's behalf, with a reason; it requests deletion if none is pending, keeps an earlier request time, and lets the next purge sweep take the account without waiting out the 30-day grace. The holder cancelling the deletion withdraws it, and an account already purging or deleted refuses it."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/creator/workspace/account.go",
+    "apps/platform/internal/creator/workspace/account_test.go"
+  ]
+}

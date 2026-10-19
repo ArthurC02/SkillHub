@@ -36,6 +36,7 @@ export const EngagePlatformAgentBrakeBodyNoteMaxLength = 1000;
 export const EvaluationFeedbackCommentMaxLength = 2000;
 export const EvaluationGraderDraftNameMaxLength = 100;
 export const EvaluationGraderRevisionInstructionsMaxLength = 4000;
+export const ExpediteAccountErasureBodyReasonMaxLength = 1000;
 export const GenerateSkillBodyReferenceSkillIdsMaxItems = 3;
 export const GenerateSkillBodyTaskDescriptionMaxLength = 4000;
 export const GrantCreditsBodyIdempotencyKeyMaxLength = 128;

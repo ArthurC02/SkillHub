@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "analytics-purge-erases-feedback-text-2026-10-20",
+  "proposal_id": "analytics-purge-erases-feedback-text-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-an-account-purge-de-identifies-feedback",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-account-purge-de-identifies-feedback",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-account-purge-de-identifies-feedback"
+        }
+      ],
+      "expected_outcome": "Purging an account detaches its funnel events from the Workspace and user, and erases its feedback reports' text, page and Run link, keeping only each report's kind and time for counting.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestPurgeDetachesAnalyticsAndKeepsOnlyTheKindOfFeedback$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

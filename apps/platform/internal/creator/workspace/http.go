@@ -14,6 +14,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
@@ -392,6 +394,39 @@ func (h *Handler) LookupAccount(w http.ResponseWriter, r *http.Request) {
 		DeletionRequestedAt: deletionRequestedAt,
 		InBetaAllowlist:     h.allowlisted(found.ProviderUserIDs),
 	})
+}
+
+const maxErasureBodyBytes = 4096
+
+func (h *Handler) ExpediteErasure(w http.ResponseWriter, r *http.Request) {
+	operator, ok := SessionUser(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	var userID pgtype.UUID
+	if err := userID.Scan(r.PathValue("user_id")); err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	var body struct {
+		Reason string `json:"reason"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxErasureBodyBytes)).Decode(&body); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a reason")
+		return
+	}
+	_, err := h.Service.ExpediteAccountErasure(r.Context(), userID, operator.ID, body.Reason)
+	switch {
+	case errors.Is(err, ErrErasureReasonRequired):
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+	case errors.Is(err, ErrAccountPurging):
+		httpx.WriteError(w, http.StatusConflict, "no live account has that id, or its purge has already started")
+	case err != nil:
+		httpx.WriteError(w, http.StatusInternalServerError, "erasure request failed")
+	default:
+		w.WriteHeader(http.StatusAccepted)
+	}
 }
 
 func (h *Handler) Rosters(w http.ResponseWriter, _ *http.Request) {

@@ -4174,6 +4174,49 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/accounts/{user_id}/erasure:
+    post:
+      operationId: expediteAccountErasure
+      summary: Erase an account without the 30-day grace, on the owner's request
+      description: |
+        Operator only. Records a deletion request for the account if it has
+        none and marks it for erasure, so the next purge sweep removes it
+        without waiting out the grace an owner's own deletion gets. Used when
+        a person asks for their data to be erased through a channel other
+        than the account page. The owner cancelling the deletion withdraws
+        it. The reason is kept in the audit event.
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, maxLength: 1000 }
+      responses:
+        "202":
+          description: The account is marked for erasure; the next purge sweep removes it.
+        "400":
+          description: The body is not JSON, or the reason is blank.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: No live account has that id, or its purge has already started.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/rosters:
     get:
       operationId: getOperatorRosters

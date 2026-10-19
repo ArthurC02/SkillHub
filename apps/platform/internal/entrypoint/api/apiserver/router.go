@@ -86,6 +86,7 @@ func NewRouter(d Deps) http.Handler {
 	mountPublishingRoutes(mux, d)
 	mountOwnerGovernanceRoutes(mux, d)
 	mountOperatorRoutes(mux, d)
+	mountPlatformAgentRoutes(mux, d)
 	mountTestLabRoutes(mux, d)
 	mountRunRoutes(mux, d)
 	mountEvaluationRoutes(mux, d)
@@ -215,6 +216,7 @@ func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("DELETE /admin/dispatch/halt", auth.RequireOperator(d.Runs.LiftHalt))
 
 	mux.HandleFunc("GET /admin/accounts", auth.RequireOperator(auth.LookupAccount))
+	mux.HandleFunc("POST /admin/accounts/{user_id}/erasure", auth.RequireOperator(auth.ExpediteErasure))
 	mux.HandleFunc("GET /admin/rosters", auth.RequireOperator(auth.Rosters))
 	mux.HandleFunc("GET /admin/skills", auth.RequireOperator(d.Governance.FindSkillsForGovernance))
 	mux.HandleFunc("GET /admin/audit-log", auth.RequireOperator(d.OperatorAudit.List))
@@ -228,6 +230,14 @@ func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("PUT /admin/settings/judge-panel", auth.RequireOperator(d.Settings.SetJudgePanel))
 	mux.HandleFunc("GET /admin/settings/runs", auth.RequireOperator(d.RunSettings.Get))
 	mux.HandleFunc("PUT /admin/settings/runs/continuation-rounds", auth.RequireOperator(d.RunSettings.SetContinuationRounds))
+	mux.HandleFunc("GET /admin/trends/runs", auth.RequireOperator(d.Trends.Runs))
+	mux.HandleFunc("GET /admin/trends/funnel", auth.RequireOperator(d.Trends.Funnel))
+	mux.HandleFunc("GET /admin/trends/operator-actions", auth.RequireOperator(d.Trends.OperatorActions))
+}
+
+func mountPlatformAgentRoutes(mux *http.ServeMux, d Deps) {
+	auth := d.Auth
+
 	mux.HandleFunc("GET /admin/agents", auth.RequireOperator(d.Agents.List))
 	mux.HandleFunc("PUT /admin/agents/{name}/enabled", auth.RequireOperator(d.Agents.SetEnabled))
 	mux.HandleFunc("PUT /admin/agents/{name}/spend-cap", auth.RequireOperator(d.Agents.SetSpendCap))
@@ -242,9 +252,6 @@ func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("GET /admin/agents/proposals", auth.RequireOperator(d.Agents.Proposals))
 	mux.HandleFunc("GET /admin/agents/proposals/{id}", auth.RequireOperator(d.Agents.Proposal))
 	mux.HandleFunc("PUT /admin/agents/proposals/{id}/decision", auth.RequireOperator(d.Agents.DecideProposal))
-	mux.HandleFunc("GET /admin/trends/runs", auth.RequireOperator(d.Trends.Runs))
-	mux.HandleFunc("GET /admin/trends/funnel", auth.RequireOperator(d.Trends.Funnel))
-	mux.HandleFunc("GET /admin/trends/operator-actions", auth.RequireOperator(d.Trends.OperatorActions))
 }
 
 func mountTestLabRoutes(mux *http.ServeMux, d Deps) {

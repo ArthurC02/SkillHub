@@ -1,0 +1,160 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "identity-deletion-recite",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "identity-deletion-recite",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-19T18:30:18.886321Z",
+  "verified_at": "2026-10-19T18:30:20.395499Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "b5ababf7839463753ee98edf99c5f308db63a988",
+    "registry_digest": "sha256:550e72a5439031e3899f6435fa74ed0e8ce21bdcf9c383013629a0183a8e4bae",
+    "committed_digest": "sha256:a52f0e3a92150bfe9a694fb3e90471355dea5b73cdd3013223d45ab0b076ffd8"
+  },
+  "affected_contexts": [
+    "identity"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "deletion-irreversible-once-purge-starts",
+        "statement": "Once an Account has started purging or is deleted, deletion can neither be requested nor cancelled; the user is told it is irreversible (HTTP 409).",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "Cancelling a deletion whose purge has started answers 409 'deletion is already irreversible'.",
+          "Requesting deletion for an already deleted Account answers 409."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/account.go",
+            "lines": {
+              "start": 42,
+              "end": 69
+            },
+            "content_sha256": "sha256:ddac5d0aa8434efc1a8b009f8d0102df6a7b24fa51b5d23ffd08cac68ab6bdde",
+            "excerpt_sha256": "sha256:f299a7a5956ac36a9374f06b675c2cf5b0a10b91aa65a2ff4c2b9aa2f8ca95f8",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/http.go",
+            "lines": {
+              "start": 550,
+              "end": 580
+            },
+            "excerpt_sha256": "sha256:694854a88d93cbfe6e3d820134e8fa46b0b7d9c256c54ffdf28c526e0271e58b"
+          },
+          {
+            "path": "contracts/openapi/public.yaml",
+            "lines": {
+              "start": 222,
+              "end": 229
+            },
+            "excerpt_sha256": "sha256:c0d734698f112f6a5b072328448d3e936105fd071bf5acf81d324c030b5725a0"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "deletion-request-starts-30-day-grace-and-is-idempotent",
+        "statement": "Requesting account deletion starts a 30-day grace period during which the Account stays fully usable; asking again keeps the original request time instead of extending the wait, and cancelling clears the request and is harmless when nothing is pending.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "A second DELETE /me keeps the first deletion_requested_at and the same purge_after.",
+          "POST /me/deletion/cancel with nothing pending answers 200 with deletion_requested_at null.",
+          "A fresh request after a cancel starts a new clock with no purge attempt on record."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/service.go",
+            "lines": {
+              "start": 329,
+              "end": 339
+            },
+            "content_sha256": "sha256:fc6bbeed3067fc11e02ba08450a7bceb6522f2d2b3abea42c4d3c5b2adf67419",
+            "excerpt_sha256": "sha256:0520b7e31b141aaa3546d12c08c04a33e92b5fbd10365eea013591ad41877248",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/account.go",
+            "lines": {
+              "start": 42,
+              "end": 69
+            },
+            "content_sha256": "sha256:ddac5d0aa8434efc1a8b009f8d0102df6a7b24fa51b5d23ffd08cac68ab6bdde",
+            "excerpt_sha256": "sha256:f299a7a5956ac36a9374f06b675c2cf5b0a10b91aa65a2ff4c2b9aa2f8ca95f8",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/account_test.go",
+            "lines": {
+              "start": 34,
+              "end": 71
+            },
+            "content_sha256": "sha256:cfb4a036bb6a6141a69a195c3e69d815ca4186f1664f3b3f5aee15c9bb300f48",
+            "excerpt_sha256": "sha256:e877185dc0ac36b0f6dd870720f86296ffcec89f918b1e66c652b157213cf838",
+            "source_kind": "tests"
+          },
+          {
+            "path": "contracts/openapi/public.yaml",
+            "lines": {
+              "start": 195,
+              "end": 208
+            },
+            "excerpt_sha256": "sha256:cbdf684053ba1daf32836bbeb0309454cad0c581e5541945e39a3992744ecf53"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-19T18:30:19.836130Z",
+      "scope": "Re-cite two account-deletion rules onto the lines the operator erasure moved",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "b5ababf7839463753ee98edf99c5f308db63a988",
+        "registry_digest": "sha256:550e72a5439031e3899f6435fa74ed0e8ce21bdcf9c383013629a0183a8e4bae",
+        "committed_digest": "sha256:a52f0e3a92150bfe9a694fb3e90471355dea5b73cdd3013223d45ab0b076ffd8"
+      }
+    }
+  ],
+  "supersedes": [
+    "identity-packaging-harvest"
+  ]
+}

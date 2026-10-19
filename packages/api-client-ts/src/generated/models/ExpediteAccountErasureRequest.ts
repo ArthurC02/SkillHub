@@ -16,9 +16,9 @@ import { mapValues } from '../runtime';
 /**
  * 
  * @export
- * @interface ClearModelCallBudgetRequest
+ * @interface ExpediteAccountErasureRequest
  */
-export interface ClearModelCallBudgetRequest {
+export interface ExpediteAccountErasureRequest {
     /**
      * 
      */
@@ -26,18 +26,18 @@ export interface ClearModelCallBudgetRequest {
 }
 
 /**
- * Check if a given object implements the ClearModelCallBudgetRequest interface.
+ * Check if a given object implements the ExpediteAccountErasureRequest interface.
  */
-export function instanceOfClearModelCallBudgetRequest(value: object): value is ClearModelCallBudgetRequest {
+export function instanceOfExpediteAccountErasureRequest(value: object): value is ExpediteAccountErasureRequest {
     if (!('reason' in value) || value['reason'] === undefined) return false;
     return true;
 }
 
-export function ClearModelCallBudgetRequestFromJSON(json: any): ClearModelCallBudgetRequest {
-    return ClearModelCallBudgetRequestFromJSONTyped(json, false);
+export function ExpediteAccountErasureRequestFromJSON(json: any): ExpediteAccountErasureRequest {
+    return ExpediteAccountErasureRequestFromJSONTyped(json, false);
 }
 
-export function ClearModelCallBudgetRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): ClearModelCallBudgetRequest {
+export function ExpediteAccountErasureRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): ExpediteAccountErasureRequest {
     if (json == null) {
         return json;
     }
@@ -47,11 +47,11 @@ export function ClearModelCallBudgetRequestFromJSONTyped(json: any, ignoreDiscri
     };
 }
 
-export function ClearModelCallBudgetRequestToJSON(json: any): ClearModelCallBudgetRequest {
-    return ClearModelCallBudgetRequestToJSONTyped(json, false);
+export function ExpediteAccountErasureRequestToJSON(json: any): ExpediteAccountErasureRequest {
+    return ExpediteAccountErasureRequestToJSONTyped(json, false);
 }
 
-export function ClearModelCallBudgetRequestToJSONTyped(value?: ClearModelCallBudgetRequest | null, ignoreDiscriminator: boolean = false): any {
+export function ExpediteAccountErasureRequestToJSONTyped(value?: ExpediteAccountErasureRequest | null, ignoreDiscriminator: boolean = false): any {
     if (value == null) {
         return value;
     }

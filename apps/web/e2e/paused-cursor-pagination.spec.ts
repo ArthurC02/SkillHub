@@ -153,6 +153,7 @@ async function openCursorRead(page: Page, surface: Surface, stage: Stage) {
     await expect(rows).toHaveCount(1);
     await page.getByRole("link", { name: "資料保存政策", exact: true }).click();
     await expect(page).toHaveURL(/\/policy$/);
+    await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toBeVisible();
     await page.goBack();
   }
   if (firstPage) {
@@ -263,6 +264,7 @@ test("a cached credit balance failure waits for connectivity and keeps recovery 
     await expect(balance.getByText("目前餘額", { exact: false })).toBeVisible();
     await page.getByRole("link", { name: "資料保存政策", exact: true }).click();
     await expect(page).toHaveURL(/\/policy$/);
+    await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toBeVisible();
     await page.goBack();
     await expect(balance.getByRole("alert")).toBeVisible();
     await expect(balance.getByText("目前餘額", { exact: false })).toHaveCount(0);

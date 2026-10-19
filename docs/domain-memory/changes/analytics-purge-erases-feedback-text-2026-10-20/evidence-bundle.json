@@ -1,0 +1,41 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "analytics-purge-erases-feedback-text-2026-10-20",
+  "proposal_id": "analytics-purge-erases-feedback-text-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "b5ababf7839463753ee98edf99c5f308db63a988",
+    "registry_digest": "sha256:a52f0e3a92150bfe9a694fb3e90471355dea5b73cdd3013223d45ab0b076ffd8",
+    "committed_digest": "sha256:a52f0e3a92150bfe9a694fb3e90471355dea5b73cdd3013223d45ab0b076ffd8"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-account-purge-de-identifies-feedback",
+      "mutated_protection": "apps/platform/internal/foundation/persistence/db/gen/beta.sql.go:159: SET workspace_id = NULL, user_id = NULL, message = NULL, page_path = NULL, run_id = NULL -> SET workspace_id = NULL, user_id = NULL, page_path = NULL, run_id = NULL",
+      "failure_evidence": "=== RUN   TestPurgeDetachesAnalyticsAndKeepsOnlyTheKindOfFeedback\n    beta_integration_test.go:634: feedback after purge: kind=\"need_signal\" message=0x24a64bfc2a00 page=<nil> run=<nil> workspace=<nil> user=<nil>, want only the kind and time kept\n--- FAIL: TestPurgeDetachesAnalyticsAndKeepsOnlyTheKindOfFeedback (0.26s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.612s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go",
+    "apps/platform/internal/product/learning/purge.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-an-account-purge-de-identifies-feedback",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestPurgeDetachesAnalyticsAndKeepsOnlyTheKindOfFeedback$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ad912209229cb18ef1aa42fcc3a515e6fddf65177ad17bb2e195e829e0fccd7f",
+      "finished_at": "2026-10-19T18:28:57.946197Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

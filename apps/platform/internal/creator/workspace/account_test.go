@@ -37,6 +37,7 @@ func TestADeletionRequestStampsOnlyAFreshRequestAndNeitherChangeReachesAPurgingO
 	pending := accountLifecycle{deletionRequestedAt: at(-time.Hour), purgeAttemptedAt: at(-time.Minute)}
 	staleAttempt := accountLifecycle{purgeAttemptedAt: at(-time.Minute)}
 	request := func(a accountLifecycle) (accountLifecycle, error) { return a.requestDeletion(now) }
+	expedite := func(a accountLifecycle) (accountLifecycle, error) { return a.expediteErasure(now) }
 	for _, tc := range []struct {
 		what    string
 		change  func(accountLifecycle) (accountLifecycle, error)
@@ -51,6 +52,13 @@ func TestADeletionRequestStampsOnlyAFreshRequestAndNeitherChangeReachesAPurgingO
 		{"a cancel once purging started", accountLifecycle.cancelDeletion, accountLifecycle{purgeStartedAt: at(-time.Minute)}, accountLifecycle{}, ErrAccountPurging},
 		{"a request of a deleted account", request, accountLifecycle{deletedAt: at(-time.Minute)}, accountLifecycle{}, ErrAccountPurging},
 		{"a cancel of a deleted account", accountLifecycle.cancelDeletion, accountLifecycle{deletedAt: at(-time.Minute)}, accountLifecycle{}, ErrAccountPurging},
+		{"an expedited erasure of a standing account requests deletion now", expedite, staleAttempt,
+			accountLifecycle{deletionRequestedAt: at(0), erasureExpeditedAt: at(0)}, nil},
+		{"an expedited erasure keeps the earlier request and clears its attempt", expedite, pending,
+			accountLifecycle{deletionRequestedAt: at(-time.Hour), erasureExpeditedAt: at(0)}, nil},
+		{"a cancel also withdraws an expedited erasure", accountLifecycle.cancelDeletion,
+			accountLifecycle{deletionRequestedAt: at(-time.Hour), erasureExpeditedAt: at(-time.Minute)}, accountLifecycle{}, nil},
+		{"an expedited erasure once purging started", expedite, accountLifecycle{purgeStartedAt: at(-time.Minute)}, accountLifecycle{}, ErrAccountPurging},
 	} {
 		got, err := tc.change(tc.account)
 		if !errors.Is(err, tc.err) {

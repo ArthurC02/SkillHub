@@ -7,7 +7,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -17,6 +19,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
 const SessionTTL = 30 * 24 * time.Hour
@@ -326,26 +329,46 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 const AccountDeletionGrace = 30 * 24 * time.Hour
 
 func (s *Service) RequestAccountDeletion(ctx context.Context, user User) (User, error) {
-	return s.changeDeletionRequest(ctx, user, audit.ActionAccountDeleteAsk, func(a accountLifecycle) (accountLifecycle, error) {
+	return changeDeletionRequest(ctx, s.Pool, user.ID, ownRequest(user, audit.ActionAccountDeleteAsk), func(a accountLifecycle) (accountLifecycle, error) {
 		return a.requestDeletion(time.Now())
 	})
 }
 
 func (s *Service) CancelAccountDeletion(ctx context.Context, user User) (User, error) {
-	return s.changeDeletionRequest(ctx, user, audit.ActionAccountDeleteStop, accountLifecycle.cancelDeletion)
+	return changeDeletionRequest(ctx, s.Pool, user.ID, ownRequest(user, audit.ActionAccountDeleteStop), accountLifecycle.cancelDeletion)
 }
 
-func (s *Service) changeDeletionRequest(
-	ctx context.Context, user User, action string, change func(accountLifecycle) (accountLifecycle, error),
+var ErrErasureReasonRequired = errors.New("a reason of 1 to 1000 characters is required")
+
+func (s *Service) ExpediteAccountErasure(ctx context.Context, userID, operatorID pgtype.UUID, reason string) (User, error) {
+	reason = strings.TrimSpace(reason)
+	if reason == "" || utf8.RuneCountInString(reason) > limits.ExpediteAccountErasureBodyReasonMaxLength {
+		return User{}, ErrErasureReasonRequired
+	}
+	event := audit.Event{
+		Actor: operatorID, Action: audit.ActionAccountErasureExpedite, ResourceType: audit.ResourceAccount, ResourceID: userID,
+		Metadata: map[string]any{"reason": reason, "scope": audit.ScopeOperator},
+	}
+	return changeDeletionRequest(ctx, s.Pool, userID, event, func(a accountLifecycle) (accountLifecycle, error) {
+		return a.expediteErasure(time.Now())
+	})
+}
+
+func ownRequest(user User, action string) audit.Event {
+	return audit.Event{Actor: user.ID, Action: action, ResourceType: audit.ResourceAccount, ResourceID: user.ID}
+}
+
+func changeDeletionRequest(
+	ctx context.Context, pool *pgxpool.Pool, userID pgtype.UUID, event audit.Event, change func(accountLifecycle) (accountLifecycle, error),
 ) (User, error) {
-	tx, err := s.Pool.Begin(ctx)
+	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return User{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	q := s.queries().WithTx(tx)
+	q := gen.New(tx)
 
-	current, err := q.LockAccountLifecycle(ctx, user.ID)
+	current, err := q.LockAccountLifecycle(ctx, userID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, ErrAccountPurging
 	}
@@ -357,14 +380,16 @@ func (s *Service) changeDeletionRequest(
 		purgeStartedAt:      current.PurgeStartedAt,
 		deletionRequestedAt: current.DeletionRequestedAt,
 		purgeAttemptedAt:    current.PurgeAttemptedAt,
+		erasureExpeditedAt:  current.ErasureExpeditedAt,
 	})
 	if err != nil {
 		return User{}, err
 	}
 	updated, err := q.SaveAccountDeletionRequest(ctx, gen.SaveAccountDeletionRequestParams{
-		ID:                  user.ID,
+		ID:                  userID,
 		DeletionRequestedAt: next.deletionRequestedAt,
 		PurgeAttemptedAt:    next.purgeAttemptedAt,
+		ErasureExpeditedAt:  next.erasureExpeditedAt,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, ErrAccountPurging
@@ -372,12 +397,7 @@ func (s *Service) changeDeletionRequest(
 	if err != nil {
 		return User{}, err
 	}
-	if err := audit.Log(ctx, tx, audit.Event{
-		Actor:        user.ID,
-		Action:       action,
-		ResourceType: audit.ResourceAccount,
-		ResourceID:   user.ID,
-	}); err != nil {
+	if err := audit.Log(ctx, tx, event); err != nil {
 		return User{}, err
 	}
 	return userDTO(updated), tx.Commit(ctx)

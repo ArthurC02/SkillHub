@@ -584,7 +584,7 @@ func TestAnalyticsSessionIsNotTheSessionToken(t *testing.T) {
 	}
 }
 
-func TestPurgeDetachesAnalyticsAndFeedbackWithoutDeletingThem(t *testing.T) {
+func TestPurgeDetachesAnalyticsAndKeepsOnlyTheKindOfFeedback(t *testing.T) {
 	pool := requireDB(t)
 	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 180*24*time.Hour)
 	f := newFixture(t, a, pool, "alice-purge-analytics")
@@ -593,7 +593,7 @@ func TestPurgeDetachesAnalyticsAndFeedbackWithoutDeletingThem(t *testing.T) {
 		t.Fatalf("skill detail: got %d", code)
 	}
 	if code, body := f.doJSON(t, http.MethodPost, "/feedback",
-		`{"kind":"need_signal","message":"I wanted a python profile"}`); code != http.StatusNoContent {
+		`{"kind":"need_signal","message":"I wanted a python profile","page_path":"/runs/x"}`); code != http.StatusNoContent {
 		t.Fatalf("POST /feedback: got %d, body %v", code, body)
 	}
 	ws := mustUUID(t, f.workspaceID)
@@ -613,6 +613,11 @@ func TestPurgeDetachesAnalyticsAndFeedbackWithoutDeletingThem(t *testing.T) {
 		t.Fatalf("no feedback report filed by this user: %v", err)
 	}
 
+	someoneElsesRun := newFixture(t, a, pool, "bob-purge-analytics").start(t)
+	if _, err := pool.Exec(context.Background(), `UPDATE feedback_reports SET run_id = $1 WHERE id = $2`,
+		mustUUID(t, someoneElsesRun.RunID), reportID); err != nil {
+		t.Fatal(err)
+	}
 	if code := f.status(t, http.MethodDelete, "/me"); code != http.StatusOK {
 		t.Fatalf("DELETE /me: got %d", code)
 	}
@@ -626,15 +631,21 @@ func TestPurgeDetachesAnalyticsAndFeedbackWithoutDeletingThem(t *testing.T) {
 	if n := betaCount(t, pool, `SELECT count(*) FROM analytics_events WHERE session_id = $1`, session); n != sessionEvents {
 		t.Errorf("this visitor's analytics events after the purge: %d, want %d kept", n, sessionEvents)
 	}
-	var message string
-	var workspace, user *string
+	assertOnlyTheKindOfFeedbackRemains(t, pool, reportID)
+}
+
+func assertOnlyTheKindOfFeedbackRemains(t *testing.T, pool *pgxpool.Pool, reportID string) {
+	t.Helper()
+	var kind string
+	var message, pagePath, runID, workspace, user *string
 	if err := pool.QueryRow(context.Background(),
-		`SELECT message, workspace_id::text, user_id::text FROM feedback_reports WHERE id = $1`, reportID,
-	).Scan(&message, &workspace, &user); err != nil {
-		t.Fatalf("the beta feedback was deleted rather than de-identified: %v", err)
+		`SELECT kind, message, page_path, run_id::text, workspace_id::text, user_id::text FROM feedback_reports WHERE id = $1`, reportID,
+	).Scan(&kind, &message, &pagePath, &runID, &workspace, &user); err != nil {
+		t.Fatalf("the beta feedback row was deleted rather than kept for counting: %v", err)
 	}
-	if message != "I wanted a python profile" || workspace != nil || user != nil {
-		t.Errorf("feedback after purge: message=%q workspace=%v user=%v, want the text kept and both ids null", message, workspace, user)
+	if kind == "" || message != nil || pagePath != nil || runID != nil || workspace != nil || user != nil {
+		t.Errorf("feedback after purge: kind=%q message=%v page=%v run=%v workspace=%v user=%v, want only the kind and time kept",
+			kind, message, pagePath, runID, workspace, user)
 	}
 }
 

@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "identity-deletion-recite",
+  "proposal_id": "identity-deletion-recite",
+  "registry_revision": {
+    "observed_commit": "b5ababf7839463753ee98edf99c5f308db63a988",
+    "registry_digest": "sha256:550e72a5439031e3899f6435fa74ed0e8ce21bdcf9c383013629a0183a8e4bae",
+    "committed_digest": "sha256:a52f0e3a92150bfe9a694fb3e90471355dea5b73cdd3013223d45ab0b076ffd8"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/identity-deletion-recite-2026-10-20 --path apps/platform/internal/creator/workspace/account.go --path apps/platform/internal/creator/workspace/account_test.go --path apps/platform/internal/creator/workspace/http.go --path apps/platform/internal/creator/workspace/service.go --path contracts/openapi/public.yaml",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:81777d3075db28f191fe6b38c4012ab5bd2509f3c3a596a39f08d1c9fe6387c8",
+      "finished_at": "2026-10-19T18:30:19.537413Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

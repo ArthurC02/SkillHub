@@ -39,6 +39,7 @@ const (
 	EvaluationFeedbackCommentMaxLength                        = 2000
 	EvaluationGraderDraftNameMaxLength                        = 100
 	EvaluationGraderRevisionInstructionsMaxLength             = 4000
+	ExpediteAccountErasureBodyReasonMaxLength                 = 1000
 	GenerateSkillBodyReferenceSkillIdsMaxItems                = 3
 	GenerateSkillBodyTaskDescriptionMaxLength                 = 4000
 	GrantCreditsBodyIdempotencyKeyMaxLength                   = 128

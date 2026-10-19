@@ -18,7 +18,7 @@ SET email = $1,
     deleted_at = now(),
     updated_at = now()
 WHERE id = $3 AND deleted_at IS NULL
-RETURNING id, email, display_name, created_at, updated_at, deleted_at, deletion_requested_at, purge_attempted_at, purge_started_at
+RETURNING id, email, display_name, created_at, updated_at, deleted_at, deletion_requested_at, purge_attempted_at, purge_started_at, erasure_expedited_at
 `
 
 type AnonymizeUserParams struct {
@@ -40,6 +40,7 @@ func (q *Queries) AnonymizeUser(ctx context.Context, arg AnonymizeUserParams) (U
 		&i.DeletionRequestedAt,
 		&i.PurgeAttemptedAt,
 		&i.PurgeStartedAt,
+		&i.ErasureExpeditedAt,
 	)
 	return i, err
 }
@@ -417,7 +418,7 @@ WITH candidates AS (
     SELECT pending.id FROM users pending
     WHERE pending.deleted_at IS NULL
       AND pending.deletion_requested_at IS NOT NULL
-      AND pending.deletion_requested_at <= $1
+      AND (pending.deletion_requested_at <= $1 OR pending.erasure_expedited_at IS NOT NULL)
 	  AND (pending.purge_attempted_at IS NULL OR pending.purge_attempted_at < now() - $2::interval)
     ORDER BY pending.purge_attempted_at NULLS FIRST, pending.purge_attempted_at,
              pending.deletion_requested_at, pending.id
@@ -834,7 +835,7 @@ func (q *Queries) ListWorkspaceSkillSourceIDs(ctx context.Context, workspaceID p
 }
 
 const lockAccountLifecycle = `-- name: LockAccountLifecycle :one
-SELECT deleted_at, purge_started_at, deletion_requested_at, purge_attempted_at
+SELECT deleted_at, purge_started_at, deletion_requested_at, purge_attempted_at, erasure_expedited_at
 FROM users WHERE id = $1 FOR UPDATE
 `
 
@@ -843,6 +844,7 @@ type LockAccountLifecycleRow struct {
 	PurgeStartedAt      pgtype.Timestamptz
 	DeletionRequestedAt pgtype.Timestamptz
 	PurgeAttemptedAt    pgtype.Timestamptz
+	ErasureExpeditedAt  pgtype.Timestamptz
 }
 
 func (q *Queries) LockAccountLifecycle(ctx context.Context, id pgtype.UUID) (LockAccountLifecycleRow, error) {
@@ -853,6 +855,7 @@ func (q *Queries) LockAccountLifecycle(ctx context.Context, id pgtype.UUID) (Loc
 		&i.PurgeStartedAt,
 		&i.DeletionRequestedAt,
 		&i.PurgeAttemptedAt,
+		&i.ErasureExpeditedAt,
 	)
 	return i, err
 }
@@ -900,7 +903,7 @@ func (q *Queries) LockSkillForOperatorWrite(ctx context.Context, id pgtype.UUID)
 
 const markAccountPurgeStarted = `-- name: MarkAccountPurgeStarted :execrows
 UPDATE users SET purge_started_at = coalesce(purge_started_at, now()), updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL AND deletion_requested_at <= $2
+WHERE id = $1 AND deleted_at IS NULL AND (deletion_requested_at <= $2 OR erasure_expedited_at IS NOT NULL)
 `
 
 type MarkAccountPurgeStartedParams struct {
@@ -1005,19 +1008,26 @@ const saveAccountDeletionRequest = `-- name: SaveAccountDeletionRequest :one
 UPDATE users
 SET deletion_requested_at = $1,
     purge_attempted_at = $2,
+    erasure_expedited_at = $3,
     updated_at = now()
-WHERE id = $3 AND deleted_at IS NULL AND purge_started_at IS NULL
-RETURNING id, email, display_name, created_at, updated_at, deleted_at, deletion_requested_at, purge_attempted_at, purge_started_at
+WHERE id = $4 AND deleted_at IS NULL AND purge_started_at IS NULL
+RETURNING id, email, display_name, created_at, updated_at, deleted_at, deletion_requested_at, purge_attempted_at, purge_started_at, erasure_expedited_at
 `
 
 type SaveAccountDeletionRequestParams struct {
 	DeletionRequestedAt pgtype.Timestamptz
 	PurgeAttemptedAt    pgtype.Timestamptz
+	ErasureExpeditedAt  pgtype.Timestamptz
 	ID                  pgtype.UUID
 }
 
 func (q *Queries) SaveAccountDeletionRequest(ctx context.Context, arg SaveAccountDeletionRequestParams) (User, error) {
-	row := q.db.QueryRow(ctx, saveAccountDeletionRequest, arg.DeletionRequestedAt, arg.PurgeAttemptedAt, arg.ID)
+	row := q.db.QueryRow(ctx, saveAccountDeletionRequest,
+		arg.DeletionRequestedAt,
+		arg.PurgeAttemptedAt,
+		arg.ErasureExpeditedAt,
+		arg.ID,
+	)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -1029,6 +1039,7 @@ func (q *Queries) SaveAccountDeletionRequest(ctx context.Context, arg SaveAccoun
 		&i.DeletionRequestedAt,
 		&i.PurgeAttemptedAt,
 		&i.PurgeStartedAt,
+		&i.ErasureExpeditedAt,
 	)
 	return i, err
 }

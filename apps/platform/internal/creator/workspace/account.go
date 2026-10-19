@@ -18,6 +18,7 @@ type accountLifecycle struct {
 	purgeStartedAt      pgtype.Timestamptz
 	deletionRequestedAt pgtype.Timestamptz
 	purgeAttemptedAt    pgtype.Timestamptz
+	erasureExpeditedAt  pgtype.Timestamptz
 }
 
 func (a accountLifecycle) gone() bool {
@@ -48,11 +49,22 @@ func (a accountLifecycle) requestDeletion(now time.Time) (accountLifecycle, erro
 	return a, nil
 }
 
+func (a accountLifecycle) expediteErasure(now time.Time) (accountLifecycle, error) {
+	a, err := a.requestDeletion(now)
+	if err != nil {
+		return a, err
+	}
+	if !a.erasureExpeditedAt.Valid {
+		a.erasureExpeditedAt, a.purgeAttemptedAt = pgtype.Timestamptz{Time: now, Valid: true}, pgtype.Timestamptz{}
+	}
+	return a, nil
+}
+
 func (a accountLifecycle) cancelDeletion() (accountLifecycle, error) {
 	if a.standing() != nil {
 		return a, ErrAccountPurging
 	}
-	a.deletionRequestedAt, a.purgeAttemptedAt = pgtype.Timestamptz{}, pgtype.Timestamptz{}
+	a.deletionRequestedAt, a.purgeAttemptedAt, a.erasureExpeditedAt = pgtype.Timestamptz{}, pgtype.Timestamptz{}, pgtype.Timestamptz{}
 	return a, nil
 }
 

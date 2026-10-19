@@ -107,6 +107,7 @@ var strangerRoutes = []strangerCase{
 	{pattern: "PUT /admin/skills/{id}/tier", body: `{"tier":"curated"}`, want: http.StatusNotFound},
 	{pattern: "PUT /admin/skills/{id}/takedown", body: `{"reason":"a stranger asked"}`, want: http.StatusNotFound},
 	{pattern: "DELETE /admin/skills/{id}/takedown", want: http.StatusNotFound},
+	{pattern: "POST /admin/accounts/{user_id}/erasure", body: `{"reason":"a stranger asked"}`, want: http.StatusNotFound},
 	{pattern: "POST /admin/credits/{workspace_id}/grants",
 		body: `{"credits":1000,"reason":"a stranger asked"}`, want: http.StatusNotFound},
 	{pattern: "PUT /admin/model-budgets/{kind}",

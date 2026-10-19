@@ -1,0 +1,109 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "identity-operator-erasure-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "identity-operator-erasure-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-19T18:29:40.562390Z",
+  "verified_at": "2026-10-19T18:29:46.360908Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "b5ababf7839463753ee98edf99c5f308db63a988",
+    "registry_digest": "sha256:550e72a5439031e3899f6435fa74ed0e8ce21bdcf9c383013629a0183a8e4bae",
+    "committed_digest": "sha256:a52f0e3a92150bfe9a694fb3e90471355dea5b73cdd3013223d45ab0b076ffd8"
+  },
+  "affected_contexts": [
+    "identity"
+  ],
+  "rule_ids": [
+    "an-operator-erasure-skips-the-deletion-grace"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "identity",
+    "invariant": "Only identity decides these rules.",
+    "evidence": [
+      "apps/platform/internal/creator/workspace/service.go:343-357"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/entrypoint/api/apiserver/router.go:219-219"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The consent promises erasure within 14 days of a request, but the only path waited a 30-day grace."
+    ],
+    "decision": "Let an operator mark an account for erasure; the purge sweep takes marked accounts regardless of the grace.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Shortening the grace for everyone: an owner's own deletion keeps its 30 days to change their mind."
+    ],
+    "proof_obligations": [
+      "rule-an-operator-erasure-skips-the-deletion-grace"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-operator-erasure-skips-the-deletion-grace",
+        "statement": "An operator may register an erasure for an account on its holder's behalf, with a reason; it requests deletion if none is pending, keeps an earlier request time, and lets the next purge sweep take the account without waiting out the 30-day grace. The holder cancelling the deletion withdraws it, and an account already purging or deleted refuses it.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "An account erased by an operator today is purged by today's sweep, while one deleted by its owner today waits; erasing a purged account answers 409."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/account.go",
+            "lines": {
+              "start": 52,
+              "end": 61
+            },
+            "excerpt_sha256": "sha256:4887239e31f20b9e79c6f0567fc676a87360e0d526f47c979857128b70498dd8"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/account_test.go",
+            "lines": {
+              "start": 34,
+              "end": 71
+            },
+            "excerpt_sha256": "sha256:e877185dc0ac36b0f6dd870720f86296ffcec89f918b1e66c652b157213cf838"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-19T18:29:46.119044Z",
+      "scope": "Record identity rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "b5ababf7839463753ee98edf99c5f308db63a988",
+        "registry_digest": "sha256:550e72a5439031e3899f6435fa74ed0e8ce21bdcf9c383013629a0183a8e4bae",
+        "committed_digest": "sha256:a52f0e3a92150bfe9a694fb3e90471355dea5b73cdd3013223d45ab0b076ffd8"
+      }
+    }
+  ]
+}

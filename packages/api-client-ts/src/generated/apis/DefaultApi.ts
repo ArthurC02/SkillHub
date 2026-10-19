@@ -69,11 +69,6 @@ import {
     CategorizedFindingsToJSON,
 } from '../models/CategorizedFindings';
 import {
-    type ClearModelCallBudgetRequest,
-    ClearModelCallBudgetRequestFromJSON,
-    ClearModelCallBudgetRequestToJSON,
-} from '../models/ClearModelCallBudgetRequest';
-import {
     type ClearSkillRestrictionRequest,
     ClearSkillRestrictionRequestFromJSON,
     ClearSkillRestrictionRequestToJSON,
@@ -303,6 +298,11 @@ import {
     EvaluationGraderRevisionFromJSON,
     EvaluationGraderRevisionToJSON,
 } from '../models/EvaluationGraderRevision';
+import {
+    type ExpediteAccountErasureRequest,
+    ExpediteAccountErasureRequestFromJSON,
+    ExpediteAccountErasureRequestToJSON,
+} from '../models/ExpediteAccountErasureRequest';
 import {
     type ExposureCase,
     ExposureCaseFromJSON,
@@ -886,7 +886,7 @@ export interface CancelRunRequest {
     id: string;
 }
 
-export interface ClearModelCallBudgetOperationRequest {
+export interface ClearModelCallBudgetRequest {
     /**
      * The model call, as `GET /admin/model-budgets` named it. A kind the
      * platform does not call is 404, the same answer a non-operator gets.
@@ -896,7 +896,7 @@ export interface ClearModelCallBudgetOperationRequest {
     /**
      * 
      */
-    clearModelCallBudgetRequest: ClearModelCallBudgetRequest;
+    expediteAccountErasureRequest: ExpediteAccountErasureRequest;
 }
 
 export interface ClearSkillRestrictionOperationRequest {
@@ -1161,6 +1161,17 @@ export interface EngagePlatformAgentBrakeOperationRequest {
      * 
      */
     engagePlatformAgentBrakeRequest: EngagePlatformAgentBrakeRequest;
+}
+
+export interface ExpediteAccountErasureOperationRequest {
+    /**
+     * 
+     */
+    userId: string;
+    /**
+     * 
+     */
+    expediteAccountErasureRequest: ExpediteAccountErasureRequest;
 }
 
 export interface ExportBundleRequest {
@@ -2269,28 +2280,28 @@ export interface DefaultApiInterface {
     /**
      * Creates request options for clearModelCallBudget without sending the request
      * @param {string} kind The model call, as &#x60;GET /admin/model-budgets&#x60; named it. A kind the platform does not call is 404, the same answer a non-operator gets. 
-     * @param {ClearModelCallBudgetRequest} clearModelCallBudgetRequest 
+     * @param {ExpediteAccountErasureRequest} expediteAccountErasureRequest 
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
-    clearModelCallBudgetRequestOpts(requestParameters: ClearModelCallBudgetOperationRequest): Promise<runtime.RequestOpts>;
+    clearModelCallBudgetRequestOpts(requestParameters: ClearModelCallBudgetRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Operator only. Removes the stored value so the call runs under `default_seconds` again. `reason` is required here too, and clearing a kind that had no value is still answered 204 and still audited — the operator did the action either way. 
      * @summary Return one model call to its compiled default (02:OPS-009)
      * @param {string} kind The model call, as &#x60;GET /admin/model-budgets&#x60; named it. A kind the platform does not call is 404, the same answer a non-operator gets. 
-     * @param {ClearModelCallBudgetRequest} clearModelCallBudgetRequest 
+     * @param {ExpediteAccountErasureRequest} expediteAccountErasureRequest 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
-    clearModelCallBudgetRaw(requestParameters: ClearModelCallBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+    clearModelCallBudgetRaw(requestParameters: ClearModelCallBudgetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
 
     /**
      * Operator only. Removes the stored value so the call runs under `default_seconds` again. `reason` is required here too, and clearing a kind that had no value is still answered 204 and still audited — the operator did the action either way. 
      * Return one model call to its compiled default (02:OPS-009)
      */
-    clearModelCallBudget(requestParameters: ClearModelCallBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+    clearModelCallBudget(requestParameters: ClearModelCallBudgetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for clearSkillRestriction without sending the request
@@ -2992,6 +3003,32 @@ export interface DefaultApiInterface {
      * Stop every platform agent (02:OPS-011)
      */
     engagePlatformAgentBrake(requestParameters: EngagePlatformAgentBrakeOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgentBrake>;
+
+    /**
+     * Creates request options for expediteAccountErasure without sending the request
+     * @param {string} userId 
+     * @param {ExpediteAccountErasureRequest} expediteAccountErasureRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    expediteAccountErasureRequestOpts(requestParameters: ExpediteAccountErasureOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Records a deletion request for the account if it has none and marks it for erasure, so the next purge sweep removes it without waiting out the grace an owner\'s own deletion gets. Used when a person asks for their data to be erased through a channel other than the account page. The owner cancelling the deletion withdraws it. The reason is kept in the audit event. 
+     * @summary Erase an account without the 30-day grace, on the owner\'s request
+     * @param {string} userId 
+     * @param {ExpediteAccountErasureRequest} expediteAccountErasureRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    expediteAccountErasureRaw(requestParameters: ExpediteAccountErasureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Operator only. Records a deletion request for the account if it has none and marks it for erasure, so the next purge sweep removes it without waiting out the grace an owner\'s own deletion gets. Used when a person asks for their data to be erased through a channel other than the account page. The owner cancelling the deletion withdraws it. The reason is kept in the audit event. 
+     * Erase an account without the 30-day grace, on the owner\'s request
+     */
+    expediteAccountErasure(requestParameters: ExpediteAccountErasureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for exportBundle without sending the request
@@ -6192,7 +6229,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     /**
      * Creates request options for clearModelCallBudget without sending the request
      */
-    async clearModelCallBudgetRequestOpts(requestParameters: ClearModelCallBudgetOperationRequest): Promise<runtime.RequestOpts> {
+    async clearModelCallBudgetRequestOpts(requestParameters: ClearModelCallBudgetRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['kind'] == null) {
             throw new runtime.RequiredError(
                 'kind',
@@ -6200,10 +6237,10 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
             );
         }
 
-        if (requestParameters['clearModelCallBudgetRequest'] == null) {
+        if (requestParameters['expediteAccountErasureRequest'] == null) {
             throw new runtime.RequiredError(
-                'clearModelCallBudgetRequest',
-                'Required parameter "clearModelCallBudgetRequest" was null or undefined when calling clearModelCallBudget().'
+                'expediteAccountErasureRequest',
+                'Required parameter "expediteAccountErasureRequest" was null or undefined when calling clearModelCallBudget().'
             );
         }
 
@@ -6222,7 +6259,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
-            body: ClearModelCallBudgetRequestToJSON(requestParameters['clearModelCallBudgetRequest']),
+            body: ExpediteAccountErasureRequestToJSON(requestParameters['expediteAccountErasureRequest']),
         };
     }
 
@@ -6230,7 +6267,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      * Operator only. Removes the stored value so the call runs under `default_seconds` again. `reason` is required here too, and clearing a kind that had no value is still answered 204 and still audited — the operator did the action either way. 
      * Return one model call to its compiled default (02:OPS-009)
      */
-    async clearModelCallBudgetRaw(requestParameters: ClearModelCallBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async clearModelCallBudgetRaw(requestParameters: ClearModelCallBudgetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         const requestOptions = await this.clearModelCallBudgetRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
@@ -6241,7 +6278,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      * Operator only. Removes the stored value so the call runs under `default_seconds` again. `reason` is required here too, and clearing a kind that had no value is still answered 204 and still audited — the operator did the action either way. 
      * Return one model call to its compiled default (02:OPS-009)
      */
-    async clearModelCallBudget(requestParameters: ClearModelCallBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+    async clearModelCallBudget(requestParameters: ClearModelCallBudgetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.clearModelCallBudgetRaw(requestParameters, initOverrides);
     }
 
@@ -7717,6 +7754,62 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     async engagePlatformAgentBrake(requestParameters: EngagePlatformAgentBrakeOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgentBrake> {
         const response = await this.engagePlatformAgentBrakeRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for expediteAccountErasure without sending the request
+     */
+    async expediteAccountErasureRequestOpts(requestParameters: ExpediteAccountErasureOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling expediteAccountErasure().'
+            );
+        }
+
+        if (requestParameters['expediteAccountErasureRequest'] == null) {
+            throw new runtime.RequiredError(
+                'expediteAccountErasureRequest',
+                'Required parameter "expediteAccountErasureRequest" was null or undefined when calling expediteAccountErasure().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/accounts/{user_id}/erasure`;
+        urlPath = urlPath.replace('{user_id}', encodeURIComponent(String(requestParameters['userId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ExpediteAccountErasureRequestToJSON(requestParameters['expediteAccountErasureRequest']),
+        };
+    }
+
+    /**
+     * Operator only. Records a deletion request for the account if it has none and marks it for erasure, so the next purge sweep removes it without waiting out the grace an owner\'s own deletion gets. Used when a person asks for their data to be erased through a channel other than the account page. The owner cancelling the deletion withdraws it. The reason is kept in the audit event. 
+     * Erase an account without the 30-day grace, on the owner\'s request
+     */
+    async expediteAccountErasureRaw(requestParameters: ExpediteAccountErasureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.expediteAccountErasureRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Operator only. Records a deletion request for the account if it has none and marks it for erasure, so the next purge sweep removes it without waiting out the grace an owner\'s own deletion gets. Used when a person asks for their data to be erased through a channel other than the account page. The owner cancelling the deletion withdraws it. The reason is kept in the audit event. 
+     * Erase an account without the 30-day grace, on the owner\'s request
+     */
+    async expediteAccountErasure(requestParameters: ExpediteAccountErasureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.expediteAccountErasureRaw(requestParameters, initOverrides);
     }
 
     /**

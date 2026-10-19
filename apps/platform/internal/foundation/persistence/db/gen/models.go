@@ -536,7 +536,7 @@ type FeedbackReport struct {
 	WorkspaceID pgtype.UUID
 	UserID      pgtype.UUID
 	Kind        string
-	Message     string
+	Message     *string
 	PagePath    *string
 	RunID       pgtype.UUID
 	CreatedAt   pgtype.Timestamptz
@@ -1048,6 +1048,7 @@ type User struct {
 	DeletionRequestedAt pgtype.Timestamptz
 	PurgeAttemptedAt    pgtype.Timestamptz
 	PurgeStartedAt      pgtype.Timestamptz
+	ErasureExpeditedAt  pgtype.Timestamptz
 }
 
 type UserIdentity struct {

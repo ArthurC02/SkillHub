@@ -41,10 +41,11 @@ const (
 
 	ActionBetaRoster = "beta.roster"
 
-	ActionFeatureFlags      = "feature_flags.roster"
-	ActionAccountDeleteAsk  = "account.deletion_requested"
-	ActionAccountDeleteStop = "account.deletion_cancelled"
-	ActionAccountPurge      = "account.purged"
+	ActionFeatureFlags           = "feature_flags.roster"
+	ActionAccountDeleteAsk       = "account.deletion_requested"
+	ActionAccountDeleteStop      = "account.deletion_cancelled"
+	ActionAccountErasureExpedite = "account.erasure_expedited"
+	ActionAccountPurge           = "account.purged"
 
 	ActionEventDeadLettered = "event.dead_lettered"
 
