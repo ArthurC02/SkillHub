@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.24
+
+### Fixed
+
+- `harvest` promoted an amended or reproven rule as the Registry held it and only appended the test citation, so the reviewed record's citations, stale ones included, and its old statement and examples went into the package, and the package could not verify. It now promotes the spec's statement, examples, contexts and citations, each cited afresh from the current lines, in place of what the reviewed record held.
+
 ## 1.2.23
 
 ### Added
