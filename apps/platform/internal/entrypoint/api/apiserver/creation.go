@@ -157,7 +157,7 @@ func (h *creationHandler) creationError(w http.ResponseWriter, err error) {
 	case errors.Is(err, creation.ErrDeadline):
 		code = 422
 		minutes := int64(h.Svc.Limits.SessionTimeout / time.Minute)
-		text = "這次創作已超過時間上限（自開始起 " + strconv.FormatInt(minutes, 10) + " 分鐘）；進度已保留，但不能再繼續，請開始新的創作。"
+		text = "這次創作已超過時間上限（自開始起 " + strconv.FormatInt(minutes, 10) + " 分鐘）；不能再請 Agent 繼續，但已經做好的草稿仍可保存；要繼續改，請開始新的創作。"
 	case errors.Is(err, creation.ErrCreditThreshold):
 
 		code = 422

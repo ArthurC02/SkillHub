@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "creation-saving-past-the-deadline-2026-10-20",
+  "status": "draft",
+  "intent": "Record the creation rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context creation lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-past-the-deadline-only-cancel-is-accepted",
+      "statement": "After a creation session's deadline only cancel and the three save commands (materialize, finalize, confirm duplicate), none of which calls the model, are accepted; every other command is refused."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/creator/creation/command_test.go",
+    "apps/platform/internal/creator/creation/creation.go"
+  ]
+}

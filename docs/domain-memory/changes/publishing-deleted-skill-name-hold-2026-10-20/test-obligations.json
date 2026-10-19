@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "publishing-deleted-skill-name-hold-2026-10-20",
+  "proposal_id": "publishing-deleted-skill-name-hold-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-a-deleted-skills-publication-name-is-held-ninety-days",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-deleted-skills-publication-name-is-held-ninety-days",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-deleted-skills-publication-name-is-held-ninety-days"
+        }
+      ],
+      "expected_outcome": "When a published Skill is deleted its publication retires; for 90 days after that its old address still answers withdrawn and the publisher cannot give its name to another Skill; after 90 days the name passes to another of the same publisher's Skills and the address follows it.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestADeletedSkillsPublicationNameIsHeldForNinetyDaysThenReleased$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

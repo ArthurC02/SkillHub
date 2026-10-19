@@ -1,0 +1,109 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "eval-purge-erases-feedback-comments-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "eval-purge-erases-feedback-comments-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-19T16:32:47.227837Z",
+  "verified_at": "2026-10-19T16:32:55.600434Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "fff3353f4abfa1ce27b1a3cd5771c8d416ead8b7",
+    "registry_digest": "sha256:86fca3dbde3873cc34e06ad1eccfa10f3092b7d9c32dd700167005e010206b1f",
+    "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+  },
+  "affected_contexts": [
+    "eval"
+  ],
+  "rule_ids": [
+    "account-purge-erases-evaluation-feedback-comments"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "eval",
+    "invariant": "Only eval decides these rules.",
+    "evidence": [
+      "apps/platform/internal/trial/improvement/purge.go:13-18"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/creator/workspace/purge.go:54-54"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Account purge kept users' free-text evaluation comments, against the rule that purge deletes or de-identifies everything but Credit."
+    ],
+    "decision": "Clear the workspace's feedback comments in the eval purge step, keeping the frozen evaluations.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Deleting the evaluations: they are frozen judgements other records cite."
+    ],
+    "proof_obligations": [
+      "rule-account-purge-erases-evaluation-feedback-comments"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "account-purge-erases-evaluation-feedback-comments",
+        "statement": "Purging an account erases the free-text feedback comments on its workspace's evaluations and keeps the evaluations themselves.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "After purge an evaluation that held 'my private note' has no comment and still exists."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/purge.go",
+            "lines": {
+              "start": 14,
+              "end": 14
+            },
+            "excerpt_sha256": "sha256:073e7657ce020f26bd57ed87aa4ec1c0f7519347db6e69b57301c829af39ca43"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_integration_test.go",
+            "lines": {
+              "start": 943,
+              "end": 986
+            },
+            "excerpt_sha256": "sha256:1a511d744463bc6dba5fd2597066850a252bbdaad94d35bcaad8b959c9caa6ad"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-19T16:32:55.329187Z",
+      "scope": "Record eval rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "fff3353f4abfa1ce27b1a3cd5771c8d416ead8b7",
+        "registry_digest": "sha256:86fca3dbde3873cc34e06ad1eccfa10f3092b7d9c32dd700167005e010206b1f",
+        "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+      }
+    }
+  ]
+}

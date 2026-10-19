@@ -37,6 +37,7 @@ export const PublishingRefusalReasonEnum = {
     NoPublisher: 'no_publisher',
     AlreadyRegistered: 'already_registered',
     NameTaken: 'name_taken',
+    NameHeld: 'name_held',
     NameIsPermanent: 'name_is_permanent',
     NameShape: 'name_shape',
     NameReserved: 'name_reserved',

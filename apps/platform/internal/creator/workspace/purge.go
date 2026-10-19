@@ -51,7 +51,7 @@ func (s *Service) purgeSteps() []purgeStep {
 		{"run", s.PurgeRunArtifacts},
 		{"packaging", s.PurgeDownloads},
 		{"creation", s.PurgeCreation},
-		{"eval", s.PurgeGraders},
+		{"eval", s.PurgeEvaluations},
 		{"publishing", s.PurgePublications},
 
 		// registry before ingest: registry deletes the skill_versions rows,

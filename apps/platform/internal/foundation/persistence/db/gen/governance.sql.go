@@ -867,7 +867,7 @@ func (q *Queries) LockAccountWorkspaceObjects(ctx context.Context, workspaceID p
 }
 
 const lockSkillForOperatorWrite = `-- name: LockSkillForOperatorWrite :one
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source FROM skills
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by FROM skills
 WHERE id = $1 AND deleted_at IS NULL
 FOR UPDATE
 `
@@ -893,6 +893,7 @@ func (q *Queries) LockSkillForOperatorWrite(ctx context.Context, id pgtype.UUID)
 		&i.CuratedVersionID,
 		&i.Category,
 		&i.CategorySource,
+		&i.TakedownBy,
 	)
 	return i, err
 }
@@ -966,6 +967,38 @@ func (q *Queries) PurgeSkillsByID(ctx context.Context, arg PurgeSkillsByIDParams
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const restoreSkill = `-- name: RestoreSkill :one
+UPDATE skills SET takedown_at = NULL, takedown_reason = NULL, takedown_by = NULL, updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL AND takedown_at IS NOT NULL
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by
+`
+
+func (q *Queries) RestoreSkill(ctx context.Context, id pgtype.UUID) (Skill, error) {
+	row := q.db.QueryRow(ctx, restoreSkill, id)
+	var i Skill
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Summary,
+		&i.ForkedFromSkillID,
+		&i.ForkedFromVersionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.TakedownAt,
+		&i.TakedownReason,
+		&i.AccessRestriction,
+		&i.Redistribution,
+		&i.CurationTier,
+		&i.CuratedVersionID,
+		&i.Category,
+		&i.CategorySource,
+		&i.TakedownBy,
+	)
+	return i, err
 }
 
 const saveAccountDeletionRequest = `-- name: SaveAccountDeletionRequest :one
@@ -1047,18 +1080,19 @@ func (q *Queries) SetSkillRedistribution(ctx context.Context, arg SetSkillRedist
 }
 
 const setSkillTakedown = `-- name: SetSkillTakedown :one
-UPDATE skills SET takedown_at = now(), takedown_reason = $2, updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL AND takedown_at IS NULL
-RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source
+UPDATE skills SET takedown_at = now(), takedown_reason = $1, takedown_by = $2, updated_at = now()
+WHERE id = $3 AND deleted_at IS NULL AND takedown_at IS NULL
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by
 `
 
 type SetSkillTakedownParams struct {
-	ID             pgtype.UUID
 	TakedownReason *string
+	TakedownBy     *string
+	ID             pgtype.UUID
 }
 
 func (q *Queries) SetSkillTakedown(ctx context.Context, arg SetSkillTakedownParams) (Skill, error) {
-	row := q.db.QueryRow(ctx, setSkillTakedown, arg.ID, arg.TakedownReason)
+	row := q.db.QueryRow(ctx, setSkillTakedown, arg.TakedownReason, arg.TakedownBy, arg.ID)
 	var i Skill
 	err := row.Scan(
 		&i.ID,
@@ -1078,6 +1112,7 @@ func (q *Queries) SetSkillTakedown(ctx context.Context, arg SetSkillTakedownPara
 		&i.CuratedVersionID,
 		&i.Category,
 		&i.CategorySource,
+		&i.TakedownBy,
 	)
 	return i, err
 }

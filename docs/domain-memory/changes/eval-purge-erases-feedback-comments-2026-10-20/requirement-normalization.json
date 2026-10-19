@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "eval-purge-erases-feedback-comments-2026-10-20",
+  "status": "draft",
+  "intent": "Record the eval rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context eval lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-account-purge-erases-evaluation-feedback-comments",
+      "statement": "Purging an account erases the free-text feedback comments on its workspace's evaluations and keeps the evaluations themselves."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_integration_test.go",
+    "apps/platform/internal/trial/improvement/purge.go"
+  ]
+}

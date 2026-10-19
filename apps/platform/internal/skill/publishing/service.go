@@ -351,6 +351,15 @@ func publicationToRelease(
 	if problem := publicationNameProblem(name); problem != "" {
 		return gen.Publication{}, &NameError{Problem: problem}
 	}
+	held, err := q.PublicationNameInQuarantine(ctx, gen.PublicationNameInQuarantineParams{
+		WorkspaceID: ws.ID, Name: name, Quarantine: pgconv.Interval(DeletedSkillNameHold),
+	})
+	if err != nil {
+		return gen.Publication{}, err
+	}
+	if held {
+		return gen.Publication{}, ErrNameHeld
+	}
 	created, err := q.CreatePublication(ctx, gen.CreatePublicationParams{
 		Name: name, SkillID: skill.ID, Status: string(StatusPublished), WorkspaceID: ws.ID,
 	})

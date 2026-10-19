@@ -1,0 +1,37 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "batch-pause-for-credit-2026-10-20",
+  "proposal_id": "batch-pause-for-credit-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-batch-waits-only-on-a-passing-refusal",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-batch-waits-only-on-a-passing-refusal",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "batch-waits-only-on-a-passing-refusal"
+        }
+      ],
+      "expected_outcome": "An evaluation batch waits when Run refuses a trial with a refusal Run says will pass on its own, pauses with the reason recorded when the refusal awaits a credit top-up, and stops with the reason recorded on any other refusal.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestABatchOutOfCreditPausesAndResumesFromTheNextTrialWithoutRerunningAny$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-batch-paused-for-thirty-days-stops",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-batch-paused-for-thirty-days-stops",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-batch-paused-for-thirty-days-stops"
+        }
+      ],
+      "expected_outcome": "A batch paused for 30 days stops with reason paused_too_long; one paused for less stays paused and can be resumed from its next unrun trial.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestABatchPausedForThirtyDaysStopsAndOneJustUnderStaysPaused$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

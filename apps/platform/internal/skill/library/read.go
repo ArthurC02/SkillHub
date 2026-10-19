@@ -23,6 +23,8 @@ type Skill struct {
 	AccessRestriction   *string
 	Redistribution      string
 
+	InheritedRestriction string
+
 	CurationTier     string
 	CuratedVersionID pgtype.UUID
 
@@ -210,7 +212,8 @@ func (s *Service) CatalogSkill(ctx context.Context, skillID pgtype.UUID) (Skill,
 	if err != nil {
 		return Skill{}, false, err
 	}
-	return skillDTO(row), true, nil
+	skill, err := withLineage(ctx, s.Pool, skillDTO(row))
+	return skill, err == nil, err
 }
 
 func (s *Service) WorkspaceSkill(ctx context.Context, workspaceID, skillID pgtype.UUID) (Skill, bool, error) {
@@ -221,7 +224,8 @@ func (s *Service) WorkspaceSkill(ctx context.Context, workspaceID, skillID pgtyp
 	if err != nil {
 		return Skill{}, false, err
 	}
-	return skillDTO(row), true, nil
+	skill, err := withLineage(ctx, s.Pool, skillDTO(row))
+	return skill, err == nil, err
 }
 
 type SkillRef struct {
@@ -242,10 +246,16 @@ func (s *Service) WorkspaceSkills(ctx context.Context, refs []SkillRef) (map[Ski
 	if err != nil {
 		return nil, err
 	}
+	inherited, err := inheritedRestrictions(ctx, s.Pool, ids)
+	if err != nil {
+		return nil, err
+	}
 	out := make(map[SkillRef]Skill, len(rows))
 	for _, row := range rows {
 		if ref := (SkillRef{WorkspaceID: row.WorkspaceID, SkillID: row.ID}); wanted[ref] {
-			out[ref] = skillDTO(row)
+			skill := skillDTO(row)
+			skill.InheritedRestriction = inherited[row.ID]
+			out[ref] = skill
 		}
 	}
 	return out, nil
@@ -259,7 +269,8 @@ func (s *Service) LockLiveWorkspaceSkill(ctx context.Context, tx pgx.Tx, workspa
 	if err != nil {
 		return Skill{}, false, err
 	}
-	return root.Skill(), true, nil
+	skill, err := withLineage(ctx, tx, root.Skill())
+	return skill, err == nil, err
 }
 
 func (s *Service) LatestVersion(ctx context.Context, workspaceID, skillID pgtype.UUID) (Version, bool, error) {
@@ -311,6 +322,8 @@ type VersionSummary struct {
 	AccessRestriction   *string
 	Redistribution      string
 	TakenDown           bool
+
+	InheritedRestriction string
 }
 
 func (s *Service) VersionSummaries(
@@ -334,7 +347,7 @@ func (s *Service) VersionSummaries(
 			TakenDown: row.TakenDown,
 		}
 	}
-	return summaries, nil
+	return summaries, inheritIntoSummaries(ctx, s.Pool, summaries)
 }
 
 func (s *Service) VersionSummariesByID(ctx context.Context, versionIDs []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error) {
@@ -354,7 +367,23 @@ func (s *Service) VersionSummariesByID(ctx context.Context, versionIDs []pgtype.
 			TakenDown: row.TakenDown,
 		}
 	}
-	return summaries, nil
+	return summaries, inheritIntoSummaries(ctx, s.Pool, summaries)
+}
+
+func inheritIntoSummaries(ctx context.Context, db gen.DBTX, summaries map[pgtype.UUID]VersionSummary) error {
+	skillIDs := make([]pgtype.UUID, 0, len(summaries))
+	for _, summary := range summaries {
+		skillIDs = append(skillIDs, summary.SkillID)
+	}
+	inherited, err := inheritedRestrictions(ctx, db, skillIDs)
+	if err != nil {
+		return err
+	}
+	for id, summary := range summaries {
+		summary.InheritedRestriction = inherited[summary.SkillID]
+		summaries[id] = summary
+	}
+	return nil
 }
 
 type SourceSibling struct {

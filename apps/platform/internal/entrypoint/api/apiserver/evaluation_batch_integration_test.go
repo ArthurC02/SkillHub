@@ -314,6 +314,97 @@ func TestARefusalThatWaitingCannotFixStopsTheBatch(t *testing.T) {
 	}
 }
 
+func setOwnerBalance(t *testing.T, pool *pgxpool.Pool, userID string, credits int64) {
+	t.Helper()
+	mustExec(t, pool, `UPDATE credit_accounts SET balance_credits = $2 WHERE user_id = $1`, mustUUID(t, userID), credits)
+}
+
+func batchStatus(t *testing.T, f fixture, batchID string) (status, reason any) {
+	t.Helper()
+	code, report := f.doJSON(t, http.MethodGet, "/skills/"+f.skillID+"/evaluation-batches/"+batchID, "")
+	if code != http.StatusOK {
+		t.Fatalf("report: got %d %v", code, report)
+	}
+	batch, _ := report["batch"].(map[string]any)
+	return batch["status"], batch["stop_reason"]
+}
+
+func TestABatchOutOfCreditPausesAndResumesFromTheNextTrialWithoutRerunningAny(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, freshName("alice-batch-pause"))
+	f.confirmPermissions(t)
+	ctx := context.Background()
+
+	code, body := f.doJSON(t, http.MethodPost, "/skills/"+f.skillID+"/evaluation-batches", batchBody(f.versionID, 2, f.testCaseID))
+	if code != http.StatusCreated {
+		t.Fatalf("create: %d %v", code, body)
+	}
+	batchID := body["id"].(string)
+	first := batchTrialRuns(t, pool, batchID)[f.testCaseID+"#1"]
+	mustExec(t, pool, `UPDATE runs SET status = 'cancelled', finished_at = now() WHERE id = $1`, mustUUID(t, first))
+	setOwnerBalance(t, pool, f.userID, 0)
+
+	if err := a.batches.AdvanceBatches(ctx, mustUUID(t, f.workspaceID)); err != nil {
+		t.Fatal(err)
+	}
+	if status, reason := batchStatus(t, f, batchID); status != "paused" || reason != "credit_balance" {
+		t.Fatalf("out of credit: status %v (%v), want paused for credit_balance", status, reason)
+	}
+	if got := started(batchTrialRuns(t, pool, batchID)); len(got) != 1 {
+		t.Fatalf("a paused batch started %v, want only its first trial", got)
+	}
+
+	setOwnerBalance(t, pool, f.userID, 1000)
+	if code, body := f.doJSON(t, http.MethodPost, "/skills/"+f.skillID+"/evaluation-batches/"+batchID+"/resume", ""); code != http.StatusNoContent {
+		t.Fatalf("resume: got %d %v, want 204", code, body)
+	}
+	if err := a.batches.AdvanceBatches(ctx, mustUUID(t, f.workspaceID)); err != nil {
+		t.Fatal(err)
+	}
+	runs := batchTrialRuns(t, pool, batchID)
+	if runs[f.testCaseID+"#1"] != first || runs[f.testCaseID+"#2"] == "" {
+		t.Errorf("after resuming: trials %v, want trial 1 still %s and trial 2 started", runs, first)
+	}
+	if status, _ := batchStatus(t, f, batchID); status != "launched" {
+		t.Errorf("after resuming: status %v, want launched", status)
+	}
+	if code, _ := f.doJSON(t, http.MethodPost, "/skills/"+f.skillID+"/evaluation-batches/"+batchID+"/resume", ""); code != http.StatusConflict {
+		t.Errorf("resuming a batch that is not paused: got %d, want 409", code)
+	}
+}
+
+func TestABatchPausedForThirtyDaysStopsAndOneJustUnderStaysPaused(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, freshName("alice-batch-paused-long"))
+	f.confirmPermissions(t)
+	ctx := context.Background()
+
+	var ids []string
+	for range 2 {
+		code, body := f.doJSON(t, http.MethodPost, "/skills/"+f.skillID+"/evaluation-batches", batchBody(f.versionID, 1, f.testCaseID))
+		if code != http.StatusCreated {
+			t.Fatalf("create: %d %v", code, body)
+		}
+		ids = append(ids, body["id"].(string))
+	}
+	for i, age := range []string{"30 days 1 minute", "29 days 23 hours"} {
+		mustExec(t, pool, `UPDATE evaluation_batches SET status = 'paused', stop_reason = 'credit_balance',
+			paused_at = now() - $2::interval WHERE id = $1`, mustUUID(t, ids[i]), age)
+	}
+
+	if err := a.batches.AdvanceAllBatches(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if status, reason := batchStatus(t, f, ids[0]); status != "stopped" || reason != "paused_too_long" {
+		t.Errorf("paused past 30 days: %v (%v), want stopped for paused_too_long", status, reason)
+	}
+	if status, _ := batchStatus(t, f, ids[1]); status != "paused" {
+		t.Errorf("paused just under 30 days: %v, want still paused", status)
+	}
+}
+
 func TestABatchWhoseTestCaseWasDeletedStopsAsTargetGone(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

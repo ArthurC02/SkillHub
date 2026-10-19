@@ -109,6 +109,7 @@ const (
 	SkillVersionAdded            = "skill.version_added"
 	SkillDescribed               = "skill.described"
 	SkillCurationSet             = "skill.curation_set"
+	SkillRestored                = "skill.restored"
 )
 
 const (
@@ -154,6 +155,7 @@ var EventTypes = []string{
 	SkillVersionAdded,
 	SkillDescribed,
 	SkillCurationSet,
+	SkillRestored,
 }
 
 var ErrUnknownEventType = errors.New("outbox: event type is not in the closed set")

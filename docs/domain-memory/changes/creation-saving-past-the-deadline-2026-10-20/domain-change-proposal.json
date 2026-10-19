@@ -1,0 +1,116 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "creation-saving-past-the-deadline-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "creation-saving-past-the-deadline-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-19T16:58:30.223706Z",
+  "verified_at": "2026-10-19T16:58:37.034526Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "b889b0dbb6b2d67e44c5b20f6f1e27ae6dabd0f5",
+    "registry_digest": "sha256:86fca3dbde3873cc34e06ad1eccfa10f3092b7d9c32dd700167005e010206b1f",
+    "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+  },
+  "affected_contexts": [
+    "creation"
+  ],
+  "rule_ids": [
+    "past-the-deadline-only-cancel-is-accepted"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "creation",
+    "invariant": "Only creation decides these rules.",
+    "evidence": [
+      "apps/platform/internal/creator/creation/creation.go:285-305"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/creator/creation/creation.go:277-279"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A session past its deadline held a paid draft that could not be saved."
+    ],
+    "decision": "Exempt the three save commands, which call no model, from the deadline.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Making the deadline idle-based: it would let one session spend indefinitely."
+    ],
+    "proof_obligations": [
+      "rule-past-the-deadline-only-cancel-is-accepted"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "past-the-deadline-only-cancel-is-accepted",
+        "statement": "After a creation session's deadline only cancel and the three save commands (materialize, finalize, confirm duplicate), none of which calls the model, are accepted; every other command is refused.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "A draft-ready session past its deadline saves; a message or a budget raise is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/creation.go",
+            "lines": {
+              "start": 297,
+              "end": 297
+            },
+            "content_sha256": "sha256:1cbf0deaf2f498800a3908476c0d91380b5545ef04c3bc48405434f5d8ad8823",
+            "excerpt_sha256": "sha256:f18748987f2dc8901f183287cca2004725112a4579485583626d70c758cccad5",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/command_test.go",
+            "lines": {
+              "start": 89,
+              "end": 101
+            },
+            "content_sha256": "sha256:1d4d90026d450869df744d2bb277b1ba593038c0285abde1abff4c77c1e89115",
+            "excerpt_sha256": "sha256:39620236efec7f89bb8f5c3c05f3db7cdda7f5c37ed70450849a9068be7aabb3",
+            "source_kind": "tests"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-19T16:58:36.700031Z",
+      "scope": "Record creation rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "b889b0dbb6b2d67e44c5b20f6f1e27ae6dabd0f5",
+        "registry_digest": "sha256:86fca3dbde3873cc34e06ad1eccfa10f3092b7d9c32dd700167005e010206b1f",
+        "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+      }
+    }
+  ],
+  "supersedes": [
+    "creation-harvest-rules-2026-10-17"
+  ]
+}

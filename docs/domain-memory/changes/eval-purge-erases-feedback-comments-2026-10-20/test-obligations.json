@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "eval-purge-erases-feedback-comments-2026-10-20",
+  "proposal_id": "eval-purge-erases-feedback-comments-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-account-purge-erases-evaluation-feedback-comments",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-account-purge-erases-evaluation-feedback-comments",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "account-purge-erases-evaluation-feedback-comments"
+        }
+      ],
+      "expected_outcome": "Purging an account erases the free-text feedback comments on its workspace's evaluations and keeps the evaluations themselves.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAccountPurgeErasesTheFeedbackCommentAndKeepsTheEvaluation$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

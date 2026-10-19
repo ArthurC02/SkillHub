@@ -275,6 +275,45 @@ func TestCanStartUsesP95WithMarkupWhenEnoughSamples(t *testing.T) {
 	}
 }
 
+func TestASessionStartsOnlyWhenItsFirstStepCanBeAfforded(t *testing.T) {
+	const firstStepReserve = 100_000
+	for _, tc := range []struct {
+		name  string
+		stats *Statistics
+	}{
+		{"no statistics", nil},
+		{"a p95 cheaper than one step", &Statistics{SampleCount: MinStatSamples, P95UsdMicros: 15_000, WindowEnd: time.Now()}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store := newFakeStore()
+			if tc.stats != nil {
+				store.stats[KindCreationSession] = *tc.stats
+			}
+			s := &Service{Store: store, Config: testConfig(),
+				FirstStepReserveMicros: map[CostKind]int64{KindCreationSession: firstStepReserve}}
+			for _, b := range []struct {
+				balance int64
+				want    bool
+			}{{79, false}, {80, true}} {
+				user := testUser(byte(60 + b.balance%10))
+				store.balances[idKey(user)] = b.balance
+				check, err := s.CanStart(context.Background(), user, KindCreationSession)
+				if err != nil {
+					t.Fatal(err)
+				}
+				step, err := s.CanAffordStep(context.Background(), user, firstStepReserve)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if check.OK != b.want || step != b.want {
+					t.Errorf("balance %d: start OK = %v, first step affordable = %v, want both %v (130 credits reserved, floor -50)",
+						b.balance, check.OK, step, b.want)
+				}
+			}
+		})
+	}
+}
+
 func TestCanStartFallsBackWhenNoStatisticsExist(t *testing.T) {
 	store := newFakeStore()
 	s := &Service{Store: store, Config: testConfig()}

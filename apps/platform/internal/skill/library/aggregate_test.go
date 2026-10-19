@@ -346,10 +346,10 @@ func TestEverySkillGovernanceCommandLeavesItsEventInTheOutbox(t *testing.T) {
 		_, err := SetRedistribution(ctx, tx, skillID, string(RedistributionBlocked), LicenseClaim{})
 		return err
 	})
-	if _, err := s.Takedown(ctx, ws, skillID, "the licence was withdrawn"); err != nil {
+	if _, err := (&Takedowns{Registry: s}).Takedown(ctx, ws, skillID, "the licence was withdrawn"); err != nil {
 		t.Fatalf("take down: %v", err)
 	}
-	if _, err := s.Takedown(ctx, ws, skillID, "a second report"); !errors.Is(err, ErrAlreadyTakenDown) {
+	if _, err := (&Takedowns{Registry: s}).Takedown(ctx, ws, skillID, "a second report"); !errors.Is(err, ErrAlreadyTakenDown) {
 		t.Fatalf("second takedown: want ErrAlreadyTakenDown, got %v", err)
 	}
 	if _, err := s.Delete(ctx, ws, skillID); err != nil {
@@ -398,7 +398,7 @@ func TestGovernanceCommandsOnASkillTheyCannotSeeAnswerNotFound(t *testing.T) {
 	held := "license-review"
 
 	for name, err := range map[string]error{
-		"take down another workspace's skill": func() error { _, err := s.Takedown(ctx, ws, elsewhere, "reason"); return err }(),
+		"take down another workspace's skill": func() error { _, err := (&Takedowns{Registry: s}).Takedown(ctx, ws, elsewhere, "reason"); return err }(),
 		"delete another workspace's skill":    func() error { _, err := s.Delete(ctx, ws, elsewhere); return err }(),
 		"categorize another workspace's skill": func() error {
 			_, err := s.SetCategory(ctx, ws, elsewhere, &documents)

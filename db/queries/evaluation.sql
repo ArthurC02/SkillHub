@@ -90,6 +90,10 @@ UPDATE evaluations SET
 WHERE id = @id AND workspace_id = @workspace_id
 RETURNING *;
 
+-- name: ClearWorkspaceEvaluationComments :execrows
+UPDATE evaluations SET feedback_comment = NULL, updated_at = now()
+WHERE workspace_id = @workspace_id AND feedback_comment IS NOT NULL;
+
 -- name: CreateEvaluationSuggestion :one
 INSERT INTO evaluation_suggestions (
     workspace_id, evaluation_id, category, problem, evidence,

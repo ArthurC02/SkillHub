@@ -436,6 +436,7 @@ type EvaluationBatch struct {
 	WithBaseline bool
 	// Every trial has ended and no simulated answer is still owed.
 	SettledAt pgtype.Timestamptz
+	PausedAt  pgtype.Timestamptz
 }
 
 // One trial of one test case in a batch; the run is linked once the batch starts it.
@@ -695,6 +696,7 @@ type Publication struct {
 	StatusChangedAt pgtype.Timestamptz
 	CreatedAt       pgtype.Timestamptz
 	BundleID        pgtype.UUID
+	RetiredAt       pgtype.Timestamptz
 }
 
 type PublicationRelease struct {
@@ -900,6 +902,7 @@ type Skill struct {
 	Category *string
 	// Who assigned skills.category: curated (PDM-001 backfill) | owner (PUT /skills/{id}/category, 05 R-19). NULL iff category is NULL. See 0061.
 	CategorySource *string
+	TakedownBy     *string
 }
 
 type SkillRuntimeCompatibility struct {

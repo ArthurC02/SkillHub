@@ -115,7 +115,7 @@ func batchRunError(err error) error {
 	case run.RefusalPasses(err):
 		return batch.ErrRunMustWait
 	case refused:
-		return batch.RunRefusedError{Reason: reason, Err: err}
+		return batch.RunRefusedError{Reason: reason, AwaitsTopUp: run.RefusalAwaitsTopUp(err), Err: err}
 	case errors.Is(err, run.ErrNotFound), errors.Is(err, run.ErrPreflightTargetNotFound):
 		return fmt.Errorf("%w: %w", batch.ErrTargetGone, err)
 	default:

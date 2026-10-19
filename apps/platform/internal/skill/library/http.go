@@ -18,8 +18,9 @@ import (
 )
 
 type Handler struct {
-	Svc      *Service
-	Identity *identity.Service
+	Svc       *Service
+	Takedowns *Takedowns
+	Identity  *identity.Service
 }
 
 func (h *Handler) workspace(w http.ResponseWriter, r *http.Request) (identity.Workspace, bool) {
@@ -177,7 +178,7 @@ func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	skill, err := h.Svc.Takedown(r.Context(), ws, skillID, strings.TrimSpace(body.Reason))
+	skill, err := h.Takedowns.Takedown(r.Context(), ws, skillID, strings.TrimSpace(body.Reason))
 	switch {
 	case errors.Is(err, ErrNotFound):
 		httpx.WriteError(w, http.StatusNotFound, err.Error())
@@ -200,6 +201,31 @@ func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 		Note: "removed from search and from the fork path; the skill, its versions " +
 			"and their sources are retained, and existing forks and past runs are unaffected",
 	})
+}
+
+func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	var skillID pgtype.UUID
+	if err := skillID.Scan(r.PathValue("id")); err != nil {
+		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+		return
+	}
+	_, err := h.Takedowns.Restore(r.Context(), ws, skillID)
+	switch {
+	case errors.Is(err, ErrNotFound):
+		httpx.WriteError(w, http.StatusNotFound, err.Error())
+	case errors.Is(err, ErrNotTakenDown):
+		httpx.WriteError(w, http.StatusConflict, err.Error())
+	case errors.Is(err, ErrRestoreNotAllowed):
+		httpx.WriteError(w, http.StatusForbidden, err.Error())
+	case err != nil:
+		httpx.WriteError(w, http.StatusInternalServerError, "restore failed")
+	default:
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
 
 const clearCategory = "unassigned"

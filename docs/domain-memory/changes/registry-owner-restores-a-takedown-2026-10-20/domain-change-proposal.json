@@ -1,0 +1,109 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "registry-owner-restores-a-takedown-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "registry-owner-restores-a-takedown-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-19T17:20:02.367080Z",
+  "verified_at": "2026-10-19T17:20:09.886198Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "b889b0dbb6b2d67e44c5b20f6f1e27ae6dabd0f5",
+    "registry_digest": "sha256:9375a084edc7cafe2417a24b8ac0dcfbf26acdc9a89aa5043d3c2a2d17f3d93e",
+    "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+  },
+  "affected_contexts": [
+    "registry"
+  ],
+  "rule_ids": [
+    "an-owner-restores-only-their-own-takedown-within-thirty-days"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Only registry decides these rules.",
+    "evidence": [
+      "apps/platform/internal/skill/library/takedowns.go:56-68"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/library/governance/takedown.go:96-96"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "An owner's own takedown could not be undone by anyone, so one slip cost the Skill its version history."
+    ],
+    "decision": "Record who took a Skill down; the owner restores their own within 30 days and an operator lifts any, writing the search document back pending enrichment.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Letting the owner undo an operator's takedown: it would undo an abuse or licensing decision the owner is the subject of."
+    ],
+    "proof_obligations": [
+      "rule-an-owner-restores-only-their-own-takedown-within-thirty-days"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-owner-restores-only-their-own-takedown-within-thirty-days",
+        "statement": "The owner may undo a takedown the owner made, within 30 days of it; a takedown an operator made, or one whose origin is unknown, only an operator lifts, at any time; restoring a Skill that is not taken down is refused.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "An owner's takedown exactly 30 days old is restored; 30 days and a second is refused; an operator's takedown an hour old is refused to the owner and lifted by an operator."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 245,
+              "end": 252
+            },
+            "excerpt_sha256": "sha256:5e5ae3ce700c5eb00bc29679a23590e392323582726cf8280826288f01a3b638"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root_test.go",
+            "lines": {
+              "start": 45,
+              "end": 76
+            },
+            "excerpt_sha256": "sha256:6c94b12b81fa4403fbd53cd8ba46c138138af1ba5ed4813393ab00a0cf5bbde4"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-19T17:20:09.677572Z",
+      "scope": "Record registry rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "b889b0dbb6b2d67e44c5b20f6f1e27ae6dabd0f5",
+        "registry_digest": "sha256:9375a084edc7cafe2417a24b8ac0dcfbf26acdc9a89aa5043d3c2a2d17f3d93e",
+        "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+      }
+    }
+  ]
+}

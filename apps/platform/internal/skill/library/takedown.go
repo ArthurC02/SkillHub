@@ -18,7 +18,7 @@ func SetTakedown(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID, reason str
 	if err != nil {
 		return TakedownBefore{}, err
 	}
-	root.TakeDown(reason)
+	root.TakeDown(reason, TakedownByOperator)
 	if err := SaveSkill(ctx, tx, root); err != nil {
 		return TakedownBefore{}, err
 	}

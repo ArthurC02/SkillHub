@@ -184,7 +184,7 @@ func NewApp(cfg Config) (*App, error) {
 	}
 	app.Deps = newDeps(cfg, app, creditSvc, funnel)
 	app.Deps.Search = &catalog.Handler{Svc: catalogSvc, Identity: auth.Service}
-	app.Deps.Registry = &registry.Handler{Svc: registrySvc, Identity: auth.Service}
+	app.Deps.Registry = &registry.Handler{Svc: registrySvc, Takedowns: &registry.Takedowns{Registry: registrySvc}, Identity: auth.Service}
 	app.Deps.Governance = &governance.Handler{Svc: newGovernanceService(cfg.Pool, registrySvc, identitySvc)}
 	app.Deps.TestLab = &testlab.Handler{Svc: testlabSvc, Identity: auth.Service}
 	app.Deps.Publishing = newPublishingHandler(cfg, publishingSvc, auth)
@@ -216,7 +216,7 @@ func wireWorkspacePurge(identitySvc *identity.Service, testlabSvc *testlab.Servi
 	identitySvc.PurgeRunArtifacts = runPurgeSvc.PurgeWorkspace
 	identitySvc.PurgeDownloads = packagingPurgeSvc.PurgeWorkspace
 	identitySvc.PurgeCreation = creation.PurgeWorkspace
-	identitySvc.PurgeGraders = graders.PurgeWorkspace
+	identitySvc.PurgeEvaluations = eval.PurgeWorkspace
 	identitySvc.PurgePublications = publishing.PurgeWorkspace
 	identitySvc.PurgeSkills = registryPurgeSvc.PurgeWorkspace
 	identitySvc.PurgeImportSources = ingestPurgeSvc.PurgeWorkspace

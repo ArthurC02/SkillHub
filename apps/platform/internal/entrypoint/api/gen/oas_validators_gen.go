@@ -4045,6 +4045,8 @@ func (s EvaluationBatchStatus) Validate() error {
 		return nil
 	case "launched":
 		return nil
+	case "paused":
+		return nil
 	case "stopped":
 		return nil
 	default:
@@ -9095,6 +9097,8 @@ func (s PublishingRefusalReason) Validate() error {
 	case "already_registered":
 		return nil
 	case "name_taken":
+		return nil
+	case "name_held":
 		return nil
 	case "name_is_permanent":
 		return nil

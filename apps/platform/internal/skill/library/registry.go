@@ -220,46 +220,11 @@ func (s *Service) Delete(ctx context.Context, ws identity.Workspace, skillID pgt
 }
 
 var (
+	ErrNotTakenDown           = errors.New("skill is not taken down")
+	ErrRestoreNotAllowed      = errors.New("only the owner's own takedown can be restored, within 30 days")
 	ErrAlreadyTakenDown       = errors.New("skill is already taken down")
 	ErrTakedownReasonRequired = errors.New("reason is required")
 )
-
-func (s *Service) Takedown(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, reason string) (Skill, error) {
-	if err := s.requireProjection(); err != nil {
-		return Skill{}, err
-	}
-	tx, err := s.Pool.Begin(ctx)
-	if err != nil {
-		return Skill{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	root, err := loadSkill(ctx, gen.New(tx), ws.ID, skillID)
-	if err != nil {
-		return Skill{}, err
-	}
-	root.TakeDown(reason)
-	if err := SaveSkill(ctx, tx, root); err != nil {
-		return Skill{}, err
-	}
-	skill := root.row
-
-	if err := s.RemoveFromIndex(ctx, tx, skill.WorkspaceID, skill.ID); err != nil {
-		return Skill{}, err
-	}
-	if err := audit.Log(ctx, tx, audit.Event{
-		Actor:        ws.OwnerUserID,
-		Workspace:    ws.ID,
-		Action:       audit.ActionSkillTakedown,
-		ResourceType: audit.ResourceSkill,
-		ResourceID:   skill.ID,
-	}); err != nil {
-		return Skill{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return Skill{}, err
-	}
-	return root.Skill(), nil
-}
 
 const maxForkAttempts = 10
 

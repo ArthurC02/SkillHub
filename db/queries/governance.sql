@@ -212,8 +212,13 @@ UPDATE skills SET access_restriction = $2, updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: SetSkillTakedown :one
-UPDATE skills SET takedown_at = now(), takedown_reason = $2, updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL AND takedown_at IS NULL
+UPDATE skills SET takedown_at = now(), takedown_reason = @takedown_reason, takedown_by = @takedown_by, updated_at = now()
+WHERE id = @id AND deleted_at IS NULL AND takedown_at IS NULL
+RETURNING *;
+
+-- name: RestoreSkill :one
+UPDATE skills SET takedown_at = NULL, takedown_reason = NULL, takedown_by = NULL, updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL AND takedown_at IS NOT NULL
 RETURNING *;
 
 -- name: ListSourcesToCheck :many

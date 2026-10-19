@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "registry-owner-restores-a-takedown-2026-10-20",
+  "proposal_id": "registry-owner-restores-a-takedown-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-an-owner-restores-only-their-own-takedown-within-thirty-days",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-owner-restores-only-their-own-takedown-within-thirty-days",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-owner-restores-only-their-own-takedown-within-thirty-days"
+        }
+      ],
+      "expected_outcome": "The owner may undo a takedown the owner made, within 30 days of it; a takedown an operator made, or one whose origin is unknown, only an operator lifts, at any time; restoring a Skill that is not taken down is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestOnlyTheOwnersOwnTakedownWithinThirtyDaysIsRestoredByTheOwner$ ./internal/skill/library/"
+    }
+  ]
+}

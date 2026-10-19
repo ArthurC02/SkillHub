@@ -294,7 +294,7 @@ func admitCommand(row gen.CreationSession, c Command) (envelope, error) {
 	if err != nil {
 		return envelope{}, err
 	}
-	if c.Kind != commandCancel && !e.Deadline.After(time.Now()) {
+	if c.Kind != commandCancel && !savesTheDraft(c.Kind) && !e.Deadline.After(time.Now()) {
 		return envelope{}, ErrDeadline
 	}
 	if current.AwaitsTheModel() && c.Kind != commandCancel && c.Kind != commandStopStep {

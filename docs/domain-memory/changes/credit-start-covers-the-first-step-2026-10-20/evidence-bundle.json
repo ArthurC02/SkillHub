@@ -1,0 +1,41 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "credit-start-covers-the-first-step-2026-10-20",
+  "proposal_id": "credit-start-covers-the-first-step-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "fff3353f4abfa1ce27b1a3cd5771c8d416ead8b7",
+    "registry_digest": "sha256:e97633d7e20d178441bc268aa4b9c5beea7b38a38dd5814aed70edfdebe3a44c",
+    "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-creation-start-threshold-covers-its-first-step",
+      "mutated_protection": "apps/platform/internal/creator/credit/service.go:238: return max(threshold, s.firstStepBalance(kind)), estimated -> return threshold, estimated",
+      "failure_evidence": "=== RUN   TestASessionStartsOnlyWhenItsFirstStepCanBeAfforded\n=== RUN   TestASessionStartsOnlyWhenItsFirstStepCanBeAfforded/no_statistics\n=== RUN   TestASessionStartsOnlyWhenItsFirstStepCanBeAfforded/a_p95_cheaper_than_one_step\n    service_test.go:309: balance 79: start OK = true, first step affordable = false, want both false (130 credits reserved, floor -50)\n--- FAIL: TestASessionStartsOnlyWhenItsFirstStepCanBeAfforded (0.00s)\n    --- PASS: TestASessionStartsOnlyWhenItsFirstStepCanBeAfforded/no_statistics (0.00s)\n    --- FAIL: TestASessionStartsOnlyWhenItsFirstStepCanBeAfforded/a_p95_cheaper_than_one_step (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t1.611s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/creator/credit/service.go",
+    "apps/platform/internal/creator/credit/service_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-creation-start-threshold-covers-its-first-step",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestASessionStartsOnlyWhenItsFirstStepCanBeAfforded$ ./internal/creator/credit/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:2dc7bfa1b32fb60a45dc7eea347f08a8e5b758b7c237cc7b133a0208f63b20e4",
+      "finished_at": "2026-10-19T16:29:33.211888Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

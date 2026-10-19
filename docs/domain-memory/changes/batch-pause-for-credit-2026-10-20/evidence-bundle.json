@@ -1,0 +1,58 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "batch-pause-for-credit-2026-10-20",
+  "proposal_id": "batch-pause-for-credit-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "b889b0dbb6b2d67e44c5b20f6f1e27ae6dabd0f5",
+    "registry_digest": "sha256:86fca3dbde3873cc34e06ad1eccfa10f3092b7d9c32dd700167005e010206b1f",
+    "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-batch-waits-only-on-a-passing-refusal",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch.go:278: if refused.AwaitsTopUp { -> if false && refused.AwaitsTopUp {",
+      "failure_evidence": "=== RUN   TestABatchOutOfCreditPausesAndResumesFromTheNextTrialWithoutRerunningAny\n    evaluation_batch_integration_test.go:352: out of credit: status stopped (credit_balance), want paused for credit_balance\n--- FAIL: TestABatchOutOfCreditPausesAndResumesFromTheNextTrialWithoutRerunningAny (0.22s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.019s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-paused-for-thirty-days-stops",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch.go:223: StopReason: &reason, PausedFor: pgconv.Interval(PausedBatchLimit), -> StopReason: &reason, PausedFor: pgconv.Interval(PausedBatchLimit * 2),",
+      "failure_evidence": "=== RUN   TestABatchPausedForThirtyDaysStopsAndOneJustUnderStaysPaused\n    evaluation_batch_integration_test.go:401: paused past 30 days: paused (credit_balance), want stopped for paused_too_long\n--- FAIL: TestABatchPausedForThirtyDaysStopsAndOneJustUnderStaysPaused (0.19s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.012s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+    "apps/platform/internal/trial/batch/batch.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-batch-waits-only-on-a-passing-refusal",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestABatchOutOfCreditPausesAndResumesFromTheNextTrialWithoutRerunningAny$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f6005e8c0b507c4de61be10da5d9413e9ae0010101c04d28efa205ff71ecdc72",
+      "finished_at": "2026-10-19T17:00:25.293038Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-batch-paused-for-thirty-days-stops",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestABatchPausedForThirtyDaysStopsAndOneJustUnderStaysPaused$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:49b7bc022df7714bb4ad6045fd95fd3fe297b5c2996a4fdf4613affb86c12e98",
+      "finished_at": "2026-10-19T17:00:33.909117Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

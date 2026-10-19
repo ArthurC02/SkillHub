@@ -28,7 +28,7 @@ INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_fr
                     access_restriction, redistribution, category, category_source)
 VALUES ($1, $2, $3, $4, $5,
         $6, $7, $8::text, $9::text)
-RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by
 `
 
 type CreateSkillParams struct {
@@ -74,6 +74,7 @@ func (q *Queries) CreateSkill(ctx context.Context, arg CreateSkillParams) (Skill
 		&i.CuratedVersionID,
 		&i.Category,
 		&i.CategorySource,
+		&i.TakedownBy,
 	)
 	return i, err
 }
@@ -133,7 +134,7 @@ func (q *Queries) FindSkillsForGovernance(ctx context.Context, arg FindSkillsFor
 }
 
 const getCatalogSkill = `-- name: GetCatalogSkill :one
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source FROM skills
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by FROM skills
 WHERE id = $1 AND workspace_id = ANY($2::uuid[]) AND deleted_at IS NULL
 `
 
@@ -163,6 +164,7 @@ func (q *Queries) GetCatalogSkill(ctx context.Context, arg GetCatalogSkillParams
 		&i.CuratedVersionID,
 		&i.Category,
 		&i.CategorySource,
+		&i.TakedownBy,
 	)
 	return i, err
 }
@@ -233,7 +235,7 @@ func (q *Queries) GetLiveSkillListingFacts(ctx context.Context, id pgtype.UUID) 
 }
 
 const getSkill = `-- name: GetSkill :one
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source FROM skills
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by FROM skills
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 `
 
@@ -263,6 +265,7 @@ func (q *Queries) GetSkill(ctx context.Context, arg GetSkillParams) (Skill, erro
 		&i.CuratedVersionID,
 		&i.Category,
 		&i.CategorySource,
+		&i.TakedownBy,
 	)
 	return i, err
 }
@@ -395,6 +398,49 @@ func (q *Queries) ListForkedFromVersions(ctx context.Context, versionIds []pgtyp
 	return items, nil
 }
 
+const listLineageRestrictions = `-- name: ListLineageRestrictions :many
+WITH RECURSIVE lineage AS (
+    SELECT s.id AS skill_id, s.forked_from_skill_id AS ancestor_id, 1 AS depth
+    FROM skills s
+    WHERE s.id = ANY($1::uuid[]) AND s.forked_from_skill_id IS NOT NULL
+    UNION ALL
+    SELECT l.skill_id, a.forked_from_skill_id, l.depth + 1
+    FROM lineage l
+    JOIN skills a ON a.id = l.ancestor_id
+    WHERE a.forked_from_skill_id IS NOT NULL AND l.depth < 64
+)
+SELECT DISTINCT ON (l.skill_id) l.skill_id, a.access_restriction::text AS reason
+FROM lineage l
+JOIN skills a ON a.id = l.ancestor_id
+WHERE a.access_restriction IS NOT NULL
+ORDER BY l.skill_id, l.depth
+`
+
+type ListLineageRestrictionsRow struct {
+	SkillID pgtype.UUID
+	Reason  string
+}
+
+func (q *Queries) ListLineageRestrictions(ctx context.Context, skillIds []pgtype.UUID) ([]ListLineageRestrictionsRow, error) {
+	rows, err := q.db.Query(ctx, listLineageRestrictions, skillIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLineageRestrictionsRow
+	for rows.Next() {
+		var i ListLineageRestrictionsRow
+		if err := rows.Scan(&i.SkillID, &i.Reason); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLiveSkillIDs = `-- name: ListLiveSkillIDs :many
 SELECT id FROM skills
 WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL AND takedown_at IS NULL
@@ -496,7 +542,7 @@ func (q *Queries) ListSkillForks(ctx context.Context, skillIds []pgtype.UUID) ([
 }
 
 const listSkills = `-- name: ListSkills :many
-SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction, sk.redistribution, sk.curation_tier, sk.curated_version_id, sk.category, sk.category_source, ver.created_at AS verified_at, ver.source_id AS verified_source_id,
+SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction, sk.redistribution, sk.curation_tier, sk.curated_version_id, sk.category, sk.category_source, sk.takedown_by, ver.created_at AS verified_at, ver.source_id AS verified_source_id,
        COALESCE(ver.content_hash, '')::text AS newest_content_hash,
        count(*) OVER ()::bigint AS total_matches
 FROM skills sk
@@ -553,6 +599,7 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListS
 			&i.Skill.CuratedVersionID,
 			&i.Skill.Category,
 			&i.Skill.CategorySource,
+			&i.Skill.TakedownBy,
 			&i.VerifiedAt,
 			&i.VerifiedSourceID,
 			&i.NewestContentHash,
@@ -569,7 +616,7 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListS
 }
 
 const listSkillsByIDs = `-- name: ListSkillsByIDs :many
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source FROM skills
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by FROM skills
 WHERE id = ANY($1::uuid[]) AND workspace_id = ANY($2::uuid[]) AND deleted_at IS NULL
 `
 
@@ -605,6 +652,7 @@ func (q *Queries) ListSkillsByIDs(ctx context.Context, arg ListSkillsByIDsParams
 			&i.CuratedVersionID,
 			&i.Category,
 			&i.CategorySource,
+			&i.TakedownBy,
 		); err != nil {
 			return nil, err
 		}
@@ -617,7 +665,7 @@ func (q *Queries) ListSkillsByIDs(ctx context.Context, arg ListSkillsByIDsParams
 }
 
 const lockSkill = `-- name: LockSkill :one
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source FROM skills
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by FROM skills
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 FOR UPDATE
 `
@@ -648,12 +696,13 @@ func (q *Queries) LockSkill(ctx context.Context, arg LockSkillParams) (Skill, er
 		&i.CuratedVersionID,
 		&i.Category,
 		&i.CategorySource,
+		&i.TakedownBy,
 	)
 	return i, err
 }
 
 const lockSkillForFork = `-- name: LockSkillForFork :one
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source FROM skills
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by FROM skills
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 FOR SHARE
 `
@@ -684,6 +733,7 @@ func (q *Queries) LockSkillForFork(ctx context.Context, arg LockSkillForForkPara
 		&i.CuratedVersionID,
 		&i.Category,
 		&i.CategorySource,
+		&i.TakedownBy,
 	)
 	return i, err
 }
@@ -692,7 +742,7 @@ const setSkillCategory = `-- name: SetSkillCategory :one
 UPDATE skills
 SET category = $3, category_source = $4, updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
-RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by
 `
 
 type SetSkillCategoryParams struct {
@@ -728,6 +778,7 @@ func (q *Queries) SetSkillCategory(ctx context.Context, arg SetSkillCategoryPara
 		&i.CuratedVersionID,
 		&i.Category,
 		&i.CategorySource,
+		&i.TakedownBy,
 	)
 	return i, err
 }
@@ -782,7 +833,7 @@ func (q *Queries) SkillsFromSameStoredPackage(ctx context.Context, arg SkillsFro
 const softDeleteSkill = `-- name: SoftDeleteSkill :one
 UPDATE skills SET deleted_at = now(), updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
-RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by
 `
 
 type SoftDeleteSkillParams struct {
@@ -811,6 +862,7 @@ func (q *Queries) SoftDeleteSkill(ctx context.Context, arg SoftDeleteSkillParams
 		&i.CuratedVersionID,
 		&i.Category,
 		&i.CategorySource,
+		&i.TakedownBy,
 	)
 	return i, err
 }

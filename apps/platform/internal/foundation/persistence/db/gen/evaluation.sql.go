@@ -11,6 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearWorkspaceEvaluationComments = `-- name: ClearWorkspaceEvaluationComments :execrows
+UPDATE evaluations SET feedback_comment = NULL, updated_at = now()
+WHERE workspace_id = $1 AND feedback_comment IS NOT NULL
+`
+
+func (q *Queries) ClearWorkspaceEvaluationComments(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, clearWorkspaceEvaluationComments, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const completeEvaluation = `-- name: CompleteEvaluation :one
 UPDATE evaluations SET
     status = 'completed',

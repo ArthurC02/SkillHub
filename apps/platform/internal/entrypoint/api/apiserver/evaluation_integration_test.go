@@ -940,6 +940,51 @@ func TestFeedbackIsRecordedAndCanBeChanged(t *testing.T) {
 	}
 }
 
+func TestAccountPurgeErasesTheFeedbackCommentAndKeepsTheEvaluation(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, freshName("eval-feedback-purge"))
+	skillID := seedSkill(t, pool, c.workspaceID, "feedback-purge")
+	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
+	a.evaluations.Judge = judgeServer(t, llmclient.JudgeVerdict{
+		CriterionResults: []llmclient.CriterionVerdict{
+			{CriterionID: "c1", Result: "passed", Reason: "yes"},
+			{CriterionID: "c2", Result: "passed", Reason: "yes"},
+		},
+		Overall: "met", Summary: "both criteria held",
+	}, "judge-run@2026-08-17")
+	if err := a.evaluations.Evaluate(context.Background(),
+		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatal(err)
+	}
+	if status, body := c.putJSON(t, "/runs/"+runID+"/evaluation/feedback", `{"helpful":true,"comment":"my private note"}`); status != http.StatusOK {
+		t.Fatalf("PUT feedback: got %d (%s)", status, body.Error)
+	}
+	if _, err := pool.Exec(context.Background(), `UPDATE runs SET cleanup_status = 'cleaned' WHERE id = $1`, runID); err != nil {
+		t.Fatal(err)
+	}
+
+	if code := c.status(t, http.MethodDelete, "/me"); code != http.StatusOK {
+		t.Fatalf("DELETE /me: %d", code)
+	}
+	if _, err := a.auth.Service.PurgeExpiredAccounts(context.Background(), a.packages, 0, 10); err != nil {
+		t.Fatal(err)
+	}
+
+	var comments, verdicts int
+	if err := pool.QueryRow(context.Background(),
+		`SELECT count(*) FILTER (WHERE feedback_comment IS NOT NULL), count(*)
+		 FROM evaluations WHERE run_id = $1`, runID).Scan(&comments, &verdicts); err != nil {
+		t.Fatal(err)
+	}
+	if comments != 0 {
+		t.Errorf("%d feedback comments survived the account purge", comments)
+	}
+	if verdicts != 1 {
+		t.Errorf("the purge removed the evaluation itself: %d rows, want 1", verdicts)
+	}
+}
+
 func (c *client) putJSON(t *testing.T, path, body string) (int, evaluationBody) {
 	t.Helper()
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodPut,

@@ -196,6 +196,32 @@ func (h *BatchHandler) BatchReport(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, viewOfReport(report))
 }
 
+func (h *BatchHandler) ResumeBatch(w http.ResponseWriter, r *http.Request) {
+	ws, ok := sessionWorkspace(h.Identity, w, r)
+	if !ok {
+		return
+	}
+	skillID, ok := pathUUID(w, r)
+	if !ok {
+		return
+	}
+	var batchID pgtype.UUID
+	if err := batchID.Scan(r.PathValue("batchId")); err != nil {
+		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+		return
+	}
+	switch err := h.Svc.ResumeBatch(r.Context(), ws.ID, skillID, batchID); {
+	case errors.Is(err, ErrNotFound):
+		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+	case errors.Is(err, ErrBatchNotPaused):
+		httpx.WriteError(w, http.StatusConflict, ErrBatchNotPaused.Error())
+	case err != nil:
+		httpx.WriteError(w, http.StatusInternalServerError, "batch resume failed")
+	default:
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 type batchComparisonView struct {
 	Reference       batchView     `json:"reference"`
 	Candidate       batchView     `json:"candidate"`

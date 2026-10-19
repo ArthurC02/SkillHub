@@ -70,6 +70,7 @@ queries:
   SetSkillCuration: registry
   SetSkillRedistribution: registry
   SetSkillTakedown: registry
+  RestoreSkill: registry
   ListSourcesToCheck: ingest
   MarkSourceChecked: ingest
 
@@ -371,6 +372,7 @@ scope:
   SetSkillCuration: user
   SetSkillRedistribution: user
   SetSkillTakedown: user
+  RestoreSkill: user
   SumCostEventsByDay: user
   SumCreditEntriesByDay: user
 
@@ -464,9 +466,11 @@ scope:
   FindSkillsForGovernance: operator
   FindLiveUserByEmail: operator
   ListForkedFromVersions: scoped-upstream
+  ListLineageRestrictions: scoped-upstream
   GetPublicPublication: platform-wide
   ListExposureStates: platform-wide
   ListStalePendingEvaluations: worker
+  StopLongPausedBatches: worker
   ListSourcesToCheck: worker
   ListArtifactsClaimingObject: worker
   ListArtifactsPastRetention: worker

@@ -1464,6 +1464,13 @@ export interface LiftDispatchHaltOperationRequest {
     liftDispatchHaltRequest: LiftDispatchHaltRequest;
 }
 
+export interface LiftSkillTakedownRequest {
+    /**
+     * 
+     */
+    id: string;
+}
+
 export interface ListCreationSessionsRequest {
     /**
      * Optional immutable Skill Version whose still-retained Studio context should be returned. This is a Creation-owned lookup and does not make Skill Registry depend on Creation.
@@ -1803,6 +1810,24 @@ export interface ReleasePlatformAgentBrakeOperationRequest {
      * 
      */
     releasePlatformAgentBrakeRequest: ReleasePlatformAgentBrakeRequest;
+}
+
+export interface RestoreSkillRequest {
+    /**
+     * 
+     */
+    id: string;
+}
+
+export interface ResumeEvaluationBatchRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * 
+     */
+    batchId: string;
 }
 
 export interface ReviewExposureOperationRequest {
@@ -4129,6 +4154,30 @@ export interface DefaultApiInterface {
     liftDispatchHalt(requestParameters: LiftDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
+     * Creates request options for liftSkillTakedown without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    liftSkillTakedownRequestOpts(requestParameters: LiftSkillTakedownRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Clears the takedown and writes the skill\'s search document back pending enrichment, in one transaction with the audit event. 
+     * @summary Lift a takedown, whoever made it (SEC-011)
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    liftSkillTakedownRaw(requestParameters: LiftSkillTakedownRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Operator only. Clears the takedown and writes the skill\'s search document back pending enrichment, in one transaction with the audit event. 
+     * Lift a takedown, whoever made it (SEC-011)
+     */
+    liftSkillTakedown(requestParameters: LiftSkillTakedownRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for listCheckKinds without sending the request
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -5079,6 +5128,56 @@ export interface DefaultApiInterface {
     requestAccountDeletion(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountDeletion>;
 
     /**
+     * Creates request options for restoreSkill without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    restoreSkillRequestOpts(requestParameters: RestoreSkillRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Clears a takedown the owner made through `POST /skills/{id}/takedown`, if no more than 30 days have passed since it. A takedown an operator made cannot be undone here; only an operator lifts it.  The skill returns to search through the same path as a new import: its search document is written back pending enrichment and stays out of listings until enrichment and the scan have run again. 
+     * @summary Undo the owner\'s own takedown within 30 days (INGEST-010)
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    restoreSkillRaw(requestParameters: RestoreSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Clears a takedown the owner made through `POST /skills/{id}/takedown`, if no more than 30 days have passed since it. A takedown an operator made cannot be undone here; only an operator lifts it.  The skill returns to search through the same path as a new import: its search document is written back pending enrichment and stays out of listings until enrichment and the scan have run again. 
+     * Undo the owner\'s own takedown within 30 days (INGEST-010)
+     */
+    restoreSkill(requestParameters: RestoreSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for resumeEvaluationBatch without sending the request
+     * @param {string} id 
+     * @param {string} batchId 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    resumeEvaluationBatchRequestOpts(requestParameters: ResumeEvaluationBatchRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Starts the batch again from the next trial that has no run; trials that already ran are never run again, so nothing is paid twice. If the credit is still short, the next trial pauses the batch again. 
+     * @summary Resume a batch paused for credit (EVAL-014)
+     * @param {string} id 
+     * @param {string} batchId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    resumeEvaluationBatchRaw(requestParameters: ResumeEvaluationBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Starts the batch again from the next trial that has no run; trials that already ran are never run again, so nothing is paid twice. If the credit is still short, the next trial pauses the batch again. 
+     * Resume a batch paused for credit (EVAL-014)
+     */
+    resumeEvaluationBatch(requestParameters: ResumeEvaluationBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for reviewExposure without sending the request
      * @param {string} publisher 
      * @param {string} name 
@@ -5474,7 +5573,7 @@ export interface DefaultApiInterface {
     setSkillRestrictionRequestOpts(requestParameters: SetSkillRestrictionOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Operator only. Sets the 0023 access restriction on one skill, or changes the reason of a hold already in place, and records who did it and why.  Idempotent: applying the same code twice writes a second audit event and leaves the row as it was. An operator repeating an action is not an error, and answering 409 here would only invite retry loops.  The column and the audit event are written in one transaction (iron rule 9), so a hold can never be in force without the event that explains it, nor explained without being in force.  This is the only cross-workspace write in the API. It writes this one skill: a fork made after the hold inherits it, but forks that already exist keep their own row and are not reached; being an operator is still not a widened workspace scope, and nothing here reads workspace-private data on the strength of it (SEC-011 最小權力原則). 
+     * Operator only. Sets the 0023 access restriction on one skill, or changes the reason of a hold already in place, and records who did it and why.  Idempotent: applying the same code twice writes a second audit event and leaves the row as it was. An operator repeating an action is not an error, and answering 409 here would only invite retry loops.  The column and the audit event are written in one transaction (iron rule 9), so a hold can never be in force without the event that explains it, nor explained without being in force.  This is the only cross-workspace write in the API. It writes this one skill, and every gate reads a hold along the fork lineage, so forks of it (and forks of those) are held too without their rows being written; being an operator is still not a widened workspace scope, and nothing here reads workspace-private data on the strength of it (SEC-011 最小權力原則). 
      * @summary Put the licensing hold on a skill (SEC-011)
      * @param {string} id 
      * @param {SetSkillRestrictionRequest} setSkillRestrictionRequest 
@@ -5485,7 +5584,7 @@ export interface DefaultApiInterface {
     setSkillRestrictionRaw(requestParameters: SetSkillRestrictionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetSkillRestriction200Response>>;
 
     /**
-     * Operator only. Sets the 0023 access restriction on one skill, or changes the reason of a hold already in place, and records who did it and why.  Idempotent: applying the same code twice writes a second audit event and leaves the row as it was. An operator repeating an action is not an error, and answering 409 here would only invite retry loops.  The column and the audit event are written in one transaction (iron rule 9), so a hold can never be in force without the event that explains it, nor explained without being in force.  This is the only cross-workspace write in the API. It writes this one skill: a fork made after the hold inherits it, but forks that already exist keep their own row and are not reached; being an operator is still not a widened workspace scope, and nothing here reads workspace-private data on the strength of it (SEC-011 最小權力原則). 
+     * Operator only. Sets the 0023 access restriction on one skill, or changes the reason of a hold already in place, and records who did it and why.  Idempotent: applying the same code twice writes a second audit event and leaves the row as it was. An operator repeating an action is not an error, and answering 409 here would only invite retry loops.  The column and the audit event are written in one transaction (iron rule 9), so a hold can never be in force without the event that explains it, nor explained without being in force.  This is the only cross-workspace write in the API. It writes this one skill, and every gate reads a hold along the fork lineage, so forks of it (and forks of those) are held too without their rows being written; being an operator is still not a widened workspace scope, and nothing here reads workspace-private data on the strength of it (SEC-011 最小權力原則). 
      * Put the licensing hold on a skill (SEC-011)
      */
     setSkillRestriction(requestParameters: SetSkillRestrictionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetSkillRestriction200Response>;
@@ -5647,7 +5746,7 @@ export interface DefaultApiInterface {
     takedownSkillAsOperatorRequestOpts(requestParameters: TakedownSkillAsOperatorOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search document and records who did it and why.  The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws content from the workspace they own. This operation is the other case — an abuse report or a DMCA notice about a fork sitting in somebody else\'s workspace.  Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410 Gone answers the detail view and the same predicate keeps it out of search — neither read asks who set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes that structural rather than a rule to remember.  **Not idempotent**, unlike `restriction` and `redistribution` beside it. Those write a value; this records an event that happened at a time, and letting a repeat move `takedown_at` would move the date a review is going to ask about. A second call answers 409, the same as the scoped route.  **There is no restore route**, here or on the scoped path. Clearing the flag is the easy half; putting the search document back is not, because the projection would come back carrying only name and summary and would silently lose the enrichment, the embedding and the scan. Today the answer is to clear the column and run `maintenance reindex`. Recorded rather than half-built.  The column write, the search removal and the audit event share one transaction (iron rule 9): content that is down in the registry and still listed in search is the outcome that must be impossible.  The reason is recorded in the audit event as well as on the row, which is where this differs from the scoped route\'s identifiers-only event. 02:SEC-011 requires an operator action to record a non-empty reason; an operator\'s own sentence about why they acted is not package content. 
+     * Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search document and records who did it and why.  The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws content from the workspace they own. This operation is the other case — an abuse report or a DMCA notice about a fork sitting in somebody else\'s workspace.  Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410 Gone answers the detail view and the same predicate keeps it out of search — neither read asks who set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes that structural rather than a rule to remember.  **Not idempotent**, unlike `restriction` and `redistribution` beside it. Those write a value; this records an event that happened at a time, and letting a repeat move `takedown_at` would move the date a review is going to ask about. A second call answers 409, the same as the scoped route.  `DELETE` on this path lifts any takedown, whoever made it; the owner can undo only their own, within 30 days, through `POST /skills/{id}/restore`. Either way the search document comes back pending enrichment and stays unlisted until enrichment and the scan have run again.  The column write, the search removal and the audit event share one transaction (iron rule 9): content that is down in the registry and still listed in search is the outcome that must be impossible.  The reason is recorded in the audit event as well as on the row, which is where this differs from the scoped route\'s identifiers-only event. 02:SEC-011 requires an operator action to record a non-empty reason; an operator\'s own sentence about why they acted is not package content. 
      * @summary Withdraw a skill from anywhere on the platform (SEC-011 action 1)
      * @param {string} id 
      * @param {TakedownSkillAsOperatorRequest} takedownSkillAsOperatorRequest 
@@ -5658,7 +5757,7 @@ export interface DefaultApiInterface {
     takedownSkillAsOperatorRaw(requestParameters: TakedownSkillAsOperatorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TakedownSkillAsOperator200Response>>;
 
     /**
-     * Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search document and records who did it and why.  The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws content from the workspace they own. This operation is the other case — an abuse report or a DMCA notice about a fork sitting in somebody else\'s workspace.  Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410 Gone answers the detail view and the same predicate keeps it out of search — neither read asks who set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes that structural rather than a rule to remember.  **Not idempotent**, unlike `restriction` and `redistribution` beside it. Those write a value; this records an event that happened at a time, and letting a repeat move `takedown_at` would move the date a review is going to ask about. A second call answers 409, the same as the scoped route.  **There is no restore route**, here or on the scoped path. Clearing the flag is the easy half; putting the search document back is not, because the projection would come back carrying only name and summary and would silently lose the enrichment, the embedding and the scan. Today the answer is to clear the column and run `maintenance reindex`. Recorded rather than half-built.  The column write, the search removal and the audit event share one transaction (iron rule 9): content that is down in the registry and still listed in search is the outcome that must be impossible.  The reason is recorded in the audit event as well as on the row, which is where this differs from the scoped route\'s identifiers-only event. 02:SEC-011 requires an operator action to record a non-empty reason; an operator\'s own sentence about why they acted is not package content. 
+     * Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search document and records who did it and why.  The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws content from the workspace they own. This operation is the other case — an abuse report or a DMCA notice about a fork sitting in somebody else\'s workspace.  Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410 Gone answers the detail view and the same predicate keeps it out of search — neither read asks who set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes that structural rather than a rule to remember.  **Not idempotent**, unlike `restriction` and `redistribution` beside it. Those write a value; this records an event that happened at a time, and letting a repeat move `takedown_at` would move the date a review is going to ask about. A second call answers 409, the same as the scoped route.  `DELETE` on this path lifts any takedown, whoever made it; the owner can undo only their own, within 30 days, through `POST /skills/{id}/restore`. Either way the search document comes back pending enrichment and stays unlisted until enrichment and the scan have run again.  The column write, the search removal and the audit event share one transaction (iron rule 9): content that is down in the registry and still listed in search is the outcome that must be impossible.  The reason is recorded in the audit event as well as on the row, which is where this differs from the scoped route\'s identifiers-only event. 02:SEC-011 requires an operator action to record a non-empty reason; an operator\'s own sentence about why they acted is not package content. 
      * Withdraw a skill from anywhere on the platform (SEC-011 action 1)
      */
     takedownSkillAsOperator(requestParameters: TakedownSkillAsOperatorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TakedownSkillAsOperator200Response>;
@@ -9863,6 +9962,52 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for liftSkillTakedown without sending the request
+     */
+    async liftSkillTakedownRequestOpts(requestParameters: LiftSkillTakedownRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling liftSkillTakedown().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/skills/{id}/takedown`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only. Clears the takedown and writes the skill\'s search document back pending enrichment, in one transaction with the audit event. 
+     * Lift a takedown, whoever made it (SEC-011)
+     */
+    async liftSkillTakedownRaw(requestParameters: LiftSkillTakedownRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.liftSkillTakedownRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Operator only. Clears the takedown and writes the skill\'s search document back pending enrichment, in one transaction with the audit event. 
+     * Lift a takedown, whoever made it (SEC-011)
+     */
+    async liftSkillTakedown(requestParameters: LiftSkillTakedownRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.liftSkillTakedownRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for listCheckKinds without sending the request
      */
     async listCheckKindsRequestOpts(): Promise<runtime.RequestOpts> {
@@ -11668,6 +11813,106 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for restoreSkill without sending the request
+     */
+    async restoreSkillRequestOpts(requestParameters: RestoreSkillRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling restoreSkill().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/skills/{id}/restore`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Clears a takedown the owner made through `POST /skills/{id}/takedown`, if no more than 30 days have passed since it. A takedown an operator made cannot be undone here; only an operator lifts it.  The skill returns to search through the same path as a new import: its search document is written back pending enrichment and stays out of listings until enrichment and the scan have run again. 
+     * Undo the owner\'s own takedown within 30 days (INGEST-010)
+     */
+    async restoreSkillRaw(requestParameters: RestoreSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.restoreSkillRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Clears a takedown the owner made through `POST /skills/{id}/takedown`, if no more than 30 days have passed since it. A takedown an operator made cannot be undone here; only an operator lifts it.  The skill returns to search through the same path as a new import: its search document is written back pending enrichment and stays out of listings until enrichment and the scan have run again. 
+     * Undo the owner\'s own takedown within 30 days (INGEST-010)
+     */
+    async restoreSkill(requestParameters: RestoreSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.restoreSkillRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for resumeEvaluationBatch without sending the request
+     */
+    async resumeEvaluationBatchRequestOpts(requestParameters: ResumeEvaluationBatchRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling resumeEvaluationBatch().'
+            );
+        }
+
+        if (requestParameters['batchId'] == null) {
+            throw new runtime.RequiredError(
+                'batchId',
+                'Required parameter "batchId" was null or undefined when calling resumeEvaluationBatch().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/skills/{id}/evaluation-batches/{batchId}/resume`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{batchId}', encodeURIComponent(String(requestParameters['batchId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Starts the batch again from the next trial that has no run; trials that already ran are never run again, so nothing is paid twice. If the credit is still short, the next trial pauses the batch again. 
+     * Resume a batch paused for credit (EVAL-014)
+     */
+    async resumeEvaluationBatchRaw(requestParameters: ResumeEvaluationBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.resumeEvaluationBatchRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Starts the batch again from the next trial that has no run; trials that already ran are never run again, so nothing is paid twice. If the credit is still short, the next trial pauses the batch again. 
+     * Resume a batch paused for credit (EVAL-014)
+     */
+    async resumeEvaluationBatch(requestParameters: ResumeEvaluationBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.resumeEvaluationBatchRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for reviewExposure without sending the request
      */
     async reviewExposureRequestOpts(requestParameters: ReviewExposureOperationRequest): Promise<runtime.RequestOpts> {
@@ -12541,7 +12786,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Sets the 0023 access restriction on one skill, or changes the reason of a hold already in place, and records who did it and why.  Idempotent: applying the same code twice writes a second audit event and leaves the row as it was. An operator repeating an action is not an error, and answering 409 here would only invite retry loops.  The column and the audit event are written in one transaction (iron rule 9), so a hold can never be in force without the event that explains it, nor explained without being in force.  This is the only cross-workspace write in the API. It writes this one skill: a fork made after the hold inherits it, but forks that already exist keep their own row and are not reached; being an operator is still not a widened workspace scope, and nothing here reads workspace-private data on the strength of it (SEC-011 最小權力原則). 
+     * Operator only. Sets the 0023 access restriction on one skill, or changes the reason of a hold already in place, and records who did it and why.  Idempotent: applying the same code twice writes a second audit event and leaves the row as it was. An operator repeating an action is not an error, and answering 409 here would only invite retry loops.  The column and the audit event are written in one transaction (iron rule 9), so a hold can never be in force without the event that explains it, nor explained without being in force.  This is the only cross-workspace write in the API. It writes this one skill, and every gate reads a hold along the fork lineage, so forks of it (and forks of those) are held too without their rows being written; being an operator is still not a widened workspace scope, and nothing here reads workspace-private data on the strength of it (SEC-011 最小權力原則). 
      * Put the licensing hold on a skill (SEC-011)
      */
     async setSkillRestrictionRaw(requestParameters: SetSkillRestrictionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetSkillRestriction200Response>> {
@@ -12552,7 +12797,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Sets the 0023 access restriction on one skill, or changes the reason of a hold already in place, and records who did it and why.  Idempotent: applying the same code twice writes a second audit event and leaves the row as it was. An operator repeating an action is not an error, and answering 409 here would only invite retry loops.  The column and the audit event are written in one transaction (iron rule 9), so a hold can never be in force without the event that explains it, nor explained without being in force.  This is the only cross-workspace write in the API. It writes this one skill: a fork made after the hold inherits it, but forks that already exist keep their own row and are not reached; being an operator is still not a widened workspace scope, and nothing here reads workspace-private data on the strength of it (SEC-011 最小權力原則). 
+     * Operator only. Sets the 0023 access restriction on one skill, or changes the reason of a hold already in place, and records who did it and why.  Idempotent: applying the same code twice writes a second audit event and leaves the row as it was. An operator repeating an action is not an error, and answering 409 here would only invite retry loops.  The column and the audit event are written in one transaction (iron rule 9), so a hold can never be in force without the event that explains it, nor explained without being in force.  This is the only cross-workspace write in the API. It writes this one skill, and every gate reads a hold along the fork lineage, so forks of it (and forks of those) are held too without their rows being written; being an operator is still not a widened workspace scope, and nothing here reads workspace-private data on the strength of it (SEC-011 最小權力原則). 
      * Put the licensing hold on a skill (SEC-011)
      */
     async setSkillRestriction(requestParameters: SetSkillRestrictionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetSkillRestriction200Response> {
@@ -12893,7 +13138,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search document and records who did it and why.  The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws content from the workspace they own. This operation is the other case — an abuse report or a DMCA notice about a fork sitting in somebody else\'s workspace.  Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410 Gone answers the detail view and the same predicate keeps it out of search — neither read asks who set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes that structural rather than a rule to remember.  **Not idempotent**, unlike `restriction` and `redistribution` beside it. Those write a value; this records an event that happened at a time, and letting a repeat move `takedown_at` would move the date a review is going to ask about. A second call answers 409, the same as the scoped route.  **There is no restore route**, here or on the scoped path. Clearing the flag is the easy half; putting the search document back is not, because the projection would come back carrying only name and summary and would silently lose the enrichment, the embedding and the scan. Today the answer is to clear the column and run `maintenance reindex`. Recorded rather than half-built.  The column write, the search removal and the audit event share one transaction (iron rule 9): content that is down in the registry and still listed in search is the outcome that must be impossible.  The reason is recorded in the audit event as well as on the row, which is where this differs from the scoped route\'s identifiers-only event. 02:SEC-011 requires an operator action to record a non-empty reason; an operator\'s own sentence about why they acted is not package content. 
+     * Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search document and records who did it and why.  The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws content from the workspace they own. This operation is the other case — an abuse report or a DMCA notice about a fork sitting in somebody else\'s workspace.  Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410 Gone answers the detail view and the same predicate keeps it out of search — neither read asks who set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes that structural rather than a rule to remember.  **Not idempotent**, unlike `restriction` and `redistribution` beside it. Those write a value; this records an event that happened at a time, and letting a repeat move `takedown_at` would move the date a review is going to ask about. A second call answers 409, the same as the scoped route.  `DELETE` on this path lifts any takedown, whoever made it; the owner can undo only their own, within 30 days, through `POST /skills/{id}/restore`. Either way the search document comes back pending enrichment and stays unlisted until enrichment and the scan have run again.  The column write, the search removal and the audit event share one transaction (iron rule 9): content that is down in the registry and still listed in search is the outcome that must be impossible.  The reason is recorded in the audit event as well as on the row, which is where this differs from the scoped route\'s identifiers-only event. 02:SEC-011 requires an operator action to record a non-empty reason; an operator\'s own sentence about why they acted is not package content. 
      * Withdraw a skill from anywhere on the platform (SEC-011 action 1)
      */
     async takedownSkillAsOperatorRaw(requestParameters: TakedownSkillAsOperatorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TakedownSkillAsOperator200Response>> {
@@ -12904,7 +13149,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search document and records who did it and why.  The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws content from the workspace they own. This operation is the other case — an abuse report or a DMCA notice about a fork sitting in somebody else\'s workspace.  Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410 Gone answers the detail view and the same predicate keeps it out of search — neither read asks who set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes that structural rather than a rule to remember.  **Not idempotent**, unlike `restriction` and `redistribution` beside it. Those write a value; this records an event that happened at a time, and letting a repeat move `takedown_at` would move the date a review is going to ask about. A second call answers 409, the same as the scoped route.  **There is no restore route**, here or on the scoped path. Clearing the flag is the easy half; putting the search document back is not, because the projection would come back carrying only name and summary and would silently lose the enrichment, the embedding and the scan. Today the answer is to clear the column and run `maintenance reindex`. Recorded rather than half-built.  The column write, the search removal and the audit event share one transaction (iron rule 9): content that is down in the registry and still listed in search is the outcome that must be impossible.  The reason is recorded in the audit event as well as on the row, which is where this differs from the scoped route\'s identifiers-only event. 02:SEC-011 requires an operator action to record a non-empty reason; an operator\'s own sentence about why they acted is not package content. 
+     * Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search document and records who did it and why.  The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws content from the workspace they own. This operation is the other case — an abuse report or a DMCA notice about a fork sitting in somebody else\'s workspace.  Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410 Gone answers the detail view and the same predicate keeps it out of search — neither read asks who set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes that structural rather than a rule to remember.  **Not idempotent**, unlike `restriction` and `redistribution` beside it. Those write a value; this records an event that happened at a time, and letting a repeat move `takedown_at` would move the date a review is going to ask about. A second call answers 409, the same as the scoped route.  `DELETE` on this path lifts any takedown, whoever made it; the owner can undo only their own, within 30 days, through `POST /skills/{id}/restore`. Either way the search document comes back pending enrichment and stays unlisted until enrichment and the scan have run again.  The column write, the search removal and the audit event share one transaction (iron rule 9): content that is down in the registry and still listed in search is the outcome that must be impossible.  The reason is recorded in the audit event as well as on the row, which is where this differs from the scoped route\'s identifiers-only event. 02:SEC-011 requires an operator action to record a non-empty reason; an operator\'s own sentence about why they acted is not package content. 
      * Withdraw a skill from anywhere on the platform (SEC-011 action 1)
      */
     async takedownSkillAsOperator(requestParameters: TakedownSkillAsOperatorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TakedownSkillAsOperator200Response> {

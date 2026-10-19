@@ -6,6 +6,7 @@ export type PublishingRefusalReason =
   | "no_publisher"
   | "already_registered"
   | "name_taken"
+  | "name_held"
   | "name_is_permanent"
   | "name_shape"
   | "name_reserved"
@@ -19,6 +20,7 @@ export const PUBLISHING_REFUSAL_LABEL: Record<PublishingRefusalReason, string> =
   no_publisher: "這個帳號還沒有註冊發佈者名稱，要先到帳號頁註冊一個才能發佈。",
   already_registered: "這個帳號已經有一個發佈者名稱了，一個帳號只能有一個，不能再註冊第二個。",
   name_taken: "這個名稱已經被別人取走了，換一個名稱再試一次。",
+  name_held: "這個名稱屬於一個已刪除的小工具，刪除後 90 天內保留，免得舊連結指到別的內容；換一個名稱，或 90 天後再用。",
   name_is_permanent: "這個小工具已經用另一個名稱發佈過，名稱一經建立就不能更改。",
   name_shape:
     "名稱格式不對：1～64 字元，只能是小寫英文字母、數字與連字號，開頭與結尾要是英數字，不能有連續兩個連字號。",

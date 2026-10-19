@@ -1,0 +1,26 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "batch-pause-for-credit-2026-10-20",
+  "status": "draft",
+  "intent": "Record the batch rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context batch lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-batch-waits-only-on-a-passing-refusal",
+      "statement": "An evaluation batch waits when Run refuses a trial with a refusal Run says will pass on its own, pauses with the reason recorded when the refusal awaits a credit top-up, and stops with the reason recorded on any other refusal."
+    },
+    {
+      "id": "enforced-a-batch-paused-for-thirty-days-stops",
+      "statement": "A batch paused for 30 days stops with reason paused_too_long; one paused for less stays paused and can be resumed from its next unrun trial."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+    "apps/platform/internal/trial/batch/batch.go"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "creation-saving-past-the-deadline-2026-10-20",
+  "proposal_id": "creation-saving-past-the-deadline-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "b889b0dbb6b2d67e44c5b20f6f1e27ae6dabd0f5",
+    "registry_digest": "sha256:86fca3dbde3873cc34e06ad1eccfa10f3092b7d9c32dd700167005e010206b1f",
+    "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-past-the-deadline-only-cancel-is-accepted",
+      "mutated_protection": "apps/platform/internal/creator/creation/creation.go:297: !savesTheDraft(c.Kind) && !e.Deadline.After(time.Now()) -> !e.Deadline.After(time.Now())",
+      "failure_evidence": "=== RUN   TestPastTheDeadlineOnlyCancelAndSavingTheDraftAreAccepted\n    command_test.go:98: materialize after the deadline: err = creation: session deadline passed, want <nil>\n    command_test.go:98: finalize after the deadline: err = creation: session deadline passed, want <nil>\n    command_test.go:98: confirm_duplicate after the deadline: err = creation: session deadline passed, want <nil>\n--- FAIL: TestPastTheDeadlineOnlyCancelAndSavingTheDraftAreAccepted (0.05s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t2.484s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/creator/creation/command_test.go",
+    "apps/platform/internal/creator/creation/creation.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-past-the-deadline-only-cancel-is-accepted",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestPastTheDeadlineOnlyCancelAndSavingTheDraftAreAccepted$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4bffcee525a6ccc594a6ff4f5697892b9abbb33d189ad7d2457f54a601896940",
+      "finished_at": "2026-10-19T16:58:36.696524Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

@@ -267,6 +267,13 @@ var domainVocabularies = []domainVocabulary{
 		},
 	},
 	{
+		name: "skill takedown origin",
+		sources: []vocabularySource{
+			sqlColumnCheck("skills", "takedown_by"),
+			goConstEnum("apps/platform/internal/skill/library/skill_root.go", "TakedownBy"),
+		},
+	},
+	{
 		name: "skill redistribution",
 		sources: []vocabularySource{
 			sqlColumnCheck("skills", "redistribution"),

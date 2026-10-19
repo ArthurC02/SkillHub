@@ -41,6 +41,8 @@ type Service struct {
 	Config Config
 
 	Facts func(ctx context.Context, db DBTX, userID pgtype.UUID) (AccountFacts, error)
+
+	FirstStepReserveMicros map[CostKind]int64
 }
 
 func (s *Service) checkAccount(ctx context.Context, db DBTX, userID pgtype.UUID) error {
@@ -217,23 +219,35 @@ func (s *Service) CanStart(ctx context.Context, userID pgtype.UUID, statKind Cos
 func (s *Service) startThreshold(ctx context.Context, kind CostKind) (threshold int64, estimated bool, err error) {
 	stats, err := s.Store.RecentStatistics(ctx, kind)
 	if errors.Is(err, ErrNoStatistics) {
-		return s.Config.StartFallbackCredits, true, nil
+		return max(s.Config.StartFallbackCredits, s.firstStepBalance(kind)), true, nil
 	}
 	if err != nil {
 		return 0, false, err
 	}
-	threshold, estimated = s.thresholdFrom(stats)
+	threshold, estimated = s.thresholdFrom(kind, stats)
 	return threshold, estimated, nil
 }
 
-func (s *Service) thresholdFrom(stats Statistics) (threshold int64, estimated bool) {
-	if stats.SampleCount < MinStatSamples || time.Since(stats.WindowEnd) > MaxStatisticsAge {
-		return s.Config.StartFallbackCredits, true
+func (s *Service) thresholdFrom(kind CostKind, stats Statistics) (threshold int64, estimated bool) {
+	threshold, estimated = s.Config.StartFallbackCredits, true
+	if stats.SampleCount >= MinStatSamples && time.Since(stats.WindowEnd) <= MaxStatisticsAge {
+		if credits, billable := s.billableCredits(stats.P95UsdMicros); billable {
+			threshold, estimated = credits, false
+		}
 	}
-	if credits, billable := s.billableCredits(stats.P95UsdMicros); billable {
-		return credits, false
+	return max(threshold, s.firstStepBalance(kind)), estimated
+}
+
+func (s *Service) firstStepBalance(kind CostKind) int64 {
+	reserve, ok := s.FirstStepReserveMicros[kind]
+	if !ok {
+		return math.MinInt64
 	}
-	return s.Config.StartFallbackCredits, true
+	credits, billable := s.billableCredits(reserve)
+	if !billable {
+		return math.MinInt64
+	}
+	return credits + s.Config.DebtFloorCredits
 }
 
 func (s *Service) billableCredits(usdMicros int64) (int64, bool) {
@@ -268,7 +282,7 @@ func (s *Service) Estimate(ctx context.Context, statKind CostKind) (Estimate, er
 	if err != nil && !errors.Is(err, ErrNoStatistics) {
 		return Estimate{}, err
 	}
-	threshold, estimated := s.thresholdFrom(stats)
+	threshold, estimated := s.thresholdFrom(statKind, stats)
 	est := Estimate{
 		LowCredits: threshold, HighCredits: threshold,
 		ThresholdCredits: threshold, Estimated: estimated,

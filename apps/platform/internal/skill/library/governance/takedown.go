@@ -60,6 +60,59 @@ func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, takedownResponse{SkillID: pgconv.UUIDString(skillID), TakenDown: true})
 }
 
+func (h *Handler) LiftTakedown(w http.ResponseWriter, r *http.Request) {
+	var skillID pgtype.UUID
+	if err := skillID.Scan(r.PathValue("id")); err != nil {
+		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
+		return
+	}
+	user, ok := sessionActor(w, r)
+	if !ok {
+		return
+	}
+	err := h.Svc.LiftTakedown(r.Context(), skillID, user.ID)
+	switch {
+	case errors.Is(err, errSkillNotFound):
+		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
+	case errors.Is(err, registry.ErrNotTakenDown):
+		httpx.WriteError(w, http.StatusConflict, "this skill is not taken down")
+	case err != nil:
+		httpx.WriteError(w, http.StatusInternalServerError, "lifting the takedown failed")
+	default:
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func (s *Service) LiftTakedown(ctx context.Context, skillID, actor pgtype.UUID) error {
+	if s.Registry == nil || s.Registry.IndexSkill == nil {
+		return errHookMissing
+	}
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	before, err := registry.LiftTakedown(ctx, tx, s.Registry, skillID)
+	if errors.Is(err, registry.ErrNotFound) {
+		return errSkillNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if err := audit.Log(ctx, tx, audit.Event{
+		Actor:        actor,
+		Workspace:    before.WorkspaceID,
+		Action:       audit.ActionSkillRestore,
+		ResourceType: audit.ResourceSkill,
+		ResourceID:   skillID,
+		Metadata:     map[string]any{"scope": audit.ScopeOperator},
+	}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func (s *Service) Takedown(ctx context.Context, skillID, actor pgtype.UUID, reason string) error {
 	reason, err := validRestrictionNote(reason)
 	if err != nil {

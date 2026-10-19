@@ -148,3 +148,20 @@ SELECT id, name, source_path FROM (
     ORDER BY sk.id, v.version_number DESC
 ) sibling
 ORDER BY name;
+
+-- name: ListLineageRestrictions :many
+WITH RECURSIVE lineage AS (
+    SELECT s.id AS skill_id, s.forked_from_skill_id AS ancestor_id, 1 AS depth
+    FROM skills s
+    WHERE s.id = ANY(@skill_ids::uuid[]) AND s.forked_from_skill_id IS NOT NULL
+    UNION ALL
+    SELECT l.skill_id, a.forked_from_skill_id, l.depth + 1
+    FROM lineage l
+    JOIN skills a ON a.id = l.ancestor_id
+    WHERE a.forked_from_skill_id IS NOT NULL AND l.depth < 64
+)
+SELECT DISTINCT ON (l.skill_id) l.skill_id, a.access_restriction::text AS reason
+FROM lineage l
+JOIN skills a ON a.id = l.ancestor_id
+WHERE a.access_restriction IS NOT NULL
+ORDER BY l.skill_id, l.depth;

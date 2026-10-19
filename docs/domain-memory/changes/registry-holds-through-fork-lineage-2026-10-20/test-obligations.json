@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "registry-holds-through-fork-lineage-2026-10-20",
+  "proposal_id": "registry-holds-through-fork-lineage-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-a-licensing-hold-reaches-forks-through-their-lineage",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-licensing-hold-reaches-forks-through-their-lineage",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-licensing-hold-reaches-forks-through-their-lineage"
+        }
+      ],
+      "expected_outcome": "A Skill without its own access restriction carries the nearest restricted ancestor's along its fork lineage, so a hold placed after a fork was made still holds the fork, without the fork's row being written.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestALicensingHoldOnAnyAncestorStopsAForkMadeBeforeIt$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

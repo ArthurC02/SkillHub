@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "publishing-deleted-skill-name-hold-2026-10-20",
+  "status": "draft",
+  "intent": "Record the publishing rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context publishing lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-deleted-skills-publication-name-is-held-ninety-days",
+      "statement": "When a published Skill is deleted its publication retires; for 90 days after that its old address still answers withdrawn and the publisher cannot give its name to another Skill; after 90 days the name passes to another of the same publisher's Skills and the address follows it."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/publishing_integration_test.go",
+    "apps/platform/internal/skill/publishing/service.go"
+  ]
+}

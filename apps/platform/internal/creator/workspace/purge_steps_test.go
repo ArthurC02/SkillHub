@@ -17,7 +17,7 @@ func fullyWiredPurge() *Service {
 	return &Service{
 		WorkspacePurges: WorkspacePurges{
 			PurgeAnalytics: purge, PurgeTestData: purge, PurgeRunArtifacts: purge, PurgeDownloads: purge,
-			PurgeCreation: purge, PurgeGraders: purge, PurgePublications: purge, PurgeSkills: purge, PurgeImportSources: purge,
+			PurgeCreation: purge, PurgeEvaluations: purge, PurgePublications: purge, PurgeSkills: purge, PurgeImportSources: purge,
 		},
 		DatasetObjectKeys: keys, RunArtifactObjectKeys: keys, DownloadArtifactObjectKeys: keys,
 		WorkspaceQuiescent: func(context.Context, gen.DBTX, pgtype.UUID) (bool, error) { return true, nil },
@@ -37,7 +37,7 @@ func TestAnAccountPurgeMissingAnyOwnersStepRefusesToStart(t *testing.T) {
 		{"run", func(s *Service) { s.PurgeRunArtifacts = nil }},
 		{"packaging", func(s *Service) { s.PurgeDownloads = nil }},
 		{"creation", func(s *Service) { s.PurgeCreation = nil }},
-		{"eval", func(s *Service) { s.PurgeGraders = nil }},
+		{"eval", func(s *Service) { s.PurgeEvaluations = nil }},
 		{"publishing", func(s *Service) { s.PurgePublications = nil }},
 		{"registry", func(s *Service) { s.PurgeSkills = nil }},
 		{"ingest", func(s *Service) { s.PurgeImportSources = nil }},
@@ -59,7 +59,7 @@ func TestAnAccountPurgeMissingAnyOwnersStepRefusesToStart(t *testing.T) {
 
 func TestPurgingExpiredAccountsChecksItsStepsBeforeTouchingAnyAccount(t *testing.T) {
 	unwired := fullyWiredPurge()
-	unwired.PurgeGraders = nil
+	unwired.PurgeEvaluations = nil
 	if purged, err := unwired.PurgeExpiredAccounts(context.Background(), nil, 0, 1); err == nil || purged != 0 {
 		t.Fatalf("PurgeExpiredAccounts without the eval step = %d, %v; want a refusal before any account is touched", purged, err)
 	}

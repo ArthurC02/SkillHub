@@ -29,6 +29,7 @@ const (
 	ActionSkillGenerateFailed = "skill.generate_failed"
 	ActionSkillDelete         = "skill.delete"
 	ActionSkillTakedown       = "skill.takedown"
+	ActionSkillRestore        = "skill.restore"
 
 	ActionSkillRestrict   = "skill.access_restrict"
 	ActionSkillUnrestrict = "skill.access_unrestrict"

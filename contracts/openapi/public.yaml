@@ -2507,6 +2507,46 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/restore:
+    post:
+      operationId: restoreSkill
+      summary: Undo the owner's own takedown within 30 days (INGEST-010)
+      description: |
+        Clears a takedown the owner made through `POST /skills/{id}/takedown`,
+        if no more than 30 days have passed since it. A takedown an operator
+        made cannot be undone here; only an operator lifts it.
+
+        The skill returns to search through the same path as a new import:
+        its search document is written back pending enrichment and stays out
+        of listings until enrichment and the scan have run again.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Restored.
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: The takedown was an operator's, or more than 30 days have passed since it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Skill not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The skill is not taken down.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/credits/{workspace_id}/grants:
     parameters:
       - name: workspace_id
@@ -2624,8 +2664,9 @@ paths:
         nor explained without being in force.
 
         This is the only cross-workspace write in the API. It writes this one
-        skill: a fork made after the hold inherits it, but forks that already
-        exist keep their own row and are not reached; being an operator is still not a widened workspace
+        skill, and every gate reads a hold along the fork lineage, so forks of
+        it (and forks of those) are held too without their rows being written;
+        being an operator is still not a widened workspace
         scope, and nothing here reads workspace-private data on the strength of
         it (SEC-011 最小權力原則).
       requestBody:
@@ -2868,12 +2909,11 @@ paths:
         going to ask about. A second call answers 409, the same as the scoped
         route.
 
-        **There is no restore route**, here or on the scoped path. Clearing the
-        flag is the easy half; putting the search document back is not, because
-        the projection would come back carrying only name and summary and would
-        silently lose the enrichment, the embedding and the scan. Today the
-        answer is to clear the column and run `maintenance reindex`. Recorded
-        rather than half-built.
+        `DELETE` on this path lifts any takedown, whoever made it; the owner
+        can undo only their own, within 30 days, through
+        `POST /skills/{id}/restore`. Either way the search document comes
+        back pending enrichment and stays unlisted until enrichment and the
+        scan have run again.
 
         The column write, the search removal and the audit event share one
         transaction (iron rule 9): content that is down in the registry and
@@ -2926,6 +2966,26 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "409":
           description: Already taken down. See the idempotency note above.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      operationId: liftSkillTakedown
+      summary: Lift a takedown, whoever made it (SEC-011)
+      description: |
+        Operator only. Clears the takedown and writes the skill's search
+        document back pending enrichment, in one transaction with the audit
+        event.
+      responses:
+        "204":
+          description: The takedown is lifted.
+        "404":
+          description: No such skill — or the caller is not an operator; the two answer identically.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The skill is not taken down.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -5199,6 +5259,46 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/evaluation-batches/{batchId}/resume:
+    post:
+      operationId: resumeEvaluationBatch
+      summary: Resume a batch paused for credit (EVAL-014)
+      description: |
+        Starts the batch again from the next trial that has no run; trials that
+        already ran are never run again, so nothing is paid twice. If the credit
+        is still short, the next trial pauses the batch again.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: batchId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Resumed; the batch is launching again.
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: The account is not invited.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's batch, or not this skill's.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The batch is not paused.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/{id}/evaluation-batches/{batchId}/comparison:
     get:
       operationId: compareEvaluationBatches
@@ -7460,14 +7560,16 @@ components:
         with_skill_withheld: { type: boolean, description: Every trial also runs with the skill withheld. }
         status:
           type: string
-          enum: [launching, launched, stopped]
+          enum: [launching, launched, paused, stopped]
           description: |
             `launching` while some trials have not started, `launched` once every
-            trial has its run, `stopped` when a run was refused for a reason that
-            waiting does not fix.
+            trial has its run, `paused` when the owner's credit ran out (trials
+            already run are kept; resuming starts the next trial not yet run, and a
+            batch paused for 30 days stops), `stopped` when a run was refused for a
+            reason that neither waiting nor a top-up fixes.
         stop_reason:
           type: string
-          description: The run refusal reason that stopped the batch; present only when stopped.
+          description: The run refusal reason that paused or stopped the batch, or `paused_too_long`; present only when paused or stopped.
         created_at: { type: string, format: date-time }
     EvaluationBatchTrial:
       type: object
@@ -8862,6 +8964,7 @@ components:
             - no_publisher
             - already_registered
             - name_taken
+            - name_held
             - name_is_permanent
             - name_shape
             - name_reserved

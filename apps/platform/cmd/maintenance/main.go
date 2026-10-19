@@ -30,7 +30,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/graders"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 func main() {
@@ -385,7 +385,7 @@ func purgeService(pool *pgxpool.Pool) *identity.Service {
 			PurgeSkills:        registrySvc.PurgeWorkspace,
 			PurgeImportSources: ingestSvc.PurgeWorkspace,
 			PurgeCreation:      creation.PurgeWorkspace,
-			PurgeGraders:       graders.PurgeWorkspace,
+			PurgeEvaluations:   eval.PurgeWorkspace,
 			PurgePublications:  publishing.PurgeWorkspace,
 		},
 		DatasetObjectKeys:          testlab.WorkspaceObjectKeys,

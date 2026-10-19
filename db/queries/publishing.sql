@@ -59,6 +59,20 @@ FROM publishers pb
 WHERE pb.workspace_id = @workspace_id
 RETURNING *;
 
+-- name: PublicationNameInQuarantine :one
+SELECT EXISTS (
+    SELECT 1 FROM publications p
+    JOIN publishers pb ON pb.id = p.publisher_id
+    WHERE pb.workspace_id = @workspace_id AND p.name = @name
+      AND p.retired_at > now() - @quarantine::interval
+);
+
+-- name: RetireSkillPublication :execrows
+UPDATE publications p SET retired_at = @retired_at
+FROM publishers pb
+WHERE pb.id = p.publisher_id AND pb.workspace_id = @workspace_id
+  AND p.skill_id = @skill_id AND p.retired_at IS NULL;
+
 -- name: SetPublicationStatus :execrows
 UPDATE publications p SET status = @status, status_changed_at = now()
 FROM publishers pb
@@ -80,7 +94,9 @@ RETURNING *;
 SELECT p.*, pb.name AS publisher_name, pb.workspace_id AS publisher_workspace_id
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
-WHERE pb.name = @publisher_name AND p.name = @name;
+WHERE pb.name = @publisher_name AND p.name = @name
+ORDER BY p.retired_at DESC NULLS FIRST
+LIMIT 1;
 
 -- name: ListPublicationReleases :many
 SELECT * FROM publication_releases
@@ -228,6 +244,8 @@ ORDER BY r.released_at, p.id;
 SELECT p.id FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE pb.name = @publisher_name AND p.name = @name
+ORDER BY p.retired_at DESC NULLS FIRST
+LIMIT 1
 FOR UPDATE OF p;
 
 -- name: InsertExposureReview :one

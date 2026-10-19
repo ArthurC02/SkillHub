@@ -51,6 +51,7 @@ var strangerRoutes = []strangerCase{
 	{pattern: "GET /skills/{id}/evaluation-batches", want: http.StatusOK},
 	{pattern: "GET /skills/{id}/evaluation-batches/{batchId}", want: http.StatusNotFound},
 	{pattern: "GET /skills/{id}/evaluation-batches/{batchId}/comparison", query: "?against={batchId}", want: http.StatusNotFound},
+	{pattern: "POST /skills/{id}/evaluation-batches/{batchId}/resume", want: http.StatusNotFound},
 
 	{pattern: "GET /downloads/{artifactId}", want: http.StatusNotFound},
 	{pattern: "GET /downloads/{artifactId}/records", want: http.StatusNotFound},
@@ -80,6 +81,7 @@ var strangerRoutes = []strangerCase{
 		want: http.StatusNotFound},
 	{pattern: "DELETE /skills/{id}", want: http.StatusNotFound},
 	{pattern: "POST /skills/{id}/takedown", body: `{"reason":"a stranger asked"}`, want: http.StatusNotFound},
+	{pattern: "POST /skills/{id}/restore", want: http.StatusNotFound},
 	{pattern: "PUT /skills/{id}/category", body: `{"category":"data"}`, want: http.StatusNotFound},
 
 	{pattern: "PATCH /test-cases/{id}", body: `{"name":"renamed by a stranger"}`, want: http.StatusNotFound},
@@ -104,6 +106,7 @@ var strangerRoutes = []strangerCase{
 		body: `{"redistribution":"allowed"}`, want: http.StatusNotFound},
 	{pattern: "PUT /admin/skills/{id}/tier", body: `{"tier":"curated"}`, want: http.StatusNotFound},
 	{pattern: "PUT /admin/skills/{id}/takedown", body: `{"reason":"a stranger asked"}`, want: http.StatusNotFound},
+	{pattern: "DELETE /admin/skills/{id}/takedown", want: http.StatusNotFound},
 	{pattern: "POST /admin/credits/{workspace_id}/grants",
 		body: `{"credits":1000,"reason":"a stranger asked"}`, want: http.StatusNotFound},
 	{pattern: "PUT /admin/model-budgets/{kind}",

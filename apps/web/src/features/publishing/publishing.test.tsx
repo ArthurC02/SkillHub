@@ -1064,6 +1064,7 @@ test("PACK-003/004 每一個 PublishingRefusal.reason 都有一句中文", () =>
     "no_publisher",
     "already_registered",
     "name_taken",
+    "name_held",
     "name_is_permanent",
     "name_shape",
     "name_reserved",

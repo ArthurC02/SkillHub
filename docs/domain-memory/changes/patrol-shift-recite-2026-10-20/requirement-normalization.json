@@ -1,0 +1,32 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "patrol-shift-recite",
+  "status": "draft",
+  "intent": "Re-cite rules/a-batch-whose-test-case-is-gone-stops, rules/a-skill-is-taken-down-once, rules/a-takedown-needs-a-reason, rules/account-purge-runs-every-owners-step-or-none, rules/start-statistics-need-the-minimum-sample-count, rules/start-statistics-older-than-their-shelf-life-are-not-trusted, contracts/run-batch-trials-v1, interactions/eval-identity-workspace-purge, interactions/run-batch-trials after the code they cite moved or changed; the facts they state are unchanged.",
+  "actor": "domain-memory-agent",
+  "observable_outcome": "verify-evidence reports every citation of the updated records current.",
+  "acceptance_criteria": [
+    {
+      "id": "citations-current",
+      "statement": "Every citation in the updated records matches the lines it cites."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/creator/credit/service.go",
+    "apps/platform/internal/creator/credit/service_test.go",
+    "apps/platform/internal/creator/workspace/purge.go",
+    "apps/platform/internal/entrypoint/api/apiserver/app.go",
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+    "apps/platform/internal/skill/library/skill_root.go",
+    "apps/platform/internal/skill/library/skill_root_test.go",
+    "apps/platform/internal/trial/batch/batch.go",
+    "apps/platform/internal/trial/execution/batch_facts.go",
+    "apps/platform/internal/trial/execution/service.go",
+    "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md"
+  ]
+}

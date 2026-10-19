@@ -36,6 +36,11 @@ var passingRefusals = map[string]bool{
 	ReasonScanUnavailable:      true,
 }
 
+func RefusalAwaitsTopUp(err error) bool {
+	reason, refused := RefusalReason(err)
+	return refused && reason == ReasonCreditBalance
+}
+
 func RefusalPasses(err error) bool {
 	if errors.Is(err, ErrDispatchHalted) {
 		return true

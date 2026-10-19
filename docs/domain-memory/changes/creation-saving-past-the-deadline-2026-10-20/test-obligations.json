@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "creation-saving-past-the-deadline-2026-10-20",
+  "proposal_id": "creation-saving-past-the-deadline-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-past-the-deadline-only-cancel-is-accepted",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-past-the-deadline-only-cancel-is-accepted",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "past-the-deadline-only-cancel-is-accepted"
+        }
+      ],
+      "expected_outcome": "After a creation session's deadline only cancel and the three save commands (materialize, finalize, confirm duplicate), none of which calls the model, are accepted; every other command is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestPastTheDeadlineOnlyCancelAndSavingTheDraftAreAccepted$ ./internal/creator/creation/"
+    }
+  ]
+}

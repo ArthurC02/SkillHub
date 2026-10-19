@@ -48,7 +48,7 @@ func (q *Queries) ClaimNextBatchItem(ctx context.Context, workspaceID pgtype.UUI
 }
 
 const getEvaluationBatch = `-- name: GetEvaluationBatch :one
-SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline, settled_at FROM evaluation_batches WHERE id = $1 AND workspace_id = $2
+SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline, settled_at, paused_at FROM evaluation_batches WHERE id = $1 AND workspace_id = $2
 `
 
 type GetEvaluationBatchParams struct {
@@ -71,6 +71,7 @@ func (q *Queries) GetEvaluationBatch(ctx context.Context, arg GetEvaluationBatch
 		&i.CreatedAt,
 		&i.WithBaseline,
 		&i.SettledAt,
+		&i.PausedAt,
 	)
 	return i, err
 }
@@ -92,7 +93,7 @@ func (q *Queries) HasUnsettledBatch(ctx context.Context, workspaceID pgtype.UUID
 const insertEvaluationBatch = `-- name: InsertEvaluationBatch :one
 INSERT INTO evaluation_batches (workspace_id, skill_id, skill_version_id, trials, with_baseline, created_by)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline, settled_at
+RETURNING id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline, settled_at, paused_at
 `
 
 type InsertEvaluationBatchParams struct {
@@ -126,6 +127,7 @@ func (q *Queries) InsertEvaluationBatch(ctx context.Context, arg InsertEvaluatio
 		&i.CreatedAt,
 		&i.WithBaseline,
 		&i.SettledAt,
+		&i.PausedAt,
 	)
 	return i, err
 }
@@ -231,7 +233,7 @@ func (q *Queries) ListEvaluationBatchItems(ctx context.Context, arg ListEvaluati
 }
 
 const listEvaluationBatches = `-- name: ListEvaluationBatches :many
-SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline, settled_at FROM evaluation_batches
+SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline, settled_at, paused_at FROM evaluation_batches
 WHERE workspace_id = $1 AND skill_id = $2
 ORDER BY created_at DESC
 LIMIT 50
@@ -263,6 +265,7 @@ func (q *Queries) ListEvaluationBatches(ctx context.Context, arg ListEvaluationB
 			&i.CreatedAt,
 			&i.WithBaseline,
 			&i.SettledAt,
+			&i.PausedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -373,6 +376,44 @@ func (q *Queries) MarkBatchesLaunched(ctx context.Context, workspaceID pgtype.UU
 	return result.RowsAffected(), nil
 }
 
+const pauseEvaluationBatch = `-- name: PauseEvaluationBatch :execrows
+UPDATE evaluation_batches SET status = 'paused', stop_reason = $1, paused_at = now()
+WHERE id = $2 AND workspace_id = $3 AND status = 'launching'
+`
+
+type PauseEvaluationBatchParams struct {
+	PauseReason *string
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) PauseEvaluationBatch(ctx context.Context, arg PauseEvaluationBatchParams) (int64, error) {
+	result, err := q.db.Exec(ctx, pauseEvaluationBatch, arg.PauseReason, arg.ID, arg.WorkspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resumeEvaluationBatch = `-- name: ResumeEvaluationBatch :execrows
+UPDATE evaluation_batches SET status = 'launching', stop_reason = NULL, paused_at = NULL
+WHERE id = $1 AND workspace_id = $2 AND skill_id = $3 AND status = 'paused'
+`
+
+type ResumeEvaluationBatchParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	SkillID     pgtype.UUID
+}
+
+func (q *Queries) ResumeEvaluationBatch(ctx context.Context, arg ResumeEvaluationBatchParams) (int64, error) {
+	result, err := q.db.Exec(ctx, resumeEvaluationBatch, arg.ID, arg.WorkspaceID, arg.SkillID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const stopEvaluationBatch = `-- name: StopEvaluationBatch :execrows
 UPDATE evaluation_batches SET status = 'stopped', stop_reason = $1
 WHERE id = $2 AND workspace_id = $3 AND status = 'launching'
@@ -386,6 +427,24 @@ type StopEvaluationBatchParams struct {
 
 func (q *Queries) StopEvaluationBatch(ctx context.Context, arg StopEvaluationBatchParams) (int64, error) {
 	result, err := q.db.Exec(ctx, stopEvaluationBatch, arg.StopReason, arg.ID, arg.WorkspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const stopLongPausedBatches = `-- name: StopLongPausedBatches :execrows
+UPDATE evaluation_batches SET status = 'stopped', stop_reason = $1, paused_at = NULL
+WHERE status = 'paused' AND paused_at < now() - $2::interval
+`
+
+type StopLongPausedBatchesParams struct {
+	StopReason *string
+	PausedFor  pgtype.Interval
+}
+
+func (q *Queries) StopLongPausedBatches(ctx context.Context, arg StopLongPausedBatchesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, stopLongPausedBatches, arg.StopReason, arg.PausedFor)
 	if err != nil {
 		return 0, err
 	}

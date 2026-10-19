@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "registry-owner-restores-a-takedown-2026-10-20",
+  "status": "draft",
+  "intent": "Record the registry rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context registry lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-an-owner-restores-only-their-own-takedown-within-thirty-days",
+      "statement": "The owner may undo a takedown the owner made, within 30 days of it; a takedown an operator made, or one whose origin is unknown, only an operator lifts, at any time; restoring a Skill that is not taken down is refused."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/skill/library/skill_root.go",
+    "apps/platform/internal/skill/library/skill_root_test.go"
+  ]
+}

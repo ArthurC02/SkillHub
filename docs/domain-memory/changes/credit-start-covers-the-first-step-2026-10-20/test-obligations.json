@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "credit-start-covers-the-first-step-2026-10-20",
+  "proposal_id": "credit-start-covers-the-first-step-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-a-creation-start-threshold-covers-its-first-step",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-creation-start-threshold-covers-its-first-step",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-creation-start-threshold-covers-its-first-step"
+        }
+      ],
+      "expected_outcome": "A creation session may start only when the balance also covers its first step: the start threshold is at least the first step's reserve in credits plus the debt floor, whatever the statistics say.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestASessionStartsOnlyWhenItsFirstStepCanBeAfforded$ ./internal/creator/credit/"
+    }
+  ]
+}

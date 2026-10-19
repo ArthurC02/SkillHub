@@ -1,0 +1,41 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "publishing-deleted-skill-name-hold-2026-10-20",
+  "proposal_id": "publishing-deleted-skill-name-hold-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "b889b0dbb6b2d67e44c5b20f6f1e27ae6dabd0f5",
+    "registry_digest": "sha256:69811dace89ad48c4a97ced1f9de44abe7cef698280066dd93662d73526d2eb2",
+    "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-deleted-skills-publication-name-is-held-ninety-days",
+      "mutated_protection": "apps/platform/internal/skill/publishing/service.go:360: if held { -> if held && false {",
+      "failure_evidence": "=== RUN   TestADeletedSkillsPublicationNameIsHeldForNinetyDaysThenReleased\n    publishing_integration_test.go:442: reusing the name right after the delete: 200 map[acquisition:map[available:true note:登入後可以下載這一版的標準 Agent Skill 套件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。] address:/p/held-b66d6bd84f/reused-7888bb54db availability:map[label:提供中 note: value:available] kind:skill name:reused-7888bb54db publisher:held-b66d6bd84f releases:[map[content_hash:81ca3f7b32e52d30e970bedee7e2c4a271538b9fc9333b10c491a7df2b1ea62d findings:map[errors:[] infos:[] warnings:[]] released_at:2026-10-19T17:20:37Z rights_attested:true version_id:0d37a8b9-ed83-4b00-8906-849208632860 version_number:1]] status:published status_changed_at:2026-10-19T17:20:37Z], want 409 name_held\n--- FAIL: TestADeletedSkillsPublicationNameIsHeldForNinetyDaysThenReleased (0.17s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.556s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/publishing_integration_test.go",
+    "apps/platform/internal/skill/publishing/service.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-deleted-skills-publication-name-is-held-ninety-days",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestADeletedSkillsPublicationNameIsHeldForNinetyDaysThenReleased$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:0e9c855d277d6757c4477a3a2f3eaaf263887cfc09dc32bca3d79164c4f25275",
+      "finished_at": "2026-10-19T17:21:09.931470Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

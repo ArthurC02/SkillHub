@@ -228,6 +228,8 @@ func writePublishingError(w http.ResponseWriter, err error) {
 		writeReason(w, http.StatusConflict, "already_registered", err.Error())
 	case errors.Is(err, ErrNameTaken):
 		writeReason(w, http.StatusConflict, "name_taken", err.Error())
+	case errors.Is(err, ErrNameHeld):
+		writeReason(w, http.StatusConflict, "name_held", err.Error())
 	case errors.Is(err, ErrNameIsPermanent):
 		writeReason(w, http.StatusConflict, "name_is_permanent", err.Error())
 	case errors.As(err, &nameErr):

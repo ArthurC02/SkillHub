@@ -1107,6 +1107,74 @@ func TestTakedownRemovesSkillFromPublicSurface(t *testing.T) {
 	}
 }
 
+func TestAnOwnerUndoesOnlyTheirOwnTakedownWithinThirtyDaysAndAnOperatorLiftsAny(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "restore-owner")
+	operator := a.login(t, "restore-operator")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+
+	ownDown := seedSkill(t, pool, owner.workspaceID, "restore-own")
+	seedVersion(t, pool, owner.workspaceID, ownDown, "hash-restore-own")
+	lapsed := seedSkill(t, pool, owner.workspaceID, "restore-lapsed")
+	operatorDown := seedSkill(t, pool, owner.workspaceID, "restore-operator-down")
+	for _, id := range []string{ownDown, lapsed} {
+		if code, out := postJSON(t, owner, "/skills/"+id+"/takedown", `{"reason":"my own mistake"}`); code != http.StatusOK {
+			t.Fatalf("owner takedown: got %d (%v)", code, out)
+		}
+	}
+	setSkill(t, pool, lapsed, "takedown_at = now() - interval '30 days 1 minute'")
+	if code, out := operatorCall(t, operator, http.MethodPut, "/admin/skills/"+operatorDown+"/takedown", `{"reason":"DMCA notice"}`); code != http.StatusOK {
+		t.Fatalf("operator takedown: got %d (%v)", code, out)
+	}
+
+	if code, out := postJSON(t, owner, "/skills/"+ownDown+"/restore", ""); code != http.StatusNoContent {
+		t.Fatalf("owner restoring their own takedown: got %d (%v), want 204", code, out)
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1 AND takedown_at IS NULL AND takedown_by IS NULL", mustUUID(t, ownDown)); c != 1 {
+		t.Fatal("the restored skill is still taken down")
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM search_documents WHERE skill_id = $1 AND enrichment_status = 'pending' AND NOT listable", mustUUID(t, ownDown)); c != 1 {
+		t.Fatal("the restored skill's search document is not back pending enrichment and unlisted")
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM audit_events WHERE action = 'skill.restore' AND resource_id = $1", mustUUID(t, ownDown)); c != 1 {
+		t.Fatal("the restore left no audit event")
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM outbox_events WHERE event_type = 'skill.restored' AND aggregate_id = $1", mustUUID(t, ownDown)); c != 1 {
+		t.Fatal("the restore published no skill.restored event")
+	}
+	if code, _ := postJSON(t, owner, "/skills/"+ownDown+"/restore", ""); code != http.StatusConflict {
+		t.Fatalf("restoring a skill that is up: got %d, want 409", code)
+	}
+	for name, id := range map[string]string{"past 30 days": lapsed, "an operator's takedown": operatorDown} {
+		if code, _ := postJSON(t, owner, "/skills/"+id+"/restore", ""); code != http.StatusForbidden {
+			t.Errorf("owner restoring %s: got %d, want 403", name, code)
+		}
+	}
+
+	assertAnOperatorLiftsAnyTakedown(t, pool, operator, lapsed, operatorDown)
+}
+
+func assertAnOperatorLiftsAnyTakedown(t *testing.T, pool *pgxpool.Pool, operator *client, lapsed, operatorDown string) {
+	t.Helper()
+	for _, id := range []string{lapsed, operatorDown} {
+		if code, out := operatorCall(t, operator, http.MethodDelete, "/admin/skills/"+id+"/takedown", ""); code != http.StatusNoContent {
+			t.Fatalf("operator lifting a takedown: got %d (%v), want 204", code, out)
+		}
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = ANY($1::uuid[]) AND takedown_at IS NULL",
+		[]string{lapsed, operatorDown}); c != 2 {
+		t.Fatalf("operator lifted %d of 2 takedowns", c)
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM audit_events WHERE action = 'skill.restore' AND resource_id = $1 AND actor_user_id = $2",
+		mustUUID(t, operatorDown), mustUUID(t, operator.userID)); c != 1 {
+		t.Fatal("lifting a takedown left no audit event naming the operator")
+	}
+	if code, _ := operatorCall(t, operator, http.MethodDelete, "/admin/skills/"+operatorDown+"/takedown", ""); code != http.StatusConflict {
+		t.Fatalf("lifting a takedown that is not there: got %d, want 409", code)
+	}
+}
+
 func TestKeyOperationsLeaveAuditEvents(t *testing.T) {
 	pool := requireDB(t)
 	ctx := context.Background()

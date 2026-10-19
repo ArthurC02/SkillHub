@@ -25,19 +25,23 @@ const (
 const (
 	BatchLaunching BatchStatus = "launching"
 	BatchLaunched  BatchStatus = "launched"
+	BatchPaused    BatchStatus = "paused"
 	BatchStopped   BatchStatus = "stopped"
 )
 
 type BatchStatus string
 
 func AllBatchStatuses() []BatchStatus {
-	return []BatchStatus{BatchLaunching, BatchLaunched, BatchStopped}
+	return []BatchStatus{BatchLaunching, BatchLaunched, BatchPaused, BatchStopped}
 }
 
 const (
-	stopReasonCreatorGone = "creator_gone"
-	stopReasonTargetGone  = "target_gone"
+	stopReasonCreatorGone   = "creator_gone"
+	stopReasonTargetGone    = "target_gone"
+	stopReasonPausedTooLong = "paused_too_long"
 )
+
+const PausedBatchLimit = 30 * 24 * time.Hour
 
 var (
 	ErrNotFound       = errors.New("evaluation not found")
@@ -45,6 +49,7 @@ var (
 	ErrRunMustWait    = errors.New("the workspace cannot start a run right now; the batch waits for its turn")
 	ErrNoFurtherRound = errors.New("this trial's conversation cannot take another answer")
 	ErrTargetGone     = errors.New("the skill, version or test case this trial runs is gone")
+	ErrBatchNotPaused = errors.New("only a paused batch can be resumed")
 	errBatchPorts     = errors.New("batch: run ports are not injected")
 )
 
@@ -55,8 +60,9 @@ func (e UnconfirmedTestCasesError) Error() string {
 }
 
 type RunRefusedError struct {
-	Reason string
-	Err    error
+	Reason      string
+	AwaitsTopUp bool
+	Err         error
 }
 
 func (e RunRefusedError) Error() string { return e.Err.Error() }
@@ -212,6 +218,12 @@ func (s *BatchService) HasUnsettledBatch(ctx context.Context, workspaceID pgtype
 }
 
 func (s *BatchService) AdvanceAllBatches(ctx context.Context) error {
+	reason := stopReasonPausedTooLong
+	if _, err := s.queries().StopLongPausedBatches(ctx, gen.StopLongPausedBatchesParams{
+		StopReason: &reason, PausedFor: pgconv.Interval(PausedBatchLimit),
+	}); err != nil {
+		return err
+	}
 	workspaces, err := s.queries().ListWorkspacesWithUnsettledBatches(ctx)
 	if err != nil {
 		return err
@@ -263,6 +275,9 @@ func (s *BatchService) startNextTrial(ctx context.Context, workspaceID pgtype.UU
 		return true, stopBatch(ctx, q, workspaceID, next.BatchID, stopReasonTargetGone)
 	}
 	if refused, isRefused := errors.AsType[RunRefusedError](err); isRefused {
+		if refused.AwaitsTopUp {
+			return true, pauseBatch(ctx, q, workspaceID, next.BatchID, refused.Reason)
+		}
 		return true, stopBatch(ctx, q, workspaceID, next.BatchID, refused.Reason)
 	}
 	if err != nil {
@@ -285,6 +300,31 @@ func stopBatch(ctx context.Context, q *gen.Queries, workspaceID, batchID pgtype.
 		ID: batchID, WorkspaceID: workspaceID, StopReason: &reason,
 	})
 	return err
+}
+
+func pauseBatch(ctx context.Context, q *gen.Queries, workspaceID, batchID pgtype.UUID, reason string) error {
+	_, err := q.PauseEvaluationBatch(ctx, gen.PauseEvaluationBatchParams{
+		ID: batchID, WorkspaceID: workspaceID, PauseReason: &reason,
+	})
+	return err
+}
+
+func (s *BatchService) ResumeBatch(ctx context.Context, workspaceID, skillID, batchID pgtype.UUID) error {
+	q := s.queries()
+	resumed, err := q.ResumeEvaluationBatch(ctx, gen.ResumeEvaluationBatchParams{
+		ID: batchID, WorkspaceID: workspaceID, SkillID: skillID,
+	})
+	if err != nil || resumed == 1 {
+		return err
+	}
+	row, err := q.GetEvaluationBatch(ctx, gen.GetEvaluationBatchParams{ID: batchID, WorkspaceID: workspaceID})
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && row.SkillID != skillID) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	return ErrBatchNotPaused
 }
 
 func (s *BatchService) ListBatches(ctx context.Context, workspaceID, skillID pgtype.UUID) ([]Batch, error) {

@@ -52,7 +52,7 @@ type WorkspacePurges struct {
 	PurgeRunArtifacts  WorkspacePurge
 	PurgeDownloads     WorkspacePurge
 	PurgeCreation      WorkspacePurge
-	PurgeGraders       WorkspacePurge
+	PurgeEvaluations   WorkspacePurge
 	PurgePublications  WorkspacePurge
 	PurgeSkills        WorkspacePurge
 	PurgeImportSources WorkspacePurge

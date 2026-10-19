@@ -1,0 +1,41 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "eval-purge-erases-feedback-comments-2026-10-20",
+  "proposal_id": "eval-purge-erases-feedback-comments-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "fff3353f4abfa1ce27b1a3cd5771c8d416ead8b7",
+    "registry_digest": "sha256:86fca3dbde3873cc34e06ad1eccfa10f3092b7d9c32dd700167005e010206b1f",
+    "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-account-purge-erases-evaluation-feedback-comments",
+      "mutated_protection": "apps/platform/internal/trial/improvement/purge.go:14: ClearWorkspaceEvaluationComments(ctx, workspaceID) -> ClearWorkspaceEvaluationComments(ctx, pgtype.UUID{})",
+      "failure_evidence": "=== RUN   TestAccountPurgeErasesTheFeedbackCommentAndKeepsTheEvaluation\n    evaluation_integration_test.go:981: 1 feedback comments survived the account purge\n--- FAIL: TestAccountPurgeErasesTheFeedbackCommentAndKeepsTheEvaluation (0.24s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.430s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_integration_test.go",
+    "apps/platform/internal/trial/improvement/purge.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-account-purge-erases-evaluation-feedback-comments",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAccountPurgeErasesTheFeedbackCommentAndKeepsTheEvaluation$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:0429a461a105aa02aff62e7701bee3a0114b85262419826c0bf935bb27fc36f5",
+      "finished_at": "2026-10-19T16:32:55.325948Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

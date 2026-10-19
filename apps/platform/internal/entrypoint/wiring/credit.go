@@ -98,6 +98,10 @@ func billableOrNil(usd *float64) *int64 {
 func WireCreationCredit(target *creation.Service, svc *credit.Service, pool *pgxpool.Pool) {
 	ids := &identity.Service{Pool: pool}
 	owner := ids.WorkspaceOwner
+	if svc.FirstStepReserveMicros == nil {
+		svc.FirstStepReserveMicros = map[credit.CostKind]int64{}
+	}
+	svc.FirstStepReserveMicros[credit.KindCreationSession] = billable(target.Limits.MaxCallCostUSD)
 
 	target.Billing = creation.BillingHooks{
 		CanStartFunc: func(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {

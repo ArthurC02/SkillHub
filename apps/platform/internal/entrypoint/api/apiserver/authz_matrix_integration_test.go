@@ -90,12 +90,14 @@ var anonymousRoutes = []anonCase{
 	{pattern: "GET /skills/{id}/diff", want: http.StatusUnauthorized},
 	{pattern: "DELETE /skills/{id}", want: http.StatusUnauthorized},
 	{pattern: "POST /skills/{id}/takedown", want: http.StatusUnauthorized},
+	{pattern: "POST /skills/{id}/restore", want: http.StatusUnauthorized},
 
 	{pattern: "PUT /admin/skills/{id}/restriction", want: http.StatusNotFound},
 	{pattern: "DELETE /admin/skills/{id}/restriction", want: http.StatusNotFound},
 	{pattern: "PUT /admin/skills/{id}/redistribution", want: http.StatusNotFound},
 	{pattern: "PUT /admin/skills/{id}/tier", want: http.StatusNotFound},
 	{pattern: "PUT /admin/skills/{id}/takedown", want: http.StatusNotFound},
+	{pattern: "DELETE /admin/skills/{id}/takedown", want: http.StatusNotFound},
 	{pattern: "GET /admin/exposure-reviews", want: http.StatusNotFound},
 	{pattern: "GET /admin/publications/{publisher}/{name}/exposure", want: http.StatusNotFound},
 	{pattern: "POST /admin/publications/{publisher}/{name}/exposure", want: http.StatusNotFound},
@@ -188,6 +190,7 @@ var anonymousRoutes = []anonCase{
 	{pattern: "GET /skills/{id}/evaluation-batches", want: http.StatusUnauthorized},
 	{pattern: "GET /skills/{id}/evaluation-batches/{batchId}", want: http.StatusUnauthorized},
 	{pattern: "GET /skills/{id}/evaluation-batches/{batchId}/comparison", want: http.StatusUnauthorized},
+	{pattern: "POST /skills/{id}/evaluation-batches/{batchId}/resume", want: http.StatusUnauthorized},
 
 	{pattern: "GET /packaging/targets", want: http.StatusUnauthorized},
 	{pattern: "GET /skills/{id}/versions/{versionId}/packaging/preview",

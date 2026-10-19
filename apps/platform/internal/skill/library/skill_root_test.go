@@ -4,6 +4,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -25,7 +26,7 @@ func skillMarked(redistribution Redistribution, newest newestVersion) *SkillRoot
 func TestTakingDownASkillHidesItOnce(t *testing.T) {
 	s := &SkillRoot{}
 
-	s.TakeDown("the licence was withdrawn")
+	s.TakeDown("the licence was withdrawn", TakedownByOwner)
 
 	if !s.TakenDown() {
 		t.Fatal("the skill is still up after being taken down")
@@ -33,7 +34,7 @@ func TestTakingDownASkillHidesItOnce(t *testing.T) {
 	assertSkillEvents(t, s, SkillTakenDown{})
 
 	again := &SkillRoot{row: gen.Skill{TakedownAt: pgtype.Timestamptz{Valid: true}}}
-	again.TakeDown("a second report")
+	again.TakeDown("a second report", TakedownByOwner)
 
 	if !again.TakenDown() {
 		t.Fatal("a refused takedown brought the skill back")
@@ -41,12 +42,45 @@ func TestTakingDownASkillHidesItOnce(t *testing.T) {
 	assertSkillEvents(t, again, Refused{Reason: RefusedAlreadyTakenDown})
 }
 
+func TestOnlyTheOwnersOwnTakedownWithinThirtyDaysIsRestoredByTheOwner(t *testing.T) {
+	now := time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
+	takenDown := func(by TakedownBy, ago time.Duration) *SkillRoot {
+		who := string(by)
+		return &SkillRoot{row: gen.Skill{TakedownAt: pgtype.Timestamptz{Time: now.Add(-ago), Valid: true}, TakedownBy: &who}}
+	}
+	cases := []struct {
+		name     string
+		skill    *SkillRoot
+		by       TakedownBy
+		want     Event
+		restored bool
+	}{
+		{"owner, own takedown a day ago", takenDown(TakedownByOwner, 24*time.Hour), TakedownByOwner, SkillRestored{}, true},
+		{"owner, own takedown exactly 30 days ago", takenDown(TakedownByOwner, OwnerRestoreWindow), TakedownByOwner, SkillRestored{}, true},
+		{"owner, own takedown 30 days and a second ago", takenDown(TakedownByOwner, OwnerRestoreWindow+time.Second), TakedownByOwner, Refused{Reason: RefusedRestoreWindowClosed}, false},
+		{"owner, operator's takedown", takenDown(TakedownByOperator, time.Hour), TakedownByOwner, Refused{Reason: RefusedRestoreNotTheOwners}, false},
+		{"operator, owner's takedown a year ago", takenDown(TakedownByOwner, 365*24*time.Hour), TakedownByOperator, SkillRestored{}, true},
+		{"operator, own takedown", takenDown(TakedownByOperator, time.Hour), TakedownByOperator, SkillRestored{}, true},
+		{"owner, not taken down", &SkillRoot{}, TakedownByOwner, Refused{Reason: RefusedNotTakenDown}, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			c.skill.Restore(c.by, now)
+
+			if c.skill.TakenDown() == c.restored {
+				t.Fatalf("taken down = %v after restore, want %v", c.skill.TakenDown(), !c.restored)
+			}
+			assertSkillEvents(t, c.skill, c.want)
+		})
+	}
+}
+
 func TestATakedownWithoutAReasonIsRefusedAndLeavesTheSkillUp(t *testing.T) {
 	for name, reason := range map[string]string{"empty": "", "whitespace": " \t\n"} {
 		t.Run(name, func(t *testing.T) {
 			s := &SkillRoot{}
 
-			s.TakeDown(reason)
+			s.TakeDown(reason, TakedownByOwner)
 
 			if s.TakenDown() {
 				t.Fatal("a takedown without a reason took the skill down")

@@ -1,0 +1,109 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "credit-start-covers-the-first-step-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "credit-start-covers-the-first-step-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-19T16:29:27.621003Z",
+  "verified_at": "2026-10-19T16:29:33.628635Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "fff3353f4abfa1ce27b1a3cd5771c8d416ead8b7",
+    "registry_digest": "sha256:e97633d7e20d178441bc268aa4b9c5beea7b38a38dd5814aed70edfdebe3a44c",
+    "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+  },
+  "affected_contexts": [
+    "credit"
+  ],
+  "rule_ids": [
+    "a-creation-start-threshold-covers-its-first-step"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "credit",
+    "invariant": "Only credit decides these rules.",
+    "evidence": [
+      "apps/platform/internal/creator/credit/service.go:231-239"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/entrypoint/wiring/credit.go:104-104"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A balance between the start threshold and the first step's need started a session whose first step was always refused."
+    ],
+    "decision": "Raise the start threshold to at least the first step's reserve plus the debt floor.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Lowering the per-step reserve: it would let a step overrun the debt floor."
+    ],
+    "proof_obligations": [
+      "rule-a-creation-start-threshold-covers-its-first-step"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-creation-start-threshold-covers-its-first-step",
+        "statement": "A creation session may start only when the balance also covers its first step: the start threshold is at least the first step's reserve in credits plus the debt floor, whatever the statistics say.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "With a US$0.10 step reserve, markup 1.3 and floor -50, a balance of 79 cannot start and 80 can."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 238,
+              "end": 238
+            },
+            "excerpt_sha256": "sha256:516ed3ed70c60ff26881d99b0a1440747f5e45c11ed291294789bada6ff7873f"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 278,
+              "end": 315
+            },
+            "excerpt_sha256": "sha256:9c4590fb3639d39fae661cd9418af8050e87fcdd5979b585dacc2d11f5ac8653"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-19T16:29:33.216329Z",
+      "scope": "Record credit rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "fff3353f4abfa1ce27b1a3cd5771c8d416ead8b7",
+        "registry_digest": "sha256:e97633d7e20d178441bc268aa4b9c5beea7b38a38dd5814aed70edfdebe3a44c",
+        "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+      }
+    }
+  ]
+}

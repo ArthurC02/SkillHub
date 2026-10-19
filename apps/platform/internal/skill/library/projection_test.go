@@ -39,7 +39,7 @@ func TestWritesRefuseWithoutTheProjectionWrites(t *testing.T) {
 			return err
 		},
 		"Takedown": func(s *Service) error {
-			_, err := s.Takedown(ctx, ws, pgtype.UUID{}, "reason")
+			_, err := (&Takedowns{Registry: s}).Takedown(ctx, ws, pgtype.UUID{}, "reason")
 			return err
 		},
 	} {

@@ -1,0 +1,150 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "batch-pause-for-credit-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "batch-pause-for-credit-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-19T17:00:16.367566Z",
+  "verified_at": "2026-10-19T17:00:34.151549Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "b889b0dbb6b2d67e44c5b20f6f1e27ae6dabd0f5",
+    "registry_digest": "sha256:86fca3dbde3873cc34e06ad1eccfa10f3092b7d9c32dd700167005e010206b1f",
+    "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+  },
+  "affected_contexts": [
+    "batch"
+  ],
+  "rule_ids": [
+    "batch-waits-only-on-a-passing-refusal",
+    "a-batch-paused-for-thirty-days-stops"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "batch",
+    "invariant": "Only batch decides these rules.",
+    "evidence": [
+      "apps/platform/internal/trial/batch/batch.go:253-283"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/entrypoint/wiring/evaluation_batches.go:118-118"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A batch that ran out of credit stopped for good, so a top-up meant running and paying for its finished trials again."
+    ],
+    "decision": "Pause on a refusal that awaits a top-up; resume from the next unrun trial; stop after 30 days paused.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Waiting on a credit refusal like a passing one: the batch would retry every minute with no end."
+    ],
+    "proof_obligations": [
+      "rule-batch-waits-only-on-a-passing-refusal",
+      "rule-a-batch-paused-for-thirty-days-stops"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "batch-waits-only-on-a-passing-refusal",
+        "statement": "An evaluation batch waits when Run refuses a trial with a refusal Run says will pass on its own, pauses with the reason recorded when the refusal awaits a credit top-up, and stops with the reason recorded on any other refusal.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A credit_balance refusal pauses the batch with only its first trial run; a missing permission confirmation stops it."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 278,
+              "end": 280
+            },
+            "content_sha256": "sha256:950b238086f9c571ee5d4e28fbe0c56a64b81598edd6b1775ddf8675143451c2",
+            "excerpt_sha256": "sha256:09a1f6e21cf7b540601c05cee4fb9677bfce3886d0189b068d5717227c89cffb",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+            "lines": {
+              "start": 332,
+              "end": 375
+            },
+            "content_sha256": "sha256:017677bb9af9d10547faeef41f6583a4479657f4d5ff59dc56d393106185cf7d",
+            "excerpt_sha256": "sha256:97a20ef07e639edb269a472b52c57ade107f8b83f7adbc381782462397866e8b",
+            "source_kind": "tests"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-batch-paused-for-thirty-days-stops",
+        "statement": "A batch paused for 30 days stops with reason paused_too_long; one paused for less stays paused and can be resumed from its next unrun trial.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "Paused 30 days and a minute stops; 29 days 23 hours stays paused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 223,
+              "end": 223
+            },
+            "excerpt_sha256": "sha256:b8f35b6c48fb87022e7d451eb0e07f81c3aff752dd949399b59dd0b39b334fe4"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+            "lines": {
+              "start": 377,
+              "end": 406
+            },
+            "excerpt_sha256": "sha256:cd0fbf89b116ca8aa503a9d8e4aa6c21678d873756f18e35f30edb1c98260a48"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-19T17:00:33.921369Z",
+      "scope": "Record batch rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "b889b0dbb6b2d67e44c5b20f6f1e27ae6dabd0f5",
+        "registry_digest": "sha256:86fca3dbde3873cc34e06ad1eccfa10f3092b7d9c32dd700167005e010206b1f",
+        "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+      }
+    }
+  ],
+  "supersedes": [
+    "batch-wait-reprove-2026-10-17"
+  ]
+}

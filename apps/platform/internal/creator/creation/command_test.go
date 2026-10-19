@@ -86,15 +86,17 @@ func TestASessionThatCannotBeDecodedIsReportedAsItIs(t *testing.T) {
 	}
 }
 
-func TestPastTheDeadlineOnlyCancelIsAccepted(t *testing.T) {
+func TestPastTheDeadlineOnlyCancelAndSavingTheDraftAreAccepted(t *testing.T) {
 	e := openSession()
 	e.Deadline = time.Now().Add(-time.Second)
-	row := storedSession(t, StateWaitingInput, 1, e)
-	if _, err := admitCommand(row, Command{Kind: "message", ExpectedRevision: 1}); !errors.Is(err, ErrDeadline) {
-		t.Fatalf("message after the deadline: err = %v, want ErrDeadline", err)
-	}
-	if _, err := admitCommand(row, Command{Kind: "cancel", ExpectedRevision: 1}); err != nil {
-		t.Fatalf("cancel after the deadline: err = %v, want nil", err)
+	row := storedSession(t, StateDraftReady, 1, e)
+	for kind, want := range map[string]error{
+		"message": ErrDeadline, "raise_budget": ErrDeadline,
+		"cancel": nil, "materialize": nil, "finalize": nil, "confirm_duplicate": nil,
+	} {
+		if _, err := admitCommand(row, Command{Kind: kind, ExpectedRevision: 1}); !errors.Is(err, want) {
+			t.Errorf("%s after the deadline: err = %v, want %v", kind, err, want)
+		}
 	}
 }
 

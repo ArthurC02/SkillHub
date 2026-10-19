@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "credit-start-covers-the-first-step-2026-10-20",
+  "status": "draft",
+  "intent": "Record the credit rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context credit lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-creation-start-threshold-covers-its-first-step",
+      "statement": "A creation session may start only when the balance also covers its first step: the start threshold is at least the first step's reserve in credits plus the debt floor, whatever the statistics say."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/creator/credit/service.go",
+    "apps/platform/internal/creator/credit/service_test.go"
+  ]
+}

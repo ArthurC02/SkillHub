@@ -41,13 +41,15 @@ export interface EvaluationBatch {
     withSkillWithheld: boolean;
     /**
      * `launching` while some trials have not started, `launched` once every
-     * trial has its run, `stopped` when a run was refused for a reason that
-     * waiting does not fix.
+     * trial has its run, `paused` when the owner's credit ran out (trials
+     * already run are kept; resuming starts the next trial not yet run, and a
+     * batch paused for 30 days stops), `stopped` when a run was refused for a
+     * reason that neither waiting nor a top-up fixes.
      * 
      */
     status: EvaluationBatchStatusEnum;
     /**
-     * The run refusal reason that stopped the batch; present only when stopped.
+     * The run refusal reason that paused or stopped the batch, or `paused_too_long`; present only when paused or stopped.
      */
     stopReason?: string;
     /**
@@ -63,6 +65,7 @@ export interface EvaluationBatch {
 export const EvaluationBatchStatusEnum = {
     Launching: 'launching',
     Launched: 'launched',
+    Paused: 'paused',
     Stopped: 'stopped',
 } as const;
 export type EvaluationBatchStatusEnum = typeof EvaluationBatchStatusEnum[keyof typeof EvaluationBatchStatusEnum];

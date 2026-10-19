@@ -181,6 +181,7 @@ func mountOwnerGovernanceRoutes(mux *http.ServeMux, d Deps) {
 	auth := d.Auth
 
 	mux.HandleFunc("POST /skills/{id}/takedown", auth.RequireSession(d.Registry.Takedown))
+	mux.HandleFunc("POST /skills/{id}/restore", auth.RequireSession(d.Registry.Restore))
 
 	mux.HandleFunc("PUT /skills/{id}/category", auth.RequireSession(d.Registry.SetCategory))
 }
@@ -195,6 +196,7 @@ func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("PUT /admin/skills/{id}/tier", auth.RequireOperator(d.Governance.SetCurationTier))
 
 	mux.HandleFunc("PUT /admin/skills/{id}/takedown", auth.RequireOperator(d.Governance.Takedown))
+	mux.HandleFunc("DELETE /admin/skills/{id}/takedown", auth.RequireOperator(d.Governance.LiftTakedown))
 
 	mux.HandleFunc("GET /admin/exposure-reviews", auth.RequireOperator(d.Publishing.ExposureQueue))
 	mux.HandleFunc("GET /admin/publications/{publisher}/{name}/exposure", auth.RequireOperator(d.Publishing.ExposureCase))
@@ -315,6 +317,7 @@ func mountEvaluationRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("POST /skills/{id}/evaluation-batches", auth.RequireSession(auth.RequireInvited(d.EvalBatches.CreateBatch)))
 	mux.HandleFunc("GET /skills/{id}/evaluation-batches", auth.RequireSession(d.EvalBatches.ListBatches))
 	mux.HandleFunc("GET /skills/{id}/evaluation-batches/{batchId}", auth.RequireSession(d.EvalBatches.BatchReport))
+	mux.HandleFunc("POST /skills/{id}/evaluation-batches/{batchId}/resume", auth.RequireSession(auth.RequireInvited(d.EvalBatches.ResumeBatch)))
 	mux.HandleFunc("GET /skills/{id}/evaluation-batches/{batchId}/comparison", auth.RequireSession(d.EvalBatches.CompareBatches))
 }
 

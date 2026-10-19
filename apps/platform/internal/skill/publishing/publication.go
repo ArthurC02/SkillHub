@@ -1,6 +1,9 @@
 package publishing
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 type Status string
 
@@ -41,8 +44,11 @@ var (
 	ErrNoPublisher     = errors.New("this account has no publisher name yet; register one before publishing")
 	ErrPublisherExists = errors.New("this account already has a publisher name")
 	ErrNameTaken       = errors.New("that name is already taken")
+	ErrNameHeld        = errors.New("that name belonged to a deleted Skill and is held for 90 days, so old links do not lead to different content")
 	ErrNameIsPermanent = errors.New("this Skill is already published under another name, and names cannot change")
 )
+
+const DeletedSkillNameHold = 90 * 24 * time.Hour
 
 type NameError struct {
 	Problem NameProblem

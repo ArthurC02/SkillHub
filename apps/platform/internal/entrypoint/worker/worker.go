@@ -27,6 +27,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
@@ -139,7 +140,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	budgets := wiring.NewModelBudgets(pool)
 	addEvaluationServices(set, pool, deps, evaluationReaders{registry: registrySvc, testlab: testlabSvc, trace: traceSvc, budgets: budgets})
 
-	set.Events = newEventDispatcher(set.RunEvents, set.SkillVersions, set.BatchEvents)
+	set.Events = newEventDispatcher(set.RunEvents, set.SkillVersions, set.BatchEvents, &publishing.SkillDeletedConsumer{Pool: pool})
 	if err := set.Events.Validate(); err != nil {
 		return nil, fmt.Errorf("outbox dispatch wiring: %w", err)
 	}
@@ -208,11 +209,13 @@ func wireEvaluationModelAndEvents(evaluations *eval.Service, pool *pgxpool.Pool,
 
 func newEventDispatcher(
 	runEvents *eval.RunEventConsumer, skillVersions *eval.SkillVersionConsumer, batchEvents *batch.BatchEventConsumer,
+	deletedSkills *publishing.SkillDeletedConsumer,
 ) *outbox.Dispatcher {
 	return outbox.NewDispatcher().
 		On("evaluation", runEvents.Deliver, outbox.RunSucceeded, outbox.RunFailed).
 		On("suggestions applied", skillVersions.Deliver, outbox.SkillVersionAdded).
 		On("evaluation batches", batchEvents.Deliver, outbox.RunSucceeded, outbox.RunFailed, outbox.RunCancelled, outbox.RunTimedOut).
+		On("publication names", deletedSkills.Deliver, outbox.SkillDeleted).
 		Ignore("progress announcements: a run that is still moving is read from its own row by the UI, and no worker-side reaction is owed",
 			outbox.RunQueued, outbox.RunProvisioning, outbox.RunPreparing,
 			outbox.RunRunning, outbox.RunEvaluating).
@@ -227,8 +230,8 @@ func newEventDispatcher(
 			outbox.EvaluationSuggestionsApplied).
 		Ignore("skill facts: no aggregate reacts to them yet, and every reader answers from the skill's own rows",
 			outbox.SkillTakenDown, outbox.SkillAccessRestricted, outbox.SkillAccessRestrictionLifted,
-			outbox.SkillRedistributionSet, outbox.SkillCategorized, outbox.SkillDeleted,
-			outbox.SkillCreated, outbox.SkillDescribed, outbox.SkillCurationSet)
+			outbox.SkillRedistributionSet, outbox.SkillCategorized,
+			outbox.SkillCreated, outbox.SkillDescribed, outbox.SkillCurationSet, outbox.SkillRestored)
 }
 
 func newCreationServices(

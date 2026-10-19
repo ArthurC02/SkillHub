@@ -755,6 +755,32 @@ func TestALicensingHoldAppliedAfterPackagingStopsTheDownload(t *testing.T) {
 	}
 }
 
+func TestALicensingHoldOnAnyAncestorStopsAForkMadeBeforeIt(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, freshName("fork-downloader"))
+	art := buildDownload(t, a, pool, c, "forked-skill")
+	other := a.login(t, freshName("catalogue-owner"))
+	grandparent := seedSkill(t, pool, other.workspaceID, freshName("grandparent"))
+	parent := seedSkill(t, pool, other.workspaceID, freshName("parent"))
+	mustExec(t, pool, `UPDATE skills SET forked_from_skill_id = $2 WHERE id = $1`, mustUUID(t, parent), mustUUID(t, grandparent))
+	mustExec(t, pool, `UPDATE skills SET forked_from_skill_id = $2 WHERE id = $1`, mustUUID(t, art.SkillID), mustUUID(t, parent))
+
+	for _, ancestor := range []struct{ name, id string }{{"parent", parent}, {"grandparent", grandparent}} {
+		t.Run(ancestor.name, func(t *testing.T) {
+			mustExec(t, pool, `UPDATE skills SET access_restriction = 'license-review' WHERE id = $1`, mustUUID(t, ancestor.id))
+			if resp, _ := c.fetchContent(t, art.ArtifactID); resp.StatusCode != http.StatusNotFound {
+				t.Errorf("a hold on the fork's %s: content got %d, want 404", ancestor.name, resp.StatusCode)
+			}
+			assertDownloadWithheld(t, c, art.ArtifactID)
+			mustExec(t, pool, `UPDATE skills SET access_restriction = NULL WHERE id = $1`, mustUUID(t, ancestor.id))
+		})
+	}
+	if resp, _ := c.fetchContent(t, art.ArtifactID); resp.StatusCode != http.StatusOK {
+		t.Errorf("with every ancestor's hold lifted the fork's download got %d, want 200", resp.StatusCode)
+	}
+}
+
 func storedObjectKey(t *testing.T, pool *pgxpool.Pool, artifactID string) string {
 	t.Helper()
 	var key string

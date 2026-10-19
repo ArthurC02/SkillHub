@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "registry-holds-through-fork-lineage-2026-10-20",
+  "status": "draft",
+  "intent": "Record the registry rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context registry lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-licensing-hold-reaches-forks-through-their-lineage",
+      "statement": "A Skill without its own access restriction carries the nearest restricted ancestor's along its fork lineage, so a hold placed after a fork was made still holds the fork, without the fork's row being written."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/download_integration_test.go",
+    "apps/platform/internal/skill/library/access.go"
+  ]
+}

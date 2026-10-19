@@ -1,0 +1,109 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "registry-holds-through-fork-lineage-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "registry-holds-through-fork-lineage-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-19T17:22:25.537987Z",
+  "verified_at": "2026-10-19T17:22:35.642199Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "3075ed5ae7f6e0d59fa01c1501532eb583eea21f",
+    "registry_digest": "sha256:69811dace89ad48c4a97ced1f9de44abe7cef698280066dd93662d73526d2eb2",
+    "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+  },
+  "affected_contexts": [
+    "registry"
+  ],
+  "rule_ids": [
+    "a-licensing-hold-reaches-forks-through-their-lineage"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Only registry decides these rules.",
+    "evidence": [
+      "apps/platform/internal/skill/library/restriction_lineage.go:26-33"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/library/read.go:373-387"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A hold placed after a fork was made did not reach the fork, and operators cannot see private forks to reach them."
+    ],
+    "decision": "Read the nearest restricted ancestor into every gate's Skill facts without writing the fork's row.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Writing the hold into every fork's row: it writes another workspace's data and misses a later lift."
+    ],
+    "proof_obligations": [
+      "rule-a-licensing-hold-reaches-forks-through-their-lineage"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-licensing-hold-reaches-forks-through-their-lineage",
+        "statement": "A Skill without its own access restriction carries the nearest restricted ancestor's along its fork lineage, so a hold placed after a fork was made still holds the fork, without the fork's row being written.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A hold on the grandparent withholds the grandchild fork's download; lifting it restores the download."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/access.go",
+            "lines": {
+              "start": 32,
+              "end": 32
+            },
+            "excerpt_sha256": "sha256:bf1b3689ee510e485e0b1c7117ae8628593ecf3a1bef01760ef6bb009a97a2aa"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/download_integration_test.go",
+            "lines": {
+              "start": 758,
+              "end": 782
+            },
+            "excerpt_sha256": "sha256:ddcbadf30a0e71f041c1a373eddac84b21c3942f7a2d400bd0f6455d09fa1188"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-19T17:22:35.366356Z",
+      "scope": "Record registry rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "3075ed5ae7f6e0d59fa01c1501532eb583eea21f",
+        "registry_digest": "sha256:69811dace89ad48c4a97ced1f9de44abe7cef698280066dd93662d73526d2eb2",
+        "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+      }
+    }
+  ]
+}

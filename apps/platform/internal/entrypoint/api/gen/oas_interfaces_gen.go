@@ -325,6 +325,10 @@ type LiftDispatchHaltRes interface {
 	liftDispatchHaltRes()
 }
 
+type LiftSkillTakedownRes interface {
+	liftSkillTakedownRes()
+}
+
 type ListCheckKindsRes interface {
 	listCheckKindsRes()
 }
@@ -475,6 +479,14 @@ type ReleasePlatformAgentBrakeRes interface {
 
 type RequestAccountDeletionRes interface {
 	requestAccountDeletionRes()
+}
+
+type RestoreSkillRes interface {
+	restoreSkillRes()
+}
+
+type ResumeEvaluationBatchRes interface {
+	resumeEvaluationBatchRes()
 }
 
 type ReviewExposureRes interface {

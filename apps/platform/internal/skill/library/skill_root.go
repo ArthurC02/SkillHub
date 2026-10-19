@@ -3,6 +3,7 @@ package registry
 import (
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -27,7 +28,19 @@ const (
 	RefusedGeneratedNameCollision  Refusal = "generated_name_collision"
 	RefusedUnknownCurationTier     Refusal = "unknown_curation_tier"
 	RefusedCurationOutsideCatalog  Refusal = "curation_outside_catalogue"
+	RefusedNotTakenDown            Refusal = "not_taken_down"
+	RefusedRestoreNotTheOwners     Refusal = "restore_not_the_owners"
+	RefusedRestoreWindowClosed     Refusal = "restore_window_closed"
 )
+
+type TakedownBy string
+
+const (
+	TakedownByOwner    TakedownBy = "owner"
+	TakedownByOperator TakedownBy = "operator"
+)
+
+const OwnerRestoreWindow = 30 * 24 * time.Hour
 
 type LicenseClaim struct {
 	Expression string
@@ -72,11 +85,17 @@ func (r Refused) err() error {
 		return ErrEmptyRestriction
 	case RefusedNoVersion:
 		return ErrNotFound
+	case RefusedNotTakenDown:
+		return ErrNotTakenDown
+	case RefusedRestoreNotTheOwners, RefusedRestoreWindowClosed:
+		return ErrRestoreNotAllowed
 	}
 	return r
 }
 
 type SkillTakenDown struct{}
+
+type SkillRestored struct{}
 
 type AccessRestricted struct {
 	Reason string `json:"reason"`
@@ -128,6 +147,7 @@ func (SkillDescribed) eventType() string    { return outbox.SkillDescribed }
 
 func (Refused) eventType() string                 { return "" }
 func (SkillTakenDown) eventType() string          { return outbox.SkillTakenDown }
+func (SkillRestored) eventType() string           { return outbox.SkillRestored }
 func (AccessRestricted) eventType() string        { return outbox.SkillAccessRestricted }
 func (AccessRestrictionLifted) eventType() string { return outbox.SkillAccessRestrictionLifted }
 func (RedistributionSet) eventType() string       { return outbox.SkillRedistributionSet }
@@ -145,6 +165,7 @@ type newestVersion struct {
 type SkillRoot struct {
 	row            gen.Skill
 	takedownReason string
+	takedownBy     TakedownBy
 	newest         newestVersion
 	pending        VersionContent
 	added          gen.SkillVersion
@@ -202,7 +223,7 @@ func (s *SkillRoot) Refusal() (Refused, bool) {
 	return Refused{}, false
 }
 
-func (s *SkillRoot) TakeDown(reason string) {
+func (s *SkillRoot) TakeDown(reason string, by TakedownBy) {
 	if s.TakenDown() {
 		s.record(Refused{Reason: RefusedAlreadyTakenDown})
 		return
@@ -211,8 +232,22 @@ func (s *SkillRoot) TakeDown(reason string) {
 		s.record(Refused{Reason: RefusedTakedownReasonMissing})
 		return
 	}
-	s.row.TakedownAt, s.takedownReason = pgtype.Timestamptz{Valid: true}, reason
+	s.row.TakedownAt, s.takedownReason, s.takedownBy = pgtype.Timestamptz{Valid: true}, reason, by
 	s.record(SkillTakenDown{})
+}
+
+func (s *SkillRoot) Restore(by TakedownBy, now time.Time) {
+	switch {
+	case !s.TakenDown():
+		s.record(Refused{Reason: RefusedNotTakenDown})
+	case by == TakedownByOwner && (s.row.TakedownBy == nil || TakedownBy(*s.row.TakedownBy) != TakedownByOwner):
+		s.record(Refused{Reason: RefusedRestoreNotTheOwners})
+	case by == TakedownByOwner && now.Sub(s.row.TakedownAt.Time) > OwnerRestoreWindow:
+		s.record(Refused{Reason: RefusedRestoreWindowClosed})
+	default:
+		s.row.TakedownAt = pgtype.Timestamptz{}
+		s.record(SkillRestored{})
+	}
 }
 
 func (s *SkillRoot) Restrict(reason *string) {

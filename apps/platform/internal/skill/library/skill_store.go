@@ -146,9 +146,12 @@ func writeSkillEvent(ctx context.Context, q *gen.Queries, root *SkillRoot, event
 			ID: root.row.ID, WorkspaceID: root.row.WorkspaceID, Summary: root.row.Summary,
 		})
 	case SkillTakenDown:
+		by := string(root.takedownBy)
 		root.row, err = q.SetSkillTakedown(ctx, gen.SetSkillTakedownParams{
-			ID: root.row.ID, TakedownReason: &root.takedownReason,
+			ID: root.row.ID, TakedownReason: &root.takedownReason, TakedownBy: &by,
 		})
+	case SkillRestored:
+		root.row, err = q.RestoreSkill(ctx, root.row.ID)
 	case AccessRestricted, AccessRestrictionLifted:
 		err = q.SetSkillAccessRestriction(ctx, gen.SetSkillAccessRestrictionParams{
 			ID: root.row.ID, AccessRestriction: root.row.AccessRestriction,

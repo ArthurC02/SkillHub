@@ -1,0 +1,393 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "patrol-shift-recite",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "patrol-shift-recite",
+  "status": "submitted",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-19T17:24:31.327568Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "3075ed5ae7f6e0d59fa01c1501532eb583eea21f",
+    "registry_digest": "sha256:69811dace89ad48c4a97ced1f9de44abe7cef698280066dd93662d73526d2eb2",
+    "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+  },
+  "affected_contexts": [
+    "batch",
+    "credit",
+    "eval",
+    "identity",
+    "registry",
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-batch-whose-test-case-is-gone-stops",
+        "statement": "When starting a batch's next trial finds its target gone, the batch stops with reason target_gone and starts no further trial.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A test case deleted mid-batch: the batch becomes stopped with target_gone."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 271,
+              "end": 282
+            },
+            "content_sha256": "sha256:950b238086f9c571ee5d4e28fbe0c56a64b81598edd6b1775ddf8675143451c2",
+            "excerpt_sha256": "sha256:64758ed135fd11623975e273461b4358defd67b4b3f2c70a6caa59e7be605df4",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+            "lines": {
+              "start": 317,
+              "end": 347
+            },
+            "excerpt_sha256": "sha256:65c59c22f7d7a9b26eac1b275c201f12a679a063856768fc72eda07bcceea0e5"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-skill-is-taken-down-once",
+        "statement": "A Skill already taken down cannot be taken down again; the second attempt is refused and the Skill stays down.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A second report against a taken-down Skill is refused as already_taken_down."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 206,
+              "end": 209
+            },
+            "excerpt_sha256": "sha256:3cbf71fa47d03be6f2fd425040d690723372ce560beac77080e4b4c8a2b4af2a"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root_test.go",
+            "lines": {
+              "start": 26,
+              "end": 43
+            },
+            "content_sha256": "sha256:897adeaf979b20517a49569f6093834b053c9688429bea68fb18931a993cb90a",
+            "excerpt_sha256": "sha256:e19237875319083945f7841bf7a8794d596cde976e85c19264f31b6ace865687",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-takedown-needs-a-reason",
+        "statement": "A takedown with an empty or whitespace-only reason is refused and the Skill stays up.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A takedown with reason ' \\t\\n' is refused as takedown_reason_missing."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 210,
+              "end": 213
+            },
+            "excerpt_sha256": "sha256:58f0db9a7890d85a5f52681fb23546ab26392416dc1dfe38b18bd70ebaf08e2f"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root_test.go",
+            "lines": {
+              "start": 78,
+              "end": 94
+            },
+            "content_sha256": "sha256:897adeaf979b20517a49569f6093834b053c9688429bea68fb18931a993cb90a",
+            "excerpt_sha256": "sha256:1728840bd75ad3a4d5f255ac9870184938de6da3396c9ccdad517137fa6d0e97",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "account-purge-runs-every-owners-step-or-none",
+        "statement": "Purging a deleted account runs the purge step of every Context that keeps data for its workspace (analytics, testlab, run, packaging, creation, eval, publishing, registry, ingest) together with the object listings of testlab, run and packaging; when any of them is missing, the purge refuses to start instead of purging part of the account.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "An account past its grace period has its graders, creation sessions, publications and skills removed in one purge.",
+          "A deployment wired without the eval purge step refuses every account purge and names eval as missing.",
+          "Registry's step runs before ingest's, so import sources no remaining version points at are removed in the same purge."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 47,
+              "end": 63
+            },
+            "content_sha256": "sha256:535679d05fcb7295a4f0040be77ca3066a587da209c41cbb59fb92adb89aeb8a",
+            "excerpt_sha256": "sha256:08883f79a76b940a13d0ad173dec7ceb803ed9732911f9cb8574e5bcd7fb22fc",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 78,
+              "end": 99
+            },
+            "excerpt_sha256": "sha256:b2cddd12981e24193eb23240c8570879ad52e8cb7756935e9233f978188ca0c3"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "start-statistics-need-the-minimum-sample-count",
+        "statement": "With fewer samples than the minimum the start threshold is the fixed fallback, marked estimated; exactly the minimum is enough.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "19 samples give the fallback; 20 samples give the p95 threshold."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 231,
+              "end": 236
+            },
+            "content_sha256": "sha256:beb56525684225ef1eb7b487de2b3751381f20720966f46ed588596c9f6e5a7f",
+            "excerpt_sha256": "sha256:0685ecaea8cd02a3f5f28d1fd035c2ed0ab404b27bc26b8b71dd25ad07cc7785",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 259,
+              "end": 276
+            },
+            "excerpt_sha256": "sha256:6087d7bb434fef20a4856241821a6870fcf1e2f6474fe3bec83cbe3f147baebe"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "start-statistics-older-than-their-shelf-life-are-not-trusted",
+        "statement": "A start threshold uses recorded cost statistics only while their window ended within the statistics shelf life; older statistics give the fixed fallback, marked estimated.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "Statistics whose window ended an hour past the shelf life give the fallback threshold, estimated."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 231,
+              "end": 238
+            },
+            "content_sha256": "sha256:beb56525684225ef1eb7b487de2b3751381f20720966f46ed588596c9f6e5a7f",
+            "excerpt_sha256": "sha256:fb76a7ad3c282a89b62e5a51a3b1f2acf6e5df6ed6373d206eef863088873e23",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 638,
+              "end": 661
+            },
+            "excerpt_sha256": "sha256:8c6e45e215e08486154ae89da50bca52bcd0a335c5334e2ec483daf5c749b5a3"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contracts",
+      "record": {
+        "id": "run-batch-trials-v1",
+        "kind": "internal-port",
+        "version": "v1",
+        "compatibility_policy": "Run starts and continues trials for an evaluation batch through the ports the composition root fills; Run publishes whether a refusal passes on its own and never hands its transaction to the batch.",
+        "data_classification": "internal",
+        "idempotency": {
+          "key": "origin key: the batch, the Test Case, the trial number and whether the Skill is withheld",
+          "scope": "per Workspace",
+          "on_replay": "returns the Run already started under that key, without admitting or charging again",
+          "on_conflict": "refused when the key already started a Run of a different Skill Version"
+        },
+        "producer_context": "run",
+        "consumer_contexts": [
+          "batch"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 46,
+              "end": 88
+            },
+            "excerpt_sha256": "sha256:81f47701455768a93e0f9330943c273785dd34ee7ef9af66468493c2ee38f32d"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/batch_facts.go",
+            "lines": {
+              "start": 34,
+              "end": 50
+            },
+            "content_sha256": "sha256:c90a69915317ee0ae254b43787f7830a17d0356668bedbf901296531361f11d6",
+            "excerpt_sha256": "sha256:39149c81260003bbbb803e2d13e9a86ef987c45d6d80e3d5fcda98d8809f47c3",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/service.go",
+            "lines": {
+              "start": 874,
+              "end": 891
+            },
+            "excerpt_sha256": "sha256:b33d744e5dc035dd07b22002b8fd5e71cba0dd4fb652efe02fe1d92a6a91ae62"
+          },
+          {
+            "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+            "lines": {
+              "start": 104,
+              "end": 104
+            },
+            "excerpt_sha256": "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "eval-identity-workspace-purge",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "producer_context": "eval",
+        "consumer_context": "identity",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 219,
+              "end": 219
+            },
+            "content_sha256": "sha256:6307caac6644382cdcadd6ab4f80025e361e94a4ef95bced9d6dbc74183701f4",
+            "excerpt_sha256": "sha256:0070fc188562407256874292cc699b576ce5823cee930fc8561eb4f2194e2609",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 54,
+              "end": 54
+            },
+            "content_sha256": "sha256:535679d05fcb7295a4f0040be77ca3066a587da209c41cbb59fb92adb89aeb8a",
+            "excerpt_sha256": "sha256:3dce59b19afa245cbf9233679a473a6f12e977232e48b7a996bea39f17c1418d",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-batch-trials",
+        "consistency": "synchronous request, idempotent by origin key; the batch records the trial in its own statement afterwards",
+        "delivery": "composition-root port",
+        "producer_context": "run",
+        "consumer_context": "batch",
+        "contract_id": "run-batch-trials-v1",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 46,
+              "end": 88
+            },
+            "excerpt_sha256": "sha256:81f47701455768a93e0f9330943c273785dd34ee7ef9af66468493c2ee38f32d"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 253,
+              "end": 291
+            },
+            "content_sha256": "sha256:950b238086f9c571ee5d4e28fbe0c56a64b81598edd6b1775ddf8675143451c2",
+            "excerpt_sha256": "sha256:f0c2583a4f83f27d85d6d02b901c673b3c97229b78aef28f391e2216a5949da5",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "batch-harvest-rules-2026-10-17",
+    "credit-ledger-rules-2026-10-18",
+    "patrol-rules",
+    "platform-shifted-recite",
+    "purge-interactions-cite-steps",
+    "receiver-free-recite",
+    "registry-harvest-rules-2026-10-17"
+  ]
+}

@@ -40,6 +40,18 @@ WHERE batch_id = @batch_id AND test_case_id = @test_case_id AND trial = @trial
 UPDATE evaluation_batches SET status = 'stopped', stop_reason = @stop_reason
 WHERE id = @id AND workspace_id = @workspace_id AND status = 'launching';
 
+-- name: PauseEvaluationBatch :execrows
+UPDATE evaluation_batches SET status = 'paused', stop_reason = @pause_reason, paused_at = now()
+WHERE id = @id AND workspace_id = @workspace_id AND status = 'launching';
+
+-- name: ResumeEvaluationBatch :execrows
+UPDATE evaluation_batches SET status = 'launching', stop_reason = NULL, paused_at = NULL
+WHERE id = @id AND workspace_id = @workspace_id AND skill_id = @skill_id AND status = 'paused';
+
+-- name: StopLongPausedBatches :execrows
+UPDATE evaluation_batches SET status = 'stopped', stop_reason = @stop_reason, paused_at = NULL
+WHERE status = 'paused' AND paused_at < now() - @paused_for::interval;
+
 -- name: MarkBatchesLaunched :execrows
 UPDATE evaluation_batches b SET status = 'launched'
 WHERE b.workspace_id = @workspace_id AND b.status = 'launching'

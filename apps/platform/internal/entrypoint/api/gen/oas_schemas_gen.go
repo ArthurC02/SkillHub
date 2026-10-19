@@ -8195,10 +8195,13 @@ type EvaluationBatch struct {
 	Trials         int       `json:"trials"`
 	// Every trial also runs with the skill withheld.
 	WithSkillWithheld bool `json:"with_skill_withheld"`
-	// `launching` while some trials have not started, `launched` once every trial has its run, `stopped`
-	// when a run was refused for a reason that waiting does not fix.
+	// `launching` while some trials have not started, `launched` once every trial has its run, `paused`
+	// when the owner's credit ran out (trials already run are kept; resuming starts the next trial not yet
+	// run, and a batch paused for 30 days stops), `stopped` when a run was refused for a reason that
+	// neither waiting nor a top-up fixes.
 	Status EvaluationBatchStatus `json:"status"`
-	// The run refusal reason that stopped the batch; present only when stopped.
+	// The run refusal reason that paused or stopped the batch, or `paused_too_long`; present only when
+	// paused or stopped.
 	StopReason OptString `json:"stop_reason"`
 	CreatedAt  time.Time `json:"created_at"`
 }
@@ -8547,13 +8550,16 @@ func (s *EvaluationBatchReportPassRate95) SetHigh(val float64) {
 	s.High = val
 }
 
-// `launching` while some trials have not started, `launched` once every trial has its run, `stopped`
-// when a run was refused for a reason that waiting does not fix.
+// `launching` while some trials have not started, `launched` once every trial has its run, `paused`
+// when the owner's credit ran out (trials already run are kept; resuming starts the next trial not yet
+// run, and a batch paused for 30 days stops), `stopped` when a run was refused for a reason that
+// neither waiting nor a top-up fixes.
 type EvaluationBatchStatus string
 
 const (
 	EvaluationBatchStatusLaunching EvaluationBatchStatus = "launching"
 	EvaluationBatchStatusLaunched  EvaluationBatchStatus = "launched"
+	EvaluationBatchStatusPaused    EvaluationBatchStatus = "paused"
 	EvaluationBatchStatusStopped   EvaluationBatchStatus = "stopped"
 )
 
@@ -8562,6 +8568,7 @@ func (EvaluationBatchStatus) AllValues() []EvaluationBatchStatus {
 	return []EvaluationBatchStatus{
 		EvaluationBatchStatusLaunching,
 		EvaluationBatchStatusLaunched,
+		EvaluationBatchStatusPaused,
 		EvaluationBatchStatusStopped,
 	}
 }
@@ -8572,6 +8579,8 @@ func (s EvaluationBatchStatus) MarshalText() ([]byte, error) {
 	case EvaluationBatchStatusLaunching:
 		return []byte(s), nil
 	case EvaluationBatchStatusLaunched:
+		return []byte(s), nil
+	case EvaluationBatchStatusPaused:
 		return []byte(s), nil
 	case EvaluationBatchStatusStopped:
 		return []byte(s), nil
@@ -8588,6 +8597,9 @@ func (s *EvaluationBatchStatus) UnmarshalText(data []byte) error {
 		return nil
 	case EvaluationBatchStatusLaunched:
 		*s = EvaluationBatchStatusLaunched
+		return nil
+	case EvaluationBatchStatusPaused:
+		*s = EvaluationBatchStatusPaused
 		return nil
 	case EvaluationBatchStatusStopped:
 		*s = EvaluationBatchStatusStopped
@@ -13613,6 +13625,19 @@ func (s *LiftDispatchHaltReq) SetProvider(val OptString) {
 func (s *LiftDispatchHaltReq) SetNote(val string) {
 	s.Note = val
 }
+
+type LiftSkillTakedownConflict Error
+
+func (*LiftSkillTakedownConflict) liftSkillTakedownRes() {}
+
+// LiftSkillTakedownNoContent is response for LiftSkillTakedown operation.
+type LiftSkillTakedownNoContent struct{}
+
+func (*LiftSkillTakedownNoContent) liftSkillTakedownRes() {}
+
+type LiftSkillTakedownNotFound Error
+
+func (*LiftSkillTakedownNotFound) liftSkillTakedownRes() {}
 
 type ListCheckKindsOK struct {
 	Kinds    []CheckKind `json:"kinds"`
@@ -25260,6 +25285,7 @@ const (
 	PublishingRefusalReasonNoPublisher           PublishingRefusalReason = "no_publisher"
 	PublishingRefusalReasonAlreadyRegistered     PublishingRefusalReason = "already_registered"
 	PublishingRefusalReasonNameTaken             PublishingRefusalReason = "name_taken"
+	PublishingRefusalReasonNameHeld              PublishingRefusalReason = "name_held"
 	PublishingRefusalReasonNameIsPermanent       PublishingRefusalReason = "name_is_permanent"
 	PublishingRefusalReasonNameShape             PublishingRefusalReason = "name_shape"
 	PublishingRefusalReasonNameReserved          PublishingRefusalReason = "name_reserved"
@@ -25288,6 +25314,7 @@ func (PublishingRefusalReason) AllValues() []PublishingRefusalReason {
 		PublishingRefusalReasonNoPublisher,
 		PublishingRefusalReasonAlreadyRegistered,
 		PublishingRefusalReasonNameTaken,
+		PublishingRefusalReasonNameHeld,
 		PublishingRefusalReasonNameIsPermanent,
 		PublishingRefusalReasonNameShape,
 		PublishingRefusalReasonNameReserved,
@@ -25319,6 +25346,8 @@ func (s PublishingRefusalReason) MarshalText() ([]byte, error) {
 	case PublishingRefusalReasonAlreadyRegistered:
 		return []byte(s), nil
 	case PublishingRefusalReasonNameTaken:
+		return []byte(s), nil
+	case PublishingRefusalReasonNameHeld:
 		return []byte(s), nil
 	case PublishingRefusalReasonNameIsPermanent:
 		return []byte(s), nil
@@ -25376,6 +25405,9 @@ func (s *PublishingRefusalReason) UnmarshalText(data []byte) error {
 		return nil
 	case PublishingRefusalReasonNameTaken:
 		*s = PublishingRefusalReasonNameTaken
+		return nil
+	case PublishingRefusalReasonNameHeld:
+		*s = PublishingRefusalReasonNameHeld
 		return nil
 	case PublishingRefusalReasonNameIsPermanent:
 		*s = PublishingRefusalReasonNameIsPermanent
@@ -25574,6 +25606,48 @@ func (*RequestAccountDeletionConflict) requestAccountDeletionRes() {}
 type RequestAccountDeletionUnauthorized Error
 
 func (*RequestAccountDeletionUnauthorized) requestAccountDeletionRes() {}
+
+type RestoreSkillConflict Error
+
+func (*RestoreSkillConflict) restoreSkillRes() {}
+
+type RestoreSkillForbidden Error
+
+func (*RestoreSkillForbidden) restoreSkillRes() {}
+
+// RestoreSkillNoContent is response for RestoreSkill operation.
+type RestoreSkillNoContent struct{}
+
+func (*RestoreSkillNoContent) restoreSkillRes() {}
+
+type RestoreSkillNotFound Error
+
+func (*RestoreSkillNotFound) restoreSkillRes() {}
+
+type RestoreSkillUnauthorized Error
+
+func (*RestoreSkillUnauthorized) restoreSkillRes() {}
+
+type ResumeEvaluationBatchConflict Error
+
+func (*ResumeEvaluationBatchConflict) resumeEvaluationBatchRes() {}
+
+type ResumeEvaluationBatchForbidden Error
+
+func (*ResumeEvaluationBatchForbidden) resumeEvaluationBatchRes() {}
+
+// ResumeEvaluationBatchNoContent is response for ResumeEvaluationBatch operation.
+type ResumeEvaluationBatchNoContent struct{}
+
+func (*ResumeEvaluationBatchNoContent) resumeEvaluationBatchRes() {}
+
+type ResumeEvaluationBatchNotFound Error
+
+func (*ResumeEvaluationBatchNotFound) resumeEvaluationBatchRes() {}
+
+type ResumeEvaluationBatchUnauthorized Error
+
+func (*ResumeEvaluationBatchUnauthorized) resumeEvaluationBatchRes() {}
 
 type ReviewExposureBadRequest Error
 

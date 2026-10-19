@@ -16,7 +16,7 @@ INSERT INTO publications (publisher_id, name, bundle_id, status)
 SELECT pb.id, $1, $2, $3
 FROM publishers pb
 WHERE pb.workspace_id = $4
-RETURNING id, publisher_id, name, skill_id, status, status_changed_at, created_at, bundle_id
+RETURNING id, publisher_id, name, skill_id, status, status_changed_at, created_at, bundle_id, retired_at
 `
 
 type CreateBundlePublicationParams struct {
@@ -43,6 +43,7 @@ func (q *Queries) CreateBundlePublication(ctx context.Context, arg CreateBundleP
 		&i.StatusChangedAt,
 		&i.CreatedAt,
 		&i.BundleID,
+		&i.RetiredAt,
 	)
 	return i, err
 }
@@ -91,7 +92,7 @@ INSERT INTO publications (publisher_id, name, skill_id, status)
 SELECT pb.id, $1, $2, $3
 FROM publishers pb
 WHERE pb.workspace_id = $4
-RETURNING id, publisher_id, name, skill_id, status, status_changed_at, created_at, bundle_id
+RETURNING id, publisher_id, name, skill_id, status, status_changed_at, created_at, bundle_id, retired_at
 `
 
 type CreatePublicationParams struct {
@@ -118,6 +119,7 @@ func (q *Queries) CreatePublication(ctx context.Context, arg CreatePublicationPa
 		&i.StatusChangedAt,
 		&i.CreatedAt,
 		&i.BundleID,
+		&i.RetiredAt,
 	)
 	return i, err
 }
@@ -243,10 +245,12 @@ func (q *Queries) GetNewestBundleVersion(ctx context.Context, arg GetNewestBundl
 }
 
 const getPublicPublication = `-- name: GetPublicPublication :one
-SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, p.bundle_id, pb.name AS publisher_name, pb.workspace_id AS publisher_workspace_id
+SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, p.bundle_id, p.retired_at, pb.name AS publisher_name, pb.workspace_id AS publisher_workspace_id
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE pb.name = $1 AND p.name = $2
+ORDER BY p.retired_at DESC NULLS FIRST
+LIMIT 1
 `
 
 type GetPublicPublicationParams struct {
@@ -263,6 +267,7 @@ type GetPublicPublicationRow struct {
 	StatusChangedAt      pgtype.Timestamptz
 	CreatedAt            pgtype.Timestamptz
 	BundleID             pgtype.UUID
+	RetiredAt            pgtype.Timestamptz
 	PublisherName        string
 	PublisherWorkspaceID pgtype.UUID
 }
@@ -279,6 +284,7 @@ func (q *Queries) GetPublicPublication(ctx context.Context, arg GetPublicPublica
 		&i.StatusChangedAt,
 		&i.CreatedAt,
 		&i.BundleID,
+		&i.RetiredAt,
 		&i.PublisherName,
 		&i.PublisherWorkspaceID,
 	)
@@ -286,7 +292,7 @@ func (q *Queries) GetPublicPublication(ctx context.Context, arg GetPublicPublica
 }
 
 const getPublicationForBundle = `-- name: GetPublicationForBundle :one
-SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, p.bundle_id, pb.name AS publisher_name
+SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, p.bundle_id, p.retired_at, pb.name AS publisher_name
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE pb.workspace_id = $1 AND p.bundle_id = $2
@@ -306,6 +312,7 @@ type GetPublicationForBundleRow struct {
 	StatusChangedAt pgtype.Timestamptz
 	CreatedAt       pgtype.Timestamptz
 	BundleID        pgtype.UUID
+	RetiredAt       pgtype.Timestamptz
 	PublisherName   string
 }
 
@@ -321,13 +328,14 @@ func (q *Queries) GetPublicationForBundle(ctx context.Context, arg GetPublicatio
 		&i.StatusChangedAt,
 		&i.CreatedAt,
 		&i.BundleID,
+		&i.RetiredAt,
 		&i.PublisherName,
 	)
 	return i, err
 }
 
 const getPublicationForSkill = `-- name: GetPublicationForSkill :one
-SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, p.bundle_id, pb.name AS publisher_name
+SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, p.bundle_id, p.retired_at, pb.name AS publisher_name
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE pb.workspace_id = $1 AND p.skill_id = $2
@@ -347,6 +355,7 @@ type GetPublicationForSkillRow struct {
 	StatusChangedAt pgtype.Timestamptz
 	CreatedAt       pgtype.Timestamptz
 	BundleID        pgtype.UUID
+	RetiredAt       pgtype.Timestamptz
 	PublisherName   string
 }
 
@@ -362,6 +371,7 @@ func (q *Queries) GetPublicationForSkill(ctx context.Context, arg GetPublication
 		&i.StatusChangedAt,
 		&i.CreatedAt,
 		&i.BundleID,
+		&i.RetiredAt,
 		&i.PublisherName,
 	)
 	return i, err
@@ -1041,6 +1051,8 @@ const lockPublicationByAddress = `-- name: LockPublicationByAddress :one
 SELECT p.id FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE pb.name = $1 AND p.name = $2
+ORDER BY p.retired_at DESC NULLS FIRST
+LIMIT 1
 FOR UPDATE OF p
 `
 
@@ -1057,7 +1069,7 @@ func (q *Queries) LockPublicationByAddress(ctx context.Context, arg LockPublicat
 }
 
 const lockPublicationForBundle = `-- name: LockPublicationForBundle :one
-SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, p.bundle_id
+SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, p.bundle_id, p.retired_at
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE pb.workspace_id = $1 AND p.bundle_id = $2
@@ -1081,12 +1093,13 @@ func (q *Queries) LockPublicationForBundle(ctx context.Context, arg LockPublicat
 		&i.StatusChangedAt,
 		&i.CreatedAt,
 		&i.BundleID,
+		&i.RetiredAt,
 	)
 	return i, err
 }
 
 const lockPublicationForSkill = `-- name: LockPublicationForSkill :one
-SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, p.bundle_id
+SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, p.bundle_id, p.retired_at
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE pb.workspace_id = $1 AND p.skill_id = $2
@@ -1110,6 +1123,7 @@ func (q *Queries) LockPublicationForSkill(ctx context.Context, arg LockPublicati
 		&i.StatusChangedAt,
 		&i.CreatedAt,
 		&i.BundleID,
+		&i.RetiredAt,
 	)
 	return i, err
 }
@@ -1128,6 +1142,28 @@ func (q *Queries) LockPublisherByWorkspace(ctx context.Context, workspaceID pgty
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const publicationNameInQuarantine = `-- name: PublicationNameInQuarantine :one
+SELECT EXISTS (
+    SELECT 1 FROM publications p
+    JOIN publishers pb ON pb.id = p.publisher_id
+    WHERE pb.workspace_id = $1 AND p.name = $2
+      AND p.retired_at > now() - $3::interval
+)
+`
+
+type PublicationNameInQuarantineParams struct {
+	WorkspaceID pgtype.UUID
+	Name        string
+	Quarantine  pgtype.Interval
+}
+
+func (q *Queries) PublicationNameInQuarantine(ctx context.Context, arg PublicationNameInQuarantineParams) (bool, error) {
+	row := q.db.QueryRow(ctx, publicationNameInQuarantine, arg.WorkspaceID, arg.Name, arg.Quarantine)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const purgeWorkspaceBundles = `-- name: PurgeWorkspaceBundles :execrows
@@ -1150,6 +1186,27 @@ WHERE pb.id = p.publisher_id AND pb.workspace_id = $1
 
 func (q *Queries) PurgeWorkspacePublications(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, purgeWorkspacePublications, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const retireSkillPublication = `-- name: RetireSkillPublication :execrows
+UPDATE publications p SET retired_at = $1
+FROM publishers pb
+WHERE pb.id = p.publisher_id AND pb.workspace_id = $2
+  AND p.skill_id = $3 AND p.retired_at IS NULL
+`
+
+type RetireSkillPublicationParams struct {
+	RetiredAt   pgtype.Timestamptz
+	WorkspaceID pgtype.UUID
+	SkillID     pgtype.UUID
+}
+
+func (q *Queries) RetireSkillPublication(ctx context.Context, arg RetireSkillPublicationParams) (int64, error) {
+	result, err := q.db.Exec(ctx, retireSkillPublication, arg.RetiredAt, arg.WorkspaceID, arg.SkillID)
 	if err != nil {
 		return 0, err
 	}

@@ -17,6 +17,17 @@ func (r AccessRestriction) InEffect() bool { return r.reason != "" }
 
 func (r AccessRestriction) Reason() string { return r.reason }
 
-func (s Skill) Restriction() AccessRestriction { return RestrictionFrom(s.AccessRestriction) }
+func (s Skill) Restriction() AccessRestriction {
+	return ownOrInherited(s.AccessRestriction, s.InheritedRestriction)
+}
 
-func (v VersionSummary) Restriction() AccessRestriction { return RestrictionFrom(v.AccessRestriction) }
+func (v VersionSummary) Restriction() AccessRestriction {
+	return ownOrInherited(v.AccessRestriction, v.InheritedRestriction)
+}
+
+func ownOrInherited(own *string, inherited string) AccessRestriction {
+	if r := RestrictionFrom(own); r.InEffect() {
+		return r
+	}
+	return RestrictionFrom(&inherited)
+}

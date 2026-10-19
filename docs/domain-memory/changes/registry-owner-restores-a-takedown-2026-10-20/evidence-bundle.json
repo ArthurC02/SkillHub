@@ -1,0 +1,41 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "registry-owner-restores-a-takedown-2026-10-20",
+  "proposal_id": "registry-owner-restores-a-takedown-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "b889b0dbb6b2d67e44c5b20f6f1e27ae6dabd0f5",
+    "registry_digest": "sha256:9375a084edc7cafe2417a24b8ac0dcfbf26acdc9a89aa5043d3c2a2d17f3d93e",
+    "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-owner-restores-only-their-own-takedown-within-thirty-days",
+      "mutated_protection": "apps/platform/internal/skill/library/skill_root.go:245: case by == TakedownByOwner && now.Sub(s.row.TakedownAt.Time) > OwnerRestoreWindow: -> case by == TakedownByOwner && now.Sub(s.row.TakedownAt.Time) >= OwnerRestoreWindow:",
+      "failure_evidence": "== RUN   TestOnlyTheOwnersOwnTakedownWithinThirtyDaysIsRestoredByTheOwner/operator,_own_takedown\n=== RUN   TestOnlyTheOwnersOwnTakedownWithinThirtyDaysIsRestoredByTheOwner/owner,_not_taken_down\n--- FAIL: TestOnlyTheOwnersOwnTakedownWithinThirtyDaysIsRestoredByTheOwner (0.00s)\n    --- PASS: TestOnlyTheOwnersOwnTakedownWithinThirtyDaysIsRestoredByTheOwner/owner,_own_takedown_a_day_ago (0.00s)\n    --- FAIL: TestOnlyTheOwnersOwnTakedownWithinThirtyDaysIsRestoredByTheOwner/owner,_own_takedown_exactly_30_days_ago (0.00s)\n    --- PASS: TestOnlyTheOwnersOwnTakedownWithinThirtyDaysIsRestoredByTheOwner/owner,_own_takedown_30_days_and_a_second_ago (0.00s)\n    --- PASS: TestOnlyTheOwnersOwnTakedownWithinThirtyDaysIsRestoredByTheOwner/owner,_operator's_takedown (0.00s)\n    --- PASS: TestOnlyTheOwnersOwnTakedownWithinThirtyDaysIsRestoredByTheOwner/operator,_owner's_takedown_a_year_ago (0.00s)\n    --- PASS: TestOnlyTheOwnersOwnTakedownWithinThirtyDaysIsRestoredByTheOwner/operator,_own_takedown (0.00s)\n    --- PASS: TestOnlyTheOwnersOwnTakedownWithinThirtyDaysIsRestoredByTheOwner/owner,_not_taken_down (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t3.048s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/skill/library/skill_root.go",
+    "apps/platform/internal/skill/library/skill_root_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-an-owner-restores-only-their-own-takedown-within-thirty-days",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestOnlyTheOwnersOwnTakedownWithinThirtyDaysIsRestoredByTheOwner$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b040684568a2496c0150cb621686a5e89998252073fd561accc979735228efce",
+      "finished_at": "2026-10-19T17:20:09.673806Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

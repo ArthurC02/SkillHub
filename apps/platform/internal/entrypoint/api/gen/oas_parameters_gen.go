@@ -344,6 +344,11 @@ type IngestTraceEventsParams struct {
 	Token string
 }
 
+// LiftSkillTakedownParams is parameters of liftSkillTakedown operation.
+type LiftSkillTakedownParams struct {
+	ID uuid.UUID
+}
+
 // ListCreationSessionsParams is parameters of listCreationSessions operation.
 type ListCreationSessionsParams struct {
 	// Optional immutable Skill Version whose still-retained Studio context should be returned. This is a
@@ -544,6 +549,17 @@ type PublishBundleParams struct {
 // PublishSkillParams is parameters of publishSkill operation.
 type PublishSkillParams struct {
 	ID uuid.UUID
+}
+
+// RestoreSkillParams is parameters of restoreSkill operation.
+type RestoreSkillParams struct {
+	ID uuid.UUID
+}
+
+// ResumeEvaluationBatchParams is parameters of resumeEvaluationBatch operation.
+type ResumeEvaluationBatchParams struct {
+	ID      uuid.UUID
+	BatchId uuid.UUID
 }
 
 // ReviewExposureParams is parameters of reviewExposure operation.

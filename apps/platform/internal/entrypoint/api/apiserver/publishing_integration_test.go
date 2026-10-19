@@ -11,6 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
 )
 
 func freshName(prefix string) string {
@@ -400,6 +402,69 @@ func TestTwoSkillsCannotShareOnePublicationName(t *testing.T) {
 	}
 	if code, body := publish(t, alice, second, `{"name":"`+shared+`","rights_attested":true}`); code != http.StatusConflict || body["reason"] != "name_taken" {
 		t.Errorf("second skill under the same name: %d %v, want 409 name_taken", code, body)
+	}
+}
+
+func deliverSkillDeleted(t *testing.T, pool *pgxpool.Pool, skillID string) {
+	t.Helper()
+	var event outbox.Event
+	if err := pool.QueryRow(context.Background(),
+		"SELECT workspace_id, aggregate_id, occurred_at FROM outbox_events WHERE event_type = 'skill.deleted' AND aggregate_id = $1",
+		mustUUID(t, skillID)).Scan(&event.WorkspaceID, &event.AggregateID, &event.OccurredAt); err != nil {
+		t.Fatalf("reading the skill.deleted event: %v", err)
+	}
+	consumer := &publishing.SkillDeletedConsumer{Pool: pool}
+	for range 2 {
+		if err := consumer.Deliver(context.Background(), event); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestADeletedSkillsPublicationNameIsHeldForNinetyDaysThenReleased(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, freshName("held-alice"))
+	registerPublisher(t, alice, freshName("held"))
+	deleted := uploadedSkill(t, alice, freshName("deleted"), "One.")
+	successorName := freshName("successor")
+	successor := uploadedSkill(t, alice, successorName, "Two.")
+	name := freshName("reused")
+	_, published := publish(t, alice, deleted, `{"name":"`+name+`","rights_attested":true}`)
+	address, _ := published["address"].(string)
+
+	if code := alice.status(t, http.MethodDelete, "/skills/"+deleted); code >= 300 {
+		t.Fatalf("deleting the published skill: %d", code)
+	}
+	deliverSkillDeleted(t, pool, deleted)
+
+	if code, body := publish(t, alice, successor, `{"name":"`+name+`","rights_attested":true}`); code != http.StatusConflict || body["reason"] != "name_held" {
+		t.Fatalf("reusing the name right after the delete: %d %v, want 409 name_held", code, body)
+	}
+	if code, body := publicRead(t, a, address); code != http.StatusOK || body["availability"].(map[string]any)["value"] != "withdrawn" {
+		t.Fatalf("the old address during the hold: %d %v, want withdrawn", code, body)
+	}
+
+	retire := func(ago string) {
+		if _, err := pool.Exec(context.Background(),
+			"UPDATE publications SET retired_at = now() - $2::interval WHERE skill_id = $1", mustUUID(t, deleted), ago); err != nil {
+			t.Fatal(err)
+		}
+	}
+	retire("89 days 23 hours")
+	if code, body := publish(t, alice, successor, `{"name":"`+name+`","rights_attested":true}`); code != http.StatusConflict || body["reason"] != "name_held" {
+		t.Fatalf("reusing the name an hour before the hold ends: %d %v, want 409 name_held", code, body)
+	}
+	retire("90 days 1 minute")
+	if code, body := publish(t, alice, successor, `{"name":"`+name+`","rights_attested":true}`); code != http.StatusOK {
+		t.Fatalf("reusing the name after the hold: %d %v, want 200", code, body)
+	}
+	code, body := publicRead(t, a, address)
+	if code != http.StatusOK || body["availability"].(map[string]any)["value"] != "available" {
+		t.Fatalf("the address after the name passed on: %d %v, want the successor available", code, body)
+	}
+	if skill, _ := body["skill"].(map[string]any); skill["name"] != successorName {
+		t.Errorf("the address serves %v, want the successor %s", body["skill"], successorName)
 	}
 }
 
