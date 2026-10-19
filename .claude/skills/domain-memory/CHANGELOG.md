@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.18
+
+### Fixed
+
+- The probe summary printed the given root in the platform's separator (`Domain Memory at docs\domain-memry: ...`) while its did-you-mean used forward slashes; the prefix now goes through the same formatter as the refusals, a forward-slash path relative to the repository root.
+- The probe's "none" line closed its sentence with a period even when the did-you-mean's question mark already ended it (`did you mean memory?.`); the period is dropped when the line ends on the question.
+
 ## 1.2.17
 
 ### Fixed

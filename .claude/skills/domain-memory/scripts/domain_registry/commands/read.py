@@ -10,7 +10,7 @@ from pathlib import Path
 from ..audit import review_history
 from ..brief import brief_for_change, brief_for_record, to_markdown
 from ..changes import list_proposals, packages_root, proof_of, rule_coverage
-from ..common import ASSET_KEYS, load_json
+from ..common import ASSET_KEYS, load_json, shown_path
 from ..locate import domain_memory_hint
 from ..compare import compare_registries
 from ..counterfactual import (
@@ -46,11 +46,11 @@ COUNTERFACTUAL_EXIT_CODES = {"killed": 0, "survived": 1, "inconclusive": 2, "err
 
 
 def probe_summary(result: dict, registry_root: Path, repo_root: Path) -> str:
-    where = f"Domain Memory at {registry_root}"
+    where = f"Domain Memory at {shown_path(registry_root, repo_root)}"
     if result["status"] == "absent" and "hint" in result:
         return f"{where}: no source map here, but {result['hint']}."
     if result["status"] == "absent":
-        return f"{where}: none; {domain_memory_hint(registry_root, repo_root)}."
+        return _closed(f"{where}: none; {domain_memory_hint(registry_root, repo_root)}")
     if result["status"] in ("current", "discovery_drifted"):
         changed_inside = result.get("content_changed", [])
         inside = (
@@ -71,6 +71,10 @@ def probe_summary(result: dict, registry_root: Path, repo_root: Path) -> str:
             f"({_named(result['changed_sources'])}); run refresh-sources, then have a developer run confirm-sources."
         )
     return f"{where}: {result['status']}. {result.get('reason', '')}".strip()
+
+
+def _closed(sentence: str) -> str:
+    return sentence if sentence.endswith("?") else f"{sentence}."
 
 
 def _named(sources: list[dict]) -> str:

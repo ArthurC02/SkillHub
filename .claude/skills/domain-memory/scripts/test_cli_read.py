@@ -70,7 +70,7 @@ class CliReadTest(RegistryTestCase):
         root = self.repo / "memory"
         summary = self.run_cli("probe", "--repo-root", str(self.repo), "--registry-root", str(root))
         self.assertEqual(
-            (1, f"Domain Memory at {root}: stale. 1 selected sources gained, lost or renamed files (docs); "
+            (1, "Domain Memory at memory: stale. 1 selected sources gained, lost or renamed files (docs); "
                 "run refresh-sources, then have a developer run confirm-sources."),
             (summary.returncode, summary.stdout.strip()),
         )
@@ -82,7 +82,7 @@ class CliReadTest(RegistryTestCase):
         root = self.repo / "memory"
         summary = self.run_cli("probe", "--repo-root", str(self.repo), "--registry-root", str(root))
         self.assertEqual(
-            (0, f"Domain Memory at {root}: current, agent-asserted, established by git; discovery drifted: "
+            (0, "Domain Memory at memory: current, agent-asserted, established by git; discovery drifted: "
                 f"0 listed paths gone, 1 matching path unlisted; run refresh-listing --registry-root {root.as_posix()} "
                 f"--repo-root {self.repo.as_posix()} (no confirmation needed)."),
             (summary.returncode, summary.stdout.strip()),
@@ -91,7 +91,7 @@ class CliReadTest(RegistryTestCase):
         refreshed = self.run_cli(*shlex.split(advised))
         after = self.run_cli("probe", "--repo-root", str(self.repo), "--registry-root", str(root))
         self.assertEqual(
-            (0, 0, f"Domain Memory at {root}: current, agent-asserted, established by git."),
+            (0, 0, "Domain Memory at memory: current, agent-asserted, established by git."),
             (refreshed.returncode, after.returncode, after.stdout.strip()),
         )
 
@@ -112,7 +112,16 @@ class CliReadTest(RegistryTestCase):
         nowhere = bare / "nowhere"
         summary = self.run_cli("probe", "--repo-root", str(bare), "--registry-root", str(nowhere))
         self.assertEqual(
-            (2, f"Domain Memory at {nowhere}: none; {DOMAIN_MEMORY_HINT}."),
+            (2, f"Domain Memory at nowhere: none; {DOMAIN_MEMORY_HINT}."),
+            (summary.returncode, summary.stdout.strip()),
+        )
+
+    def test_the_probe_of_a_typo_beside_the_registry_echoes_both_paths_alike_and_ends_on_the_question(self) -> None:
+        self.committed_source_map()
+        typo = self.repo / "memry"
+        summary = self.run_cli("probe", "--repo-root", str(self.repo), "--registry-root", str(typo))
+        self.assertEqual(
+            (2, f"Domain Memory at memry: none; {DOMAIN_MEMORY_HINT}; did you mean memory?"),
             (summary.returncode, summary.stdout.strip()),
         )
 
@@ -149,7 +158,7 @@ class CliReadTest(RegistryTestCase):
         root = self.repo / "memory"
         summary = self.run_cli("probe", "--repo-root", str(self.repo), "--registry-root", str(root))
         self.assertEqual(
-            (0, f"Domain Memory at {root}: current, agent-asserted, established by hash; "
+            (0, "Domain Memory at memory: current, agent-asserted, established by hash; "
                 "1 selected sources changed inside (docs); verify-evidence checks the citations."),
             (summary.returncode, summary.stdout.strip()),
         )
