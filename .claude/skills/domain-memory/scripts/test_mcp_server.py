@@ -11,7 +11,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from domain_registry import mcp_server
 from domain_registry.cli_commands import run_command
 from domain_registry.commands.read import handle_mcp_serve
 from domain_registry.mcp_server import READ_ONLY, McpServer, Parameter, ServerRoots, Tool, serve
@@ -77,11 +76,6 @@ class HandshakeTest(McpServerTest):
             with self.subTest(asked=asked):
                 [reply] = self.exchange(request(1, "initialize", protocolVersion=asked, capabilities={}))
                 self.assertEqual("2025-11-25", reply["result"]["protocolVersion"])
-
-    def test_without_the_plugin_manifest_the_server_reports_a_standalone_version(self) -> None:
-        with patch.object(mcp_server, "PLUGIN_MANIFEST", self.repo / "absent.json"):
-            [reply] = self.exchange(request(1, "initialize", protocolVersion="2025-06-18", capabilities={}))
-        self.assertEqual({"name": "domain-memory", "version": "standalone"}, reply["result"]["serverInfo"])
 
     def test_server_discover_lists_every_version_it_serves_and_names_itself_in_meta(self) -> None:
         [reply] = self.exchange(request("d", "server/discover", _meta=MODERN_META))

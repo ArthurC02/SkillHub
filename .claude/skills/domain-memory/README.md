@@ -43,4 +43,4 @@ Three rules keep this shape. Once a Registry exists, its records change only thr
 
 `ruff.toml` pins every finding it tolerates with a line-level `noqa`. A new finding fails, and so does a `noqa` that no longer suppresses anything: simplify a pinned function and its marker has to go in the same change.
 
-Any change to what ships — everything except `evals/` and `scripts/test_*.py` — raises `version` in `.claude-plugin/plugin.json`, so installed copies see it, and adds an entry to `CHANGELOG.md`.
+Any change to what ships — everything except `evals/` and `scripts/test_*.py` — raises `version` in `.claude-plugin/plugin.json` and the same value in `scripts/domain_registry/version.py` (the MCP server reports the latter; a test keeps the two equal), so installed copies see it, and adds an entry to `CHANGELOG.md`.

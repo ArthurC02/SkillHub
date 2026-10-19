@@ -737,7 +737,7 @@ class SourcesTest(RegistryTestCase):
     def test_discovery_does_not_descend_into_an_excluded_directory(self) -> None:
         self.write_files("kept/test_kept.py")
         excluded = [
-            ".git", ".hg", ".svn", ".devctl", "node_modules",
+            ".git", ".hg", ".svn", "node_modules",
             ".venv", "vendor", "dist", "build", "generated",
         ]
         for name in excluded:
@@ -784,6 +784,13 @@ class SourcesTest(RegistryTestCase):
         discovered = discover_sources(self.repo)
         self.assertEqual("github-pr", discovered["governance_candidates"]["recommended_verifier"])
         self.assertEqual("discovered", discovered["selection_status"])
+
+    def test_ci_that_is_not_the_one_the_pull_request_verifier_reads_gets_the_signed_commit_recommendation(self) -> None:
+        (self.repo / ".gitlab-ci.yml").write_text("stages: [test]\n", encoding="utf-8")
+        self.assertEqual(
+            {"ci_tools": ["gitlab-ci"], "recommended_verifier": "git-signed-commit", "recommended_trigger": "git-push"},
+            discover_sources(self.repo)["governance_candidates"],
+        )
 
     def test_discovery_only_recommends_governance_a_policy_accepts(self) -> None:
         def policy_from(candidates: dict) -> dict:

@@ -312,11 +312,20 @@ class RegistryValidationTest(RegistryTestCase):
             f"-----BEGIN RSA {label}-----", encoding="utf-8"
         )
         (secrets / "ci.env").write_text("ghp_" + "a" * 30, encoding="utf-8")
+        (secrets / "deploy.env").write_text("glpat-" + "d" * 20, encoding="utf-8")
+        (secrets / "cloud.env").write_text("AKIA" + "E" * 16, encoding="utf-8")
+        (secrets / "chat.env").write_text("xoxb-" + "f" * 12, encoding="utf-8")
         (secrets / "app.conf").write_text("api_key = " + "b" * 20, encoding="utf-8")
         (secrets / "clean.md").write_text("A token is a word.", encoding="utf-8")
         findings = scan_secrets(secrets)
-        self.assertEqual({finding["kind"] for finding in findings}, {"private-key", "github-token", "generic-secret"})
-        self.assertEqual(["app.conf", "ci.env", "key.pem"], sorted(finding["path"] for finding in findings))
+        self.assertEqual(
+            {"private-key", "github-token", "gitlab-token", "aws-access-key", "slack-token", "generic-secret"},
+            {finding["kind"] for finding in findings},
+        )
+        self.assertEqual(
+            ["app.conf", "chat.env", "ci.env", "cloud.env", "deploy.env", "key.pem"],
+            sorted(finding["path"] for finding in findings),
+        )
 
     def test_a_secret_finding_never_carries_the_secret(self) -> None:
         secrets = self.repo / "leaky"

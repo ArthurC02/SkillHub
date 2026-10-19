@@ -11,6 +11,7 @@ from typing import Any, TextIO
 
 from .changes import PREVIEW_STATUSES
 from .cli_parser import ASSET_CHOICES, UsageError
+from .version import PLUGIN_VERSION
 
 MODERN_VERSIONS = ("2026-07-28",)
 CACHEABLE_METHODS = ("server/discover", "tools/list")
@@ -20,7 +21,6 @@ SUPPORTED_VERSIONS = (*MODERN_VERSIONS, *LEGACY_VERSIONS)
 VERSION_KEY = "io.modelcontextprotocol/protocolVersion"
 CAPABILITIES_KEY = "io.modelcontextprotocol/clientCapabilities"
 SERVER_INFO_KEY = "io.modelcontextprotocol/serverInfo"
-PLUGIN_MANIFEST = Path(__file__).parents[2] / ".claude-plugin" / "plugin.json"
 SERVER_NAME = "domain-memory"
 CAPABILITIES = {"tools": {"listChanged": False}}
 
@@ -174,9 +174,7 @@ def _inside_repository(repo_root: Path, name: str, given: str) -> Path:
 
 
 def server_info() -> dict[str, str]:
-    if PLUGIN_MANIFEST.is_file():
-        return {"name": SERVER_NAME, "version": json.loads(PLUGIN_MANIFEST.read_text(encoding="utf-8"))["version"]}
-    return {"name": SERVER_NAME, "version": "standalone"}
+    return {"name": SERVER_NAME, "version": PLUGIN_VERSION}
 
 
 def serve(

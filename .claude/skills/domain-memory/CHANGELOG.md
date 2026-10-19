@@ -2,6 +2,18 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.20
+
+### Changed
+
+- The MCP server reports the version from `scripts/domain_registry/version.py` instead of reading one host's manifest directory, so a standalone bundle reports its real version and the server no longer assumes `.claude-plugin/` exists; a test keeps that file equal to the manifest.
+- Discovery recommends the `github-pr` verifier only when the pipeline it reads is present (`.github/workflows`); any other CI gets `git-signed-commit` with the `git-push` trigger, since the pull-request verifier reads one hosting provider's API and the policy pairs a signed-commit verifier with push enforcement.
+- The secret scanner also finds GitLab personal access tokens (`glpat-`), AWS access key ids (`AKIA`/`ASIA`) and Slack tokens (`xox?-`), reported as `gitlab-token`, `aws-access-key` and `slack-token`.
+
+### Removed
+
+- `.devctl` is no longer a built-in excluded directory when walking a repository; it was one project's tool directory, and a repository that ignores it in `.gitignore` is still skipped as every ignored path is.
+
 ## 1.2.19
 
 ### Added

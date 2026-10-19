@@ -23,7 +23,6 @@ EXCLUDED_DIRECTORIES = {
     ".git",
     ".hg",
     ".svn",
-    ".devctl",
     "node_modules",
     ".venv",
     "vendor",
@@ -42,6 +41,15 @@ CI_MARKERS = {
     ".buildkite/pipeline.yml": "buildkite",
     "azure-pipelines.yml": "azure-pipelines",
 }
+
+
+def governance_candidates(ci_tools: list[str]) -> dict[str, object]:
+    verifier = "github-pr" if "github-actions" in ci_tools else "git-signed-commit"
+    return {
+        "ci_tools": ci_tools,
+        "recommended_verifier": verifier,
+        "recommended_trigger": "external-scm" if verifier == "github-pr" else "git-push",
+    }
 
 
 def discover_ci_tools(root: Path) -> list[str]:
@@ -210,11 +218,7 @@ def discover_sources(root: Path) -> dict[str, Any]:
         "source_groups": groups,
         "missing_groups": [group["kind"] for group in groups if not group["paths"]],
         "selection_status": "discovered",
-        "governance_candidates": {
-            "ci_tools": ci_tools,
-            "recommended_verifier": "github-pr" if ci_tools else "git-signed-commit",
-            "recommended_trigger": "external-scm" if ci_tools else "git-push",
-        },
+        "governance_candidates": governance_candidates(ci_tools),
         "note": "The map locates candidate sources. It does not establish a domain fact or source authority by itself.",
     }
 

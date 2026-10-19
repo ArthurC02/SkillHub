@@ -8,6 +8,9 @@ from pathlib import Path
 PATTERNS = {
     "private-key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
     "github-token": re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}\b"),
+    "gitlab-token": re.compile(r"\bglpat-[A-Za-z0-9_-]{20,}\b"),
+    "aws-access-key": re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
+    "slack-token": re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}\b"),
     "generic-secret": re.compile(
         r"(?i)\b(?:api[_-]?key|secret|password|token)\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{16,}"
     ),
