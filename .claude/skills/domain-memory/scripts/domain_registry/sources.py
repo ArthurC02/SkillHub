@@ -727,7 +727,7 @@ def verify_against_discovery(
     return result | {"status": status, "discovered_but_unlisted": unlisted}
 
 
-def _counted(count: int, noun: str) -> str:
+def counted(count: int, noun: str) -> str:
     return f"{count} {noun}{'' if count == 1 else 's'}"
 
 
@@ -743,13 +743,13 @@ def discovery_drift_note(result: dict[str, Any]) -> str | None:
     )
     changed_inside = len(result.get("content_changed", []))
     inside = (
-        f"{_counted(changed_inside, 'selected source')} changed inside; verify-evidence checks the citations; "
+        f"{counted(changed_inside, 'selected source')} changed inside; verify-evidence checks the citations; "
         if changed_inside
         else ""
     )
     return (
-        f"NOTE: discovery drifted: {_counted(gone, 'listed path')} gone, "
-        f"{_counted(unlisted, 'matching path')} unlisted; {inside}{advice}"
+        f"NOTE: discovery drifted: {counted(gone, 'listed path')} gone, "
+        f"{counted(unlisted, 'matching path')} unlisted; {inside}{advice}"
     )
 
 
@@ -757,7 +757,7 @@ def refresh_confirmation_notice(selected_paths: list[str]) -> str:
     count = len(selected_paths)
     demonstrative = "this" if count == 1 else "these"
     return (
-        f"Selection reset to agent-asserted; confirm {demonstrative} {_counted(count, 'selected source')}: "
+        f"Selection reset to agent-asserted; confirm {demonstrative} {counted(count, 'selected source')}: "
         + ", ".join(selected_paths)
     )
 
@@ -850,10 +850,11 @@ def probe_sources(
         if invalid:
             return invalid
     if _git_shows_no_change(root, source_map):
-        return {
-            "status": "current",
-            "selection_status": selection_status,
-            "changed_sources": [],
-            "checked": "git",
-        }
-    return verify_source_map(root, source_map_path, policy) | {"checked": "hash"}
+        result = {"status": "current", "selection_status": selection_status, "changed_sources": [], "checked": "git"}
+    else:
+        result = verify_source_map(root, source_map_path, policy) | {"checked": "hash"}
+    if result["status"] != "current":
+        return result
+    gone, unlisted = _discovered_but_gone(root, source_map), _discovered_but_unlisted(root.resolve(), source_map)
+    status = "discovery_drifted" if gone or unlisted else "current"
+    return result | {"status": status, "discovered_but_gone": gone, "discovered_but_unlisted": unlisted}

@@ -15,6 +15,24 @@ TIMEOUT_VARIABLE = "DOMAIN_MEMORY_GIT_TIMEOUT"
 OWN_PROCESS_GROUP: dict[str, Any] = (
     {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}
 )
+PROCESS_SET_QUOTA = 0x0100
+PROCESS_TERMINATE = 0x0001
+
+if os.name == "nt":
+    import ctypes
+    from ctypes import wintypes
+
+    KERNEL32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    KERNEL32.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+    KERNEL32.CreateJobObjectW.restype = wintypes.HANDLE
+    KERNEL32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+    KERNEL32.AssignProcessToJobObject.restype = wintypes.BOOL
+    KERNEL32.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
+    KERNEL32.TerminateJobObject.restype = wintypes.BOOL
+    KERNEL32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    KERNEL32.OpenProcess.restype = wintypes.HANDLE
+    KERNEL32.CloseHandle.argtypes = [wintypes.HANDLE]
+    KERNEL32.CloseHandle.restype = wintypes.BOOL
 
 
 class GitDeadline(subprocess.TimeoutExpired):
@@ -53,18 +71,38 @@ def run_bounded(
         argv, stdin=subprocess.PIPE if stdin is not None else None,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, **text, **OWN_PROCESS_GROUP,
     )
+    job = _job_holding(process) if os.name == "nt" else None
     try:
         stdout, stderr = process.communicate(stdin, timeout=seconds)
     except subprocess.TimeoutExpired as error:
-        _kill_process_tree(process)
+        _kill_process_tree(process, job)
         with contextlib.suppress(subprocess.TimeoutExpired):
             process.communicate(timeout=KILLED_TREE_DRAIN_SECONDS)
         raise GitDeadline(argv, seconds, rerun_is_safe=rerun_is_safe(argv)) from error
+    finally:
+        if job is not None:
+            KERNEL32.CloseHandle(job)
     return subprocess.CompletedProcess(argv, process.returncode, stdout, stderr)
 
 
-def _kill_process_tree(process: subprocess.Popen[Any]) -> None:
+def _job_holding(process: subprocess.Popen[Any]) -> int | None:
+    job = KERNEL32.CreateJobObjectW(None, None)
+    if not job:
+        return None
+    handle = KERNEL32.OpenProcess(PROCESS_SET_QUOTA | PROCESS_TERMINATE, 0, process.pid)
+    assigned = bool(handle) and bool(KERNEL32.AssignProcessToJobObject(job, handle))
+    if handle:
+        KERNEL32.CloseHandle(handle)
+    if not assigned:
+        KERNEL32.CloseHandle(job)
+        return None
+    return job
+
+
+def _kill_process_tree(process: subprocess.Popen[Any], job: int | None) -> None:
     if os.name == "nt":
+        if job is not None:
+            KERNEL32.TerminateJobObject(job, 1)
         with contextlib.suppress(OSError, subprocess.SubprocessError):
             subprocess.run(
                 ["taskkill", "/T", "/F", "/PID", str(process.pid)],

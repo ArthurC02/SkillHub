@@ -72,6 +72,18 @@ class CliReadTest(RegistryTestCase):
             (summary.returncode, summary.stdout.strip()),
         )
 
+    def test_the_probe_reports_discovery_drift_as_verify_sources_does_and_still_exits_zero(self) -> None:
+        self.selection_with_two_sources()
+        (self.repo / "tests").mkdir()
+        (self.repo / "tests" / "test_new.py").write_text("new\n", encoding="utf-8")
+        root = self.repo / "memory"
+        summary = self.run_cli("probe", "--repo-root", str(self.repo), "--registry-root", str(root))
+        self.assertEqual(
+            (0, f"Domain Memory at {root}: current, agent-asserted, established by git; discovery drifted: "
+                "0 listed paths gone, 1 matching path unlisted; run refresh-listing (no confirmation needed)."),
+            (summary.returncode, summary.stdout.strip()),
+        )
+
     def test_the_probe_of_a_selection_changed_only_inside_stays_current_and_points_at_verify_evidence(self) -> None:
         self.selection_with_two_sources()
         (self.repo / "docs" / "kept.md").write_text("edited", encoding="utf-8")

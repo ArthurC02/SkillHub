@@ -13,13 +13,15 @@ from domain_registry.git import TIMEOUT_VARIABLE, deadline_seconds, run_bounded
 
 DEADLINE_SECONDS = 2
 RETURNS_WITHIN_SECONDS = 10
-GRANDCHILD_SLEEP_SECONDS = 12
+GRANDCHILD_SLEEP_SECONDS = 30
 GONE_WITHIN_SECONDS = 5
+SPAWN_AND_EXIT = (
+    "import subprocess, sys; grandchild = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep({sleep})']); "
+    "open(sys.argv[1], 'w').write(str(grandchild.pid))"
+)
 HANGING_COMMAND = """
 import subprocess, sys, time
-grandchild = subprocess.Popen([sys.executable, "-c", "import time; time.sleep({sleep})"])
-with open(sys.argv[1], "w") as pid_file:
-    pid_file.write(str(grandchild.pid))
+subprocess.run([sys.executable, "-c", "{spawn}", sys.argv[1]], check=True)
 time.sleep({sleep})
 """
 
@@ -46,12 +48,15 @@ def gone_within(pid: int, seconds: float) -> bool:
 
 
 class BoundedCommandTest(unittest.TestCase):
-    def test_a_command_whose_grandchild_holds_the_output_open_is_stopped_with_its_whole_tree_at_the_deadline(
+    def test_a_grandchild_whose_parent_exited_and_that_holds_the_output_open_is_stopped_at_the_deadline(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             script, pid_file = Path(temporary) / "hang.py", Path(temporary) / "grandchild.pid"
-            script.write_text(HANGING_COMMAND.format(sleep=GRANDCHILD_SLEEP_SECONDS), encoding="utf-8")
+            script.write_text(
+                HANGING_COMMAND.format(spawn=SPAWN_AND_EXIT.format(sleep=GRANDCHILD_SLEEP_SECONDS), sleep=GRANDCHILD_SLEEP_SECONDS),
+                encoding="utf-8",
+            )
             started = time.monotonic()
             with patch.dict(os.environ, {TIMEOUT_VARIABLE: str(DEADLINE_SECONDS)}), \
                     self.assertRaises(subprocess.TimeoutExpired) as stopped:
@@ -67,7 +72,7 @@ class BoundedCommandTest(unittest.TestCase):
 
     def test_a_git_read_that_times_out_says_a_rerun_is_safe(self) -> None:
         with patch.dict(os.environ, {TIMEOUT_VARIABLE: "1"}), \
-                patch("domain_registry.git.subprocess.Popen") as popen,                 patch("domain_registry.git._kill_process_tree"):
+                patch("domain_registry.git.subprocess.Popen") as popen,                 patch("domain_registry.git._kill_process_tree"), patch("domain_registry.git._job_holding", return_value=None):
             popen.return_value.communicate.side_effect = [subprocess.TimeoutExpired(["git"], 1), (b"", b"")]
             with self.assertRaises(subprocess.TimeoutExpired) as stopped:
                 run_bounded(["git", "-C", "repo", "ls-tree", "HEAD"])

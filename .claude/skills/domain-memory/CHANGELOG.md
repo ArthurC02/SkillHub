@@ -2,6 +2,14 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.11
+
+### Fixed
+
+- On Windows a git timeout now stops every process the call started, through a job object the command is assigned to as it starts; the shell-based hooks, fsmonitor and credential helpers of Git for Windows escaped the parent-child walk the previous release relied on. A process spawned in the instant before the assignment still escapes; `taskkill` remains the fallback when no job can be assigned, and a daemon git leaves behind on success is not touched.
+- `probe` reports discovery drift as `verify-sources` does, with the same counts and the `refresh-listing` remedy in its sentence, and keeps exit 0; before, it said "current" for a tree `verify-sources` reported as `discovery_drifted`.
+- The command reference states that the git deadline is per call, so a command that runs git several times can wait several times the limit.
+
 ## 1.2.10
 
 ### Changed

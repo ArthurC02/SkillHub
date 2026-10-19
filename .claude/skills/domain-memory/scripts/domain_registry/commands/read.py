@@ -36,7 +36,7 @@ from ..registry import (
     record_by_id,
 )
 from ..search import CONSTRAINT_ASSETS, MATCH_KINDS, every_resolved_term, prose_mentions, ranked_lookup
-from ..sources import probe_sources
+from ..sources import counted, probe_sources
 from ..store import committed_documents, read_document
 from .common import print_json
 
@@ -53,14 +53,20 @@ def probe_summary(result: dict, registry_root: Path) -> str:
             f"{where}: none. Nothing is initialized here; "
             "a developer decides whether to create one."
         )
-    if result["status"] == "current":
+    if result["status"] in ("current", "discovery_drifted"):
         changed_inside = result.get("content_changed", [])
         inside = (
             f"; {len(changed_inside)} selected sources changed inside ({_named(changed_inside)}); "
             "verify-evidence checks the citations"
             if changed_inside else ""
         )
-        return f"{where}: current, {result['selection_status']}, established by {result['checked']}{inside}."
+        gone, unlisted = len(result.get("discovered_but_gone", [])), len(result.get("discovered_but_unlisted", []))
+        drifted = (
+            f"; discovery drifted: {counted(gone, 'listed path')} gone, {counted(unlisted, 'matching path')} "
+            "unlisted; run refresh-listing (no confirmation needed)"
+            if result["status"] == "discovery_drifted" else ""
+        )
+        return f"{where}: current, {result['selection_status']}, established by {result['checked']}{inside}{drifted}."
     if result["status"] == "stale":
         return (
             f"{where}: stale. {len(result['changed_sources'])} selected sources gained, lost or renamed files "
@@ -262,7 +268,7 @@ def handle_probe(args: argparse.Namespace) -> int:
         args.repo_root.resolve(), registry_root / "source-map.json", policy
     )
     print(probe_summary(result, args.registry_root))
-    return {"current": 0, "absent": 2}.get(result["status"], 1)
+    return {"current": 0, "discovery_drifted": 0, "absent": 2}.get(result["status"], 1)
 
 
 def handle_readiness(args: argparse.Namespace) -> int:
