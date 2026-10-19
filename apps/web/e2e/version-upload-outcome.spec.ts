@@ -4,7 +4,7 @@ import { writeFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { expect, test, type Page } from "@playwright/test";
 import { SKILL, VERSION, SKILL_VERSIONS, platformResponse } from "../src/testing/fixtures/platform";
-import { stubPlatform } from "./stub";
+import { STATIC_KINDS, serveStatic, stubPlatform } from "./stub";
 
 test.use({ trace: "retain-on-failure" });
 
@@ -159,8 +159,7 @@ for (const outcome of OUTCOMES) {
     const endpoint = `http://127.0.0.1:${(receiver.address() as AddressInfo).port}/versions`;
     await context.route("**/*", async (route, request) => {
       if (request.url().startsWith(endpoint)) return route.continue();
-      if (["document", "stylesheet", "script", "font"].includes(request.resourceType()))
-        return route.continue();
+      if (STATIC_KINDS.has(request.resourceType())) return serveStatic(route);
       if (new URL(request.url()).pathname === `/skills/${SKILL}/versions`) {
         if (request.method() === "POST") {
           return route.continue({ url: endpoint });

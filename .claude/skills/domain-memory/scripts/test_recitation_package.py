@@ -17,6 +17,7 @@ from domain_registry.relocate import Recitation, recite
 from test_support import RegistryTestCase
 
 IDENTIFIERS = ("rq-recite", "pr-recite", "probe")
+TOOL = Path(__file__).resolve().parent / "registry_tools.py"
 
 
 class RecitationPackageTest(RegistryTestCase):
@@ -48,10 +49,58 @@ class RecitationPackageTest(RegistryTestCase):
         )
         [obligation] = self.read(output, "test-obligations.json")["obligations"]
         self.assertEqual(
-            ("citations-current", ["verify-evidence", "--registry-root", "memory", "--repo-root", ".", "--path", "src/a.py"]),
+            ("citations-current", ["verify-evidence", "--registry-root", "memory", "--repo-root", ".",
+                                   "--package-root", "changes/recite", "--path", "src/a.py"]),
             (obligation["source_id"], shlex.split(obligation["check"])[2:]),
         )
         self.assertEqual(["src/a.py"], requirement["sources"])
+
+    def verify(self, *arguments: str) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            [sys.executable, str(TOOL), "verify-evidence", "--registry-root", "memory", "--repo-root", ".", *arguments],
+            cwd=self.repo, capture_output=True, text=True, encoding="utf-8", check=False,
+        )
+
+    def test_a_stale_recitation_package_passes_its_own_obligation_before_it_is_applied(self) -> None:
+        self.cited_rule("reviewed", (2, 2))
+        (self.repo / "src" / "a.py").write_text("one\ntwo changed\nthree\n", encoding="utf-8")
+        recitation = recite(self.repo / "memory", self.repo, Recitation("rules", "rule", "src/a.py", "2"))
+        output = self.repo / "changes" / "recite"
+        self.assertEqual([], recitation_package(output, self.repo / "memory", recitation, IDENTIFIERS))
+        [obligation] = self.read(output, "test-obligations.json")["obligations"]
+        as_packaged = subprocess.run(
+            [sys.executable, *shlex.split(obligation["check"])[1:]],
+            cwd=self.repo, capture_output=True, text=True, encoding="utf-8", check=False,
+        )
+        as_stored = self.verify("--path", "src/a.py")
+        self.assertEqual(
+            (0, {"current": 1, "stale": 0}, 1, "verify-evidence failed: 1 stale citations"),
+            (
+                as_packaged.returncode,
+                {key: json.loads(as_packaged.stdout)["summary"][key] for key in ("current", "stale")},
+                as_stored.returncode,
+                as_stored.stderr.split(";")[0],
+            ),
+        )
+
+    def test_verify_evidence_with_a_package_root_reads_the_registry_as_the_package_would_leave_it(self) -> None:
+        self.cited_rule("reviewed", (2, 2))
+        (self.repo / "src" / "a.py").write_text("one\ntwo changed\nthree\n", encoding="utf-8")
+        package = self.repo / "changes" / "pkg"
+        package.mkdir(parents=True)
+        fresh = {
+            "id": "rule-2", "contexts": ["orders"], "statement": "T.", "status": "candidate",
+            "evidence": [citation(self.repo, "src/a.py", 2, 2)],
+        }
+        (package / "domain-change-proposal.json").write_text(json.dumps({"registry_updates": [
+            {"asset": "rules", "operation": "remove", "id": "rule"},
+            {"asset": "rules", "operation": "upsert", "record": fresh},
+        ]}), encoding="utf-8")
+        result = self.verify("--package-root", "changes/pkg")
+        self.assertEqual(
+            (0, [("rules", "rule-2", "current")]),
+            (result.returncode, [(r["asset"], r["id"], r["status"]) for r in json.loads(result.stdout)["results"]]),
+        )
 
     def test_a_recitation_that_is_more_than_a_recitation_is_refused(self) -> None:
         recitation = self.recitation()
@@ -116,7 +165,7 @@ class RecitationPackageTest(RegistryTestCase):
         [obligation] = self.read(output, "test-obligations.json")["obligations"]
         arguments = shlex.split(obligation["check"])
         self.assertEqual(
-            ["verify-evidence", "--registry-root", "memory", "--repo-root", ".", "--path", "src/a.py", "--path", "src/b.py"],
+            ["verify-evidence", "--registry-root", "memory", "--repo-root", ".", "--package-root", "changes/recite", "--path", "src/a.py", "--path", "src/b.py"],
             arguments[2:],
         )
         self.assertTrue(arguments[1].endswith("scripts/registry_tools.py"))

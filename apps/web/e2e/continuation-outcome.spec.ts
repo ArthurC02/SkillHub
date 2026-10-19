@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { RUN, RUNS, TRACE_GENERAL, platformResponse } from "../src/testing/fixtures/platform";
-import { stubPlatform } from "./stub";
+import { STATIC_KINDS, serveStatic, stubPlatform } from "./stub";
 
 const NEXT = "5c2f8e10-0b7a-4d63-9a41-7e3d2b1c9f44";
 const ASKING = {
@@ -151,8 +151,7 @@ test("opening Run history preserves the unknown continuation draft and retries a
   let lists = 0;
   let posts = 0;
   await page.context().route("**/*", (route, request) => {
-    if (["document", "stylesheet", "script", "font"].includes(request.resourceType()))
-      return route.continue();
+    if (STATIC_KINDS.has(request.resourceType())) return serveStatic(route);
     const { status, body } = platformResponse(request.url());
     return route.fulfill({ status, json: body });
   });

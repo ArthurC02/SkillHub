@@ -602,8 +602,12 @@ def _synonym_errors(
 EVIDENCE_STATUSES = ("current", "shifted", "stale", "unhashed", "missing", "invalid", "legacy-unverified")
 
 
+RecordOverlay = dict[str, dict[str, dict[str, Any] | None]]
+
+
 def verify_evidence(
-    root: Path, repo_root: Path, paths: list[str] | None = None, content_of: ContentReader | None = None
+    root: Path, repo_root: Path, paths: list[str] | None = None, content_of: ContentReader | None = None,
+    overlay: RecordOverlay | None = None,
 ) -> dict[str, Any]:
     source_map = source_map_for(root)
     paths = [PurePosixPath(Path(path).as_posix()).as_posix() for path in paths] if paths else None
@@ -612,7 +616,7 @@ def verify_evidence(
     results = [
         {"asset": name.removesuffix(".json"), "id": entry.get("id"), **check(classify(reference))}
         for name in ASSET_KEYS
-        for entry in asset_records(root, name)
+        for entry in _overlaid(asset_records(root, name), (overlay or {}).get(name, {}))
         for reference in all_references(entry)
         if not paths or (isinstance(reference, dict) and reference.get("path") in wanted)
     ]
@@ -631,6 +635,15 @@ def verify_evidence(
             for path in paths
         }
     return report
+
+
+def _overlaid(records: list[dict[str, Any]], changes: dict[str, dict[str, Any] | None]) -> list[dict[str, Any]]:
+    if not changes:
+        return records
+    present = {entry.get("id") for entry in records}
+    replaced = [changes[entry["id"]] if entry.get("id") in changes else entry for entry in records]
+    added = [record for record_id, record in changes.items() if record_id not in present]
+    return [entry for entry in [*replaced, *added] if entry is not None]
 
 
 def migrate_evidence(root: Path, repo_root: Path) -> int:

@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.23
+
+### Added
+
+- `verify-evidence --package-root <package>` checks the Registry as that Change Package's `registry_updates` would leave it: an upsert replaces or adds the record, a remove drops it.
+
+### Fixed
+
+- A re-citation package for a `stale` citation could never pass its one obligation, because the generated `verify-evidence` command checked the Registry as stored, which still held the old digests, and `ship-package` needs a passed result before it applies the package; a `shifted` citation only passed because `verify-evidence` does not fail on it. `init-change-package --recitation` now writes the check with `--package-root` pointing at the package, so the same command passes before apply and `verify-evidence` on the Registry is clean after ship.
+
 ## 1.2.22
 
 ### Fixed

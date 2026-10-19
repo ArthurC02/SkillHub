@@ -8,7 +8,7 @@ import {
   platformResponse,
 } from "../src/testing/fixtures/platform";
 import type { OwnSkills } from "../src/core/api/types";
-import { stubPlatform } from "./stub";
+import { STATIC_KINDS, serveStatic, stubPlatform } from "./stub";
 
 const COPIED = {
   skill_id: "abcdef01-2345-4789-abcd-0123456789ab",
@@ -191,8 +191,7 @@ for (const outcome of ["lost response", "unavailable", "malformed receipt"]) {
     let recovered = false;
     let sourceFailed = false;
     await context.route("**/*", (route, request) => {
-      if (["document", "stylesheet", "script", "font"].includes(request.resourceType()))
-        return route.continue();
+      if (STATIC_KINDS.has(request.resourceType())) return serveStatic(route);
       const path = new URL(request.url()).pathname;
       if (path === `/api/skills/${SKILL}` && sourceFailed)
         return route.fulfill({ status: 503, json: { error: "service unavailable" } });

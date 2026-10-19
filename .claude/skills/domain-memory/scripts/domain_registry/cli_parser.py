@@ -247,6 +247,7 @@ def _add_citation_commands(commands: argparse._SubParsersAction) -> None:
     evidence_verify_parser.add_argument("--path", action="append")
     evidence_verify_parser.add_argument("--strict", action="store_true")
     evidence_verify_parser.add_argument("--staged", action="store_true")
+    add_path(evidence_verify_parser, "--package-root", required=False)
     recite_parser = commands.add_parser("recite", help="Re-cite one changed citation")
     add_path(recite_parser, "--registry-root")
     add_path(recite_parser, "--repo-root")
