@@ -3,10 +3,10 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-16T17:57:56.233858Z"
+    at: "2026-10-19T18:30:19.836130Z"
 sources:
-  - resource: "apps/platform/internal/creator/workspace/account.go#L41-57"
-    excerpt_sha256: "sha256:8ff1053d6d1caa19b5c0fe2476c207a4fb6a2d5b54a35f1561008d99f11d8808"
+  - resource: "apps/platform/internal/creator/workspace/account.go#L42-69"
+    excerpt_sha256: "sha256:f299a7a5956ac36a9374f06b675c2cf5b0a10b91aa65a2ff4c2b9aa2f8ca95f8"
   - resource: "apps/platform/internal/creator/workspace/http.go#L550-580"
     excerpt_sha256: "sha256:694854a88d93cbfe6e3d820134e8fa46b0b7d9c256c54ffdf28c526e0271e58b"
   - resource: "contracts/openapi/public.yaml#L222-229"

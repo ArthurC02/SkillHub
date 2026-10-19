@@ -184,7 +184,7 @@
 - [adopting-a-reference-names-exactly-one-skill](/rules/adopting-a-reference-names-exactly-one-skill) — Adopting a reference names exactly one listed Skill.
 - [agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling](/rules/agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling) — A platform agent's effective daily spend cap is the operator's override when one is set, otherwise the default its definition declares.
 - [an-access-restriction-needs-a-reason-code](/rules/an-access-restriction-needs-a-reason-code) — An access restriction must carry a non-blank reason code; a blank one is refused and the Skill's restriction is unchanged.
-- [an-account-purge-de-identifies-feedback](/rules/an-account-purge-de-identifies-feedback) — Purging an account detaches its feedback reports and funnel events from the Workspace and user, keeping the text, rather than deleting them.
+- [an-account-purge-de-identifies-feedback](/rules/an-account-purge-de-identifies-feedback) — Purging an account detaches its funnel events from the Workspace and user, and erases its feedback reports' text, page and Run link, keeping only each report's….
 - [an-activity-cursor-must-be-one-the-feed-issued](/rules/an-activity-cursor-must-be-one-the-feed-issued) — A cursor the feed did not issue is refused as invalid before any owner source is read.
 - [an-activity-cursor-names-its-kind-and-source](/rules/an-activity-cursor-names-its-kind-and-source) — A cursor without a kind or without a source id is refused as invalid.
 - [an-activity-cursor-rank-is-0-to-3](/rules/an-activity-cursor-rank-is-0-to-3) — A cursor naming a priority rank outside 0 to 3 is refused as invalid, so a forged cursor cannot reach a rank the feed does not have.

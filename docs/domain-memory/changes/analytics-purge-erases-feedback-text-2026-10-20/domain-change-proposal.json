@@ -3,12 +3,12 @@
   "proposal_id": "analytics-purge-erases-feedback-text-2026-10-20",
   "proposer": "domain-memory-agent",
   "requirement_id": "analytics-purge-erases-feedback-text-2026-10-20",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-19T18:28:48.068094Z",
   "verified_at": "2026-10-19T18:28:58.183549Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-19T18:32:34.330469Z",
+  "applied_at": "2026-10-19T18:33:01.876810Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "b5ababf7839463753ee98edf99c5f308db63a988",
@@ -112,5 +112,9 @@
   ],
   "supersedes": [
     "analytics-harvest-rules-2026-10-17"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "22ba76ed2a6aabf67e5b561ebf0096d635c8d47a",
+    "registry_digest": "sha256:bd675c9a5a12db6d26e2bd9d87878f5076f8cf691f99649f31d32ae1c8291bf9"
+  }
 }

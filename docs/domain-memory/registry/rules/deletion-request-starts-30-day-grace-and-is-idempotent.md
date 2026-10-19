@@ -3,14 +3,14 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-16T17:57:56.233858Z"
+    at: "2026-10-19T18:30:19.836130Z"
 sources:
-  - resource: "apps/platform/internal/creator/workspace/service.go#L326-336"
-    excerpt_sha256: "sha256:b1e8edde038cda98195cb6498b6aeb6fdf655c1b6a27bceb053934db679cba77"
-  - resource: "apps/platform/internal/creator/workspace/account.go#L41-57"
-    excerpt_sha256: "sha256:8ff1053d6d1caa19b5c0fe2476c207a4fb6a2d5b54a35f1561008d99f11d8808"
-  - resource: "apps/platform/internal/creator/workspace/account_test.go#L34-63"
-    excerpt_sha256: "sha256:c10ecde98da22afc1a1f47357f055a4302fe11bcce8c696fb637999ab8a1525c"
+  - resource: "apps/platform/internal/creator/workspace/service.go#L329-339"
+    excerpt_sha256: "sha256:0520b7e31b141aaa3546d12c08c04a33e92b5fbd10365eea013591ad41877248"
+  - resource: "apps/platform/internal/creator/workspace/account.go#L42-69"
+    excerpt_sha256: "sha256:f299a7a5956ac36a9374f06b675c2cf5b0a10b91aa65a2ff4c2b9aa2f8ca95f8"
+  - resource: "apps/platform/internal/creator/workspace/account_test.go#L34-71"
+    excerpt_sha256: "sha256:e877185dc0ac36b0f6dd870720f86296ffcec89f918b1e66c652b157213cf838"
   - resource: "contracts/openapi/public.yaml#L195-208"
     excerpt_sha256: "sha256:cbdf684053ba1daf32836bbeb0309454cad0c581e5541945e39a3992744ecf53"
 ---

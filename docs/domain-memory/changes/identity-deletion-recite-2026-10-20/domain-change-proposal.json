@@ -3,12 +3,12 @@
   "proposal_id": "identity-deletion-recite",
   "proposer": "domain-memory-agent",
   "requirement_id": "identity-deletion-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-19T18:30:18.886321Z",
   "verified_at": "2026-10-19T18:30:20.395499Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-19T18:33:38.376335Z",
+  "applied_at": "2026-10-19T18:34:09.016543Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "b5ababf7839463753ee98edf99c5f308db63a988",
@@ -156,5 +156,9 @@
   ],
   "supersedes": [
     "identity-packaging-harvest"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "22ba76ed2a6aabf67e5b561ebf0096d635c8d47a",
+    "registry_digest": "sha256:4402b9f1690206bc0e738bb01433841e957d90d95351b08fc97b753292ec790c"
+  }
 }
