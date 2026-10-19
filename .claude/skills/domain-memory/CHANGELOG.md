@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.16
+
+### Fixed
+
+- The test of the did-you-mean refusal compared against the path as the test typed it, while the command prints the root it resolved, which differs on a Windows runner whose temporary directory is a short name; the test now compares against the resolved path. No product change.
+
 ## 1.2.15
 
 ### Fixed

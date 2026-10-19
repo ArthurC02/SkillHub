@@ -101,7 +101,7 @@ class CliReadTest(RegistryTestCase):
             with self.subTest(given.name):
                 result = self.run_cli("refresh-listing", "--registry-root", str(given), "--repo-root", str(self.repo))
                 self.assertEqual(
-                    (1, f"ERROR: no Domain Memory at {given}: {DOMAIN_MEMORY_HINT}; did you mean {memory.as_posix()}?\n",
+                    (1, f"ERROR: no Domain Memory at {given.resolve()}: {DOMAIN_MEMORY_HINT}; did you mean {memory.resolve().as_posix()}?\n",
                      False),
                     (result.returncode, result.stderr, typo.exists()),
                 )
