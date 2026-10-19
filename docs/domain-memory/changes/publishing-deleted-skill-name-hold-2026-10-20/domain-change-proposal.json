@@ -3,12 +3,12 @@
   "proposal_id": "publishing-deleted-skill-name-hold-2026-10-20",
   "proposer": "domain-memory-agent",
   "requirement_id": "publishing-deleted-skill-name-hold-2026-10-20",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-19T17:21:01.625833Z",
   "verified_at": "2026-10-19T17:21:10.147052Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-19T17:31:59.601217Z",
+  "applied_at": "2026-10-19T17:32:29.373997Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "b889b0dbb6b2d67e44c5b20f6f1e27ae6dabd0f5",
@@ -105,5 +105,9 @@
         "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "5939c5a81511d32b964625028f99511d5a92bc2c",
+    "registry_digest": "sha256:293b739570173456be6473296959c74708fa86bc30d9f249b12cb57153a4378c"
+  }
 }

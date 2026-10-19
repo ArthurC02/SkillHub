@@ -3,17 +3,17 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-17T15:16:09.817174Z"
+    at: "2026-10-19T16:58:36.700031Z"
 sources:
-  - resource: "apps/platform/internal/creator/creation/creation.go#L285-308"
-    excerpt_sha256: "sha256:e620da6d930b20f109a6417a623ce6a8aaa563895900dba269b812192ab9a5e6"
-  - resource: "apps/platform/internal/creator/creation/command_test.go#L89-99"
-    excerpt_sha256: "sha256:fef8105ca0d1d2d64c1c6a69b39b14185821def4d6fd6dd9ffa23277de398d51"
+  - resource: "apps/platform/internal/creator/creation/creation.go#L297-297"
+    excerpt_sha256: "sha256:f18748987f2dc8901f183287cca2004725112a4579485583626d70c758cccad5"
+  - resource: "apps/platform/internal/creator/creation/command_test.go#L89-101"
+    excerpt_sha256: "sha256:39620236efec7f89bb8f5c3c05f3db7cdda7f5c37ed70450849a9068be7aabb3"
 ---
-After a creation session's deadline every command except cancel is refused.
+After a creation session's deadline only cancel and the three save commands (materialize, finalize, confirm duplicate), none of which calls the model, are accepted; every other command is refused.
 
 # Relations
 - Contexts: [creation](/contexts/creation)
 
 # Examples
-- A message after the deadline is refused; cancel still works.
+- A draft-ready session past its deadline saves; a message or a budget raise is refused.

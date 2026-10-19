@@ -3,12 +3,12 @@
   "proposal_id": "eval-purge-erases-feedback-comments-2026-10-20",
   "proposer": "domain-memory-agent",
   "requirement_id": "eval-purge-erases-feedback-comments-2026-10-20",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-19T16:32:47.227837Z",
   "verified_at": "2026-10-19T16:32:55.600434Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-19T17:30:33.764542Z",
+  "applied_at": "2026-10-19T17:31:01.812660Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "fff3353f4abfa1ce27b1a3cd5771c8d416ead8b7",
@@ -105,5 +105,9 @@
         "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "5939c5a81511d32b964625028f99511d5a92bc2c",
+    "registry_digest": "sha256:eaaa83ecf4394598c4fa7e4a4929b77186037854a442c4c5d4eaa06317374f30"
+  }
 }

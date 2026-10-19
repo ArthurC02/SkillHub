@@ -3,10 +3,10 @@
   "proposal_id": "patrol-shift-recite",
   "proposer": "domain-memory-agent",
   "requirement_id": "patrol-shift-recite",
-  "status": "submitted",
+  "status": "verified",
   "change_classification": "routine",
   "submitted_at": "2026-10-19T17:24:31.327568Z",
-  "verified_at": null,
+  "verified_at": "2026-10-19T17:32:51.146790Z",
   "finalized_at": null,
   "applied_at": null,
   "proposal_revision": 1,
@@ -380,7 +380,21 @@
   ],
   "risk_flags": [],
   "open_questions": [],
-  "approvals": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-19T17:32:50.132592Z",
+      "scope": "Re-cite nine records onto the lines the requirements-patrol changes moved",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "3075ed5ae7f6e0d59fa01c1501532eb583eea21f",
+        "registry_digest": "sha256:69811dace89ad48c4a97ced1f9de44abe7cef698280066dd93662d73526d2eb2",
+        "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
+      }
+    }
+  ],
   "supersedes": [
     "batch-harvest-rules-2026-10-17",
     "credit-ledger-rules-2026-10-18",

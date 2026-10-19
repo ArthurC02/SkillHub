@@ -3,12 +3,12 @@
   "proposal_id": "registry-owner-restores-a-takedown-2026-10-20",
   "proposer": "domain-memory-agent",
   "requirement_id": "registry-owner-restores-a-takedown-2026-10-20",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-19T17:20:02.367080Z",
   "verified_at": "2026-10-19T17:20:09.886198Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-19T17:31:31.002328Z",
+  "applied_at": "2026-10-19T17:31:56.748588Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "b889b0dbb6b2d67e44c5b20f6f1e27ae6dabd0f5",
@@ -105,5 +105,9 @@
         "committed_digest": "sha256:ddd8a18dd71fc4616ae89acc2eb9da7ff27c76e397e71a554c0852ad2675cd96"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "5939c5a81511d32b964625028f99511d5a92bc2c",
+    "registry_digest": "sha256:2994087d47648473cd9fa21137a6bb0add35d0ea0c033ee725a08353c04697cc"
+  }
 }

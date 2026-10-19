@@ -3,12 +3,12 @@
   "proposal_id": "creation-saving-past-the-deadline-2026-10-20",
   "proposer": "domain-memory-agent",
   "requirement_id": "creation-saving-past-the-deadline-2026-10-20",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-19T16:58:30.223706Z",
   "verified_at": "2026-10-19T16:58:37.034526Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-19T17:29:34.730844Z",
+  "applied_at": "2026-10-19T17:30:04.175777Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "b889b0dbb6b2d67e44c5b20f6f1e27ae6dabd0f5",
@@ -112,5 +112,9 @@
   ],
   "supersedes": [
     "creation-harvest-rules-2026-10-17"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "5939c5a81511d32b964625028f99511d5a92bc2c",
+    "registry_digest": "sha256:342dc00e7ae8d015c53fc0da3eadf3020454cee544fde94f1c64a747bd3e42b2"
+  }
 }

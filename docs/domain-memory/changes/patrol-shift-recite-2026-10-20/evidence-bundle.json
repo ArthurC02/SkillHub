@@ -11,7 +11,17 @@
   "scm_attestation": null,
   "counterfactual_check": null,
   "sources": [],
-  "test_results": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/patrol-shift-recite-2026-10-20 --path apps/platform/internal/creator/credit/service.go --path apps/platform/internal/creator/credit/service_test.go --path apps/platform/internal/creator/workspace/purge.go --path apps/platform/internal/entrypoint/api/apiserver/app.go --path apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go --path apps/platform/internal/entrypoint/wiring/evaluation_batches.go --path apps/platform/internal/skill/library/skill_root.go --path apps/platform/internal/skill/library/skill_root_test.go --path apps/platform/internal/trial/batch/batch.go --path apps/platform/internal/trial/execution/batch_facts.go --path apps/platform/internal/trial/execution/service.go --path docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:42dbf6919405be3c299aff728bb098bc2e6277900602bb70abe4b60fb0b7e157",
+      "finished_at": "2026-10-19T17:32:40.162923Z"
+    }
+  ],
   "contract_checks": [],
   "architecture_checks": [],
   "security_checks": [],

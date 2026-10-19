@@ -3,12 +3,12 @@
   "proposal_id": "batch-pause-for-credit-2026-10-20",
   "proposer": "domain-memory-agent",
   "requirement_id": "batch-pause-for-credit-2026-10-20",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-19T17:00:16.367566Z",
   "verified_at": "2026-10-19T17:00:34.151549Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-19T17:29:09.236402Z",
+  "applied_at": "2026-10-19T17:29:31.984345Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "b889b0dbb6b2d67e44c5b20f6f1e27ae6dabd0f5",
@@ -146,5 +146,9 @@
   ],
   "supersedes": [
     "batch-wait-reprove-2026-10-17"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "5939c5a81511d32b964625028f99511d5a92bc2c",
+    "registry_digest": "sha256:2c203f126ca34ca534a93c89225ac61a1fb14a5778c7b63563cac0391e2d7800"
+  }
 }
