@@ -3,12 +3,12 @@
   "proposal_id": "registry-cite-erasure-trigger-2026-10-20",
   "proposer": "domain-memory-agent",
   "requirement_id": "registry-cite-erasure-trigger-2026-10-20",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-20T07:58:34.159447Z",
   "verified_at": "2026-10-20T07:58:42.155478Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-20T07:58:52.169512Z",
+  "applied_at": "2026-10-20T07:59:30.361208Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "31e8d45d6a78e29561d01389602479e47e09f735",
@@ -133,5 +133,9 @@
   ],
   "supersedes": [
     "registry-erase-own-run-content-2026-10-20"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "16d36ae54031244445696fec85e2ba18af3ea92d",
+    "registry_digest": "sha256:d3789064df0e31408135b016e65f710c5235f4d92ff57ddbed295a6588c91cc8"
+  }
 }
