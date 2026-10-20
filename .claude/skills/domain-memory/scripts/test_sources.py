@@ -686,6 +686,13 @@ class SourcesTest(RegistryTestCase):
             self.discovery_groups("tests"),
         )
 
+    def test_discovery_lists_each_database_schema_root_as_implementation(self) -> None:
+        self.write_files(
+            "apps/svc/thing.go", "db/migrations/0001_orders.sql", "database/schema.sql",
+            "migrations/0001_orders.sql", "schema/orders.sql", "notes/db/ignored.sql",
+        )
+        self.assertEqual(["apps", "db", "database", "migrations", "schema"], self.discovery_groups("implementation"))
+
     def test_nested_test_files_do_not_reclassify_the_implementation_root(self) -> None:
         self.write_files("apps/svc/deep/inner_test.go", "apps/svc/thing.go")
         self.assertEqual(["apps"], self.discovery_groups("implementation"))

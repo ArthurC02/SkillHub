@@ -31,7 +31,7 @@ EXCLUDED_DIRECTORIES = {
     "generated",
 }
 
-IMPLEMENTATION_ROOTS = ("apps", "src", "services", "packages")
+IMPLEMENTATION_ROOTS = ("apps", "src", "services", "packages", "db", "database", "migrations", "schema")
 
 CI_MARKERS = {
     ".github/workflows": "github-actions",
@@ -733,6 +733,16 @@ def verify_against_discovery(
 def shown_argument(path: Path) -> str:
     text = path.as_posix()
     return f'"{text}"' if " " in text else text
+
+
+def relisting_hint(registry_root: Path, repo_root: Path, paths: list[str]) -> str | None:
+    kind_of = source_kind_index(discover_sources(repo_root))
+    placed = [(path, kind_of(path)) for path in paths]
+    placed = [(path, kind) for path, kind in placed if kind != "unclassified"]
+    if not placed:
+        return None
+    placements = ", ".join(f"{path} under {kind}" for path, kind in placed)
+    return f"discovery now places {placements}; {refresh_listing_advice(registry_root, repo_root)}"
 
 
 def refresh_listing_advice(registry_root: Path, repo_root: Path) -> str:

@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.27
+
+### Added
+
+- `discover-sources` lists the database schema roots `db`, `database`, `migrations` and `schema` as implementation, so a rule a migration's constraint or trigger enforces can cite the migration once `refresh-listing` has brought the listing up to date. Before, a repository that kept its schema outside `apps`, `src`, `services` and `packages` could not cite it at all, and a harvest had to cite the decision describing the rule in place of the lines enforcing it.
+- When `harvest` refuses a citation outside the confirmed sources and today's discovery would place that path in a group, the refusal names the group and the `refresh-listing` to run.
+
 ## 1.2.26
 
 ### Removed

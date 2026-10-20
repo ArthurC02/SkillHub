@@ -60,14 +60,14 @@ class CliCiteTest(RegistryTestCase):
 
     def test_citing_a_selected_path_no_discovery_group_classifies_is_selected_and_silent(self) -> None:
         self.cited_file()
-        (self.repo / "db").mkdir()
-        (self.repo / "db" / "queries.sql").write_text("select 1;\n", encoding="utf-8")
+        (self.repo / "ops").mkdir()
+        (self.repo / "ops" / "queries.sql").write_text("select 1;\n", encoding="utf-8")
         write_source_map(
             self.repo / "memory" / "source-map.json",
-            selected_source_map(self.repo, [self.repo / "docs" / "adr", self.repo / "db"]),
+            selected_source_map(self.repo, [self.repo / "docs" / "adr", self.repo / "ops"]),
         )
         result = self.run_cli(
-            "cite", "--repo-root", str(self.repo), "--path", "db/queries.sql",
+            "cite", "--repo-root", str(self.repo), "--path", "ops/queries.sql",
             "--start", "1", "--end", "1", "--registry-root", str(self.repo / "memory"),
         )
         self.assertEqual(("selected", ""), (json.loads(result.stdout)["source_kind"], result.stderr))

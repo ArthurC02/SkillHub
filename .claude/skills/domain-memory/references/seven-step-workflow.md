@@ -101,7 +101,7 @@ The package:
 Each entry of `rules`:
 
 - `id`, `statement`, and `example` or `examples`;
-- `enforcing` spans, each `[path, start, end]` or `path:start-end`;
+- `enforcing` spans, each `[path, start, end]` or `path:start-end`, citing what enforces the rule, the code, a migration's constraint or trigger, or a contract, in any confirmed source; the decision or requirement that states the rule is evidence of its statement, not of its enforcement, so it is cited beside the enforcing lines, not in their place;
 - the proving test as `test_file` and `test`, and the full `check` that runs it with an optional `cwd`, `command_profile` and `level`;
 - `mutate`, with `file`, `find`, `replace` and an optional `expect`.
 
@@ -109,7 +109,7 @@ Each entry of `rules`:
 
 Each rule is written as a candidate, or a reviewed one is marked `amended`, or `reproven` when its statement, examples, contexts and cited spans are unchanged and only the proof is new, so the package supersedes its reviewer. The package starts under `<changes-root>/<name>`; a candidate is promoted as it stands, and an amended or reproven rule is promoted with the spec's statement, examples, contexts and citations, each cited afresh from the lines as they are now, in place of what the reviewed record held, so no stale citation survives into the package; then the package is filled and previewed `--as-status submitted`.
 
-Filling writes one acceptance criterion `enforced-<id>` and one test obligation `rule-<id>` per rule, the obligation covering the rule through `also_covers` and running the rule's check. It replaces the criteria, obligations, `rule_ids`, `affected_contexts`, `proof_obligations`, the sources (every file the rules cite) and the evidence's `counterfactual_check` list from the counterfactuals it ran and the spec's decisions.
+Filling writes one acceptance criterion `enforced-<id>` and one test obligation `rule-<id>` per rule, the obligation covering the rule through `also_covers` and running the rule's check. It replaces the criteria, obligations, `rule_ids`, `affected_contexts`, `proof_obligations`, the sources (every file the rules cite) and the evidence's `counterfactual_check` list from the counterfactuals it ran, each naming the file and protection it mutated, so the proof's subject is on record even where the rule's evidence cites other lines and the spec's decisions.
 
 ### Resuming a harvest
 

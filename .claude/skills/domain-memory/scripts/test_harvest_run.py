@@ -240,7 +240,28 @@ class HarvestTest(RegistryTestCase):
              (self.repo / "memory" / "changes" / "orders-length-rule").exists(), record_by_id(self.repo / "memory", "rules", RULE_ID)),
         )
         self.assertTrue(report["errors"][0].startswith(f"{RULE_ID} cites notes.txt outside the confirmed sources"))
+        self.assertNotIn("refresh-listing", report["errors"][0])
         self.assertIn("confirm the sources the cited paths belong to", report["next"])
+
+    def test_a_citation_discovery_would_place_today_names_the_group_and_the_refresh_listing_to_run(self) -> None:
+        self.confirm_src()
+        (self.repo / "db" / "migrations").mkdir(parents=True)
+        (self.repo / "db" / "migrations" / "0001_limit.sql").write_text(
+            "ALTER TABLE orders ADD CONSTRAINT length_limit CHECK (length <= 200);\n", encoding="utf-8"
+        )
+        spec = self.spec()
+        spec["rules"][0]["enforcing"] = ["db/migrations/0001_limit.sql:1-1"]
+        report = harvest(self.repo / "memory", self.repo, spec, None, "draft")
+        [error] = report["errors"]
+        self.assertEqual(
+            ("citation", None, True),
+            (report["stopped_at"], report["package"], error.startswith(
+                f"{RULE_ID} cites db/migrations/0001_limit.sql outside the confirmed sources; ship-package would refuse "
+                "to review it, so confirm those sources first or cite others; discovery now places "
+                "db/migrations/0001_limit.sql under implementation; run refresh-listing --registry-root "
+            )),
+        )
+        self.assertIn("(no confirmation needed)", error)
 
     def test_a_test_the_file_does_not_define_is_named_before_any_test_runs(self) -> None:
         self.confirm_src()

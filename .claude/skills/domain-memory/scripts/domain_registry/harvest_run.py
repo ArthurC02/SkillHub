@@ -23,6 +23,7 @@ from .evidence import citation, classified, function_span, source_map_for
 from .harvest_package import harvest_package, obligation_of, write_harvest_package
 from .hitl import ObligationRun, record_approval, record_test_result, same_command, submit_proposal, verify_proposal
 from .registry import as_stored, record_by_id
+from .sources import relisting_hint
 from .store import read_document
 from .transaction import remove_tree
 from .updates import promote_candidate, replace_promoted_fields, retract_candidate, upsert_candidate
@@ -275,9 +276,10 @@ def _record(run: Harvest, rule: dict[str, Any], source_map: dict[str, Any]) -> d
         return None
     outside = unclassified_paths(classify_all({"evidence": evidence}, source_map))
     if outside:
+        hint = relisting_hint(run.registry_root, run.repo_root, outside)
         run.errors.append(
             f"{rule['id']} cites {', '.join(outside)} outside the confirmed sources; ship-package would refuse "
-            "to review it, so confirm those sources first or cite others"
+            "to review it, so confirm those sources first or cite others" + (f"; {hint}" if hint else "")
         )
         return None
     examples = rule.get("examples") if isinstance(rule.get("examples"), list) else [rule["example"]] if rule.get("example") else []
