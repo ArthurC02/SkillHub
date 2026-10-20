@@ -96,8 +96,7 @@ def _recover_legacy(transaction: InterruptedTransaction) -> None:
 def _was_audited(transaction: InterruptedTransaction) -> bool:
     from .audit import read_events
 
-    events = read_events(transaction.root)
-    return bool(events and events[-1].get("operation_id") == transaction.operation_id)
+    return any(event.get("operation_id") == transaction.operation_id for event in read_events(transaction.root))
 
 
 def _recover_installed(transaction: InterruptedTransaction) -> None:

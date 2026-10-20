@@ -81,14 +81,9 @@ class UpdatesRecordsTest(RegistryTestCase):
         for field in ("sequence", "recorded_at", "previous_event_sha256", "event_sha256"):
             with self.subTest(field), self.assertRaisesRegex(ValueError, "^audit event contains reserved fields$"):
                 append_audit(root, {"operation": "forged", field: "forged"})
+        head = json.loads((root / "audit" / "events.jsonl").read_text(encoding="utf-8"))["event_sha256"]
         self.assertEqual(
-            {
-                "status": "valid",
-                "events": 1,
-                "head_sha256": json.loads(
-                    (root / "audit" / "events.jsonl").read_text(encoding="utf-8")
-                )["event_sha256"],
-            },
+            {"status": "valid", "events": 1, "height": 1, "head_sha256": head, "heads": [head]},
             verify_audit(root),
         )
 

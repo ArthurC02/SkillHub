@@ -2,6 +2,17 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.3.0
+
+### Added
+
+- `reconcile-audit --registry-root <path>` repairs `audit/` after a git merge brought two clones' events together: it drops git conflict-marker lines, keeps each event once, rewrites `events.jsonl` in height order and `manifest.json` from the events, and joins several heads with one `reconcile-audit` event naming them in `joined`.
+
+### Changed
+
+- The audit log is a hash-linked DAG, as a git history is, instead of a single chain. `previous_event_sha256` names the event an event was appended on, or a sorted list of events when it was appended on several heads, and `sequence` is the event's height, one more than its highest parent. Verification resolves parents by digest, so file order no longer matters, a repeated event is refused, and the manifest names `heads` (`head_sha256` when there is one, null while there are several). Every existing log verifies unchanged: a chain is a DAG with one parent each. Before, two clones that each appended on the same base produced two chains that could not be merged, even when the Registry content was identical.
+- `verify-audit --against` requires the log to hold every head the committed manifest names and at least as many events, instead of the committed head at the committed position.
+
 ## 1.2.32
 
 ### Changed

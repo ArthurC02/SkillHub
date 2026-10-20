@@ -13,7 +13,7 @@ Everything lives under one Registry root, inside the repository:
   registry/                   the facts: one Markdown concept per record, one folder per asset, index.md files
   source-map.json             the repository paths the facts may cite, with a snapshot of each
   domain-memory-policy.json   who may approve a fact, and how that approval is checked
-  audit/events.jsonl          a hash-chained log of every write
+  audit/events.jsonl          a hash-linked log of every write; two clones' writes merge, reconcile-audit joins them
   changes/<package>/          Change Packages, by convention; any directory inside the repository works
 ```
 

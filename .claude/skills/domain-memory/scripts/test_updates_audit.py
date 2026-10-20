@@ -388,7 +388,7 @@ class UpdatesAuditTest(RegistryTestCase):
         kept = events_file.read_text(encoding="utf-8").splitlines()[:2]
         events_file.write_text("".join(f"{line}\n" for line in kept), encoding="utf-8")
         manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
-        manifest.update(events=2, head_sha256=json.loads(kept[-1])["event_sha256"])
+        manifest.update(events=2, head_sha256=json.loads(kept[-1])["event_sha256"], heads=[json.loads(kept[-1])["event_sha256"]])
         manifest_file.write_text(json.dumps(manifest), encoding="utf-8")
         self.assertEqual("valid", verify_audit(root)["status"])
         self.assertRegex(anchor_error(root, None, "HEAD"), "^the audit log does not extend the one committed at HEAD [(]3 events")

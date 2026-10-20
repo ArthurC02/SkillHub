@@ -92,4 +92,6 @@ The policy sets limits for file count, file size, total bytes, and query result 
 
 The Registry digest covers the policy as well as the assets, because the policy decides what the Registry may become: whether a record can ever be reviewed, who the sources answer to, and which command profiles a test attestation may cite. A captured base revision therefore goes stale when the policy changes, however it changed, and approvals taken against it must be sought again.
 
+The audit log is hash-linked as a git history is, not as a single chain: an event names the event or events it was appended on, so two clones that each append on the same base both stay valid, and the next append after their merge names both heads. A merge therefore needs no hand resolution of a hash chain: `reconcile-audit` removes git's conflict markers, keeps each event once, rewrites the manifest and joins the heads with one event. What the DAG does not give is a total order; `recorded_at` and the heights in `sequence` order events within a clone, and the join event records when two lines of work met.
+
 `amend-policy` changes one or several governance fields as one audited change; see [script-api.md](script-api.md). Selected source paths and limits are not amendable: they are settled at initialization, where a developer confirms them.

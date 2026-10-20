@@ -7,7 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ..attestations import audit_attestations, verify_scm
-from ..audit import anchor_error, verify as verify_audit
+from ..audit import anchor_error, reconcile, verify as verify_audit
 from ..common import PROPOSAL_FILE, load_json
 from ..contracts import validate_schema
 from ..git_hooks import (
@@ -125,6 +125,14 @@ def handle_verify_audit(args: argparse.Namespace) -> int:
     return 0 if result["status"] == "valid" else 1
 
 
+def handle_reconcile_audit(args: argparse.Namespace) -> int:
+    result = reconcile(args.registry_root.resolve())
+    print_json(result, indent=None)
+    if result["joined"]:
+        print(f"NOTE: {len(result['joined'])} audit heads joined; commit audit/events.jsonl and audit/manifest.json", file=sys.stderr)
+    return 0
+
+
 def handle_audit_attestations(args: argparse.Namespace) -> int:
     findings = audit_attestations(
         args.repo_root.resolve(), args.changes_root.resolve(), args.verification_token_env
@@ -144,5 +152,6 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "install-pre-commit-hook": handle_install_pre_commit_hook,
     "governance-readiness": handle_governance_readiness,
     "verify-audit": handle_verify_audit,
+    "reconcile-audit": handle_reconcile_audit,
     "audit-attestations": handle_audit_attestations,
 }
