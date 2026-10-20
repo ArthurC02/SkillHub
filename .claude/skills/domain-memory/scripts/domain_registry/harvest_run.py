@@ -44,8 +44,8 @@ NOTHING_WRITTEN = {
     "spec": "no package was written; fix what the spec errors name, then run harvest again",
     "citation": "no package was written; confirm the sources the cited paths belong to, or cite others, then run harvest again",
     "package": (
-        "nothing was written; give the spec another name, or, when the error says the harvest there did not finish, "
-        "discard-harvest that package, then run harvest again"
+        "nothing was written; the error names the way out, another spec name or discard-harvest of the package there, "
+        "then run harvest again"
     ),
     "counterfactual": "no package was written; make each counterfactual killed, then run harvest again",
 }
@@ -144,7 +144,7 @@ def _check_package_directory(run: Harvest, records: list[dict[str, Any] | None])
         return
     status = proposal.get("status")
     if status not in UNFINISHED:
-        run.errors.append(f"the package at {shown} is {status}; a finished harvest is not re-run")
+        run.errors.append(f"the package at {shown} is {status}; a finished harvest is not re-run; {_way_out(shown, status)}")
         return
     changed = _changed_since_submitted(run, records, proposal) if status == "submitted" else []
     if changed:
@@ -442,6 +442,19 @@ def _next_step(run: Harvest) -> str:
     if run.errors and run.stopped_at == "draft":
         return "the draft package is written; fix what the preview names, then validate-change-package --as-status submitted"
     return NEXT_STEPS[run.stopped_at]
+
+
+def _way_out(shown: str, status: str) -> str:
+    if status in DISCARDABLE:
+        return f"to harvest again, discard-harvest --package-root {shown} --reason <why>, then run harvest again"
+    return "give the spec another name to harvest it as a new package"
+
+
+def package_root_of(spec: dict[str, Any], registry_root: Path, changes_root: Path | None) -> Path:
+    name = spec.get("name")
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError("the spec names no package: it has no name")
+    return (changes_root or registry_root / "changes") / name
 
 
 def discard_harvest(package_root: Path, registry_root: Path, repo_root: Path, reason: str) -> dict[str, Any]:

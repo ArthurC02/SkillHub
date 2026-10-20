@@ -16,7 +16,7 @@ from ..changes import (
 from ..common import EVIDENCE_FILE, OBLIGATIONS_FILE, PROPOSAL_FILE, REQUIREMENT_FILE, load_json
 from ..evidence import citation, function_span
 from ..harvest import harvest_candidates
-from ..harvest_run import discard_harvest, harvest
+from ..harvest_run import discard_harvest, harvest, package_root_of
 from ..hitl import (
     ObligationRun,
     rebase_proposal,
@@ -412,7 +412,12 @@ def handle_harvest(args: argparse.Namespace) -> int:
 
 
 def handle_discard_harvest(args: argparse.Namespace) -> int:
-    print_json(discard_harvest(args.package_root, args.registry_root, args.repo_root, args.reason))
+    if (args.package_root is None) == (args.spec is None):
+        raise ValueError("discard-harvest takes --package-root or --spec, one of them")
+    package_root = args.package_root
+    if package_root is None:
+        package_root = package_root_of(load_json(args.spec), args.registry_root, args.changes_root)
+    print_json(discard_harvest(package_root, args.registry_root, args.repo_root, args.reason))
     return 0
 
 

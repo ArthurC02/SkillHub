@@ -466,8 +466,12 @@ class HarvestTest(RegistryTestCase):
                 self.set_package_status(status)
                 events = len(self.audit_lines())
                 report = harvest(self.repo / "memory", self.repo, self.spec(), None, "verified")
+                way_out = {
+                    "verified": f"to harvest again, discard-harvest --package-root {PACKAGE} --reason <why>, then run harvest again",
+                    "approved": "give the spec another name to harvest it as a new package",
+                }[status]
                 self.assertEqual(
-                    ("package", [f"the package at {PACKAGE} is {status}; a finished harvest is not re-run"], events, status),
+                    ("package", [f"the package at {PACKAGE} is {status}; a finished harvest is not re-run; {way_out}"], events, status),
                     (report["stopped_at"], report["errors"], len(self.audit_lines()),
                      self.package_file("domain-change-proposal.json")["status"]),
                 )
@@ -516,6 +520,36 @@ class HarvestTest(RegistryTestCase):
              (self.repo / PACKAGE).exists(), record_by_id(self.repo / "memory", "rules", RULE_ID)["status"],
              record_by_id(self.repo / "memory", "rules", SECOND_RULE_ID), self.audit_lines()[-2]["operation"]),
         )
+
+    def test_discard_harvest_takes_the_spec_and_finds_the_package_where_harvest_put_it(self) -> None:
+        self.confirm_src()
+        spec_file = self.repo / "spec.json"
+        write_json(spec_file, self.spec())
+        for label, changes_root in (("beside the Registry", None), ("under --changes-root", self.repo / "pkgs")):
+            with self.subTest(label):
+                harvest(self.repo / "memory", self.repo, self.spec(), changes_root, "draft")
+                package = (changes_root or self.repo / "memory" / "changes") / "orders-length-rule"
+                roots = ["--changes-root", str(changes_root)] if changes_root else []
+                result = self.run_cli(
+                    "discard-harvest", "--spec", str(spec_file), *roots, "--registry-root", str(self.repo / "memory"),
+                    "--repo-root", str(self.repo), "--reason", "the citations ran one line long",
+                )
+                self.assertEqual(
+                    (0, package.relative_to(self.repo).as_posix(), [f"rules/{RULE_ID}"], False),
+                    (result.returncode, json.loads(result.stdout)["package"], json.loads(result.stdout)["retracted"], package.exists()),
+                )
+
+    def test_discard_harvest_wants_exactly_one_of_the_package_root_and_the_spec(self) -> None:
+        spec_file = self.repo / "spec.json"
+        write_json(spec_file, self.spec())
+        common = ("--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo), "--reason", "undone")
+        for label, chosen in (("neither", ()), ("both", ("--package-root", str(self.repo / PACKAGE), "--spec", str(spec_file)))):
+            with self.subTest(label):
+                result = self.run_cli("discard-harvest", *chosen, *common)
+                self.assertEqual(
+                    (1, "ERROR: discard-harvest takes --package-root or --spec, one of them"),
+                    (result.returncode, result.stderr.strip()),
+                )
 
     def test_discard_harvest_while_another_writer_holds_the_lock_keeps_the_package_and_writes_no_event(self) -> None:
         package = self.repo / PACKAGE

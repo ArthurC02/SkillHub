@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.3.5
+
+### Changed
+
+- `harvest` refusing to re-run a finished harvest names the way out: for a verified package, `to harvest again, discard-harvest --package-root <path> --reason <why>, then run harvest again`; for an approved or applied one, `give the spec another name to harvest it as a new package`.
+- `discard-harvest` takes `--spec <file> [--changes-root <dir>]` in place of `--package-root`, and finds the package where `harvest` put it for that spec, so the pair takes the same arguments; giving neither or both is refused.
+
 ## 1.3.4
 
 ### Changed
