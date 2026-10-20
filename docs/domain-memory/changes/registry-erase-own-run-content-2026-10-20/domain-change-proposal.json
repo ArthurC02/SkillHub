@@ -3,12 +3,12 @@
   "proposal_id": "registry-erase-own-run-content-2026-10-20",
   "proposer": "domain-memory-agent",
   "requirement_id": "registry-erase-own-run-content-2026-10-20",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-20T07:03:04.976633Z",
   "verified_at": "2026-10-20T07:03:30.004319Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-20T07:05:45.250536Z",
+  "applied_at": "2026-10-20T07:06:11.628992Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "55de462d22efbc9cf4b4e52a98d6d8696e8b5a7b",
@@ -181,5 +181,9 @@
   ],
   "supersedes": [
     "registry-curation-fork-and-content-rules-2026-10-18"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "607b127f18abf240289e42b18f1bbda4be966e70",
+    "registry_digest": "sha256:ba0e55e83ba8cf2fe4bca313ae50105c97bbe7704b45d3db6ae0c9d682c48b54"
+  }
 }
