@@ -1,0 +1,26 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "testlab-list-paging-bounds-2026-10-20",
+  "status": "draft",
+  "intent": "Record the testlab rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context testlab lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-test-case-list-limit-is-1-to-101",
+      "statement": "The test case list takes a limit from 1 to 101 inclusive and defaults to 51, one row more than a page shows so the client can tell whether another page exists; 0, 102, a non-integer and an empty limit are refused, never replaced by the default."
+    },
+    {
+      "id": "enforced-a-test-case-list-offset-is-0-to-the-int32-ceiling",
+      "statement": "The test case list takes an offset from 0 to 2147483647 as a plain decimal integer; a negative, fractional, hexadecimal, empty or larger value is refused rather than read as 0."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/testlab_integration_test.go",
+    "apps/platform/internal/trial/design/http.go"
+  ]
+}

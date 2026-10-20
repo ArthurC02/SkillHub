@@ -1,0 +1,58 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "testlab-list-paging-bounds-2026-10-20",
+  "proposal_id": "testlab-list-paging-bounds-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "a16bd54a93bc73d1cc8a729b777a34a2f3c87917",
+    "registry_digest": "sha256:3975ce62d0a1799ea7a7558072414ff06b45465569a00b1d15a2c712e450afbc",
+    "committed_digest": "sha256:4c71e98df871f3240c04b8c0537fa95fd05141a45e125f088acd30151b2c4260"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-test-case-list-limit-is-1-to-101",
+      "mutated_protection": "apps/platform/internal/trial/design/http.go:208: if err != nil || n < 1 || n > 101 { -> if err != nil || n < 1 || n > 102 {",
+      "failure_evidence": "=== RUN   TestTestCaseListRefusesAnOutOfSchemaLimit\n    testlab_integration_test.go:992: GET /test-cases?limit=\"102\": got 200, want 400 (body map[test_cases:[map[acceptance_criteria:[] created_at:2026-10-20T15:09:28Z criteria_confirmed:0 criteria_total:0 has_rubric:false name:limit-second simulated_user_facts:[] skill_id:667c7e9d-3887-42bb-be45-8608240f19c9 skill_name:limit-skill test_case_id:c8fd1f19-40b0-478a-b996-90ed7c5dba08 updated_at:2026-10-20T15:09:28Z user_prompt:Another prompt.] map[acceptance_criteria:[] created_at:2026-10-20T15:09:28Z criteria_confirmed:0 criteria_total:0 has_rubric:false name:limit simulated_user_facts:[] skill_id:667c7e9d-3887-42bb-be45-8608240f19c9 skill_name:limit-skill test_case_id:171a1ea4-0919-4cb0-94ea-e430c6e3906f updated_at:2026-10-20T15:09:28Z user_prompt:Summarise the attached rows.]]])\n--- FAIL: TestTestCaseListRefusesAnOutOfSchemaLimit (0.10s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.056s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-test-case-list-offset-is-0-to-the-int32-ceiling",
+      "mutated_protection": "apps/platform/internal/trial/design/http.go:220: if err != nil || n < 0 { return 0, fmt.Errorf(\"offset -> if err != nil || n < -1 { return 0, fmt.Errorf(\"offset",
+      "failure_evidence": "=== RUN   TestTestCaseListRefusesAnOutOfSchemaOffset\n2026/10/20 23:09:52 ERROR request failed on the server method=GET path=/test-cases status=500\n    testlab_integration_test.go:1033: GET /test-cases?offset=\"-1\": got 500, want 400 (body map[error:讀取清單失敗])\n--- FAIL: TestTestCaseListRefusesAnOutOfSchemaOffset (0.14s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.085s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/testlab_integration_test.go",
+    "apps/platform/internal/trial/design/http.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-test-case-list-limit-is-1-to-101",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTestCaseListRefusesAnOutOfSchemaLimit$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:60321836e6e62386bd575d54c37ac7f968813c51188bf7196549644979dc91ba",
+      "finished_at": "2026-10-20T15:10:56.551836Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-test-case-list-offset-is-0-to-the-int32-ceiling",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTestCaseListRefusesAnOutOfSchemaOffset$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:efb504110e7bf5bfb96c566151ef5d6666b8d1b27f8eb054fa3e31d9611edf75",
+      "finished_at": "2026-10-20T15:11:04.389476Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

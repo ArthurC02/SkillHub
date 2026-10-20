@@ -1,0 +1,37 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "testlab-list-paging-bounds-2026-10-20",
+  "proposal_id": "testlab-list-paging-bounds-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-a-test-case-list-limit-is-1-to-101",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-test-case-list-limit-is-1-to-101",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-test-case-list-limit-is-1-to-101"
+        }
+      ],
+      "expected_outcome": "The test case list takes a limit from 1 to 101 inclusive and defaults to 51, one row more than a page shows so the client can tell whether another page exists; 0, 102, a non-integer and an empty limit are refused, never replaced by the default.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTestCaseListRefusesAnOutOfSchemaLimit$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-test-case-list-offset-is-0-to-the-int32-ceiling",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-test-case-list-offset-is-0-to-the-int32-ceiling",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-test-case-list-offset-is-0-to-the-int32-ceiling"
+        }
+      ],
+      "expected_outcome": "The test case list takes an offset from 0 to 2147483647 as a plain decimal integer; a negative, fractional, hexadecimal, empty or larger value is refused rather than read as 0.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTestCaseListRefusesAnOutOfSchemaOffset$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

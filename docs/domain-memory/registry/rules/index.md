@@ -155,6 +155,8 @@
 - [a-taken-down-skills-package-is-not-current](/rules/a-taken-down-skills-package-is-not-current) — A taken-down skill's package is never reported as current content.
 - [a-test-case-holds-at-most-20-dataset-files](/rules/a-test-case-holds-at-most-20-dataset-files) — A Test Case holds at most MaxFilesPerTestCase live dataset files; one more is refused and the object already written is removed.
 - [a-test-case-holds-at-most-50-criteria](/rules/a-test-case-holds-at-most-50-criteria) — A Test Case holds at most MaxCriteria acceptance criteria; one more is refused as over the limit.
+- [a-test-case-list-limit-is-1-to-101](/rules/a-test-case-list-limit-is-1-to-101) — The test case list takes a limit from 1 to 101 inclusive and defaults to 51, one row more than a page shows so the client can tell whether another page exists;….
+- [a-test-case-list-offset-is-0-to-the-int32-ceiling](/rules/a-test-case-list-offset-is-0-to-the-int32-ceiling) — The test case list takes an offset from 0 to 2147483647 as a plain decimal integer; a negative, fractional, hexadecimal, empty or larger value is refused rathe….
 - [a-test-case-says-when-its-prompt-varied](/rules/a-test-case-says-when-its-prompt-varied) — A test case is marked prompt-varied only when its trials started from more than one distinct prompt.
 - [a-test-cases-datasets-total-at-most-100-mb](/rules/a-test-cases-datasets-total-at-most-100-mb) — All of a Test Case's dataset files together may not exceed MaxTestCaseBytes; an upload past it is refused.
 - [a-text-diff-stops-at-one-mib-per-file](/rules/a-text-diff-stops-at-one-mib-per-file) — A file larger than 1 MiB on either side gets no text diff; exactly 1 MiB is diffed.

@@ -1,0 +1,143 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "testlab-list-paging-bounds-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "testlab-list-paging-bounds-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-20T15:10:46.025431Z",
+  "verified_at": "2026-10-20T15:11:04.667550Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "a16bd54a93bc73d1cc8a729b777a34a2f3c87917",
+    "registry_digest": "sha256:3975ce62d0a1799ea7a7558072414ff06b45465569a00b1d15a2c712e450afbc",
+    "committed_digest": "sha256:4c71e98df871f3240c04b8c0537fa95fd05141a45e125f088acd30151b2c4260"
+  },
+  "affected_contexts": [
+    "testlab"
+  ],
+  "rule_ids": [
+    "a-test-case-list-limit-is-1-to-101",
+    "a-test-case-list-offset-is-0-to-the-int32-ceiling"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "testlab",
+    "invariant": "Only testlab decides these rules.",
+    "evidence": [
+      "apps/platform/internal/trial/design/http.go:201-201"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/design/http.go:231-231"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The test case list's paging bounds were tested over HTTP but not recorded."
+    ],
+    "decision": "Record testlab's test case list paging bounds.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Clamping an out-of-range limit to the default: a caller would read 51 rows as the size of their library."
+    ],
+    "proof_obligations": [
+      "rule-a-test-case-list-limit-is-1-to-101",
+      "rule-a-test-case-list-offset-is-0-to-the-int32-ceiling"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-test-case-list-limit-is-1-to-101",
+        "statement": "The test case list takes a limit from 1 to 101 inclusive and defaults to 51, one row more than a page shows so the client can tell whether another page exists; 0, 102, a non-integer and an empty limit are refused, never replaced by the default.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "limit=101 lists; limit=102 and limit= answer 400; no limit lists 51."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/http.go",
+            "lines": {
+              "start": 201,
+              "end": 212
+            },
+            "excerpt_sha256": "sha256:28fd7728217de69a3375baddcc20db26669355ff90a9d0a460c5744ca5beb46b"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/testlab_integration_test.go",
+            "lines": {
+              "start": 978,
+              "end": 1007
+            },
+            "excerpt_sha256": "sha256:ca207f418343ffd737e30a2af27a10f54ad7927f3e0d20cdcd7438309093e830"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-test-case-list-offset-is-0-to-the-int32-ceiling",
+        "statement": "The test case list takes an offset from 0 to 2147483647 as a plain decimal integer; a negative, fractional, hexadecimal, empty or larger value is refused rather than read as 0.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "offset=2147483647 lists; offset=2147483648, offset=0x10 and offset=-1 answer 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/http.go",
+            "lines": {
+              "start": 214,
+              "end": 224
+            },
+            "excerpt_sha256": "sha256:d1259489d1e4fe69e31e3e6ef92ec650dd749ca6ec1910aabd8dd4c79c70e8a7"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/testlab_integration_test.go",
+            "lines": {
+              "start": 1019,
+              "end": 1060
+            },
+            "excerpt_sha256": "sha256:126d784c66c5c29b9201874ee687687da98abc2ecd49e00f049bbd5b00f1ee2b"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-20T15:11:04.401599Z",
+      "scope": "Record testlab rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "a16bd54a93bc73d1cc8a729b777a34a2f3c87917",
+        "registry_digest": "sha256:3975ce62d0a1799ea7a7558072414ff06b45465569a00b1d15a2c712e450afbc",
+        "committed_digest": "sha256:4c71e98df871f3240c04b8c0537fa95fd05141a45e125f088acd30151b2c4260"
+      }
+    }
+  ]
+}
