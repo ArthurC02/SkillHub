@@ -1,0 +1,58 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "identity-purge-record-outside-the-database-2026-10-20",
+  "proposal_id": "identity-purge-record-outside-the-database-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "65c4bd976edab760062371ab90fa74f4174a8822",
+    "registry_digest": "sha256:d7737af98e1b3bbd1c95be3ee7666dd375819fd57ae4a49e73bda7dc248217f9",
+    "committed_digest": "sha256:14233f099ab93b7664dddeefdef2413d2bb9d5ff573601f9e9c9aab55429b04b"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-account-purge-is-recorded-outside-the-database-first",
+      "mutated_protection": "apps/platform/internal/creator/workspace/purge.go:174: if err := store.Put(ctx, purgeLedgerKey(userID), []byte(time.Now().UTC().Format(time.RFC3339))); err != nil { -> if err := error(nil); err != nil {",
+      "failure_evidence": "=== RUN   TestAPurgeThatCannotRecordItselfOutsideTheDatabaseRemovesNothing\n    account_purge_characterization_test.go:324: purge with the ledger unwritable: err <nil>, want it refused for the ledger\n--- FAIL: TestAPurgeThatCannotRecordItselfOutsideTheDatabaseRemovesNothing (0.14s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.230s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-restored-account-is-purged-again-from-the-purge-record",
+      "mutated_protection": "apps/platform/internal/creator/workspace/purge.go:235: if !current.PurgeStartedAt.Valid { -> if false {",
+      "failure_evidence": "=== RUN   TestAnAccountRestoredFromBeforeItsPurgeIsPurgedAgainFromTheLedgerOutsideTheDatabase\n    account_purge_characterization_test.go:295: replaying the ledger after a restore: purged again 0, err replay purge of account 8b2de4d3-ba21-4934-bf3c-019966bb4106: identity: account purge deferred while workspace work is active; want exactly the restored account\n--- FAIL: TestAnAccountRestoredFromBeforeItsPurgeIsPurgedAgainFromTheLedgerOutsideTheDatabase (0.15s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.307s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/creator/workspace/purge.go",
+    "apps/platform/internal/entrypoint/api/apiserver/account_purge_characterization_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-an-account-purge-is-recorded-outside-the-database-first",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAPurgeThatCannotRecordItselfOutsideTheDatabaseRemovesNothing$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e3c5182abd7eb6613a29639894dcbd0c273504557231f3817107ec551f022d86",
+      "finished_at": "2026-10-20T01:20:34.939465Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-restored-account-is-purged-again-from-the-purge-record",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnAccountRestoredFromBeforeItsPurgeIsPurgedAgainFromTheLedgerOutsideTheDatabase$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:2eb020b2e4eefda33aec190617dfa8eed7d0812d6b8f91bb73d2efae32a80a66",
+      "finished_at": "2026-10-20T01:20:44.157123Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

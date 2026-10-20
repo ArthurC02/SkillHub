@@ -1,0 +1,138 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "identity-purge-recite-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "identity-purge-recite-2026-10-20",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-20T01:17:58.599078Z",
+  "verified_at": "2026-10-20T01:18:00.455035Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "65c4bd976edab760062371ab90fa74f4174a8822",
+    "registry_digest": "sha256:14233f099ab93b7664dddeefdef2413d2bb9d5ff573601f9e9c9aab55429b04b",
+    "committed_digest": "sha256:14233f099ab93b7664dddeefdef2413d2bb9d5ff573601f9e9c9aab55429b04b"
+  },
+  "affected_contexts": [
+    "identity"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "purge-removes-files-before-rows",
+        "statement": "An account's stored files are removed before its database rows are erased, and the rows are erased in one transaction, so a failure leaves rows pointing at missing files that the next sweep can finish, never a file that no row names.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "If the object store fails mid-purge, the account stays claimed and the next sweep retries the deletion."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 227,
+              "end": 243
+            },
+            "excerpt_sha256": "sha256:2803a6487fe5c552688adbe604e5788c961d9bd4051cf1c7124b6c81c992ec83"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 157,
+              "end": 190
+            },
+            "content_sha256": "sha256:4a25bbc29fc605e8759516262cc64e08e9ac698cf007da2b9f4bb01839faa0f1",
+            "excerpt_sha256": "sha256:9e1bb6e3869b17c6f1f1596cd6251a7cff4f78209623b655c09501f3e8bcee4b",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "purge-waits-for-grace-and-quiet-workspace",
+        "statement": "An account purge starts only when the deletion request is older than the 30-day grace at the moment of claiming and every Run in each of the Account's workspaces has finished cleanup; otherwise the purge is deferred (not failed) and retried by a later sweep.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "A request made now is not claimed by a sweep whose cutoff is 30 days ago; the Account does not start purging.",
+          "An Account with a Run still cleaning up its sandbox is skipped this sweep without an error."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 205,
+              "end": 225
+            },
+            "excerpt_sha256": "sha256:c4b66529e4c8621f1fd079b3d377ca3c6eb2786f42c93bc3b4e125ddb0371cea"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 126,
+              "end": 155
+            },
+            "content_sha256": "sha256:4a25bbc29fc605e8759516262cc64e08e9ac698cf007da2b9f4bb01839faa0f1",
+            "excerpt_sha256": "sha256:d609244eb9cceb505a10fb8056ca18f16be8d842492b5f869f1d7fad77781efc",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge_grace_integration_test.go",
+            "lines": {
+              "start": 15,
+              "end": 46
+            },
+            "excerpt_sha256": "sha256:ce16089656ce432c4662d7f0e9c79995d1a4a7bd0e66e3a4808e35e21dcd706e"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-20T01:17:59.844857Z",
+      "scope": "Re-cite the two purge rules after the purge record moved their lines; statements unchanged.",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "65c4bd976edab760062371ab90fa74f4174a8822",
+        "registry_digest": "sha256:14233f099ab93b7664dddeefdef2413d2bb9d5ff573601f9e9c9aab55429b04b",
+        "committed_digest": "sha256:14233f099ab93b7664dddeefdef2413d2bb9d5ff573601f9e9c9aab55429b04b"
+      }
+    }
+  ],
+  "supersedes": [
+    "identity-packaging-harvest"
+  ]
+}

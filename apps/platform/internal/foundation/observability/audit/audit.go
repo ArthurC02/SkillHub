@@ -46,6 +46,7 @@ const (
 	ActionAccountDeleteStop      = "account.deletion_cancelled"
 	ActionAccountErasureExpedite = "account.erasure_expedited"
 	ActionAccountPurge           = "account.purged"
+	ActionAccountPurgeReplay     = "account.purge_replayed"
 
 	ActionEventDeadLettered = "event.dead_lettered"
 

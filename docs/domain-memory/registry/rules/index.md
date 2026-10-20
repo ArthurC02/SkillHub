@@ -99,6 +99,7 @@
 - [a-repeated-suggestion-id-in-an-apply-counts-once](/rules/a-repeated-suggestion-id-in-an-apply-counts-once) — An apply request that names the same suggestion twice applies it once.
 - [a-replayed-grant-applies-and-audits-once](/rules/a-replayed-grant-applies-and-audits-once) — Replaying a grant under the same key returns the current balance and writes no second audit event.
 - [a-report-item-must-cite-a-fact-a-tool-returned](/rules/a-report-item-must-cite-a-fact-a-tool-returned) — A daily report item or proposal that cites no fact, or cites a pointer no tool result holds, is rejected.
+- [a-restored-account-is-purged-again-from-the-purge-record](/rules/a-restored-account-is-purged-again-from-the-purge-record) — Replaying the purge record registers an erasure for, and purges at once, every recorded account the database holds alive; it leaves accounts already purged and….
 - [a-restricted-skill-shows-no-diff](/rules/a-restricted-skill-shows-no-diff) — While a Skill is under an access restriction, its version diffs reveal no content; the request answers 403.
 - [a-restriction-reason-must-be-known](/rules/a-restriction-reason-must-be-known) — Restricting a skill with a reason code outside the known set is refused, listing the known codes.
 - [a-rubric-item-addresses-an-existing-criterion](/rules/a-rubric-item-addresses-an-existing-criterion) — A rubric is accepted only when every item names an existing acceptance criterion, and deleting a criterion removes its rubric item.
@@ -185,6 +186,7 @@
 - [agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling](/rules/agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling) — A platform agent's effective daily spend cap is the operator's override when one is set, otherwise the default its definition declares.
 - [an-access-restriction-needs-a-reason-code](/rules/an-access-restriction-needs-a-reason-code) — An access restriction must carry a non-blank reason code; a blank one is refused and the Skill's restriction is unchanged.
 - [an-account-purge-de-identifies-feedback](/rules/an-account-purge-de-identifies-feedback) — Purging an account detaches its funnel events from the Workspace and user, and erases its feedback reports' text, page and Run link, keeping only each report's….
+- [an-account-purge-is-recorded-outside-the-database-first](/rules/an-account-purge-is-recorded-outside-the-database-first) — Once an account purge has claimed the account, it records the account in object storage, outside the database, before it removes any file or row; when that rec….
 - [an-activity-cursor-must-be-one-the-feed-issued](/rules/an-activity-cursor-must-be-one-the-feed-issued) — A cursor the feed did not issue is refused as invalid before any owner source is read.
 - [an-activity-cursor-names-its-kind-and-source](/rules/an-activity-cursor-names-its-kind-and-source) — A cursor without a kind or without a source id is refused as invalid.
 - [an-activity-cursor-rank-is-0-to-3](/rules/an-activity-cursor-rank-is-0-to-3) — A cursor naming a priority rank outside 0 to 3 is refused as invalid, so a forged cursor cannot reach a rank the feed does not have.

@@ -1,0 +1,37 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "identity-purge-record-outside-the-database-2026-10-20",
+  "proposal_id": "identity-purge-record-outside-the-database-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-an-account-purge-is-recorded-outside-the-database-first",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-account-purge-is-recorded-outside-the-database-first",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-account-purge-is-recorded-outside-the-database-first"
+        }
+      ],
+      "expected_outcome": "Once an account purge has claimed the account, it records the account in object storage, outside the database, before it removes any file or row; when that record cannot be written the purge stops and the account and its files stay as they were.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAPurgeThatCannotRecordItselfOutsideTheDatabaseRemovesNothing$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-restored-account-is-purged-again-from-the-purge-record",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-restored-account-is-purged-again-from-the-purge-record",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-restored-account-is-purged-again-from-the-purge-record"
+        }
+      ],
+      "expected_outcome": "Replaying the purge record registers an erasure for, and purges at once, every recorded account the database holds alive; it leaves accounts already purged and accounts the database does not hold alone, and fails naming any record it cannot read or any account it could not purge.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnAccountRestoredFromBeforeItsPurgeIsPurgedAgainFromTheLedgerOutsideTheDatabase$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

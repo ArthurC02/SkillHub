@@ -1,0 +1,144 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "identity-purge-record-outside-the-database-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "identity-purge-record-outside-the-database-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-20T01:20:23.951316Z",
+  "verified_at": "2026-10-20T01:20:44.407575Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "65c4bd976edab760062371ab90fa74f4174a8822",
+    "registry_digest": "sha256:d7737af98e1b3bbd1c95be3ee7666dd375819fd57ae4a49e73bda7dc248217f9",
+    "committed_digest": "sha256:14233f099ab93b7664dddeefdef2413d2bb9d5ff573601f9e9c9aab55429b04b"
+  },
+  "affected_contexts": [
+    "identity"
+  ],
+  "rule_ids": [
+    "an-account-purge-is-recorded-outside-the-database-first",
+    "a-restored-account-is-purged-again-from-the-purge-record"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "identity",
+    "invariant": "Only identity decides these rules.",
+    "evidence": [
+      "apps/platform/internal/creator/workspace/purge.go:196-221"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/cmd/maintenance/main.go:361-361"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Purge and its audit event live in the database, so restoring a backup taken before a purge brings the erased account back."
+    ],
+    "decision": "Record every purge in object storage before it removes anything, and replay that record before a restored database takes traffic and daily after.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Recording the purge in the database: a restore would roll the record back with the account.",
+      "Asking the operator to remember which accounts to purge again: detection must not depend on a person."
+    ],
+    "proof_obligations": [
+      "rule-an-account-purge-is-recorded-outside-the-database-first",
+      "rule-a-restored-account-is-purged-again-from-the-purge-record"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-account-purge-is-recorded-outside-the-database-first",
+        "statement": "Once an account purge has claimed the account, it records the account in object storage, outside the database, before it removes any file or row; when that record cannot be written the purge stops and the account and its files stay as they were.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "With the object store refusing writes, a sweep over an account due for purge reports the record failure, removes no object, and leaves the account undeleted."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 174,
+              "end": 176
+            },
+            "excerpt_sha256": "sha256:967aa0a3f90f304861f7160f7ef836055e0dc4a8dd404cdbbb5478d5d5358787"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/account_purge_characterization_test.go",
+            "lines": {
+              "start": 316,
+              "end": 329
+            },
+            "excerpt_sha256": "sha256:bf7efbfe1710750daf7a843278d804dcfb9426c6616dc7efd56b2ded5a60aca9"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-restored-account-is-purged-again-from-the-purge-record",
+        "statement": "Replaying the purge record registers an erasure for, and purges at once, every recorded account the database holds alive; it leaves accounts already purged and accounts the database does not hold alone, and fails naming any record it cannot read or any account it could not purge.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "After restoring a backup taken before Alice's purge, replay purges Alice again and only Alice; a second replay purges no one; a record named not-an-account makes the replay fail naming it."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 223,
+              "end": 248
+            },
+            "excerpt_sha256": "sha256:1a1aea9203032b0a12db3b953372860f8c4a48813b3b318e45cdfda2f9ac243f"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/account_purge_characterization_test.go",
+            "lines": {
+              "start": 270,
+              "end": 314
+            },
+            "excerpt_sha256": "sha256:b4198453dced69c1b88459637380e88e6fd87a70cc3032efac871303e43772a8"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-20T01:20:44.160947Z",
+      "scope": "Record identity rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "65c4bd976edab760062371ab90fa74f4174a8822",
+        "registry_digest": "sha256:d7737af98e1b3bbd1c95be3ee7666dd375819fd57ae4a49e73bda7dc248217f9",
+        "committed_digest": "sha256:14233f099ab93b7664dddeefdef2413d2bb9d5ff573601f9e9c9aab55429b04b"
+      }
+    }
+  ]
+}

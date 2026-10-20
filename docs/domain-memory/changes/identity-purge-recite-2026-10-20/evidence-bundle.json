@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "identity-purge-recite-2026-10-20",
+  "proposal_id": "identity-purge-recite-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "65c4bd976edab760062371ab90fa74f4174a8822",
+    "registry_digest": "sha256:14233f099ab93b7664dddeefdef2413d2bb9d5ff573601f9e9c9aab55429b04b",
+    "committed_digest": "sha256:14233f099ab93b7664dddeefdef2413d2bb9d5ff573601f9e9c9aab55429b04b"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/identity-purge-recite-2026-10-20 --path apps/platform/internal/creator/workspace/purge.go --path apps/platform/internal/creator/workspace/purge_grace_integration_test.go",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:5edb787fe077ded03691e3b18df09750f53d2af036ea25cdb9b52eced1d3af02",
+      "finished_at": "2026-10-20T01:17:59.355464Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

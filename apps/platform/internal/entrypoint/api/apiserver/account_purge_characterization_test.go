@@ -8,14 +8,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore/objstoretest"
 )
 
-type refusingRemoveStore struct{ attempted []string }
+type refusingRemoveStore struct {
+	objstoretest.InMemory
+	attempted []string
+}
 
 func (s *refusingRemoveStore) Remove(_ context.Context, key string) error {
 	s.attempted = append(s.attempted, key)
@@ -244,5 +249,81 @@ func TestAnOperatorErasureSkipsTheGraceThatAnOwnDeletionWaitsOut(t *testing.T) {
 	}
 	if code, _ := operatorCall(t, operator, http.MethodPost, "/admin/accounts/"+erased.userID+"/erasure", `{"reason":"again"}`); code != http.StatusConflict {
 		t.Errorf("erasing a purged account: got %d, want 409", code)
+	}
+}
+
+type ledgerRefusingStore struct{ recordingStore }
+
+func (*ledgerRefusingStore) Put(context.Context, string, []byte) error {
+	return errors.New("simulated object-store outage")
+}
+
+func accountState(t *testing.T, pool *pgxpool.Pool, userID string) (deleted bool, email string) {
+	t.Helper()
+	if err := pool.QueryRow(context.Background(), `SELECT deleted_at IS NOT NULL, email FROM users WHERE id = $1`,
+		mustUUID(t, userID)).Scan(&deleted, &email); err != nil {
+		t.Fatal(err)
+	}
+	return deleted, email
+}
+
+func TestAnAccountRestoredFromBeforeItsPurgeIsPurgedAgainFromTheLedgerOutsideTheDatabase(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, uniqueWorklistLabel("purge-ledger"))
+	ctx := context.Background()
+	dueForPurge(t, pool, alice)
+	store := &recordingStore{}
+	replay := identity.PurgeLedgerReplay{Accounts: a.auth.Service}
+	if _, err := a.auth.Service.PurgeExpiredAccounts(ctx, store, 0, 100); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, _ := store.GetIfPresent(ctx, "purge-ledger/"+alice.userID); !ok {
+		t.Fatalf("the purge left no ledger entry for %s outside the database", alice.userID)
+	}
+
+	if _, err := pool.Exec(ctx, `UPDATE users SET deleted_at = NULL, purge_started_at = NULL, deletion_requested_at = NULL,
+		erasure_expedited_at = NULL, purge_attempted_at = NULL, email = $2 WHERE id = $1`,
+		mustUUID(t, alice.userID), "restored-"+alice.userID+"@example.invalid"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Put(ctx, "purge-ledger/"+uuid.NewString(), []byte("2026-10-20T00:00:00Z")); err != nil {
+		t.Fatal(err)
+	}
+
+	if n, err := replay.Run(ctx, store); err != nil || n != 1 {
+		t.Fatalf("replaying the ledger after a restore: purged again %d, err %v; want exactly the restored account", n, err)
+	}
+	if deleted, email := accountState(t, pool, alice.userID); !deleted || email != "deleted-"+alice.userID+"@deleted.invalid" {
+		t.Errorf("after replay: deleted %v, email %q; want purged and anonymised again", deleted, email)
+	}
+	if n := countRow(t, pool, `SELECT count(*) FROM audit_events WHERE action = 'account.purge_replayed' AND resource_id = $1`,
+		mustUUID(t, alice.userID)); n != 1 {
+		t.Errorf("replay audit events for the account = %d, want 1", n)
+	}
+	if n, err := replay.Run(ctx, store); err != nil || n != 0 {
+		t.Errorf("replaying again: purged %d, err %v; want nothing left to purge", n, err)
+	}
+
+	if err := store.Put(ctx, "purge-ledger/not-an-account", nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := replay.Run(ctx, store); err == nil || !strings.Contains(err.Error(), "not-an-account") {
+		t.Errorf("an unreadable ledger entry: err %v, want it named", err)
+	}
+}
+
+func TestAPurgeThatCannotRecordItselfOutsideTheDatabaseRemovesNothing(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, uniqueWorklistLabel("purge-ledger-down"))
+	dueForPurge(t, pool, alice)
+	store := &ledgerRefusingStore{}
+	_, err := a.auth.Service.PurgeExpiredAccounts(context.Background(), store, 0, 100)
+	if err == nil || !strings.Contains(err.Error(), "record the purge outside the database") {
+		t.Fatalf("purge with the ledger unwritable: err %v, want it refused for the ledger", err)
+	}
+	if deleted, _ := accountState(t, pool, alice.userID); deleted || len(store.removed) != 0 {
+		t.Errorf("deleted %v, objects removed %v; want the account and its objects untouched", deleted, store.removed)
 	}
 }

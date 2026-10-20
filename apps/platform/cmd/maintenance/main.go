@@ -35,7 +35,7 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		slog.Error("usage: maintenance purge-accounts|purge-audit|purge-feedback|" +
+		slog.Error("usage: maintenance purge-accounts|replay-purges|purge-audit|purge-feedback|" +
 			"purge-run-artifacts|purge-datasets|purge-deleted-skills|" +
 			"collect-objects|check-sources|rotate-partitions|report|approved")
 		os.Exit(2)
@@ -46,7 +46,7 @@ func main() {
 }
 
 var jobPeriods = map[string][]string{
-	"daily": {"purge-accounts", "purge-run-artifacts", "purge-datasets", "purge-deleted-skills",
+	"daily": {"purge-accounts", "replay-purges", "purge-run-artifacts", "purge-datasets", "purge-deleted-skills",
 		"collect-objects", "check-sources", "report"},
 	"weekly":   {"purge-audit", "purge-feedback"},
 	"monthly":  {"rotate-partitions"},
@@ -113,6 +113,8 @@ func runSubcommand(ctx context.Context, pool *pgxpool.Pool, job string) error {
 	switch job {
 	case "purge-accounts":
 		return purgeAccounts(ctx, pool)
+	case "replay-purges":
+		return replayPurges(ctx, pool)
 	case "check-sources":
 		return checkSources(ctx, pool)
 	case "purge-feedback":
@@ -349,6 +351,16 @@ func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 		slog.Info("expired sessions removed", "sessions", sessions)
 	}
 	return errors.Join(purgeErr, sessionsErr)
+}
+
+func replayPurges(ctx context.Context, pool *pgxpool.Pool) error {
+	store, err := wiring.ObjectStoreFromEnv()
+	if err != nil {
+		return err
+	}
+	n, err := identity.PurgeLedgerReplay{Accounts: purgeService(pool)}.Run(ctx, store)
+	logSweep("purge ledger replay", err, "accounts_purged_again", n)
+	return err
 }
 
 func logSweep(sweep string, err error, counts ...any) {

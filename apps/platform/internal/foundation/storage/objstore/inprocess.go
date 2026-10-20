@@ -6,10 +6,12 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -93,7 +95,10 @@ func (b *inProcessBackend) carriesKey(r *http.Request) bool {
 func (b *inProcessBackend) serveBucket(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-
+		if r.URL.Query().Get("list-type") == "2" {
+			b.serveListing(w, r.URL.Query().Get("prefix"))
+			return
+		}
 		w.Header().Set("Content-Type", "application/xml")
 		w.WriteHeader(http.StatusOK)
 		_, _ = io.WriteString(w, `<?xml version="1.0" encoding="UTF-8"?><LocationConstraint xmlns="http://s3.amazonaws.com/doc/2006-03-01/"></LocationConstraint>`)
@@ -157,6 +162,40 @@ func (b *inProcessBackend) serveObject(w http.ResponseWriter, r *http.Request, k
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+type listedObject struct {
+	Key          string `xml:"Key"`
+	LastModified string `xml:"LastModified"`
+	ETag         string `xml:"ETag"`
+	Size         int    `xml:"Size"`
+}
+
+type bucketListing struct {
+	XMLName     xml.Name       `xml:"http://s3.amazonaws.com/doc/2006-03-01/ ListBucketResult"`
+	Name        string         `xml:"Name"`
+	Prefix      string         `xml:"Prefix"`
+	KeyCount    int            `xml:"KeyCount"`
+	IsTruncated bool           `xml:"IsTruncated"`
+	Contents    []listedObject `xml:"Contents"`
+}
+
+func (b *inProcessBackend) serveListing(w http.ResponseWriter, prefix string) {
+	b.mu.RLock()
+	listing := bucketListing{Name: b.bucket, Prefix: prefix}
+	for key, obj := range b.objects {
+		if strings.HasPrefix(key, prefix) {
+			listing.Contents = append(listing.Contents, listedObject{
+				Key: key, LastModified: obj.modTime.UTC().Format(time.RFC3339), ETag: `"` + obj.etag + `"`, Size: len(obj.data),
+			})
+		}
+	}
+	b.mu.RUnlock()
+	sort.Slice(listing.Contents, func(i, j int) bool { return listing.Contents[i].Key < listing.Contents[j].Key })
+	listing.KeyCount = len(listing.Contents)
+	w.Header().Set("Content-Type", "application/xml")
+	w.WriteHeader(http.StatusOK)
+	_ = xml.NewEncoder(w).Encode(listing)
 }
 
 func (b *inProcessBackend) lookup(key string) (storedObject, bool) {

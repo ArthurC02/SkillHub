@@ -21,6 +21,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore/objstoretest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
@@ -29,7 +30,10 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
-type recordingStore struct{ removed []string }
+type recordingStore struct {
+	objstoretest.InMemory
+	removed []string
+}
 
 func (s *recordingStore) Remove(_ context.Context, key string) error {
 	s.removed = append(s.removed, key)
@@ -47,6 +51,7 @@ func (failingAdmissionStore) Get(context.Context, string) ([]byte, error) {
 }
 
 type blockingRemovalStore struct {
+	objstoretest.InMemory
 	started chan struct{}
 	release chan struct{}
 }

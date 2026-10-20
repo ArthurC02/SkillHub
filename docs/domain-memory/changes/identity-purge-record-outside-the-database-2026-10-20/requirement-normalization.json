@@ -1,0 +1,26 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "identity-purge-record-outside-the-database-2026-10-20",
+  "status": "draft",
+  "intent": "Record the identity rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context identity lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-an-account-purge-is-recorded-outside-the-database-first",
+      "statement": "Once an account purge has claimed the account, it records the account in object storage, outside the database, before it removes any file or row; when that record cannot be written the purge stops and the account and its files stay as they were."
+    },
+    {
+      "id": "enforced-a-restored-account-is-purged-again-from-the-purge-record",
+      "statement": "Replaying the purge record registers an erasure for, and purges at once, every recorded account the database holds alive; it leaves accounts already purged and accounts the database does not hold alone, and fails naming any record it cannot read or any account it could not purge."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/creator/workspace/purge.go",
+    "apps/platform/internal/entrypoint/api/apiserver/account_purge_characterization_test.go"
+  ]
+}

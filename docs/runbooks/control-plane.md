@@ -142,7 +142,15 @@ $C exec -T postgres sh -c 'until psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc
 - 第一個 `run` 把現在的資料目錄整份複製到 `skillhub_postgres-restore-hold`，還原失敗時還有東西可以退。
 - 要退到某個時間點而不是最新：在 `echo` 那一行後面再加一行 `echo "recovery_target_time = '\''<UTC 時間>'\''" >>"$PGDATA/postgresql.auto.conf"`。
 
-最後一行回來之後資料庫已經升為主庫。接著：
+最後一行回來之後資料庫已經升為主庫。**開放流量之前**，先把還原點之後被清除、卻跟著還原回來的帳號再清一次：
+
+```bash
+$C --profile jobs run --rm maintenance replay-purges
+```
+
+清除紀錄放在資料庫以外（物件儲存的 `purge-ledger/`，每個帳號清除開始前先寫一筆），所以不會跟著還原倒退。這一步失敗就不要往下：log 會點名哪個帳號沒清成（最常見是它的 Run 還沒停），處理完再跑一次，直到成功。每日排程也會跑同一件事，但那是保險，不是這一步的替代。
+
+接著：
 
 ```bash
 sudo systemctl start skillhub skillhub-backup.timer

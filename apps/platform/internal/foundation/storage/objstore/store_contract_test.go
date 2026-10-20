@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"slices"
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore/objstoretest"
@@ -18,6 +19,7 @@ type storeUnderTest interface {
 	Open(ctx context.Context, key string) (io.ReadCloser, int64, error)
 	Exists(ctx context.Context, key string) (bool, error)
 	Remove(ctx context.Context, key string) error
+	List(ctx context.Context, prefix string) ([]string, error)
 }
 
 func storesUnderTest(t *testing.T) map[string]storeUnderTest {
@@ -48,6 +50,29 @@ func eachStore(t *testing.T, assert func(t *testing.T, store storeUnderTest, key
 			assert(t, store, "contract/"+t.Name())
 		})
 	}
+}
+
+func TestEveryStoreListsExactlyTheKeysUnderAPrefix(t *testing.T) {
+	eachStore(t, func(t *testing.T, store storeUnderTest, key string) {
+		ctx := t.Context()
+		for _, k := range []string{key + "/a/1", key + "/a/2", key + "/ab", key + "/b/1"} {
+			if err := store.Put(ctx, k, []byte("x")); err != nil {
+				t.Fatalf("Put %s: %v", k, err)
+			}
+			t.Cleanup(func() { _ = store.Remove(context.Background(), k) })
+		}
+		got, err := store.List(ctx, key+"/a/")
+		if err != nil {
+			t.Fatalf("List: %v", err)
+		}
+		slices.Sort(got)
+		if want := []string{key + "/a/1", key + "/a/2"}; !slices.Equal(got, want) {
+			t.Errorf("List(%q) = %v, want %v", key+"/a/", got, want)
+		}
+		if none, err := store.List(ctx, key+"/none/"); err != nil || len(none) != 0 {
+			t.Errorf("List of an empty prefix = %v, %v; want nothing and no error", none, err)
+		}
+	})
 }
 
 func TestEveryStoreReportsAnAbsentObjectAsAbsenceNotFailure(t *testing.T) {

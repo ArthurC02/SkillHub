@@ -164,6 +164,17 @@ func (c *Client) Remove(ctx context.Context, key string) error {
 	return nil
 }
 
+func (c *Client) List(ctx context.Context, prefix string) ([]string, error) {
+	var keys []string
+	for object := range c.mc.ListObjects(ctx, c.bucket, minio.ListObjectsOptions{Prefix: prefix, Recursive: true}) {
+		if object.Err != nil {
+			return nil, fmt.Errorf("objstore list %s: %w", prefix, object.Err)
+		}
+		keys = append(keys, object.Key)
+	}
+	return keys, nil
+}
+
 func (c *Client) Exists(ctx context.Context, key string) (bool, error) {
 	if _, err := c.mc.StatObject(ctx, c.bucket, key, minio.StatObjectOptions{}); err != nil {
 		if isNotFound(err) {

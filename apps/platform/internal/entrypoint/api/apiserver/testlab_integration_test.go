@@ -30,6 +30,16 @@ func (s packageStore) Remove(_ context.Context, key string) error {
 	return nil
 }
 
+func (s packageStore) List(_ context.Context, prefix string) ([]string, error) {
+	var keys []string
+	for key := range s {
+		if strings.HasPrefix(key, prefix) {
+			keys = append(keys, key)
+		}
+	}
+	return keys, nil
+}
+
 func (c *client) doJSON(t *testing.T, method, path, body string) (int, map[string]any) {
 	t.Helper()
 	var r io.Reader

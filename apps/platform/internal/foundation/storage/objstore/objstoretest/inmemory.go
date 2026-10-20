@@ -7,6 +7,8 @@ import (
 	"io"
 	"io/fs"
 	"net/url"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -66,6 +68,19 @@ func (s *InMemory) Get(ctx context.Context, key string) ([]byte, error) {
 		return nil, fmt.Errorf("objstoretest get %s: no object with that key: %w", key, fs.ErrNotExist)
 	}
 	return data, nil
+}
+
+func (s *InMemory) List(_ context.Context, prefix string) ([]string, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var keys []string
+	for key := range s.objects {
+		if strings.HasPrefix(key, prefix) {
+			keys = append(keys, key)
+		}
+	}
+	sort.Strings(keys)
+	return keys, nil
 }
 
 func (s *InMemory) Exists(ctx context.Context, key string) (bool, error) {

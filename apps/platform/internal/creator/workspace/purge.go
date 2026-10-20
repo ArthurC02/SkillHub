@@ -22,6 +22,18 @@ type ObjectRemover interface {
 	Remove(ctx context.Context, key string) error
 }
 
+type PurgeStore interface {
+	ObjectRemover
+	Put(ctx context.Context, key string, data []byte) error
+	List(ctx context.Context, prefix string) ([]string, error)
+}
+
+const purgeLedgerPrefix = "purge-ledger/"
+
+func purgeLedgerKey(userID pgtype.UUID) string {
+	return purgeLedgerPrefix + uuidText(userID)
+}
+
 type WorkspacePurge func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error
 
 type WorkspaceObjectKeys func(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) ([]string, error)
@@ -111,7 +123,7 @@ func (s *Service) AccountPurgeBacklog(ctx context.Context, grace time.Duration) 
 	return accounts, sessions, err
 }
 
-func (s *Service) PurgeExpiredAccounts(ctx context.Context, store ObjectRemover, grace time.Duration, limit int32) (purged int, err error) {
+func (s *Service) PurgeExpiredAccounts(ctx context.Context, store PurgeStore, grace time.Duration, limit int32) (purged int, err error) {
 	if err := s.requirePurgeSteps(); err != nil {
 		return 0, err
 	}
@@ -142,7 +154,7 @@ func (s *Service) PurgeExpiredAccounts(ctx context.Context, store ObjectRemover,
 	return purged, errors.Join(failures...)
 }
 
-func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID pgtype.UUID, cutoff pgtype.Timestamptz) error {
+func (s *Service) purgeAccount(ctx context.Context, store PurgeStore, userID pgtype.UUID, cutoff pgtype.Timestamptz) error {
 	workspaces, err := s.queries().ListWorkspacesByOwner(ctx, userID)
 	if err != nil {
 		return err
@@ -159,6 +171,9 @@ func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID 
 	if err := s.claimAccountPurge(ctx, conn, userID, workspaces, cutoff); err != nil {
 		return err
 	}
+	if err := store.Put(ctx, purgeLedgerKey(userID), []byte(time.Now().UTC().Format(time.RFC3339))); err != nil {
+		return fmt.Errorf("record the purge outside the database: %w", err)
+	}
 	if err := s.removeAccountObjects(ctx, conn, store, workspaces); err != nil {
 		return err
 	}
@@ -172,6 +187,62 @@ func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID 
 		return err
 	}
 	return s.eraseAccount(ctx, tx, userID, workspaces)
+}
+
+type PurgeLedgerReplay struct {
+	Accounts *Service
+}
+
+func (r PurgeLedgerReplay) Run(ctx context.Context, store PurgeStore) (replayed int, err error) {
+	if err := r.Accounts.requirePurgeSteps(); err != nil {
+		return 0, err
+	}
+	keys, err := store.List(ctx, purgeLedgerPrefix)
+	if err != nil {
+		return 0, err
+	}
+	var failures []error
+	for _, key := range keys {
+		var userID pgtype.UUID
+		if err := userID.Scan(strings.TrimPrefix(key, purgeLedgerPrefix)); err != nil {
+			failures = append(failures, fmt.Errorf("purge ledger entry %s: %w", key, err))
+			continue
+		}
+		resurrected, err := r.replay(ctx, store, userID)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("replay purge of account %s: %w", uuidText(userID), err))
+			continue
+		}
+		if resurrected {
+			replayed++
+		}
+	}
+	return replayed, errors.Join(failures...)
+}
+
+func (r PurgeLedgerReplay) replay(ctx context.Context, store PurgeStore, userID pgtype.UUID) (bool, error) {
+	s := r.Accounts
+	current, err := s.queries().LockAccountLifecycle(ctx, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if current.DeletedAt.Valid {
+		return false, nil
+	}
+	if !current.PurgeStartedAt.Valid {
+		event := audit.Event{
+			Actor: userID, Action: audit.ActionAccountPurgeReplay, ResourceType: audit.ResourceAccount, ResourceID: userID,
+		}
+		if _, err := changeDeletionRequest(ctx, s.Pool, userID, event, func(a accountLifecycle) (accountLifecycle, error) {
+			return a.expediteErasure(time.Now())
+		}); err != nil {
+			return false, err
+		}
+	}
+	return true, s.purgeAccount(ctx, store, userID, pgconv.Timestamptz(time.Now()))
 }
 
 type accountWorkspaceLocks struct {

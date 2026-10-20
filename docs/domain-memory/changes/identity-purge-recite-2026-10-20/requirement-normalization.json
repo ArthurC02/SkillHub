@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "identity-purge-recite-2026-10-20",
+  "status": "draft",
+  "intent": "Re-cite rules/purge-removes-files-before-rows, rules/purge-waits-for-grace-and-quiet-workspace after the code they cite moved or changed; the facts they state are unchanged.",
+  "actor": "domain-memory-agent",
+  "observable_outcome": "verify-evidence reports every citation of the updated records current.",
+  "acceptance_criteria": [
+    {
+      "id": "citations-current",
+      "statement": "Every citation in the updated records matches the lines it cites."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/creator/workspace/purge.go",
+    "apps/platform/internal/creator/workspace/purge_grace_integration_test.go"
+  ]
+}
