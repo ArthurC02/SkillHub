@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "packaging-activity-classification-2026-10-20",
+  "proposal_id": "packaging-activity-classification-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-packaging-activity-classification",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-packaging-activity-classification",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "packaging-activity-classification"
+        }
+      ],
+      "expected_outcome": "A download artifact's activity item is recent only once its scan made it available; a quarantined, rejected or unknown scan state asks for attention.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestPackagingActivityTreatsUnfinishedScanStatesDefensively$ ./internal/skill/delivery/"
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "creation-activity-classification-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "creation-activity-classification-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-20T12:33:52.595985Z",
+  "verified_at": "2026-10-20T12:34:02.124011Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "21d526bb3f12f305016a075ee0579e7625df1197",
+    "registry_digest": "sha256:316aa2fbbca381c1369aef13afa4fd7fc27ce3f124c8e3bc5e76b43aa313fbfb",
+    "committed_digest": "sha256:d3789064df0e31408135b016e65f710c5235f4d92ff57ddbed295a6588c91cc8"
+  },
+  "affected_contexts": [
+    "creation"
+  ],
+  "rule_ids": [
+    "creation-activity-classification"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "creation",
+    "invariant": "Only creation decides these rules.",
+    "evidence": [
+      "apps/platform/internal/creator/creation/activity.go:41-41"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/creator/creation/activity.go:41-41"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The activity feed only orders what each owner classifies; the creation classification was tested but unrecorded."
+    ],
+    "decision": "Record that creation owns its activity classification.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Classifying in the activity context: it would learn every owner's lifecycle."
+    ],
+    "proof_obligations": [
+      "rule-creation-activity-classification"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "creation-activity-classification",
+        "statement": "A creation session's activity item is in progress while queued or working, asks for attention while it waits for the author (information, confirmation, a draft or candidate to review, a failure, a re-upload), and is recent once saved or cancelled; an unknown state asks for attention.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "A session waiting for confirmation shows 等待你的確認 as needs attention; a saved one shows 已儲存 as recent."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/activity.go",
+            "lines": {
+              "start": 41,
+              "end": 66
+            },
+            "excerpt_sha256": "sha256:bc9aeb840036ba22202461c72c196b654304b741ee2a51c0b35df2f2fec6febd"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/activity_test.go",
+            "lines": {
+              "start": 5,
+              "end": 20
+            },
+            "excerpt_sha256": "sha256:ec95e4e1f913a2448b16d42b0f712600a564ba04543d8b11b3dc6eb8ddc7d064"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-20T12:34:01.841861Z",
+      "scope": "Record creation rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "21d526bb3f12f305016a075ee0579e7625df1197",
+        "registry_digest": "sha256:316aa2fbbca381c1369aef13afa4fd7fc27ce3f124c8e3bc5e76b43aa313fbfb",
+        "committed_digest": "sha256:d3789064df0e31408135b016e65f710c5235f4d92ff57ddbed295a6588c91cc8"
+      }
+    }
+  ]
+}

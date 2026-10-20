@@ -1,0 +1,109 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "publishing-activity-classification-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "publishing-activity-classification-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-20T12:37:09.074406Z",
+  "verified_at": "2026-10-20T12:37:15.015542Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "21d526bb3f12f305016a075ee0579e7625df1197",
+    "registry_digest": "sha256:224a981f0fe94de6795649b6f6d14df97dc00a0df3fced58aae680283231ae4e",
+    "committed_digest": "sha256:d3789064df0e31408135b016e65f710c5235f4d92ff57ddbed295a6588c91cc8"
+  },
+  "affected_contexts": [
+    "publishing"
+  ],
+  "rule_ids": [
+    "publishing-activity-classification"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "publishing",
+    "invariant": "Only publishing decides these rules.",
+    "evidence": [
+      "apps/platform/internal/skill/publishing/activity.go:51-51"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/publishing/activity.go:51-51"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The activity feed only orders what each owner classifies; the publishing classification was tested but unrecorded."
+    ],
+    "decision": "Record that publishing owns its activity classification.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Classifying in the activity context: it would learn every owner's lifecycle."
+    ],
+    "proof_obligations": [
+      "rule-publishing-activity-classification"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "publishing-activity-classification",
+        "statement": "A publication's activity item asks for attention while it is published without a Release, is recent once published with a Release or delisted, and asks for attention in an unknown status.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "A publication with no Release yet shows 尚未建立 Release as needs attention."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/activity.go",
+            "lines": {
+              "start": 51,
+              "end": 63
+            },
+            "excerpt_sha256": "sha256:88e1101acbbcb086e639d4936ff4d72b6b40102e0dd902e92dac6f310324c71a"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/activity_test.go",
+            "lines": {
+              "start": 10,
+              "end": 32
+            },
+            "excerpt_sha256": "sha256:fcd341e8e3d5c525a9ff198c48174168450478bc698f8698554e5b5d2195422e"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-20T12:37:14.771300Z",
+      "scope": "Record publishing rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "21d526bb3f12f305016a075ee0579e7625df1197",
+        "registry_digest": "sha256:224a981f0fe94de6795649b6f6d14df97dc00a0df3fced58aae680283231ae4e",
+        "committed_digest": "sha256:d3789064df0e31408135b016e65f710c5235f4d92ff57ddbed295a6588c91cc8"
+      }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "packaging-activity-classification-2026-10-20",
+  "proposal_id": "packaging-activity-classification-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "21d526bb3f12f305016a075ee0579e7625df1197",
+    "registry_digest": "sha256:e0393210b531398b45818c7251e3c2077ebfeae075225e67386dd414fd1ccf0e",
+    "committed_digest": "sha256:d3789064df0e31408135b016e65f710c5235f4d92ff57ddbed295a6588c91cc8"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-packaging-activity-classification",
+      "mutated_protection": "apps/platform/internal/skill/delivery/activity.go:51: return packagingNeedsAttention, \"套件仍在隔離區\" -> return \"recent\", \"套件仍在隔離區\"",
+      "failure_evidence": "=== RUN   TestPackagingActivityTreatsUnfinishedScanStatesDefensively\n    activity_test.go:18: status \"quarantined\": classification = \"recent\", label = \"套件仍在隔離區\"\n--- FAIL: TestPackagingActivityTreatsUnfinishedScanStatesDefensively (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery\t3.958s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/skill/delivery/activity.go",
+    "apps/platform/internal/skill/delivery/activity_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-packaging-activity-classification",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestPackagingActivityTreatsUnfinishedScanStatesDefensively$ ./internal/skill/delivery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:5029b43147e76f9757891af572bd512495eb768823f197840205e10ef1cb474d",
+      "finished_at": "2026-10-20T12:35:01.423908Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

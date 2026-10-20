@@ -1,0 +1,41 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-activity-classification-2026-10-20",
+  "proposal_id": "run-activity-classification-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "21d526bb3f12f305016a075ee0579e7625df1197",
+    "registry_digest": "sha256:a467f9570486677fca80d4bf29eab9daa25bbcbc8562254958e7e3b5ad897b8b",
+    "committed_digest": "sha256:d3789064df0e31408135b016e65f710c5235f4d92ff57ddbed295a6588c91cc8"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-run-activity-classification",
+      "mutated_protection": "apps/platform/internal/trial/execution/activity.go:86: return activityNeedsAttention, \"試跑逾時\" -> return \"recent\", \"試跑逾時\"",
+      "failure_evidence": "est.go:29: classification = \"recent\", label = \"試跑逾時\", want \"needs_attention\" and a label\n=== RUN   TestRunActivityClassificationCoversEveryLifecycleState/future_state\n--- FAIL: TestRunActivityClassificationCoversEveryLifecycleState (0.00s)\n    --- PASS: TestRunActivityClassificationCoversEveryLifecycleState/queued (0.00s)\n    --- PASS: TestRunActivityClassificationCoversEveryLifecycleState/provisioning (0.00s)\n    --- PASS: TestRunActivityClassificationCoversEveryLifecycleState/preparing (0.00s)\n    --- PASS: TestRunActivityClassificationCoversEveryLifecycleState/running (0.00s)\n    --- PASS: TestRunActivityClassificationCoversEveryLifecycleState/evaluating (0.00s)\n    --- PASS: TestRunActivityClassificationCoversEveryLifecycleState/succeeded (0.00s)\n    --- PASS: TestRunActivityClassificationCoversEveryLifecycleState/cancelled (0.00s)\n    --- PASS: TestRunActivityClassificationCoversEveryLifecycleState/failed (0.00s)\n    --- FAIL: TestRunActivityClassificationCoversEveryLifecycleState/timed_out (0.00s)\n    --- PASS: TestRunActivityClassificationCoversEveryLifecycleState/future_state (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/execution\t3.036s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/trial/execution/activity.go",
+    "apps/platform/internal/trial/execution/activity_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-run-activity-classification",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestRunActivityClassificationCoversEveryLifecycleState$ ./internal/trial/execution/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f0075402787b3b087a463f230c9695a5137a40dbf1c81b3aa9cccd69275b6416",
+      "finished_at": "2026-10-20T12:32:59.043815Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

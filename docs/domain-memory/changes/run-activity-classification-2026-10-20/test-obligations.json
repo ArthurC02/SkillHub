@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "run-activity-classification-2026-10-20",
+  "proposal_id": "run-activity-classification-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-run-activity-classification",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-run-activity-classification",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "run-activity-classification"
+        }
+      ],
+      "expected_outcome": "A Run's activity item asks for attention when it failed or timed out, is in progress from queued through evaluating, and is recent once it succeeded or was cancelled; a status the Run context does not know asks for attention.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestRunActivityClassificationCoversEveryLifecycleState$ ./internal/trial/execution/"
+    }
+  ]
+}

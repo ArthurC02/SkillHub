@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "packaging-activity-classification-2026-10-20",
+  "status": "draft",
+  "intent": "Record the packaging rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context packaging lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-packaging-activity-classification",
+      "statement": "A download artifact's activity item is recent only once its scan made it available; a quarantined, rejected or unknown scan state asks for attention."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/skill/delivery/activity.go",
+    "apps/platform/internal/skill/delivery/activity_test.go"
+  ]
+}

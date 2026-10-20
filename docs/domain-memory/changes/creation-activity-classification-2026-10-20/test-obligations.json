@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "creation-activity-classification-2026-10-20",
+  "proposal_id": "creation-activity-classification-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-creation-activity-classification",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-creation-activity-classification",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "creation-activity-classification"
+        }
+      ],
+      "expected_outcome": "A creation session's activity item is in progress while queued or working, asks for attention while it waits for the author (information, confirmation, a draft or candidate to review, a failure, a re-upload), and is recent once saved or cancelled; an unknown state asks for attention.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestCreationActivityClassificationCoversEveryLifecycleState$ ./internal/creator/creation/"
+    }
+  ]
+}

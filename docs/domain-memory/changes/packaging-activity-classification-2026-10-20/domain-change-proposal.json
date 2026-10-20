@@ -1,0 +1,109 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "packaging-activity-classification-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "packaging-activity-classification-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-20T12:34:55.105530Z",
+  "verified_at": "2026-10-20T12:35:01.719810Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "21d526bb3f12f305016a075ee0579e7625df1197",
+    "registry_digest": "sha256:e0393210b531398b45818c7251e3c2077ebfeae075225e67386dd414fd1ccf0e",
+    "committed_digest": "sha256:d3789064df0e31408135b016e65f710c5235f4d92ff57ddbed295a6588c91cc8"
+  },
+  "affected_contexts": [
+    "packaging"
+  ],
+  "rule_ids": [
+    "packaging-activity-classification"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "packaging",
+    "invariant": "Only packaging decides these rules.",
+    "evidence": [
+      "apps/platform/internal/skill/delivery/activity.go:46-46"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/delivery/activity.go:46-46"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The activity feed only orders what each owner classifies; the packaging classification was tested but unrecorded."
+    ],
+    "decision": "Record that packaging owns its activity classification.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Classifying in the activity context: it would learn every owner's lifecycle."
+    ],
+    "proof_obligations": [
+      "rule-packaging-activity-classification"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "packaging-activity-classification",
+        "statement": "A download artifact's activity item is recent only once its scan made it available; a quarantined, rejected or unknown scan state asks for attention.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "A quarantined package shows 套件仍在隔離區 as needs attention."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/activity.go",
+            "lines": {
+              "start": 46,
+              "end": 57
+            },
+            "excerpt_sha256": "sha256:7e629e0358e1879cb6017430ffe27f7deaf54ac7ccf669393741b803ee135abf"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/activity_test.go",
+            "lines": {
+              "start": 9,
+              "end": 21
+            },
+            "excerpt_sha256": "sha256:c89efbf323399f0f3e3e90221230188fca8500f04a58472ee50c380839897d1c"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-20T12:35:01.427814Z",
+      "scope": "Record packaging rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "21d526bb3f12f305016a075ee0579e7625df1197",
+        "registry_digest": "sha256:e0393210b531398b45818c7251e3c2077ebfeae075225e67386dd414fd1ccf0e",
+        "committed_digest": "sha256:d3789064df0e31408135b016e65f710c5235f4d92ff57ddbed295a6588c91cc8"
+      }
+    }
+  ]
+}

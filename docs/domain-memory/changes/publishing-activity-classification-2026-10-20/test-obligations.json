@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "publishing-activity-classification-2026-10-20",
+  "proposal_id": "publishing-activity-classification-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-publishing-activity-classification",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-publishing-activity-classification",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "publishing-activity-classification"
+        }
+      ],
+      "expected_outcome": "A publication's activity item asks for attention while it is published without a Release, is recent once published with a Release or delisted, and asks for attention in an unknown status.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestPublishingActivityDecisionTable$ ./internal/skill/publishing/"
+    }
+  ]
+}

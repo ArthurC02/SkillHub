@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "eval-activity-classification-2026-10-20",
+  "proposal_id": "eval-activity-classification-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-evaluation-activity-classification",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-evaluation-activity-classification",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "evaluation-activity-classification"
+        }
+      ],
+      "expected_outcome": "An evaluation's activity item is in progress while pending, recent only when completed as met, and asks for attention when it failed or completed as partially met, not met or undetermined; any other status and verdict pair is unsupported and asks for attention.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestEvaluationActivityDecisionTable$ ./internal/trial/improvement/"
+    }
+  ]
+}

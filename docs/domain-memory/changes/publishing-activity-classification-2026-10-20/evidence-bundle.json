@@ -1,0 +1,41 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "publishing-activity-classification-2026-10-20",
+  "proposal_id": "publishing-activity-classification-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "21d526bb3f12f305016a075ee0579e7625df1197",
+    "registry_digest": "sha256:224a981f0fe94de6795649b6f6d14df97dc00a0df3fced58aae680283231ae4e",
+    "committed_digest": "sha256:d3789064df0e31408135b016e65f710c5235f4d92ff57ddbed295a6588c91cc8"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-publishing-activity-classification",
+      "mutated_protection": "apps/platform/internal/skill/publishing/activity.go:57: return \"needs_attention\", \"尚未建立 Release\" -> return \"recent\", \"尚未建立 Release\"",
+      "failure_evidence": "=== RUN   TestPublishingActivityDecisionTable\n=== RUN   TestPublishingActivityDecisionTable/published_with_release\n=== RUN   TestPublishingActivityDecisionTable/published_without_release\n    activity_test.go:28: classification = \"recent\", label = \"尚未建立 Release\"\n=== RUN   TestPublishingActivityDecisionTable/delisted_with_release\n=== RUN   TestPublishingActivityDecisionTable/delisted_without_release\n=== RUN   TestPublishingActivityDecisionTable/future_state\n--- FAIL: TestPublishingActivityDecisionTable (0.00s)\n    --- PASS: TestPublishingActivityDecisionTable/published_with_release (0.00s)\n    --- FAIL: TestPublishingActivityDecisionTable/published_without_release (0.00s)\n    --- PASS: TestPublishingActivityDecisionTable/delisted_with_release (0.00s)\n    --- PASS: TestPublishingActivityDecisionTable/delisted_without_release (0.00s)\n    --- PASS: TestPublishingActivityDecisionTable/future_state (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing\t4.140s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/skill/publishing/activity.go",
+    "apps/platform/internal/skill/publishing/activity_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-publishing-activity-classification",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestPublishingActivityDecisionTable$ ./internal/skill/publishing/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:94b4038a4ab6c1f84cf1f9c377deaf3fa47804c5a8b5d5645e90168f524599d5",
+      "finished_at": "2026-10-20T12:37:14.767719Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

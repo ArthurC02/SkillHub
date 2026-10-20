@@ -1,0 +1,41 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "eval-activity-classification-2026-10-20",
+  "proposal_id": "eval-activity-classification-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "21d526bb3f12f305016a075ee0579e7625df1197",
+    "registry_digest": "sha256:ab060834673ba007f3d2288cd791236944b08bbc3b81aa81e621ff522fd53296",
+    "committed_digest": "sha256:d3789064df0e31408135b016e65f710c5235f4d92ff57ddbed295a6588c91cc8"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-evaluation-activity-classification",
+      "mutated_protection": "apps/platform/internal/trial/improvement/activity.go:66: return evaluationNeedsAttention, \"部分符合驗收標準\", true -> return \"recent\", \"部分符合驗收標準\", true",
+      "failure_evidence": "nding\n=== RUN   TestEvaluationActivityDecisionTable/failed\n=== RUN   TestEvaluationActivityDecisionTable/met\n=== RUN   TestEvaluationActivityDecisionTable/partially_met\n    activity_test.go:34: classification = \"recent\", supported = true, label = \"部分符合驗收標準\"\n=== RUN   TestEvaluationActivityDecisionTable/not_met\n=== RUN   TestEvaluationActivityDecisionTable/undetermined\n=== RUN   TestEvaluationActivityDecisionTable/illegal_pending_result\n=== RUN   TestEvaluationActivityDecisionTable/future_state\n--- FAIL: TestEvaluationActivityDecisionTable (0.00s)\n    --- PASS: TestEvaluationActivityDecisionTable/pending (0.00s)\n    --- PASS: TestEvaluationActivityDecisionTable/failed (0.00s)\n    --- PASS: TestEvaluationActivityDecisionTable/met (0.00s)\n    --- FAIL: TestEvaluationActivityDecisionTable/partially_met (0.00s)\n    --- PASS: TestEvaluationActivityDecisionTable/not_met (0.00s)\n    --- PASS: TestEvaluationActivityDecisionTable/undetermined (0.00s)\n    --- PASS: TestEvaluationActivityDecisionTable/illegal_pending_result (0.00s)\n    --- PASS: TestEvaluationActivityDecisionTable/future_state (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement\t4.140s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/trial/improvement/activity.go",
+    "apps/platform/internal/trial/improvement/activity_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-evaluation-activity-classification",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestEvaluationActivityDecisionTable$ ./internal/trial/improvement/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b1419162c31c4687905bd12b844e71172668988af6a34e05fe472f97d1cf884c",
+      "finished_at": "2026-10-20T12:36:17.106821Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

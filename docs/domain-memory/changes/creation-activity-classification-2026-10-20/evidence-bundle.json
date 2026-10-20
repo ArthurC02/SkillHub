@@ -1,0 +1,41 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "creation-activity-classification-2026-10-20",
+  "proposal_id": "creation-activity-classification-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "21d526bb3f12f305016a075ee0579e7625df1197",
+    "registry_digest": "sha256:316aa2fbbca381c1369aef13afa4fd7fc27ce3f124c8e3bc5e76b43aa313fbfb",
+    "committed_digest": "sha256:d3789064df0e31408135b016e65f710c5235f4d92ff57ddbed295a6588c91cc8"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-creation-activity-classification",
+      "mutated_protection": "apps/platform/internal/creator/creation/activity.go:50: return creationNeedsAttention, \"等待你的確認\" -> return \"recent\", \"等待你的確認\"",
+      "failure_evidence": "=== RUN   TestCreationActivityClassificationCoversEveryLifecycleState\n    activity_test.go:17: state \"waiting_confirmation\": classification = \"recent\", label = \"等待你的確認\"\n--- FAIL: TestCreationActivityClassificationCoversEveryLifecycleState (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t2.375s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/creator/creation/activity.go",
+    "apps/platform/internal/creator/creation/activity_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-creation-activity-classification",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestCreationActivityClassificationCoversEveryLifecycleState$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ad739388839e8a56e0a97afa4a66f36cef7764c86a84ebcac651aef714be1014",
+      "finished_at": "2026-10-20T12:34:01.837520Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

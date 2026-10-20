@@ -1,0 +1,109 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-activity-classification-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "run-activity-classification-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-20T12:32:54.254622Z",
+  "verified_at": "2026-10-20T12:32:59.295488Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "21d526bb3f12f305016a075ee0579e7625df1197",
+    "registry_digest": "sha256:a467f9570486677fca80d4bf29eab9daa25bbcbc8562254958e7e3b5ad897b8b",
+    "committed_digest": "sha256:d3789064df0e31408135b016e65f710c5235f4d92ff57ddbed295a6588c91cc8"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [
+    "run-activity-classification"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Only run decides these rules.",
+    "evidence": [
+      "apps/platform/internal/trial/execution/activity.go:67-67"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/execution/activity.go:67-67"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The activity feed only orders what each owner classifies; the run classification was tested but unrecorded."
+    ],
+    "decision": "Record that run owns its activity classification.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Classifying in the activity context: it would learn every owner's lifecycle."
+    ],
+    "proof_obligations": [
+      "rule-run-activity-classification"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "run-activity-classification",
+        "statement": "A Run's activity item asks for attention when it failed or timed out, is in progress from queued through evaluating, and is recent once it succeeded or was cancelled; a status the Run context does not know asks for attention.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A timed-out Run shows 試跑逾時 as needs attention; a cancelled one shows 已取消 as recent."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/activity.go",
+            "lines": {
+              "start": 67,
+              "end": 90
+            },
+            "excerpt_sha256": "sha256:1c93f2f43103fc2e815462ad6d34419fd1f33e23fd98841f60f4643c354e2e29"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/activity_test.go",
+            "lines": {
+              "start": 9,
+              "end": 33
+            },
+            "excerpt_sha256": "sha256:9b52d79005254edfed5ce14ff2766b17662728fd0d534d4362dafa55a4da0ca4"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-20T12:32:59.047206Z",
+      "scope": "Record run rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "21d526bb3f12f305016a075ee0579e7625df1197",
+        "registry_digest": "sha256:a467f9570486677fca80d4bf29eab9daa25bbcbc8562254958e7e3b5ad897b8b",
+        "committed_digest": "sha256:d3789064df0e31408135b016e65f710c5235f4d92ff57ddbed295a6588c91cc8"
+      }
+    }
+  ]
+}

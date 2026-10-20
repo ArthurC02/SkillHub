@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "creation-activity-classification-2026-10-20",
+  "status": "draft",
+  "intent": "Record the creation rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context creation lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-creation-activity-classification",
+      "statement": "A creation session's activity item is in progress while queued or working, asks for attention while it waits for the author (information, confirmation, a draft or candidate to review, a failure, a re-upload), and is recent once saved or cancelled; an unknown state asks for attention."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/creator/creation/activity.go",
+    "apps/platform/internal/creator/creation/activity_test.go"
+  ]
+}
