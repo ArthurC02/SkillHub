@@ -3,12 +3,12 @@
   "proposal_id": "publishing-activity-classification-2026-10-20",
   "proposer": "domain-memory-agent",
   "requirement_id": "publishing-activity-classification-2026-10-20",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-20T12:37:09.074406Z",
   "verified_at": "2026-10-20T12:37:15.015542Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-20T12:40:02.182914Z",
+  "applied_at": "2026-10-20T12:40:38.541247Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "21d526bb3f12f305016a075ee0579e7625df1197",
@@ -105,5 +105,9 @@
         "committed_digest": "sha256:d3789064df0e31408135b016e65f710c5235f4d92ff57ddbed295a6588c91cc8"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "dfd572cd509cb54cdc171e6586d2bc8b6200b403",
+    "registry_digest": "sha256:488ee913f62853104c1ab08f4342e12eac2683a0ba241edc98744f11057d4297"
+  }
 }
