@@ -337,7 +337,7 @@ class UpdatesAuditTest(RegistryTestCase):
         )
         result = verify_audit(self.repo / "nowhere")
         self.assertEqual("invalid", result["status"])
-        self.assertIn("no Domain Memory Registry", result["reason"])
+        self.assertIn("no Domain Registry at ", result["reason"])
 
     def packages(self, **statuses: dict) -> Path:
         changes = self.repo / "changes"

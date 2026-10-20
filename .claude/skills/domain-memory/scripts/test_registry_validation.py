@@ -183,7 +183,7 @@ class RegistryValidationTest(RegistryTestCase):
         current = index.read_text(encoding="utf-8")
         index.write_text("# Contexts\n\n<<<<<<< HEAD\n- [Orders](orders.md)\n=======\n- [Shipping](shipping.md)\n>>>>>>> theirs\n", encoding="utf-8")
         (root / "registry" / "rules" / "index.md").unlink()
-        stale = f"does not list the records beside it; run refresh-indexes --registry-root {root}"
+        stale = f"does not list the records beside it; run refresh-indexes --registry-root {root.resolve().as_posix()}"
         with_markers = validate(root, self.repo, False)
         refreshed = refresh_indexes(root)
         self.assertEqual(

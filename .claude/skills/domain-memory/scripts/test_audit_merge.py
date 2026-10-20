@@ -58,7 +58,7 @@ class AuditMergeTest(RegistryTestCase):
         ours, theirs = (event["event_sha256"] for event in events[1:3])
         self.assertEqual(
             (
-                {"status": "invalid", "reason": f"conflict markers at event 2; run reconcile-audit --registry-root {self.memory}"},
+                {"status": "invalid", "reason": f"conflict markers at event 2; run reconcile-audit --registry-root {self.memory.resolve().as_posix()}"},
                 {"events": 4, "conflict_markers_removed": 3, "duplicates_dropped": 0, "joined": sorted([ours, theirs]), "written": True},
                 ("valid", 4, 3, 1),
                 ("reconcile-audit", sorted([ours, theirs]), 3, sorted([ours, theirs])),
@@ -176,6 +176,19 @@ class AuditMergeTest(RegistryTestCase):
         self.assertEqual(
             ((0, {"refreshed": ["registry/contexts/index.md"]}), (0, {"refreshed": []})),
             ((first.returncode, json.loads(first.stdout)), (second.returncode, json.loads(second.stdout))),
+        )
+
+    def test_a_root_without_a_registry_is_named_in_posix_form_with_the_registry_markers_it_lacks(self) -> None:
+        nowhere = self.repo / "nowhere"
+        expected = (
+            f"no Domain Registry at {nowhere.resolve().as_posix()}: "
+            "it holds neither registry/index.md nor registry/manifest.json; "
+        )
+        with self.assertRaises(ValueError) as refused:
+            reconcile(nowhere)
+        self.assertEqual(
+            ("invalid", True, True),
+            (verify_audit(nowhere)["status"], verify_audit(nowhere)["reason"].startswith(expected), str(refused.exception).startswith(expected)),
         )
 
     def test_a_linear_log_written_before_the_dag_still_verifies(self) -> None:

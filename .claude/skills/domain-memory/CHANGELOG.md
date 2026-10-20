@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.3.3
+
+### Changed
+
+- The `reconcile-audit --registry-root` and `refresh-indexes --registry-root` hints echo the root in POSIX form, `C:/Users/.../memory`, so the command pastes back into any shell; before, on Windows the resolved path came back with backslashes, JSON-escaped to `C:\\Users\\...`.
+- `verify-audit` and `reconcile-audit` refuse a root without a Registry with the same sentence every other command uses, naming both Registry markers and the nearest Domain Memory when one is found, instead of their own `point --registry-root at the directory that holds registry/manifest.json`.
+
 ## 1.3.2
 
 ### Added

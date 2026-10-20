@@ -13,12 +13,13 @@ from .common import (
     load_json,
     readable_packages,
     reject_duplicate_keys,
+    shown_path,
     utc_now,
     write_json,
     writer_lock,
 )
 from .git import resolve_commit, run_git, toplevel
-from .store import has_registry
+from .store import has_registry, missing_registry
 
 MANIFEST_FORMAT = "domain-memory-audit/v1"
 RECONCILE_OPERATION = "reconcile-audit"
@@ -59,7 +60,7 @@ def _parsed_events(lines: list[str], root: Path) -> list[tuple[int, dict[str, An
     events = []
     for index, line in enumerate(lines, start=1):
         if line.startswith(CONFLICT_MARKERS):
-            raise ValueError(f"conflict markers at event {index}; run reconcile-audit --registry-root {root}")
+            raise ValueError(f"conflict markers at event {index}; run reconcile-audit --registry-root {shown_path(root, None)}")
         try:
             value = json.loads(line, object_pairs_hook=reject_duplicate_keys)
         except (json.JSONDecodeError, ValueError) as error:
@@ -178,10 +179,7 @@ def _manifest_error(root: Path, events: int, heads: list[str]) -> str | None:
 
 def verify(root: Path) -> dict[str, Any]:
     if not has_registry(root):
-        return _invalid(
-            f"no Domain Memory Registry at {root}; point --registry-root at the directory "
-            "that holds registry/manifest.json"
-        )
+        return _invalid(missing_registry(root))
     try:
         events = read_events(root)
         heads, height = _dag_heads(events)
@@ -198,10 +196,7 @@ def verify(root: Path) -> dict[str, Any]:
 
 def reconcile(root: Path) -> dict[str, Any]:
     if not has_registry(root):
-        raise ValueError(
-            f"no Domain Memory Registry at {root}; point --registry-root at the directory "
-            "that holds registry/manifest.json"
-        )
+        raise ValueError(missing_registry(root))
     with writer_lock(root):
         lines = _event_lines(root)
         kept = [line for line in lines if not line.startswith(CONFLICT_MARKERS)]
