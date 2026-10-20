@@ -1,9 +1,11 @@
-import { useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Link } from "@tanstack/react-router";
 import { ApiError } from "../../../../core/api/client";
 import {
   useCreationLimits,
   useCreationSessions,
   useLiveCreationSession,
+  CreationWriteResultUnknown,
 } from "../../creation.service";
 import { useCredits } from "../../../../core/session/credits.service";
 import { useRuns } from "../../../runs";
@@ -250,7 +252,7 @@ function failureNotice({
     <FailureToast
       error={error}
       busy={busy}
-      canRetry={error instanceof TypeError && Boolean(lastAttempt)}
+      canRetry={error instanceof CreationWriteResultUnknown && Boolean(lastAttempt)}
       onRetry={onRetry}
       onClose={() => onError(undefined)}
     />
@@ -270,18 +272,30 @@ function FailureToast({
   onRetry: () => void;
   onClose: () => void;
 }) {
+  const message = useRef<HTMLParagraphElement>(null);
+  useEffect(() => message.current?.focus(), [error]);
   return (
     <div className="notice notice-danger toast">
       <ReadFailure error={error} what="互動創作">
-        <p role="alert">
+        <p role="alert" ref={message} tabIndex={-1}>
           {error instanceof ApiError && error.status === 409
             ? "進度已更新，輸入仍保留。請檢查最新內容後再送出。"
-            : error instanceof TypeError
-              ? "網路連線失敗，請重試。"
-              : error instanceof Error
-                ? error.message
-                : "這一步未完成，請重試。"}
+            : error instanceof Error
+              ? error.message
+              : "這一步未完成，請重試。"}
         </p>
+        {error instanceof CreationWriteResultUnknown && (
+          <p>
+            <Link
+              to="/workspace/creations"
+              search={{ session: error.sessionId }}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              另開創作紀錄核對
+            </Link>
+          </p>
+        )}
       </ReadFailure>
       {canRetry && (
         <button type="button" disabled={busy} onClick={onRetry}>

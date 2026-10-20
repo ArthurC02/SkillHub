@@ -22,11 +22,15 @@ vi.mock("@tanstack/react-router", () => ({
     to,
     search,
     params,
+    target,
+    rel,
   }: {
     children: ReactNode;
     to: string;
     search?: Record<string, unknown>;
     params?: Record<string, string>;
+    target?: string;
+    rel?: string;
   }) => (
     <a
       href={Object.entries(params ?? {}).reduce(
@@ -34,6 +38,8 @@ vi.mock("@tanstack/react-router", () => ({
         to,
       )}
       data-search={search ? JSON.stringify(search) : undefined}
+      target={target}
+      rel={rel}
     >
       {children}
     </a>
@@ -82,6 +88,16 @@ const response = (v: unknown, status = 200) =>
   Promise.resolve(
     new Response(JSON.stringify(v), { status, headers: { "Content-Type": "application/json" } }),
   );
+const startedSessionIDs = new Set<string>();
+function creationReceipt(value: Session, url: string, init?: RequestInit) {
+  const starting = url.endsWith("/creation-sessions");
+  const id = starting
+    ? (JSON.parse(String(init?.body)) as { id: string }).id
+    : url.match(/\/creation-sessions\/([^/]+)\/actions$/)?.[1];
+  if (!id) throw new Error("creation write fixture needs a requested session ID");
+  if (starting) startedSessionIDs.add(id);
+  return response({ ...value, id });
+}
 const LIMITS = {
   min_budget_credits: 130,
   max_budget_credits: 6500,
@@ -273,9 +289,19 @@ const START = "開始創作";
 function routeGet(url: string, list: unknown, single: unknown) {
   if (url.endsWith("/creation-sessions/limits")) return response(LIMITS);
   if (url.endsWith("/me/credits")) return response({ error: "not found" }, 404);
-  return response(url.endsWith("/creation-sessions") ? list : single);
+  const id = url.match(/\/creation-sessions\/([^/?]+)$/)?.[1];
+  const detail =
+    id &&
+    startedSessionIDs.has(id) &&
+    typeof single === "object" &&
+    single !== null &&
+    !Array.isArray(single)
+      ? { ...single, id }
+      : single;
+  return response(url.endsWith("/creation-sessions") ? list : detail);
 }
 beforeEach(() => {
+  startedSessionIDs.clear();
   box = document.createElement("div");
   document.body.appendChild(box);
   // jsdom has no object URLs, so stub one — a test that wants to see a
@@ -342,7 +368,7 @@ test("natural language creates one budgeted session", async () => {
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(sample({ state: "queued" }));
+        return creationReceipt(sample({ state: "queued" }), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -355,6 +381,74 @@ test("natural language creates one budgeted session", async () => {
   expect(posts[0]).toMatchObject({ message: "建立摘要小工具", budget_credits: 500 });
   expect(posts[0].id).toBeTruthy();
 });
+
+test.each([
+  ["start", "empty"],
+  ["start", "foreign"],
+  ["start", "snapshot"],
+  ["action", "empty"],
+  ["action", "foreign"],
+  ["action", "snapshot"],
+])(
+  "an uncertain %s receipt with %s data keeps input and retries the original request",
+  async (mode, damage) => {
+    const posts: Record<string, unknown>[] = [];
+    const reads: string[] = [];
+    let requestedID = mode === "action" ? "s1" : "";
+    let current = sample();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+          posts.push(body);
+          if (mode === "start") requestedID = String(body.id);
+          current = sample({ id: requestedID, revision: 8 });
+          current.snapshot.messages = [{ role: "user", content: "保留這份送出的補充" }];
+          if (posts.length === 1)
+            return response(
+              damage === "empty"
+                ? null
+                : damage === "foreign"
+                  ? { ...current, id: "s2" }
+                  : { ...current, snapshot: null },
+            );
+          return response(current);
+        }
+        reads.push(url);
+        return routeGet(url, [], current);
+      }),
+    );
+    await render(<CreationSession sessionId={mode === "action" ? "s1" : undefined} />);
+    if (mode === "start") await pickBudget();
+    else await waitFor(() => box.querySelector("#creation-message") !== null);
+    await input("想完成的任務", "保留這份送出的補充");
+    await click(mode === "start" ? START : "送出");
+    await waitFor(
+      () => box.querySelector('[role="alert"]')?.textContent?.includes("創作結果尚未確認") === true,
+    );
+    const link = [...box.querySelectorAll("a")].find(
+      (item) => item.textContent === "另開創作紀錄核對",
+    );
+    expect(link).toBeDefined();
+    expect(link?.getAttribute("data-search")).toBe(JSON.stringify({ session: requestedID }));
+    expect(link?.getAttribute("target")).toBe("_blank");
+    expect(link?.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe(
+      "保留這份送出的補充",
+    );
+    expect(box.textContent).not.toContain("網路連線失敗");
+    expect(box.textContent).not.toContain("這一頁暫時無法顯示");
+    expect(q.getQueryData(queryKeys.creation.session("s2"))).toBeUndefined();
+    expect(reads).not.toContain("/creation-sessions/s2");
+    expect(posts).toHaveLength(1);
+    await click("重試");
+    await waitFor(() => box.querySelector<HTMLTextAreaElement>("#creation-message")?.value === "");
+    expect(posts).toHaveLength(2);
+    expect(posts[1]).toEqual(posts[0]);
+    expect(q.getQueryData<Session>(queryKeys.creation.session(requestedID))?.id).toBe(requestedID);
+  },
+);
 const creditsResponse = (patch: Record<string, unknown> = {}) => ({
   balance_credits: 100,
   debt_floor_credits: -50,
@@ -367,7 +461,7 @@ test("a balance at or above the threshold leaves the start button enabled and sh
     "fetch",
     vi.fn((url: string, init?: RequestInit) => {
       if (url.endsWith("/me/credits")) return response(creditsResponse());
-      if (init?.method === "POST") return response(sample({ state: "queued" }));
+      if (init?.method === "POST") return creationReceipt(sample({ state: "queued" }), url, init);
       return routeGet(url, [], sample());
     }),
   );
@@ -441,7 +535,7 @@ test("a diagram and reference 小工具s at once are refused before anything is 
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(sample({ revision: posts.length }));
+        return creationReceipt(sample({ revision: posts.length }), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -463,7 +557,7 @@ test("a diagram carries the sentence that came with it, in one action", async ()
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(sample({ revision: posts.length }));
+        return creationReceipt(sample({ revision: posts.length }), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -505,7 +599,7 @@ test("Enter sends, Shift+Enter does not, and neither does Enter while choosing c
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(sample({ revision: posts.length }));
+        return creationReceipt(sample({ revision: posts.length }), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -690,7 +784,7 @@ test("a step in flight can be stopped without ending the session", async () => {
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(sample({ revision: 8 }));
+        return creationReceipt(sample({ revision: 8 }), url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -923,7 +1017,7 @@ test("a step that starts running brings its progress bubble into view", async ()
     "fetch",
     vi.fn((url: string, init?: RequestInit) =>
       init?.method === "POST"
-        ? response(sample({ state: "working", revision: 8 }))
+        ? creationReceipt(sample({ state: "working", revision: 8 }), url, init)
         : routeGet(url, [v], v),
     ),
   );
@@ -980,7 +1074,7 @@ test("a picture and the words it came with are one turn in the conversation", as
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts += 1;
-        return response(posts === 1 ? sample({ revision: 1 }) : sent);
+        return creationReceipt(posts === 1 ? sample({ revision: 1 }) : sent, url, init);
       }
       return routeGet(url, [], sent);
     }),
@@ -1049,7 +1143,7 @@ test("references are cleared once they have been sent, so the next turn can be w
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(sample({ revision: posts.length + 1 }));
+        return creationReceipt(sample({ revision: posts.length + 1 }), url, init);
       }
       return routeGet(url, [], v);
     }),
@@ -1132,7 +1226,7 @@ test("diagram starts with an unbilled empty session then sends transient input",
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(sample({ revision: posts.length }));
+        return creationReceipt(sample({ revision: posts.length }), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -1170,7 +1264,7 @@ test("structured diagram understanding renders all four sections", async () => {
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(v);
+        return creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1211,7 +1305,7 @@ test("diagram checkpoints submit the description, each answer and the final inte
           v.snapshot.diagram_interpretation!.uncertainties[0].answer = "主管";
           v.snapshot.pending_action = "confirm_diagram_interpretation";
         }
-        return response(v);
+        return creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1276,7 +1370,7 @@ test("catalog references can start a session and require confirmation", async ()
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(posts.length === 1 ? sample({ revision: 1 }) : v);
+        return creationReceipt(posts.length === 1 ? sample({ revision: 1 }) : v, url, init);
       }
       return routeGet(url, [], v);
     }),
@@ -1330,7 +1424,7 @@ test("catalog hit on the first message offers adopt, confirm, or decline", async
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(v);
+        return creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1384,7 +1478,7 @@ test("materialize-time duplicates offer adopt or confirm and hide the private-ca
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(v);
+        return creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1419,7 +1513,7 @@ test("resume shows unknown costs and confirms the displayed diagram revision", a
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(v);
+        return creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1487,7 +1581,7 @@ test("409 preserves input and needs an explicit action with the refreshed revisi
           current = sample({ revision: 8 });
           return response({ error: "stale" }, 409);
         }
-        return response(current);
+        return creationReceipt(current, url, init);
       }
       return routeGet(url, [current], current);
     }),
@@ -1514,7 +1608,7 @@ test("a network failure is said beside the composer, and 重試 resends the same
         posts.push(JSON.parse(String(init.body)));
         return posts.length === 1
           ? Promise.reject(new TypeError("network unavailable"))
-          : response(v);
+          : creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1525,7 +1619,7 @@ test("a network failure is said beside the composer, and 重試 resends the same
   await click("送出");
   await waitFor(() => !!box.querySelector('[role="alert"]'));
   const alert = box.querySelector('[role="alert"]')!;
-  expect(alert.textContent).toContain("網路連線失敗");
+  expect(alert.textContent).toContain("創作結果尚未確認");
   expect(alert.closest(".composer-dock"), "錯誤離開了輸入艙").not.toBe(null);
   await click("重試");
   await waitFor(() => posts.length === 2);
@@ -1540,7 +1634,7 @@ test("開場建立 session 的請求網路失敗，按重試沿用同一個 sess
         posts.push(JSON.parse(String(init.body)));
         return posts.length === 1
           ? Promise.reject(new TypeError("network unavailable"))
-          : response(sample({ state: "queued" }));
+          : creationReceipt(sample({ state: "queued" }), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -1550,7 +1644,7 @@ test("開場建立 session 的請求網路失敗，按重試沿用同一個 sess
   await input("想完成的任務", "建立摘要小工具");
   await click(START);
   await waitFor(() => !!box.querySelector('[role="alert"]'));
-  expect(box.querySelector('[role="alert"]')!.textContent).toContain("網路連線失敗");
+  expect(box.querySelector('[role="alert"]')!.textContent).toContain("創作結果尚未確認");
   expect(posts).toHaveLength(1);
   await click("重試");
   await waitFor(() => posts.length === 2);
@@ -1565,7 +1659,7 @@ test("重試前改了輸入內容，重新送出換成新的 session 編號", as
         posts.push(JSON.parse(String(init.body)));
         return posts.length === 1
           ? Promise.reject(new TypeError("network unavailable"))
-          : response(sample({ state: "queued" }));
+          : creationReceipt(sample({ state: "queued" }), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -1588,7 +1682,7 @@ test("no budget, no conversation: the composer is frozen until a step inside the
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(sample({ state: "queued" }));
+        return creationReceipt(sample({ state: "queued" }), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -1757,7 +1851,7 @@ test("重試 after a network failure on a turn action resends that action with t
         posts.push(JSON.parse(String(init.body)));
         return posts.length === 1
           ? Promise.reject(new TypeError("network unavailable"))
-          : response(v);
+          : creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1778,7 +1872,7 @@ test("sending nothing is answered beside the composer, with nothing to retry and
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(init.body);
-        return response(sample());
+        return creationReceipt(sample(), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -1912,7 +2006,7 @@ test("resending the last message of a failed session keeps what is typed in the 
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(v);
+        return creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1936,7 +2030,7 @@ test("a failed session shows the raise form, refuses an out-of-band amount local
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(v);
+        return creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -2036,7 +2130,7 @@ test("a differing latest run offers to bring it into the session, and posts atta
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(v);
+        return creationReceipt(v, url, init);
       }
       if (url.startsWith("/runs?")) {
         runRequests.push(url);

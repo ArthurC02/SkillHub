@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { replaceEqualDeep, useQuery, useQueryClient } from "@tanstack/react-query";
-import { API_BASE_URL, apiFetch, isLastingReadFailure } from "../../core/api/client";
+import {
+  API_BASE_URL,
+  apiFetch,
+  isLastingReadFailure,
+  isWriteResultUnknown,
+} from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
 import { readCreationSession, readCreationSessions } from "./creation-response.model";
@@ -191,22 +196,39 @@ export const listCreationSessionsForVersion = async (versionId: string) =>
 export const getCreationLimits = () => apiFetch<CreationLimits>("/creation-sessions/limits");
 export const getCreationSession = async (id: string) =>
   readCreationSession(await apiFetch<unknown>("/creation-sessions/" + id), id);
+export class CreationWriteResultUnknown extends Error {
+  readonly sessionId: string;
+
+  constructor(sessionId: string) {
+    super("創作結果尚未確認。請先核對紀錄，再重試這次操作。");
+    this.sessionId = sessionId;
+  }
+}
+
+async function writeCreationSession(id: string, path: string, body: unknown) {
+  const payload = JSON.stringify(body);
+  try {
+    return readCreationSession(
+      await apiFetch<unknown>(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }),
+      id,
+    );
+  } catch (error) {
+    if (isWriteResultUnknown(error)) throw new CreationWriteResultUnknown(id);
+    throw error;
+  }
+}
+
 export const createCreationSession = (body: {
   id: string;
   message: string;
   budget_credits: number;
-}) =>
-  apiFetch<CreationSession>("/creation-sessions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+}) => writeCreationSession(body.id, "/creation-sessions", body);
 export const actOnCreationSession = (id: string, body: CreationAction) =>
-  apiFetch<CreationSession>("/creation-sessions/" + id + "/actions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  writeCreationSession(id, "/creation-sessions/" + id + "/actions", body);
 
 export function useCreationSessions() {
   return useQuery({ queryKey: queryKeys.creation.sessions, queryFn: listCreationSessions });

@@ -105,14 +105,21 @@ function stubMe(
   });
 }
 
-function creationRoute(seen: string[], sessions = [SESSION]) {
+function creationRoute(seen: string[], sessions = [SESSION], onCreate?: (id: string) => void) {
+  let created: typeof SESSION | undefined;
   return (path: string, init?: RequestInit) => {
     seen.push(path);
     if (path === "/creation-sessions/limits") return json(LIMITS);
     if (path === "/me/credits") return json({ error: "not found" }, 404);
     if (path === "/creation-sessions") {
-      return json(init?.method === "POST" ? SESSION : sessions);
+      if (init?.method === "POST") {
+        created = { ...SESSION, id: (JSON.parse(String(init.body)) as { id: string }).id };
+        onCreate?.(created.id);
+        return json(created);
+      }
+      return json(sessions);
     }
+    if (created && path === `/creation-sessions/${created.id}`) return json(created);
     if (path === `/creation-sessions/${SESSION_ID}`) return json(SESSION);
     if (path === `/creation-sessions/${SECOND_SESSION_ID}`) return json(SECOND_SESSION);
   };
@@ -278,7 +285,13 @@ test("changing the session address clears unsent composer input from the previou
 
 test("creating a session makes the returned session addressable", async () => {
   const seen: string[] = [];
-  stubMe({ generate_skill: true, creation_skill: true }, creationRoute(seen, []));
+  let requestedID = "";
+  stubMe(
+    { generate_skill: true, creation_skill: true },
+    creationRoute(seen, [], (id) => {
+      requestedID = id;
+    }),
+  );
   await visit(() => container.querySelector('input[name="creation-budget"]') !== null);
 
   await act(async () => {
@@ -297,19 +310,22 @@ test("creating a session makes the returned session addressable", async () => {
       .find((button) => button.textContent === "開始創作")!
       .click();
   });
-  await waitFor(() => router.state.location.search.session === SESSION_ID);
+  await waitFor(() => requestedID !== "" && router.state.location.search.session === requestedID);
 
-  expect(router.state.location.search.session).toBe(SESSION_ID);
+  expect(router.state.location.search.session).toBe(requestedID);
 });
 
 test("a first diagram that the new session refuses keeps the diagram and shows why", async () => {
   const seen: string[] = [];
-  const sessions = creationRoute(seen, []);
+  let requestedID = "";
+  const sessions = creationRoute(seen, [], (id) => {
+    requestedID = id;
+  });
   stubMe(
     { generate_skill: true, creation_skill: true },
     (path, init) =>
       sessions(path, init) ??
-      (path === `/creation-sessions/${SESSION_ID}/actions`
+      (requestedID && path === `/creation-sessions/${requestedID}/actions`
         ? json({ error: "看不懂這張流程圖" }, 422)
         : undefined),
   );
@@ -333,7 +349,8 @@ test("a first diagram that the new session refuses keeps the diagram and shows w
   });
   await waitFor(() => text().includes("看不懂這張流程圖"));
 
-  expect(seen).toContain(`/creation-sessions/${SESSION_ID}/actions`);
-  expect(router.state.location.search.session).toBe(SESSION_ID);
+  expect(requestedID).not.toBe("");
+  expect(seen).toContain(`/creation-sessions/${requestedID}/actions`);
+  expect(router.state.location.search.session).toBe(requestedID);
   expect(text()).toContain("移除流程圖：flow.png");
 });

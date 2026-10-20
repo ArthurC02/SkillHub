@@ -75,6 +75,7 @@ export function Composer({
   const startBlocked = !hasSession && (creditsBlocked || limitsFailed);
   return (
     <div className="composer-dock">
+      {failureBox}
       {latestHidden && !failureBox && (
         <button type="button" className="to-latest" onClick={onShowLatest}>
           ↓ {unseen > 0 ? `${unseen} 則新訊息` : "回到最新"}
@@ -148,7 +149,6 @@ export function Composer({
         {picking && (
           <ReferenceChooser refs={refs} locked={locked} onRefs={onRefs} onError={onError} />
         )}
-        {failureBox}
       </div>
       <span id="composer-limits">
         Enter 送出，Shift＋Enter 換行。流程圖可以貼上或拖進來：PNG、JPEG、WebP，最多 4,000,000

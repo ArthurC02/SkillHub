@@ -96,7 +96,8 @@ async function sendDiagram() {
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts += 1;
-        return response(posts === 1 ? sample() : sent);
+        if (posts === 1) sent.id = JSON.parse(String(init.body)).id;
+        return response(posts === 1 ? sample({ id: sent.id }) : sent);
       }
       if (url.endsWith("/creation-sessions/limits")) return response(LIMITS);
       if (url.endsWith("/me/credits")) return response({ error: "not found" }, 404);

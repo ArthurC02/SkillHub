@@ -1,10 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page, type Route } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import type { CreationSession } from "../src/features/creation/creation.service";
-import { ME } from "../src/testing/fixtures/platform";
+import { ME, platformResponse } from "../src/testing/fixtures/platform";
 import { setOffline } from "./offline";
-import { stubPlatform } from "./stub";
+import { serveStatic, STATIC_KINDS, stubPlatform } from "./stub";
 
 const ID = "44444444-4444-4444-8444-444444444444";
 const SESSION: CreationSession = {
@@ -35,6 +35,21 @@ const SESSION: CreationSession = {
   expires_at: "2099-09-30T08:00:00Z",
   deadline: "2099-09-29T09:00:00Z",
 };
+const LIMITS = {
+  min_budget_credits: 130,
+  max_budget_credits: 6500,
+  max_steps: 20,
+  max_tool_calls: 10,
+  call_timeout_seconds: 120,
+  session_timeout_seconds: 3600,
+  retention_seconds: 604800,
+};
+const CREDITS = {
+  balance_credits: 1000,
+  debt_floor_credits: -50,
+  estimated_session: { low_credits: 30, high_credits: 65, sample_size: 40, estimated: false },
+  can_start: true,
+};
 
 async function stubCreation(page: Page, status = 200, events = false) {
   await stubPlatform(page);
@@ -59,18 +74,7 @@ async function stubCreation(page: Page, status = 200, events = false) {
       writes.push(path);
       return route.fulfill({ json: SESSION });
     }
-    if (path.endsWith("/limits"))
-      return route.fulfill({
-        json: {
-          min_budget_credits: 130,
-          max_budget_credits: 6500,
-          max_steps: 20,
-          max_tool_calls: 10,
-          call_timeout_seconds: 120,
-          session_timeout_seconds: 3600,
-          retention_seconds: 604800,
-        },
-      });
+    if (path.endsWith("/limits")) return route.fulfill({ json: LIMITS });
     if (!path.endsWith(ID)) return route.fulfill({ json: [SESSION] });
     reads++;
     if (held) await gate;
@@ -100,6 +104,162 @@ async function stubCreation(page: Page, status = 200, events = false) {
       reply = value;
     },
   };
+}
+
+async function stubWriteReceipt(page: Page, context: BrowserContext, mode: string, damage: string) {
+  const state = await stubCreation(page);
+  state.recover();
+  const posts: Record<string, unknown>[] = [];
+  const paths: string[] = [];
+  let current = SESSION;
+  const handleCreation = async (route: Route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    paths.push(path);
+    if (path.endsWith("/events")) return route.fulfill({ status: 204 });
+    if (path.endsWith("/limits")) return route.fulfill({ json: LIMITS });
+    if (request.method() === "POST") {
+      const body = request.postDataJSON() as Record<string, unknown>;
+      posts.push(body);
+      current = {
+        ...SESSION,
+        id: mode === "start" ? String(body.id) : ID,
+        revision: 8,
+        snapshot: {
+          ...SESSION.snapshot,
+          messages: [...SESSION.snapshot.messages, { role: "user", content: "保留這份送出的補充" }],
+        },
+      };
+      const value =
+        posts.length > 1
+          ? current
+          : damage === "empty"
+            ? null
+            : damage === "foreign"
+              ? { ...current, id: "55555555-5555-4555-8555-555555555555" }
+              : { ...current, snapshot: null };
+      return route.fulfill({ json: value });
+    }
+    if (path === "/creation-sessions")
+      return route.fulfill({ json: current.id === ID ? [current] : [current, SESSION] });
+    if (path === "/creation-sessions/" + current.id) return route.fulfill({ json: current });
+    return route.fulfill({ status: 404, json: { error: "找不到可讀取的創作或參考內容。" } });
+  };
+  await context.route("**/*", (route, request) => {
+    if (STATIC_KINDS.has(request.resourceType())) return serveStatic(route);
+    const path = new URL(request.url()).pathname;
+    if (path.startsWith("/creation-sessions")) return handleCreation(route);
+    if (path === "/me")
+      return route.fulfill({
+        json: { ...ME, features: { generate_skill: true, creation_skill: true } },
+      });
+    if (path === "/me/credits") return route.fulfill({ json: CREDITS });
+    const { body, status } = platformResponse(request.url());
+    return route.fulfill({ status, json: body });
+  });
+  await page.route("**/me/credits", (route) => route.fulfill({ json: CREDITS }));
+  await page.route("**/creation-sessions**", handleCreation);
+  return {
+    posts,
+    paths,
+    get requestedID() {
+      return current.id;
+    },
+  };
+}
+
+for (const [mode, damage] of [
+  ["start", "empty"],
+  ["start", "foreign"],
+  ["start", "snapshot"],
+  ["action", "empty"],
+  ["action", "foreign"],
+  ["action", "snapshot"],
+]) {
+  test(`an uncertain ${mode} receipt with ${damage} data keeps the editor during keyboard verification`, async ({
+    page,
+    context,
+  }) => {
+    const state = await stubWriteReceipt(page, context, mode, damage);
+    if (damage === "snapshot") await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto(
+      mode === "start" ? "/workspace/creations" : `/workspace/creations?session=${ID}`,
+    );
+    if (mode === "start") {
+      await page.getByRole("button", { name: "＋ 開始新的創作", exact: true }).click();
+      await page
+        .locator(".budget-picker label")
+        .filter({ hasText: /^500 點$/ })
+        .click();
+      await expect(page.getByRole("radio", { name: "500 點", exact: true })).toBeChecked();
+    }
+    const current = page.locator("#creation-workspace");
+    await current.locator("#creation-message").fill("保留這份送出的補充");
+    await current
+      .getByRole("button", { name: mode === "start" ? "開始創作" : "送出", exact: true })
+      .click();
+    await expect(current.getByRole("alert")).toContainText("創作結果尚未確認");
+    await expect(current.getByRole("alert")).toBeFocused();
+    await expect(current.getByRole("alert")).toBeInViewport();
+    await expect(current.locator("#creation-message")).toHaveValue("保留這份送出的補充");
+    await expect(page).toHaveURL(
+      mode === "start" ? /\/workspace\/creations$/ : new RegExp(`session=${ID}$`),
+    );
+    const recovery = current.getByRole("link", { name: "另開創作紀錄核對", exact: true });
+    await expect(recovery).toHaveAttribute(
+      "href",
+      `/workspace/creations?session=${state.requestedID}`,
+    );
+    await expect(recovery).toHaveAttribute("target", "_blank");
+    if (mode === "start") {
+      await expect(page.getByRole("radio", { name: "500 點", exact: true })).toBeChecked();
+      const geometry = await current.evaluate((element) => {
+        const notice = element.querySelector(".notice.toast")!.getBoundingClientRect();
+        const budget = element.querySelector(".budget-picker")!.getBoundingClientRect();
+        return { noticeBottom: notice.bottom, budgetTop: budget.top };
+      });
+      expect(geometry.noticeBottom).toBeLessThanOrEqual(geometry.budgetTop);
+    }
+    await captureReadState(page);
+    if (damage === "snapshot") {
+      const submit = current.getByRole("button", {
+        name: mode === "start" ? "開始創作" : "送出",
+        exact: true,
+      });
+      await submit.scrollIntoViewIfNeeded();
+      await expect(submit).toBeInViewport({ ratio: 1 });
+      expect(
+        await submit.evaluate((button) => {
+          const rect = button.getBoundingClientRect();
+          return [
+            [rect.left + 6, rect.top + 6],
+            [rect.right - 6, rect.top + 6],
+            [rect.left + 6, rect.bottom - 6],
+            [rect.right - 6, rect.bottom - 6],
+          ].every(([x, y]) => button.contains(document.elementFromPoint(x, y)));
+        }),
+      ).toBe(true);
+      await page.screenshot({ path: test.info().outputPath("creation-short-submit.png") });
+    }
+    expect(state.posts).toHaveLength(1);
+    const opened = context.waitForEvent("page");
+    await recovery.focus();
+    await page.keyboard.press("Enter");
+    const verification = await opened;
+    await expect(verification).toHaveURL(new RegExp(`session=${state.requestedID}$`));
+    await expect(verification.locator("#creation-workspace")).toContainText("保留這份送出的補充");
+    await verification.close();
+    await page.bringToFront();
+    await expect(current.locator("#creation-message")).toHaveValue("保留這份送出的補充");
+    expect(state.posts).toHaveLength(1);
+    expect(state.paths).not.toContain("/creation-sessions/55555555-5555-4555-8555-555555555555");
+    await current.getByRole("button", { name: "重試", exact: true }).focus();
+    await page.keyboard.press("Enter");
+    await expect.poll(() => state.posts.length).toBe(2);
+    expect(state.posts[1]).toEqual(state.posts[0]);
+    await expect(current.locator("#creation-message")).toHaveValue("");
+    await expect(page).toHaveURL(new RegExp(`session=${state.requestedID}$`));
+  });
 }
 
 for (const [name, reply] of [
@@ -142,7 +302,7 @@ async function captureReadState(page: Page) {
     for (const node of review.nodes) {
       expect(node.target).toHaveLength(1);
       expect(node.target[0]).toMatch(
-        /^li\[data-index="\d+"\] > \.agent-avatar\[aria-hidden="true"\]$/,
+        /^li\[(?:data-index="\d+"|data-role="assistant")\] > \.agent-avatar\[aria-hidden="true"\]$/,
       );
       expect(node.any.length).toBeGreaterThan(0);
       expect(node.any.every((check) => check.data?.messageKey === "nonBmp")).toBe(true);
