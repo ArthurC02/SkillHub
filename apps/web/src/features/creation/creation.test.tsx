@@ -2485,6 +2485,121 @@ test("a late stream frame older than the screen does not roll it back", async ()
   expect(box.textContent).not.toContain("這是舊的一步。");
 });
 
+test.each([
+  {
+    name: "initial older GET",
+    cached: false,
+    incoming: 7,
+    expected: 8,
+    brief: "串流已確認的最新需求",
+  },
+  {
+    name: "refresh older GET",
+    cached: true,
+    incoming: 7,
+    expected: 8,
+    brief: "串流已確認的最新需求",
+  },
+  { name: "newer GET", cached: false, incoming: 9, expected: 9, brief: "伺服器已確認的更新需求" },
+])(
+  "a creation $name commits without losing newer progress or the draft",
+  async ({ cached, incoming, expected, brief }) => {
+    const es = stubEventSource();
+    const before = sample();
+    let release!: (response: Response) => void;
+    const held = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    let reads = 0;
+    const writes: unknown[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method === "POST") writes.push(init.body);
+        if (url.endsWith("/creation-sessions/s1")) {
+          reads++;
+          return cached && reads === 1 ? response(before) : held;
+        }
+        return routeGet(url, [], before);
+      }),
+    );
+    try {
+      await render(<CreationSession sessionId="s1" />);
+      if (cached) {
+        await waitFor(() => box.querySelector("#creation-message") !== null);
+        await act(async () => {
+          void q.invalidateQueries({ queryKey: queryKeys.creation.session("s1") });
+        });
+      }
+      await waitFor(() => reads === (cached ? 2 : 1) && es.open.length === 1);
+      const stream = sample({ revision: 8 });
+      stream.snapshot.brief = "串流已確認的最新需求";
+      await act(async () => {
+        es.open[0].onopen?.();
+        es.open[0].onmessage?.({ data: JSON.stringify(stream) });
+      });
+      await waitFor(() => box.textContent!.includes("串流已確認的最新需求"));
+      await input("想完成的任務", "請保留尚未送出的補充");
+      const fetched = sample({ revision: incoming });
+      fetched.snapshot.brief = "伺服器已確認的更新需求";
+      await act(async () => {
+        release(await response(fetched));
+      });
+      await pollUntil(
+        () => q.getQueryState(queryKeys.creation.session("s1"))?.fetchStatus === "idle",
+        () => box.textContent,
+        2500,
+        { flushBeforeFirstCheck: true },
+      );
+      expect(q.getQueryData<Session>(queryKeys.creation.session("s1"))?.revision).toBe(expected);
+      expect(box.querySelector(".creation-current")?.textContent).toContain(brief);
+      expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe(
+        "請保留尚未送出的補充",
+      );
+      expect(reads).toBe(cached ? 2 : 1);
+      expect(writes).toEqual([]);
+    } finally {
+      release(await response(before));
+    }
+  },
+);
+
+test("an unchanged creation GET shares the existing session and nested data", async () => {
+  const current = sample({ revision: 8 });
+  q.setQueryData(queryKeys.creation.session("s1"), current);
+  let release!: (response: Response) => void;
+  const held = new Promise<Response>((resolve) => {
+    release = resolve;
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      url.endsWith("/creation-sessions/s1") ? held : routeGet(url, [], current),
+    ),
+  );
+  try {
+    await render(<CreationSession sessionId="s1" />);
+    await waitFor(
+      () => q.getQueryState(queryKeys.creation.session("s1"))?.fetchStatus === "fetching",
+    );
+    await act(async () => {
+      release(await response(current));
+    });
+    await pollUntil(
+      () => q.getQueryState(queryKeys.creation.session("s1"))?.fetchStatus === "idle",
+      () => box.textContent,
+      2500,
+      { flushBeforeFirstCheck: true },
+    );
+    const loaded = q.getQueryData<Session>(queryKeys.creation.session("s1"));
+    expect(loaded).toBe(current);
+    expect(loaded?.snapshot).toBe(current.snapshot);
+    expect(loaded?.snapshot.messages).toBe(current.snapshot.messages);
+  } finally {
+    release(await response(current));
+  }
+});
+
 test("leaving the page closes the stream", async () => {
   const es = stubEventSource();
   const v = sample({ state: "working" });

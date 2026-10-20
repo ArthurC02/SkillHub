@@ -36,12 +36,13 @@ const SESSION: CreationSession = {
   deadline: "2099-09-29T09:00:00Z",
 };
 
-async function stubCreation(page: Page, status = 200) {
+async function stubCreation(page: Page, status = 200, events = false) {
   await stubPlatform(page);
   await page.setViewportSize({ width: 375, height: 900 });
-  await page.addInitScript(() =>
-    Object.defineProperty(window, "EventSource", { value: undefined, configurable: true }),
-  );
+  if (!events)
+    await page.addInitScript(() =>
+      Object.defineProperty(window, "EventSource", { value: undefined, configurable: true }),
+    );
   await page.route("**/me", (route) =>
     route.fulfill({ json: { ...ME, features: { generate_skill: true, creation_skill: true } } }),
   );
@@ -153,6 +154,47 @@ async function captureReadState(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: test.info().outputPath("creation-read-phone.png") });
 }
+
+test("a delayed creation GET keeps newer stream progress and unsent input", async ({ page }) => {
+  const state = await stubCreation(page, 200, true);
+  let frames = 0;
+  const newer = {
+    ...SESSION,
+    revision: 8,
+    snapshot: { ...SESSION.snapshot, brief: "串流已確認的最新需求" },
+  };
+  await page.route("**/events", (route) => {
+    frames++;
+    return frames === 1
+      ? route.fulfill({
+          headers: { "Content-Type": "text/event-stream" },
+          body: "data: " + JSON.stringify(newer) + "\n\n",
+        })
+      : route.fulfill({ status: 204 });
+  });
+  try {
+    await page.goto(`/workspace/creations?session=${ID}`);
+    const current = page.locator("#creation-workspace");
+    await expect.poll(() => state.reads).toBe(1);
+    await expect(current).toContainText("串流已確認的最新需求");
+    await expect(current.getByRole("status")).toContainText("正在重新讀取創作紀錄");
+    await current.locator("#creation-message").fill("請保留尚未送出的補充");
+    const finished = page.waitForResponse(
+      (reply) => new URL(reply.url()).pathname === "/creation-sessions/" + ID,
+    );
+    state.recover();
+    await (await finished).finished();
+    await expect(current.getByRole("status")).toHaveCount(0);
+    await expect(current).toContainText("串流已確認的最新需求");
+    await expect(current.locator("#creation-message")).toHaveValue("請保留尚未送出的補充");
+    await expect(page).toHaveURL(new RegExp(`session=${ID}$`));
+    expect(state.reads).toBe(1);
+    expect(state.writes).toEqual([]);
+    await captureReadState(page);
+  } finally {
+    state.release();
+  }
+});
 
 test("a selected creation waits for its first reply without offering a new paid session", async ({
   page,

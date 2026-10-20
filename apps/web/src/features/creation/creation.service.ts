@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { replaceEqualDeep, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE_URL, apiFetch, isLastingReadFailure } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
@@ -236,6 +236,11 @@ export function useLiveCreationSession(id: string) {
     queryKey: queryKeys.creation.session(id),
     queryFn: () => getCreationSession(id),
     enabled: !!id,
+    structuralSharing: (previous, incoming) =>
+      replaceEqualDeep(
+        previous,
+        keepNewer(incoming as CreationSession)(previous as CreationSession | undefined),
+      ),
     refetchInterval: (q) =>
       !streaming &&
       !isLastingReadFailure(q.state.error) &&
