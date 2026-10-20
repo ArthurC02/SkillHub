@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, isWriteResultUnknown } from "../../core/api/client";
+import { apiFetch, ApiError, isWriteResultUnknown } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import type { DeclarableLicense } from "@skillhub/api-client-ts";
 import type { CategorizedFindings, Labelled } from "../../core/api/types";
@@ -265,6 +265,14 @@ export function useAcquirePublication(publisher: string, name: string) {
   return useMutation({
     mutationFn: () => requestAcquisition(`/publications/${publisher}/${name}/acquisitions`),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.packaging.downloads }),
+    onError: (error) => {
+      if (error instanceof ApiError && (error.status === 404 || error.status === 409)) {
+        void client.resetQueries({
+          queryKey: queryKeys.publishing.publicPublication(publisher, name),
+          exact: true,
+        });
+      }
+    },
   });
 }
 

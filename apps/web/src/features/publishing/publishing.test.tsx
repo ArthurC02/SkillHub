@@ -1,8 +1,9 @@
 import { StrictMode, act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
+import { queryKeys } from "../../core/api/queryKeys";
 import { PublicPublication } from "./PublicPublication.page";
 import { PublisherSection } from "./components/PublisherSection";
 import { PublishPanel } from "./components/PublishPanel";
@@ -38,10 +39,12 @@ import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 let container: HTMLDivElement;
 let root: Root;
 let publishingSearch: { artifact?: string; publication?: string; bundleVersion?: string } = {};
+let publicParams = { publisher: PUBLISHER, name: PUBLICATION };
 
 beforeEach(() => {
   queryClient.clear();
   publishingSearch = {};
+  publicParams = { publisher: PUBLISHER, name: PUBLICATION };
   container = document.createElement("div");
   document.body.appendChild(container);
 });
@@ -50,6 +53,7 @@ afterEach(async () => {
   await act(async () => root?.unmount());
   container.remove();
   vi.unstubAllGlobals();
+  onlineManager.setOnline(true);
 });
 
 vi.mock("@tanstack/react-router", () => ({
@@ -79,7 +83,7 @@ vi.mock("@tanstack/react-router", () => ({
       </a>
     );
   },
-  useParams: () => ({ publisher: PUBLISHER, name: PUBLICATION }),
+  useParams: () => publicParams,
   useSearch: () => publishingSearch,
 }));
 
@@ -954,6 +958,244 @@ test("PACK-004 沒有這個發佈物：404 說出來，不是空白", async () =
 });
 
 const ACQUIRE_ADDRESS = `${PUB_ADDRESS}/acquisitions`;
+
+const DELISTED_NOTE = "作者撤回了這個發佈物，這一頁不再提供它的內容。";
+
+function unavailablePublication(
+  initial: typeof PUBLIC_PUBLICATION | typeof PUBLIC_BUNDLE_PUBLICATION,
+) {
+  return {
+    kind: initial.kind,
+    publisher: initial.publisher,
+    name: initial.name,
+    address: initial.address,
+    availability: { value: "delisted", label: "作者已撤回", note: DELISTED_NOTE },
+    delisted_at: "2026-10-20T18:00:00Z",
+    releases: [],
+    exposure: { available: false, note: DELISTED_NOTE },
+    acquisition: { available: false, note: DELISTED_NOTE },
+  };
+}
+
+function availabilityScenario(
+  kind: "skill" | "bundle",
+  reread: () => Promise<Response>,
+  status = 409,
+  reply: unknown = status === 404
+    ? { error: "not found" }
+    : { error: DELISTED_NOTE, reason: "delisted" },
+) {
+  const initial = kind === "skill" ? PUBLIC_PUBLICATION : PUBLIC_BUNDLE_PUBLICATION;
+  publicParams = { publisher: PUBLISHER, name: initial.name };
+  const address = `/publications/${PUBLISHER}/${initial.name}`;
+  const state = { reads: 0, writes: 0, initial };
+  container.id = "main-content";
+  container.tabIndex = -1;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === address + "/acquisitions" && init?.method === "POST") {
+      state.writes++;
+      return json(reply, status);
+    }
+    if (path === address) {
+      state.reads++;
+      return state.reads === 1 ? json(initial) : reread();
+    }
+    const response = platformResponse(String(input));
+    return json(response.body, response.status);
+  });
+  return state;
+}
+
+async function rejectedAcquisition(readFinished = false) {
+  await pollUntil(
+    () =>
+      queryClient
+        .getMutationCache()
+        .getAll()
+        .some((mutation) => mutation.state.status === "error") &&
+      (!readFinished || queryClient.isFetching() === 0),
+    text,
+    DEFAULT_WAIT_MS,
+    { flushBeforeFirstCheck: true },
+  );
+}
+
+for (const kind of ["skill", "bundle"] as const) {
+  for (const status of [404, 409]) {
+    test(`a ${kind} acquisition rejected with ${status} removes obsolete content while its address is checked`, async () => {
+      let finish!: (value: Response) => void;
+      const held = new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+      const state = availabilityScenario(kind, () => held, status);
+      const ownKey = queryKeys.publishing.ownPublication(SKILL);
+      queryClient.setQueryData(ownKey, OWN_PUBLICATION);
+      const ownQuery = queryClient.getQueryCache().find({ queryKey: ownKey, exact: true })!;
+      try {
+        await render(<PublicPublication />, () => Boolean(button("下載")));
+        await act(async () => button("下載")!.click());
+        await rejectedAcquisition();
+        expect(ownQuery.state.data).toBe(OWN_PUBLICATION);
+        expect(state.reads).toBe(2);
+        expect(text()).toContain("載入這個發佈物中");
+        expect(container.querySelector("h1")?.textContent).toBe("公開發佈物");
+        expect(container.querySelector(".publication-trust")).toBeNull();
+        expect(button("下載")).toBeUndefined();
+        expect(document.activeElement).toBe(container);
+        await act(async () =>
+          finish(
+            await json(
+              status === 404
+                ? { error: "no publication has this address" }
+                : unavailablePublication(state.initial),
+              status === 404 ? 404 : 200,
+            ),
+          ),
+        );
+        await waitFor(() => text().includes(status === 404 ? "沒有這個發佈物" : "作者已撤回"));
+        expect(container.querySelector(".publication-trust")).toBeNull();
+        expect(button("下載")).toBeUndefined();
+        expect(state.reads).toBe(2);
+        expect(state.writes).toBe(1);
+      } finally {
+        finish(await json({ error: "no publication has this address" }, 404));
+      }
+    });
+  }
+
+  test(`a ${kind} availability reread failure withholds obsolete content and retries only the read`, async () => {
+    const state = availabilityScenario(kind, () =>
+      state.reads === 2
+        ? json({ error: "publication lookup failed" }, 500)
+        : json(unavailablePublication(state.initial)),
+    );
+    await render(<PublicPublication />, () => Boolean(button("下載")));
+    await act(async () => button("下載")!.click());
+    await rejectedAcquisition(true);
+    expect(text()).toContain("暫時無法讀取這個發佈物");
+    expect(container.querySelector("h1")?.textContent).toBe("公開發佈物");
+    expect(container.querySelector(".publication-trust")).toBeNull();
+    expect(button("下載")).toBeUndefined();
+    expect(state.reads).toBe(2);
+    expect(state.writes).toBe(1);
+    await act(async () => button("再試一次")!.click());
+    await waitFor(() => text().includes("作者已撤回"));
+    expect(state.reads).toBe(3);
+    expect(state.writes).toBe(1);
+    expect(document.activeElement).toBe(container);
+  });
+}
+
+test("a paused availability check withholds obsolete content and resumes without another acquisition", async () => {
+  const state = availabilityScenario(
+    "skill",
+    () => json(unavailablePublication(state.initial)),
+    409,
+  );
+  const fetch = globalThis.fetch;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (init?.method === "POST") onlineManager.setOnline(false);
+    return fetch(input, init);
+  });
+  try {
+    await render(<PublicPublication />, () => Boolean(button("下載")));
+    await act(async () => button("下載")!.click());
+    await rejectedAcquisition();
+    expect(text()).toContain("等待連線以讀取這個發佈物");
+    expect(button("下載")).toBeUndefined();
+    expect(container.querySelector(".publication-trust")).toBeNull();
+    expect(state.reads).toBe(1);
+    expect(state.writes).toBe(1);
+    await act(async () => onlineManager.setOnline(true));
+    await waitFor(() => text().includes("作者已撤回"));
+    expect(state.reads).toBe(2);
+    expect(state.writes).toBe(1);
+  } finally {
+    onlineManager.setOnline(true);
+  }
+});
+
+test.each([
+  [401, "not authenticated", "這個下載需要登入"],
+  [
+    403,
+    "Skill Hub 還在封測：瀏覽與小工具詳情對所有人開放，但複製一份、試跑與下載只開放給受邀的測試者。",
+    "還在封測",
+  ],
+  [422, "這個小工具的內容因授權問題尚未釐清而被保留，所以不能發佈", "授權問題尚未釐清"],
+  [500, "publishing failed", "下載結果尚未確認"],
+])(
+  "an acquisition rejected with unrelated status %s retains context without resetting availability",
+  async (status, message, expected) => {
+    const state = availabilityScenario("skill", () => json(PUBLIC_PUBLICATION), status, {
+      error: message,
+    });
+    await render(<PublicPublication />, () => Boolean(button("下載")));
+    await act(async () => button("下載")!.click());
+    await rejectedAcquisition(true);
+    expect(text()).toContain(expected);
+    expect(text()).toContain("把 PDF 整理成摘要");
+    expect(button("下載")).toBeDefined();
+    expect(state.reads).toBe(1);
+    expect(state.writes).toBe(1);
+  },
+);
+
+test("a newly available reread preserves the acquisition refusal instead of losing the result", async () => {
+  let finish!: (value: Response) => void;
+  const held = new Promise<Response>((resolve) => {
+    finish = resolve;
+  });
+  const state = availabilityScenario("skill", () => held);
+  try {
+    await render(<PublicPublication />, () => Boolean(button("下載")));
+    await act(async () => button("下載")!.click());
+    await rejectedAcquisition();
+    expect(state.reads).toBe(2);
+    expect(text()).toContain("載入這個發佈物中");
+    await act(async () => finish(await json(PUBLIC_PUBLICATION)));
+    await rejectedAcquisition(true);
+    expect(text()).toContain(DELISTED_NOTE);
+    expect(text()).toContain("上次下載的回饋");
+    expect(text()).toContain("把 PDF 整理成摘要");
+    expect(button("下載")?.disabled).toBe(false);
+    expect(state.writes).toBe(1);
+  } finally {
+    finish(await json(PUBLIC_PUBLICATION));
+  }
+});
+
+test("a different public address starts without the previous acquisition outcome", async () => {
+  const state = availabilityScenario("skill", () => json(PUBLIC_PUBLICATION), 201, null);
+  const fetch = globalThis.fetch;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) =>
+    String(input).endsWith(`/publications/${PUBLISHER}/pdf-toolkit`)
+      ? json(PUBLIC_BUNDLE_PUBLICATION)
+      : fetch(input, init),
+  );
+  await render(<PublicPublication />, () => Boolean(button("下載")));
+  await act(async () => button("下載")!.click());
+  await waitFor(() => text().includes("下載結果尚未確認"));
+  publicParams = { publisher: PUBLISHER, name: "pdf-toolkit" };
+  await act(async () =>
+    root.render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <PublicPublication />
+        </QueryClientProvider>
+      </StrictMode>,
+    ),
+  );
+  await waitFor(() => text().includes("一組跟 PDF 有關的小工具"));
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+  expect(text()).not.toContain("另開交付紀錄核對");
+  expect(text()).not.toContain("上次下載的回饋");
+  expect(button("下載")?.disabled).toBe(false);
+  expect(state.writes).toBe(1);
+});
 
 for (const kind of ["publication", "bundle"] as const) {
   test.each([

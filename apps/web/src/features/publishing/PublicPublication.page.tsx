@@ -1,6 +1,7 @@
+import { useEffect } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { Loading } from "../../shared/ui/Loading";
-import { PageReadFailure } from "../../shared/ui/LoginRequired";
+import { ReadFailure } from "../../shared/ui/LoginRequired";
 import { Timestamp } from "../../shared/ui/Timestamp";
 import { LabelledBadge } from "../../shared/ui/LabelledBadge";
 import { SOURCE_LABELS } from "../../shared/ui/LicenseBadge.model";
@@ -57,9 +58,7 @@ function ReleaseHistory({
   );
 }
 
-function AcquireAction({ publisher, name }: { publisher: string; name: string }) {
-  const acquire = useAcquirePublication(publisher, name);
-
+function AcquireAction({ acquire }: { acquire: ReturnType<typeof useAcquirePublication> }) {
   return (
     <section className="publication-acquire" data-role="publication-acquire">
       <div>
@@ -76,6 +75,7 @@ function AcquireAction({ publisher, name }: { publisher: string; name: string })
         >
           {acquire.isPending ? "建立下載中…" : "下載"}
         </button>
+        {acquire.isError && <p className="note">上次下載的回饋</p>}
         <AcquisitionFailure
           error={acquire.error}
           what="這個下載"
@@ -120,12 +120,10 @@ function UnavailablePublication({ data }: { data: PublicPublicationData }) {
 
 function PublicBundle({
   data,
-  publisher,
-  name,
+  acquire,
 }: {
   data: PublicPublicationData;
-  publisher: string;
-  name: string;
+  acquire: ReturnType<typeof useAcquirePublication>;
 }) {
   const bundle = data.bundle;
   const bundleRelease = data.bundle_release;
@@ -158,7 +156,7 @@ function PublicBundle({
           <Findings findings={bundleRelease.findings} />
         </div>
       </section>
-      {data.acquisition.available && <AcquireAction publisher={publisher} name={name} />}
+      {data.acquisition.available && <AcquireAction acquire={acquire} />}
       <details>
         <summary>進階資訊（識別碼）</summary>
         <p>
@@ -172,12 +170,10 @@ function PublicBundle({
 
 function PublicSkill({
   data,
-  publisher,
-  name,
+  acquire,
 }: {
   data: PublicPublicationData;
-  publisher: string;
-  name: string;
+  acquire: ReturnType<typeof useAcquirePublication>;
 }) {
   const skill = data.skill;
   const release = data.release;
@@ -221,7 +217,7 @@ function PublicSkill({
           </p>
         </div>
       </section>
-      {data.acquisition.available && <AcquireAction publisher={publisher} name={name} />}
+      {data.acquisition.available && <AcquireAction acquire={acquire} />}
       <details>
         <summary>進階資訊（識別碼）</summary>
         <p>
@@ -235,32 +231,48 @@ function PublicSkill({
 
 export function PublicPublication() {
   const { publisher, name } = useParams({ from: "/p/$publisher/$name" });
-  const publication = usePublicPublication(publisher, name);
+  return <PublicationContent key={`${publisher}/${name}`} publisher={publisher} name={name} />;
+}
 
-  if (publication.isPending) return <Loading what="這個發佈物" />;
-  if (publication.error instanceof ApiError && publication.error.status === 404) {
+function PublicationContent({ publisher, name }: { publisher: string; name: string }) {
+  const publication = usePublicPublication(publisher, name);
+  const acquire = useAcquirePublication(publisher, name);
+  const availability = publication.data?.availability.value;
+
+  useEffect(() => {
+    if (
+      (publication.isPending || publication.error || availability !== "available") &&
+      document.activeElement === document.body
+    ) {
+      document.getElementById("main-content")?.focus();
+    }
+  }, [publication.isPending, publication.error, availability]);
+
+  if (publication.isPending || publication.error) {
+    const missing = publication.error instanceof ApiError && publication.error.status === 404;
+    const paused = publication.fetchStatus === "paused";
     return (
-      <PageReadFailure heading="公開發佈物" error={publication.error} what="這個發佈物">
-        <p role="alert">沒有這個發佈物。</p>
-      </PageReadFailure>
+      <section>
+        <h1>公開發佈物</h1>
+        {(publication.isPending || paused) && <Loading what="這個發佈物" paused={paused} />}
+        <ReadFailure
+          error={publication.error}
+          what="這個發佈物"
+          retry={missing ? undefined : () => void publication.refetch()}
+          retrying={publication.fetchStatus !== "idle"}
+          focusTarget="main-content"
+        >
+          {missing && <p role="alert">沒有這個發佈物。</p>}
+        </ReadFailure>
+      </section>
     );
   }
-  if (publication.error)
-    return (
-      <PageReadFailure
-        heading="公開發佈物"
-        error={publication.error}
-        what="這個發佈物"
-        retry={() => void publication.refetch()}
-        retrying={publication.isFetching}
-      />
-    );
   if (!publication.data) return null;
   if (publication.data.availability.value !== "available") {
     return <UnavailablePublication data={publication.data} />;
   }
   if (publication.data.kind === "bundle") {
-    return <PublicBundle data={publication.data} publisher={publisher} name={name} />;
+    return <PublicBundle data={publication.data} acquire={acquire} />;
   }
-  return <PublicSkill data={publication.data} publisher={publisher} name={name} />;
+  return <PublicSkill data={publication.data} acquire={acquire} />;
 }
