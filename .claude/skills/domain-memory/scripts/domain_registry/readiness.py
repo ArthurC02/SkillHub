@@ -3,10 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .common import one_level_too_deep_hint
+from .common import load_json, one_level_too_deep_hint
 from .policy import existing_policy
 from .registry import coverage, validate
-from .sources import discover_sources, verify_source_map
+from .sources import discover_sources, listing_drift, verify_source_map
 from .store import MANIFEST, read_document
 
 PRODUCT_GROUPS = (
@@ -61,6 +61,14 @@ def registry_condition(
     return ("reviewed-empty" if reviewed_empty else "current"), records, []
 
 
+def _listing_signal(discovered: dict[str, Any], registry_root: Path) -> dict[str, Any]:
+    gone, unlisted = listing_drift(discovered, load_json(registry_root / "source-map.json"))
+    return {
+        "kind": "listing", "status": "drifted" if gone or unlisted else "current",
+        "discovered_but_gone": gone, "discovered_but_unlisted": unlisted,
+    }
+
+
 def _governance(candidates: dict[str, Any], registry_root: Path | None) -> dict[str, Any]:
     try:
         policy = existing_policy(registry_root.resolve()) if registry_root else None
@@ -95,6 +103,8 @@ def assess_readiness(
         registry_status, registry_records, blocks = registry_condition(
             repo_root, registry_root.resolve()
         )
+        if registry_status not in UNUSABLE_REGISTRY_STATUSES:
+            signals.append(_listing_signal(discovered, registry_root.resolve()))
         signals.append({"kind": "registry", "status": registry_status})
         signals.append({"kind": "registry_records", "count": registry_records})
 

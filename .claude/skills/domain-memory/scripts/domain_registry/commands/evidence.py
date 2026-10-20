@@ -294,6 +294,9 @@ def handle_refresh_listing(args: argparse.Namespace) -> int:
     added, removed = len(change["added"]), len(change["removed"])
     if added or removed:
         print(f"Listing refreshed: +{added} -{removed} discovered {'path' if added + removed == 1 else 'paths'}")
+        for name in ("added", "removed"):
+            if change[name]:
+                print(f"{name}: {', '.join(change[name])}")
     else:
         print("Listing already current")
     return 0

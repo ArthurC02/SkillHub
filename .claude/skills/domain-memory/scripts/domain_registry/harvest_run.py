@@ -23,7 +23,7 @@ from .evidence import citation, classified, function_span, source_map_for
 from .harvest_package import harvest_package, obligation_of, write_harvest_package
 from .hitl import ObligationRun, record_approval, record_test_result, same_command, submit_proposal, verify_proposal
 from .registry import as_stored, record_by_id
-from .sources import relisting_hint
+from .sources import discovery_placements, refresh_listing_advice
 from .store import read_document
 from .transaction import remove_tree
 from .updates import promote_candidate, replace_promoted_fields, retract_candidate, upsert_candidate
@@ -73,6 +73,7 @@ class Harvest:
     written: bool = False
     resumed_from: str | None = None
     interrupted: bool = False
+    relisting: str | None = None
 
     def report(self) -> dict[str, Any]:
         return {
@@ -276,10 +277,9 @@ def _record(run: Harvest, rule: dict[str, Any], source_map: dict[str, Any]) -> d
         return None
     outside = unclassified_paths(classify_all({"evidence": evidence}, source_map))
     if outside:
-        hint = relisting_hint(run.registry_root, run.repo_root, outside)
         run.errors.append(
             f"{rule['id']} cites {', '.join(outside)} outside the confirmed sources; ship-package would refuse "
-            "to review it, so confirm those sources first or cite others" + (f"; {hint}" if hint else "")
+            f"to review it, so confirm those sources first or cite others{_placement_hint(run, outside)}"
         )
         return None
     examples = rule.get("examples") if isinstance(rule.get("examples"), list) else [rule["example"]] if rule.get("example") else []
@@ -287,6 +287,14 @@ def _record(run: Harvest, rule: dict[str, Any], source_map: dict[str, Any]) -> d
         "id": rule["id"], "contexts": [run.spec["context"]], "statement": rule["statement"],
         **({"examples": examples} if examples else {}), "status": "candidate", "evidence": evidence,
     }
+
+
+def _placement_hint(run: Harvest, outside: list[str]) -> str:
+    placed = discovery_placements(run.repo_root, outside)
+    if not placed:
+        return ""
+    run.relisting = refresh_listing_advice(Path(shown_path(run.registry_root, run.repo_root)), Path("."))
+    return f"; discovery now places {', '.join(f'{path} under {kind}' for path, kind in placed)}; {run.relisting}"
 
 
 def _counterfactuals(run: Harvest) -> dict[str, dict[str, Any]]:
@@ -418,6 +426,11 @@ def _already_approved(package_root: Path, approval: dict[str, Any]) -> bool:
 
 
 def _next_step(run: Harvest) -> str:
+    if run.stopped_at == "citation" and run.relisting:
+        return (
+            f"no package was written; discovery now places a cited path, so {run.relisting}, then run harvest again; "
+            "otherwise confirm the sources the cited paths belong to, or cite others"
+        )
     if run.stopped_at in NOTHING_WRITTEN:
         return NOTHING_WRITTEN[run.stopped_at]
     if run.interrupted:

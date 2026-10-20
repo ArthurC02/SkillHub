@@ -2,6 +2,18 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.28
+
+### Changed
+
+- `readiness` with a usable Registry adds a `listing` signal, `current` or `drifted` with `discovered_but_gone` and `discovered_but_unlisted`, and on drift prints the `NOTE:` that `verify-sources` prints, with the `refresh-listing` to run; the listing is never a block.
+- `refresh-listing` prints an `added:` and a `removed:` line naming the paths after its count line.
+- A refused `harvest` citation that discovery would place today shows the `refresh-listing` roots relative to the repository, and the report's `next` leads with that command.
+
+### Fixed
+
+- `discovered_but_gone` counted only listed paths whose file was deleted, so a listed path discovery no longer places, such as an instruction file name discovery stopped listing, was absent from the drift note while `refresh-listing` dropped it; the count under-stated what a refresh removes. It now names every listed path discovery no longer finds, which is what the refresh drops.
+
 ## 1.2.27
 
 ### Added

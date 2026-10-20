@@ -26,4 +26,4 @@ The state is a posture, not a verdict about project ownership, quality, or wheth
 }
 ```
 
-`signals` reports observations, including Registry validation and record count; `blocks` reports reasons the existing memory cannot safely guide work; `next_capability` only routes the Agent. An unusable Registry overrides the normal design or maintenance route until its sources or structure are repaired. An Agent must still inspect the selected sources and run the capability's own validation before relying on any domain fact.
+`signals` reports observations, including Registry validation, record count and, with a usable Registry, a `listing` signal that is `current` or `drifted` with the paths `refresh-listing` would add and drop; `blocks` reports reasons the existing memory cannot safely guide work; `next_capability` only routes the Agent. An unusable Registry overrides the normal design or maintenance route until its sources or structure are repaired. An Agent must still inspect the selected sources and run the capability's own validation before relying on any domain fact.

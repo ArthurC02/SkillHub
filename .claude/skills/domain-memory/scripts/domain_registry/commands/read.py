@@ -37,7 +37,7 @@ from ..registry import (
     record_by_id,
 )
 from ..search import CONSTRAINT_ASSETS, MATCH_KINDS, every_resolved_term, prose_mentions, ranked_lookup
-from ..sources import counted, probe_sources, refresh_listing_advice
+from ..sources import counted, discovery_drift_note, probe_sources, refresh_listing_advice
 from ..store import committed_documents, read_document
 from .common import print_json
 
@@ -274,7 +274,11 @@ def handle_probe(args: argparse.Namespace) -> int:
 
 
 def handle_readiness(args: argparse.Namespace) -> int:
-    print_json(assess_readiness(args.repo_root, args.registry_root))
+    result = assess_readiness(args.repo_root, args.registry_root)
+    print_json(result)
+    drifted = next((s for s in result["signals"] if s.get("kind") == "listing" and s.get("status") == "drifted"), None)
+    if drifted and (note := discovery_drift_note(drifted | {"status": "discovery_drifted"}, args.registry_root, args.repo_root)):
+        print(note, file=sys.stderr)
     return 0
 
 

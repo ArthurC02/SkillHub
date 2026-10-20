@@ -704,18 +704,9 @@ def _discovered_but_gone(root: Path, source_map: dict[str, Any]) -> list[str]:
     )
 
 
-def _discovered_but_unlisted(root: Path, source_map: dict[str, Any]) -> list[str]:
-    listed = {
-        path
-        for group in source_map.get("source_groups", [])
-        for path in group.get("paths", [])
-    }
-    discovered = {
-        path
-        for group in discover_sources(root)["source_groups"]
-        for path in group["paths"]
-    }
-    return sorted(discovered - listed)
+def listing_drift(discovered: dict[str, Any], source_map: dict[str, Any]) -> tuple[list[str], list[str]]:
+    listed, current = _listed_paths(source_map), _listed_paths(discovered)
+    return sorted(listed - current), sorted(current - listed)
 
 
 def verify_against_discovery(
@@ -724,10 +715,9 @@ def verify_against_discovery(
     result = verify_source_map(root, source_map_path, policy)
     if "discovered_but_gone" not in result:
         return result
-    unlisted = _discovered_but_unlisted(root.resolve(), load_json(source_map_path))
-    drifted = bool(result["discovered_but_gone"] or unlisted)
-    status = "discovery_drifted" if drifted and result["status"] == "current" else result["status"]
-    return result | {"status": status, "discovered_but_unlisted": unlisted}
+    gone, unlisted = listing_drift(discover_sources(root.resolve()), load_json(source_map_path))
+    status = "discovery_drifted" if (gone or unlisted) and result["status"] == "current" else result["status"]
+    return result | {"status": status, "discovered_but_gone": gone, "discovered_but_unlisted": unlisted}
 
 
 def shown_argument(path: Path) -> str:
@@ -735,14 +725,10 @@ def shown_argument(path: Path) -> str:
     return f'"{text}"' if " " in text else text
 
 
-def relisting_hint(registry_root: Path, repo_root: Path, paths: list[str]) -> str | None:
+def discovery_placements(repo_root: Path, paths: list[str]) -> list[tuple[str, str]]:
     kind_of = source_kind_index(discover_sources(repo_root))
     placed = [(path, kind_of(path)) for path in paths]
-    placed = [(path, kind) for path, kind in placed if kind != "unclassified"]
-    if not placed:
-        return None
-    placements = ", ".join(f"{path} under {kind}" for path, kind in placed)
-    return f"discovery now places {placements}; {refresh_listing_advice(registry_root, repo_root)}"
+    return [(path, kind) for path, kind in placed if kind != "unclassified"]
 
 
 def refresh_listing_advice(registry_root: Path, repo_root: Path) -> str:
@@ -880,6 +866,6 @@ def probe_sources(
         result = verify_source_map(root, source_map_path, policy) | {"checked": "hash"}
     if result["status"] != "current":
         return result
-    gone, unlisted = _discovered_but_gone(root, source_map), _discovered_but_unlisted(root.resolve(), source_map)
+    gone, unlisted = listing_drift(discover_sources(root.resolve()), source_map)
     status = "discovery_drifted" if gone or unlisted else "current"
     return result | {"status": status, "discovered_but_gone": gone, "discovered_but_unlisted": unlisted}

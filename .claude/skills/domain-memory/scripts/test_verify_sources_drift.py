@@ -7,6 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+from domain_registry.readiness import assess_readiness
 from domain_registry.sources import (
     selected_source_map,
     verify_against_discovery,
@@ -52,6 +53,49 @@ class VerifySourcesDriftTest(RegistryTestCase):
                 report["discovered_but_unlisted"],
                 result.stderr.strip(),
             ),
+        )
+
+    def test_a_listed_path_discovery_no_longer_places_counts_as_gone_while_its_file_remains(self) -> None:
+        source_map_path = self.map_with_tests("test_kept.py")
+        (self.repo / "notes").mkdir()
+        (self.repo / "notes" / "README.md").write_text("notes\n", encoding="utf-8")
+        stored = json.loads(source_map_path.read_text(encoding="utf-8"))
+        next(group for group in stored["source_groups"] if group["kind"] == "tests")["paths"].append("notes/README.md")
+        write_source_map(source_map_path, stored)
+        result = self.verify(source_map_path)
+        report = json.loads(result.stdout)
+        self.assertEqual(
+            ("discovery_drifted", ["notes/README.md"], [], True,
+             "NOTE: discovery drifted: 1 listed path gone, 0 matching paths unlisted; "
+             f"run refresh-listing --registry-root {source_map_path.parent.as_posix()} "
+             f"--repo-root {self.repo.as_posix()} (no confirmation needed)"),
+            (report["status"], report["discovered_but_gone"], report["discovered_but_unlisted"],
+             (self.repo / "notes" / "README.md").is_file(), result.stderr.strip()),
+        )
+
+    def test_readiness_reports_listing_drift_as_a_signal_and_a_note_without_blocking(self) -> None:
+        self.permit_sources()
+        source_map_path = self.map_with_tests("test_kept.py")
+        (self.repo / "tests" / "test_new.py").write_text("new\n", encoding="utf-8")
+        assessed = assess_readiness(self.repo, self.repo / "memory")
+        result = self.run_cli("readiness", "--repo-root", str(self.repo), "--registry-root", str(self.repo / "memory"))
+        self.assertEqual(
+            ([], {"kind": "listing", "status": "drifted", "discovered_but_gone": [], "discovered_but_unlisted": ["tests/test_new.py"]},
+             0, "NOTE: discovery drifted: 0 listed paths gone, 1 matching path unlisted; "
+                f"run refresh-listing --registry-root {source_map_path.parent.as_posix()} "
+                f"--repo-root {self.repo.as_posix()} (no confirmation needed)"),
+            (assessed["blocks"], next(s for s in assessed["signals"] if s["kind"] == "listing"),
+             result.returncode, result.stderr.strip()),
+        )
+
+    def test_readiness_reports_a_current_listing_silently(self) -> None:
+        self.permit_sources()
+        self.map_with_tests("test_kept.py")
+        assessed = assess_readiness(self.repo, self.repo / "memory")
+        result = self.run_cli("readiness", "--repo-root", str(self.repo), "--registry-root", str(self.repo / "memory"))
+        self.assertEqual(
+            ({"kind": "listing", "status": "current", "discovered_but_gone": [], "discovered_but_unlisted": []}, ""),
+            (next(s for s in assessed["signals"] if s["kind"] == "listing"), result.stderr.strip()),
         )
 
     def test_several_gone_and_unlisted_paths_are_counted_in_the_plural_and_listed_sorted(
@@ -246,7 +290,7 @@ class VerifySourcesDriftTest(RegistryTestCase):
         self.assertEqual(
             (
                 0,
-                "Listing refreshed: +1 -1 discovered paths",
+                "Listing refreshed: +1 -1 discovered paths\nadded: tests/test_new.py\nremoved: tests/test_gone.py",
                 self.without_listing(confirmed),
                 ["tests/test_kept.py", "tests/test_new.py"],
                 {"operation": "refresh-listing", "added": ["tests/test_new.py"], "removed": ["tests/test_gone.py"]},
@@ -286,7 +330,7 @@ class VerifySourcesDriftTest(RegistryTestCase):
         result = self.refresh_listing()
         after = self.stored_map()
         self.assertEqual(
-            (0, "Listing refreshed: +1 -0 discovered path", True, False, self.without_listing(before)),
+            (0, "Listing refreshed: +1 -0 discovered path\nadded: tests/test_new.py", True, False, self.without_listing(before)),
             (
                 result.returncode,
                 result.stdout.strip(),

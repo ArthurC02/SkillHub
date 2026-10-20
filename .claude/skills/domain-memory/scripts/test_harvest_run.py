@@ -252,16 +252,16 @@ class HarvestTest(RegistryTestCase):
         spec = self.spec()
         spec["rules"][0]["enforcing"] = ["db/migrations/0001_limit.sql:1-1"]
         report = harvest(self.repo / "memory", self.repo, spec, None, "draft")
-        [error] = report["errors"]
+        advice = "run refresh-listing --registry-root memory --repo-root . (no confirmation needed)"
         self.assertEqual(
-            ("citation", None, True),
-            (report["stopped_at"], report["package"], error.startswith(
+            ("citation", None, [
                 f"{RULE_ID} cites db/migrations/0001_limit.sql outside the confirmed sources; ship-package would refuse "
                 "to review it, so confirm those sources first or cite others; discovery now places "
-                "db/migrations/0001_limit.sql under implementation; run refresh-listing --registry-root "
-            )),
+                f"db/migrations/0001_limit.sql under implementation; {advice}",
+            ], f"no package was written; discovery now places a cited path, so {advice}, then run harvest again; "
+               "otherwise confirm the sources the cited paths belong to, or cite others"),
+            (report["stopped_at"], report["package"], report["errors"], report["next"]),
         )
-        self.assertIn("(no confirmation needed)", error)
 
     def test_a_test_the_file_does_not_define_is_named_before_any_test_runs(self) -> None:
         self.confirm_src()
