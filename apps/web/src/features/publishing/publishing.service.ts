@@ -18,6 +18,7 @@ export interface PublicationRelease {
   content_hash: string;
   released_at: string;
   rights_attested: boolean;
+  declared_license?: DeclarableLicense;
   findings: CategorizedFindings;
 }
 
