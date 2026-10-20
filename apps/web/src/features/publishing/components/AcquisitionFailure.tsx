@@ -8,13 +8,17 @@ export function AcquisitionFailure({
   error,
   what,
   fallback,
+  focusOnError = true,
 }: {
   error: unknown;
   what: string;
   fallback: string;
+  focusOnError?: boolean;
 }) {
   const message = useRef<HTMLParagraphElement>(null);
-  useEffect(() => message.current?.focus(), [error]);
+  useEffect(() => {
+    if (focusOnError) message.current?.focus();
+  }, [error, focusOnError]);
   if (!error) return null;
   return (
     <ReadFailure error={error} what={what}>

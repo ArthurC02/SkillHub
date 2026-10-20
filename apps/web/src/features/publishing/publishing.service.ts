@@ -3,6 +3,7 @@ import { apiFetch, ApiError, isWriteResultUnknown } from "../../core/api/client"
 import { queryKeys } from "../../core/api/queryKeys";
 import type { DeclarableLicense } from "@skillhub/api-client-ts";
 import type { CategorizedFindings, Labelled } from "../../core/api/types";
+import { readPublicPublication } from "./public-publication.model";
 import { AcquisitionResultUnknown, readAcquisition } from "./acquisition.model";
 
 export interface Publisher {
@@ -246,7 +247,8 @@ export function useDelist(skillId: string) {
 export function usePublicPublication(publisher: string, name: string) {
   return useQuery({
     queryKey: queryKeys.publishing.publicPublication(publisher, name),
-    queryFn: () => apiFetch<PublicPublication>(`/publications/${publisher}/${name}`),
+    queryFn: async () =>
+      readPublicPublication(await apiFetch<unknown>(`/publications/${publisher}/${name}`)),
     enabled: publisher.length > 0 && name.length > 0,
   });
 }

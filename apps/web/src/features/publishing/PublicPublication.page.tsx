@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { Loading } from "../../shared/ui/Loading";
 import { ReadFailure } from "../../shared/ui/LoginRequired";
@@ -58,7 +58,13 @@ function ReleaseHistory({
   );
 }
 
-function AcquireAction({ acquire }: { acquire: ReturnType<typeof useAcquirePublication> }) {
+function AcquireAction({
+  acquire,
+  focusAcquisitionError,
+}: {
+  acquire: ReturnType<typeof useAcquirePublication>;
+  focusAcquisitionError: boolean;
+}) {
   return (
     <section className="publication-acquire" data-role="publication-acquire">
       <div>
@@ -80,6 +86,7 @@ function AcquireAction({ acquire }: { acquire: ReturnType<typeof useAcquirePubli
           error={acquire.error}
           what="這個下載"
           fallback="下載沒有成功，可以再試一次。"
+          focusOnError={focusAcquisitionError}
         />
         {acquire.isSuccess && (
           <p role="status">
@@ -121,9 +128,11 @@ function UnavailablePublication({ data }: { data: PublicPublicationData }) {
 function PublicBundle({
   data,
   acquire,
+  focusAcquisitionError,
 }: {
   data: PublicPublicationData;
   acquire: ReturnType<typeof useAcquirePublication>;
+  focusAcquisitionError: boolean;
 }) {
   const bundle = data.bundle;
   const bundleRelease = data.bundle_release;
@@ -156,7 +165,9 @@ function PublicBundle({
           <Findings findings={bundleRelease.findings} />
         </div>
       </section>
-      {data.acquisition.available && <AcquireAction acquire={acquire} />}
+      {data.acquisition.available && (
+        <AcquireAction acquire={acquire} focusAcquisitionError={focusAcquisitionError} />
+      )}
       <details>
         <summary>進階資訊（識別碼）</summary>
         <p>
@@ -171,9 +182,11 @@ function PublicBundle({
 function PublicSkill({
   data,
   acquire,
+  focusAcquisitionError,
 }: {
   data: PublicPublicationData;
   acquire: ReturnType<typeof useAcquirePublication>;
+  focusAcquisitionError: boolean;
 }) {
   const skill = data.skill;
   const release = data.release;
@@ -217,7 +230,9 @@ function PublicSkill({
           </p>
         </div>
       </section>
-      {data.acquisition.available && <AcquireAction acquire={acquire} />}
+      {data.acquisition.available && (
+        <AcquireAction acquire={acquire} focusAcquisitionError={focusAcquisitionError} />
+      )}
       <details>
         <summary>進階資訊（識別碼）</summary>
         <p>
@@ -237,6 +252,7 @@ export function PublicPublication() {
 function PublicationContent({ publisher, name }: { publisher: string; name: string }) {
   const publication = usePublicPublication(publisher, name);
   const acquire = useAcquirePublication(publisher, name);
+  const [acknowledgedError, setAcknowledgedError] = useState<Error | null>(null);
   const availability = publication.data?.availability.value;
 
   useEffect(() => {
@@ -258,7 +274,14 @@ function PublicationContent({ publisher, name }: { publisher: string; name: stri
         <ReadFailure
           error={publication.error}
           what="這個發佈物"
-          retry={missing ? undefined : () => void publication.refetch()}
+          retry={
+            missing
+              ? undefined
+              : () => {
+                  setAcknowledgedError(acquire.error);
+                  void publication.refetch();
+                }
+          }
           retrying={publication.fetchStatus !== "idle"}
           focusTarget="main-content"
         >
@@ -272,7 +295,19 @@ function PublicationContent({ publisher, name }: { publisher: string; name: stri
     return <UnavailablePublication data={publication.data} />;
   }
   if (publication.data.kind === "bundle") {
-    return <PublicBundle data={publication.data} acquire={acquire} />;
+    return (
+      <PublicBundle
+        data={publication.data}
+        acquire={acquire}
+        focusAcquisitionError={acquire.error !== acknowledgedError}
+      />
+    );
   }
-  return <PublicSkill data={publication.data} acquire={acquire} />;
+  return (
+    <PublicSkill
+      data={publication.data}
+      acquire={acquire}
+      focusAcquisitionError={acquire.error !== acknowledgedError}
+    />
+  );
 }

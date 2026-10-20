@@ -863,7 +863,7 @@ test("a public release with findings still states the limits of static scanning"
           ...PUBLIC_PUBLICATION.release,
           findings: {
             errors: [],
-            warnings: [{ code: "SCRIPT_FOUND", message: "套件含有 Script。" }],
+            warnings: [{ severity: "warning", code: "SCRIPT_FOUND", message: "套件含有 Script。" }],
             infos: [],
           },
         },

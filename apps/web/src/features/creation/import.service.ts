@@ -1,14 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, isWriteResultUnknown } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
-import type {
-  CategorizedFindings,
-  ImportFinding,
-  ImportResult,
-  ImportedSkill,
-  RefusedSkill,
-  UploadResult,
-} from "../../core/api/types";
+import { isCategorizedFindings, isImportFinding } from "../../core/api/findings";
+export { isCategorizedFindings } from "../../core/api/findings";
+import type { ImportResult, ImportedSkill, RefusedSkill, UploadResult } from "../../core/api/types";
 
 export function importSkillFromURL(url: string) {
   return apiFetch<unknown>("/skills/import/url", {
@@ -95,31 +90,6 @@ export function isUploadResult(value: unknown): value is UploadResult {
     result.content_hash.trim().length > 0 &&
     typeof result.duplicate === "boolean" &&
     isCategorizedFindings(result.findings)
-  );
-}
-
-export function isCategorizedFindings(value: unknown): value is CategorizedFindings {
-  if (typeof value !== "object" || value === null) return false;
-  const body = value as Partial<CategorizedFindings>;
-  return (
-    Array.isArray(body.errors) &&
-    Array.isArray(body.warnings) &&
-    Array.isArray(body.infos) &&
-    [body.errors, body.warnings, body.infos].flat().every(isImportFinding)
-  );
-}
-
-function isImportFinding(value: unknown): value is ImportFinding {
-  if (!value || typeof value !== "object") return false;
-  const finding = value as Partial<ImportFinding>;
-  return (
-    ["error", "warning", "info"].includes(finding.severity ?? "") &&
-    typeof finding.code === "string" &&
-    typeof finding.message === "string" &&
-    (finding.path === undefined || typeof finding.path === "string") &&
-    (finding.details === undefined ||
-      (Array.isArray(finding.details) &&
-        finding.details.every((detail) => typeof detail === "string")))
   );
 }
 
