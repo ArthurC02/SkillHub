@@ -1,0 +1,23 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "registry-cite-erasure-trigger-2026-10-20",
+  "status": "draft",
+  "intent": "Cite the migration that enforces the one-time content erasure, now that discovery lists db/ as implementation.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context registry lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-skill-version-changes-only-once-to-erase-its-content",
+      "statement": "A skill version row never changes except once, to erase its content: that one update sets content_erased_at and must leave the manifest empty and the import source cleared, may change nothing else, and freezes the row again."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/skill/library/aggregate_test.go",
+    "db/migrations/0130_skill_version_content_erasure.sql",
+    "docs/adr/ADR-023-account-purge.md"
+  ]
+}

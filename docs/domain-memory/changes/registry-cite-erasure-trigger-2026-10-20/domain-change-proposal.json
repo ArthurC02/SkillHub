@@ -1,0 +1,137 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "registry-cite-erasure-trigger-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "registry-cite-erasure-trigger-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-20T07:58:34.159447Z",
+  "verified_at": "2026-10-20T07:58:42.155478Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "31e8d45d6a78e29561d01389602479e47e09f735",
+    "registry_digest": "sha256:ba0e55e83ba8cf2fe4bca313ae50105c97bbe7704b45d3db6ae0c9d682c48b54",
+    "committed_digest": "sha256:ba0e55e83ba8cf2fe4bca313ae50105c97bbe7704b45d3db6ae0c9d682c48b54"
+  },
+  "affected_contexts": [
+    "registry"
+  ],
+  "rule_ids": [
+    "a-skill-version-changes-only-once-to-erase-its-content"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Only registry decides these rules.",
+    "evidence": [
+      "apps/platform/internal/skill/library/purge.go:73-85"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/entrypoint/api/apiserver/app.go:211-211"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Iron rule 4 keeps every version a Run used, so an account purge kept the whole private skill whenever the owner had ever run it, against the promise that deleting the account deletes its content."
+    ],
+    "decision": "Erase content but keep version rows: an account purge tombstones skills only the workspace itself holds; the version trigger allows one content erasure.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Deleting the owner's Runs too: breaks iron rule 4, the consent's permanent Run metadata, and the credit records that point at Runs.",
+      "Keeping the content: deleting an account would not delete what the user wrote."
+    ],
+    "proof_obligations": [
+      "rule-a-skill-version-changes-only-once-to-erase-its-content"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-skill-version-changes-only-once-to-erase-its-content",
+        "statement": "A skill version row never changes except once, to erase its content: that one update sets content_erased_at and must leave the manifest empty and the import source cleared, may change nothing else, and freezes the row again.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "Erasing while rewriting the content hash, or while keeping the manifest, is refused; after the erasure, restoring a manifest, un-erasing or erasing again is refused."
+        ],
+        "evidence": [
+          {
+            "path": "db/migrations/0130_skill_version_content_erasure.sql",
+            "lines": {
+              "start": 2,
+              "end": 4
+            },
+            "content_sha256": "sha256:bab9d85899fdd0eb38b308c24f591a25bdf9df6ceb5fac39f81883b3ca4af075",
+            "excerpt_sha256": "sha256:5fc4a5b8cad683e7d5b4a3e7353d5e50428f309c22aa437fa4ad7a8ffe86bd43",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "db/migrations/0130_skill_version_content_erasure.sql",
+            "lines": {
+              "start": 13,
+              "end": 22
+            },
+            "content_sha256": "sha256:bab9d85899fdd0eb38b308c24f591a25bdf9df6ceb5fac39f81883b3ca4af075",
+            "excerpt_sha256": "sha256:3e751ac65f8b298e21a5d0a66f02face1d87c71ae44ff95788cf216077f41a45",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "docs/adr/ADR-023-account-purge.md",
+            "lines": {
+              "start": 48,
+              "end": 48
+            },
+            "content_sha256": "sha256:bbeaa6f70a0b70ba3d85488fa502db69749e4f50569880a5cfe2a7081b5a7b12",
+            "excerpt_sha256": "sha256:1a2ba40a85527c67fa6e66244ee305cdb4f8880568e86bcae7b64714982bbbe4",
+            "source_kind": "decisions"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/aggregate_test.go",
+            "lines": {
+              "start": 269,
+              "end": 312
+            },
+            "content_sha256": "sha256:86f9587e336c379eab3195292f385dff140d32e87173a18446b26399c33af25c",
+            "excerpt_sha256": "sha256:812cfd1760d4c8999649c26baba6a5b56e8f5cdf4babf8dd45bef22a8ec876d4",
+            "source_kind": "tests"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-20T07:58:41.879063Z",
+      "scope": "Record registry rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "31e8d45d6a78e29561d01389602479e47e09f735",
+        "registry_digest": "sha256:ba0e55e83ba8cf2fe4bca313ae50105c97bbe7704b45d3db6ae0c9d682c48b54",
+        "committed_digest": "sha256:ba0e55e83ba8cf2fe4bca313ae50105c97bbe7704b45d3db6ae0c9d682c48b54"
+      }
+    }
+  ],
+  "supersedes": [
+    "registry-erase-own-run-content-2026-10-20"
+  ]
+}

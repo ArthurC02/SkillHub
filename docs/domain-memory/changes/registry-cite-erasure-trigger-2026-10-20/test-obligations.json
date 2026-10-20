@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "registry-cite-erasure-trigger-2026-10-20",
+  "proposal_id": "registry-cite-erasure-trigger-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-a-skill-version-changes-only-once-to-erase-its-content",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-skill-version-changes-only-once-to-erase-its-content",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-skill-version-changes-only-once-to-erase-its-content"
+        }
+      ],
+      "expected_outcome": "A skill version row never changes except once, to erase its content: that one update sets content_erased_at and must leave the manifest empty and the import source cleared, may change nothing else, and freezes the row again.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAVersionRowAllowsOnlyItsContentToBeErasedAndOnlyOnce$ ./internal/skill/library/"
+    }
+  ]
+}

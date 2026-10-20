@@ -1,0 +1,42 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "registry-cite-erasure-trigger-2026-10-20",
+  "proposal_id": "registry-cite-erasure-trigger-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "31e8d45d6a78e29561d01389602479e47e09f735",
+    "registry_digest": "sha256:ba0e55e83ba8cf2fe4bca313ae50105c97bbe7704b45d3db6ae0c9d682c48b54",
+    "committed_digest": "sha256:ba0e55e83ba8cf2fe4bca313ae50105c97bbe7704b45d3db6ae0c9d682c48b54"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-skill-version-changes-only-once-to-erase-its-content",
+      "mutated_protection": "db/migrations/0130_skill_version_content_erasure.sql:16: WHEN (OLD.content_erased_at IS NOT NULL OR NEW.content_erased_at IS NULL) -> WHEN (NEW.content_erased_at IS NULL)",
+      "failure_evidence": "=== RUN   TestAVersionRowAllowsOnlyItsContentToBeErasedAndOnlyOnce\n    aggregate_test.go:309: restoring a manifest of an erased version: err = ERROR: new row for relation \"skill_versions\" violates check constraint \"skill_versions_erased_content_cleared\" (SQLSTATE 23514), want the immutability refusal\n    aggregate_test.go:309: erasing again of an erased version: err = <nil>, want the immutability refusal\n--- FAIL: TestAVersionRowAllowsOnlyItsContentToBeErasedAndOnlyOnce (0.06s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t3.784s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/skill/library/aggregate_test.go",
+    "db/migrations/0130_skill_version_content_erasure.sql",
+    "docs/adr/ADR-023-account-purge.md"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-skill-version-changes-only-once-to-erase-its-content",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAVersionRowAllowsOnlyItsContentToBeErasedAndOnlyOnce$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:a83eb139c0f7f3b2307e287465c75301f1b2170b48280fe2575e7e81ef292998",
+      "finished_at": "2026-10-20T07:58:41.875232Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
