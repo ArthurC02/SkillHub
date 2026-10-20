@@ -20,6 +20,10 @@ const (
 	OrphanPersistsAfterRounds = 2
 
 	superviseBatch = 200
+
+	SpendRecheckWindow = 24 * time.Hour
+
+	SpendRecheckEvery = 5 * time.Minute
 )
 
 func ActiveRunClaim(batch int32) gen.ListActiveRunsParams {
@@ -65,11 +69,39 @@ func (s *Service) Supervise(ctx context.Context) error {
 		}
 	}
 
+	if err := (SpendRechecks{Queries: s.queries(), Queue: s.Queue}).Enqueue(ctx); err != nil {
+		errs = append(errs, err)
+	}
+
 	detector := s.detector()
 	detector.DetectMaskerCanaryFailed(ctx)
 	detector.DetectMaskingStopped(ctx)
 	detector.DetectP02Breach(ctx)
 
+	return errors.Join(errs...)
+}
+
+type SpendRechecks struct {
+	Queries *gen.Queries
+	Queue   RunQueue
+}
+
+func (r SpendRechecks) Enqueue(ctx context.Context) error {
+	if r.Queue == nil {
+		return nil
+	}
+	awaiting, err := r.Queries.ListRunsAwaitingSpend(ctx, gen.ListRunsAwaitingSpendParams{
+		SpendWindow: pgconv.Interval(SpendRecheckWindow), RecheckAfter: pgconv.Interval(SpendRecheckEvery), BatchSize: superviseBatch,
+	})
+	if err != nil {
+		return err
+	}
+	var errs []error
+	for _, run := range awaiting {
+		if err := r.Queue.Clean(ctx, RunWork{RunID: run.ID, WorkspaceID: run.WorkspaceID}); err != nil {
+			errs = append(errs, err)
+		}
+	}
 	return errors.Join(errs...)
 }
 

@@ -10,8 +10,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
@@ -85,6 +87,9 @@ func TestARunIsChargedWhatItSpentAndOnlyOnce(t *testing.T) {
 	if got := balanceOf(t, pool, f.userID); got != betaGrantCredits-50 {
 		t.Errorf("balance = %d, want %d", got, betaGrantCredits-50)
 	}
+	if !costSettled(t, pool, runID) {
+		t.Error("a run charged at its real cost is not marked settled, so supervision would keep re-reading its spend")
+	}
 }
 
 func TestARunWhoseSpendIsUnreadableIsRecordedButNotCharged(t *testing.T) {
@@ -144,6 +149,120 @@ func TestARunWhoseSpendIsReadOnALaterCleanupReachesTheLedgerAtItsRealCost(t *tes
 	}
 	if got := balanceOf(t, pool, f.userID); got != betaGrantCredits-50 {
 		t.Errorf("balance = %d, want %d", got, betaGrantCredits-50)
+	}
+}
+
+type recordingQueue struct {
+	mu      sync.Mutex
+	cleaned []run.RunWork
+}
+
+func (*recordingQueue) Drive(context.Context, run.RunWork) (bool, error)     { return false, nil }
+func (*recordingQueue) DriveInTx(context.Context, pgx.Tx, run.RunWork) error { return nil }
+func (*recordingQueue) CleanInTx(context.Context, pgx.Tx, run.RunWork) error { return nil }
+
+func (q *recordingQueue) Clean(_ context.Context, w run.RunWork) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.cleaned = append(q.cleaned, w)
+	return nil
+}
+
+func (q *recordingQueue) took(runID string) bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	found := slices.ContainsFunc(q.cleaned, func(w run.RunWork) bool { return w.RunID.String() == runID })
+	q.cleaned = nil
+	return found
+}
+
+func costSettled(t *testing.T, pool *pgxpool.Pool, runID any) bool {
+	t.Helper()
+	var settled bool
+	if err := pool.QueryRow(context.Background(), "SELECT cost_settled_at IS NOT NULL FROM runs WHERE id = $1", runID).Scan(&settled); err != nil {
+		t.Fatal(err)
+	}
+	return settled
+}
+
+func ageFinishedRun(t *testing.T, pool *pgxpool.Pool, runID any, interval string) {
+	t.Helper()
+	ctx := context.Background()
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Release()
+	if _, err := conn.Exec(ctx, `SET session_replication_role = replica`); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if _, err := conn.Exec(ctx, `SET session_replication_role = DEFAULT`); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	if _, err := conn.Exec(ctx, "UPDATE runs SET finished_at = now() - $2::interval, spend_rechecked_at = NULL WHERE id = $1",
+		runID, interval); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSupervisionReReadsAnUnreadableRunSpendForADayUntilItIsCharged(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	_, svc := haltHarness(t, a, pool)
+	f := newFixture(t, a, pool, "alice-run-recheck")
+	ctx := context.Background()
+	finished := f.start(t)
+	runID := mustUUID(t, finished.RunID)
+	if err := driveThroughPolls(ctx, svc.Drive, mustUUID(t, f.workspaceID), runID); err != nil {
+		t.Fatalf("driving the run: %v", err)
+	}
+	svc.Gateway = spendingGateway(t, -1)
+	if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), runID); err != nil {
+		t.Fatalf("cleanup: %v", err)
+	}
+	if costSettled(t, pool, runID) {
+		t.Fatal("a run whose spend was unreadable is marked settled, so nothing would ever read it again")
+	}
+
+	queue := &recordingQueue{}
+	rechecks := run.SpendRechecks{Queries: gen.New(pool), Queue: queue}
+	finishedAgo := func(interval string) { ageFinishedRun(t, pool, runID, interval) }
+	enqueued := func() bool {
+		t.Helper()
+		if err := rechecks.Enqueue(ctx); err != nil {
+			t.Fatal(err)
+		}
+		return queue.took(finished.RunID)
+	}
+
+	finishedAgo("24 hours 1 minute")
+	if enqueued() {
+		t.Error("a run that finished more than a day ago was queued for another spend read")
+	}
+	finishedAgo("23 hours 59 minutes")
+	svc.Queue = queue
+	if err := svc.Supervise(ctx); err != nil {
+		t.Logf("supervision reported other runs' trouble: %v", err)
+	}
+	if !queue.took(finished.RunID) {
+		t.Fatal("supervision did not queue a run inside the day with an unread spend for another read")
+	}
+	if enqueued() {
+		t.Error("the same run was queued again at once instead of after the recheck interval")
+	}
+
+	svc.Gateway = spendingGateway(t, 0.0382)
+	if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), runID); err != nil {
+		t.Fatalf("the queued cleanup: %v", err)
+	}
+	if got := balanceOf(t, pool, f.userID); got != betaGrantCredits-50 {
+		t.Errorf("balance = %d, want %d once the spend became readable", got, betaGrantCredits-50)
+	}
+	finishedAgo("2 minutes")
+	if enqueued() || !costSettled(t, pool, runID) {
+		t.Error("a run charged at its real cost is still queued for spend reads")
 	}
 }
 

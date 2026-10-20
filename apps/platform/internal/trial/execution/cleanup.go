@@ -49,11 +49,14 @@ func (s *Service) CleanRun(ctx context.Context, workspaceID, runID pgtype.UUID) 
 // again, which a provider need not tolerate.
 func (s *Service) settleLateSpend(ctx context.Context, run gen.Run) error {
 	if s.Ledger == nil {
-		return nil
+		return markCostSettled(ctx, s.queries(), run)
 	}
 	final, err := s.Ledger.FinalCostRecorded(ctx, run.ID)
-	if err != nil || final {
+	if err != nil {
 		return err
+	}
+	if final {
+		return markCostSettled(ctx, s.queries(), run)
 	}
 	attempts, err := s.attempts(ctx, run.WorkspaceID, run.ID)
 	if err != nil {

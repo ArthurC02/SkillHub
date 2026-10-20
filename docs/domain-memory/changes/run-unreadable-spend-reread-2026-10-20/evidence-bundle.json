@@ -1,0 +1,41 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-unreadable-spend-reread-2026-10-20",
+  "proposal_id": "run-unreadable-spend-reread-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "c7288d7c5aaa838b09e47867048f7d2655c69cdc",
+    "registry_digest": "sha256:a73e93111e7c776877bc368da5f0154d99195ace03425c233c1503e456a375ef",
+    "committed_digest": "sha256:834de529e4859d17871633e3a4912ce9236e1d95314c40bef9629359e61660d8"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-run-whose-spend-was-unreadable-is-read-again-for-a-day",
+      "mutated_protection": "apps/platform/internal/trial/execution/supervisor.go:24: SpendRecheckWindow = 24 * time.Hour -> SpendRecheckWindow = 25 * time.Hour",
+      "failure_evidence": "=== RUN   TestSupervisionReReadsAnUnreadableRunSpendForADayUntilItIsCharged\n    run_credit_integration_test.go:242: a run that finished more than a day ago was queued for another spend read\n--- FAIL: TestSupervisionReReadsAnUnreadableRunSpendForADayUntilItIsCharged (0.35s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.598s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/run_credit_integration_test.go",
+    "apps/platform/internal/trial/execution/supervisor.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-run-whose-spend-was-unreadable-is-read-again-for-a-day",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestSupervisionReReadsAnUnreadableRunSpendForADayUntilItIsCharged$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4d8bf30fd88507ac60a1acea8844213d5b5897af6b96de9e5dbcd10c084b817c",
+      "finished_at": "2026-10-20T01:50:58.362201Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

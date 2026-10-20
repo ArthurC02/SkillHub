@@ -119,6 +119,23 @@ UPDATE runs r SET cleanup_attempted_at = now()
 FROM candidates c WHERE r.id = c.id
 RETURNING r.*;
 
+-- name: ListRunsAwaitingSpend :many
+WITH candidates AS (
+    SELECT id FROM runs
+    WHERE cleanup_status = 'cleaned' AND cost_settled_at IS NULL
+      AND finished_at > now() - @spend_window::interval
+      AND (spend_rechecked_at IS NULL OR spend_rechecked_at < now() - @recheck_after::interval)
+    ORDER BY spend_rechecked_at NULLS FIRST, finished_at, id
+    LIMIT @batch_size FOR UPDATE SKIP LOCKED
+)
+UPDATE runs r SET spend_rechecked_at = now()
+FROM candidates c WHERE r.id = c.id
+RETURNING r.id, r.workspace_id;
+
+-- name: MarkRunCostSettled :exec
+UPDATE runs SET cost_settled_at = coalesce(cost_settled_at, now())
+WHERE id = @run_id AND workspace_id = @workspace_id;
+
 -- name: SetRunCleanupStatus :one
 UPDATE runs SET
     cleanup_status = @cleanup_status,

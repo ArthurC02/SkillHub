@@ -168,6 +168,8 @@ queries:
   SetRunRuntimeSnapshot: run
   ListActiveRuns: run
   ListRunsNeedingCleanup: run
+  ListRunsAwaitingSpend: run
+  MarkRunCostSettled: run
   SetRunCleanupStatus: run
   InsertRunStatusTransition: run
   ListRunStatusTransitions: run
@@ -407,6 +409,7 @@ scope:
   ListSkillForks: user
   ListOutboxEventsByAggregate: user
   ListRunsNeedingCleanup: user
+  ListRunsAwaitingSpend: user
   ListSearchDocumentsMissingBigram: user
   GetSearchDocumentEnrichedText: user
   ListSkillSourcesInVersions: user

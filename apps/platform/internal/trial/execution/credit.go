@@ -33,8 +33,7 @@ func (s *Service) requireCredit(ctx context.Context, tx pgx.Tx, workspaceID pgty
 
 func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.RunAttempt) error {
 	if s.Ledger == nil || len(attempts) == 0 {
-
-		return nil
+		return markCostSettled(ctx, s.queries(), run)
 	}
 	costUSD := s.reportedSpend(ctx, run, attempts)
 	tx, err := s.Pool.Begin(ctx)
@@ -46,10 +45,19 @@ func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.
 	if err := s.Ledger.Settle(ctx, tx, settlement); err != nil {
 		return fmt.Errorf("settle: %w", err)
 	}
+	if costUSD != nil {
+		if err := markCostSettled(ctx, gen.New(tx), run); err != nil {
+			return err
+		}
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit settlement: %w", err)
 	}
 	return nil
+}
+
+func markCostSettled(ctx context.Context, q *gen.Queries, run gen.Run) error {
+	return q.MarkRunCostSettled(ctx, gen.MarkRunCostSettledParams{RunID: run.ID, WorkspaceID: run.WorkspaceID})
 }
 
 func (s *Service) reportedSpend(ctx context.Context, run gen.Run, attempts []gen.RunAttempt) *float64 {

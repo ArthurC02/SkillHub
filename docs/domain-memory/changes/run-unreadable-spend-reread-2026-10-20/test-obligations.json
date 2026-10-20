@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "run-unreadable-spend-reread-2026-10-20",
+  "proposal_id": "run-unreadable-spend-reread-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-a-run-whose-spend-was-unreadable-is-read-again-for-a-day",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-run-whose-spend-was-unreadable-is-read-again-for-a-day",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-run-whose-spend-was-unreadable-is-read-again-for-a-day"
+        }
+      ],
+      "expected_outcome": "A cleaned Run whose cost was not settled at its real spend is queued for another cleanup by supervision, at most once every 5 minutes, until a read settles it or a day has passed since it finished; a settled Run is never queued for spend again.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestSupervisionReReadsAnUnreadableRunSpendForADayUntilItIsCharged$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

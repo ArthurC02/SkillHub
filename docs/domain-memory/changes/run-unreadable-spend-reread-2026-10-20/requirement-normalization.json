@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "run-unreadable-spend-reread-2026-10-20",
+  "status": "draft",
+  "intent": "Record the run rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context run lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-run-whose-spend-was-unreadable-is-read-again-for-a-day",
+      "statement": "A cleaned Run whose cost was not settled at its real spend is queued for another cleanup by supervision, at most once every 5 minutes, until a read settles it or a day has passed since it finished; a settled Run is never queued for spend again."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/run_credit_integration_test.go",
+    "apps/platform/internal/trial/execution/supervisor.go"
+  ]
+}

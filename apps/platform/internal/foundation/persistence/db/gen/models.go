@@ -755,7 +755,9 @@ type Run struct {
 	ArtifactsTruncated   bool
 	ActivityUpdatedAt    pgtype.Timestamptz
 	// The caller's name for the request that started this run; asking again with the same name returns this run instead of starting another.
-	OriginKey *string
+	OriginKey        *string
+	CostSettledAt    pgtype.Timestamptz
+	SpendRecheckedAt pgtype.Timestamptz
 }
 
 type RunArtifactUploadIntent struct {
