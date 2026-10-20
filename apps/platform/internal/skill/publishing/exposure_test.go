@@ -101,15 +101,21 @@ func TestACurrentListableSnapshotIsExposedOnlyForAnApprovedRedistributableSkill(
 	for name, c := range map[string]struct {
 		approved bool
 		skill    SkillFacts
+		license  string
 		exposed  bool
 	}{
-		"approved and redistributable":         {true, SkillFacts{Redistribution: redistributionAllowed}, true},
-		"not approved":                         {false, SkillFacts{Redistribution: redistributionAllowed}, false},
-		"approved but supplied by its creator": {true, SkillFacts{Redistribution: redistributionSelfSupplied}, false},
-		"approved but generated":               {true, SkillFacts{Redistribution: redistributionGenerated}, false},
-		"approved but taken down":              {true, SkillFacts{Redistribution: redistributionAllowed, TakenDown: true}, false},
+		"approved and redistributable":                         {true, SkillFacts{Redistribution: redistributionAllowed}, "", true},
+		"not approved":                                         {false, SkillFacts{Redistribution: redistributionAllowed}, "", false},
+		"approved but supplied by its creator":                 {true, SkillFacts{Redistribution: redistributionSelfSupplied}, "", false},
+		"approved, supplied by its creator, licence declared":  {true, SkillFacts{Redistribution: redistributionSelfSupplied}, "MIT", false},
+		"approved but generated without a declared licence":    {true, SkillFacts{Redistribution: redistributionGenerated}, "", false},
+		"approved, generated, licence declared on the release": {true, SkillFacts{Redistribution: redistributionGenerated}, "MIT", true},
+		"approved but taken down":                              {true, SkillFacts{Redistribution: redistributionAllowed, TakenDown: true}, "", false},
 	} {
-		state := ExposureState{Status: StatusPublished, VersionID: versionID, Approved: c.approved, Concluded: true, ReviewedDigest: "reviewed"}
+		state := ExposureState{
+			Status: StatusPublished, VersionID: versionID, Approved: c.approved, Concluded: true, ReviewedDigest: "reviewed",
+			DeclaredLicense: c.license,
+		}
 		exposed, _, err := svc.exposedFor(context.Background(), state, c.skill, true)
 		if err != nil {
 			t.Fatal(err)
@@ -157,6 +163,7 @@ func TestApprovalProblemUsesTheSameFactsAsTheReviewGuard(t *testing.T) {
 	state := ExposureState{Status: StatusPublished, VersionID: versionID}
 	skill := SkillFacts{Redistribution: redistributionAllowed}
 	snapshot := &SearchSnapshot{VersionID: versionID, Enriched: true}
+	declared := ExposureState{Status: StatusPublished, VersionID: versionID, DeclaredLicense: "CC-BY-SA-4.0"}
 	for _, tc := range []struct {
 		name        string
 		state       ExposureState
@@ -171,6 +178,9 @@ func TestApprovalProblemUsesTheSameFactsAsTheReviewGuard(t *testing.T) {
 		{"taken down skill", state, SkillFacts{Redistribution: redistributionAllowed, TakenDown: true}, true, snapshot, "not_available"},
 		{"held skill", state, SkillFacts{Redistribution: redistributionAllowed, AccessRestricted: true}, true, snapshot, "not_available"},
 		{"not cleared for redistribution", state, SkillFacts{Redistribution: redistributionSelfSupplied}, true, snapshot, "redistribution_not_allowed"},
+		{"generated without a declared licence", state, SkillFacts{Redistribution: redistributionGenerated}, true, snapshot, "redistribution_not_allowed"},
+		{"generated with a declared licence", declared, SkillFacts{Redistribution: redistributionGenerated}, true, snapshot, ""},
+		{"self supplied with a declared licence", declared, SkillFacts{Redistribution: redistributionSelfSupplied}, true, snapshot, "redistribution_not_allowed"},
 		{"snapshot absent", state, skill, true, nil, "snapshot_not_current"},
 		{"snapshot for another version", state, skill, true, &SearchSnapshot{VersionID: otherVersionID, Enriched: true}, "snapshot_not_current"},
 		{"snapshot still enriching", state, skill, true, &SearchSnapshot{VersionID: versionID}, "snapshot_pending"},

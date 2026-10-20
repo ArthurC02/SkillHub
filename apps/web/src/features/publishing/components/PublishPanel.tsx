@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import type { DeclarableLicense } from "@skillhub/api-client-ts";
 import { Link } from "@tanstack/react-router";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
@@ -15,7 +16,7 @@ import {
   type Publication,
 } from "../publishing.service";
 import { publishGateState, refusalSentence } from "../publishing.model";
-import { PublishForm } from "./PublishForm";
+import { PublishDeclarations, PublishForm, type Declarations } from "./PublishForm";
 import { PublisherRegistration } from "./PublisherSection";
 import { VersionCatalogExposure } from "./CatalogExposure";
 import { DeliveryAudience } from "./DeliveryAudience";
@@ -38,6 +39,7 @@ export function PublishPanel({
   const delist = useDelist(skill.skill_id);
   const [name, setName] = useState(skill.name);
   const [attested, setAttested] = useState(false);
+  const [license, setLicense] = useState<DeclarableLicense | "">("");
   const nameInputId = useId();
   const headingId = `${nameInputId}-heading`;
 
@@ -54,7 +56,18 @@ export function PublishPanel({
   const noPublisherYet = publisher.error instanceof ApiError && publisher.error.status === 404;
   const notPublishedYet = publication.error instanceof ApiError && publication.error.status === 404;
 
-  const { needsAttestation, disabledReason, cannotSubmit } = publishGateState(skill, attested);
+  const { needsAttestation, declaresLicense, disabledReason, cannotSubmit } = publishGateState(
+    skill,
+    attested,
+  );
+  const declarations: Declarations = {
+    needsAttestation,
+    attested,
+    onAttestedChange: setAttested,
+    declaresLicense,
+    license,
+    onLicenseChange: setLicense,
+  };
 
   return (
     <section aria-labelledby={headingId}>
@@ -97,9 +110,7 @@ export function PublishPanel({
           {publication.data && !publication.error ? (
             <PublishedView
               publication={publication.data}
-              needsAttestation={needsAttestation}
-              attested={attested}
-              setAttested={setAttested}
+              declarations={declarations}
               disabledReason={disabledReason}
               cannotSubmit={cannotSubmit}
               publish={publish}
@@ -112,9 +123,7 @@ export function PublishPanel({
               nameInputId={nameInputId}
               name={name}
               onNameChange={setName}
-              needsAttestation={needsAttestation}
-              attested={attested}
-              onAttestedChange={setAttested}
+              declarations={declarations}
               disabledReason={disabledReason}
               cannotSubmit={cannotSubmit}
               publish={publish}
@@ -130,9 +139,7 @@ export function PublishPanel({
 
 function PublishedView({
   publication,
-  needsAttestation,
-  attested,
-  setAttested,
+  declarations,
   disabledReason,
   cannotSubmit,
   publish,
@@ -141,9 +148,7 @@ function PublishedView({
   version,
 }: {
   publication: Publication;
-  needsAttestation: boolean;
-  attested: boolean;
-  setAttested: (value: boolean) => void;
+  declarations: Declarations;
   disabledReason: string | undefined;
   cannotSubmit: boolean;
   publish: ReturnType<typeof usePublish>;
@@ -198,25 +203,18 @@ function PublishedView({
       <DeliveryAudience publication={publication} />
       <VersionCatalogExposure skillId={skillId} publication={publication} version={version} />
 
-      {needsAttestation && (
-        <p>
-          <label>
-            <input
-              type="checkbox"
-              checked={attested}
-              onChange={(event) => setAttested(event.target.checked)}
-            />{" "}
-            我有權散布這些內容
-          </label>
-        </p>
-      )}
+      <PublishDeclarations declarations={declarations} />
       <p>
         <button
           type="button"
           disabled={publish.isPending || cannotSubmit}
           aria-describedby={disabledReason ? "publish-disabled-reason" : undefined}
           onClick={() =>
-            publish.mutate({ versionId: version.version_id, rightsAttested: attested })
+            publish.mutate({
+              versionId: version.version_id,
+              rightsAttested: declarations.attested,
+              declaredLicense: declarations.license,
+            })
           }
         >
           {publish.isPending ? "送出中…" : `發佈 v${version.version_number}`}

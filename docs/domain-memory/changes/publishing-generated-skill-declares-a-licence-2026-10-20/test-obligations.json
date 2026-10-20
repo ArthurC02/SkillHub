@@ -1,0 +1,67 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "publishing-generated-skill-declares-a-licence-2026-10-20",
+  "proposal_id": "publishing-generated-skill-declares-a-licence-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-only-a-generated-skill-declares-a-licence-on-its-release",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-only-a-generated-skill-declares-a-licence-on-its-release",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "only-a-generated-skill-declares-a-licence-on-its-release"
+        }
+      ],
+      "expected_outcome": "An author may declare a licence when releasing a Skill only if the Skill was generated for them, and only one of the known SPDX identifiers, spelled exactly; the declaration is kept on that release.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestOnlyAGeneratedSkillDeclaresALicenceAndOnlyFromTheKnownList$ ./internal/skill/publishing/"
+    },
+    {
+      "id": "rule-catalog-exposure-needs-an-approved-review-of-redistributable-content",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-catalog-exposure-needs-an-approved-review-of-redistributable-content",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "catalog-exposure-needs-an-approved-review-of-redistributable-content"
+        }
+      ],
+      "expected_outcome": "A publication is exposed in the Catalog only when its review is approved, its Skill is available and cleared for the Catalog, and its search snapshot is listable, of the released version and with the digest the reviewer approved. A Skill is cleared for the Catalog when its redistribution is allowed, or when it was generated and its latest release declares a licence.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestACurrentListableSnapshotIsExposedOnlyForAnApprovedRedistributableSkill$ ./internal/skill/publishing/"
+    },
+    {
+      "id": "rule-an-exposure-approval-needs-a-current-enriched-snapshot",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-exposure-approval-needs-a-current-enriched-snapshot",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-exposure-approval-needs-a-current-enriched-snapshot"
+        }
+      ],
+      "expected_outcome": "An exposure approval is refused unless the publication is published, its Skill is available and cleared for the Catalog, and a fully enriched search snapshot of the released version exists.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestApprovalProblemUsesTheSameFactsAsTheReviewGuard$ ./internal/skill/publishing/"
+    },
+    {
+      "id": "rule-republishing-the-same-version-keeps-its-one-release",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-republishing-the-same-version-keeps-its-one-release",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "republishing-the-same-version-keeps-its-one-release"
+        }
+      ],
+      "expected_outcome": "Publishing the published latest version again, with the same content and the same declared licence, adds no release, so its exposure review is kept; declaring a different licence for that version adds a release.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAGeneratedSkillIsApprovableOnlyOnceItsLatestReleaseDeclaresALicence$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

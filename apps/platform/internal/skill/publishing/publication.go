@@ -3,6 +3,8 @@ package publishing
 import (
 	"errors"
 	"time"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
 type Status string
@@ -37,6 +39,7 @@ const (
 	RefusedRightsNotAttested  Refusal = "rights_not_attested"
 	RefusedFileRemoved        Refusal = "file_removed_by_packager"
 	RefusedMemberWithdrawn    Refusal = "member_withdrawn"
+	RefusedLicenseNotDeclared Refusal = "license_not_declarable"
 )
 
 var (
@@ -90,6 +93,19 @@ const (
 	rightsNotAttested rightsAttestation = iota
 	rightsAttested
 )
+
+func declarationGate(skill SkillFacts, license string) *RefusedError {
+	switch {
+	case license == "":
+		return nil
+	case skill.Redistribution != redistributionGenerated:
+		return &RefusedError{RefusedLicenseNotDeclared, "只有平台依你的描述寫出來的 Skill 可以在發佈時聲明授權；其他 Skill 的授權來自它自己的內容"}
+	case !skillpkg.IsKnownLicense(license):
+		return &RefusedError{RefusedLicenseNotDeclared, "聲明的授權不在可選的授權條款清單裡"}
+	default:
+		return nil
+	}
+}
 
 func releaseGate(skill SkillFacts, attestation rightsAttestation) *RefusedError {
 	if skill.AccessRestricted {

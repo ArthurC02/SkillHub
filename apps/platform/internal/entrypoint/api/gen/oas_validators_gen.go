@@ -3233,6 +3233,41 @@ func (s DecideSuggestionReqDecision) Validate() error {
 	}
 }
 
+func (s DeclarableLicense) Validate() error {
+	switch s {
+	case "Apache-2.0":
+		return nil
+	case "MIT":
+		return nil
+	case "ISC":
+		return nil
+	case "BSD-2-Clause":
+		return nil
+	case "BSD-3-Clause":
+		return nil
+	case "GPL-2.0":
+		return nil
+	case "GPL-3.0":
+		return nil
+	case "LGPL-3.0":
+		return nil
+	case "AGPL-3.0":
+		return nil
+	case "MPL-2.0":
+		return nil
+	case "Unlicense":
+		return nil
+	case "CC0-1.0":
+		return nil
+	case "CC-BY-4.0":
+		return nil
+	case "CC-BY-SA-4.0":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
 func (s *DeclareDispatchHaltOK) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -9043,6 +9078,24 @@ func (s *PublicationRelease) Validate() error {
 
 	var failures []validate.FieldError
 	if err := func() error {
+		if value, ok := s.DeclaredLicense.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "declared_license",
+			Error: err,
+		})
+	}
+	if err := func() error {
 		if err := s.Findings.Validate(); err != nil {
 			return err
 		}
@@ -9090,6 +9143,36 @@ func (s *PublishSkillConflict) Validate() error {
 	alias := (*PublishingRefusal)(s)
 	if err := alias.Validate(); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (s *PublishSkillReq) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if value, ok := s.DeclaredLicense.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "declared_license",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
 	}
 	return nil
 }
@@ -9150,6 +9233,8 @@ func (s PublishingRefusalReason) Validate() error {
 	case "validation_blocked":
 		return nil
 	case "rights_not_attested":
+		return nil
+	case "license_not_declarable":
 		return nil
 	case "file_removed_by_packager":
 		return nil

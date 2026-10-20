@@ -36,13 +36,14 @@ type publisherView struct {
 }
 
 type releaseView struct {
-	VersionID      string                       `json:"version_id,omitempty"`
-	VersionNumber  int32                        `json:"version_number,omitempty"`
-	BundleVersion  string                       `json:"bundle_version,omitempty"`
-	ContentHash    string                       `json:"content_hash"`
-	ReleasedAt     string                       `json:"released_at"`
-	RightsAttested bool                         `json:"rights_attested"`
-	Findings       skillpkg.CategorizedFindings `json:"findings"`
+	VersionID       string                       `json:"version_id,omitempty"`
+	VersionNumber   int32                        `json:"version_number,omitempty"`
+	BundleVersion   string                       `json:"bundle_version,omitempty"`
+	ContentHash     string                       `json:"content_hash"`
+	ReleasedAt      string                       `json:"released_at"`
+	RightsAttested  bool                         `json:"rights_attested"`
+	DeclaredLicense string                       `json:"declared_license,omitempty"`
+	Findings        skillpkg.CategorizedFindings `json:"findings"`
 }
 
 type publicationView struct {
@@ -335,15 +336,16 @@ func (h *Handler) Publish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Name           string `json:"name"`
-		VersionID      string `json:"version_id"`
-		RightsAttested bool   `json:"rights_attested"`
+		Name            string `json:"name"`
+		VersionID       string `json:"version_id"`
+		RightsAttested  bool   `json:"rights_attested"`
+		DeclaredLicense string `json:"declared_license"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "the body must be a JSON object")
 		return
 	}
-	in := PublishInput{Name: req.Name, RightsAttested: req.RightsAttested}
+	in := PublishInput{Name: req.Name, RightsAttested: req.RightsAttested, DeclaredLicense: req.DeclaredLicense}
 	if req.VersionID != "" {
 		if err := in.VersionID.Scan(req.VersionID); err != nil {
 			httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
@@ -457,7 +459,7 @@ func ownView(p Publication) publicationView {
 	for _, release := range p.Releases {
 		view := releaseView{
 			ContentHash: release.ContentHash, ReleasedAt: timestamp(release.ReleasedAt),
-			RightsAttested: release.RightsAttested, Findings: release.Findings,
+			RightsAttested: release.RightsAttested, DeclaredLicense: release.DeclaredLicense, Findings: release.Findings,
 		}
 		if release.Bundle != nil {
 			view.BundleVersion = release.Bundle.Version
@@ -526,10 +528,19 @@ func (h *Handler) publicView(p PublicPublication) publicPublicationView {
 	view.Release = &currentReleaseView{
 		publicReleaseView: view.Releases[0],
 		Findings:          current.Findings,
-		License:           licenseView{Expression: p.Version.LicenseExpression, Source: p.Version.LicenseSource},
+		License:           publicLicense(p.Version, current),
 		Redistribution:    labelled{Value: p.Skill.Redistribution, Label: label, Note: note},
 	}
 	return view
+}
+
+const licenseSourceAuthorDeclared = "author_declared"
+
+func publicLicense(version VersionFacts, release Release) licenseView {
+	if version.LicenseExpression == "" && release.DeclaredLicense != "" {
+		return licenseView{Expression: release.DeclaredLicense, Source: licenseSourceAuthorDeclared}
+	}
+	return licenseView{Expression: version.LicenseExpression, Source: version.LicenseSource}
 }
 
 func publicBundle(view publicPublicationView, releases []Release) publicPublicationView {

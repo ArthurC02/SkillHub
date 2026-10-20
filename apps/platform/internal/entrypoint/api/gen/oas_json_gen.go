@@ -17039,6 +17039,70 @@ func (s *DecideSuggestionUnauthorized) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes DeclarableLicense as json.
+func (s DeclarableLicense) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes DeclarableLicense from json.
+func (s *DeclarableLicense) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DeclarableLicense to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch DeclarableLicense(v) {
+	case DeclarableLicenseApache20:
+		*s = DeclarableLicenseApache20
+	case DeclarableLicenseMIT:
+		*s = DeclarableLicenseMIT
+	case DeclarableLicenseISC:
+		*s = DeclarableLicenseISC
+	case DeclarableLicenseBSD2Clause:
+		*s = DeclarableLicenseBSD2Clause
+	case DeclarableLicenseBSD3Clause:
+		*s = DeclarableLicenseBSD3Clause
+	case DeclarableLicenseGPL20:
+		*s = DeclarableLicenseGPL20
+	case DeclarableLicenseGPL30:
+		*s = DeclarableLicenseGPL30
+	case DeclarableLicenseLGPL30:
+		*s = DeclarableLicenseLGPL30
+	case DeclarableLicenseAGPL30:
+		*s = DeclarableLicenseAGPL30
+	case DeclarableLicenseMPL20:
+		*s = DeclarableLicenseMPL20
+	case DeclarableLicenseUnlicense:
+		*s = DeclarableLicenseUnlicense
+	case DeclarableLicenseCC010:
+		*s = DeclarableLicenseCC010
+	case DeclarableLicenseCCBY40:
+		*s = DeclarableLicenseCCBY40
+	case DeclarableLicenseCCBYSA40:
+		*s = DeclarableLicenseCCBYSA40
+	default:
+		*s = DeclarableLicense(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s DeclarableLicense) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DeclarableLicense) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes DeclareDispatchHaltBadRequest as json.
 func (s *DeclareDispatchHaltBadRequest) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -41113,6 +41177,39 @@ func (s *OptDateTime) UnmarshalJSON(data []byte) error {
 	return s.Decode(d, json.DecodeDateTime)
 }
 
+// Encode encodes DeclarableLicense as json.
+func (o OptDeclarableLicense) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes DeclarableLicense from json.
+func (o *OptDeclarableLicense) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptDeclarableLicense to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptDeclarableLicense) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptDeclarableLicense) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes DevLoginReq as json.
 func (o OptDevLoginReq) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -52367,19 +52464,26 @@ func (s *PublicationRelease) encodeFields(e *jx.Encoder) {
 		e.Bool(s.RightsAttested)
 	}
 	{
+		if s.DeclaredLicense.Set {
+			e.FieldStart("declared_license")
+			s.DeclaredLicense.Encode(e)
+		}
+	}
+	{
 		e.FieldStart("findings")
 		s.Findings.Encode(e)
 	}
 }
 
-var jsonFieldsNameOfPublicationRelease = [7]string{
+var jsonFieldsNameOfPublicationRelease = [8]string{
 	0: "version_id",
 	1: "version_number",
 	2: "bundle_version",
 	3: "content_hash",
 	4: "released_at",
 	5: "rights_attested",
-	6: "findings",
+	6: "declared_license",
+	7: "findings",
 }
 
 // Decode decodes PublicationRelease from json.
@@ -52457,8 +52561,18 @@ func (s *PublicationRelease) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"rights_attested\"")
 			}
+		case "declared_license":
+			if err := func() error {
+				s.DeclaredLicense.Reset()
+				if err := s.DeclaredLicense.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"declared_license\"")
+			}
 		case "findings":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				if err := s.Findings.Decode(d); err != nil {
 					return err
@@ -52477,7 +52591,7 @@ func (s *PublicationRelease) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b01111000,
+		0b10111000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -52991,12 +53105,19 @@ func (s *PublishSkillReq) encodeFields(e *jx.Encoder) {
 			s.RightsAttested.Encode(e)
 		}
 	}
+	{
+		if s.DeclaredLicense.Set {
+			e.FieldStart("declared_license")
+			s.DeclaredLicense.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfPublishSkillReq = [3]string{
+var jsonFieldsNameOfPublishSkillReq = [4]string{
 	0: "name",
 	1: "version_id",
 	2: "rights_attested",
+	3: "declared_license",
 }
 
 // Decode decodes PublishSkillReq from json.
@@ -53036,6 +53157,16 @@ func (s *PublishSkillReq) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"rights_attested\"")
+			}
+		case "declared_license":
+			if err := func() error {
+				s.DeclaredLicense.Reset()
+				if err := s.DeclaredLicense.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"declared_license\"")
 			}
 		default:
 			return d.Skip()
@@ -53401,6 +53532,8 @@ func (s *PublishingRefusalReason) Decode(d *jx.Decoder) error {
 		*s = PublishingRefusalReasonValidationBlocked
 	case PublishingRefusalReasonRightsNotAttested:
 		*s = PublishingRefusalReasonRightsNotAttested
+	case PublishingRefusalReasonLicenseNotDeclarable:
+		*s = PublishingRefusalReasonLicenseNotDeclarable
 	case PublishingRefusalReasonFileRemovedByPackager:
 		*s = PublishingRefusalReasonFileRemovedByPackager
 	case PublishingRefusalReasonMemberWithdrawn:

@@ -434,7 +434,7 @@ SELECT p.id, $1, $2, $3, $4, $5, clock_timestamp()
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE p.id = $6 AND pb.workspace_id = $7
-RETURNING id, publication_id, skill_version_id, version_number, content_hash, findings, rights_attested, released_by, released_at, bundle_version_id
+RETURNING id, publication_id, skill_version_id, version_number, content_hash, findings, rights_attested, released_by, released_at, bundle_version_id, declared_license
 `
 
 type InsertBundleReleaseParams struct {
@@ -469,6 +469,7 @@ func (q *Queries) InsertBundleRelease(ctx context.Context, arg InsertBundleRelea
 		&i.ReleasedBy,
 		&i.ReleasedAt,
 		&i.BundleVersionID,
+		&i.DeclaredLicense,
 	)
 	return i, err
 }
@@ -521,23 +522,25 @@ func (q *Queries) InsertExposureReview(ctx context.Context, arg InsertExposureRe
 
 const insertPublicationRelease = `-- name: InsertPublicationRelease :one
 INSERT INTO publication_releases (publication_id, skill_version_id, version_number, content_hash,
-                                  findings, rights_attested, released_by, released_at)
-SELECT p.id, $1, $2, $3, $4, $5, $6, clock_timestamp()
+                                  findings, rights_attested, declared_license, released_by, released_at)
+SELECT p.id, $1, $2, $3, $4, $5, $6,
+       $7, clock_timestamp()
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
-WHERE p.id = $7 AND pb.workspace_id = $8
-RETURNING id, publication_id, skill_version_id, version_number, content_hash, findings, rights_attested, released_by, released_at, bundle_version_id
+WHERE p.id = $8 AND pb.workspace_id = $9
+RETURNING id, publication_id, skill_version_id, version_number, content_hash, findings, rights_attested, released_by, released_at, bundle_version_id, declared_license
 `
 
 type InsertPublicationReleaseParams struct {
-	SkillVersionID pgtype.UUID
-	VersionNumber  *int32
-	ContentHash    string
-	Findings       []byte
-	RightsAttested bool
-	ReleasedBy     pgtype.UUID
-	PublicationID  pgtype.UUID
-	WorkspaceID    pgtype.UUID
+	SkillVersionID  pgtype.UUID
+	VersionNumber   *int32
+	ContentHash     string
+	Findings        []byte
+	RightsAttested  bool
+	DeclaredLicense *string
+	ReleasedBy      pgtype.UUID
+	PublicationID   pgtype.UUID
+	WorkspaceID     pgtype.UUID
 }
 
 func (q *Queries) InsertPublicationRelease(ctx context.Context, arg InsertPublicationReleaseParams) (PublicationRelease, error) {
@@ -547,6 +550,7 @@ func (q *Queries) InsertPublicationRelease(ctx context.Context, arg InsertPublic
 		arg.ContentHash,
 		arg.Findings,
 		arg.RightsAttested,
+		arg.DeclaredLicense,
 		arg.ReleasedBy,
 		arg.PublicationID,
 		arg.WorkspaceID,
@@ -563,6 +567,7 @@ func (q *Queries) InsertPublicationRelease(ctx context.Context, arg InsertPublic
 		&i.ReleasedBy,
 		&i.ReleasedAt,
 		&i.BundleVersionID,
+		&i.DeclaredLicense,
 	)
 	return i, err
 }
@@ -640,13 +645,14 @@ const listExposureStates = `-- name: ListExposureStates :many
 SELECT p.id AS publication_id, p.name, p.status, p.skill_id,
        pb.name AS publisher_name, pb.workspace_id AS publisher_workspace_id,
        r.id AS release_id, r.skill_version_id, r.version_number, r.content_hash, r.released_at,
+       r.declared_license,
        coalesce(rv.sequence, 0)::integer AS sequence, rv.release_id AS reviewed_release_id,
        coalesce(rv.decision, '')::text AS decision,
        coalesce(rv.snapshot_digest, '')::text AS reviewed_snapshot_digest
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 JOIN LATERAL (
-    SELECT id, publication_id, skill_version_id, version_number, content_hash, findings, rights_attested, released_by, released_at, bundle_version_id FROM publication_releases pr WHERE pr.publication_id = p.id
+    SELECT id, publication_id, skill_version_id, version_number, content_hash, findings, rights_attested, released_by, released_at, bundle_version_id, declared_license FROM publication_releases pr WHERE pr.publication_id = p.id
     ORDER BY pr.released_at DESC, pr.id DESC LIMIT 1
 ) r ON true
 LEFT JOIN LATERAL (
@@ -676,6 +682,7 @@ type ListExposureStatesRow struct {
 	VersionNumber          *int32
 	ContentHash            string
 	ReleasedAt             pgtype.Timestamptz
+	DeclaredLicense        *string
 	Sequence               int32
 	ReviewedReleaseID      pgtype.UUID
 	Decision               string
@@ -703,6 +710,7 @@ func (q *Queries) ListExposureStates(ctx context.Context, arg ListExposureStates
 			&i.VersionNumber,
 			&i.ContentHash,
 			&i.ReleasedAt,
+			&i.DeclaredLicense,
 			&i.Sequence,
 			&i.ReviewedReleaseID,
 			&i.Decision,
@@ -719,7 +727,7 @@ func (q *Queries) ListExposureStates(ctx context.Context, arg ListExposureStates
 }
 
 const listPublicationReleases = `-- name: ListPublicationReleases :many
-SELECT id, publication_id, skill_version_id, version_number, content_hash, findings, rights_attested, released_by, released_at, bundle_version_id FROM publication_releases
+SELECT id, publication_id, skill_version_id, version_number, content_hash, findings, rights_attested, released_by, released_at, bundle_version_id, declared_license FROM publication_releases
 WHERE publication_id = $1
 ORDER BY released_at DESC, id DESC
 `
@@ -744,6 +752,7 @@ func (q *Queries) ListPublicationReleases(ctx context.Context, publicationID pgt
 			&i.ReleasedBy,
 			&i.ReleasedAt,
 			&i.BundleVersionID,
+			&i.DeclaredLicense,
 		); err != nil {
 			return nil, err
 		}
@@ -948,6 +957,7 @@ SELECT p.id AS publication_id, p.skill_id, p.name, p.status, p.status_changed_at
        latest.skill_version_id AS latest_version_id,
        latest.version_number AS latest_version_number,
        latest.released_at AS latest_released_at,
+       latest.declared_license AS latest_declared_license,
        coalesce(review.sequence, 0)::integer AS exposure_sequence,
        review.release_id AS reviewed_release_id,
        coalesce(review.decision, '')::text AS exposure_decision,
@@ -955,7 +965,7 @@ SELECT p.id AS publication_id, p.skill_id, p.name, p.status, p.status_changed_at
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 LEFT JOIN LATERAL (
-    SELECT pr.id, pr.skill_version_id, pr.version_number, pr.released_at
+    SELECT pr.id, pr.skill_version_id, pr.version_number, pr.released_at, pr.declared_license
     FROM publication_releases pr
     WHERE pr.publication_id = p.id
     ORDER BY pr.released_at DESC, pr.id DESC
@@ -984,6 +994,7 @@ type ListWorkspaceSkillPublicationsRow struct {
 	LatestVersionID        pgtype.UUID
 	LatestVersionNumber    *int32
 	LatestReleasedAt       pgtype.Timestamptz
+	LatestDeclaredLicense  *string
 	ExposureSequence       int32
 	ReviewedReleaseID      pgtype.UUID
 	ExposureDecision       string
@@ -1011,6 +1022,7 @@ func (q *Queries) ListWorkspaceSkillPublications(ctx context.Context, workspaceI
 			&i.LatestVersionID,
 			&i.LatestVersionNumber,
 			&i.LatestReleasedAt,
+			&i.LatestDeclaredLicense,
 			&i.ExposureSequence,
 			&i.ReviewedReleaseID,
 			&i.ExposureDecision,

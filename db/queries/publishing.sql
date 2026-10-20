@@ -22,6 +22,7 @@ SELECT p.id AS publication_id, p.skill_id, p.name, p.status, p.status_changed_at
        latest.skill_version_id AS latest_version_id,
        latest.version_number AS latest_version_number,
        latest.released_at AS latest_released_at,
+       latest.declared_license AS latest_declared_license,
        coalesce(review.sequence, 0)::integer AS exposure_sequence,
        review.release_id AS reviewed_release_id,
        coalesce(review.decision, '')::text AS exposure_decision,
@@ -29,7 +30,7 @@ SELECT p.id AS publication_id, p.skill_id, p.name, p.status, p.status_changed_at
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 LEFT JOIN LATERAL (
-    SELECT pr.id, pr.skill_version_id, pr.version_number, pr.released_at
+    SELECT pr.id, pr.skill_version_id, pr.version_number, pr.released_at, pr.declared_license
     FROM publication_releases pr
     WHERE pr.publication_id = p.id
     ORDER BY pr.released_at DESC, pr.id DESC
@@ -83,8 +84,9 @@ WHERE p.id = @id
 
 -- name: InsertPublicationRelease :one
 INSERT INTO publication_releases (publication_id, skill_version_id, version_number, content_hash,
-                                  findings, rights_attested, released_by, released_at)
-SELECT p.id, @skill_version_id, @version_number, @content_hash, @findings, @rights_attested, @released_by, clock_timestamp()
+                                  findings, rights_attested, declared_license, released_by, released_at)
+SELECT p.id, @skill_version_id, @version_number, @content_hash, @findings, @rights_attested, sqlc.narg(declared_license),
+       @released_by, clock_timestamp()
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE p.id = @publication_id AND pb.workspace_id = @workspace_id
@@ -222,6 +224,7 @@ DELETE FROM bundles WHERE workspace_id = @workspace_id;
 SELECT p.id AS publication_id, p.name, p.status, p.skill_id,
        pb.name AS publisher_name, pb.workspace_id AS publisher_workspace_id,
        r.id AS release_id, r.skill_version_id, r.version_number, r.content_hash, r.released_at,
+       r.declared_license,
        coalesce(rv.sequence, 0)::integer AS sequence, rv.release_id AS reviewed_release_id,
        coalesce(rv.decision, '')::text AS decision,
        coalesce(rv.snapshot_digest, '')::text AS reviewed_snapshot_digest

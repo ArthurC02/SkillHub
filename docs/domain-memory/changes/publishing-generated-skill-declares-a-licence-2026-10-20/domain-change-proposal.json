@@ -1,0 +1,228 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "publishing-generated-skill-declares-a-licence-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "publishing-generated-skill-declares-a-licence-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-20T00:08:45.537638Z",
+  "verified_at": "2026-10-20T00:09:10.362320Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "d6223e207998f1cb086ca4e025e02e0fa8bd2fc6",
+    "registry_digest": "sha256:e6e79ee37be141beca32636c8c1e96161869b2edea8034b370ce8758896c2d4e",
+    "committed_digest": "sha256:4402b9f1690206bc0e738bb01433841e957d90d95351b08fc97b753292ec790c"
+  },
+  "affected_contexts": [
+    "publishing"
+  ],
+  "rule_ids": [
+    "only-a-generated-skill-declares-a-licence-on-its-release",
+    "catalog-exposure-needs-an-approved-review-of-redistributable-content",
+    "an-exposure-approval-needs-a-current-enriched-snapshot",
+    "republishing-the-same-version-keeps-its-one-release"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "publishing",
+    "invariant": "Only publishing decides these rules.",
+    "evidence": [
+      "apps/platform/internal/skill/publishing/service.go:250-252"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/publishing/http.go:342-342"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A generated Skill could never be exposed: its redistribution cannot be changed from generated, while the screens told operators to judge it allowed first."
+    ],
+    "decision": "Let the author declare a licence from a fixed SPDX list on the release of a generated Skill; a generated Skill whose latest release declares one is cleared for the Catalog.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Letting operators change generated to allowed: the operator cannot vouch for content only the author asked for.",
+      "Recording the declaration on the Skill: a later release could then inherit a licence its author never chose for it."
+    ],
+    "proof_obligations": [
+      "rule-only-a-generated-skill-declares-a-licence-on-its-release",
+      "rule-catalog-exposure-needs-an-approved-review-of-redistributable-content",
+      "rule-an-exposure-approval-needs-a-current-enriched-snapshot",
+      "rule-republishing-the-same-version-keeps-its-one-release"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-a-generated-skill-declares-a-licence-on-its-release",
+        "statement": "An author may declare a licence when releasing a Skill only if the Skill was generated for them, and only one of the known SPDX identifiers, spelled exactly; the declaration is kept on that release.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "Releasing a generated Skill with MIT stores MIT on the release; WTFPL, mit, or MIT on a self-supplied Skill is refused as license_not_declarable."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/publication.go",
+            "lines": {
+              "start": 97,
+              "end": 108
+            },
+            "excerpt_sha256": "sha256:de84963b0d6c4a4c506ec8ef2564f57de511f7e14ca91527596a810b73b3719a"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/publication_test.go",
+            "lines": {
+              "start": 86,
+              "end": 113
+            },
+            "excerpt_sha256": "sha256:7669391636791d0546726dccc47c0629f2cd76edebdc4af9268afb24b6f4b950"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "catalog-exposure-needs-an-approved-review-of-redistributable-content",
+        "statement": "A publication is exposed in the Catalog only when its review is approved, its Skill is available and cleared for the Catalog, and its search snapshot is listable, of the released version and with the digest the reviewer approved. A Skill is cleared for the Catalog when its redistribution is allowed, or when it was generated and its latest release declares a licence.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "An approved Skill whose content its creator supplied is not exposed, even with a licence on its release; an approved generated Skill is exposed once its latest release declares MIT."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure.go",
+            "lines": {
+              "start": 208,
+              "end": 216
+            },
+            "content_sha256": "sha256:649a74f5a4af5c57166dd71ca9eed640c4159bcfb148d805535c844d788d26a7",
+            "excerpt_sha256": "sha256:3a96ece110e80bc90d85b889257a4ac3e375c87a0b13c63b8e397a7d78e8ff6c",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure_test.go",
+            "lines": {
+              "start": 94,
+              "end": 127
+            },
+            "content_sha256": "sha256:f622f47cdf6d3ef268e45e149f0233d1e444a4f51d69f67788e15acd66146c9e",
+            "excerpt_sha256": "sha256:53be478221804a44b69649595cbced6b3b5a8ae3d201afea79b3d374a4b9691a",
+            "source_kind": "tests"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-exposure-approval-needs-a-current-enriched-snapshot",
+        "statement": "An exposure approval is refused unless the publication is published, its Skill is available and cleared for the Catalog, and a fully enriched search snapshot of the released version exists.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "Approving while the snapshot is still enriching is refused as snapshot_pending; approving a generated Skill whose latest release declares no licence is refused as redistribution_not_allowed."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure.go",
+            "lines": {
+              "start": 217,
+              "end": 232
+            },
+            "content_sha256": "sha256:649a74f5a4af5c57166dd71ca9eed640c4159bcfb148d805535c844d788d26a7",
+            "excerpt_sha256": "sha256:3483bedc0ce415a180da9f790563e11b5726d1c32b1bfc3e78049de39fa13965",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure_test.go",
+            "lines": {
+              "start": 160,
+              "end": 194
+            },
+            "content_sha256": "sha256:f622f47cdf6d3ef268e45e149f0233d1e444a4f51d69f67788e15acd66146c9e",
+            "excerpt_sha256": "sha256:f698ef064c02717f552f2f724f72d4e3e3198368b49223d53f011d4d30672e62",
+            "source_kind": "tests"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "republishing-the-same-version-keeps-its-one-release",
+        "statement": "Publishing the published latest version again, with the same content and the same declared licence, adds no release, so its exposure review is kept; declaring a different licence for that version adds a release.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "Publishing v1 twice leaves exactly one release; publishing it again with MIT adds a second, and once more with MIT still leaves two."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/service.go",
+            "lines": {
+              "start": 654,
+              "end": 661
+            },
+            "content_sha256": "sha256:6efa5cabba62f63789ca083b78d5692b1cfacc6c149924cd10858912d35b96f7",
+            "excerpt_sha256": "sha256:29c51a42469697687c591ff20c6b2dcfb973b8271c8414d4c03f3942b391c866",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/exposure_integration_test.go",
+            "lines": {
+              "start": 478,
+              "end": 508
+            },
+            "content_sha256": "sha256:57b9f786413b8dfd83745926b9856d521ff3e01d42fef64694ba9450ec014291",
+            "excerpt_sha256": "sha256:f98c7487952d1d5a1e9026e78f90405fb6f0e85d1ef619b7844a65ccffed5b43",
+            "source_kind": "tests"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-20T00:09:09.697460Z",
+      "scope": "Record publishing rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "d6223e207998f1cb086ca4e025e02e0fa8bd2fc6",
+        "registry_digest": "sha256:e6e79ee37be141beca32636c8c1e96161869b2edea8034b370ce8758896c2d4e",
+        "committed_digest": "sha256:4402b9f1690206bc0e738bb01433841e957d90d95351b08fc97b753292ec790c"
+      }
+    }
+  ],
+  "supersedes": [
+    "publishing-harvest-rules-2026-10-17",
+    "publishing-review-rules-2026-10-18"
+  ]
+}

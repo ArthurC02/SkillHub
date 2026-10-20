@@ -72,6 +72,7 @@ export * from './Dataset';
 export * from './DatasetLimits';
 export * from './DecidePlatformAgentProposalRequest';
 export * from './DecideSuggestionRequest';
+export * from './DeclarableLicense';
 export * from './DeclareDispatchHalt200Response';
 export * from './DeclareDispatchHaltRequest';
 export * from './DeleteDataset200Response';

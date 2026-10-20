@@ -83,6 +83,55 @@ func TestTheReleaseGateAnswersEveryRedistributionValueAndTheHold(t *testing.T) {
 	}
 }
 
+func TestOnlyAGeneratedSkillDeclaresALicenceAndOnlyFromTheKnownList(t *testing.T) {
+	generated := SkillFacts{Redistribution: redistributionGenerated}
+	for _, tc := range []struct {
+		name    string
+		skill   SkillFacts
+		license string
+		refused bool
+	}{
+		{"no declaration on an allowed skill", SkillFacts{Redistribution: redistributionAllowed}, "", false},
+		{"no declaration on a generated skill", generated, "", false},
+		{"the first known licence", generated, "Apache-2.0", false},
+		{"the last known licence", generated, "CC-BY-SA-4.0", false},
+		{"a licence outside the list", generated, "WTFPL", true},
+		{"a known id in the wrong case", generated, "mit", true},
+		{"a declaration on an allowed skill", SkillFacts{Redistribution: redistributionAllowed}, "MIT", true},
+		{"a declaration on a self supplied skill", SkillFacts{Redistribution: redistributionSelfSupplied}, "MIT", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			refused := declarationGate(tc.skill, tc.license)
+			if (refused != nil) != tc.refused {
+				t.Fatalf("declarationGate refused = %v, want %v", refused, tc.refused)
+			}
+			if refused != nil && (refused.Reason != RefusedLicenseNotDeclared || refused.Message == "") {
+				t.Errorf("refusal = %+v, want %q with a sentence", refused, RefusedLicenseNotDeclared)
+			}
+		})
+	}
+}
+
+func TestThePublicLicenceFallsBackToTheAuthorsDeclarationOnlyWhenTheVersionHasNone(t *testing.T) {
+	declared := Release{DeclaredLicense: "MIT"}
+	for _, tc := range []struct {
+		name    string
+		version VersionFacts
+		release Release
+		want    licenseView
+	}{
+		{"the version's own licence wins", VersionFacts{LicenseExpression: "Apache-2.0", LicenseSource: "manifest"}, declared, licenseView{"Apache-2.0", "manifest"}},
+		{"no version licence shows the declaration", VersionFacts{}, declared, licenseView{"MIT", "author_declared"}},
+		{"neither stays empty", VersionFacts{}, Release{}, licenseView{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := publicLicense(tc.version, tc.release); got != tc.want {
+				t.Errorf("publicLicense = %+v, want %+v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestAPublicAddressReportsWhyItNoLongerOffersItsContent(t *testing.T) {
 	cases := []struct {
 		name   string

@@ -1,3 +1,4 @@
+import type { DeclarableLicense } from "@skillhub/api-client-ts";
 import { ApiError } from "../../core/api/client";
 import type { SkillDetail } from "../../core/api/types";
 import { packagingGate } from "../packaging";
@@ -14,7 +15,8 @@ export type PublishingRefusalReason =
   | "not_redistributable"
   | "license_unknown"
   | "validation_blocked"
-  | "rights_not_attested";
+  | "rights_not_attested"
+  | "license_not_declarable";
 
 export const PUBLISHING_REFUSAL_LABEL: Record<PublishingRefusalReason, string> = {
   no_publisher: "這個帳號還沒有註冊發佈者名稱，要先到帳號頁註冊一個才能發佈。",
@@ -32,7 +34,26 @@ export const PUBLISHING_REFUSAL_LABEL: Record<PublishingRefusalReason, string> =
   validation_blocked: "這一版的套件沒有通過規格驗證，所以不能發佈。",
   rights_not_attested:
     "這份內容是你自己帶進來的，或是平台依你的描述寫出來的；發佈之前要先聲明你有權散布它。",
+  license_not_declarable:
+    "只有平台依你的描述寫出來的小工具可以在發佈時選授權條款，而且要從清單裡選一個。",
 };
+
+export const DECLARABLE_LICENSES: readonly DeclarableLicense[] = [
+  "Apache-2.0",
+  "MIT",
+  "ISC",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "GPL-2.0",
+  "GPL-3.0",
+  "LGPL-3.0",
+  "AGPL-3.0",
+  "MPL-2.0",
+  "Unlicense",
+  "CC0-1.0",
+  "CC-BY-4.0",
+  "CC-BY-SA-4.0",
+];
 
 export const PUBLISHER_NAME_RULE =
   "名稱規則：1～64 字元，只能是小寫英文字母、數字與連字號（-），開頭與結尾必須是英數字，不能有連續兩個連字號。";
@@ -41,6 +62,7 @@ export const PUBLISHER_NAME_PERMANENT = "註冊之後這個名稱就是永久的
 
 export type PublishGateState = {
   needsAttestation: boolean;
+  declaresLicense: boolean;
   disabledReason: string | undefined;
   cannotSubmit: boolean;
 };
@@ -58,7 +80,12 @@ export function publishGateState(skill: SkillDetail, attested: boolean): Publish
     : needsAttestation && !attested
       ? "先勾選下面的聲明才能發佈。"
       : undefined;
-  return { needsAttestation, disabledReason, cannotSubmit: Boolean(disabledReason) };
+  return {
+    needsAttestation,
+    declaresLicense: redistValue === "generated",
+    disabledReason,
+    cannotSubmit: Boolean(disabledReason),
+  };
 }
 
 export function refusalReason(error: unknown): PublishingRefusalReason | undefined {

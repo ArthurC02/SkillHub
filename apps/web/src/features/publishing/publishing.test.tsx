@@ -7,7 +7,9 @@ import { PublicPublication } from "./PublicPublication.page";
 import { PublisherSection } from "./components/PublisherSection";
 import { PublishPanel } from "./components/PublishPanel";
 import { PublishingWorkspace } from "./PublishingWorkspace.page";
+import { DeclarableLicense } from "@skillhub/api-client-ts";
 import {
+  DECLARABLE_LICENSES,
   PUBLISHING_REFUSAL_LABEL,
   type PublishingRefusalReason,
   refusalSentence,
@@ -1073,6 +1075,7 @@ test("PACK-003/004 每一個 PublishingRefusal.reason 都有一句中文", () =>
     "license_unknown",
     "validation_blocked",
     "rights_not_attested",
+    "license_not_declarable",
   ];
   expect(Object.keys(PUBLISHING_REFUSAL_LABEL).sort()).toEqual([...REASONS].sort());
   for (const reason of REASONS) {
@@ -1373,11 +1376,15 @@ test("PublishPanel：發佈明確送出畫面上的版本，不讓伺服器另�
   });
 });
 
-describe("PublishPanel：勾選框只在 self_supplied／generated 出現", () => {
-  const CASES: { value: SkillDetail["redistribution"]["value"]; needsCheckbox: boolean }[] = [
-    { value: "allowed", needsCheckbox: false },
-    { value: "self_supplied", needsCheckbox: true },
-    { value: "generated", needsCheckbox: true },
+describe("PublishPanel：勾選框只在 self_supplied／generated 出現，授權選單只在 generated 出現", () => {
+  const CASES: {
+    value: SkillDetail["redistribution"]["value"];
+    needsCheckbox: boolean;
+    declaresLicense: boolean;
+  }[] = [
+    { value: "allowed", needsCheckbox: false, declaresLicense: false },
+    { value: "self_supplied", needsCheckbox: true, declaresLicense: false },
+    { value: "generated", needsCheckbox: true, declaresLicense: true },
   ];
 
   for (const testCase of CASES) {
@@ -1403,8 +1410,52 @@ describe("PublishPanel：勾選框只在 self_supplied／generated 出現", () =
         expect(checkbox).toBeNull();
         expect(button("發佈")?.disabled).toBe(false);
       }
+      expect(container.querySelector("select") !== null).toBe(testCase.declaresLicense);
     });
   }
+});
+
+test("可選的授權條款就是契約列出的那一組", () => {
+  expect([...DECLARABLE_LICENSES].sort()).toEqual(Object.values(DeclarableLicense).sort());
+});
+
+test("PublishPanel：生成的小工具送出選定的授權；不聲明時不送這個欄位", async () => {
+  const posted: Record<string, unknown>[] = [];
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me/publisher") return json(OWN_PUBLISHER);
+    if (path === `/skills/${SKILL}/publication` && init?.method === "POST") {
+      posted.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+      return json({ error: "not yet" }, 409);
+    }
+    if (path === `/skills/${SKILL}/publication`) return json({ error: "not published" }, 404);
+    return json({ error: "not found" }, 404);
+  });
+  const skill = detail({ redistribution: { value: "generated", label: "", note: "" } });
+  await render(<PublishPanel skill={skill} isLoggedIn isOwner />, () =>
+    Boolean(container.querySelector("select")),
+  );
+  const submit = async () => {
+    await act(async () =>
+      container
+        .querySelector("form")!
+        .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
+    );
+    await waitFor(() => posted.length > 0);
+  };
+
+  await submit();
+  expect(posted.pop()).not.toHaveProperty("declared_license");
+
+  const select = container.querySelector("select")!;
+  await act(async () => {
+    select.value = "MIT";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await submit();
+  expect(posted.pop()).toMatchObject({ declared_license: "MIT" });
 });
 
 test("refusalSentence: 沒有 reason 欄位時回傳 undefined，不誤植成中文句", () => {

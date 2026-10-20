@@ -267,6 +267,14 @@ var domainVocabularies = []domainVocabulary{
 		},
 	},
 	{
+		name: "declarable licence",
+		sources: []vocabularySource{
+			sqlColumnCheck("publication_releases", "declared_license"),
+			goListedConstEnum("apps/platform/internal/shared/skillpkg/skillpkg.go", "spdxIDs",
+				"apps/platform/internal/shared/skillpkg/skillpkg.go", "spdxID"),
+		},
+	},
+	{
 		name: "skill takedown origin",
 		sources: []vocabularySource{
 			sqlColumnCheck("skills", "takedown_by"),
@@ -763,7 +771,7 @@ func migrationVocabularies(root string) (map[string]map[string]bool, error) {
 			switch statement.kind {
 			case "table":
 				table = statement.args[0]
-			case "check":
+			case migrationCheck:
 				nullableColumn, column, list := statement.args[0], statement.args[1], statement.args[2]
 				if nullableColumn == "" || nullableColumn == column {
 					vocabularies[table+"."+column] = quotedSQLValues(list)
@@ -782,13 +790,15 @@ func migrationVocabularies(root string) (map[string]map[string]bool, error) {
 	return vocabularies, nil
 }
 
+const migrationCheck = "check"
+
 func migrationStatements(sql string) []migrationStatement {
 	var statements []migrationStatement
 	for kind, pattern := range map[string]*regexp.Regexp{
-		"table":  migrationTablePattern,
-		"check":  migrationCheckPattern,
-		"drop":   migrationDropPattern,
-		"rename": migrationRenamePattern,
+		"table":        migrationTablePattern,
+		migrationCheck: migrationCheckPattern,
+		"drop":         migrationDropPattern,
+		"rename":       migrationRenamePattern,
 	} {
 		for _, match := range pattern.FindAllStringSubmatchIndex(sql, -1) {
 			var args []string
@@ -797,7 +807,11 @@ func migrationStatements(sql string) []migrationStatement {
 					args = append(args, "")
 					continue
 				}
-				args = append(args, strings.ToLower(sql[match[group]:match[group+1]]))
+				arg := sql[match[group]:match[group+1]]
+				if kind != migrationCheck || group != len(match)-2 {
+					arg = strings.ToLower(arg)
+				}
+				args = append(args, arg)
 			}
 			statements = append(statements, migrationStatement{at: match[0], kind: kind, args: args})
 		}

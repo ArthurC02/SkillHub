@@ -475,6 +475,38 @@ func TestOnlyAnAllowedVerdictOnCurrentFinishedTextCanBeApproved(t *testing.T) {
 	}
 }
 
+func TestAGeneratedSkillIsApprovableOnlyOnceItsLatestReleaseDeclaresALicence(t *testing.T) {
+	w := newExposureWorld(t, "declared")
+	setSkill(t, w.pool, w.skillID, "redistribution = 'self_supplied'")
+	if code, body := publish(t, w.author, w.skillID, `{"rights_attested":true,"declared_license":"MIT"}`); body["reason"] != "license_not_declarable" {
+		t.Errorf("declaring a licence for self supplied content: %d %v, want license_not_declarable", code, body)
+	}
+	setSkill(t, w.pool, w.skillID, "redistribution = 'generated'")
+	w.assertApproval(t, "redistribution_not_allowed")
+	if code, body := publish(t, w.author, w.skillID, `{"rights_attested":true,"declared_license":"WTFPL"}`); body["reason"] != "license_not_declarable" {
+		t.Errorf("declaring a licence outside the list: %d %v, want license_not_declarable", code, body)
+	}
+
+	code, body := publish(t, w.author, w.skillID, `{"rights_attested":true,"declared_license":"MIT"}`)
+	if code != http.StatusOK {
+		t.Fatalf("declaring MIT on the same version: %d %v", code, body)
+	}
+	releases := objects(t, body["releases"])
+	if len(releases) != 2 || releases[0]["declared_license"] != "MIT" || releases[1]["declared_license"] != nil {
+		t.Fatalf("releases = %v, want a new release carrying MIT above the undeclared one", releases)
+	}
+	if code, body := publish(t, w.author, w.skillID, `{"rights_attested":true,"declared_license":"MIT"}`); code != http.StatusOK || len(objects(t, body["releases"])) != 2 {
+		t.Fatalf("declaring MIT again: %d %v, want the same two releases", code, body)
+	}
+	w.assertApproval(t, "")
+	if code, body := w.reviewCurrent(t, "approved", "licence declared by the author"); code != http.StatusOK {
+		t.Fatalf("approving the declared release: %d %v", code, body)
+	}
+	if !w.searchFinds(t) {
+		t.Errorf("an approved generated release with a declared licence is not in search")
+	}
+}
+
 func TestExposureReviewsAreForOperatorsOnly(t *testing.T) {
 	w := newExposureWorld(t, "operators")
 	for _, path := range []string{"/admin/exposure-reviews", w.casePath()} {

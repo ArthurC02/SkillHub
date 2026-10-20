@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net/url"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -404,19 +405,23 @@ func licensePointerTarget(license string) (string, bool) {
 	return name, true
 }
 
+type spdxID = string
+
 const (
-	spdxApache2   = "Apache-2.0"
-	spdxMIT       = "MIT"
-	spdxISC       = "ISC"
-	spdxBSD2      = "BSD-2-Clause"
-	spdxBSD3      = "BSD-3-Clause"
-	spdxGPL2      = "GPL-2.0"
-	spdxGPL3      = "GPL-3.0"
-	spdxLGPL3     = "LGPL-3.0"
-	spdxAGPL3     = "AGPL-3.0"
-	spdxMPL2      = "MPL-2.0"
-	spdxUnlicense = "Unlicense"
-	spdxCC0       = "CC0-1.0"
+	spdxApache2   spdxID = "Apache-2.0"
+	spdxMIT       spdxID = "MIT"
+	spdxISC       spdxID = "ISC"
+	spdxBSD2      spdxID = "BSD-2-Clause"
+	spdxBSD3      spdxID = "BSD-3-Clause"
+	spdxGPL2      spdxID = "GPL-2.0"
+	spdxGPL3      spdxID = "GPL-3.0"
+	spdxLGPL3     spdxID = "LGPL-3.0"
+	spdxAGPL3     spdxID = "AGPL-3.0"
+	spdxMPL2      spdxID = "MPL-2.0"
+	spdxUnlicense spdxID = "Unlicense"
+	spdxCC0       spdxID = "CC0-1.0"
+	spdxCCBY4     spdxID = "CC-BY-4.0"
+	spdxCCBYSA4   spdxID = "CC-BY-SA-4.0"
 )
 
 var licenseSignatures = []struct{ marker, spdx string }{
@@ -509,7 +514,11 @@ func licenseCandidates(fsys fs.FS) []licenseCandidate {
 var spdxIDs = []string{
 	spdxApache2, spdxMIT, spdxISC, spdxBSD2, spdxBSD3,
 	spdxGPL2, spdxGPL3, spdxLGPL3, spdxAGPL3, spdxMPL2,
-	spdxUnlicense, spdxCC0, "CC-BY-4.0", "CC-BY-SA-4.0",
+	spdxUnlicense, spdxCC0, spdxCCBY4, spdxCCBYSA4,
+}
+
+func IsKnownLicense(id string) bool {
+	return slices.Contains(spdxIDs, id)
 }
 
 var spdxAliases = map[string]string{

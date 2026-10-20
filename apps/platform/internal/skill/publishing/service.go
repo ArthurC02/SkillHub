@@ -83,13 +83,14 @@ type Publisher struct {
 }
 
 type Release struct {
-	VersionID      pgtype.UUID
-	VersionNumber  int32
-	Bundle         *BundleVersion
-	ContentHash    string
-	Findings       skillpkg.CategorizedFindings
-	RightsAttested bool
-	ReleasedAt     time.Time
+	VersionID       pgtype.UUID
+	VersionNumber   int32
+	Bundle          *BundleVersion
+	ContentHash     string
+	Findings        skillpkg.CategorizedFindings
+	RightsAttested  bool
+	DeclaredLicense string
+	ReleasedAt      time.Time
 }
 
 type Publication struct {
@@ -138,9 +139,10 @@ type publicationDelivery struct {
 }
 
 type PublishInput struct {
-	Name           string
-	VersionID      pgtype.UUID
-	RightsAttested bool
+	Name            string
+	VersionID       pgtype.UUID
+	RightsAttested  bool
+	DeclaredLicense string
 }
 
 func (in PublishInput) attestation() rightsAttestation {
@@ -245,12 +247,15 @@ func (s *Service) release(
 	if refused := releaseGate(skill, in.attestation()); refused != nil {
 		return refused
 	}
+	if refused := declarationGate(skill, in.DeclaredLicense); refused != nil {
+		return refused
+	}
 
 	publication, err := publicationToRelease(ctx, q, ws, skill, in.Name)
 	if err != nil {
 		return err
 	}
-	if released, err := alreadyReleased(ctx, q, publication, version); err != nil || released {
+	if released, err := alreadyReleased(ctx, q, publication, version, in.DeclaredLicense); err != nil || released {
 		if err != nil {
 			return err
 		}
@@ -259,7 +264,8 @@ func (s *Service) release(
 	release, err := q.InsertPublicationRelease(ctx, gen.InsertPublicationReleaseParams{
 		PublicationID: publication.ID, WorkspaceID: ws.ID,
 		SkillVersionID: version.ID, VersionNumber: &version.VersionNumber, ContentHash: version.ContentHash,
-		Findings: candidate.findings, RightsAttested: in.RightsAttested, ReleasedBy: ws.OwnerUserID,
+		Findings: candidate.findings, RightsAttested: in.RightsAttested, DeclaredLicense: optionalLicense(in.DeclaredLicense),
+		ReleasedBy: ws.OwnerUserID,
 	})
 	if err != nil {
 		return err
@@ -273,6 +279,7 @@ func (s *Service) release(
 			"version_id":        pgconv.UUIDString(version.ID),
 			auditKeyContentHash: version.ContentHash,
 			"rights_attested":   in.RightsAttested,
+			"declared_license":  in.DeclaredLicense,
 			auditKeyReleaseID:   pgconv.UUIDString(release.ID),
 		},
 	}); err != nil {
@@ -616,7 +623,8 @@ func releasesOf(ctx context.Context, q *gen.Queries, publicationID pgtype.UUID) 
 		}
 		release := Release{
 			VersionID: row.SkillVersionID, ContentHash: row.ContentHash,
-			Findings: findings, RightsAttested: row.RightsAttested, ReleasedAt: row.ReleasedAt.Time,
+			Findings: findings, RightsAttested: row.RightsAttested, DeclaredLicense: licenseOf(row.DeclaredLicense),
+			ReleasedAt: row.ReleasedAt.Time,
 		}
 		if row.VersionNumber != nil {
 			release.VersionNumber = *row.VersionNumber
@@ -643,10 +651,27 @@ func releasesOf(ctx context.Context, q *gen.Queries, publicationID pgtype.UUID) 
 	return releases, nil
 }
 
-func alreadyReleased(ctx context.Context, q *gen.Queries, publication gen.Publication, version VersionFacts) (bool, error) {
+func alreadyReleased(
+	ctx context.Context, q *gen.Queries, publication gen.Publication, version VersionFacts, license string,
+) (bool, error) {
 	return latestReleaseIs(ctx, q, publication, func(latest gen.PublicationRelease) bool {
-		return latest.SkillVersionID == version.ID && latest.ContentHash == version.ContentHash
+		return latest.SkillVersionID == version.ID && latest.ContentHash == version.ContentHash &&
+			licenseOf(latest.DeclaredLicense) == license
 	})
+}
+
+func optionalLicense(license string) *string {
+	if license == "" {
+		return nil
+	}
+	return &license
+}
+
+func licenseOf(declared *string) string {
+	if declared == nil {
+		return ""
+	}
+	return *declared
 }
 
 func latestReleaseIs(

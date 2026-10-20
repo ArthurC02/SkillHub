@@ -1,0 +1,96 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "publishing-generated-skill-declares-a-licence-2026-10-20",
+  "proposal_id": "publishing-generated-skill-declares-a-licence-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "d6223e207998f1cb086ca4e025e02e0fa8bd2fc6",
+    "registry_digest": "sha256:e6e79ee37be141beca32636c8c1e96161869b2edea8034b370ce8758896c2d4e",
+    "committed_digest": "sha256:4402b9f1690206bc0e738bb01433841e957d90d95351b08fc97b753292ec790c"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-only-a-generated-skill-declares-a-licence-on-its-release",
+      "mutated_protection": "apps/platform/internal/skill/publishing/publication.go:101: case skill.Redistribution != redistributionGenerated: -> case false:",
+      "failure_evidence": "on_on_a_self_supplied_skill\n    publication_test.go:106: declarationGate refused = <nil>, want true\n--- FAIL: TestOnlyAGeneratedSkillDeclaresALicenceAndOnlyFromTheKnownList (0.00s)\n    --- PASS: TestOnlyAGeneratedSkillDeclaresALicenceAndOnlyFromTheKnownList/no_declaration_on_an_allowed_skill (0.00s)\n    --- PASS: TestOnlyAGeneratedSkillDeclaresALicenceAndOnlyFromTheKnownList/no_declaration_on_a_generated_skill (0.00s)\n    --- PASS: TestOnlyAGeneratedSkillDeclaresALicenceAndOnlyFromTheKnownList/the_first_known_licence (0.00s)\n    --- PASS: TestOnlyAGeneratedSkillDeclaresALicenceAndOnlyFromTheKnownList/the_last_known_licence (0.00s)\n    --- PASS: TestOnlyAGeneratedSkillDeclaresALicenceAndOnlyFromTheKnownList/a_licence_outside_the_list (0.00s)\n    --- PASS: TestOnlyAGeneratedSkillDeclaresALicenceAndOnlyFromTheKnownList/a_known_id_in_the_wrong_case (0.00s)\n    --- FAIL: TestOnlyAGeneratedSkillDeclaresALicenceAndOnlyFromTheKnownList/a_declaration_on_an_allowed_skill (0.00s)\n    --- FAIL: TestOnlyAGeneratedSkillDeclaresALicenceAndOnlyFromTheKnownList/a_declaration_on_a_self_supplied_skill (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing\t2.446s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-catalog-exposure-needs-an-approved-review-of-redistributable-content",
+      "mutated_protection": "apps/platform/internal/skill/publishing/exposure.go:214: skill.Redistribution == redistributionGenerated && state.DeclaredLicense != \"\" -> false",
+      "failure_evidence": "=== RUN   TestACurrentListableSnapshotIsExposedOnlyForAnApprovedRedistributableSkill\n    exposure_test.go:124: approved, generated, licence declared on the release: exposed = false, want true\n--- FAIL: TestACurrentListableSnapshotIsExposedOnlyForAnApprovedRedistributableSkill (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing\t2.484s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-exposure-approval-needs-a-current-enriched-snapshot",
+      "mutated_protection": "apps/platform/internal/skill/publishing/exposure.go:227: case !snapshot.Enriched: -> case false:",
+      "failure_evidence": "--- FAIL: TestApprovalProblemUsesTheSameFactsAsTheReviewGuard (0.00s)\n    --- PASS: TestApprovalProblemUsesTheSameFactsAsTheReview\n...\nGuard/ready (0.00s)\n    --- PASS: TestApprovalProblemUsesTheSameFactsAsTheReviewGuard/withdrawn_publication (0.00s)\n    --- PASS: TestApprovalProblemUsesTheSameFactsAsTheReviewGuard/missing_skill (0.00s)\n    --- PASS: TestApprovalProblemUsesTheSameFactsAsTheReviewGuard/taken_down_skill (0.00s)\n    --- PASS: TestApprovalProblemUsesTheSameFactsAsTheReviewGuard/held_skill (0.00s)\n    --- PASS: TestApprovalProblemUsesTheSameFactsAsTheReviewGuard/not_cleared_for_redistribution (0.00s)\n    --- PASS: TestApprovalProblemUsesTheSameFactsAsTheReviewGuard/generated_without_a_declared_licence (0.00s)\n    --- PASS: TestApprovalProblemUsesTheSameFactsAsTheReviewGuard/generated_with_a_declared_licence (0.00s)\n    --- PASS: TestApprovalProblemUsesTheSameFactsAsTheReviewGuard/self_supplied_with_a_declared_licence (0.00s)\n    --- PASS: TestApprovalProblemUsesTheSameFactsAsTheReviewGuard/snapshot_absent (0.00s)\n    --- PASS: TestApprovalProblemUsesTheSameFactsAsTheReviewGuard/snapshot_for_another_version (0.00s)\n    --- FAIL: TestApprovalProblemUsesTheSameFactsAsTheReviewGuard/snapshot_still_enriching (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing\t2.223s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-republishing-the-same-version-keeps-its-one-release",
+      "mutated_protection": "apps/platform/internal/skill/publishing/service.go:658: && licenseOf(latest.DeclaredLicense) == license -> && true",
+      "failure_evidence": "=== RUN   TestAGeneratedSkillIsApprovableOnlyOnceItsLatestReleaseDeclaresALicence\n    exposure_integration_test.go:496: releases = [map[content_hash:c2ceee10b1479ec77c17e1132a224266d8a8518cddcd14838ff3428a6039dab5 findings:map[errors:[] infos:[] warnings:[]] released_at:2026-10-20T00:08:18Z rights_attested:true version_id:8295583e-b63d-4e1d-9751-59af7205a466 version_number:1]], want a new release carrying MIT above the undeclared one\n--- FAIL: TestAGeneratedSkillIsApprovableOnlyOnceItsLatestReleaseDeclaresALicence (0.23s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.697s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/exposure_integration_test.go",
+    "apps/platform/internal/skill/publishing/exposure.go",
+    "apps/platform/internal/skill/publishing/exposure_test.go",
+    "apps/platform/internal/skill/publishing/publication.go",
+    "apps/platform/internal/skill/publishing/publication_test.go",
+    "apps/platform/internal/skill/publishing/service.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-only-a-generated-skill-declares-a-licence-on-its-release",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestOnlyAGeneratedSkillDeclaresALicenceAndOnlyFromTheKnownList$ ./internal/skill/publishing/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:39641885584da67c47d2e3dd64938b32000eb477b10c87e71cce9469a5e502cb",
+      "finished_at": "2026-10-20T00:08:52.332057Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-catalog-exposure-needs-an-approved-review-of-redistributable-content",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestACurrentListableSnapshotIsExposedOnlyForAnApprovedRedistributableSkill$ ./internal/skill/publishing/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:4477549f8175c4fd8aeab8318a1a91585df236aea0917d7efb63ee73907ce1bd",
+      "finished_at": "2026-10-20T00:08:57.095450Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-exposure-approval-needs-a-current-enriched-snapshot",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestApprovalProblemUsesTheSameFactsAsTheReviewGuard$ ./internal/skill/publishing/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:48242ec5fb861ea86149969cf0f8d6ccfef29effb4386ca79edffc5eeec0cc47",
+      "finished_at": "2026-10-20T00:09:01.560757Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-republishing-the-same-version-keeps-its-one-release",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAGeneratedSkillIsApprovableOnlyOnceItsLatestReleaseDeclaresALicence$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:6c8ba09eedca5e51b2743eca6fa6fe0ae4e6f07fe8aa24261505b2def8d38c2c",
+      "finished_at": "2026-10-20T00:09:09.693401Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

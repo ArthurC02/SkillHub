@@ -5078,7 +5078,7 @@ export interface DefaultApiInterface {
     publishSkillRequestOpts(requestParameters: PublishSkillOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Adds one immutable release pinning the version (the newest one when version_id is absent) and its content hash. The first publish creates the publication under the given name, or the Skill\'s name; later ones keep that name. The release gate is the download gate: a licence hold, a blocked or an unknown redistribution verdict refuses. Content the author supplied or the platform generated for them needs the author\'s statement that they may distribute it. 
+     * Adds one immutable release pinning the version (the newest one when version_id is absent) and its content hash. The first publish creates the publication under the given name, or the Skill\'s name; later ones keep that name. The release gate is the download gate: a licence hold, a blocked or an unknown redistribution verdict refuses. Content the author supplied or the platform generated for them needs the author\'s statement that they may distribute it. Only a generated Skill may declare a licence; that declaration is what lets an operator approve it for the public catalogue. 
      * @summary Publish a version of this Skill, or publish it again (PACK-004)
      * @param {string} id 
      * @param {PublishSkillRequest} publishSkillRequest 
@@ -5089,7 +5089,7 @@ export interface DefaultApiInterface {
     publishSkillRaw(requestParameters: PublishSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publication>>;
 
     /**
-     * Adds one immutable release pinning the version (the newest one when version_id is absent) and its content hash. The first publish creates the publication under the given name, or the Skill\'s name; later ones keep that name. The release gate is the download gate: a licence hold, a blocked or an unknown redistribution verdict refuses. Content the author supplied or the platform generated for them needs the author\'s statement that they may distribute it. 
+     * Adds one immutable release pinning the version (the newest one when version_id is absent) and its content hash. The first publish creates the publication under the given name, or the Skill\'s name; later ones keep that name. The release gate is the download gate: a licence hold, a blocked or an unknown redistribution verdict refuses. Content the author supplied or the platform generated for them needs the author\'s statement that they may distribute it. Only a generated Skill may declare a licence; that declaration is what lets an operator approve it for the public catalogue. 
      * Publish a version of this Skill, or publish it again (PACK-004)
      */
     publishSkill(requestParameters: PublishSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publication>;
@@ -11750,7 +11750,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Adds one immutable release pinning the version (the newest one when version_id is absent) and its content hash. The first publish creates the publication under the given name, or the Skill\'s name; later ones keep that name. The release gate is the download gate: a licence hold, a blocked or an unknown redistribution verdict refuses. Content the author supplied or the platform generated for them needs the author\'s statement that they may distribute it. 
+     * Adds one immutable release pinning the version (the newest one when version_id is absent) and its content hash. The first publish creates the publication under the given name, or the Skill\'s name; later ones keep that name. The release gate is the download gate: a licence hold, a blocked or an unknown redistribution verdict refuses. Content the author supplied or the platform generated for them needs the author\'s statement that they may distribute it. Only a generated Skill may declare a licence; that declaration is what lets an operator approve it for the public catalogue. 
      * Publish a version of this Skill, or publish it again (PACK-004)
      */
     async publishSkillRaw(requestParameters: PublishSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publication>> {
@@ -11761,7 +11761,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Adds one immutable release pinning the version (the newest one when version_id is absent) and its content hash. The first publish creates the publication under the given name, or the Skill\'s name; later ones keep that name. The release gate is the download gate: a licence hold, a blocked or an unknown redistribution verdict refuses. Content the author supplied or the platform generated for them needs the author\'s statement that they may distribute it. 
+     * Adds one immutable release pinning the version (the newest one when version_id is absent) and its content hash. The first publish creates the publication under the given name, or the Skill\'s name; later ones keep that name. The release gate is the download gate: a licence hold, a blocked or an unknown redistribution verdict refuses. Content the author supplied or the platform generated for them needs the author\'s statement that they may distribute it. Only a generated Skill may declare a licence; that declaration is what lets an operator approve it for the public catalogue. 
      * Publish a version of this Skill, or publish it again (PACK-004)
      */
     async publishSkill(requestParameters: PublishSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publication> {

@@ -6855,6 +6855,132 @@ type DecideSuggestionUnauthorized Error
 
 func (*DecideSuggestionUnauthorized) decideSuggestionRes() {}
 
+// Ref: #/components/schemas/DeclarableLicense
+type DeclarableLicense string
+
+const (
+	DeclarableLicenseApache20   DeclarableLicense = "Apache-2.0"
+	DeclarableLicenseMIT        DeclarableLicense = "MIT"
+	DeclarableLicenseISC        DeclarableLicense = "ISC"
+	DeclarableLicenseBSD2Clause DeclarableLicense = "BSD-2-Clause"
+	DeclarableLicenseBSD3Clause DeclarableLicense = "BSD-3-Clause"
+	DeclarableLicenseGPL20      DeclarableLicense = "GPL-2.0"
+	DeclarableLicenseGPL30      DeclarableLicense = "GPL-3.0"
+	DeclarableLicenseLGPL30     DeclarableLicense = "LGPL-3.0"
+	DeclarableLicenseAGPL30     DeclarableLicense = "AGPL-3.0"
+	DeclarableLicenseMPL20      DeclarableLicense = "MPL-2.0"
+	DeclarableLicenseUnlicense  DeclarableLicense = "Unlicense"
+	DeclarableLicenseCC010      DeclarableLicense = "CC0-1.0"
+	DeclarableLicenseCCBY40     DeclarableLicense = "CC-BY-4.0"
+	DeclarableLicenseCCBYSA40   DeclarableLicense = "CC-BY-SA-4.0"
+)
+
+// AllValues returns all DeclarableLicense values.
+func (DeclarableLicense) AllValues() []DeclarableLicense {
+	return []DeclarableLicense{
+		DeclarableLicenseApache20,
+		DeclarableLicenseMIT,
+		DeclarableLicenseISC,
+		DeclarableLicenseBSD2Clause,
+		DeclarableLicenseBSD3Clause,
+		DeclarableLicenseGPL20,
+		DeclarableLicenseGPL30,
+		DeclarableLicenseLGPL30,
+		DeclarableLicenseAGPL30,
+		DeclarableLicenseMPL20,
+		DeclarableLicenseUnlicense,
+		DeclarableLicenseCC010,
+		DeclarableLicenseCCBY40,
+		DeclarableLicenseCCBYSA40,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DeclarableLicense) MarshalText() ([]byte, error) {
+	switch s {
+	case DeclarableLicenseApache20:
+		return []byte(s), nil
+	case DeclarableLicenseMIT:
+		return []byte(s), nil
+	case DeclarableLicenseISC:
+		return []byte(s), nil
+	case DeclarableLicenseBSD2Clause:
+		return []byte(s), nil
+	case DeclarableLicenseBSD3Clause:
+		return []byte(s), nil
+	case DeclarableLicenseGPL20:
+		return []byte(s), nil
+	case DeclarableLicenseGPL30:
+		return []byte(s), nil
+	case DeclarableLicenseLGPL30:
+		return []byte(s), nil
+	case DeclarableLicenseAGPL30:
+		return []byte(s), nil
+	case DeclarableLicenseMPL20:
+		return []byte(s), nil
+	case DeclarableLicenseUnlicense:
+		return []byte(s), nil
+	case DeclarableLicenseCC010:
+		return []byte(s), nil
+	case DeclarableLicenseCCBY40:
+		return []byte(s), nil
+	case DeclarableLicenseCCBYSA40:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DeclarableLicense) UnmarshalText(data []byte) error {
+	switch DeclarableLicense(data) {
+	case DeclarableLicenseApache20:
+		*s = DeclarableLicenseApache20
+		return nil
+	case DeclarableLicenseMIT:
+		*s = DeclarableLicenseMIT
+		return nil
+	case DeclarableLicenseISC:
+		*s = DeclarableLicenseISC
+		return nil
+	case DeclarableLicenseBSD2Clause:
+		*s = DeclarableLicenseBSD2Clause
+		return nil
+	case DeclarableLicenseBSD3Clause:
+		*s = DeclarableLicenseBSD3Clause
+		return nil
+	case DeclarableLicenseGPL20:
+		*s = DeclarableLicenseGPL20
+		return nil
+	case DeclarableLicenseGPL30:
+		*s = DeclarableLicenseGPL30
+		return nil
+	case DeclarableLicenseLGPL30:
+		*s = DeclarableLicenseLGPL30
+		return nil
+	case DeclarableLicenseAGPL30:
+		*s = DeclarableLicenseAGPL30
+		return nil
+	case DeclarableLicenseMPL20:
+		*s = DeclarableLicenseMPL20
+		return nil
+	case DeclarableLicenseUnlicense:
+		*s = DeclarableLicenseUnlicense
+		return nil
+	case DeclarableLicenseCC010:
+		*s = DeclarableLicenseCC010
+		return nil
+	case DeclarableLicenseCCBY40:
+		*s = DeclarableLicenseCCBY40
+		return nil
+	case DeclarableLicenseCCBYSA40:
+		*s = DeclarableLicenseCCBYSA40
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type DeclareDispatchHaltBadRequest Error
 
 func (*DeclareDispatchHaltBadRequest) declareDispatchHaltRes() {}
@@ -16214,6 +16340,52 @@ func (o OptDateTime) Or(d time.Time) time.Time {
 	return d
 }
 
+// NewOptDeclarableLicense returns new OptDeclarableLicense with value set to v.
+func NewOptDeclarableLicense(v DeclarableLicense) OptDeclarableLicense {
+	return OptDeclarableLicense{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptDeclarableLicense is optional DeclarableLicense.
+type OptDeclarableLicense struct {
+	Value DeclarableLicense
+	Set   bool
+}
+
+// IsSet returns true if OptDeclarableLicense was set.
+func (o OptDeclarableLicense) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptDeclarableLicense) Reset() {
+	var v DeclarableLicense
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptDeclarableLicense) SetTo(v DeclarableLicense) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptDeclarableLicense) Get() (v DeclarableLicense, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptDeclarableLicense) Or(d DeclarableLicense) DeclarableLicense {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptDevLoginReq returns new OptDevLoginReq with value set to v.
 func NewOptDevLoginReq(v DevLoginReq) OptDevLoginReq {
 	return OptDevLoginReq{
@@ -25020,13 +25192,14 @@ func (s *PublicationNote) SetNote(val string) {
 // A Skill release carries version_id and version_number; a Bundle release carries bundle_version.
 // Ref: #/components/schemas/PublicationRelease
 type PublicationRelease struct {
-	VersionID      OptUUID             `json:"version_id"`
-	VersionNumber  OptInt              `json:"version_number"`
-	BundleVersion  OptString           `json:"bundle_version"`
-	ContentHash    string              `json:"content_hash"`
-	ReleasedAt     time.Time           `json:"released_at"`
-	RightsAttested bool                `json:"rights_attested"`
-	Findings       CategorizedFindings `json:"findings"`
+	VersionID       OptUUID              `json:"version_id"`
+	VersionNumber   OptInt               `json:"version_number"`
+	BundleVersion   OptString            `json:"bundle_version"`
+	ContentHash     string               `json:"content_hash"`
+	ReleasedAt      time.Time            `json:"released_at"`
+	RightsAttested  bool                 `json:"rights_attested"`
+	DeclaredLicense OptDeclarableLicense `json:"declared_license"`
+	Findings        CategorizedFindings  `json:"findings"`
 }
 
 // GetVersionID returns the value of VersionID.
@@ -25057,6 +25230,11 @@ func (s *PublicationRelease) GetReleasedAt() time.Time {
 // GetRightsAttested returns the value of RightsAttested.
 func (s *PublicationRelease) GetRightsAttested() bool {
 	return s.RightsAttested
+}
+
+// GetDeclaredLicense returns the value of DeclaredLicense.
+func (s *PublicationRelease) GetDeclaredLicense() OptDeclarableLicense {
+	return s.DeclaredLicense
 }
 
 // GetFindings returns the value of Findings.
@@ -25092,6 +25270,11 @@ func (s *PublicationRelease) SetReleasedAt(val time.Time) {
 // SetRightsAttested sets the value of RightsAttested.
 func (s *PublicationRelease) SetRightsAttested(val bool) {
 	s.RightsAttested = val
+}
+
+// SetDeclaredLicense sets the value of DeclaredLicense.
+func (s *PublicationRelease) SetDeclaredLicense(val OptDeclarableLicense) {
+	s.DeclaredLicense = val
 }
 
 // SetFindings sets the value of Findings.
@@ -25210,9 +25393,10 @@ type PublishSkillNotFound Error
 func (*PublishSkillNotFound) publishSkillRes() {}
 
 type PublishSkillReq struct {
-	Name           OptString `json:"name"`
-	VersionID      OptUUID   `json:"version_id"`
-	RightsAttested OptBool   `json:"rights_attested"`
+	Name            OptString            `json:"name"`
+	VersionID       OptUUID              `json:"version_id"`
+	RightsAttested  OptBool              `json:"rights_attested"`
+	DeclaredLicense OptDeclarableLicense `json:"declared_license"`
 }
 
 // GetName returns the value of Name.
@@ -25230,6 +25414,11 @@ func (s *PublishSkillReq) GetRightsAttested() OptBool {
 	return s.RightsAttested
 }
 
+// GetDeclaredLicense returns the value of DeclaredLicense.
+func (s *PublishSkillReq) GetDeclaredLicense() OptDeclarableLicense {
+	return s.DeclaredLicense
+}
+
 // SetName sets the value of Name.
 func (s *PublishSkillReq) SetName(val OptString) {
 	s.Name = val
@@ -25243,6 +25432,11 @@ func (s *PublishSkillReq) SetVersionID(val OptUUID) {
 // SetRightsAttested sets the value of RightsAttested.
 func (s *PublishSkillReq) SetRightsAttested(val OptBool) {
 	s.RightsAttested = val
+}
+
+// SetDeclaredLicense sets the value of DeclaredLicense.
+func (s *PublishSkillReq) SetDeclaredLicense(val OptDeclarableLicense) {
+	s.DeclaredLicense = val
 }
 
 type PublishSkillUnauthorized Error
@@ -25325,6 +25519,7 @@ const (
 	PublishingRefusalReasonLicenseUnknown        PublishingRefusalReason = "license_unknown"
 	PublishingRefusalReasonValidationBlocked     PublishingRefusalReason = "validation_blocked"
 	PublishingRefusalReasonRightsNotAttested     PublishingRefusalReason = "rights_not_attested"
+	PublishingRefusalReasonLicenseNotDeclarable  PublishingRefusalReason = "license_not_declarable"
 	PublishingRefusalReasonFileRemovedByPackager PublishingRefusalReason = "file_removed_by_packager"
 	PublishingRefusalReasonMemberWithdrawn       PublishingRefusalReason = "member_withdrawn"
 	PublishingRefusalReasonVersionShape          PublishingRefusalReason = "version_shape"
@@ -25354,6 +25549,7 @@ func (PublishingRefusalReason) AllValues() []PublishingRefusalReason {
 		PublishingRefusalReasonLicenseUnknown,
 		PublishingRefusalReasonValidationBlocked,
 		PublishingRefusalReasonRightsNotAttested,
+		PublishingRefusalReasonLicenseNotDeclarable,
 		PublishingRefusalReasonFileRemovedByPackager,
 		PublishingRefusalReasonMemberWithdrawn,
 		PublishingRefusalReasonVersionShape,
@@ -25395,6 +25591,8 @@ func (s PublishingRefusalReason) MarshalText() ([]byte, error) {
 	case PublishingRefusalReasonValidationBlocked:
 		return []byte(s), nil
 	case PublishingRefusalReasonRightsNotAttested:
+		return []byte(s), nil
+	case PublishingRefusalReasonLicenseNotDeclarable:
 		return []byte(s), nil
 	case PublishingRefusalReasonFileRemovedByPackager:
 		return []byte(s), nil
@@ -25463,6 +25661,9 @@ func (s *PublishingRefusalReason) UnmarshalText(data []byte) error {
 		return nil
 	case PublishingRefusalReasonRightsNotAttested:
 		*s = PublishingRefusalReasonRightsNotAttested
+		return nil
+	case PublishingRefusalReasonLicenseNotDeclarable:
+		*s = PublishingRefusalReasonLicenseNotDeclarable
 		return nil
 	case PublishingRefusalReasonFileRemovedByPackager:
 		*s = PublishingRefusalReasonFileRemovedByPackager

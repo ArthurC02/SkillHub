@@ -64,6 +64,7 @@ type ExposureState struct {
 	VersionNumber    int32
 	ContentHash      string
 	ReleasedAt       time.Time
+	DeclaredLicense  string
 	Sequence         int32
 	Concluded        bool
 	Approved         bool
@@ -127,7 +128,7 @@ var exposureProblemWords = map[ExposureProblem]string{
 	ExposureDecisionUnknown: "審核結論只能是核准或撤銷",
 	ExposureNotPublished:    "這個發佈物已經撤回，不能核准曝光",
 	ExposureNotAvailable:    "這個 Skill 目前被下架、被保留或已刪除，不能核准曝光",
-	ExposureNotAllowed:      "可散布判定不是 allowed：要先以既有的可散布判定動詞附授權證據判成 allowed，才能核准曝光",
+	ExposureNotAllowed:      "可散布判定不是 allowed，也不是作者在最新一次發佈聲明了授權的生成 Skill：要先附授權證據判成 allowed，或請作者重新發佈並聲明授權，才能核准曝光",
 	ExposureSnapshotMissing: "搜尋索引裡的內容不是這一筆 Release 的版本（還沒索引，或作者之後上傳了新版本），不能核准審核者沒看過的內容",
 	ExposureSnapshotPending: "這一版的搜尋內容還在補充，補完之前的文字不是最後會被搜尋與顯示的那一份",
 }
@@ -150,7 +151,8 @@ func exposureStateOf(row gen.ListExposureStatesRow) ExposureState {
 		PublicationID: row.PublicationID, Publisher: row.PublisherName, Name: row.Name, Status: Status(row.Status),
 		SkillID: row.SkillID, OwnerWorkspaceID: row.PublisherWorkspaceID,
 		ReleaseID: row.ReleaseID, VersionID: row.SkillVersionID, VersionNumber: version,
-		ContentHash: row.ContentHash, ReleasedAt: row.ReleasedAt.Time, Sequence: row.Sequence,
+		ContentHash: row.ContentHash, ReleasedAt: row.ReleasedAt.Time, DeclaredLicense: licenseOf(row.DeclaredLicense),
+		Sequence:  row.Sequence,
 		Concluded: concluded, Approved: concluded && ExposureDecision(row.Decision) == ExposureApproved,
 		ReviewedDigest: row.ReviewedSnapshotDigest,
 	}
@@ -166,8 +168,8 @@ func ownerExposureStateOf(row gen.ListWorkspaceSkillPublicationsRow) ExposureSta
 		PublicationID: row.PublicationID, Publisher: row.PublisherName, Name: row.Name,
 		Status: Status(row.Status), SkillID: row.SkillID, OwnerWorkspaceID: row.PublisherWorkspaceID,
 		ReleaseID: row.LatestReleaseID, VersionID: row.LatestVersionID, VersionNumber: version,
-		ReleasedAt: row.LatestReleasedAt.Time,
-		Sequence:   row.ExposureSequence, Concluded: concluded,
+		ReleasedAt: row.LatestReleasedAt.Time, DeclaredLicense: licenseOf(row.LatestDeclaredLicense),
+		Sequence: row.ExposureSequence, Concluded: concluded,
 		Approved:       concluded && ExposureDecision(row.ExposureDecision) == ExposureApproved,
 		ReviewedDigest: row.ReviewedSnapshotDigest,
 	}
@@ -200,11 +202,16 @@ func (s *Service) exposureEligible(ctx context.Context, state ExposureState) (bo
 	if err != nil {
 		return false, err
 	}
-	return exposable(state.Status, skill, found), nil
+	return exposable(state, skill, found), nil
 }
 
-func exposable(status Status, skill SkillFacts, found bool) bool {
-	return availabilityOf(status, skill, found) == AvailabilityAvailable && skill.Redistribution == redistributionAllowed
+func exposable(state ExposureState, skill SkillFacts, found bool) bool {
+	return availabilityOf(state.Status, skill, found) == AvailabilityAvailable && licensedForCatalog(state, skill)
+}
+
+func licensedForCatalog(state ExposureState, skill SkillFacts) bool {
+	return skill.Redistribution == redistributionAllowed ||
+		skill.Redistribution == redistributionGenerated && state.DeclaredLicense != ""
 }
 
 func approvalProblem(state ExposureState, skill SkillFacts, skillFound bool, snapshot *SearchSnapshot) ExposureProblem {
@@ -213,7 +220,7 @@ func approvalProblem(state ExposureState, skill SkillFacts, skillFound bool, sna
 		return ExposureNotPublished
 	case !skillFound || skill.TakenDown || skill.AccessRestricted:
 		return ExposureNotAvailable
-	case skill.Redistribution != redistributionAllowed:
+	case !licensedForCatalog(state, skill):
 		return ExposureNotAllowed
 	case snapshot == nil || snapshot.VersionID != state.VersionID:
 		return ExposureSnapshotMissing
@@ -284,7 +291,7 @@ func (s *Service) exposedAmong(ctx context.Context, states []ExposureState) ([]E
 	var out []Exposure
 	for i, state := range candidates {
 		skill, found := skills[refs[i]]
-		if exposable(state.Status, skill, found) {
+		if exposable(state, skill, found) {
 			out = append(out, Exposure{
 				SkillID: state.SkillID, VersionID: state.VersionID,
 				SnapshotDigest: state.ReviewedDigest, OwnerWorkspaceID: state.OwnerWorkspaceID,
@@ -320,7 +327,7 @@ func (s *Service) exposedFor(ctx context.Context, state ExposureState, skill Ski
 		return false, nil, err
 	}
 	current := snapshot.Listable && snapshot.VersionID == state.VersionID && snapshot.Digest == state.ReviewedDigest
-	return state.Approved && exposable(state.Status, skill, skillFound) && current, &snapshot, nil
+	return state.Approved && exposable(state, skill, skillFound) && current, &snapshot, nil
 }
 
 func (s *Service) ExposureQueue(ctx context.Context) ([]ExposureState, error) {

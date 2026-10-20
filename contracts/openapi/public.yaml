@@ -1964,7 +1964,9 @@ paths:
         keep that name. The release gate is the download gate: a licence hold,
         a blocked or an unknown redistribution verdict refuses. Content the
         author supplied or the platform generated for them needs the author's
-        statement that they may distribute it.
+        statement that they may distribute it. Only a generated Skill may
+        declare a licence; that declaration is what lets an operator approve
+        it for the public catalogue.
       requestBody:
         required: true
         content:
@@ -1975,6 +1977,7 @@ paths:
                 name: { type: string }
                 version_id: { type: string, format: uuid }
                 rights_attested: { type: boolean }
+                declared_license: { $ref: "#/components/schemas/DeclarableLicense" }
       responses:
         "200":
           description: Published; the publication with every release, newest first.
@@ -9016,6 +9019,7 @@ components:
             - license_unknown
             - validation_blocked
             - rights_not_attested
+            - license_not_declarable
             - file_removed_by_packager
             - member_withdrawn
             - version_shape
@@ -9039,7 +9043,12 @@ components:
         content_hash: { type: string }
         released_at: { type: string, format: date-time }
         rights_attested: { type: boolean }
+        declared_license: { $ref: "#/components/schemas/DeclarableLicense" }
         findings: { $ref: "#/components/schemas/CategorizedFindings" }
+    DeclarableLicense:
+      type: string
+      enum: [Apache-2.0, MIT, ISC, BSD-2-Clause, BSD-3-Clause, GPL-2.0, GPL-3.0, LGPL-3.0, AGPL-3.0, MPL-2.0,
+             Unlicense, CC0-1.0, CC-BY-4.0, CC-BY-SA-4.0]
     Publication:
       type: object
       required: [kind, publisher, name, address, status, status_changed_at, releases]

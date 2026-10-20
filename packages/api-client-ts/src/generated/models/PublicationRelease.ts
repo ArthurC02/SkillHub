@@ -20,6 +20,13 @@ import {
     CategorizedFindingsToJSON,
     CategorizedFindingsToJSONTyped,
 } from './CategorizedFindings';
+import type { DeclarableLicense } from './DeclarableLicense';
+import {
+    DeclarableLicenseFromJSON,
+    DeclarableLicenseFromJSONTyped,
+    DeclarableLicenseToJSON,
+    DeclarableLicenseToJSONTyped,
+} from './DeclarableLicense';
 
 /**
  * A Skill release carries version_id and version_number; a Bundle release carries bundle_version.
@@ -54,8 +61,14 @@ export interface PublicationRelease {
     /**
      * 
      */
+    declaredLicense?: DeclarableLicense;
+    /**
+     * 
+     */
     findings: CategorizedFindings;
 }
+
+
 
 /**
  * Check if a given object implements the PublicationRelease interface.
@@ -84,6 +97,7 @@ export function PublicationReleaseFromJSONTyped(json: any, ignoreDiscriminator: 
         'contentHash': json['content_hash'],
         'releasedAt': (json['released_at'] == null ? json['released_at'] : parseDateTime(json['released_at'])),
         'rightsAttested': json['rights_attested'],
+        'declaredLicense': json['declared_license'] == null ? undefined : DeclarableLicenseFromJSON(json['declared_license']),
         'findings': CategorizedFindingsFromJSON(json['findings']),
     };
 }
@@ -105,6 +119,7 @@ export function PublicationReleaseToJSONTyped(value?: PublicationRelease | null,
         'content_hash': value['contentHash'],
         'released_at': value['releasedAt'] == null ? value['releasedAt'] : serializeDateTime(value['releasedAt']),
         'rights_attested': value['rightsAttested'],
+        'declared_license': DeclarableLicenseToJSON(value['declaredLicense']),
         'findings': CategorizedFindingsToJSON(value['findings']),
     };
 }

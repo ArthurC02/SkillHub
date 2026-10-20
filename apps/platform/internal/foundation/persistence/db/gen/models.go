@@ -710,6 +710,7 @@ type PublicationRelease struct {
 	ReleasedBy      pgtype.UUID
 	ReleasedAt      pgtype.Timestamptz
 	BundleVersionID pgtype.UUID
+	DeclaredLicense *string
 }
 
 type Publisher struct {

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
+import type { DeclarableLicense } from "@skillhub/api-client-ts";
 import type { CategorizedFindings, Labelled } from "../../core/api/types";
 
 export interface Publisher {
@@ -205,16 +206,22 @@ export interface PublishRequest {
   name?: string;
   versionId?: string;
   rightsAttested?: boolean;
+  declaredLicense?: DeclarableLicense | "";
 }
 
 export function usePublish(skillId: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ name, versionId, rightsAttested }: PublishRequest) =>
+    mutationFn: ({ name, versionId, rightsAttested, declaredLicense }: PublishRequest) =>
       apiFetch<Publication>(`/skills/${skillId}/publication`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, version_id: versionId, rights_attested: rightsAttested }),
+        body: JSON.stringify({
+          name,
+          version_id: versionId,
+          rights_attested: rightsAttested,
+          declared_license: declaredLicense || undefined,
+        }),
       }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: queryKeys.publishing.ownPublication(skillId) });

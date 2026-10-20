@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { DeclarableLicense } from './DeclarableLicense';
+import {
+    DeclarableLicenseFromJSON,
+    DeclarableLicenseFromJSONTyped,
+    DeclarableLicenseToJSON,
+    DeclarableLicenseToJSONTyped,
+} from './DeclarableLicense';
+
 /**
  * 
  * @export
@@ -31,7 +39,13 @@ export interface PublishSkillRequest {
      * 
      */
     rightsAttested?: boolean;
+    /**
+     * 
+     */
+    declaredLicense?: DeclarableLicense;
 }
+
+
 
 /**
  * Check if a given object implements the PublishSkillRequest interface.
@@ -53,6 +67,7 @@ export function PublishSkillRequestFromJSONTyped(json: any, ignoreDiscriminator:
         'name': json['name'] == null ? undefined : json['name'],
         'versionId': json['version_id'] == null ? undefined : json['version_id'],
         'rightsAttested': json['rights_attested'] == null ? undefined : json['rights_attested'],
+        'declaredLicense': json['declared_license'] == null ? undefined : DeclarableLicenseFromJSON(json['declared_license']),
     };
 }
 
@@ -70,6 +85,7 @@ export function PublishSkillRequestToJSONTyped(value?: PublishSkillRequest | nul
         'name': value['name'],
         'version_id': value['versionId'],
         'rights_attested': value['rightsAttested'],
+        'declared_license': DeclarableLicenseToJSON(value['declaredLicense']),
     };
 }
 

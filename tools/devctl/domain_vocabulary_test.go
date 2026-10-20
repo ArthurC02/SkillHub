@@ -238,6 +238,14 @@ CREATE TABLE events (
 			want: []string{"debit", "grant"},
 		},
 		{
+			name: "values keep their case while the column name does not",
+			migrations: map[string]string{"0001_releases.sql": `ALTER TABLE Releases
+    ADD COLUMN License text CHECK (License IN ('MIT', 'Apache-2.0'));
+`},
+			key:  "releases.license",
+			want: []string{"Apache-2.0", "MIT"},
+		},
+		{
 			name: "a nullable list is a vocabulary",
 			migrations: map[string]string{"0001_events.sql": `CREATE TABLE events (
     ref_type text CHECK (ref_type IS NULL OR ref_type IN ('run', 'session'))
