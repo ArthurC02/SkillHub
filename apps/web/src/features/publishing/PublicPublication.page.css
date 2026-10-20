@@ -66,6 +66,8 @@
 }
 
 .publication-acquire-action {
+  min-width: 0;
+  overflow-wrap: anywhere;
   display: grid;
   gap: 8px;
   justify-items: end;

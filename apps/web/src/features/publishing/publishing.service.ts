@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "../../core/api/client";
+import { apiFetch, isWriteResultUnknown } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import type { DeclarableLicense } from "@skillhub/api-client-ts";
 import type { CategorizedFindings, Labelled } from "../../core/api/types";
+import { AcquisitionResultUnknown, readAcquisition } from "./acquisition.model";
 
 export interface Publisher {
   name: string;
@@ -250,11 +251,19 @@ export function usePublicPublication(publisher: string, name: string) {
   });
 }
 
+async function requestAcquisition(path: string) {
+  try {
+    return readAcquisition(await apiFetch<unknown>(path, { method: "POST" }));
+  } catch (error) {
+    if (isWriteResultUnknown(error)) throw new AcquisitionResultUnknown();
+    throw error;
+  }
+}
+
 export function useAcquirePublication(publisher: string, name: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () =>
-      apiFetch<Acquisition>(`/publications/${publisher}/${name}/acquisitions`, { method: "POST" }),
+    mutationFn: () => requestAcquisition(`/publications/${publisher}/${name}/acquisitions`),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.packaging.downloads }),
   });
 }
@@ -306,9 +315,7 @@ export function useExportBundle(bundle: string, version: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () =>
-      apiFetch<Acquisition>(`/me/bundles/${bundle}/export?version=${encodeURIComponent(version)}`, {
-        method: "POST",
-      }),
+      requestAcquisition(`/me/bundles/${bundle}/export?version=${encodeURIComponent(version)}`),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.packaging.downloads }),
   });
 }

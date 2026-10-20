@@ -1,6 +1,6 @@
 import { Link, useParams } from "@tanstack/react-router";
 import { Loading } from "../../shared/ui/Loading";
-import { PageReadFailure, ReadFailure } from "../../shared/ui/LoginRequired";
+import { PageReadFailure } from "../../shared/ui/LoginRequired";
 import { Timestamp } from "../../shared/ui/Timestamp";
 import { LabelledBadge } from "../../shared/ui/LabelledBadge";
 import { SOURCE_LABELS } from "../../shared/ui/LicenseBadge.model";
@@ -13,7 +13,7 @@ import {
   type PublicPublication as PublicPublicationData,
   type PublicRelease,
 } from "./publishing.service";
-import { actionFailureSentence } from "./publishing.model";
+import { AcquisitionFailure } from "./components/AcquisitionFailure";
 import { DeliveryAudience } from "./components/DeliveryAudience";
 import "./PublicPublication.page.css";
 
@@ -76,15 +76,13 @@ function AcquireAction({ publisher, name }: { publisher: string; name: string })
         >
           {acquire.isPending ? "建立下載中…" : "下載"}
         </button>
-        {acquire.isError && (
-          <ReadFailure error={acquire.error} what="這個下載">
-            <p role="alert">
-              {actionFailureSentence(acquire.error, "下載沒有成功，可以再試一次。")}
-            </p>
-          </ReadFailure>
-        )}
+        <AcquisitionFailure
+          error={acquire.error}
+          what="這個下載"
+          fallback="下載沒有成功，可以再試一次。"
+        />
         {acquire.isSuccess && (
-          <p>
+          <p role="status">
             <a href={`${API_BASE_URL}${acquire.data.content_url}`}>下載 {acquire.data.file_name}</a>
             {" ｜ "}
             <Link to="/workspace/downloads" search={{ artifact: acquire.data.artifact_id }}>

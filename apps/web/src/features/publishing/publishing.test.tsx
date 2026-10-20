@@ -29,6 +29,7 @@ import {
   SKILL_VERSIONS,
   VERSION,
   skillDetail,
+  platformResponse,
 } from "../../testing/fixtures/platform";
 import type { SkillDetail } from "../../core/api/types";
 import type { BundleVersion, Publication } from "./publishing.service";
@@ -57,18 +58,26 @@ vi.mock("@tanstack/react-router", () => ({
     params,
     search,
     children,
+    target,
+    rel,
   }: {
     to: string;
     params?: Record<string, string>;
     search?: Record<string, string | undefined>;
     children?: unknown;
+    target?: string;
+    rel?: string;
   }) => {
     const path = Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to);
     const query = new URLSearchParams();
     Object.entries(search ?? {}).forEach(([key, value]) => {
       if (value !== undefined) query.set(key, value);
     });
-    return <a href={`${path}${query.size ? `?${query}` : ""}`}>{children as never}</a>;
+    return (
+      <a href={`${path}${query.size ? `?${query}` : ""}`} target={target} rel={rel}>
+        {children as never}
+      </a>
+    );
   },
   useParams: () => ({ publisher: PUBLISHER, name: PUBLICATION }),
   useSearch: () => publishingSearch,
@@ -945,6 +954,91 @@ test("PACK-004 沒有這個發佈物：404 說出來，不是空白", async () =
 });
 
 const ACQUIRE_ADDRESS = `${PUB_ADDRESS}/acquisitions`;
+
+for (const kind of ["publication", "bundle"] as const) {
+  test.each([
+    ["null", null],
+    ["missing URL", { artifact_id: ARTIFACT }],
+    [
+      "foreign URL",
+      {
+        artifact_id: ARTIFACT,
+        file_name: "pdf-toolkit.zip",
+        size_bytes: 100,
+        content_hash: "sha256:artifact",
+        expires_at: "2099-01-01T00:00:00Z",
+        duplicate: false,
+        content_url: "/downloads/55555555-5555-4555-8555-555555555555/content",
+      },
+    ],
+  ])(
+    `an uncertain ${kind} acquisition with %s preserves context and offers record verification`,
+    async (_, reply) => {
+      const writes: string[] = [];
+      const endpoint = kind === "publication" ? ACQUIRE_ADDRESS : "/me/bundles/pdf-toolkit/export";
+      vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+        const path = String(input)
+          .replace(/^https?:\/\/[^/]+/, "")
+          .split("?")[0];
+        if (path === endpoint && init?.method === "POST") {
+          writes.push(String(input));
+          return json(reply, 201);
+        }
+        if (path === "/me/bundles") return json({ bundles: [OWN_BUNDLE] });
+        if (path === "/me/bundles/overview") return json(bundleOverview(OWN_BUNDLE));
+        const response = platformResponse(String(input));
+        return json(response.body, response.status);
+      });
+      await render(kind === "publication" ? <PublicPublication /> : <PublishingWorkspace />, () =>
+        Boolean(button(kind === "publication" ? "下載" : "匯出 v1.1.0 Plugin")),
+      );
+      await act(async () =>
+        button(kind === "publication" ? "下載" : "匯出 v1.1.0 Plugin")!.click(),
+      );
+      await waitFor(() => text().includes("下載結果尚未確認"));
+      expect(text()).toContain(
+        kind === "publication" ? "PDF Summariser" : "一組跟 PDF 有關的小工具",
+      );
+      const link = Array.from(container.querySelectorAll("a")).find(
+        (item) => item.textContent === "另開交付紀錄核對",
+      );
+      expect(link?.getAttribute("href")).toBe("/workspace/downloads");
+      expect(link?.getAttribute("target")).toBe("_blank");
+      expect(link?.getAttribute("rel")).toBe("noopener noreferrer");
+      expect(document.activeElement?.getAttribute("role")).toBe("alert");
+      expect(container.querySelector('a[href="undefined"], a[href*="55555555-5555"]')).toBeNull();
+      expect(writes).toHaveLength(1);
+    },
+  );
+}
+
+test.each(["network", "server error", "unreadable JSON"])(
+  "a publication acquisition with %s keeps an uncertain outcome without resending",
+  async (failure) => {
+    let writes = 0;
+    vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+      const path = String(input)
+        .replace(/^https?:\/\/[^/]+/, "")
+        .split("?")[0];
+      if (path === ACQUIRE_ADDRESS && init?.method === "POST") {
+        writes++;
+        if (failure === "network") throw new TypeError("Failed to fetch");
+        if (failure === "unreadable JSON")
+          return Promise.resolve(new Response("{", { status: 201 }));
+        return json({ error: "internal error" }, 500);
+      }
+      const response = platformResponse(String(input));
+      return json(response.body, response.status);
+    });
+    await render(<PublicPublication />, () => Boolean(button("下載")));
+    await act(async () => button("下載")!.click());
+    await waitFor(() => text().includes("下載結果尚未確認"));
+    expect(text()).toContain("另開交付紀錄核對");
+    expect(text()).not.toContain("下載沒有成功");
+    expect(text()).not.toContain("Failed to fetch");
+    expect(writes).toBe(1);
+  },
+);
 
 function stubAcquire(post: () => { body: unknown; status?: number }) {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {

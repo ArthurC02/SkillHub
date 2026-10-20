@@ -1666,13 +1666,13 @@ test("PACK-018 匯出為 Plugin 成功後顯示下載連結，且揭露句在按
     publication: () => ({ body: { error: "not published" }, status: 404 }),
     onExport: () => ({
       body: {
-        artifact_id: "art-2",
+        artifact_id: ARTIFACT,
         file_name: "pdf-toolkit-1.0.0-plugin.zip",
         size_bytes: 10,
         content_hash: "sha256:x",
         expires_at: "2099-01-01T00:00:00Z",
         duplicate: false,
-        content_url: "/downloads/art-2/content",
+        content_url: "/downloads/33333333-3333-3333-3333-333333333333/content",
       },
     }),
   });
@@ -1686,7 +1686,9 @@ test("PACK-018 匯出為 Plugin 成功後顯示下載連結，且揭露句在按
   const link = Array.from(container.querySelectorAll("a")).find((a) =>
     (a.textContent ?? "").includes("pdf-toolkit-1.0.0-plugin.zip"),
   );
-  expect(link?.getAttribute("href")).toBe("/downloads/art-2/content");
+  expect(link?.getAttribute("href")).toBe(
+    "/downloads/33333333-3333-3333-3333-333333333333/content",
+  );
 });
 
 test("PACK-018 尚未發佈時可以送出發佈，422 顯示伺服器的字串", async () => {
