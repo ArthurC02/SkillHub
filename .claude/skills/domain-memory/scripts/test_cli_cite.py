@@ -123,8 +123,16 @@ class CliCiteTest(RegistryTestCase):
     def test_cite_refuses_a_function_it_cannot_place(self) -> None:
         (self.repo / "twice.py").write_text("def f():\n    pass\n\ndef f():\n    pass\n", encoding="utf-8")
         (self.repo / "open.go").write_text("package p\n\nfunc Open() {\n\treturn\n", encoding="utf-8")
+        (self.repo / "elsewhere.py").write_text("def g():\n    pass\n", encoding="utf-8")
+        (self.repo / "pkg").mkdir()
+        (self.repo / "pkg" / "also.go").write_text("package pkg\n\nfunc g() {}\n", encoding="utf-8")
+        (self.repo / "more").mkdir()
+        (self.repo / "more" / "again.py").write_text("def g():\n    pass\n", encoding="utf-8")
+        (self.repo / "prose.md").write_text("def h():\n", encoding="utf-8")
         for path, name, refusal in (
-            ("twice.py", "g", "ERROR: twice.py defines no Go func or Python def named g"),
+            ("twice.py", "g", "ERROR: twice.py defines no Go func or Python def named g; "
+                               "it is defined in several files: elsewhere.py:1, more/again.py:1"),
+            ("twice.py", "h", "ERROR: twice.py defines no Go func or Python def named h"),
             ("twice.py", "f", "ERROR: twice.py defines f 2 times; cite the one you mean with --lines"),
             ("open.go", "Open", "ERROR: open.go: the body of Open starting on line 3 does not end; cite it with --lines"),
         ):

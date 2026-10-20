@@ -273,6 +273,18 @@ class HarvestTest(RegistryTestCase):
             (report["stopped_at"], report["errors"], report["package"]),
         )
 
+    def test_a_test_defined_in_another_file_is_refused_with_that_file_and_line(self) -> None:
+        self.confirm_src()
+        (self.repo / "src" / "tests" / "test_other.py").write_text("import unittest\n\n\ndef test_elsewhere():\n    pass\n", encoding="utf-8")
+        spec = self.spec()
+        spec["rules"][0]["test"] = "test_elsewhere"
+        report = harvest(self.repo / "memory", self.repo, spec, None, "verified")
+        self.assertEqual(
+            ("citation", [f"{RULE_ID}: src/tests/test_rule.py defines no Go func or Python def named test_elsewhere; "
+                          "it is defined in src/tests/test_other.py:4"], None),
+            (report["stopped_at"], report["errors"], report["package"]),
+        )
+
     def test_a_reviewed_rule_with_the_same_spans_but_another_example_is_amended(self) -> None:
         self.confirm_src()
         self.seed("rules.json", [{

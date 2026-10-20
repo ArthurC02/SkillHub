@@ -9,7 +9,7 @@ from typing import Any
 
 from .common import MAX_EVIDENCE_BYTES, MAX_NESTING_DEPTH, load_json
 from .git import run_git_bytes
-from .sources import source_kind_index
+from .sources import repository_files, source_kind_index
 
 
 DERIVED_EVIDENCE_KEYS = ("content_sha256", "source_kind")
@@ -108,7 +108,8 @@ def function_span(repo_root: Path, relative: str, name: str) -> tuple[int, int]:
     starts = [(number, found) for number, row in enumerate(rows, 1) if (found := pattern.match(row))]
     if len(starts) != 1:
         raise ValueError(
-            f"{relative} defines no Go func or Python def named {name}" if not starts
+            f"{relative} defines no Go func or Python def named {name}{_defined_elsewhere(repo_root.resolve(), relative, pattern)}"
+            if not starts
             else f"{relative} defines {name} {len(starts)} times; cite the one you mean with --lines"
         )
     start, found = starts[0]
@@ -116,6 +117,25 @@ def function_span(repo_root: Path, relative: str, name: str) -> tuple[int, int]:
     if end is None:
         raise ValueError(f"{relative}: the body of {name} starting on line {start} does not end; cite it with --lines")
     return start, end
+
+
+SOURCE_SUFFIXES = (".go", ".py")
+
+
+def _defined_elsewhere(repo_root: Path, relative: str, pattern: re.Pattern[str]) -> str:
+    suffix = Path(relative).suffix
+    if suffix not in SOURCE_SUFFIXES:
+        return ""
+    found = []
+    for path in repository_files(repo_root):
+        if path == relative or not path.endswith(suffix):
+            continue
+        rows = (repo_root / path).read_text(encoding="utf-8", errors="replace").splitlines()
+        found.extend(f"{path}:{number}" for number, row in enumerate(rows, 1) if pattern.match(row))
+    found.sort()
+    if not found:
+        return ""
+    return f"; it is defined in {found[0]}" if len(found) == 1 else "; it is defined in several files: " + ", ".join(found)
 
 
 def _go_end(rows: list[str], start: int, indent: str) -> int | None:

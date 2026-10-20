@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.3.4
+
+### Changed
+
+- When `cite --function` or a harvest's `test` names a function the cited file does not define, the refusal looks the name up in the repository's files of the same language and adds where it lives, `; it is defined in internal/api/generate_test.go:360`, or `; it is defined in several files: a.go:12, b.py:3` when several define it. Before, the refusal stopped at the file that lacked it, and finding the right file was a search by hand.
+
 ## 1.3.3
 
 ### Changed
