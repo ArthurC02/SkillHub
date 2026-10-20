@@ -3,12 +3,12 @@
   "proposal_id": "publishing-generated-skill-declares-a-licence-2026-10-20",
   "proposer": "domain-memory-agent",
   "requirement_id": "publishing-generated-skill-declares-a-licence-2026-10-20",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-20T00:08:45.537638Z",
   "verified_at": "2026-10-20T00:09:10.362320Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-20T00:14:05.080912Z",
+  "applied_at": "2026-10-20T00:14:34.577162Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "d6223e207998f1cb086ca4e025e02e0fa8bd2fc6",
@@ -224,5 +224,9 @@
   "supersedes": [
     "publishing-harvest-rules-2026-10-17",
     "publishing-review-rules-2026-10-18"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "a5156684c68088f60369fd89e38a4b128f1ac1ad",
+    "registry_digest": "sha256:14233f099ab93b7664dddeefdef2413d2bb9d5ff573601f9e9c9aab55429b04b"
+  }
 }
