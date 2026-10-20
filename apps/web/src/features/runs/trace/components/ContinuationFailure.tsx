@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { serverReason } from "../../../../core/api/client";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
+import { focusFeedback } from "../../../../shared/ui/focusFeedback";
 import { isContinuationResultUnknown } from "../../runs.service";
 
 export function ContinuationFailure({ error }: { error: unknown }) {
@@ -9,8 +10,10 @@ export function ContinuationFailure({ error }: { error: unknown }) {
   const failure = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (unknown) {
-      failure.current?.focus();
-      failure.current?.scrollIntoView({ block: "center" });
+      const feedback = failure.current;
+      focusFeedback(feedback);
+      if (feedback && document.activeElement === feedback)
+        feedback.scrollIntoView({ block: "center" });
     }
   }, [error, unknown]);
   return (
