@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.31
+
+### Fixed
+
+- What counts as a Domain Memory is now one rule, in the code and in the reference: a `registry/` holding `index.md` or `manifest.json`, or a `source-map.json` of format `domain-source-map/v1`. The git-backed search already required a marker file inside `registry/`, while the reference said a path "carries a `registry/`" and the neighbour search outside git accepted any `registry/` directory, so a bare directory of that name counted in one search and not the other.
+
 ## 1.2.30
 
 ### Fixed

@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.cli import main
 from domain_registry.common import DOMAIN_MEMORY_HINT
+from domain_registry.locate import domain_memory_hint
 from domain_registry.evidence import citation
 from domain_registry.registry import asset_records
 from domain_registry.sources import probe_sources, shown_argument
@@ -147,6 +148,18 @@ class CliReadTest(RegistryTestCase):
         self.assertEqual(
             (1, f"ERROR: no Domain Memory at .: {DOMAIN_MEMORY_HINT}; did you mean memory?\n"),
             (result.returncode, result.stderr),
+        )
+
+    def test_outside_git_a_registry_directory_counts_only_when_it_holds_a_manifest_or_an_index(self) -> None:
+        for name, files in (("bare", ("registry/notes.txt",)), ("indexed", ("registry/index.md",)), ("manifested", ("registry/manifest.json",))):
+            for relative in files:
+                (self.repo / "places" / name / relative).parent.mkdir(parents=True, exist_ok=True)
+                (self.repo / "places" / name / relative).write_text("{}", encoding="utf-8")
+        places = self.repo.resolve() / "places"
+        self.assertEqual(
+            f"{DOMAIN_MEMORY_HINT}; Domain Memories in this repository: "
+            f"{(places / 'indexed').as_posix()}, {(places / 'manifested').as_posix()}",
+            domain_memory_hint(places / "memry"),
         )
 
     def test_a_repository_with_several_registries_lists_them_including_one_two_levels_down(self) -> None:

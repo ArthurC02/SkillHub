@@ -3,10 +3,10 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from .common import DOMAIN_MEMORY_HINT, holds_domain_memory, is_domain_source_map, shown_path
+from .common import DOMAIN_MEMORY_HINT, REGISTRY_MARKERS, holds_domain_memory, is_domain_source_map, shown_path
 from .git import run_git
 
-DOMAIN_MEMORY_MARKERS = (":(glob)**/source-map.json", ":(glob)**/registry/index.md", ":(glob)**/registry/manifest.json")
+DOMAIN_MEMORY_MARKERS = (":(glob)**/source-map.json", *(f":(glob)**/registry/{marker}" for marker in REGISTRY_MARKERS))
 
 
 def domain_memory_hint(root: Path, repo_root: Path | None = None) -> str:

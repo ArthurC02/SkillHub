@@ -209,10 +209,13 @@ DOMAIN_MEMORY_HINT = (
 
 
 SOURCE_MAP_FORMAT = "domain-source-map/v1"
+REGISTRY_MARKERS = ("index.md", "manifest.json")
 
 
 def holds_domain_memory(path: Path) -> bool:
-    return is_domain_source_map(path / "source-map.json") or (path / "registry").is_dir()
+    return is_domain_source_map(path / "source-map.json") or any(
+        (path / "registry" / marker).is_file() for marker in REGISTRY_MARKERS
+    )
 
 
 def is_domain_source_map(path: Path) -> bool:
