@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.readiness import assess_readiness
+from domain_registry.registry import init_registry
 from domain_registry.sources import (
     selected_source_map,
     verify_against_discovery,
@@ -86,6 +87,49 @@ class VerifySourcesDriftTest(RegistryTestCase):
                 f"--repo-root {self.repo.as_posix()} (no confirmation needed)"),
             (assessed["blocks"], next(s for s in assessed["signals"] if s["kind"] == "listing"),
              result.returncode, result.stderr.strip()),
+        )
+
+    def test_readiness_without_a_registry_root_assesses_the_one_domain_memory_the_repository_holds(self) -> None:
+        self.permit_sources()
+        source_map_path = self.map_with_tests("test_kept.py")
+        (self.repo / "tests" / "test_new.py").write_text("new\n", encoding="utf-8")
+        result = self.run_cli("readiness", "--repo-root", str(self.repo))
+        report = json.loads(result.stdout)
+        self.assertEqual(
+            (0, "memory", ["memory"], "drifted", ["tests/test_new.py"],
+             "NOTE: assessing the Domain Memory at memory, the one this repository holds; pass --registry-root to assess another.\n"
+             "NOTE: discovery drifted: 0 listed paths gone, 1 matching path unlisted; "
+             f"run refresh-listing --registry-root {(self.repo / 'memory').as_posix()} --repo-root {self.repo.as_posix()} "
+             "(no confirmation needed)"),
+            (result.returncode, report["registry_root"], report["domain_memories"],
+             next(s for s in report["signals"] if s["kind"] == "listing")["status"],
+             next(s for s in report["signals"] if s["kind"] == "listing")["discovered_but_unlisted"], result.stderr.strip()),
+        )
+        self.assertTrue(source_map_path.is_file())
+
+    def test_readiness_without_a_registry_root_names_several_domain_memories_and_assesses_none(self) -> None:
+        self.permit_sources()
+        self.map_with_tests("test_kept.py")
+        init_registry(self.repo / "docs" / "dm")
+        result = self.run_cli("readiness", "--repo-root", str(self.repo))
+        report = json.loads(result.stdout)
+        self.assertEqual(
+            (0, None, ["docs/dm", "memory"], [],
+             "NOTE: Domain Memories in this repository: docs/dm, memory; pass --registry-root to assess one."),
+            (result.returncode, report["registry_root"], report["domain_memories"],
+             [s["kind"] for s in report["signals"] if s["kind"] in ("registry", "registry_records", "listing")],
+             result.stderr.strip()),
+        )
+
+    def test_readiness_with_a_registry_root_reports_it_and_looks_for_no_other(self) -> None:
+        self.permit_sources()
+        self.map_with_tests("test_kept.py")
+        init_registry(self.repo / "docs" / "dm")
+        result = self.run_cli("readiness", "--repo-root", str(self.repo), "--registry-root", str(self.repo / "memory"))
+        report = json.loads(result.stdout)
+        self.assertEqual(
+            ("memory", False, ""),
+            (report["registry_root"], "domain_memories" in report, result.stderr.strip()),
         )
 
     def test_readiness_reports_a_current_listing_silently(self) -> None:

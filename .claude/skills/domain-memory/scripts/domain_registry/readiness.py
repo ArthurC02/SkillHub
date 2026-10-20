@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .common import load_json, one_level_too_deep_hint
+from .common import load_json, one_level_too_deep_hint, shown_path
+from .locate import domain_memories_in
 from .policy import existing_policy
 from .registry import coverage, validate
 from .sources import discover_sources, listing_drift, verify_source_map
@@ -82,6 +83,25 @@ def _governance(candidates: dict[str, Any], registry_root: Path | None) -> dict[
         "configured_verifier": governance["verifier"],
         "configured_trigger": governance.get("trigger"),
     }
+
+
+def readiness_report(repo_root: Path, registry_root: Path | None) -> tuple[dict[str, Any], str | None]:
+    repo_root = repo_root.resolve()
+    if registry_root is not None:
+        return assess_readiness(repo_root, registry_root) | {"registry_root": shown_path(registry_root.resolve(), repo_root)}, None
+    found = domain_memories_in(repo_root)
+    shown = [shown_path(place, repo_root) for place in found]
+    chosen = found[0] if len(found) == 1 else None
+    report = assess_readiness(repo_root, chosen) | {
+        "registry_root": shown[0] if chosen else None, "domain_memories": shown,
+    }
+    if chosen:
+        note = f"NOTE: assessing the Domain Memory at {shown[0]}, the one this repository holds; pass --registry-root to assess another."
+    elif found:
+        note = f"NOTE: Domain Memories in this repository: {', '.join(shown)}; pass --registry-root to assess one."
+    else:
+        note = None
+    return report, note
 
 
 def assess_readiness(

@@ -321,13 +321,16 @@ class CliTest(RegistryTestCase):
         helps = {choice.dest: choice.help for choice in subcommands._choices_actions}
         self.assertEqual((63, tasks), (len(helps), helps))
 
-    def test_readiness_command_returns_json_without_writing(self) -> None:
+    def test_readiness_command_returns_json_without_writing_and_assesses_the_one_domain_memory_it_finds(self) -> None:
         before = self.file_bytes()
         result = self.run_cli("readiness", "--repo-root", str(self.repo))
         after = self.file_bytes()
-        self.assertEqual(result.returncode, 0)
-        self.assertEqual(json.loads(result.stdout)["state"], "empty")
-        self.assertEqual(before, after)
+        report = json.loads(result.stdout)
+        self.assertEqual(
+            (0, "dead", "memory", ["memory"], before,
+             "NOTE: assessing the Domain Memory at memory, the one this repository holds; pass --registry-root to assess another."),
+            (result.returncode, report["state"], report["registry_root"], report["domain_memories"], after, result.stderr.strip()),
+        )
 
     def test_initializing_into_an_occupied_destination_is_refused(self) -> None:
         (self.repo / "docs").mkdir(exist_ok=True)

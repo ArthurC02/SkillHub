@@ -74,7 +74,7 @@ It offers no command that writes; candidates and Change Packages stay on the com
 
 | You want to | Run |
 | --- | --- |
-| Know what this repository has | `readiness --repo-root <repo> --registry-root <root>`; `extract` means code exists and the Registry at that root holds no record yet. Without `--registry-root` it cannot tell `extract` from `read-and-maintain`, or report `dead` |
+| Know what this repository has | `readiness --repo-root <repo> [--registry-root <root>]`; `extract` means code exists and the Registry holds no record yet. Without `--registry-root` it assesses the one Domain Memory the repository holds and names it; with several it names them and assesses none until you choose |
 | Start a Domain Memory | `init-domain-memory`, which records the destination, sources and policy choices a Registry needs; `init` only copies an empty skeleton that can never hold a reviewed record |
 | Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`, and before changing a record `dependents --asset <asset> --id <id>` for what else it may touch; a `mentioned` match is prose in a reviewed record, not a term |
 | Review a branch for what it does to the model | the `domain-memory-review-change` capability: `brief --base <branch point> --markdown`, then the verdict table and the attention list decide what to ask for |
@@ -114,7 +114,7 @@ To change the plugin itself, read `README.md` in the complete package.
 
 ## Before you rely on anything here
 
-Run `readiness --repo-root <repo> [--registry-root <root>]` first, giving `--registry-root` whenever a Registry may exist. It distinguishes an empty repository, a greenfield design, a brownfield implementation, and a memory whose evidence has died. Its signals route your work; they are not domain facts.
+Run `readiness --repo-root <repo> [--registry-root <root>]` first; it finds the Domain Memory the repository holds by itself, so give `--registry-root` when there are several or it lives outside the repository. It distinguishes an empty repository, a greenfield design, a brownfield implementation, and a memory whose evidence has died. Its signals route your work; they are not domain facts.
 
 Treat only `reviewed` records as facts. A `candidate` is handoff material and authorizes no implementation. `reviewed-empty` means there is no model to depend on yet, so go back to the decisions, contracts, code, and tests.
 

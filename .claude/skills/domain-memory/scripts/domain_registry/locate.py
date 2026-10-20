@@ -20,6 +20,10 @@ def domain_memory_hint(root: Path, repo_root: Path | None = None) -> str:
     return f"{DOMAIN_MEMORY_HINT}; Domain Memories in this repository: {', '.join(shown)}"
 
 
+def domain_memories_in(repo_root: Path) -> list[Path]:
+    return sorted({place.resolve() for place in _domain_memories_known_to_git(repo_root) or []})
+
+
 def _candidates(asked: Path, repo_root: Path | None) -> list[Path]:
     if repo_root is not None:
         listed = _domain_memories_known_to_git(repo_root)

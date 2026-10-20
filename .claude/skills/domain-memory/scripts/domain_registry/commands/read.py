@@ -27,7 +27,7 @@ from ..gates import quality_gates
 from ..impact import boundary_impact, registered_collaborations
 from ..mcp_server import ServerRoots, serve
 from ..policy import policy_path, query_result_limit
-from ..readiness import assess_readiness
+from ..readiness import readiness_report
 from ..registry import (
     asset_records,
     boundary_analysis,
@@ -274,10 +274,13 @@ def handle_probe(args: argparse.Namespace) -> int:
 
 
 def handle_readiness(args: argparse.Namespace) -> int:
-    result = assess_readiness(args.repo_root, args.registry_root)
+    result, located = readiness_report(args.repo_root, args.registry_root)
     print_json(result)
+    if located:
+        print(located, file=sys.stderr)
+    registry_root = args.registry_root or (args.repo_root / result["registry_root"] if result["registry_root"] else None)
     drifted = next((s for s in result["signals"] if s.get("kind") == "listing" and s.get("status") == "drifted"), None)
-    if drifted and (note := discovery_drift_note(drifted | {"status": "discovery_drifted"}, args.registry_root, args.repo_root)):
+    if drifted and (note := discovery_drift_note(drifted | {"status": "discovery_drifted"}, registry_root, args.repo_root)):
         print(note, file=sys.stderr)
     return 0
 

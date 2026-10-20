@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.29
+
+### Added
+
+- `readiness` without `--registry-root` looks for the Domain Memories the repository holds: one is assessed as if named, reported in `registry_root` and announced on stderr; several are listed in `domain_memories` with a note asking for `--registry-root`. Before, the first `readiness` in an unfamiliar repository, the run the guidance asks for, said nothing about a Registry sitting at a conventional path.
+
 ## 1.2.28
 
 ### Changed

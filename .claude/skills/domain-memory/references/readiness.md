@@ -1,6 +1,6 @@
 # Project readiness
 
-`readiness` is a read-only routing check for a repository that may not have a Domain Memory yet. It observes candidate source locations and, when the caller provides `--registry-root`, the source map status. It does not select sources, create a Registry, promote a record, or infer a domain owner.
+`readiness` is a read-only routing check for a repository that may not have a Domain Memory yet. It observes candidate source locations and the source map status of the Registry at `--registry-root`; without that option it looks for the Domain Memories the repository holds, assesses the one it finds and names it in `registry_root` and on stderr, or names several in `domain_memories` and assesses none until the caller chooses. It does not select sources, create a Registry, promote a record, or infer a domain owner.
 
 ## States
 
@@ -22,8 +22,12 @@ The state is a posture, not a verdict about project ownership, quality, or wheth
   "confidence": "high",
   "signals": [{"kind": "implementation", "status": "missing"}],
   "blocks": [],
-  "next_capability": "discover"
+  "next_capability": "discover",
+  "registry_root": null,
+  "domain_memories": []
 }
 ```
+
+`registry_root` is the Registry assessed, relative to the repository, or null; `domain_memories`, present only when `--registry-root` was omitted, lists every Domain Memory the repository holds.
 
 `signals` reports observations, including Registry validation, record count and, with a usable Registry, a `listing` signal that is `current` or `drifted` with the paths `refresh-listing` would add and drop; `blocks` reports reasons the existing memory cannot safely guide work; `next_capability` only routes the Agent. An unusable Registry overrides the normal design or maintenance route until its sources or structure are repaired. An Agent must still inspect the selected sources and run the capability's own validation before relying on any domain fact.
