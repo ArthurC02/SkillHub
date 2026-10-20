@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "policy-default-generation-allowance-2026-10-20",
+  "proposal_id": "policy-default-generation-allowance-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-the-default-generation-allowance",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-default-generation-allowance",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-default-generation-allowance"
+        }
+      ],
+      "expected_outcome": "By default a Workspace may generate 10 skills a day and 30 per 30 days, and 20 in its first 30 days; the daily generation allowance is higher than the daily run allowance.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestGenerateDefaultsAreTheRatifiedNumbers$ ./internal/product/entitlements/"
+    }
+  ]
+}

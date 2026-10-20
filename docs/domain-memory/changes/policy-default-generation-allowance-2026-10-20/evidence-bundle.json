@@ -1,0 +1,41 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "policy-default-generation-allowance-2026-10-20",
+  "proposal_id": "policy-default-generation-allowance-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "f62d4467af30e5a3b7c2b70050fbbb2f36967d0e",
+    "registry_digest": "sha256:7d216dc9aea1aa91217a1d07ef373a06713b78fee5975af5af7554723d86b835",
+    "committed_digest": "sha256:488ee913f62853104c1ab08f4342e12eac2683a0ba241edc98744f11057d4297"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-default-generation-allowance",
+      "mutated_protection": "apps/platform/internal/product/entitlements/generate_quota.go:13: generateDaily = 10 -> generateDaily = 11",
+      "failure_evidence": "=== RUN   TestGenerateDefaultsAreTheRatifiedNumbers\n    generate_quota_test.go:99: generation allowance drifted from the 2026-08-27 ratification (m0/pdm-proposals.md §9.1, 05 R-9): {Daily:11 Window:30 FirstWindow:20 WindowDays:30}\n--- FAIL: TestGenerateDefaultsAreTheRatifiedNumbers (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements\t0.630s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/product/entitlements/generate_quota.go",
+    "apps/platform/internal/product/entitlements/generate_quota_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-the-default-generation-allowance",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestGenerateDefaultsAreTheRatifiedNumbers$ ./internal/product/entitlements/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:445fbafed932fc5d4552ede070dbe1807066f222a516d058cfa49cc245686466",
+      "finished_at": "2026-10-20T14:04:15.086817Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

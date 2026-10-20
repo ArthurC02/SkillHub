@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "policy-default-generation-allowance-2026-10-20",
+  "status": "draft",
+  "intent": "Record the policy rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context policy lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-the-default-generation-allowance",
+      "statement": "By default a Workspace may generate 10 skills a day and 30 per 30 days, and 20 in its first 30 days; the daily generation allowance is higher than the daily run allowance."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/product/entitlements/generate_quota.go",
+    "apps/platform/internal/product/entitlements/generate_quota_test.go"
+  ]
+}

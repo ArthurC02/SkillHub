@@ -1,0 +1,110 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "ingest-generation-guards-2026-10-20",
+  "proposal_id": "ingest-generation-guards-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "f62d4467af30e5a3b7c2b70050fbbb2f36967d0e",
+    "registry_digest": "sha256:a31ee8da282bbaebc8c9f87891209b646220f331b4f2a9e1628e43c7daa85129",
+    "committed_digest": "sha256:488ee913f62853104c1ab08f4342e12eac2683a0ba241edc98744f11057d4297"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-generation-description-is-8-to-4000-characters",
+      "mutated_protection": "apps/platform/internal/skill/admission/generate.go:76: case n > maxTaskDescriptionRunes: -> case n >= maxTaskDescriptionRunes:",
+      "failure_evidence": "=== RUN   TestExactlyTheDescriptionLengthBoundsAreAccepted\n    generate_test.go:212: classifyTaskDescription at the maximum length = ingest: task description is too long, want nil\n--- FAIL: TestExactlyTheDescriptionLengthBoundsAreAccepted (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\t3.241s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-generation-diagram-is-at-most-4-mb",
+      "mutated_protection": "apps/platform/internal/skill/admission/generate.go:209: len(in.Diagram.Data) > generateMaxDiagramBytes -> len(in.Diagram.Data) >= generateMaxDiagramBytes",
+      "failure_evidence": "=== RUN   TestExactlyTheDiagramSizeCapIsNotRefused\n    generate_test.go:586: a diagram at exactly the size cap was refused as invalid: ingest: diagram is not a usable image\n--- FAIL: TestExactlyTheDiagramSizeCapIsNotRefused (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\t3.444s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-generation-takes-at-most-three-references",
+      "mutated_protection": "apps/platform/internal/skill/admission/generate.go:213: len(in.ReferenceSkillIDs) > generateMaxReferences -> len(in.ReferenceSkillIDs) >= generateMaxReferences",
+      "failure_evidence": "=== RUN   TestExactlyTheReferenceCapIsNotRefused\n    generate_test.go:610: exactly 3 references were refused as too many: ingest: too many reference skills\n--- FAIL: TestExactlyTheReferenceCapIsNotRefused (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\t3.534s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-the-catalogue-never-generates-skills",
+      "mutated_protection": "apps/platform/internal/skill/admission/generate.go:201: if ws.IsCatalog { return ErrGenerateNotForCatalogue -> if false && ws.IsCatalog { return ErrGenerateNotForCatalogue",
+      "failure_evidence": "=== RUN   TestTheCatalogueDoesNotGenerateSkills\n    generate_integration_test.go:369: err = ingest: task description is empty or too short to act on, want ErrGenerateNotForCatalogue\n--- FAIL: TestTheCatalogueDoesNotGenerateSkills (0.05s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.350s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-workspace-runs-one-generation-at-a-time",
+      "mutated_protection": "apps/platform/internal/foundation/persistence/db/gen/skill_import.sql.go:18: WHERE generation_leases.expires_at <= now() -> WHERE true",
+      "failure_evidence": "=== RUN   TestOneGenerationPerWorkspaceAtATimeAcrossAPIInstances\n    generate_test.go:237: a second API instance took the slot the first one holds\n--- FAIL: TestOneGenerationPerWorkspaceAtATimeAcrossAPIInstances (0.02s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\t4.077s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/generate_integration_test.go",
+    "apps/platform/internal/skill/admission/generate.go",
+    "apps/platform/internal/skill/admission/generate_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-generation-description-is-8-to-4000-characters",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestExactlyTheDescriptionLengthBoundsAreAccepted$ ./internal/skill/admission/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:c3bb0e8778613bd2fb97e5c1dec45615baf99b671efeace78d93fdbd64c31481",
+      "finished_at": "2026-10-20T14:09:59.289518Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-generation-diagram-is-at-most-4-mb",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestExactlyTheDiagramSizeCapIsNotRefused$ ./internal/skill/admission/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:96167498985390c83956e19ebaa1094c0b5472914ac8081619238c134950ac5c",
+      "finished_at": "2026-10-20T14:10:05.702357Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-generation-takes-at-most-three-references",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestExactlyTheReferenceCapIsNotRefused$ ./internal/skill/admission/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:798dd476f06aadf8ef494a1480ee34e82bf15552c04f573afd213200bbefe848",
+      "finished_at": "2026-10-20T14:10:19.039461Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-the-catalogue-never-generates-skills",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTheCatalogueDoesNotGenerateSkills$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:54b8d1fb8cf527664d9c6e88cbae0bc0e3bed5c3815d8e704296cf7e35970c0d",
+      "finished_at": "2026-10-20T14:10:27.961057Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-workspace-runs-one-generation-at-a-time",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestOneGenerationPerWorkspaceAtATimeAcrossAPIInstances$ ./internal/skill/admission/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f0dff9e50c90d9cdfd5bf8a52bd4bc477b456b354a041ef8219f3748687d1411",
+      "finished_at": "2026-10-20T14:10:36.964227Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

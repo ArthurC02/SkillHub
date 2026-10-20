@@ -1,0 +1,245 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "ingest-generation-guards-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "ingest-generation-guards-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-20T14:09:51.418216Z",
+  "verified_at": "2026-10-20T14:10:37.200269Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "f62d4467af30e5a3b7c2b70050fbbb2f36967d0e",
+    "registry_digest": "sha256:a31ee8da282bbaebc8c9f87891209b646220f331b4f2a9e1628e43c7daa85129",
+    "committed_digest": "sha256:488ee913f62853104c1ab08f4342e12eac2683a0ba241edc98744f11057d4297"
+  },
+  "affected_contexts": [
+    "ingest"
+  ],
+  "rule_ids": [
+    "a-generation-description-is-8-to-4000-characters",
+    "a-generation-diagram-is-at-most-4-mb",
+    "a-generation-takes-at-most-three-references",
+    "the-catalogue-never-generates-skills",
+    "a-workspace-runs-one-generation-at-a-time"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "ingest",
+    "invariant": "Only ingest decides these rules.",
+    "evidence": [
+      "apps/platform/internal/skill/admission/generate.go:200-217"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/admission/generate.go:172-178"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Generation guards were tested at their exact bounds but none was recorded in the Registry."
+    ],
+    "decision": "Record ingest's generation input bounds and its one-at-a-time slot.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Bounding generation input in the gateway: the platform must refuse before spending a model call."
+    ],
+    "proof_obligations": [
+      "rule-a-generation-description-is-8-to-4000-characters",
+      "rule-a-generation-diagram-is-at-most-4-mb",
+      "rule-a-generation-takes-at-most-three-references",
+      "rule-the-catalogue-never-generates-skills",
+      "rule-a-workspace-runs-one-generation-at-a-time"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-generation-description-is-8-to-4000-characters",
+        "statement": "A generation's task description counts characters, not bytes: one shorter than 8 characters without a diagram is refused as blank, one longer than 4000 is refused as too long, and both bounds themselves are accepted; with no description, a diagram is required.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "Eight letters are accepted, seven are refused as blank; 4000 CJK characters are accepted, 4001 are refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/generate.go",
+            "lines": {
+              "start": 71,
+              "end": 82
+            },
+            "excerpt_sha256": "sha256:e858cbcf5fd4385f333895d17cc356675966f12b0e265bdb73e4b631f001a2e1"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/generate_test.go",
+            "lines": {
+              "start": 207,
+              "end": 214
+            },
+            "excerpt_sha256": "sha256:84f8a180da9f01b5196376ae8a40319289a44c24d5896a64829d5a83addb3cc0"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-generation-diagram-is-at-most-4-mb",
+        "statement": "A diagram attached to a generation must be a non-empty image of an allowed type and at most 4,000,000 bytes; a diagram of exactly that size is accepted.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "A 4,000,000-byte PNG is accepted; one byte more is refused before the gateway."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/generate.go",
+            "lines": {
+              "start": 207,
+              "end": 212
+            },
+            "excerpt_sha256": "sha256:8249101e926ab6300def8a271a0eba1a8f3a168a2b13db4c074a9c6027c56523"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/generate_test.go",
+            "lines": {
+              "start": 571,
+              "end": 588
+            },
+            "excerpt_sha256": "sha256:ad1db3c81dd8013210c4778612c57bfef603c046fd83d9fa68288786ce01e1de"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-generation-takes-at-most-three-references",
+        "statement": "A generation names at most three reference skills; three are accepted and four are refused before the gateway.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "Three references reach the gateway; four are refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/generate.go",
+            "lines": {
+              "start": 213,
+              "end": 215
+            },
+            "excerpt_sha256": "sha256:c0bdf3a9817a6b117d3afccc7e4662e41d9b8aa8b9c51c037e8a1d7b6953ba43"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/generate_test.go",
+            "lines": {
+              "start": 602,
+              "end": 612
+            },
+            "excerpt_sha256": "sha256:0a15b2b1c6a79ebddd0e1565369089bc82b1065e24dabb466a78ac0d3f84f336"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-catalogue-never-generates-skills",
+        "statement": "The catalogue workspace never generates skills; a generation request in it is refused before anything else is checked.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "A generation asked of the catalogue workspace is refused as not for the catalogue."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/generate.go",
+            "lines": {
+              "start": 200,
+              "end": 203
+            },
+            "excerpt_sha256": "sha256:baca19f906363d2d3f9a5f102e77f1a332eb9b6b632b3da8de804967371a0f30"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/generate_integration_test.go",
+            "lines": {
+              "start": 360,
+              "end": 374
+            },
+            "excerpt_sha256": "sha256:51ac0a2ef78c56ec3af0b5bfcbc722850a7c639c4273fb6e80a2133e1e989e6c"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-workspace-runs-one-generation-at-a-time",
+        "statement": "A workspace holds at most one generation at a time across every API instance: a second request while a lease is live is refused as in flight, another workspace is unaffected, and an expired lease can be taken over.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "Two API instances asking for the same workspace: the first holds the slot and the second is refused; a different workspace still generates."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/generate.go",
+            "lines": {
+              "start": 589,
+              "end": 597
+            },
+            "excerpt_sha256": "sha256:d431c298671dcdefb3d22f0c8dc9903348fb46e6106d187ff9f1729c36a40a77"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/generate_test.go",
+            "lines": {
+              "start": 225,
+              "end": 254
+            },
+            "excerpt_sha256": "sha256:fcbbb89bfa343d25d1dbbfe6dc212a687de11b8f139cab321d0a0dba9b77214d"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-20T14:10:36.977281Z",
+      "scope": "Record ingest rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "f62d4467af30e5a3b7c2b70050fbbb2f36967d0e",
+        "registry_digest": "sha256:a31ee8da282bbaebc8c9f87891209b646220f331b4f2a9e1628e43c7daa85129",
+        "committed_digest": "sha256:488ee913f62853104c1ab08f4342e12eac2683a0ba241edc98744f11057d4297"
+      }
+    }
+  ]
+}

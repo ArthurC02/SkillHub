@@ -1,0 +1,82 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "ingest-generation-guards-2026-10-20",
+  "proposal_id": "ingest-generation-guards-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-a-generation-description-is-8-to-4000-characters",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-generation-description-is-8-to-4000-characters",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-generation-description-is-8-to-4000-characters"
+        }
+      ],
+      "expected_outcome": "A generation's task description counts characters, not bytes: one shorter than 8 characters without a diagram is refused as blank, one longer than 4000 is refused as too long, and both bounds themselves are accepted; with no description, a diagram is required.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestExactlyTheDescriptionLengthBoundsAreAccepted$ ./internal/skill/admission/"
+    },
+    {
+      "id": "rule-a-generation-diagram-is-at-most-4-mb",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-generation-diagram-is-at-most-4-mb",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-generation-diagram-is-at-most-4-mb"
+        }
+      ],
+      "expected_outcome": "A diagram attached to a generation must be a non-empty image of an allowed type and at most 4,000,000 bytes; a diagram of exactly that size is accepted.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestExactlyTheDiagramSizeCapIsNotRefused$ ./internal/skill/admission/"
+    },
+    {
+      "id": "rule-a-generation-takes-at-most-three-references",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-generation-takes-at-most-three-references",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-generation-takes-at-most-three-references"
+        }
+      ],
+      "expected_outcome": "A generation names at most three reference skills; three are accepted and four are refused before the gateway.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestExactlyTheReferenceCapIsNotRefused$ ./internal/skill/admission/"
+    },
+    {
+      "id": "rule-the-catalogue-never-generates-skills",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-the-catalogue-never-generates-skills",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "the-catalogue-never-generates-skills"
+        }
+      ],
+      "expected_outcome": "The catalogue workspace never generates skills; a generation request in it is refused before anything else is checked.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheCatalogueDoesNotGenerateSkills$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-workspace-runs-one-generation-at-a-time",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-workspace-runs-one-generation-at-a-time",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-workspace-runs-one-generation-at-a-time"
+        }
+      ],
+      "expected_outcome": "A workspace holds at most one generation at a time across every API instance: a second request while a lease is live is refused as in flight, another workspace is unaffected, and an expired lease can be taken over.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestOneGenerationPerWorkspaceAtATimeAcrossAPIInstances$ ./internal/skill/admission/"
+    }
+  ]
+}

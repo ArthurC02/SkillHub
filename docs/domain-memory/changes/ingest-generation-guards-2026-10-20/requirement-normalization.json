@@ -1,0 +1,39 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "ingest-generation-guards-2026-10-20",
+  "status": "draft",
+  "intent": "Record the ingest rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context ingest lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-generation-description-is-8-to-4000-characters",
+      "statement": "A generation's task description counts characters, not bytes: one shorter than 8 characters without a diagram is refused as blank, one longer than 4000 is refused as too long, and both bounds themselves are accepted; with no description, a diagram is required."
+    },
+    {
+      "id": "enforced-a-generation-diagram-is-at-most-4-mb",
+      "statement": "A diagram attached to a generation must be a non-empty image of an allowed type and at most 4,000,000 bytes; a diagram of exactly that size is accepted."
+    },
+    {
+      "id": "enforced-a-generation-takes-at-most-three-references",
+      "statement": "A generation names at most three reference skills; three are accepted and four are refused before the gateway."
+    },
+    {
+      "id": "enforced-the-catalogue-never-generates-skills",
+      "statement": "The catalogue workspace never generates skills; a generation request in it is refused before anything else is checked."
+    },
+    {
+      "id": "enforced-a-workspace-runs-one-generation-at-a-time",
+      "statement": "A workspace holds at most one generation at a time across every API instance: a second request while a lease is live is refused as in flight, another workspace is unaffected, and an expired lease can be taken over."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/generate_integration_test.go",
+    "apps/platform/internal/skill/admission/generate.go",
+    "apps/platform/internal/skill/admission/generate_test.go"
+  ]
+}
