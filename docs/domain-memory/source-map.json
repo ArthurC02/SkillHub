@@ -18,19 +18,12 @@
       "paths": [
         ".claude/skills/domain-memory/AGENTS.md",
         "AGENTS.md",
-        "CLAUDE.md",
         "apps/llm/AGENTS.md",
-        "apps/llm/CLAUDE.md",
         "apps/platform/AGENTS.md",
-        "apps/platform/CLAUDE.md",
         "apps/platform/internal/AGENTS.md",
-        "apps/platform/internal/CLAUDE.md",
         "apps/sandbox/AGENTS.md",
-        "apps/sandbox/CLAUDE.md",
         "apps/web/AGENTS.md",
-        "apps/web/CLAUDE.md",
-        "docs/AGENTS.md",
-        "docs/CLAUDE.md"
+        "docs/AGENTS.md"
       ]
     },
     {
@@ -101,7 +94,8 @@
       "authority": "current executable behavior",
       "paths": [
         "apps",
-        "packages"
+        "packages",
+        "db"
       ]
     },
     {
@@ -400,6 +394,7 @@
         "apps/platform/internal/entrypoint/api/apiserver/worklist_fairness_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/workspace_history_integration_test.go",
         "apps/platform/internal/entrypoint/wiring/agent_tools_test.go",
+        "apps/platform/internal/entrypoint/wiring/creation_credit_test.go",
         "apps/platform/internal/entrypoint/wiring/creation_environment_test.go",
         "apps/platform/internal/entrypoint/wiring/creation_queue_test.go",
         "apps/platform/internal/entrypoint/wiring/creation_references_test.go",
@@ -817,6 +812,7 @@
         "apps/web/e2e/shots.spec.ts",
         "apps/web/e2e/skill-read-recovery.spec.ts",
         "apps/web/e2e/startup-recovery.spec.ts",
+        "apps/web/e2e/static-assets.spec.ts",
         "apps/web/e2e/stored-files-read-recovery.spec.ts",
         "apps/web/e2e/suggestion-decision-lifetime.spec.ts",
         "apps/web/e2e/suggestion-decision-outcome.spec.ts",
