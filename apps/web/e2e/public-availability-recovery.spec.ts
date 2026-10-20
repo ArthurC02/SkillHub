@@ -211,3 +211,32 @@ test("an availability check preserves focus moved to the page header", async ({ 
     state.release();
   }
 });
+
+for (const kind of ["skill", "bundle"] as const) {
+  test(`a reopened ${kind} publication preserves ongoing header search input`, async ({ page }) => {
+    const state = await publicationScenario(page, kind, "available");
+    try {
+      await expect(page.getByRole("status")).toContainText("載入這個發佈物中");
+      const search = page.getByPlaceholder("搜尋小工具或描述任務");
+      await search.fill("PDF");
+      await capture(page, "reopening-header-focused");
+      state.release();
+      await expect(
+        page.getByRole("heading", {
+          name: kind === "skill" ? "PDF Summariser" : "pdf-toolkit",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(page.getByRole("alert")).toHaveText(DELISTED_NOTE);
+      await expect(search).toBeFocused();
+      await page.keyboard.type(" tools");
+      await expect(search).toHaveValue("PDF tools");
+      await expect(page.getByRole("button", { name: "下載", exact: true })).toBeEnabled();
+      expect(state.reads).toBe(2);
+      expect(state.writes).toBe(1);
+      await capture(page, "reopened-header-preserved");
+    } finally {
+      state.release();
+    }
+  });
+}

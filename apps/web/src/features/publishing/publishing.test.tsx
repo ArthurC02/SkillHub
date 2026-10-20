@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
 import { PublicPublication } from "./PublicPublication.page";
+import { AcquisitionFailure } from "./components/AcquisitionFailure";
 import { PublisherSection } from "./components/PublisherSection";
 import { PublishPanel } from "./components/PublishPanel";
 import { PublishingWorkspace } from "./PublishingWorkspace.page";
@@ -130,6 +131,64 @@ function stub(routes: Record<string, { body: unknown; status?: number }>) {
 }
 
 const PUB_ADDRESS = `/publications/${PUBLISHER}/${PUBLICATION}`;
+
+for (const target of [
+  "body",
+  "main",
+  "action",
+  "header",
+  "other control",
+  "acknowledged",
+] as const) {
+  test(`acquisition feedback respects focus in ${target}`, async () => {
+    container.id = "main-content";
+    container.tabIndex = -1;
+    const headerInput = document.createElement("input");
+    headerInput.setAttribute("aria-label", "搜尋 Catalog");
+    document.body.appendChild(headerInput);
+    const view = (error?: Error) => (
+      <>
+        <input aria-label="其他操作" />
+        <div>
+          <button type="button">取得套件</button>
+          <AcquisitionFailure
+            error={error}
+            what="這個下載"
+            fallback="下載沒有成功，可以再試一次。"
+            focusOnError={target !== "acknowledged"}
+          />
+        </div>
+      </>
+    );
+    try {
+      await render(view(), () => Boolean(button("取得套件")));
+      const action = button("取得套件")!;
+      const other = container.querySelector("input")!;
+      if (target === "main") container.focus();
+      if (target === "action") action.focus();
+      if (target === "header") headerInput.focus();
+      if (target === "other control") other.focus();
+      const previous = document.activeElement;
+      await act(async () => {
+        root.render(
+          <StrictMode>
+            <QueryClientProvider client={queryClient}>
+              {view(new Error("publishing failed"))}
+            </QueryClientProvider>
+          </StrictMode>,
+        );
+      });
+      const alert = container.querySelector('[role="alert"]');
+      expect(alert?.textContent).toBe("下載沒有成功，可以再試一次。");
+      expect(action.isConnected).toBe(true);
+      expect(document.activeElement).toBe(
+        target === "body" || target === "main" || target === "action" ? alert : previous,
+      );
+    } finally {
+      headerInput.remove();
+    }
+  });
+}
 
 function bundleOverview(latestVersion: BundleVersion, publication?: Publication) {
   const latestRelease = publication?.releases[0];

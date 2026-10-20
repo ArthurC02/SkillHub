@@ -17,7 +17,16 @@ export function AcquisitionFailure({
 }) {
   const message = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
-    if (focusOnError) message.current?.focus();
+    const feedback = message.current;
+    const active = document.activeElement;
+    if (
+      focusOnError &&
+      feedback &&
+      (active === document.body ||
+        active?.id === "main-content" ||
+        feedback.parentElement?.contains(active))
+    )
+      feedback.focus();
   }, [error, focusOnError]);
   if (!error) return null;
   return (
