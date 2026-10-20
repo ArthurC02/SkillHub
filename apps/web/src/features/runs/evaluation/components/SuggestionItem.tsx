@@ -1,4 +1,5 @@
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
+import { focusFeedback } from "../../../../shared/ui/focusFeedback";
 import { useEffect, useRef, useState } from "react";
 import { isWriteResultUnknown, serverReason } from "../../../../core/api/client";
 import { useDecideSuggestion } from "../../evaluation.service";
@@ -31,7 +32,12 @@ function DecisionFailure({
     : "這個決定";
   const feedback = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
-    if (failure) feedback.current?.focus();
+    if (failure)
+      focusFeedback(
+        feedback.current,
+        document.getElementById("evaluation-heading"),
+        document.getElementById("suggestions-heading"),
+      );
   }, [failure]);
   return (
     <>

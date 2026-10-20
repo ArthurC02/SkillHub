@@ -1,5 +1,6 @@
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
+import { focusFeedback } from "../../../../shared/ui/focusFeedback";
 import { ApiError } from "../../../../core/api/client";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -49,7 +50,12 @@ export function SuggestionsPanel({
   };
   const failure = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (readable && unknown) failure.current?.focus();
+    if (readable && unknown)
+      focusFeedback(
+        failure.current,
+        document.getElementById("evaluation-heading"),
+        document.getElementById("suggestions-heading"),
+      );
   }, [error, unknown, readable]);
   if (!readable) return null;
   if (
@@ -211,11 +217,13 @@ function SuggestionsContent({
               suggestions.fetchStatus !== "idle"
             }
             aria-describedby={
-              decisionsUnsettled
-                ? "suggestion-decisions-note"
-                : suggestions.fetchStatus !== "idle"
-                  ? "suggestions-refresh-note"
-                  : undefined
+              apply.isPending
+                ? "apply-suggestions-pending-note"
+                : decisionsUnsettled
+                  ? "suggestion-decisions-note"
+                  : suggestions.fetchStatus !== "idle"
+                    ? "suggestions-refresh-note"
+                    : undefined
             }
             onClick={() =>
               apply.mutate({
@@ -227,6 +235,11 @@ function SuggestionsContent({
           >
             {unknown ? "核對後仍" : ""}以已接受的 {accepted.length} 項建議建立新版本
           </button>
+          {apply.isPending && (
+            <p id="apply-suggestions-pending-note" role="status" className="note">
+              正在建立新版本…
+            </p>
+          )}
           {decisionsUnsettled && (
             <p id="suggestion-decisions-note" role="status" className="note">
               改善建議的決定尚未確認；請等待目前操作完成，或重新送出未確認的決定後，再建立版本。

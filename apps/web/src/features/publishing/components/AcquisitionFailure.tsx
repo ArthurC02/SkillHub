@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
+import { focusFeedback } from "../../../shared/ui/focusFeedback";
 import { AcquisitionResultUnknown } from "../acquisition.model";
 import { actionFailureSentence } from "../publishing.model";
 
@@ -17,16 +18,7 @@ export function AcquisitionFailure({
 }) {
   const message = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
-    const feedback = message.current;
-    const active = document.activeElement;
-    if (
-      focusOnError &&
-      feedback &&
-      (active === document.body ||
-        active?.id === "main-content" ||
-        feedback.parentElement?.contains(active))
-    )
-      feedback.focus();
+    if (focusOnError) focusFeedback(message.current);
   }, [error, focusOnError]);
   if (!error) return null;
   return (
