@@ -3,12 +3,12 @@
   "proposal_id": "identity-purge-record-outside-the-database-2026-10-20",
   "proposer": "domain-memory-agent",
   "requirement_id": "identity-purge-record-outside-the-database-2026-10-20",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-20T01:20:23.951316Z",
   "verified_at": "2026-10-20T01:20:44.407575Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-20T01:27:19.340034Z",
+  "applied_at": "2026-10-20T01:27:50.453497Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "65c4bd976edab760062371ab90fa74f4174a8822",
@@ -140,5 +140,9 @@
         "committed_digest": "sha256:14233f099ab93b7664dddeefdef2413d2bb9d5ff573601f9e9c9aab55429b04b"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "791ab95f95986768b63094c848b5798e30ed39ab",
+    "registry_digest": "sha256:834de529e4859d17871633e3a4912ce9236e1d95314c40bef9629359e61660d8"
+  }
 }

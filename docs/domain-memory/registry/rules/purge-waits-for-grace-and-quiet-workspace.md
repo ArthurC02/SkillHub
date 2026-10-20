@@ -3,12 +3,12 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-16T17:57:56.233858Z"
+    at: "2026-10-20T01:17:59.844857Z"
 sources:
   - resource: "apps/platform/internal/creator/workspace/purge.go#L205-225"
     excerpt_sha256: "sha256:c4b66529e4c8621f1fd079b3d377ca3c6eb2786f42c93bc3b4e125ddb0371cea"
-  - resource: "apps/platform/internal/creator/workspace/purge.go#L114-143"
-    excerpt_sha256: "sha256:415ad8fb85def327b8a13513fca2077fe13a06d6d77137b9f782cc1b096fbee2"
+  - resource: "apps/platform/internal/creator/workspace/purge.go#L126-155"
+    excerpt_sha256: "sha256:d609244eb9cceb505a10fb8056ca18f16be8d842492b5f869f1d7fad77781efc"
   - resource: "apps/platform/internal/creator/workspace/purge_grace_integration_test.go#L15-46"
     excerpt_sha256: "sha256:ce16089656ce432c4662d7f0e9c79995d1a4a7bd0e66e3a4808e35e21dcd706e"
 ---
