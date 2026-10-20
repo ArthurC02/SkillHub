@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.3.1
+
+### Changed
+
+- `lookup`, `resolve-terms`, `get-context`, `get-record`, `dependents`, `analyze-boundary`, `verify-audit`, `reconcile-audit` and `init-change-package` accept `--repo-root` and leave it unused, as `coverage` already did, so the flags most commands need can be passed to every command.
+- An argument a command does not take is refused with that command's own usage line, `usage: ... get-context [-h] --registry-root ... --id ID [--summary]`, instead of the top-level `usage: ... command ...`, which named no flag the command accepts.
+
 ## 1.3.0
 
 ### Added

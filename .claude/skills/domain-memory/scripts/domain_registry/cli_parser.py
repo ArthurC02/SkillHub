@@ -1,7 +1,7 @@
 import argparse
 import textwrap
 from pathlib import Path
-from typing import NoReturn
+from typing import Any, NoReturn
 
 from .changes import PREVIEW_STATUSES
 from .common import ASSET_KEYS
@@ -86,6 +86,25 @@ class CliParser(argparse.ArgumentParser):
     def error(self, message: str) -> NoReturn:
         raise UsageError(self.format_usage(), f"{self.prog}: error: {message}")
 
+    def parse_args(self, args: Any = None, namespace: Any = None) -> argparse.Namespace:  # type: ignore[override]
+        parsed, extras = self.parse_known_args(args, namespace)
+        if extras:
+            command_parser(self, getattr(parsed, "command", None)).error(f"unrecognized arguments: {' '.join(extras)}")
+        return parsed
+
+
+def command_parser(parser: argparse.ArgumentParser, command: str | None) -> argparse.ArgumentParser:
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction) and command in action.choices:
+            return action.choices[command]
+    return parser
+
+
+REPO_ROOT_ACCEPTED_UNUSED = (
+    "lookup", "resolve-terms", "get-context", "get-record", "dependents", "analyze-boundary",
+    "verify-audit", "reconcile-audit", "init-change-package",
+)
+
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -98,6 +117,10 @@ def build_parser() -> argparse.ArgumentParser:
         _add_read_commands, _add_evidence_commands, _add_lifecycle_commands, _add_governance_commands,
     ):
         add_commands(commands)
+    for name in REPO_ROOT_ACCEPTED_UNUSED:
+        commands.choices[name].add_argument(
+            "--repo-root", type=Path, required=False, help="accepted so one set of flags fits every command; not used here"
+        )
     commands._choices_actions.sort(key=lambda action: COMMAND_ORDER[action.dest])
     return parser
 

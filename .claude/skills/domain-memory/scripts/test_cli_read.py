@@ -408,6 +408,33 @@ class CliReadTest(RegistryTestCase):
              for asset, identifier in (("rule", "r"), ("dependency-policy", "p"))],
         )
 
+    def test_a_registry_command_accepts_the_repo_root_flag_it_does_not_use(self) -> None:
+        memory = str(self.repo / "memory")
+        with_flag = self.run_cli("coverage", "--registry-root", memory, "--repo-root", str(self.repo))
+        for command in (
+            ("get-context", "--id", "orders"), ("get-record", "--asset", "contexts", "--id", "orders"),
+            ("lookup", "--asset", "rules", "--query", "a"), ("resolve-terms", "--query", "a"),
+            ("dependents", "--asset", "contexts", "--id", "orders"), ("verify-audit",), ("reconcile-audit",),
+        ):
+            with self.subTest(command[0]):
+                result = self.run_cli(command[0], "--registry-root", memory, "--repo-root", str(self.repo), *command[1:])
+                self.assertEqual((0, False), (with_flag.returncode, "unrecognized arguments" in result.stderr))
+
+    def test_an_argument_a_command_does_not_take_is_refused_with_that_commands_usage(self) -> None:
+        result = self.run_cli("get-context", "--registry-root", str(self.repo / "memory"), "--id", "orders", "--summery")
+        usage, error = result.stderr.rstrip().rsplit("\n", 1)
+        flat = " ".join(usage.split())
+        self.assertEqual(
+            (2, True, True, True, False),
+            (
+                result.returncode,
+                flat.startswith("usage: ") and " get-context [-h]" in flat,
+                "--id ID [--summary]" in flat,
+                error.endswith(" get-context: error: unrecognized arguments: --summery"),
+                "[-h] command" in usage,
+            ),
+        )
+
     def test_an_empty_query_is_a_usage_error(self) -> None:
         memory = str(self.repo / "memory")
         for command in (("resolve-terms", "--query", " "), ("lookup", "--asset", "rules", "--query", "")):
