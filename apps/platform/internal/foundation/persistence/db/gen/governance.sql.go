@@ -191,7 +191,7 @@ func (q *Queries) CountSourcesToCheck(ctx context.Context) (int64, error) {
 const countUnreferencedCollectableObjects = `-- name: CountUnreferencedCollectableObjects :one
 SELECT count(*)::bigint FROM object_collection_queue q
 WHERE NOT EXISTS (
-    SELECT 1 FROM skill_versions v WHERE v.package_object_key = q.object_key
+    SELECT 1 FROM skill_versions v WHERE v.package_object_key = q.object_key AND v.content_erased_at IS NULL
 )
 `
 
@@ -373,12 +373,36 @@ func (q *Queries) DeleteWorkspaceTestCases(ctx context.Context, arg DeleteWorksp
 const dropReferencedCollectionEntries = `-- name: DropReferencedCollectionEntries :execrows
 DELETE FROM object_collection_queue q
 WHERE EXISTS (
-    SELECT 1 FROM skill_versions v WHERE v.package_object_key = q.object_key
+    SELECT 1 FROM skill_versions v WHERE v.package_object_key = q.object_key AND v.content_erased_at IS NULL
 )
 `
 
 func (q *Queries) DropReferencedCollectionEntries(ctx context.Context) (int64, error) {
 	result, err := q.db.Exec(ctx, dropReferencedCollectionEntries)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const eraseSkillContent = `-- name: EraseSkillContent :execrows
+WITH erased AS (
+    UPDATE skill_versions
+    SET manifest = '{}'::jsonb, source_id = NULL, content_erased_at = now()
+    WHERE skill_id = ANY($1::uuid[]) AND content_erased_at IS NULL
+    RETURNING package_object_key
+),
+enqueued AS (
+    INSERT INTO object_collection_queue (object_key)
+    SELECT DISTINCT package_object_key FROM erased WHERE package_object_key <> ''
+    ON CONFLICT (object_key) DO NOTHING
+)
+UPDATE skills SET summary = NULL, deleted_at = coalesce(deleted_at, now()), updated_at = now()
+WHERE id = ANY($1::uuid[])
+`
+
+func (q *Queries) EraseSkillContent(ctx context.Context, skillIds []pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, eraseSkillContent, skillIds)
 	if err != nil {
 		return 0, err
 	}
@@ -458,7 +482,7 @@ func (q *Queries) ListAccountsPastGrace(ctx context.Context, arg ListAccountsPas
 const listCollectableObjects = `-- name: ListCollectableObjects :many
 SELECT object_key FROM object_collection_queue q
 WHERE NOT EXISTS (
-    SELECT 1 FROM skill_versions v WHERE v.package_object_key = q.object_key
+    SELECT 1 FROM skill_versions v WHERE v.package_object_key = q.object_key AND v.content_erased_at IS NULL
 )
 ORDER BY enqueued_at
 LIMIT $1::int

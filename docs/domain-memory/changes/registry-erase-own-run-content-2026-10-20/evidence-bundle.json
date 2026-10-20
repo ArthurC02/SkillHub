@@ -1,0 +1,78 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "registry-erase-own-run-content-2026-10-20",
+  "proposal_id": "registry-erase-own-run-content-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "55de462d22efbc9cf4b4e52a98d6d8696e8b5a7b",
+    "registry_digest": "sha256:57e607a73cd55af2cbaf9a7f238b10c412f8c8e130b8a40328a400a426138f07",
+    "committed_digest": "sha256:44e3a75298e17db30d462222955a16d2f22c3277505f2a8165eff37a284e3a82"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-held-skill-is-not-purged",
+      "mutated_protection": "apps/platform/internal/skill/library/purge.go:31: return h.skills[c.skillID] || slices.ContainsFunc(c.versionIDs, func(id pgtype.UUID) bool { return h.versions[id] }) -> return h.skills[c.skillID]",
+      "failure_evidence": "=== RUN   TestAPurgeKeepsASkillWhileAnythingStillHoldsItOrOneOfItsVersions\n    purge_test.go:70: its newest version is held: keep = false, want true\n    purge_test.go:70: its first version is held: keep = false, want true\n--- FAIL: TestAPurgeKeepsASkillWhileAnythingStillHoldsItOrOneOfItsVersions (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t2.970s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-account-purge-erases-a-skill-only-its-own-workspace-holds",
+      "mutated_protection": "apps/platform/internal/skill/library/purge.go:61: s.unreferenced(ctx, tx, candidates, holdsOutsideTheWorkspace(s)) -> s.unreferenced(ctx, tx, candidates, everyHold(s))",
+      "failure_evidence": "=== RUN   TestAccountPurgeLeavesAVersionOnlyItsOwnRunsUsedAsATombstoneWithoutContent\n    governance_integration_test.go:770: the version the Run used is not a tombstone without its manifest and import source\n--- FAIL: TestAccountPurgeLeavesAVersionOnlyItsOwnRunsUsedAsATombstoneWithoutContent (0.25s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.089s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-skill-version-changes-only-once-to-erase-its-content",
+      "mutated_protection": "db/migrations/0130_skill_version_content_erasure.sql:16: WHEN (OLD.content_erased_at IS NOT NULL OR NEW.content_erased_at IS NULL) -> WHEN (NEW.content_erased_at IS NULL)",
+      "failure_evidence": "=== RUN   TestAVersionRowAllowsOnlyItsContentToBeErasedAndOnlyOnce\n    aggregate_test.go:309: restoring a manifest of an erased version: err = ERROR: new row for relation \"skill_versions\" violates check constraint \"skill_versions_erased_content_cleared\" (SQLSTATE 23514), want the immutability refusal\n    aggregate_test.go:309: erasing again of an erased version: err = <nil>, want the immutability refusal\n--- FAIL: TestAVersionRowAllowsOnlyItsContentToBeErasedAndOnlyOnce (0.06s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t4.407s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/governance_integration_test.go",
+    "apps/platform/internal/skill/library/aggregate_test.go",
+    "apps/platform/internal/skill/library/purge.go",
+    "apps/platform/internal/skill/library/purge_test.go",
+    "docs/adr/ADR-023-account-purge.md"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-held-skill-is-not-purged",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAPurgeKeepsASkillWhileAnythingStillHoldsItOrOneOfItsVersions$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:1cfccd9155dec397be4bc3768304a2f028e396fb30184af793509679567000a2",
+      "finished_at": "2026-10-20T07:03:13.454926Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-account-purge-erases-a-skill-only-its-own-workspace-holds",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAccountPurgeLeavesAVersionOnlyItsOwnRunsUsedAsATombstoneWithoutContent$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:082423be655ade170c5f431dae4ae6f3acecfa0ce15726b7e98c22ce1b20018d",
+      "finished_at": "2026-10-20T07:03:22.419609Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-skill-version-changes-only-once-to-erase-its-content",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAVersionRowAllowsOnlyItsContentToBeErasedAndOnlyOnce$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:a74113c6006196c1e64b0c6bbd0fd01cc10c25656cd694a540c9a7e7cb8304aa",
+      "finished_at": "2026-10-20T07:03:29.655909Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

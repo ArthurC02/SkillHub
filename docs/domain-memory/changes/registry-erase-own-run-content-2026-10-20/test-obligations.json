@@ -1,0 +1,52 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "registry-erase-own-run-content-2026-10-20",
+  "proposal_id": "registry-erase-own-run-content-2026-10-20",
+  "obligations": [
+    {
+      "id": "rule-a-held-skill-is-not-purged",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-held-skill-is-not-purged",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-held-skill-is-not-purged"
+        }
+      ],
+      "expected_outcome": "A purge keeps the row of a skill that has test cases or a version referenced by a run, a download or a bundle.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAPurgeKeepsASkillWhileAnythingStillHoldsItOrOneOfItsVersions$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-an-account-purge-erases-a-skill-only-its-own-workspace-holds",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-account-purge-erases-a-skill-only-its-own-workspace-holds",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-account-purge-erases-a-skill-only-its-own-workspace-holds"
+        }
+      ],
+      "expected_outcome": "An account purge erases the content of a skill that only the workspace's own Runs or frozen test cases hold: every version loses its manifest and import source, its package object goes to collection, the skill loses its summary and search entry, and the version rows stay so those Runs still point at them. A skill another workspace forked, bundled or downloaded keeps its content.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAccountPurgeLeavesAVersionOnlyItsOwnRunsUsedAsATombstoneWithoutContent$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-skill-version-changes-only-once-to-erase-its-content",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-skill-version-changes-only-once-to-erase-its-content",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-skill-version-changes-only-once-to-erase-its-content"
+        }
+      ],
+      "expected_outcome": "A skill version row never changes except once, to erase its content: that one update sets content_erased_at and must leave the manifest empty and the import source cleared, may change nothing else, and freezes the row again.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAVersionRowAllowsOnlyItsContentToBeErasedAndOnlyOnce$ ./internal/skill/library/"
+    }
+  ]
+}

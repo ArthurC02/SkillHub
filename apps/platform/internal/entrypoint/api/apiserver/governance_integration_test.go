@@ -724,6 +724,70 @@ func TestAccountPurgeErasesASkillWhoseOnlyForkIsTheAccountsOwn(t *testing.T) {
 	}
 }
 
+func TestAccountPurgeLeavesAVersionOnlyItsOwnRunsUsedAsATombstoneWithoutContent(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	a := newAPI(t, pool)
+	erin := a.login(t, freshName("erin-tombstone"))
+	skillID := seedSkill(t, pool, erin.workspaceID, freshName("erin-ran"))
+	var sourceID pgtype.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at, counts_toward_generate_quota)
+		VALUES ($1, 'git', 'https://example.invalid/erin.git', 'hash-erin', now(), false) RETURNING id`,
+		mustUUID(t, erin.workspaceID)).Scan(&sourceID); err != nil {
+		t.Fatal(err)
+	}
+	packageKey := "packages/" + skillID + ".zip"
+	version, err := gen.New(pool).CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
+		WorkspaceID:      mustUUID(t, erin.workspaceID),
+		SkillID:          mustUUID(t, skillID),
+		VersionNumber:    1,
+		SourceID:         sourceID,
+		ContentHash:      "hash-" + skillID,
+		PackageObjectKey: packageKey,
+		Manifest:         []byte(`{"description":"erin's own words"}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runID := seedFinishedRun(t, pool, fixture{client: erin, versionID: uuidText(version.ID)}, finishedRun{
+		testCaseID: seedTestCase(t, pool, erin.workspaceID, skillID), criteria: "[]", contentHash: "sha256:erin",
+	})
+	mustExec(t, pool, "UPDATE runs SET cleanup_status = 'cleaned' WHERE id = $1", mustUUID(t, runID))
+
+	if status, _ := deleteJSON(t, erin, "/me"); status != http.StatusOK {
+		t.Fatalf("DELETE /me: got %d", status)
+	}
+	if _, err := a.auth.Service.PurgeExpiredAccounts(ctx, &recordingStore{}, 0, 100); err != nil {
+		t.Fatalf("purge: %v", err)
+	}
+
+	if got := countRow(t, pool, "SELECT count(*) FROM runs WHERE id = $1", mustUUID(t, runID)); got != 1 {
+		t.Fatal("the account's own Run lost its identity")
+	}
+	if got := countRow(t, pool, `SELECT count(*) FROM skill_versions
+		WHERE id = $1 AND content_erased_at IS NOT NULL AND manifest = '{}'::jsonb AND source_id IS NULL`, version.ID); got != 1 {
+		t.Fatal("the version the Run used is not a tombstone without its manifest and import source")
+	}
+	if got := countRow(t, pool, "SELECT count(*) FROM skill_sources WHERE id = $1", sourceID); got != 0 {
+		t.Fatal("the import source of an erased version survived the purge")
+	}
+	if got := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1 AND summary IS NULL AND deleted_at IS NOT NULL",
+		mustUUID(t, skillID)); got != 1 {
+		t.Fatal("the tombstoned skill kept its summary or still counts as live")
+	}
+	if got := countRow(t, pool, "SELECT count(*) FROM search_documents WHERE skill_id = $1", mustUUID(t, skillID)); got != 0 {
+		t.Fatal("the tombstoned skill is still in the search index")
+	}
+	collected := &recordingStore{}
+	if _, err := (&registry.Service{Pool: pool}).CollectOrphanObjects(ctx, collected, 10000); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(collected.removed, packageKey) {
+		t.Fatal("the erased version's package object was not removed by object collection")
+	}
+}
+
 type purgeWorld struct {
 	private, shared                string
 	sharedVer                      gen.SkillVersion
@@ -922,8 +986,8 @@ func assertReferencedRowsSurvivedThePurge(t *testing.T, pool *pgxpool.Pool, w pu
 		t.Fatal("the test case a retained run's snapshot points at was deleted; that run's record of its own input now dangles (iron rule 4)")
 	}
 
-	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE id = $1", w.sharedVer.ID); c != 1 {
-		t.Fatal("a version another user forked was deleted; that breaks their provenance chain")
+	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE id = $1 AND content_erased_at IS NULL", w.sharedVer.ID); c != 1 {
+		t.Fatal("a version another user forked was deleted or erased; that breaks their provenance chain")
 	}
 	if ids := forker.skillIDs(t, "/skills"); len(ids) == 0 {
 		t.Fatal("bob's fork disappeared with alice's account")

@@ -68,7 +68,7 @@ SELECT pg_advisory_unlock(hashtextextended('package-object:' || sqlc.arg(object_
 
 -- name: PackageObjectCollectable :one
 SELECT NOT EXISTS (
-    SELECT 1 FROM skill_versions WHERE package_object_key = sqlc.arg(object_key)
+    SELECT 1 FROM skill_versions WHERE package_object_key = sqlc.arg(object_key) AND content_erased_at IS NULL
 );
 
 -- name: ListSkillSourcesInVersions :many

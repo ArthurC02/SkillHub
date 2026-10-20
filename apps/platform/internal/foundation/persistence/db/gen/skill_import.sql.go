@@ -165,7 +165,7 @@ func (q *Queries) GetSkillByName(ctx context.Context, arg GetSkillByNameParams) 
 }
 
 const getVersionBySkillAndHash = `-- name: GetVersionBySkillAndHash :one
-SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source, source_path FROM skill_versions
+SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source, source_path, content_erased_at FROM skill_versions
 WHERE skill_id = $1 AND content_hash = $2 AND workspace_id = $3
 `
 
@@ -191,6 +191,7 @@ func (q *Queries) GetVersionBySkillAndHash(ctx context.Context, arg GetVersionBy
 		&i.CreatedAt,
 		&i.LicenseSource,
 		&i.SourcePath,
+		&i.ContentErasedAt,
 	)
 	return i, err
 }

@@ -266,6 +266,51 @@ func TestWrittenVersionRowIsFrozen(t *testing.T) {
 	}
 }
 
+func TestAVersionRowAllowsOnlyItsContentToBeErasedAndOnlyOnce(t *testing.T) {
+	pool := requireRegistryDB(t)
+	ws, skillID := seedSkill(t, pool, "erasable")
+	ctx := context.Background()
+	var sourceID pgtype.UUID
+	if err := pool.QueryRow(ctx, `INSERT INTO skill_sources (workspace_id, source_type, content_hash, fetched_at, counts_toward_generate_quota)
+		VALUES ($1, 'upload', 'erasable-source', now(), false) RETURNING id`, ws.ID).Scan(&sourceID); err != nil {
+		t.Fatal(err)
+	}
+	version, err := commitVersion(t, pool, ws.ID, skillID, NewVersion{
+		SourceID:         sourceID,
+		ContentHash:      "erasable-bytes",
+		PackageObjectKey: "packages/erasable-bytes",
+		Report:           passingReport("erasable"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, tc := range map[string]struct{ statement, refusal string }{
+		"erasure that keeps the manifest": {`UPDATE skill_versions SET source_id = NULL, content_erased_at = now() WHERE id = $1`,
+			"skill_versions_erased_content_cleared"},
+		"erasure that keeps the import source": {`UPDATE skill_versions SET manifest = '{}', content_erased_at = now() WHERE id = $1`,
+			"skill_versions_erased_content_cleared"},
+		"erasure that rewrites the hash": {`UPDATE skill_versions SET manifest = '{}', source_id = NULL, content_erased_at = now(),
+			content_hash = 'tampered' WHERE id = $1`, "immutable"},
+	} {
+		if _, err := pool.Exec(ctx, tc.statement, version.ID); err == nil || !strings.Contains(err.Error(), tc.refusal) {
+			t.Errorf("%s: err = %v, want a refusal naming %q", name, err, tc.refusal)
+		}
+	}
+	if _, err := pool.Exec(ctx, `UPDATE skill_versions SET manifest = '{}', source_id = NULL, content_erased_at = now()
+		WHERE id = $1`, version.ID); err != nil {
+		t.Fatalf("erasing the content: %v", err)
+	}
+	for name, statement := range map[string]string{
+		"restoring a manifest": `UPDATE skill_versions SET manifest = '{"name":"back"}' WHERE id = $1`,
+		"un-erasing":           `UPDATE skill_versions SET content_erased_at = NULL WHERE id = $1`,
+		"erasing again":        `UPDATE skill_versions SET content_erased_at = now() WHERE id = $1`,
+	} {
+		if _, err := pool.Exec(ctx, statement, version.ID); err == nil || !strings.Contains(err.Error(), "immutable") {
+			t.Errorf("%s of an erased version: err = %v, want the immutability refusal", name, err)
+		}
+	}
+}
+
 func TestForkSharesThePackageObject(t *testing.T) {
 	pool := requireRegistryDB(t)
 

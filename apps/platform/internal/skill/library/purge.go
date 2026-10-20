@@ -42,6 +42,9 @@ func (s *Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgt
 	if err := s.requirePurgeReads(); err != nil {
 		return err
 	}
+	if s.RemoveFromIndex == nil {
+		return errors.New("registry: search projection removal not injected; refusing to purge")
+	}
 	q := gen.New(tx)
 	rows, err := q.ListWorkspacePurgeCandidates(ctx, workspaceID)
 	if err != nil {
@@ -51,44 +54,93 @@ func (s *Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgt
 	for i, r := range rows {
 		candidates[i] = purgeCandidate{skillID: r.ID, versionIDs: r.VersionIds}
 	}
-	purgeable, _, err := s.unreferenced(ctx, tx, candidates)
-	if err != nil || len(purgeable) == 0 {
+	purgeable, _, err := s.unreferenced(ctx, tx, candidates, everyHold(s))
+	if err != nil {
 		return err
 	}
-	_, err = q.PurgeSkillsByID(ctx, gen.PurgeSkillsByIDParams{SkillIds: purgeable})
-	return err
+	unsharedWithOthers, _, err := s.unreferenced(ctx, tx, candidates, holdsOutsideTheWorkspace(s))
+	if err != nil {
+		return err
+	}
+	if len(purgeable) > 0 {
+		if _, err := q.PurgeSkillsByID(ctx, gen.PurgeSkillsByIDParams{SkillIds: purgeable}); err != nil {
+			return err
+		}
+	}
+	return eraseContent(ctx, tx, workspaceID, without(unsharedWithOthers, purgeable), s.RemoveFromIndex)
 }
 
-func (s *Service) purgeHolds(ctx context.Context, db gen.DBTX, candidates []purgeCandidate) (purgeHolds, error) {
+func eraseContent(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, skillIDs []pgtype.UUID, removeFromIndex func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) error) error {
+	if len(skillIDs) == 0 {
+		return nil
+	}
+	if _, err := gen.New(tx).EraseSkillContent(ctx, skillIDs); err != nil {
+		return err
+	}
+	for _, id := range skillIDs {
+		if err := removeFromIndex(ctx, tx, workspaceID, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func without(ids, excluded []pgtype.UUID) []pgtype.UUID {
+	var kept []pgtype.UUID
+	for _, id := range ids {
+		if !slices.Contains(excluded, id) {
+			kept = append(kept, id)
+		}
+	}
+	return kept
+}
+
+type holdReads struct {
+	skills   []ReferenceRead
+	versions []ReferenceRead
+}
+
+func everyHold(s *Service) holdReads {
+	return holdReads{
+		skills:   []ReferenceRead{s.SkillsWithTestCases},
+		versions: []ReferenceRead{s.VersionsInRuns, s.VersionsInDownloads, s.VersionsInBundles},
+	}
+}
+
+func holdsOutsideTheWorkspace(s *Service) holdReads {
+	return holdReads{versions: []ReferenceRead{s.VersionsInDownloads, s.VersionsInBundles}}
+}
+
+func (s *Service) purgeHolds(ctx context.Context, db gen.DBTX, candidates []purgeCandidate, reads holdReads) (purgeHolds, error) {
 	var skillIDs, versionIDs []pgtype.UUID
 	for _, c := range candidates {
 		skillIDs = append(skillIDs, c.skillID)
 		versionIDs = append(versionIDs, c.versionIDs...)
 	}
 	holds := purgeHolds{skills: map[pgtype.UUID]bool{}, versions: map[pgtype.UUID]bool{}}
-	for _, hold := range []struct {
-		read ReferenceRead
-		ids  []pgtype.UUID
-		held map[pgtype.UUID]bool
+	for _, scope := range []struct {
+		reads []ReferenceRead
+		ids   []pgtype.UUID
+		held  map[pgtype.UUID]bool
 	}{
-		{s.SkillsWithTestCases, skillIDs, holds.skills},
-		{s.VersionsInRuns, versionIDs, holds.versions},
-		{s.VersionsInDownloads, versionIDs, holds.versions},
-		{s.VersionsInBundles, versionIDs, holds.versions},
+		{reads.skills, skillIDs, holds.skills},
+		{reads.versions, versionIDs, holds.versions},
 	} {
-		ids, err := hold.read(ctx, db, hold.ids)
-		if err != nil {
-			return purgeHolds{}, err
-		}
-		for _, id := range ids {
-			hold.held[id] = true
+		for _, read := range scope.reads {
+			ids, err := read(ctx, db, scope.ids)
+			if err != nil {
+				return purgeHolds{}, err
+			}
+			for _, id := range ids {
+				scope.held[id] = true
+			}
 		}
 	}
 	return holds, nil
 }
 
-func (s *Service) unreferenced(ctx context.Context, db gen.DBTX, candidates []purgeCandidate) ([]pgtype.UUID, int64, error) {
-	holds, err := s.purgeHolds(ctx, db, candidates)
+func (s *Service) unreferenced(ctx context.Context, db gen.DBTX, candidates []purgeCandidate, reads holdReads) ([]pgtype.UUID, int64, error) {
+	holds, err := s.purgeHolds(ctx, db, candidates, reads)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -158,7 +210,7 @@ func (s *Service) PurgeDeletedSkills(ctx context.Context, grace time.Duration, l
 	for i, r := range rows {
 		candidates[i] = purgeCandidate{skillID: r.ID, versionIDs: r.VersionIds}
 	}
-	purgeable, kept, err := s.unreferenced(ctx, tx, candidates)
+	purgeable, kept, err := s.unreferenced(ctx, tx, candidates, everyHold(s))
 	if err != nil {
 		return DeletionSweep{}, err
 	}

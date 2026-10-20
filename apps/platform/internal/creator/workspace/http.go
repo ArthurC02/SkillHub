@@ -578,8 +578,8 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 }
 
 const deletionScope = "寬限期結束前，你的帳號照常可用。到期後，你上傳的資料集、試跑產出，" +
-	"以及沒有任何人複製或試跑過的小工具會連同檔案永久刪除。被其他使用者複製過、" +
-	"或歷史試跑使用過的小工具版本會保留（它們的內容是別人的來源鏈），" +
+	"以及沒有其他使用者複製過的小工具會連同檔案永久刪除；你試跑過的小工具只留下一筆沒有內容的版本紀錄。" +
+	"被其他使用者複製過的小工具版本會保留（它們的內容是別人的來源鏈），" +
 	"但你的身分會從上面移除，顯示為已刪除的使用者所有。"
 
 func (h *Handler) requestDeletion(w http.ResponseWriter, r *http.Request) {

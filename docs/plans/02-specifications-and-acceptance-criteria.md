@@ -1421,6 +1421,7 @@ Skill 執行時可以用平台的兩個工具補 Context：提問工具把只有
 - 使用者可主動刪除 Run 輸入與 Artifact；刪除工作具可追蹤狀態，完成後不再出現在一般存取介面（NFR-002）。
 - Run 終止後暫存空間被銷毀，且清理狀態被記錄，不以最終回應成功取代清理確認。
 - Artifact 上傳授權限定目的地、大小與有效期。
+- **帳號清除時，只被自己的 Run 用過的 Skill 版本刪除內容、留下版本列**（[`05` R-107](05-pending-rulings.md)）：套件物件、匯入來源與 manifest 刪除，Skill 摘要清空並移出搜尋，版本列標上內容刪除的時間，讓那些 Run 仍指得到它；被他人 Fork 或收進他人 Bundle 的版本內容照舊保留。版本列除了這一次清空之外仍然不可改，清空也只能發生一次，由資料庫觸發器強制。有測試證明：清除後 Run 還在、版本列沒有內容、匯入來源已刪、搜尋查不到、物件回收會刪掉那份套件；被他人 Fork 的版本內容不動；觸發器拒絕清空時改寫雜湊、清空後再改、以及清空卻留下 manifest 或匯入來源。
 - **保存期限的值由部署設定帶入**：`.env.example` 的 `DOWNLOAD_ARTIFACT_RETENTION`、`ANALYTICS_RETENTION`、`AUDIT_RETENTION`、`TRACE_RETENTION`；Dataset **刻意沒有**單一變數（逐列 `expires_at`，理由在 `apps/platform/cmd/maintenance/main.go`）。Run Artifact 與 Trace 統一為 90 天（[`05` R-11](05-pending-rulings.md)），`NFR-002a` 第 2 條因此成立。
 - **上面三條允收都已成立**（`CORE-007` 已勾且涵蓋可追蹤狀態、`cleanup_status` 是 Run 列表的一等欄位、`SBX-008` 已勾且授權分型別帶 TTL）。**本項仍不勾的理由有兩個，都不是缺實作**：①**Run 列本身**沒有保存期限值；②**LLM 觀測平台**（威脅模型 Q10）今天沒有標的，這個 repo 沒有任何一條路徑接上它（[`05` R-24](05-pending-rulings.md)）。
 

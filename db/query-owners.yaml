@@ -56,6 +56,7 @@ queries:
   DeleteWorkspaceDownloadArtifacts: packaging
   ListWorkspacePurgeCandidates: registry
   PurgeSkillsByID: registry
+  EraseSkillContent: registry
   ListSkillVersionsInRuns: run
   ListSkillsPastDeletionGrace: registry
   ListCollectableObjects: registry
@@ -432,6 +433,7 @@ scope:
   NextTraceSeq: user
   PruneDeletedSearchDocuments: user
   PurgeSkillsByID: user
+  EraseSkillContent: user
   RecordObjectSighting: user
   RecordOrphanSighting: user
   RecordOutboxDeliveryFailure: user
@@ -511,6 +513,7 @@ immutable:
 
 immutable_allow:
   PurgeSkillsByID: skill_versions
+  EraseSkillContent: skill_versions
   DeleteExpiredAuditEvents: audit_events
   DeleteTraceEventsBefore: trace_events
   DeleteWorkspaceDownloadRecords: download_records
@@ -610,7 +613,7 @@ retention:
   sessions: expire at expires_at, maintenance purge-accounts
   workspaces: keep anonymized by account purge
   skills: with_owner deleted after the deletion grace or by account purge
-  skill_versions: with_owner purged with their skill
+  skill_versions: with_owner purged with their skill; one only its owner's Runs used keeps a content-erased row
   skill_runtime_compatibility: with_owner deleted with its skill
   object_collection_queue: transient drained by maintenance collect-objects
   skill_sources: with_owner unreferenced sources deleted by account purge

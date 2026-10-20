@@ -19,7 +19,7 @@ INSERT INTO skill_versions (
     $1, $2, $3, $4,
     $5, $6, $7, $8, $9, $10
 )
-RETURNING id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source, source_path
+RETURNING id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source, source_path, content_erased_at
 `
 
 type CreateSkillVersionParams struct {
@@ -62,6 +62,7 @@ func (q *Queries) CreateSkillVersion(ctx context.Context, arg CreateSkillVersion
 		&i.CreatedAt,
 		&i.LicenseSource,
 		&i.SourcePath,
+		&i.ContentErasedAt,
 	)
 	return i, err
 }
@@ -121,7 +122,7 @@ func (q *Queries) GetSkillRuntimeCompatibility(ctx context.Context, skillVersion
 }
 
 const getSkillVersion = `-- name: GetSkillVersion :one
-SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source, source_path FROM skill_versions
+SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source, source_path, content_erased_at FROM skill_versions
 WHERE skill_versions.id = $1 AND skill_versions.workspace_id = $2
   AND EXISTS (
       SELECT 1 FROM skills sk
@@ -150,6 +151,7 @@ func (q *Queries) GetSkillVersion(ctx context.Context, arg GetSkillVersionParams
 		&i.CreatedAt,
 		&i.LicenseSource,
 		&i.SourcePath,
+		&i.ContentErasedAt,
 	)
 	return i, err
 }
@@ -179,7 +181,7 @@ func (q *Queries) ListSkillSourcesInVersions(ctx context.Context, sourceIds []pg
 }
 
 const listSkillVersions = `-- name: ListSkillVersions :many
-SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source, source_path FROM skill_versions
+SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source, source_path, content_erased_at FROM skill_versions
 WHERE skill_versions.workspace_id = $1 AND skill_versions.skill_id = $2
   AND EXISTS (
       SELECT 1 FROM skills sk
@@ -215,6 +217,7 @@ func (q *Queries) ListSkillVersions(ctx context.Context, arg ListSkillVersionsPa
 			&i.CreatedAt,
 			&i.LicenseSource,
 			&i.SourcePath,
+			&i.ContentErasedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -385,7 +388,7 @@ func (q *Queries) OldestCollectableObjectEnqueuedAt(ctx context.Context) (pgtype
 
 const packageObjectCollectable = `-- name: PackageObjectCollectable :one
 SELECT NOT EXISTS (
-    SELECT 1 FROM skill_versions WHERE package_object_key = $1
+    SELECT 1 FROM skill_versions WHERE package_object_key = $1 AND content_erased_at IS NULL
 )
 `
 

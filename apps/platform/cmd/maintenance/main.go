@@ -25,6 +25,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
@@ -378,6 +379,7 @@ func registryPurger(pool *pgxpool.Pool) *registry.Service {
 		VersionsInDownloads: packaging.SkillVersionsInDownloads,
 		VersionsInBundles:   publishing.SkillVersionsInBundles,
 		SkillsWithTestCases: testlab.SkillsWithTestCases,
+		RemoveFromIndex:     catalog.RemoveSkillFromIndex,
 	}
 }
 

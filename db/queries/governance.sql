@@ -150,10 +150,25 @@ versions AS (
 )
 DELETE FROM skills WHERE id IN (SELECT id FROM purgeable);
 
+-- name: EraseSkillContent :execrows
+WITH erased AS (
+    UPDATE skill_versions
+    SET manifest = '{}'::jsonb, source_id = NULL, content_erased_at = now()
+    WHERE skill_id = ANY(@skill_ids::uuid[]) AND content_erased_at IS NULL
+    RETURNING package_object_key
+),
+enqueued AS (
+    INSERT INTO object_collection_queue (object_key)
+    SELECT DISTINCT package_object_key FROM erased WHERE package_object_key <> ''
+    ON CONFLICT (object_key) DO NOTHING
+)
+UPDATE skills SET summary = NULL, deleted_at = coalesce(deleted_at, now()), updated_at = now()
+WHERE id = ANY(@skill_ids::uuid[]);
+
 -- name: ListCollectableObjects :many
 SELECT object_key FROM object_collection_queue q
 WHERE NOT EXISTS (
-    SELECT 1 FROM skill_versions v WHERE v.package_object_key = q.object_key
+    SELECT 1 FROM skill_versions v WHERE v.package_object_key = q.object_key AND v.content_erased_at IS NULL
 )
 ORDER BY enqueued_at
 LIMIT @row_limit::int;
@@ -164,7 +179,7 @@ DELETE FROM object_collection_queue WHERE object_key = $1;
 -- name: DropReferencedCollectionEntries :execrows
 DELETE FROM object_collection_queue q
 WHERE EXISTS (
-    SELECT 1 FROM skill_versions v WHERE v.package_object_key = q.object_key
+    SELECT 1 FROM skill_versions v WHERE v.package_object_key = q.object_key AND v.content_erased_at IS NULL
 );
 
 -- name: CountCollectableObjects :one
@@ -262,7 +277,7 @@ WHERE deleted_at IS NOT NULL AND deleted_at <= @cutoff::timestamptz;
 -- name: CountUnreferencedCollectableObjects :one
 SELECT count(*)::bigint FROM object_collection_queue q
 WHERE NOT EXISTS (
-    SELECT 1 FROM skill_versions v WHERE v.package_object_key = q.object_key
+    SELECT 1 FROM skill_versions v WHERE v.package_object_key = q.object_key AND v.content_erased_at IS NULL
 );
 
 -- name: CountSourcesToCheck :one

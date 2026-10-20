@@ -1,0 +1,33 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "registry-erase-own-run-content-2026-10-20",
+  "status": "draft",
+  "intent": "Record the registry rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context registry lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-held-skill-is-not-purged",
+      "statement": "A purge keeps the row of a skill that has test cases or a version referenced by a run, a download or a bundle."
+    },
+    {
+      "id": "enforced-an-account-purge-erases-a-skill-only-its-own-workspace-holds",
+      "statement": "An account purge erases the content of a skill that only the workspace's own Runs or frozen test cases hold: every version loses its manifest and import source, its package object goes to collection, the skill loses its summary and search entry, and the version rows stay so those Runs still point at them. A skill another workspace forked, bundled or downloaded keeps its content."
+    },
+    {
+      "id": "enforced-a-skill-version-changes-only-once-to-erase-its-content",
+      "statement": "A skill version row never changes except once, to erase its content: that one update sets content_erased_at and must leave the manifest empty and the import source cleared, may change nothing else, and freezes the row again."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/governance_integration_test.go",
+    "apps/platform/internal/skill/library/aggregate_test.go",
+    "apps/platform/internal/skill/library/purge.go",
+    "apps/platform/internal/skill/library/purge_test.go",
+    "docs/adr/ADR-023-account-purge.md"
+  ]
+}

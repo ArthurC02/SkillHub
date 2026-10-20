@@ -958,6 +958,8 @@ type SkillVersion struct {
 	// Provenance tier of license_expression, strongest first: manifest (author declared it in SKILL.md frontmatter), manifest-referenced-file (frontmatter pointed at a package file, e.g. "SEE LICENSE IN LICENSE.txt", and that file's text was recognised), package-license-file (a LICENSE file in the package itself), repo-license-file (repository-level LICENSE carried into a package cut from a monorepo subdirectory). NULL whenever license_expression is NULL.
 	LicenseSource *string
 	SourcePath    string
+	// Set once when the owner's account purge erased this version's content (manifest, import source, package object) because only the owner's own Runs still referenced it. The row stays as a tombstone so those Runs keep their identity.
+	ContentErasedAt pgtype.Timestamptz
 }
 
 type TestCase struct {

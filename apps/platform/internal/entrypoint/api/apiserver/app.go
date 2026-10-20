@@ -208,6 +208,7 @@ func wireWorkspacePurge(identitySvc *identity.Service, testlabSvc *testlab.Servi
 		VersionsInDownloads: packaging.SkillVersionsInDownloads,
 		VersionsInBundles:   publishing.SkillVersionsInBundles,
 		SkillsWithTestCases: testlab.SkillsWithTestCases,
+		RemoveFromIndex:     catalog.RemoveSkillFromIndex,
 	}
 	ingestPurgeSvc := &ingest.Service{Pool: pool, SourcesInVersions: registry.SourcesInVersions}
 
