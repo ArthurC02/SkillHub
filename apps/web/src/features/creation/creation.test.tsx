@@ -449,6 +449,42 @@ test.each([
     expect(q.getQueryData<Session>(queryKeys.creation.session(requestedID))?.id).toBe(requestedID);
   },
 );
+test("an explicitly new creation discards an uncertain start identity", async () => {
+  const posts: Record<string, unknown>[] = [];
+  let current = sample();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        posts.push(body);
+        current = sample({ id: String(body.id), revision: 8 });
+        return posts.length === 1 ? response(null) : creationReceipt(current, url, init);
+      }
+      return routeGet(url, [], current);
+    }),
+  );
+  await render();
+  await pickBudget();
+  await input("想完成的任務", "建立摘要小工具");
+  await click(START);
+  await waitFor(() => box.querySelector('[role="alert"]') !== null);
+  expect(posts).toHaveLength(1);
+  await click("＋ 開始新的創作");
+  expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe("");
+  expect(box.querySelector('[role="alert"]')).toBeNull();
+  expect(posts).toHaveLength(1);
+  await input("想完成的任務", "建立摘要小工具");
+  await click(START);
+  await waitFor(() => box.querySelector<HTMLTextAreaElement>("#creation-message")?.value === "");
+  expect(posts).toHaveLength(2);
+  expect(posts[1].id).not.toBe(posts[0].id);
+  expect({ ...posts[1], id: posts[0].id }).toEqual(posts[0]);
+  expect(q.getQueryData<Session>(queryKeys.creation.session(String(posts[1].id)))?.id).toBe(
+    posts[1].id,
+  );
+});
+
 const creditsResponse = (patch: Record<string, unknown> = {}) => ({
   balance_credits: 100,
   debt_floor_credits: -50,

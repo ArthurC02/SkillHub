@@ -262,6 +262,38 @@ for (const [mode, damage] of [
   });
 }
 
+test("an explicitly new creation discards an uncertain start identity on a phone", async ({
+  page,
+  context,
+}) => {
+  const state = await stubWriteReceipt(page, context, "start", "empty");
+  await page.goto("/workspace/creations");
+  await page.getByRole("button", { name: "＋ 開始新的創作", exact: true }).click();
+  await page
+    .locator(".budget-picker label")
+    .filter({ hasText: /^500 點$/ })
+    .click();
+  const input = page.locator("#creation-message");
+  await input.fill("保留這份送出的補充");
+  await page.getByRole("button", { name: "開始創作", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("創作結果尚未確認");
+  expect(state.posts).toHaveLength(1);
+  await captureReadState(page);
+  await page.getByRole("button", { name: /創作清單 ·/ }).click();
+  await page.getByRole("button", { name: "＋ 開始新的創作", exact: true }).click();
+  await expect(input).toHaveValue("");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByRole("radio", { name: "500 點", exact: true })).toBeChecked();
+  expect(state.posts).toHaveLength(1);
+  await input.fill("保留這份送出的補充");
+  await page.getByRole("button", { name: "開始創作", exact: true }).click();
+  await expect.poll(() => state.posts.length).toBe(2);
+  await expect(input).toHaveValue("");
+  expect(state.posts[1].id).not.toBe(state.posts[0].id);
+  expect({ ...state.posts[1], id: state.posts[0].id }).toEqual(state.posts[0]);
+  await expect(page).toHaveURL(new RegExp(`session=${state.posts[1].id}$`));
+});
+
 for (const [name, reply] of [
   ["empty reply", null],
   ["another session", { ...SESSION, id: "55555555-5555-4555-8555-555555555555" }],

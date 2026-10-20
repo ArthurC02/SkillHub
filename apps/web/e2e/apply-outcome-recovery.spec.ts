@@ -34,15 +34,8 @@ test("a complete apply receipt exposes the created version and preserves the ori
 }) => {
   await stubPlatform(page);
   const writes: string[] = [];
-  const receiver = receiverFor("valid", (body) => writes.push(body));
-  await new Promise<void>((resolve, reject) => {
-    receiver.once("error", reject);
-    receiver.listen(0, "127.0.0.1", resolve);
-  });
+  const receiver = await stubApplyOutcome(page, "valid", (body) => writes.push(body));
   try {
-    await page.route(`**/skills/${SKILL}/versions/from-suggestions`, (route) =>
-      route.continue({ url: `http://127.0.0.1:${(receiver.address() as AddressInfo).port}/apply` }),
-    );
     await page.goto(`/runs/${RUN}`);
     await expect(page.locator(".auth-name")).toHaveText("tester");
     await page.getByRole("button", { name: "以已接受的 1 項建議建立新版本", exact: true }).click();
@@ -63,8 +56,8 @@ test("a complete apply receipt exposes the created version and preserves the ori
     expect(JSON.parse(writes[0])).toEqual({ evaluation_id: "eval-2", suggestion_ids: ["s1"] });
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   } finally {
-    receiver.closeAllConnections();
-    await new Promise<void>((resolve) => receiver.close(() => resolve()));
+    receiver?.closeAllConnections();
+    if (receiver) await new Promise<void>((resolve) => receiver.close(() => resolve()));
   }
 });
 
@@ -127,7 +120,52 @@ for (const blockedSession of [false, true]) {
     expect(writes).toBe(blockedSession ? 0 : 1);
   });
 }
-function receiverFor(transport: string, onBody: (body: string) => void) {
+const APPLY_RECEIPTS: Record<string, string> = {
+  server500: JSON.stringify({ error: "internal error" }),
+  server503: JSON.stringify({ error: "service unavailable" }),
+  malformed: "{",
+  incomplete: JSON.stringify({
+    skill_id: SKILL,
+    version_id: NEW_VERSION,
+    version_number: 3,
+    applied_suggestion_ids: ["s1"],
+    rejected_suggestions: [],
+  }),
+  null: "null",
+  valid: JSON.stringify({
+    skill_id: SKILL,
+    version_id: NEW_VERSION,
+    version_number: 3,
+    content_hash: "hash-new",
+    duplicate: false,
+    applied_suggestion_ids: ["s1"],
+    rejected_suggestions: [],
+  }),
+};
+
+async function stubApplyOutcome(page: Page, transport: string, onBody: (body: string) => void) {
+  const receiver = transport === "network" ? receiverFor(onBody) : undefined;
+  if (receiver)
+    await new Promise<void>((resolve, reject) => {
+      receiver.once("error", reject);
+      receiver.listen(0, "127.0.0.1", resolve);
+    });
+  await page.route(`**/skills/${SKILL}/versions/from-suggestions`, (route) => {
+    if (receiver)
+      return route.continue({
+        url: `http://127.0.0.1:${(receiver.address() as AddressInfo).port}/apply`,
+      });
+    onBody(route.request().postData() ?? "");
+    return route.fulfill({
+      status: transport === "server500" ? 500 : transport === "server503" ? 503 : 201,
+      contentType: "application/json",
+      body: APPLY_RECEIPTS[transport],
+    });
+  });
+  return receiver;
+}
+
+function receiverFor(onBody: (body: string) => void) {
   return createServer(async (request, response) => {
     const headers = {
       "Access-Control-Allow-Origin": request.headers.origin ?? "http://127.0.0.1:4173",
@@ -143,36 +181,8 @@ function receiverFor(transport: string, onBody: (body: string) => void) {
     const chunks: Buffer[] = [];
     for await (const chunk of request) chunks.push(Buffer.from(chunk));
     onBody(Buffer.concat(chunks).toString("utf8"));
-    if (transport === "network") {
-      response.writeHead(201, { ...headers, "Content-Length": "100" });
-      response.write("{", () => response.destroy());
-      return;
-    }
-    const bodies: Record<string, string> = {
-      server500: JSON.stringify({ error: "internal error" }),
-      server503: JSON.stringify({ error: "service unavailable" }),
-      malformed: "{",
-      incomplete: JSON.stringify({
-        skill_id: SKILL,
-        version_id: NEW_VERSION,
-        version_number: 3,
-        applied_suggestion_ids: ["s1"],
-        rejected_suggestions: [],
-      }),
-      null: "null",
-      valid: JSON.stringify({
-        skill_id: SKILL,
-        version_id: NEW_VERSION,
-        version_number: 3,
-        content_hash: "hash-new",
-        duplicate: false,
-        applied_suggestion_ids: ["s1"],
-        rejected_suggestions: [],
-      }),
-    };
-    response
-      .writeHead(transport === "server500" ? 500 : transport === "server503" ? 503 : 201, headers)
-      .end(bodies[transport]);
+    response.writeHead(201, { ...headers, "Content-Length": "100" });
+    response.write("{", () => response.destroy());
   });
 }
 
@@ -198,20 +208,11 @@ for (const [transport, saved, associated, failedRead] of [
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const receiver = receiverFor(transport, (body) => {
+    const receiver = await stubApplyOutcome(page, transport, (body) => {
       writes.push(body);
       committed = saved;
     });
-    await new Promise<void>((resolve, reject) => {
-      receiver.once("error", reject);
-      receiver.listen(0, "127.0.0.1", resolve);
-    });
     try {
-      await page.route(`**/skills/${SKILL}/versions/from-suggestions`, (route) =>
-        route.continue({
-          url: `http://127.0.0.1:${(receiver.address() as AddressInfo).port}/apply`,
-        }),
-      );
       await page.route(`**/runs/${RUN}/suggestions`, async (route) => {
         reads += 1;
         if (reads === 2 && failedRead)
@@ -301,8 +302,8 @@ for (const [transport, saved, associated, failedRead] of [
       expect(writes).toHaveLength(1);
     } finally {
       release();
-      receiver.closeAllConnections();
-      await new Promise<void>((resolve) => receiver.close(() => resolve()));
+      receiver?.closeAllConnections();
+      if (receiver) await new Promise<void>((resolve) => receiver.close(() => resolve()));
     }
   });
 }
