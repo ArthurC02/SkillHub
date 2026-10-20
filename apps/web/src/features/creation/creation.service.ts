@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE_URL, apiFetch, isLastingReadFailure } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
+import { readCreationSession, readCreationSessions } from "./creation-response.model";
 export type CreationState =
   | "queued"
   | "working"
@@ -181,12 +182,15 @@ export interface CreationAction {
   run_id?: string;
   budget_credits?: number;
 }
-export const listCreationSessions = () => apiFetch<CreationSession[]>("/creation-sessions");
-export const listCreationSessionsForVersion = (versionId: string) =>
-  apiFetch<CreationSession[]>(`/creation-sessions?version_id=${encodeURIComponent(versionId)}`);
+export const listCreationSessions = async () =>
+  readCreationSessions(await apiFetch<unknown>("/creation-sessions"));
+export const listCreationSessionsForVersion = async (versionId: string) =>
+  readCreationSessions(
+    await apiFetch<unknown>(`/creation-sessions?version_id=${encodeURIComponent(versionId)}`),
+  );
 export const getCreationLimits = () => apiFetch<CreationLimits>("/creation-sessions/limits");
-export const getCreationSession = (id: string) =>
-  apiFetch<CreationSession>("/creation-sessions/" + id);
+export const getCreationSession = async (id: string) =>
+  readCreationSession(await apiFetch<unknown>("/creation-sessions/" + id), id);
 export const createCreationSession = (body: {
   id: string;
   message: string;
@@ -245,6 +249,9 @@ export function useLiveCreationSession(id: string) {
       id,
       (s) => client.setQueryData<CreationSession>(queryKeys.creation.session(id), keepNewer(s)),
       setStreaming,
+      () => {
+        void client.invalidateQueries({ queryKey: queryKeys.creation.session(id) });
+      },
     );
   }, [id, client]);
   return query;
@@ -277,6 +284,7 @@ export function streamCreationSession(
   id: string,
   onSession: (s: CreationSession) => void,
   onOpen: (live: boolean) => void,
+  onInvalid: () => void,
 ): () => void {
   if (typeof EventSource === "undefined") {
     onOpen(false);
@@ -288,11 +296,13 @@ export function streamCreationSession(
   source.onopen = () => onOpen(true);
   source.onmessage = (e) => {
     try {
-      const session = JSON.parse(e.data) as CreationSession;
+      const session = readCreationSession(JSON.parse(e.data), id);
       onSession(session);
+      onOpen(true);
       if (endedStates.has(session.state)) source.close();
     } catch {
-      // Ignore a half-written frame; the poll underneath will catch up.
+      onOpen(false);
+      onInvalid();
     }
   };
   source.onerror = () => {

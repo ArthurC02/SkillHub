@@ -7,7 +7,12 @@ import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { CreationSession } from "./create/components/CreationSession";
 import { CreateHub } from "./components/CreateHub";
 import type { CreationSession as Session, CreationSnapshot } from "./creation.service";
-import { useCreationEntryPoint } from "./creation.service";
+import {
+  getCreationSession,
+  listCreationSessions,
+  listCreationSessionsForVersion,
+  useCreationEntryPoint,
+} from "./creation.service";
 import { pollUntil } from "../../testing/poll";
 import { ME } from "../../testing/fixtures/platform";
 import { queryKeys } from "../../core/api/queryKeys";
@@ -86,6 +91,162 @@ const LIMITS = {
   session_timeout_seconds: 3600,
   retention_seconds: 604800,
 };
+
+const invalidCreationReplies: [string, () => unknown][] = [
+  ["empty reply", () => null],
+  ["another session", () => sample({ id: "s2" })],
+  ["missing snapshot", () => ({ ...sample(), snapshot: null })],
+  ["missing messages", () => ({ ...sample(), snapshot: { ...sample().snapshot, messages: null } })],
+  [
+    "nontext message",
+    () => ({
+      ...sample(),
+      snapshot: { ...sample().snapshot, messages: [{ role: "assistant", content: {} }] },
+    }),
+  ],
+  [
+    "malformed draft",
+    () => ({ ...sample(), snapshot: { ...sample().snapshot, draft: { skill: { files: {} } } } }),
+  ],
+  [
+    "malformed diagram",
+    () => ({
+      ...sample(),
+      snapshot: { ...sample().snapshot, diagram_interpretation: { nodes: null } },
+    }),
+  ],
+  [
+    "malformed references",
+    () => ({ ...sample(), snapshot: { ...sample().snapshot, references: [null] } }),
+  ],
+];
+
+test.each(invalidCreationReplies)(
+  "an invalid creation %s stays a recoverable read and sends no writes",
+  async (_, invalid) => {
+    let reply: unknown = invalid();
+    const writes: unknown[] = [];
+    let reads = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method === "POST") writes.push(init.body);
+        if (url.endsWith("/creation-sessions/s1")) {
+          reads++;
+          return response(reply);
+        }
+        return routeGet(url, [], sample());
+      }),
+    );
+    await render(<CreationSession sessionId="s1" />);
+    await waitFor(() => box.querySelector('.creation-current [role="alert"]') !== null);
+    expect(box.querySelector(".creation-current")?.textContent).toContain("暫時無法讀取創作紀錄");
+    expect(box.querySelector(".composer, .starter-cards, .budget-picker")).toBeNull();
+    reply = sample();
+    await click("再試一次");
+    await waitFor(() => box.querySelector("#creation-message") !== null);
+    expect(box.querySelector(".creation-current")?.textContent).toContain("摘要任務");
+    expect(reads).toBe(2);
+    expect(writes).toEqual([]);
+  },
+);
+
+test.each(["all", "version"])(
+  "an invalid %s creation list is unavailable instead of empty or partly accepted",
+  async (list) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => response([sample(), { ...sample(), snapshot: null }])),
+    );
+    const load = list === "all" ? listCreationSessions : () => listCreationSessionsForVersion("v1");
+    await expect(load()).rejects.toThrow("創作紀錄的回應不完整");
+  },
+);
+
+test("creation reads keep Go's empty criteria and legacy tool messages compatible", async () => {
+  const valid = sample({ revision: 0 });
+  valid.snapshot.messages = [{ role: "tool", content: "not structured JSON" }];
+  valid.snapshot.pending_action = "future_action";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => response({ ...valid, snapshot: { ...valid.snapshot, acceptance_criteria: null } })),
+  );
+  const session = await getCreationSession("s1");
+  expect(session.revision).toBe(0);
+  expect(session.snapshot.acceptance_criteria).toEqual([]);
+  expect(session.snapshot.messages).toEqual([{ role: "tool", content: "not structured JSON" }]);
+  expect(session.snapshot.pending_action).toBe("future_action");
+});
+
+test("a malformed reread retains the cached creation and unsent draft until GET recovery", async () => {
+  const current = sample();
+  q.setQueryData(queryKeys.creation.session("s1"), current);
+  let reply: unknown = current;
+  const writes: unknown[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") writes.push(init.body);
+      return routeGet(url, [], reply);
+    }),
+  );
+  await render(<CreationSession sessionId="s1" />);
+  await waitFor(() => box.querySelector("#creation-message") !== null);
+  await input("想完成的任務", "保留這份輸入");
+  reply = { ...sample({ revision: 8 }), snapshot: null };
+  await act(async () => {
+    await q.invalidateQueries({ queryKey: queryKeys.creation.session("s1") });
+  });
+  await waitFor(() => box.querySelector('.creation-current [role="alert"]') !== null);
+  expect(q.getQueryData(queryKeys.creation.session("s1"))).toEqual(current);
+  expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe("保留這份輸入");
+  reply = sample({ revision: 9 });
+  await click("再試一次");
+  await waitFor(() => q.getQueryData<Session>(queryKeys.creation.session("s1"))?.revision === 9);
+  expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe("保留這份輸入");
+  expect(writes).toEqual([]);
+});
+
+test.each(["foreign identity", "broken snapshot", "broken JSON"])(
+  "an invalid stream %s falls back to GET without replacing the draft",
+  async (kind) => {
+    const es = stubEventSource();
+    let reads = 0;
+    const writes: unknown[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method === "POST") writes.push(init.body);
+        if (url.endsWith("/creation-sessions/s1")) {
+          reads++;
+          return response(sample({ revision: reads === 1 ? 7 : 9 }));
+        }
+        return routeGet(url, [], sample());
+      }),
+    );
+    await render(<CreationSession sessionId="s1" />);
+    await waitFor(() => box.querySelector("#creation-message") !== null && es.open.length > 0);
+    await input("想完成的任務", "串流異常也保留");
+    const source = es.open.at(-1)!;
+    const invalid =
+      kind === "foreign identity"
+        ? sample({ id: "s2", revision: 100 })
+        : { ...sample({ revision: 100 }), snapshot: null };
+    await act(async () => {
+      source.onopen?.();
+      source.onmessage?.({ data: kind === "broken JSON" ? "{" : JSON.stringify(invalid) });
+    });
+    await waitFor(() => q.getQueryData<Session>(queryKeys.creation.session("s1"))?.revision === 9);
+    expect(reads).toBe(2);
+    expect(q.getQueryData<Session>(queryKeys.creation.session("s1"))?.id).toBe("s1");
+    expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe(
+      "串流異常也保留",
+    );
+    expect(writes).toEqual([]);
+    await act(async () => source.onmessage?.({ data: JSON.stringify(sample({ revision: 10 })) }));
+    await waitFor(() => q.getQueryData<Session>(queryKeys.creation.session("s1"))?.revision === 10);
+  },
+);
 
 test("a persisted message shows its timestamp without inventing one for a legacy message", async () => {
   const session = sample();

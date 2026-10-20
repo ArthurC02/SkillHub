@@ -49,6 +49,7 @@ async function stubCreation(page: Page, status = 200) {
   const gate = new Promise<void>((resolve) => (release = resolve));
   let held = status === 200;
   let reads = 0;
+  let reply: unknown = SESSION;
   const writes: string[] = [];
   await page.route("**/creation-sessions**", async (route) => {
     const request = route.request();
@@ -73,7 +74,7 @@ async function stubCreation(page: Page, status = 200) {
     reads++;
     if (held) await gate;
     return status === 200
-      ? route.fulfill({ json: SESSION })
+      ? route.fulfill({ json: reply })
       : route.fulfill({ status, json: { error: "unavailable" } });
   });
   return {
@@ -88,10 +89,47 @@ async function stubCreation(page: Page, status = 200) {
     },
     recover: () => {
       status = 200;
+      reply = SESSION;
       held = false;
       release();
     },
+    invalid: (value: unknown) => {
+      status = 200;
+      held = false;
+      reply = value;
+    },
   };
+}
+
+for (const [name, reply] of [
+  ["empty reply", null],
+  ["another session", { ...SESSION, id: "55555555-5555-4555-8555-555555555555" }],
+  ["missing snapshot", { ...SESSION, snapshot: null }],
+  ["missing messages", { ...SESSION, snapshot: { ...SESSION.snapshot, messages: null } }],
+] as const) {
+  test(`an invalid creation ${name} offers keyboard GET recovery without a new paid session`, async ({
+    page,
+  }) => {
+    const state = await stubCreation(page);
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    state.invalid(reply);
+    await page.goto(`/workspace/creations?session=${ID}`);
+    const current = page.locator("#creation-workspace");
+    await expect(current.getByRole("alert")).toContainText("暫時無法讀取創作紀錄");
+    await expect(current.locator(".composer, .starter-cards, .budget-picker")).toHaveCount(0);
+    await captureReadState(page);
+    state.recover();
+    await current.getByRole("button", { name: "再試一次", exact: true }).focus();
+    await page.keyboard.press("Enter");
+    await expect(current.locator("#creation-message")).toBeEnabled();
+    await expect(current).toContainText("請保留這場創作的需求");
+    await expect(current).toBeFocused();
+    await expect(page).toHaveURL(new RegExp(`session=${ID}$`));
+    expect(state.reads).toBe(2);
+    expect(state.writes).toEqual([]);
+    expect(errors).toEqual([]);
+  });
 }
 
 async function captureReadState(page: Page) {
