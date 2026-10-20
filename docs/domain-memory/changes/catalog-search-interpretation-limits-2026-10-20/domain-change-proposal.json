@@ -1,0 +1,177 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "catalog-search-interpretation-limits-2026-10-20",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "catalog-search-interpretation-limits-2026-10-20",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-20T14:46:24.565144Z",
+  "verified_at": "2026-10-20T14:46:47.549610Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "fbb2d44eb8f0a4418a721f02cad7ae0984f4ea09",
+    "registry_digest": "sha256:35aa69512e5df71ed1c87b9eeb18783df28237dbce85bb5dd2ec9d89431611e0",
+    "committed_digest": "sha256:cd7108d5c4686ba27760b4fe6d522eaaf7654fc067cecfa9247b9b5b49eb1e9d"
+  },
+  "affected_contexts": [
+    "catalog"
+  ],
+  "rule_ids": [
+    "a-model-extracted-search-intent-quotes-the-query",
+    "a-search-interpretation-has-at-most-8-keywords-of-128-characters",
+    "a-corrected-search-is-at-most-2000-characters-combined"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "catalog",
+    "invariant": "Only catalog decides these rules.",
+    "evidence": [
+      "apps/platform/internal/skill/discovery/intent.go:82-82"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/discovery/intent.go:82-82"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The search interpretation's acceptance rules were tested at their bounds but none was recorded."
+    ],
+    "decision": "Record catalog's search interpretation acceptance rules.",
+    "invariants_preserved": [
+      "Each rule statement matches the code it cites."
+    ],
+    "rejected_alternatives": [
+      "Trusting the model's intent as given: it could invent a requirement the person never stated."
+    ],
+    "proof_obligations": [
+      "rule-a-model-extracted-search-intent-quotes-the-query",
+      "rule-a-search-interpretation-has-at-most-8-keywords-of-128-characters",
+      "rule-a-corrected-search-is-at-most-2000-characters-combined"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-model-extracted-search-intent-quotes-the-query",
+        "statement": "A search intent the model extracted is accepted only when every filled field appears verbatim in the person's query and none is blank or over 2000 characters; a person's own correction need not quote the original query.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "From the query \"CSV\", a proposal naming Python as the tool is refused; the person correcting the intent to Python is accepted."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/intent.go",
+            "lines": {
+              "start": 110,
+              "end": 122
+            },
+            "excerpt_sha256": "sha256:fdd85f8191de85094364a7d12c04806f9eb134ff00e317a2849a5e6dcf39c45c"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/intent_test.go",
+            "lines": {
+              "start": 32,
+              "end": 60
+            },
+            "excerpt_sha256": "sha256:3db3fbfda8811fa7923d1c74325dd60506e8139775f416eb0bd75f9c53e2c481"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-search-interpretation-has-at-most-8-keywords-of-128-characters",
+        "statement": "A search interpretation holds at most 8 keywords, each non-blank and at most 128 characters; exactly 8 keywords of 128 characters are accepted.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "Eight keywords of 128 characters are accepted; a ninth keyword or a 129-character one is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/intent.go",
+            "lines": {
+              "start": 124,
+              "end": 134
+            },
+            "excerpt_sha256": "sha256:c7015d518852e5841ddf0114afb760357b54f77c0f58229e4ea2dbec2c026681"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/intent_test.go",
+            "lines": {
+              "start": 62,
+              "end": 84
+            },
+            "excerpt_sha256": "sha256:87f55842163246cf145bee4d95a36bb7a68a96254521e413fe3fcf02192c9740"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-corrected-search-is-at-most-2000-characters-combined",
+        "statement": "A search the person corrected is refused when its intent fields and keywords together exceed 2000 characters; exactly 2000 is accepted.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "A corrected intent totalling 2000 characters searches; 2001 is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/intent.go",
+            "lines": {
+              "start": 100,
+              "end": 102
+            },
+            "excerpt_sha256": "sha256:20a3b297e2c0a30297180e30aacafa117d16b184e51e8c746d74d04070e626f0"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/intent_test.go",
+            "lines": {
+              "start": 105,
+              "end": 118
+            },
+            "excerpt_sha256": "sha256:ab43daa8acd23224bc5c8156eee0a8911e08dbd734b65934705eab1a23e814f0"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-20T14:46:47.256731Z",
+      "scope": "Record catalog rules from the requirements patrol",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "fbb2d44eb8f0a4418a721f02cad7ae0984f4ea09",
+        "registry_digest": "sha256:35aa69512e5df71ed1c87b9eeb18783df28237dbce85bb5dd2ec9d89431611e0",
+        "committed_digest": "sha256:cd7108d5c4686ba27760b4fe6d522eaaf7654fc067cecfa9247b9b5b49eb1e9d"
+      }
+    }
+  ]
+}

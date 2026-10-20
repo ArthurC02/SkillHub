@@ -1,0 +1,75 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "catalog-search-interpretation-limits-2026-10-20",
+  "proposal_id": "catalog-search-interpretation-limits-2026-10-20",
+  "registry_revision": {
+    "observed_commit": "fbb2d44eb8f0a4418a721f02cad7ae0984f4ea09",
+    "registry_digest": "sha256:35aa69512e5df71ed1c87b9eeb18783df28237dbce85bb5dd2ec9d89431611e0",
+    "committed_digest": "sha256:cd7108d5c4686ba27760b4fe6d522eaaf7654fc067cecfa9247b9b5b49eb1e9d"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-model-extracted-search-intent-quotes-the-query",
+      "mutated_protection": "apps/platform/internal/skill/discovery/intent.go:117: (source == extractedByModel && !strings.Contains(query, *value)) -> (false && !strings.Contains(query, *value))",
+      "failure_evidence": "--- FAIL: TestIntentValidationRejectsIncompleteInventedAndOversizedProposals (0.00s)\n    --- PASS: TestIntentValidationRejectsIncompleteInventedAndOversizedProposals/missing_field (0.00s)\n    --- PASS: TestIntentValidationRejectsIncompleteInventedAndOversizedProposals/unknown_field (0.00s)\n    --- FAIL: TestIntentVal\n...\nidationRejectsIncompleteInventedAndOversizedProposals/invented_tool (0.00s)\n    --- PASS: TestIntentValidationRejectsIncompleteInventedAndOversizedProposals/empty_field (0.00s)\n    --- PASS: TestIntentValidationRejectsIncompleteInventedAndOversizedProposals/blank_field (0.00s)\n    --- PASS: TestIntentValidationRejectsIncompleteInventedAndOversizedProposals/long_field (0.00s)\n    --- PASS: TestIntentValidationRejectsIncompleteInventedAndOversizedProposals/missing_keywords (0.00s)\n    --- PASS: TestIntentValidationRejectsIncompleteInventedAndOversizedProposals/too_many_keywords (0.00s)\n    --- PASS: TestIntentValidationRejectsIncompleteInventedAndOversizedProposals/long_keyword (0.00s)\n    --- PASS: TestIntentValidationRejectsIncompleteInventedAndOversizedProposals/blank_keyword (0.00s)\n    --- PASS: TestIntentValidationRejectsIncompleteInventedAndOversizedProposals/missing_filters (0.00s)\n    --- PASS: TestIntentValidationRejectsIncompleteInventedAndOversizedProposals/unknown_filter (0.00s)\n    --- PASS: TestIntentValidationRejectsIncompleteInventedAndOversizedProposals/invalid_filter (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery\t3.681s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-search-interpretation-has-at-most-8-keywords-of-128-characters",
+      "mutated_protection": "apps/platform/internal/skill/discovery/intent.go:125: if len(i.Keywords) > maxIntentKeywords { -> if len(i.Keywords) >= maxIntentKeywords {",
+      "failure_evidence": "=== RUN   TestIntentLimitsAcceptTheBoundaryAndUserCorrectionsNeedNotQuoteOriginal\n    intent_test.go:71: too many search keywords\n--- FAIL: TestIntentLimitsAcceptTheBoundaryAndUserCorrectionsNeedNotQuoteOriginal (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery\t3.272s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-corrected-search-is-at-most-2000-characters-combined",
+      "mutated_protection": "apps/platform/internal/skill/discovery/intent.go:100: if !extracted && utf8.RuneCountInString(i.retrievalQuery(query)) > maxQueryRunes { -> if !extracted && utf8.RuneCountInString(i.retrievalQuery(query)) >= maxQueryRunes {",
+      "failure_evidence": "=== RUN   TestCorrectedIntentCombinedTextLimit\n=== RUN   TestCorrectedIntentCombinedTextLimit/2000\n    intent_test.go:114: combined size=2000 err=combined intent and keywords must not exceed 2000 characters\n=== RUN   TestCorrectedIntentCombinedTextLimit/2001\n--- FAIL: TestCorrectedIntentCombinedTextLimit (0.00s)\n    --- FAIL: TestCorrectedIntentCombinedTextLimit/2000 (0.00s)\n    --- PASS: TestCorrectedIntentCombinedTextLimit/2001 (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery\t3.426s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/skill/discovery/intent.go",
+    "apps/platform/internal/skill/discovery/intent_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-model-extracted-search-intent-quotes-the-query",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestIntentValidationRejectsIncompleteInventedAndOversizedProposals$ ./internal/skill/discovery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f597d92ae5fde505f93e404dff57993336ed3d03ea456c046e93acb922efe15a",
+      "finished_at": "2026-10-20T14:46:32.919817Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-search-interpretation-has-at-most-8-keywords-of-128-characters",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestIntentLimitsAcceptTheBoundaryAndUserCorrectionsNeedNotQuoteOriginal$ ./internal/skill/discovery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:bcbc3f32132cd3032fa45c7ec454e170806be8328a4974f62aadd97fb97ea070",
+      "finished_at": "2026-10-20T14:46:41.191816Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-corrected-search-is-at-most-2000-characters-combined",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestCorrectedIntentCombinedTextLimit$ ./internal/skill/discovery/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f35550e47aacf3e4ebe3e78a80a89de06de36e624d14f02c92a07c66f5c4f234",
+      "finished_at": "2026-10-20T14:46:47.242143Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

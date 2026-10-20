@@ -1,0 +1,30 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "catalog-search-interpretation-limits-2026-10-20",
+  "status": "draft",
+  "intent": "Record the catalog rules a requirements patrol changed or added.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context catalog lists the rules as reviewed, each proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-model-extracted-search-intent-quotes-the-query",
+      "statement": "A search intent the model extracted is accepted only when every filled field appears verbatim in the person's query and none is blank or over 2000 characters; a person's own correction need not quote the original query."
+    },
+    {
+      "id": "enforced-a-search-interpretation-has-at-most-8-keywords-of-128-characters",
+      "statement": "A search interpretation holds at most 8 keywords, each non-blank and at most 128 characters; exactly 8 keywords of 128 characters are accepted."
+    },
+    {
+      "id": "enforced-a-corrected-search-is-at-most-2000-characters-combined",
+      "statement": "A search the person corrected is refused when its intent fields and keywords together exceed 2000 characters; exactly 2000 is accepted."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/skill/discovery/intent.go",
+    "apps/platform/internal/skill/discovery/intent_test.go"
+  ]
+}
