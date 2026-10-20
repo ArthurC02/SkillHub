@@ -58,7 +58,7 @@ class AuditMergeTest(RegistryTestCase):
         ours, theirs = (event["event_sha256"] for event in events[1:3])
         self.assertEqual(
             (
-                {"status": "invalid", "reason": "audit event 2 is invalid JSON"},
+                {"status": "invalid", "reason": f"conflict markers at event 2; run reconcile-audit --registry-root {self.memory}"},
                 {"events": 4, "conflict_markers_removed": 3, "duplicates_dropped": 0, "joined": sorted([ours, theirs]), "written": True},
                 ("valid", 4, 3, 1),
                 ("reconcile-audit", sorted([ours, theirs]), 3, sorted([ours, theirs])),
@@ -166,6 +166,16 @@ class AuditMergeTest(RegistryTestCase):
         self.assertEqual(
             (0, 2, True, "NOTE: 2 audit heads joined; commit audit/events.jsonl and audit/manifest.json"),
             (result.returncode, len(report["joined"]), report["written"], result.stderr.strip()),
+        )
+
+    def test_the_refresh_indexes_command_lists_what_it_rebuilt_and_nothing_on_a_second_run(self) -> None:
+        index = self.memory / "registry" / "contexts" / "index.md"
+        index.write_text("# Contexts\n", encoding="utf-8")
+        first = self.run_cli("refresh-indexes", "--registry-root", str(self.memory))
+        second = self.run_cli("refresh-indexes", "--registry-root", str(self.memory))
+        self.assertEqual(
+            ((0, {"refreshed": ["registry/contexts/index.md"]}), (0, {"refreshed": []})),
+            ((first.returncode, json.loads(first.stdout)), (second.returncode, json.loads(second.stdout))),
         )
 
     def test_a_linear_log_written_before_the_dag_still_verifies(self) -> None:

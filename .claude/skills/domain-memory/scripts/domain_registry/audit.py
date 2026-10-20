@@ -8,6 +8,7 @@ from typing import Any
 
 from .common import (
     APPLY_OPERATION,
+    CONFLICT_MARKERS,
     MAX_JSON_BYTES,
     load_json,
     readable_packages,
@@ -21,7 +22,6 @@ from .store import has_registry
 
 MANIFEST_FORMAT = "domain-memory-audit/v1"
 RECONCILE_OPERATION = "reconcile-audit"
-CONFLICT_MARKERS = ("<<<<<<< ", "=======", ">>>>>>> ", "||||||| ")
 
 
 def canonical(value: dict[str, Any]) -> bytes:
@@ -43,7 +43,7 @@ def audit_manifest_path(root: Path) -> Path:
 
 
 def read_events(root: Path) -> list[dict[str, Any]]:
-    return [event for _, event in _parsed_events(_event_lines(root))]
+    return [event for _, event in _parsed_events(_event_lines(root), root)]
 
 
 def _event_lines(root: Path) -> list[str]:
@@ -55,9 +55,11 @@ def _event_lines(root: Path) -> list[str]:
     return path.read_text(encoding="utf-8").splitlines()
 
 
-def _parsed_events(lines: list[str]) -> list[tuple[int, dict[str, Any]]]:
+def _parsed_events(lines: list[str], root: Path) -> list[tuple[int, dict[str, Any]]]:
     events = []
     for index, line in enumerate(lines, start=1):
+        if line.startswith(CONFLICT_MARKERS):
+            raise ValueError(f"conflict markers at event {index}; run reconcile-audit --registry-root {root}")
         try:
             value = json.loads(line, object_pairs_hook=reject_duplicate_keys)
         except (json.JSONDecodeError, ValueError) as error:
@@ -204,7 +206,7 @@ def reconcile(root: Path) -> dict[str, Any]:
         lines = _event_lines(root)
         kept = [line for line in lines if not line.startswith(CONFLICT_MARKERS)]
         events: dict[str, dict[str, Any]] = {}
-        for _, event in _parsed_events(kept):
+        for _, event in _parsed_events(kept, root):
             events.setdefault(str(event.get("event_sha256")), event)
         ordered = sorted(events.values(), key=lambda event: event.get("sequence", 0) if isinstance(event.get("sequence"), int) else 0)
         heads, _ = _dag_heads(ordered)

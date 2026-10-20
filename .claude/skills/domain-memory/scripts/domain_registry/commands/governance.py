@@ -8,7 +8,7 @@ from pathlib import Path
 
 from ..attestations import audit_attestations, verify_scm
 from ..audit import anchor_error, reconcile, verify as verify_audit
-from ..common import PROPOSAL_FILE, load_json
+from ..common import PROPOSAL_FILE, load_json, shown_path
 from ..contracts import validate_schema
 from ..git_hooks import (
     governance_readiness,
@@ -18,6 +18,7 @@ from ..git_hooks import (
 )
 from ..policy import amend_policy_fields, validate_policy
 from ..signing import init_signing_key
+from ..store import refresh_indexes
 from .common import note_unsettled, print_json, report_errors
 
 
@@ -133,6 +134,12 @@ def handle_reconcile_audit(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_refresh_indexes(args: argparse.Namespace) -> int:
+    root = args.registry_root.resolve()
+    print_json({"refreshed": [shown_path(path, root) for path in refresh_indexes(root)]}, indent=None)
+    return 0
+
+
 def handle_audit_attestations(args: argparse.Namespace) -> int:
     findings = audit_attestations(
         args.repo_root.resolve(), args.changes_root.resolve(), args.verification_token_env
@@ -153,5 +160,6 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "governance-readiness": handle_governance_readiness,
     "verify-audit": handle_verify_audit,
     "reconcile-audit": handle_reconcile_audit,
+    "refresh-indexes": handle_refresh_indexes,
     "audit-attestations": handle_audit_attestations,
 }

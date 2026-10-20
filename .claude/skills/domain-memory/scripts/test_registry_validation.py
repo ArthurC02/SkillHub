@@ -14,7 +14,7 @@ from domain_registry.contracts import validate_schema
 from domain_registry.cli_commands import HANDLERS
 from domain_registry.cli_parser import build_parser
 from domain_registry.registry import migrate_evidence, validate, verify_evidence
-from domain_registry.store import read_document, write_document
+from domain_registry.store import read_document, refresh_indexes, write_document
 from test_support import VERIFIED, RegistryTestCase, append_audit, lookup, scan_secrets, use_json_layout
 
 
@@ -156,6 +156,48 @@ class RegistryValidationTest(RegistryTestCase):
         self.assertEqual(
             [], [error for error in validate(root, None, False) if "aggregate" in error or "contract" in error]
         )
+
+    def test_validate_names_every_file_that_holds_git_conflict_markers_and_nothing_else(self) -> None:
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        root = self.repo / "memory"
+        marked = "---\nname: Orders\n<<<<<<< HEAD\nresponsibility: Own orders.\n=======\nresponsibility: Own all orders.\n>>>>>>> theirs\n---\n"
+        (root / "registry" / "contexts" / "orders.md").write_text(marked, encoding="utf-8")
+        package = root / "changes" / "p1"
+        package.mkdir(parents=True)
+        (package / "proposal.json").write_text("{\n<<<<<<< HEAD\n\"a\": 1\n=======\n\"a\": 2\n>>>>>>> theirs\n}\n", encoding="utf-8")
+        policy = root / "domain-memory-policy.json"
+        policy.write_text("||||||| base\n" + policy.read_text(encoding="utf-8"), encoding="utf-8")
+        self.assertEqual(
+            [
+                "changes/p1/proposal.json holds git conflict markers at line 2; resolve the merge before validating",
+                "domain-memory-policy.json holds git conflict markers at line 1; resolve the merge before validating",
+                "registry/contexts/orders.md holds git conflict markers at line 3; resolve the merge before validating",
+            ],
+            validate(root, self.repo, False),
+        )
+
+    def test_validate_refuses_a_stale_or_missing_index_and_refresh_indexes_rebuilds_it_from_the_concept_files(self) -> None:
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        root = self.repo / "memory"
+        index = root / "registry" / "contexts" / "index.md"
+        current = index.read_text(encoding="utf-8")
+        index.write_text("# Contexts\n\n<<<<<<< HEAD\n- [Orders](orders.md)\n=======\n- [Shipping](shipping.md)\n>>>>>>> theirs\n", encoding="utf-8")
+        (root / "registry" / "rules" / "index.md").unlink()
+        stale = f"does not list the records beside it; run refresh-indexes --registry-root {root}"
+        with_markers = validate(root, self.repo, False)
+        refreshed = refresh_indexes(root)
+        self.assertEqual(
+            (
+                ["registry/contexts/index.md holds git conflict markers at line 3; resolve the merge before validating"],
+                [index, root / "registry" / "rules" / "index.md"],
+                current,
+                [],
+                [],
+            ),
+            (with_markers, refreshed, index.read_text(encoding="utf-8"), validate(root, self.repo, False), refresh_indexes(root)),
+        )
+        index.write_text("# Contexts\n", encoding="utf-8")
+        self.assertEqual([f"registry/contexts/index.md {stale}"], validate(root, self.repo, False))
 
     def test_validate_refuses_an_unhashed_citation(self) -> None:
         self.two_line_rule()

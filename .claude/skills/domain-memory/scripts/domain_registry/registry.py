@@ -12,11 +12,13 @@ from .common import (
     PROPOSAL_FILE,
     REGISTRY_STATUSES,
     REVIEW_REQUIRED_FIELDS,
+    conflict_marked_line,
     is_reviewed,
     load_json,
     record_status,
     registry_dir,
     review_field,
+    shown_path,
     template_dir,
 )
 from .evidence import (
@@ -43,6 +45,7 @@ from .store import (
     missing_registry,
     logical_documents,
     read_document,
+    stale_indexes,
     write_document,
 )
 
@@ -488,7 +491,9 @@ def _validate_evidence(
 def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list[str]:  # noqa: FBT001
     if not has_registry(root):
         return [missing_registry(root, repo_root)]
-    errors: list[str] = []
+    errors = _conflict_marker_errors(root)
+    if errors:
+        return errors
     if require_reviewed and review_mode(root) != "scm-verified":
         errors.append("local-draft-only Domain Memory cannot satisfy --require-reviewed")
     manifest = read_document(root, MANIFEST)
@@ -500,9 +505,24 @@ def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list
     errors.extend(_validate_asset_records(documents, records, require_reviewed))
     errors.extend(cross_reference_errors(records))
     errors.extend(_validate_evidence(records, repo_root))
+    errors.extend(
+        f"{shown_path(path, root)} does not list the records beside it; run refresh-indexes --registry-root {root}"
+        for path in stale_indexes(root)
+    )
     if repo_root is not None and "contexts.json" in documents:
         errors.extend(_implementation_path_errors(documents["contexts.json"], repo_root))
     return errors
+
+
+def _conflict_marker_errors(root: Path) -> list[str]:
+    scanned = (*root.glob("*.json"), *registry_dir(root).rglob("*"), *(root / "changes").rglob("*"))
+    files = sorted(path for path in scanned if path.is_file())
+    marked = ((path, conflict_marked_line(path.read_text(encoding="utf-8", errors="replace"))) for path in files)
+    return [
+        f"{shown_path(path, root)} holds git conflict markers at line {line}; resolve the merge before validating"
+        for path, line in marked
+        if line is not None
+    ]
 
 
 def _implementation_path_errors(contexts: dict[str, Any], repo_root: Path) -> list[str]:

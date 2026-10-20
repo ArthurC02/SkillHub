@@ -25,7 +25,7 @@ COMMAND_GROUPS = {
     "everyday": (
         "readiness", "probe", "lookup", "resolve-terms", "get-context", "get-record", "dependents", "brief",
         "analyze-boundary", "boundary-impact", "validate", "coverage", "verify-evidence", "verify-sources",
-        "verify-audit", "reconcile-audit", "cite", "recite", "relocate-evidence", "upsert-candidate", "retract-candidate",
+        "verify-audit", "reconcile-audit", "refresh-indexes", "cite", "recite", "relocate-evidence", "upsert-candidate", "retract-candidate",
         "promote-candidate", "harvest", "discard-harvest", "init-change-package", "validate-change-package", "submit-proposal",
         "record-test-result", "record-approval", "verify-proposal", "rebase-proposal", "ship-package", "supersede-proposal",
         "list-proposals", "quality-gates", "counterfactual",
@@ -102,7 +102,7 @@ def command_parser(parser: argparse.ArgumentParser, command: str | None) -> argp
 
 REPO_ROOT_ACCEPTED_UNUSED = (
     "lookup", "resolve-terms", "get-context", "get-record", "dependents", "analyze-boundary",
-    "verify-audit", "reconcile-audit", "init-change-package",
+    "verify-audit", "reconcile-audit", "refresh-indexes", "init-change-package",
 )
 
 
@@ -556,6 +556,8 @@ def _add_attestation_commands(commands: argparse._SubParsersAction) -> None:
     audit_parser.add_argument("--against")
     reconcile_parser = commands.add_parser("reconcile-audit", help="Reconcile audit trail")
     add_path(reconcile_parser, "--registry-root")
+    indexes_parser = commands.add_parser("refresh-indexes", help="Rebuild concept indexes")
+    add_path(indexes_parser, "--registry-root")
 
 
 def _add_hook_commands(commands: argparse._SubParsersAction) -> None:

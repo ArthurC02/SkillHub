@@ -414,7 +414,7 @@ class CliReadTest(RegistryTestCase):
         for command in (
             ("get-context", "--id", "orders"), ("get-record", "--asset", "contexts", "--id", "orders"),
             ("lookup", "--asset", "rules", "--query", "a"), ("resolve-terms", "--query", "a"),
-            ("dependents", "--asset", "contexts", "--id", "orders"), ("verify-audit",), ("reconcile-audit",),
+            ("dependents", "--asset", "contexts", "--id", "orders"), ("verify-audit",), ("reconcile-audit",), ("refresh-indexes",),
         ):
             with self.subTest(command[0]):
                 result = self.run_cli(command[0], "--registry-root", memory, "--repo-root", str(self.repo), *command[1:])

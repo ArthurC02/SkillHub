@@ -2,6 +2,18 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.3.2
+
+### Added
+
+- `refresh-indexes --registry-root <path>` rewrites `registry/index.md` and each `registry/<asset>/index.md` from the concept files beside them and prints the indexes it rewrote, so an index a merge conflicted in is rebuilt rather than resolved by hand. After a merge the procedure is `reconcile-audit`, `refresh-indexes`, `validate`.
+
+### Changed
+
+- `validate` refuses a Registry while any file under `registry/`, under `changes/` or any JSON file at the root holds git conflict markers, naming every such file with its line, `registry/contexts/orders.md holds git conflict markers at line 3; resolve the merge before validating`, and reports nothing else until they are gone. Before, a marked concept file surfaced as a decoding error that named no cause.
+- `validate` refuses an asset index that does not list the concept files beside it, `registry/contexts/index.md does not list the records beside it; run refresh-indexes --registry-root <path>`.
+- `verify-audit`, and every command that reads the log, report a conflict-marker line as `conflict markers at event N; run reconcile-audit --registry-root <path>` instead of `audit event N is invalid JSON`.
+
 ## 1.3.1
 
 ### Changed

@@ -278,6 +278,16 @@ def registry_dir(root: Path) -> Path:
     return root / "registry"
 
 
+CONFLICT_MARKERS = ("<<<<<<< ", "=======", ">>>>>>> ", "||||||| ")
+
+
+def conflict_marked_line(text: str) -> int | None:
+    for number, line in enumerate(text.splitlines(), start=1):
+        if line.startswith(CONFLICT_MARKERS):
+            return number
+    return None
+
+
 @contextmanager
 def writer_lock(root: Path):
     lock = root / ".domain-registry.lock"

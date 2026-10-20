@@ -14,6 +14,7 @@ Everything lives under one Registry root, inside the repository:
   source-map.json             the repository paths the facts may cite, with a snapshot of each
   domain-memory-policy.json   who may approve a fact, and how that approval is checked
   audit/events.jsonl          a hash-linked log of every write; two clones' writes merge, reconcile-audit joins them
+  registry/<asset>/index.md   derived from the concept files; refresh-indexes rebuilds it after a merge
   changes/<package>/          Change Packages, by convention; any directory inside the repository works
 ```
 
