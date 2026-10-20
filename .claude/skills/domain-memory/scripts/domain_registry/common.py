@@ -203,7 +203,8 @@ def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 
 DOMAIN_MEMORY_HINT = (
-    "check --registry-root (a Registry holds registry/ and source-map.json); "
+    "check --registry-root (a Registry holds registry/index.md or registry/manifest.json, "
+    "or a domain-source-map/v1 source-map.json); "
     "initialize one only if this repository has none yet"
 )
 

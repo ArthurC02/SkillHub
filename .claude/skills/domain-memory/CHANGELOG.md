@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.32
+
+### Changed
+
+- The hint a refusal gives for a missing Domain Memory, `check --registry-root (...)`, now states the one rule: a Registry holds `registry/index.md` or `registry/manifest.json`, or a `domain-source-map/v1` `source-map.json`. It used to say a Registry holds `registry/` and `source-map.json`, the loose rule the code no longer applies.
+
 ## 1.2.31
 
 ### Fixed
