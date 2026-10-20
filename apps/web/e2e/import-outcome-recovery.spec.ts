@@ -5,7 +5,7 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { ImportResult } from "../src/core/api/types";
 import { platformResponse, SKILL, VERSION } from "../src/testing/fixtures/platform";
-import { stubPlatform } from "./stub";
+import { STATIC_KINDS, stubPlatform } from "./stub";
 
 const RECEIPT: ImportResult = {
   shape: "skill",
@@ -139,7 +139,12 @@ async function checkLibraryWithoutLeaving(page: Page) {
 }
 
 async function stubPopupPlatform(page: Page) {
-  await page.context().route("**/*", (route) => {
+  await page.context().route("**/*", async (route) => {
+    const kind = route.request().resourceType();
+    if (kind !== "document" && STATIC_KINDS.has(kind)) {
+      const response = await route.fetch({ maxRetries: 0 });
+      return route.fulfill({ response });
+    }
     if (!["xhr", "fetch"].includes(route.request().resourceType())) return route.continue();
     const result = platformResponse(route.request().url());
     return route.fulfill({ status: result.status, json: result.body });
