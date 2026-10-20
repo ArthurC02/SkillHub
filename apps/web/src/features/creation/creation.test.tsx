@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { CreationSession } from "./create/components/CreationSession";
 import { CreateHub } from "./components/CreateHub";
@@ -10,6 +10,7 @@ import type { CreationSession as Session, CreationSnapshot } from "./creation.se
 import { useCreationEntryPoint } from "./creation.service";
 import { pollUntil } from "../../testing/poll";
 import { ME } from "../../testing/fixtures/platform";
+import { queryKeys } from "../../core/api/queryKeys";
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
     children,
@@ -646,6 +647,10 @@ test("the transcript is a named live region and the list keeps its own semantics
   expect(log, "對話不是即時區域，新訊息不會被念出來").not.toBe(null);
   expect(log.getAttribute("aria-label")).toBeTruthy();
   expect(log.querySelector("ol.creation-log"), "角色蓋掉了清單語意").not.toBe(null);
+  const transcript = box.querySelector(".creation-stream")!;
+  expect(transcript.getAttribute("role")).toBe("region");
+  expect(transcript.getAttribute("aria-label")).toBe("創作對話與決策");
+  expect(transcript.getAttribute("tabindex")).toBe("0");
 });
 function recordScrolls() {
   const scrolls: { target: Element; block?: string }[] = [];
@@ -2473,4 +2478,158 @@ test("an unknown pending action stays visible in state without inventing a decis
   expect(box.querySelector(".creation-workbench")).not.toBeNull();
   expect(box.querySelector(".creation-focus")).toBeNull();
   expect(box.querySelector('.creation-state [role="status"]')?.textContent).toBeTruthy();
+});
+
+test("a selected creation waits for its first reply instead of offering another session", async () => {
+  let release!: (value: Response) => void;
+  const reply = new Promise<Response>((resolve) => (release = resolve));
+  const writes: unknown[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") writes.push(init.body);
+      return url.endsWith("/creation-sessions/s1") ? reply : routeGet(url, [], sample());
+    }),
+  );
+  try {
+    await render(<CreationSession sessionId="s1" />);
+    expect(box.querySelector(".creation-current")?.textContent).toContain("載入創作紀錄中");
+    expect(box.querySelector(".starter-cards")).toBeNull();
+    expect(box.querySelector(".composer")).toBeNull();
+    expect(box.querySelector('input[name="creation-budget"]')).toBeNull();
+    expect(writes).toEqual([]);
+    await act(async () => release(await response(sample())));
+    await waitFor(() => !!box.querySelector('.creation-state [role="status"]'));
+    expect(box.querySelector(".creation-current")?.textContent).toContain("摘要任務");
+    expect(box.querySelector(".composer")).not.toBeNull();
+    expect(box.querySelector('input[name="creation-budget"]')).toBeNull();
+    expect(writes).toEqual([]);
+  } finally {
+    release(await response(sample()));
+  }
+});
+
+test("a selected creation explains an offline initial read without opening a new composer", async () => {
+  const fetcher = vi.fn((url: string) => routeGet(url, [], sample()));
+  vi.stubGlobal("fetch", fetcher);
+  onlineManager.setOnline(false);
+  try {
+    await render(<CreationSession sessionId="s1" />);
+    expect(box.querySelector(".creation-current")?.textContent).toContain("等待連線以讀取創作紀錄");
+    expect(box.querySelector(".creation-current .loading-skeleton")).toBeNull();
+    expect(box.querySelector(".starter-cards")).toBeNull();
+    expect(box.querySelector(".composer")).toBeNull();
+    expect(fetcher).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => onlineManager.setOnline(true));
+  }
+});
+
+for (const status of [404, 503]) {
+  test(`a selected creation read refused with ${status} retries that record without starting another`, async () => {
+    let reads = 0;
+    const writes: unknown[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method === "POST") writes.push(init.body);
+        if (url.endsWith("/creation-sessions/s1")) {
+          reads++;
+          return reads === 1 ? response({ error: "unavailable" }, status) : response(sample());
+        }
+        return routeGet(url, [], sample());
+      }),
+    );
+    await render(<CreationSession sessionId="s1" />);
+    await waitFor(() => !!box.querySelector('.creation-current [role="alert"]'));
+    expect(box.querySelector(".starter-cards")).toBeNull();
+    expect(box.querySelector(".composer")).toBeNull();
+    expect(box.querySelector('input[name="creation-budget"]')).toBeNull();
+    expect(reads).toBe(1);
+    expect(writes).toEqual([]);
+    await click("再試一次");
+    await waitFor(() => !!box.querySelector('.creation-state [role="status"]'));
+    expect(box.querySelector(".creation-current")?.textContent).toContain("摘要任務");
+    expect(box.querySelector(".composer")).not.toBeNull();
+    expect(box.querySelector('input[name="creation-budget"]')).toBeNull();
+    expect(reads).toBe(2);
+    expect(writes).toEqual([]);
+  });
+}
+
+test("a selected creation that needs login offers sign-in without a new-session composer", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      url.endsWith("/creation-sessions/s1")
+        ? response({ error: "not authenticated" }, 401)
+        : routeGet(url, [], sample()),
+    ),
+  );
+  await render(<CreationSession sessionId="s1" />);
+  await waitFor(
+    () =>
+      box.querySelector(".creation-current")?.textContent?.includes("創作紀錄需要登入") === true,
+  );
+  expect(box.querySelector(".starter-cards")).toBeNull();
+  expect(box.querySelector(".composer")).toBeNull();
+  expect(box.querySelector(".creation-current")?.textContent).not.toContain("再試一次");
+  expect(box.querySelector(".creation-current")?.textContent).not.toContain("not authenticated");
+});
+
+test("a cached creation hides its old read error while a paused retry preserves the draft", async () => {
+  const current = sample();
+  q.setQueryData(queryKeys.creation.session("s1"), current);
+  let reads = 0;
+  const writes: unknown[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") writes.push(init.body);
+      if (url.endsWith("/creation-sessions/s1")) {
+        reads++;
+        return reads === 1
+          ? response({ error: "unavailable" }, 503)
+          : response({
+              ...current,
+              snapshot: { ...current.snapshot, brief: "更新後的需求" },
+            });
+      }
+      return routeGet(url, [], current);
+    }),
+  );
+  await render(<CreationSession sessionId="s1" />);
+  await waitFor(() => !!box.querySelector('.creation-current [role="alert"]'));
+  await input("想完成的任務", "尚未送出的補充");
+  onlineManager.setOnline(false);
+  try {
+    await click("再試一次");
+    await pollUntil(
+      () => q.getQueryState(queryKeys.creation.session("s1"))?.fetchStatus === "paused",
+      () => box.textContent,
+      2500,
+      { flushBeforeFirstCheck: true },
+    );
+    expect(box.querySelector(".creation-current")?.textContent).toContain(
+      "等待連線以重新讀取創作紀錄",
+    );
+    expect(box.querySelector('.creation-current [role="alert"]')).toBeNull();
+    expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe(
+      "尚未送出的補充",
+    );
+    expect(box.querySelector(".creation-current")?.textContent).toContain("摘要任務");
+    expect(reads).toBe(1);
+    expect(writes).toEqual([]);
+    await act(async () => onlineManager.setOnline(true));
+    await waitFor(
+      () => box.querySelector(".creation-current")?.textContent?.includes("更新後的需求") === true,
+    );
+    expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe(
+      "尚未送出的補充",
+    );
+    expect(reads).toBe(2);
+    expect(writes).toEqual([]);
+  } finally {
+    await act(async () => onlineManager.setOnline(true));
+  }
 });

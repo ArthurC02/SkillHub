@@ -238,7 +238,11 @@ test("changing the session address clears unsent composer input from the previou
     creationRoute([], [SESSION, SECOND_SESSION]),
   );
   await visit(
-    () => text().includes("把每週報告整理成摘要"),
+    () =>
+      container
+        .querySelector(".creation-current")
+        ?.textContent?.includes("把每週報告整理成摘要") === true &&
+      container.querySelector('textarea[aria-label="想完成的任務"]') !== null,
     `/workspace/creations?session=${SESSION_ID}`,
   );
   const firstComposer = container.querySelector<HTMLTextAreaElement>(
@@ -259,7 +263,13 @@ test("changing the session address clears unsent composer input from the previou
       search: { session: SECOND_SESSION_ID },
     });
   });
-  await waitFor(() => text().includes("整理另一個完全不同的任務"));
+  await waitFor(
+    () =>
+      container
+        .querySelector(".creation-current")
+        ?.textContent?.includes("整理另一個完全不同的任務") === true &&
+      container.querySelector('textarea[aria-label="想完成的任務"]') !== null,
+  );
 
   expect(
     container.querySelector<HTMLTextAreaElement>('textarea[aria-label="想完成的任務"]')!.value,

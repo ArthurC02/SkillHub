@@ -10,17 +10,13 @@ export function useMessageStream(
   const stream = useRef<HTMLDivElement>(null);
   const [latestHidden, setLatestHidden] = useState(false),
     [unseen, setUnseen] = useState(0);
-  useEffect(() => {
+  const onScroll = () => {
     const el = stream.current;
     if (!el) return;
-    const onScroll = () => {
-      const hidden = isBelow(newestMessageIn(el), el);
-      setLatestHidden(hidden);
-      if (!hidden) setUnseen(0);
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, []);
+    const hidden = isBelow(newestMessageIn(el), el);
+    setLatestHidden(hidden);
+    if (!hidden) setUnseen(0);
+  };
   const showLatest = () => {
     if (stream.current) newestMessageIn(stream.current)?.scrollIntoView?.({ block: "start" });
     setLatestHidden(false);
@@ -42,5 +38,5 @@ export function useMessageStream(
         ?.querySelector(".creation-log > li[data-pending]")
         ?.scrollIntoView?.({ block: "nearest" });
   }, [working]);
-  return { stream, latestHidden, unseen, showLatest };
+  return { stream, latestHidden, unseen, showLatest, onScroll };
 }
