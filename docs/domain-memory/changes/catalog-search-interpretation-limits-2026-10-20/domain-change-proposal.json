@@ -3,12 +3,12 @@
   "proposal_id": "catalog-search-interpretation-limits-2026-10-20",
   "proposer": "domain-memory-agent",
   "requirement_id": "catalog-search-interpretation-limits-2026-10-20",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-20T14:46:24.565144Z",
   "verified_at": "2026-10-20T14:46:47.549610Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-20T14:47:02.994301Z",
+  "applied_at": "2026-10-20T14:47:39.994934Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "fbb2d44eb8f0a4418a721f02cad7ae0984f4ea09",
@@ -173,5 +173,9 @@
         "committed_digest": "sha256:cd7108d5c4686ba27760b4fe6d522eaaf7654fc067cecfa9247b9b5b49eb1e9d"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "98910d3cecefa2129f8bd77ed61988239b422a0a",
+    "registry_digest": "sha256:4c71e98df871f3240c04b8c0537fa95fd05141a45e125f088acd30151b2c4260"
+  }
 }

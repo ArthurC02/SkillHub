@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-20T14:46:47.256731Z"
 sources:
   - resource: "apps/platform/internal/skill/discovery/intent.go#L100-102"
     excerpt_sha256: "sha256:20a3b297e2c0a30297180e30aacafa117d16b184e51e8c746d74d04070e626f0"
