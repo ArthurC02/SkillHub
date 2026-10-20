@@ -3,7 +3,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from .common import DOMAIN_MEMORY_HINT, holds_domain_memory, shown_path
+from .common import DOMAIN_MEMORY_HINT, holds_domain_memory, is_domain_source_map, shown_path
 from .git import run_git
 
 DOMAIN_MEMORY_MARKERS = (":(glob)**/source-map.json", ":(glob)**/registry/index.md", ":(glob)**/registry/manifest.json")
@@ -41,7 +41,8 @@ def _domain_memories_known_to_git(repo_root: Path) -> list[Path] | None:
         return None
     if result.returncode != 0:
         return None
-    return [_home_of(repo_root / path) for path in result.stdout.split("\0") if path]
+    markers = [repo_root / path for path in result.stdout.split("\0") if path]
+    return [_home_of(marker) for marker in markers if marker.name != "source-map.json" or is_domain_source_map(marker)]
 
 
 def _home_of(marker: Path) -> Path:

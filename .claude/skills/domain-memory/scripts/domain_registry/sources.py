@@ -7,6 +7,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .common import (
+    SOURCE_MAP_FORMAT,
     shown_path,
     completed_identifier,
     load_json,
@@ -212,7 +213,7 @@ def discover_sources(root: Path) -> dict[str, Any]:
         },
     ]
     return {
-        "format": "domain-source-map/v1",
+        "format": SOURCE_MAP_FORMAT,
         "repo_root": ".",
         "source_order": [group["kind"] for group in groups],
         "source_groups": groups,

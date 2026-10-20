@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.2.30
+
+### Fixed
+
+- A `source-map.json` that is not a Domain Memory source map, such as a build artifact or a file that is not JSON, no longer counts as a Domain Memory when `readiness` looks for one or a refusal says "did you mean"; only a file whose `format` is `domain-source-map/v1`, or a `registry/` directory, does. Before, such a file sent `readiness` to the "several Domain Memories" branch and dropped the Registry signals until `--registry-root` was passed.
+
 ## 1.2.29
 
 ### Added

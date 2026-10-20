@@ -208,8 +208,18 @@ DOMAIN_MEMORY_HINT = (
 )
 
 
+SOURCE_MAP_FORMAT = "domain-source-map/v1"
+
+
 def holds_domain_memory(path: Path) -> bool:
-    return (path / "source-map.json").is_file() or (path / "registry").is_dir()
+    return is_domain_source_map(path / "source-map.json") or (path / "registry").is_dir()
+
+
+def is_domain_source_map(path: Path) -> bool:
+    try:
+        return load_json(path).get("format") == SOURCE_MAP_FORMAT
+    except (OSError, ValueError, AttributeError):
+        return False
 
 
 def one_level_too_deep_hint(path: Path) -> str:

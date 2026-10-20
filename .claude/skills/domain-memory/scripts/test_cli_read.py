@@ -135,6 +135,20 @@ class CliReadTest(RegistryTestCase):
                     (result.returncode, result.stderr),
                 )
 
+    def test_an_unrelated_file_named_source_map_json_is_not_a_domain_memory(self) -> None:
+        self.committed_source_map()
+        (self.repo / "web" / "build").mkdir(parents=True)
+        (self.repo / "web" / "build" / "source-map.json").write_text('{"version": 3, "sources": ["app.ts"]}\n', encoding="utf-8")
+        (self.repo / "web" / "notes").mkdir()
+        (self.repo / "web" / "notes" / "source-map.json").write_text("not json\n", encoding="utf-8")
+        (self.repo / "web" / "other").mkdir()
+        (self.repo / "web" / "other" / "source-map.json").write_text('{"format": "something-else/v1"}\n', encoding="utf-8")
+        result = self.run_cli("refresh-listing", "--registry-root", str(self.repo), "--repo-root", str(self.repo))
+        self.assertEqual(
+            (1, f"ERROR: no Domain Memory at .: {DOMAIN_MEMORY_HINT}; did you mean memory?\n"),
+            (result.returncode, result.stderr),
+        )
+
     def test_a_repository_with_several_registries_lists_them_including_one_two_levels_down(self) -> None:
         self.committed_source_map()
         deeper = self.repo / "docs" / "dm"
