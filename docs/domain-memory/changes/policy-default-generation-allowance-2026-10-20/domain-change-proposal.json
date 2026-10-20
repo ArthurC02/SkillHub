@@ -3,12 +3,12 @@
   "proposal_id": "policy-default-generation-allowance-2026-10-20",
   "proposer": "domain-memory-agent",
   "requirement_id": "policy-default-generation-allowance-2026-10-20",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-20T14:04:13.255184Z",
   "verified_at": "2026-10-20T14:04:15.324171Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-20T14:10:56.391377Z",
+  "applied_at": "2026-10-20T14:11:24.959546Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "f62d4467af30e5a3b7c2b70050fbbb2f36967d0e",
@@ -105,5 +105,9 @@
         "committed_digest": "sha256:488ee913f62853104c1ab08f4342e12eac2683a0ba241edc98744f11057d4297"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "3b65d282a2b5a2842c64efa62ff3608e666ca090",
+    "registry_digest": "sha256:c1af90c96dd4e976c027e11726b1e8713bebca8f0be6a0f0a9cc6edd0ef023d2"
+  }
 }

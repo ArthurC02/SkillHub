@@ -3,12 +3,12 @@
   "proposal_id": "ingest-generation-guards-2026-10-20",
   "proposer": "domain-memory-agent",
   "requirement_id": "ingest-generation-guards-2026-10-20",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-20T14:09:51.418216Z",
   "verified_at": "2026-10-20T14:10:37.200269Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-20T14:11:27.895661Z",
+  "applied_at": "2026-10-20T14:11:54.583561Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "f62d4467af30e5a3b7c2b70050fbbb2f36967d0e",
@@ -241,5 +241,9 @@
         "committed_digest": "sha256:488ee913f62853104c1ab08f4342e12eac2683a0ba241edc98744f11057d4297"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "3b65d282a2b5a2842c64efa62ff3608e666ca090",
+    "registry_digest": "sha256:cd7108d5c4686ba27760b4fe6d522eaaf7654fc067cecfa9247b9b5b49eb1e9d"
+  }
 }
