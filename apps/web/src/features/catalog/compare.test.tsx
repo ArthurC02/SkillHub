@@ -11,6 +11,8 @@ import {
   OTHER_RUN,
   RUN,
   RUNS,
+  SKILL,
+  SKILL_VERSIONS,
   TEST_CASE,
   platformResponse,
   skillDetail,
@@ -85,6 +87,53 @@ test("EVAL-003 waits for the 測試題 before loading candidate runs", async () 
   expect(runLists.length).toBeGreaterThan(0);
   expect(runLists.every((url) => url.includes(`test_case_id=${TEST_CASE}`))).toBe(true);
 });
+
+test.each([
+  ["canonical source", "canonical", false, "比較基準：v1"],
+  ["case-equivalent source", "uppercase", false, "比較基準：v1"],
+  ["unmapped source", "missing", false, "比較基準：版本編號未知"],
+  ["unreadable metadata", "canonical", true, "比較基準：版本編號未知"],
+] as const)(
+  "comparison identifies its %s without borrowing a candidate version",
+  async (_name, identity, failed, expected) => {
+    const sourceVersion = {
+      ...SKILL_VERSIONS.versions.find((version) => version.version_number === 1)!,
+      version_id: "abcdefab-1111-4111-8111-111111111111",
+    };
+    const versionId =
+      identity === "missing"
+        ? "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+        : identity === "uppercase"
+          ? sourceVersion.version_id.toUpperCase()
+          : sourceVersion.version_id;
+    const reads: string[] = [];
+    vi.stubGlobal("fetch", (input: string) => {
+      const url = String(input);
+      reads.push(url);
+      const response = platformResponse(url);
+      if (pathOf(url) === `/runs/${RUN}`)
+        return json({ ...(response.body as object), skill_version_id: versionId });
+      if (failed && pathOf(url) === `/skills/${SKILL}/versions`)
+        return json({ error: "service unavailable" }, 503);
+      if (pathOf(url) === `/skills/${SKILL}/versions`)
+        return json({
+          versions: SKILL_VERSIONS.versions.map((version) =>
+            version.version_number === 1 ? sourceVersion : version,
+          ),
+        });
+      return json(response.body, response.status);
+    });
+    await render(<RunCompare />);
+    await waitFor(() =>
+      Array.from(container.querySelectorAll("p")).some((node) => node.textContent === expected),
+    );
+    expect(
+      Array.from(container.querySelectorAll("p")).some((node) => node.textContent === expected),
+    ).toBe(true);
+    expect(text()).not.toContain("比較基準：v2");
+    expect(reads.filter((url) => pathOf(url) === `/skills/${SKILL}/versions`)).toHaveLength(1);
+  },
+);
 
 test("EVAL-003 comparison does not fetch a version diff outside the platform", async () => {
   const calls: string[] = [];

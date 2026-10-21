@@ -4,6 +4,15 @@ import { ApiError, apiFetch } from "../api/client";
 import { queryKeys } from "../api/queryKeys";
 import type { AccountDeletion, Me } from "../api/types";
 
+const reloadingClients = new WeakSet<ReturnType<typeof useQueryClient>>();
+
+function reloadSession(client: ReturnType<typeof useQueryClient>) {
+  if (reloadingClients.has(client)) return;
+  reloadingClients.add(client);
+  client.clear();
+  window.location.reload();
+}
+
 export async function getMe(): Promise<Me> {
   const result = await apiFetch<unknown>("/me");
   if (!isMe(result)) throw new Error("Invalid session response");
@@ -50,8 +59,7 @@ export function useSessionBoundary() {
     if (!me.isSuccess && !(me.error instanceof ApiError && me.error.status === 401)) return;
     const identity = me.isSuccess ? `${me.data.user_id}/${me.data.workspace_id}` : null;
     if (previousIdentity.current !== undefined && previousIdentity.current !== identity) {
-      client.clear();
-      window.location.reload();
+      reloadSession(client);
     }
     previousIdentity.current = identity;
   }, [client, me.data, me.isSuccess, me.error]);
@@ -89,8 +97,7 @@ export function useDevSignIn() {
   return useMutation({
     mutationFn: devLogin,
     onSuccess: () => {
-      client.clear();
-      window.location.reload();
+      reloadSession(client);
     },
   });
 }
@@ -136,14 +143,12 @@ export function useSignOut() {
         });
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          client.clear();
-          window.location.reload();
+          reloadSession(client);
         }
       }
     },
     onSuccess: () => {
-      client.clear();
-      window.location.reload();
+      reloadSession(client);
     },
   });
 }

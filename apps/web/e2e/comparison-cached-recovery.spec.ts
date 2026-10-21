@@ -74,6 +74,11 @@ for (const dependency of ["self", "candidates", "versions"] as const) {
           await expect(page.getByRole("button", { name: /^以 v2、/ })).toBeVisible();
           await nav.getByRole("link", { name: "總覽", exact: true }).click();
           await expect(page.getByRole("heading", { level: 1 })).not.toHaveText("試跑比較");
+          await expect(
+            page
+              .getByRole("region", { name: "版本", exact: true })
+              .getByText(/共\s*2\s*版，最新 v2/),
+          ).toBeVisible();
           control.phase = "error";
           await page.goBack();
           await expect(page.getByRole("alert")).toContainText(`暫時無法讀取${what}`);
