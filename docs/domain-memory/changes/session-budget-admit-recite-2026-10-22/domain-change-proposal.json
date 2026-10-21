@@ -3,12 +3,12 @@
   "proposal_id": "session-budget-admit-recite",
   "proposer": "domain-memory-agent",
   "requirement_id": "session-budget-admit-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-21T18:23:33.351664Z",
   "verified_at": "2026-10-21T18:23:35.310436Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-21T18:26:06.207944Z",
+  "applied_at": "2026-10-21T18:27:36.180970Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "1424b26c77ab38c268d22f1a22a72360f50f46c4",
@@ -76,5 +76,9 @@
   "approvals": [],
   "supersedes": [
     "creation-harvest-rules-2026-10-17"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "9d55d49f9d504bdc6fb3e2650c2985e15ec1cffd",
+    "registry_digest": "sha256:0a9cc76d732c07c3a7355b8d036d440f348c7ed6e35d27cd9db24b81f5310b61"
+  }
 }

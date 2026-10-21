@@ -5,8 +5,8 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-17T15:16:09.817174Z"
 sources:
-  - resource: "apps/platform/internal/creator/creation/session_start.go#L32-52"
-    excerpt_sha256: "sha256:b20110a1f8ae1270f000a1990171cfd12ae18a370e6c5dacd0a52b9a53e30c9f"
+  - resource: "apps/platform/internal/creator/creation/session_start.go#L32-50"
+    excerpt_sha256: "sha256:22ae849259584fe6019f5d11e7627f2e2380bf7b5883c9718fec6a5bfe48e515"
   - resource: "apps/platform/internal/creator/creation/start_test.go#L16-45"
     excerpt_sha256: "sha256:87a2f6d2cef57d471c95b6b55fe4e64e52e7f9ffe5f2fee896b9400c4047681f"
 ---
