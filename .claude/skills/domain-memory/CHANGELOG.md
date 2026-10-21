@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.3.8
+
+### Changed
+
+- The shifted-citation note agrees with its count: `relocate-evidence re-cites it` for one citation, `them` for several.
+
 ## 1.3.7
 
 ### Changed

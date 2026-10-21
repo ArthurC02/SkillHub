@@ -1036,7 +1036,7 @@ def shifted_citation_notes(proposal: dict[str, Any], repo_root: Path) -> list[st
             notes.append(
                 f"NOTE: registry update {raw.get('asset')}/{raw['record'].get('id')} cites {count} citation{'s' if count > 1 else ''} "
                 f"whose lines are unchanged but now sit elsewhere in {', '.join(paths)}; this passes every check and "
-                "needs no Change Package of its own; when the record is next touched, relocate-evidence re-cites them"
+                f"needs no Change Package of its own; when the record is next touched, relocate-evidence re-cites {'them' if count > 1 else 'it'}"
             )
     return notes
 

@@ -552,7 +552,7 @@ class CliProposalsTest(RegistryTestCase):
         self.assertEqual(
             (False, ["NOTE: registry update rules/order-total cites 1 citation whose lines are unchanged but now sit "
                         "elsewhere in README.md; this passes every check and needs no Change Package of its own; when the "
-                        "record is next touched, relocate-evidence re-cites them"]),
+                        "record is next touched, relocate-evidence re-cites it"]),
             ("cites evidence that is shifted" in result.stderr, notes),
         )
 
