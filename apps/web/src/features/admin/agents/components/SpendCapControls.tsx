@@ -82,6 +82,7 @@ export function SpendCapControls({
                 setSourceMicros(agent.daily_spend_cap_usd_micros);
               }}
               readOnly={readOnly}
+              aria-invalid={micros === null}
               aria-describedby={micros === null ? `${fieldId}-range` : undefined}
             />
             {micros === null && (

@@ -4,6 +4,8 @@ import { useUpdateTestCase } from "../../testcases.service";
 import type { TestCase } from "../../testcases.service";
 import { MutationError } from "./MutationError";
 
+const MAX_FACT_CHARS = 1500;
+
 function factsOf(text: string) {
   return text
     .split("\n")
@@ -16,6 +18,15 @@ export function SimulatedUserForm({ testCase }: { testCase: TestCase }) {
   const save = useUpdateTestCase(testCase.test_case_id);
   const facts = factsOf(text);
   const tooMany = facts.length > SimulatedUserFactsMaxItems;
+  const totalCharacters = facts.reduce((total, fact) => total + Array.from(fact).length, 0);
+  const tooLong = totalCharacters > MAX_FACT_CHARS;
+  const invalid = tooMany || tooLong;
+  const explanation = [
+    tooMany ? `目前 ${facts.length} 行，最多 ${SimulatedUserFactsMaxItems} 行。` : null,
+    tooLong ? `目前合計 ${totalCharacters} 個字，最多 ${MAX_FACT_CHARS} 個字。` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <>
@@ -36,18 +47,19 @@ export function SimulatedUserForm({ testCase }: { testCase: TestCase }) {
             setText(e.target.value);
           }}
           readOnly={save.isPending}
+          aria-invalid={invalid}
           aria-describedby="simulated-user-limit"
         />
         <br />
-        <span id="simulated-user-limit" className="note" role={tooMany ? "status" : undefined}>
-          {tooMany
-            ? `目前 ${facts.length} 行，最多 ${SimulatedUserFactsMaxItems} 行。`
-            : `最多 ${SimulatedUserFactsMaxItems} 行，合計最多 1500 個字。`}
+        <span id="simulated-user-limit" className="note" role={invalid ? "status" : undefined}>
+          {invalid
+            ? explanation
+            : `最多 ${SimulatedUserFactsMaxItems} 行，合計最多 ${MAX_FACT_CHARS} 個字。`}
         </span>
       </p>
       <button
         type="button"
-        disabled={save.isPending || tooMany}
+        disabled={save.isPending || invalid}
         onClick={() => save.mutate({ simulated_user_facts: facts })}
       >
         {save.isPending ? "儲存中…" : "儲存模擬使用者"}

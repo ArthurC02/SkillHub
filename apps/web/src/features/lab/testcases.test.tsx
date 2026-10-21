@@ -518,6 +518,56 @@ test("eleven facts cannot be saved and the screen says how many lines there are"
   expect(text()).toContain("目前 11 行，最多 10 行。");
 });
 
+test.each([
+  { name: "plain boundary", input: "字".repeat(1500), invalid: false, problems: [] },
+  {
+    name: "plain overflow",
+    input: "字".repeat(1501),
+    invalid: true,
+    problems: ["目前合計 1501 個字，最多 1500 個字。"],
+  },
+  { name: "astral boundary", input: "𠮷".repeat(1500), invalid: false, problems: [] },
+  {
+    name: "astral overflow",
+    input: "𠮷".repeat(1501),
+    invalid: true,
+    problems: ["目前合計 1501 個字，最多 1500 個字。"],
+  },
+  {
+    name: "trimmed aggregate boundary",
+    input: `  ${"甲".repeat(750)}  \n\n ${"乙".repeat(750)}  `,
+    invalid: false,
+    problems: [],
+  },
+  {
+    name: "aggregate overflow",
+    input: `${"甲".repeat(750)}\n${"乙".repeat(751)}`,
+    invalid: true,
+    problems: ["目前合計 1501 個字，最多 1500 個字。"],
+  },
+  {
+    name: "both limits exceeded",
+    input: `${"字".repeat(1491)}\n${Array(10).fill("乙").join("\n")}`,
+    invalid: true,
+    problems: ["目前 11 行，最多 10 行。", "目前合計 1501 個字，最多 1500 個字。"],
+  },
+  { name: "blank optional facts", input: "  \n\n ", invalid: false, problems: [] },
+])("simulated facts expose accurate validation for $name", async ({ input, invalid, problems }) => {
+  const calls = stubPlatform();
+  await render();
+  const box = container.querySelector<HTMLTextAreaElement>("#simulated-user-facts")!;
+  await act(async () => setValue(box, input));
+  expect(box.value).toBe(input);
+  expect(button("儲存模擬使用者").disabled).toBe(invalid);
+  if (invalid) expect(box.getAttribute("aria-invalid")).toBe("true");
+  else expect([null, "false"]).toContain(box.getAttribute("aria-invalid"));
+  expect(box.getAttribute("aria-describedby")).toBe("simulated-user-limit");
+  const note = container.querySelector("#simulated-user-limit")!;
+  expect(note.getAttribute("role")).toBe(invalid ? "status" : null);
+  for (const problem of problems) expect(note.textContent).toContain(problem);
+  expect(calls.filter((call) => call.method === "PATCH")).toHaveLength(0);
+});
+
 test("a changed prompt is not labelled as saved by the previous request", async () => {
   stubPlatform();
   await render();

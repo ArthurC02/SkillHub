@@ -1663,13 +1663,17 @@ test("OPS-011: an agent's daily spend cap accepts up to five dollars and sends m
   await mountAt("/admin/agents");
   await waitFor(has("（預設）"));
   await type("#admin-agent-daily-report-cap-set-note", "busy week");
+  const cap = field<HTMLInputElement>("#admin-agent-daily-report-cap");
+  expect([null, "false"]).toContain(cap.getAttribute("aria-invalid"));
 
   for (const refused of ["0", "5.000001", "0.0000001", "abc", ""]) {
     await type("#admin-agent-daily-report-cap", refused);
     expect(button("改 daily-report 的每日上限").disabled, refused).toBe(true);
+    expect(cap.getAttribute("aria-invalid"), refused).toBe("true");
   }
   await type("#admin-agent-daily-report-cap", "5");
   expect(button("改 daily-report 的每日上限").disabled).toBe(false);
+  expect([null, "false"]).toContain(cap.getAttribute("aria-invalid"));
   await click(button("改 daily-report 的每日上限"));
   await waitFor(() => calls.some((c) => c.method === "PUT"));
   expect(calls.find((c) => c.method === "PUT")).toEqual({
