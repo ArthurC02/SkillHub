@@ -84,11 +84,16 @@ export function RunCompare() {
         試跑比較
       </h1>
       {readableSelf && (
-        <SkillWorkspaceNav
-          skillId={readableSelf.skill_id}
-          versionId={readableSelf.skill_version_id}
-          testCaseId={readableSelf.test_case_id}
-        />
+        <>
+          <SkillWorkspaceNav
+            skillId={readableSelf.skill_id}
+            versionId={readableSelf.skill_version_id}
+            testCaseId={readableSelf.test_case_id}
+          />
+          <p className="note">
+            比較基準：{sourceVersionLabel(readableSelf.skill_version_id, versions)}
+          </p>
+        </>
       )}
 
       <p className="note">
@@ -121,6 +126,21 @@ export function RunCompare() {
       </ComparisonResult>
     </section>
   );
+}
+
+function sourceVersionLabel(
+  versionId: string | undefined,
+  query: ReturnType<typeof useSkillVersions>,
+) {
+  if (readFeedback(query).pending)
+    return query.fetchStatus === "paused" ? "版本編號待連線" : "版本編號載入中";
+  const version =
+    !query.error && typeof versionId === "string"
+      ? query.data?.versions.find(
+          (candidate) => candidate.version_id.toLowerCase() === versionId.toLowerCase(),
+        )
+      : undefined;
+  return version ? `v${version.version_number}` : "版本編號未知";
 }
 
 function readFeedback(
