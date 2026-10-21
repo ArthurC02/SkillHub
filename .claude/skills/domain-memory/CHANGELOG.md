@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.1.1
+
+### Fixed
+
+- The test holding each command's `--help` line to the reference reads the reference's one-section-per-command layout; 2.1.0 shipped with it reading the old table and failing.
+
 ## 2.1.0
 
 ### Changed

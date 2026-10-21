@@ -315,7 +315,7 @@ class CliTest(RegistryTestCase):
     def test_every_command_says_in_one_line_what_it_is_for_as_the_reference_does(self) -> None:
         reference = (Path(__file__).parents[1] / "references" / "script-api.md").read_text(encoding="utf-8")
         tasks: dict[str, str] = {}
-        for task, command in re.findall(r"^\| ([^|`]+?) \| `([a-z][a-z-]*)", reference, re.MULTILINE):
+        for command, task in re.findall(r"^### `([a-z][a-z-]*)`\n\n\*(.+?)\.\*$", reference, re.MULTILINE):
             tasks.setdefault(command, task.strip())
         [subcommands] = [action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)]
         helps = {choice.dest: choice.help for choice in subcommands._choices_actions}
