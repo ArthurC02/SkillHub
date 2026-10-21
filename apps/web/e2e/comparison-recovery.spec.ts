@@ -152,6 +152,7 @@ for (const dependency of ["self", "candidates", "versions"] as const) {
           ? "可比較的試跑紀錄"
           : "候選試跑紀錄的 Version 編號";
     await expect(page.getByRole("alert")).toContainText(`暫時無法讀取${what}`);
+    await page.getByText("直接輸入試跑紀錄 ID", { exact: true }).click();
     const field = page.getByLabel("要比較的另一個試跑紀錄 ID");
     await field.fill("尚未送出的 ID");
     fail = false;

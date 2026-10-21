@@ -47,7 +47,10 @@ for (const intent of ["refresh", "retry", "candidate", "manual"] as const) {
       if (picking) await expect(candidate).toBeVisible();
       if (intent === "refresh")
         await expect(table.getByText("更新前的比較輸出", { exact: true })).toHaveCount(2);
-      if (intent === "manual") await page.getByLabel("要比較的另一個試跑紀錄 ID").fill(OTHER_RUN);
+      if (intent === "manual") {
+        await page.getByText("直接輸入試跑紀錄 ID", { exact: true }).click();
+        await page.getByLabel("要比較的另一個試跑紀錄 ID").fill(OTHER_RUN);
+      }
       const action =
         intent === "retry"
           ? main.getByRole("button", { name: "再試一次", exact: true })

@@ -79,6 +79,7 @@ for (const dependency of ["self", "candidates", "versions"] as const) {
           await expect(page.getByRole("alert")).toContainText(`暫時無法讀取${what}`);
           if (dependency === "self") await expect(nav).toHaveCount(0);
           else await expect(nav).toBeVisible();
+          await page.getByText("直接輸入試跑紀錄 ID", { exact: true }).click();
           await field.fill("尚未送出的比較 ID");
           control.phase = "held";
           if (paused) await setOffline(page, true);

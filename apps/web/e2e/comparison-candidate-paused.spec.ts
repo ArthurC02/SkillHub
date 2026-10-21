@@ -38,6 +38,7 @@ for (const retrying of [false, true]) {
       const main = page.getByRole("main");
       const more = main.getByRole("button", { name: /^(載入更早的試跑紀錄|載入中…|等待連線…)$/ });
       await expect(more).toHaveText("載入更早的試跑紀錄");
+      await page.getByText("直接輸入試跑紀錄 ID", { exact: true }).click();
       const field = page.getByLabel("要比較的另一個試跑紀錄 ID");
       await field.fill("尚未送出的比較 ID");
       if (retrying) {

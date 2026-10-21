@@ -209,6 +209,32 @@ export function CompareCandidatesPicker({
 }) {
   return (
     <>
+      <details>
+        <summary>直接輸入試跑紀錄 ID</summary>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onPick(draft.trim());
+          }}
+        >
+          <label htmlFor="against">要比較的另一個試跑紀錄 ID</label>{" "}
+          <input
+            id="against"
+            required
+            pattern=".*\S.*"
+            aria-describedby="run-comparison-id-help"
+            value={draft}
+            onChange={(e) => onDraftChange(e.target.value)}
+            size={40}
+            placeholder="另一個試跑紀錄的平台 run_id"
+          />{" "}
+          <button type="submit">比較</button>
+          <p className="note" id="run-comparison-id-help">
+            輸入另一筆試跑紀錄的 ID 後開始比較。ID
+            不能只有空白；別的測試題或別的小工具的試跑紀錄也可以。
+          </p>
+        </form>
+      </details>
       <CandidateList
         selfPending={selfPending}
         selfPaused={selfPaused}
@@ -232,29 +258,6 @@ export function CompareCandidatesPicker({
         versions={versions}
         onPick={onPick}
       />
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          onPick(draft.trim());
-        }}
-      >
-        <label htmlFor="against">要比較的另一個試跑紀錄 ID</label>{" "}
-        <input
-          id="against"
-          required
-          pattern=".*\S.*"
-          aria-describedby="run-comparison-id-help"
-          value={draft}
-          onChange={(e) => onDraftChange(e.target.value)}
-          size={40}
-          placeholder="另一個試跑紀錄的平台 run_id"
-        />{" "}
-        <button type="submit">比較</button>
-        <p className="note" id="run-comparison-id-help">
-          輸入另一筆試跑紀錄的 ID 後開始比較。ID
-          不能只有空白；別的測試題或別的小工具的試跑紀錄也可以。
-        </p>
-      </form>
     </>
   );
 }
