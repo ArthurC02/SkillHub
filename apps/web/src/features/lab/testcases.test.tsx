@@ -650,6 +650,174 @@ test("Evaluation version cap measures the existing trimmed wire value", async ()
   });
 });
 
+const newCriterionDraftCases = [
+  {
+    mode: "unchanged text",
+    initialCheck: false,
+    edit: "none",
+    expectedText: "",
+    expectedCheck: null,
+  },
+  {
+    mode: "unchanged check",
+    initialCheck: true,
+    edit: "none",
+    expectedText: "",
+    expectedCheck: null,
+  },
+  {
+    mode: "newer text",
+    initialCheck: true,
+    edit: "text",
+    expectedText: "下一條草稿",
+    expectedCheck: " 42 ",
+  },
+  {
+    mode: "newer check",
+    initialCheck: false,
+    edit: "check",
+    expectedText: "已送出的這一條",
+    expectedCheck: "下一條的值",
+  },
+  {
+    mode: "cleared text",
+    initialCheck: true,
+    edit: "clear",
+    expectedText: "",
+    expectedCheck: " 42 ",
+  },
+  {
+    mode: "removed check",
+    initialCheck: true,
+    edit: "remove",
+    expectedText: "已送出的這一條",
+    expectedCheck: null,
+  },
+  {
+    mode: "reverted text",
+    initialCheck: true,
+    edit: "revert",
+    expectedText: "已送出的這一條",
+    expectedCheck: " 42 ",
+  },
+  {
+    mode: "failed save",
+    initialCheck: true,
+    edit: "none",
+    expectedText: "已送出的這一條",
+    expectedCheck: " 42 ",
+  },
+  {
+    mode: "failed newer text",
+    initialCheck: true,
+    edit: "text",
+    expectedText: "下一條草稿",
+    expectedCheck: " 42 ",
+  },
+];
+
+test.each(newCriterionDraftCases)(
+  "new criterion retains draft ownership for $mode",
+  async ({ mode, initialCheck, edit, expectedText, expectedCheck }) => {
+    const current = structuredClone(draft);
+    const calls = stubPlatform({ testCase: current });
+    const platformFetch = globalThis.fetch;
+    const writes: unknown[] = [];
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const failed = mode.startsWith("failed");
+    vi.stubGlobal("fetch", async (input: string, init?: RequestInit) => {
+      if (init?.method !== "POST" || !String(input).endsWith(`/test-cases/${TEST_CASE}/criteria`)) {
+        return platformFetch(input, init);
+      }
+      const body = JSON.parse(init.body as string);
+      writes.push(body);
+      await held;
+      if (failed) return json({ error: "新增驗收條件失敗" }, 500);
+      current.acceptance_criteria.push({
+        id: "c-added",
+        text: body.text,
+        source: "user",
+        confirmed_at: null,
+      });
+      return json(current, 201);
+    });
+    try {
+      await render();
+      const field = container.querySelector<HTMLInputElement>("#new-criterion")!;
+      await act(async () => setValue(field, "已送出的這一條"));
+      if (initialCheck) {
+        await act(async () => button("開始設計").click());
+        await waitFor(() => container.querySelector("#check-node-0-value-0") !== null);
+        await act(async () =>
+          setValue(container.querySelector<HTMLInputElement>("#check-node-0-value-0")!, " 42 "),
+        );
+      }
+      expect(button("新增").disabled).toBe(false);
+      await act(async () => button("新增").click());
+      await waitFor(() => writes.length === 1);
+      await waitFor(() => text().includes("新增中…"));
+      expect(button("新增中…").disabled).toBe(true);
+      expect(field.disabled).toBe(false);
+      if (edit === "text" || edit === "clear") {
+        await act(async () => setValue(field, expectedText));
+      } else if (edit === "revert") {
+        await act(async () => setValue(field, "暫時的改動"));
+        await act(async () => setValue(field, "已送出的這一條"));
+      } else if (edit === "check") {
+        await act(async () => button("開始設計").click());
+        await waitFor(() => container.querySelector("#check-node-0-value-0") !== null);
+        await act(async () =>
+          setValue(
+            container.querySelector<HTMLInputElement>("#check-node-0-value-0")!,
+            "下一條的值",
+          ),
+        );
+      } else if (edit === "remove") {
+        await act(async () => button("拿掉整個檢查").click());
+      }
+      await act(async () => release());
+      if (failed) await waitFor(() => text().includes("無法新增，可以再試一次。"));
+      else await waitFor(() => container.querySelector("#criterion-c-added") !== null);
+      await waitFor(() => !text().includes("新增中…"));
+      expect(field.value).toBe(expectedText);
+      const checkField = container.querySelector<HTMLInputElement>("#check-node-0-value-0");
+      if (expectedCheck === null) expect(checkField).toBeNull();
+      else expect(checkField?.value).toBe(expectedCheck);
+      expect(button("新增").disabled).toBe(expectedText === "");
+      expect(writes).toEqual([
+        {
+          source: "user",
+          text: "已送出的這一條",
+          ...(initialCheck ? { check: { kind: "contains_values", values: ["42"] } } : {}),
+        },
+      ]);
+      expect(
+        calls.filter(
+          (call) =>
+            call.method === "GET" && call.url.split("?")[0].endsWith(`/test-cases/${TEST_CASE}`),
+        ),
+      ).toHaveLength(failed ? 1 : 2);
+      const receipt = Array.from(container.querySelectorAll('[role="status"]')).find((node) =>
+        node.textContent?.includes("已新增驗收條件。"),
+      );
+      if (failed) {
+        expect(receipt).toBeUndefined();
+        const alert = container.querySelector('[role="alert"]')!;
+        const editor = container.querySelector('[aria-label="檢查方式與設計"]')!;
+        expect(alert.compareDocumentPosition(editor) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(4);
+      } else
+        expect(receipt?.textContent).toBe(
+          edit === "none" ? "已新增驗收條件。" : "已新增驗收條件。目前欄位裡的草稿尚未新增。",
+        );
+    } finally {
+      release();
+    }
+  },
+);
+
 const criterionOwnershipCases = [
   { mode: "pristine-reread", expected: "伺服器已更新的驗收條件", dirty: false, enabled: false },
   { mode: "canonical-save", expected: "已儲存的內容", dirty: false, enabled: false },

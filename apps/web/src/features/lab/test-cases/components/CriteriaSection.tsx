@@ -72,8 +72,11 @@ function addBlocker(text: string, checkReady: boolean, sizeProblem: string | nul
 }
 
 export function CriteriaSection({ testCase }: { testCase: TestCase }) {
-  const [text, setText] = useState("");
-  const [check, setCheck] = useState<CheckNode | null>(null);
+  const [draft, setDraft] = useState<{ text: string; check: CheckNode | null }>({
+    text: "",
+    check: null,
+  });
+  const { text, check } = draft;
   const checkReady = useCheckReady(check);
   const [message, setMessage] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -82,6 +85,17 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
   const suggestError = suggest.error;
   const sizeProblem = textLengthReason(text, "驗收條件", AcceptanceCriterionTextMaxLength);
   const blocker = addBlocker(text, checkReady, sizeProblem);
+
+  const addCriterion = () => {
+    const submitted = draft;
+    add.mutate(
+      { text: submitted.text, check: submitted.check ? forRequest(submitted.check) : undefined },
+      {
+        onSuccess: () =>
+          setDraft((current) => (current === submitted ? { text: "", check: null } : current)),
+      },
+    );
+  };
 
   const requestSuggestions = () =>
     suggest.mutate(undefined, {
@@ -114,7 +128,10 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
         <input
           id="new-criterion"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            const text = e.target.value;
+            setDraft((current) => ({ ...current, text }));
+          }}
           size={50}
           aria-invalid={sizeProblem !== null}
           aria-describedby={blocker?.id}
@@ -123,17 +140,7 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
           type="button"
           disabled={add.isPending || blocker !== null}
           aria-describedby={blocker?.id}
-          onClick={() =>
-            add.mutate(
-              { text, check: check ? forRequest(check) : undefined },
-              {
-                onSuccess: () => {
-                  setText("");
-                  setCheck(null);
-                },
-              },
-            )
-          }
+          onClick={addCriterion}
         >
           {add.isPending ? "新增中…" : "新增"}
         </button>{" "}
@@ -146,13 +153,22 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
           </span>
         )}
       </p>
+      {add.isSuccess && (
+        <p role="status">
+          已新增驗收條件。
+          {(text !== "" || check !== null) && "目前欄位裡的草稿尚未新增。"}
+        </p>
+      )}
+      <MutationError error={add.error} what="這一條驗收條件" fallback="無法新增，可以再試一次。" />
       <h3>這一條怎麼判定（選用）</h3>
       <p className="note">
         不設計就交給評審模型依文字判定。設計時可以把規則、評審判定與評分器用串聯、並聯、條件與
         Fan-Out 組合起來；規則能決定的不會再問評審模型。<Link to="/lab/graders">管理評分器</Link>
       </p>
-      <CheckEditor value={check} onChange={setCheck} />
-      <MutationError error={add.error} what="這一條驗收條件" fallback="無法新增，可以再試一次。" />
+      <CheckEditor
+        value={check}
+        onChange={(check) => setDraft((current) => ({ ...current, check }))}
+      />
       <ReadFailure error={suggestError} what="建議">
         <p role="alert">
           {suggestError instanceof ApiError && suggestError.status === 503
