@@ -72,7 +72,7 @@ pandas==3.0.5
 pdfminer.six==20260107
 pdfplumber==0.11.10
 phonenumbers==9.0.37
-pillow==12.3.0
+pillow==13.0.0
 pycountry==26.2.16
 pycparser==3.0
 pypdf==6.19.0

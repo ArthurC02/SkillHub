@@ -910,3 +910,30 @@ exit 1（與 CI 的 I-06 失敗相同）；`2026.08-17` → `No vulnerabilities 
 | 預設映像 | 仍是 `-18`；四項與提問工具的真模型實測在 CI 發佈的 digest 上跑過之後才移動 |
 
 **這一版改了 `run.mjs`，要反證的新行為**：提問之後 Run 停下而不是繼續回答、沒提問的 Run 不帶 `questions`。`run.test.mjs` 的兩支端到端測試各自被弄壞過一次（拿掉停下、拿掉記錄問題），都會紅。
+
+## `2026.08-19` → `2026.08-20`（2026-10-22）— **安全性修補：`@modelcontextprotocol/sdk`、`hono` 與 `pillow`；四項實測隨後補入本節**
+
+2026-10-20 公布的公告讓三個套件有可修的 High。npm 的兩個由 Dependabot 回報，`pillow` 是本機以 CI 釘住的 grype 掃描同一份建置時查到的；不修 `pillow`，I-06 會擋下這一版的發佈。
+
+| 套件 | 原版本 | 修正版本 | 公告 |
+| --- | --- | --- | --- |
+| `@modelcontextprotocol/sdk`（npm） | `1.31.0` | `1.32.1` | GHSA-46jr-4wx8-v453、GHSA-22jm-h49p-29qw（High）；GHSA-rvq5-wwqv-78pq、GHSA-6prh-2h8m-c8cw（Medium） |
+| `hono`（npm） | `4.13.9` | `4.13.13` | GHSA-5r4p-p66f-jhc7（Medium） |
+| `pillow`（Python） | `12.3.0` | `13.0.0` | GHSA-65qm-jvmh-6pqg、GHSA-p4wg-p73j-c528、GHSA-q45j-58j2-45rg（High）；GHSA-462x-pgg6-55fp、GHSA-vx6w-vv9f-6gvg（Medium） |
+
+**暴露面**：npm 的五則都在 HTTP 伺服器或 HTTP 用戶端傳輸上；`run.mjs` 只用行程內的 MCP 伺服器（`createSdkMcpServer`），沒有 HTTP 傳輸、沒有監聽埠，沙箱也沒有外網。`pillow` 的三則是解析 GIF、PDF、TIFF 時的阻斷服務與未初始化記憶體，Skill 處理使用者上傳的檔案時會走到，影響範圍是那一次 Run 的沙箱。
+
+**`pillow` 的冷卻期**：`13.0.0` 於 2026-10-16 發佈，與 npm 的 `min-release-age=7` 同一個標準，**2026-10-23 之前不推送這一版**。它是大版本，要求 Python ≥ 3.11，映像裡是 3.11.2。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `package-lock.json` 只換上表兩個 npm 套件（都在原本的版本範圍內：`^1.29.0`、`^4.11.4`，`package.json` 一字未動）；`constraints.txt` 的 `pillow`；`ARG IMAGE_VERSION` |
+| 新增的依賴 | 無 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| `run.mjs` | **未變** |
+| 預設映像 | 本節第一批推送時仍是 `-19`；四項在 CI 發佈的 digest 上跑過之後才移動 |
+
+### 本機驗證（2026-10-22，沒有任何模型呼叫）
+
+以 CI 釘住的 `anchore/grype:v0.117.0@sha256:ddf9e9f2…` 掃描本機建置，`--only-fixed --fail-on high`：`No vulnerabilities found`、exit 0（換 `pillow` 之前同一個掃描列出它的三則 High、exit 2）。同一個映像、無網路：`node --version` → `v22.23.2`，`@modelcontextprotocol/sdk` → `1.32.1`，`hono` → `4.13.13`，`PIL.__version__` → `13.0.0`，`id -u` → `65532`。`pillow` 的使用者 `python-pptx`、`python-docx` 各插入一張 PNG 並存檔成功，GIF 讀回尺寸正確，`pdfplumber` 匯入成功。
