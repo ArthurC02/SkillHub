@@ -937,3 +937,27 @@ exit 1（與 CI 的 I-06 失敗相同）；`2026.08-17` → `No vulnerabilities 
 ### 本機驗證（2026-10-22，沒有任何模型呼叫）
 
 以 CI 釘住的 `anchore/grype:v0.117.0@sha256:ddf9e9f2…` 掃描本機建置，`--only-fixed --fail-on high`：`No vulnerabilities found`、exit 0（換 `pillow` 之前同一個掃描列出它的三則 High、exit 2）。同一個映像、無網路：`node --version` → `v22.23.2`，`@modelcontextprotocol/sdk` → `1.32.1`，`hono` → `4.13.13`，`PIL.__version__` → `13.0.0`，`id -u` → `65532`。`pillow` 的使用者 `python-pptx`、`python-docx` 各插入一張 PNG 並存檔成功，GIF 讀回尺寸正確，`pdfplumber` 匯入成功。
+
+### 2026-10-22：四項測項，全部跑在 CI 發佈的 digest 上
+
+| 欄位 | 值 |
+| --- | --- |
+| 映像 digest | `sha256:6d7d02eb404789c2dc1945f72488fc67aa3d76e50bcca47584a6930adcfd7803`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-20`，於 commit `a136803e` 發佈；以 tag `docker pull`，`RepoDigests` 對得上） |
+| 環境 | 本機 LiteLLM（`skillhub-litellm-1`）＋ `skillhub_egress`；`sandboxd` 以 HEAD 交叉編譯、在 `debian:12-slim` 容器跑，`SKILLHUB_SANDBOX_IMAGE` **直接指上面那個 digest**；兩支測試二進位交叉編譯後在容器裡跑；允許清單只在暫存副本裡填 litellm 的 egress IP，committed 的那份一字未動 |
+| 費用 | 合計 **$0.0969117**（`gpt-5.4-mini`，24 次呼叫，以閘道 `LiteLLM_SpendLogs` 加總）：端到端三次 Run $0.022596＋$0.021867＋$0.024365、harness 兩支；撤銷探測與被換掉的套件 $0 |
+| 映像層 | 同一個 digest、無網路：`node --version` → `v22.23.2`、`@modelcontextprotocol/sdk` → `1.32.1`、`hono` → `4.13.13`、`PIL.__version__` → `13.0.0`、`id -u` → `65532`、`command -v npm` → 無、`/etc/debian_version` → `12.15`、`.Size` → 1,336,869,512 bytes、version label → `2026.08-20` |
+
+| 項次 | 狀態 | 實測輸出 / 判定 |
+| --- | --- | --- |
+| **1. Skill 載入條件** | ✅ **通過，三種形狀各跑一次** | `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` PASS（26.53s）、`TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone` PASS（20.35s）、`TestEndToEndRunOfAPluginInsideARepositoryDirectoryInstallsItsSkill` PASS（19.16s） |
+| **2. 全數經閘道；金鑰撤銷後回 401** | ✅ **通過** | 每次 Run 的模型呼叫都在該 Run 自己的 Virtual Key 下。撤銷：新開一把限 `gpt-5.4-mini`、0.5 USD、6 小時的 Virtual Key 打 `/v1/models` → **200**，`/key/delete` → 200，同一把再打 → **401** |
+| **3. Prompt caching 計費欄位與對帳** | ✅ **通過** | 閘道把快取讀取記在 `usage_object.prompt_tokens_details.cached_tokens`：20 次呼叫中 19 次有值，合計 235,776。三次 Run 測試各自回報的閘道費用加總 $0.068828，與閘道 `LiteLLM_SpendLogs` 同時段加總 $0.068827 對得上 |
+| **4. `usage` 事件的發出條件** | ✅ **通過** | `TestHarnessReportsUsageForACompletedTurn` PASS（15.57s，`in=18011 out=30 token_source=result`）；`TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage` PASS（15.49s，撞上限仍回報 `in=18011 out=41`，provider 錯誤指向 `token_budget_exceeded`）。harness 以 master key 當 grant，`cost` 為 `null`，與 `-18` 相同 |
+
+**套件位元組核對（不在四項清單上，同批驗證）**：`TestEndToEndRunRefusesAPackageWhoseStoredBytesAreNotTheAdmittedOnes` PASS（12.20s），沒有呼叫模型。
+
+**`-19` 的行為也在這一次涵蓋**：`-19` 的四項始終沒有在它自己的 digest 上跑過，而 `-20` 帶著 `-19` 的 `run.mjs`，所以上面四項就是 `-19` 那份 `run.mjs` 第一次在真閘道上通過。`-19` 新增的提問工具 `mcp__skillhub__ask_person` 沒有真模型的端到端測試，**這一次沒有驗到**；它的行為目前只由 `run.test.mjs` 的兩支端到端測試（假模型）守住。
+
+### 預設映像從 `-18` 移到 `-20`
+
+四項在 `-20` 的 digest 上通過之後，經負責人同意移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例，以及 `apps/sandbox/README.md` 的環境變數表與建置範例。
