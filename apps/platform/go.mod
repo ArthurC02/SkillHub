@@ -1,6 +1,6 @@
 module github.com/ArthurC02/skillhub/apps/platform
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/go-faster/errors v0.8.0

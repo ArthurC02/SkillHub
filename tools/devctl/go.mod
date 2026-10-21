@@ -1,3 +1,3 @@
 module github.com/ArthurC02/skillhub/tools/devctl
 
-go 1.27.2
+go 1.27.3
