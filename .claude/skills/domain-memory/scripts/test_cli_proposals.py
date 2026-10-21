@@ -75,7 +75,7 @@ class CliProposalsTest(RegistryTestCase):
             (unknown["rules_by_context"][0]["unknown"], unknown["rule_totals"]),
         )
 
-    def test_promote_candidate_adds_the_citations_it_is_given_once(self) -> None:
+    def test_promote_candidate_adds_a_citation_once_even_when_the_record_already_cites_it(self) -> None:
         package = self.package_with_a_candidate_rule("An order total is non-negative.")
         (self.repo / "total_test.py").write_text("def test_total():\n    assert True\n", encoding="utf-8")
         promote = ("promote-candidate", "--package-root", str(package), "--registry-root", str(self.repo / "memory"),
@@ -88,7 +88,7 @@ class CliProposalsTest(RegistryTestCase):
         self.assertEqual(0, self.run_cli(*promote, *cited).returncode)
         [update] = self.registry_updates(package)
         self.assertEqual(
-            ["README.md:1", ("README.md", 1, 1), ("total_test.py", 1, 2)],
+            [("README.md", 1, 1), ("total_test.py", 1, 2)],
             [entry if isinstance(entry, str) else (entry["path"], entry["lines"]["start"], entry["lines"]["end"])
              for entry in update["record"]["evidence"]],
         )

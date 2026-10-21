@@ -26,7 +26,6 @@ from test_support import (
     append_audit,
     amend_policy,
     snapshot_of_files,
-    use_json_layout,
 )
 
 
@@ -106,11 +105,10 @@ class UpdatesRecordsTest(RegistryTestCase):
             upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
 
     def test_terms_that_name_each_other_are_upserted_together_in_one_audited_change(self) -> None:
-        use_json_layout(self.repo / "memory")
         order, line = self.look_alike_terms()
         upsert_candidate(self.repo / "memory", self.repo, "vocabulary", order, line)
         self.assertEqual(
-            [("order", ["order-line"]), ("order-line", ["order"])],
+            [("order-line", ["order"]), ("order", ["order-line"])],
             [(term["id"], term["not_same_as"]) for term in asset_records(self.repo / "memory", "vocabulary.json")],
         )
         last = self.audit_lines()[-1]
@@ -220,23 +218,21 @@ class UpdatesRecordsTest(RegistryTestCase):
         self.assertEqual(recorded["reason"], "Not a boundary.")
 
     def test_a_reviewed_record_cannot_be_retracted(self) -> None:
-        use_json_layout(self.repo / "memory")
         self.two_contexts()
         value = read_document(self.repo / "memory", "contexts.json")
-        value["contexts"][0]["status"] = "reviewed"
+        next(context for context in value["contexts"] if context["id"] == "orders")["status"] = "reviewed"
         write_document(self.repo / "memory", "contexts.json", value)
         with self.assertRaisesRegex(ValueError, "superseding proposal"):
             retract_candidate(
                 self.repo / "memory", self.repo, "contexts", "orders", "Changed my mind."
             )
         self.assertEqual(
-            [entry["id"] for entry in self.stored_contexts()], ["orders", "billing"]
+            [entry["id"] for entry in self.stored_contexts()], ["billing", "orders"]
         )
 
     def test_a_reviewed_record_is_not_overwritten_by_an_upserted_candidate(self) -> None:
-        use_json_layout(self.repo / "memory")
         self.two_contexts()
-        self.edit_registry("contexts.json", lambda value: value["contexts"][0].update(status="reviewed"))
+        self.edit_registry("contexts.json", lambda value: next(c for c in value["contexts"] if c["id"] == "orders").update(status="reviewed"))
         registry_files = snapshot_of_files(self.repo / "memory" / "registry")
         record = self.write_record(
             "context.json", {"id": "orders", "name": "Renamed", "responsibility": "Own everything."}
@@ -246,14 +242,13 @@ class UpdatesRecordsTest(RegistryTestCase):
         self.assertEqual(registry_files, snapshot_of_files(self.repo / "memory" / "registry"))
 
     def test_retracting_an_absent_record_changes_nothing(self) -> None:
-        use_json_layout(self.repo / "memory")
         self.two_contexts()
         with self.assertRaisesRegex(ValueError, "no such record"):
             retract_candidate(
                 self.repo / "memory", self.repo, "contexts", "shipping", "Never existed."
             )
         self.assertEqual(
-            [entry["id"] for entry in self.stored_contexts()], ["orders", "billing"]
+            [entry["id"] for entry in self.stored_contexts()], ["billing", "orders"]
         )
 
     def test_retracting_a_candidate_requires_a_reason(self) -> None:
@@ -262,7 +257,6 @@ class UpdatesRecordsTest(RegistryTestCase):
             retract_candidate(self.repo / "memory", self.repo, "contexts", "billing", "   ")
 
     def test_a_referenced_candidate_cannot_be_retracted(self) -> None:
-        use_json_layout(self.repo / "memory")
         self.two_contexts()
         self.seed(
             "interactions.json",
@@ -279,7 +273,7 @@ class UpdatesRecordsTest(RegistryTestCase):
                 self.repo / "memory", self.repo, "contexts", "billing", "No longer wanted."
             )
         self.assertEqual(
-            [entry["id"] for entry in self.stored_contexts()], ["orders", "billing"]
+            [entry["id"] for entry in self.stored_contexts()], ["billing", "orders"]
         )
 
     def demoted_contexts(self) -> dict:

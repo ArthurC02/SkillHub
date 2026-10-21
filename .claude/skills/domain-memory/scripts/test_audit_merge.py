@@ -182,7 +182,7 @@ class AuditMergeTest(RegistryTestCase):
         nowhere = self.repo / "nowhere"
         expected = (
             f"no Domain Registry at {nowhere.resolve().as_posix()}: "
-            "it holds neither registry/index.md nor registry/manifest.json; "
+            "it holds no registry/index.md; "
         )
         with self.assertRaises(ValueError) as refused:
             reconcile(nowhere)

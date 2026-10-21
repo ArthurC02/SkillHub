@@ -242,10 +242,6 @@ def _citations(record: dict[str, Any]) -> list[Citation]:
             start, end = lines.get("start"), lines.get("end")
             valid = isinstance(start, int) and isinstance(end, int)
             citations.append((reference["path"], start if valid else 0, end if valid else -1))
-        elif isinstance(reference, str):
-            path, _, line = reference.partition(":")
-            number = int(line) if line.isdigit() else 0
-            citations.append((path, number, number if line.isdigit() else -1))
     return citations
 
 

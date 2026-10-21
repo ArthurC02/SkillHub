@@ -16,10 +16,6 @@ from domain_registry.git import toplevel
 from domain_registry.impact import boundary_impact
 from domain_registry.policy import validate_policy
 from domain_registry.readiness import assess_readiness
-from domain_registry.registry import (
-    migrate_evidence,
-    verify_evidence,
-)
 from domain_registry.security import scan_report
 from domain_registry.sources import (
     confirm_sources,
@@ -34,7 +30,7 @@ from domain_registry.sources import (
 )
 from domain_registry.sources import discover_ci_tools
 from domain_registry.sources import source_snapshots
-from test_support import RegistryTestCase, source_kind_for, stored_policy_of, use_json_layout
+from test_support import RegistryTestCase, source_kind_for, stored_policy_of
 
 
 class SourcesTest(RegistryTestCase):
@@ -177,17 +173,6 @@ class SourcesTest(RegistryTestCase):
                 "status"
             ],
         )
-
-    def test_migrated_evidence_is_classified_by_the_source_map_when_verified(self) -> None:
-        self.seed_line_reference_evidence()
-        write_source_map(
-            self.repo / "memory" / "source-map.json",
-            {"selected_paths": ["source.md"],
-             "source_groups": [{"kind": "decisions", "paths": ["source.md"]}]},
-        )
-        migrate_evidence(self.repo / "memory", self.repo)
-        [result] = verify_evidence(self.repo / "memory", self.repo)["results"]
-        self.assertEqual("decisions", result["source_kind"])
 
     def test_a_change_across_two_contexts_without_a_collaboration_is_unregistered(self) -> None:
         self.two_mapped_contexts()
@@ -986,21 +971,6 @@ class SourcesTest(RegistryTestCase):
             result["blocks"],
         )
 
-    def test_readiness_reports_a_reviewed_registry_without_records_as_reviewed_empty(self) -> None:
-        use_json_layout(self.repo / "memory")
-        self.write_files("apps/orders/main.py")
-        (self.repo / "docs").mkdir()
-        write_source_map(
-            self.repo / "memory" / "source-map.json",
-            selected_source_map(self.repo, [self.repo / "docs"], stored_policy_of(self.repo)),
-        )
-        self.edit_registry("manifest.json", lambda manifest: manifest.update(status="reviewed"))
-        result = assess_readiness(self.repo, self.repo / "memory")
-        self.assertEqual(
-            ({"kind": "registry", "status": "reviewed-empty"}, {"kind": "registry_records", "count": 0}, []),
-            (result["signals"][-2], result["signals"][-1], result["blocks"]),
-        )
-
     def test_readiness_on_a_root_one_level_too_deep_names_the_likely_root(self) -> None:
         self.committed_source_map()
         result = assess_readiness(self.repo, self.repo / "memory" / "registry")
@@ -1014,7 +984,6 @@ class SourcesTest(RegistryTestCase):
     def test_readiness_routes_a_valid_registry_with_domain_records_to_greenfield(
         self,
     ) -> None:
-        use_json_layout(self.repo / "memory")
         docs = self.repo / "docs"
         docs.mkdir()
         write_source_map(
@@ -1032,7 +1001,6 @@ class SourcesTest(RegistryTestCase):
         )
 
     def test_readiness_reports_an_empty_working_memory_as_current(self) -> None:
-        use_json_layout(self.repo / "memory")
         (self.repo / "docs").mkdir()
         implementation = self.repo / "apps" / "orders"
         implementation.mkdir(parents=True)
@@ -1065,10 +1033,7 @@ class SourcesTest(RegistryTestCase):
             self.repo / "memory" / "source-map.json",
             selected_source_map(self.repo, [docs]),
         )
-        use_json_layout(self.repo / "memory")
-        (self.repo / "memory" / "registry" / "contexts.json").write_text(
-            '{"contexts": "broken"}', encoding="utf-8"
-        )
+        (self.repo / "memory" / "registry" / "contexts" / "broken.md").write_text("no frontmatter\n", encoding="utf-8")
         result = assess_readiness(self.repo, self.repo / "memory")
         self.assertEqual(result["state"], "dead")
         self.assertEqual(result["signals"][-2]["status"], "invalid")

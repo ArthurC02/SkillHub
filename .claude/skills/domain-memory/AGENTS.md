@@ -68,7 +68,6 @@ It offers no command that writes; candidates and Change Packages stay on the com
   - `unhashed`: the citation was not built by `cite`.
   - `missing`: the cited file is gone.
   - `invalid`: the citation is malformed, points outside the repository, or cannot be read as cited.
-  - `legacy-unverified`: a plain `path:line` citation, which `migrate-evidence` converts.
 - **Change Package**: the one way a reviewed record changes. It is a directory of four JSON files and a Draft PR description whose proposal moves `draft → submitted → verified → approved → applied`, or ends `superseded`. Once submitted, its content is frozen.
 
 ## Common tasks
@@ -76,7 +75,7 @@ It offers no command that writes; candidates and Change Packages stay on the com
 | You want to | Run |
 | --- | --- |
 | Know what this repository has | `readiness --repo-root <repo> [--registry-root <root>]`; `extract` means code exists and the Registry holds no record yet. Without `--registry-root` it assesses the one Domain Memory the repository holds and names it; with several it names them and assesses none until you choose |
-| Start a Domain Memory | `init-domain-memory`, which records the destination, sources and policy choices a Registry needs; `init` only copies an empty skeleton that can never hold a reviewed record |
+| Start a Domain Memory | `init-domain-memory`, which records the destination, sources and policy choices a Registry needs |
 | Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`, and before changing a record `dependents --asset <asset> --id <id>` for what else it may touch; a `mentioned` match is prose in a reviewed record, not a term |
 | Review a branch for what it does to the model | the `domain-memory-review-change` capability: `brief --base <branch point> --markdown`, then the verdict table and the attention list decide what to ask for |
 | Read one brief before a review or a change | `brief --base <branch point>` or `brief --asset <asset> --id <id>`, `--markdown` for the pull request: verdict, Contexts touched, records to re-read with their dependents, citation verification and an attention list |
@@ -117,13 +116,13 @@ To change the plugin itself, read `README.md` in the complete package.
 
 Run `readiness --repo-root <repo> [--registry-root <root>]` first; it finds the Domain Memory the repository holds by itself, so give `--registry-root` when there are several or it lives outside the repository. It distinguishes an empty repository, a greenfield design, a brownfield implementation, and a memory whose evidence has died. Its signals route your work; they are not domain facts.
 
-Treat only `reviewed` records as facts. A `candidate` is handoff material and authorizes no implementation. `reviewed-empty` means there is no model to depend on yet, so go back to the decisions, contracts, code, and tests.
+Treat only `reviewed` records as facts. A `candidate` is handoff material and authorizes no implementation.
 
 Not every package is a Context. A Context owns domain rules and the data they decide about. A package that only serves others, such as persistence, transport, a shared loop, or the client of an outside system, is recorded by the repository's own architecture records, not in the Registry. Moving such a package changes no Registry fact while the rules and their data stay with the Context that owns them.
 
 ## Choosing what to do
 
-[SKILL.md](SKILL.md) beside this file is where the work is chosen. In the complete package it routes the seven capabilities to a page under `skills/`; in a standalone bundle it is the one capability the bundle carries. It is plain Markdown, so read it whether or not your host has a concept of Skills.
+[SKILL.md](SKILL.md) beside this file is where the work is chosen. It routes the seven capabilities to a page under `skills/`. It is plain Markdown, so read it whether or not your host has a concept of Skills.
 
 [references/script-api.md](references/script-api.md) is the command surface and what each command guarantees. [references/host-integration.md](references/host-integration.md) is for wiring this into a host that dispatches work to several Agents.
 

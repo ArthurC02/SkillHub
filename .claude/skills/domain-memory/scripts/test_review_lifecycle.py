@@ -362,7 +362,7 @@ class ReviewLifecycleTest(RegistryTestCase):
             (package / name).write_text(json.dumps(document), encoding="utf-8")
         record = self.write_record(
             f"{rule_id}.json",
-            {"id": rule_id, "contexts": ["orders"], "statement": f"The rule {rule_id} holds.", "evidence": ["README.md:1"]},
+            {"id": rule_id, "contexts": ["orders"], "statement": f"The rule {rule_id} holds.", "evidence": [self.readme_citation()]},
         )
         upsert_candidate(self.repo / "memory", self.repo, "rules", record)
         promote_candidate(package, self.repo / "memory", "rules", rule_id)

@@ -8,7 +8,6 @@ from .locate import domain_memories_in
 from .policy import existing_policy
 from .registry import coverage, validate
 from .sources import discover_sources, listing_drift, verify_source_map
-from .store import MANIFEST, read_document
 
 PRODUCT_GROUPS = (
     "decisions",
@@ -57,9 +56,7 @@ def registry_condition(
         report[key]
         for key in ("contexts", "vocabulary_terms", "aggregates", "rules", "contracts")
     )
-    manifest = read_document(registry_path, MANIFEST)
-    reviewed_empty = records == 0 and manifest.get("status") == "reviewed"
-    return ("reviewed-empty" if reviewed_empty else "current"), records, []
+    return "current", records, []
 
 
 def _listing_signal(discovered: dict[str, Any], registry_root: Path) -> dict[str, Any]:

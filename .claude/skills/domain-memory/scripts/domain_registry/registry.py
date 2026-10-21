@@ -1,11 +1,9 @@
-import shutil
 from collections import Counter
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .common import (
-    ASSET_FORMATS,
     ASSET_KEYS,
     CLOSED_FIELDS,
     CONTEXT_SUBDOMAINS,
@@ -19,37 +17,26 @@ from .common import (
     registry_dir,
     review_field,
     shown_path,
-    template_dir,
 )
 from .evidence import (
     ContentReader,
     all_references,
     classifier,
-    migrate_legacy,
     source_map_for,
     verifier,
-    with_references,
     without_derived_keys,
 )
-from .okf import verified_by
 from .policy import review_mode
 from .sources import lies_under, repository_files
 from .store import (
-    MANIFEST,
     create_concept_layout,
-    document_path,
-    has_document,
     has_registry,
-    is_concept_layout,
     read_record,
     missing_registry,
-    logical_documents,
     read_document,
     stale_indexes,
-    write_document,
 )
 
-STANDARD_FILES = (*ASSET_KEYS, "manifest.json")
 ABSENCE_ASSETS = {
     "vocabulary": "without_vocabulary",
     "aggregates": "without_aggregate",
@@ -64,74 +51,6 @@ def init_registry(output: Path) -> None:
     if output.exists() and any(output.iterdir()):
         raise ValueError(f"output directory is not empty: {output}")
     create_concept_layout(output)
-
-
-def migrate_registry(root: Path) -> list[str]:
-    if is_concept_layout(root):
-        current = logical_documents(root)
-        if refined_documents(current)[0] == current:
-            return []
-    from .transaction import mutate_registry
-
-    created: list[str] = []
-    reviewed_by: dict[str, str] = {}
-
-    def mutate(staging: Path) -> None:
-        target = registry_dir(staging)
-        converting = not is_concept_layout(staging)
-        if converting:
-            created.extend(_copy_missing_templates(target))
-        refined, found = refined_documents(logical_documents(staging))
-        reviewed_by.update(found)
-        if converting:
-            for name in STANDARD_FILES:
-                (target / name).unlink()
-            create_concept_layout(staging)
-        for name in ASSET_KEYS:
-            write_document(staging, name, refined[name])
-        if logical_documents(staging) != refined:
-            raise ValueError("the concept layout would not hold the Registry unchanged; nothing was converted")
-
-    mutate_registry(
-        root, None, mutate,
-        audit_event=lambda: {"operation": "migrate-registry", "layout": "okf", "reviewed_by": reviewed_by},
-    )
-    return created
-
-
-def refined_documents(documents: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
-    reviewed_by: dict[str, str] = {}
-    refined = {}
-    for name, document in documents.items():
-        key = ASSET_KEYS[name]
-        records = document.get(key)
-        if not isinstance(records, list):
-            refined[name] = document
-            continue
-        refined[name] = {**document, key: [_refined_record(name, record, reviewed_by) for record in records]}
-    return refined, reviewed_by
-
-
-def _refined_record(name: str, record: dict[str, Any], reviewed_by: dict[str, str]) -> dict[str, Any]:
-    refined = without_derived_keys(record)
-    review = refined.pop("review", None)
-    if not isinstance(review, dict):
-        return refined
-    if review.get("proposal_id"):
-        reviewed_by[f"{name.removesuffix('.json')}/{refined.get('id')}"] = review["proposal_id"]
-    verified = verified_by(review.get("approvals") or [])
-    if verified:
-        refined["verified"] = verified
-    return refined
-
-
-def _copy_missing_templates(target: Path) -> list[str]:
-    copied = []
-    for name in STANDARD_FILES:
-        if not (target / name).exists():
-            shutil.copyfile(template_dir() / name, target / name)
-            copied.append(name)
-    return copied
 
 
 def asset_records(root: Path, name: str) -> list[dict[str, Any]]:
@@ -183,30 +102,20 @@ def _load_registry_assets(
     documents: dict[str, dict[str, Any]] = {}
     errors: list[str] = []
     for name in ASSET_KEYS:
-        if not has_document(root, name):
-            errors.append(f"missing asset: {document_path(root, name)}")
-            continue
-        try:
-            document = read_document(root, name)
-            records[name] = _records_of(name, document)
-            documents[name] = document
-        except ValueError as error:
-            errors.append(str(error))
+        loaded = _loaded_asset(root, name)
+        if isinstance(loaded, str):
+            errors.append(loaded)
+        else:
+            records[name], documents[name] = loaded
     return records, documents, errors
 
 
-def _asset_header_errors(name: str, asset: dict[str, Any], entries: list[dict[str, Any]]) -> list[str]:
-    errors: list[str] = []
-    if asset.get("format") != ASSET_FORMATS[name]:
-        errors.append(f"{name} has an invalid format")
-    if asset.get("status") not in REGISTRY_STATUSES:
-        errors.append(f"{name} has an invalid status")
-    identifiers = [entry.get("id") for entry in entries]
-    if not all(isinstance(identifier, str) and identifier for identifier in identifiers):
-        errors.append(f"{name} entries require non-empty id")
-    elif len(identifiers) != len(set(identifiers)):
-        errors.append(f"{name} contains duplicate id")
-    return errors
+def _loaded_asset(root: Path, name: str) -> tuple[list[dict[str, Any]], dict[str, Any]] | str:
+    try:
+        document = read_document(root, name)
+        return _records_of(name, document), document
+    except ValueError as error:
+        return str(error)
 
 
 def _entry_status_errors(
@@ -217,7 +126,7 @@ def _entry_status_errors(
         return [f"{label} has an invalid status"]
     errors: list[str] = []
     if "review" in entry:
-        errors.append(f"{label} holds a legacy review block; run migrate-registry")
+        errors.append(f"{label} holds a review block; this version reads verified only")
     if status == "reviewed":
         missing = [field for field in REVIEW_REQUIRED_FIELDS[name] if not entry.get(field)]
         if missing:
@@ -237,7 +146,6 @@ def _validate_asset_records(
     errors: list[str] = []
     for name, entries in records.items():
         asset = documents[name]
-        errors.extend(_asset_header_errors(name, asset, entries))
         for entry in entries:
             status = record_status(name.removesuffix(".json"), asset, entry)
             errors.extend(_entry_status_errors(name, entry, status, require_reviewed))
@@ -496,10 +404,6 @@ def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list
         return errors
     if require_reviewed and review_mode(root) != "scm-verified":
         errors.append("local-draft-only Domain Memory cannot satisfy --require-reviewed")
-    manifest = read_document(root, MANIFEST)
-    artifacts = manifest.get("artifacts")
-    if not isinstance(artifacts, list) or not set(ASSET_KEYS).issubset(artifacts):
-        errors.append("manifest artifacts must list every standard registry asset file")
     records, documents, load_errors = _load_registry_assets(root)
     errors.extend(load_errors)
     errors.extend(_validate_asset_records(documents, records, require_reviewed))
@@ -619,7 +523,7 @@ def _synonym_errors(
     return errors
 
 
-EVIDENCE_STATUSES = ("current", "shifted", "stale", "unhashed", "missing", "invalid", "legacy-unverified")
+EVIDENCE_STATUSES = ("current", "shifted", "stale", "unhashed", "missing", "invalid")
 
 
 RecordOverlay = dict[str, dict[str, dict[str, Any] | None]]
@@ -666,33 +570,6 @@ def _overlaid(records: list[dict[str, Any]], changes: dict[str, dict[str, Any] |
     return [entry for entry in [*replaced, *added] if entry is not None]
 
 
-def migrate_evidence(root: Path, repo_root: Path) -> int:
-    from .transaction import mutate_registry
-
-    migrated = 0
-
-    def migrated_reference(reference: Any) -> Any:
-        nonlocal migrated
-        after = migrate_legacy(reference, repo_root)
-        migrated += reference != after
-        return after
-
-    def transform(value: Any) -> Any:
-        return with_references(value, migrated_reference)
-
-    def mutate(staging: Path) -> None:
-        for name in ASSET_KEYS:
-            write_document(staging, name, transform(read_document(staging, name)))
-
-    mutate_registry(
-        root,
-        repo_root,
-        mutate,
-        audit_event=lambda: {"operation": "migrate-evidence", "migrated": migrated},
-    )
-    return migrated
-
-
 def contexts_holding(records: dict[str, list[dict[str, Any]]]) -> dict[str, set[Any]]:
     contracts = set()
     for entry in records.get("contracts.json", []):
@@ -732,7 +609,7 @@ def declared_absences(contexts: list[dict[str, Any]]) -> dict[str, set[Any]]:
 
 
 def as_stored(asset: str, record: dict[str, Any]) -> Any:
-    review_keys = (review_field(asset), "review", "verified")
+    review_keys = (review_field(asset), "verified")
     return without_derived_keys({key: value for key, value in record.items() if key not in review_keys})
 
 
@@ -759,8 +636,8 @@ def evidence_gaps(root: Path, documents: dict[str, dict[str, Any]]) -> list[dict
 
 
 def coverage(root: Path) -> dict[str, Any]:
-    documents = {name: read_document(root, name) for name in ASSET_KEYS if has_document(root, name)}
-    records = {name: _records_of(name, documents[name]) if name in documents else [] for name in ASSET_KEYS}
+    documents = {name: read_document(root, name) for name in ASSET_KEYS}
+    records = {name: _records_of(name, documents[name]) for name in ASSET_KEYS}
     contexts, vocabulary, aggregates, rules, contracts, events = (
         records[name] for name in ("contexts.json", "vocabulary.json", "aggregates.json", "rules.json",
                                    "contracts.json", "events.json")

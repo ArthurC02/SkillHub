@@ -23,7 +23,9 @@ THEMES = {
     "governance": (governance, _add_governance_commands),
 }
 
-REFERENCE = Path(__file__).parents[1] / "references" / "script-api.md"
+PLUGIN = Path(__file__).parents[1]
+REFERENCE = PLUGIN / "references" / "script-api.md"
+LINK = re.compile(r"\]\(([^)]+)\)")
 TABLE_HEADINGS = {"## Everyday commands": "everyday", "## Advanced commands": "advanced"}
 ROW = re.compile(r"^\| [^|`]+? \| `([a-z][a-z-]*)")
 
@@ -37,6 +39,21 @@ def registered_by(add_commands) -> list[str]:
     subcommands = argparse.ArgumentParser().add_subparsers()
     add_commands(subcommands)
     return sorted(subcommands.choices)
+
+
+def pages() -> list[Path]:
+    return [PLUGIN / "SKILL.md", PLUGIN / "AGENTS.md", *sorted(PLUGIN.glob("skills/*/SKILL.md")), *sorted(PLUGIN.glob("references/*.md"))]
+
+
+def local_targets(page: Path) -> list[str]:
+    links = LINK.findall(page.read_text(encoding="utf-8"))
+    kept = [link for link in links if not link.startswith(("http://", "https://", "/"))]
+    return [target for target in (link.split("#", 1)[0] for link in kept) if target]
+
+
+def code_rules(page: Path) -> list[str]:
+    section = page.read_text(encoding="utf-8").split("## When you are the one writing the code", 1)[1].split("\n## ", 1)[0]
+    return re.findall(r"^\d+\. .+$", section, re.MULTILINE)
 
 
 def documented_groups() -> dict[str, set[str]]:
@@ -124,6 +141,21 @@ class CommandGroupsTest(RegistryTestCase):
         (self.repo / "changes").mkdir()
         result = self.run_cli("list-proposals", "--changes-root", str(self.repo / "changes"))
         self.assertEqual((0, "[]", ""), (result.returncode, result.stdout.strip(), result.stderr))
+
+
+class PagesTest(unittest.TestCase):
+    def test_every_page_links_only_to_files_the_plugin_holds(self) -> None:
+        broken = [(page.relative_to(PLUGIN).as_posix(), target) for page in pages() for target in local_targets(page)
+                  if not (page.parent / target).is_file()]
+        self.assertEqual([], broken)
+
+    def test_every_reference_is_linked_from_a_page_that_chooses_work(self) -> None:
+        linked = {(page.parent / target).resolve() for page in pages() for target in local_targets(page)}
+        self.assertEqual([], [path.name for path in sorted(PLUGIN.glob("references/*.md")) if path.resolve() not in linked])
+
+    def test_the_code_rules_read_the_same_on_the_entry_and_the_hygiene_page(self) -> None:
+        entry = code_rules(PLUGIN / "AGENTS.md")
+        self.assertEqual((6, entry), (len(entry), code_rules(PLUGIN / "skills/domain-memory-implementation-hygiene/SKILL.md")))
 
 
 if __name__ == "__main__":

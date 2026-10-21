@@ -18,7 +18,7 @@ from domain_registry.changes import (
     init_change_package,
     validate_change_package,
 )
-from domain_registry.common import ASSET_KEYS, registry_dir, writer_lock, write_json
+from domain_registry.common import ASSET_KEYS, registry_dir, writer_lock
 from domain_registry.evidence import (
     citation,
     verify,
@@ -39,16 +39,14 @@ from domain_registry.registry import (
 from domain_registry.search import _stem, _words, ranked_lookup
 from domain_registry.security import scan_report
 from domain_registry.sources import (
+    source_kind_index,
     discover_sources,
     selected_source_map,
-    source_kind_index,
     verify_source_map,
     write_source_map,
 )
 from domain_registry.store import (
-    MANIFEST,
-    document_path,
-    manifest_document,
+    INDEX,
     read_document,
     write_document,
 )
@@ -87,16 +85,6 @@ def snapshot_of_files(directory: Path) -> dict[str, bytes]:
         for path in sorted(directory.rglob("*"))
         if path.is_file()
     }
-
-
-def use_json_layout(root: Path) -> None:
-    documents = {name: read_document(root, name) for name in ASSET_KEYS}
-    registry = registry_dir(root)
-    for entry in registry.iterdir():
-        shutil.rmtree(entry) if entry.is_dir() else entry.unlink()
-    for name, document in documents.items():
-        write_json(registry / name, document)
-    write_json(registry / MANIFEST, manifest_document())
 
 
 def lookup(root: Path, asset: str, query: str) -> list[dict[str, Any]]:
@@ -204,6 +192,12 @@ class RegistryTestCase(unittest.TestCase):
         self.commit_all("source map")
         return path
 
+    def readme_citation(self) -> dict[str, Any]:
+        readme = self.repo / "README.md"
+        if not readme.is_file():
+            readme.write_text("evidence\n", encoding="utf-8")
+        return citation(self.repo, "README.md", 1, 1)
+
     def write_record(self, name: str, value: Any) -> Path:
         path = self.repo / name
         path.write_text(json.dumps(value), encoding="utf-8")
@@ -266,20 +260,6 @@ class RegistryTestCase(unittest.TestCase):
         (self.repo / "memory" / "domain-memory-policy.json").write_text(json.dumps(policy), encoding="utf-8")
         (self.repo / "fact.md").write_text("x", encoding="utf-8")
         (self.repo / "adr.md").write_text("y", encoding="utf-8")
-
-    def seed_line_reference_evidence(self) -> None:
-        (self.repo / "source.md").write_text("evidence\n", encoding="utf-8")
-        root = self.repo / "memory"
-        value = read_document(root, "contexts.json")
-        value["contexts"] = [
-            {
-                "id": "orders",
-                "name": "Orders",
-                "responsibility": "Own orders.",
-                "evidence": ["source.md:1"],
-            }
-        ]
-        write_document(root, "contexts.json", value)
 
     def sign_a_domain_memory_commit(self, message: str) -> str:
         target = self.repo / "docs" / "domain-memory"
@@ -417,7 +397,7 @@ class RegistryTestCase(unittest.TestCase):
         staging = root / ".domain-registry-stage-op"
         shutil.copytree(root / "registry", backup)
         staging.mkdir()
-        document_path(root, MANIFEST).write_text("{}\n", encoding="utf-8")
+        (registry_dir(root) / INDEX).write_text("{}\n", encoding="utf-8")
         transaction_path(root).write_text(
             json.dumps({
                 "format": "domain-registry-transaction/v2", "operation_id": "op",
@@ -475,7 +455,7 @@ class RegistryTestCase(unittest.TestCase):
                         "id": "order-total",
                         "contexts": ["orders"],
                         "statement": "An order total is non-negative.",
-                        "evidence": ["README.md:1"],
+                        "evidence": [self.readme_citation()],
                     },
                 }
             ],
@@ -675,7 +655,7 @@ class RegistryTestCase(unittest.TestCase):
         (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
         record = self.write_record(
             "rule.json",
-            {"id": "order-total", "contexts": ["orders"], "statement": statement, "evidence": ["README.md:1"]},
+            {"id": "order-total", "contexts": ["orders"], "statement": statement, "evidence": [self.readme_citation()]},
         )
         upsert_candidate(self.repo / "memory", self.repo, "rules", record)
         return package

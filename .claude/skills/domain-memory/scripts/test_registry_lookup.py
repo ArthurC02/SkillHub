@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.registry import coverage, verify_evidence
 from domain_registry.search import _is_common, every_resolved_term, ranked_lookup
-from test_support import RegistryTestCase, lookup, use_json_layout, word_stems
+from test_support import RegistryTestCase, lookup, word_stems
 
 
 class RegistryLookupTest(RegistryTestCase):
@@ -386,11 +386,10 @@ class RegistryLookupTest(RegistryTestCase):
             lookup(self.repo / "memory", "nonsense", "")
 
     def test_a_result_limit_equal_to_the_match_count_returns_every_match(self) -> None:
-        use_json_layout(self.repo / "memory")
         self.two_contexts()
         self.allow_results(2)
         found = lookup(self.repo / "memory", "contexts", "")
-        self.assertEqual(["orders", "billing"], [entry["id"] for entry in found])
+        self.assertEqual(["billing", "orders"], [entry["id"] for entry in found])
 
 
 if __name__ == "__main__":

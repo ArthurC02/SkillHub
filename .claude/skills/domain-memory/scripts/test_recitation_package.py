@@ -150,7 +150,7 @@ class RecitationPackageTest(RegistryTestCase):
     def test_a_record_that_names_no_context_leaves_affected_contexts_for_the_proposer(self) -> None:
         recitation = self.recitation()
         update = recitation["registry_updates"][0]
-        self.seed("rules.json", [{**update["record"], "contexts": [], "review": {"proposal_id": "PRO-1"}}])
+        self.seed("rules.json", [{**update["record"], "contexts": []}])
         recitation["registry_updates"] = [{**update, "record": {**update["record"], "contexts": []}}]
         output = self.repo / "changes" / "recite"
         blank = recitation_package(output, self.repo / "memory", recitation, IDENTIFIERS)

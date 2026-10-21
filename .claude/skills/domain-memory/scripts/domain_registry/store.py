@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 import subprocess
 from pathlib import Path
@@ -9,12 +8,8 @@ from typing import Any
 from .common import (
     ASSET_FORMATS,
     ASSET_KEYS,
-    find_record,
-    load_json,
     registry_dir,
-    review_field,
     shown_path,
-    write_json,
 )
 from .evidence import without_derived_keys
 from .git import read_objects, run_git_bytes
@@ -46,29 +41,13 @@ def asset_of(name: str) -> str:
     return name.removesuffix(".json")
 
 
-def is_concept_layout(root: Path) -> bool:
-    return (registry_dir(root) / INDEX).is_file()
-
-
-def document_path(root: Path, name: str) -> Path:
-    if is_concept_layout(root):
-        return registry_dir(root) / (INDEX if name == MANIFEST else asset_of(name))
-    return registry_dir(root) / name
-
-
-def has_document(root: Path, name: str) -> bool:
-    if is_concept_layout(root):
-        return True
-    return document_path(root, name).is_file()
-
-
 def has_registry(root: Path) -> bool:
-    return is_concept_layout(root) or (registry_dir(root) / MANIFEST).is_file()
+    return (registry_dir(root) / INDEX).is_file()
 
 
 def missing_registry(root: Path, repo_root: Path | None = None) -> str:
     return (
-        f"no Domain Registry at {shown_path(root, repo_root)}: it holds neither registry/{INDEX} nor registry/{MANIFEST}; "
+        f"no Domain Registry at {shown_path(root, repo_root)}: it holds no registry/{INDEX}; "
         f"{domain_memory_hint(root, repo_root)}"
     )
 
@@ -78,10 +57,8 @@ def manifest_document() -> dict[str, Any]:
 
 
 def read_document(root: Path, name: str) -> dict[str, Any]:
-    if not is_concept_layout(root):
-        if not registry_dir(root).is_dir():
-            raise ValueError(missing_registry(root))
-        return load_json(registry_dir(root) / name)
+    if not has_registry(root):
+        raise ValueError(missing_registry(root))
     if name == MANIFEST:
         return manifest_document()
     directory = registry_dir(root) / asset_of(name)
@@ -94,8 +71,6 @@ def read_document(root: Path, name: str) -> dict[str, Any]:
 
 
 def read_record(root: Path, name: str, record_id: str) -> dict[str, Any] | None:
-    if not is_concept_layout(root):
-        return find_record(read_document(root, name).get(ASSET_KEYS[name], []), record_id)
     asset = asset_of(name)
     try:
         concept = registry_dir(root) / asset / _concept_file_name(asset, record_id)
@@ -120,15 +95,12 @@ def _decoded(asset: str, record_id: str, text: str) -> dict[str, Any]:
 
 
 def write_document(root: Path, name: str, document: dict[str, Any]) -> None:
-    if not is_concept_layout(root):
-        write_json(registry_dir(root) / name, document)
-        return
     if name == MANIFEST:
         return
     asset = asset_of(name)
     directory = registry_dir(root) / asset
     directory.mkdir(parents=True, exist_ok=True)
-    records = _records_with_their_status(name, document)
+    records = document.get(ASSET_KEYS[name], [])
     written = {}
     for record in records:
         file_name = _concept_file_name(asset, record.get("id"))
@@ -143,35 +115,12 @@ def write_document(root: Path, name: str, document: dict[str, Any]) -> None:
     _write_text(directory / INDEX, asset_index(asset, records))
 
 
-def logical_documents(root: Path) -> dict[str, Any]:
-    documents = {}
-    for name in ASSET_KEYS:
-        document = read_document(root, name)
-        records = document.get(ASSET_KEYS[name], [])
-        rest = {key: value for key, value in document.items() if key not in ("format", "status", ASSET_KEYS[name])}
-        documents[name] = {
-            **rest,
-            ASSET_KEYS[name]: sorted(_records_with_their_status(name, document), key=lambda record: str(record.get("id")))
-            if isinstance(records, list) else records,
-        }
-    return documents
-
-
 def create_concept_layout(root: Path) -> None:
     registry = registry_dir(root)
     registry.mkdir(parents=True, exist_ok=True)
     _write_text(registry / INDEX, root_index())
     for name in ASSET_KEYS:
         write_document(root, name, {ASSET_KEYS[name]: []})
-
-
-def _records_with_their_status(name: str, document: dict[str, Any]) -> list[dict[str, Any]]:
-    default = document.get("status", DEFAULT_STATUS)
-    records = document.get(ASSET_KEYS[name], [])
-    if default == DEFAULT_STATUS:
-        return records
-    field = review_field(asset_of(name))
-    return [record if field in record else {**record, field: default} for record in records]
 
 
 def _concept_file_name(asset: str, record_id: Any) -> str:
@@ -200,7 +149,7 @@ def refresh_indexes(root: Path) -> list[Path]:
 
 
 def _expected_indexes(root: Path) -> dict[Path, str]:
-    if not is_concept_layout(root):
+    if not has_registry(root):
         return {}
     expected = {registry_dir(root) / INDEX: root_index()}
     for name in ASSET_KEYS:
@@ -243,7 +192,7 @@ def committed_documents(repo_root: Path, commit: str, root: Path, names: tuple[s
     paths = [path for path in listing.stdout.decode("utf-8", "surrogateescape").split("\0") if path]
     contents = _blobs(repo_root, commit, paths)
     if f"{registry}/{INDEX}" not in contents:
-        return _committed_json_documents(contents, registry, names)
+        return None
     documents: dict[str, Any] = {}
     for name in names:
         if name == MANIFEST:
@@ -256,20 +205,6 @@ def committed_documents(repo_root: Path, commit: str, root: Path, names: tuple[s
             if path.startswith(prefix) and path.endswith(".md") and "/" not in path[len(prefix):]
             and path[len(prefix):] != INDEX
         ))
-    return documents
-
-
-def _committed_json_documents(contents: dict[str, str], registry: str, names: tuple[str, ...]) -> dict[str, Any] | None:
-
-    documents = {}
-    for name in names:
-        path = f"{registry}/{name}"
-        if path not in contents:
-            return None
-        try:
-            documents[name] = json.loads(contents[path])
-        except ValueError as error:
-            raise ValueError(f"{path} is not JSON: {error}") from error
     return documents
 
 

@@ -142,7 +142,6 @@ def demote_local_reviews(registry_root: Path, repo_root: Path) -> None:
             document = read_document(staging, name)
             document["status"] = "candidate"
             for record in document[key]:
-                record.pop("review", None)
                 record.pop("verified", None)
                 record[review_field(name.removesuffix(".json"))] = "candidate"
             write_document(staging, name, document)
@@ -222,7 +221,6 @@ def stage_candidates(
         result.outside.extend(unclassified_paths(candidate))
         if candidate.get(review_field(asset), "candidate") != "candidate" or candidate.get("verified"):
             result.status_dropped.append(f"{asset}/{record['id']}")
-        candidate.pop("review", None)
         candidate.pop("verified", None)
         candidate[review_field(asset)] = "candidate"
         put_record(records, existing, candidate)
@@ -330,7 +328,6 @@ def _reviewed_record(
     update: ParsedUpdate, proposal: dict[str, Any], source_map: Any, existing: dict[str, Any] | None
 ) -> dict[str, Any]:
     promoted = classify_all(dict(update.record or {}), source_map)
-    promoted.pop("review", None)
     promoted["verified"] = verified_by(proposal["approvals"]) or list((existing or {}).get("verified") or [])
     promoted[review_field(update.asset)] = "reviewed"
     return promoted
@@ -461,7 +458,7 @@ def promote_candidate(
     promoted = {
         key: value
         for key, value in record.items()
-        if key not in {review_field(asset), "review", "verified"}
+        if key not in {review_field(asset), "verified"}
     }
     update = {"operation": "upsert", "asset": asset, "record": promoted}
     updates = [
@@ -488,10 +485,20 @@ def add_promoted_evidence(
         if updates_record(update, asset, record_id) and isinstance(update.get("record"), dict):
             record = update["record"]
             evidence = list(record.get("evidence")) if isinstance(record.get("evidence"), list) else []
-            evidence += [citation for index, citation in enumerate(citations)
-                         if citation not in evidence and citation not in citations[:index]]
+            cited = {_cited_span(reference) for reference in evidence}
+            for citation in citations:
+                if _cited_span(citation) not in cited:
+                    evidence.append(citation)
+                    cited.add(_cited_span(citation))
             record["evidence"] = evidence
     write_json(path, proposal)
+
+
+def _cited_span(reference: Any) -> tuple[Any, ...]:
+    if not isinstance(reference, dict):
+        return (reference,)
+    lines = reference.get("lines") if isinstance(reference.get("lines"), dict) else {}
+    return (reference.get("path"), lines.get("start"), lines.get("end"), reference.get("excerpt_sha256"))
 
 
 def replace_promoted_fields(package_root: Path, asset: str, record_id: str, fields: dict[str, Any]) -> None:

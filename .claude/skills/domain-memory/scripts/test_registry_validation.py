@@ -13,9 +13,9 @@ from domain_registry.common import DOMAIN_MEMORY_HINT, ASSET_KEYS, load_json
 from domain_registry.contracts import validate_schema
 from domain_registry.cli_commands import HANDLERS
 from domain_registry.cli_parser import build_parser
-from domain_registry.registry import migrate_evidence, validate, verify_evidence
+from domain_registry.registry import validate, verify_evidence
 from domain_registry.store import read_document, refresh_indexes, write_document
-from test_support import VERIFIED, RegistryTestCase, append_audit, lookup, scan_secrets, use_json_layout
+from test_support import VERIFIED, RegistryTestCase, append_audit, lookup, scan_secrets
 
 
 class RegistryValidationTest(RegistryTestCase):
@@ -32,22 +32,12 @@ class RegistryValidationTest(RegistryTestCase):
         policy_path.write_text(json.dumps(policy), encoding="utf-8")
         self.assertEqual(1, len(lookup(self.repo / "memory", "contexts", "")))
 
-    def test_migrate_evidence_upgrades_existing_line_reference(self) -> None:
-        self.seed_line_reference_evidence()
-        self.assertEqual(1, migrate_evidence(self.repo / "memory", self.repo))
-        self.assertEqual(
-            1, verify_evidence(self.repo / "memory", self.repo)["summary"]["current"]
-        )
-
     def test_each_record_and_reference_defect_is_named(self) -> None:
-        use_json_layout(self.repo / "memory")
         orders = {"id": "orders", "name": "Orders", "responsibility": "Own orders."}
         billing = {"id": "billing", "name": "Billing", "responsibility": "Own invoices."}
         order_term = {"id": "order", "name": "Order", "contexts": ["orders"]}
         invoice_term = {"id": "invoice", "name": "Invoice", "contexts": ["orders"]}
         cases = [
-            ("duplicate id", "contexts.json", [orders, dict(orders)], "contexts.json contains duplicate id"),
-            ("blank id", "contexts.json", [orders, {**billing, "id": ""}], "contexts.json entries require non-empty id"),
             ("unknown status", "contexts.json", [{**orders, "status": "pending"}, billing],
              "contexts/orders has an invalid status"),
             ("decision review status", "decisions.json", [{"id": "d", "review_status": "bogus", "status": "candidate"}],
@@ -254,24 +244,15 @@ class RegistryValidationTest(RegistryTestCase):
         self.assertEqual(1, len(events.read_text(encoding="utf-8").splitlines()))
 
     def test_a_registry_root_one_directory_too_deep_is_named_as_such(self) -> None:
-        use_json_layout(self.repo / "memory")
         inner = self.repo / "memory" / "registry"
         self.assertEqual(
             [
-                f"no Domain Registry at memory/registry: it holds neither registry/index.md nor "
-                f"registry/manifest.json; {DOMAIN_MEMORY_HINT}; did you mean memory?"
+                f"no Domain Registry at memory/registry: it holds no registry/index.md; {DOMAIN_MEMORY_HINT}; did you mean memory?"
             ],
             validate(inner, self.repo, False),
         )
         with self.assertRaisesRegex(ValueError, "points one directory too deep"):
             load_json(inner / "domain-memory-policy.json")
-
-    def test_a_json_registry_without_a_manifest_is_still_read(self) -> None:
-        root = self.repo / "memory"
-        use_json_layout(root)
-        contexts = read_document(root, "contexts.json")
-        (root / "registry" / "manifest.json").unlink()
-        self.assertEqual(contexts, read_document(root, "contexts.json"))
 
     def test_a_missing_file_with_nothing_nearby_gets_no_hint(self) -> None:
         missing = self.repo / "memory" / "nowhere.json"
@@ -280,12 +261,11 @@ class RegistryValidationTest(RegistryTestCase):
         self.assertEqual(f"JSON file required: {missing}", str(refused.exception))
         elsewhere, memory = self.repo / "elsewhere", self.repo / "memory"
         self.assertEqual(
-            [f"no Domain Registry at {elsewhere.resolve().as_posix()}: it holds neither registry/index.md nor "
-             f"registry/manifest.json; {DOMAIN_MEMORY_HINT}; did you mean {memory.resolve().as_posix()}?"],
+            [f"no Domain Registry at {elsewhere.resolve().as_posix()}: it holds no registry/index.md; {DOMAIN_MEMORY_HINT}; did you mean {memory.resolve().as_posix()}?"],
             validate(elsewhere, None, False),
         )
         self.assertEqual(
-            [f"no Domain Registry at elsewhere: it holds neither registry/index.md nor registry/manifest.json; "
+            [f"no Domain Registry at elsewhere: it holds no registry/index.md; "
              f"{DOMAIN_MEMORY_HINT}; did you mean memory?"],
             validate(elsewhere, self.repo, False),
         )
@@ -296,8 +276,7 @@ class RegistryValidationTest(RegistryTestCase):
         ):
             with self.subTest(beside.as_posix()):
                 self.assertEqual(
-                    [f"no Domain Registry at {beside.resolve().as_posix()}: it holds neither registry/index.md nor "
-                     f"registry/manifest.json; {DOMAIN_MEMORY_HINT}{nearby}"],
+                    [f"no Domain Registry at {beside.resolve().as_posix()}: it holds no registry/index.md; {DOMAIN_MEMORY_HINT}{nearby}"],
                     validate(beside, None, False),
                 )
 
