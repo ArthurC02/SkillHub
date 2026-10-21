@@ -82,9 +82,26 @@ got="$(awk '$1 == "users" { print $2 }' <<<"$report")"
 [ "$got" = "$want" ] ||
   fail "the restored database has $got users, the source has $want: the WAL written after the base backup was not replayed"
 echo "backup drill: restored $got users, including the 4 written after the base backup"
+grep -q "within the 14400s recovery time objective" <<<"$report" ||
+  fail "the restore drill did not measure its recovery against the four-hour objective: $report"
+
+overdue="$(docker run --rm --network "$NET" "${walg_env[@]}" -e DRILL_RTO_SECONDS=0 "$POSTGRES_IMAGE" skillhub-restore-drill 2>&1)" &&
+  fail "a restore drill slower than its recovery time objective exited 0"
+grep -q "over the 0s recovery time objective" <<<"$overdue" ||
+  fail "a restore drill over its objective did not say so: $overdue"
+echo "backup drill: a drill over its recovery time objective fails and says so"
 
 if docker run --rm --network "$NET" "${walg_env[@]}" -e WALG_S3_PREFIX=s3://skillhub-backups/nothing-here \
   "$POSTGRES_IMAGE" skillhub-restore-drill >/dev/null 2>&1; then
   fail "a restore drill with no backup to fetch exited 0"
 fi
 echo "backup drill: a drill with no backup fails, as it must"
+
+for bad in "WALG_RETAIN_DAYS=0" "WALG_RETAIN_DAYS=35d" "WALG_RETAIN_FULL=7"; do
+  refusal="$(docker exec -e "$bad" "$PG" skillhub-backup 2>&1)" && fail "skillhub-backup accepted $bad"
+  grep -q "WALG_RETAIN_DAYS" <<<"$refusal" || fail "skillhub-backup refused $bad without naming WALG_RETAIN_DAYS: $refusal"
+done
+docker exec "$PG" skillhub-backup >/dev/null 2>&1 || fail "the second skillhub-backup failed"
+kept="$(docker exec "$PG" gosu postgres wal-g backup-list 2>/dev/null | grep -c '^base_')"
+[ "$kept" = 2 ] || fail "after two backups within the retention window $kept remain; retention deleted a backup younger than 35 days"
+echo "backup drill: both backups younger than the 35-day retention survive the second backup"

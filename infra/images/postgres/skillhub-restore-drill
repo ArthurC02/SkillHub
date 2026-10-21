@@ -3,21 +3,30 @@ set -eu
 : "${WALG_S3_PREFIX:?WALG_S3_PREFIX is not set, so there is no backup to restore}"
 export PGDATA=/var/lib/postgresql/restore-drill PGHOST=/var/run/postgresql PGUSER="${POSTGRES_USER:-postgres}"
 database="${DRILL_DATABASE:-skillhub}"
+rto_seconds="${DRILL_RTO_SECONDS:-14400}"
+started=$(date +%s)
+
+elapsed() { echo $(($(date +%s) - started)); }
+remaining() { echo $((rto_seconds - $(elapsed))); }
+over_objective() {
+    echo "restore drill: recovery took $(elapsed)s, over the ${rto_seconds}s recovery time objective; see $PGDATA/drill.log" >&2
+    exit 1
+}
 
 rm -rf "$PGDATA"
 install -d -o postgres -g postgres -m 0700 "$PGDATA"
 gosu postgres wal-g backup-fetch "$PGDATA" "${DRILL_BACKUP:-LATEST}"
 gosu postgres touch "$PGDATA/recovery.signal"
-gosu postgres pg_ctl -D "$PGDATA" -w -t 3600 -l "$PGDATA/drill.log" start -o \
-    "-c listen_addresses='' -c archive_mode=off -c restore_command='wal-g wal-fetch %f %p' -c recovery_target_action=promote"
+[ "$(remaining)" -gt 0 ] || over_objective
+if ! gosu postgres pg_ctl -D "$PGDATA" -w -t "$(remaining)" -l "$PGDATA/drill.log" start -o \
+    "-c listen_addresses='' -c archive_mode=off -c restore_command='wal-g wal-fetch %f %p' -c recovery_target_action=promote"; then
+    [ "$(remaining)" -gt 0 ] || over_objective
+    echo "restore drill: postgres did not start on the restored data; see $PGDATA/drill.log" >&2
+    exit 1
+fi
 
-waited=0
 until [ "$(gosu postgres psql -Atqc 'SELECT NOT pg_is_in_recovery()')" = t ]; do
-    waited=$((waited + 5))
-    if [ "$waited" -gt "${DRILL_RECOVERY_TIMEOUT_SECONDS:-3600}" ]; then
-        echo "restore drill: recovery did not finish; see $PGDATA/drill.log" >&2
-        exit 1
-    fi
+    [ "$(remaining)" -gt 0 ] || over_objective
     sleep 5
 done
 
@@ -29,4 +38,5 @@ gosu postgres psql -v ON_ERROR_STOP=1 -d "$database" -At -F ' ' -c "
     UNION ALL SELECT 'latest_run_created_at', coalesce(max(created_at)::text, 'none') FROM runs
     UNION ALL SELECT 'latest_audit_event_at', coalesce(max(created_at)::text, 'none') FROM audit_events"
 gosu postgres pg_ctl -D "$PGDATA" -m fast -w stop
-echo "restore drill: recovered and readable"
+[ "$(elapsed)" -le "$rto_seconds" ] || over_objective
+echo "restore drill: recovered and readable in $(elapsed)s, within the ${rto_seconds}s recovery time objective"

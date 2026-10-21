@@ -45,7 +45,7 @@ EOF
 
 | 檔 | 內容 |
 | --- | --- |
-| `postgres.env` | `POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_DB=skillhub`；WAL-G：`WALG_S3_PREFIX=s3://<備份 bucket>/postgres`、`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_ENDPOINT`、`AWS_REGION`、`AWS_S3_FORCE_PATH_STYLE=true`；可選 `WALG_RETAIN_FULL`（預設保留 7 份完整備份） |
+| `postgres.env` | `POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_DB=skillhub`；WAL-G：`WALG_S3_PREFIX=s3://<備份 bucket>/postgres`、`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_ENDPOINT`、`AWS_REGION`、`AWS_S3_FORCE_PATH_STYLE=true`；可選 `WALG_RETAIN_DAYS`（預設 35，備份保留天數；仍設著舊的 `WALG_RETAIN_FULL` 時備份拒絕執行）、`DRILL_RTO_SECONDS`（預設 14400，還原演練的時間上限） |
 | `platform.env` | api、worker、maintenance、reindex 共用。`DATABASE_URL=postgres://<user>:<password>@postgres:5432/skillhub?sslmode=disable`；其餘照 [release-checklist](../plans/mvp/m4/release-checklist.md) §2.3 的表，完整清單是 `.env.example` |
 | `llm.env` | apps/llm 的設定；`LITELLM_API_KEY` 是 Virtual Key，不是 master key（§2.3） |
 | `postgres-exporter.env` | `DATA_SOURCE_NAME=postgresql://<user>:<password>@postgres:5432/skillhub?sslmode=disable` |
@@ -108,8 +108,8 @@ sudo /opt/skillhub/infra/deploy/control-plane/bin/skillhub-enable-timers
 ## 3. 備份與還原演練
 
 - **連續封存**：Postgres 每寫滿一段 WAL，或有寫入後滿 60 秒，就由 `wal-g wal-push` 送到備份 bucket。失敗時 WAL 堆在資料卷上並重試。
-- **完整備份**：`skillhub-backup.timer` 每天 03:00，保留最近 `WALG_RETAIN_FULL` 份，更舊的連同所屬 WAL 一起刪。
-- **還原演練**：`skillhub-restore-drill.timer` 每月 7 日 05:00，在一個**沒有掛資料卷**的一次性容器裡抓最新完整備份、重播 WAL 到最新、印出幾張核心表的列數與最後寫入時間。不碰正在服務的資料庫。
+- **完整備份**：`skillhub-backup.timer` 每天 03:00，超過 `WALG_RETAIN_DAYS` 天的備份連同所屬 WAL 一起刪。這個天數寫在同意書的刪除說明裡，改它要重走法務確認。
+- **還原演練**：`skillhub-restore-drill.timer` 每月 7 日 05:00，在一個**沒有掛資料卷**的一次性容器裡抓最新完整備份、重播 WAL 到最新、印出幾張核心表的列數與最後寫入時間，以及從取回到可讀花了幾秒；超過 `DRILL_RTO_SECONDS` 就失敗，由 `ScheduledJobFailed` 告警。不碰正在服務的資料庫。
 
 手動：
 
