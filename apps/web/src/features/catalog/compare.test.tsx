@@ -281,7 +281,17 @@ test("EVAL-003 到站時就有同一個測試題的候選,而且認得出它的�
   expect(text()).not.toContain("這是別的測試題的試跑紀錄。");
 
   const list = container.querySelector("ul.download-list");
-  expect(list?.textContent ?? "").not.toContain(OTHER_RUN);
+  const identity = Array.from(list!.querySelectorAll("code")).find(
+    (node) => node.textContent === OTHER_RUN,
+  );
+  expect(identity).toBeDefined();
+  const disclosure = identity!.closest("details");
+  expect(disclosure).not.toBeNull();
+  expect(disclosure!.open).toBe(false);
+  expect(disclosure!.querySelector("summary")?.textContent).toBe("試跑紀錄 ID");
+  const surface = list!.cloneNode(true) as HTMLElement;
+  surface.querySelectorAll("details").forEach((node) => node.remove());
+  expect(surface.textContent).not.toContain(OTHER_RUN);
 
   expect(container.querySelector("#against")).not.toBeNull();
   expect(text()).not.toContain("這個測試題目前只有這一次試跑紀錄");

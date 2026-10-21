@@ -158,6 +158,10 @@ function CandidateRow({
           <code>{run.skill_version_id}</code>
         </details>
       )}
+      <details>
+        <summary>試跑紀錄 ID</summary>
+        <code>{run.run_id}</code>
+      </details>
       <p className="badge-row">
         <RunVerdict verdict={run.evaluation} />
       </p>
@@ -166,13 +170,25 @@ function CandidateRow({
       </p>
       {run.status_reason && <p className="note">{run.status_reason}</p>}
       <p>
+        <Link
+          to="/runs/$runId"
+          params={{ runId: run.run_id }}
+          target="_blank"
+          rel="noopener"
+          preload={false}
+          aria-label={`另開試跑結果：${accessibleVersion}、建立於 ${formatAt(run.created_at, "second")}，試跑紀錄 ID ${run.run_id}`}
+        >
+          另開試跑結果
+        </Link>
+      </p>
+      <p>
         <button
           type="button"
           ref={focusRef}
-          aria-label={`以 ${accessibleVersion}、建立於 ${formatAt(run.created_at)} 的試跑比較，試跑紀錄 ID ${run.run_id}`}
+          aria-label={`以 ${accessibleVersion}、建立於 ${formatAt(run.created_at, "second")} 的試跑比較，試跑紀錄 ID ${run.run_id}`}
           onClick={() => onPick(run.run_id)}
         >
-          與這一次比較（建立於 <Timestamp at={run.created_at} />）
+          與這一次比較（建立於 <Timestamp at={run.created_at} precision="second" />）
         </button>
       </p>
     </li>

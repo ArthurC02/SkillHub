@@ -91,6 +91,12 @@ export function RunCompare() {
         />
       )}
 
+      <p className="note">
+        <Link to="/runs/$runId" params={{ runId }} target="_blank" rel="noopener" preload={false}>
+          另開比較基準的試跑結果
+        </Link>
+      </p>
+
       <ComparisonResult comparison={comparison} against={against}>
         <details>
           <summary>進階資訊（試跑紀錄識別碼）</summary>
@@ -113,12 +119,6 @@ export function RunCompare() {
           pickForm
         )}
       </ComparisonResult>
-
-      <p className="note">
-        <Link to="/runs/$runId" params={{ runId }}>
-          回到這次試跑的詳情
-        </Link>
-      </p>
     </section>
   );
 }
