@@ -191,15 +191,8 @@ func (s checkScope) withItem(values []string) []string {
 	return out
 }
 
-type ruleLeaf struct {
-	info  CheckKind
-	grade ruleGrader
-}
-
-func (r ruleLeaf) kind() CheckKind { return r.info }
-
-func (r ruleLeaf) evaluate(s checkScope, n testlab.Check, _ string) outcome {
-	result, reason := r.grade(s.m, s.withItem(n.Values))
+func gradeRule(s checkScope, n testlab.Check, grade ruleGrader) outcome {
+	result, reason := grade(s.m, s.withItem(n.Values))
 	if s.m.CannotRecordPass(result) {
 		result = verdict.ResultUndetermined
 		reason += "; the run's evidence is incomplete, so this is not recorded as passed"
@@ -215,7 +208,7 @@ func (containsValuesNode) kind() CheckKind {
 }
 
 func (n containsValuesNode) evaluate(s checkScope, c testlab.Check, path string) outcome {
-	return ruleLeaf{n.kind(), gradeContainsValues}.evaluate(s, c, path)
+	return gradeRule(s, c, gradeContainsValues)
 }
 
 type asksNode struct{}
@@ -226,7 +219,7 @@ func (asksNode) kind() CheckKind {
 }
 
 func (n asksNode) evaluate(s checkScope, c testlab.Check, path string) outcome {
-	return ruleLeaf{n.kind(), gradeAsks}.evaluate(s, c, path)
+	return gradeRule(s, c, gradeAsks)
 }
 
 type doesNotAskNode struct{}
@@ -237,7 +230,7 @@ func (doesNotAskNode) kind() CheckKind {
 }
 
 func (n doesNotAskNode) evaluate(s checkScope, c testlab.Check, path string) outcome {
-	return ruleLeaf{n.kind(), gradeDoesNotAsk}.evaluate(s, c, path)
+	return gradeRule(s, c, gradeDoesNotAsk)
 }
 
 type judgeNode struct{}

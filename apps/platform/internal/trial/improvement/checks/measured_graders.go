@@ -83,7 +83,7 @@ func (maxCharsNode) kind() CheckKind {
 func (maxCharsNode) validateValues(values []string) error { return validateLimit(values) }
 
 func (n maxCharsNode) evaluate(s checkScope, c testlab.Check, path string) outcome {
-	return ruleLeaf{n.kind(), limitGrader{"characters", countChars}.grade}.evaluate(s, c, path)
+	return gradeRule(s, c, limitGrader{"characters", countChars}.grade)
 }
 
 type maxSentencesNode struct{}
@@ -96,7 +96,7 @@ func (maxSentencesNode) kind() CheckKind {
 func (maxSentencesNode) validateValues(values []string) error { return validateLimit(values) }
 
 func (n maxSentencesNode) evaluate(s checkScope, c testlab.Check, path string) outcome {
-	return ruleLeaf{n.kind(), limitGrader{"sentences", countSentences}.grade}.evaluate(s, c, path)
+	return gradeRule(s, c, limitGrader{"sentences", countSentences}.grade)
 }
 
 func calledTools(m facts.Material, names []string) (called, missing []string) {
@@ -142,7 +142,7 @@ func (callsToolNode) kind() CheckKind {
 }
 
 func (n callsToolNode) evaluate(s checkScope, c testlab.Check, path string) outcome {
-	return ruleLeaf{n.kind(), gradeCallsTool}.evaluate(s, c, path)
+	return gradeRule(s, c, gradeCallsTool)
 }
 
 type avoidsToolNode struct{}
@@ -153,5 +153,5 @@ func (avoidsToolNode) kind() CheckKind {
 }
 
 func (n avoidsToolNode) evaluate(s checkScope, c testlab.Check, path string) outcome {
-	return ruleLeaf{n.kind(), gradeAvoidsTool}.evaluate(s, c, path)
+	return gradeRule(s, c, gradeAvoidsTool)
 }
