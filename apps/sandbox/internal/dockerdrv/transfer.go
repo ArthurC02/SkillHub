@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"path"
 	"strings"
 	"time"
@@ -32,10 +31,6 @@ const (
 
 	DonePath      = OutDir + "/.workload-done"
 	CollectedPath = OutDir + "/.collected"
-
-	grantFetchLimit = 64 << 20
-
-	grantFetchTimeout = 2 * time.Minute
 
 	artifactReadLimit = 128 << 20
 
@@ -91,7 +86,7 @@ func inputTarget(g sandbox.ObjectGrant, datasetNames map[string]string) (string,
 }
 
 func (d *Driver) placeInput(ctx context.Context, id string, req sandbox.RunRequest, g sandbox.ObjectGrant, target string) error {
-	body, err := fetch(ctx, g.URL)
+	body, err := sandbox.FetchGrant(ctx, g.URL, sandbox.GrantFetchLimit)
 	if err != nil {
 		return fmt.Errorf("fetch %s %s: %w", g.Purpose, g.ObjectKey, err)
 	}
@@ -150,38 +145,6 @@ func (d *Driver) ReleaseWorkload(ctx context.Context, id string) error {
 		return nil
 	}
 	return err
-}
-
-func fetch(ctx context.Context, url string) ([]byte, error) {
-	return fetchWithLimit(ctx, url, grantFetchLimit)
-}
-
-func fetchWithLimit(ctx context.Context, url string, limit int64) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(ctx, grantFetchTimeout)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, errors.New("grant URL is not usable")
-	}
-	resp, err := sandbox.GrantHTTPClient.Do(req)
-	if err != nil {
-		return nil, errors.New("object storage could not be reached")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("object storage answered %d", resp.StatusCode)
-	}
-	if resp.ContentLength > limit {
-		return nil, errors.New("object exceeds the grant size limit")
-	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
-	if err != nil {
-		return nil, errors.New("object could not be read")
-	}
-	if int64(len(body)) > limit {
-		return nil, errors.New("object exceeds the grant size limit")
-	}
-	return body, nil
 }
 
 func (d *Driver) exec(ctx context.Context, id string, cmd []string, stdin []byte) error {

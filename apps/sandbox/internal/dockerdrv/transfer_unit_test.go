@@ -19,7 +19,7 @@ func TestFetchRejectsAnOversizedGrantedObject(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, err := fetch(context.Background(), srv.URL+"/signed?secret=must-not-leak")
+	_, err := sandbox.FetchGrant(context.Background(), srv.URL+"/signed?secret=must-not-leak", sandbox.GrantFetchLimit)
 	if err == nil {
 		t.Fatal("oversized object was accepted")
 	}
@@ -37,7 +37,7 @@ func TestFetchRejectsOversizedChunkedObject(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, err := fetchWithLimit(context.Background(), srv.URL+"/signed?secret=must-not-leak", 5)
+	_, err := sandbox.FetchGrant(context.Background(), srv.URL+"/signed?secret=must-not-leak", 5)
 	if err == nil {
 		t.Fatal("oversized chunked object was accepted")
 	}
@@ -56,7 +56,7 @@ func TestFetchRefusesToFollowARedirect(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	body, err := fetch(context.Background(), srv.URL+"/signed?secret=must-not-leak")
+	body, err := sandbox.FetchGrant(context.Background(), srv.URL+"/signed?secret=must-not-leak", sandbox.GrantFetchLimit)
 	if err == nil {
 		t.Fatalf("a redirected grant URL was followed and returned %q", body)
 	}

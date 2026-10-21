@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
 )
 
 func TestFetchRefusesToFollowARedirect(t *testing.T) {
@@ -18,7 +20,7 @@ func TestFetchRefusesToFollowARedirect(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	body, err := fetch(context.Background(), srv.URL+"/signed?secret=must-not-leak")
+	body, err := sandbox.FetchGrant(context.Background(), srv.URL+"/signed?secret=must-not-leak", sandbox.GrantFetchLimit)
 	if err == nil {
 		t.Fatalf("a redirected grant URL was followed and returned %q", body)
 	}
