@@ -16,7 +16,7 @@ func TestListCombinesRunAndEvaluationByPriorityAndLatestOwnerTime(t *testing.T) 
 	service := completeService()
 	service.ReadRuns = func(context.Context, pgtype.UUID) ([]RunFact, error) {
 		return []RunFact{{
-			RunID: "run-1", SkillName: "Release notes", Classification: Recent,
+			RunID: "run-1", Classification: Recent,
 			Status: Status{Value: "succeeded", Label: "試跑完成"}, ActivityAt: runTime,
 		}}, nil
 	}
@@ -45,8 +45,8 @@ func TestListUsesTheGlobalTotalOrderAcrossPages(t *testing.T) {
 	service := completeService()
 	service.ReadRuns = func(context.Context, pgtype.UUID) ([]RunFact, error) {
 		return []RunFact{
-			{RunID: "b", SkillName: "B", Classification: Recent, ActivityAt: shared},
-			{RunID: "a", SkillName: "A", Classification: Recent, ActivityAt: shared},
+			{RunID: "b", Classification: Recent, ActivityAt: shared},
+			{RunID: "a", Classification: Recent, ActivityAt: shared},
 		}, nil
 	}
 	service.ReadCreations = func(context.Context, pgtype.UUID) ([]CreationFact, error) {
@@ -126,7 +126,7 @@ func TestListScopesEveryOwnerReaderToTheRequestedWorkspace(t *testing.T) {
 		ReadRuns: func(_ context.Context, workspaceID pgtype.UUID) ([]RunFact, error) {
 			seen[SourceRun] = append(seen[SourceRun], workspaceID)
 			if workspaceID == alice {
-				return []RunFact{{RunID: "alice-run", SkillName: "Alice", Classification: Recent}}, nil
+				return []RunFact{{RunID: "alice-run", Classification: Recent}}, nil
 			}
 			return nil, nil
 		},
@@ -151,6 +151,7 @@ func TestListScopesEveryOwnerReaderToTheRequestedWorkspace(t *testing.T) {
 			}
 			return nil, nil
 		},
+		LinkRuns: linkEveryRun,
 		ReadPublishing: func(_ context.Context, workspaceID pgtype.UUID) ([]PublishingFact, error) {
 			seen[SourcePublishing] = append(seen[SourcePublishing], workspaceID)
 			if workspaceID == alice {
@@ -185,5 +186,87 @@ func completeService() *Service {
 		ReadCreations:   func(context.Context, pgtype.UUID) ([]CreationFact, error) { return nil, nil },
 		ReadPackaging:   func(context.Context, pgtype.UUID) ([]PackagingFact, error) { return nil, nil },
 		ReadPublishing:  func(context.Context, pgtype.UUID) ([]PublishingFact, error) { return nil, nil },
+		LinkRuns:        linkEveryRun,
+	}
+}
+
+func linkEveryRun(_ context.Context, _ pgtype.UUID, facts []RunFact) (map[string]RunLink, error) {
+	links := make(map[string]RunLink, len(facts))
+	for _, fact := range facts {
+		links[fact.RunID] = RunLink{SkillID: "skill-of-" + fact.RunID, SkillName: "Skill " + fact.RunID, TestCaseID: "case-of-" + fact.RunID}
+	}
+	return links, nil
+}
+
+func TestListLinksOnlyTheRunsOnTheReturnedPage(t *testing.T) {
+	newest := time.Date(2026, 9, 30, 8, 0, 0, 0, time.UTC)
+	service := completeService()
+	service.ReadRuns = func(context.Context, pgtype.UUID) ([]RunFact, error) {
+		return []RunFact{
+			{RunID: "old", Classification: Recent, ActivityAt: newest.Add(-2 * time.Hour)},
+			{RunID: "new", Classification: Recent, ActivityAt: newest},
+			{RunID: "mid", Classification: Recent, ActivityAt: newest.Add(-time.Hour)},
+		}, nil
+	}
+	var linked []string
+	service.LinkRuns = func(ctx context.Context, ws pgtype.UUID, facts []RunFact) (map[string]RunLink, error) {
+		for _, fact := range facts {
+			linked = append(linked, fact.RunID)
+		}
+		return linkEveryRun(ctx, ws, facts)
+	}
+
+	page, err := service.List(context.Background(), pgtype.UUID{}, "", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(linked, []string{"new", "mid"}) {
+		t.Fatalf("linked runs = %v, want only the page's [new mid]", linked)
+	}
+	first := page.Items[0]
+	if first.Summary != "Skill new 的試跑" || first.Context.SkillID != "skill-of-new" ||
+		first.Context.SkillName != "Skill new" || first.Context.TestCaseID != "case-of-new" {
+		t.Fatalf("linked item = %+v context = %+v", first, *first.Context)
+	}
+}
+
+func TestListFailsClosedWhenTheRunsOnThePageCannotBeLinked(t *testing.T) {
+	cases := map[string]func(context.Context, pgtype.UUID, []RunFact) (map[string]RunLink, error){
+		"linker fails": func(context.Context, pgtype.UUID, []RunFact) (map[string]RunLink, error) {
+			return nil, errors.New("registry unavailable")
+		},
+		"a run has no link": func(context.Context, pgtype.UUID, []RunFact) (map[string]RunLink, error) {
+			return map[string]RunLink{}, nil
+		},
+		"linker not configured": nil,
+	}
+	for name, linker := range cases {
+		t.Run(name, func(t *testing.T) {
+			service := completeService()
+			service.ReadRuns = func(context.Context, pgtype.UUID) ([]RunFact, error) {
+				return []RunFact{{RunID: "run-1", Classification: Recent}}, nil
+			}
+			service.LinkRuns = linker
+			page, err := service.List(context.Background(), pgtype.UUID{}, "", 50)
+			var unavailable *UnavailableError
+			if !errors.As(err, &unavailable) || !reflect.DeepEqual(unavailable.Sources, []Source{SourceRun}) {
+				t.Fatalf("error = %v, want run source unavailable", err)
+			}
+			if len(page.Items) != 0 || page.Complete {
+				t.Fatalf("partial page escaped: %+v", page)
+			}
+		})
+	}
+}
+
+func TestListDoesNotCallTheLinkerWhenThePageHasNoRun(t *testing.T) {
+	service := completeService()
+	service.ReadCreations = func(context.Context, pgtype.UUID) ([]CreationFact, error) {
+		return []CreationFact{{SessionID: "c", Classification: Recent}}, nil
+	}
+	service.LinkRuns = nil
+	page, err := service.List(context.Background(), pgtype.UUID{}, "", 50)
+	if err != nil || len(page.Items) != 1 {
+		t.Fatalf("page = %+v, err = %v", page, err)
 	}
 }

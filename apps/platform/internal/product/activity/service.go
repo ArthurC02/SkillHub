@@ -31,6 +31,8 @@ var Sources = []Source{
 	SourcePublishing,
 }
 
+const runKind = "run"
+
 type Classification string
 
 const (
@@ -84,14 +86,18 @@ type Page struct {
 }
 
 type RunFact struct {
-	RunID          string
-	SkillID        string
-	SkillName      string
-	SkillVersionID string
-	TestCaseID     string
-	Classification Classification
-	Status         Status
-	ActivityAt     time.Time
+	RunID              string
+	SkillVersionID     string
+	TestCaseSnapshotID string
+	Classification     Classification
+	Status             Status
+	ActivityAt         time.Time
+}
+
+type RunLink struct {
+	SkillID    string
+	SkillName  string
+	TestCaseID string
 }
 
 type EvaluationFact struct {
@@ -135,6 +141,7 @@ type Service struct {
 	ReadCreations   func(context.Context, pgtype.UUID) ([]CreationFact, error)
 	ReadPackaging   func(context.Context, pgtype.UUID) ([]PackagingFact, error)
 	ReadPublishing  func(context.Context, pgtype.UUID) ([]PublishingFact, error)
+	LinkRuns        func(context.Context, pgtype.UUID, []RunFact) (map[string]RunLink, error)
 }
 
 type sourceFacts struct {
@@ -184,7 +191,48 @@ func (s *Service) List(
 		page.Items = page.Items[:limit]
 		page.NextCursor = encodeCursor(page.Items[len(page.Items)-1])
 	}
+	if err := s.linkRunsOnPage(ctx, workspaceID, page.Items, facts.runs); err != nil {
+		return Page{}, &UnavailableError{Sources: []Source{SourceRun}}
+	}
 	return page, nil
+}
+
+func (s *Service) linkRunsOnPage(
+	ctx context.Context, workspaceID pgtype.UUID, items []Item, runs []RunFact,
+) error {
+	runByID := make(map[string]RunFact, len(runs))
+	for _, fact := range runs {
+		runByID[fact.RunID] = fact
+	}
+	var onPage []RunFact
+	for _, item := range items {
+		if item.Kind == runKind {
+			onPage = append(onPage, runByID[item.SourceID])
+		}
+	}
+	if len(onPage) == 0 {
+		return nil
+	}
+	if s.LinkRuns == nil {
+		return errors.New("activity run linker is not configured")
+	}
+	links, err := s.LinkRuns(ctx, workspaceID, onPage)
+	if err != nil {
+		return err
+	}
+	for i := range items {
+		if items[i].Kind != runKind {
+			continue
+		}
+		link, ok := links[items[i].SourceID]
+		if !ok {
+			return fmt.Errorf("run %s has no link", items[i].SourceID)
+		}
+		items[i].Summary = link.SkillName + " 的試跑"
+		items[i].Context.SkillID, items[i].Context.SkillName = link.SkillID, link.SkillName
+		items[i].Context.TestCaseID = link.TestCaseID
+	}
+	return nil
 }
 
 func (s *Service) readAll(
@@ -248,13 +296,10 @@ func combine(
 			}
 		}
 		items = append(items, Item{
-			Kind: "run", SourceID: fact.RunID, Summary: fact.SkillName + " 的試跑",
+			Kind: runKind, SourceID: fact.RunID,
 			Classification: classification, Status: status, ActivityAt: activityAt,
-			Context: &Context{
-				SkillID: fact.SkillID, SkillName: fact.SkillName,
-				SkillVersionID: fact.SkillVersionID, TestCaseID: fact.TestCaseID,
-			},
-			Continuation: Continuation{Kind: "run", RunID: fact.RunID},
+			Context:      &Context{SkillVersionID: fact.SkillVersionID},
+			Continuation: Continuation{Kind: runKind, RunID: fact.RunID},
 		})
 	}
 	for _, fact := range creations {

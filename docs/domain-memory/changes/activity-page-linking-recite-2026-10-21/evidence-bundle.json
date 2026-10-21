@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "activity-page-linking-recite",
+  "proposal_id": "activity-page-linking-recite",
+  "registry_revision": {
+    "observed_commit": "75202504b259dc6f5d572f3f27997322e0c9e957",
+    "registry_digest": "sha256:08afcb38a6dafadde344b7ec4fa79007b79b3fb131e8d8c58717083c8859b264",
+    "committed_digest": "sha256:08afcb38a6dafadde344b7ec4fa79007b79b3fb131e8d8c58717083c8859b264"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/activity-page-linking-recite-2026-10-21 --path apps/platform/internal/product/activity/service.go --path apps/platform/internal/product/activity/service_test.go",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:ca901c11731f82845a110b1dafb38786ec3ae16445d26bc9990fabea2bf18d17",
+      "finished_at": "2026-10-21T00:15:12.911192Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

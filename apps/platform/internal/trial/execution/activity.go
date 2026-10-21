@@ -12,15 +12,19 @@ import (
 )
 
 type ActivityFact struct {
-	RunID          pgtype.UUID
-	SkillID        pgtype.UUID
-	SkillName      string
-	SkillVersionID pgtype.UUID
-	TestCaseID     pgtype.UUID
-	Classification string
-	Status         string
-	StatusLabel    string
-	ActivityAt     time.Time
+	RunID              pgtype.UUID
+	SkillVersionID     pgtype.UUID
+	TestCaseSnapshotID pgtype.UUID
+	Classification     string
+	Status             string
+	StatusLabel        string
+	ActivityAt         time.Time
+}
+
+type ActivityLink struct {
+	SkillID    pgtype.UUID
+	SkillName  string
+	TestCaseID pgtype.UUID
 }
 
 const (
@@ -29,39 +33,48 @@ const (
 )
 
 func (s *Service) ActivityFacts(ctx context.Context, workspaceID pgtype.UUID) ([]ActivityFact, error) {
-	if err := s.requireRunLinks(); err != nil {
-		return nil, err
-	}
 	rows, err := s.queries().ListRunActivityFacts(ctx, workspaceID)
-	if err != nil {
-		return nil, err
-	}
-	versionIDs := make([]pgtype.UUID, len(rows))
-	snapshotIDs := make([]pgtype.UUID, len(rows))
-	for i, row := range rows {
-		versionIDs[i] = row.SkillVersionID
-		snapshotIDs[i] = row.TestCaseSnapshotID
-	}
-	versions, testCases, err := s.runLinks(ctx, workspaceID, versionIDs, snapshotIDs)
 	if err != nil {
 		return nil, err
 	}
 	facts := make([]ActivityFact, len(rows))
 	for i, row := range rows {
-		version, versionFound := versions[row.SkillVersionID]
-		testCaseID, caseFound := testCases[row.TestCaseSnapshotID]
-		if !versionFound || !caseFound {
-			return nil, fmt.Errorf("%w: run %s", errRunLinkMissing, pgconv.UUIDString(row.ID))
-		}
 		classification, label := classifyRunActivity(row.Status)
 		facts[i] = ActivityFact{
-			RunID: row.ID, SkillID: version.SkillID, SkillName: version.SkillName,
-			SkillVersionID: row.SkillVersionID, TestCaseID: testCaseID,
+			RunID: row.ID, SkillVersionID: row.SkillVersionID, TestCaseSnapshotID: row.TestCaseSnapshotID,
 			Classification: classification, Status: string(row.Status), StatusLabel: label,
 			ActivityAt: row.ActivityUpdatedAt.Time,
 		}
 	}
 	return facts, nil
+}
+
+func (s *Service) ActivityLinks(
+	ctx context.Context, workspaceID pgtype.UUID, facts []ActivityFact,
+) (map[pgtype.UUID]ActivityLink, error) {
+	if err := s.requireRunLinks(); err != nil {
+		return nil, err
+	}
+	versionIDs := make([]pgtype.UUID, len(facts))
+	snapshotIDs := make([]pgtype.UUID, len(facts))
+	for i, fact := range facts {
+		versionIDs[i] = fact.SkillVersionID
+		snapshotIDs[i] = fact.TestCaseSnapshotID
+	}
+	versions, testCases, err := s.runLinks(ctx, workspaceID, versionIDs, snapshotIDs)
+	if err != nil {
+		return nil, err
+	}
+	links := make(map[pgtype.UUID]ActivityLink, len(facts))
+	for _, fact := range facts {
+		version, versionFound := versions[fact.SkillVersionID]
+		testCaseID, caseFound := testCases[fact.TestCaseSnapshotID]
+		if !versionFound || !caseFound {
+			return nil, fmt.Errorf("%w: run %s", errRunLinkMissing, pgconv.UUIDString(fact.RunID))
+		}
+		links[fact.RunID] = ActivityLink{SkillID: version.SkillID, SkillName: version.SkillName, TestCaseID: testCaseID}
+	}
+	return links, nil
 }
 
 func classifyRunActivity(status gen.RunStatus) (string, string) {

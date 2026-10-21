@@ -83,11 +83,10 @@ func newActivityService(
 		out := make([]activity.RunFact, len(facts))
 		for i, fact := range facts {
 			out[i] = activity.RunFact{
-				RunID: pgconv.UUIDString(fact.RunID), SkillID: pgconv.UUIDString(fact.SkillID),
-				SkillName: fact.SkillName, SkillVersionID: pgconv.UUIDString(fact.SkillVersionID),
-				TestCaseID:     pgconv.UUIDString(fact.TestCaseID),
-				Classification: activity.Classification(fact.Classification),
-				Status:         activity.Status{Value: fact.Status, Label: fact.StatusLabel}, ActivityAt: fact.ActivityAt,
+				RunID: pgconv.UUIDString(fact.RunID), SkillVersionID: pgconv.UUIDString(fact.SkillVersionID),
+				TestCaseSnapshotID: pgconv.UUIDString(fact.TestCaseSnapshotID),
+				Classification:     activity.Classification(fact.Classification),
+				Status:             activity.Status{Value: fact.Status, Label: fact.StatusLabel}, ActivityAt: fact.ActivityAt,
 			}
 		}
 		return out, err
@@ -140,5 +139,34 @@ func newActivityService(
 		}
 		return out, err
 	}
+	service.LinkRuns = func(ctx context.Context, workspaceID pgtype.UUID, facts []activity.RunFact) (map[string]activity.RunLink, error) {
+		return linkActivityRuns(ctx, runs, workspaceID, facts)
+	}
 	return service
+}
+
+func linkActivityRuns(
+	ctx context.Context, runs *run.Service, workspaceID pgtype.UUID, facts []activity.RunFact,
+) (map[string]activity.RunLink, error) {
+	owned := make([]run.ActivityFact, len(facts))
+	for i, fact := range facts {
+		if err := errors.Join(
+			owned[i].RunID.Scan(fact.RunID),
+			owned[i].SkillVersionID.Scan(fact.SkillVersionID),
+			owned[i].TestCaseSnapshotID.Scan(fact.TestCaseSnapshotID),
+		); err != nil {
+			return nil, err
+		}
+	}
+	links, err := runs.ActivityLinks(ctx, workspaceID, owned)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]activity.RunLink, len(links))
+	for runID, link := range links {
+		out[pgconv.UUIDString(runID)] = activity.RunLink{
+			SkillID: pgconv.UUIDString(link.SkillID), SkillName: link.SkillName, TestCaseID: pgconv.UUIDString(link.TestCaseID),
+		}
+	}
+	return out, nil
 }

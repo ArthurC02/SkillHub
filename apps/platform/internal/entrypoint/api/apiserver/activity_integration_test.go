@@ -63,9 +63,12 @@ func TestWorkspaceActivityScopesEveryOwnerReaderToTheSessionWorkspace(t *testing
 	}
 	a.app.ActivitySvc.ReadRuns = func(_ context.Context, workspaceID pgtype.UUID) ([]activity.RunFact, error) {
 		if record(activity.SourceRun, workspaceID) {
-			return []activity.RunFact{{RunID: "alice-run", SkillName: "Alice", Classification: activity.Recent}}, nil
+			return []activity.RunFact{{RunID: "alice-run", Classification: activity.Recent}}, nil
 		}
 		return nil, nil
+	}
+	a.app.ActivitySvc.LinkRuns = func(context.Context, pgtype.UUID, []activity.RunFact) (map[string]activity.RunLink, error) {
+		return map[string]activity.RunLink{"alice-run": {SkillName: "Alice"}}, nil
 	}
 	a.app.ActivitySvc.ReadEvaluations = func(_ context.Context, workspaceID pgtype.UUID) ([]activity.EvaluationFact, error) {
 		if record(activity.SourceEvaluation, workspaceID) {
@@ -138,5 +141,36 @@ func TestWorkspaceActivityRejectsForeignCursorAndOutOfRangeLimit(t *testing.T) {
 		if code, body := alice.doJSON(t, http.MethodGet, path, ""); code != http.StatusBadRequest {
 			t.Errorf("GET %s: status = %d, body = %v", path, code, body)
 		}
+	}
+}
+
+func TestARunInWorkspaceActivityCarriesItsSkillAndTestCase(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, "activity-run-link")
+	skillID := seedSkill(t, pool, alice.workspaceID, "週報整理")
+	runID := seedRun(t, pool, alice.workspaceID, skillID)
+	var versionID, testCaseID string
+	if err := pool.QueryRow(context.Background(), `
+		SELECT r.skill_version_id::text, s.test_case_id::text
+		FROM runs r JOIN test_case_snapshots s ON s.id = r.test_case_snapshot_id WHERE r.id = $1`,
+		mustUUID(t, runID)).Scan(&versionID, &testCaseID); err != nil {
+		t.Fatal(err)
+	}
+
+	code, body := alice.doJSON(t, http.MethodGet, "/me/activity", "")
+	items, _ := body["items"].([]any)
+	if code != http.StatusOK || len(items) != 1 {
+		t.Fatalf("status = %d, body = %v", code, body)
+	}
+	item := items[0].(map[string]any)
+	if item["source_id"] != runID || item["summary"] != "週報整理 的試跑" {
+		t.Fatalf("item = %v", item)
+	}
+	want := map[string]any{
+		"skill_id": skillID, "skill_name": "週報整理", "skill_version_id": versionID, "test_case_id": testCaseID,
+	}
+	if got := item["context"]; !reflect.DeepEqual(got, want) {
+		t.Fatalf("context = %v, want %v", got, want)
 	}
 }
