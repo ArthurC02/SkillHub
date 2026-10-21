@@ -1,9 +1,5 @@
-html {
+html:has(main textarea:focus) {
   scroll-padding-top: var(--app-header-clearance, 0px);
-}
-
-html:has(.app-header:focus-within) {
-  scroll-padding-top: 0;
 }
 
 /* 欄寬的新家，而它現在是一個 token 而不是散在兩處的字面值——`--measure` 同時被

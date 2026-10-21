@@ -124,7 +124,7 @@
 #run-decision,
 #run-trace,
 #run-artifacts {
-  scroll-margin-top: 24px;
+  scroll-margin-top: var(--app-header-clearance, 24px);
 }
 
 @media (min-width: 1024px) {

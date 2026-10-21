@@ -19,7 +19,7 @@ import "./RootLayout.css";
 const HEADER_SCROLL_GAP = 8;
 const HEADER_CLEARANCE_PROPERTY = "--app-header-clearance";
 
-function useHeaderScrollPadding() {
+function useHeaderClearance() {
   const headerRef = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
@@ -54,7 +54,7 @@ export function RootLayout({ children }: { children: ReactNode }) {
   const creationExposed = useCreationEntryPoint();
   const [query, setQuery] = useState("");
   const previousPathname = useRef(pathname);
-  const headerRef = useHeaderScrollPadding();
+  const headerRef = useHeaderClearance();
 
   useLayoutEffect(() => {
     if (previousPathname.current === pathname) return;
