@@ -34,7 +34,9 @@ export function RunCompare() {
   const versions = useSkillVersions(readableSelf?.skill_id ?? "");
   const versionsFeedback = readFeedback(versions);
   const candidates = testCaseId
-    ? (siblings.data?.pages.flatMap((p) => p.runs) ?? []).filter((r) => r.run_id !== runId)
+    ? (siblings.data?.pages.flatMap((p) => p.runs) ?? []).filter(
+        (r) => r.run_id.toLowerCase() !== runId.toLowerCase(),
+      )
     : [];
   const {
     loadMore,
