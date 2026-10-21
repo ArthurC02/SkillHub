@@ -20,6 +20,18 @@ type ReconcileCandidate struct {
 	ObjectKey   string
 }
 
+func toCandidates[R ~struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	ObjectKey   string
+}](rows []R) []ReconcileCandidate {
+	out := make([]ReconcileCandidate, len(rows))
+	for i, row := range rows {
+		out[i] = ReconcileCandidate(row)
+	}
+	return out
+}
+
 func (s *Service) ExpiredArtifactCandidates(ctx context.Context, limit int32) ([]ReconcileCandidate, error) {
 	if s == nil || s.Pool == nil {
 		return nil, errReconcilePersistenceNotConfigured
@@ -28,11 +40,7 @@ func (s *Service) ExpiredArtifactCandidates(ctx context.Context, limit int32) ([
 	if err != nil {
 		return nil, err
 	}
-	out := make([]ReconcileCandidate, len(rows))
-	for i, row := range rows {
-		out[i] = ReconcileCandidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
-	}
-	return out, nil
+	return toCandidates(rows), nil
 }
 
 func (s *Service) ArtifactRetentionBacklog(ctx context.Context) (outputs, intents int64, err error) {
@@ -66,11 +74,7 @@ func (s *Service) ArtifactUploadIntentCandidates(ctx context.Context, limit int3
 	if err != nil {
 		return nil, err
 	}
-	out := make([]ReconcileCandidate, len(rows))
-	for i, row := range rows {
-		out[i] = ReconcileCandidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
-	}
-	return out, nil
+	return toCandidates(rows), nil
 }
 
 func (s *Service) MarkArtifactUploadIntentPurged(ctx context.Context, tx pgx.Tx, id pgtype.UUID) error {

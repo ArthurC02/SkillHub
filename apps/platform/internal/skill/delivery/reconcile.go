@@ -25,6 +25,18 @@ type ReconcileCandidate struct {
 	ObjectKey   string
 }
 
+func toCandidates[R ~struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	ObjectKey   string
+}](rows []R) []ReconcileCandidate {
+	out := make([]ReconcileCandidate, len(rows))
+	for i, row := range rows {
+		out[i] = ReconcileCandidate(row)
+	}
+	return out
+}
+
 func ActiveArtifactReferences(ctx context.Context, db gen.DBTX, objectKey string) (int64, error) {
 	return gen.New(db).CountArtifactsSharingObject(ctx, objectKey)
 }
@@ -62,11 +74,7 @@ func (s *Service) ExpiredReconcileCandidates(ctx context.Context, limit int32) (
 	if err != nil {
 		return nil, err
 	}
-	out := make([]ReconcileCandidate, len(rows))
-	for i, row := range rows {
-		out[i] = ReconcileCandidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
-	}
-	return out, nil
+	return toCandidates(rows), nil
 }
 
 func (s *Service) DownloadCleanupIntentCandidates(ctx context.Context, limit int32) ([]ReconcileCandidate, error) {
@@ -77,11 +85,7 @@ func (s *Service) DownloadCleanupIntentCandidates(ctx context.Context, limit int
 	if err != nil {
 		return nil, err
 	}
-	out := make([]ReconcileCandidate, len(rows))
-	for i, row := range rows {
-		out[i] = ReconcileCandidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
-	}
-	return out, nil
+	return toCandidates(rows), nil
 }
 
 func (s *Service) MarkDownloadCleanupIntentPurged(ctx context.Context, tx pgx.Tx, id pgtype.UUID) error {
@@ -99,11 +103,7 @@ func (s *Service) ClaimedReconcileCandidates(ctx context.Context, limit int32) (
 	if err != nil {
 		return nil, err
 	}
-	out := make([]ReconcileCandidate, len(rows))
-	for i, row := range rows {
-		out[i] = ReconcileCandidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
-	}
-	return out, nil
+	return toCandidates(rows), nil
 }
 
 func (s *Service) MarkArtifactPurged(ctx context.Context, tx pgx.Tx, artifactID pgtype.UUID) error {

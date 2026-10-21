@@ -14,6 +14,7 @@ import (
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
@@ -74,7 +75,11 @@ type Set struct {
 	Gauges      []func(context.Context) error
 }
 
-func packagingCandidates(list func(context.Context, int32) ([]packaging.ReconcileCandidate, error)) objreconcile.ListFunc {
+func reconcileCandidates[C ~struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	ObjectKey   string
+}](list func(context.Context, int32) ([]C, error)) objreconcile.ListFunc {
 	return func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
 		rows, err := list(ctx, limit)
 		if err != nil {
@@ -82,21 +87,7 @@ func packagingCandidates(list func(context.Context, int32) ([]packaging.Reconcil
 		}
 		out := make([]objreconcile.Candidate, len(rows))
 		for i, row := range rows {
-			out[i] = objreconcile.Candidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
-		}
-		return out, nil
-	}
-}
-
-func datasetCandidates(list func(context.Context, int32) ([]testlab.ReconcileCandidate, error)) objreconcile.ListFunc {
-	return func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
-		rows, err := list(ctx, limit)
-		if err != nil {
-			return nil, err
-		}
-		out := make([]objreconcile.Candidate, len(rows))
-		for i, row := range rows {
-			out[i] = objreconcile.Candidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
+			out[i] = objreconcile.Candidate(row)
 		}
 		return out, nil
 	}
@@ -265,10 +256,10 @@ func newObjectReconciler(
 ) *objreconcile.Service {
 	return &objreconcile.Service{
 		Pool: pool, Store: store,
-		ListExpiredArtifacts:       packagingCandidates(downloads.ExpiredReconcileCandidates),
-		ListDownloadIntents:        packagingCandidates(downloads.DownloadCleanupIntentCandidates),
-		ListClaimedArtifacts:       packagingCandidates(downloads.ClaimedReconcileCandidates),
-		ListClaimedDatasets:        datasetCandidates(testlabSvc.ClaimedReconcileCandidates),
+		ListExpiredArtifacts:       reconcileCandidates(downloads.ExpiredReconcileCandidates),
+		ListDownloadIntents:        reconcileCandidates(downloads.DownloadCleanupIntentCandidates),
+		ListClaimedArtifacts:       reconcileCandidates(downloads.ClaimedReconcileCandidates),
+		ListClaimedDatasets:        reconcileCandidates(testlabSvc.ClaimedReconcileCandidates),
 		RecordArtifactPurged:       downloads.MarkArtifactPurged,
 		RecordDownloadIntentPurged: downloads.MarkDownloadCleanupIntentPurged,
 		RecordDatasetLost:          testlabSvc.MarkDatasetObjectLost,

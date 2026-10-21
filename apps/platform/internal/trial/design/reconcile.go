@@ -17,6 +17,18 @@ type ReconcileCandidate struct {
 	ObjectKey   string
 }
 
+func toCandidates[R ~struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	ObjectKey   string
+}](rows []R) []ReconcileCandidate {
+	out := make([]ReconcileCandidate, len(rows))
+	for i, row := range rows {
+		out[i] = ReconcileCandidate(row)
+	}
+	return out
+}
+
 func (s *Service) ClaimedReconcileCandidates(ctx context.Context, limit int32) ([]ReconcileCandidate, error) {
 	if s == nil || s.Pool == nil {
 		return nil, errPersistenceNotConfigured
@@ -25,11 +37,7 @@ func (s *Service) ClaimedReconcileCandidates(ctx context.Context, limit int32) (
 	if err != nil {
 		return nil, err
 	}
-	out := make([]ReconcileCandidate, len(rows))
-	for i, row := range rows {
-		out[i] = ReconcileCandidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
-	}
-	return out, nil
+	return toCandidates(rows), nil
 }
 
 func (s *Service) ExpiredDatasetCandidates(ctx context.Context, limit int32) ([]ReconcileCandidate, error) {
@@ -40,11 +48,7 @@ func (s *Service) ExpiredDatasetCandidates(ctx context.Context, limit int32) ([]
 	if err != nil {
 		return nil, err
 	}
-	out := make([]ReconcileCandidate, len(rows))
-	for i, row := range rows {
-		out[i] = ReconcileCandidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
-	}
-	return out, nil
+	return toCandidates(rows), nil
 }
 
 func (s *Service) DatasetRetentionBacklog(ctx context.Context) (datasets, intents int64, err error) {
@@ -68,11 +72,7 @@ func (s *Service) DatasetCleanupIntentCandidates(ctx context.Context, limit int3
 	if err != nil {
 		return nil, err
 	}
-	out := make([]ReconcileCandidate, len(rows))
-	for i, row := range rows {
-		out[i] = ReconcileCandidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
-	}
-	return out, nil
+	return toCandidates(rows), nil
 }
 
 func (s *Service) MarkDatasetCleanupIntentPurged(ctx context.Context, tx pgx.Tx, intentID pgtype.UUID) error {
