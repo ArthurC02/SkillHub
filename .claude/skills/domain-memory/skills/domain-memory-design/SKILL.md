@@ -1,6 +1,6 @@
 ---
 name: domain-memory-design
-description: Turn a domain-significant requirement into a reviewable DDD boundary and Change Package using the Domain Registry.
+description: Turn a material domain change into a reviewable boundary decision and Change Package. Use after Read, when the seven-step workflow says the change is material; it records unknowns instead of inventing facts.
 ---
 
 # Design a Domain Change

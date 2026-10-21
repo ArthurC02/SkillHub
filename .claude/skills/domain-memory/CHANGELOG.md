@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.0.2
+
+### Changed
+
+- The router page says, for each capability, when to use it and nothing else: the paragraphs that only advertised a reference are gone, since each capability page links the references it uses, and one closing line says where the workflow, the command reference, host integration, the reliability architecture and packaging are. Each capability's description now states when to use it. The extract page no longer mentions `init`.
+
 ## 2.0.1
 
 ### Fixed

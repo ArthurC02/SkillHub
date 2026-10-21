@@ -1,44 +1,28 @@
 ---
 name: domain-memory
-description: "Route domain-driven development work to the smallest Domain Memory capability: read the model, extract it from requirements or code, design a boundary, check a change expresses it, maintain the files, or review consistency."
+description: "Route domain-driven development work to the smallest Domain Memory capability: read the reviewed model before coding, extract it from a requirement or code, design a material change as a Change Package, keep the Registry current after implementation, review its consistency, or review a branch through it."
 ---
 
 # Domain Memory
 
-Domain Memory is a continuous development loop, not a one-time knowledge dump. The reviewed Registry guides implementation; implementation evidence updates the Registry for the next Agent.
+Domain Memory is a development loop, not a knowledge dump: the reviewed Registry guides implementation, and the implementation's evidence updates the Registry for the next Agent. Only `reviewed` records are facts; a `candidate` is handoff material and authorizes nothing.
 
-First time here? [AGENTS.md](AGENTS.md) has the vocabulary, a table of common tasks with their commands, and the mistakes that force a redo, in one page.
+First time here? [AGENTS.md](AGENTS.md) has the vocabulary, the common tasks with their commands, and the mistakes that force a redo.
 
-In an unfamiliar repository, run the read-only `readiness` command first, which finds the Domain Memory the repository holds by itself (`--registry-root` chooses among several or names one elsewhere), and treat only reviewed records as facts; candidates are handoff material and authorize no implementation ([AGENTS.md](AGENTS.md#before-you-rely-on-anything-here)). See [readiness](references/readiness.md) for the evidence and output contract.
+In an unfamiliar repository, run `readiness --repo-root <repo>` first. It is read-only, finds the Domain Memory the repository holds (`--registry-root` chooses among several), and names the capability to start with; [readiness](references/readiness.md) explains its states.
 
-Choose one focused capability:
+Then choose one capability:
 
-- **Extract**: turn a requirement, existing code, or a requirement change or refactoring into DDD candidates with evidence. Use [domain-memory-extract](skills/domain-memory-extract/SKILL.md).
-- **Read**: before coding, load the reviewed terms, Context, ownership, invariants, and existing collaboration. Use [domain-memory-read](skills/domain-memory-read/SKILL.md).
-- **Design**: when a request is a material change, as the seven-step workflow defines it, prepare a reviewable Change Package. Use [domain-memory-design](skills/domain-memory-design/SKILL.md).
-- **Maintain**: after implementation or source drift, update the smallest affected asset as a candidate and preserve evidence. Use [domain-memory-maintain](skills/domain-memory-maintain/SKILL.md).
-- **Review**: before relying on domain facts or handing off work, validate the Registry, source evidence, audit chain, and proposal state. Use [domain-memory-review](skills/domain-memory-review/SKILL.md).
-- **Review a change**: when a branch is ready for review, read it through the model from one `brief` and decide whether it needs a Change Package, a recite, or nothing. Use [domain-memory-review-change](skills/domain-memory-review-change/SKILL.md).
-- **Implementation hygiene**: after Read or Design, and whenever a repository check forces a change, check that code expresses the reviewed boundary without turning generic style rules into Registry facts. Use [domain-memory-implementation-hygiene](skills/domain-memory-implementation-hygiene/SKILL.md).
+- **Read** before coding, when a request uses a domain term or may cross a Context: [domain-memory-read](skills/domain-memory-read/SKILL.md).
+- **Extract** when the Registry has not learned the domain yet, from a requirement, from code, or from a change: [domain-memory-extract](skills/domain-memory-extract/SKILL.md).
+- **Design** when the change is material, as the seven-step workflow defines it, to prepare a reviewable Change Package: [domain-memory-design](skills/domain-memory-design/SKILL.md).
+- **Maintain** after implementation or source drift, to re-cite evidence and record what the model learned: [domain-memory-maintain](skills/domain-memory-maintain/SKILL.md).
+- **Review** before relying on a fact or handing work off, to check the Registry, evidence, audit chain and proposals: [domain-memory-review](skills/domain-memory-review/SKILL.md).
+- **Review a change** when a branch is ready for review, from one `brief`, to decide whether it needs a Change Package, a recite, or nothing: [domain-memory-review-change](skills/domain-memory-review-change/SKILL.md).
+- **Implementation hygiene** while writing code from a handoff, when a repository check forces a change, or before handing the change to review: [domain-memory-implementation-hygiene](skills/domain-memory-implementation-hygiene/SKILL.md).
 
-For a brownfield refactoring that preserves the reviewed model, use the [brownfield refactoring fast path](references/brownfield-refactoring.md) before opening a Change Package. It is a proof of preservation, not a shortcut around unknown ownership or changed contracts.
+A brownfield refactoring that preserves the reviewed model takes the [brownfield refactoring fast path](references/brownfield-refactoring.md) before anyone opens a Change Package: it is a proof of preservation, not a way around unknown ownership or a changed contract.
 
-All capabilities share one file-backed Registry, policy, source map, audit chain, and Change Package schema.
+A Registry that has never named an approval authority holds candidates only, and no capability can promote one. *Preparing the approval authority* in [script-api.md](references/script-api.md#preparing-the-approval-authority) covers the two cases: pull requests that are reviewed, or a maintainer who signs.
 
-Read [the seven-step workflow](references/seven-step-workflow.md) for material domain changes and [the file-backed API](references/script-api.md) for command shapes. The scripts are the controlled write boundary; Git remains the collaboration and review boundary.
-
-A Registry that has never named an approval authority holds candidates only, and no capability can promote one. The API reference's *Preparing the approval authority* section covers the two situations: a repository whose pull requests are reviewed, and a repository where the maintainer signs instead.
-
-Use [tactical design reasoning](references/tactical-reasoning.md) when guiding implementation. Preserve domain boundaries and invariants, then let the Agent choose the language-idiomatic tactical pattern; do not turn this Plugin into a code template library.
-
-For a material change, pass the compact [implementation handoff](references/implementation-handoff.md) from Read or Design to the coding Agent. It carries facts and proof obligations, not code shape.
-
-When the change reaches an external system, settle the boundary with [ports and adapters](references/ports-and-adapters.md). For how the code states the reviewed facts, how a refactoring proves it preserved behavior, and why this Plugin carries no numeric limit, use [code expression](references/code-expression.md).
-
-Verify any claimed tactical Pattern with [pattern verification](references/pattern-verification.md), including a counterfactual test when the change is material.
-
-Supporting references: [evidence rules](references/evidence-rules.md), [Registry authoring](references/registry-authoring.md), [Registry schema](references/registry-schema.md), [proposal lifecycle](references/proposal-lifecycle.md), and [reliability target architecture](references/reliability-architecture.md).
-
-`plugin.json` packages Skills and optional scripts but does not declare subagents. A host may delegate these capabilities to its own agents; otherwise run them sequentially. See [host integration](references/host-integration.md).
-
-Distribute the complete capability set as the Plugin. See [packaging](references/packaging.md).
+Where the rest is: [the seven-step workflow](references/seven-step-workflow.md) for a material change; [script-api.md](references/script-api.md) for every command and what it guarantees; [host integration](references/host-integration.md) when a host dispatches these capabilities to its own agents; [reliability architecture](references/reliability-architecture.md) for the trust boundaries and the write protocol behind the scripts; [packaging](references/packaging.md) for the Plugin layout.
