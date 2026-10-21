@@ -27,10 +27,12 @@ export function RunCompare() {
   const loggedOut = unauthenticated(me.error);
 
   const self = useRun(runId);
+  const selfFeedback = readFeedback(self);
   const readableSelf = self.error ? undefined : self.data;
   const testCaseId = readableSelf?.test_case_id;
   const siblings = useRuns({ testCaseId, enabled: Boolean(testCaseId) });
   const versions = useSkillVersions(readableSelf?.skill_id ?? "");
+  const versionsFeedback = readFeedback(versions);
   const candidates = testCaseId
     ? (siblings.data?.pages.flatMap((p) => p.runs) ?? []).filter((r) => r.run_id !== runId)
     : [];
@@ -48,9 +50,9 @@ export function RunCompare() {
 
   const pickForm = (
     <CompareCandidatesPicker
-      selfPending={self.isPending}
+      selfPending={selfFeedback.pending}
       selfPaused={self.fetchStatus === "paused"}
-      selfError={self.error}
+      selfError={selfFeedback.error}
       onRetrySelf={() => void self.refetch()}
       testCaseId={testCaseId}
       siblingsPending={siblings.isPending || (siblings.isError && siblings.isFetching)}
@@ -63,9 +65,9 @@ export function RunCompare() {
       onLoadMoreCandidates={loadMore}
       continuationRef={bindTarget}
       continuationRunId={continuationRun?.run_id}
-      versionsPending={versions.isPending}
+      versionsPending={versionsFeedback.pending}
       versionsPaused={versions.fetchStatus === "paused"}
-      versionsError={versions.error}
+      versionsError={versionsFeedback.error}
       onRetryVersions={() => void versions.refetch()}
       versions={versions.error ? [] : (versions.data?.versions ?? [])}
       draft={draft}
@@ -117,6 +119,13 @@ export function RunCompare() {
       </p>
     </section>
   );
+}
+
+function readFeedback(
+  query: Pick<ReturnType<typeof useRun>, "isPending" | "isError" | "fetchStatus" | "error">,
+) {
+  const pending = query.isPending || (query.isError && query.fetchStatus !== "idle");
+  return { pending, error: pending ? null : query.error };
 }
 
 function ComparisonResult({
