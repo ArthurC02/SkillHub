@@ -44,6 +44,55 @@ test("a duplicate receipt retains the existing version identity", async () => {
     createVersionFromSuggestions("skill", "evaluation", ["s1", "s2"]),
   ).resolves.toMatchObject({ version_id: "version", duplicate: true });
 });
+
+test("an apply receipt matches identifiers without changing UUID case semantics", async () => {
+  vi.mocked(apiFetch).mockResolvedValue({
+    ...receipt,
+    skill_id: "ABC",
+    applied_suggestion_ids: ["S1"],
+    rejected_suggestions: [{ ...receipt.rejected_suggestions[0], suggestion_id: "S2" }],
+  });
+  await expect(
+    createVersionFromSuggestions("abc", "evaluation", ["s1", "s2"]),
+  ).resolves.toMatchObject({
+    skill_id: "ABC",
+    applied_suggestion_ids: ["S1"],
+  });
+});
+
+test("repeated requested suggestions require only one outcome per identifier", async () => {
+  vi.mocked(apiFetch).mockResolvedValue(receipt);
+  await expect(
+    createVersionFromSuggestions("skill", "evaluation", ["s1", "S1", "s2"]),
+  ).resolves.toEqual(receipt);
+});
+
+test.each([
+  ["another Skill", { ...receipt, skill_id: "other-skill" }],
+  ["unrequested applied suggestion", { ...receipt, applied_suggestion_ids: ["s3"] }],
+  [
+    "unrequested rejected suggestion",
+    {
+      ...receipt,
+      rejected_suggestions: [{ ...receipt.rejected_suggestions[0], suggestion_id: "s3" }],
+    },
+  ],
+  ["unaccounted requested suggestion", { ...receipt, rejected_suggestions: [] }],
+  ["repeated applied suggestion", { ...receipt, applied_suggestion_ids: ["s1", "S1"] }],
+  [
+    "repeated rejected suggestion",
+    {
+      ...receipt,
+      rejected_suggestions: [...receipt.rejected_suggestions, ...receipt.rejected_suggestions],
+    },
+  ],
+  ["both applied and rejected suggestion", { ...receipt, applied_suggestion_ids: ["s1", "s2"] }],
+])("a receipt with %s cannot confirm the requested operation", async (_name, response) => {
+  vi.mocked(apiFetch).mockResolvedValue(response);
+  await expect(createVersionFromSuggestions("skill", "evaluation", ["s1", "s2"])).rejects.toThrow(
+    "Invalid applied version response",
+  );
+});
 test.each([
   ["null", null],
   ["empty", {}],

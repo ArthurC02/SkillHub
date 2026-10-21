@@ -13,6 +13,33 @@ let container: HTMLDivElement;
 let root: Root;
 const scrollIntoView = HTMLElement.prototype.scrollIntoView;
 
+test("an apply receipt invalidates the requested version cache despite UUID case differences", async () => {
+  stubPlatform({ evaluated: true, accepted: true });
+  const requestedSkill = "AAAAAAAA-BBBB-4CCC-8DDD-EEEEEEEEEEEE";
+  const returnedSkill = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+  const originalFetch = globalThis.fetch;
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+    const response = await originalFetch(input, init);
+    const url = String(input);
+    if (url.endsWith(`/runs/${RUN}`) || url.includes("/versions/from-suggestions")) {
+      return json(
+        {
+          ...(await response.json()),
+          skill_id: url.endsWith(`/runs/${RUN}`) ? requestedSkill : returnedSkill,
+        },
+        response.status,
+      );
+    }
+    return response;
+  });
+  queryClient.setQueryData(queryKeys.skills.versions(requestedSkill), { versions: [] });
+  queryClient.setQueryData(queryKeys.skills.versions(returnedSkill), { versions: [] });
+  await applyAccepted();
+  expect(queryClient.getQueryState(queryKeys.skills.versions(requestedSkill))?.isInvalidated).toBe(
+    true,
+  );
+});
+
 function json(body: unknown, status = 200) {
   return Promise.resolve(
     new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),

@@ -37,6 +37,24 @@ test("the component prints the same absolute time an <option> label gets", async
   expect(time.textContent).toMatch(/2026/);
 });
 
+test.each([
+  ["2026-09-05T08:30:00Z", "2026/09/05 16:30:00"],
+  ["2026-09-05T08:30:59Z", "2026/09/05 16:30:59"],
+])("second precision preserves the seconds in %s", (at, expected) => {
+  expect(formatAt(at, "second")).toBe(expected);
+});
+
+test("second precision preserves the unreadable timestamp feedback", () => {
+  expect(formatAt("not-a-time", "second")).toBe("not-a-time（無法解讀的時間格式）");
+});
+
+test("the component forwards second precision while preserving the original instant", async () => {
+  const at = "2026-09-05T08:30:59Z";
+  await act(async () => root.render(<Timestamp at={at} precision="second" />));
+  expect(box.querySelector("time")!.getAttribute("datetime")).toBe(at);
+  expect(box.querySelector("time")!.textContent).toBe("2026/09/05 16:30:59");
+});
+
 async function relativeTextAfter(elapsedMs: number): Promise<string> {
   const at = "2026-09-05T08:30:00Z";
   vi.useFakeTimers({ toFake: ["Date"] });

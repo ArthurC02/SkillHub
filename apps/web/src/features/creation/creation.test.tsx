@@ -14,7 +14,7 @@ import {
   useCreationEntryPoint,
 } from "./creation.service";
 import { pollUntil } from "../../testing/poll";
-import { ME } from "../../testing/fixtures/platform";
+import { ME, RUNS } from "../../testing/fixtures/platform";
 import { queryKeys } from "../../core/api/queryKeys";
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -2173,6 +2173,10 @@ test("a differing latest run offers to bring it into the session, and posts atta
         return response({
           runs: [
             {
+              ...RUNS.runs[0],
+              skill_id: "sk-1",
+              skill_version_id: "v1",
+              test_case_id: "tc-1",
               run_id: "run-new",
               status: "succeeded",
               evaluation: { value: "met", label: "符合", note: "" },
@@ -2229,6 +2233,10 @@ test("a candidate whose run matches the latest says so, with no button to attach
         return response({
           runs: [
             {
+              ...RUNS.runs[0],
+              skill_id: "sk-1",
+              skill_version_id: "v1",
+              test_case_id: "tc-1",
               run_id: "run-new",
               status: "succeeded",
               evaluation: { value: "met", label: "符合", note: "" },
@@ -2273,11 +2281,21 @@ test("an older finished run is not offered as the latest while a newer run is st
         return response({
           runs: [
             {
+              ...RUNS.runs[0],
+              skill_id: "sk-1",
+              skill_version_id: "v1",
+              test_case_id: "tc-1",
               run_id: "run-new",
               status: "running",
+              started_at: undefined,
+              finished_at: undefined,
               evaluation: { value: "", label: "", note: "" },
             },
             {
+              ...RUNS.runs[0],
+              skill_id: "sk-1",
+              skill_version_id: "v1",
+              test_case_id: "tc-1",
               run_id: "run-old",
               status: "succeeded",
               evaluation: { value: "met", label: "符合", note: "" },

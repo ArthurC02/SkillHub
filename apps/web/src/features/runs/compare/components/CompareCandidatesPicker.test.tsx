@@ -129,9 +129,11 @@ test("distinguishes candidate runs by immutable Version before choosing one", as
   const links = Array.from(container.querySelectorAll("a"));
   expect(links.map((link) => [link.textContent, link.getAttribute("href")])).toEqual([
     ["v1", "/skills/skill-1/versions/version-1"],
+    ["另開試跑結果", "/runs/run-2"],
     ["v2", "/skills/skill-1/versions/version-2"],
+    ["另開試跑結果", "/runs/run-3"],
   ]);
-  const buttons = Array.from(container.querySelectorAll("button"));
+  const buttons = Array.from(container.querySelectorAll<HTMLButtonElement>("button[aria-label]"));
   expect(buttons[0].getAttribute("aria-label")).toContain("v1");
   expect(buttons[1].getAttribute("aria-label")).toContain("v2");
   const button = buttons[0];

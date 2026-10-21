@@ -34,6 +34,7 @@ for (const existing of [false, true]) {
           await main.getByText("換一個要比較的試跑紀錄", { exact: true }).click();
         }
         const originalURL = page.url();
+        await page.getByText("直接輸入試跑紀錄 ID", { exact: true }).click();
         const field = page.getByLabel("要比較的另一個試跑紀錄 ID");
         const submit = async () => {
           if (method === "pointer")

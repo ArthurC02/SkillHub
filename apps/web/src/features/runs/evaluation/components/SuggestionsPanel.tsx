@@ -31,7 +31,8 @@ export function SuggestionsPanel({
   readable: boolean;
 }) {
   const suggestions = useRunSuggestions(runId);
-  const run = useRun(runId).data;
+  const source = useRun(runId);
+  const run = source.error ? undefined : source.data;
   const skillId = run?.skill_id;
   const apply = useApplySuggestions(runId);
   const applied = apply.data;
@@ -76,6 +77,7 @@ export function SuggestionsPanel({
         runId={runId}
         evaluationId={evaluationId}
         skillId={skillId}
+        sourceUnavailable={Boolean(source.error)}
         apply={apply}
         unknown={unknown}
         decisionStates={decisionStates}
@@ -98,7 +100,14 @@ export function SuggestionsPanel({
           重新確認建議套用狀態
         </button>
       )}
-      {applied && <AppliedResult result={applied} testCaseId={run?.test_case_id} runId={runId} />}
+      {applied && (
+        <AppliedResult
+          result={applied}
+          testCaseId={run?.test_case_id}
+          sourceConfirmed={Boolean(run)}
+          runId={runId}
+        />
+      )}
     </section>
   );
 }
@@ -139,6 +148,7 @@ function SuggestionsContent({
   runId,
   evaluationId,
   skillId,
+  sourceUnavailable,
   apply,
   unknown,
   decisionStates,
@@ -148,6 +158,7 @@ function SuggestionsContent({
   runId: string;
   evaluationId: string;
   skillId: string | undefined;
+  sourceUnavailable: boolean;
   apply: ReturnType<typeof useApplySuggestions>;
   unknown: boolean;
   decisionStates: ReadonlyMap<string, SuggestionDecisionState>;
@@ -159,7 +170,7 @@ function SuggestionsContent({
   const notFound = suggestions.error instanceof ApiError && suggestions.error.status === 404;
   if (suggestions.isPending) return <Loading what="改善建議" />;
   if (notFound) return null;
-  if (suggestions.error) {
+  if (suggestions.error)
     return (
       <ReadFailure
         error={suggestions.error}
@@ -171,7 +182,6 @@ function SuggestionsContent({
         retrying={suggestions.isFetching}
       />
     );
-  }
 
   if (suggestions.data.evaluation_id !== evaluationId) {
     return (
@@ -191,6 +201,7 @@ function SuggestionsContent({
   }
 
   const accepted = suggestions.data.suggestions.filter((s) => s.decision === "accepted");
+  const sourceNoteId = skillId ? undefined : "suggestion-source-note";
 
   return (
     <>
@@ -223,7 +234,7 @@ function SuggestionsContent({
                   ? "suggestion-decisions-note"
                   : suggestions.fetchStatus !== "idle"
                     ? "suggestions-refresh-note"
-                    : undefined
+                    : sourceNoteId
             }
             onClick={() =>
               apply.mutate({
@@ -250,9 +261,31 @@ function SuggestionsContent({
               改善建議清單尚未確認；確認後才能建立版本。
             </p>
           )}
-          {!skillId && <p className="note">正在讀取這次試跑屬於哪個小工具…</p>}
+          <SuggestionSourceNote skillId={skillId} sourceUnavailable={sourceUnavailable} />
         </div>
       )}
     </>
+  );
+}
+
+function SuggestionSourceNote({
+  skillId,
+  sourceUnavailable,
+}: {
+  skillId: string | undefined;
+  sourceUnavailable: boolean;
+}) {
+  if (skillId) return null;
+  return (
+    <p id="suggestion-source-note" className="note">
+      {sourceUnavailable ? (
+        <>
+          試跑來源尚未確認，暫時不能建立新版本。請先
+          <a href="#run-heading">重新確認試跑來源</a>。
+        </>
+      ) : (
+        "正在讀取這次試跑屬於哪個小工具…"
+      )}
+    </p>
   );
 }

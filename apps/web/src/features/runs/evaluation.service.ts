@@ -373,8 +373,23 @@ export async function createVersionFromSuggestions(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ evaluation_id: evaluationId, suggestion_ids: suggestionIds }),
   });
-  if (!isAppliedVersion(result)) throw new Error("Invalid applied version response");
+  if (!isAppliedVersion(result) || !matchesAppliedRequest(result, skillId, suggestionIds))
+    throw new Error("Invalid applied version response");
   return result;
+}
+
+function matchesAppliedRequest(
+  result: VersionFromSuggestions,
+  skillId: string,
+  suggestionIds: string[],
+) {
+  if (result.skill_id.toLowerCase() !== skillId.toLowerCase()) return false;
+  const remaining = new Set(suggestionIds.map((id) => id.toLowerCase()));
+  const reported = [
+    ...result.applied_suggestion_ids,
+    ...result.rejected_suggestions.map((suggestion) => suggestion.suggestion_id),
+  ];
+  return reported.every((id) => remaining.delete(id.toLowerCase())) && remaining.size === 0;
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -435,20 +450,22 @@ export function useApplySuggestions(runId: string) {
       evaluationId: string;
       suggestionIds: string[];
     }) => createVersionFromSuggestions(skillId, evaluationId, suggestionIds),
-    onSuccess: (created) => {
+    onSuccess: (created, request) => {
       client.setQueryData<RunSuggestions>(
         queryKeys.evaluation.suggestions(runId),
         (held) =>
           held && {
             ...held,
             suggestions: held.suggestions.map((s) =>
-              created.applied_suggestion_ids.includes(s.suggestion_id)
+              created.applied_suggestion_ids.some(
+                (id) => id.toLowerCase() === s.suggestion_id.toLowerCase(),
+              )
                 ? { ...s, applied_skill_version_id: created.version_id }
                 : s,
             ),
           },
       );
-      return client.invalidateQueries({ queryKey: queryKeys.skills.versions(created.skill_id) });
+      return client.invalidateQueries({ queryKey: queryKeys.skills.versions(request.skillId) });
     },
     onError: (error, request) => {
       if (isApplyResultUnknown(error)) {

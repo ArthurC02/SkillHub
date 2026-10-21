@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch, isLastingReadFailure } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
+import { isTraceAdvanced, isTraceSummary, RUN_STATUSES } from "./trace-response.model";
+export { RUN_STATUSES } from "./trace-response.model";
 
 export type TraceMode = "general" | "advanced";
 
@@ -68,18 +70,6 @@ export type TraceAdvanced = {
   has_more: boolean;
 };
 
-export const RUN_STATUSES = [
-  "queued",
-  "provisioning",
-  "preparing",
-  "running",
-  "evaluating",
-  "succeeded",
-  "failed",
-  "cancelled",
-  "timed_out",
-] as const;
-
 export type RunStatus = (typeof RUN_STATUSES)[number];
 
 export const IN_FLIGHT_RUN_STATUSES = new Set<string>([
@@ -94,20 +84,20 @@ export const TERMINAL_RUN_STATUSES = new Set<string>(
   RUN_STATUSES.filter((status) => !IN_FLIGHT_RUN_STATUSES.has(status)),
 );
 
+class InvalidTraceResponseError extends Error {}
+
 export function useTrace<M extends TraceMode>(runId: string, mode: M, active?: boolean, after = 0) {
   return useQuery({
     queryKey: queryKeys.trace.page(runId, mode, mode === "advanced" ? after : 0),
     queryFn: async () => {
-      if (mode === "general") {
-        return apiFetch<TraceSummary>(`/runs/${runId}/trace`) as Promise<
-          M extends "advanced" ? TraceAdvanced : TraceSummary
-        >;
-      }
-      return apiFetch<TraceAdvanced>(
-        `/runs/${runId}/trace?mode=advanced&after=${after}`,
-      ) as Promise<M extends "advanced" ? TraceAdvanced : TraceSummary>;
+      const query = mode === "advanced" ? `?mode=advanced&after=${after}` : "";
+      const result = await apiFetch<unknown>(`/runs/${runId}/trace${query}`);
+      if (!(mode === "general" ? isTraceSummary(result, runId) : isTraceAdvanced(result, runId)))
+        throw new InvalidTraceResponseError("Invalid trace response");
+      return result as M extends "advanced" ? TraceAdvanced : TraceSummary;
     },
     refetchInterval: (query) => {
+      if (query.state.error instanceof InvalidTraceResponseError) return false;
       if (active === false || isLastingReadFailure(query.state.error)) return false;
       if (mode === "general") {
         const data = query.state.data as TraceSummary | undefined;

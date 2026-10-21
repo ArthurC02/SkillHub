@@ -3,7 +3,7 @@ import { CLEANUP_BADGE } from "../../runs.model";
 
 export function RunCleanupStatus({ runId }: { runId: string }) {
   const run = useRun(runId);
-  if (!run.data?.cleanup_status) return null;
+  if (run.error || !run.data?.cleanup_status) return null;
   const { cleanup_status } = run.data;
   return (
     <p className="badge-row">

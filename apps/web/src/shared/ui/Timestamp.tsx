@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { formatAt } from "./Timestamp.model";
+import { formatAt, type TimestampPrecision } from "./Timestamp.model";
 
 const RELATIVE = new Intl.RelativeTimeFormat("zh-TW", { numeric: "always" });
 
@@ -34,7 +34,15 @@ function refreshDelay(from: number, now: number): number {
   return 86_400_000 - (elapsed % 86_400_000);
 }
 
-export function Timestamp({ at, relative = false }: { at: string; relative?: boolean }) {
+export function Timestamp({
+  at,
+  relative = false,
+  precision = "minute",
+}: {
+  at: string;
+  relative?: boolean;
+  precision?: TimestampPrecision;
+}) {
   const [now, setNow] = useState(() => Date.now());
   const date = new Date(at);
   const dateTime = date.getTime();
@@ -52,12 +60,12 @@ export function Timestamp({ at, relative = false }: { at: string; relative?: boo
   }, [dateTime, relative]);
 
   if (Number.isNaN(dateTime)) {
-    return <time dateTime={at}>{formatAt(at)}</time>;
+    return <time dateTime={at}>{formatAt(at, precision)}</time>;
   }
 
   return (
     <time dateTime={at}>
-      {formatAt(at)}
+      {formatAt(at, precision)}
       {relative && `（${ago(date, now)}）`}
     </time>
   );

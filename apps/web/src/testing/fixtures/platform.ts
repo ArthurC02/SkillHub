@@ -1,3 +1,4 @@
+import type { TraceAdvanced, TraceSummary } from "../../features/runs/trace.service";
 import type {
   AccountLookup,
   CostStatisticsWindow,
@@ -633,6 +634,7 @@ export const TRACE_GENERAL = {
   status_reason: "the provider could not carry the attempt",
   complete: false,
   skills: [{ name: "pdf-summarise", decision: "activated", reason: "prompt 提到 PDF" }],
+  skills_total: 1,
   resources_read: 1,
   tool_calls: {
     total: 2,
@@ -643,13 +645,15 @@ export const TRACE_GENERAL = {
     slowest_tool: "bash",
   },
   errors: [{ category: "provision", code: "provider_error", message: "no slot" }],
+  errors_total: 1,
+  summary_truncated: false,
   final_output: "Removed 17 duplicate rows.",
   usage: { model: "gpt-5-mini", input_tokens: 27042, output_tokens: 1180, cost_credits: null },
   steps: [
     { status: "queued", reason: "已收到這次試跑的請求" },
     { status: "failed", reason: "the provider could not carry the attempt" },
   ],
-};
+} satisfies TraceSummary;
 
 export const TRACE_ADVANCED = {
   run_id: RUN,
@@ -662,6 +666,7 @@ export const TRACE_ADVANCED = {
       emitted_by: "sandbox",
       received: 2,
       highest_seq: 3,
+      missing_count: 1,
       missing_seq: [2],
       late_events: 1,
     },
@@ -680,7 +685,7 @@ export const TRACE_ADVANCED = {
       payload: { stream: "stderr", message: "boom", truncated: false },
     },
   ],
-};
+} satisfies TraceAdvanced;
 
 export const EVALUATION = {
   evaluation_id: "eval-2",

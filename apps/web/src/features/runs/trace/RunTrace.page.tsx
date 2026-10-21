@@ -113,10 +113,13 @@ export function RunTrace() {
         <h1 id="run-heading" tabIndex={-1}>
           試跑結果
         </h1>
-        <p className="run-identity" data-role="evidence">
-          <strong>試跑紀錄 ID：</strong>
-          <code>{runId}</code>
-        </p>
+        <details>
+          <summary>試跑識別碼</summary>
+          <p className="run-identity" data-role="evidence">
+            <strong>試跑紀錄 ID：</strong>
+            <code>{runId}</code>
+          </p>
+        </details>
         <ReadFailure
           error={run.error}
           what="這次試跑"

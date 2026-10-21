@@ -27,11 +27,16 @@ export function RunCompare() {
   const loggedOut = unauthenticated(me.error);
 
   const self = useRun(runId);
-  const testCaseId = self.data?.test_case_id;
+  const selfFeedback = readFeedback(self);
+  const readableSelf = self.error ? undefined : self.data;
+  const testCaseId = readableSelf?.test_case_id;
   const siblings = useRuns({ testCaseId, enabled: Boolean(testCaseId) });
-  const versions = useSkillVersions(self.data?.skill_id ?? "");
+  const versions = useSkillVersions(readableSelf?.skill_id ?? "");
+  const versionsFeedback = readFeedback(versions);
   const candidates = testCaseId
-    ? (siblings.data?.pages.flatMap((p) => p.runs) ?? []).filter((r) => r.run_id !== runId)
+    ? (siblings.data?.pages.flatMap((p) => p.runs) ?? []).filter(
+        (r) => r.run_id.toLowerCase() !== runId.toLowerCase(),
+      )
     : [];
   const {
     loadMore,
@@ -47,9 +52,9 @@ export function RunCompare() {
 
   const pickForm = (
     <CompareCandidatesPicker
-      selfPending={self.isPending}
+      selfPending={selfFeedback.pending}
       selfPaused={self.fetchStatus === "paused"}
-      selfError={self.error}
+      selfError={selfFeedback.error}
       onRetrySelf={() => void self.refetch()}
       testCaseId={testCaseId}
       siblingsPending={siblings.isPending || (siblings.isError && siblings.isFetching)}
@@ -62,9 +67,9 @@ export function RunCompare() {
       onLoadMoreCandidates={loadMore}
       continuationRef={bindTarget}
       continuationRunId={continuationRun?.run_id}
-      versionsPending={versions.isPending}
+      versionsPending={versionsFeedback.pending}
       versionsPaused={versions.fetchStatus === "paused"}
-      versionsError={versions.error}
+      versionsError={versionsFeedback.error}
       onRetryVersions={() => void versions.refetch()}
       versions={versions.error ? [] : (versions.data?.versions ?? [])}
       draft={draft}
@@ -78,13 +83,19 @@ export function RunCompare() {
       <h1 id="run-comparison-heading" tabIndex={-1} ref={headingRef}>
         試跑比較
       </h1>
-      {self.data && (
+      {readableSelf && (
         <SkillWorkspaceNav
-          skillId={self.data.skill_id}
-          versionId={self.data.skill_version_id}
-          testCaseId={self.data.test_case_id}
+          skillId={readableSelf.skill_id}
+          versionId={readableSelf.skill_version_id}
+          testCaseId={readableSelf.test_case_id}
         />
       )}
+
+      <p className="note">
+        <Link to="/runs/$runId" params={{ runId }} target="_blank" rel="noopener" preload={false}>
+          另開比較基準的試跑結果
+        </Link>
+      </p>
 
       <ComparisonResult comparison={comparison} against={against}>
         <details>
@@ -108,14 +119,15 @@ export function RunCompare() {
           pickForm
         )}
       </ComparisonResult>
-
-      <p className="note">
-        <Link to="/runs/$runId" params={{ runId }}>
-          回到這次試跑的詳情
-        </Link>
-      </p>
     </section>
   );
+}
+
+function readFeedback(
+  query: Pick<ReturnType<typeof useRun>, "isPending" | "isError" | "fetchStatus" | "error">,
+) {
+  const pending = query.isPending || (query.isError && query.fetchStatus !== "idle");
+  return { pending, error: pending ? null : query.error };
 }
 
 function ComparisonResult({

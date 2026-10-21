@@ -9,6 +9,7 @@ import type { TestCase } from "./testcases.service";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 import {
   ME,
+  RUNS,
   CHECK_KINDS,
   PLATFORM_GRADER,
   WORKSPACE_GRADER,
@@ -92,7 +93,7 @@ const RUN = {
   skill_version_id: VERSION,
   test_case_id: TEST_CASE,
   provider: "self-hosted",
-  cleanup_status: "cleaned",
+  cleanup_status: RUNS.runs[0].cleanup_status,
   evaluation: {
     value: "met",
     label: "符合",
