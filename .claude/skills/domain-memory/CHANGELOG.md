@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.3.7
+
+### Changed
+
+- `validate-change-package --repo-root` reports a shifted citation, whose lines are unchanged but sit elsewhere in the file, as one `NOTE: registry update <asset>/<id> cites N citations whose lines are unchanged but now sit elsewhere in <files>; ...` per record, instead of one `ERROR:` per citation whose text said it passes every check; the exit code no longer counts it.
+
 ## 1.3.6
 
 ### Fixed

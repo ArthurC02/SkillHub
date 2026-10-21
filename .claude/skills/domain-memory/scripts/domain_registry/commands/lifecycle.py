@@ -7,6 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ..changes import (
+    shifted_citation_notes,
     init_change_package,
     list_proposals,
     missing_approval_roles,
@@ -352,6 +353,8 @@ def handle_validate_change_package(args: argparse.Namespace) -> int:
         args.as_status,
         args.repo_root.resolve() if args.repo_root else None,
     )
+    if args.repo_root:
+        _print_notes(shifted_citation_notes(load_json(args.package_root / PROPOSAL_FILE), args.repo_root.resolve()))
     if args.as_status is None:
         exit_code = report_errors(errors, "Change package is valid.")
         if not exit_code and not load_json(args.package_root / PROPOSAL_FILE).get("registry_updates"):

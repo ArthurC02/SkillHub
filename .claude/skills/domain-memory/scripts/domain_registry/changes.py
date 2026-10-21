@@ -1022,6 +1022,25 @@ def list_proposals(changes_root: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def shifted_citation_notes(proposal: dict[str, Any], repo_root: Path) -> list[str]:
+    updates = proposal.get("registry_updates")
+    check = verifier(repo_root)
+    notes = []
+    for raw in updates if isinstance(updates, list) else []:
+        if not isinstance(raw, dict) or not isinstance(raw.get("record"), dict):
+            continue
+        shifted = [check(reference) for reference in all_references(raw["record"])]
+        paths = sorted({result["path"] for result in shifted if result["status"] == "shifted"})
+        count = sum(result["status"] == "shifted" for result in shifted)
+        if count:
+            notes.append(
+                f"NOTE: registry update {raw.get('asset')}/{raw['record'].get('id')} cites {count} citation{'s' if count > 1 else ''} "
+                f"whose lines are unchanged but now sit elsewhere in {', '.join(paths)}; this passes every check and "
+                "needs no Change Package of its own; when the record is next touched, relocate-evidence re-cites them"
+            )
+    return notes
+
+
 def _updated_evidence_errors(proposal: dict[str, Any], repo_root: Path) -> list[str]:
     updates = proposal.get("registry_updates")
     errors = []
@@ -1031,7 +1050,7 @@ def _updated_evidence_errors(proposal: dict[str, Any], repo_root: Path) -> list[
             continue
         for reference in all_references(raw["record"]):
             result = check(reference)
-            if result["status"] != "current":
+            if result["status"] not in ("current", "shifted"):
                 errors.append(
                     f"registry update {raw.get('asset')}/{raw['record'].get('id')} cites evidence that is "
                     f"{result['status']}: {result.get('reason') or result.get('path') or result.get('reference')}"
