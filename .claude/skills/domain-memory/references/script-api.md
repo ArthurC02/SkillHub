@@ -1,6 +1,6 @@
 # File-backed Domain Memory API
 
-`scripts/registry_tools.py` is the stable command entry point. It implements the read, query, and controlled update capability that a remote Domain Memory API would provide, using JSON files in the local repository.
+`scripts/registry_tools.py` is the stable command entry point. It implements the read, query, and controlled update capability that a remote Domain Memory API would provide, using files in the local repository.
 
 The commands fall into two groups, which `registry_tools.py --help` lists too. Everyday commands are the seven-step workflow, harvest, review and reading. Advanced commands set up, govern, recover and measure: rarely run, still needed. Each command has one section: its synopsis, then what it guarantees and how it refuses.
 
