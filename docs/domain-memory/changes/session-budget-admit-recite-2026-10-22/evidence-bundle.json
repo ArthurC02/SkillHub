@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "session-budget-admit-recite",
+  "proposal_id": "session-budget-admit-recite",
+  "registry_revision": {
+    "observed_commit": "1424b26c77ab38c268d22f1a22a72360f50f46c4",
+    "registry_digest": "sha256:63633611bf10baefd1fad2de9e4b20cbf6fca9cc75025e7f5c3d80503f74045f",
+    "committed_digest": "sha256:63633611bf10baefd1fad2de9e4b20cbf6fca9cc75025e7f5c3d80503f74045f"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/session-budget-admit-recite-2026-10-22 --path apps/platform/internal/creator/creation/session_start.go --path apps/platform/internal/creator/creation/start_test.go",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:1e268b922a91437b81d2ca16867f60ec6fb5c7a99a8865e7358db40027e57599",
+      "finished_at": "2026-10-21T18:23:34.368136Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

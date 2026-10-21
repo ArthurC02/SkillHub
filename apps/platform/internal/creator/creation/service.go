@@ -298,7 +298,7 @@ type Service struct {
 
 	HandOff func(context.Context, JobArgs, *Diagram) error
 
-	Billing CreationBilling
+	Billing BillingHooks
 }
 
 func digest(v any) string {
@@ -413,9 +413,6 @@ func (s *Service) advance(ctx context.Context, tx pgx.Tx, row gen.CreationSessio
 }
 
 func (s *Service) summarizeSession(ctx context.Context, tx pgx.Tx, sessionID pgtype.UUID) {
-	if s.Billing == nil {
-		return
-	}
 	if err := s.Billing.SessionEnded(ctx, tx, sessionID); err != nil {
 		slog.Warn("creation: session cost summary not written", "error", err)
 	}

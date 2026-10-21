@@ -430,7 +430,7 @@ func confirmBrief(p *Snapshot) (commandOutcome, error) {
 }
 
 func confirmDiagramDescription(p *Snapshot) (commandOutcome, error) {
-	if p.DiagramFingerprint == "" || p.PendingAction != PendingDiagramDescription || !validDiagramDescription(p.DiagramDescription) || p.DiagramInterpretation != nil {
+	if p.DiagramFingerprint == "" || p.PendingAction != PendingDiagramDescription || !validDiagramText(p.DiagramDescription) || p.DiagramInterpretation != nil {
 		return commandOutcome{}, ErrInvalidCommand
 	}
 	p.DiagramDescriptionConfirmed = true
@@ -439,7 +439,7 @@ func confirmDiagramDescription(p *Snapshot) (commandOutcome, error) {
 }
 
 func answerDiagramUncertainty(p *Snapshot, id, answer string) (commandOutcome, error) {
-	if p.DiagramFingerprint == "" || p.PendingAction != PendingDiagramAnswers || !validDiagramAnswer(answer) || !validDiagramInterpretation(p.DiagramInterpretation) {
+	if p.DiagramFingerprint == "" || p.PendingAction != PendingDiagramAnswers || !validDiagramText(answer) || !validDiagramInterpretation(p.DiagramInterpretation) {
 		return commandOutcome{}, ErrInvalidCommand
 	}
 	for i := range p.DiagramInterpretation.Uncertainties {

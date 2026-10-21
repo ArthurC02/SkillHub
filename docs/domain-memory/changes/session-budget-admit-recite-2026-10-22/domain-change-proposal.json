@@ -1,0 +1,80 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "session-budget-admit-recite",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "session-budget-admit-recite",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-21T18:23:33.351664Z",
+  "verified_at": "2026-10-21T18:23:35.310436Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "1424b26c77ab38c268d22f1a22a72360f50f46c4",
+    "registry_digest": "sha256:63633611bf10baefd1fad2de9e4b20cbf6fca9cc75025e7f5c3d80503f74045f",
+    "committed_digest": "sha256:63633611bf10baefd1fad2de9e4b20cbf6fca9cc75025e7f5c3d80503f74045f"
+  },
+  "affected_contexts": [
+    "creation"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-session-budget-lies-between-one-call-and-the-ceiling",
+        "statement": "A session is refused before any database work when its budget is below one model call's cost or above the session ceiling.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "A budget just over the ceiling is refused as out of band."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/session_start.go",
+            "lines": {
+              "start": 32,
+              "end": 50
+            },
+            "content_sha256": "sha256:a3cbfe09c6ea20fe242f3345c4193237fdb9ceb4f43c956e8472fa56905c0bc6",
+            "excerpt_sha256": "sha256:22ae849259584fe6019f5d11e7627f2e2380bf7b5883c9718fec6a5bfe48e515",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/start_test.go",
+            "lines": {
+              "start": 16,
+              "end": 45
+            },
+            "excerpt_sha256": "sha256:87a2f6d2cef57d471c95b6b55fe4e64e52e7f9ffe5f2fee896b9400c4047681f"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "creation-harvest-rules-2026-10-17"
+  ]
+}

@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -725,16 +724,6 @@ func artifact(row gen.Artifact) Artifact {
 		ExpiresAt:   timePointer(row.ExpiresAt),
 		Purged:      row.PurgedAt.Valid,
 	}
-}
-
-func (s *Service) DeleteArtifact(
-	ctx context.Context, ws identity.Workspace, runID, artifactID pgtype.UUID,
-) error {
-	return artifactLifecycle{
-		pool: s.Pool, store: s.Store,
-		activeReferences: s.ActiveArtifactReferences,
-		markPurged:       s.MarkRunOutputPurged,
-	}.Delete(ctx, ws, runID, artifactID)
 }
 
 func (s *Service) Linkage(ctx context.Context, workspaceID, runID pgtype.UUID) (Linkage, error) {

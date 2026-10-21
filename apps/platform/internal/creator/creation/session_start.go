@@ -30,14 +30,12 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 }
 
 func (s *Service) admitStart(ctx context.Context, ws identity.Workspace, id pgtype.UUID, message string, budget float64) error {
-	if s.Billing != nil {
-		ok, err := s.Billing.CanStart(ctx, ws.ID)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return ErrCreditThreshold
-		}
+	ok, err := s.Billing.CanStart(ctx, ws.ID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrCreditThreshold
 	}
 	if !s.Limits.Valid() {
 		return ErrUnavailable

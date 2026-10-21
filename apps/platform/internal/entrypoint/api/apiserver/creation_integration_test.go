@@ -44,7 +44,7 @@ func creationFixtureWithLimits(t *testing.T, limits creation.Limits) (*api, *cre
 	transient := httptest.NewServer(set.Creation.TransientHandler("test-worker"))
 	t.Cleanup(transient.Close)
 	packages := packageStore{}
-	app, err := apiserver.NewApp(apiserver.Config{Pool: pool, Store: packages, OAuth: &identity.GitHubOAuth{}, DevLogin: true, GenerateExposed: true, CreationExposed: true, CreationLimits: limits, CreationTransient: creation.TransientClient(transient.URL, "test-worker", 5*time.Second)})
+	app, err := apiserver.NewApp(apiserver.Config{Pool: pool, Store: packages, OAuth: &identity.GitHubOAuth{}, DevLogin: true, GenerateExposed: true, CreationExposed: true, CreationLimits: limits, CreationTransient: creation.TransientClientWithHTTP(transient.URL, "test-worker", 5*time.Second, nil)})
 	if err != nil {
 		t.Fatal(err)
 	}

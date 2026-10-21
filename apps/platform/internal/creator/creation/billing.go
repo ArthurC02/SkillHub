@@ -15,13 +15,6 @@ type StepSettlement struct {
 	ReservedUSD float64
 }
 
-type CreationBilling interface {
-	CanStart(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
-	Reserve(ctx context.Context, workspaceID pgtype.UUID, reservedUSD float64) (bool, error)
-	Settle(ctx context.Context, tx pgx.Tx, step StepSettlement) error
-	SessionEnded(ctx context.Context, tx pgx.Tx, sessionID pgtype.UUID) error
-}
-
 type BillingHooks struct {
 	CanStartFunc     func(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
 	ReserveFunc      func(ctx context.Context, workspaceID pgtype.UUID, reservedUSD float64) (bool, error)

@@ -143,8 +143,6 @@ func (f *URLFetcher) policy() sourcePolicy {
 	return sourcePolicy{allowedHosts: f.Allowed, allowInsecure: f.AllowInsecure}
 }
 
-func (f *URLFetcher) checkURL(u *url.URL) error { return f.policy().check(u) }
-
 func (f *URLFetcher) Normalize(rawURL string) (string, error) {
 	return f.policy().normalize(rawURL)
 }
@@ -213,7 +211,7 @@ func (f *URLFetcher) download(ctx context.Context, rawURL string) ([]byte, error
 		return nil, fmt.Errorf("%w: 這不是一個合法的網址。", ErrFetch)
 	}
 
-	if err := f.checkURL(req.URL); err != nil {
+	if err := f.policy().check(req.URL); err != nil {
 		return nil, err
 	}
 	resp, err := f.do(req)

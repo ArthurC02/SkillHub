@@ -288,7 +288,7 @@ func RecordOrchestratorEvent(ctx context.Context, tx pgx.Tx, event OrchestratorE
 	}
 
 	var eventID pgtype.UUID
-	if err := eventID.Scan(newUUID()); err != nil {
+	if err := eventID.Scan(uuid.NewString()); err != nil {
 		return err
 	}
 	var statusPtr *string
@@ -725,8 +725,6 @@ func (s *Service) traceStreamHealth(ctx context.Context, workspaceID, runID pgty
 	}
 	return out, nil
 }
-
-func newUUID() string { return uuid.NewString() }
 
 func sourceLabel(source string) string {
 	if sources[source] {

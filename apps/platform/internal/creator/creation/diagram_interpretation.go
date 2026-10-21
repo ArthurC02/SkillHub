@@ -30,10 +30,6 @@ type DiagramDecomposition struct {
 	Uncertainties []string `json:"uncertainties"`
 }
 
-func validDiagramDescription(value string) bool {
-	return validDiagramText(value)
-}
-
 func validRequiredDiagramItems(items []string, limit int) bool {
 	return len(items) > 0 && validDiagramItems(items, limit)
 }
@@ -83,8 +79,8 @@ func validDiagramInterpretation(value *DiagramInterpretation) bool {
 	seen := map[string]bool{}
 	for _, uncertainty := range value.Uncertainties {
 		if _, err := ParseID(uncertainty.ID); err != nil || seen[uncertainty.ID] ||
-			!validDiagramDescription(uncertainty.Question) ||
-			(uncertainty.Answer != "" && !validDiagramAnswer(uncertainty.Answer)) {
+			!validDiagramText(uncertainty.Question) ||
+			(uncertainty.Answer != "" && !validDiagramText(uncertainty.Answer)) {
 			return false
 		}
 		seen[uncertainty.ID] = true
@@ -92,22 +88,16 @@ func validDiagramInterpretation(value *DiagramInterpretation) bool {
 	return true
 }
 
-func validDiagramAnswer(value string) bool {
-	return validDiagramText(value)
-}
-
 func validDiagramText(value string) bool {
 	return strings.TrimSpace(value) != "" && utf8.RuneCountInString(value) <= maxDiagramItemRunes
 }
 
 func allDiagramUncertaintiesAnswered(value *DiagramInterpretation) bool {
-	return validDiagramInterpretation(value) &&
-		all(value.Uncertainties, func(uncertainty DiagramUncertainty) bool { return validDiagramAnswer(uncertainty.Answer) })
-}
-
-func all[T any](values []T, predicate func(T) bool) bool {
-	for _, value := range values {
-		if !predicate(value) {
+	if !validDiagramInterpretation(value) {
+		return false
+	}
+	for _, uncertainty := range value.Uncertainties {
+		if !validDiagramText(uncertainty.Answer) {
 			return false
 		}
 	}

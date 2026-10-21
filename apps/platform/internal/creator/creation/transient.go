@@ -81,10 +81,6 @@ func (s *Service) TransientHandler(token string) http.Handler {
 	})
 }
 
-func TransientClient(baseURL, token string, timeout time.Duration) func(context.Context, JobArgs, *Diagram) error {
-	return TransientClientWithHTTP(baseURL, token, timeout, nil)
-}
-
 func TransientClientWithHTTP(baseURL, token string, timeout time.Duration, client *http.Client) func(context.Context, JobArgs, *Diagram) error {
 	if baseURL == "" || token == "" || timeout <= 0 {
 		return nil

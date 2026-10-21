@@ -18,20 +18,13 @@ import (
 
 const artifactCleanupTimeout = 5 * time.Second
 
-type artifactLifecycle struct {
-	pool             *pgxpool.Pool
-	store            ObjectStore
-	activeReferences func(context.Context, gen.DBTX, string) (int64, error)
-	markPurged       func(context.Context, pgx.Tx, pgtype.UUID) error
-}
-
-func (l artifactLifecycle) Delete(
+func (s *Service) DeleteArtifact(
 	ctx context.Context, ws identity.Workspace, runID, artifactID pgtype.UUID,
 ) error {
-	if l.activeReferences == nil {
+	if s.ActiveArtifactReferences == nil {
 		return errors.New("run: artifact reference counter not injected; refusing delete")
 	}
-	lookup, err := gen.New(l.pool).GetRunArtifactForDelete(ctx, gen.GetRunArtifactForDeleteParams{
+	lookup, err := gen.New(s.Pool).GetRunArtifactForDelete(ctx, gen.GetRunArtifactForDeleteParams{
 		ArtifactID: artifactID, RunID: runID, WorkspaceID: ws.ID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -40,7 +33,7 @@ func (l artifactLifecycle) Delete(
 	if err != nil {
 		return err
 	}
-	conn, err := l.pool.Acquire(ctx)
+	conn, err := s.Pool.Acquire(ctx)
 	if err != nil {
 		return err
 	}
@@ -61,10 +54,10 @@ func (l artifactLifecycle) Delete(
 	if err != nil || !deleted {
 		return err
 	}
-	if row.PurgedAt.Valid || l.store == nil {
+	if row.PurgedAt.Valid || s.Store == nil {
 		return nil
 	}
-	l.purgeUnreferencedObject(ctx, conn, row)
+	purgeUnreferencedObject(ctx, s, conn, row)
 	return nil
 }
 
@@ -112,18 +105,18 @@ func softDeleteRecorded(
 	return row, true, nil
 }
 
-func (l artifactLifecycle) purgeUnreferencedObject(
-	ctx context.Context, conn *pgxpool.Conn, row gen.SoftDeleteRunArtifactRow,
+func purgeUnreferencedObject(
+	ctx context.Context, s *Service, conn *pgxpool.Conn, row gen.SoftDeleteRunArtifactRow,
 ) {
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), artifactCleanupTimeout)
 	defer cancel()
-	shared, err := l.activeReferences(cleanupCtx, conn, row.ObjectKey)
+	shared, err := s.ActiveArtifactReferences(cleanupCtx, conn, row.ObjectKey)
 	if err == nil && shared == 0 {
-		err = l.store.Remove(cleanupCtx, row.ObjectKey)
+		err = s.Store.Remove(cleanupCtx, row.ObjectKey)
 	}
 	if err == nil {
 		err = pgx.BeginFunc(cleanupCtx, conn, func(tx pgx.Tx) error {
-			return l.markPurged(cleanupCtx, tx, row.ID)
+			return s.MarkRunOutputPurged(cleanupCtx, tx, row.ID)
 		})
 	}
 	if err != nil {

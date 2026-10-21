@@ -18,11 +18,8 @@ func TestValidDiagramTextRuneBoundaries(t *testing.T) {
 		"over":  {value: over, valid: false},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if got := validDiagramDescription(tc.value); got != tc.valid {
-				t.Fatalf("validDiagramDescription(%q) = %v, want %v", name, got, tc.valid)
-			}
-			if got := validDiagramAnswer(tc.value); got != tc.valid {
-				t.Fatalf("validDiagramAnswer(%q) = %v, want %v", name, got, tc.valid)
+			if got := validDiagramText(tc.value); got != tc.valid {
+				t.Fatalf("validDiagramText(%q) = %v, want %v", name, got, tc.valid)
 			}
 			if got := validDiagramInterpretation(&DiagramInterpretation{Nodes: []string{tc.value}}); got != tc.valid {
 				t.Fatalf("validDiagramInterpretation(%q) = %v, want %v", name, got, tc.valid)

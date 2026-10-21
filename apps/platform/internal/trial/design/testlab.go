@@ -408,7 +408,7 @@ func (s *Service) ListTestCases(
 	return out, nil
 }
 
-func page[T any](rows []T, limit, offset int32) []T {
+func page(rows []gen.TestCase, limit, offset int32) []gen.TestCase {
 	if offset > 0 {
 		if int(offset) >= len(rows) {
 			return nil

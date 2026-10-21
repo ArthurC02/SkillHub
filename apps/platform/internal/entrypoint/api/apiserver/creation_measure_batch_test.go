@@ -956,7 +956,7 @@ func newCreationMeasureAPI(t *testing.T, pool *pgxpool.Pool, llm *llmclient.Clie
 	app, err := apiserver.NewApp(apiserver.Config{
 		Pool: pool, Store: packages, LLM: llm, OAuth: &identity.GitHubOAuth{}, DevLogin: true,
 		GenerateExposed: true, CreationExposed: true, CreationLimits: limits,
-		CreationTransient: creation.TransientClient(transient.URL, "creation-measure", 95*time.Second),
+		CreationTransient: creation.TransientClientWithHTTP(transient.URL, "creation-measure", 95*time.Second, nil),
 		TraceSigner:       traceSigner,
 	})
 	if err != nil {

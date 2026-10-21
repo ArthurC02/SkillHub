@@ -170,7 +170,7 @@ func normalizeReply(r *StepResult, p Snapshot) {
 }
 
 func admitReply(r *StepResult, p Snapshot) error {
-	if r.DiagramDescription != "" && !validDiagramDescription(r.DiagramDescription) {
+	if r.DiagramDescription != "" && !validDiagramText(r.DiagramDescription) {
 		return rejectedReply("has an invalid diagram description")
 	}
 	if r.DiagramInterpretation != nil && !validDiagramDecomposition(r.DiagramInterpretation) {

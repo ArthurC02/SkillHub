@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"log/slog"
 	"strings"
 	"time"
@@ -931,7 +930,6 @@ func reusedArtifact(p *Plan, row gen.ListDownloadArtifactsWithIdentityRow) Artif
 }
 
 type sourceFiles struct {
-	fsys     fs.FS
 	report   skillpkg.Report
 	files    []exportFile
 	excluded []ExcludedFile
@@ -951,7 +949,7 @@ func (s *Service) readSource(ctx context.Context, version VersionFacts) (sourceF
 		return sourceFiles{}, fmt.Errorf("stored package unreadable: %w", err)
 	}
 	out := sourceFiles{
-		fsys: fsys, report: skillpkg.Validate(fsys),
+		report:     skillpkg.Validate(fsys),
 		validation: ManifestValidation{Errors: []ManifestFinding{}, Warnings: []ManifestFinding{}, Infos: []ManifestFinding{}},
 	}
 	for _, finding := range out.report.Findings {

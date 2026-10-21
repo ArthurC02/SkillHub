@@ -441,9 +441,6 @@ func (s *Service) referencedContent(ctx context.Context, ws identity.Workspace, 
 }
 
 func (s *Service) reserveCall(ctx context.Context, workspaceID pgtype.UUID, maxCallCostUSD float64) error {
-	if s.Billing == nil {
-		return nil
-	}
 	ok, err := s.Billing.Reserve(ctx, workspaceID, maxCallCostUSD)
 	if err != nil {
 		return err
@@ -558,9 +555,6 @@ func finishAttemptReceipt(ctx context.Context, tx pgx.Tx, a JobArgs, usage *Mode
 }
 
 func (s *Service) settleCredit(ctx context.Context, tx pgx.Tx, a JobArgs, l Limits, usage *ModelUsage) error {
-	if s.Billing == nil {
-		return nil
-	}
 	return s.Billing.Settle(ctx, tx, StepSettlement{
 		WorkspaceID: a.WorkspaceID,
 		SessionID:   a.SessionID,
@@ -583,7 +577,7 @@ func (s *Service) attemptOutcome(ctx context.Context, row gen.CreationSession, e
 	if call.callErr != nil || call.reply == nil || !live(row) || !e.Deadline.After(time.Now()) {
 		return "", false, ErrUnavailable
 	}
-	if call.carriedDiagram && !validDiagramDescription(call.reply.DiagramDescription) {
+	if call.carriedDiagram && !validDiagramText(call.reply.DiagramDescription) {
 		return "", false, rejectedReply("carries no valid description of the uploaded diagram")
 	}
 	return s.proposal(ctx, row.Revision+1, e, call.reply, call.found)
