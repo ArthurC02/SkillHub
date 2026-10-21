@@ -1,6 +1,6 @@
 ---
 name: domain-memory-review
-description: Check that Domain Registry facts, source evidence, audit history, proposals, and implementation handoff remain internally consistent.
+description: Check that Registry facts, source evidence, audit history, proposals and the implementation handoff still agree. Use before relying on a domain fact or handing work to another Agent; it is read-only.
 ---
 
 # Review Domain Memory

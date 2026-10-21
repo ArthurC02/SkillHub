@@ -1,6 +1,6 @@
 ---
 name: domain-memory-maintain
-description: Keep file-backed Domain Memory current after implementation or source changes by preserving evidence and creating governed candidate updates.
+description: Keep the Domain Registry current after implementation or source drift. Use after code changed or a selected source moved; it re-cites evidence and records what the model learned as governed candidates.
 ---
 
 # Maintain Domain Memory
