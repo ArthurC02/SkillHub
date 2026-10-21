@@ -127,6 +127,36 @@ export type RunListItem = {
   finished_at?: string;
 };
 
+function isRunLabel(value: unknown): value is Labelled {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const label = value as Partial<Labelled>;
+  return (
+    typeof label.value === "string" &&
+    typeof label.label === "string" &&
+    (label.note === undefined || typeof label.note === "string")
+  );
+}
+
+function isRunListItem(value: unknown): value is RunListItem {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const run = value as Partial<RunListItem>;
+  return (
+    typeof run.run_id === "string" &&
+    typeof run.status === "string" &&
+    typeof run.skill_id === "string" &&
+    typeof run.skill_name === "string" &&
+    typeof run.skill_version_id === "string" &&
+    typeof run.provider === "string" &&
+    typeof run.created_at === "string" &&
+    isRunLabel(run.evaluation) &&
+    isRunLabel(run.cleanup_status) &&
+    (run.failure_class === undefined || isRunLabel(run.failure_class)) &&
+    [run.status_reason, run.test_case_id, run.started_at, run.finished_at].every(
+      (field) => field === undefined || typeof field === "string",
+    )
+  );
+}
+
 export function useRuns({
   testCaseId,
   skillVersionId,
@@ -143,10 +173,21 @@ export function useRuns({
       const params = new URLSearchParams({ limit: "51", offset: String(pageParam) });
       if (testCaseId) params.set("test_case_id", testCaseId);
       if (skillVersionId) params.set("skill_version_id", skillVersionId);
-      return apiFetch<{ runs: RunListItem[] }>(`/runs?${params}`).then((page) => ({
-        runs: page.runs.slice(0, 50),
-        nextOffset: page.runs.length > 50 ? pageParam + 50 : undefined,
-      }));
+      return apiFetch<unknown>(`/runs?${params}`).then((page) => {
+        if (
+          !page ||
+          typeof page !== "object" ||
+          Array.isArray(page) ||
+          !("runs" in page) ||
+          !Array.isArray(page.runs) ||
+          !page.runs.every(isRunListItem)
+        )
+          throw new Error("Invalid Run list response");
+        return {
+          runs: page.runs.slice(0, 50),
+          nextOffset: page.runs.length > 50 ? pageParam + 50 : undefined,
+        };
+      });
     },
     getNextPageParam: (last) => last.nextOffset,
     enabled,
