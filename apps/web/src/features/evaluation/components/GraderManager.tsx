@@ -13,6 +13,7 @@ import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
+import { textLengthReason } from "../../../shared/textLength.model";
 import {
   useCreateGrader,
   useGraders,
@@ -66,11 +67,13 @@ function InstructionsField({
   value,
   onChange,
   readOnly,
+  problem,
 }: {
   id: string;
   value: string;
   onChange: (value: string) => void;
   readOnly: boolean;
+  problem: string | null;
 }) {
   return (
     <div className="field">
@@ -78,11 +81,15 @@ function InstructionsField({
       <textarea
         id={id}
         value={value}
-        maxLength={EvaluationGraderRevisionInstructionsMaxLength}
+        aria-invalid={problem !== null}
+        aria-describedby={`${id}-limit`}
         rows={6}
         onChange={(e) => onChange(e.target.value)}
         readOnly={readOnly}
       />
+      <p id={`${id}-limit`} className="note" role={problem ? "status" : undefined}>
+        {problem ?? `最多 ${EvaluationGraderRevisionInstructionsMaxLength} 個字。`}
+      </p>
     </div>
   );
 }
@@ -131,8 +138,14 @@ function ReviseGrader({
     }
   }
   const id = `grader-${grader.id}`;
+  const instructionsProblem = textLengthReason(
+    instructions,
+    "評分指示",
+    EvaluationGraderRevisionInstructionsMaxLength,
+  );
   const changed = instructions.trim() !== grader.instructions.trim();
-  const ready = changed && instructions.trim() !== "" && reason.trim() !== "";
+  const ready =
+    changed && instructions.trim() !== "" && reason.trim() !== "" && instructionsProblem === null;
   return (
     <form
       onInput={() => {
@@ -165,6 +178,7 @@ function ReviseGrader({
         value={instructions}
         onChange={setInstructions}
         readOnly={revise.isPending}
+        problem={instructionsProblem}
       />
       <ReasonField
         id={`${id}-reason`}
@@ -176,11 +190,13 @@ function ReviseGrader({
         <button
           type="submit"
           disabled={!ready || revise.isPending}
-          aria-describedby={ready ? undefined : `${id}-why`}
+          aria-describedby={
+            ready ? undefined : instructionsProblem ? `${id}-instructions-limit` : `${id}-why`
+          }
         >
           {revise.isPending ? "存成新版本中…" : unconfirmed ? "重新送出新版本" : "存成新版本"}
         </button>{" "}
-        {!ready && (
+        {!ready && !instructionsProblem && (
           <span className="note" id={`${id}-why`}>
             {changed ? "要寫評分指示與這一版改了什麼" : "評分指示沒有變更"}
           </span>
@@ -230,7 +246,22 @@ function CreateGrader({ scope, onCompleted, onDraftChange }: GraderActions) {
   const [reason, setReason] = useState("");
   const [unconfirmed, setUnconfirmed] = useState<UnconfirmedWrite>();
   const create = useCreateGrader(scope);
-  const ready = name.trim() !== "" && instructions.trim() !== "" && reason.trim() !== "";
+  const nameProblem = textLengthReason(name, "名稱", EvaluationGraderDraftNameMaxLength);
+  const instructionsProblem = textLengthReason(
+    instructions,
+    "評分指示",
+    EvaluationGraderRevisionInstructionsMaxLength,
+  );
+  const lengthProblemId = nameProblem
+    ? "grader-create-name-limit"
+    : instructionsProblem
+      ? "grader-create-instructions-limit"
+      : null;
+  const ready =
+    name.trim() !== "" &&
+    instructions.trim() !== "" &&
+    reason.trim() !== "" &&
+    lengthProblemId === null;
   return (
     <form
       onInput={() => {
@@ -265,16 +296,21 @@ function CreateGrader({ scope, onCompleted, onDraftChange }: GraderActions) {
         <input
           id="grader-create-name"
           value={name}
-          maxLength={EvaluationGraderDraftNameMaxLength}
+          aria-invalid={nameProblem !== null}
+          aria-describedby="grader-create-name-limit"
           onChange={(e) => setName(e.target.value)}
           readOnly={create.isPending}
         />
+        <p id="grader-create-name-limit" className="note" role={nameProblem ? "status" : undefined}>
+          {nameProblem ?? `最多 ${EvaluationGraderDraftNameMaxLength} 個字。`}
+        </p>
       </div>
       <InstructionsField
         id="grader-create-instructions"
         value={instructions}
         onChange={setInstructions}
         readOnly={create.isPending}
+        problem={instructionsProblem}
       />
       <ReasonField
         id="grader-create-reason"
@@ -286,11 +322,11 @@ function CreateGrader({ scope, onCompleted, onDraftChange }: GraderActions) {
         <button
           type="submit"
           disabled={!ready || create.isPending}
-          aria-describedby={ready ? undefined : "grader-create-why"}
+          aria-describedby={ready ? undefined : (lengthProblemId ?? "grader-create-why")}
         >
           {create.isPending ? "新增中…" : unconfirmed ? "重新送出新增" : "新增評分器"}
         </button>{" "}
-        {!ready && (
+        {!ready && !lengthProblemId && (
           <span className="note" id="grader-create-why">
             名稱、評分指示與這一版改了什麼都要填
           </span>

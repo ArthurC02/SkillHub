@@ -1,4 +1,5 @@
 import { SetEvaluationFeedbackBodyCommentMaxLength } from "@skillhub/api-client-ts/limits";
+import { textLengthReason } from "../../../../shared/textLength.model";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { useState } from "react";
@@ -16,6 +17,11 @@ export function FeedbackForm({
   disabled: boolean;
 }) {
   const [comment, setComment] = useState(evaluation.feedback?.comment ?? "");
+  const sizeReason = textLengthReason(
+    comment,
+    "補充說明",
+    SetEvaluationFeedbackBodyCommentMaxLength,
+  );
   const submit = useEvaluationFeedback(runId);
   const error = submit.error;
 
@@ -37,25 +43,31 @@ export function FeedbackForm({
       <textarea
         id="feedback-comment"
         rows={3}
-        maxLength={SetEvaluationFeedbackBodyCommentMaxLength}
         value={comment}
+        aria-invalid={sizeReason !== null}
+        aria-describedby="feedback-comment-limit"
         onChange={(e) => {
           setComment(e.target.value);
           submit.reset();
         }}
         readOnly={submit.isPending}
       />
+      <p id="feedback-comment-limit" className="note" role={sizeReason ? "status" : undefined}>
+        {sizeReason ?? `最多 ${SetEvaluationFeedbackBodyCommentMaxLength} 個字。`}
+      </p>
       <p>
         <button
           type="button"
-          disabled={submit.isPending}
+          disabled={submit.isPending || sizeReason !== null}
+          aria-describedby={sizeReason ? "feedback-comment-limit" : undefined}
           onClick={() => submit.mutate({ helpful: true, comment })}
         >
           有幫助
         </button>{" "}
         <button
           type="button"
-          disabled={submit.isPending}
+          disabled={submit.isPending || sizeReason !== null}
+          aria-describedby={sizeReason ? "feedback-comment-limit" : undefined}
           onClick={() => submit.mutate({ helpful: false, comment })}
         >
           沒幫助
