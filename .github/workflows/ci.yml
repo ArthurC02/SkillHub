@@ -586,10 +586,10 @@ jobs:
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
       - name: Shipped dependencies — fixable vulnerabilities, licenses, workflow audit
         if: github.event_name == 'push' || github.event_name == 'pull_request'
-        run: go -C tools/devctl run . dep-audit
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Dependency audit' go -C tools/devctl run . dep-audit
       - name: Every project — fixable vulnerabilities (dev dependencies too), licenses, workflow audit
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-        run: go -C tools/devctl run . dep-audit --full
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Full dependency audit' go -C tools/devctl run . dep-audit --full
 
   contracts-drift:
     runs-on: ubuntu-latest
