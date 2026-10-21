@@ -5,10 +5,12 @@ import { BLOCKED_REASON_LABEL } from "../evaluation.model";
 export function AppliedResult({
   result,
   testCaseId,
+  sourceConfirmed,
   runId,
 }: {
   result: VersionFromSuggestions;
   testCaseId?: string;
+  sourceConfirmed: boolean;
   runId: string;
 }) {
   return (
@@ -33,7 +35,11 @@ export function AppliedResult({
           </ul>
         </>
       )}
-      {testCaseId ? (
+      {!sourceConfirmed ? (
+        <p className="note">
+          試跑來源尚未確認，暫時無法提供相同測試題的重跑入口；已建立的新版本不受影響。
+        </p>
+      ) : testCaseId ? (
         <p>
           <Link
             to="/skills/$skillId/test-cases/$testCaseId/runs/new"

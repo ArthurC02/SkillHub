@@ -27,9 +27,10 @@ export function RunCompare() {
   const loggedOut = unauthenticated(me.error);
 
   const self = useRun(runId);
-  const testCaseId = self.data?.test_case_id;
+  const readableSelf = self.error ? undefined : self.data;
+  const testCaseId = readableSelf?.test_case_id;
   const siblings = useRuns({ testCaseId, enabled: Boolean(testCaseId) });
-  const versions = useSkillVersions(self.data?.skill_id ?? "");
+  const versions = useSkillVersions(readableSelf?.skill_id ?? "");
   const candidates = testCaseId
     ? (siblings.data?.pages.flatMap((p) => p.runs) ?? []).filter((r) => r.run_id !== runId)
     : [];
@@ -78,11 +79,11 @@ export function RunCompare() {
       <h1 id="run-comparison-heading" tabIndex={-1} ref={headingRef}>
         試跑比較
       </h1>
-      {self.data && (
+      {readableSelf && (
         <SkillWorkspaceNav
-          skillId={self.data.skill_id}
-          versionId={self.data.skill_version_id}
-          testCaseId={self.data.test_case_id}
+          skillId={readableSelf.skill_id}
+          versionId={readableSelf.skill_version_id}
+          testCaseId={readableSelf.test_case_id}
         />
       )}
 
