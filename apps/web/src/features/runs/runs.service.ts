@@ -45,7 +45,16 @@ export type Run = {
 export function useRun(runId: string) {
   return useQuery({
     queryKey: queryKeys.runs.detail(runId),
-    queryFn: () => apiFetch<Run>(`/runs/${runId}`),
+    queryFn: async () => {
+      const run = await apiFetch<Run>(`/runs/${runId}`);
+      if (
+        !run ||
+        typeof run.run_id !== "string" ||
+        run.run_id.toLowerCase() !== runId.toLowerCase()
+      )
+        throw new Error("Invalid Run response");
+      return run;
+    },
     enabled: runId.length > 0,
   });
 }

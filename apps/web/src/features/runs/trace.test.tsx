@@ -479,7 +479,7 @@ test("§2.12: the banner is gone once the run is terminal", async () => {
 
 test("設計 §3 第 4 條：失敗的試跑紀錄在自己的頁面上要說出失敗類別，不能比清單頁說得少", async () => {
   stubTrace(summary, advanced, {
-    run_id: "r-1",
+    run_id: summary.run_id,
     skill_id: "s-1",
     skill_version_id: "v-1",
     test_case_snapshot_id: "snap-1",
@@ -490,6 +490,7 @@ test("設計 §3 第 4 條：失敗的試跑紀錄在自己的頁面上要說出
     },
   });
   await render();
+  await waitFor(() => (container.textContent ?? "").includes("能力不符"));
 
   expect(container.textContent).toContain("能力不符");
   expect(container.textContent).toContain("平台在跑之前就拒絕了這次試跑");
