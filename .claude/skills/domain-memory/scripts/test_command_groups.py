@@ -32,7 +32,7 @@ SNIPPET = re.compile(r"`([a-z][a-z-]* [^`]*--[^`]*)`")
 PLACEHOLDER = re.compile(r"<[^>]*>")
 ROOTS = ("--registry-root", "x", "--repo-root", "x")
 TABLE_HEADINGS = {"## Everyday commands": "everyday", "## Advanced commands": "advanced"}
-ROW = re.compile(r"^\| [^|`]+? \| `([a-z][a-z-]*)")
+ROW = re.compile(r"^### `([a-z][a-z-]*)`")
 
 
 def parsed_commands() -> list[str]:
@@ -128,7 +128,7 @@ class CommandGroupsTest(RegistryTestCase):
                 (result.returncode, hook.read_text(encoding="utf-8").splitlines()[2]),
             )
 
-    def test_each_command_is_documented_only_in_the_table_of_its_group(self) -> None:
+    def test_each_command_is_documented_only_under_the_heading_of_its_group(self) -> None:
         self.assertEqual(
             {name: {group} for group, names in COMMAND_GROUPS.items() for name in names}, documented_groups()
         )
