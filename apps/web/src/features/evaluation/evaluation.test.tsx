@@ -142,6 +142,61 @@ function ReadyEditor() {
   );
 }
 
+function ValidatedEditor({ initial }: { initial: CheckNode }) {
+  const [value, setValue] = useState<CheckNode | null>(initial);
+  const ready = useCheckReady(value);
+  return (
+    <>
+      <button disabled={!ready}>送出檢查</button>
+      <output data-draft>{JSON.stringify(value)}</output>
+      <CheckEditor value={value} onChange={setValue} />
+    </>
+  );
+}
+
+for (const character of ["a", "😀"]) {
+  for (const count of [199, 200, 201]) {
+    test(`check input preserves ${count} ${character} characters and explains its limit`, async () => {
+      await renderNode(<ValidatedEditor initial={{ kind: "contains_values", values: ["資料"] }} />);
+      await waitFor(() => container.querySelector("#check-node-0-value-0") !== null);
+      const input = field<HTMLInputElement>("#check-node-0-value-0");
+      const value = character.repeat(count);
+      await act(async () => setValue(input, value));
+      expect(input.value).toBe(value);
+      expect(input.hasAttribute("maxlength")).toBe(false);
+      expect(input.getAttribute("aria-invalid")).toBe(String(count === 201));
+      const description = input.getAttribute("aria-describedby");
+      expect(description).toBeTruthy();
+      expect(field(`#${description}`).textContent).toContain(
+        count === 201 ? "值最多 200 個字，目前 201 個字。" : "最多 200 個字",
+      );
+      expect(button("送出檢查").disabled).toBe(count === 201);
+      expect(JSON.parse(field("[data-draft]").textContent!).values).toEqual([value]);
+    });
+  }
+}
+
+for (const value of ["0", "1", "0.5"]) {
+  test(`fan-out input exposes the integer validity of ${value} before submission`, async () => {
+    await renderNode(
+      <ValidatedEditor
+        initial={{ kind: "each", values: ["資料"], children: [{ kind: "judge" }] }}
+      />,
+    );
+    await waitFor(() => container.querySelector("#check-node-0-at-least") !== null);
+    const input = field<HTMLInputElement>("#check-node-0-at-least");
+    await act(async () => setValue(input, value));
+    expect(input.value).toBe(value);
+    expect(input.getAttribute("aria-invalid")).toBe(String(value === "0.5"));
+    expect(button("送出檢查").disabled).toBe(value === "0.5");
+    if (value === "0.5") {
+      const description = input.getAttribute("aria-describedby");
+      expect(description).toBeTruthy();
+      expect(field(`#${description}`).textContent).toContain("至少通過數必須是整數");
+    }
+  });
+}
+
 test("a failed check-kind refresh cannot approve a cached design and retry preserves its values", async () => {
   await renderNode(<ReadyEditor />);
   await waitFor(() => container.querySelector("[data-check-ready]")?.textContent === "true");

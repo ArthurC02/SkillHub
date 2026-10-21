@@ -36,6 +36,47 @@ const KINDS = [
 ];
 const LIMITS = { maxNodes: 50, maxDepth: 8 };
 
+for (const character of ["a", "😀"]) {
+  for (const count of [199, 200, 201]) {
+    it(`validates ${character} check values at ${count} code points`, () => {
+      const tree: CheckNode = { kind: "contains_values", values: [character.repeat(count)] };
+      expect(problems(tree, KINDS, LIMITS).get("0") ?? []).toEqual(
+        count === 201 ? ["值最多 200 個字，目前 201 個字。"] : [],
+      );
+    });
+  }
+  it(`validates trimmed ${character} values at the wire limit inside a child`, () => {
+    const value = ` ${character.repeat(200)} `;
+    const tree: CheckNode = {
+      kind: "sequence",
+      children: [{ kind: "contains_values", values: [value] }],
+    };
+    expect(problems(tree, KINDS, LIMITS).size).toBe(0);
+    expect(forRequest(tree)).toEqual({
+      kind: "sequence",
+      children: [{ kind: "contains_values", values: [character.repeat(200)] }],
+    });
+    expect(tree.children![0].values).toEqual([value]);
+  });
+}
+
+for (const { name, value, expected } of [
+  { name: "zero", value: 0, expected: [] },
+  { name: "item count", value: 1, expected: [] },
+  { name: "fraction", value: 0.5, expected: ["至少通過數必須是整數"] },
+  { name: "not a number", value: Number.NaN, expected: ["至少通過數必須是整數"] },
+]) {
+  it(`validates the ${name} fan-out threshold against the integer contract`, () => {
+    const tree: CheckNode = {
+      kind: "each",
+      values: ["資料"],
+      children: [{ kind: "judge" }],
+      at_least: value,
+    };
+    expect(problems(tree, KINDS, LIMITS).get("0") ?? []).toEqual(expected);
+  });
+}
+
 const gated: CheckNode = {
   kind: "sequence",
   children: [{ kind: "contains_values", values: ["17"] }, { kind: "judge" }],

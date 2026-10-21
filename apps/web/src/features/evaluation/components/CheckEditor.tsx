@@ -2,8 +2,10 @@ import { CriterionCheckValuesItemMaxLength } from "@skillhub/api-client-ts/limit
 import { useId, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
+import { textLengthReason } from "../../../shared/textLength.model";
 import {
   PROMPT_GRADER,
+  atLeastReason,
   appendChild,
   emptyNode,
   nodeAt,
@@ -101,7 +103,10 @@ function ValuesField({
           <input
             id={`${idBase}-value-${i}`}
             value={v}
-            maxLength={CriterionCheckValuesItemMaxLength}
+            aria-invalid={
+              textLengthReason(v.trim(), "值", CriterionCheckValuesItemMaxLength) !== null
+            }
+            aria-describedby={`${idBase}-value-${i}-limit`}
             onChange={(e) => onChange(values.map((old, j) => (j === i ? e.target.value : old)))}
           />{" "}
           <button
@@ -111,6 +116,11 @@ function ValuesField({
           >
             刪掉第 {i + 1} 個
           </button>
+          <br />
+          <span id={`${idBase}-value-${i}-limit`} className="note">
+            {textLengthReason(v.trim(), "值", CriterionCheckValuesItemMaxLength) ??
+              `前後空白不計，最多 ${CriterionCheckValuesItemMaxLength} 個字。`}
+          </span>
         </p>
       ))}
       <button
@@ -146,6 +156,9 @@ function NodeForm({
   const update = (patch: Partial<CheckNode>) =>
     onChange(replaceAt(tree, path, { ...node, ...patch }));
   const children = node.children ?? [];
+  const atLeastProblem = kind?.at_least
+    ? atLeastReason(node.at_least ?? 0, (node.values ?? []).length)
+    : null;
   return (
     <section className="check-editor-node" aria-labelledby={`${idBase}-heading`}>
       <h4 id={`${idBase}-heading`}>選取的節點：{describe(node, palette)}</h4>
@@ -171,6 +184,8 @@ function NodeForm({
             max={(node.values ?? []).length}
             step={1}
             value={node.at_least ?? 0}
+            aria-invalid={atLeastProblem !== null}
+            aria-describedby={atLeastProblem ? `${idBase}-problems` : undefined}
             onChange={(e) => update({ at_least: Number(e.target.value) })}
           />
         </p>
@@ -188,7 +203,11 @@ function NodeForm({
         />
       )}
       {found.length > 0 && (
-        <ul className="check-editor-problems" aria-label="這個節點還要修正">
+        <ul
+          id={`${idBase}-problems`}
+          className="check-editor-problems"
+          aria-label="這個節點還要修正"
+        >
           {found.map((p) => (
             <li key={p}>{p}</li>
           ))}
