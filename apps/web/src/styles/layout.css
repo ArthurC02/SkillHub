@@ -16,6 +16,7 @@ main,
 
 main {
   flex: 1 0 auto;
+  scroll-margin-top: var(--app-header-clearance, 0px);
 }
 
 /* 頁尾那一列是**純連結**（「資料保存政策 ｜ 帳號與刪除」），不是夾在句子裡的連結，

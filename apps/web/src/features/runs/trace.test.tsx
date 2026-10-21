@@ -238,7 +238,7 @@ test("the general mode keeps provider wording behind a technical-details disclos
   expect(details?.parentElement?.textContent).toContain("這次試跑留有錯誤紀錄");
 });
 
-test("a 試跑紀錄 with an owner 測試題 returns to that exact case and version", async () => {
+test("a Run folds its identifier and keeps links to its exact source case and version", async () => {
   stubTrace(summary, advanced, {
     run_id: summary.run_id,
     skill_id: "skill-1",
@@ -250,6 +250,9 @@ test("a 試跑紀錄 with an owner 測試題 returns to that exact case and vers
 
   const text = container.textContent ?? "";
   expect(text).toContain(`試跑紀錄 ID：${summary.run_id}`);
+  const identity = container.querySelector(".run-identity")?.closest("details");
+  expect(identity?.open).toBe(false);
+  expect(identity?.querySelector("summary")?.textContent).toBe("試跑識別碼");
   const source = container.querySelector('[aria-label="這次試跑的來源"]');
   const sourceLinks = Array.from(source?.querySelectorAll("a") ?? [], (link) => [
     link.textContent,
