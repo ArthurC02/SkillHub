@@ -3,12 +3,12 @@
   "proposal_id": "feedback-body-cap-recite",
   "proposer": "domain-memory-agent",
   "requirement_id": "feedback-body-cap-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-21T19:11:04.155506Z",
   "verified_at": "2026-10-21T19:11:09.805513Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-21T19:14:58.108757Z",
+  "applied_at": "2026-10-21T19:15:53.307200Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "0800bd840d3df431126dae169095e4f74d0d1ed7",
@@ -84,5 +84,9 @@
   "approvals": [],
   "supersedes": [
     "analytics-retention-and-feedback-rules-2026-10-18"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "6b9681d6a1af72b98879e74ba8d717adbcb182da",
+    "registry_digest": "sha256:2f588110df9e369db14f0be1b65cd2bfa3b38aef0c20461ca66159867e5f6da9"
+  }
 }
