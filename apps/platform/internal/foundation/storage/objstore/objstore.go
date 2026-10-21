@@ -175,6 +175,21 @@ func (c *Client) List(ctx context.Context, prefix string) ([]string, error) {
 	return keys, nil
 }
 
+func (c *Client) Inventory(ctx context.Context, prefix string) (map[string]int64, error) {
+	sizes := map[string]int64{}
+	for object := range c.mc.ListObjects(ctx, c.bucket, minio.ListObjectsOptions{Prefix: prefix, Recursive: true}) {
+		if object.Err != nil {
+			return nil, fmt.Errorf("objstore list %s: %w", prefix, object.Err)
+		}
+		sizes[object.Key] = object.Size
+	}
+	return sizes, nil
+}
+
+func (c *Client) Location() string {
+	return c.mc.EndpointURL().Host + "/" + c.bucket
+}
+
 func (c *Client) Exists(ctx context.Context, key string) (bool, error) {
 	if _, err := c.mc.StatObject(ctx, c.bucket, key, minio.StatObjectOptions{}); err != nil {
 		if isNotFound(err) {

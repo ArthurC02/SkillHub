@@ -75,7 +75,10 @@ services:
     mem_limit: 1g
     profiles: ["jobs"]
     entrypoint: ["maintenance"]
-    <<: *platform-env
+    env_file:
+      - ${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}/platform.env
+      - path: ${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}/objstore-backup.env
+        required: false
     depends_on:
       postgres:
         condition: service_healthy

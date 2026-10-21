@@ -21,6 +21,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/jobruns"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/partition"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
@@ -38,7 +39,7 @@ func main() {
 	if len(os.Args) != 2 {
 		slog.Error("usage: maintenance purge-accounts|replay-purges|purge-audit|purge-feedback|" +
 			"purge-run-artifacts|purge-datasets|purge-deleted-skills|" +
-			"collect-objects|check-sources|rotate-partitions|report|approved")
+			"collect-objects|backup-objects|check-sources|rotate-partitions|report|approved")
 		os.Exit(2)
 	}
 	if code := runJob(os.Args[1]); code != 0 {
@@ -48,7 +49,7 @@ func main() {
 
 var jobPeriods = map[string][]string{
 	"daily": {"purge-accounts", "replay-purges", "purge-run-artifacts", "purge-datasets", "purge-deleted-skills",
-		"collect-objects", "check-sources", "report"},
+		"collect-objects", "backup-objects", "check-sources", "report"},
 	"weekly":   {"purge-audit", "purge-feedback"},
 	"monthly":  {"rotate-partitions"},
 	"frequent": {"approved"},
@@ -130,6 +131,8 @@ func runSubcommand(ctx context.Context, pool *pgxpool.Pool, job string) error {
 		return purgeDeletedSkills(ctx, pool)
 	case "collect-objects":
 		return collectObjects(ctx, pool)
+	case "backup-objects":
+		return backupObjects(ctx)
 	case "rotate-partitions":
 		return rotatePartitions(ctx, pool)
 	case "report":
@@ -361,6 +364,23 @@ func replayPurges(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 	n, err := identity.PurgeLedgerReplay{Accounts: purgeService(pool)}.Run(ctx, store)
 	logSweep("purge ledger replay", err, "accounts_purged_again", n)
+	return err
+}
+
+func backupObjects(ctx context.Context) error {
+	source, err := wiring.ObjectStoreFromEnv()
+	if err != nil {
+		return err
+	}
+	backup, err := wiring.ObjectBackupStoreFromEnv()
+	if err != nil {
+		return err
+	}
+	r, err := objstore.Mirror(ctx, source, backup, objstore.MirrorPolicy{
+		Now: time.Now(), Retention: wiring.ObjectBackupRetention, Sample: wiring.ObjectBackupSample,
+	})
+	logSweep("object backup", err, "copied", r.Copied, "tombstoned", r.Tombstoned,
+		"expired", r.Expired, "revived", r.Revived, "sampled", r.Sampled)
 	return err
 }
 

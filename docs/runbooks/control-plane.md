@@ -47,6 +47,7 @@ EOF
 | --- | --- |
 | `postgres.env` | `POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_DB=skillhub`；WAL-G：`WALG_S3_PREFIX=s3://<備份 bucket>/postgres`、`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_ENDPOINT`、`AWS_REGION`、`AWS_S3_FORCE_PATH_STYLE=true`；可選 `WALG_RETAIN_DAYS`（預設 35，備份保留天數；仍設著舊的 `WALG_RETAIN_FULL` 時備份拒絕執行）、`DRILL_RTO_SECONDS`（預設 14400，還原演練的時間上限） |
 | `platform.env` | api、worker、maintenance、reindex 共用。`DATABASE_URL=postgres://<user>:<password>@postgres:5432/skillhub?sslmode=disable`；其餘照 [release-checklist](../plans/mvp/m4/release-checklist.md) §2.3 的表，完整清單是 `.env.example` |
+| `objstore-backup.env` | 只給 maintenance 的物件備份 job：`OBJSTORE_BACKUP_ENDPOINT`、`OBJSTORE_BACKUP_ACCESS_KEY`、`OBJSTORE_BACKUP_SECRET_KEY`、`OBJSTORE_BACKUP_BUCKET`、`OBJSTORE_BACKUP_SSL=1`。指向**另一個** bucket（最好另一個區域），金鑰只對那個 bucket 有權限；缺任何一項 `backup-objects` 拒絕執行並點名，與應用程式同一個 bucket 也拒絕。建議在備份 bucket 開版本控管，舊版本 35 天後過期，金鑰外洩時刪掉的備份仍救得回來 |
 | `llm.env` | apps/llm 的設定；`LITELLM_API_KEY` 是 Virtual Key，不是 master key（§2.3） |
 | `postgres-exporter.env` | `DATA_SOURCE_NAME=postgresql://<user>:<password>@postgres:5432/skillhub?sslmode=disable` |
 | `smtp-password` | SMTP 密碼，單獨一行 |
@@ -109,6 +110,7 @@ sudo /opt/skillhub/infra/deploy/control-plane/bin/skillhub-enable-timers
 
 - **連續封存**：Postgres 每寫滿一段 WAL，或有寫入後滿 60 秒，就由 `wal-g wal-push` 送到備份 bucket。失敗時 WAL 堆在資料卷上並重試。
 - **完整備份**：`skillhub-backup.timer` 每天 03:00，超過 `WALG_RETAIN_DAYS` 天的備份連同所屬 WAL 一起刪。這個天數寫在同意書的刪除說明裡，改它要重走法務確認。
+- **物件備份**：maintenance 的 `backup-objects` 每天把應用程式 bucket 的每個物件複製到備份 bucket 的 `objects/`；來源不見的物件先在 `tombstones/` 記下時間，滿 35 天連同備份一起刪（與資料庫備份同一個保存期，寫在同意書）。每次跑完確認每個來源物件都在備份裡、大小相同，並逐位元比對一組每天輪換的 20 個物件；任何一項不對 job 就失敗，由 `ScheduledJobFailed` 告警。
 - **還原演練**：`skillhub-restore-drill.timer` 每月 7 日 05:00，在一個**沒有掛資料卷**的一次性容器裡抓最新完整備份、重播 WAL 到最新、印出幾張核心表的列數與最後寫入時間，以及從取回到可讀花了幾秒；超過 `DRILL_RTO_SECONDS` 就失敗，由 `ScheduledJobFailed` 告警。不碰正在服務的資料庫。
 
 手動：
@@ -158,6 +160,13 @@ sudo systemctl start skillhub-backup
 ```
 
 還原後的資料庫在新的 timeline 上，**立刻做一次完整備份**，之後的 WAL 才有起點。確認資料無誤後 `sudo docker volume rm skillhub_postgres-restore-hold`。
+
+### 物件儲存遺失或被誤刪
+
+1. **先停物件備份**：`sudo systemctl stop skillhub-daily@backup-objects.timer`。它照常跑會把來源不見的物件全部記成刪除，35 天後連備份一起刪。
+2. 用任何 S3 工具把備份 bucket 的 `objects/` 底下整份複製回應用程式 bucket，**去掉 `objects/` 前綴**（`objects/purge-ledger/…` 回到 `purge-ledger/…`）。備份 bucket 的 `tombstones/` 不要複製。
+3. 跑一次 `$C --profile jobs run --rm maintenance replay-purges`：清除紀錄跟著物件回來了，這一步把已清除帳號的物件再刪一次。
+4. `sudo systemctl start skillhub-daily@backup-objects.timer`，再手動跑一次 `$C --profile jobs run --rm maintenance backup-objects`：它會把回來的物件的刪除記號清掉，log 的 `revived` 是清掉的數目。
 
 ## 5. 告警
 

@@ -43,6 +43,13 @@ var capabilityLedger = []struct {
 		},
 	},
 	{
+		reason: "由 cmd/maintenance 的 backup-objects 擁有：缺任何一個那個 job 就拒絕執行並點名；API 行程刻意不持有備份位置的金鑰",
+		vars: []string{
+			"OBJSTORE_BACKUP_ACCESS_KEY", "OBJSTORE_BACKUP_BUCKET", "OBJSTORE_BACKUP_ENDPOINT",
+			"OBJSTORE_BACKUP_SECRET_KEY", "OBJSTORE_BACKUP_SSL",
+		},
+	},
+	{
 		reason: "屬於別的行程或測試調具，不是這個 API 的部署變數",
 		vars: []string{
 			"LITELLM_API_KEY", "LITELLM_BASE_URL", "LITELLM_MASTER_KEY", "OPENAI_API_KEY",

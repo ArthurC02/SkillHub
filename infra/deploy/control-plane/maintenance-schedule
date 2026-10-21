@@ -4,6 +4,7 @@ daily purge-run-artifacts
 daily purge-datasets
 daily purge-deleted-skills
 daily collect-objects
+daily backup-objects
 daily check-sources
 weekly purge-audit
 weekly purge-feedback
