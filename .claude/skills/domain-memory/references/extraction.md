@@ -22,7 +22,7 @@ When the source shows something close to an element but not its defining propert
 
 ## The order of work
 
-Models find vocabulary and relations reliably and Bounded Contexts and Aggregates unreliably, and an early wrong boundary spreads into everything recorded after it. So extract in this order, and validate after each stage before building on it:
+Models find vocabulary and relations reliably and Bounded Contexts and Aggregates unreliably, and an early wrong boundary spreads into everything recorded after it. So start with the smallest slice that holds a real cross-Context behavior, two Contexts, a shared term, an invariant and one interaction, extract in this order, and validate after each stage before building on it:
 
 1. **Language.** Collect the terms the domain uses and what the code or requirement does with each. A word with two meanings is a boundary signal, not one term. Keep them as notes: a Term names its Contexts, so it is recorded once step 2 has them.
 2. **Boundaries.** Propose Contexts only where several signals agree: the language changes, data is owned and written in one place, changes land together, and calls cross the boundary through an explicit surface. Each Context names its `implementation_path` when code exists. Prefer fewer, evidenced Contexts to a speculative split.

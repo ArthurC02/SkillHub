@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.1.9
+
+### Removed
+
+- The Registry authoring and Registry maintenance pages. The authoring page's asset table repeated the schema's and the extraction page's, and it still pointed at the record templates 2.0.0 removed; its guidance on choosing an Interaction over a Dependency policy is in the Registry schema, and its smallest-slice advice in the extraction page. The maintenance page's sequence repeated the Maintain capability's; what it added, that evidence says where a statement came from and not that the rule still holds, and what `probe` reports, is on the Maintain page.
+
 ## 2.1.8
 
 ### Fixed
