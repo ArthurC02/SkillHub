@@ -20,11 +20,12 @@ from skillhub_llm.gateway import (
     client,
     completion_usage,
     failure_label,
+    json_schema_format,
     request_metadata,
     served_model,
     within,
 )
-from skillhub_llm.untrusted import scrub
+from skillhub_llm.untrusted import fence, scrub
 
 from .enrich_checks import EnrichmentDocument, Finding, check_enrichment
 
@@ -167,12 +168,11 @@ def _scrub(text: str) -> str:
 
 def _user_message(req: EnrichSkillRequest) -> str:
     tree = "\n".join(_scrub(p) for p in req.file_tree) or "(not provided)"
-    return (
-        f"<{DATA_TAG}>\n"
+    return fence(
+        DATA_TAG,
         f"Skill name: {_scrub(req.skill_name)}\n\n"
         f"Package files:\n{tree}\n\n"
-        f"SKILL.md:\n{_scrub(req.skill_md)}\n"
-        f"</{DATA_TAG}>"
+        f"SKILL.md:\n{_scrub(req.skill_md)}",
     )
 
 
@@ -188,14 +188,7 @@ async def enrich_skill(req: EnrichSkillRequest) -> EnrichSkillResponse:
                 {"role": "system", "content": system},
                 {"role": "user", "content": _user_message(req)},
             ],
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "skill_enrichment",
-                    "strict": True,
-                    "schema": Enrichment.model_json_schema(),
-                },
-            },
+            response_format=json_schema_format("skill_enrichment", Enrichment),
             temperature=TEMPERATURE,
             seed=SEED,
             extra_body=request_metadata(operation="enrich-skill"),

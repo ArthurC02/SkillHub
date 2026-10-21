@@ -13,6 +13,7 @@ from skillhub_llm.gateway import (
     client,
     completion_usage,
     failure_label,
+    json_schema_format,
     request_metadata,
     served_model,
     within,
@@ -142,14 +143,7 @@ async def analyze_intent(req: AnalyzeSearchIntentRequest) -> AnalyzeSearchIntent
                 {"role": "user", "content": fence(DATA_TAG, scrub(DATA_TAG, req.query))},
             ],
             max_completion_tokens=MAX_OUTPUT_TOKENS,
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "search_intent",
-                    "strict": True,
-                    "schema": IntentProposal.model_json_schema(),
-                },
-            },
+            response_format=json_schema_format("search_intent", IntentProposal),
             extra_body=request_metadata(operation="analyze-intent", prompt_version=PROMPT_VERSION),
         )
         completion = raw.parse()

@@ -146,6 +146,13 @@ async def close_client() -> None:
         _shared_client.cache_clear()
 
 
+def json_schema_format(name: str, model: type[BaseModel]) -> dict:
+    return {
+        "type": "json_schema",
+        "json_schema": {"name": name, "strict": True, "schema": model.model_json_schema()},
+    }
+
+
 def request_metadata(**pairs: str) -> dict:
     """Gateway metadata so the spend lands on the right Run and operation.
 

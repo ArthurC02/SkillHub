@@ -9,7 +9,7 @@ import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Annotated, Literal, TypedDict
+from typing import Annotated, Any, Literal, TypedDict
 
 from fastapi import APIRouter, Header, HTTPException, Request
 from langgraph.graph import END, START, StateGraph
@@ -22,17 +22,20 @@ from skillhub_llm.gateway import (
     GatewayUsage,
     client,
     completion_usage,
+    json_schema_format,
     request_metadata,
     require_budgeted_key,
     served_model,
 )
 from skillhub_llm.generate import (
     FIELD_RULES,
+    REFERENCE_TAG,
     GeneratedFile,
     GenerateDiagram,
     GeneratedSkill,
     GenerateReference,
     _over_cap,
+    text_with_diagram,
 )
 from skillhub_llm.untrusted import data_block_rules, fence, scrub
 
@@ -47,7 +50,7 @@ INPUT_SCHEMA_PATH = "scripts/input_schema.json"
 INPUT_CHECK_SECTION = (
     "## Input check (first step)\n\n"
     "Before any other step, write every value the message gives into `input.json` as "
-    '`{{"records": [{{<field name>: <the value exactly as written>}}, ...]}}`, one record '
+    '`{"records": [{<field name>: <the value exactly as written>}, ...]}`, one record '
     "per item, with the field names of `scripts/input_schema.json`, then run\n"
     "`python scripts/check_input.py input.json`\n"
     "from the directory holding this SKILL.md, adding `--today YYYY-MM-DD` when the message "
@@ -106,7 +109,6 @@ SHIPPED_FILES_RULE = (
     "scripts/check_output.py are supplied by the platform, never by you."
 )
 DATA_TAG = "untrusted_creation_snapshot"
-REFERENCE_TAG = "untrusted_reference_skill"
 TOOL_TAG = "untrusted_tool_observation"
 TEXT_MAX_CHARS = 20000  # one-number: creationMaxTextRunes
 MAX_ACCEPTANCE_CRITERIA = 12  # one-number: creationMaxAcceptanceCriteria
@@ -718,15 +720,7 @@ def _system_prompt(phase: str) -> str:
 
 
 def _user_content(req: CreationStepRequest, prompt: str) -> str | list[dict]:
-    if req.diagram is None:
-        return prompt
-    return [
-        {"type": "text", "text": prompt},
-        {
-            "type": "image_url",
-            "image_url": {"url": f"data:{req.diagram.media_type};base64,{req.diagram.data}"},
-        },
-    ]
+    return text_with_diagram(prompt, req.diagram)
 
 
 @dataclass
@@ -750,17 +744,22 @@ async def _ask_model(req: CreationStepRequest, gateway_key: str, call: _ModelCal
                 {"role": "user", "content": call.user},
             ],
             max_tokens=call.max_tokens,
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": call.schema_name,
-                    "strict": True,
-                    "schema": call.schema.model_json_schema(),
-                },
-            },
+            response_format=json_schema_format(call.schema_name, call.schema),
             extra_body=request_metadata(operation=call.operation, session_id=req.session_id),
         )
     )
+
+
+async def _ask_parsed(
+    req: CreationStepRequest,
+    gateway_key: str,
+    call: _ModelCallSpec,
+    usages: list[GatewayUsage | None],
+) -> Any:
+    raw = await _ask_model(req, gateway_key, call)
+    completion = raw.parse()
+    usages.append(completion_usage(completion, raw.headers))
+    return call.schema.model_validate_json(completion.choices[0].message.content or "")
 
 
 @dataclass
@@ -797,7 +796,7 @@ async def _diagnose(
     content: str | list[dict],
     revision: _ReviewRevision,
 ) -> None:
-    raw = await _ask_model(
+    diagnosis = await _ask_parsed(
         req,
         gateway_key,
         _ModelCallSpec(
@@ -808,10 +807,8 @@ async def _diagnose(
             schema_name="review_diagnosis",
             operation="creation-review-diagnosis",
         ),
+        revision.usages,
     )
-    completion = raw.parse()
-    revision.usages.append(completion_usage(completion, raw.headers))
-    diagnosis = ReviewDiagnosis.model_validate_json(completion.choices[0].message.content or "")
     if not diagnosis.edits:
         return
     if any(e.target not in ("body", "files") for e in diagnosis.edits):
@@ -838,7 +835,7 @@ async def _rewrite(
     edits_text = _edit_lines(edits)
     current_files = req.draft.files if req.draft else []
     files_text = "\n\n".join(f"### {f.path}\n\n{f.content}" for f in current_files)
-    raw = await _ask_model(
+    candidate = await _ask_parsed(
         req,
         gateway_key,
         _ModelCallSpec(
@@ -854,10 +851,8 @@ async def _rewrite(
             schema_name="review_rewrite",
             operation="creation-review-rewrite",
         ),
+        revision.usages,
     )
-    rewrite = raw.parse()
-    revision.usages.append(completion_usage(rewrite, raw.headers))
-    candidate = ReviewRewrite.model_validate_json(rewrite.choices[0].message.content or "")
     body_changed = bool(req.draft) and (candidate.body.strip() != req.draft.body.strip())
     files_changed = bool(req.draft) and candidate.files != req.draft.files
     if body_changed:
@@ -1168,7 +1163,7 @@ async def _write_challenges(
         },
         ensure_ascii=False,
     )
-    raw = await _ask_model(
+    found = await _ask_parsed(
         req,
         gateway_key,
         _ModelCallSpec(
@@ -1179,10 +1174,8 @@ async def _write_challenges(
             schema_name="challenge_cases",
             operation="creation-challenge",
         ),
+        usages,
     )
-    completion = raw.parse()
-    usages.append(completion_usage(completion, raw.headers))
-    found = ChallengeSet.model_validate_json(completion.choices[0].message.content or "")
     return _bounded_challenges(found.cases)
 
 
@@ -1296,7 +1289,7 @@ def _supply_input_check(draft: GeneratedSkill | None) -> GeneratedSkill | None:
     draft = draft.model_copy(update={"files": files})
     if INPUT_SCRIPT_PATH in draft.body:
         return draft
-    return _append_section(draft, INPUT_CHECK_SECTION.format())
+    return _append_section(draft, INPUT_CHECK_SECTION)
 
 
 def _append_section(draft: GeneratedSkill, section: str) -> GeneratedSkill:

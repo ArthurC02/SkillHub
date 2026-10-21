@@ -6,7 +6,7 @@ import logging
 import os
 import secrets
 from contextlib import asynccontextmanager
-from typing import Annotated, Literal
+from typing import Annotated, Literal, NamedTuple
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -25,6 +25,7 @@ from skillhub_llm.gateway import (
     completion_usage,
     embedding_usage,
     failure_label,
+    json_schema_format,
     key_is_budgeted,
     request_metadata,
     require_budgeted_service_key,
@@ -234,6 +235,49 @@ class MatchReasonsResponse(MatchReasons):
     usage: GatewayUsage | None = None
 
 
+class _JsonCall(NamedTuple):
+    operation: str
+    model: str
+    schema_name: str
+    schema: type[BaseModel]
+
+
+async def _ask_for_json(call: _JsonCall, system_prompt: str, user_prompt: str, timeout: float):
+    operation, model, schema_name, schema = call
+    client = _client(timeout)
+
+    try:
+        raw = await client.chat.completions.with_raw_response.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.3,
+            max_tokens=1024,
+            response_format=json_schema_format(schema_name, schema),
+            extra_body=request_metadata(operation=operation),
+        )
+        response = raw.parse()
+    except Exception as e:
+        logger.warning("%s LLM call failed (%s)", operation, failure_label(e))
+        raise HTTPException(status_code=502, detail="gateway error") from e
+
+    try:
+        content = (response.choices[0].message.content or "").strip()
+    except AttributeError, IndexError, TypeError:
+        logger.warning("%s provider returned a malformed envelope", operation)
+        raise HTTPException(
+            status_code=502, detail=f"{operation} provider returned malformed output"
+        ) from None
+    try:
+        parsed = schema.model_validate_json(content)
+    except ValidationError:
+        logger.warning("%s: model output did not match the schema", operation)
+        parsed = None
+    return response, raw.headers, parsed
+
+
 @app.post("/match-reasons", response_model=MatchReasonsResponse, dependencies=budgeted)
 async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
     """Generate human-readable match reasons for search result candidates.
@@ -266,54 +310,24 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
         + "\n\nProduce the match reasons."
     )
 
-    client = _client(within(MATCH_REASONS_TIMEOUT_SECONDS, req.timeout_seconds))
-
-    try:
-        raw = await client.chat.completions.with_raw_response.create(
-            model=MATCH_REASON_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.3,
-            max_tokens=1024,
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "match_reasons",
-                    "strict": True,
-                    "schema": MatchReasons.model_json_schema(),
-                },
-            },
-            extra_body=request_metadata(operation="match-reasons"),
-        )
-        response = raw.parse()
-    except Exception as e:
-        logger.warning("match-reasons LLM call failed (%s)", failure_label(e))
-        raise HTTPException(status_code=502, detail="gateway error") from e
-
-    try:
-        content = (response.choices[0].message.content or "").strip()
-    except AttributeError, IndexError, TypeError:
-        logger.warning("match-reasons provider returned a malformed envelope")
-        raise HTTPException(
-            status_code=502, detail="match-reasons provider returned malformed output"
-        ) from None
-    try:
-        parsed = MatchReasons.model_validate_json(content)
-    except ValidationError:
-        logger.warning("match-reasons: model output did not match the schema")
+    response, headers, parsed = await _ask_for_json(
+        _JsonCall("match-reasons", MATCH_REASON_MODEL, "match_reasons", MatchReasons),
+        system_prompt,
+        user_prompt,
+        within(MATCH_REASONS_TIMEOUT_SECONDS, req.timeout_seconds),
+    )
+    if parsed is None:
         return MatchReasonsResponse(
             reasons=[],
-            model=served_model(response, raw.headers, MATCH_REASON_MODEL),
-            usage=completion_usage(response, raw.headers),
+            model=served_model(response, headers, MATCH_REASON_MODEL),
+            usage=completion_usage(response, headers),
         )
 
     wanted = {c.skill_id for c in req.candidates}
     return MatchReasonsResponse(
         reasons=[r for r in parsed.reasons if r.skill_id in wanted and r.reason],
-        model=served_model(response, raw.headers, MATCH_REASON_MODEL),
-        usage=completion_usage(response, raw.headers),
+        model=served_model(response, headers, MATCH_REASON_MODEL),
+        usage=completion_usage(response, headers),
     )
 
 
@@ -408,44 +422,16 @@ async def suggest_criteria(req: SuggestCriteriaRequest) -> SuggestCriteriaRespon
         + "\n\nPropose the acceptance criteria."
     )
 
-    client = _client(within(SUGGEST_CRITERIA_TIMEOUT_SECONDS, req.timeout_seconds))
-
-    try:
-        raw = await client.chat.completions.with_raw_response.create(
-            model=SUGGEST_CRITERIA_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.3,
-            max_tokens=1024,
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "suggested_criteria",
-                    "strict": True,
-                    "schema": SuggestedCriteria.model_json_schema(),
-                },
-            },
-            extra_body=request_metadata(operation="suggest-criteria"),
-        )
-        response = raw.parse()
-    except Exception as e:
-        logger.warning("suggest-criteria LLM call failed (%s)", failure_label(e))
-        raise HTTPException(status_code=502, detail="gateway error") from e
-
-    try:
-        content = (response.choices[0].message.content or "").strip()
-    except AttributeError, IndexError, TypeError:
-        logger.warning("suggest-criteria provider returned a malformed envelope")
-        raise HTTPException(
-            status_code=502, detail="suggest-criteria provider returned malformed output"
-        ) from None
-    usage = completion_usage(response, raw.headers)
-    try:
-        parsed = SuggestedCriteria.model_validate_json(content)
-    except ValidationError:
-        logger.warning("suggest-criteria: model output did not match the schema")
+    response, headers, parsed = await _ask_for_json(
+        _JsonCall(
+            "suggest-criteria", SUGGEST_CRITERIA_MODEL, "suggested_criteria", SuggestedCriteria
+        ),
+        system_prompt,
+        user_prompt,
+        within(SUGGEST_CRITERIA_TIMEOUT_SECONDS, req.timeout_seconds),
+    )
+    usage = completion_usage(response, headers)
+    if parsed is None:
         return SuggestCriteriaResponse(criteria=[], usage=usage)
 
     seen: set[str] = set()

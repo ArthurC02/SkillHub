@@ -29,6 +29,7 @@ from skillhub_llm.gateway import (
     client,
     completion_usage,
     failure_label,
+    json_schema_format,
     request_metadata,
     served_model,
     within,
@@ -237,6 +238,18 @@ def _reference_block(ref: GenerateReference) -> str:
     return f"Reference: {name}\n" + fence(REFERENCE_TAG, skill_md)
 
 
+def text_with_diagram(text: str, diagram: GenerateDiagram | None) -> str | list[dict]:
+    if diagram is None:
+        return text
+    return [
+        {"type": "text", "text": text},
+        {
+            "type": "image_url",
+            "image_url": {"url": f"data:{diagram.media_type};base64,{diagram.data}"},
+        },
+    ]
+
+
 def _user_text(req: GenerateSkillRequest) -> str:
     """The text part of the user message: the fenced task (if any), then each
     fenced reference, then the closing instruction.
@@ -255,18 +268,7 @@ def _user_text(req: GenerateSkillRequest) -> str:
 @router.post("/v1/generate-skill", response_model=GenerateSkillResponse)
 async def generate_skill(req: GenerateSkillRequest) -> GenerateSkillResponse:
     """Generate one Skill package."""
-    text = _user_text(req)
-    if req.diagram is not None:
-        # Never logged: this is the user's uploaded image, base64 and all.
-        user_content: str | list[dict] = [
-            {"type": "text", "text": text},
-            {
-                "type": "image_url",
-                "image_url": {"url": f"data:{req.diagram.media_type};base64,{req.diagram.data}"},
-            },
-        ]
-    else:
-        user_content = text
+    user_content = text_with_diagram(_user_text(req), req.diagram)
 
     try:
         raw = await _client(req.timeout_seconds).chat.completions.with_raw_response.create(
@@ -278,14 +280,7 @@ async def generate_skill(req: GenerateSkillRequest) -> GenerateSkillResponse:
             max_tokens=MAX_OUTPUT_TOKENS,
             temperature=TEMPERATURE,
             seed=SEED,
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "generated_skill",
-                    "strict": True,
-                    "schema": GeneratedSkill.model_json_schema(),
-                },
-            },
+            response_format=json_schema_format("generated_skill", GeneratedSkill),
             extra_body=request_metadata(operation="generate-skill"),
         )
         completion = raw.parse()

@@ -12,7 +12,7 @@ async def answer_unless_disconnected[T](
     request: Request,
     work: Coroutine[Any, Any, T],
     *,
-    timeout_seconds: float | None,
+    timeout_seconds: float,
     disconnected_detail: str,
     timeout_detail: str,
 ) -> T:

@@ -23,11 +23,12 @@ from skillhub_llm.gateway import (
     client,
     completion_usage,
     failure_label,
+    json_schema_format,
     request_metadata,
     served_model,
     within,
 )
-from skillhub_llm.untrusted import scrub
+from skillhub_llm.untrusted import fence, scrub
 
 router = APIRouter()
 logger = logging.getLogger("skillhub_llm.evaluate")
@@ -403,10 +404,7 @@ def _judge_user_message(req: JudgeRunRequest) -> str:
         )
 
     body = "\n\n".join(sections)
-    return (
-        f"<{DATA_TAG}>\n{body}\n</{DATA_TAG}>\n\n"
-        "Judge each acceptance criterion listed in the block above."
-    )
+    return fence(DATA_TAG, body) + "\n\nJudge each acceptance criterion listed in the block above."
 
 
 @router.post("/judge-run", response_model=JudgeRunResponse)
@@ -426,14 +424,7 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
                 {"role": "system", "content": system},
                 {"role": "user", "content": _judge_user_message(req)},
             ],
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "judge_verdict",
-                    "strict": True,
-                    "schema": JudgeVerdict.model_json_schema(),
-                },
-            },
+            response_format=json_schema_format("judge_verdict", JudgeVerdict),
             temperature=TEMPERATURE,
             seed=seed,
             extra_body=request_metadata(
@@ -538,10 +529,7 @@ def _improvements_user_message(req: SuggestImprovementsRequest) -> str:
         )
 
     body = "\n\n".join(sections)
-    return (
-        f"<{DATA_TAG}>\n{body}\n</{DATA_TAG}>\n\n"
-        "Propose the improvements supported by the evaluation above."
-    )
+    return fence(DATA_TAG, body) + "\n\nPropose the improvements supported by the evaluation above."
 
 
 @router.post("/suggest-improvements", response_model=SuggestImprovementsResponse)
@@ -557,14 +545,7 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
                 {"role": "system", "content": SUGGEST_IMPROVEMENTS_SYSTEM_PROMPT},
                 {"role": "user", "content": _improvements_user_message(req)},
             ],
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "improvement_proposals",
-                    "strict": True,
-                    "schema": ImprovementProposals.model_json_schema(),
-                },
-            },
+            response_format=json_schema_format("improvement_proposals", ImprovementProposals),
             temperature=TEMPERATURE,
             seed=SEED,
             extra_body=request_metadata(evaluation_id=req.evaluation_id, operation="suggest"),
