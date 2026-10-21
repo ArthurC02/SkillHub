@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.1.10
+
+### Changed
+
+- The implementation hygiene page no longer restates the runtime, which the entry page holds, nor its own first three rules under *Check the expression*; that section keeps the two cases the rules do not cover.
+
 ## 2.1.9
 
 ### Removed

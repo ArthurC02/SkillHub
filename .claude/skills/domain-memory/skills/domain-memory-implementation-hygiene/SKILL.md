@@ -11,7 +11,7 @@ The repository's automation owns formatting and every numeric limit. This check 
 
 ## When you are the one writing the code
 
-The commands below are in [registry_tools.py](../../scripts/registry_tools.py): run it as `<python> <that file> <command>` from any directory, with Python 3.10 or later (`python3`, or `python` on Windows) and `git`, and nothing to install. These six hold for every change to source:
+The commands are run as `<python> <path>/scripts/registry_tools.py <command>`; [AGENTS.md](../../AGENTS.md) has the runtime. These six hold for every change to source:
 
 1. Run `quality-gates --repo-root <repo>`. The checks it lists must pass, and a check met by a change of form alone is not met: when one forces a change, remove the cause it points at. A flag kept as a keyword argument or a default is a change of form; when it chooses between kinds the domain names, including a kind the handoff says is coming, name that concept in this change. When `standard` is `none`, say so in your report and claim no standard the repository does not enforce.
 2. Search for what already exists, and use it or extend it.
@@ -38,11 +38,8 @@ A fixed public payload is named rather than left structurally anonymous; genuine
 
 ## Check the expression
 
-Work through [code expression](../../references/code-expression.md):
+Rules 1 to 3 above are the check; [code expression](../../references/code-expression.md) says how to meet them. Two cases need more:
 
-- Find the repository's own checks first; they must pass. When it has none, report that, and claim no standard the repository does not enforce.
-- Search for what already exists before writing it again.
-- Take identifiers and the names of business numbers from the reviewed vocabulary.
 - When a repository check forced the change, search the change for each tell in *When a gate forces the change*, and report any check that could only be met in form.
 - For a refactoring, keep the proof that behaviour was preserved in the repository as tests, and report each rule that had no test before the change.
 
