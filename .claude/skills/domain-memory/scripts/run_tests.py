@@ -8,8 +8,11 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from domain_registry.git import TIMEOUT_VARIABLE
+
 HERE = Path(__file__).resolve().parent
 SUMMARY_TAIL = 3
+GIT_TIMEOUT_SECONDS_FOR_A_LOADED_RUNNER = "60"
 
 
 def test_modules(root: Path, chosen: list[str]) -> list[str]:
@@ -31,7 +34,7 @@ def run_module(root: Path, python: str, module: str) -> tuple[str, int, str, flo
     started = time.monotonic()
     completed = subprocess.run(
         [python, "-m", "unittest", "-q", module], cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace",
-        check=False,
+        check=False, env={TIMEOUT_VARIABLE: GIT_TIMEOUT_SECONDS_FOR_A_LOADED_RUNNER, **os.environ},
     )
     return module, completed.returncode, completed.stdout + completed.stderr, time.monotonic() - started
 

@@ -458,10 +458,11 @@ class PreCommitHookTest(RegistryTestCase):
                 subprocess.run(["git", "config", "--unset", "domain-memory.git-timeout"], cwd=self.repo, check=False)
                 if configured is not None:
                     subprocess.run(["git", "config", "domain-memory.git-timeout", configured], cwd=self.repo, check=True)
+                inherited = {name: value for name, value in shims.items() if name != "DOMAIN_MEMORY_GIT_TIMEOUT"}
                 result = subprocess.run(
                     ["sh", str(hook), "origin", "https://example.com/repo.git"], cwd=self.repo,
                     input=f"refs/heads/main {head} refs/heads/main {EMPTY_SHA}\n",
-                    env={**shims, **environment}, capture_output=True, text=True, encoding="utf-8", check=False,
+                    env={**inherited, **environment}, capture_output=True, text=True, encoding="utf-8", check=False,
                 )
                 self.assertEqual((1, expected), (result.returncode, result.stderr))
 

@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.1.6
+
+### Fixed
+
+- The test runner gives each test module a git timeout of 60 seconds unless the environment sets `DOMAIN_MEMORY_GIT_TIMEOUT`; the 15-second default the commands keep had `ssh-keygen` time out on a loaded Windows runner and fail a run that changed no code.
+
 ## 2.1.5
 
 ### Changed

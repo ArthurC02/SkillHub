@@ -2,15 +2,22 @@ from __future__ import annotations
 
 import contextlib
 import io
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import run_tests
+from domain_registry.git import TIMEOUT_VARIABLE
 
 PASSING = "import unittest\n\n\nclass PassingTest(unittest.TestCase):\n    def test_passes(self):\n        self.assertTrue(True)\n"
 FAILING = "import unittest\n\n\nclass FailingTest(unittest.TestCase):\n    def test_fails(self):\n        self.assertEqual(1, 2)\n"
+REPORTING_THE_GIT_TIMEOUT = (
+    "import os, unittest\n\n\nclass ProbeTest(unittest.TestCase):\n    def test_reports(self):\n"
+    f"        self.fail('timeout=' + os.environ.get('{TIMEOUT_VARIABLE}', 'unset'))\n"
+)
 
 
 class RunTestsTest(unittest.TestCase):
@@ -40,6 +47,14 @@ class RunTestsTest(unittest.TestCase):
     def test_named_modules_run_alone_and_a_green_run_exits_zero(self) -> None:
         code, output = self.run_in({"test_one": PASSING, "test_two": FAILING}, "test_one")
         self.assertEqual((0, True, True), (code, "test_two" not in output.split("failed:")[0], output.rstrip().endswith("failed: none")))
+
+    def test_a_module_sees_a_sixty_second_git_timeout_unless_the_environment_sets_one(self) -> None:
+        for given, expected in ((None, "60"), ("7", "7")):
+            with self.subTest(given=given), patch.dict(os.environ, {TIMEOUT_VARIABLE: given} if given else {}):
+                if given is None:
+                    os.environ.pop(TIMEOUT_VARIABLE, None)
+                code, output = self.run_in({"test_probe": REPORTING_THE_GIT_TIMEOUT}, "test_probe")
+                self.assertEqual((1, True), (code, f"AssertionError: timeout={expected}" in output))
 
 
 if __name__ == "__main__":
