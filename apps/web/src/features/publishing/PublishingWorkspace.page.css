@@ -169,6 +169,8 @@
 }
 
 .publishing-workspace .bundle-version-item {
+  min-width: 0;
+  overflow-wrap: anywhere;
   padding: 16px;
   background: var(--code-bg);
   border: 0;

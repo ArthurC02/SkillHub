@@ -26,6 +26,7 @@ import {
   type OwnerBundleSummary,
 } from "../publishing.service";
 import { actionFailureSentence } from "../publishing.model";
+import { AcquisitionFailure } from "./AcquisitionFailure";
 import { DeliveryAudience } from "./DeliveryAudience";
 
 const PLUGIN_SCOPE_NOTE = "Plugin 只含 Agent 小工具，不含 MCP 設定或宿主專屬元件。";
@@ -543,15 +544,13 @@ function BundleActionFeedback({
 }) {
   return (
     <>
-      {exportBundle.isError && (
-        <ReadFailure error={exportBundle.error} what="匯出 Plugin">
-          <p role="alert">
-            {actionFailureSentence(exportBundle.error, "匯出沒有完成；請確認版本狀態後再試一次。")}
-          </p>
-        </ReadFailure>
-      )}
+      <AcquisitionFailure
+        error={exportBundle.error}
+        what="匯出 Plugin"
+        fallback="匯出沒有完成；請確認版本狀態後再試一次。"
+      />
       {exportBundle.isSuccess && (
-        <p>
+        <p role="status">
           <a href={`${API_BASE_URL}${exportBundle.data.content_url}`}>
             下載 {exportBundle.data.file_name}
           </a>

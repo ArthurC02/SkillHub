@@ -8,12 +8,13 @@ import {
   platformResponse,
 } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
+import { creationSnapshot } from "../src/testing/fixtures/creation";
 
 const SESSION = {
   id: "44444444-4444-4444-8444-444444444444",
   revision: 7,
   state: "saved",
-  snapshot: { brief: "整理採購文件並產生摘要" },
+  snapshot: creationSnapshot("整理採購文件並產生摘要"),
   created_at: "2026-09-27T09:00:00Z",
   updated_at: "2026-09-28T09:30:00Z",
   expires_at: "2099-09-27T09:00:00Z",

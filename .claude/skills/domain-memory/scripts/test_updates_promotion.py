@@ -8,7 +8,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.hitl import submit_proposal
+from domain_registry.evidence import citation
+from domain_registry.hitl import submit_proposal, verify_proposal
 from domain_registry.audit import reviewing_proposals
 from domain_registry.audit import verify as verify_audit
 from domain_registry.policy import amend_policy_fields
@@ -22,7 +23,7 @@ from domain_registry.revision import (
 from domain_registry.sources import write_source_map
 from domain_registry.updates import apply_approved_updates, promote_candidate, upsert_candidate
 from domain_registry.store import MANIFEST, document_path, read_document
-from test_support import RegistryTestCase, amend_policy
+from test_support import VERIFIED, RegistryTestCase, amend_policy, applied_by
 
 
 class UpdatesPromotionTest(RegistryTestCase):
@@ -38,6 +39,53 @@ class UpdatesPromotionTest(RegistryTestCase):
         self.assertEqual(
             self.stored_rule()["statement"], "An order total is non-negative."
         )
+
+    def recited_package(self, statement: str | None = None) -> Path:
+        (self.repo / "README.md").write_text("evidence\nmoved here\n", encoding="utf-8")
+        package = self.draft_package()
+        proposal_path = package / "domain-change-proposal.json"
+        proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
+        record = proposal["registry_updates"][0]["record"]
+        self.seed("rules.json", [{**record, "status": "reviewed", "verified": VERIFIED,
+                                  "evidence": [citation(self.repo, "README.md", 1, 1)]}])
+        applied_by(self.repo / "memory", "PRO-1", "rules/order-total")
+        record["evidence"] = [citation(self.repo, "README.md", 2, 2)]
+        if statement is not None:
+            record["statement"] = statement
+        proposal.update(proposal_id="PRO-2", supersedes=["PRO-1"])
+        proposal_path.write_text(json.dumps(proposal), encoding="utf-8")
+        for name in ("test-obligations.json", "evidence-bundle.json"):
+            path = package / name
+            value = json.loads(path.read_text(encoding="utf-8"))
+            value["proposal_id"] = "PRO-2"
+            path.write_text(json.dumps(value), encoding="utf-8")
+        requirement_path = package / "requirement-normalization.json"
+        requirement = json.loads(requirement_path.read_text(encoding="utf-8"))
+        requirement["required_approval_roles"] = []
+        requirement_path.write_text(json.dumps(requirement), encoding="utf-8")
+        submit_proposal(package, self.repo / "memory", self.repo)
+        return package
+
+    def test_a_recitation_applied_without_an_approval_keeps_the_records_verified_list(self) -> None:
+        package = self.recited_package()
+        self.attest_and_finalize(package)
+        apply_approved_updates(package, self.repo / "memory", self.repo)
+        stored = self.stored_rule()
+        self.assertEqual(
+            (VERIFIED, "reviewed", {"start": 2, "end": 2}, "PRO-2"),
+            (stored["verified"], stored["status"], stored["evidence"][0]["lines"],
+             reviewing_proposals(self.repo / "memory")["rules/order-total"]),
+        )
+
+    def test_an_update_that_changes_more_than_its_citations_without_an_approval_is_refused_before_signing(self) -> None:
+        package = self.recited_package("An order total is never below zero.")
+        with self.assertRaisesRegex(
+            ValueError,
+            re.escape("once applied: rules/order-total would be reviewed by nobody; the proposal records no approval and "
+                      "changes more than its citations (statement), so record-approval first"),
+        ):
+            verify_proposal(package, self.repo / "memory", self.repo)
+        self.assertEqual("An order total is non-negative.", self.stored_rule()["statement"])
 
     def test_superseding_a_different_proposal_does_not_replace_a_reviewed_record(
         self,

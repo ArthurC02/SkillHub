@@ -208,6 +208,8 @@ class ChangesTest(RegistryTestCase):
             [
                 "an approved or applied proposal lacks required approvals: domain-owner",
                 "an approved or applied proposal requires SCM attestation",
+                "once applied: rules/order-total would be reviewed by nobody; the proposal records no approval and the "
+                "Registry holds no verified rules/order-total, so record-approval first",
             ],
             errors,
         )
@@ -732,9 +734,11 @@ class ChangesTest(RegistryTestCase):
         evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
         evidence.update({"registry_revision": revision, "counterfactual_check": None})
         evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+        nobody = ("once applied: rules/order-total would be reviewed by nobody; the proposal records no approval and the "
+                  "Registry holds no verified rules/order-total, so record-approval first")
         cases = [
-            ("material", ["a material verified proposal requires counterfactual_check evidence"]),
-            ("routine", []),
+            ("material", ["a material verified proposal requires counterfactual_check evidence", nobody]),
+            ("routine", [nobody]),
         ]
         for classification, expected in cases:
             with self.subTest(classification):

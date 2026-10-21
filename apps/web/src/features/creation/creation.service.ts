@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { API_BASE_URL, apiFetch, isLastingReadFailure } from "../../core/api/client";
+import { replaceEqualDeep, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  API_BASE_URL,
+  apiFetch,
+  isLastingReadFailure,
+  isWriteResultUnknown,
+} from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
+import { readCreationSession, readCreationSessions } from "./creation-response.model";
 export type CreationState =
   | "queued"
   | "working"
@@ -181,28 +187,48 @@ export interface CreationAction {
   run_id?: string;
   budget_credits?: number;
 }
-export const listCreationSessions = () => apiFetch<CreationSession[]>("/creation-sessions");
-export const listCreationSessionsForVersion = (versionId: string) =>
-  apiFetch<CreationSession[]>(`/creation-sessions?version_id=${encodeURIComponent(versionId)}`);
+export const listCreationSessions = async () =>
+  readCreationSessions(await apiFetch<unknown>("/creation-sessions"));
+export const listCreationSessionsForVersion = async (versionId: string) =>
+  readCreationSessions(
+    await apiFetch<unknown>(`/creation-sessions?version_id=${encodeURIComponent(versionId)}`),
+  );
 export const getCreationLimits = () => apiFetch<CreationLimits>("/creation-sessions/limits");
-export const getCreationSession = (id: string) =>
-  apiFetch<CreationSession>("/creation-sessions/" + id);
+export const getCreationSession = async (id: string) =>
+  readCreationSession(await apiFetch<unknown>("/creation-sessions/" + id), id);
+export class CreationWriteResultUnknown extends Error {
+  readonly sessionId: string;
+
+  constructor(sessionId: string) {
+    super("創作結果尚未確認。請先核對紀錄，再重試這次操作。");
+    this.sessionId = sessionId;
+  }
+}
+
+async function writeCreationSession(id: string, path: string, body: unknown) {
+  const payload = JSON.stringify(body);
+  try {
+    return readCreationSession(
+      await apiFetch<unknown>(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }),
+      id,
+    );
+  } catch (error) {
+    if (isWriteResultUnknown(error)) throw new CreationWriteResultUnknown(id);
+    throw error;
+  }
+}
+
 export const createCreationSession = (body: {
   id: string;
   message: string;
   budget_credits: number;
-}) =>
-  apiFetch<CreationSession>("/creation-sessions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+}) => writeCreationSession(body.id, "/creation-sessions", body);
 export const actOnCreationSession = (id: string, body: CreationAction) =>
-  apiFetch<CreationSession>("/creation-sessions/" + id + "/actions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  writeCreationSession(id, "/creation-sessions/" + id + "/actions", body);
 
 export function useCreationSessions() {
   return useQuery({ queryKey: queryKeys.creation.sessions, queryFn: listCreationSessions });
@@ -232,6 +258,11 @@ export function useLiveCreationSession(id: string) {
     queryKey: queryKeys.creation.session(id),
     queryFn: () => getCreationSession(id),
     enabled: !!id,
+    structuralSharing: (previous, incoming) =>
+      replaceEqualDeep(
+        previous,
+        keepNewer(incoming as CreationSession)(previous as CreationSession | undefined),
+      ),
     refetchInterval: (q) =>
       !streaming &&
       !isLastingReadFailure(q.state.error) &&
@@ -245,6 +276,9 @@ export function useLiveCreationSession(id: string) {
       id,
       (s) => client.setQueryData<CreationSession>(queryKeys.creation.session(id), keepNewer(s)),
       setStreaming,
+      () => {
+        void client.invalidateQueries({ queryKey: queryKeys.creation.session(id) });
+      },
     );
   }, [id, client]);
   return query;
@@ -277,6 +311,7 @@ export function streamCreationSession(
   id: string,
   onSession: (s: CreationSession) => void,
   onOpen: (live: boolean) => void,
+  onInvalid: () => void,
 ): () => void {
   if (typeof EventSource === "undefined") {
     onOpen(false);
@@ -288,11 +323,13 @@ export function streamCreationSession(
   source.onopen = () => onOpen(true);
   source.onmessage = (e) => {
     try {
-      const session = JSON.parse(e.data) as CreationSession;
+      const session = readCreationSession(JSON.parse(e.data), id);
       onSession(session);
+      onOpen(true);
       if (endedStates.has(session.state)) source.close();
     } catch {
-      // Ignore a half-written frame; the poll underneath will catch up.
+      onOpen(false);
+      onInvalid();
     }
   };
   source.onerror = () => {

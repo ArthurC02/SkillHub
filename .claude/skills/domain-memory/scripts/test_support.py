@@ -560,6 +560,9 @@ class RegistryTestCase(unittest.TestCase):
     def approve_and_finalize(self, package: Path) -> None:
         submit_proposal(package, self.repo / "memory", self.repo)
         record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        self.attest_and_finalize(package)
+
+    def attest_and_finalize(self, package: Path) -> None:
         submitted = json.loads(
             (package / "domain-change-proposal.json").read_text(encoding="utf-8")
         )

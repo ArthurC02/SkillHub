@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "../../core/api/client";
+import { apiFetch, ApiError, isWriteResultUnknown } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import type { DeclarableLicense } from "@skillhub/api-client-ts";
 import type { CategorizedFindings, Labelled } from "../../core/api/types";
+import { readPublicPublication } from "./public-publication.model";
+import { AcquisitionResultUnknown, readAcquisition } from "./acquisition.model";
 
 export interface Publisher {
   name: string;
@@ -245,17 +247,34 @@ export function useDelist(skillId: string) {
 export function usePublicPublication(publisher: string, name: string) {
   return useQuery({
     queryKey: queryKeys.publishing.publicPublication(publisher, name),
-    queryFn: () => apiFetch<PublicPublication>(`/publications/${publisher}/${name}`),
+    queryFn: async () =>
+      readPublicPublication(await apiFetch<unknown>(`/publications/${publisher}/${name}`)),
     enabled: publisher.length > 0 && name.length > 0,
   });
+}
+
+async function requestAcquisition(path: string) {
+  try {
+    return readAcquisition(await apiFetch<unknown>(path, { method: "POST" }));
+  } catch (error) {
+    if (isWriteResultUnknown(error)) throw new AcquisitionResultUnknown();
+    throw error;
+  }
 }
 
 export function useAcquirePublication(publisher: string, name: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () =>
-      apiFetch<Acquisition>(`/publications/${publisher}/${name}/acquisitions`, { method: "POST" }),
+    mutationFn: () => requestAcquisition(`/publications/${publisher}/${name}/acquisitions`),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.packaging.downloads }),
+    onError: (error) => {
+      if (error instanceof ApiError && (error.status === 404 || error.status === 409)) {
+        void client.resetQueries({
+          queryKey: queryKeys.publishing.publicPublication(publisher, name),
+          exact: true,
+        });
+      }
+    },
   });
 }
 
@@ -306,9 +325,7 @@ export function useExportBundle(bundle: string, version: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () =>
-      apiFetch<Acquisition>(`/me/bundles/${bundle}/export?version=${encodeURIComponent(version)}`, {
-        method: "POST",
-      }),
+      requestAcquisition(`/me/bundles/${bundle}/export?version=${encodeURIComponent(version)}`),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.packaging.downloads }),
   });
 }

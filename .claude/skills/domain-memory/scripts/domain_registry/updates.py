@@ -24,7 +24,14 @@ from .common import (
     review_field,
     utc_now,
 )
-from .evidence import cited_excerpts, classify_all, hash_all, one_cites_within_the_other, source_map_for, unclassified_paths
+from .evidence import (
+    cited_excerpts,
+    classify_all,
+    hash_all,
+    one_cites_within_the_other,
+    source_map_for,
+    unclassified_paths,
+)
 from .okf import contexts_named_by, verified_by
 from .policy import review_mode
 from .revision import (
@@ -320,11 +327,11 @@ def _refuse_unsuperseded_overwrite(
 
 
 def _reviewed_record(
-    update: ParsedUpdate, proposal: dict[str, Any], source_map: Any
+    update: ParsedUpdate, proposal: dict[str, Any], source_map: Any, existing: dict[str, Any] | None
 ) -> dict[str, Any]:
     promoted = classify_all(dict(update.record or {}), source_map)
     promoted.pop("review", None)
-    promoted["verified"] = verified_by(proposal["approvals"])
+    promoted["verified"] = verified_by(proposal["approvals"]) or list((existing or {}).get("verified") or [])
     promoted[review_field(update.asset)] = "reviewed"
     return promoted
 
@@ -337,7 +344,7 @@ def _apply_update(
     existing = find_record(records, update.record_id)
     _refuse_unsuperseded_overwrite(update, document, existing, proposal, reviewing)
     if update.record is not None:
-        put_record(records, existing, _reviewed_record(update, proposal, source_map))
+        put_record(records, existing, _reviewed_record(update, proposal, source_map, existing))
         return
     if existing is None:
         raise ValueError(

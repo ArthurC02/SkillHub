@@ -76,6 +76,7 @@ export function useCreationCommands(onSaved: (id: string) => void) {
   };
   const forgetPending = () => {
     pending.current = undefined;
+    startPending.current = undefined;
   };
   return { send, start, forgetPending };
 }

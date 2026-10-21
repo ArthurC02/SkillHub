@@ -7,7 +7,7 @@ from functools import cache
 from pathlib import Path
 from typing import Any
 
-from .common import MAX_EVIDENCE_BYTES, MAX_NESTING_DEPTH, load_json
+from .common import MAX_EVIDENCE_BYTES, MAX_NESTING_DEPTH, load_json, review_field
 from .git import run_git_bytes
 from .sources import repository_files, source_kind_index
 
@@ -83,6 +83,18 @@ def without_derived_keys(value: Any) -> Any:
         lambda reference: {key: item for key, item in reference.items() if key not in DERIVED_EVIDENCE_KEYS}
         if isinstance(reference, dict)
         else reference,
+    )
+
+
+def fields_beyond_evidence(asset: str, before: dict[str, Any], after: dict[str, Any]) -> list[str]:
+    settled_on_apply = ("review", "verified", review_field(asset))
+    stripped = [
+        with_references({key: value for key, value in record.items() if key not in settled_on_apply}, lambda _: None)
+        for record in (before, after)
+    ]
+    return sorted(
+        key for key in stripped[0].keys() | stripped[1].keys()
+        if key not in stripped[0] or key not in stripped[1] or stripped[0][key] != stripped[1][key]
     )
 
 

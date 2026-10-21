@@ -33,6 +33,7 @@ import {
 } from "../src/testing/fixtures/platform";
 import { PHONE_ROUTES, ROUTES } from "./routes";
 import { stubPlatform } from "./stub";
+import { creationSnapshot } from "../src/testing/fixtures/creation";
 
 const lookupTest = test.extend({ trace: "retain-on-failure" });
 
@@ -57,7 +58,7 @@ async function stubCreationContinuations(page: Page) {
       id,
       revision: 1,
       state,
-      snapshot: { brief },
+      snapshot: creationSnapshot(brief),
       created_at: "2026-09-28T10:00:00Z",
       updated_at: `2026-09-28T1${3 - index}:00:00Z`,
       expires_at: "2099-09-29T14:00:00Z",
@@ -329,7 +330,7 @@ async function verifyVersionEvidenceOnPhone(page: Page, testInfo: TestInfo) {
           id: creationSession,
           revision: 7,
           state: "saved",
-          snapshot: { brief: "整理採購文件並產生摘要" },
+          snapshot: creationSnapshot("整理採購文件並產生摘要"),
           created_at: "2026-09-27T09:00:00Z",
           updated_at: "2026-09-28T09:30:00Z",
           expires_at: "2099-09-27T09:00:00Z",
@@ -539,7 +540,7 @@ async function verifyCreationDecisionOnPhone(page: Page, testInfo: TestInfo) {
     snapshot: {
       ...session.snapshot,
       brief: "把內部規範整理成可重用檢查表",
-      pending_action: null,
+      pending_action: "",
     },
     updated_at: "2026-09-29T07:30:00Z",
   };

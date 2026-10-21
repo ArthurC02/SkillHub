@@ -33,7 +33,7 @@ from .common import (
     write_json,
 )
 from .policy import approved_command_profiles
-from .evidence import all_references, classify_all, source_map_for, unclassified_paths, verifier
+from .evidence import all_references, classify_all, fields_beyond_evidence, source_map_for, unclassified_paths, verifier
 from .registry import asset_records, cross_reference_errors
 from .store import read_document
 from .revision import DIGEST_HEX_LENGTH, DIGEST_PREFIX, valid_digest, valid_registry_revision
@@ -781,12 +781,7 @@ def unconfirmed_evidence_errors(proposal: dict[str, Any], registry_root: Path) -
 
 def _staged(current: dict[str, list[dict[str, Any]]], proposal: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
     records = {name: list(entries) for name, entries in current.items()}
-    updates = proposal.get("registry_updates")
-    for raw in updates if isinstance(updates, list) else []:
-        try:
-            update = parsed_update(raw)
-        except ValueError:
-            continue
+    for update in _parsed_updates(proposal):
         entries = records[update.document_name]
         entries[:] = [entry for entry in entries if entry.get("id") != update.record_id]
         if update.record is not None:
@@ -809,7 +804,43 @@ def _staged_registry_errors(
     if repo_root is not None:
         errors.extend(_updated_evidence_errors(proposal, repo_root))
         errors.extend(_decision_evidence_errors(proposal, repo_root))
+    if proposal.get("status") in VERIFIED_OR_LATER:
+        errors.extend(_unverified_update_errors(current, proposal))
     return errors
+
+
+def _unverified_update_errors(current: dict[str, list[dict[str, Any]]], proposal: dict[str, Any]) -> list[str]:
+    approvals = proposal.get("approvals")
+    if any(isinstance(entry, dict) and entry.get("decision") == "approved" for entry in (approvals if isinstance(approvals, list) else [])):
+        return []
+    errors = []
+    for update in _parsed_updates(proposal):
+        if update.record is None:
+            continue
+        label = f"{update.asset}/{update.record_id}"
+        existing = next((entry for entry in current[update.document_name] if entry.get("id") == update.record_id), None)
+        if existing is None or not existing.get("verified"):
+            errors.append(f"once applied: {label} would be reviewed by nobody; the proposal records no approval and the "
+                          f"Registry holds no verified {label}, so record-approval first")
+            continue
+        fields = fields_beyond_evidence(update.asset, existing, update.record)
+        if fields:
+            errors.append(f"once applied: {label} would be reviewed by nobody; the proposal records no approval and "
+                          f"changes more than its citations ({', '.join(fields)}), so record-approval first")
+    return errors
+
+
+def _parsed_updates(proposal: dict[str, Any]) -> list[ParsedUpdate]:
+    updates = proposal.get("registry_updates")
+    parsed = (_parsed_or_none(raw) for raw in (updates if isinstance(updates, list) else []))
+    return [update for update in parsed if update is not None]
+
+
+def _parsed_or_none(raw: Any) -> ParsedUpdate | None:
+    try:
+        return parsed_update(raw)
+    except ValueError:
+        return None
 
 
 def _decision_evidence_errors(proposal: dict[str, Any], repo_root: Path) -> list[str]:

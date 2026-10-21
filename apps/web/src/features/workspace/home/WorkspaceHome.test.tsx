@@ -7,6 +7,7 @@ import { queryClient } from "../../../core/api/queryClient";
 import { queryKeys } from "../../../core/api/queryKeys";
 import { WorkspaceHome } from "./WorkspaceHome.page";
 import { pollUntil } from "../../../testing/poll";
+import { creationSnapshot } from "../../../testing/fixtures/creation";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -441,7 +442,7 @@ test("workspace home resumes the three most recent actionable creation sessions"
     id,
     revision: 1,
     state,
-    snapshot: { brief },
+    snapshot: creationSnapshot(brief),
     created_at: "2026-09-28T10:00:00Z",
     updated_at,
     expires_at: "2099-09-29T14:00:00Z",
@@ -670,7 +671,7 @@ test.each([0, 99, 101])(
             id: "88888888-8888-4888-8888-888888888888",
             revision: 1,
             state: "waiting_input",
-            snapshot: { brief: "即將到期的創作" },
+            snapshot: creationSnapshot("即將到期的創作"),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             expires_at: new Date(Date.now() + 60_000).toISOString(),

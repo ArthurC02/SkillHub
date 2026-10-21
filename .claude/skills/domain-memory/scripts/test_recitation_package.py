@@ -14,6 +14,7 @@ from domain_registry.evidence import citation
 from domain_registry.okf import contexts_named_by
 from domain_registry.recitation_package import recitation_package
 from domain_registry.relocate import Recitation, recite
+from domain_registry.store import read_document, write_document
 from test_support import RegistryTestCase
 
 IDENTIFIERS = ("rq-recite", "pr-recite", "probe")
@@ -60,6 +61,19 @@ class RecitationPackageTest(RegistryTestCase):
             [sys.executable, str(TOOL), "verify-evidence", "--registry-root", "memory", "--repo-root", ".", *arguments],
             cwd=self.repo, capture_output=True, text=True, encoding="utf-8", check=False,
         )
+
+    def test_a_recitation_package_whose_record_was_verified_by_nobody_is_refused_once_verified(self) -> None:
+        recitation = self.recitation()
+        output = self.repo / "changes" / "recite"
+        recitation_package(output, self.repo / "memory", recitation, IDENTIFIERS)
+        nobody = ("once applied: rules/rule would be reviewed by nobody; the proposal records no approval and the "
+                  "Registry holds no verified rules/rule, so record-approval first")
+        with_verified = validate_change_package(output, self.repo / "memory", "verified", self.repo)
+        document = read_document(self.repo / "memory", "rules.json")
+        document["rules"][0].pop("verified")
+        write_document(self.repo / "memory", "rules.json", document)
+        without = validate_change_package(output, self.repo / "memory", "verified", self.repo)
+        self.assertEqual((False, True), (nobody in with_verified, nobody in without))
 
     def test_a_stale_recitation_package_passes_its_own_obligation_before_it_is_applied(self) -> None:
         self.cited_rule("reviewed", (2, 2))

@@ -70,7 +70,7 @@ def handle_init_change_package(args: argparse.Namespace) -> int:
     ]
     if missing:
         print(
-            f"Created {args.output}. Still blank: {', '.join(missing)}; validate-change-package "
+            f"Created {args.output.as_posix()}. Still blank: {', '.join(missing)}; validate-change-package "
             "refuses the package until they are filled, so pass them here next time or fill them now."
         )
     return 0
@@ -86,7 +86,7 @@ def _init_recitation_package(args: argparse.Namespace) -> int:
     blank = recitation_package(
         args.output.resolve(), args.registry_root.resolve(), load_json(args.recitation.resolve()), identifiers
     )
-    print(f"Created {args.output}: a routine re-citation package; submit it, record its one test result, then review it.")
+    print(f"Created {args.output.as_posix()}: a routine re-citation package; submit it, record its one test result, then review it.")
     if blank:
         print(f"Still blank: {'; '.join(blank)}; fill it before submit-proposal.")
     return 0

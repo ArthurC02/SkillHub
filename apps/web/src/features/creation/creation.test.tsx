@@ -2,25 +2,35 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { CreationSession } from "./create/components/CreationSession";
 import { CreateHub } from "./components/CreateHub";
 import type { CreationSession as Session, CreationSnapshot } from "./creation.service";
-import { useCreationEntryPoint } from "./creation.service";
+import {
+  getCreationSession,
+  listCreationSessions,
+  listCreationSessionsForVersion,
+  useCreationEntryPoint,
+} from "./creation.service";
 import { pollUntil } from "../../testing/poll";
 import { ME } from "../../testing/fixtures/platform";
+import { queryKeys } from "../../core/api/queryKeys";
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
     children,
     to,
     search,
     params,
+    target,
+    rel,
   }: {
     children: ReactNode;
     to: string;
     search?: Record<string, unknown>;
     params?: Record<string, string>;
+    target?: string;
+    rel?: string;
   }) => (
     <a
       href={Object.entries(params ?? {}).reduce(
@@ -28,6 +38,8 @@ vi.mock("@tanstack/react-router", () => ({
         to,
       )}
       data-search={search ? JSON.stringify(search) : undefined}
+      target={target}
+      rel={rel}
     >
       {children}
     </a>
@@ -76,6 +88,16 @@ const response = (v: unknown, status = 200) =>
   Promise.resolve(
     new Response(JSON.stringify(v), { status, headers: { "Content-Type": "application/json" } }),
   );
+const startedSessionIDs = new Set<string>();
+function creationReceipt(value: Session, url: string, init?: RequestInit) {
+  const starting = url.endsWith("/creation-sessions");
+  const id = starting
+    ? (JSON.parse(String(init?.body)) as { id: string }).id
+    : url.match(/\/creation-sessions\/([^/]+)\/actions$/)?.[1];
+  if (!id) throw new Error("creation write fixture needs a requested session ID");
+  if (starting) startedSessionIDs.add(id);
+  return response({ ...value, id });
+}
 const LIMITS = {
   min_budget_credits: 130,
   max_budget_credits: 6500,
@@ -85,6 +107,162 @@ const LIMITS = {
   session_timeout_seconds: 3600,
   retention_seconds: 604800,
 };
+
+const invalidCreationReplies: [string, () => unknown][] = [
+  ["empty reply", () => null],
+  ["another session", () => sample({ id: "s2" })],
+  ["missing snapshot", () => ({ ...sample(), snapshot: null })],
+  ["missing messages", () => ({ ...sample(), snapshot: { ...sample().snapshot, messages: null } })],
+  [
+    "nontext message",
+    () => ({
+      ...sample(),
+      snapshot: { ...sample().snapshot, messages: [{ role: "assistant", content: {} }] },
+    }),
+  ],
+  [
+    "malformed draft",
+    () => ({ ...sample(), snapshot: { ...sample().snapshot, draft: { skill: { files: {} } } } }),
+  ],
+  [
+    "malformed diagram",
+    () => ({
+      ...sample(),
+      snapshot: { ...sample().snapshot, diagram_interpretation: { nodes: null } },
+    }),
+  ],
+  [
+    "malformed references",
+    () => ({ ...sample(), snapshot: { ...sample().snapshot, references: [null] } }),
+  ],
+];
+
+test.each(invalidCreationReplies)(
+  "an invalid creation %s stays a recoverable read and sends no writes",
+  async (_, invalid) => {
+    let reply: unknown = invalid();
+    const writes: unknown[] = [];
+    let reads = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method === "POST") writes.push(init.body);
+        if (url.endsWith("/creation-sessions/s1")) {
+          reads++;
+          return response(reply);
+        }
+        return routeGet(url, [], sample());
+      }),
+    );
+    await render(<CreationSession sessionId="s1" />);
+    await waitFor(() => box.querySelector('.creation-current [role="alert"]') !== null);
+    expect(box.querySelector(".creation-current")?.textContent).toContain("暫時無法讀取創作紀錄");
+    expect(box.querySelector(".composer, .starter-cards, .budget-picker")).toBeNull();
+    reply = sample();
+    await click("再試一次");
+    await waitFor(() => box.querySelector("#creation-message") !== null);
+    expect(box.querySelector(".creation-current")?.textContent).toContain("摘要任務");
+    expect(reads).toBe(2);
+    expect(writes).toEqual([]);
+  },
+);
+
+test.each(["all", "version"])(
+  "an invalid %s creation list is unavailable instead of empty or partly accepted",
+  async (list) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => response([sample(), { ...sample(), snapshot: null }])),
+    );
+    const load = list === "all" ? listCreationSessions : () => listCreationSessionsForVersion("v1");
+    await expect(load()).rejects.toThrow("創作紀錄的回應不完整");
+  },
+);
+
+test("creation reads keep Go's empty criteria and legacy tool messages compatible", async () => {
+  const valid = sample({ revision: 0 });
+  valid.snapshot.messages = [{ role: "tool", content: "not structured JSON" }];
+  valid.snapshot.pending_action = "future_action";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => response({ ...valid, snapshot: { ...valid.snapshot, acceptance_criteria: null } })),
+  );
+  const session = await getCreationSession("s1");
+  expect(session.revision).toBe(0);
+  expect(session.snapshot.acceptance_criteria).toEqual([]);
+  expect(session.snapshot.messages).toEqual([{ role: "tool", content: "not structured JSON" }]);
+  expect(session.snapshot.pending_action).toBe("future_action");
+});
+
+test("a malformed reread retains the cached creation and unsent draft until GET recovery", async () => {
+  const current = sample();
+  q.setQueryData(queryKeys.creation.session("s1"), current);
+  let reply: unknown = current;
+  const writes: unknown[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") writes.push(init.body);
+      return routeGet(url, [], reply);
+    }),
+  );
+  await render(<CreationSession sessionId="s1" />);
+  await waitFor(() => box.querySelector("#creation-message") !== null);
+  await input("想完成的任務", "保留這份輸入");
+  reply = { ...sample({ revision: 8 }), snapshot: null };
+  await act(async () => {
+    await q.invalidateQueries({ queryKey: queryKeys.creation.session("s1") });
+  });
+  await waitFor(() => box.querySelector('.creation-current [role="alert"]') !== null);
+  expect(q.getQueryData(queryKeys.creation.session("s1"))).toEqual(current);
+  expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe("保留這份輸入");
+  reply = sample({ revision: 9 });
+  await click("再試一次");
+  await waitFor(() => q.getQueryData<Session>(queryKeys.creation.session("s1"))?.revision === 9);
+  expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe("保留這份輸入");
+  expect(writes).toEqual([]);
+});
+
+test.each(["foreign identity", "broken snapshot", "broken JSON"])(
+  "an invalid stream %s falls back to GET without replacing the draft",
+  async (kind) => {
+    const es = stubEventSource();
+    let reads = 0;
+    const writes: unknown[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method === "POST") writes.push(init.body);
+        if (url.endsWith("/creation-sessions/s1")) {
+          reads++;
+          return response(sample({ revision: reads === 1 ? 7 : 9 }));
+        }
+        return routeGet(url, [], sample());
+      }),
+    );
+    await render(<CreationSession sessionId="s1" />);
+    await waitFor(() => box.querySelector("#creation-message") !== null && es.open.length > 0);
+    await input("想完成的任務", "串流異常也保留");
+    const source = es.open.at(-1)!;
+    const invalid =
+      kind === "foreign identity"
+        ? sample({ id: "s2", revision: 100 })
+        : { ...sample({ revision: 100 }), snapshot: null };
+    await act(async () => {
+      source.onopen?.();
+      source.onmessage?.({ data: kind === "broken JSON" ? "{" : JSON.stringify(invalid) });
+    });
+    await waitFor(() => q.getQueryData<Session>(queryKeys.creation.session("s1"))?.revision === 9);
+    expect(reads).toBe(2);
+    expect(q.getQueryData<Session>(queryKeys.creation.session("s1"))?.id).toBe("s1");
+    expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe(
+      "串流異常也保留",
+    );
+    expect(writes).toEqual([]);
+    await act(async () => source.onmessage?.({ data: JSON.stringify(sample({ revision: 10 })) }));
+    await waitFor(() => q.getQueryData<Session>(queryKeys.creation.session("s1"))?.revision === 10);
+  },
+);
 
 test("a persisted message shows its timestamp without inventing one for a legacy message", async () => {
   const session = sample();
@@ -111,9 +289,19 @@ const START = "開始創作";
 function routeGet(url: string, list: unknown, single: unknown) {
   if (url.endsWith("/creation-sessions/limits")) return response(LIMITS);
   if (url.endsWith("/me/credits")) return response({ error: "not found" }, 404);
-  return response(url.endsWith("/creation-sessions") ? list : single);
+  const id = url.match(/\/creation-sessions\/([^/?]+)$/)?.[1];
+  const detail =
+    id &&
+    startedSessionIDs.has(id) &&
+    typeof single === "object" &&
+    single !== null &&
+    !Array.isArray(single)
+      ? { ...single, id }
+      : single;
+  return response(url.endsWith("/creation-sessions") ? list : detail);
 }
 beforeEach(() => {
+  startedSessionIDs.clear();
   box = document.createElement("div");
   document.body.appendChild(box);
   // jsdom has no object URLs, so stub one — a test that wants to see a
@@ -180,7 +368,7 @@ test("natural language creates one budgeted session", async () => {
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(sample({ state: "queued" }));
+        return creationReceipt(sample({ state: "queued" }), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -193,6 +381,110 @@ test("natural language creates one budgeted session", async () => {
   expect(posts[0]).toMatchObject({ message: "建立摘要小工具", budget_credits: 500 });
   expect(posts[0].id).toBeTruthy();
 });
+
+test.each([
+  ["start", "empty"],
+  ["start", "foreign"],
+  ["start", "snapshot"],
+  ["action", "empty"],
+  ["action", "foreign"],
+  ["action", "snapshot"],
+])(
+  "an uncertain %s receipt with %s data keeps input and retries the original request",
+  async (mode, damage) => {
+    const posts: Record<string, unknown>[] = [];
+    const reads: string[] = [];
+    let requestedID = mode === "action" ? "s1" : "";
+    let current = sample();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+          posts.push(body);
+          if (mode === "start") requestedID = String(body.id);
+          current = sample({ id: requestedID, revision: 8 });
+          current.snapshot.messages = [{ role: "user", content: "保留這份送出的補充" }];
+          if (posts.length === 1)
+            return response(
+              damage === "empty"
+                ? null
+                : damage === "foreign"
+                  ? { ...current, id: "s2" }
+                  : { ...current, snapshot: null },
+            );
+          return response(current);
+        }
+        reads.push(url);
+        return routeGet(url, [], current);
+      }),
+    );
+    await render(<CreationSession sessionId={mode === "action" ? "s1" : undefined} />);
+    if (mode === "start") await pickBudget();
+    else await waitFor(() => box.querySelector("#creation-message") !== null);
+    await input("想完成的任務", "保留這份送出的補充");
+    await click(mode === "start" ? START : "送出");
+    await waitFor(
+      () => box.querySelector('[role="alert"]')?.textContent?.includes("創作結果尚未確認") === true,
+    );
+    const link = [...box.querySelectorAll("a")].find(
+      (item) => item.textContent === "另開創作紀錄核對",
+    );
+    expect(link).toBeDefined();
+    expect(link?.getAttribute("data-search")).toBe(JSON.stringify({ session: requestedID }));
+    expect(link?.getAttribute("target")).toBe("_blank");
+    expect(link?.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe(
+      "保留這份送出的補充",
+    );
+    expect(box.textContent).not.toContain("網路連線失敗");
+    expect(box.textContent).not.toContain("這一頁暫時無法顯示");
+    expect(q.getQueryData(queryKeys.creation.session("s2"))).toBeUndefined();
+    expect(reads).not.toContain("/creation-sessions/s2");
+    expect(posts).toHaveLength(1);
+    await click("重試");
+    await waitFor(() => box.querySelector<HTMLTextAreaElement>("#creation-message")?.value === "");
+    expect(posts).toHaveLength(2);
+    expect(posts[1]).toEqual(posts[0]);
+    expect(q.getQueryData<Session>(queryKeys.creation.session(requestedID))?.id).toBe(requestedID);
+  },
+);
+test("an explicitly new creation discards an uncertain start identity", async () => {
+  const posts: Record<string, unknown>[] = [];
+  let current = sample();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        posts.push(body);
+        current = sample({ id: String(body.id), revision: 8 });
+        return posts.length === 1 ? response(null) : creationReceipt(current, url, init);
+      }
+      return routeGet(url, [], current);
+    }),
+  );
+  await render();
+  await pickBudget();
+  await input("想完成的任務", "建立摘要小工具");
+  await click(START);
+  await waitFor(() => box.querySelector('[role="alert"]') !== null);
+  expect(posts).toHaveLength(1);
+  await click("＋ 開始新的創作");
+  expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe("");
+  expect(box.querySelector('[role="alert"]')).toBeNull();
+  expect(posts).toHaveLength(1);
+  await input("想完成的任務", "建立摘要小工具");
+  await click(START);
+  await waitFor(() => box.querySelector<HTMLTextAreaElement>("#creation-message")?.value === "");
+  expect(posts).toHaveLength(2);
+  expect(posts[1].id).not.toBe(posts[0].id);
+  expect({ ...posts[1], id: posts[0].id }).toEqual(posts[0]);
+  expect(q.getQueryData<Session>(queryKeys.creation.session(String(posts[1].id)))?.id).toBe(
+    posts[1].id,
+  );
+});
+
 const creditsResponse = (patch: Record<string, unknown> = {}) => ({
   balance_credits: 100,
   debt_floor_credits: -50,
@@ -205,7 +497,7 @@ test("a balance at or above the threshold leaves the start button enabled and sh
     "fetch",
     vi.fn((url: string, init?: RequestInit) => {
       if (url.endsWith("/me/credits")) return response(creditsResponse());
-      if (init?.method === "POST") return response(sample({ state: "queued" }));
+      if (init?.method === "POST") return creationReceipt(sample({ state: "queued" }), url, init);
       return routeGet(url, [], sample());
     }),
   );
@@ -279,7 +571,7 @@ test("a diagram and reference 小工具s at once are refused before anything is 
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(sample({ revision: posts.length }));
+        return creationReceipt(sample({ revision: posts.length }), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -301,7 +593,7 @@ test("a diagram carries the sentence that came with it, in one action", async ()
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(sample({ revision: posts.length }));
+        return creationReceipt(sample({ revision: posts.length }), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -343,7 +635,7 @@ test("Enter sends, Shift+Enter does not, and neither does Enter while choosing c
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(sample({ revision: posts.length }));
+        return creationReceipt(sample({ revision: posts.length }), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -528,7 +820,7 @@ test("a step in flight can be stopped without ending the session", async () => {
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(sample({ revision: 8 }));
+        return creationReceipt(sample({ revision: 8 }), url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -646,6 +938,10 @@ test("the transcript is a named live region and the list keeps its own semantics
   expect(log, "對話不是即時區域，新訊息不會被念出來").not.toBe(null);
   expect(log.getAttribute("aria-label")).toBeTruthy();
   expect(log.querySelector("ol.creation-log"), "角色蓋掉了清單語意").not.toBe(null);
+  const transcript = box.querySelector(".creation-stream")!;
+  expect(transcript.getAttribute("role")).toBe("region");
+  expect(transcript.getAttribute("aria-label")).toBe("創作對話與決策");
+  expect(transcript.getAttribute("tabindex")).toBe("0");
 });
 function recordScrolls() {
   const scrolls: { target: Element; block?: string }[] = [];
@@ -757,7 +1053,7 @@ test("a step that starts running brings its progress bubble into view", async ()
     "fetch",
     vi.fn((url: string, init?: RequestInit) =>
       init?.method === "POST"
-        ? response(sample({ state: "working", revision: 8 }))
+        ? creationReceipt(sample({ state: "working", revision: 8 }), url, init)
         : routeGet(url, [v], v),
     ),
   );
@@ -814,7 +1110,7 @@ test("a picture and the words it came with are one turn in the conversation", as
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts += 1;
-        return response(posts === 1 ? sample({ revision: 1 }) : sent);
+        return creationReceipt(posts === 1 ? sample({ revision: 1 }) : sent, url, init);
       }
       return routeGet(url, [], sent);
     }),
@@ -883,7 +1179,7 @@ test("references are cleared once they have been sent, so the next turn can be w
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(sample({ revision: posts.length + 1 }));
+        return creationReceipt(sample({ revision: posts.length + 1 }), url, init);
       }
       return routeGet(url, [], v);
     }),
@@ -966,7 +1262,7 @@ test("diagram starts with an unbilled empty session then sends transient input",
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(sample({ revision: posts.length }));
+        return creationReceipt(sample({ revision: posts.length }), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -1004,7 +1300,7 @@ test("structured diagram understanding renders all four sections", async () => {
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(v);
+        return creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1045,7 +1341,7 @@ test("diagram checkpoints submit the description, each answer and the final inte
           v.snapshot.diagram_interpretation!.uncertainties[0].answer = "主管";
           v.snapshot.pending_action = "confirm_diagram_interpretation";
         }
-        return response(v);
+        return creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1110,7 +1406,7 @@ test("catalog references can start a session and require confirmation", async ()
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(posts.length === 1 ? sample({ revision: 1 }) : v);
+        return creationReceipt(posts.length === 1 ? sample({ revision: 1 }) : v, url, init);
       }
       return routeGet(url, [], v);
     }),
@@ -1164,7 +1460,7 @@ test("catalog hit on the first message offers adopt, confirm, or decline", async
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(v);
+        return creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1218,7 +1514,7 @@ test("materialize-time duplicates offer adopt or confirm and hide the private-ca
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(v);
+        return creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1253,7 +1549,7 @@ test("resume shows unknown costs and confirms the displayed diagram revision", a
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(v);
+        return creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1321,7 +1617,7 @@ test("409 preserves input and needs an explicit action with the refreshed revisi
           current = sample({ revision: 8 });
           return response({ error: "stale" }, 409);
         }
-        return response(current);
+        return creationReceipt(current, url, init);
       }
       return routeGet(url, [current], current);
     }),
@@ -1348,7 +1644,7 @@ test("a network failure is said beside the composer, and 重試 resends the same
         posts.push(JSON.parse(String(init.body)));
         return posts.length === 1
           ? Promise.reject(new TypeError("network unavailable"))
-          : response(v);
+          : creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1359,7 +1655,7 @@ test("a network failure is said beside the composer, and 重試 resends the same
   await click("送出");
   await waitFor(() => !!box.querySelector('[role="alert"]'));
   const alert = box.querySelector('[role="alert"]')!;
-  expect(alert.textContent).toContain("網路連線失敗");
+  expect(alert.textContent).toContain("創作結果尚未確認");
   expect(alert.closest(".composer-dock"), "錯誤離開了輸入艙").not.toBe(null);
   await click("重試");
   await waitFor(() => posts.length === 2);
@@ -1374,7 +1670,7 @@ test("開場建立 session 的請求網路失敗，按重試沿用同一個 sess
         posts.push(JSON.parse(String(init.body)));
         return posts.length === 1
           ? Promise.reject(new TypeError("network unavailable"))
-          : response(sample({ state: "queued" }));
+          : creationReceipt(sample({ state: "queued" }), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -1384,7 +1680,7 @@ test("開場建立 session 的請求網路失敗，按重試沿用同一個 sess
   await input("想完成的任務", "建立摘要小工具");
   await click(START);
   await waitFor(() => !!box.querySelector('[role="alert"]'));
-  expect(box.querySelector('[role="alert"]')!.textContent).toContain("網路連線失敗");
+  expect(box.querySelector('[role="alert"]')!.textContent).toContain("創作結果尚未確認");
   expect(posts).toHaveLength(1);
   await click("重試");
   await waitFor(() => posts.length === 2);
@@ -1399,7 +1695,7 @@ test("重試前改了輸入內容，重新送出換成新的 session 編號", as
         posts.push(JSON.parse(String(init.body)));
         return posts.length === 1
           ? Promise.reject(new TypeError("network unavailable"))
-          : response(sample({ state: "queued" }));
+          : creationReceipt(sample({ state: "queued" }), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -1422,7 +1718,7 @@ test("no budget, no conversation: the composer is frozen until a step inside the
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(sample({ state: "queued" }));
+        return creationReceipt(sample({ state: "queued" }), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -1591,7 +1887,7 @@ test("重試 after a network failure on a turn action resends that action with t
         posts.push(JSON.parse(String(init.body)));
         return posts.length === 1
           ? Promise.reject(new TypeError("network unavailable"))
-          : response(v);
+          : creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1612,7 +1908,7 @@ test("sending nothing is answered beside the composer, with nothing to retry and
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(init.body);
-        return response(sample());
+        return creationReceipt(sample(), url, init);
       }
       return routeGet(url, [], sample());
     }),
@@ -1746,7 +2042,7 @@ test("resending the last message of a failed session keeps what is typed in the 
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(v);
+        return creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1770,7 +2066,7 @@ test("a failed session shows the raise form, refuses an out-of-band amount local
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(v);
+        return creationReceipt(v, url, init);
       }
       return routeGet(url, [v], v);
     }),
@@ -1870,7 +2166,7 @@ test("a differing latest run offers to bring it into the session, and posts atta
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         posts.push(JSON.parse(String(init.body)));
-        return response(v);
+        return creationReceipt(v, url, init);
       }
       if (url.startsWith("/runs?")) {
         runRequests.push(url);
@@ -2319,6 +2615,121 @@ test("a late stream frame older than the screen does not roll it back", async ()
   expect(box.textContent).not.toContain("這是舊的一步。");
 });
 
+test.each([
+  {
+    name: "initial older GET",
+    cached: false,
+    incoming: 7,
+    expected: 8,
+    brief: "串流已確認的最新需求",
+  },
+  {
+    name: "refresh older GET",
+    cached: true,
+    incoming: 7,
+    expected: 8,
+    brief: "串流已確認的最新需求",
+  },
+  { name: "newer GET", cached: false, incoming: 9, expected: 9, brief: "伺服器已確認的更新需求" },
+])(
+  "a creation $name commits without losing newer progress or the draft",
+  async ({ cached, incoming, expected, brief }) => {
+    const es = stubEventSource();
+    const before = sample();
+    let release!: (response: Response) => void;
+    const held = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    let reads = 0;
+    const writes: unknown[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method === "POST") writes.push(init.body);
+        if (url.endsWith("/creation-sessions/s1")) {
+          reads++;
+          return cached && reads === 1 ? response(before) : held;
+        }
+        return routeGet(url, [], before);
+      }),
+    );
+    try {
+      await render(<CreationSession sessionId="s1" />);
+      if (cached) {
+        await waitFor(() => box.querySelector("#creation-message") !== null);
+        await act(async () => {
+          void q.invalidateQueries({ queryKey: queryKeys.creation.session("s1") });
+        });
+      }
+      await waitFor(() => reads === (cached ? 2 : 1) && es.open.length === 1);
+      const stream = sample({ revision: 8 });
+      stream.snapshot.brief = "串流已確認的最新需求";
+      await act(async () => {
+        es.open[0].onopen?.();
+        es.open[0].onmessage?.({ data: JSON.stringify(stream) });
+      });
+      await waitFor(() => box.textContent!.includes("串流已確認的最新需求"));
+      await input("想完成的任務", "請保留尚未送出的補充");
+      const fetched = sample({ revision: incoming });
+      fetched.snapshot.brief = "伺服器已確認的更新需求";
+      await act(async () => {
+        release(await response(fetched));
+      });
+      await pollUntil(
+        () => q.getQueryState(queryKeys.creation.session("s1"))?.fetchStatus === "idle",
+        () => box.textContent,
+        2500,
+        { flushBeforeFirstCheck: true },
+      );
+      expect(q.getQueryData<Session>(queryKeys.creation.session("s1"))?.revision).toBe(expected);
+      expect(box.querySelector(".creation-current")?.textContent).toContain(brief);
+      expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe(
+        "請保留尚未送出的補充",
+      );
+      expect(reads).toBe(cached ? 2 : 1);
+      expect(writes).toEqual([]);
+    } finally {
+      release(await response(before));
+    }
+  },
+);
+
+test("an unchanged creation GET shares the existing session and nested data", async () => {
+  const current = sample({ revision: 8 });
+  q.setQueryData(queryKeys.creation.session("s1"), current);
+  let release!: (response: Response) => void;
+  const held = new Promise<Response>((resolve) => {
+    release = resolve;
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      url.endsWith("/creation-sessions/s1") ? held : routeGet(url, [], current),
+    ),
+  );
+  try {
+    await render(<CreationSession sessionId="s1" />);
+    await waitFor(
+      () => q.getQueryState(queryKeys.creation.session("s1"))?.fetchStatus === "fetching",
+    );
+    await act(async () => {
+      release(await response(current));
+    });
+    await pollUntil(
+      () => q.getQueryState(queryKeys.creation.session("s1"))?.fetchStatus === "idle",
+      () => box.textContent,
+      2500,
+      { flushBeforeFirstCheck: true },
+    );
+    const loaded = q.getQueryData<Session>(queryKeys.creation.session("s1"));
+    expect(loaded).toBe(current);
+    expect(loaded?.snapshot).toBe(current.snapshot);
+    expect(loaded?.snapshot.messages).toBe(current.snapshot.messages);
+  } finally {
+    release(await response(current));
+  }
+});
+
 test("leaving the page closes the stream", async () => {
   const es = stubEventSource();
   const v = sample({ state: "working" });
@@ -2473,4 +2884,158 @@ test("an unknown pending action stays visible in state without inventing a decis
   expect(box.querySelector(".creation-workbench")).not.toBeNull();
   expect(box.querySelector(".creation-focus")).toBeNull();
   expect(box.querySelector('.creation-state [role="status"]')?.textContent).toBeTruthy();
+});
+
+test("a selected creation waits for its first reply instead of offering another session", async () => {
+  let release!: (value: Response) => void;
+  const reply = new Promise<Response>((resolve) => (release = resolve));
+  const writes: unknown[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") writes.push(init.body);
+      return url.endsWith("/creation-sessions/s1") ? reply : routeGet(url, [], sample());
+    }),
+  );
+  try {
+    await render(<CreationSession sessionId="s1" />);
+    expect(box.querySelector(".creation-current")?.textContent).toContain("載入創作紀錄中");
+    expect(box.querySelector(".starter-cards")).toBeNull();
+    expect(box.querySelector(".composer")).toBeNull();
+    expect(box.querySelector('input[name="creation-budget"]')).toBeNull();
+    expect(writes).toEqual([]);
+    await act(async () => release(await response(sample())));
+    await waitFor(() => !!box.querySelector('.creation-state [role="status"]'));
+    expect(box.querySelector(".creation-current")?.textContent).toContain("摘要任務");
+    expect(box.querySelector(".composer")).not.toBeNull();
+    expect(box.querySelector('input[name="creation-budget"]')).toBeNull();
+    expect(writes).toEqual([]);
+  } finally {
+    release(await response(sample()));
+  }
+});
+
+test("a selected creation explains an offline initial read without opening a new composer", async () => {
+  const fetcher = vi.fn((url: string) => routeGet(url, [], sample()));
+  vi.stubGlobal("fetch", fetcher);
+  onlineManager.setOnline(false);
+  try {
+    await render(<CreationSession sessionId="s1" />);
+    expect(box.querySelector(".creation-current")?.textContent).toContain("等待連線以讀取創作紀錄");
+    expect(box.querySelector(".creation-current .loading-skeleton")).toBeNull();
+    expect(box.querySelector(".starter-cards")).toBeNull();
+    expect(box.querySelector(".composer")).toBeNull();
+    expect(fetcher).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => onlineManager.setOnline(true));
+  }
+});
+
+for (const status of [404, 503]) {
+  test(`a selected creation read refused with ${status} retries that record without starting another`, async () => {
+    let reads = 0;
+    const writes: unknown[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method === "POST") writes.push(init.body);
+        if (url.endsWith("/creation-sessions/s1")) {
+          reads++;
+          return reads === 1 ? response({ error: "unavailable" }, status) : response(sample());
+        }
+        return routeGet(url, [], sample());
+      }),
+    );
+    await render(<CreationSession sessionId="s1" />);
+    await waitFor(() => !!box.querySelector('.creation-current [role="alert"]'));
+    expect(box.querySelector(".starter-cards")).toBeNull();
+    expect(box.querySelector(".composer")).toBeNull();
+    expect(box.querySelector('input[name="creation-budget"]')).toBeNull();
+    expect(reads).toBe(1);
+    expect(writes).toEqual([]);
+    await click("再試一次");
+    await waitFor(() => !!box.querySelector('.creation-state [role="status"]'));
+    expect(box.querySelector(".creation-current")?.textContent).toContain("摘要任務");
+    expect(box.querySelector(".composer")).not.toBeNull();
+    expect(box.querySelector('input[name="creation-budget"]')).toBeNull();
+    expect(reads).toBe(2);
+    expect(writes).toEqual([]);
+  });
+}
+
+test("a selected creation that needs login offers sign-in without a new-session composer", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      url.endsWith("/creation-sessions/s1")
+        ? response({ error: "not authenticated" }, 401)
+        : routeGet(url, [], sample()),
+    ),
+  );
+  await render(<CreationSession sessionId="s1" />);
+  await waitFor(
+    () =>
+      box.querySelector(".creation-current")?.textContent?.includes("創作紀錄需要登入") === true,
+  );
+  expect(box.querySelector(".starter-cards")).toBeNull();
+  expect(box.querySelector(".composer")).toBeNull();
+  expect(box.querySelector(".creation-current")?.textContent).not.toContain("再試一次");
+  expect(box.querySelector(".creation-current")?.textContent).not.toContain("not authenticated");
+});
+
+test("a cached creation hides its old read error while a paused retry preserves the draft", async () => {
+  const current = sample();
+  q.setQueryData(queryKeys.creation.session("s1"), current);
+  let reads = 0;
+  const writes: unknown[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") writes.push(init.body);
+      if (url.endsWith("/creation-sessions/s1")) {
+        reads++;
+        return reads === 1
+          ? response({ error: "unavailable" }, 503)
+          : response({
+              ...current,
+              snapshot: { ...current.snapshot, brief: "更新後的需求" },
+            });
+      }
+      return routeGet(url, [], current);
+    }),
+  );
+  await render(<CreationSession sessionId="s1" />);
+  await waitFor(() => !!box.querySelector('.creation-current [role="alert"]'));
+  await input("想完成的任務", "尚未送出的補充");
+  onlineManager.setOnline(false);
+  try {
+    await click("再試一次");
+    await pollUntil(
+      () => q.getQueryState(queryKeys.creation.session("s1"))?.fetchStatus === "paused",
+      () => box.textContent,
+      2500,
+      { flushBeforeFirstCheck: true },
+    );
+    expect(box.querySelector(".creation-current")?.textContent).toContain(
+      "等待連線以重新讀取創作紀錄",
+    );
+    expect(box.querySelector('.creation-current [role="alert"]')).toBeNull();
+    expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe(
+      "尚未送出的補充",
+    );
+    expect(box.querySelector(".creation-current")?.textContent).toContain("摘要任務");
+    expect(reads).toBe(1);
+    expect(writes).toEqual([]);
+    await act(async () => onlineManager.setOnline(true));
+    await waitFor(
+      () => box.querySelector(".creation-current")?.textContent?.includes("更新後的需求") === true,
+    );
+    expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe(
+      "尚未送出的補充",
+    );
+    expect(reads).toBe(2);
+    expect(writes).toEqual([]);
+  } finally {
+    await act(async () => onlineManager.setOnline(true));
+  }
 });

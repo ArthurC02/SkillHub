@@ -2,6 +2,17 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.3.6
+
+### Fixed
+
+- A re-citation package that records no approval, the routine package `init-change-package --recitation` writes, could not be applied: apply stamped `verified` from the proposal's approvals, found none, and the staged Registry failed with `rules/<id> is reviewed but missing verified` after the commit was signed. Apply now keeps the record's own `verified` when the proposal records no approval and the update changes nothing but citations; an approval still replaces it.
+
+### Changed
+
+- `verify-proposal`, `validate-change-package --as-status verified` and finalize refuse, before anything is signed, an update that once applied would be reviewed by nobody: `once applied: rules/<id> would be reviewed by nobody; the proposal records no approval and the Registry holds no verified rules/<id>, so record-approval first`, or `... and changes more than its citations (statement), so record-approval first`.
+- `init-change-package` prints the created path in POSIX form.
+
 ## 1.3.5
 
 ### Changed
