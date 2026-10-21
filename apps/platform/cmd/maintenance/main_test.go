@@ -213,7 +213,7 @@ func TestEachReconcileRowBecomesTheCandidateItNamesWithinTheBatch(t *testing.T) 
 		ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}, WorkspaceID: pgtype.UUID{Bytes: [16]byte{2}, Valid: true}, ObjectKey: "runs/a",
 	}
 	var asked int32
-	list := asCandidates(func(_ context.Context, limit int32) ([]run.ReconcileCandidate, error) {
+	list := wiring.ReconcileCandidates(func(_ context.Context, limit int32) ([]run.ReconcileCandidate, error) {
 		asked = limit
 		return []run.ReconcileCandidate{row}, nil
 	})
@@ -223,7 +223,7 @@ func TestEachReconcileRowBecomesTheCandidateItNamesWithinTheBatch(t *testing.T) 
 		t.Errorf("candidates %+v (%v) with limit %d, want %+v with limit 7", got, err, asked, want)
 	}
 
-	failing := asCandidates(func(context.Context, int32) ([]run.ReconcileCandidate, error) {
+	failing := wiring.ReconcileCandidates(func(context.Context, int32) ([]run.ReconcileCandidate, error) {
 		return nil, errors.New("list failed")
 	})
 	if _, err := failing(context.Background(), 7); err == nil || err.Error() != "list failed" {

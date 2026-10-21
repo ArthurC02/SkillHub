@@ -11,7 +11,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
@@ -195,9 +194,9 @@ func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
 	svc := &testlab.Service{Pool: pool, ClearSightings: objreconcile.ClearDatasetSightings}
 	return purgeRetained(ctx, pool, retentionPasses{
 		sweep: "dataset purge", purgedKey: "datasets_purged",
-		expired: objreconcile.RetentionOwner{List: asCandidates(svc.ExpiredDatasetCandidates), Mark: svc.MarkDatasetPurged},
+		expired: objreconcile.RetentionOwner{List: wiring.ReconcileCandidates(svc.ExpiredDatasetCandidates), Mark: svc.MarkDatasetPurged},
 		intents: objreconcile.RetentionOwner{
-			List: asCandidates(svc.DatasetCleanupIntentCandidates),
+			List: wiring.ReconcileCandidates(svc.DatasetCleanupIntentCandidates),
 			Mark: svc.MarkDatasetCleanupIntentPurged, Guard: svc.GuardDatasetObjectRemoval,
 		},
 	})
@@ -222,28 +221,6 @@ func (p retentionPasses) run(ctx context.Context, pool *pgxpool.Pool, store objr
 	err = errors.Join(err, intentErr)
 	logSweep(p.sweep, err, p.purgedKey, n, "upload_intents_purged", intentN)
 	return err
-}
-
-type reconcileRow interface {
-	~struct {
-		ID          pgtype.UUID
-		WorkspaceID pgtype.UUID
-		ObjectKey   string
-	}
-}
-
-func asCandidates[T reconcileRow](list func(context.Context, int32) ([]T, error)) objreconcile.ListFunc {
-	return func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
-		rows, err := list(ctx, limit)
-		if err != nil {
-			return nil, err
-		}
-		out := make([]objreconcile.Candidate, len(rows))
-		for i, row := range rows {
-			out[i] = objreconcile.Candidate(row)
-		}
-		return out, nil
-	}
 }
 
 func rotatePartitions(ctx context.Context, pool *pgxpool.Pool) error {
@@ -288,11 +265,11 @@ func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
 	return purgeRetained(ctx, pool, retentionPasses{
 		sweep: "run artifact purge", purgedKey: "artifacts_purged",
 		expired: objreconcile.RetentionOwner{
-			List: asCandidates(svc.ExpiredArtifactCandidates),
+			List: wiring.ReconcileCandidates(svc.ExpiredArtifactCandidates),
 			Mark: svc.MarkRunOutputPurged, Guard: svc.GuardArtifactUploadIntentRemoval,
 		},
 		intents: objreconcile.RetentionOwner{
-			List: asCandidates(svc.ArtifactUploadIntentCandidates),
+			List: wiring.ReconcileCandidates(svc.ArtifactUploadIntentCandidates),
 			Mark: svc.MarkArtifactUploadIntentPurged, Guard: svc.GuardArtifactUploadIntentRemoval,
 		},
 	})

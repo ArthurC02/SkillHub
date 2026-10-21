@@ -14,7 +14,6 @@ import (
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
@@ -73,24 +72,6 @@ type Set struct {
 	WorkerKinds map[string]bool
 	Scheduled   map[string]bool
 	Gauges      []func(context.Context) error
-}
-
-func reconcileCandidates[C ~struct {
-	ID          pgtype.UUID
-	WorkspaceID pgtype.UUID
-	ObjectKey   string
-}](list func(context.Context, int32) ([]C, error)) objreconcile.ListFunc {
-	return func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
-		rows, err := list(ctx, limit)
-		if err != nil {
-			return nil, err
-		}
-		out := make([]objreconcile.Candidate, len(rows))
-		for i, row := range rows {
-			out[i] = objreconcile.Candidate(row)
-		}
-		return out, nil
-	}
 }
 
 type evaluationReaders struct {
@@ -256,10 +237,10 @@ func newObjectReconciler(
 ) *objreconcile.Service {
 	return &objreconcile.Service{
 		Pool: pool, Store: store,
-		ListExpiredArtifacts:       reconcileCandidates(downloads.ExpiredReconcileCandidates),
-		ListDownloadIntents:        reconcileCandidates(downloads.DownloadCleanupIntentCandidates),
-		ListClaimedArtifacts:       reconcileCandidates(downloads.ClaimedReconcileCandidates),
-		ListClaimedDatasets:        reconcileCandidates(testlabSvc.ClaimedReconcileCandidates),
+		ListExpiredArtifacts:       wiring.ReconcileCandidates(downloads.ExpiredReconcileCandidates),
+		ListDownloadIntents:        wiring.ReconcileCandidates(downloads.DownloadCleanupIntentCandidates),
+		ListClaimedArtifacts:       wiring.ReconcileCandidates(downloads.ClaimedReconcileCandidates),
+		ListClaimedDatasets:        wiring.ReconcileCandidates(testlabSvc.ClaimedReconcileCandidates),
 		RecordArtifactPurged:       downloads.MarkArtifactPurged,
 		RecordDownloadIntentPurged: downloads.MarkDownloadCleanupIntentPurged,
 		RecordDatasetLost:          testlabSvc.MarkDatasetObjectLost,

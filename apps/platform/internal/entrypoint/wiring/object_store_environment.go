@@ -1,13 +1,16 @@
 package wiring
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func ObjectStoreFromEnv() (*objstore.Client, error) {
@@ -46,4 +49,22 @@ func ObjectBackupStoreFromEnv() (*objstore.Client, error) {
 		os.Getenv("OBJSTORE_BACKUP_BUCKET"),
 		os.Getenv("OBJSTORE_BACKUP_SSL") == "1",
 	)
+}
+
+func ReconcileCandidates[R ~struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	ObjectKey   string
+}](list func(context.Context, int32) ([]R, error)) objreconcile.ListFunc {
+	return func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
+		rows, err := list(ctx, limit)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]objreconcile.Candidate, len(rows))
+		for i, row := range rows {
+			out[i] = objreconcile.Candidate(row)
+		}
+		return out, nil
+	}
 }
