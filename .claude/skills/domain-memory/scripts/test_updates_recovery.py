@@ -18,7 +18,8 @@ from domain_registry.updates import (
     reconcile_pending_update,
     upsert_candidate,
 )
-from domain_registry.store import MANIFEST, document_path, is_concept_layout, read_document
+from domain_registry.common import registry_dir
+from domain_registry.store import INDEX, has_registry, read_document
 from test_support import RegistryTestCase, append_audit
 
 
@@ -29,10 +30,10 @@ class UpdatesRecoveryTest(RegistryTestCase):
         root = self.repo / "memory"
         backup = root / ".domain-registry-backup-new"
         staging = root / ".domain-registry-stage-new"
-        original = document_path(root, MANIFEST).read_bytes()
+        original = (registry_dir(root) / INDEX).read_bytes()
         shutil.copytree(root / "registry", backup)
         staging.mkdir()
-        document_path(root, MANIFEST).write_text("{}\n", encoding="utf-8")
+        (registry_dir(root) / INDEX).write_text("{}\n", encoding="utf-8")
         transaction_path(root).write_text(
             json.dumps(
                 {
@@ -46,19 +47,19 @@ class UpdatesRecoveryTest(RegistryTestCase):
             encoding="utf-8",
         )
         recover_interrupted_update(root, False)
-        self.assertEqual(original, document_path(root, MANIFEST).read_bytes())
+        self.assertEqual(original, (registry_dir(root) / INDEX).read_bytes())
 
     def test_recovery_rolls_back_an_installed_transaction_when_the_last_audit_event_is_another_operations(
         self,
     ) -> None:
-        original = document_path(self.repo / "memory", MANIFEST).read_bytes()
+        original = (registry_dir(self.repo / "memory") / INDEX).read_bytes()
         root, backup, _ = self.interrupted_transaction("installed")
         append_audit(root, {"operation": "update", "operation_id": "someone-else"})
         recover_interrupted_update(root, False)
         self.assertEqual(
             (original, False, False),
             (
-                document_path(root, MANIFEST).read_bytes(),
+                (registry_dir(root) / INDEX).read_bytes(),
                 backup.exists(), transaction_path(root).exists(),
             ),
         )
@@ -71,7 +72,7 @@ class UpdatesRecoveryTest(RegistryTestCase):
         staging = root / ".domain-registry-stage-audited"
         shutil.copytree(root / "registry", backup)
         staging.mkdir()
-        document_path(root, MANIFEST).write_text("{}\n", encoding="utf-8")
+        (registry_dir(root) / INDEX).write_text("{}\n", encoding="utf-8")
         append_audit(root, {"operation": "update", "operation_id": "audited"})
         transaction_path(root).write_text(
             json.dumps(
@@ -87,7 +88,7 @@ class UpdatesRecoveryTest(RegistryTestCase):
         )
         recover_interrupted_update(root, False)
         self.assertEqual(
-            "{}\n", document_path(root, MANIFEST).read_text(encoding="utf-8")
+            "{}\n", (registry_dir(root) / INDEX).read_text(encoding="utf-8")
         )
         self.assertFalse(backup.exists())
 
@@ -148,13 +149,13 @@ class UpdatesRecoveryTest(RegistryTestCase):
         )
 
     def test_recovery_restores_the_backup_when_a_prepared_swap_left_no_registry(self) -> None:
-        original = document_path(self.repo / "memory", MANIFEST).read_bytes()
+        original = (registry_dir(self.repo / "memory") / INDEX).read_bytes()
         root, backup, _ = self.interrupted_transaction("prepared")
         remove_tree(root / "registry")
         recover_interrupted_update(root, False)
         self.assertEqual(
             (original, False, False),
-            (document_path(root, MANIFEST).read_bytes(), backup.exists(), transaction_path(root).exists()),
+            ((registry_dir(root) / INDEX).read_bytes(), backup.exists(), transaction_path(root).exists()),
         )
 
     def test_recovery_discards_a_prepared_transaction_and_keeps_the_registry(self) -> None:
@@ -169,10 +170,22 @@ class UpdatesRecoveryTest(RegistryTestCase):
         self.assertEqual(
             ("{}\n", False, False, False),
             (
-                document_path(root, MANIFEST).read_text(encoding="utf-8"),
+                (registry_dir(root) / INDEX).read_text(encoding="utf-8"),
                 backup.exists(), staging.exists(), transaction_path(root).exists(),
             ),
         )
+
+    def test_a_journal_without_a_phase_or_an_operation_id_is_malformed(self) -> None:
+        for missing in ("phase", "operation_id"):
+            with self.subTest(missing):
+                self.tearDown()
+                self.setUp()
+                root, _, _ = self.interrupted_transaction("installed")
+                journal = json.loads(transaction_path(root).read_text(encoding="utf-8"))
+                del journal[missing]
+                transaction_path(root).write_text(json.dumps(journal), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "^registry recovery journal is malformed$"):
+                    recover_interrupted_update(root, False)
 
     def test_recovery_refuses_a_transaction_marked_for_reconciliation_or_in_an_unknown_phase(self) -> None:
         for phase, refusal in (
@@ -188,20 +201,20 @@ class UpdatesRecoveryTest(RegistryTestCase):
                 transaction_path(root).unlink()
 
     def test_recovery_restores_the_backup_when_an_unaudited_install_left_no_registry(self) -> None:
-        original = document_path(self.repo / "memory", MANIFEST).read_bytes()
+        original = (registry_dir(self.repo / "memory") / INDEX).read_bytes()
         root, backup, _ = self.interrupted_transaction("installed")
         remove_tree(root / "registry")
         recover_interrupted_update(root, False)
         self.assertEqual(
             (original, False, False),
             (
-                document_path(root, MANIFEST).read_bytes(),
+                (registry_dir(root) / INDEX).read_bytes(),
                 backup.exists(), transaction_path(root).exists(),
             ),
         )
 
     def assert_registry_in_place(self, root: Path) -> None:
-        self.assertTrue(is_concept_layout(root))
+        self.assertTrue(has_registry(root))
         self.assertTrue((root / "registry" / "contexts").is_dir())
 
     def test_recovery_restores_the_registry_a_crash_left_in_the_backup(self) -> None:
@@ -210,7 +223,8 @@ class UpdatesRecoveryTest(RegistryTestCase):
         (root / "registry").replace(backup)
         transaction_path(root).write_text(
             json.dumps(
-                {"backup": backup.name, "staging": ".domain-registry-stage-abc"}
+                {"format": "domain-registry-transaction/v2", "operation_id": "abc", "phase": "prepared",
+                 "backup": backup.name, "staging": ".domain-registry-stage-abc"}
             ),
             encoding="utf-8",
         )
@@ -227,7 +241,8 @@ class UpdatesRecoveryTest(RegistryTestCase):
             os.chmod(path, read_only)
         transaction_path(root).write_text(
             json.dumps(
-                {"backup": backup.name, "staging": ".domain-registry-stage-abc"}
+                {"format": "domain-registry-transaction/v2", "operation_id": "abc", "phase": "prepared",
+                 "backup": backup.name, "staging": ".domain-registry-stage-abc"}
             ),
             encoding="utf-8",
         )
@@ -244,7 +259,8 @@ class UpdatesRecoveryTest(RegistryTestCase):
         shutil.copytree(root / "registry", backup)
         transaction_path(root).write_text(
             json.dumps(
-                {"backup": backup.name, "staging": ".domain-registry-stage-abc"}
+                {"format": "domain-registry-transaction/v2", "operation_id": "abc", "phase": "prepared",
+                 "backup": backup.name, "staging": ".domain-registry-stage-abc"}
             ),
             encoding="utf-8",
         )
@@ -265,7 +281,8 @@ class UpdatesRecoveryTest(RegistryTestCase):
         for label, backup, staging in cases:
             with self.subTest(label):
                 transaction_path(root).write_text(
-                    json.dumps({"backup": backup, "staging": staging}), encoding="utf-8"
+                    json.dumps({"format": "domain-registry-transaction/v2", "operation_id": "abc", "phase": "prepared",
+                                "backup": backup, "staging": staging}), encoding="utf-8"
                 )
                 with self.assertRaisesRegex(ValueError, "^registry recovery journal contains an unsafe path$"):
                     recover_interrupted_update(root, False)

@@ -10,31 +10,13 @@ sys.path.insert(0, str(Path(__file__).parent))
 from domain_registry.commands.governance import policy_assignments
 from domain_registry.registry import (
     coverage,
-    migrate_registry,
-    record_by_id,
     validate,
     verify_evidence,
 )
-from test_support import RegistryTestCase, amend_policy, use_json_layout
+from test_support import RegistryTestCase, amend_policy
 
 
 class RegistryPolicyTest(RegistryTestCase):
-    def test_migrating_restores_a_missing_asset_without_touching_the_others(
-        self,
-    ) -> None:
-        self.seed(
-            "contexts.json",
-            [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}],
-        )
-        use_json_layout(self.repo / "memory")
-        (self.repo / "memory" / "registry" / "events.json").unlink()
-        created = migrate_registry(self.repo / "memory")
-        self.assertEqual(created, ["events.json"])
-        record = record_by_id(self.repo / "memory", "contexts", "orders")
-        self.assertIsNotNone(record)
-        assert record is not None
-        self.assertEqual(record["name"], "Orders")
-
     def test_an_examined_context_leaves_the_gap_list_but_an_unexamined_one_stays(
         self,
     ) -> None:
@@ -205,11 +187,10 @@ class RegistryPolicyTest(RegistryTestCase):
         self.assertTrue((destination / "domain-memory-policy.json").is_file())
 
     def test_verify_evidence_names_the_record_of_each_citation_and_filters_by_path(self) -> None:
-        use_json_layout(self.repo / "memory")
         self.seed_two_cited_rules()
         report = verify_evidence(self.repo / "memory", self.repo, ["fact.md"])
         self.assertEqual(
-            [("rules", "moved", "shifted"), ("rules", "kept", "current")],
+            [("rules", "kept", "current"), ("rules", "moved", "shifted")],
             [(item["asset"], item["id"], item["status"]) for item in report["results"]],
         )
         self.assertEqual(3, len(verify_evidence(self.repo / "memory", self.repo)["results"]))

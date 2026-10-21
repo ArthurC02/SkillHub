@@ -5,6 +5,7 @@ import unittest
 
 from domain_registry.common import ASSET_KEYS
 from domain_registry.compare import compare_registries
+from domain_registry.registry import init_registry
 from domain_registry.store import read_document, write_document
 from test_support import RegistryTestCase
 
@@ -103,10 +104,6 @@ class RecordMatchingTest(unittest.TestCase):
     def test_a_rule_in_the_matching_context_citing_the_same_file_matches(self) -> None:
         rule = {"id": "totals", "contexts": ["sales"], "evidence": cited("src/orders/total.py")}
         self.assertEqual("context-and-evidence", self.rules(rule)["matched"][0]["by"])
-
-    def test_a_legacy_path_and_line_citation_counts_as_its_file(self) -> None:
-        rule = {"id": "totals", "contexts": ["sales"], "evidence": ["src/orders/total.py:4"]}
-        self.assertEqual(["order-total-is-positive"], [pair["gold"] for pair in self.rules(rule)["matched"]])
 
     def test_a_rule_whose_cited_lines_overlap_wins_over_one_citing_elsewhere_in_the_file(self) -> None:
         gold = registry(contexts=[ORDERS], rules=[
@@ -282,7 +279,7 @@ class CompareCommandTest(RegistryTestCase):
         self.commit_all("gold")
         self.seed("contexts.json", [])
         candidate = self.repo / "candidate"
-        self.run_cli("init", "--output", str(candidate))
+        init_registry(candidate)
         result = self.run_cli("compare-registry", "--gold-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
                               "--gold-commit", "HEAD", "--candidate-root", str(candidate))
         self.assertEqual(0, result.returncode, result.stdout)
@@ -297,7 +294,7 @@ class CompareCommandTest(RegistryTestCase):
         self.seed("rules.json", rules)
         candidate = self.repo / "candidate"
         if not candidate.exists():
-            self.run_cli("init", "--output", str(candidate))
+            init_registry(candidate)
         for name, records in (("contexts.json", [ORDERS]), ("rules.json", rules)):
             value = read_document(candidate, name)
             value[ASSET_KEYS[name]] = records
@@ -314,7 +311,7 @@ class CompareCommandTest(RegistryTestCase):
     def test_the_command_notes_a_scoped_context_with_no_candidate_and_refuses_an_unknown_one(self) -> None:
         self.seed("contexts.json", [ORDERS])
         candidate = self.repo / "candidate"
-        self.run_cli("init", "--output", str(candidate))
+        init_registry(candidate)
         arguments = ("compare-registry", "--gold-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
                      "--candidate-root", str(candidate), "--context")
         noted = self.run_cli(*arguments, "orders")

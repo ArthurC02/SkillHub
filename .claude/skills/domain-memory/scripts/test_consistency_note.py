@@ -30,7 +30,7 @@ class ConsistencyNoteTest(RegistryTestCase):
         if interaction_consistency is not None:
             proposal["registry_updates"].append({"operation": "upsert", "asset": "interactions", "record": {
                 "id": "order-placed", "producer_context": "orders", "consumer_context": "orders",
-                "consistency": interaction_consistency, "delivery": "in process", "evidence": ["README.md:1"],
+                "consistency": interaction_consistency, "delivery": "in process", "evidence": [self.readme_citation()],
             }})
         path.write_text(json.dumps(proposal), encoding="utf-8")
         return self.run_cli(

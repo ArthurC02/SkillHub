@@ -22,7 +22,8 @@ from domain_registry.revision import (
 )
 from domain_registry.sources import write_source_map
 from domain_registry.updates import apply_approved_updates, promote_candidate, upsert_candidate
-from domain_registry.store import MANIFEST, document_path, read_document
+from domain_registry.common import registry_dir
+from domain_registry.store import INDEX, read_document
 from test_support import VERIFIED, RegistryTestCase, amend_policy, applied_by
 
 
@@ -179,7 +180,7 @@ class UpdatesPromotionTest(RegistryTestCase):
         package = self.draft_package()
         self.approve_and_apply(package)
         written = [
-            document_path(self.repo / "memory", MANIFEST),
+            (registry_dir(self.repo / "memory") / INDEX),
             self.repo / "memory" / "audit" / "events.jsonl",
             *sorted((self.repo / "memory" / "registry" / "rules").glob("*.md")),
             package / "domain-change-proposal.json",
@@ -216,7 +217,7 @@ class UpdatesPromotionTest(RegistryTestCase):
         promote_candidate(package, self.repo / "memory", "rules", "order-total")
         record = self.write_record(
             "rule.json",
-            {"id": "order-total", "contexts": ["orders"], "statement": "Second wording.", "evidence": ["README.md:1"]},
+            {"id": "order-total", "contexts": ["orders"], "statement": "Second wording.", "evidence": [self.readme_citation()]},
         )
         upsert_candidate(self.repo / "memory", self.repo, "rules", record)
         promote_candidate(package, self.repo / "memory", "rules", "order-total")
@@ -226,7 +227,7 @@ class UpdatesPromotionTest(RegistryTestCase):
         package = self.package_with_a_candidate_rule("An order total is non-negative.")
         second = self.write_record(
             "second-rule.json",
-            {"id": "order-tax", "contexts": ["orders"], "statement": "Tax is added.", "evidence": ["README.md:1"]},
+            {"id": "order-tax", "contexts": ["orders"], "statement": "Tax is added.", "evidence": [self.readme_citation()]},
         )
         upsert_candidate(self.repo / "memory", self.repo, "rules", second)
         promote_candidate(package, self.repo / "memory", "rules", "order-total")
@@ -234,13 +235,6 @@ class UpdatesPromotionTest(RegistryTestCase):
         self.assertEqual(
             ["order-total", "order-tax"], [entry["record"]["id"] for entry in self.registry_updates(package)]
         )
-
-    def test_promoting_a_candidate_that_carries_a_review_key_strips_it(self) -> None:
-        package = self.package_with_a_candidate_rule("An order total is non-negative.")
-        self.edit_registry("rules.json", lambda value: value["rules"][0].update(review={"proposal_id": "PRO-0"}))
-        promote_candidate(package, self.repo / "memory", "rules", "order-total")
-        [update] = self.registry_updates(package)
-        self.assertNotIn("review", update["record"])
 
     def test_promoting_a_record_the_registry_does_not_hold_is_refused(self) -> None:
         package = self.package_with_a_candidate_rule("An order total is non-negative.")

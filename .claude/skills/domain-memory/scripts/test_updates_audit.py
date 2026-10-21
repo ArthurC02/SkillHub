@@ -9,11 +9,9 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.audit import read_events as read_audit_events
 from domain_registry.audit import event_digest as audit_event_digest
 from domain_registry.audit import anchor_error
 from domain_registry.audit import verify as verify_audit
-from domain_registry.registry import migrate_evidence
 from domain_registry.revision import (
     base_registry_revision,
     current_registry_revision,
@@ -25,31 +23,19 @@ from domain_registry.revision import (
 )
 from domain_registry.registry import init_registry
 from domain_registry.updates import upsert_candidate
-from domain_registry.store import read_document, write_document
-from test_support import RegistryTestCase, append_audit, applied_by, use_json_layout
+from domain_registry.store import read_document
+from test_support import RegistryTestCase, append_audit, applied_by
 
 DRAFTED_RULE = {"id": "order-total", "contexts": ["orders"], "statement": "A total."}
 
 
 class UpdatesAuditTest(RegistryTestCase):
-    def test_changed_registry_rejects_a_captured_revision(self) -> None:
-        use_json_layout(self.repo / "memory")
-        expected = current_registry_revision(self.repo / "memory", self.repo)
-        value = read_document(self.repo / "memory", "contexts.json")
-        value["note"] = "changed"
-        write_document(self.repo / "memory", "contexts.json", value)
-        with self.assertRaisesRegex(ValueError, "stale"):
-            require_current_registry_revision(
-                {"base_registry_revision": expected}, self.repo / "memory", self.repo
-            )
-
     def test_a_stale_base_holds_only_while_what_the_proposal_touches_is_unchanged(self) -> None:
-        use_json_layout(self.repo / "memory")
         def billing_renamed(value):
-            value["contexts"][1]["name"] = "Invoicing"
+            next(context for context in value["contexts"] if context["id"] == "billing")["name"] = "Invoicing"
 
         def orders_renamed(value):
-            value["contexts"][0]["name"] = "Purchases"
+            next(context for context in value["contexts"] if context["id"] == "orders")["name"] = "Purchases"
 
         def rule_written(value):
             value["rules"].append({"id": "order-total", "contexts": ["billing"]})
@@ -57,17 +43,12 @@ class UpdatesAuditTest(RegistryTestCase):
         def rule_written_as_its_draft(value):
             value["rules"].append({"id": "order-total", "contexts": ["orders"], "status": "candidate"})
 
-        def context_list_annotated(value):
-            value["note"] = "changed"
-
         cases = [
             ("an untouched record changed", "contexts.json", billing_renamed, None),
             ("a record it references changed", "contexts.json", orders_renamed, "contexts/orders"),
             ("the record it writes changed", "rules.json", rule_written,
              "rules/order-total, which this proposal writes, changed since it was reviewed"),
             ("the record it writes is present as its own draft", "rules.json", rule_written_as_its_draft, None),
-            ("an asset changed outside its records", "contexts.json", context_list_annotated,
-             "contexts.json changed outside its records"),
         ]
         for label, name, change, refusal in cases:
             with self.subTest(label):
@@ -92,7 +73,6 @@ class UpdatesAuditTest(RegistryTestCase):
                         require_current_registry_revision(proposal, self.repo / "memory", self.repo)
 
     def test_a_removed_record_that_reappears_as_the_draft_is_stale(self) -> None:
-        use_json_layout(self.repo / "memory")
         self.two_contexts()
         self.seed("rules.json", [])
         self.commit_everything("base")
@@ -106,7 +86,6 @@ class UpdatesAuditTest(RegistryTestCase):
             require_current_registry_revision(proposal, self.repo / "memory", self.repo)
 
     def test_a_decision_draft_matches_its_record_apart_from_its_review_status(self) -> None:
-        use_json_layout(self.repo / "memory")
         decision = {"id": "one-store", "statement": "Use one store.", "status": "accepted"}
         for label, drafted, refusal in (
             ("the draft is the record", decision, None),
@@ -245,11 +224,6 @@ class UpdatesAuditTest(RegistryTestCase):
                 "name": "Orders",
                 "responsibility": "Own orders.",
                 "status": "reviewed",
-                "review": {
-                    "proposal_id": "forged",
-                    "proposal_revision": "forged",
-                    "approvals": [{"role": "owner", "reviewer": "nobody"}],
-                },
                 "verified": [{"by": "human:nobody", "at": "2026-01-01T00:00:00Z"}],
             },
         )
@@ -259,7 +233,7 @@ class UpdatesAuditTest(RegistryTestCase):
             entry for entry in stored["contexts"] if entry["id"] == "orders"
         )
         self.assertEqual(
-            ("candidate", False, False), (written["status"], "review" in written, "verified" in written)
+            ("candidate", False), (written["status"], "verified" in written)
         )
 
     def test_audit_failure_rolls_back_a_registry_swap(self) -> None:
@@ -280,16 +254,6 @@ class UpdatesAuditTest(RegistryTestCase):
         self.assertFalse(
             (self.repo / "memory" / ".domain-registry-transaction.json").exists()
         )
-
-    def test_migrate_evidence_records_how_many_references_it_upgraded(self) -> None:
-        self.seed_line_reference_evidence()
-        migrate_evidence(self.repo / "memory", self.repo)
-        migrations = [
-            event["migrated"]
-            for event in read_audit_events(self.repo / "memory")
-            if event["operation"] == "migrate-evidence"
-        ]
-        self.assertEqual([1], migrations)
 
     def test_a_registry_digest_is_sha256_and_64_lowercase_hex(self) -> None:
         hexes = "a" * 64

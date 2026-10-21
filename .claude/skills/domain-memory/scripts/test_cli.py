@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from domain_registry.changes import validate_change_package
 from domain_registry.cli_parser import build_parser
 from domain_registry.git_hooks import governance_readiness, install_pre_push_hook
-from domain_registry.store import is_concept_layout, write_document
+from domain_registry.store import has_registry, write_document
 from test_support import RegistryTestCase, amend_policy, stored_policy_of
 
 
@@ -319,7 +319,7 @@ class CliTest(RegistryTestCase):
             tasks.setdefault(command, task.strip())
         [subcommands] = [action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)]
         helps = {choice.dest: choice.help for choice in subcommands._choices_actions}
-        self.assertEqual((65, tasks), (len(helps), helps))
+        self.assertEqual((62, tasks), (len(helps), helps))
 
     def test_readiness_command_returns_json_without_writing_and_assesses_the_one_domain_memory_it_finds(self) -> None:
         before = self.file_bytes()
@@ -380,7 +380,7 @@ class CliTest(RegistryTestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue((destination / "source-map.json").is_file())
-        self.assertTrue(is_concept_layout(destination))
+        self.assertTrue(has_registry(destination))
         self.assertTrue((destination / "registry" / "contexts").is_dir())
         policy = json.loads((destination / "domain-memory-policy.json").read_text(encoding="utf-8"))
         self.assertEqual(

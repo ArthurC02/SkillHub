@@ -181,7 +181,7 @@ class HarvestTest(RegistryTestCase):
         self.confirm_src()
         self.seed("rules.json", [{
             "id": RULE_ID, "contexts": ["orders"], "statement": "A length past the limit is refused.",
-            "status": "reviewed", "verified": VERIFIED, "evidence": ["src/rule.py:1"],
+            "status": "reviewed", "verified": VERIFIED, "evidence": [citation(self.repo, "src/rule.py", 1, 1)],
         }])
         applied_by(self.repo / "memory", "PRO-1", f"rules/{RULE_ID}")
         report = harvest(self.repo / "memory", self.repo, self.spec(), None, "draft")
@@ -217,7 +217,7 @@ class HarvestTest(RegistryTestCase):
         self.confirm_src()
         self.seed("rules.json", [{
             "id": RULE_ID, "contexts": ["orders"], "statement": "Long input is turned away.", "examples": ["300 is refused."],
-            "status": "reviewed", "verified": VERIFIED, "evidence": ["src/rule.py:1"],
+            "status": "reviewed", "verified": VERIFIED, "evidence": [citation(self.repo, "src/rule.py", 1, 1)],
         }])
         applied_by(self.repo / "memory", "PRO-1", f"rules/{RULE_ID}")
         report = harvest(self.repo / "memory", self.repo, self.spec(), None, "draft")
@@ -506,7 +506,7 @@ class HarvestTest(RegistryTestCase):
         self.confirm_src()
         self.seed("rules.json", [{
             "id": RULE_ID, "contexts": ["orders"], "statement": "A length past the limit is refused.",
-            "status": "reviewed", "verified": VERIFIED, "evidence": ["src/rule.py:1"],
+            "status": "reviewed", "verified": VERIFIED, "evidence": [citation(self.repo, "src/rule.py", 1, 1)],
         }])
         applied_by(self.repo / "memory", "PRO-1", f"rules/{RULE_ID}")
         harvest(self.repo / "memory", self.repo, self.two_rule_spec(), None, "draft")

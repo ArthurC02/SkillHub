@@ -71,7 +71,7 @@ class InterruptedTransaction:
 def _checked_journal(journal: Path) -> dict[str, Any]:
     value = read_journal_document(journal)
     if not isinstance(value, dict) or not all(
-        isinstance(value.get(key), str) for key in ("backup", "staging")
+        isinstance(value.get(key), str) for key in ("backup", "staging", "phase", "operation_id")
     ):
         raise ValueError("registry recovery journal is malformed")
     if any(
@@ -81,16 +81,6 @@ def _checked_journal(journal: Path) -> dict[str, Any]:
     ):
         raise ValueError("registry recovery journal contains an unsafe path")
     return value
-
-
-def _recover_legacy(transaction: InterruptedTransaction) -> None:
-    target = registry_dir(transaction.root)
-    if transaction.backup.exists():
-        if target.exists():
-            remove_tree(transaction.backup)
-        else:
-            replace_path(transaction.backup, target)
-    transaction.discard()
 
 
 def _was_audited(transaction: InterruptedTransaction) -> bool:
@@ -137,11 +127,8 @@ def recover(root: Path) -> None:
         return
     value = _checked_journal(journal)
     transaction = InterruptedTransaction(
-        root, journal, value.get("operation_id"), root / value["backup"], root / value["staging"]
+        root, journal, value["operation_id"], root / value["backup"], root / value["staging"]
     )
-    if "phase" not in value or "operation_id" not in value:
-        _recover_legacy(transaction)
-        return
     handler = RECOVERY_BY_PHASE.get(value["phase"])
     if handler is None:
         raise ValueError("registry recovery journal has an invalid phase")

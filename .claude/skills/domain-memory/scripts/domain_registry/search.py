@@ -11,7 +11,7 @@ from .common import ASSET_KEYS, record_status
 from .okf import CONTEXT_RELATIONS, PROSE_FIELDS, RELATION_TARGETS
 from .policy import query_result_limit
 from .registry import SUMMARY_FIELDS, asset_records
-from .store import has_document, read_document
+from .store import read_document
 
 
 def ranked_lookup(root: Path, asset: str, query: str) -> tuple[list[dict[str, Any]], str]:
@@ -192,7 +192,6 @@ def prose_mentions(root: Path, needle: str) -> list[dict[str, Any]]:
     mentions = [
         _mention(name, entry, fields)
         for name in sorted(ASSET_KEYS)
-        if has_document(root, name)
         for entry in _reviewed_entries(root, name)
         if (fields := _mentioning_fields(entry, wanted))
     ]

@@ -10,7 +10,7 @@ from .common import ASSET_KEYS, find_record, registry_dir, shown_path
 from .git import run_git, run_git_bytes
 from .policy import existing_policy, policy_path
 from .registry import as_stored
-from .store import committed_documents, document_path, has_document, read_document
+from .store import committed_documents, read_document
 
 COMMIT_LENGTH = 40
 DIGEST_PREFIX = "sha256:"
@@ -64,14 +64,7 @@ def _digest_of(documents: dict[str, Any], policy_name: str, policy: Any) -> str:
 
 
 def _current_documents(root: Path) -> tuple[dict[str, Any], Any]:
-    documents = {}
-    for name in REGISTRY_FILES:
-        if not has_document(root, name):
-            raise ValueError(
-                f"registry asset is missing while calculating revision: {document_path(root, name)}"
-            )
-        documents[name] = read_document(root, name)
-    return documents, existing_policy(root)
+    return {name: read_document(root, name) for name in REGISTRY_FILES}, existing_policy(root)
 
 
 def registry_digest(root: Path) -> str:

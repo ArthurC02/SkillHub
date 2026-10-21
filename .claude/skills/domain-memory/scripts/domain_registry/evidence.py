@@ -87,7 +87,7 @@ def without_derived_keys(value: Any) -> Any:
 
 
 def fields_beyond_evidence(asset: str, before: dict[str, Any], after: dict[str, Any]) -> list[str]:
-    settled_on_apply = ("review", "verified", review_field(asset))
+    settled_on_apply = ("verified", review_field(asset))
     stripped = [
         with_references({key: value for key, value in record.items() if key not in settled_on_apply}, lambda _: None)
         for record in (before, after)
@@ -325,8 +325,6 @@ def verifier(repo_root: Path, content_of: ContentReader | None = None) -> Callab
         return sources[path_text]
 
     def check(reference: Any) -> dict[str, Any]:
-        if isinstance(reference, str):
-            return {"status": "legacy-unverified", "reference": reference}
         shape = _shape_error(reference)
         if shape:
             return {"status": "invalid", "reason": shape}
@@ -387,31 +385,6 @@ def _moved_or_stale(excerpt_sha256: str, path_text: str, rows: list[str], length
         "reason": f"the cited lines are unchanged but now sit elsewhere in {path_text}; this passes "
         "every check and needs no Change Package of its own; when one next touches the record, "
         f"relocate-evidence --from {path_text} --to {path_text} re-cites them and prints the supersedes",
-    }
-
-
-def migrate_legacy(reference: Any, repo_root: Path) -> Any:
-    if not isinstance(reference, str):
-        return reference
-    path_text, separator, line_text = reference.rpartition(":")
-    if not separator or not line_text.isdigit() or int(line_text) < 1:
-        return reference
-    path = (repo_root / path_text).resolve()
-    if (
-        not path.is_relative_to(repo_root.resolve())
-        or not path.is_file()
-        or path.stat().st_size > MAX_EVIDENCE_BYTES
-    ):
-        return reference
-    content, rows = _read_lines(path)
-    line = int(line_text)
-    if line > len(rows):
-        return reference
-    return {
-        "path": path_text.replace("\\", "/"),
-        "lines": {"start": line, "end": line},
-        "content_sha256": digest(content),
-        "excerpt_sha256": digest(_excerpt(rows, line, line)),
     }
 
 

@@ -2,6 +2,27 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.0.0
+
+### Removed
+
+- The JSON Registry layout, one file per asset, which no version since 0.30.0 writes. A Registry is a `registry/index.md` with one concept file per record; `migrate-registry` is gone with it, and a Registry still kept as JSON is converted by the 1.x line before upgrading. `brief`, `export` and `compare-registry` read a commit's Registry in the concept layout only. The `templates/domain-registry` skeleton went with the layout.
+- Plain `path:line` citations and `migrate-evidence`: a citation is an object built by `cite`, and anything else is `invalid`, so `verify-evidence` no longer reports `legacy-unverified`, and `compare-registry` matches structured citations only.
+- The `review` block a record carried before `verified`: nothing strips or reads it any more, and `validate` refuses a record holding one.
+- `init`, which copied an empty skeleton that could never hold a reviewed record: `init-domain-memory` is the entry point.
+- `readiness` no longer reports a `reviewed-empty` Registry, a state only the JSON manifest could express.
+- `scripts/build_standalone.py` and the standalone bundle: the Plugin is the one distribution.
+- A transaction journal without `phase` and `operation_id`, written before journaled phases, is malformed instead of recovered.
+
+### Changed
+
+- A missing Registry is named as `it holds no registry/index.md`, and a directory is a Domain Memory when it holds `registry/index.md` or a source map; a bare `registry/manifest.json` no longer counts.
+- Without a policy file `review_mode` is `no-policy`.
+
+### Fixed
+
+- `promote-candidate --cite` no longer adds a citation the record already holds: a citation is the same when its path, lines and excerpt digest are.
+
 ## 1.3.9
 
 ### Removed

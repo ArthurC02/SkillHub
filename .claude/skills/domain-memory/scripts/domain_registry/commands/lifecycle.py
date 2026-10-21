@@ -30,8 +30,6 @@ from ..hitl import (
 from ..recitation_package import recitation_package
 from ..registry import (
     cited_paths,
-    init_registry,
-    migrate_registry,
     package_consistency_notes,
     record_by_id,
     registry_consistency_notes,
@@ -52,11 +50,6 @@ from ..updates import (
     upsert_candidate,
 )
 from .common import OUTSIDE_SOURCES_CONSEQUENCE, note_unsettled, print_json, report_errors
-
-
-def handle_init(args: argparse.Namespace) -> int:
-    init_registry(args.output.resolve())
-    return 0
 
 
 def handle_init_change_package(args: argparse.Namespace) -> int:
@@ -131,11 +124,6 @@ def _note_unplaced(registry_root: Path, repo_root: Path) -> None:
             "or the path is corrected.",
             file=sys.stderr,
         )
-
-
-def handle_migrate_registry(args: argparse.Namespace) -> int:
-    print_json({"created": migrate_registry(args.registry_root.resolve())}, indent=None)
-    return 0
 
 
 def handle_demote_local_reviews(args: argparse.Namespace) -> int:
@@ -425,11 +413,9 @@ def handle_discard_harvest(args: argparse.Namespace) -> int:
 
 
 HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
-    "init": handle_init,
     "init-change-package": handle_init_change_package,
     "redraft-proposal": handle_redraft_proposal,
     "validate": handle_validate,
-    "migrate-registry": handle_migrate_registry,
     "upsert-candidate": handle_upsert_candidate,
     "harvest-candidates": handle_harvest_candidates,
     "harvest": handle_harvest,

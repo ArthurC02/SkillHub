@@ -8,7 +8,6 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.common import registry_dir, write_json
 from domain_registry.evidence import (
     all_references,
     citation,
@@ -23,8 +22,7 @@ from domain_registry.registry import (
     validate,
 )
 from domain_registry.store import read_document, write_document
-from domain_registry.updates import upsert_candidate
-from test_support import VERIFIED, RegistryTestCase, applied_by, use_json_layout
+from test_support import VERIFIED, RegistryTestCase, applied_by
 
 
 class EvidenceTest(RegistryTestCase):
@@ -41,7 +39,7 @@ class EvidenceTest(RegistryTestCase):
         source.write_text("one\ntwo\nthree\n", encoding="utf-8")
         cited = citation(self.repo, "fact.md", 2, 3)
         cases = [
-            ("legacy text", "fact.md:2", {"status": "legacy-unverified", "reference": "fact.md:2"}),
+            ("plain text", "fact.md:2", {"status": "invalid", "reason": "evidence must be an object"}),
             ("not an object", 7, {"status": "invalid", "reason": "evidence must be an object"}),
             ("no lines", {"path": "fact.md"}, {"status": "invalid", "reason": "evidence requires path and lines"}),
             ("line zero", {**cited, "lines": {"start": 0, "end": 1}},
@@ -226,21 +224,6 @@ class EvidenceTest(RegistryTestCase):
             coverage(self.repo / "memory")["evidence_gaps"],
         )
 
-    def test_a_record_reviewed_by_its_document_default_is_reviewed_for_coverage_and_for_an_upsert(self) -> None:
-        root = self.repo / "memory"
-        use_json_layout(root)
-        write_json(registry_dir(root) / "rules.json", {
-            "format": "domain-rules/v1", "status": "reviewed",
-            "rules": [{"id": "order-total", "statement": "An order total is never negative."}],
-        })
-        record = self.repo / "record.json"
-        write_json(record, {"id": "order-total", "statement": "An order total may be negative."})
-        self.assertEqual(
-            [{"asset": "rules", "id": "order-total", "reason": "no evidence"}], coverage(root)["evidence_gaps"]
-        )
-        with self.assertRaisesRegex(ValueError, "^cannot overwrite reviewed record: order-total$"):
-            upsert_candidate(root, None, "rules", record)
-
     def test_coverage_says_nothing_about_a_record_citing_a_selected_source(
         self,
     ) -> None:
@@ -382,12 +365,11 @@ class EvidenceTest(RegistryTestCase):
             with self.subTest(found=found):
                 self.tearDown()
                 self.setUp()
-                use_json_layout(self.repo / "memory")
                 self.evidence_moved("one\ntwo\n", "lib/a.py", text)
                 moved = relocate_evidence(self.repo / "memory", self.repo, "src", "lib")
                 self.assertEqual(([], []), (moved["registry_updates"], moved["candidates"]))
                 self.assertEqual(
-                    [("reviewed-rule", found), ("candidate-rule", found)],
+                    [("candidate-rule", found), ("reviewed-rule", found)],
                     [(problem["id"], problem["found"]) for problem in moved["unmatched"]],
                 )
 

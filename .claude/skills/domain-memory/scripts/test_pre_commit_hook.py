@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.evidence import citation
 from domain_registry.git_hooks import EMPTY_SHA, install_pre_commit_hook, install_pre_push_hook
-from test_support import RegistryTestCase, use_json_layout
+from test_support import RegistryTestCase
 
 TOOL = Path(__file__).resolve().parent / "registry_tools.py"
 REAL_PYTHON = Path(sys.executable).as_posix()
@@ -306,7 +306,7 @@ class PreCommitHookTest(RegistryTestCase):
         result = self.commit_hook(hook, self.shims("exit 1"))
         self.assertEqual((1, f"domain-memory pre-commit: {NO_PYTHON}\n"), (result.returncode, result.stderr))
 
-    def mixed_with_a_legacy_citation(self, relative: str) -> None:
+    def mixed_with_a_plain_text_citation(self, relative: str) -> None:
         self.cited_source()
         (self.repo / relative).parent.mkdir(parents=True, exist_ok=True)
         (self.repo / relative).write_text("one\ntwo\n", encoding="utf-8")
@@ -315,23 +315,18 @@ class PreCommitHookTest(RegistryTestCase):
             "evidence": [f"{relative}:2", citation(self.repo, relative, 1, 1)],
         }])
 
-    def test_a_file_cited_in_the_json_layout_needs_python(self) -> None:
-        self.cited_source()
-        use_json_layout(self.repo / "memory")
-        self.assert_staging_needs_python("src/a.py")
-
     def test_a_file_named_in_the_source_map_needs_python(self) -> None:
         self.cited_source()
         (self.repo / "memory" / "source-map.json").write_text(
             '{"sources": [{"path": "docs/selected.md"}]}\n', encoding="utf-8")
         self.assert_staging_needs_python("docs/selected.md")
 
-    def test_a_plain_path_kept_beside_a_legacy_citation_needs_python(self) -> None:
-        self.mixed_with_a_legacy_citation("src/b.py")
+    def test_a_plain_path_kept_beside_a_plain_text_citation_needs_python(self) -> None:
+        self.mixed_with_a_plain_text_citation("src/b.py")
         self.assert_staging_needs_python("src/b.py")
 
-    def test_a_quoted_path_kept_beside_a_legacy_citation_needs_python(self) -> None:
-        self.mixed_with_a_legacy_citation(".hidden/b.py")
+    def test_a_quoted_path_kept_beside_a_plain_text_citation_needs_python(self) -> None:
+        self.mixed_with_a_plain_text_citation(".hidden/b.py")
         self.assert_staging_needs_python(".hidden/b.py")
 
     def mapped_contexts_with_a_cited_port(self) -> None:

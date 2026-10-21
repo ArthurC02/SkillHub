@@ -16,7 +16,7 @@ from ..evidence import (
     staged_content,
 )
 from ..policy import existing_policy, policy_path, write_policy
-from ..registry import init_registry, migrate_evidence, verify_evidence
+from ..registry import init_registry, verify_evidence
 from ..relocate import Recitation, line_range, recite, relocate_evidence
 from ..security import scan_report
 from ..sources import (
@@ -205,12 +205,6 @@ def package_overlay(package_root: Path) -> dict[str, dict[str, dict | None]]:
     return overlay
 
 
-def handle_migrate_evidence(args: argparse.Namespace) -> int:
-    migrated = migrate_evidence(args.registry_root.resolve(), args.repo_root.resolve())
-    print_json({"migrated": migrated}, indent=None)
-    return 0
-
-
 def handle_init_domain_memory(args: argparse.Namespace) -> int:
     repo_root = args.repo_root.resolve()
     output = args.output.resolve()
@@ -345,7 +339,6 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "discover-sources": handle_discover_sources,
     "verify-sources": handle_verify_sources,
     "verify-evidence": handle_verify_evidence,
-    "migrate-evidence": handle_migrate_evidence,
     "init-domain-memory": handle_init_domain_memory,
     "confirm-sources": handle_confirm_sources,
     "refresh-sources": handle_refresh_sources,

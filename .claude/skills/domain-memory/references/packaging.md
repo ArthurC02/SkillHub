@@ -23,19 +23,6 @@ The scripts need Python 3.10 or later, its standard library, and `git`, and noth
 
 Only hosts that define a manifest read it, so the Plugin root also carries `AGENTS.md`: the entry point for an Agent that arrives with no manifest support and no concept of Skills. It states the runtime, the command form, the vocabulary, the common tasks and the six code rules, and the two rules that hold whoever is reading — `readiness` first, and only `reviewed` records are facts — then sends the reader to the router to choose a capability.
 
-When a host accepts only one standalone Skill, build a self-contained bundle first:
+The Plugin root also holds `evals/`. Each directory under it states its scenarios in `scenarios.json`: a small project, the handoff and task an Agent receives, the expectations a reader judges, and a `check.py` that computes the ones a machine can. Give each scenario to an Agent with the Plugin as released and again with the Plugin as changed, on more than one model tier, and compare. A change to a Skill or a reference that moves no scenario has not been shown to help.
 
-```bash
-python scripts/build_standalone.py \
-  --plugin-root . \
-  --skill domain-memory-read \
-  --output ./dist/domain-memory-read
-```
-
-Upload the resulting directory. Do not upload a directory under `skills/` directly: its references and templates live at the Plugin root. Do not upload the Plugin root as if it were a standalone replacement: its root `SKILL.md` is a router and the host may not discover nested Skills automatically.
-
-Standalone bundles keep the same file-backed Registry format and include the shared resources required by the selected capability. Change Packages use explicit `domain-*/v1` format fields so an older package cannot silently pass as current. They may omit unrelated capabilities, but must not claim that one capability performed the complete Read → Design → Maintain → Review cycle. Implementation hygiene is a companion check, not a substitute for that lifecycle.
-
-The Plugin root also holds `evals/`, which a bundle does not carry. Each directory under it states its scenarios in `scenarios.json`: a small project, the handoff and task an Agent receives, the expectations a reader judges, and a `check.py` that computes the ones a machine can. Give each scenario to an Agent with the Plugin as released and again with the Plugin as changed, on more than one model tier, and compare. A change to a Skill or a reference that moves no scenario has not been shown to help.
-
-Before release, validate the Plugin manifest, each standalone bundle, and the selected bundle's scripts. A valid manifest proves packaging shape; it does not prove that a host invokes every lifecycle capability.
+Before release, validate the Plugin manifest and run the scripts' tests. A valid manifest proves packaging shape; it does not prove that a host invokes every lifecycle capability.

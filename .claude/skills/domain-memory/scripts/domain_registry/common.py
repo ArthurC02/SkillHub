@@ -203,14 +203,14 @@ def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 
 DOMAIN_MEMORY_HINT = (
-    "check --registry-root (a Registry holds registry/index.md or registry/manifest.json, "
+    "check --registry-root (a Registry holds registry/index.md, "
     "or a domain-source-map/v1 source-map.json); "
     "initialize one only if this repository has none yet"
 )
 
 
 SOURCE_MAP_FORMAT = "domain-source-map/v1"
-REGISTRY_MARKERS = ("index.md", "manifest.json")
+REGISTRY_MARKERS = ("index.md",)
 
 
 def holds_domain_memory(path: Path) -> bool:
@@ -301,10 +301,6 @@ def writer_lock(root: Path):
         yield
     finally:
         lock.rmdir()
-
-
-def template_dir() -> Path:
-    return Path(__file__).parents[2] / "templates" / "domain-registry"
 
 
 def change_template_dir() -> Path:

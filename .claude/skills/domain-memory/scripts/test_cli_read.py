@@ -19,7 +19,7 @@ from domain_registry.locate import domain_memory_hint
 from domain_registry.evidence import citation
 from domain_registry.registry import asset_records
 from domain_registry.sources import probe_sources, shown_argument
-from test_support import RegistryTestCase, use_json_layout
+from test_support import RegistryTestCase
 
 
 class CliReadTest(RegistryTestCase):
@@ -36,14 +36,13 @@ class CliReadTest(RegistryTestCase):
         )
 
     def test_upsert_candidate_takes_record_file_more_than_once_from_the_command_line(self) -> None:
-        use_json_layout(self.repo / "memory")
         order, line = self.look_alike_terms()
         result = self.run_cli(
             "upsert-candidate", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
             "--asset", "vocabulary", "--record-file", str(order), "--record-file", str(line),
         )
         self.assertEqual((0, "2 candidate records written: 2 created, 0 updated."), (result.returncode, result.stdout.strip()))
-        self.assertEqual(["order", "order-line"],
+        self.assertEqual(["order-line", "order"],
                          [term["id"] for term in asset_records(self.repo / "memory", "vocabulary.json")])
 
     def test_upsert_candidate_names_a_record_file_that_does_not_exist(self) -> None:
@@ -150,15 +149,14 @@ class CliReadTest(RegistryTestCase):
             (result.returncode, result.stderr),
         )
 
-    def test_outside_git_a_registry_directory_counts_only_when_it_holds_a_manifest_or_an_index(self) -> None:
+    def test_outside_git_a_registry_directory_counts_only_when_it_holds_an_index(self) -> None:
         for name, files in (("bare", ("registry/notes.txt",)), ("indexed", ("registry/index.md",)), ("manifested", ("registry/manifest.json",))):
             for relative in files:
                 (self.repo / "places" / name / relative).parent.mkdir(parents=True, exist_ok=True)
                 (self.repo / "places" / name / relative).write_text("{}", encoding="utf-8")
         places = self.repo.resolve() / "places"
         self.assertEqual(
-            f"{DOMAIN_MEMORY_HINT}; Domain Memories in this repository: "
-            f"{(places / 'indexed').as_posix()}, {(places / 'manifested').as_posix()}",
+            f"{DOMAIN_MEMORY_HINT}; did you mean {(places / 'indexed').as_posix()}?",
             domain_memory_hint(places / "memry"),
         )
 
@@ -264,15 +262,6 @@ class CliReadTest(RegistryTestCase):
                 result = self.run_cli("export", "--registry-root", root, *extra)
                 self.assertEqual(1, result.returncode)
                 self.assertEqual(message, result.stderr.strip())
-
-    def test_a_committed_json_asset_that_is_not_json_is_named(self) -> None:
-        use_json_layout(self.repo / "memory")
-        (self.repo / "memory" / "registry" / "rules.json").write_text("not json", encoding="utf-8")
-        self.commit_all("broken")
-        result = self.run_cli("export", "--registry-root", str(self.repo / "memory"),
-                              "--repo-root", str(self.repo), "--commit", "HEAD")
-        self.assertEqual(1, result.returncode)
-        self.assertTrue(result.stderr.startswith("ERROR: memory/registry/rules.json is not JSON: "), result.stderr)
 
     def test_the_module_entry_point_runs_the_command_instead_of_exiting_quietly(
         self,

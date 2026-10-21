@@ -246,7 +246,7 @@ def _valid_policy_if_any(root: Path) -> dict[str, Any] | None:
 
 def review_mode(root: Path) -> str:
     policy = _valid_policy_if_any(root)
-    return policy["review_mode"] if policy else "legacy-unverified"
+    return policy["review_mode"] if policy else "no-policy"
 
 
 def review_governance(root: Path) -> dict[str, Any]:

@@ -41,4 +41,4 @@ Supporting references: [evidence rules](references/evidence-rules.md), [Registry
 
 `plugin.json` packages Skills and optional scripts but does not declare subagents. A host may delegate these capabilities to its own agents; otherwise run them sequentially. See [host integration](references/host-integration.md).
 
-Distribute the complete capability set as the Plugin. Distribute one directory under `skills/` when a host accepts only a standalone Skill; the root router is not a standalone replacement for the lifecycle capabilities. See [packaging](references/packaging.md).
+Distribute the complete capability set as the Plugin. See [packaging](references/packaging.md).

@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -40,22 +42,38 @@ func evidenceRepoCiting(t *testing.T, citedPath, content string, withoutHash boo
 	if withoutHash {
 		delete(citation, "excerpt_sha256")
 	}
-	rules, err := json.MarshalIndent(map[string]any{"rules": []any{map[string]any{
-		"id": "rule", "statement": "S.", "status": "reviewed", "evidence": []any{citation},
-	}}}, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	files := map[string]string{citedPath: content, "docs/domain-memory/registry/rules.json": string(rules) + "\n", runtimeDockerfile: ""}
-	for name, key := range map[string]string{
-		"contexts": "contexts", "vocabulary": "terms", "aggregates": "aggregates", "contracts": "contracts",
-		"interactions": "interactions", "decisions": "decisions", "events": "events", "capabilities": "capabilities",
-		"value-objects": "value_objects", "dependency-policies": "dependencies",
-	} {
-		files["docs/domain-memory/registry/"+name+".json"] = `{"` + key + `": []}` + "\n"
+	files := map[string]string{citedPath: content, runtimeDockerfile: ""}
+	for path, text := range conceptRegistry(map[string]string{"rule": ruleConcept(citation, "S.")}) {
+		files[path] = text
 	}
 	repo.commit(t, files)
 	return repo, repo.head(t)
+}
+
+func ruleConcept(citation map[string]any, statement string) string {
+	lines, _ := citation["lines"].(map[string]any)
+	concept := fmt.Sprintf("---\ntype: Business Rule\nstatus: stable\nsources:\n  - resource: \"%s#L%v-%v\"\n",
+		citation["path"], lines["start"], lines["end"])
+	if digest, ok := citation["excerpt_sha256"].(string); ok {
+		concept += fmt.Sprintf("    excerpt_sha256: \"%s\"\n", digest)
+	}
+	return concept + "---\n" + statement + "\n"
+}
+
+func conceptRegistry(rules map[string]string) map[string]string {
+	ids := make([]string, 0, len(rules))
+	for id := range rules {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	index := "# Business Rules\n\n"
+	files := map[string]string{"docs/domain-memory/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n\n- [Business Rules](/rules/index.md)\n"}
+	for _, id := range ids {
+		index += fmt.Sprintf("- [%s](/rules/%s)\n", id, id)
+		files["docs/domain-memory/registry/rules/"+id+".md"] = rules[id]
+	}
+	files["docs/domain-memory/registry/rules/index.md"] = index
+	return files
 }
 
 func pushProblems(t *testing.T, repo gitRepo, base string) []string {
@@ -168,23 +186,15 @@ func TestACitationAddedInAPushThatIsNotCheckedOutIsChecked(t *testing.T) {
 	if err := json.Unmarshal([]byte("{"+body), &citation); err != nil {
 		t.Fatalf("cite printed %q: %v", cited, err)
 	}
-	rulesPath := filepath.Join(repo.root, "docs", "domain-memory", "registry", "rules.json")
-	data, err := os.ReadFile(rulesPath)
+	files := map[string]string{"src/c.py": "fact = 1\n"}
+	existing, err := os.ReadFile(filepath.Join(repo.root, "docs", "domain-memory", "registry", "rules", "rule.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var document map[string][]any
-	if err := json.Unmarshal(data, &document); err != nil {
-		t.Fatal(err)
+	for path, text := range conceptRegistry(map[string]string{"rule": string(existing), "later": ruleConcept(citation, "T.")}) {
+		files[path] = text
 	}
-	document["rules"] = append(document["rules"], map[string]any{
-		"id": "later", "statement": "T.", "status": "reviewed", "evidence": []any{citation},
-	})
-	rules, err := json.MarshalIndent(document, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	repo.commit(t, map[string]string{"src/c.py": "fact = 1\n", "docs/domain-memory/registry/rules.json": string(rules) + "\n"})
+	repo.commit(t, files)
 	repo.commit(t, map[string]string{"src/c.py": "fact = 2\n"})
 	pushed := repo.head(t)
 	repo.git(t, "checkout", "-q", "--detach", base)
@@ -291,12 +301,12 @@ func TestARangeNamingAShaThatDoesNotExistIsAnError(t *testing.T) {
 	}
 }
 
-func TestARegistryFileThatIsNotJSONIsNamedAndLeftToCI(t *testing.T) {
+func TestARegistryFileThatIsNotAConceptIsNamedAndLeftToCI(t *testing.T) {
 	repo, base := evidenceRepo(t)
-	repo.commit(t, map[string]string{"docs/domain-memory/registry/rules.json": "not json"})
+	repo.commit(t, map[string]string{"docs/domain-memory/registry/rules/rule.md": "not a concept"})
 	problems, warnings, err := committedEvidenceProblems(repo.root, base+"..HEAD")
 	if err != nil || len(problems) != 0 || len(warnings) != 1 ||
-		!strings.Contains(warnings[0], "Domain Memory evidence skipped (ERROR: docs/domain-memory/registry/rules.json is not JSON: ") {
+		!strings.Contains(warnings[0], "Domain Memory evidence skipped (ERROR: rules/rule.md: a concept document starts with a --- frontmatter line") {
 		t.Fatalf("an unparsable registry file was not named: %v %v %v", problems, warnings, err)
 	}
 }

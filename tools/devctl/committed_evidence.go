@@ -19,7 +19,7 @@ const (
 	sourceMapFile     = domainMemoryRoot + "/source-map.json"
 )
 
-var passingEvidence = map[string]bool{"current": true, "shifted": true, "legacy-unverified": true}
+var passingEvidence = map[string]bool{"current": true, "shifted": true}
 
 type evidenceReport struct {
 	Results *[]struct {

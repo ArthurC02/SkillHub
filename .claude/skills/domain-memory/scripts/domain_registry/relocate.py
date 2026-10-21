@@ -82,7 +82,7 @@ class Relocation:
 def _record_update(
     name: str, document: dict[str, Any], entry: dict[str, Any], changed: dict[str, Any], reviewing: dict[str, str]
 ) -> dict[str, Any]:
-    record = {key: value for key, value in changed.items() if key not in ("review", "verified")}
+    record = {key: value for key, value in changed.items() if key != "verified"}
     asset = name.removesuffix(".json")
     if record_status(asset, document, entry) == "reviewed":
         return {

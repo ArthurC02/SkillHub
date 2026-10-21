@@ -31,8 +31,8 @@ COMMAND_GROUPS = {
         "list-proposals", "quality-gates", "counterfactual",
     ),
     "advanced": (
-        "discover-sources", "init-domain-memory", "confirm-sources", "refine-sources", "refresh-sources", "refresh-listing", "init",
-        "migrate-registry", "migrate-evidence", "recover-registry-update", "demote-local-reviews", "redraft-proposal",
+        "discover-sources", "init-domain-memory", "confirm-sources", "refine-sources", "refresh-sources", "refresh-listing",
+        "recover-registry-update", "demote-local-reviews", "redraft-proposal",
         "export", "change-coupling", "compare-registry", "harvest-candidates", "governance-readiness",
         "init-signing-key", "amend-policy", "install-git-hitl-hook", "install-pre-commit-hook", "verify-git-governance", "validate-policy",
         "verify-scm-attestation", "audit-attestations", "scan-secrets", "validate-contract", "mcp-serve",
@@ -285,9 +285,6 @@ def _add_citation_commands(commands: argparse._SubParsersAction) -> None:
     add_path(relocate_parser, "--repo-root")
     relocate_parser.add_argument("--from", dest="moved_from", required=True)
     relocate_parser.add_argument("--to", dest="moved_to", required=True)
-    evidence_migrate_parser = commands.add_parser("migrate-evidence", help="Upgrade legacy citations")
-    add_path(evidence_migrate_parser, "--registry-root")
-    add_path(evidence_migrate_parser, "--repo-root")
 
 
 def _add_source_commands(commands: argparse._SubParsersAction) -> None:
@@ -365,10 +362,6 @@ def _add_lifecycle_commands(commands: argparse._SubParsersAction) -> None:
 
 
 def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
-    init_parser = commands.add_parser("init", help="Create an empty Registry skeleton, not the entry point")
-    add_path(init_parser, "--output")
-    migrate_parser = commands.add_parser("migrate-registry", help="Move a JSON Registry into concept files")
-    add_path(migrate_parser, "--registry-root")
     _add_change_package_init(commands)
     redraft_parser = commands.add_parser("redraft-proposal", help="Redraft a retired proposal")
     add_path(redraft_parser, "--package-root")

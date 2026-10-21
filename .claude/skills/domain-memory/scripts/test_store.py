@@ -7,24 +7,19 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from domain_registry.audit import read_events, reviewing_proposals
 from domain_registry.common import ASSET_KEYS, registry_dir, shown_path, write_json
 from domain_registry.git import run_bounded
-from domain_registry.okf import encode
-from domain_registry.registry import init_registry, migrate_registry
+from domain_registry.registry import init_registry
 from domain_registry.revision import registry_digest
 from domain_registry.store import (
     read_record,
     MANIFEST,
     committed_documents,
-    has_document,
     has_registry,
-    is_concept_layout,
-    logical_documents,
     read_document,
     write_document,
 )
-from test_support import RegistryTestCase, applied_by, snapshot_of_files, use_json_layout
+from test_support import RegistryTestCase, snapshot_of_files
 
 ORDER_RULE = {"id": "order-total", "statement": "An order total is never negative. It is checked on save.",
               "contexts": ["orders"], "status": "reviewed"}
@@ -97,7 +92,7 @@ class ConceptLayoutTest(RegistryTestCase):
 
     def test_init_lays_out_a_root_index_and_one_index_per_asset(self) -> None:
         registry = registry_dir(self.memory())
-        self.assertTrue(is_concept_layout(self.memory()))
+        self.assertTrue(has_registry(self.memory()))
         root_index = (registry / "index.md").read_text(encoding="utf-8")
         self.assertTrue(root_index.startswith('---\nokf_version: "0.2"\n---\n# Domain Registry\n'))
         self.assertIn("- [Business Rules](/rules/index.md)\n", root_index)
@@ -150,13 +145,6 @@ class ConceptLayoutTest(RegistryTestCase):
         with self.assertRaisesRegex(ValueError, "rules holds two records with id r; a concept file holds one"):
             write_document(self.memory(), "rules.json", {"rules": [{"id": "r"}, {"id": "r", "statement": "S."}]})
 
-    def test_an_asset_level_status_moves_into_records_that_have_none(self) -> None:
-        write_document(self.memory(), "rules.json", {"status": "reviewed", "rules": [{"id": "a"}, {"id": "b", "status": "candidate"}]})
-        self.assertEqual(
-            [{"id": "a", "status": "reviewed"}, {"id": "b", "status": "candidate"}],
-            read_document(self.memory(), "rules.json")["rules"],
-        )
-
     def test_an_unreadable_concept_file_is_named(self) -> None:
         (registry_dir(self.memory()) / "rules" / "broken.md").write_text("no frontmatter\n", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, r"rules/broken\.md: a concept document starts with a --- frontmatter line"):
@@ -170,78 +158,13 @@ class ConceptLayoutTest(RegistryTestCase):
             {"format": "domain-registry/v1", "status": "candidate", "artifacts": list(ASSET_KEYS)},
             read_document(self.memory(), MANIFEST),
         )
-        self.assertTrue(has_document(self.memory(), "events.json"))
 
     def test_a_directory_without_a_registry_has_none(self) -> None:
         self.assertFalse(has_registry(self.repo / "nowhere"))
+        (registry_dir(self.repo / "nowhere")).mkdir(parents=True)
+        write_json(registry_dir(self.repo / "nowhere") / MANIFEST, {"format": "domain-registry/v1"})
+        self.assertFalse(has_registry(self.repo / "nowhere"))
         self.assertTrue(has_registry(self.memory()))
-
-
-class MigrationTest(RegistryTestCase):
-    def legacy_registry(self, rules: list[dict]) -> None:
-        write_document(self.repo / "memory", "rules.json", {"rules": rules})
-        use_json_layout(self.repo / "memory")
-
-    def test_migration_moves_a_json_registry_into_concept_files_unchanged(self) -> None:
-        self.legacy_registry([REFUND_RULE, ORDER_RULE])
-        before = logical_documents(self.repo / "memory")
-        self.assertEqual([], migrate_registry(self.repo / "memory"))
-        self.assertTrue(is_concept_layout(self.repo / "memory"))
-        self.assertFalse((registry_dir(self.repo / "memory") / "rules.json").exists())
-        self.assertEqual(before, logical_documents(self.repo / "memory"))
-        self.assertEqual("migrate-registry", read_events(self.repo / "memory")[-1]["operation"])
-
-    def test_migrating_a_concept_registry_changes_nothing(self) -> None:
-        before = snapshot_of_files(self.repo / "memory")
-        self.assertEqual([], migrate_registry(self.repo / "memory"))
-        self.assertEqual(before, snapshot_of_files(self.repo / "memory"))
-
-    def test_a_missing_asset_file_is_created_before_the_move(self) -> None:
-        self.legacy_registry([ORDER_RULE])
-        (registry_dir(self.repo / "memory") / "events.json").unlink()
-        self.assertEqual(["events.json"], migrate_registry(self.repo / "memory"))
-        self.assertEqual([], read_document(self.repo / "memory", "events.json")["events"])
-
-    def test_a_registry_the_concept_layout_cannot_hold_is_left_as_it_was(self) -> None:
-        self.legacy_registry([ORDER_RULE])
-        rules = registry_dir(self.repo / "memory") / "rules.json"
-        write_json(rules, {**json.loads(rules.read_text(encoding="utf-8")), "note": "kept only in JSON"})
-        before = snapshot_of_files(registry_dir(self.repo / "memory"))
-        with self.assertRaisesRegex(ValueError, "would not hold the Registry unchanged"):
-            migrate_registry(self.repo / "memory")
-        self.assertEqual(before, snapshot_of_files(registry_dir(self.repo / "memory")))
-
-    def test_migration_keeps_only_who_verified_a_record_and_moves_its_proposal_to_the_audit(self) -> None:
-        self.legacy_registry([{**ORDER_RULE, "review": REVIEW, "evidence": [CITED_WITH_DERIVED_KEYS]}])
-        migrate_registry(self.repo / "memory")
-        self.assertEqual(
-            [{**ORDER_RULE, "verified": [{"by": "human:Ann", "at": "2026-01-02T00:00:00Z"}], "evidence": [CITED]}],
-            read_document(self.repo / "memory", "rules.json")["rules"],
-        )
-        self.assertEqual({"rules/order-total": "PRO-1"}, read_events(self.repo / "memory")[-1]["reviewed_by"])
-
-    def test_a_concept_registry_still_holding_a_review_block_is_refined_in_place(self) -> None:
-        write_document(self.repo / "memory", "rules.json", {"rules": [{**ORDER_RULE, "review": REVIEW}]})
-        migrate_registry(self.repo / "memory")
-        [rule] = read_document(self.repo / "memory", "rules.json")["rules"]
-        self.assertEqual((False, "PRO-1"), ("review" in rule, reviewing_proposals(self.repo / "memory")["rules/order-total"]))
-
-    def test_a_concept_file_still_holding_derived_hashes_loses_them(self) -> None:
-        concept = registry_dir(self.repo / "memory") / "rules" / "order-total.md"
-        concept.write_text(encode("rules", {**ORDER_RULE, "evidence": [CITED_WITH_DERIVED_KEYS]}), encoding="utf-8")
-        migrate_registry(self.repo / "memory")
-        self.assertEqual([CITED], read_document(self.repo / "memory", "rules.json")["rules"][0]["evidence"])
-
-    def test_a_review_block_without_an_approval_leaves_no_verified_entry(self) -> None:
-        write_document(self.repo / "memory", "rules.json", {"rules": [{**ORDER_RULE, "review": {"proposal_id": "PRO-1"}}]})
-        migrate_registry(self.repo / "memory")
-        self.assertEqual([ORDER_RULE], read_document(self.repo / "memory", "rules.json")["rules"])
-
-    def test_a_later_apply_takes_over_as_the_reviewing_proposal(self) -> None:
-        write_document(self.repo / "memory", "rules.json", {"rules": [{**ORDER_RULE, "review": REVIEW}]})
-        migrate_registry(self.repo / "memory")
-        applied_by(self.repo / "memory", "PRO-2", "rules/order-total")
-        self.assertEqual({"rules/order-total": "PRO-2"}, reviewing_proposals(self.repo / "memory"))
 
 
 class DigestAndHistoryTest(RegistryTestCase):
@@ -252,30 +175,19 @@ class DigestAndHistoryTest(RegistryTestCase):
             self.assertEqual("sha256:4a0def5bc16e39e03b939ef5f61f4dcc0c3d89f4e54f27a967c216a14720a324", registry_digest(root))
 
     def test_the_digest_does_not_depend_on_record_order(self) -> None:
-        self.legacy_registry_with([REFUND_RULE, ORDER_RULE])
+        write_document(self.repo / "memory", "rules.json", {"rules": [REFUND_RULE, ORDER_RULE]})
         first = registry_digest(self.repo / "memory")
-        self.legacy_registry_with([ORDER_RULE, REFUND_RULE])
+        write_document(self.repo / "memory", "rules.json", {"rules": [ORDER_RULE, REFUND_RULE]})
         self.assertEqual(first, registry_digest(self.repo / "memory"))
 
-    def legacy_registry_with(self, rules: list[dict]) -> None:
-        if not (registry_dir(self.repo / "memory") / MANIFEST).exists():
-            use_json_layout(self.repo / "memory")
-        write_json(registry_dir(self.repo / "memory") / "rules.json", {"format": "domain-rules/v1", "status": "candidate", "rules": rules})
-
-    def test_the_documents_of_a_commit_read_back_in_either_layout(self) -> None:
+    def test_the_documents_of_a_commit_read_back(self) -> None:
         names = (MANIFEST, "rules.json", "events.json")
         write_document(self.repo / "memory", "rules.json", {"rules": [ORDER_RULE]})
         self.commit_all("concept layout")
-        concept = self.head()
-        use_json_layout(self.repo / "memory")
-        self.commit_all("json layout")
-        legacy = self.head()
-        for label, commit in (("concept", concept), ("json", legacy)):
-            with self.subTest(label):
-                documents = committed_documents(self.repo, commit, self.repo / "memory", names)
-                self.assertEqual([ORDER_RULE], documents["rules.json"]["rules"])
-                self.assertEqual([], documents["events.json"]["events"])
-                self.assertEqual("domain-registry/v1", documents[MANIFEST]["format"])
+        documents = committed_documents(self.repo, self.head(), self.repo / "memory", names)
+        self.assertEqual([ORDER_RULE], documents["rules.json"]["rules"])
+        self.assertEqual([], documents["events.json"]["events"])
+        self.assertEqual("domain-registry/v1", documents[MANIFEST]["format"])
 
     def test_a_commit_without_the_registry_has_no_documents(self) -> None:
         self.assertIsNone(committed_documents(self.repo, self.head(), self.repo / "elsewhere", (MANIFEST,)))
@@ -327,16 +239,6 @@ class ReadRecordTest(RegistryTestCase):
              read_record(root, "contexts.json", "index"), read_record(root, "contexts.json", "../orders"),
              read_record(root, "contexts.json", "orders/../orders")),
         )
-
-    def test_a_record_is_found_in_a_json_layout_by_scanning_its_asset(self) -> None:
-        use_json_layout(self.repo / "memory")
-        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
-        self.assertEqual(
-            ("Orders", None),
-            (read_record(self.repo / "memory", "contexts.json", "orders")["name"],
-             read_record(self.repo / "memory", "contexts.json", "billing")),
-        )
-
 
 if __name__ == "__main__":
     unittest.main()

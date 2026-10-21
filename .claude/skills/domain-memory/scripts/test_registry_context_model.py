@@ -14,7 +14,8 @@ from domain_registry.registry import (
     record_by_id,
     validate,
 )
-from test_support import VERIFIED, RegistryTestCase, amend_policy, use_json_layout
+from domain_registry.evidence import citation
+from test_support import VERIFIED, RegistryTestCase, amend_policy
 
 
 class RegistryContextModelTest(RegistryTestCase):
@@ -188,6 +189,8 @@ class RegistryContextModelTest(RegistryTestCase):
         )
 
     def test_a_registry_of_reviewed_records_satisfies_reviewed_validation(self) -> None:
+        (self.repo / "docs").mkdir(exist_ok=True)
+        (self.repo / "docs" / "kept.md").write_text("kept\n", encoding="utf-8")
         self.seed(
             "contexts.json",
             [
@@ -197,17 +200,17 @@ class RegistryContextModelTest(RegistryTestCase):
                     "responsibility": "Own orders.",
                     "status": "reviewed",
                     "verified": VERIFIED,
-                    "evidence": ["docs/kept.md:1"],
+                    "evidence": [citation(self.repo, "docs/kept.md", 1, 1)],
                 }
             ],
         )
         self.assertEqual([], validate(self.repo / "memory", self.repo, True))
 
-    def test_a_record_holding_a_legacy_review_block_is_sent_to_migrate_registry(self) -> None:
+    def test_a_record_holding_a_review_block_is_refused(self) -> None:
         self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders.",
                                      "review": {"proposal_id": "P-1"}}])
         self.assertEqual(
-            ["contexts/orders holds a legacy review block; run migrate-registry"],
+            ["contexts/orders holds a review block; this version reads verified only"],
             validate(self.repo / "memory", None, False),
         )
 
@@ -357,7 +360,7 @@ class RegistryContextModelTest(RegistryTestCase):
         (self.repo / "memory" / "domain-memory-policy.json").unlink()
         model = context_model(self.repo / "memory", "orders")
         assert model is not None
-        self.assertEqual(("working-memory", "legacy-unverified"), (model["usage"], model["review_mode"]))
+        self.assertEqual(("working-memory", "no-policy"), (model["usage"], model["review_mode"]))
 
     def test_reviewed_validation_without_a_policy_file_cannot_be_satisfied(self) -> None:
         (self.repo / "memory" / "domain-memory-policy.json").unlink()
@@ -367,7 +370,6 @@ class RegistryContextModelTest(RegistryTestCase):
         )
 
     def test_a_context_model_gathers_each_section_from_the_records_that_name_the_context(self) -> None:
-        use_json_layout(self.repo / "memory")
         self.two_contexts()
         self.seed("vocabulary.json", [
             {"id": "order", "name": "Order", "contexts": ["orders"]},
@@ -399,10 +401,10 @@ class RegistryContextModelTest(RegistryTestCase):
         model = context_model(self.repo / "memory", "orders")
         assert model is not None
         expected = {
-            "vocabulary": ["order", "ledger-entry"],
+            "vocabulary": ["ledger-entry", "order"],
             "aggregates": ["order-aggregate"],
             "rules": ["order-total", "shared-currency"],
-            "interactions": ["order-billed", "invoice-paid"],
+            "interactions": ["invoice-paid", "order-billed"],
             "events": ["order-placed", "payment-received"],
             "capabilities": ["place-order"],
             "value_objects": ["money"],
@@ -428,45 +430,6 @@ class RegistryContextModelTest(RegistryTestCase):
              asked["target_depends_on_source"]["contracts"],
              reversed_ask["status"], [entry["id"] for entry in reversed_ask["target_depends_on_source"]["contracts"]]),
         )
-
-    def test_each_asset_level_defect_is_named(self) -> None:
-        use_json_layout(self.repo / "memory")
-        registry = self.repo / "memory" / "registry"
-        events = registry / "events.json"
-
-        def break_format(value: dict) -> None:
-            value["format"] = "domain-contexts/v0"
-
-        def break_status(value: dict) -> None:
-            value["status"] = "pending"
-
-        def drop_events_from_manifest(value: dict) -> None:
-            value["artifacts"] = [name for name in value["artifacts"] if name != "events.json"]
-
-        def manifest_without_a_list(value: dict) -> None:
-            value["artifacts"] = "all"
-
-        cases = [
-            ("invalid format", "contexts.json", break_format, ["contexts.json has an invalid format"]),
-            ("invalid status", "contexts.json", break_status, ["contexts.json has an invalid status"]),
-            ("manifest lacks an asset", "manifest.json", drop_events_from_manifest,
-             ["manifest artifacts must list every standard registry asset file"]),
-            ("manifest artifacts not a list", "manifest.json", manifest_without_a_list,
-             ["manifest artifacts must list every standard registry asset file"]),
-        ]
-        pristine = {path.name: path.read_text(encoding="utf-8") for path in registry.iterdir()}
-        for label, name, change, expected in cases:
-            with self.subTest(label):
-                for asset, text in pristine.items():
-                    (registry / asset).write_text(text, encoding="utf-8")
-                self.edit_registry(name, change)
-                self.assertEqual(expected, validate(self.repo / "memory", None, False))
-        with self.subTest("missing asset file"):
-            for asset, text in pristine.items():
-                (registry / asset).write_text(text, encoding="utf-8")
-            events.unlink()
-            self.assertEqual([f"missing asset: {events}"], validate(self.repo / "memory", None, False))
-
 
 if __name__ == "__main__":
     unittest.main()
