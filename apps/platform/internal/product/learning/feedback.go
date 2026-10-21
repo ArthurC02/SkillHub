@@ -171,23 +171,27 @@ func (s *Service) RecordFeedback(ctx context.Context, report FeedbackReport) err
 }
 
 func (s *Service) CountExpiredFeedback(ctx context.Context, retention time.Duration) (int64, error) {
+	cutoff, err := s.expiryCutoff("count", retention)
+	if err != nil {
+		return 0, err
+	}
+	return gen.New(s.Pool).CountExpiredFeedbackReports(ctx, cutoff)
+}
+
+func (s *Service) expiryCutoff(action string, retention time.Duration) (pgtype.Timestamptz, error) {
 	if s == nil || s.Pool == nil {
-		return 0, errors.New("feedback count requires a database pool")
+		return pgtype.Timestamptz{}, errors.New("feedback " + action + " requires a database pool")
 	}
 	if retention <= 0 {
-		return 0, errors.New("feedback count requires a positive retention period")
+		return pgtype.Timestamptz{}, errors.New("feedback " + action + " requires a positive retention period")
 	}
-	return gen.New(s.Pool).CountExpiredFeedbackReports(ctx,
-		pgtype.Timestamptz{Time: s.now().Add(-retention), Valid: true})
+	return pgtype.Timestamptz{Time: s.now().Add(-retention), Valid: true}, nil
 }
 
 func (s *Service) PurgeExpiredFeedback(ctx context.Context, retention time.Duration) (int64, error) {
-	if s == nil || s.Pool == nil {
-		return 0, errors.New("feedback purge requires a database pool")
+	cutoff, err := s.expiryCutoff("purge", retention)
+	if err != nil {
+		return 0, err
 	}
-	if retention <= 0 {
-		return 0, errors.New("feedback purge requires a positive retention period")
-	}
-	return gen.New(s.Pool).DeleteExpiredFeedbackReports(ctx,
-		pgtype.Timestamptz{Time: s.now().Add(-retention), Valid: true})
+	return gen.New(s.Pool).DeleteExpiredFeedbackReports(ctx, cutoff)
 }

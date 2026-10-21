@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "feedback-expiry-cutoff-recite",
+  "proposal_id": "feedback-expiry-cutoff-recite",
+  "registry_revision": {
+    "observed_commit": "ce9621a9eb25149bc788a20de0ca516ddb86ea6f",
+    "registry_digest": "sha256:2ac56d0d98f30a1b2d131ee46b995537c45c6b4dac5e8245a620cde8271ac6c2",
+    "committed_digest": "sha256:2ac56d0d98f30a1b2d131ee46b995537c45c6b4dac5e8245a620cde8271ac6c2"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/feedback-expiry-cutoff-recite-2026-10-22 --path apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go --path apps/platform/internal/product/learning/feedback.go",
+      "command_profile": "python-unittest",
+      "exit_code": 0,
+      "output_sha256": "sha256:8adf1b732fc9b7ce0f64f433360fedbc8018ce0aad81160914493059d9b2afdc",
+      "finished_at": "2026-10-21T17:43:27.930095Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

@@ -17,17 +17,11 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
-type Pool interface {
-	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
-	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
-	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
-}
-
 type PostgresStore struct {
-	Pool Pool
+	Pool DBTX
 }
 
-func NewPostgresStore(pool Pool) *PostgresStore { return &PostgresStore{Pool: pool} }
+func NewPostgresStore(pool DBTX) *PostgresStore { return &PostgresStore{Pool: pool} }
 
 var _ Store = (*PostgresStore)(nil)
 

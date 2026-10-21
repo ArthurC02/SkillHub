@@ -94,10 +94,10 @@ func (s *Service) Sweep(ctx context.Context) error {
 	if err := s.purgeExpired(ctx); err != nil {
 		return err
 	}
-	if err := s.checkArtifacts(ctx); err != nil {
+	if err := s.checkClaimed(ctx, kindArtifact, s.ListClaimedArtifacts, s.RecordArtifactPurged, audit.ResourceArtifact); err != nil {
 		return err
 	}
-	if err := s.checkDatasets(ctx); err != nil {
+	if err := s.checkClaimed(ctx, kindDataset, s.ListClaimedDatasets, s.RecordDatasetLost, audit.ResourceDataset); err != nil {
 		return err
 	}
 	return s.PublishGauge(ctx)
@@ -238,48 +238,24 @@ func markPurged(ctx context.Context, pool *pgxpool.Pool, mark MarkFunc, artifact
 	return tx.Commit(ctx)
 }
 
-func (s *Service) checkArtifacts(ctx context.Context) error {
+func (s *Service) checkClaimed(
+	ctx context.Context, kind string, list ListFunc, mark MarkFunc, resourceType string,
+) error {
 	q := gen.New(s.Pool)
 	checked := map[string]objectCheck{}
-	rows, err := s.ListClaimedArtifacts(ctx, batch)
+	rows, err := list(ctx, batch)
 	if err != nil {
 		return err
 	}
 	for _, row := range rows {
-		confirmed, err := s.sight(ctx, q, checked, kindArtifact, row)
+		confirmed, err := s.sight(ctx, q, checked, kind, row)
 		if err != nil {
 			return err
 		}
 		if !confirmed {
 			continue
 		}
-		if err := s.markLost(ctx, kindArtifact, row,
-			s.RecordArtifactPurged,
-			audit.ResourceArtifact); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *Service) checkDatasets(ctx context.Context) error {
-	q := gen.New(s.Pool)
-	checked := map[string]objectCheck{}
-	rows, err := s.ListClaimedDatasets(ctx, batch)
-	if err != nil {
-		return err
-	}
-	for _, row := range rows {
-		confirmed, err := s.sight(ctx, q, checked, kindDataset, row)
-		if err != nil {
-			return err
-		}
-		if !confirmed {
-			continue
-		}
-		if err := s.markLost(ctx, kindDataset, row,
-			s.RecordDatasetLost,
-			audit.ResourceDataset); err != nil {
+		if err := s.markLost(ctx, kind, row, mark, resourceType); err != nil {
 			return err
 		}
 	}

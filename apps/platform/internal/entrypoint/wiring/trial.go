@@ -128,16 +128,19 @@ func WireEvaluationRunReaders(service *eval.Service, runs *run.Service) {
 	}
 }
 
+func evalVersionFacts(version registry.Version) facts.Version {
+	return facts.Version{ID: version.ID, SkillID: version.SkillID,
+		PackageObjectKey: version.PackageObjectKey, SourcePath: version.SourcePath}
+}
+
 func WireEvaluationRegistryReaders(service *eval.Service, registryService *registry.Service) {
 	service.ReadVersion = func(ctx context.Context, workspaceID, versionID pgtype.UUID) (facts.Version, bool, error) {
 		version, found, err := registryService.WorkspaceVersion(ctx, workspaceID, versionID)
-		return facts.Version{ID: version.ID, SkillID: version.SkillID,
-			PackageObjectKey: version.PackageObjectKey, SourcePath: version.SourcePath}, found, err
+		return evalVersionFacts(version), found, err
 	}
 	service.ReadLatestVersion = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (facts.Version, bool, error) {
 		version, found, err := registryService.LatestVersion(ctx, workspaceID, skillID)
-		return facts.Version{ID: version.ID, SkillID: version.SkillID,
-			PackageObjectKey: version.PackageObjectKey, SourcePath: version.SourcePath}, found, err
+		return evalVersionFacts(version), found, err
 	}
 	service.ReadSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (facts.Skill, bool, error) {
 		skill, found, err := registryService.WorkspaceSkill(ctx, workspaceID, skillID)

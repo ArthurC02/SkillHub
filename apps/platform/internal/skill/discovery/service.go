@@ -466,22 +466,25 @@ func (s *Service) Browse(ctx context.Context, limit int32, filters searchFilters
 
 	hits := make([]searchResult, 0, len(rows))
 	for _, row := range rows {
-		hit := searchResult{
-			SkillID:       pgconv.UUIDString(row.SkillID),
-			Name:          row.Name,
-			Summary:       summaryText(row.Summary, row.EnrichedSummary),
-			SummarySource: summarySource(row.EnrichedSummary),
-
-			RankNote: rankNoteCatalog,
-		}
-		resultFacets(&hit, facetColumns{
-			curated: row.Curated, category: row.Category, categorySource: row.CategorySource,
-			tagsJSON: row.Tags, scanJSON: row.Scan, verifiedAt: row.VerifiedAt,
-			compat: measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt),
-		})
-		hits = append(hits, hit)
+		hits = append(hits, rowResult(gen.PublicSearchSkillsRow(row), rankNoteCatalog))
 	}
 	return hits, total, nil
+}
+
+func rowResult(row gen.PublicSearchSkillsRow, rankNote string) searchResult {
+	hit := searchResult{
+		SkillID:       pgconv.UUIDString(row.SkillID),
+		Name:          row.Name,
+		Summary:       summaryText(row.Summary, row.EnrichedSummary),
+		SummarySource: summarySource(row.EnrichedSummary),
+		RankNote:      rankNote,
+	}
+	resultFacets(&hit, facetColumns{
+		curated: row.Curated, category: row.Category, categorySource: row.CategorySource,
+		tagsJSON: row.Tags, scanJSON: row.Scan, verifiedAt: row.VerifiedAt,
+		compat: measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt),
+	})
+	return hit
 }
 
 func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query string, limit int32, filters searchFilters) ([]searchResult, int64, error) {
@@ -513,19 +516,7 @@ func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 
 	hits := make([]searchResult, 0, len(rows))
 	for _, row := range rows {
-		hit := searchResult{
-			SkillID:       pgconv.UUIDString(row.SkillID),
-			Name:          row.Name,
-			Summary:       summaryText(row.Summary, row.EnrichedSummary),
-			SummarySource: summarySource(row.EnrichedSummary),
-			RankNote:      rankNoteDegraded,
-		}
-		resultFacets(&hit, facetColumns{
-			curated: row.Curated, category: row.Category, categorySource: row.CategorySource,
-			tagsJSON: row.Tags, scanJSON: row.Scan, verifiedAt: row.VerifiedAt,
-			compat: measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt),
-		})
-		hits = append(hits, hit)
+		hits = append(hits, rowResult(row, rankNoteDegraded))
 	}
 	return hits, total, nil
 }

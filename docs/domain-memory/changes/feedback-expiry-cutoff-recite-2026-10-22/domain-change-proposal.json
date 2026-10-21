@@ -1,0 +1,80 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "feedback-expiry-cutoff-recite",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "feedback-expiry-cutoff-recite",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-21T17:42:38.786555Z",
+  "verified_at": "2026-10-21T17:43:39.849323Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "ce9621a9eb25149bc788a20de0ca516ddb86ea6f",
+    "registry_digest": "sha256:2ac56d0d98f30a1b2d131ee46b995537c45c6b4dac5e8245a620cde8271ac6c2",
+    "committed_digest": "sha256:2ac56d0d98f30a1b2d131ee46b995537c45c6b4dac5e8245a620cde8271ac6c2"
+  },
+  "affected_contexts": [
+    "analytics"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "feedback-past-retention-is-purged-and-newer-kept",
+        "statement": "Purging feedback removes only reports created before the retention window, and the preview counts exactly what the purge removes.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "With a 90-day window, reports aged 100 and 91 days are removed and a fresh one stays."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/feedback.go",
+            "lines": {
+              "start": 173,
+              "end": 197
+            },
+            "content_sha256": "sha256:1bedc824f2f307c906c0d6d86c9bfd7a50bd811149bb5e5e18aa698652d0456b",
+            "excerpt_sha256": "sha256:8ef88772f32292ea1531fff76c56d0024661068f021cdcdd422189bac17bfe9b",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go",
+            "lines": {
+              "start": 710,
+              "end": 739
+            },
+            "excerpt_sha256": "sha256:364a963d8ed718922dca007e22d493f3ded277895e120bdedbe475abd5ad4c69"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "analytics-retention-and-feedback-rules-2026-10-18"
+  ]
+}
