@@ -45,6 +45,12 @@ for (const target of ["header", "feedback"] as const) {
           ? page.getByPlaceholder("搜尋小工具或描述任務")
           : page.locator("#feedback-comment");
       await input.fill("保留輸入");
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+          ),
+      );
       const readingPosition = await page.evaluate(() => scrollY);
       release();
       const failure = form.getByRole("alert", { name: "回答送出結果", exact: true });

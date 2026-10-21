@@ -208,9 +208,11 @@ test("questions belonging to another Run never become an answer form for this Ru
     route.fulfill({ json: { ...ASKING, run_id: NEXT } }),
   );
   await page.goto(`/runs/${RUN}`);
+  await expect(page.locator("#run-trace").getByRole("alert")).toHaveText("無法讀取執行紀錄。");
   await expect(
     page.locator('#run-trace p[role="status"]').filter({ hasText: "執行狀態" }),
-  ).toContainText("succeeded");
+  ).toHaveCount(0);
+  await expect(page.locator("#run-decision .verdict")).toHaveText("任務判定：未符合");
   await expect(page.getByRole("region", { name: "這次試跑需要你回答", exact: true })).toHaveCount(
     0,
   );
