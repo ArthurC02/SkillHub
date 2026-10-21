@@ -14,7 +14,8 @@ function factsOf(text: string) {
 }
 
 export function SimulatedUserForm({ testCase }: { testCase: TestCase }) {
-  const [text, setText] = useState(testCase.simulated_user_facts.join("\n"));
+  const [draft, setDraft] = useState<string | null>(null);
+  const text = draft ?? testCase.simulated_user_facts.join("\n");
   const save = useUpdateTestCase(testCase.test_case_id);
   const facts = factsOf(text);
   const tooMany = facts.length > SimulatedUserFactsMaxItems;
@@ -44,7 +45,7 @@ export function SimulatedUserForm({ testCase }: { testCase: TestCase }) {
           value={text}
           onChange={(e) => {
             save.reset();
-            setText(e.target.value);
+            setDraft(e.target.value);
           }}
           readOnly={save.isPending}
           aria-invalid={invalid}
@@ -60,7 +61,13 @@ export function SimulatedUserForm({ testCase }: { testCase: TestCase }) {
       <button
         type="button"
         disabled={save.isPending || invalid}
-        onClick={() => save.mutate({ simulated_user_facts: facts })}
+        onClick={() => {
+          const submitted = draft;
+          save.mutate(
+            { simulated_user_facts: facts },
+            { onSuccess: () => setDraft((current) => (current === submitted ? null : current)) },
+          );
+        }}
       >
         {save.isPending ? "儲存中…" : "儲存模擬使用者"}
       </button>

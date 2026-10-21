@@ -7,6 +7,7 @@ import { RubricCriterionItem } from "./RubricCriterionItem";
 import { textLengthReason } from "../test-cases.model";
 
 type RubricBlocker = { field: "version" | "item"; id: string; say: string };
+type RubricDraft = { version?: string; items?: Record<string, Partial<RubricItem>> };
 
 function rubricBlocker(version: string, items: RubricItem[]): RubricBlocker | null {
   if (items.length === 0) return null;
@@ -28,9 +29,20 @@ function rubricBlocker(version: string, items: RubricItem[]): RubricBlocker | nu
 
 export function RubricSection({ testCase }: { testCase: TestCase }) {
   const stored = testCase.rubric;
-  const [version, setVersion] = useState(stored?.version ?? "");
-  const [items, setItems] = useState<Record<string, RubricItem>>(
-    Object.fromEntries((stored?.items ?? []).map((i) => [i.id, i])),
+  const [draft, setDraft] = useState<RubricDraft | null>(null);
+  const version = draft?.version ?? stored?.version ?? "";
+  const storedItems = new Map((stored?.items ?? []).map((item) => [item.id, item]));
+  const items = Object.fromEntries(
+    testCase.acceptance_criteria.map(({ id }) => [
+      id,
+      {
+        id,
+        text: "",
+        evidence_required: false,
+        ...storedItems.get(id),
+        ...draft?.items?.[id],
+      },
+    ]),
   );
   const save = useUpdateTestCase(testCase.test_case_id);
   const list = testCase.acceptance_criteria
@@ -39,15 +51,18 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
   const blocker = rubricBlocker(version, list);
   const versionProblem = blocker?.field === "version" ? blocker.say : null;
   const saveRubric = () => {
-    // null means no rubric; {items: []} would mean a rubric with nothing in it.
-    save.mutate({ rubric: list.length === 0 ? null : { version: version.trim(), items: list } });
+    const submitted = draft;
+    save.mutate(
+      { rubric: list.length === 0 ? null : { version: version.trim(), items: list } },
+      { onSuccess: () => setDraft((current) => (current === submitted ? null : current)) },
+    );
   };
 
   const update = (id: string, patch: Partial<RubricItem>) => {
     save.reset();
-    setItems((prev) => ({
-      ...prev,
-      [id]: { ...(prev[id] ?? { id, text: "", evidence_required: false }), ...patch },
+    setDraft((current) => ({
+      ...current,
+      items: { ...current?.items, [id]: { ...current?.items?.[id], ...patch } },
     }));
   };
 
@@ -70,7 +85,8 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
               value={version}
               onChange={(e) => {
                 save.reset();
-                setVersion(e.target.value);
+                const value = e.target.value;
+                setDraft((current) => ({ ...current, version: value }));
               }}
               readOnly={save.isPending}
               size={40}

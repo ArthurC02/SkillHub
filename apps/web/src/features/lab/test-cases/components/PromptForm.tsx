@@ -5,8 +5,9 @@ import { MAX_NAME_CHARS, MAX_PROMPT_CHARS, oversizeReason } from "../test-cases.
 import { MutationError } from "./MutationError";
 
 export function PromptForm({ testCase }: { testCase: TestCase }) {
-  const [name, setName] = useState(testCase.name);
-  const [prompt, setPrompt] = useState(testCase.user_prompt);
+  const [draft, setDraft] = useState<{ name?: string; prompt?: string } | null>(null);
+  const name = draft?.name ?? testCase.name;
+  const prompt = draft?.prompt ?? testCase.user_prompt;
   const sizeReason = oversizeReason(name, prompt);
   const save = useUpdateTestCase(testCase.test_case_id);
 
@@ -20,7 +21,8 @@ export function PromptForm({ testCase }: { testCase: TestCase }) {
           value={name}
           onChange={(e) => {
             save.reset();
-            setName(e.target.value);
+            const value = e.target.value;
+            setDraft((current) => ({ ...current, name: value }));
           }}
           readOnly={save.isPending}
           size={40}
@@ -36,7 +38,8 @@ export function PromptForm({ testCase }: { testCase: TestCase }) {
           value={prompt}
           onChange={(e) => {
             save.reset();
-            setPrompt(e.target.value);
+            const value = e.target.value;
+            setDraft((current) => ({ ...current, prompt: value }));
           }}
           readOnly={save.isPending}
         />
@@ -57,7 +60,11 @@ export function PromptForm({ testCase }: { testCase: TestCase }) {
         }
         onClick={() => {
           if (sizeReason) return;
-          save.mutate({ name, user_prompt: prompt });
+          const submitted = draft;
+          save.mutate(
+            { name, user_prompt: prompt },
+            { onSuccess: () => setDraft((current) => (current === submitted ? null : current)) },
+          );
         }}
       >
         {save.isPending ? "儲存中…" : "儲存"}
