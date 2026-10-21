@@ -60,6 +60,7 @@ vi.mock("../shared/ui/NavScrollCue", () => ({
 
 let container: HTMLDivElement;
 let root: Root;
+let originalHeaderClearance: string;
 
 beforeEach(() => {
   mocks.generateExposed = false;
@@ -67,6 +68,8 @@ beforeEach(() => {
   mocks.outletTitle = "工作台";
   mocks.pathname = "/workspace";
   document.title = "Skill Hub";
+  originalHeaderClearance =
+    document.documentElement.style.getPropertyValue("--app-header-clearance");
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -75,8 +78,38 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   container.remove();
+  document.documentElement.style.setProperty("--app-header-clearance", originalHeaderClearance);
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
+
+function mockHeaderMeasurement() {
+  let height = 65;
+  let notify = () => {};
+  const observe = vi.fn();
+  const disconnect = vi.fn();
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+    () => ({ height }) as DOMRect,
+  );
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(callback: () => void) {
+        notify = callback;
+      }
+      observe = observe;
+      disconnect = disconnect;
+    },
+  );
+  return {
+    observe,
+    disconnect,
+    resize(nextHeight: number) {
+      height = nextHeight;
+      notify();
+    },
+  };
+}
 
 async function renderShell() {
   await act(async () => {
@@ -159,4 +192,27 @@ test("Catalog owns its search instead of receiving a duplicate shell form", asyn
   await renderShell();
 
   expect(container.querySelector('form[role="search"]')).toBeNull();
+});
+
+test("the viewport keeps measured header clearance when its height changes", async () => {
+  const measurement = mockHeaderMeasurement();
+  await renderShell();
+
+  expect(document.documentElement.style.getPropertyValue("--app-header-clearance")).toBe("73px");
+  expect(measurement.observe).toHaveBeenLastCalledWith(container.querySelector("header"));
+  await act(async () => measurement.resize(109));
+  expect(document.documentElement.style.getPropertyValue("--app-header-clearance")).toBe("117px");
+});
+
+test("removing the shell stops header measurement and restores previous viewport clearance", async () => {
+  document.documentElement.style.setProperty("--app-header-clearance", "17px");
+  const measurement = mockHeaderMeasurement();
+  await renderShell();
+  expect(document.documentElement.style.getPropertyValue("--app-header-clearance")).toBe("73px");
+  measurement.disconnect.mockClear();
+
+  await act(async () => root.render(null));
+
+  expect(measurement.disconnect).toHaveBeenCalledTimes(1);
+  expect(document.documentElement.style.getPropertyValue("--app-header-clearance")).toBe("17px");
 });

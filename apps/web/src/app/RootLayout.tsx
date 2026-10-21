@@ -16,6 +16,35 @@ import { useMe, useSessionBoundary } from "../core/session/me.service";
 import { FeatureAvailabilityProvider } from "../shared/FeatureAvailabilityProvider";
 import "./RootLayout.css";
 
+const HEADER_SCROLL_GAP = 8;
+const HEADER_CLEARANCE_PROPERTY = "--app-header-clearance";
+
+function useHeaderScrollPadding() {
+  const headerRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const viewportStyle = document.documentElement.style;
+    const previousClearance = viewportStyle.getPropertyValue(HEADER_CLEARANCE_PROPERTY);
+    const updateScrollPadding = () => {
+      viewportStyle.setProperty(
+        HEADER_CLEARANCE_PROPERTY,
+        `${header.getBoundingClientRect().height + HEADER_SCROLL_GAP}px`,
+      );
+    };
+    updateScrollPadding();
+    const observer =
+      typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(updateScrollPadding);
+    observer?.observe(header);
+    return () => {
+      observer?.disconnect();
+      viewportStyle.setProperty(HEADER_CLEARANCE_PROPERTY, previousClearance);
+    };
+  }, []);
+  return headerRef;
+}
+
 export function RootLayout({ children }: { children: ReactNode }) {
   useSessionBoundary();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -25,6 +54,7 @@ export function RootLayout({ children }: { children: ReactNode }) {
   const creationExposed = useCreationEntryPoint();
   const [query, setQuery] = useState("");
   const previousPathname = useRef(pathname);
+  const headerRef = useHeaderScrollPadding();
 
   useLayoutEffect(() => {
     if (previousPathname.current === pathname) return;
@@ -62,7 +92,7 @@ export function RootLayout({ children }: { children: ReactNode }) {
         <a className="skip-link" href="#main-content">
           跳到主要內容
         </a>
-        <header className="app-header">
+        <header className="app-header" ref={headerRef}>
           <Link to="/" className="app-title">
             Skill Hub
           </Link>
