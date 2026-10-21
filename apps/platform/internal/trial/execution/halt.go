@@ -2,7 +2,6 @@ package run
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -161,8 +160,7 @@ func (h *Handler) LiftHalt(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) decodeHaltRequest(w http.ResponseWriter, r *http.Request) (haltRequest, bool) {
 	var body haltRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a note")
+	if !httpx.DecodeJSON(w, r, maxRequestBodyBytes, &body, "body must be JSON with a note") {
 		return haltRequest{}, false
 	}
 	body.Note = strings.TrimSpace(body.Note)

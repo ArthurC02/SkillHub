@@ -1,7 +1,6 @@
 package run
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -46,9 +45,7 @@ func (h *SettingsHandler) SetContinuationRounds(w http.ResponseWriter, r *http.R
 		Rounds *int   `json:"rounds"`
 		Note   string `json:"note"`
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxSettingsBodyBytes)
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON")
+	if !httpx.DecodeJSON(w, r, maxSettingsBodyBytes, &body, "body must be JSON") {
 		return
 	}
 	if body.Rounds == nil {

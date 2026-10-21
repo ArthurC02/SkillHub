@@ -1,7 +1,6 @@
 package packaging
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -224,8 +223,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		Target           string `json:"target"`
 		IncludeTestCases bool   `json:"include_test_cases"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxPackageRequestBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a `target`")
+	if !httpx.DecodeJSON(w, r, maxPackageRequestBytes, &body, "body must be JSON with a `target`") {
 		return
 	}
 	if body.Target == "" {

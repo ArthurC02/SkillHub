@@ -300,8 +300,7 @@ func decodeGenerateInput(w http.ResponseWriter, r *http.Request) (GenerateInput,
 		ReferenceSkillIDs []string `json:"reference_skill_ids"`
 	}
 
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxGenerateRequestBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a task_description, a diagram, or both")
+	if !httpx.DecodeJSON(w, r, maxGenerateRequestBytes, &body, "body must be JSON with a task_description, a diagram, or both") {
 		return GenerateInput{}, false
 	}
 

@@ -301,8 +301,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 		ConfirmedSummaryHash string `json:"confirmed_summary_hash"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with version_id and test_case_id")
+	if !httpx.DecodeJSON(w, r, maxRequestBodyBytes, &body, "body must be JSON with version_id and test_case_id") {
 		return
 	}
 	var versionID, testCaseID pgtype.UUID
@@ -348,8 +347,7 @@ func (h *Handler) Continue(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Answers []string `json:"answers"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with answers")
+	if !httpx.DecodeJSON(w, r, maxRequestBodyBytes, &body, "body must be JSON with answers") {
 		return
 	}
 	run, err := h.Svc.Continue(r.Context(), ContinueParams{

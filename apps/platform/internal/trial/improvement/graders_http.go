@@ -1,7 +1,6 @@
 package eval
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -110,8 +109,7 @@ func decodeGraderDraft(w http.ResponseWriter, r *http.Request) (graders.Draft, b
 		Instructions string `json:"instructions"`
 		Reason       string `json:"reason"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxGraderBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with `instructions` and `reason`")
+	if !httpx.DecodeJSON(w, r, maxGraderBodyBytes, &body, "body must be JSON with `instructions` and `reason`") {
 		return graders.Draft{}, false
 	}
 	return graders.Draft(body), true

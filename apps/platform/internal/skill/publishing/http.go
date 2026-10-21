@@ -1,7 +1,6 @@
 package publishing
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -267,8 +266,7 @@ func (h *Handler) RegisterPublisher(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name string `json:"name"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&req); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "the body must be JSON with a name")
+	if !httpx.DecodeJSON(w, r, maxJSONBodyBytes, &req, "the body must be JSON with a name") {
 		return
 	}
 	publisher, err := h.Svc.RegisterPublisher(r.Context(), ws, req.Name)
@@ -332,8 +330,7 @@ func (h *Handler) Publish(w http.ResponseWriter, r *http.Request) {
 		RightsAttested  bool   `json:"rights_attested"`
 		DeclaredLicense string `json:"declared_license"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&req); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "the body must be a JSON object")
+	if !httpx.DecodeJSON(w, r, maxJSONBodyBytes, &req, "the body must be a JSON object") {
 		return
 	}
 	in := PublishInput{Name: req.Name, RightsAttested: req.RightsAttested, DeclaredLicense: req.DeclaredLicense}

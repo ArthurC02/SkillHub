@@ -2,7 +2,6 @@ package governance
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -44,8 +43,7 @@ type redistributionChangeResponse struct {
 
 func (h *Handler) SetRedistribution(w http.ResponseWriter, r *http.Request) {
 	var body redistributionRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a value and a note")
+	if !httpx.DecodeJSON(w, r, maxJSONBodyBytes, &body, "body must be JSON with a value and a note") {
 		return
 	}
 

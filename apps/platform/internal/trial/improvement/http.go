@@ -161,8 +161,7 @@ func (h *Handler) SetFeedback(w http.ResponseWriter, r *http.Request) {
 		Helpful *bool  `json:"helpful"`
 		Comment string `json:"comment"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxFeedbackBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a boolean `helpful`")
+	if !httpx.DecodeJSON(w, r, maxFeedbackBodyBytes, &body, "body must be JSON with a boolean `helpful`") {
 		return
 	}
 	if body.Helpful == nil {

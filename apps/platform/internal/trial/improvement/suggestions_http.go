@@ -120,8 +120,7 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Decision Decision `json:"decision"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxDecisionBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a `decision`")
+	if !httpx.DecodeJSON(w, r, maxDecisionBodyBytes, &body, "body must be JSON with a `decision`") {
 		return
 	}
 
@@ -190,9 +189,7 @@ func (h *Handler) ApplySuggestions(w http.ResponseWriter, r *http.Request) {
 		EvaluationID  string   `json:"evaluation_id"`
 		SuggestionIDs []string `json:"suggestion_ids"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxApplyBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest,
-			"body must be JSON with `evaluation_id` and `suggestion_ids`")
+	if !httpx.DecodeJSON(w, r, maxApplyBodyBytes, &body, "body must be JSON with `evaluation_id` and `suggestion_ids`") {
 		return
 	}
 	var evaluationID pgtype.UUID

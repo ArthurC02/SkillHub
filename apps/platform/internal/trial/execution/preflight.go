@@ -546,9 +546,7 @@ func (h *Handler) ConfirmPreflight(w http.ResponseWriter, r *http.Request) {
 		TestCaseID  string `json:"test_case_id"`
 		SummaryHash string `json:"summary_hash"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest,
-			"body must be JSON with version_id, test_case_id and summary_hash")
+	if !httpx.DecodeJSON(w, r, maxRequestBodyBytes, &body, "body must be JSON with version_id, test_case_id and summary_hash") {
 		return
 	}
 	target, ok := preflightIDs(w, r, body.VersionID, body.TestCaseID)

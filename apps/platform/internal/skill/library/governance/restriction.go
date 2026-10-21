@@ -2,7 +2,6 @@ package governance
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"slices"
@@ -194,8 +193,7 @@ func restrictionAuditAction(reason *string) string {
 
 func decodeRestrictionRequest(w http.ResponseWriter, r *http.Request) (restrictionRequest, bool) {
 	var body restrictionRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a note")
+	if !httpx.DecodeJSON(w, r, maxJSONBodyBytes, &body, "body must be JSON with a note") {
 		return restrictionRequest{}, false
 	}
 	return body, true

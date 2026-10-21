@@ -1,0 +1,88 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "feedback-body-cap-recite",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "feedback-body-cap-recite",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-21T19:11:04.155506Z",
+  "verified_at": "2026-10-21T19:11:09.805513Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "0800bd840d3df431126dae169095e4f74d0d1ed7",
+    "registry_digest": "sha256:0a9cc76d732c07c3a7355b8d036d440f348c7ed6e35d27cd9db24b81f5310b61",
+    "committed_digest": "sha256:0a9cc76d732c07c3a7355b8d036d440f348c7ed6e35d27cd9db24b81f5310b61"
+  },
+  "affected_contexts": [
+    "analytics"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-feedback-body-is-at-most-8-kib",
+        "statement": "A feedback request body over 8 KiB is refused before any field is read.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "A body padded past 8 KiB answers 400 and stores nothing."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/feedback.go",
+            "lines": {
+              "start": 19,
+              "end": 22
+            },
+            "excerpt_sha256": "sha256:cd43a2d1e86b25e6e2ff0a72f49b04b710d3c8a6d17f1b6d6f1123e6fb1660be"
+          },
+          {
+            "path": "apps/platform/internal/product/learning/feedback.go",
+            "lines": {
+              "start": 86,
+              "end": 88
+            },
+            "content_sha256": "sha256:9445d23b7bd6d26101671506e2f9f3a4406fc155d0190b577902262a8b08743e",
+            "excerpt_sha256": "sha256:19788726fe2527badae7460deb272c74db88567dfde7ca77a03616406c8086cc",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/feedback_limits_integration_test.go",
+            "lines": {
+              "start": 28,
+              "end": 40
+            },
+            "excerpt_sha256": "sha256:4dd2ac094ef3e9db2b2ac19dcd5ecc68e20fe3edbeb3b28388749b278df6e38f"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "analytics-retention-and-feedback-rules-2026-10-18"
+  ]
+}

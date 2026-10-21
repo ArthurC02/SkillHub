@@ -196,11 +196,7 @@ func (h *Handler) noteFromOperator(w http.ResponseWriter, r *http.Request) (stri
 }
 
 func decode(w http.ResponseWriter, r *http.Request, body any) bool {
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)).Decode(body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a note")
-		return false
-	}
-	return true
+	return httpx.DecodeJSON(w, r, maxRequestBodyBytes, body, "body must be JSON with a note")
 }
 
 func requireNote(w http.ResponseWriter, raw string) (string, bool) {

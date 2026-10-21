@@ -1,7 +1,6 @@
 package batch
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -109,8 +108,7 @@ func (h *BatchHandler) CreateBatch(w http.ResponseWriter, r *http.Request) {
 		Trials            int      `json:"trials"`
 		WithSkillWithheld bool     `json:"with_skill_withheld"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBatchBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with `skill_version_id`, `test_case_ids` and `trials`")
+	if !httpx.DecodeJSON(w, r, maxBatchBodyBytes, &body, "body must be JSON with `skill_version_id`, `test_case_ids` and `trials`") {
 		return
 	}
 	ids, ok := uuids(append([]string{body.SkillVersionID}, body.TestCaseIDs...))

@@ -155,11 +155,7 @@ type deletedDatasetResponse struct {
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBytes)).Decode(v); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "請求內容不是合法的 JSON")
-		return false
-	}
-	return true
+	return httpx.DecodeJSON(w, r, maxJSONBytes, v, "請求內容不是合法的 JSON")
 }
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {

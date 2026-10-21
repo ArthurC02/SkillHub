@@ -1,7 +1,6 @@
 package publishing
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -165,8 +164,7 @@ func (h *Handler) CreateBundleVersion(w http.ResponseWriter, r *http.Request) {
 		Description      string   `json:"description"`
 		MemberVersionIDs []string `json:"member_version_ids"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&req); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "the body must be a JSON object")
+	if !httpx.DecodeJSON(w, r, maxJSONBodyBytes, &req, "the body must be a JSON object") {
 		return
 	}
 	in := BundleInput{Name: req.Name, Version: req.Version, Description: req.Description}
@@ -226,8 +224,7 @@ func (h *Handler) PublishBundle(w http.ResponseWriter, r *http.Request) {
 		Version        string `json:"version"`
 		RightsAttested bool   `json:"rights_attested"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&req); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "the body must be a JSON object")
+	if !httpx.DecodeJSON(w, r, maxJSONBodyBytes, &req, "the body must be a JSON object") {
 		return
 	}
 	publication, err := h.Svc.PublishBundle(r.Context(), ws, r.PathValue("name"), BundlePublishInput{

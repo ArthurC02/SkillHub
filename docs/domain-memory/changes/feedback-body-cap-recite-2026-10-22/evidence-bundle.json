@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "feedback-body-cap-recite",
+  "proposal_id": "feedback-body-cap-recite",
+  "registry_revision": {
+    "observed_commit": "0800bd840d3df431126dae169095e4f74d0d1ed7",
+    "registry_digest": "sha256:0a9cc76d732c07c3a7355b8d036d440f348c7ed6e35d27cd9db24b81f5310b61",
+    "committed_digest": "sha256:0a9cc76d732c07c3a7355b8d036d440f348c7ed6e35d27cd9db24b81f5310b61"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/feedback-body-cap-recite-2026-10-22 --path apps/platform/internal/entrypoint/api/apiserver/feedback_limits_integration_test.go --path apps/platform/internal/product/learning/feedback.go",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:e71e593c5aad9e1006063728f2068f462e047de994734bfd2ca464dc7d9f4a8e",
+      "finished_at": "2026-10-21T19:11:07.510580Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

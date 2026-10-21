@@ -164,8 +164,7 @@ func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Reason string `json:"reason"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a reason")
+	if !httpx.DecodeJSON(w, r, maxJSONBodyBytes, &body, "body must be JSON with a reason") {
 		return
 	}
 
@@ -234,8 +233,7 @@ func (h *Handler) SetCategory(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Category string `json:"category"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a category")
+	if !httpx.DecodeJSON(w, r, maxJSONBodyBytes, &body, "body must be JSON with a category") {
 		return
 	}
 	if body.Category != clearCategory && !slices.Contains(AllCategories(), Category(body.Category)) {

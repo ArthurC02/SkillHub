@@ -2,7 +2,6 @@ package analytics
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"slices"
@@ -84,8 +83,7 @@ func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {
 		RunID    string       `json:"run_id"`
 		BuildID  string       `json:"build_id"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxFeedbackBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "內容必須是 JSON，且包含 kind 與 message")
+	if !httpx.DecodeJSON(w, r, maxFeedbackBodyBytes, &body, "內容必須是 JSON，且包含 kind 與 message") {
 		return
 	}
 	if !slices.Contains(AllFeedbackKinds(), body.Kind) {

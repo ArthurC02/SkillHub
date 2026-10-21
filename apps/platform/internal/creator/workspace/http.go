@@ -412,8 +412,7 @@ func (h *Handler) ExpediteErasure(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Reason string `json:"reason"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxErasureBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a reason")
+	if !httpx.DecodeJSON(w, r, maxErasureBodyBytes, &body, "body must be JSON with a reason") {
 		return
 	}
 	_, err := h.Service.ExpediteAccountErasure(r.Context(), userID, operator.ID, body.Reason)

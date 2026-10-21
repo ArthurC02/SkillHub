@@ -2,7 +2,6 @@ package governance
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -25,8 +24,7 @@ type takedownResponse struct {
 
 func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 	var body takedownRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a reason")
+	if !httpx.DecodeJSON(w, r, maxJSONBodyBytes, &body, "body must be JSON with a reason") {
 		return
 	}
 

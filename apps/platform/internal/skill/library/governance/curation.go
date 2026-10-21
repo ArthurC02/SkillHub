@@ -2,7 +2,6 @@ package governance
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -37,8 +36,7 @@ type curationChangeResponse struct {
 
 func (h *Handler) SetCurationTier(w http.ResponseWriter, r *http.Request) {
 	var body curationRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a value and a note")
+	if !httpx.DecodeJSON(w, r, maxJSONBodyBytes, &body, "body must be JSON with a value and a note") {
 		return
 	}
 	var skillID pgtype.UUID

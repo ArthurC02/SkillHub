@@ -1,7 +1,6 @@
 package evalsettings
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -44,9 +43,7 @@ func (h *Handler) SetJudgePanel(w http.ResponseWriter, r *http.Request) {
 		Enabled *bool  `json:"enabled"`
 		Note    string `json:"note"`
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxSettingsBodyBytes)
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON")
+	if !httpx.DecodeJSON(w, r, maxSettingsBodyBytes, &body, "body must be JSON") {
 		return
 	}
 	if body.Enabled == nil {

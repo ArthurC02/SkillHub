@@ -1,7 +1,6 @@
 package modelbudget
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -122,8 +121,7 @@ const maxBudgetRequestBytes = 4096
 
 func decode(w http.ResponseWriter, r *http.Request) (budgetRequest, bool) {
 	var body budgetRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBudgetRequestBytes)).Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a reason")
+	if !httpx.DecodeJSON(w, r, maxBudgetRequestBytes, &body, "body must be JSON with a reason") {
 		return budgetRequest{}, false
 	}
 	return body, true
