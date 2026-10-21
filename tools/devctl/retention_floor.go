@@ -300,8 +300,7 @@ func envRetention(root, name string) (problems []string, retention time.Duration
 }
 
 type sqlCodeLine struct {
-	number int
-	text   string
+	text string
 }
 
 type sqlStatement struct {
@@ -321,7 +320,7 @@ func sqlStatements(text string) []sqlStatement {
 			continue
 		}
 		current := &statements[len(statements)-1]
-		current.code = append(current.code, sqlCodeLine{number: i + 1, text: line})
+		current.code = append(current.code, sqlCodeLine{text: line})
 	}
 	return statements
 }

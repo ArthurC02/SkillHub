@@ -148,6 +148,6 @@ func resourceEnforcement() ResourceEnforcement {
 	return ResourceEnforcement{Memory: true, Processes: true}
 }
 
-func reaping() Reaping { return Reaping{Descendants: true, Detached: true} }
+func reaping() Reaping { return Reaping{Detached: true} }
 
 func rootless() bool { return !windows.GetCurrentProcessToken().IsElevated() }

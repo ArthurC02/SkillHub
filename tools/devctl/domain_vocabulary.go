@@ -23,7 +23,6 @@ type domainVocabulary struct {
 	name    string
 	sources []vocabularySource
 	readers []vocabularySource
-	absent  string
 }
 
 func goConstEnum(path, typeName string) vocabularySource {
@@ -118,7 +117,6 @@ var domainVocabularies = []domainVocabulary{
 				"apps/platform/internal/creator/creation/state.go", "State"),
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "CreationSessionState"),
 		},
-		absent: "creation_sessions.state carries no CHECK; state.go is the only guard",
 	},
 	{
 		name: "evaluation status",

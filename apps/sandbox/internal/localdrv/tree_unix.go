@@ -86,6 +86,6 @@ func (t *pgroupTree) limitHits() limitHits {
 
 func resourceEnforcement() ResourceEnforcement { return cgroupEnforcement() }
 
-func reaping() Reaping { return Reaping{Descendants: true, Detached: false} }
+func reaping() Reaping { return Reaping{Detached: false} }
 
 func rootless() bool { return os.Geteuid() != 0 }

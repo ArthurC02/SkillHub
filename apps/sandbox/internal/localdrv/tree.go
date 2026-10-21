@@ -26,7 +26,5 @@ type treeLimits struct {
 }
 
 type Reaping struct {
-	Descendants bool
-
 	Detached bool
 }

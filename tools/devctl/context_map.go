@@ -33,11 +33,10 @@ const (
 )
 
 type packageIdentity struct {
-	Product string
-	Kind    architectureKind
-	ID      string
-	Path    string
-	Source  string
+	Kind   architectureKind
+	ID     string
+	Path   string
+	Source string
 }
 
 var (
@@ -123,13 +122,13 @@ func architectureIdentities(root string) (map[string]packageIdentity, []string) 
 			problems = append(problems, problem)
 			continue
 		}
-		architecture, context := architectureKind(entry.kind), entry.context
+		architecture := architectureKind(entry.kind)
 		id, currentPath := entry.id, entry.path
 		if _, duplicate := declared[id]; duplicate {
 			problems = append(problems, fmt.Sprintf("%s declares Boundary ID %q twice", relative, id))
 			continue
 		}
-		identity := packageIdentity{Product: context, Kind: architecture, ID: id, Path: currentPath, Source: relative}
+		identity := packageIdentity{Kind: architecture, ID: id, Path: currentPath, Source: relative}
 		for _, previous := range declared {
 			if previous.Path == identity.Path {
 				problems = append(problems, fmt.Sprintf("%s declares internal path %q twice (%s and %s)", relative, identity.Path, previous.ID, identity.ID))

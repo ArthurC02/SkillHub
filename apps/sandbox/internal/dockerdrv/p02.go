@@ -204,6 +204,6 @@ func parseProbeOutput(out string, targets []string) []string {
 	return reached
 }
 
-func ptr[T any](v T) *T { return &v }
+func ptr(v int64) *int64 { return &v }
 
 var _ sandbox.EgressProber = (*Driver)(nil)
