@@ -40,26 +40,15 @@ Treat the code as the evidence of current behavior, not of intent. Read the boun
 `change-coupling --repo-root <repo> --root <code root> --depth <n>` reports which modules change together in history.
 
 - Strong coupling inside a candidate Context supports it; strong coupling across two candidates asks whether they are one Context or share a hidden contract; a composition root couples with everything and says nothing about boundaries.
-- It reports only modules that still exist; use `--since` to keep a rewritten history from dominating.
-- Files outside every root, such as a web client, contracts or migrations shipped with the same feature, do not count toward `--max-changeset`, since a sweeping rename or format couples everything.
-- `--max-modules` also skips a commit that touches more modules than that, which catches a sweep of few files spread wide. The newest twenty are listed in `skipped_sweeping` with their `modules` and, with `--registry-root`, their `contexts`, so a reader can check each is a sweep.
-- With `--registry-root` only modules a Context owns count toward `--max-modules`, since nearly every feature also touches code no Context owns, such as wiring or generated types.
-- A feature that fans in, one Context consuming several others in one commit, also crosses the limit: read the `contexts` of each `skipped_sweeping` entry, and run once without `--max-modules` before concluding that a hub Context has no visible collaborations.
-- A commit whose subject matches an `--exclude-subject` pattern, such as `^(chore|style|test)` (`test(` subjects are often sweeps too), is left out, because a repository-wide sweep couples modules that share no domain.
-- The `subjects` of each pair let a reader tell a domain change from a sweep.
-- When a module lies in no Context, `explained_by` is `null`, since the Registry cannot speak for it.
+- Use `--since` to keep a rewritten history from dominating, and `--exclude-subject` with a pattern such as `^(chore|style|test)` to leave out repository-wide sweeps, which couple modules that share no domain; `test(` subjects are often sweeps too.
+- Read each pair's `subjects` to tell a domain change from a sweep, and each `skipped_sweeping` entry's `modules` and `contexts` to check that it was one. A feature that fans in, one Context consuming several others in one commit, also crosses `--max-modules`: run once without it before concluding that a hub Context has no visible collaborations.
+- An empty `explained_by` is coupling the Registry does not account for; a `null` one is a module no Context owns, which the Registry cannot speak for.
 
-`compare-registry` scores an extraction against a gold Registry, and pairs records this way:
+`compare-registry` scores an extraction against a gold Registry. Reading the score:
 
-- A Context pairs by its `implementation_path`: the same path (`path`), one ending with the other, as when one Registry writes it from the repository root and the other from a module (`path-suffix`), or one inside the other (`nested-path`); otherwise by name.
-- Interactions and dependency policies pair when both of their Contexts pair.
-- Any other record pairs by id or name, ignoring case and punctuation (a term also by a gold synonym, an aggregate by its root), or by naming a paired Context and citing a file the gold record cites. Among those, the pair whose cited lines overlap most is taken first, so a record citing the same lines wins over one citing elsewhere in the file.
-
-Reading the score:
-
-- `--context` is for an extraction that covered part of the code: candidate records count only when they name a candidate Context paired with a scoped one, so an extraction of other code does not lower the precision. Contexts outside the scope still pair, so an interaction or dependency policy between a scoped Context and another one is scored.
-- Each `overall_*` score carries its `matched`, `gold` and `candidate` counts, so a ratio over two records reads as such.
-- The evidence of a pair other than a Context pair is usually the package documentation either side would cite, so it is marked `copied_evidence` when one side's cited files and excerpts are all among the other's, as when a harvest dropped a citation, since a blind extraction rarely cites exactly the gold lines.
+- Score an extraction that covered part of the code with `--context`, so an extraction of other code does not lower the precision; the interactions and dependency policies between a scoped Context and another are still scored.
+- A ratio over two records reads as such: look at the `matched`, `gold` and `candidate` counts beside each `overall_*` score.
+- A `copied_evidence` pair usually cites the package documentation either side would cite, as when a harvest dropped a citation; `overall_independent` leaves those pairs out.
 - It measures structure, not meaning: a rule worded differently but citing other lines counts as missed. Read `possible_pairs` and the missed and extra lists before trusting a number.
 
 ## From a change
