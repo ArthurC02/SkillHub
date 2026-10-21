@@ -1,6 +1,12 @@
 import type { Labelled } from "../../core/api/types";
 import type { RunStatus } from "./trace.service";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+} from "@tanstack/react-query";
 import {
   apiFetch,
   isWriteResultUnknown as isContinuationResultUnknown,
@@ -157,6 +163,30 @@ function isRunListItem(value: unknown): value is RunListItem {
   );
 }
 
+type RunListPage = { runs: RunListItem[]; nextOffset: number | undefined };
+
+function uniqueRunPages(data: InfiniteData<RunListPage, number>) {
+  const locations = new Map<string, { page: number; row: number; runId: string }>();
+  const pages = data.pages.map((item): RunListPage => ({ ...item, runs: [] }));
+  data.pages.forEach((item, pageIndex) => {
+    item.runs.forEach((run) => {
+      const identity = run.run_id.toLowerCase();
+      const previous = locations.get(identity);
+      if (previous) {
+        pages[previous.page].runs[previous.row] = { ...run, run_id: previous.runId };
+      } else {
+        locations.set(identity, {
+          page: pageIndex,
+          row: pages[pageIndex].runs.length,
+          runId: run.run_id,
+        });
+        pages[pageIndex].runs.push(run);
+      }
+    });
+  });
+  return { ...data, pages };
+}
+
 export function useRuns({
   testCaseId,
   skillVersionId,
@@ -190,6 +220,7 @@ export function useRuns({
       });
     },
     getNextPageParam: (last) => last.nextOffset,
+    select: uniqueRunPages,
     enabled,
   });
 }

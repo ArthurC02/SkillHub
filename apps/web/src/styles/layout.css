@@ -1,3 +1,7 @@
+html {
+  scroll-padding-bottom: 16px;
+}
+
 html:has(main textarea:focus) {
   scroll-padding-top: var(--app-header-clearance, 0px);
 }

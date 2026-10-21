@@ -25,6 +25,9 @@ export function useContinuationFocus(
     }
     if (!available || focused.current === target || !element.current) return;
     focused.current = target;
-    if (!focusMoved.current) element.current.focus();
+    if (!focusMoved.current) {
+      element.current.focus();
+      element.current.scrollIntoView?.({ block: "nearest", behavior: "instant" });
+    }
   }, [available, element, target]);
 }

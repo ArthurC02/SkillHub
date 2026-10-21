@@ -59,6 +59,8 @@ test("an empty completed pagination request returns focus to its heading after t
   try {
     await act(async () => root.render(<EmptyPages />));
     const heading = container.querySelector("h1")!;
+    const reveal = vi.fn();
+    heading.scrollIntoView = reveal;
     const trigger = container.querySelector("button")!;
     trigger.focus();
     await act(async () => trigger.click());
@@ -66,6 +68,7 @@ test("an empty completed pagination request returns focus to its heading after t
     await act(async () => release());
     expect(container.querySelector("button")).toBeNull();
     expect(document.activeElement).toBe(heading);
+    expect(reveal).toHaveBeenCalledExactlyOnceWith({ block: "nearest", behavior: "instant" });
   } finally {
     release();
   }
