@@ -539,6 +539,23 @@ class CliProposalsTest(RegistryTestCase):
              printed["base_registry_revision"]),
         )
 
+    def test_validate_change_package_prints_shifted_citations_as_one_note_per_record_and_no_error(self) -> None:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        self.cite_in_proposal(package, "README.md")
+        (self.repo / "README.md").write_text("moved down\nevidence\n", encoding="utf-8")
+        result = self.run_cli(
+            "validate-change-package", "--package-root", str(package), "--registry-root", str(self.repo / "memory"),
+            "--repo-root", str(self.repo), "--as-status", "approved",
+        )
+        notes = [line for line in result.stderr.splitlines() if line.startswith("NOTE: registry update")]
+        self.assertEqual(
+            (False, ["NOTE: registry update rules/order-total cites 1 citation whose lines are unchanged but now sit "
+                        "elsewhere in README.md; this passes every check and needs no Change Package of its own; when the "
+                        "record is next touched, relocate-evidence re-cites them"]),
+            ("cites evidence that is shifted" in result.stderr, notes),
+        )
+
     def test_verify_proposal_run_again_on_a_verified_package_says_so_and_exits_zero(self) -> None:
         package = self.submitted_package()
         record_approval(package, "domain-owner", "reviewer", "entire proposal", None)

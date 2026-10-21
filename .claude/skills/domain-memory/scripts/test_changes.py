@@ -12,6 +12,7 @@ from domain_registry.changes import _changes_behavior as changes_behavior
 from domain_registry.changes import _obligation_errors as obligation_errors
 from domain_registry.changes import _requirement_and_proposal_errors as requirement_and_proposal_errors
 from domain_registry.changes import (
+    shifted_citation_notes,
     EVIDENCE_FILE,
     PROPOSAL_FILE,
     as_if_moved_to,
@@ -724,6 +725,26 @@ class ChangesTest(RegistryTestCase):
         for label, status, check, updates, expected in cases:
             with self.subTest(label):
                 self.assertEqual(expected, self.verdicts_in(package, check, status, updates))
+
+    def test_shifted_citations_are_a_note_per_record_not_an_error(self) -> None:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        (self.repo / "NOTES.md").write_text("another fact\n", encoding="utf-8")
+        proposal_path = package / PROPOSAL_FILE
+        proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
+        proposal["registry_updates"][0]["record"]["evidence"] = [
+            citation(self.repo, "README.md", 1, 1), citation(self.repo, "NOTES.md", 1, 1),
+        ]
+        proposal_path.write_text(json.dumps(proposal), encoding="utf-8")
+        (self.repo / "README.md").write_text("moved down\nevidence\n", encoding="utf-8")
+        (self.repo / "NOTES.md").write_text("moved down\nanother fact\n", encoding="utf-8")
+        self.assertEqual(
+            ([], ["NOTE: registry update rules/order-total cites 2 citations whose lines are unchanged but now sit elsewhere in "
+                  "NOTES.md, README.md; this passes every check and needs no Change Package of its own; when the record is "
+                  "next touched, relocate-evidence re-cites them"]),
+            (validate_change_package(package, self.repo / "memory", None, self.repo),
+             shifted_citation_notes(proposal, self.repo)),
+        )
 
     def test_a_routine_package_at_verified_needs_no_counterfactual(self) -> None:
         package = self.draft_package()
