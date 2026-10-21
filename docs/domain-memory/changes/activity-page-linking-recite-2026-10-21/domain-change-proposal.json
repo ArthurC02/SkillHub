@@ -3,12 +3,12 @@
   "proposal_id": "activity-page-linking-recite",
   "proposer": "domain-memory-agent",
   "requirement_id": "activity-page-linking-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-21T00:15:12.089411Z",
   "verified_at": "2026-10-21T00:15:13.446299Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-21T00:29:22.967745Z",
+  "applied_at": "2026-10-21T01:12:00.097053Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "75202504b259dc6f5d572f3f27997322e0c9e957",
@@ -191,5 +191,9 @@
   "approvals": [],
   "supersedes": [
     "activity-harvest-rules-2026-10-17"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "9737fb7bafc411793f67612d3b07d0d58a85be56",
+    "registry_digest": "sha256:2ac56d0d98f30a1b2d131ee46b995537c45c6b4dac5e8245a620cde8271ac6c2"
+  }
 }

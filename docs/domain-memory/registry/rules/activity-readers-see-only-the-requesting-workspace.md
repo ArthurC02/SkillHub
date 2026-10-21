@@ -7,8 +7,8 @@ verified:
 sources:
   - resource: "apps/platform/internal/product/activity/service.go#L218-225"
     excerpt_sha256: "sha256:f2d1e366fa3772200e6b1bd8eb1e7d0bfcbb965686fec66250058ecbe4ea12ca"
-  - resource: "apps/platform/internal/product/activity/service_test.go#L121-179"
-    excerpt_sha256: "sha256:f221aa575c58692e8d7efee541d3f73625e24c4e6f3f0736d6019413cdd53c5e"
+  - resource: "apps/platform/internal/product/activity/service_test.go#L121-180"
+    excerpt_sha256: "sha256:44c5252c0dd17e8f944521f43f7950a937b764cabedc8a4b044d8ab1753294bf"
 ---
 Every owner source of the feed is read with the requesting Workspace's id, so no Workspace sees another's activity.
 
