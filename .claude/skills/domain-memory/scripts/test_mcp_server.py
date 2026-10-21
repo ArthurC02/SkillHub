@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 from domain_registry.cli_commands import run_command
 from domain_registry.commands.read import handle_mcp_serve
-from domain_registry.mcp_server import READ_ONLY, McpServer, Parameter, ServerRoots, Tool, serve
+from domain_registry.mcp_server import McpServer, Parameter, ServerRoots, Tool, serve
 from test_support import RegistryTestCase
 
 PLUGIN_VERSION = json.loads((Path(__file__).parents[1] / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
@@ -149,7 +149,6 @@ class ToolListTest(McpServerTest):
                 [reply] = self.exchange(request(1, "tools/list", **meta))
                 names = {tool["name"] for tool in reply["result"]["tools"]}
                 self.assertEqual(EXPOSED_TOOLS, names)
-                self.assertEqual(set(), {name.replace("_", "-") for name in names} - set(READ_ONLY))
                 self.assertEqual(set(), names & {command.replace("-", "_") for command in MUTATING_COMMANDS})
 
     def test_each_tool_declares_its_parameters_as_a_closed_json_schema(self) -> None:

@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.registry import coverage, verify_evidence
-from domain_registry.search import _is_common, ranked_lookup, resolve_terms
+from domain_registry.search import _is_common, every_resolved_term, ranked_lookup
 from test_support import RegistryTestCase, lookup, use_json_layout, word_stems
 
 
@@ -39,7 +39,7 @@ class RegistryLookupTest(RegistryTestCase):
 
     def test_a_requirement_sentence_resolves_the_terms_it_names(self) -> None:
         self.defined_term()
-        matches = resolve_terms(
+        matches = every_resolved_term(
             self.repo / "memory", "Who starts the Evaluation once a Run succeeds?", None
         )
         self.assertEqual([term["id"] for term in matches], ["run"])
@@ -49,7 +49,7 @@ class RegistryLookupTest(RegistryTestCase):
     ) -> None:
         self.defined_term()
         self.assertEqual(
-            resolve_terms(
+            every_resolved_term(
                 self.repo / "memory", "Who signs off on the quarterly budget?", None
             ),
             [],
@@ -57,12 +57,12 @@ class RegistryLookupTest(RegistryTestCase):
 
     def test_a_word_from_the_definition_still_resolves_the_term(self) -> None:
         self.defined_term()
-        matches = resolve_terms(self.repo / "memory", "test case", None)
+        matches = every_resolved_term(self.repo / "memory", "test case", None)
         self.assertEqual([(term["id"], term["match_kind"]) for term in matches], [("run", "definition")])
 
     def test_a_name_in_the_query_is_a_name_match(self) -> None:
         self.defined_term()
-        matches = resolve_terms(self.repo / "memory", "a run", None)
+        matches = every_resolved_term(self.repo / "memory", "a run", None)
         self.assertEqual([(term["id"], term["match_kind"]) for term in matches], [("run", "name")])
 
     def test_a_synonym_in_the_query_is_a_synonym_match(self) -> None:
@@ -71,7 +71,7 @@ class RegistryLookupTest(RegistryTestCase):
              "synonyms": ["Execution"]},
         ])
         self.allow_results(10)
-        matches = resolve_terms(self.repo / "memory", "retry the execution", None)
+        matches = every_resolved_term(self.repo / "memory", "retry the execution", None)
         self.assertEqual([(term["id"], term["match_kind"]) for term in matches], [("run", "synonym")])
 
     def test_name_matches_come_before_synonym_and_definition_matches(self) -> None:
@@ -82,7 +82,7 @@ class RegistryLookupTest(RegistryTestCase):
             {"id": "run", "name": "Run", "definition": "One trial.", "contexts": ["trial"]},
         ])
         self.allow_results(10)
-        matches = resolve_terms(self.repo / "memory", "run", None)
+        matches = every_resolved_term(self.repo / "memory", "run", None)
         self.assertEqual(
             [(term["id"], term["match_kind"]) for term in matches],
             [("run", "name"), ("job", "synonym"), ("attempt", "definition")],
@@ -113,7 +113,7 @@ class RegistryLookupTest(RegistryTestCase):
         self.allow_results(10)
         found = [
             term["id"]
-            for term in resolve_terms(self.repo / "memory", "confirmed purchase", None)
+            for term in every_resolved_term(self.repo / "memory", "confirmed purchase", None)
         ]
         self.assertEqual(found, ["order"])
 
@@ -130,7 +130,7 @@ class RegistryLookupTest(RegistryTestCase):
                 }
             ],
         )
-        self.assertEqual(len(resolve_terms(self.repo / "memory", "ORDER", None)), 1)
+        self.assertEqual(len(every_resolved_term(self.repo / "memory", "ORDER", None)), 1)
 
     def test_resolve_terms_excludes_a_term_that_does_not_belong_to_the_named_context(
         self,
@@ -148,38 +148,16 @@ class RegistryLookupTest(RegistryTestCase):
             ],
         )
         self.assertEqual(
-            resolve_terms(self.repo / "memory", "order", "orders")[0]["id"], "order"
+            every_resolved_term(self.repo / "memory", "order", "orders")[0]["id"], "order"
         )
-        self.assertEqual(resolve_terms(self.repo / "memory", "order", "billing"), [])
-
-    def test_resolve_terms_stops_at_the_policy_result_limit(self) -> None:
-        self.two_contexts()
-        self.seed(
-            "vocabulary.json",
-            [
-                {
-                    "id": "order",
-                    "name": "Order",
-                    "definition": "A purchase.",
-                    "contexts": ["orders"],
-                },
-                {
-                    "id": "order-line",
-                    "name": "Order line",
-                    "definition": "A purchase line.",
-                    "contexts": ["orders"],
-                },
-            ],
-        )
-        self.allow_results(1)
-        self.assertEqual(len(resolve_terms(self.repo / "memory", "purchase", None)), 1)
+        self.assertEqual(every_resolved_term(self.repo / "memory", "order", "billing"), [])
 
     def test_a_query_no_term_matches_lists_reviewed_records_that_mention_it(self) -> None:
         self.contexts_mentioning_suggestions()
         self.assertEqual(
             [{"match_kind": "mentioned", "asset": "contexts", "id": "eval", "status": "reviewed", "contexts": ["eval"],
               "summary": "Applies accepted Suggestions.", "fields": ["responsibility"]}],
-            resolve_terms(self.repo / "memory", "suggestion", None),
+            every_resolved_term(self.repo / "memory", "suggestion", None),
         )
 
     def test_a_mention_names_its_contexts_and_the_first_sentence_of_its_statement(self) -> None:
@@ -198,7 +176,7 @@ class RegistryLookupTest(RegistryTestCase):
              ("interactions", ["catalog", "billing"], "Withdrawn skills stop billing"),
              ("dependency-policies", ["catalog", "registry"], "Withdrawn skills are looked up here.")],
             [(item["asset"], item["contexts"], item["summary"])
-             for item in resolve_terms(self.repo / "memory", "withdrawn", None)],
+             for item in every_resolved_term(self.repo / "memory", "withdrawn", None)],
         )
 
     def test_one_word_finds_its_spaced_hyphenated_and_camel_case_forms(self) -> None:
@@ -212,7 +190,7 @@ class RegistryLookupTest(RegistryTestCase):
         ])
         self.assertEqual(
             ["r0", "r1", "r2", "r3"],
-            [item["id"] for item in resolve_terms(self.repo / "memory", "takedown", None)],
+            [item["id"] for item in every_resolved_term(self.repo / "memory", "takedown", None)],
         )
 
     def test_lookup_finds_every_word_through_its_spaced_form(self) -> None:
@@ -230,12 +208,12 @@ class RegistryLookupTest(RegistryTestCase):
 
     def test_a_mention_search_ignores_the_status_field(self) -> None:
         self.contexts_mentioning_suggestions()
-        self.assertEqual([], resolve_terms(self.repo / "memory", "reviewed", None))
+        self.assertEqual([], every_resolved_term(self.repo / "memory", "reviewed", None))
 
     def test_a_matching_term_hides_prose_mentions(self) -> None:
         self.contexts_mentioning_suggestions()
         self.seed("vocabulary.json", [{"id": "suggestion", "name": "Suggestion", "contexts": ["eval"]}])
-        self.assertEqual(["name"], [match["match_kind"] for match in resolve_terms(self.repo / "memory", "suggestion", None)])
+        self.assertEqual(["name"], [match["match_kind"] for match in every_resolved_term(self.repo / "memory", "suggestion", None)])
 
     def test_with_mentions_a_matching_term_comes_first_and_mentions_follow(self) -> None:
         self.contexts_mentioning_suggestions()
@@ -244,7 +222,7 @@ class RegistryLookupTest(RegistryTestCase):
         self.assertEqual(
             [("vocabulary", "suggestion", "name"), ("contexts", "eval", "mentioned")],
             [(match.get("asset", "vocabulary"), match["id"], match["match_kind"])
-             for match in resolve_terms(self.repo / "memory", "suggestion", None, with_mentions=True)],
+             for match in every_resolved_term(self.repo / "memory", "suggestion", None, with_mentions=True)],
         )
 
     def test_a_record_id_is_searched_word_by_word(self) -> None:
@@ -252,7 +230,7 @@ class RegistryLookupTest(RegistryTestCase):
         self.seed("interactions.json", [{"id": "eval-workspace-purge", "status": "reviewed"}])
         self.assertEqual(
             [("interactions", "eval-workspace-purge", ["id"])],
-            [(match["asset"], match["id"], match["fields"]) for match in resolve_terms(self.repo / "memory", "purge", None)],
+            [(match["asset"], match["id"], match["fields"]) for match in every_resolved_term(self.repo / "memory", "purge", None)],
         )
 
     def test_a_list_of_text_is_searched_and_a_list_of_record_ids_is_not(self) -> None:
@@ -261,7 +239,7 @@ class RegistryLookupTest(RegistryTestCase):
         self.seed("rules.json", [{"id": "gate", "contexts": ["refund"], "statement": "x", "status": "reviewed"}])
         self.assertEqual(
             [("vocabulary", "order", ["examples"])],
-            [(match["asset"], match["id"], match["fields"]) for match in resolve_terms(self.repo / "memory", "refund", None)],
+            [(match["asset"], match["id"], match["fields"]) for match in every_resolved_term(self.repo / "memory", "refund", None)],
         )
 
     def test_verify_evidence_reports_each_requested_path_and_whether_it_exists(self) -> None:
@@ -282,7 +260,7 @@ class RegistryLookupTest(RegistryTestCase):
         self.seed("rules.json", [{"id": "gate", "contexts": ["orders"], "statement": "A check gates release.", "status": "reviewed"}])
         self.assertEqual(
             [("rules", "gate", ["statement"]), ("capabilities", "audit", ["rationale"])],
-            [(match["asset"], match["id"], match["fields"]) for match in resolve_terms(self.repo / "memory", "check", None)],
+            [(match["asset"], match["id"], match["fields"]) for match in every_resolved_term(self.repo / "memory", "check", None)],
         )
 
     def runs_rules(self) -> None:
@@ -322,7 +300,7 @@ class RegistryLookupTest(RegistryTestCase):
                                   "statement": "A purge runs every step.", "status": "reviewed"}])
         self.assertEqual(
             [("purge-runs-every-step", ["id", "statement"])],
-            [(match["id"], match["fields"]) for match in resolve_terms(self.repo / "memory", "purge", None)],
+            [(match["id"], match["fields"]) for match in every_resolved_term(self.repo / "memory", "purge", None)],
         )
 
     def test_a_record_mentioned_in_one_defining_field_ranks_before_a_rule_mentioned_only_elsewhere(self) -> None:
@@ -332,7 +310,7 @@ class RegistryLookupTest(RegistryTestCase):
                                   "status": "reviewed"}])
         self.assertEqual(
             ["purge", "gate"],
-            [match["id"] for match in resolve_terms(self.repo / "memory", "purge", None)],
+            [match["id"] for match in every_resolved_term(self.repo / "memory", "purge", None)],
         )
 
     def test_a_query_sharing_only_a_word_many_records_hold_lists_nothing_and_says_so(self) -> None:
@@ -380,7 +358,7 @@ class RegistryLookupTest(RegistryTestCase):
         self.seed("interactions.json", [{"id": "run-retry", "status": "reviewed"}])
         self.assertEqual(
             [("rules", "one-trial", ["statement"])],
-            [(match["asset"], match["id"], match["fields"]) for match in resolve_terms(self.repo / "memory", "concurrent runs", None)],
+            [(match["asset"], match["id"], match["fields"]) for match in every_resolved_term(self.repo / "memory", "concurrent runs", None)],
         )
 
     def test_mentions_in_rules_come_before_mentions_in_other_assets(self) -> None:
@@ -389,7 +367,7 @@ class RegistryLookupTest(RegistryTestCase):
         self.seed("rules.json", [{"id": "purge-runs-every-step", "contexts": ["identity"], "statement": "x", "status": "reviewed"}])
         self.assertEqual(
             [("rules", "purge-runs-every-step"), ("interactions", "eval-workspace-purge")],
-            [(match["asset"], match["id"]) for match in resolve_terms(self.repo / "memory", "purge", None)],
+            [(match["asset"], match["id"]) for match in every_resolved_term(self.repo / "memory", "purge", None)],
         )
 
     def test_a_query_that_matches_nothing_finds_nothing(self) -> None:

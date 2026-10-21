@@ -31,11 +31,6 @@ INVALID_PARAMS = -32602
 INTERNAL_ERROR = -32603
 UNSUPPORTED_VERSION = -32022
 
-READ_ONLY = (
-    "get-context", "get-record", "resolve-terms", "lookup", "dependents", "coverage", "brief",
-    "boundary-impact", "verify-evidence", "validate", "readiness", "list-proposals", "validate-change-package",
-)
-
 REGISTRY_ROOT = "--registry-root"
 REPO_ROOT = "--repo-root"
 BOTH_ROOTS = (REGISTRY_ROOT, REPO_ROOT)

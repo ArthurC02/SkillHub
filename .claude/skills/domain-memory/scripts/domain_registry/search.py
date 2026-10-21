@@ -122,12 +122,6 @@ def _match_kind(term: dict[str, Any], needle: str) -> str | None:
     return None
 
 
-def resolve_terms(
-    root: Path, query: str, context: str | None, *, with_mentions: bool = False
-) -> list[dict[str, Any]]:
-    return every_resolved_term(root, query, context, with_mentions=with_mentions)[: query_result_limit(root)]
-
-
 def every_resolved_term(
     root: Path, query: str, context: str | None, *, with_mentions: bool = False
 ) -> list[dict[str, Any]]:

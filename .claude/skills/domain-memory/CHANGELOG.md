@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 1.3.9
+
+### Removed
+
+- `search.resolve_terms`, a limited wrapper no command called: `resolve-terms` reads every match itself so it can say how many the limit cut. The MCP server's `READ_ONLY` list, which only a test read: the test pins the offered tools by name instead.
+
 ## 1.3.8
 
 ### Changed

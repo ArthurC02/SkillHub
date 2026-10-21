@@ -337,16 +337,22 @@ class CliReadTest(RegistryTestCase):
         self.assertEqual("", self.lookup_note("trial workspace"))
 
     def resolve_notes(self, limit: int, *, term: bool) -> str:
+        return self.resolve(limit, term=term).stderr.strip()
+
+    def resolve(self, limit: int, *, term: bool) -> subprocess.CompletedProcess:
         self.allow_results(limit)
         if term:
             self.seed("vocabulary.json", [{"id": "purge", "name": "Purge", "contexts": ["identity"], "status": "reviewed"}])
         self.seed("rules.json", [{"id": "purge-runs-every-step", "contexts": ["identity"], "statement": "x", "status": "reviewed"}])
         self.seed("interactions.json", [{"id": "eval-workspace-purge", "status": "reviewed"}])
-        return self.run_cli("resolve-terms", "--registry-root", str(self.repo / "memory"), "--query", "purge").stderr.strip()
+        return self.run_cli("resolve-terms", "--registry-root", str(self.repo / "memory"), "--query", "purge")
 
     def test_resolve_terms_notes_mentions_cut_by_the_result_limit(self) -> None:
         self.assertEqual('NOTE: "purge" has 2 matches; the first 1 are shown, rules and contracts first among mentions.',
                          self.resolve_notes(1, term=False))
+
+    def test_resolve_terms_prints_only_the_matches_within_the_result_limit(self) -> None:
+        self.assertEqual(["purge-runs-every-step"], [match["id"] for match in json.loads(self.resolve(1, term=False).stdout)])
 
     def test_resolve_terms_holding_exactly_the_result_limit_adds_no_note(self) -> None:
         self.assertEqual("", self.resolve_notes(2, term=False))
