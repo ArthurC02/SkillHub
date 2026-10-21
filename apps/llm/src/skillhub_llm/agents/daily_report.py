@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from skillhub_llm.agents.base import CITES, AgentInstructions
+from skillhub_llm.agents.base import CITES, REPORT_ITEMS, AgentInstructions
 
 DAILY_REPORT = AgentInstructions(
     system=(
@@ -23,20 +23,7 @@ DAILY_REPORT = AgentInstructions(
         "additionalProperties": False,
         "required": ["items"],
         "properties": {
-            "items": {
-                "type": "array",
-                "minItems": 1,
-                "items": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "required": ["status", "text", "cites"],
-                    "properties": {
-                        "status": {"type": "string", "enum": ["fine", "attention"]},
-                        "text": {"type": "string", "minLength": 1},
-                        "cites": CITES,
-                    },
-                },
-            },
+            "items": REPORT_ITEMS,
             "proposals": {
                 "type": "array",
                 "items": {

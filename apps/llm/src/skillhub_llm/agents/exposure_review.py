@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from skillhub_llm.agents.base import CITES, AgentInstructions
+from skillhub_llm.agents.base import REPORT_ITEMS, AgentInstructions
 
 EXPOSURE_REVIEW = AgentInstructions(
     system=(
@@ -29,20 +29,7 @@ EXPOSURE_REVIEW = AgentInstructions(
         "additionalProperties": False,
         "required": ["items"],
         "properties": {
-            "items": {
-                "type": "array",
-                "minItems": 1,
-                "items": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "required": ["status", "text", "cites"],
-                    "properties": {
-                        "status": {"type": "string", "enum": ["fine", "attention"]},
-                        "text": {"type": "string", "minLength": 1},
-                        "cites": CITES,
-                    },
-                },
-            },
+            "items": REPORT_ITEMS,
         },
     },
     prompt_version="exposure-review-v2",
