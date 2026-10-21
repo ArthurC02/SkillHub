@@ -58,6 +58,11 @@ test("populated run results keep identity, sources, output and task verdict visi
   await page.setViewportSize({ width: 375, height: 667 });
   await page.goto(`/runs/${RUN}`);
   await expect(page.getByRole("heading", { name: "試跑結果", exact: true })).toBeVisible();
+  await expect(page.getByText(`試跑紀錄 ID：${RUN}`, { exact: true })).toBeHidden();
+  const identity = page.getByText("試跑識別碼", { exact: true });
+  await identity.focus();
+  await expect(identity).toBeFocused();
+  await page.keyboard.press("Enter");
   await expect(page.getByText(`試跑紀錄 ID：${RUN}`, { exact: true })).toBeVisible();
   const source = page.getByRole("navigation", { name: "這次試跑的來源" });
   await expect(source.getByRole("link", { name: "來源小工具" })).toHaveAttribute(
