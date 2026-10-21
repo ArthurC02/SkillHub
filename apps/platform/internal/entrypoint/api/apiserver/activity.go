@@ -79,7 +79,7 @@ func newActivityService(
 ) *activity.Service {
 	service := &activity.Service{}
 	service.ReadRuns = func(ctx context.Context, workspaceID pgtype.UUID) ([]activity.RunFact, error) {
-		facts, err := runs.ActivityFacts(ctx, workspaceID)
+		facts, err := run.Activity{Runs: runs}.Facts(ctx, workspaceID)
 		out := make([]activity.RunFact, len(facts))
 		for i, fact := range facts {
 			out[i] = activity.RunFact{
@@ -158,7 +158,7 @@ func linkActivityRuns(
 			return nil, err
 		}
 	}
-	links, err := runs.ActivityLinks(ctx, workspaceID, owned)
+	links, err := run.Activity{Runs: runs}.Links(ctx, workspaceID, owned)
 	if err != nil {
 		return nil, err
 	}

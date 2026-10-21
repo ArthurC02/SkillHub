@@ -27,13 +27,17 @@ type ActivityLink struct {
 	TestCaseID pgtype.UUID
 }
 
+type Activity struct {
+	Runs *Service
+}
+
 const (
 	activityInProgress     = "in_progress"
 	activityNeedsAttention = "needs_attention"
 )
 
-func (s *Service) ActivityFacts(ctx context.Context, workspaceID pgtype.UUID) ([]ActivityFact, error) {
-	rows, err := s.queries().ListRunActivityFacts(ctx, workspaceID)
+func (a Activity) Facts(ctx context.Context, workspaceID pgtype.UUID) ([]ActivityFact, error) {
+	rows, err := a.Runs.queries().ListRunActivityFacts(ctx, workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -49,10 +53,10 @@ func (s *Service) ActivityFacts(ctx context.Context, workspaceID pgtype.UUID) ([
 	return facts, nil
 }
 
-func (s *Service) ActivityLinks(
+func (a Activity) Links(
 	ctx context.Context, workspaceID pgtype.UUID, facts []ActivityFact,
 ) (map[pgtype.UUID]ActivityLink, error) {
-	if err := s.requireRunLinks(); err != nil {
+	if err := a.Runs.requireRunLinks(); err != nil {
 		return nil, err
 	}
 	versionIDs := make([]pgtype.UUID, len(facts))
@@ -61,7 +65,7 @@ func (s *Service) ActivityLinks(
 		versionIDs[i] = fact.SkillVersionID
 		snapshotIDs[i] = fact.TestCaseSnapshotID
 	}
-	versions, testCases, err := s.runLinks(ctx, workspaceID, versionIDs, snapshotIDs)
+	versions, testCases, err := a.Runs.runLinks(ctx, workspaceID, versionIDs, snapshotIDs)
 	if err != nil {
 		return nil, err
 	}
