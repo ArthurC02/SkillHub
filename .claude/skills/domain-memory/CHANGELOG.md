@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.1.4
+
+### Fixed
+
+- Three sentences in the command reference that pointed `brief`, `install-pre-commit-hook` and `mcp-serve` at their own notes since 2.1.0 are gone. The output conventions, the walking and timeout rules and the shape of an update have their own headings, *Output and refusals* and *The shape of an update*, instead of sitting under *Checks on the code being written*, and the entry page links the output conventions again; 2.1.2 dropped that link as misdirected when only its heading was.
+
 ## 2.1.3
 
 ### Changed
