@@ -16,17 +16,8 @@ import (
 const maxBatchBodyBytes = 8 << 10
 
 func sessionWorkspace(identities *identity.Service, w http.ResponseWriter, r *http.Request) (identity.Workspace, bool) {
-	user, ok := identity.SessionUser(r.Context())
-	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
-		return identity.Workspace{}, false
-	}
-	ws, err := identities.PersonalWorkspace(r.Context(), user)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
-		return identity.Workspace{}, false
-	}
-	return ws, true
+	_, ws, ok := identity.SessionWorkspace(identities, w, r)
+	return ws, ok
 }
 
 func pathUUID(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {

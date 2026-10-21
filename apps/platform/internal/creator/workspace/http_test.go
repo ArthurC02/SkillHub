@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -138,5 +139,81 @@ func TestDevLoginStopsReadingABodyPastFourKilobytes(t *testing.T) {
 
 	if w.Code != 500 || !strings.Contains(w.Body.String(), "login failed") {
 		t.Fatalf("status = %d body = %q, want the default dev user's login attempt: the name past 4 KiB must never be read", w.Code, w.Body.String())
+	}
+}
+
+func requestWithSessionUser(user User, workspace *Workspace) *http.Request {
+	r := httptest.NewRequest(http.MethodGet, "/x", nil)
+	ctx := context.WithValue(r.Context(), ctxKey{}, user)
+	if workspace != nil {
+		ctx = context.WithValue(ctx, sessionWorkspaceKey{}, *workspace)
+	}
+	return r.WithContext(ctx)
+}
+
+func unreachableService(t *testing.T) *Service {
+	t.Helper()
+	pool, err := pgxpool.New(context.Background(),
+		"postgres://nobody@127.0.0.1:1/nothing?sslmode=disable&connect_timeout=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	return &Service{Pool: pool}
+}
+
+func TestSessionWorkspaceAnswers401WithoutASession(t *testing.T) {
+	w := httptest.NewRecorder()
+	_, ws, ok := SessionWorkspace(&Service{}, w, httptest.NewRequest(http.MethodGet, "/x", nil))
+	if ok || ws.ID.Valid {
+		t.Fatalf("ok = %v workspace = %+v, want a refusal with no workspace", ok, ws)
+	}
+	if w.Code != http.StatusUnauthorized || !strings.Contains(w.Body.String(), `"not authenticated"`) {
+		t.Fatalf("status = %d body = %q, want 401 \"not authenticated\"", w.Code, w.Body.String())
+	}
+}
+
+func TestSessionWorkspaceAnswers500WhenTheWorkspaceLookupFails(t *testing.T) {
+	w := httptest.NewRecorder()
+	user := User{ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}}
+	_, ws, ok := SessionWorkspace(unreachableService(t), w, requestWithSessionUser(user, nil))
+	if ok || ws.ID.Valid {
+		t.Fatalf("ok = %v workspace = %+v, want a refusal with no workspace", ok, ws)
+	}
+	if w.Code != http.StatusInternalServerError || !strings.Contains(w.Body.String(), `"workspace lookup failed"`) {
+		t.Fatalf("status = %d body = %q, want 500 \"workspace lookup failed\"", w.Code, w.Body.String())
+	}
+}
+
+func TestSessionWorkspaceReturnsTheUserAndWorkspaceAndWritesNothing(t *testing.T) {
+	user := User{ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}}
+	want := Workspace{ID: pgtype.UUID{Bytes: [16]byte{2}, Valid: true}, OwnerUserID: user.ID}
+	w := httptest.NewRecorder()
+
+	gotUser, gotWorkspace, ok := SessionWorkspace(&Service{}, w, requestWithSessionUser(user, &want))
+
+	if !ok || gotUser.ID != user.ID || gotWorkspace.ID != want.ID {
+		t.Fatalf("ok = %v user = %v workspace = %v, want the session user and their workspace", ok, gotUser.ID, gotWorkspace.ID)
+	}
+	if w.Body.Len() != 0 || w.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %q, want nothing written", w.Code, w.Body.String())
+	}
+}
+
+func TestSessionWorkspaceIDIsZeroWithoutASessionOrOnLookupFailure(t *testing.T) {
+	user := User{ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}}
+	if got := SessionWorkspaceID(&Service{}, httptest.NewRequest(http.MethodGet, "/x", nil)); got.Valid {
+		t.Errorf("no session: id = %v, want zero", got)
+	}
+	if got := SessionWorkspaceID(unreachableService(t), requestWithSessionUser(user, nil)); got.Valid {
+		t.Errorf("lookup failure: id = %v, want zero", got)
+	}
+}
+
+func TestSessionWorkspaceIDReturnsThePersonalWorkspaceID(t *testing.T) {
+	user := User{ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}}
+	want := Workspace{ID: pgtype.UUID{Bytes: [16]byte{2}, Valid: true}, OwnerUserID: user.ID}
+	if got := SessionWorkspaceID(&Service{}, requestWithSessionUser(user, &want)); got != want.ID {
+		t.Errorf("id = %v, want %v", got, want.ID)
 	}
 }

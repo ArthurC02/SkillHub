@@ -587,14 +587,8 @@ func isComprehensible(q string) bool {
 }
 
 func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
-	user, ok := identity.SessionUser(r.Context())
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
-		return
-	}
-	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
 		return
 	}
 

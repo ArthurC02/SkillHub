@@ -77,15 +77,8 @@ func (h *Handler) Ingest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
-	user, ok := identity.SessionUser(r.Context())
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
-		return
-	}
-
-	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
 		return
 	}
 	var runID pgtype.UUID
@@ -94,6 +87,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var err error
 	after := int64(0)
 	if raw := r.URL.Query().Get("after"); raw != "" {
 		after, err = strconv.ParseInt(raw, 10, 64)

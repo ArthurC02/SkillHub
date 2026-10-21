@@ -472,6 +472,32 @@ func SessionUser(ctx context.Context) (User, bool) {
 	return u, ok
 }
 
+func SessionWorkspace(svc *Service, w http.ResponseWriter, r *http.Request) (User, Workspace, bool) {
+	user, ok := SessionUser(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
+		return User{}, Workspace{}, false
+	}
+	ws, err := svc.PersonalWorkspace(r.Context(), user)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
+		return User{}, Workspace{}, false
+	}
+	return user, ws, true
+}
+
+func SessionWorkspaceID(svc *Service, r *http.Request) pgtype.UUID {
+	user, ok := SessionUser(r.Context())
+	if !ok {
+		return pgtype.UUID{}
+	}
+	ws, err := svc.PersonalWorkspace(r.Context(), user)
+	if err != nil {
+		return pgtype.UUID{}
+	}
+	return ws.ID
+}
+
 func (h *Handler) OptionalSession(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie(sessionCookie)

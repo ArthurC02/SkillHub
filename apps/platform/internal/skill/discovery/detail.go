@@ -949,15 +949,7 @@ func timeString(t pgtype.Timestamptz) string {
 }
 
 func (h *Handler) viewerWorkspace(r *http.Request) pgtype.UUID {
-	user, ok := identity.SessionUser(r.Context())
-	if !ok {
-		return pgtype.UUID{}
-	}
-	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
-	if err != nil {
-		return pgtype.UUID{}
-	}
-	return ws.ID
+	return identity.SessionWorkspaceID(h.Identity, r)
 }
 
 func (a sourceAudience) redact(src *sourceInfo) {

@@ -29,17 +29,8 @@ type Handler struct {
 }
 
 func (h *Handler) workspace(w http.ResponseWriter, r *http.Request) (identity.Workspace, identity.User, bool) {
-	user, ok := identity.SessionUser(r.Context())
-	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
-		return identity.Workspace{}, identity.User{}, false
-	}
-	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
-		return identity.Workspace{}, identity.User{}, false
-	}
-	return ws, user, true
+	user, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
+	return ws, user, ok
 }
 
 type runResponse struct {

@@ -192,17 +192,8 @@ func timestamp(at time.Time) string {
 }
 
 func (h *Handler) workspace(w http.ResponseWriter, r *http.Request) (identity.Workspace, bool) {
-	user, ok := identity.SessionUser(r.Context())
-	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
-		return identity.Workspace{}, false
-	}
-	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
-		return identity.Workspace{}, false
-	}
-	return ws, true
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
+	return ws, ok
 }
 
 func writeReason(w http.ResponseWriter, code int, reason, message string) {

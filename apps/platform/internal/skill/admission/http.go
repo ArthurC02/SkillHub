@@ -134,14 +134,8 @@ func writeBadBody(w http.ResponseWriter) {
 }
 
 func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
-	user, ok := identity.SessionUser(r.Context())
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
-		return
-	}
-	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
 		return
 	}
 
@@ -161,14 +155,8 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) SaveVersion(w http.ResponseWriter, r *http.Request) {
-	user, ok := identity.SessionUser(r.Context())
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
-		return
-	}
-	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
 		return
 	}
 
@@ -200,14 +188,8 @@ func (h *Handler) SaveVersion(w http.ResponseWriter, r *http.Request) {
 const maxImportURLBodyBytes = 4096
 
 func (h *Handler) ImportURL(w http.ResponseWriter, r *http.Request) {
-	user, ok := identity.SessionUser(r.Context())
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
-		return
-	}
-	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
 		return
 	}
 
@@ -293,14 +275,8 @@ type GenerateRejected struct {
 }
 
 func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
-	user, ok := identity.SessionUser(r.Context())
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
-		return
-	}
-	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
 		return
 	}
 
@@ -456,14 +432,8 @@ type GenerateFailure struct {
 }
 
 func (h *Handler) GenerateFailures(w http.ResponseWriter, r *http.Request) {
-	user, ok := identity.SessionUser(r.Context())
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
-		return
-	}
-	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
 		return
 	}
 	records, err := h.Svc.GenerateFailures(r.Context(), ws.ID, generateFailureLimit)

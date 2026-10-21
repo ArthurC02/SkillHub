@@ -68,26 +68,12 @@ func (h *Handler) recordDownloadStarted(r *http.Request) {
 }
 
 func (h *Handler) sessionWorkspace(r *http.Request) pgtype.UUID {
-	user, ok := identity.SessionUser(r.Context())
-	if !ok {
-		return pgtype.UUID{}
-	}
-	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
-	if err != nil {
-		return pgtype.UUID{}
-	}
-	return ws.ID
+	return identity.SessionWorkspaceID(h.Identity, r)
 }
 
 func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {
-	user, ok := identity.SessionUser(r.Context())
+	user, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
-		return
-	}
-	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
 		return
 	}
 
