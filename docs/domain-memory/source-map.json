@@ -812,6 +812,7 @@
         "apps/web/e2e/nav-scroll-cue.spec.ts",
         "apps/web/e2e/navigation-focus.spec.ts",
         "apps/web/e2e/navigation-pending.spec.ts",
+        "apps/web/e2e/new-criterion-draft.spec.ts",
         "apps/web/e2e/packaging-read-recovery.spec.ts",
         "apps/web/e2e/page-read-recovery.spec.ts",
         "apps/web/e2e/paused-cursor-pagination.spec.ts",
