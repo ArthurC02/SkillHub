@@ -17,6 +17,10 @@ function CheckSummary({ check }: { check?: CheckNode }) {
   return <p className="note">判定方式：依設計的檢查（{countNodes(check)} 個節點）</p>;
 }
 
+function saveTextReason(edited: boolean, text: string) {
+  return !edited ? "沒有變更要存" : text.trim() === "" ? "驗收條件不能是空白" : null;
+}
+
 export function CriterionRow({
   testCaseId,
   criterion,
@@ -24,12 +28,21 @@ export function CriterionRow({
   testCaseId: string;
   criterion: AcceptanceCriterion;
 }) {
-  const [draft, setDraft] = useState(criterion.text);
+  const [draft, setDraft] = useState<string | null>(null);
+  const text = draft ?? criterion.text;
   const action = useCriterionAction(testCaseId, criterion.id);
   const running = action.isPending ? action.variables?.kind : undefined;
 
-  const edited = draft !== criterion.text;
-  const saveReason = !edited ? "沒有變更要存" : draft.trim() === "" ? "驗收條件不能是空白" : null;
+  const edited = text !== criterion.text;
+  const saveReason = saveTextReason(edited, text);
+
+  function saveText() {
+    const submitted = text;
+    action.mutate(
+      { kind: "save", text: submitted },
+      { onSuccess: () => setDraft((current) => (current === submitted ? null : current)) },
+    );
+  }
 
   return (
     <li className="criterion">
@@ -38,7 +51,7 @@ export function CriterionRow({
       </label>{" "}
       <input
         id={`criterion-${criterion.id}`}
-        value={draft}
+        value={text}
         onChange={(e) => setDraft(e.target.value)}
         size={50}
         maxLength={AcceptanceCriterionTextMaxLength}
@@ -55,9 +68,9 @@ export function CriterionRow({
       <p>
         <button
           type="button"
-          disabled={action.isPending || !edited || draft.trim() === ""}
+          disabled={action.isPending || !edited || text.trim() === ""}
           aria-describedby={saveReason ? `criterion-save-${criterion.id}` : undefined}
-          onClick={() => action.mutate({ kind: "save", text: draft })}
+          onClick={saveText}
         >
           {running ? (running === "save" ? "儲存中…" : "儲存文字（另一項處理中…）") : "儲存文字"}
         </button>{" "}

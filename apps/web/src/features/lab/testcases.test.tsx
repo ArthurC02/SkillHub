@@ -518,6 +518,114 @@ test("eleven facts cannot be saved and the screen says how many lines there are"
   expect(text()).toContain("目前 11 行，最多 10 行。");
 });
 
+const criterionOwnershipCases = [
+  { mode: "pristine-reread", expected: "伺服器已更新的驗收條件", dirty: false, enabled: false },
+  { mode: "canonical-save", expected: "已儲存的內容", dirty: false, enabled: false },
+  { mode: "dirty-reread", expected: "未送出的自己的草稿", dirty: true, enabled: true },
+  { mode: "pending-typing", expected: "正在編輯的下一稿", dirty: true, enabled: true },
+  { mode: "pending-revert", expected: "輸出的列數少於輸入", dirty: true, enabled: true },
+  { mode: "empty-reread", expected: "", dirty: true, enabled: false },
+  { mode: "unchanged-reread", expected: "輸出的列數少於輸入", dirty: false, enabled: false },
+  { mode: "failed-save", expected: "  已儲存的內容  ", dirty: true, enabled: true },
+];
+
+test.each(criterionOwnershipCases)(
+  "criterion draft ownership survives $mode",
+  async ({ mode, expected, dirty, enabled }) => {
+    const current = structuredClone(draft);
+    current.acceptance_criteria.push({
+      id: "c2",
+      text: "沒有刪掉原始欄位",
+      source: "suggested",
+      confirmed_at: null,
+    });
+    const calls = stubPlatform({ testCase: current });
+    const platformFetch = globalThis.fetch;
+    const writes: { criterion: string; body: unknown }[] = [];
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.stubGlobal("fetch", async (input: string, init?: RequestInit) => {
+      const url = String(input);
+      if (init?.method !== "PATCH" || !url.includes(`/test-cases/${TEST_CASE}/criteria/`)) {
+        return platformFetch(input, init);
+      }
+      const criterion = url.split("/").at(-1)!;
+      const body: unknown = JSON.parse(init.body as string);
+      writes.push({ criterion, body });
+      if (mode === "failed-save") return json({ error: "暫時無法更新驗收條件" }, 503);
+      if (criterion === "c1") {
+        if (mode.startsWith("pending-")) await held;
+        current.acceptance_criteria[0].text = "已儲存的內容";
+        current.acceptance_criteria[0].confirmed_at = null;
+      } else {
+        current.acceptance_criteria[1].confirmed_at = "2026-08-18T01:00:00Z";
+        if (mode !== "unchanged-reread") {
+          current.acceptance_criteria[0].text = "伺服器已更新的驗收條件";
+          current.acceptance_criteria[0].confirmed_at = null;
+        }
+      }
+      current.updated_at = "2026-08-18T01:00:00Z";
+      return json(current);
+    });
+    try {
+      await render();
+      const field = container.querySelector<HTMLInputElement>("#criterion-c1")!;
+      const row = field.closest("li")!;
+      expect(field.value).toBe("輸出的列數少於輸入");
+      expect(button("儲存文字").disabled).toBe(true);
+      const saving =
+        mode === "canonical-save" || mode.startsWith("pending-") || mode === "failed-save";
+      if (saving) {
+        await act(async () => setValue(field, "  已儲存的內容  "));
+        await act(async () => button("儲存文字").click());
+        await waitFor(() => writes.length === 1);
+        if (mode.startsWith("pending-")) {
+          await act(async () => setValue(field, expected));
+          await act(async () => release());
+        }
+        if (mode === "failed-save")
+          await waitFor(() => row.querySelector('[role="alert"]') !== null);
+        else await waitFor(() => row.textContent?.includes("狀態：尚未確認") === true);
+      } else {
+        if (dirty) await act(async () => setValue(field, expected));
+        await act(async () => button("確認").click());
+        await waitFor(
+          () =>
+            container
+              .querySelector("#criterion-c2")
+              ?.closest("li")
+              ?.textContent?.includes("狀態：已確認") === true,
+        );
+      }
+      await waitFor(() => row.textContent?.includes("儲存中…") === false);
+      expect(field.value).toBe(expected);
+      expect(button("儲存文字").disabled).toBe(!enabled);
+      expect(row.querySelector("#criterion-edited-c1") !== null).toBe(dirty);
+      if (mode === "failed-save") {
+        expect(row.querySelector('[role="alert"]')?.textContent).toBe(
+          "操作沒有成功，可以再試一次。",
+        );
+      }
+      if (mode === "empty-reread") expect(row.textContent).toContain("驗收條件不能是空白");
+      expect(writes).toEqual([
+        saving
+          ? { criterion: "c1", body: { text: "  已儲存的內容  " } }
+          : { criterion: "c2", body: { confirmed: true } },
+      ]);
+      expect(
+        calls.filter(
+          (call) =>
+            call.method === "GET" && call.url.split("?")[0].endsWith(`/test-cases/${TEST_CASE}`),
+        ),
+      ).toHaveLength(mode === "failed-save" ? 1 : 2);
+    } finally {
+      release();
+    }
+  },
+);
+
 test.each([
   { name: "plain boundary", input: "字".repeat(1500), invalid: false, problems: [] },
   {
