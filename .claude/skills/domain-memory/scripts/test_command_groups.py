@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import argparse
 import re
+import shlex
 import unittest
 from pathlib import Path
 
 from domain_registry.cli_parser import (
     COMMAND_GROUPS,
+    UsageError,
     _add_evidence_commands,
     _add_governance_commands,
     _add_lifecycle_commands,
@@ -26,6 +28,9 @@ THEMES = {
 PLUGIN = Path(__file__).parents[1]
 REFERENCE = PLUGIN / "references" / "script-api.md"
 LINK = re.compile(r"\]\(([^)]+)\)")
+SNIPPET = re.compile(r"`([a-z][a-z-]* [^`]*--[^`]*)`")
+PLACEHOLDER = re.compile(r"<[^>]*>")
+ROOTS = ("--registry-root", "x", "--repo-root", "x")
 TABLE_HEADINGS = {"## Everyday commands": "everyday", "## Advanced commands": "advanced"}
 ROW = re.compile(r"^\| [^|`]+? \| `([a-z][a-z-]*)")
 
@@ -54,6 +59,30 @@ def local_targets(page: Path) -> list[str]:
 def code_rules(page: Path) -> list[str]:
     section = page.read_text(encoding="utf-8").split("## When you are the one writing the code", 1)[1].split("\n## ", 1)[0]
     return re.findall(r"^\d+\. .+$", section, re.MULTILINE)
+
+
+def common_task_invocations() -> list[str]:
+    section = (PLUGIN / "AGENTS.md").read_text(encoding="utf-8").split("## Common tasks", 1)[1].split("\n## ", 1)[0]
+    names = set(parsed_commands())
+    return [snippet for snippet in SNIPPET.findall(section) if snippet.split()[0] in names]
+
+
+def invocation_argv(snippet: str) -> list[str]:
+    [subcommands] = [action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)]
+    tokens = shlex.split(PLACEHOLDER.sub("x", snippet).replace("[", "").replace("]", ""))
+    choices = {flag: action.choices for action in subcommands.choices[tokens[0]]._actions for flag in action.option_strings if action.choices}
+    for index, token in enumerate(tokens[:-1]):
+        if token in choices and tokens[index + 1] == "x":
+            tokens[index + 1] = sorted(choices[token])[0]
+    return tokens
+
+
+def parse_refusal(argv: list[str]) -> str | None:
+    try:
+        build_parser().parse_args(argv)
+    except UsageError as refusal:
+        return str(refusal).splitlines()[-1]
+    return None
 
 
 def documented_groups() -> dict[str, set[str]]:
@@ -152,6 +181,18 @@ class PagesTest(unittest.TestCase):
     def test_every_reference_is_linked_from_a_page_that_chooses_work(self) -> None:
         linked = {(page.parent / target).resolve() for page in pages() for target in local_targets(page)}
         self.assertEqual([], [path.name for path in sorted(PLUGIN.glob("references/*.md")) if path.resolve() not in linked])
+
+    def test_every_invocation_in_the_common_tasks_table_parses_with_the_roots_the_convention_leaves_out(self) -> None:
+        invocations = common_task_invocations()
+        self.assertGreater(len(invocations), 10)
+        refused = {}
+        for snippet in invocations:
+            argv = invocation_argv(snippet)
+            variants = [argv + list(ROOTS), argv + list(ROOTS[:2]), argv + list(ROOTS[2:]), argv]
+            refusals = [parse_refusal(variant) for variant in variants]
+            if all(refusals):
+                refused[snippet] = refusals[0]
+        self.assertEqual({}, refused)
 
     def test_the_code_rules_read_the_same_on_the_entry_and_the_hygiene_page(self) -> None:
         entry = code_rules(PLUGIN / "AGENTS.md")

@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.0.1
+
+### Fixed
+
+- The AGENTS.md task table names `--registry-root` on the `init-change-package --recitation` line, the one command whose need for it the table's convention did not cover. A test now parses every invocation in that table, with the two root flags the convention leaves out, so a flag the parser does not take, or one it requires, is caught before a reader is; it caught three more lines, which now name `--package-root` for `ship-package`, `--reason` for `discard-harvest` and `--path` with `--lines` for `cite --show`.
+
 ## 2.0.0
 
 ### Removed
