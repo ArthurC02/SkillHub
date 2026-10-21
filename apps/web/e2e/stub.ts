@@ -24,7 +24,25 @@ export async function serveStatic(route: Route, url?: string): Promise<void> {
   );
 }
 
+const TRANSIENT_NAVIGATION_FAILURE = "net::ERR_NO_BUFFER_SPACE";
+
+export function retryTransientNavigation(page: Pick<Page, "goto">): void {
+  const goto = page.goto.bind(page);
+  page.goto = async (url, options) => {
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return await goto(url, options);
+      } catch (error) {
+        const transient = String(error).includes(TRANSIENT_NAVIGATION_FAILURE);
+        if (!transient || attempt >= STATIC_ATTEMPTS) throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, STATIC_RETRY_DELAY_MS));
+    }
+  };
+}
+
 export async function stubPlatform(page: Page) {
+  retryTransientNavigation(page);
   await page.route("**/*", (route, request) => {
     if (STATIC_KINDS.has(request.resourceType())) return serveStatic(route);
     const { body, status } = platformResponse(request.url());

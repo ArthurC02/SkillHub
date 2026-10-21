@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { expect, test } from "@playwright/test";
-import { serveStatic } from "./stub";
+import { expect, type Page, test } from "@playwright/test";
+import { retryTransientNavigation, serveStatic, stubPlatform } from "./stub";
 
 function droppingOrigin(drops: number, hits: number[]): Server {
   return createServer((request, response) => {
@@ -60,4 +60,56 @@ test("a static asset the origin keeps dropping is refused with every failure nam
   } finally {
     server.close();
   }
+});
+
+function navigatorFailing(failures: string[]) {
+  const calls: string[] = [];
+  const page = {
+    goto: async (url: string) => {
+      calls.push(url);
+      const failure = failures.shift();
+      if (failure) throw new Error(`page.goto: ${failure} at ${url}`);
+      return null;
+    },
+  };
+  retryTransientNavigation(page);
+  return { page, calls };
+}
+
+test("a navigation the runner fails twice for lack of buffer space lands on the third attempt", async () => {
+  const { page, calls } = navigatorFailing([
+    "net::ERR_NO_BUFFER_SPACE",
+    "net::ERR_NO_BUFFER_SPACE",
+  ]);
+  await page.goto("/workspace/runs");
+  expect(calls).toEqual(["/workspace/runs", "/workspace/runs", "/workspace/runs"]);
+});
+
+test("a navigation that keeps failing for lack of buffer space is refused after three attempts", async () => {
+  const { page, calls } = navigatorFailing(Array(5).fill("net::ERR_NO_BUFFER_SPACE"));
+  await expect(page.goto("/workspace/runs")).rejects.toThrow("net::ERR_NO_BUFFER_SPACE");
+  expect(calls).toHaveLength(3);
+});
+
+test("a navigation that fails for any other reason is not retried", async () => {
+  const { page, calls } = navigatorFailing(["net::ERR_CONNECTION_REFUSED"]);
+  await expect(page.goto("/workspace/runs")).rejects.toThrow("net::ERR_CONNECTION_REFUSED");
+  expect(calls).toHaveLength(1);
+});
+
+test("every page the platform stub serves retries a navigation that ran out of buffer space", async () => {
+  const failures = ["net::ERR_NO_BUFFER_SPACE"];
+  let calls = 0;
+  const page = {
+    route: async () => {},
+    goto: async (url: string) => {
+      calls += 1;
+      const failure = failures.shift();
+      if (failure) throw new Error(`page.goto: ${failure} at ${url}`);
+      return null;
+    },
+  };
+  await stubPlatform(page as unknown as Page);
+  await page.goto("/");
+  expect(calls).toBe(2);
 });
