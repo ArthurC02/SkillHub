@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.1.8
+
+### Fixed
+
+- The reliability page said a test result entered by hand does not count; `verify-proposal` accepts one that carries the run's output digest and a link to the CI run, as the command reference states, and the page now says so.
+
 ## 2.1.7
 
 ### Changed

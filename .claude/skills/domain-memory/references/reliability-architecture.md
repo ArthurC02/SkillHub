@@ -37,7 +37,7 @@ Record maturity and Change Package workflow are separate states.
 | --- | --- |
 | `draft` | The package validates and its unknowns are stated. |
 | `submitted` | The content is frozen, with the Registry revision it was built on. |
-| `verified` | Every test obligation has a passing result that `record-test-result` produced by running its check. |
+| `verified` | Every test obligation has a passing result with the digest of the run's output, from `record-test-result` or from a CI run. |
 | `approved` | An approval is recorded for every role the policy and the requirement call for. |
 | `applied` | The Registry is written and the audit event appended. |
 | `superseded` or `rejected` | Terminal. |
@@ -62,7 +62,7 @@ The HEAD commit is provenance. A proposal's base is its Registry digest, so unre
 
 A Registry whose review mode is `local-draft-only` makes candidates and nothing else; no command promotes a record until the policy names a verifier. `github-pr` reads the pull request through the provider's API: it must be merged, hold a current approval, have every check run completed and successful, and its head commit must carry this package with the same proposal id and revision. `git-signed-commit` checks the signature on the commit that carries the package against the authorized signers, by key fingerprint or principal. A reviewer name typed into a file is never evidence.
 
-A test result is recorded by `record-test-result`, which runs the obligation's check under one of the policy's command profiles and records the command, the profile, exit code 0 and when it finished; a result written by hand does not count. `validate-contract` parses a contract schema locally and answers `unverified` for one it cannot, never `valid`.
+A test result is recorded by `record-test-result`, which runs the obligation's check under one of the policy's command profiles and records the command, the profile, exit code 0, the digest of the run's output and when it finished; a result from a CI run is entered with the same fields, the run's link as its evidence, and `verify-proposal` refuses one without the digest. A bare `passed` is never enough. `validate-contract` parses a contract schema locally and answers `unverified` for one it cannot, never `valid`.
 
 ## Limits and refusals
 
