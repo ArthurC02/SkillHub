@@ -21,7 +21,7 @@ The manifest carries packaging identity only: `name`, `version`, `description`, 
 
 The scripts need Python 3.10 or later, its standard library, and `git`, and nothing else. A host that cannot offer both runs the Skills without the controlled write boundary, which means no promotion and no audit chain, rather than partially.
 
-Only hosts that define a manifest read it, so the Plugin root also carries `AGENTS.md`: the entry point for an Agent that arrives with no manifest support and no concept of Skills. It states the runtime, the command form, the vocabulary, the common tasks and the six code rules, and the two rules that hold whoever is reading — `readiness` first, and only `reviewed` records are facts — then sends the reader to the router to choose a capability.
+Only hosts that define a manifest read it, so the Plugin root also carries `AGENTS.md`: the entry point for an Agent that arrives with no manifest support and no concept of Skills. It states the two rules that hold whoever is reading, `readiness` first and only `reviewed` records are facts, then what is on disk, how a fact changes, the runtime and command form, the vocabulary, the common tasks, the mistakes that force a redo and the six code rules, and sends the reader to the router to choose a capability.
 
 The Plugin root also holds `evals/`. Each directory under it states its scenarios in `scenarios.json`: a small project, the handoff and task an Agent receives, the expectations a reader judges, and a `check.py` that computes the ones a machine can. Give each scenario to an Agent with the Plugin as released and again with the Plugin as changed, on more than one model tier, and compare. A change to a Skill or a reference that moves no scenario has not been shown to help.
 

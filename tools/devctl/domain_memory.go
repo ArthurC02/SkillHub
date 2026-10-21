@@ -12,7 +12,19 @@ var domainMemoryTool = func(root string, args ...string) (string, error) {
 	command := exec.Command("uv", append([]string{cmdRun, "--no-project", ecosystemPython, filepath.Join(root, ".claude", "skills", "domain-memory", "scripts", "registry_tools.py")}, args...)...)
 	command.Dir = root
 	output, err := command.CombinedOutput()
-	return strings.TrimSpace(string(output)), err
+	return domainMemoryOutput(string(output), err), err
+}
+
+func domainMemoryOutput(output string, commandErr error) string {
+	if commandErr != nil {
+		for _, line := range strings.Split(output, "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "ERROR: ") {
+				return line
+			}
+		}
+	}
+	return strings.TrimSpace(output)
 }
 
 func domainMemoryProblems(root string) []string {

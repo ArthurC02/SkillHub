@@ -2,6 +2,24 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.1.4
+
+### Fixed
+
+- Three sentences in the command reference that pointed `brief`, `install-pre-commit-hook` and `mcp-serve` at their own notes since 2.1.0 are gone. The output conventions, the walking and timeout rules and the shape of an update have their own headings, *Output and refusals* and *The shape of an update*, instead of sitting under *Checks on the code being written*, and the entry page links the output conventions again; 2.1.2 dropped that link as misdirected when only its heading was.
+
+## 2.1.3
+
+### Changed
+
+- The harvest spec format, what a harvest writes and what a resume skips sit under `harvest` in the command reference, and the counterfactual suite file format under `counterfactual`, instead of in the workflow page; the workflow page keeps when to harvest, the loop by hand, and how to sign and ship one, and links to the reference for the formats.
+
+## 2.1.2
+
+### Changed
+
+- The entry page opens with the two rules that hold whoever is reading, then says what is on disk and how a fact changes, and every remaining paragraph says when an Agent reads it and what it does next; the write route is one paragraph, the four honesty checks, the closing manifesto and the misdirected link from the command form to the counterfactual section are gone, and what makes a package a Context sits with the vocabulary. The common-tasks table keeps each command and the step after it; what a flag does lives in the command reference only. The reference no longer calls the Registry JSON files.
+
 ## 2.1.1
 
 ### Fixed
