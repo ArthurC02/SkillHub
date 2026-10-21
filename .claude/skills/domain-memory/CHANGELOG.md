@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.1.5
+
+### Changed
+
+- The reliability architecture page states what the scripts do, not a target: the write protocol and its recovery as the journal phases run them, the proposal states by what each proves, the two verifiers by what they check, and the limits as refusals. Code-owner checks, Unicode normalization of identifiers, contract structural diffs, secret scanning before every write, partial results over a limit and marking a proposal applied only after its commit were described and not implemented; they are gone.
+
 ## 2.1.4
 
 ### Fixed

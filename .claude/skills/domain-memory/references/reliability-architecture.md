@@ -1,97 +1,73 @@
-# Domain Memory reliability target architecture
+# Reliability architecture
 
-The reliability architecture of the Registry. It makes the Registry a reviewable projection, not an authority that can invent domain facts, and separates trusted control, untrusted evidence, and verified state.
-
-The current local implementation provides policy-controlled source selection and limits, Registry digests, phase-aware journaled local writes with recovery, structured citation verification, test-attestation checks, a tamper-evident local audit chain with a checked head manifest, and SCM-artifact binding checks.
+What the scripts guarantee about trust, writes and approval: for a host deciding what to rely on, and for an Agent asked whether a fact can be trusted. The commands themselves are in [script-api.md](script-api.md).
 
 ## Trust boundaries
 
 | Input | Treatment | Permitted effect |
 | --- | --- | --- |
-| Repository instructions at the agent's configured instruction path | Trusted control | Select the agent procedure. |
-| Developer-confirmed source policy | Trusted configuration after review | Select readable source paths and storage location. |
-| Selected documents, code, test output, issues, and generated text | Untrusted evidence | Support a cited candidate; never issue commands, select tools, approve a proposal, or grant access. |
-| Script output and model output | Untrusted proposal | Require schema validation and an authorized write path. |
-| SCM review, protected-branch result, and CI attestation | External verification | Satisfy the configured approval or check policy. |
+| Repository instructions | Trusted control | Select the procedure. |
+| The developer-confirmed source map and policy | Trusted configuration | Select the paths a citation may name, where the Registry lives, and who may approve. |
+| Selected documents, code, test output and generated text | Untrusted evidence | Support a cited candidate; never issue a command, select a tool, approve a proposal or grant access. |
+| Script output and model output | Untrusted proposal | Pass validation and an authorized write path before they land. |
+| A merged, approved pull request with green checks, or a signed commit | External verification | Satisfy the approval the policy names. |
 
-The Script must not execute text from an evidence source. It must use argument arrays for commands, resolve paths inside the repository, restrict writes to the configured Domain Memory root, redact secrets from persisted output, and require explicit human authorization for destructive or external actions.
+No command executes text from an evidence source. A test or counterfactual command runs as an argument array without a shell, every cited path resolves inside the repository, writes stay under the Registry root, and the only outside call is the pull-request check that `ship-package` and `verify-scm-attestation` make against the provider the policy names, with a token from the environment variable the command names.
 
 ## Durable artifacts
 
-`domain-memory-policy.json` is created during Init from developer choices: the destination, selected source roots, include and exclude patterns, source authority, data classification, owners, storage mode, approved command profiles, review provider, and resource limits. Discovery only suggests values for it.
+`domain-memory-policy.json` holds the choices `init-domain-memory` takes from a developer: the destination, the sources with their include and exclude patterns, the source authority, the data classification, the storage mode (`tracked`, `ignored` or `external`), the review mode with its verifier, trigger and CI requirement, the authorized signers, the command profiles a test result may run, and the limits. Discovery only suggests values for it. The sources and limits are settled at initialization; `amend-policy` changes the governance fields as one audited change.
 
-The Registry contains records and a canonical manifest. Each Registry revision is a canonical SHA-256 digest of every standard asset. Canonical JSON uses UTF-8, sorted keys, normalized line endings, and an explicit schema version, so formatting changes do not invalidate a review.
+A Registry revision is one SHA-256 digest over the canonical JSON of every asset and the policy. Formatting changes therefore do not invalidate a review, and a policy change does: a base revision captured before it is stale, and approvals taken against it must be sought again.
 
-Every reviewed evidence citation is an object, not only `path:line`:
-
-```json
-{
-  "path": "docs/rules.md",
-  "lines": {"start": 12, "end": 16},
-  "excerpt_sha256": "sha256:<cited-lines>"
-}
-```
-
-The source manifest is a Merkle-style list of selected files and their digests, with skipped files and the reason. `verify-evidence` identifies stale records precisely; a changed source root alone does not silently invalidate unrelated evidence.
+A citation is an object, `{path, lines, excerpt_sha256}`, never a bare `path:line`, so `verify-evidence` can say of each one whether the cited lines still stand. The source map holds a digest and a listing of every selected file, so `verify-sources` tells the selection moving from a file changing inside, and a changed source root alone invalidates no unrelated evidence.
 
 ## State model
 
-Record maturity and Change Package workflow are separate states:
+Record maturity and Change Package workflow are separate states.
 
-| State | Meaning |
+| Record status | Meaning |
 | --- | --- |
-| `candidate` | Evidence or a proposed interpretation exists; it cannot constrain implementation. |
-| `reviewed` | A configured authority accepted a specific record revision and evidence manifest. |
-| `deprecated` | Retained for historical lookup but excluded from current decisions. |
+| `candidate` | Evidence or a proposed interpretation exists; it constrains no implementation. |
+| `reviewed` | The configured authority accepted this record revision and its evidence. |
+| `deprecated` | Kept for lookup, excluded from current decisions. |
 | `superseded` | Replaced by a named record or Change Package. |
 
-| Proposal state | Required proof |
+| Proposal status | What it proves |
 | --- | --- |
-| `draft` | Valid schema and explicit unknowns. |
-| `submitted` | Frozen proposal digest, Registry digest, source manifest digest, and test plan. |
-| `verified` | CI attestation for the submitted digest. |
-| `approved` | Review-provider evidence for that exact proposal and commit. |
-| `applied` | A committed Registry revision and update attestation. |
-| `rejected` or `superseded` | Immutable terminal record. |
+| `draft` | The package validates and its unknowns are stated. |
+| `submitted` | The content is frozen, with the Registry revision it was built on. |
+| `verified` | Every test obligation has a passing result that `record-test-result` produced by running its check. |
+| `approved` | An approval is recorded for every role the policy and the requirement call for. |
+| `applied` | The Registry is written and the audit event appended. |
+| `superseded` or `rejected` | Terminal. |
 
-Changing proposal content, Registry content, cited evidence, or test configuration creates a new digest and invalidates `verified` and `approved`.
+A change to the proposal's content, or to the records it touches, after submission invalidates `verified` and `approved`: `rebase-proposal` restamps the base and retires the approvals.
 
-## Update protocol
+## The write protocol
 
-1. Read the current Registry manifest and source manifest once.
-2. Build a complete proposed Registry in a temporary workspace.
-3. Run schema, reference, semantic policy, evidence, contract, and test-plan validation there.
-4. Acquire a per-Registry writer lock.
-5. Re-read the Registry manifest under that lock. If it differs from the expected digest, refuse with `registry revision changed before update; run ship-package again` and write nothing.
-6. Apply the prepared patch through one recoverable transaction, then emit an update attestation containing old digest, new digest, proposal digest, and actor identity.
-7. Commit the patch through the repository's normal SCM workflow. Mark the proposal `applied` only after observing the committed revision or accepted merge result.
+Every write goes through one routine:
 
-The journal records `prepared`, `installed`, and `audited` phases. Recovery removes an uninstalled staging tree, rolls back an installed transaction with no matching audit operation, and completes cleanup when the audit operation is present; an incomplete pair is reported for manual reconciliation. The lock protects local writer races. Git is the collaboration and audit boundary: the Skill prepares a change, while protected branches, code owners, required checks, and stale-review invalidation decide whether it becomes shared truth.
+1. Take the per-Registry writer lock, and finish or roll back an interrupted write first.
+2. When the caller named the revision it expects, as `ship-package` does, compare it with the Registry's digest; a difference refuses with `registry revision changed before update; run ship-package again`.
+3. Copy the Registry to a staging directory, apply the change there and validate the whole copy; an error the Registry did not already have refuses the write.
+4. Journal the operation as `prepared`, move the Registry aside as the backup, install the staging copy, and mark the journal `installed`.
+5. Append the audit event and mark the journal `audited`; then remove the backup, the staging copy and the journal. A failed append restores the backup.
 
-## Git use and bounded history
+`recover-registry-update` reads the journal: `prepared` restores the backup and discards the staging copy, `installed` rolls back to the backup, `audited` only cleans up, and a journal whose backup or staging directory is gone, or that is marked `reconciliation-required`, stops with `registry transaction requires manual reconciliation`. A journal of another format, malformed or oversized, is refused rather than acted on. The lock protects local writers; Git is the collaboration boundary, so protected branches, required reviews and checks guard the Registry's commit as they guard any other file.
 
-The HEAD SHA is provenance metadata. It must not by itself invalidate a Proposal when the Registry digest and all cited evidence digests are unchanged; unrelated commits should not force needless reapproval.
+The HEAD commit is provenance. A proposal's base is its Registry digest, so unrelated commits do not force a new approval.
 
 ## Approval and test attestations
 
-The default local mode can create drafts and candidate records but cannot establish a reviewed record. Promotion requires a configured verification adapter. A Git hosting adapter verifies the pull request, target commit, required reviewer roles, code-owner requirements, and completed checks through the provider API, and stores references and immutable observed fields, never a claimed reviewer name alone.
+A Registry whose review mode is `local-draft-only` makes candidates and nothing else; no command promotes a record until the policy names a verifier. `github-pr` reads the pull request through the provider's API: it must be merged, hold a current approval, have every check run completed and successful, and its head commit must carry this package with the same proposal id and revision. `git-signed-commit` checks the signature on the commit that carries the package against the authorized signers, by key fingerprint or principal. A reviewer name typed into a file is never evidence.
 
-Test attestations use an allowlisted command profile from the policy. They record command ID, arguments, working directory, environment profile name, input and output digests, exit code, skipped count, duration, commit, and CI run URL when available. Free-text `passed` is never sufficient proof.
+A test result is recorded by `record-test-result`, which runs the obligation's check under one of the policy's command profiles and records the command, the profile, exit code 0 and when it finished; a result written by hand does not count. `validate-contract` parses a contract schema locally and answers `unverified` for one it cannot, never `valid`.
 
-Contract adapters validate the declared format and produce structural diffs. A breaking diff creates a required decision; it cannot decide business compatibility by itself.
+## Limits and refusals
 
-## Reliability, privacy, and scale limits
+Every parser refuses a duplicate identifier, a path outside the repository, a journal or source map of another format, and, among the sources, a symbolic link. The policy's limits, `max_file_count`, `max_file_bytes`, `max_total_bytes` and `max_query_results`, refuse what exceeds them by name; nothing is silently truncated. `scan-secrets` reports where a secret-shaped string sits without printing it; it is a command to run before a commit, not a step a write runs for you.
 
-All parsers reject unknown schema versions, duplicate identifiers after Unicode normalization, path traversal, malformed journals, oversized JSON, and non-regular files. Recovery journals use fixed operation IDs and paths derived by the Script, never arbitrary paths read from the journal.
-
-Init asks whether Domain Memory is tracked, ignored, or stored externally, and its sensitivity and retention policy. Source text is not copied by default. Secret scanning runs before persistence; findings are reported without emitting secret values.
-
-The policy sets limits for file count, file size, total bytes, and query result count. Exceeding a limit produces a partial, explicitly incomplete result; it never silently omits material.
-
-## Policy is part of the revision
-
-The Registry digest covers the policy as well as the assets, because the policy decides what the Registry may become: whether a record can ever be reviewed, who the sources answer to, and which command profiles a test attestation may cite. A captured base revision therefore goes stale when the policy changes, however it changed, and approvals taken against it must be sought again.
+## The audit log
 
 The audit log is hash-linked as a git history is, not as a single chain: an event names the event or events it was appended on, so two clones that each append on the same base both stay valid, and the next append after their merge names both heads. A merge therefore needs no hand resolution of a hash chain: `reconcile-audit` removes git's conflict markers, keeps each event once, rewrites the manifest and joins the heads with one event. What the DAG does not give is a total order; `recorded_at` and the heights in `sequence` order events within a clone, and the join event records when two lines of work met. The asset indexes are derived from the concept files, so a merge that conflicts in an index is repaired by `refresh-indexes`, not by hand; `validate` refuses any Registry file that still holds conflict markers and any index that no longer lists the records beside it.
-
-`amend-policy` changes one or several governance fields as one audited change; see [script-api.md](script-api.md). Selected source paths and limits are not amendable: they are settled at initialization, where a developer confirms them.
