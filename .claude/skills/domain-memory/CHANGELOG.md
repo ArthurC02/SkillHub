@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.1.3
+
+### Changed
+
+- The harvest spec format, what a harvest writes and what a resume skips sit under `harvest` in the command reference, and the counterfactual suite file format under `counterfactual`, instead of in the workflow page; the workflow page keeps when to harvest, the loop by hand, and how to sign and ship one, and links to the reference for the formats.
+
 ## 2.1.2
 
 ### Changed

@@ -72,7 +72,7 @@ Complete the package's [evidence bundle](../templates/evidence-bundle.json) and 
 
 ## Harvesting proven rules from existing code
 
-`harvest --spec <file> [--through verified]` runs the whole loop below from one spec, one entry per rule, and stops before the signed commit; the steps are spelled out here for a rule that needs a hand on one of them. When a step fails after the package is written, running the same spec again resumes from where it stopped without writing the unchanged records again, and `discard-harvest --package-root <package>` undoes a harvest that will not be finished.
+`harvest --spec <file> [--through verified]` runs the whole loop below from one spec, one entry per rule, and stops before the signed commit; [harvest](script-api.md#harvest) has the spec format, what it writes and what a resume skips. The steps are spelled out here for a rule that needs a hand on one of them. When a step fails after the package is written, running the same spec again resumes from where it stopped without writing the unchanged records again, and `discard-harvest --package-root <package>` undoes a harvest that will not be finished.
 
 When reviewed rules are drawn from code that already enforces them rather than from a new requirement, start from the Contexts with the fewest reviewed rules in `coverage`'s `rules_by_context`. For each rule, cite the code that enforces it and, with `cite --function`, the test that proves it; record it with `upsert-candidate` and promote it into one package. Its `check` runs only that test, with `-v` for Go. Then show that every rule can fail before anything is submitted, once per rule:
 
@@ -81,50 +81,9 @@ DM="python3 <path>/registry_tools.py"
 $DM counterfactual --repo-root . --file <enforcing file> --find '<protection>' --replace '<broken protection>' --test-command '<check>' --cwd <directory> --obligation-id <obligation>
 ```
 
-Several rules at once go through `counterfactual --suite <json>`, one entry per rule with its `obligation_id`. The file holds:
-
-- at the top level, `test_command`, `cwd`, `timeout`, `expect` and `mutations`;
-- in each entry of `mutations`, `file`, `find`, `replace`, `test_command`, `cwd`, `timeout`, `expect` and `obligation_id`; an entry inherits the top-level values it leaves out.
+Several rules at once go through `counterfactual --suite <json>`, one entry per rule with its `obligation_id`; [counterfactual](script-api.md#counterfactual) has the file format.
 
 The intact run is made once per distinct command and directory, and each mutation is judged and restored before the next. Continue only when every verdict is `killed`. `harvest --spec` keeps each whole output and writes nothing while a rule's counterfactual is not killed. A rule whose mutation survives is either untested or not the rule it claims: write the test, or leave the rule out and say why in `rejected_alternatives`.
-
-### The harvest spec
-
-`harvest --spec` reads one JSON object that names the package and its rules.
-
-The package:
-
-- `name`, also the requirement and proposal id, `context`, `proposer`, `intent`, `outcome` and `scope`;
-- the `ownership`, `boundary` and `design` decisions;
-- an optional `approval` with `role` and `reviewer`.
-
-Each entry of `rules`:
-
-- `id`, `statement`, and `example` or `examples`;
-- `enforcing` spans, each `[path, start, end]` or `path:start-end`, citing what enforces the rule, the code, a migration's constraint or trigger, or a contract, in any confirmed source; the decision or requirement that states the rule is evidence of its statement, not of its enforcement, so it is cited beside the enforcing lines, not in their place;
-- the proving test as `test_file` and `test`, and the full `check` that runs it with an optional `cwd`, `command_profile` and `level`;
-- `mutate`, with `file`, `find`, `replace` and an optional `expect`.
-
-### What a harvest writes
-
-Each rule is written as a candidate, or a reviewed one is marked `amended`, or `reproven` when its statement, examples, contexts and cited spans are unchanged and only the proof is new, so the package supersedes its reviewer. The package starts under `<changes-root>/<name>`; a candidate is promoted as it stands, and an amended or reproven rule is promoted with the spec's statement, examples, contexts and citations, each cited afresh from the lines as they are now, in place of what the reviewed record held, so no stale citation survives into the package; then the package is filled and previewed `--as-status submitted`.
-
-Filling writes one acceptance criterion `enforced-<id>` and one test obligation `rule-<id>` per rule, the obligation covering the rule through `also_covers` and running the rule's check. It replaces the criteria, obligations, `rule_ids`, `affected_contexts`, `proof_obligations`, the sources (every file the rules cite) and the evidence's `counterfactual_check` list from the counterfactuals it ran, each naming the file and protection it mutated, so the proof's subject is on record even where the rule's evidence cites other lines and the spec's decisions.
-
-### Resuming a harvest
-
-A step that fails after the package is written, such as a test command whose database is down, is reported, not thrown. Before any counterfactual runs, a directory holding something other than this spec's package is refused, and so is this spec's package once it is past `submitted`, since a finished harvest is not re-run.
-
-Running the same spec again over its own `draft` or `submitted` package resumes it:
-
-- a draft record whose content is what the run would write is not written again and is reported `unchanged`;
-- a rule already in the package is not promoted again;
-- the fill is written only when it differs;
-- a submitted package is not submitted again;
-- an obligation with a passing result of its check is not run again;
-- an approval by the same role and reviewer is not recorded again.
-
-A submitted package whose rules changed since is refused, because its content is frozen.
 
 ### Signing and shipping a harvest
 
