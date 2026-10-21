@@ -8,6 +8,7 @@ import { useAddCriterion, useSuggestCriteria } from "../../testcases.service";
 import type { TestCase } from "../../testcases.service";
 import { MutationError } from "./MutationError";
 import { CriterionRow } from "./CriterionRow";
+import { textLengthReason } from "../test-cases.model";
 
 const MAX_CRITERIA = 50;
 
@@ -59,8 +60,9 @@ function Suggestions({
   );
 }
 
-function addBlocker(text: string, checkReady: boolean) {
+function addBlocker(text: string, checkReady: boolean, sizeProblem: string | null) {
   if (text.trim() === "") return { id: "criterion-add-why", say: "欄位是空的" };
+  if (sizeProblem) return { id: "criterion-add-why", say: sizeProblem };
   if (!checkReady)
     return {
       id: "criterion-check-why",
@@ -78,7 +80,8 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
   const add = useAddCriterion(testCase.test_case_id);
   const suggest = useSuggestCriteria(testCase.test_case_id);
   const suggestError = suggest.error;
-  const blocker = addBlocker(text, checkReady);
+  const sizeProblem = textLengthReason(text, "驗收條件", AcceptanceCriterionTextMaxLength);
+  const blocker = addBlocker(text, checkReady, sizeProblem);
 
   const requestSuggestions = () =>
     suggest.mutate(undefined, {
@@ -113,7 +116,8 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           size={50}
-          maxLength={AcceptanceCriterionTextMaxLength}
+          aria-invalid={sizeProblem !== null}
+          aria-describedby={blocker?.id}
         />{" "}
         <button
           type="button"

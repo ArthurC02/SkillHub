@@ -6,6 +6,7 @@ import { ConfirmDelete } from "../../../../shared/ui/ConfirmDelete";
 import type { AcceptanceCriterion } from "../../testcases.service";
 import { MutationError } from "./MutationError";
 import { countNodes, type CheckNode } from "../../../evaluation";
+import { textLengthReason } from "../test-cases.model";
 
 function criterionState(c: AcceptanceCriterion): string {
   if (c.confirmed_at) return `已確認（${formatAt(c.confirmed_at)}）`;
@@ -17,8 +18,14 @@ function CheckSummary({ check }: { check?: CheckNode }) {
   return <p className="note">判定方式：依設計的檢查（{countNodes(check)} 個節點）</p>;
 }
 
-function saveTextReason(edited: boolean, text: string) {
-  return !edited ? "沒有變更要存" : text.trim() === "" ? "驗收條件不能是空白" : null;
+function criterionTextProblem(text: string) {
+  return text.trim() === ""
+    ? "驗收條件不能是空白"
+    : textLengthReason(text, "驗收條件", AcceptanceCriterionTextMaxLength);
+}
+
+function saveTextReason(edited: boolean, problem: string | null) {
+  return problem ?? (edited ? null : "沒有變更要存");
 }
 
 export function CriterionRow({
@@ -34,7 +41,8 @@ export function CriterionRow({
   const running = action.isPending ? action.variables?.kind : undefined;
 
   const edited = text !== criterion.text;
-  const saveReason = saveTextReason(edited, text);
+  const problem = criterionTextProblem(text);
+  const saveReason = saveTextReason(edited, problem);
 
   function saveText() {
     const submitted = text;
@@ -54,7 +62,8 @@ export function CriterionRow({
         value={text}
         onChange={(e) => setDraft(e.target.value)}
         size={50}
-        maxLength={AcceptanceCriterionTextMaxLength}
+        aria-invalid={problem !== null}
+        aria-describedby={problem ? `criterion-save-${criterion.id}` : undefined}
       />
       <p className="note">狀態：{criterionState(criterion)}</p>
       <CheckSummary check={criterion.check} />
@@ -68,7 +77,7 @@ export function CriterionRow({
       <p>
         <button
           type="button"
-          disabled={action.isPending || !edited || text.trim() === ""}
+          disabled={action.isPending || saveReason !== null}
           aria-describedby={saveReason ? `criterion-save-${criterion.id}` : undefined}
           onClick={saveText}
         >

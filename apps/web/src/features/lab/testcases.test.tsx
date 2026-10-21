@@ -518,6 +518,138 @@ test("eleven facts cannot be saved and the screen says how many lines there are"
   expect(text()).toContain("目前 11 行，最多 10 行。");
 });
 
+const evaluationTextFields = [
+  { name: "criterion", selector: "#criterion-c1", save: "儲存文字", cap: 2000, label: "驗收條件" },
+  { name: "new criterion", selector: "#new-criterion", save: "新增", cap: 2000, label: "驗收條件" },
+  {
+    name: "rubric item",
+    selector: "#rubric-c1",
+    save: "儲存 Rubric",
+    cap: 2000,
+    label: "Rubric 說明",
+  },
+  {
+    name: "rubric version",
+    selector: "#rubric-version",
+    save: "儲存 Rubric",
+    cap: 200,
+    label: "Rubric 版本",
+  },
+];
+
+async function mountEvaluationTextInput(selector: string, saveLabel: string) {
+  const testCase = structuredClone(draft);
+  testCase.rubric = {
+    version: "base/v1",
+    items: [{ id: "c1", text: "原有的評分說明", evidence_required: false }],
+  };
+  const calls = stubPlatform({ testCase });
+  await render();
+  return {
+    calls,
+    field: container.querySelector<HTMLInputElement | HTMLTextAreaElement>(selector)!,
+    save: button(saveLabel),
+  };
+}
+
+function descriptionOf(element: HTMLElement) {
+  return (element.getAttribute("aria-describedby") ?? "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((id) => container.querySelector(`#${id}`)?.textContent ?? "")
+    .join(" ");
+}
+
+test.each(
+  evaluationTextFields.flatMap((field) =>
+    [
+      { shape: "ASCII cap", value: "X".repeat(field.cap), invalid: false },
+      { shape: "ASCII overflow", value: "X".repeat(field.cap + 1), invalid: true },
+      { shape: "astral cap", value: "𠮷".repeat(field.cap), invalid: false },
+      { shape: "astral overflow", value: "𠮷".repeat(field.cap + 1), invalid: true },
+    ].map((input) => ({ ...field, ...input })),
+  ),
+)("Evaluation text limit preserves $name $shape", async (scenario) => {
+  const { field, save, calls } = await mountEvaluationTextInput(scenario.selector, scenario.save);
+  await act(async () => setValue(field, scenario.value));
+  expect(field.value).toBe(scenario.value);
+  expect(save.disabled).toBe(scenario.invalid);
+  if (scenario.invalid) {
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    const reason = `${scenario.label}最多 ${scenario.cap} 個字，目前 ${scenario.cap + 1} 個字。`;
+    expect(descriptionOf(field)).toContain(reason);
+    expect(descriptionOf(save)).toContain(reason);
+  } else {
+    expect([null, "false"]).toContain(field.getAttribute("aria-invalid"));
+  }
+  expect(calls.filter((call) => call.method !== "GET")).toEqual([]);
+});
+
+test.each([
+  { selector: "#criterion-c1", saveLabel: "儲存文字", reason: "驗收條件不能是空白" },
+  { selector: "#rubric-version", saveLabel: "儲存 Rubric", reason: "Rubric 版本是空的" },
+])("Evaluation required text exposes $selector blank state", async (scenario) => {
+  const { field, save, calls } = await mountEvaluationTextInput(
+    scenario.selector,
+    scenario.saveLabel,
+  );
+  await act(async () => setValue(field, ""));
+  expect(field.value).toBe("");
+  expect(save.disabled).toBe(true);
+  expect(field.getAttribute("aria-invalid")).toBe("true");
+  expect(descriptionOf(field)).toContain(scenario.reason);
+  expect(descriptionOf(save)).toContain(scenario.reason);
+  expect(calls.filter((call) => call.method !== "GET")).toEqual([]);
+});
+
+test("Evaluation new-entry hint does not mark untouched blank input invalid", async () => {
+  const { field, save, calls } = await mountEvaluationTextInput("#new-criterion", "新增");
+  expect(field.value).toBe("");
+  expect(save.disabled).toBe(true);
+  expect([null, "false"]).toContain(field.getAttribute("aria-invalid"));
+  expect(descriptionOf(save)).toContain("欄位是空的");
+  expect(calls.filter((call) => call.method !== "GET")).toEqual([]);
+});
+
+test.each([
+  { name: "blank unused version", version: "", item: "" },
+  { name: "oversized unused version", version: "X".repeat(201), item: "" },
+  { name: "oversized whitespace-only optional item", version: "base/v1", item: " ".repeat(2001) },
+])("Evaluation optional rubric removal ignores $name", async ({ version, item }) => {
+  const { field, save, calls } = await mountEvaluationTextInput("#rubric-version", "儲存 Rubric");
+  const itemField = container.querySelector<HTMLTextAreaElement>("#rubric-c1")!;
+  await act(async () => setValue(field, version));
+  await act(async () => setValue(itemField, item));
+  expect(field.value).toBe(version);
+  expect(itemField.value).toBe(item);
+  expect(save.disabled).toBe(false);
+  expect([null, "false"]).toContain(field.getAttribute("aria-invalid"));
+  expect([null, "false"]).toContain(itemField.getAttribute("aria-invalid"));
+  await act(async () => save.click());
+  await waitFor(() => text().includes("已儲存。"));
+  expect(calls.filter((call) => call.method === "PATCH")).toEqual([
+    { url: `/test-cases/${TEST_CASE}`, method: "PATCH", body: JSON.stringify({ rubric: null }) },
+  ]);
+});
+
+test("Evaluation version cap measures the existing trimmed wire value", async () => {
+  const { field, save, calls } = await mountEvaluationTextInput("#rubric-version", "儲存 Rubric");
+  const raw = `  ${"X".repeat(200)}  `;
+  await act(async () => setValue(field, raw));
+  expect(field.value).toBe(raw);
+  expect(save.disabled).toBe(false);
+  expect([null, "false"]).toContain(field.getAttribute("aria-invalid"));
+  await act(async () => save.click());
+  await waitFor(() => text().includes("已儲存。"));
+  const patch = calls.find((call) => call.method === "PATCH");
+  expect(JSON.parse(patch!.body!)).toEqual({
+    rubric: {
+      version: "X".repeat(200),
+      items: [{ id: "c1", text: "原有的評分說明", evidence_required: false }],
+    },
+  });
+});
+
 const criterionOwnershipCases = [
   { mode: "pristine-reread", expected: "伺服器已更新的驗收條件", dirty: false, enabled: false },
   { mode: "canonical-save", expected: "已儲存的內容", dirty: false, enabled: false },

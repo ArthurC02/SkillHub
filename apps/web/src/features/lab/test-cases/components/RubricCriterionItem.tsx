@@ -1,5 +1,6 @@
 import { RubricItemTextMaxLength } from "@skillhub/api-client-ts/limits";
 import type { RubricItem } from "../../testcases.service";
+import { textLengthReason } from "../test-cases.model";
 
 export function RubricCriterionItem({
   criterionId,
@@ -14,6 +15,9 @@ export function RubricCriterionItem({
   onUpdate: (patch: Partial<RubricItem>) => void;
   pending: boolean;
 }) {
+  const text = item?.text ?? "";
+  const problem =
+    text.trim() === "" ? null : textLengthReason(text, "Rubric 說明", RubricItemTextMaxLength);
   return (
     <li className="criterion">
       <p className="note">驗收條件：{criterionText}</p>
@@ -25,11 +29,17 @@ export function RubricCriterionItem({
         id={`rubric-${criterionId}`}
         rows={3}
         cols={60}
-        maxLength={RubricItemTextMaxLength}
-        value={item?.text ?? ""}
+        value={text}
+        aria-invalid={problem !== null}
+        aria-describedby={problem ? `rubric-size-${criterionId}` : undefined}
         onChange={(e) => onUpdate({ text: e.target.value })}
         readOnly={pending}
       />
+      {problem && (
+        <p className="note" role="status" id={`rubric-size-${criterionId}`}>
+          {problem}
+        </p>
+      )}
       <p>
         <label htmlFor={`rubric-weight-${criterionId}`}>權重</label>{" "}
         <input

@@ -1,9 +1,30 @@
-import { RubricVersionMaxLength } from "@skillhub/api-client-ts/limits";
+import { RubricItemTextMaxLength, RubricVersionMaxLength } from "@skillhub/api-client-ts/limits";
 import { useState } from "react";
 import { useUpdateTestCase } from "../../testcases.service";
 import type { RubricItem, TestCase } from "../../testcases.service";
 import { MutationError } from "./MutationError";
 import { RubricCriterionItem } from "./RubricCriterionItem";
+import { textLengthReason } from "../test-cases.model";
+
+type RubricBlocker = { field: "version" | "item"; id: string; say: string };
+
+function rubricBlocker(version: string, items: RubricItem[]): RubricBlocker | null {
+  if (items.length === 0) return null;
+  if (version.trim() === "") {
+    return {
+      field: "version",
+      id: "rubric-version-reason",
+      say: "還不能儲存，因為 Rubric 版本是空的。有內容的 rubric 一定要有版本——評估報告要記下這次判定是在哪個版本下做的。",
+    };
+  }
+  const versionProblem = textLengthReason(version.trim(), "Rubric 版本", RubricVersionMaxLength);
+  if (versionProblem) return { field: "version", id: "rubric-version-reason", say: versionProblem };
+  for (const item of items) {
+    const problem = textLengthReason(item.text, "Rubric 說明", RubricItemTextMaxLength);
+    if (problem) return { field: "item", id: `rubric-size-${item.id}`, say: problem };
+  }
+  return null;
+}
 
 export function RubricSection({ testCase }: { testCase: TestCase }) {
   const stored = testCase.rubric;
@@ -12,10 +33,12 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
     Object.fromEntries((stored?.items ?? []).map((i) => [i.id, i])),
   );
   const save = useUpdateTestCase(testCase.test_case_id);
+  const list = testCase.acceptance_criteria
+    .map((c) => items[c.id])
+    .filter((i): i is RubricItem => i !== undefined && i.text.trim() !== "");
+  const blocker = rubricBlocker(version, list);
+  const versionProblem = blocker?.field === "version" ? blocker.say : null;
   const saveRubric = () => {
-    const list = testCase.acceptance_criteria
-      .map((c) => items[c.id])
-      .filter((i): i is RubricItem => i !== undefined && i.text.trim() !== "");
     // null means no rubric; {items: []} would mean a rubric with nothing in it.
     save.mutate({ rubric: list.length === 0 ? null : { version: version.trim(), items: list } });
   };
@@ -28,7 +51,7 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
     }));
   };
 
-  const used = testCase.acceptance_criteria.filter((c) => items[c.id]?.text.trim()).length;
+  const used = list.length;
 
   return (
     <>
@@ -51,10 +74,19 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
               }}
               readOnly={save.isPending}
               size={40}
-              maxLength={RubricVersionMaxLength}
+              aria-invalid={versionProblem !== null}
+              aria-describedby={versionProblem ? "rubric-version-reason" : undefined}
               placeholder="例如 content-007/writing/v1"
             />
             <br />
+            {versionProblem && (
+              <>
+                <span id="rubric-version-reason" className="note" role="status">
+                  {versionProblem}
+                </span>
+                <br />
+              </>
+            )}
             <span className="note" data-role="evidence">
               改動文字、權重或引文要求會建立新版本；評估報告會記下版本。
             </span>
@@ -73,10 +105,8 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
           </ul>
           <button
             type="button"
-            disabled={save.isPending || (used > 0 && version.trim() === "")}
-            aria-describedby={
-              used > 0 && version.trim() === "" ? "rubric-version-reason" : undefined
-            }
+            disabled={save.isPending || blocker !== null}
+            aria-describedby={blocker?.id}
             onClick={saveRubric}
           >
             {save.isPending ? "儲存中…" : "儲存 Rubric"}
@@ -86,12 +116,6 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
               ? "目前沒有任何一條有內容，儲存等於移除這個測試題的 rubric。"
               : `目前 ${used} 條有內容。`}
           </span>
-          {used > 0 && version.trim() === "" && (
-            <span id="rubric-version-reason" className="note" role="status">
-              還不能儲存，因為 Rubric 版本是空的。有內容的 rubric
-              一定要有版本——評估報告要記下這次判定是在哪個版本下做的。
-            </span>
-          )}
           {save.isSuccess && <p role="status">已儲存。</p>}
           <MutationError error={save.error} what="Rubric" fallback="儲存沒有成功，可以再試一次。" />
         </>
