@@ -831,7 +831,7 @@ jobs:
           [ "$status" = 1 ] && grep -q 'SKILLHUB_SANDBOX_TOKEN is required' <<<"$output"
 
   images-push:
-    needs: [images, web, platform, llm, sandbox, devctl, contracts-drift, dependency-audit]
+    needs: [images, web, web-browser, platform, llm, sandbox, devctl, contracts-drift, dependency-audit]
     if: ${{ !failure() && !cancelled() && needs.images.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15

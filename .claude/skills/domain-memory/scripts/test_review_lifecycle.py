@@ -154,6 +154,20 @@ class ReviewLifecycleTest(RegistryTestCase):
         with self.assertRaisesRegex(ValueError, "only a finalized approved proposal may apply"):
             apply_approved_updates(package, self.repo / "memory", self.repo)
 
+    def test_an_approved_proposal_without_a_finalization_time_does_not_apply(self) -> None:
+        for label, finalized_at in (("absent", None), ("not a timestamp", "yesterday")):
+            with self.subTest(label):
+                self.tearDown()
+                self.setUp()
+                package = self.draft_package()
+                (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+                self.approve_and_finalize(package)
+                path = package / "domain-change-proposal.json"
+                write_json(path, {**load_json(path), "finalized_at": finalized_at})
+                with self.assertRaisesRegex(ValueError, "^only a finalized approved proposal may apply registry updates$"):
+                    apply_approved_updates(package, self.repo / "memory", self.repo)
+                self.assertEqual([], self.rule_ids())
+
     def test_a_finalized_proposal_superseded_before_it_applied_does_not_apply(self) -> None:
         package = self.draft_package()
         (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")

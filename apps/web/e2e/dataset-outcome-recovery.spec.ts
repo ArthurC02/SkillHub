@@ -7,6 +7,66 @@ import { TEST_CASE, VERSION, platformResponse } from "../src/testing/fixtures/pl
 import type { Dataset } from "../src/features/lab/lab.service";
 import { stubPlatform } from "./stub";
 
+test("dataset selection starts in the first phone viewport with rules before submission", async ({
+  page,
+}) => {
+  await stubPlatform(page);
+  for (const width of [375, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`/lab/test-cases/${TEST_CASE}/datasets`);
+    await expect(page.locator(".auth-name")).toHaveText("tester");
+    const file = page.getByLabel("選擇檔案", { exact: true });
+    const guide = page.getByRole("region", { name: "上傳前請先確認", exact: true });
+    const submit = page.getByRole("button", { name: "上傳", exact: true });
+    await expect(submit).toBeEnabled();
+    const box = await file.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(900);
+    expect(
+      await file.evaluate((element) =>
+        Boolean(
+          element.compareDocumentPosition(document.querySelector(".dataset-upload-guide")!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      await guide.evaluate((element) =>
+        Boolean(
+          element.compareDocumentPosition(
+            document.querySelector(".dataset-upload-picker button")!,
+          ) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+      ),
+    ).toBe(true);
+    for (const term of ["大小限制", "支援格式", "保存政策", "資料使用範圍"]) {
+      await expect(guide.getByText(term, { exact: true })).toBeVisible();
+    }
+    expect(await guide.locator("details, [hidden]").count()).toBe(0);
+    await file.focus();
+    await page.keyboard.press("Tab");
+    await expect(guide.getByRole("link")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(submit).toBeFocused();
+    const report = await new AxeBuilder({ page }).analyze();
+    await writeFile(
+      test.info().outputPath(`dataset-task-order-${width}-a11y.json`),
+      JSON.stringify(report),
+    );
+    expect(report.violations).toEqual([]);
+    expect(report.incomplete).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({
+      path: test.info().outputPath(`dataset-task-order-${width}.png`),
+      fullPage: true,
+    });
+  }
+});
+
 function uploadReceiver(transport: string, onBody: (body: string) => void) {
   return createServer(async (request, response) => {
     const headers = {
@@ -274,15 +334,71 @@ async function datasetSessionReceiver(previous: boolean, writes: string[]) {
   return receiver;
 }
 
-function submitWhileIdentityStarts(page: Page) {
-  return page.evaluate(async () => {
-    document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
-    document.querySelector<HTMLButtonElement>(".dataset-upload-picker button")!.click();
-  });
+async function submitWhileIdentityStarts(page: Page) {
+  await expect(page.locator(".dataset-upload-picker button")).toBeEnabled();
+  return page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const button = document.querySelector<HTMLButtonElement>(".dataset-upload-picker button")!;
+        const originalFetch = window.fetch;
+        window.fetch = (input, init) => {
+          const response = originalFetch.call(window, input, init);
+          const url = new URL(
+            input instanceof Request ? input.url : input.toString(),
+            location.href,
+          );
+          if (url.pathname === "/me") {
+            window.fetch = originalFetch;
+            if (button.disabled) {
+              reject(new Error("The identity submit probe requires an enabled upload button"));
+              return response;
+            }
+            button.click();
+            resolve();
+          }
+          return response;
+        };
+        document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+      }),
+  );
 }
+
+test("dataset identity submit starts before a queued disabling render", async ({ page }) => {
+  await page.route("**/identity-submit-probe", (route) =>
+    route.fulfill({
+      contentType: "text/html; charset=utf-8",
+      body: '<div class="dataset-upload-picker"><button data-clicks="0">Upload</button></div>',
+    }),
+  );
+  await page.route("**/me", (route) => route.fulfill({ json: { ready: true } }));
+  await page.goto("/identity-submit-probe");
+  await page.evaluate(() => {
+    const button = document.querySelector<HTMLButtonElement>(".dataset-upload-picker button")!;
+    const originalFetch = window.fetch;
+    button.addEventListener("click", () => {
+      button.dataset.clicks = String(Number(button.dataset.clicks) + 1);
+    });
+    document.addEventListener(
+      "visibilitychange",
+      () => {
+        void fetch("/me").then(() => {
+          button.dataset.fetchRestored = String(window.fetch === originalFetch);
+        });
+        queueMicrotask(() => {
+          button.disabled = true;
+        });
+      },
+      { once: true },
+    );
+  });
+  const profile = page.waitForResponse((response) => new URL(response.url()).pathname === "/me");
+  await submitWhileIdentityStarts(page);
+  await profile;
+  const button = page.locator(".dataset-upload-picker button");
+  await expect(button).toBeDisabled();
+  await expect(button).toHaveAttribute("data-clicks", "1");
+  await expect(button).toHaveAttribute("data-fetch-restored", "true");
+});
 
 for (const previous of [false, true]) {
   test(`an identity check in the dataset submit turn preserves ${previous ? "the preceding unknown upload" : "the unsent file"}`, async ({
@@ -383,13 +499,22 @@ for (const previous of [false, true]) {
         release = resolve;
       });
       checking = true;
+      const profile = page.waitForResponse(
+        (response) => new URL(response.url()).pathname === "/me",
+      );
       await submitWhileIdentityStarts(page);
+      await expect(page.getByText("正在確認登入狀態…", { exact: true })).toBeVisible();
       await expect(blocked).toBeFocused();
       await expect(result).toHaveCount(0);
       await expect(page.getByRole("status", { name: "上傳完成", exact: true })).toContainText(
         "next.csv",
       );
       expect(writes).toEqual(previous ? ["first-data", "next-data"] : ["next-data"]);
+      checking = false;
+      release();
+      await profile;
+      await expect(page.locator(".auth-name")).toHaveText("tester");
+      await expect(upload).toBeEnabled();
     } finally {
       release();
       receiver.closeAllConnections();

@@ -103,6 +103,34 @@ func TestBrowserRequiredChecksFailUnlessEveryShardSucceeded(t *testing.T) {
 	}
 }
 
+func TestImagePublicationWaitsForNativeBrowserChecks(t *testing.T) {
+	job := browserWorkflowJob(t, "images-push")
+	_, remaining, found := strings.Cut(job, "    needs: [")
+	if !found {
+		t.Fatal("image publication must declare its validation dependencies")
+	}
+	line, _, found := strings.Cut(remaining, "]")
+	if !found {
+		t.Fatal("image publication dependencies must form a complete list")
+	}
+	dependencies := make(map[string]bool)
+	for _, name := range strings.Split(line, ",") {
+		dependencies[strings.TrimSpace(name)] = true
+	}
+	expected := []string{"images", "web", "web-browser", "platform", "llm", "sandbox", "devctl", "contracts-drift", "dependency-audit"}
+	for _, name := range expected {
+		if !dependencies[name] {
+			t.Errorf("image publication must wait for %s", name)
+		}
+	}
+	if len(dependencies) != len(expected) {
+		t.Error("image publication must retain exactly its required validation dependencies")
+	}
+	if !strings.Contains(job, "if: ${{ !failure() && !cancelled() && needs.images.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}") {
+		t.Error("image publication must refuse failed or cancelled validation while allowing unrelated skipped jobs")
+	}
+}
+
 func TestBrowserPreviewPinsOneLoopbackAddress(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {

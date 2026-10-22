@@ -2,6 +2,18 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.3.3
+
+### Fixed
+
+- The test that a git deadline ends in one error line no longer depends on git taking longer than a millisecond: on a fast runner every git call finished in time and the command ended on another error. It now raises the deadline itself; the real timeout is tested with commands that do run long.
+
+## 2.3.2
+
+### Added
+
+- A test that an approved proposal whose `finalized_at` is absent or not a timestamp does not apply.
+
 ## 2.3.1
 
 ### Added
