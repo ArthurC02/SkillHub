@@ -37,6 +37,8 @@ Read the intended behavior and its acceptance criteria. Resolve each noun with `
 
 Treat the code as the evidence of current behavior, not of intent. Read the boundary surfaces first: public APIs, event schemas, persistence ownership, composition roots and architecture checks. Then read inside each candidate Context for its terms, guards and refusals. Tests that assert a refusal are good evidence for a rule; a test name alone is not.
 
+A database schema states rules the application cannot break: `extract-sql-schema --registry-root <root> --repo-root <repo> --migrations <dir> --table-context <table>=<context> ...` writes a candidate Rule for each constraint, index and trigger the migrations leave on a table, citing its lines. Each statement arrives as the constraint's SQL; restate it in the domain's language, and retract the ones that only serve the database, such as a unique index that mirrors a primary key.
+
 `change-coupling --repo-root <repo> --root <code root> --depth <n>` reports which modules change together in history.
 
 - Strong coupling inside a candidate Context supports it; strong coupling across two candidates asks whether they are one Context or share a hidden contract; a composition root couples with everything and says nothing about boundaries.

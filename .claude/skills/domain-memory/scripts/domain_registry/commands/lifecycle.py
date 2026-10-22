@@ -38,6 +38,7 @@ from ..registry import (
 )
 from ..relocate import line_range
 from ..ship import ship_package
+from ..sql_candidates import extract_sql_rules
 from ..store import read_document
 from ..transaction import recover_interrupted_update, transaction_path
 from ..updates import (
@@ -205,13 +206,36 @@ def handle_upsert_candidate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _pairs(entries: list[str], option: str, shape: str) -> dict[str, str]:
+    pairs = {}
+    for entry in entries:
+        left, separator, right = entry.partition("=")
+        if not (separator and left.strip() and right.strip()):
+            raise ValueError(f"{option} takes {shape}, got {entry}")
+        pairs[left.strip()] = right.strip()
+    return pairs
+
+
+def handle_extract_sql_schema(args: argparse.Namespace) -> int:
+    report = extract_sql_rules(
+        args.registry_root.resolve(), args.repo_root.resolve(), args.migrations.resolve(),
+        _pairs(args.table_context, "--table-context", "TABLE=CONTEXT"), args.default_context,
+    )
+    print_json(report)
+    if report["unplaced_tables"]:
+        print("NOTE: no Context for the constraints of " + ", ".join(report["unplaced_tables"])
+              + "; name one with --table-context TABLE=CONTEXT or --default-context to extract them.", file=sys.stderr)
+    if report["unread_statements"]:
+        print(f"NOTE: {len(report['unread_statements'])} statement(s) were not read, so their constraints are not "
+              "extracted; see unread_statements.", file=sys.stderr)
+    if report["outside_sources"]:
+        print("NOTE: the extracted rules rest on files the confirmed source map does not cover: "
+              + ", ".join(report["outside_sources"]) + ". " + OUTSIDE_SOURCES_CONSEQUENCE, file=sys.stderr)
+    return 0
+
+
 def handle_harvest_candidates(args: argparse.Namespace) -> int:
-    context_map = {}
-    for entry in args.context_map:
-        candidate, separator, gold = entry.partition("=")
-        if not (separator and candidate.strip() and gold.strip()):
-            raise ValueError(f"--context-map takes CANDIDATE=GOLD, got {entry}")
-        context_map[candidate.strip()] = gold.strip()
+    context_map = _pairs(args.context_map, "--context-map", "CANDIDATE=GOLD")
     report = harvest_candidates(
         args.registry_root.resolve(), args.repo_root.resolve(), args.from_root.resolve(), context_map,
         keep_duplicates=args.keep_duplicates,
@@ -418,6 +442,7 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "validate": handle_validate,
     "upsert-candidate": handle_upsert_candidate,
     "harvest-candidates": handle_harvest_candidates,
+    "extract-sql-schema": handle_extract_sql_schema,
     "harvest": handle_harvest,
     "discard-harvest": handle_discard_harvest,
     "retract-candidate": handle_retract_candidate,
