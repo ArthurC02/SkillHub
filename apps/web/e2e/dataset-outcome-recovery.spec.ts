@@ -274,15 +274,71 @@ async function datasetSessionReceiver(previous: boolean, writes: string[]) {
   return receiver;
 }
 
-function submitWhileIdentityStarts(page: Page) {
-  return page.evaluate(async () => {
-    document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
-    document.querySelector<HTMLButtonElement>(".dataset-upload-picker button")!.click();
-  });
+async function submitWhileIdentityStarts(page: Page) {
+  await expect(page.locator(".dataset-upload-picker button")).toBeEnabled();
+  return page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const button = document.querySelector<HTMLButtonElement>(".dataset-upload-picker button")!;
+        const originalFetch = window.fetch;
+        window.fetch = (input, init) => {
+          const response = originalFetch.call(window, input, init);
+          const url = new URL(
+            input instanceof Request ? input.url : input.toString(),
+            location.href,
+          );
+          if (url.pathname === "/me") {
+            window.fetch = originalFetch;
+            if (button.disabled) {
+              reject(new Error("The identity submit probe requires an enabled upload button"));
+              return response;
+            }
+            button.click();
+            resolve();
+          }
+          return response;
+        };
+        document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+      }),
+  );
 }
+
+test("dataset identity submit starts before a queued disabling render", async ({ page }) => {
+  await page.route("**/identity-submit-probe", (route) =>
+    route.fulfill({
+      contentType: "text/html; charset=utf-8",
+      body: '<div class="dataset-upload-picker"><button data-clicks="0">Upload</button></div>',
+    }),
+  );
+  await page.route("**/me", (route) => route.fulfill({ json: { ready: true } }));
+  await page.goto("/identity-submit-probe");
+  await page.evaluate(() => {
+    const button = document.querySelector<HTMLButtonElement>(".dataset-upload-picker button")!;
+    const originalFetch = window.fetch;
+    button.addEventListener("click", () => {
+      button.dataset.clicks = String(Number(button.dataset.clicks) + 1);
+    });
+    document.addEventListener(
+      "visibilitychange",
+      () => {
+        void fetch("/me").then(() => {
+          button.dataset.fetchRestored = String(window.fetch === originalFetch);
+        });
+        queueMicrotask(() => {
+          button.disabled = true;
+        });
+      },
+      { once: true },
+    );
+  });
+  const profile = page.waitForResponse((response) => new URL(response.url()).pathname === "/me");
+  await submitWhileIdentityStarts(page);
+  await profile;
+  const button = page.locator(".dataset-upload-picker button");
+  await expect(button).toBeDisabled();
+  await expect(button).toHaveAttribute("data-clicks", "1");
+  await expect(button).toHaveAttribute("data-fetch-restored", "true");
+});
 
 for (const previous of [false, true]) {
   test(`an identity check in the dataset submit turn preserves ${previous ? "the preceding unknown upload" : "the unsent file"}`, async ({
@@ -383,13 +439,22 @@ for (const previous of [false, true]) {
         release = resolve;
       });
       checking = true;
+      const profile = page.waitForResponse(
+        (response) => new URL(response.url()).pathname === "/me",
+      );
       await submitWhileIdentityStarts(page);
+      await expect(page.getByText("正在確認登入狀態…", { exact: true })).toBeVisible();
       await expect(blocked).toBeFocused();
       await expect(result).toHaveCount(0);
       await expect(page.getByRole("status", { name: "上傳完成", exact: true })).toContainText(
         "next.csv",
       );
       expect(writes).toEqual(previous ? ["first-data", "next-data"] : ["next-data"]);
+      checking = false;
+      release();
+      await profile;
+      await expect(page.locator(".auth-name")).toHaveText("tester");
+      await expect(upload).toBeEnabled();
     } finally {
       release();
       receiver.closeAllConnections();
