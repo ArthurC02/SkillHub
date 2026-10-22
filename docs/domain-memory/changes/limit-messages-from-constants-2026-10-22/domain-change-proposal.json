@@ -3,12 +3,12 @@
   "proposal_id": "limit-messages-from-constants",
   "proposer": "domain-memory-agent",
   "requirement_id": "limit-messages-from-constants",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-22T15:44:44.912471Z",
   "verified_at": "2026-10-22T15:44:48.168952Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T15:45:01.574200Z",
+  "applied_at": "2026-10-22T15:46:36.192381Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "97e8db991ab53bea0d8e8be68329e030f0d78e9f",
@@ -162,5 +162,9 @@
   "supersedes": [
     "contract-limits-from-generated",
     "identity-harvest-rules-2026-10-18"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "7911466cb513552316a651183f98019089f9d872",
+    "registry_digest": "sha256:cd88d464926f80ced0feedd76b49d6d024bf229b66f91162f7460122bf30ce2b"
+  }
 }
