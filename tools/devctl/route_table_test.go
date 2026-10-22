@@ -117,7 +117,7 @@ func TestARateLimitedRouteMustDeclareItsRefusal(t *testing.T) {
 			root := writeRouteFixture(t, "", "")
 			router := filepath.Join(root, filepath.FromSlash(routeTableSources[0]))
 			contract := filepath.Join(root, filepath.FromSlash(routeContractFile))
-			replaceIn(t, router, "}\n", "\tmux.HandleFunc(\"POST /limited\", limited(d, \"r\", h.x))\n}\n")
+			replaceIn(t, router, "}\n", "\tmux.HandleFunc(\"POST /limited\",\n\t\tlimited(d, \"r\", h.x))\n}\n")
 			replaceIn(t, contract, "components:", "  /limited:\n    post:\n"+tc.responses+"components:")
 			problems := routeTableProblems(root)
 			if len(problems) != len(tc.want) {

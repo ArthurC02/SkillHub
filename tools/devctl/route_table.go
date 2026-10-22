@@ -21,8 +21,8 @@ var routeTableSources = []string{
 const routeContractFile = "contracts/openapi/public.yaml"
 
 var (
-	routeCallPattern    = regexp.MustCompile(`mux\.Handle(?:Func)?\(([^,]+),`)
-	limitedRoutePattern = regexp.MustCompile(`mux\.HandleFunc\(("[^"]+"),.*\blimited\(`)
+	routeCallPattern  = regexp.MustCompile(`mux\.Handle(?:Func)?\(([^,]+),`)
+	handleFuncPattern = regexp.MustCompile(`mux\.HandleFunc\(("[^"]+"),`)
 )
 
 var routePatternConstants = map[string]struct{ file, name string }{
@@ -87,8 +87,12 @@ func undeclaredRateLimits(root string, documented map[string]map[string]bool) []
 		return []string{fmt.Sprintf("route-table: %v", err)}
 	}
 	var problems []string
-	for _, m := range limitedRoutePattern.FindAllStringSubmatch(string(data), -1) {
-		pattern, _ := strconv.Unquote(m[1])
+	source := string(data)
+	for _, m := range handleFuncPattern.FindAllStringSubmatchIndex(source, -1) {
+		if !strings.Contains(mountCall(source, m[0]), "limited(") {
+			continue
+		}
+		pattern, _ := strconv.Unquote(source[m[2]:m[3]])
 		if statuses := documented[pattern]; statuses != nil && !statuses["429"] {
 			problems = append(problems, fmt.Sprintf(
 				"route-table: %q is rate limited in %s but its operation in %s declares no 429; "+
@@ -97,6 +101,22 @@ func undeclaredRateLimits(root string, documented map[string]map[string]bool) []
 		}
 	}
 	return problems
+}
+
+func mountCall(source string, start int) string {
+	depth := 0
+	for i := start + strings.IndexByte(source[start:], '('); i < len(source); i++ {
+		switch source[i] {
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 {
+				return source[start : i+1]
+			}
+		}
+	}
+	return source[start:]
 }
 
 func mountedRoutes(root string) ([]string, []string) {

@@ -33754,16 +33754,17 @@ func (s *TooManyRequestsHeaders) SetResponse(val Error) {
 	s.Response = val
 }
 
-func (*TooManyRequestsHeaders) actOnCreationSessionRes()            {}
-func (*TooManyRequestsHeaders) browseCatalogRes()                   {}
-func (*TooManyRequestsHeaders) createCreationSessionRes()           {}
-func (*TooManyRequestsHeaders) generateSkillRes()                   {}
-func (*TooManyRequestsHeaders) importSkillFromURLRes()              {}
-func (*TooManyRequestsHeaders) publicSearchSkillsRes()              {}
-func (*TooManyRequestsHeaders) saveSkillVersionRes()                {}
-func (*TooManyRequestsHeaders) searchSkillsWithCorrectedIntentRes() {}
-func (*TooManyRequestsHeaders) suggestAcceptanceCriteriaRes()       {}
-func (*TooManyRequestsHeaders) uploadSkillPackageRes()              {}
+func (*TooManyRequestsHeaders) actOnCreationSessionRes()              {}
+func (*TooManyRequestsHeaders) browseCatalogRes()                     {}
+func (*TooManyRequestsHeaders) createCreationSessionRes()             {}
+func (*TooManyRequestsHeaders) createSkillVersionFromSuggestionsRes() {}
+func (*TooManyRequestsHeaders) generateSkillRes()                     {}
+func (*TooManyRequestsHeaders) importSkillFromURLRes()                {}
+func (*TooManyRequestsHeaders) publicSearchSkillsRes()                {}
+func (*TooManyRequestsHeaders) saveSkillVersionRes()                  {}
+func (*TooManyRequestsHeaders) searchSkillsWithCorrectedIntentRes()   {}
+func (*TooManyRequestsHeaders) suggestAcceptanceCriteriaRes()         {}
+func (*TooManyRequestsHeaders) uploadSkillPackageRes()                {}
 
 // Ref: #/components/schemas/TraceAdvanced
 type TraceAdvanced struct {

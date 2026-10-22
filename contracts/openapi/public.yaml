@@ -2229,6 +2229,7 @@ paths:
                     `evaluation_id`. Order does not matter; two suggestions
                     touching the same file are applied in path order.
       responses:
+        "429": { $ref: "#/components/responses/TooManyRequests" }
         "201":
           description: |
             The new version. `applied_suggestion_ids` is what actually went in;

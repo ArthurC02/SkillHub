@@ -317,7 +317,7 @@ func mountEvaluationRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("PUT /suggestions/{id}/decision", auth.RequireSession(d.Eval.Decide))
 	mux.HandleFunc("GET /suggestions/{id}/diff", auth.RequireSession(d.Eval.Diff))
 	mux.HandleFunc("POST /skills/{id}/versions/from-suggestions",
-		auth.RequireSession(d.Eval.ApplySuggestions))
+		auth.RequireSession(limited(d, metrics.RouteImportUpload, d.Eval.ApplySuggestions)))
 
 	mux.HandleFunc("GET /runs/{id}/comparison", auth.RequireSession(d.Eval.Comparison))
 
