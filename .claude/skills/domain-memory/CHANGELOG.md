@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.3.2
+
+### Added
+
+- A test that an approved proposal whose `finalized_at` is absent or not a timestamp does not apply.
+
 ## 2.3.1
 
 ### Added
