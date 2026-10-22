@@ -167,7 +167,8 @@ test("governance refresh and recovery withhold stale decisions on a phone", asyn
   }
   await expect(page.getByText("已下架", { exact: true })).toBeVisible();
   await expect(page.getByText("DMCA notice", { exact: false })).toBeVisible();
-  await expect(actions).toHaveCount(0);
+  await expect(page.locator("#admin-skill-takedown")).toHaveCount(0);
+  await expect(page.locator("#admin-skill-lift-takedown")).toBeVisible();
   await expect(page.getByRole("button", { name: "確認下架" })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const accessibility = await new AxeBuilder({ page }).include("main").analyze();
