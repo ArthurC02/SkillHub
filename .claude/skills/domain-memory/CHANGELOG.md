@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.16
+
+### Added
+
+- Tests for the four refusals `init-domain-memory` makes before writing anything: scm-verified without a verifier, signed commits without a signer, signed commits checked on commit instead of on push, and an output outside the repository.
+
 ## 2.2.15
 
 ### Fixed
