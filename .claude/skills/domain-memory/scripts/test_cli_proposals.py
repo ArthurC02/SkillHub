@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from domain_registry.changes import init_change_package, validate_change_package
 from domain_registry.evidence import citation
 from domain_registry.harvest_package import harvest_package, write_harvest_package
-from domain_registry.hitl import record_approval
+from domain_registry.hitl import record_approval, submit_proposal
 from test_support import RegistryTestCase, applied_by
 
 
@@ -521,9 +521,16 @@ class CliProposalsTest(RegistryTestCase):
                          (result.returncode, {key: json.loads(result.stdout)["summary"][key] for key in ("current", "shifted")}))
 
     def test_rebase_proposal_prints_the_restamped_package_and_a_refusal_goes_to_stderr(self) -> None:
-        package = self.submitted_package()
+        package = self.draft_package()
         arguments = ("rebase-proposal", "--package-root", str(package), "--registry-root", str(self.repo / "memory"),
                      "--repo-root", str(self.repo))
+        refused = self.run_cli(*arguments)
+        self.assertEqual(
+            (1, "", "ERROR: a draft proposal is not rebased; submit-proposal stamps its base\n"),
+            (refused.returncode, refused.stdout, refused.stderr),
+        )
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        submit_proposal(package, self.repo / "memory", self.repo)
         current = self.run_cli(*arguments)
         self.edit_registry("contexts.json", lambda value: value["contexts"][0].update(name="Purchases"))
         rebased = self.run_cli(*arguments)

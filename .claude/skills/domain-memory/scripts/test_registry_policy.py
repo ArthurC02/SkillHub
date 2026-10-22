@@ -79,13 +79,16 @@ class RegistryPolicyTest(RegistryTestCase):
             [("review_mode", "scm-verified"), ("authorized_signers", "a=b,c")],
             policy_assignments(parsed(set=["review_mode=scm-verified", "authorized_signers=a=b,c"])),
         )
-        for refused in (
-            parsed(),
-            parsed(field="ci_requirement"),
-            parsed(field="ci_requirement", value="required", set=["review_mode=scm-verified"]),
-            parsed(set=["review_mode"]),
+        both = "give --field with --value, or one or more --set FIELD=VALUE, not both"
+        neither = "each --set takes FIELD=VALUE; give at least one, or --field with --value"
+        for refused, message in (
+            (parsed(), neither),
+            (parsed(field="ci_requirement"), both),
+            (parsed(value="required"), both),
+            (parsed(field="ci_requirement", value="required", set=["review_mode=scm-verified"]), both),
+            (parsed(set=["review_mode"]), neither),
         ):
-            with self.subTest(refused=vars(refused)), self.assertRaises(ValueError):
+            with self.subTest(refused=vars(refused)), self.assertRaisesRegex(ValueError, f"^{message}$"):
                 policy_assignments(refused)
 
     def test_a_policy_can_leave_local_draft_only_for_external_review(self) -> None:
@@ -153,10 +156,8 @@ class RegistryPolicyTest(RegistryTestCase):
         with self.assertRaises(ValueError) as raised:
             amend_policy(self.repo / "memory", "limits", "0", "Loosen the limits.")
         for amendable in (
-            "review_mode",
-            "storage_mode",
-            "data_classification",
-            "source_authority",
+            "review_mode", "storage_mode", "data_classification", "source_authority",
+            "review_verifier", "review_trigger", "ci_requirement", "authorized_signers",
         ):
             self.assertIn(amendable, str(raised.exception))
 

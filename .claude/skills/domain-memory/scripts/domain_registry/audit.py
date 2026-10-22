@@ -203,6 +203,8 @@ def reconcile(root: Path) -> dict[str, Any]:
         raise ValueError(missing_registry(root))
     with writer_lock(root):
         lines = _event_lines(root)
+        if not lines:
+            return {"events": 0, "conflict_markers_removed": 0, "duplicates_dropped": 0, "joined": [], "written": False}
         kept = [line for line in lines if not _conflict_marker(line)]
         events: dict[str, dict[str, Any]] = {}
         for _, event in _parsed_events(kept, root):

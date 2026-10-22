@@ -24,13 +24,14 @@ class RegistryValidationTest(RegistryTestCase):
         value["contexts"] = [
             {"id": "one", "name": "One", "responsibility": "First."},
             {"id": "two", "name": "Two", "responsibility": "Second."},
+            {"id": "three", "name": "Three", "responsibility": "Third."},
         ]
         write_document(self.repo / "memory", "contexts.json", value)
         policy_path = self.repo / "memory" / "domain-memory-policy.json"
         policy = json.loads(policy_path.read_text(encoding="utf-8"))
-        policy["limits"]["max_query_results"] = 1
+        policy["limits"]["max_query_results"] = 2
         policy_path.write_text(json.dumps(policy), encoding="utf-8")
-        self.assertEqual(1, len(lookup(self.repo / "memory", "contexts", "")))
+        self.assertEqual(2, len(lookup(self.repo / "memory", "contexts", "")))
 
     def test_each_record_and_reference_defect_is_named(self) -> None:
         orders = {"id": "orders", "name": "Orders", "responsibility": "Own orders."}

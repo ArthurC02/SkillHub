@@ -78,16 +78,22 @@ class RegistryContextModelTest(RegistryTestCase):
         amend_policy(
             self.repo / "memory", "review_mode", "local-draft-only", "No external verifier is configured."
         )
-        errors = validate(self.repo / "memory", self.repo, True)
-        self.assertTrue(any("cannot satisfy" in error for error in errors), errors)
+        self.assertEqual(
+            ["local-draft-only Domain Memory cannot satisfy --require-reviewed"],
+            validate(self.repo / "memory", self.repo, True),
+        )
 
     def test_two_contexts_cannot_claim_the_same_code(self) -> None:
-        errors = self.placement_errors(("orders", "sales/orders"), ("billing", "sales/orders"))
-        self.assertTrue(any("overlaps" in error for error in errors), errors)
+        self.assertEqual(
+            ["contexts/orders claims sales/orders, which overlaps sales/orders claimed by billing: code belongs to one Context"],
+            self.placement_errors(("orders", "sales/orders"), ("billing", "sales/orders")),
+        )
 
     def test_a_context_cannot_claim_code_inside_another_context(self) -> None:
-        errors = self.placement_errors(("sales", "sales"), ("orders", "sales/orders"))
-        self.assertTrue(any("overlaps" in error for error in errors), errors)
+        self.assertEqual(
+            ["contexts/sales claims sales, which overlaps sales/orders claimed by orders: code belongs to one Context"],
+            self.placement_errors(("sales", "sales"), ("orders", "sales/orders")),
+        )
 
     def test_sibling_paths_that_share_a_name_prefix_do_not_overlap(self) -> None:
         errors = self.placement_errors(("orders", "sales/order"), ("ordering", "sales/ordering"))
@@ -105,8 +111,10 @@ class RegistryContextModelTest(RegistryTestCase):
                 }
             ],
         )
-        errors = validate(self.repo / "memory", self.repo, False)
-        self.assertTrue(any("unknown subdomain" in error for error in errors), errors)
+        self.assertEqual(
+            ["contexts/orders has an unknown subdomain: 'strategic' is not one of core, generic, supporting"],
+            validate(self.repo / "memory", self.repo, False),
+        )
 
     def test_shared_kernel_is_refused_as_a_subdomain_and_pointed_to_the_interaction(self) -> None:
         self.seed("contexts.json", [

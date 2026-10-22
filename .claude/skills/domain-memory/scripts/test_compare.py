@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import unittest
 
 from domain_registry.common import ASSET_KEYS
@@ -289,10 +290,15 @@ class CompareCommandTest(RegistryTestCase):
         self.assertEqual((1, ["orders"]), (json.loads(result.stdout)["assets"]["contexts"]["gold"],
                                            json.loads(result.stdout)["assets"]["contexts"]["missed"]))
 
-    def compare_note(self, copied_rules: int) -> str:
+    def compare_note(self, copied_rules: int, rules_in_all: int = 4) -> str:
+        completed = self.compare_run(copied_rules, rules_in_all)
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        return completed.stderr
+
+    def compare_run(self, copied_rules: int, rules_in_all: int) -> subprocess.CompletedProcess:
         evidence = [{"path": "src/orders/a.py", "excerpt_sha256": "1" * 64}]
         rules = [{"id": f"r{number}", "contexts": ["orders"], **({"evidence": evidence} if number < copied_rules else {})}
-                 for number in range(4)]
+                 for number in range(rules_in_all)]
         self.seed("contexts.json", [ORDERS])
         self.seed("rules.json", rules)
         candidate = self.repo / "candidate"
@@ -303,13 +309,13 @@ class CompareCommandTest(RegistryTestCase):
             value[ASSET_KEYS[name]] = records
             write_document(candidate, name, value)
         return self.run_cli("compare-registry", "--gold-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
-                            "--candidate-root", str(candidate)).stderr
+                            "--candidate-root", str(candidate))
 
     def test_the_command_notes_when_more_than_half_the_matches_are_copied(self) -> None:
         self.assertIn("NOTE: 3 of 5 matches cite exactly the gold evidence", self.compare_note(3))
 
-    def test_the_command_does_not_note_when_half_the_matches_or_fewer_are_copied(self) -> None:
-        self.assertNotIn("cite exactly the gold evidence", self.compare_note(2))
+    def test_the_command_does_not_note_when_exactly_half_the_matches_are_copied(self) -> None:
+        self.assertNotIn("cite exactly the gold evidence", self.compare_note(3, rules_in_all=5))
 
     def test_the_command_notes_a_scoped_context_with_no_candidate_and_refuses_an_unknown_one(self) -> None:
         self.seed("contexts.json", [ORDERS])

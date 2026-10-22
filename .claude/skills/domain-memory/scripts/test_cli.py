@@ -301,9 +301,7 @@ class CliTest(RegistryTestCase):
         malformed = self.repo / "malformed.json"
         malformed.write_text("{", encoding="utf-8")
         result = self.run_cli("validate-policy", "--policy", str(malformed))
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("ERROR", result.stderr)
-        self.assertNotIn("Traceback", result.stderr)
+        self.assertEqual((1, True, 1), (result.returncode, result.stderr.startswith("ERROR: "), len(result.stderr.splitlines())))
 
     def file_bytes(self) -> dict[str, bytes]:
         return {

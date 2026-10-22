@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.5
+
+### Fixed
+
+- `reconcile-audit` on a Domain Memory that has no audit log yet reports nothing to join and writes nothing, instead of failing on the missing `audit/` directory.
+
+### Changed
+
+- Fourteen tests that asserted a substring, a prefix or only that nothing was raised now assert the exact message, exit code or record; the compare note is held at exactly half, the counterfactual exit code at either mutation order, and the package-script and ESLint gates on their positive side.
+
 ## 2.2.4
 
 ### Added

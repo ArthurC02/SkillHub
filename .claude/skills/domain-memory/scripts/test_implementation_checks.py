@@ -200,11 +200,13 @@ class QualityGatesTest(RepositoryCase):
         self.write("pyproject.toml", "[project]\nname = 'x'\n")
         self.assertEqual(self.gates(), [])
 
-    def test_a_package_script_is_a_gate(self) -> None:
-        self.write("package.json", json.dumps({"scripts": {"lint": "x", "dev": "y"}}))
+    def test_the_lint_typecheck_and_test_scripts_of_a_package_are_gates_and_others_are_not(self) -> None:
+        self.write("package.json", json.dumps({"scripts": {"lint": "x", "dev": "y", "typecheck": "z", "test": "t"}}))
         self.assertEqual(
             self.gates(),
-            [{"kind": "lint", "tool": "script:lint", "path": "package.json"}],
+            [{"kind": "lint", "tool": "script:lint", "path": "package.json"},
+             {"kind": "types", "tool": "script:typecheck", "path": "package.json"},
+             {"kind": "tests", "tool": "script:test", "path": "package.json"}],
         )
 
     def test_a_package_file_that_cannot_be_read_is_not_a_gate(self) -> None:
@@ -231,7 +233,8 @@ class QualityGatesTest(RepositoryCase):
 
     def test_a_dependency_directory_is_not_searched(self) -> None:
         self.write("node_modules/pkg/.eslintrc.json", "")
-        self.assertEqual(self.gates(), [])
+        self.write(".eslintrc.json", "")
+        self.assertEqual(self.gates(), [{"kind": "lint", "tool": "eslint", "path": ".eslintrc.json"}])
 
     def test_a_fixture_directory_is_not_searched(self) -> None:
         for fixture in ("fixtures", "__fixtures__", "testdata"):
@@ -751,15 +754,16 @@ class CommandLineTest(RepositoryCase):
         self.write("rule.py", RULE)
         self.write("tests/__init__.py")
         self.write("tests/test_rule.py", RULE_TEST)
-        suite = self.write("suite.json", json.dumps({"test_command": RUN_TESTS, "mutations": [
-            {"file": "rule.py", "find": "LIMIT = 200", "replace": "LIMIT = 201"},
-            {"file": "rule.py", "find": "CAP = 12", "replace": "CAP = 13"},
-        ]}))
-        completed = self.run_tool("counterfactual", "--repo-root", str(self.repo), "--suite", str(suite))
-        self.assertEqual(
-            (1, {"killed": 1, "survived": 1, "inconclusive": 0, "error": 0}),
-            (completed.returncode, json.loads(completed.stdout)["summary"]),
-        )
+        killed = {"file": "rule.py", "find": "LIMIT = 200", "replace": "LIMIT = 201"}
+        survived = {"file": "rule.py", "find": "CAP = 12", "replace": "CAP = 13"}
+        for label, mutations in (("survivor last", [killed, survived]), ("survivor first", [survived, killed])):
+            with self.subTest(label):
+                suite = self.write("suite.json", json.dumps({"test_command": RUN_TESTS, "mutations": mutations}))
+                completed = self.run_tool("counterfactual", "--repo-root", str(self.repo), "--suite", str(suite))
+                self.assertEqual(
+                    (1, {"killed": 1, "survived": 1, "inconclusive": 0, "error": 0}),
+                    (completed.returncode, json.loads(completed.stdout)["summary"]),
+                )
 
     def test_a_killed_rule_exits_zero(self) -> None:
         completed = self.counterfactual_run("LIMIT = 200", "LIMIT = 201")

@@ -404,6 +404,7 @@ class CliReadTest(RegistryTestCase):
         )
 
     def test_a_registry_command_accepts_the_repo_root_flag_it_does_not_use(self) -> None:
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
         memory = str(self.repo / "memory")
         with_flag = self.run_cli("coverage", "--registry-root", memory, "--repo-root", str(self.repo))
         for command in (
@@ -413,7 +414,7 @@ class CliReadTest(RegistryTestCase):
         ):
             with self.subTest(command[0]):
                 result = self.run_cli(command[0], "--registry-root", memory, "--repo-root", str(self.repo), *command[1:])
-                self.assertEqual((0, False), (with_flag.returncode, "unrecognized arguments" in result.stderr))
+                self.assertEqual((0, 0, False), (with_flag.returncode, result.returncode, "unrecognized arguments" in result.stderr))
 
     def test_an_argument_a_command_does_not_take_is_refused_with_that_commands_usage(self) -> None:
         result = self.run_cli("get-context", "--registry-root", str(self.repo / "memory"), "--id", "orders", "--summery")

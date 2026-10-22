@@ -154,7 +154,8 @@ class ReviewTestResultsTest(RegistryTestCase):
         check = self.declare_check(package, self.run_writing("ok"))
         proposal_path = package / "domain-change-proposal.json"
         for status, records in (
-            ("draft", True), ("submitted", True), ("verified", False), ("applied", False), ("superseded", False),
+            ("draft", True), ("submitted", True), ("verified", False), ("approved", False), ("applied", False),
+            ("superseded", False),
         ):
             with self.subTest(status):
                 proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
@@ -164,12 +165,18 @@ class ReviewTestResultsTest(RegistryTestCase):
                 evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
                 evidence["test_results"] = []
                 evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
-                try:
-                    record_test_result(package, self.repo / "memory", self.repo, ObligationRun("OB-1", None, "unit"), 60)
-                except ValueError as error:
-                    self.assertRegex(str(error), f"^the proposal is {status}: its test results are what verify-proposal")
+                run = ObligationRun("OB-1", None, "unit")
+                if records:
+                    record_test_result(package, self.repo / "memory", self.repo, run, 60)
+                else:
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        f"^the proposal is {status}: its test results are what verify-proposal checked, "
+                        "so they stay as they are; redraft it to record new ones$",
+                    ):
+                        record_test_result(package, self.repo / "memory", self.repo, run, 60)
                 recorded = json.loads(evidence_path.read_text(encoding="utf-8"))["test_results"]
-                self.assertEqual(records, [check] == [entry["evidence"] for entry in recorded])
+                self.assertEqual([check] if records else [], [entry["evidence"] for entry in recorded])
 
     def test_a_passing_run_in_which_no_test_passed_records_nothing(self) -> None:
         package = self.draft_package()
@@ -200,7 +207,7 @@ class ReviewTestResultsTest(RegistryTestCase):
         package = self.with_recorded_evidence(evidence)
         self.approve_and_finalize(package)
         proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
-        self.assertNotIn(proposal["status"], ("draft", "submitted"))
+        self.assertEqual("approved", proposal["status"])
 
     def test_verification_accepts_the_check_written_with_other_spacing(self) -> None:
         self.assert_verified_with("go test  -v ./orders/...")

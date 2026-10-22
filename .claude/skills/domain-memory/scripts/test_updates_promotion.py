@@ -8,6 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+from domain_registry.changes import validate_change_package
 from domain_registry.evidence import citation
 from domain_registry.hitl import submit_proposal, verify_proposal
 from domain_registry.audit import reviewing_proposals
@@ -343,8 +344,12 @@ class UpdatesPromotionTest(RegistryTestCase):
         proposal = json.loads(path.read_text(encoding="utf-8"))
         proposal["registry_updates"][0]["operation"] = "replace"
         path.write_text(json.dumps(proposal), encoding="utf-8")
-        with self.assertRaisesRegex(ValueError, "must be an upsert or a remove"):
-            self.approve_and_apply(package)
+        self.assertEqual(
+            ["each registry update must be an upsert or a remove"],
+            validate_change_package(package, self.repo / "memory"),
+        )
+        with self.assertRaisesRegex(ValueError, "^draft proposal is invalid: each registry update must be an upsert or a remove$"):
+            submit_proposal(package, self.repo / "memory", self.repo)
         self.assertEqual(self.rule_ids(), ["order-total"])
 
     def test_amending_a_governance_field_records_what_changed_and_why(self) -> None:

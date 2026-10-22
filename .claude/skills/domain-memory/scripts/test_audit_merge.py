@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from domain_registry.audit import anchor_error, event_digest, parents_of, read_events, reconcile
 from domain_registry.audit import verify as verify_audit
 from domain_registry.common import load_json
+from domain_registry.registry import init_registry
 from test_support import RegistryTestCase, append_audit
 
 MARKED = "<<<<<<< HEAD\n{ours}=======\n{theirs}>>>>>>> theirs\n"
@@ -73,7 +74,7 @@ class AuditMergeTest(RegistryTestCase):
             ),
         )
 
-    def test_a_log_merged_by_union_verifies_with_two_heads_and_the_next_append_joins_them(self) -> None:
+    def test_a_log_merged_by_union_is_invalid_until_the_next_append_joins_its_two_heads(self) -> None:
         other = self.fork()
         self.merged_by_union(other)
         events_before = read_events(self.memory)
@@ -92,6 +93,14 @@ class AuditMergeTest(RegistryTestCase):
                 parents_of(appended), appended["sequence"],
                 load_json(self.memory / "audit" / "manifest.json")["heads"], verify_audit(self.memory)["status"],
             ),
+        )
+
+    def test_reconcile_on_a_domain_memory_without_an_audit_log_writes_nothing(self) -> None:
+        root = self.repo / "fresh"
+        init_registry(root)
+        self.assertEqual(
+            ({"events": 0, "conflict_markers_removed": 0, "duplicates_dropped": 0, "joined": [], "written": False}, False),
+            (reconcile(root), (root / "audit").exists()),
         )
 
     def test_reconcile_leaves_a_log_with_one_head_untouched(self) -> None:
