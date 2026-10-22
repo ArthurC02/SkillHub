@@ -3,10 +3,10 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-18T10:10:47.982008Z"
+    at: "2026-10-22T13:08:10.780011Z"
 sources:
-  - resource: "apps/platform/internal/product/learning/feedback.go#L109-113"
-    excerpt_sha256: "sha256:c6aab9ace0f515da994f241b75d035e9c9e248dec2beeddc5b86d1c1069d94b2"
+  - resource: "apps/platform/internal/product/learning/feedback.go#L95-99"
+    excerpt_sha256: "sha256:740f6a9b5ad7f425f235474b5e08be2228b540cca89034daf4a3513e1ee0cda0"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/feedback_limits_integration_test.go#L11-26"
     excerpt_sha256: "sha256:631f403c2acfd51a9f785b1fe5454d79db40e3ee8e961ba00572bdf444906a49"
 ---

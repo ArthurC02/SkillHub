@@ -3,12 +3,12 @@
   "proposal_id": "contract-limits-from-generated",
   "proposer": "domain-memory-agent",
   "requirement_id": "contract-limits-from-generated",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-22T13:08:08.583502Z",
   "verified_at": "2026-10-22T13:08:11.735406Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T13:13:26.811604Z",
+  "applied_at": "2026-10-22T13:14:22.195544Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "9a6ed257616fa3f420f753aa682c63bf9118cea1",
@@ -215,5 +215,9 @@
     "analytics-retention-and-feedback-rules-2026-10-18",
     "feedback-body-cap-recite",
     "trace-batch-cap-rule-2026-10-17"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "188a4684880ce1c38ab8cd439203bb803ea2428a",
+    "registry_digest": "sha256:a5e65a53c5e581a79a043584519092c09d1010b1ab4e429cc164818516b53473"
+  }
 }
