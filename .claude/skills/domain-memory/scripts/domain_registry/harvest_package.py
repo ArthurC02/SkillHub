@@ -71,8 +71,14 @@ def _entry_errors(rule_id: str, entry: Any) -> list[str]:
     run = entry.get("counterfactual")
     if not isinstance(run, dict) or "verdict" not in run:
         return ["counterfactual must be the whole output of counterfactual, so its verdict and test_command can be read"]
-    if run.get("verdict") != "killed" or not isinstance(run.get("counterfactual_check"), dict):
+    return _run_errors(rule_id, entry, run)
+
+
+def _run_errors(rule_id: str, entry: dict[str, Any], run: dict[str, Any]) -> list[str]:
+    if run.get("verdict") != "killed":
         return [f"the counterfactual is {run.get('verdict')}, not killed; the rule is not shown to fail without its protection"]
+    if not isinstance(run.get("counterfactual_check"), dict):
+        return ["the counterfactual output has no counterfactual_check; give the whole output of counterfactual"]
     if not same_command(str(run.get("test_command")), entry["check"]):
         return [f"the counterfactual ran {run.get('test_command')!r}, not the check {entry['check']!r}"]
     named = run["counterfactual_check"].get("obligation_id")

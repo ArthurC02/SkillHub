@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.8
+
+### Fixed
+
+- `harvest --spec` names a killed counterfactual that lacks its `counterfactual_check` (`the counterfactual output has no counterfactual_check; give the whole output of counterfactual`); it said `the counterfactual is killed, not killed`.
+
+### Added
+
+- Tests for discarding a harvest by a spec without a name or with a blank reason, superseding a verified or approved proposal and naming a blank replacement, an approval time given in ISO-8601, an environment signing key against an existing key file with and without `--force` and signing every commit, refining to no source, refreshing a confirmed selection, and a source map without a valid selection.
+
 ## 2.2.7
 
 ### Fixed

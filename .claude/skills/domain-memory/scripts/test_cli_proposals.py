@@ -174,6 +174,8 @@ class CliProposalsTest(RegistryTestCase):
              "rules.order-total: counterfactual must be the whole output of counterfactual"),
             ("survived", {"counterfactual": {**killed, "verdict": "survived"}},
              "rules.order-total: the counterfactual is survived, not killed"),
+            ("killed without its check", {"counterfactual": {key: value for key, value in killed.items() if key != "counterfactual_check"}},
+             "rules.order-total: the counterfactual output has no counterfactual_check; give the whole output of counterfactual"),
             ("another command", {"counterfactual": {**killed, "test_command": "go test -v ./..."}},
              "rules.order-total: the counterfactual ran 'go test -v ./...', not the check"),
             ("another obligation", {"counterfactual": {**killed, "counterfactual_check": {
