@@ -3,12 +3,12 @@
   "proposal_id": "batch-answer-refusal-pauses",
   "proposer": "domain-memory-agent",
   "requirement_id": "batch-answer-refusal-pauses",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-22T09:15:23.190537Z",
   "verified_at": "2026-10-22T09:17:07.109125Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T09:21:36.229878Z",
+  "applied_at": "2026-10-22T09:22:32.670017Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "168172f9e5330d4b966493783b44bef6e4ba82cc",
@@ -162,5 +162,9 @@
   ],
   "supersedes": [
     "batch-harvest-rules-2026-10-17"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "1014fbab645387278c382f95112f5a95fcb15120",
+    "registry_digest": "sha256:9fa94484ea0aafd15db5ba1e57080c14b89a26209bf0cbc13898bf91a95b050b"
+  }
 }

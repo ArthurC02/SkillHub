@@ -7,7 +7,7 @@
 - [a-batch-needs-every-test-case-confirmed](/rules/a-batch-needs-every-test-case-confirmed) — A batch is refused as a whole, naming every unconfirmed test case, when any of its test cases lacks confirmed run permissions.
 - [a-batch-paused-for-thirty-days-stops](/rules/a-batch-paused-for-thirty-days-stops) — A batch paused for 30 days stops with reason paused_too_long; one paused for less stays paused and can be resumed from its next unrun trial.
 - [a-batch-report-is-read-only-under-its-own-skill](/rules/a-batch-report-is-read-only-under-its-own-skill) — A batch report asked for under another Skill of the same Workspace answers not found.
-- [a-batch-settles-only-when-no-trial-is-open](/rules/a-batch-settles-only-when-no-trial-is-open) — A batch is marked settled only once none of its trials is still running or owed an answer.
+- [a-batch-settles-only-when-no-trial-is-open](/rules/a-batch-settles-only-when-no-trial-is-open) — A batch is marked settled only once none of its trials is still running or owed an answer; a paused batch is neither answered nor settled until it is resumed.
 - [a-batch-whose-creator-is-gone-stops](/rules/a-batch-whose-creator-is-gone-stops) — When a batch's creator no longer exists, the batch stops as creator_gone instead of starting another trial with no actor.
 - [a-batch-whose-test-case-is-gone-stops](/rules/a-batch-whose-test-case-is-gone-stops) — When starting a batch's next trial finds its target gone, the batch stops with reason target_gone and starts no further trial.
 - [a-binary-target-gets-no-diff](/rules/a-binary-target-gets-no-diff) — A target file with a NUL byte in its first 8000 bytes is not diffable, so its suggestion is blocked as diff_unavailable rather than applied unseen.
