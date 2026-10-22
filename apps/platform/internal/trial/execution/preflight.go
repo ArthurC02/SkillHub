@@ -120,6 +120,20 @@ func (s *Service) blockingReason(
 	if reason := refusalReason(scanVerdict(scan)); reason != "" {
 		return reason, nil
 	}
+	if s.Ledger != nil && s.Pool != nil {
+		tx, err := s.Pool.Begin(ctx)
+		if err != nil {
+			return "", err
+		}
+		affordable, err := s.Ledger.Reserve(ctx, tx, workspaceID, s.Deployment.Budget())
+		_ = tx.Rollback(ctx)
+		if err != nil {
+			return "", err
+		}
+		if !affordable {
+			return ReasonCreditBalance, nil
+		}
+	}
 	if _, err := s.curatedContentRefusal(ctx, workspaceID, version.ID); !errors.Is(err, ErrContentNotCurated) {
 		return "", err
 	}

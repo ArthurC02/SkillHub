@@ -69,7 +69,8 @@ export interface PreflightResponse {
     | "capability_mismatch"
     | "scan_blocked"
     | "scan_unavailable"
-    | "content_not_curated";
+    | "content_not_curated"
+    | "credit_balance";
   notes: string[];
 }
 

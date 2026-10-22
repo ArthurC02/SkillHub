@@ -94,6 +94,18 @@ test("a pair this deployment cannot run offers no button to start it", async () 
   );
 });
 
+test("an empty balance is named on the summary and tells the user who adds credits", async () => {
+  platformWithPreflight({ blocked: "credit_balance" });
+  const shown = await renderPreflight();
+
+  expect(startButton(), "the run would be refused for credit, so there is nothing to click").toBe(
+    undefined,
+  );
+  expect(shown).toContain(
+    "點數不足,不能開始這次試跑。請聯絡管理者為這個帳號加點;加點後重新整理這一頁就能開始。",
+  );
+});
+
 test("a pair this deployment can run still offers the button", async () => {
   platformWithPreflight({});
   await renderPreflight();

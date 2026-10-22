@@ -58594,6 +58594,8 @@ func (s *RunPermissionSummaryBlocked) Decode(d *jx.Decoder) error {
 		*s = RunPermissionSummaryBlockedScanUnavailable
 	case RunPermissionSummaryBlockedContentNotCurated:
 		*s = RunPermissionSummaryBlockedContentNotCurated
+	case RunPermissionSummaryBlockedCreditBalance:
+		*s = RunPermissionSummaryBlockedCreditBalance
 	default:
 		*s = RunPermissionSummaryBlocked(v)
 	}

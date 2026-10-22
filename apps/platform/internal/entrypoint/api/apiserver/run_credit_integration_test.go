@@ -340,3 +340,15 @@ func TestCleanupRevokesTheAttemptKeyBeforeReadingWhatTheRunSpent(t *testing.T) {
 		t.Errorf("gateway calls = %v, want the key revoked before the spend is read; spend after the read would go uncharged", calls)
 	}
 }
+
+func TestThePreflightSummaryNamesAnEmptyBalanceBeforeTheUserConfirms(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	a.startingCredits = 0
+	haltHarness(t, a, pool)
+	f := newFixture(t, a, pool, "alice-no-credit-preflight")
+
+	if _, view := f.preflight(t); view.Blocked != "credit_balance" {
+		t.Errorf("preflight with no credit says blocked=%q, want credit_balance before the summary is confirmed", view.Blocked)
+	}
+}

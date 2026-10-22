@@ -43,6 +43,8 @@ export const BLOCKED_SENTENCE: Record<NonNullable<PreflightResponse["blocked"]>,
   content_not_curated:
     "這個部署只跑目錄裡的小工具。這一版不在公開目錄、也不是被策展的那一版,所以按了也不會開始——" +
     "要跑自己的小工具,請用有真正沙箱的部署。",
+  credit_balance:
+    "點數不足,不能開始這次試跑。請聯絡管理者為這個帳號加點;加點後重新整理這一頁就能開始。",
 };
 
 export const NOT_INVITED_SENTENCE =

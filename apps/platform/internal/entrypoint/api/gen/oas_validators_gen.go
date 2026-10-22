@@ -10025,6 +10025,8 @@ func (s RunPermissionSummaryBlocked) Validate() error {
 		return nil
 	case "content_not_curated":
 		return nil
+	case "credit_balance":
+		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}
