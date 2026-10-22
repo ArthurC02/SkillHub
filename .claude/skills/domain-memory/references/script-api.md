@@ -418,6 +418,14 @@ Moves the source map from `agent-asserted` to `developer-confirmed`, recording w
 
 Writes every record of a Registry extracted elsewhere, such as a blind extraction, into this one as candidates, in one update. It pairs the scratch Contexts with this Registry's the way `compare-registry` does, by `implementation_path` or name, and `--context-map` adds or overrides a pairing; a paired Context is not written, and every record naming it is written under the Context it paired with. A record whose id is reviewed here is skipped and listed in `skipped_reviewed`, and one citing exactly the excerpts of a reviewed record is skipped as a copy and listed in `skipped_duplicate` unless `--keep-duplicates`; citations without a digest get one. It prints the renames in `context_map`, every pairing in `context_pairs` with how it paired, `context_id_collisions` for a Context that pairs with the one of the same id here only by that id, not by path, what it `harvested`, `created` and `updated`, the files outside the confirmed sources, and `possible_duplicates`, reviewed or candidate records whose cited excerpts contain or are contained in a harvested record's.
 
+### `extract-sql-schema`
+
+*Extract SQL constraints as candidate rules.*
+
+`extract-sql-schema --registry-root <root> --repo-root <repo> --migrations <dir> [--table-context <table>=<context> ...] [--default-context <context>]`
+
+Reads the `*.sql` migration files of a directory in name order, the way a database would apply them, and writes one candidate Rule for every CHECK, UNIQUE and EXCLUDE constraint, unique or partial index and trigger that a table still carries at the end, each citing the migration lines that declare it. A rule's `statement` is the constraint's own text, prefixed with its table, kind and name, for the reviewer to restate in the domain's language; its Context is the one `--table-context` names for the table, else `--default-context`. A table neither names is left out and listed in `unplaced_tables`, with no rule written. It runs as one update, like `harvest-candidates`: a reviewed rule of the same id is skipped and listed in `skipped_reviewed`, a candidate of the same id is updated, and a copy of a reviewed record's evidence is skipped unless the record is a candidate. It prints what it `extracted`, `created` and `updated`, the `unread_statements` whose constraints it therefore cannot extract, and `outside_sources`, the migration files the confirmed source map does not cover. It never connects to a database, and a dropped table or a partition contributes no rule.
+
 ### `redraft-proposal`
 
 *Redraft a retired proposal.*
@@ -598,7 +606,7 @@ Reading a result:
 Output follows three cases:
 
 - A command that answers a question (`lookup`, `get-context`, `export`, `verify-evidence`, `quality-gates` and the other reads) prints JSON on stdout, except `probe`, which prints one sentence, and `brief --markdown`, which prints Markdown. `validate`, `validate-policy`, `validate-change-package`, `verify-scm-attestation` and `verify-git-governance` print their verdict on stdout, or one `ERROR:` line per problem on stderr.
-- A command that writes (`upsert-candidate`, `submit-proposal`, `init-domain-memory` and the other changes) prints what it did as text on stdout, except `harvest`, `harvest-candidates`, `discard-harvest`, `rebase-proposal`, `ship-package`, `discover-sources` and `init-signing-key`, which print JSON. A refused step of `harvest` or `ship-package` sits in its report's `errors`, and the command exits 1.
+- A command that writes (`upsert-candidate`, `submit-proposal`, `init-domain-memory` and the other changes) prints what it did as text on stdout, except `harvest`, `harvest-candidates`, `extract-sql-schema`, `discard-harvest`, `rebase-proposal`, `ship-package`, `discover-sources` and `init-signing-key`, which print JSON. A refused step of `harvest` or `ship-package` sits in its report's `errors`, and the command exits 1.
 - Every other refusal prints `ERROR: <reason>` on stderr and exits 1, so stdout carries only the command's output.
 
 Three things fall outside these cases: a refused `counterfactual` prints JSON and exits 3, because 1 means `survived` and 2 `inconclusive`; a usage mistake, such as an unknown option or an empty query, exits 2 with argparse's message on stderr, and `probe` also exits 2, with its sentence on stdout, when the root holds no source map; and every `NOTE:` goes to stderr. Output is UTF-8 with line feeds on every platform, and a path a report shows, such as a package outside the repository, is a posix path on every platform.

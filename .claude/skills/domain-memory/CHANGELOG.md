@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.4.0
+
+### Added
+
+- `extract-sql-schema` reads a directory of SQL migrations the way a database applies them and writes one candidate Rule per CHECK, UNIQUE and EXCLUDE constraint, unique or partial index and trigger a table still carries, citing the migration lines that declare it; the Context comes from `--table-context TABLE=CONTEXT` or `--default-context`, a table neither names is listed in `unplaced_tables`, a reviewed rule of the same id is skipped, and statements the reader cannot parse are listed in `unread_statements` rather than silently dropped. The reader keeps what the database would hold at the end: a constraint, index or trigger declared again under its name replaces the earlier declaration, and `DROP CONSTRAINT`, `DROP INDEX` and `DROP TRIGGER` remove one, so a rule cites the declaration in force. The Registry learns the rules a schema enforces without the plugin ever connecting to a database.
+
 ## 2.3.9
 
 ### Fixed

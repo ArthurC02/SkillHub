@@ -1,0 +1,101 @@
+{
+  "inventory": {
+    "migrations": 131,
+    "tables": 71,
+    "partitions": 4,
+    "columns": 654,
+    "queries": 509,
+    "constraints": 312,
+    "foreign_keys": 145,
+    "types": 2,
+    "registry_records": 475,
+    "unparsed_statements": 0
+  },
+  "metrics": {
+    "meaning.tables_described": {
+      "numerator": 71,
+      "denominator": 71,
+      "ratio": 1.0
+    },
+    "meaning.columns_described": {
+      "numerator": 35,
+      "denominator": 654,
+      "ratio": 0.054
+    },
+    "meaning.tables_known_to_registry": {
+      "numerator": 9,
+      "denominator": 71,
+      "ratio": 0.127
+    },
+    "ownership.tables_with_exactly_one_declared_owner": {
+      "numerator": 70,
+      "denominator": 71,
+      "ratio": 0.986
+    },
+    "ownership.tables_owned_by_registry_contexts_only": {
+      "numerator": 64,
+      "denominator": 71,
+      "ratio": 0.901
+    },
+    "ownership.tables_written_by_at_most_one_owner": {
+      "numerator": 70,
+      "denominator": 71,
+      "ratio": 0.986
+    },
+    "ownership.tables_claimed_by_an_aggregate": {
+      "numerator": 0,
+      "denominator": 71,
+      "ratio": 0.0
+    },
+    "ownership.tables_touched_by_a_query": {
+      "numerator": 71,
+      "denominator": 71,
+      "ratio": 1.0
+    },
+    "rules.constraints_cited_by_a_record": {
+      "numerator": 2,
+      "denominator": 312,
+      "ratio": 0.006
+    },
+    "rules.foreign_keys_inside_one_context": {
+      "numerator": 56,
+      "denominator": 145,
+      "ratio": 0.386
+    },
+    "rules.cross_context_foreign_keys_with_a_dependency_policy": {
+      "numerator": 55,
+      "denominator": 89,
+      "ratio": 0.618
+    },
+    "access.queries_with_an_owner": {
+      "numerator": 509,
+      "denominator": 509,
+      "ratio": 1.0
+    },
+    "sensitivity.candidate_columns_cited_by_a_record": {
+      "numerator": 0,
+      "denominator": 2,
+      "ratio": 0.0
+    },
+    "consistency.interactions_with_a_known_consistency": {
+      "numerator": 54,
+      "denominator": 55,
+      "ratio": 0.982
+    },
+    "provenance.migrations_cited_by_a_record": {
+      "numerator": 1,
+      "denominator": 131,
+      "ratio": 0.008
+    },
+    "provenance.immutable_tables_known_to_registry": {
+      "numerator": 0,
+      "denominator": 17,
+      "ratio": 0.0
+    },
+    "provenance.tables_with_a_retention_policy": {
+      "numerator": 71,
+      "denominator": 71,
+      "ratio": 1.0
+    }
+  }
+}

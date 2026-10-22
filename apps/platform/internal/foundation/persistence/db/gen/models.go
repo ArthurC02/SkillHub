@@ -105,6 +105,7 @@ func (ns NullRunStatus) Value() (driver.Value, error) {
 	return string(ns.RunStatus), nil
 }
 
+// One anonymous product-usage event (search, detail view, session start, download start) with coarse query shape and no query text; feeds the beta funnel measurements. Partitioned by month and expired after the configured analytics retention.
 type AnalyticsEvent struct {
 	EventID        pgtype.UUID
 	EventName      string
@@ -157,6 +158,7 @@ type AnalyticsEventsDefault struct {
 	Target         *string
 }
 
+// One stored output file of a run or a download package, with its object key, content hash, size and scan status. The row stays after the object expires; maintenance marks it purged once the retention window passes.
 type Artifact struct {
 	ID          pgtype.UUID
 	WorkspaceID pgtype.UUID
@@ -177,6 +179,7 @@ type Artifact struct {
 	RetentionAttemptedAt pgtype.Timestamptz
 }
 
+// One security-relevant action by an actor on a resource, with structured metadata. Immutable: a trail that could be rewritten would not be a trail. Expires after the configured audit retention.
 type AuditEvent struct {
 	ID           int64
 	ActorUserID  pgtype.UUID
@@ -189,6 +192,7 @@ type AuditEvent struct {
 	ActorAgentID pgtype.UUID
 }
 
+// A named, workspace-owned collection of skills that is versioned and downloaded as one unit.
 type Bundle struct {
 	ID          pgtype.UUID
 	WorkspaceID pgtype.UUID
@@ -196,6 +200,7 @@ type Bundle struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
+// One skill version pinned inside a bundle version, with its manifest name, content hash and position. Immutable: changing it would rewrite the set someone already installed.
 type BundleMember struct {
 	BundleVersionID pgtype.UUID
 	SkillID         pgtype.UUID
@@ -206,6 +211,7 @@ type BundleMember struct {
 	Position        int32
 }
 
+// One released, pinned list of skill versions under a bundle, identified by a version label and a content hash. Immutable: upgrading a member creates a new bundle version instead of editing this one.
 type BundleVersion struct {
 	ID          pgtype.UUID
 	BundleID    pgtype.UUID
@@ -216,6 +222,7 @@ type BundleVersion struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
+// One paid model call made by the platform, with model, token counts, cost in micro-dollars and whether the cost was measured or estimated. Immutable and never deleted; recomputing statistics creates new windows instead of changing events.
 type CostEvent struct {
 	ID               pgtype.UUID
 	Kind             string
@@ -233,6 +240,7 @@ type CostEvent struct {
 	CreatedAt        pgtype.Timestamptz
 }
 
+// Per creation session roll-up of cost: total micro-dollars, number of steps and whether any step was estimated. Kept permanently, even across account purge.
 type CostSessionSummary struct {
 	SessionID  pgtype.UUID
 	UserID     pgtype.UUID
@@ -242,6 +250,7 @@ type CostSessionSummary struct {
 	LastStepAt pgtype.Timestamptz
 }
 
+// One percentile summary (median, 90th, 95th, maximum cost) of a kind of model call over a time window, used to decide whether a paid call may start and what it is expected to cost. Derived data recomputed daily.
 type CostStatistic struct {
 	ID           pgtype.UUID
 	Kind         string
@@ -255,6 +264,7 @@ type CostStatistic struct {
 	CreatedAt    pgtype.Timestamptz
 }
 
+// One command or attempt received by a creation session, with the revision it expected, a hash of the request and its result and usage; lets a retried request return the same outcome. Deleted with its session.
 type CreationReceipt struct {
 	ID               pgtype.UUID
 	SessionID        pgtype.UUID
@@ -269,6 +279,7 @@ type CreationReceipt struct {
 	FinishedAt       pgtype.Timestamptz
 }
 
+// One interactive skill-authoring conversation in a workspace, holding its current state, revision counter and snapshot. Expires at expires_at.
 type CreationSession struct {
 	ID          pgtype.UUID
 	WorkspaceID pgtype.UUID
@@ -280,6 +291,7 @@ type CreationSession struct {
 	ExpiresAt   pgtype.Timestamptz
 }
 
+// One revision of a creation session, storing the full session snapshot after an event so the session history can be replayed. Deleted with its session.
 type CreationSessionEvent struct {
 	SessionID   pgtype.UUID
 	WorkspaceID pgtype.UUID
@@ -289,12 +301,14 @@ type CreationSessionEvent struct {
 	State       *string
 }
 
+// One row per user holding the current credit balance; the balance is the running total of the user's credit entries. Never deleted, not even by account purge.
 type CreditAccount struct {
 	UserID         pgtype.UUID
 	BalanceCredits int64
 	UpdatedAt      pgtype.Timestamptz
 }
 
+// One change to a user's credit balance: a debit for model use, a grant, a top-up or an adjustment, each with an idempotency key. Immutable: corrections are new entries. Never deleted, not even by account purge.
 type CreditEntry struct {
 	ID             pgtype.UUID
 	UserID         pgtype.UUID
@@ -312,12 +326,14 @@ type CreditEntry struct {
 	CreatedAt      pgtype.Timestamptz
 }
 
+// One measurement of the total database size per calendar day, used to watch storage growth. One row is kept per day.
 type DatabaseSizeSample struct {
 	SampledOn     pgtype.Date
 	DatabaseBytes int64
 	SampledAt     pgtype.Timestamptz
 }
 
+// One uploaded input file attached to a test case, with its object key, size and content hash. The row stays after the object expires; maintenance marks it purged once the retention window passes.
 type Dataset struct {
 	ID                   pgtype.UUID
 	WorkspaceID          pgtype.UUID
@@ -335,6 +351,7 @@ type Dataset struct {
 	PurgedAt             pgtype.Timestamptz
 }
 
+// A pending promise to delete a dataset object that was uploaded but never recorded in a manifest, due after not_before. The row is deleted once the object is gone.
 type DatasetObjectCleanupIntent struct {
 	ID          pgtype.UUID
 	WorkspaceID pgtype.UUID
@@ -359,6 +376,7 @@ type DispatchHalt struct {
 	LastClearRoundAt pgtype.Timestamptz
 }
 
+// The package-specific details of a downloadable artifact: which skill version, target, profile and packager version, manifest hash and whether test cases are included. Immutable: the produced bytes and their hashes never change, repackaging is a new row. The row stays after the object expires.
 type DownloadArtifact struct {
 	ArtifactID        pgtype.UUID
 	Kind              string
@@ -373,6 +391,7 @@ type DownloadArtifact struct {
 	PluginVersion     *string
 }
 
+// One skill version that a downloadable plugin package was built from, with its position. Immutable: repackaging creates new rows.
 type DownloadArtifactMember struct {
 	ArtifactID     pgtype.UUID
 	WorkspaceID    pgtype.UUID
@@ -380,6 +399,7 @@ type DownloadArtifactMember struct {
 	Position       int32
 }
 
+// A pending promise to delete a package object that was uploaded but never recorded in a manifest, due after not_before. The row is deleted once the object is gone.
 type DownloadObjectCleanupIntent struct {
 	ID          pgtype.UUID
 	WorkspaceID pgtype.UUID
@@ -389,6 +409,7 @@ type DownloadObjectCleanupIntent struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
+// One fact that a user downloaded a package at a given time. Immutable: it records what happened and is not editable state. Deleted with the owner by account purge.
 type DownloadRecord struct {
 	ID           int64
 	WorkspaceID  pgtype.UUID
@@ -397,6 +418,7 @@ type DownloadRecord struct {
 	DownloadedAt pgtype.Timestamptz
 }
 
+// The verdict on one run: overall result, per-criterion results, summary, judge model and the user's feedback on the verdict.
 type Evaluation struct {
 	ID                    pgtype.UUID
 	WorkspaceID           pgtype.UUID
@@ -472,6 +494,7 @@ type EvaluationGraderVersion struct {
 	CreatedAt    pgtype.Timestamptz
 }
 
+// The model, prompt version, token counts and cost used by one judging or suggestion step of an evaluation. Immutable: re-evaluating appends new rows.
 type EvaluationModelUsage struct {
 	ID               pgtype.UUID
 	EvaluationID     pgtype.UUID
@@ -495,6 +518,7 @@ type EvaluationSetting struct {
 	SetAt      pgtype.Timestamptz
 }
 
+// One proposed improvement produced from an evaluation, with the problem, evidence, target file, proposed change, expected impact and the user's decision. Accepting a suggestion creates a new skill version rather than editing in place.
 type EvaluationSuggestion struct {
 	ID                    pgtype.UUID
 	WorkspaceID           pgtype.UUID
@@ -511,6 +535,7 @@ type EvaluationSuggestion struct {
 	CreatedAt             pgtype.Timestamptz
 }
 
+// The link between an accepted evaluation suggestion and the new skill version created from it. Immutable and append-only: later applications never overwrite an earlier source.
 type EvaluationSuggestionApplication struct {
 	WorkspaceID    pgtype.UUID
 	SuggestionID   pgtype.UUID
@@ -518,6 +543,7 @@ type EvaluationSuggestionApplication struct {
 	AppliedAt      pgtype.Timestamptz
 }
 
+// One operator decision to approve or revoke the public exposure of a publication release, with the reason and the content digest that was reviewed. Immutable: a revocation is a new row and earlier judgements stay on record.
 type ExposureReview struct {
 	ID             pgtype.UUID
 	PublicationID  pgtype.UUID
@@ -531,6 +557,7 @@ type ExposureReview struct {
 	ReviewedAt     pgtype.Timestamptz
 }
 
+// One piece of feedback a user submitted, either a blocking issue or a signal of need, with the page it came from. Expires after the configured feedback retention.
 type FeedbackReport struct {
 	ID          pgtype.UUID
 	WorkspaceID pgtype.UUID
@@ -543,11 +570,13 @@ type FeedbackReport struct {
 	BuildID     *string
 }
 
+// A short-lived per-workspace lock that allows only one skill generation at a time; a row exists only while the lease is held or not yet expired.
 type GenerationLease struct {
 	WorkspaceID pgtype.UUID
 	ExpiresAt   pgtype.Timestamptz
 }
 
+// One row per scheduled maintenance job recording its period and when it last succeeded, so overdue jobs can be detected. Jobs no longer scheduled are forgotten.
 type MaintenanceJobRun struct {
 	Job           string
 	PeriodSeconds int32
@@ -570,6 +599,7 @@ type ObjectCollectionQueue struct {
 	EnqueuedAt pgtype.Timestamptz
 }
 
+// A dataset or artifact whose object was seen missing or stray, with how many reconciliation rounds it has persisted; an object is acted on only after repeated sightings. Deleted when the sighting clears.
 type ObjectReconcileSighting struct {
 	ResourceKind string
 	ResourceID   pgtype.UUID
@@ -579,6 +609,7 @@ type ObjectReconcileSighting struct {
 	Rounds       int32
 }
 
+// One domain event written in the same transaction as the state change that caused it, waiting to be published to consumers. Published events expire after seven days; dead letters stay.
 type OutboxEvent struct {
 	EventID          pgtype.UUID
 	EventType        string
@@ -596,6 +627,7 @@ type OutboxEvent struct {
 	NextDeliveryAt   pgtype.Timestamptz
 }
 
+// One platform agent defined in code, with its purpose, model role, daily spend cap, allowed tools and actions, owner and whether it is enabled. One row per agent.
 type PlatformAgent struct {
 	ID                  pgtype.UUID
 	Name                string
@@ -611,6 +643,7 @@ type PlatformAgent struct {
 	DailySpendCapOverrideMicros *int64
 }
 
+// A single row that exists only while the operator has engaged the emergency brake that stops all platform agents, with who engaged it and why.
 type PlatformAgentBrake struct {
 	Engaged   bool
 	EngagedBy pgtype.UUID
@@ -618,6 +651,7 @@ type PlatformAgentBrake struct {
 	Reason    string
 }
 
+// One deduplicated problem reported by a platform agent, with its title, cited evidence, status, assignee and how often it has been seen.
 type PlatformAgentFinding struct {
 	ID              pgtype.UUID
 	AgentID         pgtype.UUID
@@ -631,6 +665,7 @@ type PlatformAgentFinding struct {
 	StatusChangedAt pgtype.Timestamptz
 }
 
+// One step in the life of a platform agent finding (opened, seen again, acknowledged, resolved and so on), made either by an agent run or by an operator with a note. Archivable with the finding.
 type PlatformAgentFindingEvent struct {
 	FindingID  pgtype.UUID
 	Seq        int32
@@ -643,6 +678,7 @@ type PlatformAgentFindingEvent struct {
 	OccurredAt pgtype.Timestamptz
 }
 
+// One action a platform agent proposes for an operator to approve, with its risk tier, reason, cited evidence, preview and lifecycle from proposed to executed or expired.
 type PlatformAgentProposal struct {
 	ID           pgtype.UUID
 	AgentID      pgtype.UUID
@@ -663,6 +699,7 @@ type PlatformAgentProposal struct {
 	Outcome      *string
 }
 
+// One execution of a platform agent, with its status, start and finish time and the reason it stopped or failed.
 type PlatformAgentRun struct {
 	ID              pgtype.UUID
 	AgentID         pgtype.UUID
@@ -674,6 +711,7 @@ type PlatformAgentRun struct {
 	KeyBudgetMicros *int64
 }
 
+// One tool call made during a platform agent run, with its arguments, result, model and token and cost usage.
 type PlatformAgentStep struct {
 	RunID            pgtype.UUID
 	Seq              int32
@@ -687,6 +725,7 @@ type PlatformAgentStep struct {
 	CreatedAt        pgtype.Timestamptz
 }
 
+// A skill made publicly available under a publisher and a name, with whether it is currently published or delisted.
 type Publication struct {
 	ID              pgtype.UUID
 	PublisherID     pgtype.UUID
@@ -699,6 +738,7 @@ type Publication struct {
 	RetiredAt       pgtype.Timestamptz
 }
 
+// The fact that a particular skill version was published under a name, with its content hash, scan findings, rights attestation and releaser. Immutable: a new release is a new row, because rewriting it would rewrite what others have seen.
 type PublicationRelease struct {
 	ID              pgtype.UUID
 	PublicationID   pgtype.UUID
@@ -713,6 +753,7 @@ type PublicationRelease struct {
 	DeclaredLicense *string
 }
 
+// The public identity of a workspace under which it publishes skills; one publisher per workspace with a unique name.
 type Publisher struct {
 	ID          pgtype.UUID
 	WorkspaceID pgtype.UUID
@@ -720,6 +761,7 @@ type Publisher struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
+// The token-bucket state of one rate-limit key, used to throttle requests across API processes. Idle buckets are swept by the limiter.
 type RateLimitBucket struct {
 	Key     string
 	Tokens  float64
@@ -727,6 +769,7 @@ type RateLimitBucket struct {
 	Allowed bool
 }
 
+// A provider run that exists at the execution provider but has no matching platform run, with how many reconciliation rounds it has persisted before it is cleaned up. Deleted when the orphan clears.
 type ReconcilerOrphanSighting struct {
 	Provider      string
 	ProviderRunID string
@@ -735,6 +778,7 @@ type ReconcilerOrphanSighting struct {
 	Rounds        int32
 }
 
+// One execution of a skill version against a frozen test case snapshot, with its status, attempt count, provider and cleanup state. The permanent identity of a run; its child rows are archivable.
 type Run struct {
 	ID                   pgtype.UUID
 	WorkspaceID          pgtype.UUID
@@ -760,6 +804,7 @@ type Run struct {
 	SpendRecheckedAt pgtype.Timestamptz
 }
 
+// A pending promise to delete an object uploaded by a run attempt if no output manifest ever records it, due after not_before. The row is deleted once the object is settled.
 type RunArtifactUploadIntent struct {
 	ID           pgtype.UUID
 	RunAttemptID pgtype.UUID
@@ -770,6 +815,7 @@ type RunArtifactUploadIntent struct {
 	CreatedAt    pgtype.Timestamptz
 }
 
+// One execution attempt of a run at a provider, with its provider run id, timing and error class and message. Archivable with the run.
 type RunAttempt struct {
 	ID                       pgtype.UUID
 	RunID                    pgtype.UUID
@@ -800,6 +846,7 @@ type RunContinuation struct {
 	AnsweredAsSimulatedUser bool
 }
 
+// The record that a user confirmed the permissions a skill version requests before it was run with a given test case. Kept permanently.
 type RunPermissionConfirmation struct {
 	ID             pgtype.UUID
 	WorkspaceID    pgtype.UUID
@@ -819,6 +866,7 @@ type RunSetting struct {
 	SetAt              pgtype.Timestamptz
 }
 
+// The runtime and policy configuration that applied to one run, kept apart from the hot run row. Archivable with the run.
 type RunSnapshot struct {
 	RunID           pgtype.UUID
 	WorkspaceID     pgtype.UUID
@@ -826,6 +874,7 @@ type RunSnapshot struct {
 	PolicySnapshot  []byte
 }
 
+// One change of a run from one status to another, with the reason and time. Immutable: it is the history of what happened to the run, and rewriting it would rewrite that history. Archivable.
 type RunStatusTransition struct {
 	ID           int64
 	RunID        pgtype.UUID
@@ -837,6 +886,7 @@ type RunStatusTransition struct {
 	RunAttemptID pgtype.UUID
 }
 
+// The searchable projection of one skill: name, summary, full-text vector and embedding used by catalog search. Derived data kept in step with the skill.
 type SearchDocument struct {
 	SkillID                 pgtype.UUID
 	WorkspaceID             pgtype.UUID
@@ -873,6 +923,7 @@ type SearchDocument struct {
 	Curated                 bool
 }
 
+// One login session of a user, identified by a hashed token and valid until expires_at.
 type Session struct {
 	ID        pgtype.UUID
 	UserID    pgtype.UUID
@@ -881,6 +932,7 @@ type Session struct {
 	ExpiresAt pgtype.Timestamptz
 }
 
+// One skill owned by a workspace: its name, summary, category, curation tier, licensing and redistribution gates and, for a fork, the skill it came from. deleted_at marks a deletion that waits for the grace period before purge.
 type Skill struct {
 	ID                  pgtype.UUID
 	WorkspaceID         pgtype.UUID
@@ -908,6 +960,7 @@ type Skill struct {
 	TakedownBy     *string
 }
 
+// The measured result of whether a skill version activated and ran on a given runtime image, and which run measured it.
 type SkillRuntimeCompatibility struct {
 	SkillVersionID pgtype.UUID
 	RuntimeImage   string
@@ -917,6 +970,7 @@ type SkillRuntimeCompatibility struct {
 	MeasuredAt     pgtype.Timestamptz
 }
 
+// Where an imported skill package came from (a git repository at a ref, or an upload) with the content hash of what was fetched.
 type SkillSource struct {
 	ID               pgtype.UUID
 	WorkspaceID      pgtype.UUID
@@ -944,6 +998,7 @@ type SkillSource struct {
 	PluginRepository          *string
 }
 
+// One numbered version of a skill: its package location, content hash, parsed manifest and declared license. Immutable: adopting a suggestion creates a new version instead of overwriting this one.
 type SkillVersion struct {
 	ID                pgtype.UUID
 	WorkspaceID       pgtype.UUID
@@ -962,6 +1017,7 @@ type SkillVersion struct {
 	ContentErasedAt pgtype.Timestamptz
 }
 
+// One test scenario for a skill: a user prompt and acceptance criteria that runs are judged against.
 type TestCase struct {
 	ID                 pgtype.UUID
 	WorkspaceID        pgtype.UUID
@@ -977,6 +1033,7 @@ type TestCase struct {
 	SimulatedUserFacts []string
 }
 
+// The frozen copy of a test case's prompt, criteria and dataset references taken when a run starts. Immutable: changing it would make the inputs of historical runs lie. Archivable.
 type TestCaseSnapshot struct {
 	ID                 pgtype.UUID
 	WorkspaceID        pgtype.UUID
@@ -991,6 +1048,7 @@ type TestCaseSnapshot struct {
 	SimulatedUserFacts []string
 }
 
+// One execution fact emitted during a run, with its sequence number, type, source and payload. Immutable and partitioned by month; expires after the configured trace retention by dropping partitions.
 type TraceEvent struct {
 	ID               pgtype.UUID
 	WorkspaceID      pgtype.UUID
@@ -1043,6 +1101,7 @@ type TraceEventsDefault struct {
 	Late             bool
 }
 
+// One person with an account, with email and display name; deleted_at marks a closed account. The row stays after account purge so credit records keep their reference.
 type User struct {
 	ID                  pgtype.UUID
 	Email               string
@@ -1056,6 +1115,7 @@ type User struct {
 	ErasureExpeditedAt  pgtype.Timestamptz
 }
 
+// The link between a user and an external login identity, unique per provider and provider user id.
 type UserIdentity struct {
 	UserID         pgtype.UUID
 	Provider       string
@@ -1063,6 +1123,7 @@ type UserIdentity struct {
 	CreatedAt      pgtype.Timestamptz
 }
 
+// The tenant boundary that owns skills, test cases, runs and other user data; each is owned by one user.
 type Workspace struct {
 	ID          pgtype.UUID
 	OwnerUserID pgtype.UUID

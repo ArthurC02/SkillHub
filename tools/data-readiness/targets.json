@@ -1,0 +1,17 @@
+{
+  "meaning.tables_described": 1.0,
+  "meaning.columns_described": 0.5,
+  "meaning.tables_known_to_registry": 1.0,
+  "ownership.tables_with_exactly_one_declared_owner": 1.0,
+  "ownership.tables_owned_by_registry_contexts_only": 1.0,
+  "ownership.tables_written_by_at_most_one_owner": 1.0,
+  "ownership.tables_claimed_by_an_aggregate": 0.5,
+  "ownership.tables_touched_by_a_query": 1.0,
+  "rules.constraints_cited_by_a_record": 0.3,
+  "rules.cross_context_foreign_keys_with_a_dependency_policy": 1.0,
+  "access.queries_with_an_owner": 1.0,
+  "sensitivity.candidate_columns_cited_by_a_record": 1.0,
+  "consistency.interactions_with_a_known_consistency": 1.0,
+  "provenance.immutable_tables_known_to_registry": 1.0,
+  "provenance.tables_with_a_retention_policy": 1.0
+}
