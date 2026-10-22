@@ -3,12 +3,12 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-22T16:46:22.676701Z"
+    at: "2026-10-22T16:51:53.380662Z"
 sources:
   - resource: "apps/platform/internal/trial/execution/service.go#L490-514"
-    excerpt_sha256: "sha256:d5b3ce56d56a3fa7ef8abf7dace064656c3b1d9d7dce6d974e5ebaef5bfad9de"
-  - resource: "apps/platform/internal/trial/execution/job.go#L174-179"
-    excerpt_sha256: "sha256:5fda0f513f4ab3ca1f69f66999132c2bea3e4167bc6823a4b6545c6821d198c5"
+    excerpt_sha256: "sha256:93fc41c9e61caed47c19d53aba63834e2aea46dc488f83b259aa084349b48e04"
+  - resource: "apps/platform/internal/trial/execution/job.go#L174-181"
+    excerpt_sha256: "sha256:4810ff4a644c9d8dd79c248465077894aab424b2f122ba150a3d761898a5d2af"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/preflight_integration_test.go#L329-369"
     excerpt_sha256: "sha256:99269089bfff4f8e108fb63c47cedaa14c6d45f61f0df459bd2fc489c6bb6d18"
 ---

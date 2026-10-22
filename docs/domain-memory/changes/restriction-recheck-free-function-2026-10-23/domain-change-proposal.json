@@ -3,12 +3,12 @@
   "proposal_id": "restriction-recheck-free-function",
   "proposer": "domain-memory-agent",
   "requirement_id": "restriction-recheck-free-function",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-22T16:51:51.613422Z",
   "verified_at": "2026-10-22T16:51:54.680065Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T16:52:08.182574Z",
+  "applied_at": "2026-10-22T16:53:20.360571Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "eaf29dd130cbc75a90a053b340652fd72f8b9e8f",
@@ -100,5 +100,9 @@
   ],
   "supersedes": [
     "restriction-rechecked-at-dispatch"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "6f5e4436b883cf19a31b028e64ed49e0025f807e",
+    "registry_digest": "sha256:f61e73be64928d1a987c98cb8b0060415b79a90535ce1d0d16c7f1c1b5ecc9e9"
+  }
 }
