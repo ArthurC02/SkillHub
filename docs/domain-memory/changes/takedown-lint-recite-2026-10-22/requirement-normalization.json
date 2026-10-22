@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "takedown-lint-recite",
+  "status": "draft",
+  "intent": "Re-cite rules/a-skill-is-taken-down-once after the code they cite moved or changed; the facts they state are unchanged.",
+  "actor": "domain-memory-agent",
+  "observable_outcome": "verify-evidence reports every citation of the updated records current.",
+  "acceptance_criteria": [
+    {
+      "id": "citations-current",
+      "statement": "Every citation in the updated records matches the lines it cites."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/skill/library/skill_root.go",
+    "apps/platform/internal/skill/library/skill_root_test.go"
+  ]
+}

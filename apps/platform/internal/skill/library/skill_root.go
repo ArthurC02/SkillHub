@@ -228,7 +228,8 @@ func (s *SkillRoot) Refusal() (Refused, bool) {
 }
 
 func (s *SkillRoot) TakeDown(reason string, by TakedownBy) {
-	if s.TakenDown() && !(by == TakedownByOperator && s.takenDownBy(TakedownByOwner)) {
+	supersedesOwners := by == TakedownByOperator && s.takenDownBy(TakedownByOwner)
+	if s.TakenDown() && !supersedesOwners {
 		s.record(Refused{Reason: RefusedAlreadyTakenDown})
 		return
 	}

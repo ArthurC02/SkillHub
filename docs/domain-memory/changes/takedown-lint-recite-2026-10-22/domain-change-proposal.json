@@ -1,0 +1,81 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "takedown-lint-recite",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "takedown-lint-recite",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-22T05:55:09.206414Z",
+  "verified_at": "2026-10-22T05:55:12.255312Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "d92eb156c49c9b74cc72cd39c2c77e3b317a95b9",
+    "registry_digest": "sha256:67145f48847db252c81812c4e893df2036e1e87bf95730a8db579159b4647795",
+    "committed_digest": "sha256:67145f48847db252c81812c4e893df2036e1e87bf95730a8db579159b4647795"
+  },
+  "affected_contexts": [
+    "registry"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-skill-is-taken-down-once",
+        "statement": "A Skill already taken down cannot be taken down again, except that an operator's takedown supersedes the owner's own: the Skill stays down, now as the operator's, and only an operator lifts it. Any other second attempt is refused and the Skill stays down.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A second report against a taken-down Skill is refused as already_taken_down.",
+          "An operator taking down a Skill its owner already took down succeeds; the owner can no longer restore it."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 230,
+              "end": 241
+            },
+            "content_sha256": "sha256:9d9cf0ac4c791fddbe95a4cc441793feaf6439abe0268ab8700b3ae28b420a28",
+            "excerpt_sha256": "sha256:cc0770c9e2faba761708ded728f17d925225bf36767705877080d4b7eeb11053",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root_test.go",
+            "lines": {
+              "start": 26,
+              "end": 68
+            },
+            "excerpt_sha256": "sha256:1bf6a2c8ea47c0aada434e072d458147ea3c7e9c53487be898f76749561c3799"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "operator-takedown-supersedes-owner"
+  ]
+}

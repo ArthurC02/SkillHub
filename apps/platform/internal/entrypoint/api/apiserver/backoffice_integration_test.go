@@ -328,6 +328,17 @@ func assertOnlyOperatorEventsWithObjectMetadata(t *testing.T, events []map[strin
 	}
 }
 
+func assertOperatorLogHas(t *testing.T, events []map[string]any, operatorID string, actions [][2]string) {
+	t.Helper()
+	for _, want := range actions {
+		if !slices.ContainsFunc(events, func(e map[string]any) bool {
+			return e["action"] == want[0] && e["resource_id"] == want[1] && e["actor_user_id"] == operatorID
+		}) {
+			t.Errorf("the log misses the operator's %s on %s; got %d events", want[0], want[1], len(events))
+		}
+	}
+}
+
 func assertAuditLogNewestFirst(t *testing.T, events []map[string]any) {
 	t.Helper()
 	for i := 1; i < len(events); i++ {
@@ -383,20 +394,11 @@ func TestOperatorAuditLogListsOnlyOperatorActions(t *testing.T) {
 	}
 
 	events := allAuditEvents(t, operator)
-	has := func(action, resource string) bool {
-		return slices.ContainsFunc(events, func(e map[string]any) bool {
-			return e["action"] == action && e["resource_id"] == resource && e["actor_user_id"] == operator.userID
-		})
-	}
-	for _, want := range []struct{ action, resource string }{
+	assertOperatorLogHas(t, events, operator.userID, [][2]string{
 		{"skill.takedown", operatorDown}, {"skill.restore", operatorDown}, {"skill.access_restrict", held},
 		{"credit.lookup", owner.userID}, {"account.erasure_expedited", erased.userID},
 		{"evaluation_grader.version_create", platformGrader},
-	} {
-		if !has(want.action, want.resource) {
-			t.Errorf("the log misses the operator's %s on %s; got %d events", want.action, want.resource, len(events))
-		}
-	}
+	})
 	if slices.ContainsFunc(events, func(e map[string]any) bool { return e["resource_id"] == ownGrader }) {
 		t.Error("a workspace grader version is in the operator log")
 	}

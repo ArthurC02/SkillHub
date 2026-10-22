@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "takedown-lint-recite",
+  "proposal_id": "takedown-lint-recite",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/takedown-lint-recite-2026-10-22 --path apps/platform/internal/skill/library/skill_root.go --path apps/platform/internal/skill/library/skill_root_test.go"
+    }
+  ]
+}

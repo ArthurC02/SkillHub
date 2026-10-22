@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "takedown-lint-recite",
+  "proposal_id": "takedown-lint-recite",
+  "registry_revision": {
+    "observed_commit": "d92eb156c49c9b74cc72cd39c2c77e3b317a95b9",
+    "registry_digest": "sha256:67145f48847db252c81812c4e893df2036e1e87bf95730a8db579159b4647795",
+    "committed_digest": "sha256:67145f48847db252c81812c4e893df2036e1e87bf95730a8db579159b4647795"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/takedown-lint-recite-2026-10-22 --path apps/platform/internal/skill/library/skill_root.go --path apps/platform/internal/skill/library/skill_root_test.go",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:1e4785e9d6caafc459f4c0a7bd2f1f549197dcadc7878bd941a6ed04f08c00e7",
+      "finished_at": "2026-10-22T05:55:10.962558Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
