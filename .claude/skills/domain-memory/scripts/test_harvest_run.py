@@ -524,6 +524,22 @@ class HarvestTest(RegistryTestCase):
                     (result.returncode, json.loads(result.stdout)["package"], json.loads(result.stdout)["retracted"], package.exists()),
                 )
 
+    def test_discard_harvest_refuses_a_spec_without_a_name_and_a_blank_reason(self) -> None:
+        self.confirm_src()
+        harvest(self.repo / "memory", self.repo, self.spec(), None, "draft")
+        nameless = self.repo / "nameless.json"
+        write_json(nameless, {key: value for key, value in self.spec().items() if key != "name"})
+        no_name = self.run_cli(
+            "discard-harvest", "--spec", str(nameless), "--registry-root", str(self.repo / "memory"),
+            "--repo-root", str(self.repo), "--reason", "undone",
+        )
+        blank = self.discard(reason=" ")
+        self.assertEqual(
+            (1, "ERROR: the spec names no package: it has no name",
+             1, "ERROR: discarding a harvest requires the reason it is undone", True),
+            (no_name.returncode, no_name.stderr.strip(), blank.returncode, blank.stderr.strip(), (self.repo / PACKAGE).is_dir()),
+        )
+
     def test_discard_harvest_wants_exactly_one_of_the_package_root_and_the_spec(self) -> None:
         spec_file = self.repo / "spec.json"
         write_json(spec_file, self.spec())

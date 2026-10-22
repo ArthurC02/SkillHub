@@ -1,4 +1,4 @@
-import { Suspense, lazy, useId, type ComponentProps } from "react";
+import { Suspense, lazy, useId, useRef, type ComponentProps } from "react";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { emptyNode, type CheckNode } from "../check.model";
@@ -13,8 +13,13 @@ export function LazyCheckEditor({
 }: Omit<ComponentProps<typeof CheckEditor>, "value" | "kinds"> & { value: CheckNode | null }) {
   const kinds = useCheckKinds();
   const id = useId();
+  const workArea = useRef<HTMLDivElement>(null);
+  const update = (next: CheckNode | null) => {
+    if (next === null) workArea.current?.focus();
+    onChange(next);
+  };
   return (
-    <div id={id} tabIndex={-1} role="group" aria-label="檢查方式與設計">
+    <div ref={workArea} id={id} tabIndex={-1} role="group" aria-label="檢查方式與設計">
       {kinds.isPending && <Loading what="檢查方式" paused={kinds.fetchStatus === "paused"} />}
       <ReadFailure
         error={kinds.error}
@@ -27,7 +32,7 @@ export function LazyCheckEditor({
         kinds.data &&
         (value ? (
           <Suspense fallback={<Loading what="檢查設計" />}>
-            <CheckEditor value={value} onChange={onChange} kinds={kinds.data} />
+            <CheckEditor value={value} onChange={update} kinds={kinds.data} />
           </Suspense>
         ) : (
           <KindPicker
@@ -35,7 +40,10 @@ export function LazyCheckEditor({
             label="從哪一種節點開始"
             kinds={kinds.data.kinds}
             action="開始設計"
-            onPick={(kind) => onChange(emptyNode(kind))}
+            onPick={(kind) => {
+              workArea.current?.focus();
+              onChange(emptyNode(kind));
+            }}
           />
         ))}
     </div>

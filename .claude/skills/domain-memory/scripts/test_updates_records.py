@@ -301,7 +301,6 @@ class UpdatesRecordsTest(RegistryTestCase):
         )
         self.two_contexts()
         value = read_document(self.repo / "memory", "contexts.json")
-        value["status"] = "reviewed"
         for record in value["contexts"]:
             record["status"] = "reviewed"
             record["verified"] = VERIFIED

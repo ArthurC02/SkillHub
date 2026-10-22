@@ -238,7 +238,6 @@ class EvidenceTest(RegistryTestCase):
         source = self.repo / "fact.md"
         source.write_text("Orders notify Billing.", encoding="utf-8")
         value = read_document(self.repo / "memory", "interactions.json")
-        value["status"] = "reviewed"
         value["interactions"] = [{"id": "order-billed", "producer_context": "orders", "consumer_context": "billing", "consistency": "eventual", "delivery": "outbox event", "evidence": [citation(self.repo, "fact.md", 1, 1)], "verified": VERIFIED}]
         write_document(self.repo / "memory", "interactions.json", value)
         self.assertEqual(validate(self.repo / "memory", self.repo, False), [])

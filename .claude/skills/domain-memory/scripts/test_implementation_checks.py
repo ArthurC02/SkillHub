@@ -681,6 +681,13 @@ class FailureEvidenceTest(unittest.TestCase):
         output = "=== RUN   TestPurge\n--- FAIL: TestPurge (0.00s)\npanic: nil pointer\n" + frames
         self.assertEqual("--- FAIL: TestPurge (0.00s)\npanic: nil pointer\n...\n" + output[-OUTPUT_TAIL:], failure_evidence(output))
 
+    def test_forty_failure_lines_are_kept_and_the_forty_first_is_dropped(self) -> None:
+        for count, kept in ((40, 40), (41, 40)):
+            with self.subTest(count=count):
+                lines = [f"--- FAIL: Test{number} (0.00s)" for number in range(count)]
+                output = "".join(f"{line}\n" for line in lines) + "x" * OUTPUT_TAIL
+                self.assertEqual("\n".join([*lines[:kept], "...", output[-OUTPUT_TAIL:]]), failure_evidence(output))
+
     def test_the_lines_indented_under_a_failure_are_kept_with_it(self) -> None:
         failures = (
             "--- FAIL: TestPurge (0.00s)\n"

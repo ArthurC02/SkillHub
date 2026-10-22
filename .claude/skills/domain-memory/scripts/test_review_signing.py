@@ -188,6 +188,30 @@ class ReviewSigningTest(RegistryTestCase):
         self.assertEqual("environment", second["source"])
         self.assertEqual(first["fingerprint"], second["fingerprint"])
 
+    def test_an_environment_key_replaces_an_existing_key_file_only_when_forced(self) -> None:
+        key_file = self.repo / "keys" / "signing-key"
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            init_signing_key(self.repo, "probe@example.com", key_file)
+        kept = key_file.read_bytes()
+        other = self.repo / "other-key"
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            init_signing_key(self.repo, "other@example.com", other)
+        material = other.read_text(encoding="utf-8")
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: material}):
+            with self.assertRaises(ValueError) as refused:
+                init_signing_key(self.repo, "probe@example.com", key_file)
+            unforced = key_file.read_bytes()
+            forced = init_signing_key(self.repo, "probe@example.com", key_file, force=True, sign_every_commit=True)
+        signs = subprocess.run(
+            ["git", "-C", str(self.repo), "config", "commit.gpgsign"], capture_output=True, text=True, check=False
+        ).stdout.strip()
+        self.assertEqual(
+            (f"{key_file} already exists; pass --force to replace it from {SIGNING_KEY_ENV}", kept,
+             "environment", material.replace("\r\n", "\n").strip(), "true"),
+            (str(refused.exception), unforced, forced["source"],
+             key_file.read_text(encoding="utf-8").replace("\r\n", "\n").strip(), signs),
+        )
+
     def test_key_material_with_crlf_line_endings_and_no_final_newline_rebuilds(self) -> None:
         with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
             first = init_signing_key(

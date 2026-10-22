@@ -320,6 +320,20 @@ class RegistryLookupTest(RegistryTestCase):
         self.runs_rules()
         self.assertEqual(([], "none"), self.found("invoices"))
 
+    def test_a_query_of_stop_words_only_finds_nothing_and_says_so(self) -> None:
+        self.runs_rules()
+        self.assertEqual(([], "none"), self.found("who does what"))
+
+    def test_the_result_limit_holds_for_records_holding_every_word_and_some_words(self) -> None:
+        self.allow_results(1)
+        self.seed("rules.json", [
+            {"id": "a-daily", "contexts": ["shipping"], "statement": "Orders ship daily.", "status": "reviewed"},
+            {"id": "b-weekly", "contexts": ["shipping"], "statement": "Orders ship weekly.", "status": "reviewed"},
+        ])
+        for query, how in (("shipped order", "all-words"), ("shipped order invoices", "some-words")):
+            with self.subTest(query):
+                self.assertEqual((["a-daily"], how), self.found(query))
+
     def test_word_stems_join_forms_of_a_word_but_not_a_longer_word(self) -> None:
         self.assertEqual(
             (word_stems("concurrency"), word_stems("licensing"), word_stems("deleted"), word_stems("runs"), {"precheck"}),

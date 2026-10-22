@@ -88,7 +88,7 @@ class RecitationPackageTest(RegistryTestCase):
         )
         as_stored = self.verify("--path", "src/a.py")
         self.assertEqual(
-            (0, {"current": 1, "stale": 0}, 1, "verify-evidence failed: 1 stale citations"),
+            (0, {"current": 1, "stale": 0}, 1, "verify-evidence failed: 1 stale citation"),
             (
                 as_packaged.returncode,
                 {key: json.loads(as_packaged.stdout)["summary"][key] for key in ("current", "stale")},

@@ -258,6 +258,12 @@ class ReviewLifecycleTest(RegistryTestCase):
                     record_approval(package, role, reviewer, scope, None)
                 self.assertEqual([], self.proposal_in(package)["approvals"])
 
+    def test_an_approval_time_given_in_iso_8601_is_recorded_as_given(self) -> None:
+        package = self.submitted_package()
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", "2026-01-02T03:04:05Z")
+        [approval] = self.proposal_in(package)["approvals"]
+        self.assertEqual("2026-01-02T03:04:05Z", approval["approved_at"])
+
     def test_an_approval_time_that_is_not_iso_is_refused(self) -> None:
         package = self.submitted_package()
         for label, approved_at in (("words", "yesterday"), ("impossible date", "2026-13-45T00:00:00Z")):
@@ -679,6 +685,25 @@ class ReviewLifecycleTest(RegistryTestCase):
         self.assertEqual(proposal["status"], "superseded")
         self.assertEqual(proposal["superseded_from_status"], "submitted")
         self.assertIn("other way", proposal["superseded_reason"])
+
+    def test_a_verified_or_approved_proposal_can_be_superseded_and_keeps_its_status(self) -> None:
+        for status in ("verified", "approved"):
+            with self.subTest(status):
+                self.tearDown()
+                self.setUp()
+                package = self.submitted_package()
+                proposal_path = package / "domain-change-proposal.json"
+                write_json(proposal_path, {**load_json(proposal_path), "status": status})
+                supersede_proposal(package, "Overtaken by the event catalogue.", None)
+                proposal = self.proposal_in(package)
+                self.assertEqual(("superseded", status), (proposal["status"], proposal["superseded_from_status"]))
+
+    def test_a_blank_replacement_is_refused_and_the_proposal_stays_as_it_was(self) -> None:
+        package = self.submitted_package()
+        before = (package / "domain-change-proposal.json").read_bytes()
+        with self.assertRaisesRegex(ValueError, "^superseded_by must name the proposal that replaces this one$"):
+            supersede_proposal(package, "Replaced.", " ")
+        self.assertEqual(before, (package / "domain-change-proposal.json").read_bytes())
 
     def test_a_superseded_proposal_can_name_what_replaced_it(self) -> None:
         package = self.submitted_package()

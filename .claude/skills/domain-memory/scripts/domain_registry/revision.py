@@ -169,12 +169,6 @@ def _base_documents(
     return rebuilt
 
 
-def _without_records(name: str, document: Any) -> Any:
-    if name not in ASSET_KEYS or not isinstance(document, dict):
-        return document
-    return {key: value for key, value in document.items() if key != ASSET_KEYS[name]}
-
-
 def _strings_in(value: Any) -> set[str]:
     if isinstance(value, str):
         return {value}
@@ -214,9 +208,6 @@ def _changed_since_base(
     now, now_policy = _current_documents(root)
     if then_policy != now_policy:
         return "the Domain Memory policy changed"
-    for name in REGISTRY_FILES:
-        if _without_records(name, then[name]) != _without_records(name, now[name]):
-            return f"{name} changed outside its records"
     written = _written_records(proposal)
     for name, record_id in sorted(_touched_records(proposal, then) | _touched_records(proposal, now)):
         changed = _changed_record(name, record_id, (then, now), written)

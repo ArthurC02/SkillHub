@@ -41,6 +41,25 @@ class DependentsTest(RegistryTestCase):
         )
         self.assertEqual("A total is never negative.", reached[2]["summary"])
 
+    def test_a_walk_from_a_context_leaves_it_and_stops_at_every_other_context(self) -> None:
+        self.coupled_registry()
+        reached = dependents(self.repo / "memory", "contexts", "billing")["reached"]
+        self.assertEqual(
+            [("contracts", "orders-v1", 1, "contracts/orders-v1.consumer_contexts"),
+             ("events", "order-placed", 1, "events/order-placed.consumers"),
+             ("interactions", "orders-billing", 1, "interactions/orders-billing.consumer_context"),
+             ("aggregates", "order", 2, "events/order-placed.aggregate"),
+             ("contexts", "orders", 2, "contracts/orders-v1.producer_context"),
+             ("rules", "total", 3, "rules/total.aggregate")],
+            [(item["asset"], item["id"], item["depth"], item["through"]) for item in reached],
+        )
+
+    def test_a_reference_to_a_record_the_registry_lacks_is_not_walked(self) -> None:
+        self.coupled_registry()
+        self.seed("rules.json", [{"id": "dangling", "contexts": ["orders"], "aggregate": "ghost", "statement": "S."}])
+        reached = dependents(self.repo / "memory", "rules", "dangling")["reached"]
+        self.assertEqual([("contexts", "orders")], [(item["asset"], item["id"]) for item in reached])
+
     def test_an_absent_record_is_refused_by_name(self) -> None:
         self.coupled_registry()
         with self.assertRaises(ValueError) as refused:

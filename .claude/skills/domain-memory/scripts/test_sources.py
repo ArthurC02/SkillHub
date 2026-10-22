@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.common import load_json
+from domain_registry.common import load_json, write_json
 from domain_registry.evidence import digest
 from domain_registry.git import toplevel
 from domain_registry.impact import boundary_impact
@@ -22,6 +22,7 @@ from domain_registry.sources import (
     discover_sources,
     probe_sources,
     refine_sources,
+    refresh_sources,
     selected_source_map,
     source_files,
     source_policy_report,
@@ -124,6 +125,30 @@ class SourcesTest(RegistryTestCase):
         self.assertEqual(
             ["docs"], [entry["path"] for entry in result["changed_sources"]]
         )
+
+    def test_refining_to_no_source_is_refused_and_writes_nothing(self) -> None:
+        policy = stored_policy_of(self.repo)
+        with self.assertRaisesRegex(ValueError, "^refining sources requires at least one focused path$"):
+            refine_sources(self.repo / "memory", self.repo, [], policy)
+        self.assertEqual(policy, stored_policy_of(self.repo))
+
+    def test_refreshing_a_confirmed_selection_asks_for_confirmation_again(self) -> None:
+        path = self.committed_source_map()
+        confirm_sources(self.repo / "memory", self.repo, "Arthur")
+        confirmed = json.loads(path.read_text(encoding="utf-8"))["selection_status"]
+        refreshed = refresh_sources(self.repo / "memory", self.repo)
+        self.assertEqual(
+            ("developer-confirmed", "agent-asserted", "agent-asserted"),
+            (confirmed, refreshed["selection_status"], json.loads(path.read_text(encoding="utf-8"))["selection_status"]),
+        )
+
+    def test_refreshing_a_source_map_without_a_valid_selection_is_refused(self) -> None:
+        path = self.committed_source_map()
+        for label, selected in (("not a list", "docs"), ("a blank path", ["docs", " "])):
+            with self.subTest(label):
+                write_json(path, {**json.loads(path.read_text(encoding="utf-8")), "selected_paths": selected})
+                with self.assertRaisesRegex(ValueError, "^source map has no valid selected paths to refresh$"):
+                    refresh_sources(self.repo / "memory", self.repo)
 
     def test_refining_sources_replaces_the_corpus_and_requires_confirmation(self) -> None:
         source = self.repo / "fact.md"

@@ -20,6 +20,26 @@ from test_support import RegistryTestCase, amend_policy, stored_policy_of
 
 
 class CliTest(RegistryTestCase):
+    def test_the_secret_scan_exits_on_findings_first_then_on_an_incomplete_scan(self) -> None:
+        limit = 1_048_576
+        key = "-----BEGIN " + "PRIVATE KEY-----\n"
+        cases = [
+            ("clean, a file at the size limit", {"a.txt": "x" * limit}, (0, "complete", 0)),
+            ("a key", {"a.txt": key}, (1, "complete", 1)),
+            ("a file one byte past the limit", {"a.txt": "x" * (limit + 1)}, (2, "incomplete", 0)),
+            ("a key and a skipped file", {"a.txt": key, "b.txt": "x" * (limit + 1)},
+             (1, "incomplete", 1)),
+        ]
+        for number, (label, files, expected) in enumerate(cases):
+            with self.subTest(label):
+                scanned = self.repo / f"scanned{number}"
+                scanned.mkdir()
+                for name, text in files.items():
+                    (scanned / name).write_text(text, encoding="utf-8", newline="\n")
+                result = self.run_cli("scan-secrets", "--repo-root", str(scanned))
+                report = json.loads(result.stdout)
+                self.assertEqual(expected, (result.returncode, report["status"], len(report["findings"])))
+
     def test_a_git_deadline_ends_in_one_error_line_that_names_the_variable(self) -> None:
         self.committed_source_map()
         result = subprocess.run(

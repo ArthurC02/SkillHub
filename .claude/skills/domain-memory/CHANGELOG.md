@@ -2,6 +2,49 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.11
+
+### Added
+
+- Tests for `brief` given an asset without an id, an id without an asset, or a base with an asset, and for `dependents` walking out of a context and skipping a reference to a record the registry lacks.
+
+## 2.2.10
+
+### Added
+
+- Lookup tests: a query of stop words only finds nothing and says `none`, and the result limit holds for records holding every word of the query and for records holding some of its words.
+
+## 2.2.9
+
+### Added
+
+- Boundary tests: an index description at 160 characters kept whole and at 161 shortened, failure evidence keeping 40 failure lines and dropping the 41st, and a possible rule pair offered at a similarity of 0.25 and not just under it.
+
+## 2.2.8
+
+### Fixed
+
+- `harvest --spec` names a killed counterfactual that lacks its `counterfactual_check` (`the counterfactual output has no counterfactual_check; give the whole output of counterfactual`); it said `the counterfactual is killed, not killed`.
+
+### Added
+
+- Tests for discarding a harvest by a spec without a name or with a blank reason, superseding a verified or approved proposal and naming a blank replacement, an approval time given in ISO-8601, an environment signing key against an existing key file with and without `--force` and signing every commit, refining to no source, refreshing a confirmed selection, and a source map without a valid selection.
+
+## 2.2.7
+
+### Fixed
+
+- `audit-attestations` refuses a `--changes-root` that does not exist (`no Change Packages directory at <path>; pass the directory that holds them`) instead of reporting every package carried and exiting 0; an existing empty directory still finds nothing.
+- `verify-evidence` without `--staged` counts one failing citation in the singular (`1 stale citation`), as `--staged` does.
+
+### Removed
+
+- The base-revision check for a Registry file that changed outside its records: the concept layout fixes a document's status and the manifest, so the check could never fire.
+
+### Added
+
+- Tests for a Registry update that fails at each step or succeeds leaving nothing behind, an audit log at and past its size limit, the secret scan's exit code at and past the file size limit, the staged summary in the plural and for an unhashed citation, and the rerun advice of a git deadline.
+
 ## 2.2.6
 
 ### Fixed

@@ -413,6 +413,15 @@ class ReviewScmTest(RegistryTestCase):
             [(finding["proposal_id"], finding["verdict"]) for finding in findings],
         )
 
+    def test_auditing_a_changes_directory_that_does_not_exist_is_refused_and_an_empty_one_finds_nothing(self) -> None:
+        with self.assertRaises(ValueError) as refused:
+            audit_attestations(self.repo, self.repo / "chnages", "GITHUB_TOKEN")
+        (self.repo / "empty").mkdir()
+        self.assertEqual(
+            (f"no Change Packages directory at {self.repo / 'chnages'}; pass the directory that holds them", []),
+            (str(refused.exception), audit_attestations(self.repo, self.repo / "empty", "GITHUB_TOKEN")),
+        )
+
     def test_the_attestation_audit_does_not_read_a_commit_split_across_lines(self) -> None:
         self.changed_package("unattested", "applied", None)
         added = self.commit_everything("adds the unattested package")

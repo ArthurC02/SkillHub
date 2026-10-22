@@ -140,6 +140,13 @@ class ConceptLayoutTest(RegistryTestCase):
         line = (registry_dir(self.memory()) / "rules" / "index.md").read_text(encoding="utf-8").splitlines()[-1]
         self.assertEqual("- [long](/rules/long) — " + "x" * 159 + "….", line)
 
+    def test_a_first_sentence_at_the_index_limit_is_kept_whole_and_one_past_it_is_shortened(self) -> None:
+        for length, shown in ((160, "x" * 160 + "."), (161, "x" * 159 + "….")):
+            with self.subTest(length=length):
+                write_document(self.memory(), "rules.json", {"rules": [{"id": "long", "statement": "x" * length}]})
+                line = (registry_dir(self.memory()) / "rules" / "index.md").read_text(encoding="utf-8").splitlines()[-1]
+                self.assertEqual("- [long](/rules/long) — " + shown, line)
+
     def test_a_record_id_that_cannot_name_a_file_is_refused(self) -> None:
         for record_id in ("../escape", "a/b", "index", "", " lead", 7):
             with self.subTest(record_id=record_id), self.assertRaisesRegex(ValueError, "cannot name a concept file"):
