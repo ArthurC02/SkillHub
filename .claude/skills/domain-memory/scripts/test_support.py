@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import json
 import os
 import shutil
@@ -105,61 +106,69 @@ def stored_policy_of(repo: Path) -> dict:
     )
 
 
+@functools.cache
+def _seed_repository() -> tempfile.TemporaryDirectory:
+    seed = tempfile.TemporaryDirectory()
+    repo = Path(seed.name)
+    init_registry(repo / "memory")
+    (repo / "memory" / "domain-memory-policy.json").write_text(
+        json.dumps(
+            {
+                "format": "domain-memory-policy/v1",
+                "storage_mode": "tracked",
+                "data_classification": "internal",
+                "review_mode": "scm-verified",
+                "review_governance": {
+                    "verifier": "github-pr",
+                    "trigger": "external-scm",
+                    "ci_requirement": "required",
+                    "authorized_signers": [],
+                },
+                "source_policy": {
+                    "selected_paths": ["docs"],
+                    "include": ["**"],
+                    "exclude": [],
+                    "authority": "test",
+                },
+                "limits": {
+                    "max_file_count": 1,
+                    "max_file_bytes": 1,
+                    "max_total_bytes": 1,
+                    "max_query_results": 1,
+                },
+                "approved_command_profiles": ["unit"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    for key, value in (("core.autocrlf", "false"), ("gc.auto", "0"), ("maintenance.auto", "false")):
+        subprocess.run(["git", "config", key, value], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.com",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-qm",
+            "seed",
+        ],
+        cwd=repo,
+        check=True,
+    )
+    return seed
+
+
 class RegistryTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.repo = Path(self.temporary.name)
-        init_registry(self.repo / "memory")
-        (self.repo / "memory" / "domain-memory-policy.json").write_text(
-            json.dumps(
-                {
-                    "format": "domain-memory-policy/v1",
-                    "storage_mode": "tracked",
-                    "data_classification": "internal",
-                    "review_mode": "scm-verified",
-                    "review_governance": {
-                        "verifier": "github-pr",
-                        "trigger": "external-scm",
-                        "ci_requirement": "required",
-                        "authorized_signers": [],
-                    },
-                    "source_policy": {
-                        "selected_paths": ["docs"],
-                        "include": ["**"],
-                        "exclude": [],
-                        "authority": "test",
-                    },
-                    "limits": {
-                        "max_file_count": 1,
-                        "max_file_bytes": 1,
-                        "max_total_bytes": 1,
-                        "max_query_results": 1,
-                    },
-                    "approved_command_profiles": ["unit"],
-                }
-            ),
-            encoding="utf-8",
-        )
-        subprocess.run(["git", "init", "-q"], cwd=self.repo, check=True)
-        for key, value in (("core.autocrlf", "false"), ("gc.auto", "0"), ("maintenance.auto", "false")):
-            subprocess.run(["git", "config", key, value], cwd=self.repo, check=True)
-        subprocess.run(["git", "add", "."], cwd=self.repo, check=True)
-        subprocess.run(
-            [
-                "git",
-                "-c",
-                "user.name=Test",
-                "-c",
-                "user.email=test@example.com",
-                "-c",
-                "commit.gpgsign=false",
-                "commit",
-                "-qm",
-                "seed",
-            ],
-            cwd=self.repo,
-            check=True,
-        )
+        shutil.copytree(_seed_repository().name, self.repo, dirs_exist_ok=True)
 
     def tearDown(self) -> None:
         self.temporary.cleanup()
