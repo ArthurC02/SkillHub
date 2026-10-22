@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-22T10:07:44.566259Z"
 sources:
   - resource: "apps/platform/internal/entrypoint/wiring/evaluation_batches.go#L48-51"
     excerpt_sha256: "sha256:91f030e8fd5cae4aefcf7c34c2a1aff83d9f7354b6ae6c51bf9d7c17d9924180"

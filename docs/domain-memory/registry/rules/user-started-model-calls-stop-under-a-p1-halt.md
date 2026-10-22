@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-22T10:07:44.566259Z"
 sources:
   - resource: "apps/platform/internal/trial/design/cost.go#L22-37"
     excerpt_sha256: "sha256:6df644766cd397f4d57227d46082b1eb508bcbc096b2a7fa0ba43fb6a635b63b"

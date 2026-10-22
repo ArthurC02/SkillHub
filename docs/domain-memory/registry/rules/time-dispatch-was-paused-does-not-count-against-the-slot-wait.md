@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-10-22T10:07:44.566259Z"
 sources:
   - resource: "apps/platform/internal/trial/execution/halt/paused.go#L22-41"
     excerpt_sha256: "sha256:6a494406a7a0e101d3edc8c775d18d6b95a3698ac29cde59a9c6151ad9937511"

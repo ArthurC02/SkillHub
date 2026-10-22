@@ -3,12 +3,12 @@
   "proposal_id": "dispatch-halt-reaches-model-calls-and-queue",
   "proposer": "domain-memory-agent",
   "requirement_id": "dispatch-halt-reaches-model-calls-and-queue",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-22T10:01:47.522085Z",
   "verified_at": "2026-10-22T10:07:45.486548Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T10:10:26.288641Z",
+  "applied_at": "2026-10-22T10:11:34.829247Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "6f735267bdd9e3f34263f43ab80c5042309099d4",
@@ -515,5 +515,9 @@
     "testlab-suggest-paid-by-requester",
     "run-harvest-rules-2026-10-18",
     "batch-pauses-on-used-up-quota"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "752a1d6641577fd7b4f1ab165899f9357667b498",
+    "registry_digest": "sha256:696624d415cc81953f6f32a46fed88aa07eeb341623854effba43e4d5dd315d5"
+  }
 }
