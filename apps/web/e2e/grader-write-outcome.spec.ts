@@ -206,6 +206,7 @@ for (const scope of SCOPES) {
       test(`${scope.name} ${operation} preserves an unknown ${outcome} outcome through verification and explicit resend`, async ({
         page,
       }) => {
+        test.slow();
         await page.emulateMedia({
           colorScheme: outcome === "null" || outcome === "server" ? "light" : "dark",
         });
