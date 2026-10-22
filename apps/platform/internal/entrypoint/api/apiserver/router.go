@@ -150,7 +150,7 @@ func mountLibraryRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("GET /skills", auth.RequireSession(d.Registry.List))
 
 	mux.HandleFunc("POST /skills/{id}/fork", auth.RequireSession(auth.RequireInvited(d.Registry.Fork)))
-	mux.HandleFunc("POST /skills/{id}/versions", auth.RequireSession(d.Importer.SaveVersion))
+	mux.HandleFunc("POST /skills/{id}/versions", auth.RequireSession(limited(d, metrics.RouteImportUpload, d.Importer.SaveVersion)))
 
 	mux.HandleFunc("GET /skills/{id}/versions", auth.RequireSession(d.Registry.Versions))
 	mux.HandleFunc("GET /skills/{id}/diff", auth.RequireSession(d.Registry.Diff))

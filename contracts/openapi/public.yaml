@@ -2274,6 +2274,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CategorizedFindings"
+        "429":
+          description: |
+            Too many uploads from this account; the same per-account limiter as
+            import upload. Carries `Retry-After` in whole seconds.
+          headers:
+            Retry-After:
+              description: Whole seconds to wait before retrying.
+              required: true
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/{id}/versions/from-suggestions:
     post:
       operationId: createSkillVersionFromSuggestions
