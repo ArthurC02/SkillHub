@@ -171,7 +171,7 @@ test("an offline account reread hides the previous grant target until a fresh re
     return route.fulfill({ json: ADMIN_ACCOUNT });
   });
   try {
-    await page.getByRole("button", { name: "查詢", exact: true }).click();
+    await page.getByLabel("Email", { exact: true }).press("Enter");
     await expect(page.locator("#admin-grant-amount")).toBeVisible();
     await page.locator("#admin-grant-amount").fill("25");
     await page.locator("#admin-grant-note").fill("draft for previous observation");
