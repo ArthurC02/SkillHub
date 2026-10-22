@@ -15,6 +15,7 @@ from .common import (
     reject_duplicate_keys,
     shown_path,
     utc_now,
+    whole_number,
     write_json,
     writer_lock,
 )
@@ -266,7 +267,7 @@ def _committed_prefix_error(root: Path, against: str) -> str | None:
     count, head = manifest.get("events"), manifest.get("head_sha256")
     heads = manifest.get("heads") if isinstance(manifest.get("heads"), list) else [head] if head else []
     present = {event.get("event_sha256") for event in read_events(root)}
-    if not isinstance(count, int) or count > len(present) or any(digest not in present for digest in heads):
+    if not whole_number(count) or count > len(present) or any(digest not in present for digest in heads):
         return (
             f"the audit log does not extend the one committed at {against} ({count} events, head {head}); "
             "events were removed or rewritten since"

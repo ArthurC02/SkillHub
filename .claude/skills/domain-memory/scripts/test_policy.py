@@ -61,12 +61,25 @@ class PolicyTest(RegistryTestCase):
             ("limit below one", {"limits": {**sound["limits"], "max_file_count": 0}}, "policy has invalid limits"),
             ("limit not a number", {"limits": {**sound["limits"], "max_query_results": "9"}},
              "policy has invalid limits"),
+            ("limit given as true", {"limits": {**sound["limits"], "max_query_results": True}},
+             "policy has invalid limits"),
         ]
         for label, change, message in cases:
             with self.subTest(label):
                 self.assertEqual([message], validate_policy({**sound, **change}))
         with self.subTest("a signed-commit policy that is complete"):
             self.assertEqual([], validate_policy({**sound, "review_governance": signed}))
+
+    def test_a_policy_broken_everywhere_names_each_defect_in_the_order_of_its_fields(self) -> None:
+        broken = {
+            **stored_policy_of(self.repo), "format": "v0", "storage_mode": "cloud",
+            "review_governance": None, "source_policy": None, "limits": None,
+        }
+        self.assertEqual(
+            ["policy has an invalid format", "policy has an invalid storage_mode", "policy requires review_governance",
+             "policy requires selected source paths and authority", "policy has invalid limits"],
+            validate_policy(broken),
+        )
 
     def test_each_limit_accepts_one_and_refuses_zero(self) -> None:
         sound = stored_policy_of(self.repo)

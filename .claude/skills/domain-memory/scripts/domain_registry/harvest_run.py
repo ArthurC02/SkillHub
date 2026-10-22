@@ -15,6 +15,7 @@ from .common import (
     iter_packages,
     load_json,
     shown_path,
+    whole_number,
     write_json,
     writer_lock,
 )
@@ -240,7 +241,7 @@ def _span(span: Any) -> tuple[str, int, int] | None:
         if path and start.isdigit() and (end or start).isdigit():
             return path, int(start), int(end or start)
         return None
-    if isinstance(span, list) and len(span) == SPAN_PARTS and _text(span[0]) and all(isinstance(n, int) for n in span[1:]):
+    if isinstance(span, list) and len(span) == SPAN_PARTS and _text(span[0]) and all(whole_number(n) for n in span[1:]):
         return span[0], span[1], span[2]
     return None
 

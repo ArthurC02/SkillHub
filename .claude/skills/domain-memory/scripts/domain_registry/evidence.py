@@ -8,7 +8,7 @@ from functools import cache
 from pathlib import Path
 from typing import Any
 
-from .common import MAX_EVIDENCE_BYTES, MAX_NESTING_DEPTH, load_json, review_field
+from .common import MAX_EVIDENCE_BYTES, MAX_NESTING_DEPTH, load_json, review_field, whole_number
 from .git import run_git_bytes
 from .sources import repository_files, source_kind_index
 
@@ -30,8 +30,8 @@ def source_map_for(registry_root: Path) -> dict[str, Any]:
 
 def _valid_line_range(start: Any, end: Any) -> bool:
     return (
-        isinstance(start, int)
-        and isinstance(end, int)
+        whole_number(start)
+        and whole_number(end)
         and start >= 1
         and end >= start
     )

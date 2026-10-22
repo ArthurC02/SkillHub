@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.15
+
+### Fixed
+
+- A JSON `true` is no longer read as the number 1: a policy limit, a `proposal_revision`, the lines of a citation, the lines of a harvest `enforcing` span and a committed audit manifest's event count given as `true` are refused like any other value that is not a whole number.
+
+### Added
+
+- Tests for a policy broken in every field, naming each defect in field order, and for consistency holders that are not objects or whose consistency is not text.
+
 ## 2.2.14
 
 ### Fixed
