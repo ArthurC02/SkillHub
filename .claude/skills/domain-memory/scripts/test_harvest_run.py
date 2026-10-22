@@ -127,7 +127,11 @@ class HarvestTest(RegistryTestCase):
             (report["rules"][0]["test_citation"]["path"], report["rules"][0]["test_citation"]["lines"]["start"],
              report["rules"][0]["test_citation"]["lines"]["end"]),
         )
-        self.assertIn("harvest --through verified", report["next"])
+        self.assertEqual(
+            "the draft package passes the submitted preview; run harvest --through verified, or submit-proposal, "
+            "record-test-result per obligation, record-approval and verify-proposal",
+            report["next"],
+        )
 
     def test_through_verified_submits_records_the_test_results_approves_and_verifies(self) -> None:
         self.confirm_src()
@@ -150,8 +154,9 @@ class HarvestTest(RegistryTestCase):
         report = harvest(self.repo / "memory", self.repo, spec, None, "verified")
         proposal = load_json(self.repo / "memory" / "changes" / "orders-length-rule" / "domain-change-proposal.json")
         self.assertEqual(
-            ("tested", ["no approval in the spec; record-approval, then verify-proposal"], "submitted"),
-            (report["stopped_at"], report["errors"], proposal["status"]),
+            ("tested", ["no approval in the spec; record-approval, then verify-proposal"], "submitted",
+             "the proposal is submitted with its test results; record-approval, then verify-proposal"),
+            (report["stopped_at"], report["errors"], proposal["status"], report["next"]),
         )
 
     def test_a_draft_the_preview_refuses_is_left_written_with_what_it_names(self) -> None:
