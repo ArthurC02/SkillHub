@@ -397,6 +397,16 @@ class UpdatesAuditTest(RegistryTestCase):
         )
         self.assertEqual("invalid", verify_audit(self.repo / "memory")["status"])
 
+    def test_nothing_is_appended_to_a_broken_audit_chain(self) -> None:
+        root = self.repo / "memory"
+        append_audit(root, {"operation": "first"})
+        events_file = root / "audit" / "events.jsonl"
+        events_file.write_text(events_file.read_text(encoding="utf-8").replace("first", "forged"), encoding="utf-8")
+        before = events_file.read_bytes()
+        with self.assertRaisesRegex(ValueError, "^audit log is invalid: "):
+            append_audit(root, {"operation": "second"})
+        self.assertEqual(before, events_file.read_bytes())
+
     def test_each_way_an_audit_chain_breaks_is_named(self) -> None:
         root = self.repo / "memory"
         for operation in ("first", "second", "third"):

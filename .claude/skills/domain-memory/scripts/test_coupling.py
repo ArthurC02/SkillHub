@@ -4,8 +4,10 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from domain_registry.coupling import CouplingLimits, CouplingReading, change_coupling, module_of
+from domain_registry.git import GitDeadline
 from test_support import RegistryTestCase
 
 LOW = CouplingLimits(min_revisions=2, min_shared=2, min_degree=0, max_changeset=30)
@@ -46,6 +48,15 @@ class ChangeCouplingTest(RegistryTestCase):
 
     def pairs(self, limits: CouplingLimits = LOW) -> list[dict]:
         return change_coupling(self.repo, ["src"], 1, limits)["pairs"]
+
+    def test_a_since_limit_reaches_git_and_a_git_that_cannot_answer_is_named(self) -> None:
+        deadline = GitDeadline(["git", "log"], 1, rerun_is_safe=True)
+        with (
+            patch("domain_registry.coupling.run_git", side_effect=deadline) as run,
+            self.assertRaisesRegex(ValueError, "^git could not read the history: Command '\\['git', 'log'\\]' timed out"),
+        ):
+            change_coupling(self.repo, ["src"], 1, LOW, CouplingReading(since="2026-01-01"))
+        self.assertIn("--since=2026-01-01", run.call_args.args)
 
     def test_the_degree_is_shared_commits_over_the_average_revisions_of_the_two(self) -> None:
         for _ in range(4):

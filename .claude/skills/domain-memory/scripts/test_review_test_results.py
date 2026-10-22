@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -36,6 +37,16 @@ class ReviewTestResultsTest(RegistryTestCase):
         evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
         [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
         self.assertEqual("sha256:" + hashlib.sha256(b"^(A|B)$").hexdigest(), result["output_sha256"])
+
+    def test_a_check_that_gives_no_result_in_time_records_nothing(self) -> None:
+        package = self.draft_package()
+        before = (package / "evidence-bundle.json").read_bytes()
+        sleeper = f'"{sys.executable}" -c "import time; time.sleep(5)"'
+        with self.assertRaisesRegex(ValueError, "^" + re.escape(sleeper) + " gave no result within 1 seconds; nothing recorded$"):
+            record_test_result(
+                package, self.repo / "memory", self.repo, ObligationRun("OB-1", self.declare_check(package, sleeper), "unit"), 1,
+            )
+        self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
 
     def test_a_command_that_cannot_start_records_nothing(self) -> None:
         package = self.draft_package()

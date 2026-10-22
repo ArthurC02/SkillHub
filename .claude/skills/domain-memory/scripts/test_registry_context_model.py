@@ -322,6 +322,19 @@ class RegistryContextModelTest(RegistryTestCase):
         self.assertEqual(gaps["without_contract"], ["orders"])
         self.assertEqual(gaps["without_event"], ["orders"])
 
+    def test_each_defect_in_a_context_s_prefixes_or_implementation_path_is_named(self) -> None:
+        prefixes = "contexts/orders requirement_prefixes must be a list of non-empty strings"
+        path = "contexts/orders implementation_path must be a non-empty string"
+        for label, field, value, message in (
+            ("blank prefix", "requirement_prefixes", ["ORD", " "], prefixes),
+            ("prefix not text", "requirement_prefixes", [7], prefixes),
+            ("blank path", "implementation_path", " ", path),
+            ("path not text", "implementation_path", 7, path),
+        ):
+            with self.subTest(label):
+                self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders.", field: value}])
+                self.assertEqual([message], validate(self.repo / "memory", self.repo, False))
+
     def test_each_defect_in_a_confirmed_absence_is_named(self) -> None:
         cases = [
             ("not a list", "rules", [], "contexts/orders confirmed_absences must be a list"),

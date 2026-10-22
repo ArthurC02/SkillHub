@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from domain_registry.changes import missing_approval_roles, redraft_change_package, validate_change_package
 from domain_registry.hitl import (
     ObligationRun,
+    attest_signed_commit,
     finalize_proposal,
     missing_attestation_message,
     rebase_proposal,
@@ -24,6 +25,7 @@ from domain_registry.hitl import (
     verify_proposal,
 )
 from domain_registry.common import iso_timestamp, load_json, write_json
+from domain_registry.policy import amend_policy_fields
 from domain_registry.revision import (
     StaleBaseError,
     base_registry_revision,
@@ -32,7 +34,7 @@ from domain_registry.revision import (
 )
 from domain_registry.store import read_document
 from domain_registry.updates import apply_approved_updates, promote_candidate, upsert_candidate
-from test_support import RegistryTestCase
+from test_support import RegistryTestCase, amend_policy
 
 
 class ReviewLifecycleTest(RegistryTestCase):
@@ -578,6 +580,48 @@ class ReviewLifecycleTest(RegistryTestCase):
         self.assertIn("run ship-package --commit", signed)
         self.assertNotIn("pull_request", signed)
         self.assertIn("names no review verifier", missing_attestation_message("none"))
+
+    def attested_verified_package(self) -> tuple[Path, dict]:
+        package = self.submitted_package()
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        evidence_path = package / "evidence-bundle.json"
+        evidence = load_json(evidence_path)
+        evidence["scm_attestation"] = {
+            "provider": "github", "pull_request": "https://github.example/repo/pull/1",
+            "checks_url": "https://github.example/repo/actions/runs/1", "commit": "a" * 40, "status": "approved",
+            "proposal_revision": 1, "base_registry_revision": self.proposal_in(package)["base_registry_revision"],
+        }
+        write_json(evidence_path, evidence)
+        verify_proposal(package, self.repo / "memory", self.repo)
+        return package, evidence["scm_attestation"]
+
+    def test_a_policy_that_requires_no_ci_tells_the_scm_check_so(self) -> None:
+        amend_policy(self.repo / "memory", "ci_requirement", "none", "No CI runs here.")
+        package, attestation = self.attested_verified_package()
+        with patch("domain_registry.hitl.verify_external_scm", return_value=[]) as verify_scm, \
+                patch("domain_registry.hitl.github_commit_carries_proposal", return_value=[]):
+            finalize_proposal(package, self.repo / "memory", self.repo)
+        verify_scm.assert_called_once_with(attestation, "GITHUB_TOKEN", False)
+        self.assertEqual("approved", self.proposal_in(package)["status"])
+
+    def test_a_policy_without_a_review_verifier_cannot_finalize(self) -> None:
+        amend_policy_fields(
+            self.repo / "memory", [("review_mode", "local-draft-only"), ("review_verifier", "none")], "Local only."
+        )
+        package, _ = self.attested_verified_package()
+        with self.assertRaisesRegex(ValueError, "^SCM governance is not externally verified: policy has no review verifier$"):
+            finalize_proposal(package, self.repo / "memory", self.repo)
+        self.assertEqual("verified", self.proposal_in(package)["status"])
+
+    def test_attesting_a_commit_the_repository_does_not_hold_is_refused(self) -> None:
+        amend_policy_fields(
+            self.repo / "memory",
+            [("review_verifier", "git-signed-commit"), ("review_trigger", "git-push"), ("authorized_signers", "SHA256:AAA")],
+            "Sign commits.",
+        )
+        package = self.submitted_package()
+        with self.assertRaisesRegex(ValueError, f"^no commit {'0' * 40} in "):
+            attest_signed_commit(package, self.repo / "memory", self.repo, "0" * 40)
 
     def test_approved_package_applies_against_its_exact_revision(self) -> None:
         package = self.draft_package()

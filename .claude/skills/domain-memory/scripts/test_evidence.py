@@ -390,6 +390,16 @@ class EvidenceTest(RegistryTestCase):
         moved = relocate_evidence(self.repo / "memory", self.repo, "sr", "srcx")
         self.assertEqual(([], [], []), (moved["registry_updates"], moved["candidates"], moved["unmatched"]))
 
+    def test_reciting_a_path_the_record_does_not_cite_lists_what_it_cites(self) -> None:
+        self.cited_rule("candidate", (2, 2))
+        with self.assertRaises(ValueError) as refused:
+            recite(self.repo / "memory", self.repo, Recitation("rules", "rule", "src/b.py", "1", None))
+        self.assertEqual(
+            "rules/rule has 0 citations of src/b.py; name the one to replace with --replace PATH:START-END. "
+            "It cites: src/a.py:2-2",
+            str(refused.exception),
+        )
+
     def test_reciting_a_reviewed_record_prints_its_update_and_the_proposal_to_supersede(self) -> None:
         self.cited_rule("reviewed", (2, 2))
         result = recite(self.repo / "memory", self.repo, Recitation("rules", "rule", "src/a.py", "3", None))

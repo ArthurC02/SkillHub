@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -19,6 +20,21 @@ from test_support import RegistryTestCase, amend_policy, stored_policy_of
 
 
 class CliTest(RegistryTestCase):
+    def test_a_git_deadline_ends_in_one_error_line_that_names_the_variable(self) -> None:
+        self.committed_source_map()
+        result = subprocess.run(
+            [sys.executable, "-m", "domain_registry.cli", "refresh-listing",
+             "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo)],
+            cwd=Path(__file__).parent, capture_output=True, text=True, encoding="utf-8", check=False,
+            env={**os.environ, "PYTHONIOENCODING": "utf-8", "DOMAIN_MEMORY_GIT_TIMEOUT": "0.001"},
+        )
+        self.assertEqual(
+            (1, True, True, 1),
+            (result.returncode, result.stderr.startswith("ERROR: Command '['git', "),
+             result.stderr.rstrip().endswith("; set DOMAIN_MEMORY_GIT_TIMEOUT to a larger number of seconds to wait longer"),
+             len(result.stderr.rstrip().splitlines())),
+        )
+
     def test_adding_a_source_keeps_the_rest_of_the_selection(self) -> None:
         self.selection_with_two_sources()
         result = self.refine("--add", "fact.md", "--add", "adr.md")

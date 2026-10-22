@@ -183,6 +183,25 @@ class ReviewScmTest(RegistryTestCase):
                     github_api_path(url)
                 self.assertEqual(message, str(refused.exception))
 
+    def test_the_latest_review_of_each_reviewer_decides_the_approval(self) -> None:
+        attestation = {"provider": "github", "pull_request": PULL_REQUEST_URL, "commit": "a" * 40}
+        approved = {"user": {"login": "reviewer"}, "state": "APPROVED"}
+        changes = {"user": {"login": "reviewer"}, "state": "CHANGES_REQUESTED"}
+        for label, reviews, expected in (
+            ("changes requested, then approved", [changes, approved], []),
+            ("approved, then changes requested", [approved, changes], ["SCM pull request has no current approval"]),
+        ):
+            serve, _ = github_serving(
+                {"state": "closed", "merged_at": "2026-01-01T00:00:00Z", "head": {"sha": "a" * 40}}, reviews,
+                {"check_runs": [{"status": "completed", "conclusion": "success"}]},
+            )
+            with (
+                self.subTest(label),
+                patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}),
+                patch("domain_registry.attestations.github_page", side_effect=serve),
+            ):
+                self.assertEqual(expected, verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"))
+
     def test_external_scm_verification_requires_merged_approved_green_github_pr(self) -> None:
         attestation = {"provider": "github", "pull_request": PULL_REQUEST_URL, "commit": "a" * 40}
         serve, requested = github_serving(

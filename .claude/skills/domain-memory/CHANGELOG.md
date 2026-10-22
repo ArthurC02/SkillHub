@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.4
+
+### Added
+
+- Tests for branches the suite never reached: a policy that requires no CI, a policy without a review verifier, attesting a commit the repository does not hold, a check that gives no result in time, the latest review of a reviewer deciding the approval, appending to a broken audit chain, reciting a path a record does not cite, a Context's prefixes and implementation path, a git deadline on the command line, and `--since` with a git that cannot answer.
+
 ## 2.2.3
 
 ### Fixed
