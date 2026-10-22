@@ -1,3 +1,6 @@
+import { CriterionCheckValuesItemMaxLength } from "@skillhub/api-client-ts/limits";
+import { textLengthReason } from "../../shared/textLength.model";
+
 export type CheckNode = {
   kind: string;
   values?: string[];
@@ -67,6 +70,11 @@ function depthOf(node: CheckNode): number {
   return 1 + Math.max(0, ...(node.children ?? []).map(depthOf));
 }
 
+export function atLeastReason(value: number, count: number): string | null {
+  if (!Number.isInteger(value)) return "至少通過數必須是整數";
+  return value < 0 || value > count ? `至少通過數要在 0 到 ${count} 之間` : null;
+}
+
 function nodeProblems(node: CheckNode, kind: CheckKind | undefined): string[] {
   if (!kind) return [`平台不認得「${node.kind}」這種節點`];
   const out: string[] = [];
@@ -80,6 +88,10 @@ function nodeProblems(node: CheckNode, kind: CheckKind | undefined): string[] {
     );
   }
   if (values.some((v) => v.trim() === "")) out.push("有空白的值");
+  const sizeProblem = values
+    .map((v) => textLengthReason(v.trim(), "值", CriterionCheckValuesItemMaxLength))
+    .find(Boolean);
+  if (sizeProblem) out.push(sizeProblem);
   if (children.length < kind.children.min || children.length > kind.children.max) {
     out.push(
       kind.children.max === 0
@@ -87,10 +99,8 @@ function nodeProblems(node: CheckNode, kind: CheckKind | undefined): string[] {
         : `要 ${kind.children.min} 到 ${kind.children.max} 個子節點，現在 ${children.length} 個`,
     );
   }
-  const atLeast = node.at_least ?? 0;
-  if (kind.at_least && (atLeast < 0 || atLeast > values.length)) {
-    out.push(`至少通過數要在 0 到 ${values.length} 之間`);
-  }
+  const atLeastProblem = atLeastReason(node.at_least ?? 0, values.length);
+  if (kind.at_least && atLeastProblem) out.push(atLeastProblem);
   return out;
 }
 

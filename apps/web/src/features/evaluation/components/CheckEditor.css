@@ -58,6 +58,7 @@
 
 .check-editor-panel {
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .check-editor-outline,
