@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.1
+
+### Added
+
+- Tests for the refusals the suite never exercised: each defect `verify-proposal` finds in the test evidence, submitting a package that is not a draft or names no proposer, verifying one that is not submitted, an update that expects a Registry revision the Registry has left, and each defect in a Context's `confirmed_absences`. Removing any of those checks now turns a test red.
+
 ## 2.2.0
 
 ### Fixed

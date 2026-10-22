@@ -322,6 +322,26 @@ class RegistryContextModelTest(RegistryTestCase):
         self.assertEqual(gaps["without_contract"], ["orders"])
         self.assertEqual(gaps["without_event"], ["orders"])
 
+    def test_each_defect_in_a_confirmed_absence_is_named(self) -> None:
+        cases = [
+            ("not a list", "rules", [], "contexts/orders confirmed_absences must be a list"),
+            ("unknown asset", [{"asset": "decisions", "reason": "None."}], [],
+             "contexts/orders confirms an absence of an unknown asset; use one of aggregates, contracts, events, rules, vocabulary"),
+            ("not an object", ["rules"], [],
+             "contexts/orders confirms an absence of an unknown asset; use one of aggregates, contracts, events, rules, vocabulary"),
+            ("blank reason", [{"asset": "rules", "reason": " "}], [],
+             "contexts/orders confirms an absence of rules without a reason; a confirmed absence is a finding and needs one"),
+            ("contradicted by a record", [{"asset": "rules", "reason": "Orders decides nothing."}],
+             [{"id": "order-total", "contexts": ["orders"], "statement": "S."}],
+             "contexts/orders confirms an absence of rules, but rules records name it"),
+        ]
+        for label, absences, rules, message in cases:
+            with self.subTest(label):
+                self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders.",
+                                             "confirmed_absences": absences}])
+                self.seed("rules.json", rules)
+                self.assertEqual([message], validate(self.repo / "memory", self.repo, False))
+
     def test_coverage_counts_events_and_takes_a_confirmed_absence_of_events(self) -> None:
         self.seed("contexts.json", [
             {"id": "orders", "name": "Orders", "responsibility": "Own orders."},

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -22,7 +23,7 @@ from domain_registry.hitl import (
     supersede_proposal,
     verify_proposal,
 )
-from domain_registry.common import iso_timestamp, write_json
+from domain_registry.common import iso_timestamp, load_json, write_json
 from domain_registry.revision import (
     StaleBaseError,
     base_registry_revision,
@@ -171,6 +172,70 @@ class ReviewLifecycleTest(RegistryTestCase):
         verify_proposal(package, self.repo / "memory", self.repo)
         proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
         self.assertEqual("verified", proposal["status"])
+
+    def test_each_defect_in_the_test_evidence_is_named_and_keeps_the_proposal_submitted(self) -> None:
+        attested = (
+            "a verified test result requires exit_code 0, output_sha256, and finished_at"
+        )
+        unattested = "every test obligation requires a passing attestation"
+        cases = [
+            ("status not passed", lambda good: [{**good, "status": "failed"}],
+             f"each verified test result requires a passed obligation_id; {unattested}"),
+            ("result not an object", lambda _: ["passed"],
+             f"each verified test result requires a passed obligation_id; {unattested}"),
+            ("unknown obligation", lambda good: [{**good, "obligation_id": "OB-9"}],
+             f"a test result references an unknown obligation; {unattested}"),
+            ("two attestations for one obligation", lambda good: [good, good],
+             "a test obligation may have only one passing attestation"),
+            ("without evidence", lambda good: [{**good, "evidence": ""}],
+             "a verified test result requires evidence and command_profile; the test result of OB-1 ran '', "
+             "not the obligation's check 'test command'; record the check, or cite the CI run as an https:// link"),
+            ("without a command profile", lambda good: [{**good, "command_profile": None}],
+             "a verified test result requires evidence and command_profile; "
+             "a test result uses a command profile not approved by Domain Memory policy"),
+            ("a profile the policy does not approve", lambda good: [{**good, "command_profile": "release"}],
+             "a test result uses a command profile not approved by Domain Memory policy"),
+            ("exit code 1", lambda good: [{**good, "exit_code": 1}], attested),
+            ("output digest that is not a digest", lambda good: [{**good, "output_sha256": "passed"}], attested),
+            ("finished_at that is not a timestamp", lambda good: [{**good, "finished_at": "yesterday"}], attested),
+            ("no result at all", lambda _: [], unattested),
+            ("test_results not a list", lambda _: "passed", "evidence-bundle.json has invalid test_results"),
+        ]
+        for label, results_of, message in cases:
+            with self.subTest(label):
+                self.tearDown()
+                self.setUp()
+                package = self.submitted_package()
+                record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+                evidence_path = package / "evidence-bundle.json"
+                evidence = load_json(evidence_path)
+                [good] = evidence["test_results"]
+                write_json(evidence_path, {**evidence, "test_results": results_of(good)})
+                before = evidence_path.read_bytes()
+                with self.assertRaisesRegex(ValueError, "^proposal lacks verified test evidence: " + re.escape(message) + "$"):
+                    verify_proposal(package, self.repo / "memory", self.repo)
+                self.assertEqual(("submitted", before), (self.proposal_in(package)["status"], evidence_path.read_bytes()))
+
+    def test_submitting_a_proposal_that_is_not_a_draft_or_names_no_proposer_is_refused(self) -> None:
+        submitted = self.submitted_package()
+        before = (submitted / "domain-change-proposal.json").read_bytes()
+        with self.assertRaisesRegex(ValueError, "^only a draft proposal may be submitted$"):
+            submit_proposal(submitted, self.repo / "memory", self.repo)
+        self.assertEqual(before, (submitted / "domain-change-proposal.json").read_bytes())
+        shutil.rmtree(submitted)
+        draft = self.draft_package()
+        proposal_path = draft / "domain-change-proposal.json"
+        write_json(proposal_path, {**load_json(proposal_path), "proposer": ""})
+        before = proposal_path.read_bytes()
+        with self.assertRaisesRegex(ValueError, "^a proposal requires a proposer before submission$"):
+            submit_proposal(draft, self.repo / "memory", self.repo)
+        self.assertEqual(("draft", before), (self.proposal_in(draft)["status"], proposal_path.read_bytes()))
+
+    def test_verifying_a_proposal_that_is_not_submitted_is_refused(self) -> None:
+        draft = self.draft_package()
+        with self.assertRaisesRegex(ValueError, "^only a submitted proposal may be verified$"):
+            verify_proposal(draft, self.repo / "memory", self.repo)
+        self.assertEqual("draft", self.proposal_in(draft)["status"])
 
     def test_the_proposer_cannot_approve_their_own_proposal(self) -> None:
         package = self.submitted_package()

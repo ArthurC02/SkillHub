@@ -12,7 +12,8 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.transaction import recover_interrupted_update, remove_tree, transaction_path
+from domain_registry.revision import registry_digest
+from domain_registry.transaction import mutate_registry, recover_interrupted_update, remove_tree, transaction_path
 from domain_registry.updates import (
     apply_approved_updates,
     reconcile_pending_update,
@@ -163,6 +164,20 @@ class UpdatesRecoveryTest(RegistryTestCase):
         staging.rmdir()
         with self.assertRaisesRegex(ValueError, "registry transaction requires manual reconciliation"):
             recover_interrupted_update(root, False)
+
+    def test_an_update_expecting_a_revision_the_registry_has_left_is_refused_and_writes_nothing(self) -> None:
+        root = self.repo / "memory"
+        index = registry_dir(root) / INDEX
+        before = index.read_bytes()
+        applied = []
+        with self.assertRaisesRegex(ValueError, "^registry revision changed before update; run ship-package again$"):
+            mutate_registry(root, self.repo, applied.append, expected_digest="sha256:" + "0" * 64)
+        mutate_registry(root, self.repo, applied.append, expected_digest=registry_digest(root))
+        self.assertEqual(
+            (before, 1, [], False),
+            (index.read_bytes(), len(applied), sorted(path.name for path in root.glob(".domain-registry-*")),
+             transaction_path(root).exists()),
+        )
 
     def test_recovery_restores_the_backup_when_a_prepared_swap_left_no_registry(self) -> None:
         original = (registry_dir(self.repo / "memory") / INDEX).read_bytes()
