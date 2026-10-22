@@ -106,7 +106,7 @@ for (const advanced of [false, true]) {
     await section.getByRole("button", { name: "再試一次", exact: true }).click();
     await expect(section.getByRole("alert")).toHaveCount(0);
     await expect(page.locator("#run-trace-heading")).toBeFocused();
-    expect(reads).toBe(2);
+    await expect.poll(() => reads).toBe(2);
     if (advanced) expect(offsets).toEqual(["1000", "1000"]);
     else expect(new URL(page.url()).searchParams.get("events")).toBeNull();
   });
