@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.3.1
+
+### Added
+
+- Tests pinning the next step `harvest` names for a draft and for a run stopped with its test results, and the one `ship-package` names for an approved package whose apply failed and for a package finalize sends back.
+
 ## 2.3.0
 
 ### Added

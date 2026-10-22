@@ -78,11 +78,23 @@ class ShipPackageTest(RegistryTestCase):
             first = ship_package(package, self.repo / "memory", self.repo, signed)
         second = ship_package(package, self.repo / "memory", self.repo, signed)
         self.assertEqual(
-            ((["attest-signed-commit", "finalize-proposal"], ["apply-approved-updates: the disk was full"], "approved"),
+            ((["attest-signed-commit", "finalize-proposal"], ["apply-approved-updates: the disk was full"], "approved",
+              "the proposal is approved but not applied; run ship-package again"),
              (["apply-approved-updates"], [], "applied")),
-            ((first["completed"], first["errors"], first["status"]), (second["completed"], second["errors"], second["status"])),
+            ((first["completed"], first["errors"], first["status"], first["next"]),
+             (second["completed"], second["errors"], second["status"])),
         )
         self.assertNotIn("commit", second)
+
+    def test_a_package_finalize_sends_back_is_submitted_again_and_names_what_to_correct(self) -> None:
+        package, _ = self.verified_package_under_signed_governance()
+        signed = self.commit_everything("adds the Change Package", signed=True)
+        with patch("domain_registry.hitl.validate_change_package", return_value=["the approval names no reviewer"]):
+            report = ship_package(package, self.repo / "memory", self.repo, signed)
+        self.assertEqual(
+            ("submitted", "the proposal is submitted again; correct what finalize named, verify-proposal, then ship-package"),
+            (report["status"], report["next"]),
+        )
 
     def test_an_approved_package_is_not_applied_under_another_commit(self) -> None:
         package, unsigned = self.verified_package_under_signed_governance()
