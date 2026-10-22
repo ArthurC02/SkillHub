@@ -114,10 +114,14 @@ async function touched($: EngineInterface): Promise<string[]> {
   return (await $.state.get({ plugin: 'skillhub-guards', key: 'touched' })).value ?? []
 }
 
+const rememberedThisProcess = new Set<string>()
+
 async function remember($: EngineInterface, paths: string[]) {
   const list = await touched($)
-  const fresh = paths.map(normalize).filter(path => !list.includes(path))
-  if (fresh.length > 0) await $.state.set({ plugin: 'skillhub-guards', key: 'touched' }, [...list, ...fresh])
+  for (const path of [...list, ...paths.map(normalize)]) rememberedThisProcess.add(path)
+  if (rememberedThisProcess.size > list.length) {
+    await $.state.set({ plugin: 'skillhub-guards', key: 'touched' }, [...rememberedThisProcess])
+  }
 }
 
 async function consumeAllowance($: EngineInterface, action: string): Promise<boolean> {

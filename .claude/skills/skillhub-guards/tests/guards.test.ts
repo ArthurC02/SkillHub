@@ -205,6 +205,17 @@ test('a file this session\'s own command changed can then be edited', async ($, 
   expect(edited).toEqual(['Edit'])
 })
 
+test('files this session edited in one parallel batch can each be edited again', async ($, on) => {
+  let edited = false
+  world(on, argv => argv.includes('--porcelain') && edited ? ` M ${argv.at(-1)}\0` : '')
+  const edit = (file: string) =>
+    $.tool.call({ tool: 'Edit', file_path: `${ROOT}/apps/${file}`, old_string: 'a', new_string: 'b' })
+  await Promise.all(['a.ts', 'b.ts', 'c.ts'].map(edit))
+  edited = true
+  const again = await Promise.all(['a.ts', 'b.ts', 'c.ts'].map(edit))
+  expect(again.map(result => result.deny)).toEqual([undefined, undefined, undefined])
+})
+
 test('a file inside a new folder this session\'s own command created can then be edited', async ($, on) => {
   let created = false
   const edited: string[] = []
