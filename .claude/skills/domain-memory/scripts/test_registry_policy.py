@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -179,6 +180,37 @@ class RegistryPolicyTest(RegistryTestCase):
         corrected = self.run_cli(*arguments)
         self.assertEqual(0, corrected.returncode, corrected.stderr)
         self.assertTrue((destination / "domain-memory-policy.json").is_file())
+
+    def test_an_initialization_whose_review_flags_contradict_is_refused_naming_the_flag_and_writes_nothing(self) -> None:
+        (self.repo / "docs").mkdir(exist_ok=True)
+        (self.repo / "docs" / "rules.md").write_text("rules", encoding="utf-8")
+        destination = self.repo / "domain-memory"
+        elsewhere = tempfile.TemporaryDirectory()
+        self.addCleanup(elsewhere.cleanup)
+        outside = Path(elsewhere.name) / "memory"
+        common = (
+            "--repo-root", str(self.repo), "--source", str(self.repo / "docs"), "--storage-mode", "ignored",
+            "--data-classification", "internal", "--source-authority", "test",
+        )
+        signed = ("--review-mode", "scm-verified", "--review-verifier", "git-signed-commit")
+        for label, given, refusal in (
+            ("scm-verified without a verifier", ("--output", str(destination), "--review-mode", "scm-verified"),
+             "scm-verified Domain Memory requires --review-verifier"),
+            ("signed commits without a signer", ("--output", str(destination), *signed, "--review-trigger", "git-push"),
+             "git-signed-commit requires at least one --authorized-signer"),
+            ("signed commits checked on commit",
+             ("--output", str(destination), *signed, "--authorized-signer", "SHA256:key", "--review-trigger", "git-commit"),
+             "git-signed-commit requires --review-trigger git-push"),
+            ("an output outside the repository",
+             ("--output", str(outside), "--review-mode", "local-draft-only"),
+             "output must be inside the repository"),
+        ):
+            with self.subTest(label):
+                refused = self.run_cli("init-domain-memory", *common, *given)
+                self.assertEqual(
+                    (1, f"ERROR: {refusal}", False, False),
+                    (refused.returncode, refused.stderr.strip(), destination.exists(), outside.exists()),
+                )
 
     def test_verify_evidence_names_the_record_of_each_citation_and_filters_by_path(self) -> None:
         self.seed_two_cited_rules()
