@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.readiness import assess_readiness
+from domain_registry.git import run_git
+from domain_registry.readiness import assess_readiness, readiness_report
 from domain_registry.registry import init_registry
 from domain_registry.sources import (
     selected_source_map,
@@ -120,6 +123,30 @@ class VerifySourcesDriftTest(RegistryTestCase):
              [s["kind"] for s in report["signals"] if s["kind"] in ("registry", "registry_records", "listing")],
              result.stderr.strip()),
         )
+
+    def test_readiness_without_a_registry_root_says_when_git_cannot_list_the_domain_memories(self) -> None:
+        self.permit_sources()
+        self.map_with_tests("test_kept.py")
+        not_a_repository = subprocess.CompletedProcess(["git"], 128, "", "fatal: not a git repository\n")
+        for label, outcome, reason in (
+            ("git cannot start", OSError("git vanished"), "git vanished"),
+            ("not a git repository", not_a_repository, "fatal: not a git repository"),
+        ):
+            def listing_answers(root: object, *arguments: str, answer: object = outcome, **options: object) -> object:
+                if "ls-files" in arguments:
+                    if isinstance(answer, Exception):
+                        raise answer
+                    return answer
+                return run_git(root, *arguments, **options)
+
+            with self.subTest(label), patch("domain_registry.locate.run_git", side_effect=listing_answers):
+                report, note = readiness_report(self.repo, None)
+            self.assertEqual(
+                (None, None, [], f"NOTE: git could not list the Domain Memories this repository holds: {reason}; "
+                 "pass --registry-root to assess one."),
+                (report["registry_root"], report["domain_memories"],
+                 [s["kind"] for s in report["signals"] if s["kind"] in ("registry", "registry_records", "listing")], note),
+            )
 
     def test_readiness_with_a_registry_root_reports_it_and_looks_for_no_other(self) -> None:
         self.permit_sources()

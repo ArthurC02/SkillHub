@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import shlex
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -25,6 +24,7 @@ def recitation_package(
         reference["path"] for _, record in updates for reference in all_references(record)
         if isinstance(reference, dict) and isinstance(reference.get("path"), str)
     })
+    check = _verify_command(registry_root, output, cited)
     requirement_id, proposal_id, proposer = identifiers
     names = ", ".join(f"{asset}/{record['id']}" for asset, record in updates)
     init_change_package(output, requirement_id, proposal_id, proposer)
@@ -46,7 +46,7 @@ def recitation_package(
         "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
         "level": "architecture",
         "status": "planned",
-        "check": _verify_command(registry_root, output, cited),
+        "check": check,
     }]})
     _fill(output / PROPOSAL_FILE, {
         "change_classification": "routine",
@@ -115,5 +115,5 @@ def _verify_command(registry_root: Path, package_root: Path, cited: list[str]) -
 def _repository_top(path: Path) -> Path | None:
     try:
         return toplevel(path)
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError:
         return None

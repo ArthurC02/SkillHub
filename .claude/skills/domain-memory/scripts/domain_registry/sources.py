@@ -1,7 +1,6 @@
 import fnmatch
 import hashlib
 import os
-import subprocess
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -75,7 +74,7 @@ def _untracked(root: Path, relatives: list[str]) -> list[str]:
         return relatives
     try:
         listed = run_git(root, "ls-files", "-z", "-t")
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError:
         return relatives
     tracked = {entry[2:] for entry in listed.stdout.split(chr(0)) if entry.startswith(INDEX_TAGS_GIT_NEVER_IGNORES)}
     return [entry for entry in relatives if entry not in tracked]
@@ -802,7 +801,7 @@ def git_state(root: Path, selected_paths: list[str]) -> dict[str, Any]:
     try:
         trees = run_git(root, "rev-parse", *(f"HEAD:{path}" for path in selected_paths))
         dirty = run_git(root, "status", "--porcelain", "-z", "--", *selected_paths)
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError:
         return {}
     if trees.returncode != 0 or dirty.returncode != 0:
         return {}

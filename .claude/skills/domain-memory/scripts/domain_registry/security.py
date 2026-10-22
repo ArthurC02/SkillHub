@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import re
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -87,7 +86,7 @@ def _scannable_files(root: Path, scan: Scan):
 def _files_known_to_git(root: Path) -> list[str] | None:
     try:
         result = run_git(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError:
         return None
     if result.returncode != 0:
         return None

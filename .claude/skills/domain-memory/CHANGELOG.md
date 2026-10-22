@@ -2,6 +2,23 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.3.8
+
+### Fixed
+
+- `readiness` without `--registry-root` no longer reports that the repository holds no Domain Memory when git could not list them: with no git on the path, or a directory that is not a repository, `domain_memories` is now `null` and a `NOTE:` gives git's reason (`NOTE: git could not list the Domain Memories this repository holds: <reason>; pass --registry-root to assess one.`); it listed `[]` and assessed nothing, as it does for a repository that truly holds none. The hint under `no Domain Memory at …` still falls back to the neighbouring directories as before.
+
+## 2.3.7
+
+### Fixed
+
+- A git deadline surfaces as one `ERROR:` line from every command, as it has since 2.2.3 for discovery and the quality gates. Six readers still swallowed it as if git were absent: `submit-proposal` stamped a base revision with no commit, so `verify-proposal` and `rebase-proposal` later said the base names no commit without saying why; `confirm-sources` and `refresh-sources` recorded an empty git state, so every later `probe` and `verify-sources` took the slow hashing path; `readiness` listed no Domain Memory, `scan-secrets` walked the tree instead of asking git, the untracked prefilter of `discover-sources` was skipped, and a re-citation package named absolute paths in its check. Each now ends in the deadline's own line, which names `DOMAIN_MEMORY_GIT_TIMEOUT`; a git that cannot start at all still takes the fallback it took before.
+- A re-citation package asks git for the repository top before it writes anything, so a deadline there leaves no half-written package behind.
+
+### Added
+
+- Tests that each of the six readers lets a git deadline through and still falls back when git cannot start.
+
 ## 2.3.6
 
 ### Fixed
