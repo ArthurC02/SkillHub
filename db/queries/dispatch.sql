@@ -3,6 +3,11 @@ SELECT * FROM dispatch_halts
 WHERE lifted_at IS NULL
 ORDER BY declared_at;
 
+-- name: ListDispatchHaltsOverlapping :many
+SELECT * FROM dispatch_halts
+WHERE declared_at < @until::timestamptz AND (lifted_at IS NULL OR lifted_at > @since::timestamptz)
+ORDER BY declared_at;
+
 -- name: LockDispatchHaltTarget :exec
 SELECT pg_advisory_xact_lock(hashtextextended('dispatch-halt:' || @provider::text, 0));
 

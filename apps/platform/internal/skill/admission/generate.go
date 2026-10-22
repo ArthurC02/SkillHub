@@ -41,6 +41,8 @@ var ErrGenerateTooLong = errors.New("ingest: task description is too long")
 
 var ErrCreditThreshold = errors.New("ingest: credit balance below the start threshold")
 
+var ErrModelCallsHalted = errors.New("ingest: model calls are halted by a P1 incident")
+
 var ErrGenerateInFlight = errors.New("ingest: a generation is already running for this workspace")
 
 var ErrGenerateSlotUnavailable = errors.New("ingest: whether a generation is already running cannot be read")
@@ -247,6 +249,9 @@ func (s *Service) admitGeneration(ctx context.Context, job generation) error {
 			"reason":           reason,
 		})
 		return err
+	}
+	if s.Billing.ModelCallsHalted != nil && s.Billing.ModelCallsHalted(ctx) {
+		return ErrModelCallsHalted
 	}
 	if s.Billing.CanStart == nil {
 		return nil

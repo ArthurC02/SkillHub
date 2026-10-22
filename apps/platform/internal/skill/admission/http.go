@@ -354,63 +354,58 @@ func writeGenerateOutcome(w http.ResponseWriter, res GenerateResult, err error) 
 	}
 }
 
+type generateRefusalEntry struct {
+	err     error
+	status  int
+	message string
+}
+
+var generateRefusals = []generateRefusalEntry{
+	{ErrGenerateBlank, http.StatusUnprocessableEntity,
+		"請描述你要完成的任務：做什麼、輸入是什麼、預期產出是什麼。"},
+	{ErrGenerateNoInput, http.StatusUnprocessableEntity,
+		"請描述你要完成的任務：做什麼、輸入是什麼、預期產出是什麼；或上傳一張流程圖／示意圖。兩者至少要有一項。"},
+	{ErrDiagramInvalid, http.StatusBadRequest,
+		"diagram 不是可用的圖片。接受的格式：PNG、JPEG、WebP，解碼後大小不超過 4 MB。"},
+	{ErrTooManyReferences, http.StatusUnprocessableEntity,
+		"參考的 Skill 最多三個，請減少後再試一次。"},
+	{ErrReferenceUnavailable, http.StatusUnprocessableEntity,
+		"其中一個參考的 Skill 無法使用，請換一個再試一次。"},
+	{policy.ErrGenerateQuotaExceeded, http.StatusUnprocessableEntity,
+		""},
+	{policy.ErrAllowanceUnavailable, http.StatusServiceUnavailable,
+		"目前算不出這個工作區剩下的生成額度，所以沒有呼叫模型、也沒有花錢。稍後再試。"},
+	{ErrGenerationTruncated, http.StatusUnprocessableEntity,
+		"這件事的內容超過一次生成的上限，已經停下來，沒有建立任何版本。" +
+			"把任務拆小一點再試一次會有幫助。"},
+	{ErrGenerateTooLong, http.StatusUnprocessableEntity,
+		"這段任務描述超過一次生成能吃下的長度。請留下要做什麼、輸入是什麼、預期產出是什麼，其餘可以省略。"},
+	{ErrGenerateSlotUnavailable, http.StatusServiceUnavailable,
+		"目前無法確認這個工作區是否已有生成在進行，所以沒有呼叫模型、也沒有花錢。稍後再試。"},
+	{ErrGenerateInFlight, http.StatusConflict,
+		"這個工作區已經有一次生成正在進行。等它結束再送出——同時跑兩次會付兩次錢。"},
+	{ErrModelCallsHalted, http.StatusServiceUnavailable,
+		"平台暫停中，這次沒有呼叫模型、也沒有花錢。請稍後再試。"},
+	{ErrCreditThreshold, http.StatusUnprocessableEntity,
+		"點數不足，無法開始這次生成，沒有呼叫模型。請聯絡管理者為這個帳號加點。"},
+	{ErrGenerateNotForCatalogue, http.StatusUnprocessableEntity,
+		"公開目錄不生成 Skill。請切換到你自己的工作區再生成一次，" +
+			"做好之後可以從那裡發布到目錄。"},
+	{ErrGeneratedNameCollision, http.StatusUnprocessableEntity,
+		"這個工作區已經有一個同名的 Skill。" +
+			"請先刪除它（或改掉它的名字），再生成一次——" +
+			"生成永遠建立一個新的 Skill 的第一個版本，不會接在既有的 Skill 後面；" +
+			"同一段任務描述再生成一次通常會取到同一個名字，改寫描述也會讓模型換名字。"},
+}
+
 func generateRefusal(err error) (status int, message string, refused bool) {
-	switch {
-	case errors.Is(err, ErrGenerateBlank):
-
-		return http.StatusUnprocessableEntity,
-			"請描述你要完成的任務：做什麼、輸入是什麼、預期產出是什麼。", true
-	case errors.Is(err, ErrGenerateNoInput):
-
-		return http.StatusUnprocessableEntity,
-			"請描述你要完成的任務：做什麼、輸入是什麼、預期產出是什麼；或上傳一張流程圖／示意圖。兩者至少要有一項。", true
-	case errors.Is(err, ErrDiagramInvalid):
-
-		return http.StatusBadRequest,
-			"diagram 不是可用的圖片。接受的格式：PNG、JPEG、WebP，解碼後大小不超過 4 MB。", true
-	case errors.Is(err, ErrTooManyReferences):
-		return http.StatusUnprocessableEntity,
-			"參考的 Skill 最多三個，請減少後再試一次。", true
-	case errors.Is(err, ErrReferenceUnavailable):
-
-		return http.StatusUnprocessableEntity,
-			"其中一個參考的 Skill 無法使用，請換一個再試一次。", true
-	case errors.Is(err, policy.ErrGenerateQuotaExceeded):
-
-		return http.StatusUnprocessableEntity, err.Error(), true
-	case errors.Is(err, policy.ErrAllowanceUnavailable):
-
-		return http.StatusServiceUnavailable,
-			"目前算不出這個工作區剩下的生成額度，所以沒有呼叫模型、也沒有花錢。稍後再試。", true
-	case errors.Is(err, ErrGenerationTruncated):
-
-		return http.StatusUnprocessableEntity,
-			"這件事的內容超過一次生成的上限，已經停下來，沒有建立任何版本。" +
-				"把任務拆小一點再試一次會有幫助。", true
-	case errors.Is(err, ErrGenerateTooLong):
-		return http.StatusUnprocessableEntity,
-			"這段任務描述超過一次生成能吃下的長度。請留下要做什麼、輸入是什麼、預期產出是什麼，其餘可以省略。", true
-	case errors.Is(err, ErrGenerateSlotUnavailable):
-		return http.StatusServiceUnavailable,
-			"目前無法確認這個工作區是否已有生成在進行，所以沒有呼叫模型、也沒有花錢。稍後再試。", true
-	case errors.Is(err, ErrGenerateInFlight):
-
-		return http.StatusConflict,
-			"這個工作區已經有一次生成正在進行。等它結束再送出——同時跑兩次會付兩次錢。", true
-	case errors.Is(err, ErrCreditThreshold):
-		return http.StatusUnprocessableEntity,
-			"點數不足，無法開始這次生成，沒有呼叫模型。請聯絡管理者為這個帳號加點。", true
-	case errors.Is(err, ErrGenerateNotForCatalogue):
-		return http.StatusUnprocessableEntity,
-			"公開目錄不生成 Skill。請切換到你自己的工作區再生成一次，" +
-				"做好之後可以從那裡發布到目錄。", true
-	case errors.Is(err, ErrGeneratedNameCollision):
-
-		return http.StatusUnprocessableEntity,
-			"這個工作區已經有一個同名的 Skill。" +
-				"請先刪除它（或改掉它的名字），再生成一次——" +
-				"生成永遠建立一個新的 Skill 的第一個版本，不會接在既有的 Skill 後面；" +
-				"同一段任務描述再生成一次通常會取到同一個名字，改寫描述也會讓模型換名字。", true
+	for _, r := range generateRefusals {
+		if errors.Is(err, r.err) {
+			if r.message == "" {
+				return r.status, err.Error(), true
+			}
+			return r.status, r.message, true
+		}
 	}
 	return 0, "", false
 }

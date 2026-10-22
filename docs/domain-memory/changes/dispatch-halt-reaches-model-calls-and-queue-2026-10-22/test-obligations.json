@@ -1,0 +1,67 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "dispatch-halt-reaches-model-calls-and-queue",
+  "proposal_id": "dispatch-halt-reaches-model-calls-and-queue",
+  "obligations": [
+    {
+      "id": "rule-user-started-model-calls-stop-under-a-p1-halt",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-user-started-model-calls-stop-under-a-p1-halt",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "user-started-model-calls-stop-under-a-p1-halt"
+        }
+      ],
+      "expected_outcome": "While a P1 incident halts dispatch, generating a skill, a creation step and a criteria suggestion are refused before the model is called and nothing is charged; a creation step that was refused is not counted and the session waits for the person to send again. An unreadable halt state counts as halted.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^(TestAP1HaltRefusesGenerationAndCriteriaSuggestionsWithoutCallingTheModel|TestACreationStepUnderAP1HaltSkipsTheModelCallAndWaitsForInput)$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-time-dispatch-was-paused-does-not-count-against-the-slot-wait",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-time-dispatch-was-paused-does-not-count-against-the-slot-wait",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "time-dispatch-was-paused-does-not-count-against-the-slot-wait"
+        }
+      ],
+      "expected_outcome": "A run waiting for a sandbox slot times out only after the slot-wait limit plus every stretch during which dispatch was paused for every provider that could take it; if the halt history cannot be read the run keeps waiting.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTimeTheQueueSpentHaltedDoesNotCountAgainstTheSlotWaitLimit$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-batch-starts-no-trial-while-dispatch-is-paused",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-batch-starts-no-trial-while-dispatch-is-paused",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-batch-starts-no-trial-while-dispatch-is-paused"
+        }
+      ],
+      "expected_outcome": "While dispatch is paused for every provider, by an orphan threshold or a P1 incident, an evaluation batch waits instead of creating its next trial, and starts it on the first advance after the halt lifts.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestABatchStartsNoTrialWhileDispatchIsPaused$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-an-unaccepted-run-expires-after-the-slot-wait-limit",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-unaccepted-run-expires-after-the-slot-wait-limit",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-unaccepted-run-expires-after-the-slot-wait-limit"
+        }
+      ],
+      "expected_outcome": "A run no provider has accepted waits for a slot up to the slot-wait limit plus the time dispatch was paused for it, and is timed out with a queue reason just past that.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^(TestTimeTheQueueWasHeldExtendsTheSlotWaitLimit|TestARunNobodyHasAcceptedWaitsForASlotUpToTheWaitLimit)$ ./internal/trial/execution/"
+    }
+  ]
+}

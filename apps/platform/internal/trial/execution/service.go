@@ -449,7 +449,7 @@ func (s *Service) admitRun(ctx context.Context, p CreateParams) (admittedRun, er
 		return admittedRun{}, errRegistryReadNotConfigured
 	}
 
-	if err := s.requireDispatchable(ctx); err != nil {
+	if err := s.DispatchGate().requireDispatchable(ctx); err != nil {
 		return admittedRun{}, err
 	}
 

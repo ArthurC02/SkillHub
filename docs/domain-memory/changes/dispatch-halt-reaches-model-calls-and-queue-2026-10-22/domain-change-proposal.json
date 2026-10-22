@@ -1,0 +1,519 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "dispatch-halt-reaches-model-calls-and-queue",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "dispatch-halt-reaches-model-calls-and-queue",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-22T10:01:47.522085Z",
+  "verified_at": "2026-10-22T10:07:45.486548Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "6f735267bdd9e3f34263f43ab80c5042309099d4",
+    "registry_digest": "sha256:3c057fe5650cf4175105079e97d694a73b950d57c2a140d564b548028256a50f",
+    "committed_digest": "sha256:9fa94484ea0aafd15db5ba1e57080c14b89a26209bf0cbc13898bf91a95b050b"
+  },
+  "affected_contexts": [
+    "batch",
+    "creation",
+    "ingest",
+    "run",
+    "testlab"
+  ],
+  "rule_ids": [
+    "user-started-model-calls-stop-under-a-p1-halt",
+    "time-dispatch-was-paused-does-not-count-against-the-slot-wait",
+    "a-batch-starts-no-trial-while-dispatch-is-paused",
+    "an-unaccepted-run-expires-after-the-slot-wait-limit"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Only run decides whether dispatch is paused or halted by a P1; each consumer decides what its own refusal looks like.",
+    "evidence": [
+      "apps/platform/internal/trial/execution/halt.go:22-59",
+      "apps/platform/internal/entrypoint/api/apiserver/app.go:654-661"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "run-ingest-model-call-halt, run-testlab-model-call-halt and run-creation-model-call-halt: the composition root hands each consumer run's dispatch gate as a hook; batch reads the same gate through its existing StartRun port.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "ingest, testlab or creation importing run"
+    ],
+    "evidence": [
+      "apps/platform/internal/trial/execution/halt.go:22-59",
+      "apps/platform/internal/entrypoint/api/apiserver/app.go:654-661"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A P1 halt stopped new runs but generation, creation steps and criteria suggestions kept calling the model, so spending continued through the incident.",
+      "Under an orphan-threshold halt queued runs could not be dispatched yet their slot-wait clock kept running, and batches kept creating trials that then timed out unevaluated."
+    ],
+    "decision": "Expose run's dispatch gate as a type with its own methods, hand ModelCallsHalted to the three model-calling contexts through their spend-admission hooks, extend a queued run's deadline by the time dispatch was paused over its wait, and make the batch wait while dispatch is paused.",
+    "invariants_preserved": [
+      "A refused call charges nothing.",
+      "An orphan halt still lets people queue runs.",
+      "A P1 halt is never lifted automatically."
+    ],
+    "rejected_alternatives": [
+      "Restarting the queue clock when a halt lifts: it would give a run caught by two short halts more wait than the time it was actually held.",
+      "Refusing run creation under an orphan halt: it would turn an automatically recovering halt into user-visible refusals."
+    ],
+    "proof_obligations": [
+      "rule-user-started-model-calls-stop-under-a-p1-halt",
+      "rule-time-dispatch-was-paused-does-not-count-against-the-slot-wait",
+      "rule-a-batch-starts-no-trial-while-dispatch-is-paused",
+      "rule-an-unaccepted-run-expires-after-the-slot-wait-limit"
+    ],
+    "counterfactual_check": "Dropping the held time from the slot-wait deadline fails TestTimeTheQueueSpentHaltedDoesNotCountAgainstTheSlotWaitLimit."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "user-started-model-calls-stop-under-a-p1-halt",
+        "statement": "While a P1 incident halts dispatch, generating a skill, a creation step and a criteria suggestion are refused before the model is called and nothing is charged; a creation step that was refused is not counted and the session waits for the person to send again. An unreadable halt state counts as halted.",
+        "contexts": [
+          "creation",
+          "ingest",
+          "testlab"
+        ],
+        "examples": [
+          "Under a P1 halt a criteria suggestion answers 503 naming the halt, generation returns ErrModelCallsHalted, and the model stub is never called."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/cost.go",
+            "lines": {
+              "start": 22,
+              "end": 37
+            },
+            "excerpt_sha256": "sha256:6df644766cd397f4d57227d46082b1eb508bcbc096b2a7fa0ba43fb6a635b63b"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/generate.go",
+            "lines": {
+              "start": 253,
+              "end": 255
+            },
+            "excerpt_sha256": "sha256:3f7684b057cdb1f15bb4f1130f90075c7504a2c745b24184a0ab12cebdd21266"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/job.go",
+            "lines": {
+              "start": 445,
+              "end": 447
+            },
+            "excerpt_sha256": "sha256:3f7684b057cdb1f15bb4f1130f90075c7504a2c745b24184a0ab12cebdd21266"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/job.go",
+            "lines": {
+              "start": 614,
+              "end": 619
+            },
+            "excerpt_sha256": "sha256:40352e3aaee09c5e33a426829b41a169b70e2bb148976f1edf54f28a2482c3e9"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/halt.go",
+            "lines": {
+              "start": 32,
+              "end": 46
+            },
+            "excerpt_sha256": "sha256:d230881335bad2a2fccc01812cfdaf34794d0fd3c247b3ab0973dc5ef85d14d3"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/p1_halt_model_calls_integration_test.go",
+            "lines": {
+              "start": 18,
+              "end": 81
+            },
+            "excerpt_sha256": "sha256:d8e8d8a5a0c369b973d2acacea3d5df6440e1e5f55fe9cae4bdc2618640a43fd"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "time-dispatch-was-paused-does-not-count-against-the-slot-wait",
+        "statement": "A run waiting for a sandbox slot times out only after the slot-wait limit plus every stretch during which dispatch was paused for every provider that could take it; if the halt history cannot be read the run keeps waiting.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A run queued forty minutes ago, fifteen of them under a pool halt, is still queued; a pool halt declared before the run queued and still held stops its clock entirely."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/halt/paused.go",
+            "lines": {
+              "start": 22,
+              "end": 41
+            },
+            "excerpt_sha256": "sha256:6a494406a7a0e101d3edc8c775d18d6b95a3698ac29cde59a9c6151ad9937511"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/job.go",
+            "lines": {
+              "start": 941,
+              "end": 947
+            },
+            "excerpt_sha256": "sha256:7124a1a3ceb89a3de9554dc4546c222d03838b09c22e36b26c2d2a59f6f30202"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/job.go",
+            "lines": {
+              "start": 958,
+              "end": 967
+            },
+            "excerpt_sha256": "sha256:0d77c9e792b2cb23b7b852fdcd35592800d6833406652a22d80df5be13307ed7"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/halt/paused_test.go",
+            "lines": {
+              "start": 28,
+              "end": 54
+            },
+            "excerpt_sha256": "sha256:d5046eb497c504ce795484fd8a57591cf66fde02fcccb5e71475fb3b90442a5c"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/p1_halt_model_calls_integration_test.go",
+            "lines": {
+              "start": 83,
+              "end": 105
+            },
+            "excerpt_sha256": "sha256:766f13f28c07d0625db0bd84a1a83800323f6dd9cbf92211048bfa76c859cc70"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-batch-starts-no-trial-while-dispatch-is-paused",
+        "statement": "While dispatch is paused for every provider, by an orphan threshold or a P1 incident, an evaluation batch waits instead of creating its next trial, and starts it on the first advance after the halt lifts.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A batch created under an orphan-threshold pool halt has no trial run; after the halt lifts the next advance starts its one trial."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 48,
+              "end": 51
+            },
+            "excerpt_sha256": "sha256:91f030e8fd5cae4aefcf7c34c2a1aff83d9f7354b6ae6c51bf9d7c17d9924180"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/p1_halt_model_calls_integration_test.go",
+            "lines": {
+              "start": 107,
+              "end": 141
+            },
+            "excerpt_sha256": "sha256:fa35d8e841fc93b0d5d35f498206c78c12df64653641b69be9758fab92901c4e"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-ingest-model-call-halt",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "producer_context": "run",
+        "consumer_context": "ingest",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 654,
+              "end": 661
+            },
+            "excerpt_sha256": "sha256:a3328498e75275f977844508c68f206866494f6306b7df4b4641313603bebb32"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-testlab-model-call-halt",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "producer_context": "run",
+        "consumer_context": "testlab",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 654,
+              "end": 661
+            },
+            "excerpt_sha256": "sha256:a3328498e75275f977844508c68f206866494f6306b7df4b4641313603bebb32"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-creation-model-call-halt",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "producer_context": "run",
+        "consumer_context": "creation",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 654,
+              "end": 661
+            },
+            "excerpt_sha256": "sha256:a3328498e75275f977844508c68f206866494f6306b7df4b4641313603bebb32"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/worker/worker.go",
+            "lines": {
+              "start": 131,
+              "end": 131
+            },
+            "excerpt_sha256": "sha256:04826325c717031416987ac82fa5191d85736a718e72eca06ce785464b8c6030"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-criteria-suggestion-is-paid-for-by-its-requester",
+        "statement": "Suggesting acceptance criteria is a model call the user starts, so it is open only to invited accounts, refused before the model is called when the owner's credit balance is below the start threshold for suggest_criteria, and debited by the usage the gateway reported once the model answers.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "With no suggest_criteria statistics the threshold is the 70-credit fallback: a balance of 69 is refused with no model call and nothing charged; a balance of 70 is allowed and a $0.01 answer debits 13 credits at the default markup."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/suggest.go",
+            "lines": {
+              "start": 64,
+              "end": 66
+            },
+            "excerpt_sha256": "sha256:59952126e3d2651a7268888dc36abf67669d23566a5a623df2a050efeb443850"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggest_credit_integration_test.go",
+            "lines": {
+              "start": 55,
+              "end": 96
+            },
+            "excerpt_sha256": "sha256:354e7871e1e63baa7eb16aa4708f2668691f5db5541b39b7a3a27427e463af06"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/cost.go",
+            "lines": {
+              "start": 22,
+              "end": 38
+            },
+            "content_sha256": "sha256:6fd357d7247ed8b516bb28cab569acc076f1756960a7e2d8cfb9a3395130fe2f",
+            "excerpt_sha256": "sha256:f1877a709e43f98fd927ff215c6c577ac8936f2de533870f1a7589689e79b748"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-unaccepted-run-expires-after-the-slot-wait-limit",
+        "statement": "A run no provider has accepted waits for a slot up to the slot-wait limit plus the time dispatch was paused for it, and is timed out with a queue reason just past that.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A run with no provider handle is still waiting at creation plus the limit, and expired a moment later."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/schedule_test.go",
+            "lines": {
+              "start": 401,
+              "end": 419
+            },
+            "excerpt_sha256": "sha256:b1b0177c40cc82c1deee4e43c7def823453d2e5efa3b4aeb19e5a60f5935612e"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/job.go",
+            "lines": {
+              "start": 941,
+              "end": 972
+            },
+            "content_sha256": "sha256:85ba1f39f3ebf6e6e3ce82b35307da64dfaa5f9f8851aa7a4e7d3d60c3c22911",
+            "excerpt_sha256": "sha256:322812d354dc8845fbfdaebad4c2ebc8efb34dc941eb004fb3c289430843215f"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-hard-wall-clock-runs-from-the-first-dispatch",
+        "statement": "Once a provider has accepted an attempt, the run's deadline is its first dispatch plus the frozen policy's hard wall clock, not its creation time.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "Dispatches at 13:00 and 14:00 under a 120-second policy give a 13:02 deadline."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/schedule_test.go",
+            "lines": {
+              "start": 376,
+              "end": 399
+            },
+            "excerpt_sha256": "sha256:b1620d0d6727c1258ab54edd3923c640130725457f56f3b5d9e9152dd591b625"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/job.go",
+            "lines": {
+              "start": 917,
+              "end": 967
+            },
+            "content_sha256": "sha256:85ba1f39f3ebf6e6e3ce82b35307da64dfaa5f9f8851aa7a4e7d3d60c3c22911",
+            "excerpt_sha256": "sha256:e2735d2dcbee29c8010dbf873af8badd3949d85a9094ee7a4c4f32775473c8e0"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contracts",
+      "record": {
+        "id": "run-batch-trials-v1",
+        "kind": "internal-port",
+        "version": "v1",
+        "compatibility_policy": "Run starts and continues trials for an evaluation batch through the ports the composition root fills; Run publishes whether a refusal passes on its own and never hands its transaction to the batch.",
+        "data_classification": "internal",
+        "idempotency": {
+          "key": "origin key: the batch, the Test Case, the trial number and whether the Skill is withheld",
+          "scope": "per Workspace",
+          "on_replay": "returns the Run already started under that key, without admitting or charging again",
+          "on_conflict": "refused when the key already started a Run of a different Skill Version"
+        },
+        "producer_context": "run",
+        "consumer_contexts": [
+          "batch"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/service.go",
+            "lines": {
+              "start": 874,
+              "end": 891
+            },
+            "excerpt_sha256": "sha256:b33d744e5dc035dd07b22002b8fd5e71cba0dd4fb652efe02fe1d92a6a91ae62"
+          },
+          {
+            "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+            "lines": {
+              "start": 104,
+              "end": 104
+            },
+            "excerpt_sha256": "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/batch_facts.go",
+            "lines": {
+              "start": 35,
+              "end": 51
+            },
+            "excerpt_sha256": "sha256:4ce1a570d590d6e8dab11f9e8bdebe20db4f3394d49f79ad0ab4207be2f421a7"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 46,
+              "end": 91
+            },
+            "content_sha256": "sha256:1b6aa29f84c6e4f567e535d27dfaf9dcb022feeab954df72dd952ddfdbdec931",
+            "excerpt_sha256": "sha256:9f717648182cc8b8d70ff7ea41570ebaaaf9a022a738b57c03e730ee343ce676"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-batch-trials",
+        "consistency": "synchronous request, idempotent by origin key; the batch records the trial in its own statement afterwards",
+        "delivery": "composition-root port",
+        "producer_context": "run",
+        "consumer_context": "batch",
+        "contract_id": "run-batch-trials-v1",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 253,
+              "end": 291
+            },
+            "excerpt_sha256": "sha256:f59f6851992723f666c594a0f96028394f3305b6ef1ef897c7ca561cf9d36999"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 46,
+              "end": 91
+            },
+            "content_sha256": "sha256:1b6aa29f84c6e4f567e535d27dfaf9dcb022feeab954df72dd952ddfdbdec931",
+            "excerpt_sha256": "sha256:9f717648182cc8b8d70ff7ea41570ebaaaf9a022a738b57c03e730ee343ce676"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T10:07:44.566259Z",
+      "scope": "Record the R-116 dispatch-halt rules and interactions; amend the slot-wait rule; re-cite four records",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "6f735267bdd9e3f34263f43ab80c5042309099d4",
+        "registry_digest": "sha256:3c057fe5650cf4175105079e97d694a73b950d57c2a140d564b548028256a50f",
+        "committed_digest": "sha256:9fa94484ea0aafd15db5ba1e57080c14b89a26209bf0cbc13898bf91a95b050b"
+      }
+    }
+  ],
+  "supersedes": [
+    "testlab-suggest-paid-by-requester",
+    "run-harvest-rules-2026-10-18",
+    "batch-pauses-on-used-up-quota"
+  ]
+}

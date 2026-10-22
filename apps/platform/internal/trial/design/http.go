@@ -72,6 +72,8 @@ func fail(w http.ResponseWriter, err error, generic string) {
 
 	case errors.Is(err, ErrCreditThreshold):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, ErrCreditThreshold.Error())
+	case errors.Is(err, ErrModelCallsHalted):
+		httpx.WriteError(w, http.StatusServiceUnavailable, ErrModelCallsHalted.Error())
 	case errors.Is(err, ErrSuggestUnavailable):
 		httpx.WriteError(w, http.StatusServiceUnavailable, ErrSuggestUnavailable.Error())
 	default:

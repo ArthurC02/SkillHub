@@ -46,6 +46,9 @@ func standingVerdictReader(pool *pgxpool.Pool) func(context.Context, pgtype.UUID
 func evaluationBatchPorts(runs *run.Service, testlabSvc *testlab.Service, traceSvc *trace.Service) batch.BatchPorts {
 	return batch.BatchPorts{
 		StartRun: func(ctx context.Context, b batch.BatchRun) (pgtype.UUID, error) {
+			if runs.DispatchGate().Paused(ctx) {
+				return pgtype.UUID{}, batch.ErrRunMustWait
+			}
 			created, err := runs.Create(ctx, run.CreateParams{
 				WorkspaceID: b.WorkspaceID, Actor: b.Actor, SkillID: b.SkillID,
 				VersionID: b.VersionID, TestCaseID: b.TestCaseID, ConfirmedSummaryHash: b.SummaryHash,

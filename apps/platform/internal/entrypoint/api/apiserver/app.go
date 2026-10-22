@@ -164,8 +164,7 @@ func NewApp(cfg Config) (*App, error) {
 	wiring.WireCreationCredit(creationSvc, creditSvc, cfg.Pool)
 
 	wireCostRecording(creditSvc, catalogSvc, versions)
-	wireSuggestCredit(testlabSvc, creditSvc, identitySvc, cfg.Pool)
-	wireGenerateCredit(versions, creditSvc, identitySvc, cfg.Pool)
+	wireUserStartedModelCalls(userStartedModelCalls{creditSvc, identitySvc, runSvc, creationSvc, versions, testlabSvc}, cfg.Pool)
 	wiring.WireCreditDisplay(creditSvc, runSvc, traceSvc, evalSvc)
 	wiring.WireRunCredit(runSvc, creditSvc, cfg.Pool)
 
@@ -641,4 +640,22 @@ func newGovernanceService(pool *pgxpool.Pool, registrySvc *registry.Service, ide
 		RestrictionNote:       catalog.RestrictionNote,
 		RedistributionDisplay: catalog.RedistributionDisplay,
 	}
+}
+
+type userStartedModelCalls struct {
+	credits   *credit.Service
+	owners    *identity.Service
+	runs      *run.Service
+	creations *creation.Service
+	versions  *ingest.Service
+	lab       *testlab.Service
+}
+
+func wireUserStartedModelCalls(w userStartedModelCalls, pool *pgxpool.Pool) {
+	wireSuggestCredit(w.lab, w.credits, w.owners, pool)
+	wireGenerateCredit(w.versions, w.credits, w.owners, pool)
+	halted := w.runs.DispatchGate().ModelCallsHalted
+	w.creations.Billing.ModelCallsHalted = halted
+	w.versions.Billing.ModelCallsHalted = halted
+	w.lab.Billing.ModelCallsHalted = halted
 }

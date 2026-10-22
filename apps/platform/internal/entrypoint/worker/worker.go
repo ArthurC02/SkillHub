@@ -128,6 +128,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	}
 	creditSvc.Config.SessionIdle = deps.CreationLimits.SessionTimeout
 	wiring.WireCreationCredit(set.Creation, creditSvc, pool)
+	set.Creation.Billing.ModelCallsHalted = set.Runs.DispatchGate().ModelCallsHalted
 	backfillSvc := newBackfillService(pool, deps)
 	wireCostRecording(creditSvc, set.CreationSearch, creationVersions, backfillSvc, set.Evaluations)
 	wiring.WireCreditDisplay(creditSvc, set.Runs, traceSvc, set.Evaluations)

@@ -16,6 +16,7 @@ type StepSettlement struct {
 }
 
 type BillingHooks struct {
+	ModelCallsHalted func(ctx context.Context) bool
 	CanStartFunc     func(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
 	ReserveFunc      func(ctx context.Context, workspaceID pgtype.UUID, reservedUSD float64) (bool, error)
 	SettleFunc       func(ctx context.Context, tx pgx.Tx, step StepSettlement) error

@@ -8,14 +8,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-var ErrCreditThreshold = errors.New("點數不足，無法開始建議驗收條件，沒有呼叫模型。請聯絡管理者為這個帳號加點。")
+var (
+	ErrCreditThreshold  = errors.New("點數不足，無法開始建議驗收條件，沒有呼叫模型。請聯絡管理者為這個帳號加點。")
+	ErrModelCallsHalted = errors.New("平台暫停中，這次沒有呼叫模型、也沒有扣點。驗收條件可以自己手動輸入，或稍後再試。")
+)
 
 type SuggestBilling struct {
-	CanStart func(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
-	Charge   func(ctx context.Context, workspaceID pgtype.UUID, usage *ModelUsage) error
+	ModelCallsHalted func(ctx context.Context) bool
+	CanStart         func(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
+	Charge           func(ctx context.Context, workspaceID pgtype.UUID, usage *ModelUsage) error
 }
 
 func (b SuggestBilling) admit(ctx context.Context, workspaceID pgtype.UUID) error {
+	if b.ModelCallsHalted != nil && b.ModelCallsHalted(ctx) {
+		return ErrModelCallsHalted
+	}
 	if b.CanStart == nil {
 		return nil
 	}

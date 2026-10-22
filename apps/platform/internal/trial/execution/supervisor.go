@@ -129,7 +129,7 @@ func (s *Service) superviseRun(ctx context.Context, run gen.Run, policy []byte) 
 	if err != nil {
 		return err
 	}
-	if clock := clockFor(run, policy, attempts); clock.expired(s.now()) {
+	if clock := s.DispatchGate().runClock(ctx, run, policy, attempts); clock.expired(s.now()) {
 		var lastAttemptID pgtype.UUID
 		if len(attempts) > 0 {
 			lastAttemptID = attempts[len(attempts)-1].ID

@@ -35,6 +35,8 @@ var (
 
 	ErrCreditFloor = errors.New("creation: credit balance at the debt floor")
 
+	ErrModelCallsHalted = errors.New("creation: model calls are halted by a P1 incident")
+
 	ErrIllegalTransition = errors.New("creation: the session cannot move that way")
 )
 

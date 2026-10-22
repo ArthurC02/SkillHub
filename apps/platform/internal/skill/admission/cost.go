@@ -49,8 +49,9 @@ func (s *Service) recordCost(ctx context.Context, kind credit.CostKind, workspac
 }
 
 type GenerateBilling struct {
-	CanStart func(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
-	Charge   func(ctx context.Context, charge GenerationCharge) error
+	ModelCallsHalted func(ctx context.Context) bool
+	CanStart         func(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
+	Charge           func(ctx context.Context, charge GenerationCharge) error
 }
 
 type GenerationCharge struct {

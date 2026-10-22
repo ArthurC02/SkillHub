@@ -442,6 +442,9 @@ func (s *Service) referencedContent(ctx context.Context, ws identity.Workspace, 
 }
 
 func (s *Service) reserveCall(ctx context.Context, workspaceID pgtype.UUID, maxCallCostUSD float64) error {
+	if s.Billing.ModelCallsHalted != nil && s.Billing.ModelCallsHalted(ctx) {
+		return ErrModelCallsHalted
+	}
 	ok, err := s.Billing.Reserve(ctx, workspaceID, maxCallCostUSD)
 	if err != nil {
 		return err
@@ -456,7 +459,7 @@ func stepFailureMessage(err, callErr error) string {
 	switch {
 	case errors.Is(err, ErrInvalidCommand):
 		return "這一步未完成：模型的回覆不符合會話規則，已保留進度與實際可取得的費用。請檢查後再繼續。"
-	case callErr != nil && !errors.Is(callErr, ErrNotFound) && !errors.Is(callErr, ErrCreditFloor):
+	case callErr != nil && !errors.Is(callErr, ErrNotFound) && !errors.Is(callErr, ErrCreditFloor) && !errors.Is(callErr, ErrModelCallsHalted):
 		return "這一步未完成：平台這一側沒能完成這次模型呼叫，不是你寫的內容的問題。已保留進度與實際可取得的費用。請檢查後再繼續。"
 	}
 	return "這一步未完成；已保留進度與實際可取得的費用。請檢查後再繼續。"
@@ -607,6 +610,12 @@ func failedAttempt(p *Snapshot, err error, call stepCall) State {
 		state = StateWaitingInput
 		p.PendingAction = NothingPending
 		p.appendMessage("assistant", "帳戶餘額已達可容忍的欠款上限，請充值後再繼續這場創作。")
+	}
+	if errors.Is(callErr, ErrModelCallsHalted) {
+		p.Steps--
+		state = StateWaitingInput
+		p.PendingAction = NothingPending
+		p.appendMessage("assistant", "平台暫停中，這一步沒有呼叫模型、也沒有扣點。恢復後再送出一次就會接著做。")
 	}
 	return state
 }

@@ -1,0 +1,89 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "dispatch-halt-reaches-model-calls-and-queue",
+  "proposal_id": "dispatch-halt-reaches-model-calls-and-queue",
+  "registry_revision": {
+    "observed_commit": "6f735267bdd9e3f34263f43ab80c5042309099d4",
+    "registry_digest": "sha256:3c057fe5650cf4175105079e97d694a73b950d57c2a140d564b548028256a50f",
+    "committed_digest": "sha256:9fa94484ea0aafd15db5ba1e57080c14b89a26209bf0cbc13898bf91a95b050b"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-user-started-model-calls-stop-under-a-p1-halt",
+      "mutated_protection": "apps/platform/internal/trial/design/cost.go:23: if b.ModelCallsHalted != nil && b.ModelCallsHalted(ctx) { -> if b.ModelCallsHalted != nil && b.ModelCallsHalted(ctx) && false {",
+      "failure_evidence": "=== RUN   TestAP1HaltRefusesGenerationAndCriteriaSuggestionsWithoutCallingTheModel\n2026/10/22 18:04:46 ERROR request failed on the server method=POST path=/test-cases/fb322eb3-4bfa-42a4-b714-c66ab7d1f3f8/criteria/suggest status=503\n    p1_halt_model_calls_integration_test.go:38: suggesting criteria under a P1 halt: got 503 \"目前無法自動建議驗收條件，請自己手動輸入\", want 503 naming the halt\n--- FAIL: TestAP1HaltRefusesGenerationAndCriteriaSuggestionsWithoutCallingTheModel (4.59s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t23.338s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-time-dispatch-was-paused-does-not-count-against-the-slot-wait",
+      "mutated_protection": "apps/platform/internal/trial/execution/job.go:965: return c.createdAt.Add(SlotWaitLimit + c.held) -> return c.createdAt.Add(SlotWaitLimit)",
+      "failure_evidence": "=== RUN   TestTimeTheQueueSpentHaltedDoesNotCountAgainstTheSlotWaitLimit\n2026/10/22 18:05:58 WARN run timed out by the supervisor run_id=c12939a7-ee1f-428c-9cf8-9705edb03f15 status=queued\n2026/10/22 18:05:58 ERROR could not evaluate the trace masking criterion error=\"run: trace service not injected\"\n    p1_halt_model_calls_integration_test.go:102: a run queued 40m0s, fifteen minutes of it under a halt, is \"timed_out\" (排隊等空的沙箱超過時間上限 30 分鐘;期限是 2026-10-22T09:55:58Z); want still queued\n--- FAIL: TestTimeTheQueueSpentHaltedDoesNotCountAgainstTheSlotWaitLimit (0.43s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t8.521s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-starts-no-trial-while-dispatch-is-paused",
+      "mutated_protection": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go:49: if runs.DispatchGate().Paused(ctx) { -> if runs.DispatchGate().Paused(ctx) && false {",
+      "failure_evidence": "=== RUN   TestABatchStartsNoTrialWhileDispatchIsPaused\n    p1_halt_model_calls_integration_test.go:131: a batch created while dispatch is paused started [4ae31778-1b6e-41d8-8cba-42128e2a8548#1], want no trial\n--- FAIL: TestABatchStartsNoTrialWhileDispatchIsPaused (1.09s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t11.116s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-unaccepted-run-expires-after-the-slot-wait-limit",
+      "mutated_protection": "apps/platform/internal/trial/execution/job.go:965: return c.createdAt.Add(SlotWaitLimit + c.held) -> return c.createdAt.Add(SlotWaitLimit)",
+      "failure_evidence": "=== RUN   TestTimeTheQueueWasHeldExtendsTheSlotWaitLimit\n    schedule_test.go:407: the run expired at the wait limit plus the held time, want it still waiting\n--- FAIL: TestTimeTheQueueWasHeldExtendsTheSlotWaitLimit (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/execution\t3.390s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-user-started-model-calls-stop-under-a-p1-halt",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^(TestAP1HaltRefusesGenerationAndCriteriaSuggestionsWithoutCallingTheModel|TestACreationStepUnderAP1HaltSkipsTheModelCallAndWaitsForInput)$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:c08fa4089526338903cd7f96d52a8df9e0fc5b5c19abb58e99dcc1e8fcb1d6e9",
+      "finished_at": "2026-10-22T10:02:09.400940Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-time-dispatch-was-paused-does-not-count-against-the-slot-wait",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestTimeTheQueueSpentHaltedDoesNotCountAgainstTheSlotWaitLimit$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:172bd85f56229578009fc27422b79256d5781385c64463c64cdf07832253395c",
+      "finished_at": "2026-10-22T10:02:44.321417Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-batch-starts-no-trial-while-dispatch-is-paused",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestABatchStartsNoTrialWhileDispatchIsPaused$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b32f6d1fa173f5583008ad8a1ce3cd7da02d0e14694b8f2ecded6525645b2e7f",
+      "finished_at": "2026-10-22T10:03:03.537052Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-unaccepted-run-expires-after-the-slot-wait-limit",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^(TestTimeTheQueueWasHeldExtendsTheSlotWaitLimit|TestARunNobodyHasAcceptedWaitsForASlotUpToTheWaitLimit)$ ./internal/trial/execution/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:58eb6d5b4de33ccea76511bcdc25886380909f93d417188e19af8f246ee22680",
+      "finished_at": "2026-10-22T10:03:13.855737Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

@@ -19,16 +19,43 @@ var ErrDispatchHalted = errors.New("the execution environment is temporarily una
 
 func (s *Service) halts() halt.Ledger { return halt.Ledger{Pool: s.Pool} }
 
-func (s *Service) requireDispatchable(ctx context.Context) error {
-	state, err := s.halts().Active(ctx)
+type DispatchGate struct {
+	ledger    halt.Ledger
+	providers func() []string
+	now       func() time.Time
+}
+
+func (s *Service) DispatchGate() DispatchGate {
+	return DispatchGate{ledger: s.halts(), providers: func() []string { return s.providers().Names() }, now: s.now}
+}
+
+func (g DispatchGate) requireDispatchable(ctx context.Context) error {
+	state, err := g.ledger.Active(ctx)
 	if err != nil {
 		slog.Error("dispatch halt state unreadable; refusing run creation", "error", err)
 		return ErrDispatchHalted
 	}
-	if state.IncidentPaused(s.providers().Names()) {
+	if state.IncidentPaused(g.providers()) {
 		return ErrDispatchHalted
 	}
 	return nil
+}
+
+func (g DispatchGate) ModelCallsHalted(ctx context.Context) bool {
+	return errors.Is(g.requireDispatchable(ctx), ErrDispatchHalted)
+}
+
+func (g DispatchGate) Paused(ctx context.Context) bool {
+	return g.ledger.FailClosed(ctx).DispatchPaused(g.providers())
+}
+
+func (g DispatchGate) heldWithin(ctx context.Context, from, to time.Time) time.Duration {
+	held, err := g.ledger.PausedWithin(ctx, g.providers(), from, to)
+	if err != nil {
+		slog.Error("dispatch halt history unreadable; the queued run keeps waiting", "error", err)
+		return to.Sub(from)
+	}
+	return held
 }
 
 func (s *Service) detector() halt.Detector {

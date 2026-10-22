@@ -78,7 +78,7 @@ func (s *Service) Drive(ctx context.Context, workspaceID, runID pgtype.UUID) err
 		return err
 	}
 	err = (&driver{
-		svc: s, cur: current, policy: snapshots.PolicySnapshot, clock: clockFor(current, snapshots.PolicySnapshot, attempts),
+		svc: s, cur: current, policy: snapshots.PolicySnapshot, clock: s.DispatchGate().runClock(ctx, current, snapshots.PolicySnapshot, attempts),
 	}).execute(ctx, attempts)
 	if errors.Is(err, errSuperseded) {
 		slog.Info("run driver superseded", "run_id", pgconv.UUIDString(runID))
@@ -918,6 +918,7 @@ type runClock struct {
 	createdAt  time.Time
 	dispatched time.Time
 	wallClock  time.Duration
+	held       time.Duration
 }
 
 func clockFor(run gen.Run, policy []byte, attempts []gen.RunAttempt) runClock {
@@ -933,6 +934,14 @@ func clockFor(run gen.Run, policy []byte, attempts []gen.RunAttempt) runClock {
 		if a.ProviderRunID != nil && a.StartedAt.Valid {
 			clock = clock.dispatchedAt(a.StartedAt.Time)
 		}
+	}
+	return clock
+}
+
+func (g DispatchGate) runClock(ctx context.Context, run gen.Run, policy []byte, attempts []gen.RunAttempt) runClock {
+	clock := clockFor(run, policy, attempts)
+	if clock.waiting() && !clock.createdAt.IsZero() {
+		clock.held = g.heldWithin(ctx, clock.createdAt, g.now())
 	}
 	return clock
 }
@@ -953,7 +962,7 @@ func (c runClock) deadline() time.Time {
 	case c.createdAt.IsZero():
 		return time.Time{}
 	default:
-		return c.createdAt.Add(SlotWaitLimit)
+		return c.createdAt.Add(SlotWaitLimit + c.held)
 	}
 }
 

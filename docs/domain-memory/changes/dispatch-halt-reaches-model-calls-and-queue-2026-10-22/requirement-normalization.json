@@ -1,0 +1,36 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "dispatch-halt-reaches-model-calls-and-queue",
+  "status": "draft",
+  "intent": "An incident stops every user-started model call, and a halted queue neither burns its waiting runs nor feeds batches.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context run, batch, creation, ingest and testlab list the new rules as reviewed, proven by their tests.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-user-started-model-calls-stop-under-a-p1-halt",
+      "statement": "While a P1 incident halts dispatch, generating a skill, a creation step and a criteria suggestion are refused before the model is called and nothing is charged; a creation step that was refused is not counted and the session waits for the person to send again. An unreadable halt state counts as halted."
+    },
+    {
+      "id": "enforced-time-dispatch-was-paused-does-not-count-against-the-slot-wait",
+      "statement": "A run waiting for a sandbox slot times out only after the slot-wait limit plus every stretch during which dispatch was paused for every provider that could take it; if the halt history cannot be read the run keeps waiting."
+    },
+    {
+      "id": "enforced-a-batch-starts-no-trial-while-dispatch-is-paused",
+      "statement": "While dispatch is paused for every provider, by an orphan threshold or a P1 incident, an evaluation batch waits instead of creating its next trial, and starts it on the first advance after the halt lifts."
+    },
+    {
+      "id": "enforced-an-unaccepted-run-expires-after-the-slot-wait-limit",
+      "statement": "A run no provider has accepted waits for a slot up to the slot-wait limit plus the time dispatch was paused for it, and is timed out with a queue reason just past that."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/trial/execution/halt.go",
+    "apps/platform/internal/trial/execution/halt/paused.go",
+    "apps/platform/internal/trial/execution/job.go",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go"
+  ]
+}

@@ -398,6 +398,19 @@ func TestTheWallClockRunsFromTheFirstDispatchNotFromCreation(t *testing.T) {
 	}
 }
 
+func TestTimeTheQueueWasHeldExtendsTheSlotWaitLimit(t *testing.T) {
+	created := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	clock := clockFor(gen.Run{CreatedAt: pgtype.Timestamptz{Time: created, Valid: true}}, []byte(`{}`), nil)
+	clock.held = 15 * time.Minute
+
+	if clock.expired(created.Add(SlotWaitLimit + 15*time.Minute)) {
+		t.Error("the run expired at the wait limit plus the held time, want it still waiting")
+	}
+	if !clock.expired(created.Add(SlotWaitLimit + 15*time.Minute + time.Nanosecond)) {
+		t.Error("the run is still waiting past the wait limit plus the held time")
+	}
+}
+
 func TestARunNobodyHasAcceptedWaitsForASlotUpToTheWaitLimit(t *testing.T) {
 	created := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
 	run := gen.Run{CreatedAt: pgtype.Timestamptz{Time: created, Valid: true}}

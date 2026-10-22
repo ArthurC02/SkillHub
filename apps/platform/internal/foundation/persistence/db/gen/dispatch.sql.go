@@ -151,6 +151,49 @@ func (q *Queries) ListActiveDispatchHalts(ctx context.Context) ([]DispatchHalt, 
 	return items, nil
 }
 
+const listDispatchHaltsOverlapping = `-- name: ListDispatchHaltsOverlapping :many
+SELECT id, provider, source, reason, declared_by, declared_at, clear_rounds, lifted_at, lifted_by, lift_reason, last_clear_round_at FROM dispatch_halts
+WHERE declared_at < $1::timestamptz AND (lifted_at IS NULL OR lifted_at > $2::timestamptz)
+ORDER BY declared_at
+`
+
+type ListDispatchHaltsOverlappingParams struct {
+	Until pgtype.Timestamptz
+	Since pgtype.Timestamptz
+}
+
+func (q *Queries) ListDispatchHaltsOverlapping(ctx context.Context, arg ListDispatchHaltsOverlappingParams) ([]DispatchHalt, error) {
+	rows, err := q.db.Query(ctx, listDispatchHaltsOverlapping, arg.Until, arg.Since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DispatchHalt
+	for rows.Next() {
+		var i DispatchHalt
+		if err := rows.Scan(
+			&i.ID,
+			&i.Provider,
+			&i.Source,
+			&i.Reason,
+			&i.DeclaredBy,
+			&i.DeclaredAt,
+			&i.ClearRounds,
+			&i.LiftedAt,
+			&i.LiftedBy,
+			&i.LiftReason,
+			&i.LastClearRoundAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockDispatchHaltTarget = `-- name: LockDispatchHaltTarget :exec
 SELECT pg_advisory_xact_lock(hashtextextended('dispatch-halt:' || $1::text, 0))
 `
