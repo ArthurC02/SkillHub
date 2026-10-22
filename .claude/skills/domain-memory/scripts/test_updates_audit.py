@@ -342,6 +342,13 @@ class UpdatesAuditTest(RegistryTestCase):
         self.assertEqual("valid", verify_audit(root)["status"])
         self.assertRegex(anchor_error(root, None, "HEAD"), "^the audit log does not extend the one committed at HEAD [(]3 events")
 
+    def test_a_committed_manifest_whose_event_count_is_true_anchors_nothing(self) -> None:
+        root = self.committed_log(2)
+        manifest_file = root / "audit" / "manifest.json"
+        manifest_file.write_text(json.dumps({**json.loads(manifest_file.read_text(encoding="utf-8")), "events": True}), encoding="utf-8")
+        self.commit_all("count given as true")
+        self.assertRegex(anchor_error(root, None, "HEAD"), "^the audit log does not extend the one committed at HEAD [(]True events")
+
     def test_a_log_rewritten_since_a_commit_does_not_extend_it(self) -> None:
         root = self.committed_log(2)
         events_file = root / "audit" / "events.jsonl"

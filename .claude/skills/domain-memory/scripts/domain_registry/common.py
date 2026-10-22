@@ -311,6 +311,10 @@ def completed_identifier(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip()) and not value.startswith("<")
 
 
+def whole_number(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 

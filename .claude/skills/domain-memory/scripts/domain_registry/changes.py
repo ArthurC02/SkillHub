@@ -30,6 +30,7 @@ from .common import (
     readable_packages,
     record_status,
     utc_now,
+    whole_number,
     write_json,
 )
 from .policy import approved_command_profiles
@@ -668,7 +669,7 @@ def _proposal_field_errors(proposal: dict[str, Any]) -> list[str]:
     if proposal.get("status") not in PROPOSAL_STATUSES:
         errors.append("domain-change-proposal.json has an invalid status")
     revision = proposal.get("proposal_revision")
-    if not isinstance(revision, int) or revision < 1:
+    if not whole_number(revision) or revision < 1:
         errors.append(
             "domain-change-proposal.json requires a positive proposal_revision"
         )

@@ -98,6 +98,8 @@ class ChangesTest(RegistryTestCase):
             ("status", {}, {"status": "shipped"}, ["domain-change-proposal.json has an invalid status"]),
             ("revision zero", {}, {"proposal_revision": 0},
              ["domain-change-proposal.json requires a positive proposal_revision"]),
+            ("revision given as true", {}, {"proposal_revision": True},
+             ["domain-change-proposal.json requires a positive proposal_revision"]),
             ("no contexts", {}, {"affected_contexts": []}, ["domain-change-proposal.json requires affected_contexts"]),
             ("rule ids", {}, {"rule_ids": [""]}, ["domain-change-proposal.json has invalid rule_ids"]),
             ("contract ids", {}, {"contract_ids": "c"}, ["domain-change-proposal.json has invalid contract_ids"]),

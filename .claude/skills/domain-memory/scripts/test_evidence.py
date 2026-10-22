@@ -53,6 +53,8 @@ class EvidenceTest(RegistryTestCase):
             ("no lines", {"path": "fact.md"}, {"status": "invalid", "reason": "evidence requires path and lines"}),
             ("line zero", {**cited, "lines": {"start": 0, "end": 1}},
              {"status": "invalid", "reason": "evidence line range is invalid"}),
+            ("lines given as true", {**cited, "lines": {"start": True, "end": True}},
+             {"status": "invalid", "reason": "evidence line range is invalid"}),
             ("end before start", {**cited, "lines": {"start": 3, "end": 2}},
              {"status": "invalid", "reason": "evidence line range is invalid"}),
             ("outside", {**cited, "path": "../fact.md"},

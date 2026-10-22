@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .common import change_template_dir, load_json, write_json, writer_lock
+from .common import change_template_dir, load_json, whole_number, write_json, writer_lock
 
 STORAGE_MODES = ("tracked", "ignored", "external")
 CLASSIFICATIONS = ("public", "internal", "confidential", "restricted")
@@ -82,7 +82,7 @@ def _source_error(source: Any) -> str | None:
 
 def _limits_error(limits: Any) -> str | None:
     if not isinstance(limits, dict) or any(
-        not isinstance(limits.get(key), int) or limits[key] < 1 for key in LIMIT_KEYS
+        not whole_number(limits.get(key)) or limits[key] < 1 for key in LIMIT_KEYS
     ):
         return "policy has invalid limits"
     return None

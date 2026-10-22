@@ -5,6 +5,7 @@ import subprocess
 import unittest
 from pathlib import Path
 
+from domain_registry.registry import consistency_notes
 from test_support import RegistryTestCase
 
 KNOWN_VALUES_TAIL = (
@@ -73,6 +74,10 @@ class ConsistencyNoteTest(RegistryTestCase):
             (0, f'NOTE: proposal interactions/order-placed consistency "at once" {KNOWN_VALUES_TAIL}'),
             (result.returncode, result.stderr.strip()),
         )
+
+    def test_a_holder_that_is_not_an_object_or_whose_consistency_is_not_text_is_given_no_note(self) -> None:
+        holders = [("number", {"consistency": 3}), ("absent", {}), ("prose", "eventual"), ("none", None)]
+        self.assertEqual([], consistency_notes(holders))
 
     def test_the_schema_page_names_the_known_values_and_leaves_kind_and_delivery_unchecked(self) -> None:
         page = (Path(__file__).parents[1] / "references" / "registry-schema.md").read_text(encoding="utf-8")

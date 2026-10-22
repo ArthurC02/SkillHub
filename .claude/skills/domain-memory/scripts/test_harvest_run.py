@@ -310,6 +310,14 @@ class HarvestTest(RegistryTestCase):
             (report["rules"][0]["record"], proposal["supersedes"], report["errors"], report["stopped_at"]),
         )
 
+    def test_an_enforcing_span_whose_lines_are_true_is_named(self) -> None:
+        [rule] = self.spec()["rules"]
+        spec = self.spec(rules=[{**rule, "enforcing": [["src/rule.py", True, True]]}])
+        self.assertEqual(
+            [f"rule {rule['id']}: enforcing must be a non-empty list of [path, start, end] or path:start-end"],
+            spec_errors(spec),
+        )
+
     def test_a_spec_with_gaps_names_each_gap(self) -> None:
         self.assertEqual(["the spec must be a JSON object"], spec_errors([]))
         self.assertEqual(
