@@ -3,12 +3,12 @@
   "proposal_id": "takedown-lint-recite",
   "proposer": "domain-memory-agent",
   "requirement_id": "takedown-lint-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-22T05:55:09.206414Z",
   "verified_at": "2026-10-22T05:55:12.255312Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T05:55:26.353698Z",
+  "applied_at": "2026-10-22T05:57:00.885879Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "d92eb156c49c9b74cc72cd39c2c77e3b317a95b9",
@@ -77,5 +77,9 @@
   "approvals": [],
   "supersedes": [
     "operator-takedown-supersedes-owner"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "7c31103432290c287656937cbb24bfa6b6c79194",
+    "registry_digest": "sha256:6e0087ca54f48804e0136b668b20d5511a5e7706611a7059e08f17cad61a44d5"
+  }
 }
