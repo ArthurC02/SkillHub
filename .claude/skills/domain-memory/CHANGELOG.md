@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.3.0
+
+### Added
+
+- `counterfactual --package-root <package> --obligation-id <id>` records a killed run's `counterfactual_check` in the package's `evidence-bundle.json` and prints `recorded_in`, replacing the run recorded for the same obligation and a `not_applicable` entry and keeping the others as a list. The package's status and the obligation are checked before anything runs; a run that is not killed records nothing and prints `not_recorded`. Only `harvest` filled the check before, so a package written by hand needed it copied in.
+
 ## 2.2.17
 
 ### Removed

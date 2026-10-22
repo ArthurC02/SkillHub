@@ -743,6 +743,77 @@ class FailureEvidenceTest(unittest.TestCase):
         self.assertEqual(output, failure_evidence(output))
 
 
+class RecordedCounterfactualTest(RepositoryCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.write("rule.py", RULE)
+        self.write("tests/__init__.py")
+        self.write("tests/test_rule.py", RULE_TEST)
+        self.package = self.repo / "changes" / "limit"
+        self.seed_package("draft", None)
+
+    def seed_package(self, status: str, recorded: object) -> None:
+        proposal = {"status": status, "implementation_design": {"proof_obligations": ["OB-1"]}}
+        self.write("changes/limit/domain-change-proposal.json", json.dumps(proposal))
+        self.write("changes/limit/test-obligations.json", json.dumps({"obligations": [{"id": "OB-1"}, {"id": "OB-2"}]}))
+        self.write("changes/limit/evidence-bundle.json", json.dumps({"counterfactual_check": recorded}))
+
+    def recorded(self) -> object:
+        return json.loads((self.package / "evidence-bundle.json").read_text(encoding="utf-8"))["counterfactual_check"]
+
+    def run_recording(self, find: str, replace: str, *extra: str) -> tuple[int, dict]:
+        completed = subprocess.run(
+            [sys.executable, str(TOOLS), "counterfactual", "--repo-root", str(self.repo), "--file", "rule.py",
+             "--find", find, "--replace", replace, "--test-command", RUN_TESTS, "--package-root", str(self.package), *extra],
+            capture_output=True, text=True, encoding="utf-8", check=False,
+        )
+        return completed.returncode, json.loads(completed.stdout)
+
+    def test_a_killed_run_is_recorded_replacing_its_obligation_and_keeping_the_others(self) -> None:
+        other = {"status": "passed", "obligation_id": "OB-2", "mutated_protection": "x", "failure_evidence": "y", "restored": True}
+        earlier = {**other, "obligation_id": "OB-1", "mutated_protection": "an earlier run"}
+        self.seed_package("submitted", [other, earlier])
+        code, result = self.run_recording("LIMIT = 200", "LIMIT = 201", "--obligation-id", "OB-1")
+        self.assertEqual(
+            (0, "killed", "changes/limit/evidence-bundle.json", [other, result["counterfactual_check"]], "OB-1"),
+            (code, result["verdict"], result["recorded_in"], self.recorded(), result["counterfactual_check"]["obligation_id"]),
+        )
+
+    def test_a_killed_run_replaces_a_not_applicable_entry(self) -> None:
+        self.seed_package("draft", {"status": "not_applicable", "reason": "No rule changed."})
+        code, result = self.run_recording("LIMIT = 200", "LIMIT = 201", "--obligation-id", "OB-1")
+        self.assertEqual((0, [result["counterfactual_check"]]), (code, self.recorded()))
+
+    def test_a_run_that_is_not_killed_records_nothing_and_says_so(self) -> None:
+        code, result = self.run_recording("CAP = 12", "CAP = 13", "--obligation-id", "OB-1")
+        self.assertEqual(
+            (1, "survived", "only a killed counterfactual whose file was restored is recorded", None),
+            (code, result["verdict"], result["not_recorded"], self.recorded()),
+        )
+
+    def test_a_package_that_cannot_take_the_run_is_refused_before_anything_runs(self) -> None:
+        suite = self.write("suite.json", json.dumps({"test_command": RUN_TESTS, "mutations": [
+            {"file": "rule.py", "find": "LIMIT = 200", "replace": "LIMIT = 201"}]}))
+        for label, status, extra, reason in (
+            ("no obligation", "draft", (), "--package-root records the check under an obligation; name it with --obligation-id"),
+            ("verified proposal", "verified", ("--obligation-id", "OB-1"),
+             "the proposal is verified: its counterfactual checks are what verify-proposal checked, so they stay as they are; "
+             "redraft it to record new ones"),
+            ("unknown obligation", "draft", ("--obligation-id", "OB-9"), "test-obligations.json has no obligation OB-9"),
+            ("obligation outside the design", "draft", ("--obligation-id", "OB-2"),
+             "obligation OB-2 is not one of implementation_design's proof_obligations: OB-1"),
+            ("with a suite", "draft", ("--obligation-id", "OB-1", "--suite", str(suite)),
+             "--package-root records one counterfactual; run each obligation's mutation on its own with --obligation-id"),
+        ):
+            with self.subTest(label):
+                self.seed_package(status, None)
+                code, result = self.run_recording("LIMIT = 200", "LIMIT = 201", *extra)
+                self.assertEqual(
+                    (3, {"format": result.get("format"), "verdict": "error", "reason": reason}, None, RULE),
+                    (code, result, self.recorded(), (self.repo / "rule.py").read_text(encoding="utf-8")),
+                )
+
+
 class DecodedOutputTest(unittest.TestCase):
     def test_utf8_output_is_read_as_utf8(self) -> None:
         self.assertEqual(decoded("中".encode()), "中")

@@ -238,6 +238,7 @@ def _add_check_commands(commands: argparse._SubParsersAction) -> None:
         "write --expect=PATTERN when the pattern starts with -",
     )
     counterfactual_parser.add_argument("--obligation-id")
+    add_path(counterfactual_parser, "--package-root", required=False)
     proposals_parser = commands.add_parser("list-proposals", help="List the Change Packages")
     add_path(proposals_parser, "--changes-root")
 
