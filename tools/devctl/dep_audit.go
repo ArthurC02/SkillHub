@@ -9,8 +9,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type auditTarget struct {
@@ -160,7 +163,7 @@ func scanTarget(dir, ecosystem string, scope auditScope, toolchain map[string]st
 			args = append(args, "--omit=dev")
 			minSeverity = "high"
 		}
-		data, err := auditToolOutput(dir, ecosystemNPM, args...)
+		data, err := retryUnavailableRegistry(func() ([]byte, error) { return auditToolOutput(dir, ecosystemNPM, args...) }, time.Sleep)
 		if err != nil {
 			return nil, err
 		}
@@ -220,6 +223,45 @@ func auditToolOutput(dir, name string, args ...string) ([]byte, error) {
 		return nil, fmt.Errorf("%s %s: %w\n%s", name, strings.Join(args, " "), err, stderr.String())
 	}
 	return data, nil
+}
+
+const (
+	npmAuditAttempts   = 3
+	npmAuditRetryDelay = 15 * time.Second
+)
+
+var npmStatusInMessage = regexp.MustCompile(`^(\d{3}) `)
+
+func retryUnavailableRegistry(run func() ([]byte, error), wait func(time.Duration)) ([]byte, error) {
+	for attempt := 1; ; attempt++ {
+		data, err := run()
+		status := npmRegistryStatus(data)
+		if status < 500 || status > 599 {
+			return data, err
+		}
+		if attempt == npmAuditAttempts {
+			return nil, fmt.Errorf("npm audit: the registry answered %d to %d attempts, so the audit did not run and cannot say there is nothing to fix; run dep-audit again later", status, npmAuditAttempts)
+		}
+		wait(npmAuditRetryDelay * time.Duration(attempt))
+	}
+}
+
+func npmRegistryStatus(data []byte) int {
+	var failure struct {
+		StatusCode int    `json:"statusCode"`
+		Message    string `json:"message"`
+	}
+	if json.Unmarshal(data, &failure) != nil {
+		return 0
+	}
+	if failure.StatusCode != 0 {
+		return failure.StatusCode
+	}
+	if found := npmStatusInMessage.FindStringSubmatch(failure.Message); found != nil {
+		status, _ := strconv.Atoi(found[1])
+		return status
+	}
+	return 0
 }
 
 func npmFindings(data []byte, minSeverity string) ([]vulnFinding, error) {

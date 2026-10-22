@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os/exec"
 	"path"
 	"strings"
 	"testing"
+	"time"
 )
 
 const npmAuditReport = `{"auditReportVersion":2,"vulnerabilities":{
@@ -99,6 +101,74 @@ func TestNpmAuditErrorOutputIsNotACleanReport(t *testing.T) {
 	t.Parallel()
 	if _, err := npmFindings([]byte(`{"error":{"code":"ENOLOCK","summary":"no lockfile"}}`), "high"); err == nil {
 		t.Fatal("an npm error object parsed as zero vulnerabilities")
+	}
+}
+
+const npmUnavailable = `{"message": "503 Service Unavailable - POST https://registry.npmjs.org/-/npm/v1/security/advisories/bulk - Service Unavailable", "method": "POST"}`
+
+type scriptedAudit struct {
+	answers []string
+	calls   int
+	waits   []time.Duration
+}
+
+func (s *scriptedAudit) run() ([]byte, error) {
+	answer := s.answers[s.calls]
+	s.calls++
+	return []byte(answer), nil
+}
+
+func (s *scriptedAudit) wait(delay time.Duration) { s.waits = append(s.waits, delay) }
+
+func TestAnUnavailableRegistryIsAskedAgainAndAnswersOnTheLastAttempt(t *testing.T) {
+	t.Parallel()
+	audit := &scriptedAudit{answers: []string{npmUnavailable, npmUnavailable, npmAuditReport}}
+	data, err := retryUnavailableRegistry(audit.run, audit.wait)
+	if err != nil || string(data) != npmAuditReport || audit.calls != 3 ||
+		len(audit.waits) != 2 || audit.waits[0] != 15*time.Second || audit.waits[1] != 30*time.Second {
+		t.Fatalf("err %v, calls %d, waits %v, data %.40s", err, audit.calls, audit.waits, data)
+	}
+}
+
+func TestARegistryUnavailableOnEveryAttemptIsAnErrorNotACleanAudit(t *testing.T) {
+	t.Parallel()
+	audit := &scriptedAudit{answers: []string{npmUnavailable, `{"statusCode": 502, "message": "Bad Gateway"}`, npmUnavailable}}
+	_, err := retryUnavailableRegistry(audit.run, audit.wait)
+	want := "npm audit: the registry answered 503 to 3 attempts, so the audit did not run and cannot say there is nothing to fix; run dep-audit again later"
+	if err == nil || err.Error() != want || audit.calls != 3 || len(audit.waits) != 2 {
+		t.Fatalf("err %v, calls %d, waits %v", err, audit.calls, audit.waits)
+	}
+}
+
+func TestOnlyAServerErrorIsAskedAgain(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ name, answer string }{
+		{"a report", npmAuditReport},
+		{"a client error", `{"message": "404 Not Found - POST https://registry.npmjs.org/-/npm/v1/security/advisories/bulk"}`},
+		{"a status just below the server range", `{"statusCode": 499, "message": "Client Closed Request"}`},
+		{"a status just above the server range", `{"statusCode": 600, "message": "Unknown"}`},
+		{"an npm error object", `{"error":{"code":"ENOLOCK","summary":"no lockfile"}}`},
+		{"output that is not JSON", `npm ERR! something`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			audit := &scriptedAudit{answers: []string{tc.answer}}
+			data, err := retryUnavailableRegistry(audit.run, audit.wait)
+			if err != nil || string(data) != tc.answer || audit.calls != 1 || len(audit.waits) != 0 {
+				t.Fatalf("err %v, calls %d, waits %v", err, audit.calls, audit.waits)
+			}
+		})
+	}
+}
+
+func TestAnAuditThatCouldNotStartIsNotAskedAgain(t *testing.T) {
+	t.Parallel()
+	calls := 0
+	failed := errors.New("npm: executable file not found")
+	_, err := retryUnavailableRegistry(func() ([]byte, error) { calls++; return nil, failed }, func(time.Duration) { t.Fatal("waited") })
+	if !errors.Is(err, failed) || calls != 1 {
+		t.Fatalf("err %v, calls %d", err, calls)
 	}
 }
 
