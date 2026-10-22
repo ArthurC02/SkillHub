@@ -34,7 +34,7 @@ services:
       retries: 10
 
   litellm:
-    image: ghcr.io/berriai/litellm:main-stable@sha256:d295634e09c648dcdb72c4cc2dd226f5fb87823a73e88cbbed6f205e4deb044b
+    image: ghcr.io/berriai/litellm:main-stable@sha256:df15400b5b80925c45d3fd53f8f7a6c0eaa8a25a86833e1b358002e129018943
     profiles: ["model"]
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     environment:
