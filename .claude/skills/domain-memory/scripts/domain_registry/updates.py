@@ -460,6 +460,11 @@ def promote_candidate(
         for key, value in record.items()
         if key not in {review_field(asset), "verified"}
     }
+    earlier = next(
+        (entry for entry in proposal.get("registry_updates", []) if updates_record(entry, asset, record_id)), None
+    )
+    if earlier is not None and isinstance((earlier.get("record") or {}).get("evidence"), list):
+        promoted["evidence"] = _with_citations(promoted.get("evidence"), earlier["record"]["evidence"])
     update = {"operation": "upsert", "asset": asset, "record": promoted}
     updates = [
         entry
@@ -483,22 +488,28 @@ def add_promoted_evidence(
     proposal = load_json(path)
     for update in proposal.get("registry_updates", []):
         if updates_record(update, asset, record_id) and isinstance(update.get("record"), dict):
-            record = update["record"]
-            evidence = list(record.get("evidence")) if isinstance(record.get("evidence"), list) else []
-            cited = {_cited_span(reference) for reference in evidence}
-            for citation in citations:
-                if _cited_span(citation) not in cited:
-                    evidence.append(citation)
-                    cited.add(_cited_span(citation))
-            record["evidence"] = evidence
+            update["record"]["evidence"] = _with_citations(update["record"].get("evidence"), citations)
     write_json(path, proposal)
+
+
+def _with_citations(evidence: Any, citations: tuple[dict[str, Any], ...] | list[Any]) -> list[Any]:
+    merged = list(evidence) if isinstance(evidence, list) else []
+    at = {_cited_span(reference): index for index, reference in enumerate(merged)}
+    for citation in citations:
+        span = _cited_span(citation)
+        if span in at:
+            merged[at[span]] = citation
+        else:
+            at[span] = len(merged)
+            merged.append(citation)
+    return merged
 
 
 def _cited_span(reference: Any) -> tuple[Any, ...]:
     if not isinstance(reference, dict):
         return (reference,)
     lines = reference.get("lines") if isinstance(reference.get("lines"), dict) else {}
-    return (reference.get("path"), lines.get("start"), lines.get("end"), reference.get("excerpt_sha256"))
+    return (reference.get("path"), lines.get("start"), lines.get("end"))
 
 
 def replace_promoted_fields(package_root: Path, asset: str, record_id: str, fields: dict[str, Any]) -> None:

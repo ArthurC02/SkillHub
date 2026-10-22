@@ -463,6 +463,7 @@ def _add_proposal_commands(commands: argparse._SubParsersAction) -> None:
     approval_parser.add_argument("--reviewer", required=True)
     approval_parser.add_argument("--scope", required=True)
     approval_parser.add_argument("--approved-at")
+    add_lifecycle_roots(approval_parser)
     supersede_parser = commands.add_parser("supersede-proposal", help="Retire a proposal")
     add_path(supersede_parser, "--package-root")
     supersede_parser.add_argument("--reason", required=True)
