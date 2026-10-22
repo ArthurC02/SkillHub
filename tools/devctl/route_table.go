@@ -20,7 +20,10 @@ var routeTableSources = []string{
 
 const routeContractFile = "contracts/openapi/public.yaml"
 
-var routeCallPattern = regexp.MustCompile(`mux\.Handle(?:Func)?\(([^,]+),`)
+var (
+	routeCallPattern    = regexp.MustCompile(`mux\.Handle(?:Func)?\(([^,]+),`)
+	limitedRoutePattern = regexp.MustCompile(`mux\.HandleFunc\(("[^"]+"),.*\blimited\(`)
+)
 
 var routePatternConstants = map[string]struct{ file, name string }{
 	"trace.IngestPath": {"apps/platform/internal/trial/evidence/token.go", "IngestPath"},
@@ -58,7 +61,7 @@ func routeTableProblems(root string) []string {
 			continue
 		}
 		seen[pattern] = true
-		if !documented[pattern] {
+		if documented[pattern] == nil {
 			problems = append(problems, fmt.Sprintf(
 				"route-table: %q is mounted but has no operation in %s; iron rule 12 wants the contract "+
 					"written first, and codegen cannot see this because the Go side generates models only, "+
@@ -72,7 +75,27 @@ func routeTableProblems(root string) []string {
 					"would call a 404", routeContractFile, pattern))
 		}
 	}
+	problems = append(problems, undeclaredRateLimits(root, documented)...)
 	sort.Strings(problems)
+	return problems
+}
+
+func undeclaredRateLimits(root string, documented map[string]map[string]bool) []string {
+	relative := routeTableSources[0]
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relative)))
+	if err != nil {
+		return []string{fmt.Sprintf("route-table: %v", err)}
+	}
+	var problems []string
+	for _, m := range limitedRoutePattern.FindAllStringSubmatch(string(data), -1) {
+		pattern, _ := strconv.Unquote(m[1])
+		if statuses := documented[pattern]; statuses != nil && !statuses["429"] {
+			problems = append(problems, fmt.Sprintf(
+				"route-table: %q is rate limited in %s but its operation in %s declares no 429; "+
+					"a generated client has no branch for the one refusal that says when to come back",
+				pattern, relative, routeContractFile))
+		}
+	}
 	return problems
 }
 
@@ -162,16 +185,17 @@ var (
 	contractPathLine   = regexp.MustCompile(`^  (/\S*):\s*$`)
 	contractMethodLine = regexp.MustCompile(`^    (get|put|post|patch|delete|head|options|trace):\s*$`)
 	contractTopLevel   = regexp.MustCompile(`^[A-Za-z]`)
+	contractStatusLine = regexp.MustCompile(`^        "(\d{3})":`)
 )
 
-func contractOperations(path string) (map[string]bool, error) {
+func contractOperations(path string) (map[string]map[string]bool, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	operations := map[string]bool{}
+	operations := map[string]map[string]bool{}
 	inPaths := false
-	current := ""
+	current, operation := "", ""
 	for _, line := range strings.Split(string(data), "\n") {
 		if strings.HasPrefix(line, "paths:") {
 			inPaths = true
@@ -184,11 +208,16 @@ func contractOperations(path string) (map[string]bool, error) {
 			continue
 		}
 		if m := contractPathLine.FindStringSubmatch(line); m != nil {
-			current = m[1]
+			current, operation = m[1], ""
 			continue
 		}
 		if m := contractMethodLine.FindStringSubmatch(line); m != nil && current != "" {
-			operations[strings.ToUpper(m[1])+" "+current] = true
+			operation = strings.ToUpper(m[1]) + " " + current
+			operations[operation] = map[string]bool{}
+			continue
+		}
+		if m := contractStatusLine.FindStringSubmatch(line); m != nil && operation != "" {
+			operations[operation][m[1]] = true
 		}
 	}
 	if len(operations) == 0 {

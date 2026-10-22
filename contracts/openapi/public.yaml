@@ -606,26 +606,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "429":
-          description: |
-            Too many requests from this address. Carries `Retry-After` in
-            seconds, and that header is the point of the refusal: this is the
-            one 4xx in this contract the caller is *expected* to retry, so a
-            client that treats it as an unknown error backs off wrongly or not
-            at all.
-
-            The limiter is on unless a deployment sets `RATE_LIMIT=off`. An
-            operation that does not declare it leaves
-            every generated client with a branch missing for the only answer that
-            tells it when to come back (02:NFR-001 clause 5).
-          headers:
-            Retry-After:
-              description: Whole seconds to wait before retrying.
-              required: true
-              schema: { type: integer, minimum: 1 }
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
         "413":
           description: |
             Archive exceeds the upload size limit, or the source holds more
@@ -779,26 +760,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenerateSkillRefusal"
-        "429":
-          description: |
-            Too many requests from this address. Carries `Retry-After` in
-            seconds, and that header is the point of the refusal: this is the
-            one 4xx in this contract the caller is *expected* to retry, so a
-            client that treats it as an unknown error backs off wrongly or not
-            at all.
-
-            The limiter is on unless a deployment sets `RATE_LIMIT=off`. An
-            operation that does not declare it leaves
-            every generated client with a branch missing for the only answer that
-            tells it when to come back (02:NFR-001 clause 5).
-          headers:
-            Retry-After:
-              description: Whole seconds to wait before retrying.
-              required: true
-              schema: { type: integer, minimum: 1 }
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
         "502":
           description: The model gateway failed. Nothing was created.
           content:
@@ -912,26 +874,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "429":
-          description: |
-            Too many requests from this address. Carries `Retry-After` in
-            seconds, and that header is the point of the refusal: this is the
-            one 4xx in this contract the caller is *expected* to retry, so a
-            client that treats it as an unknown error backs off wrongly or not
-            at all.
-
-            The limiter is on unless a deployment sets `RATE_LIMIT=off`. An
-            operation that does not declare it leaves
-            every generated client with a branch missing for the only answer that
-            tells it when to come back (02:NFR-001 clause 5).
-          headers:
-            Retry-After:
-              description: Whole seconds to wait before retrying.
-              required: true
-              schema: { type: integer, minimum: 1 }
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
         "422":
           description: |
             Nothing in the source became a skill. Same shape as the 201 with an
@@ -1061,26 +1004,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicSearchResponse"
-        "429":
-          description: |
-            Too many requests from this address. Carries `Retry-After` in
-            seconds, and that header is the point of the refusal: this is the
-            one 4xx in this contract the caller is *expected* to retry, so a
-            client that treats it as an unknown error backs off wrongly or not
-            at all.
-
-            The limiter is on unless a deployment sets `RATE_LIMIT=off`. An
-            operation that does not declare it leaves
-            every generated client with a branch missing for the only answer that
-            tells it when to come back (02:NFR-001 clause 5).
-          headers:
-            Retry-After:
-              description: Whole seconds to wait before retrying.
-              required: true
-              schema: { type: integer, minimum: 1 }
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
         "400":
           description: |
             A missing `q`, an oversized query, or an unusable filter. `q` is
@@ -1143,16 +1067,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-        "429":
-          description: Too many requests from this address.
-          headers:
-            Retry-After:
-              required: true
-              description: Whole seconds before retrying.
-              schema: { type: integer, minimum: 1 }
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /api/skills/catalog:
     get:
       operationId: browseCatalog
@@ -1233,20 +1148,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/CatalogResponse"
         "304": { $ref: "#/components/responses/NotModified" }
-        "429":
-          description: |
-            Too many requests from this address, with `Retry-After` in seconds.
-            Same limiter and same reason as the search route: this is a 4xx the
-            caller is expected to retry, and a client that cannot tell it apart
-            backs off wrongly or not at all (02:NFR-001 clause 5).
-          headers:
-            Retry-After:
-              description: Whole seconds to wait before retrying.
-              required: true
-              schema: { type: integer, minimum: 1 }
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
         "400":
           description: |
             A `limit` outside `1..100` inclusive, or a `script`/`validation`/
@@ -2274,18 +2176,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CategorizedFindings"
-        "429":
-          description: |
-            Too many uploads from this account; the same per-account limiter as
-            import upload. Carries `Retry-After` in whole seconds.
-          headers:
-            Retry-After:
-              description: Whole seconds to wait before retrying.
-              required: true
-              schema: { type: integer, minimum: 1 }
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /skills/{id}/versions/from-suggestions:
     post:
       operationId: createSkillVersionFromSuggestions
@@ -6456,6 +6347,7 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
+        "429": { $ref: "#/components/responses/TooManyRequests" }
         "200":
           description: |
             The proposals. 200 and not 201 because nothing was created: the
@@ -7233,6 +7125,7 @@ paths:
       operationId: "createCreationSession"
       summary: "createCreationSession"
       responses:
+        "429": { $ref: "#/components/responses/TooManyRequests" }
         200:
           description: "Workspace-scoped creation snapshot"
           content:
@@ -7469,6 +7362,7 @@ paths:
       operationId: "actOnCreationSession"
       summary: "actOnCreationSession"
       responses:
+        "429": { $ref: "#/components/responses/TooManyRequests" }
         200:
           description: "Workspace-scoped creation snapshot"
           content:
@@ -7535,6 +7429,21 @@ components:
         where the answer can be the caller's own skill, so it is revalidated on every view.
       schema: { type: string }
   responses:
+    TooManyRequests:
+      description: |
+        Too many requests from this account, or from this address when nobody
+        is signed in. Carries `Retry-After` in whole seconds: this is the one
+        4xx the caller is expected to retry, so a client that treats it as an
+        unknown error backs off wrongly or not at all (02:NFR-001 clause 5).
+        The limiter is on unless a deployment sets `RATE_LIMIT=off`.
+      headers:
+        Retry-After:
+          description: Whole seconds to wait before retrying.
+          required: true
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     NotModified:
       description: The request carried `If-None-Match` with the current ETag; the cached body is still the answer.
       headers:

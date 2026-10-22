@@ -8071,40 +8071,6 @@ func (*Error) listSkillVersionsRes()               {}
 func (*Error) publicSearchSkillsRes()              {}
 func (*Error) searchSkillsWithCorrectedIntentRes() {}
 
-// ErrorHeaders wraps Error with response headers.
-type ErrorHeaders struct {
-	RetryAfter int
-	Response   Error
-}
-
-// GetRetryAfter returns the value of RetryAfter.
-func (s *ErrorHeaders) GetRetryAfter() int {
-	return s.RetryAfter
-}
-
-// GetResponse returns the value of Response.
-func (s *ErrorHeaders) GetResponse() Error {
-	return s.Response
-}
-
-// SetRetryAfter sets the value of RetryAfter.
-func (s *ErrorHeaders) SetRetryAfter(val int) {
-	s.RetryAfter = val
-}
-
-// SetResponse sets the value of Response.
-func (s *ErrorHeaders) SetResponse(val Error) {
-	s.Response = val
-}
-
-func (*ErrorHeaders) browseCatalogRes()                   {}
-func (*ErrorHeaders) generateSkillRes()                   {}
-func (*ErrorHeaders) importSkillFromURLRes()              {}
-func (*ErrorHeaders) publicSearchSkillsRes()              {}
-func (*ErrorHeaders) saveSkillVersionRes()                {}
-func (*ErrorHeaders) searchSkillsWithCorrectedIntentRes() {}
-func (*ErrorHeaders) uploadSkillPackageRes()              {}
-
 // One judgement of one run (EVAL-001), and a resource of its own because it answers a question `Run`
 // does not. `Run.status` records what happened during execution; `Evaluation.overall` records whether
 // the task was achieved. `succeeded` is an execution outcome and never a task verdict, an evaluation
@@ -33761,6 +33727,43 @@ func (s *TestCaseListItem) SetCriteriaTotal(val int) {
 func (s *TestCaseListItem) SetHasRubric(val bool) {
 	s.HasRubric = val
 }
+
+// TooManyRequestsHeaders wraps Error with response headers.
+type TooManyRequestsHeaders struct {
+	RetryAfter int
+	Response   Error
+}
+
+// GetRetryAfter returns the value of RetryAfter.
+func (s *TooManyRequestsHeaders) GetRetryAfter() int {
+	return s.RetryAfter
+}
+
+// GetResponse returns the value of Response.
+func (s *TooManyRequestsHeaders) GetResponse() Error {
+	return s.Response
+}
+
+// SetRetryAfter sets the value of RetryAfter.
+func (s *TooManyRequestsHeaders) SetRetryAfter(val int) {
+	s.RetryAfter = val
+}
+
+// SetResponse sets the value of Response.
+func (s *TooManyRequestsHeaders) SetResponse(val Error) {
+	s.Response = val
+}
+
+func (*TooManyRequestsHeaders) actOnCreationSessionRes()            {}
+func (*TooManyRequestsHeaders) browseCatalogRes()                   {}
+func (*TooManyRequestsHeaders) createCreationSessionRes()           {}
+func (*TooManyRequestsHeaders) generateSkillRes()                   {}
+func (*TooManyRequestsHeaders) importSkillFromURLRes()              {}
+func (*TooManyRequestsHeaders) publicSearchSkillsRes()              {}
+func (*TooManyRequestsHeaders) saveSkillVersionRes()                {}
+func (*TooManyRequestsHeaders) searchSkillsWithCorrectedIntentRes() {}
+func (*TooManyRequestsHeaders) suggestAcceptanceCriteriaRes()       {}
+func (*TooManyRequestsHeaders) uploadSkillPackageRes()              {}
 
 // Ref: #/components/schemas/TraceAdvanced
 type TraceAdvanced struct {

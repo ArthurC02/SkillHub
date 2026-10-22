@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -96,6 +98,51 @@ func TestRouteTableSpeaksInBothDirections(t *testing.T) {
 				t.Fatalf("want exactly one problem containing %q, got %v", tc.want, problems)
 			}
 		})
+	}
+}
+
+func TestARateLimitedRouteMustDeclareItsRefusal(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name      string
+		responses string
+		want      []string
+	}{
+		{"declares 429", "      responses:\n        \"429\": { $ref: \"#/components/responses/TooManyRequests\" }\n", nil},
+		{"declares only 201", "      responses:\n        \"201\":\n          description: made\n",
+			[]string{`"POST /limited" is rate limited`}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root := writeRouteFixture(t, "", "")
+			router := filepath.Join(root, filepath.FromSlash(routeTableSources[0]))
+			contract := filepath.Join(root, filepath.FromSlash(routeContractFile))
+			replaceIn(t, router, "}\n", "\tmux.HandleFunc(\"POST /limited\", limited(d, \"r\", h.x))\n}\n")
+			replaceIn(t, contract, "components:", "  /limited:\n    post:\n"+tc.responses+"components:")
+			problems := routeTableProblems(root)
+			if len(problems) != len(tc.want) {
+				t.Fatalf("problems = %v, want %d", problems, len(tc.want))
+			}
+			for i, want := range tc.want {
+				if !strings.Contains(problems[i], want) {
+					t.Errorf("problem %q does not say %q", problems[i], want)
+				}
+			}
+		})
+	}
+}
+
+func replaceIn(t *testing.T, path, old, new string) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), old) {
+		t.Fatalf("%s holds no %q", path, old)
+	}
+	if err := os.WriteFile(path, []byte(strings.Replace(string(data), old, new, 1)), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }
 
