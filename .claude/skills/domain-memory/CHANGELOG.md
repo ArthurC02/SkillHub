@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.9
+
+### Added
+
+- Boundary tests: an index description at 160 characters kept whole and at 161 shortened, failure evidence keeping 40 failure lines and dropping the 41st, and a possible rule pair offered at a similarity of 0.25 and not just under it.
+
 ## 2.2.8
 
 ### Fixed

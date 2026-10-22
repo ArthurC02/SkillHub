@@ -156,6 +156,13 @@ class PossiblePairTest(unittest.TestCase):
     def test_a_rule_worded_alike_in_another_context_is_not_offered(self) -> None:
         self.assertEqual([], self.possible("Once a run reaches a terminal status it stays final.", ["billing"]))
 
+    def test_a_rule_a_quarter_alike_is_offered_and_one_just_under_is_not(self) -> None:
+        self.assertEqual(
+            ([{"gold": "run-terminal-status-is-final", "candidate": "closed", "similarity": 0.25}], []),
+            (self.possible("Terminal run alpha beta gamma.", ["orders"]),
+             self.possible("Terminal run alpha beta gamma delta.", ["orders"])),
+        )
+
     def test_a_rule_worded_differently_is_not_offered(self) -> None:
         self.assertEqual([], self.possible("Invoices are numbered in sequence.", ["orders"]))
 
