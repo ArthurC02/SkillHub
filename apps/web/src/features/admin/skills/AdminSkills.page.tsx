@@ -68,6 +68,27 @@ function GovernanceResult({
   );
 }
 
+function SingleSkillActions({
+  skill,
+  onComplete,
+}: {
+  skill: SkillGovernance;
+  onComplete: (completed?: { id: string; message: string; takedown?: boolean }) => void;
+}) {
+  const onOutcome = (message: string) => onComplete({ id: skill.skill_id, message });
+  if (skill.takedown_at !== null) return <LiftTakedownAction skill={skill} onOutcome={onOutcome} />;
+  return (
+    <GovernanceActions
+      skill={skill}
+      onTakedown={() =>
+        onComplete({ id: skill.skill_id, message: `「${skill.name}」已下架。`, takedown: true })
+      }
+      onOutcome={onOutcome}
+      onDraftChange={() => onComplete(undefined)}
+    />
+  );
+}
+
 function GovernanceResults({ q }: { q: string }) {
   const skills = useGovernance(q);
   const readable = q !== "" && !skills.error && !skills.isFetching;
@@ -130,27 +151,8 @@ function GovernanceResults({ q }: { q: string }) {
             </ul>
           </>
         ))}
-      {found.length === 1 && found[0].takedown_at === null && (
-        <GovernanceActions
-          key={found[0].skill_id}
-          skill={found[0]}
-          onTakedown={() =>
-            setCompleted({
-              id: found[0].skill_id,
-              message: `「${found[0].name}」已下架。`,
-              takedown: true,
-            })
-          }
-          onOutcome={(message) => setCompleted({ id: found[0].skill_id, message })}
-          onDraftChange={() => setCompleted(undefined)}
-        />
-      )}
-      {found.length === 1 && found[0].takedown_at !== null && (
-        <LiftTakedownAction
-          key={found[0].skill_id}
-          skill={found[0]}
-          onOutcome={(message) => setCompleted({ id: found[0].skill_id, message })}
-        />
+      {found.length === 1 && (
+        <SingleSkillActions key={found[0].skill_id} skill={found[0]} onComplete={setCompleted} />
       )}
     </>
   );

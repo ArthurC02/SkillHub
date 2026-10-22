@@ -41,6 +41,20 @@ export function RunPreflight() {
   );
 }
 
+function PreflightReadFailure({ preflight }: { preflight: ReturnType<typeof usePreflight> }) {
+  if (preflight.error instanceof ApiError && preflight.error.status === 403)
+    return <p role="alert">{NOT_INVITED_SENTENCE}</p>;
+  return (
+    <ReadFailure
+      error={preflight.error}
+      what="權限摘要"
+      retry={() => void preflight.refetch()}
+      retrying={preflight.fetchStatus !== "idle"}
+      focusTarget="preflight-heading"
+    />
+  );
+}
+
 function Preflight({ skill, linkedVersion, testCase, against }: PreflightProps) {
   const navigate = useNavigate();
   const version = linkedVersion;
@@ -130,23 +144,10 @@ function Preflight({ skill, linkedVersion, testCase, against }: PreflightProps) 
         <Loading what="權限摘要" />
       </PreflightShell>
     );
-  if (preflight.error instanceof ApiError && preflight.error.status === 403) {
-    return (
-      <PreflightShell {...shellProps}>
-        <p role="alert">{NOT_INVITED_SENTENCE}</p>
-      </PreflightShell>
-    );
-  }
   if (preflight.error) {
     return (
       <PreflightShell {...shellProps}>
-        <ReadFailure
-          error={preflight.error}
-          what="權限摘要"
-          retry={() => void preflight.refetch()}
-          retrying={preflight.fetchStatus !== "idle"}
-          focusTarget="preflight-heading"
-        />
+        <PreflightReadFailure preflight={preflight} />
       </PreflightShell>
     );
   }
