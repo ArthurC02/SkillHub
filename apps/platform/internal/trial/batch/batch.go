@@ -13,12 +13,13 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
 const (
 	MinBatchTrials       = 1
 	MaxBatchTrials       = 10
-	MaxBatchTestCases    = 50
+	MaxBatchTestCases    = limits.CreateEvaluationBatchBodyTestCaseIdsMaxItems
 	BatchAdvanceInterval = time.Minute
 )
 

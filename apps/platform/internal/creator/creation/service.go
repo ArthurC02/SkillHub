@@ -10,6 +10,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/webfetch"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -48,7 +49,7 @@ const (
 )
 
 const (
-	MaxReferences = 3
+	MaxReferences = limits.CreationActionReferenceSkillIdsMaxItems
 
 	MaxMessages = 98
 

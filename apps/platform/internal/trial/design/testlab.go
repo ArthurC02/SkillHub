@@ -544,7 +544,7 @@ func validateDraft(name, prompt string) (string, string, error) {
 
 const (
 	MaxSimulatedUserFacts      = limits.SimulatedUserFactsMaxItems
-	MaxSimulatedUserFactsChars = 1500
+	MaxSimulatedUserFactsChars = 1500 // one-number: simulatedUserFactsChars
 )
 
 var ErrSimulatedUserFacts = fmt.Errorf("%w: 模擬使用者的事實最多 %d 條、每條不能空白、合計最多 %d 個字",

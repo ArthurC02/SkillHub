@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "contract-limits-from-generated",
+  "proposal_id": "contract-limits-from-generated",
+  "registry_revision": {
+    "observed_commit": "9a6ed257616fa3f420f753aa682c63bf9118cea1",
+    "registry_digest": "sha256:1c1e2274eb72358df38cafe9e7a6942104f9366bd77c3ec95b558a95b77e8734",
+    "committed_digest": "sha256:1c1e2274eb72358df38cafe9e7a6942104f9366bd77c3ec95b558a95b77e8734"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/contract-limits-from-generated-2026-10-22 --path apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/feedback_limits_integration_test.go --path apps/platform/internal/product/learning/feedback.go --path apps/platform/internal/trial/evidence/http.go --path apps/platform/internal/trial/evidence/http_test.go",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:33dea754487a4036b69fba70449566dcb2b1ff84e547c7d212d816219a7f57ca",
+      "finished_at": "2026-10-22T13:08:10.154579Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

@@ -7,6 +7,7 @@ import (
 	"errors"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"strings"
@@ -60,7 +61,7 @@ const (
 	receiptCancelled = "cancelled"
 )
 
-const maxPersonMessageRunes = 4000
+const maxPersonMessageRunes = limits.CreationActionMessageMaxLength
 
 const (
 	uuidVersionMask    = 0x0f

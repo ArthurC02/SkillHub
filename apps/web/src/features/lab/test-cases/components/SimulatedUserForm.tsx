@@ -4,7 +4,7 @@ import { useUpdateTestCase } from "../../testcases.service";
 import type { TestCase } from "../../testcases.service";
 import { MutationError } from "./MutationError";
 
-const MAX_FACT_CHARS = 1500;
+const MAX_FACT_CHARS = 1500; // one-number: simulatedUserFactsChars
 
 function factsOf(text: string) {
   return text

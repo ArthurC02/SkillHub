@@ -1,9 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
+import { SubmitFeedbackBodyMessageMaxLength } from "@skillhub/api-client-ts/limits";
 import { apiFetch } from "../../core/api/client";
 
 export type FeedbackKind = "blocking_issue" | "need_signal";
 
-export const FEEDBACK_MAX_MESSAGE = 2000;
+export const FEEDBACK_MAX_MESSAGE = SubmitFeedbackBodyMessageMaxLength;
 
 export interface FeedbackReport {
   kind: FeedbackKind;

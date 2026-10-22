@@ -18,6 +18,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
 type CreditSessionEstimate struct {
@@ -271,7 +272,7 @@ type creditGrantRequest struct {
 	IdempotencyKey *string `json:"idempotency_key"`
 }
 
-const maxGrantIdempotencyKeyRunes = 128
+const maxGrantIdempotencyKeyRunes = limits.GrantCreditsBodyIdempotencyKeyMaxLength
 
 type creditGrantResponse struct {
 	WorkspaceID    string `json:"workspace_id"`

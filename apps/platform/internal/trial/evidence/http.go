@@ -13,11 +13,12 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
 const maxBatchBytes = 4 << 20
 
-const maxBatchEvents = 1000
+const maxBatchEvents = limits.IngestTraceEventsBodyMaxItems
 
 type Handler struct {
 	Svc      *Service

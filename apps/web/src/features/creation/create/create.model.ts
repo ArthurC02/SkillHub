@@ -1,3 +1,4 @@
+import { CreationActionMessageMaxLength } from "@skillhub/api-client-ts/limits";
 import type { CreditBalance } from "../../../core/session/credits.service";
 import type {
   CreationAction,
@@ -323,7 +324,7 @@ export function nextStepBudget(
   };
 }
 
-export const MAX_MESSAGE_RUNES = 4000;
+export const MAX_MESSAGE_RUNES = CreationActionMessageMaxLength;
 
 export const points = (v: number) => v + " 點";
 

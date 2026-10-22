@@ -1,4 +1,5 @@
 import type { ReactNode, RefObject } from "react";
+import { CreationActionReferenceSkillIdsMaxItems } from "@skillhub/api-client-ts/limits";
 import type { CreditBalance } from "../../../../core/session/credits.service";
 import { ReferencePicker } from "../../components/ReferencePicker";
 import { MAX_MESSAGE_RUNES, points } from "../create.model";
@@ -379,7 +380,8 @@ function ReferenceChooser({
         references={refs}
         onToggle={(skillID, name) => {
           if (refs.some((r) => r.id === skillID)) onRefs(refs.filter((r) => r.id !== skillID));
-          else if (refs.length >= 3) onError(new Error("參考小工具最多三個；先移除一個再加。"));
+          else if (refs.length >= CreationActionReferenceSkillIdsMaxItems)
+            onError(new Error("參考小工具最多三個；先移除一個再加。"));
           else onRefs([...refs, { id: skillID, name }]);
         }}
       />

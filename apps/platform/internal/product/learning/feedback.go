@@ -7,16 +7,18 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
 const (
-	maxFeedbackMessage   = 2000
+	maxFeedbackMessage   = limits.SubmitFeedbackBodyMessageMaxLength
 	maxFeedbackBodyBytes = 8192
 )
 
@@ -91,7 +93,7 @@ func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	message := strings.TrimSpace(body.Message)
-	if message == "" || len([]rune(message)) > maxFeedbackMessage {
+	if message == "" || utf8.RuneCountInString(message) > maxFeedbackMessage {
 		httpx.WriteError(w, http.StatusBadRequest, "message 不能空白，且最多 2000 字")
 		return
 	}

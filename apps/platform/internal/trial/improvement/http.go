@@ -6,12 +6,14 @@ import (
 	"errors"
 	"net/http"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -144,7 +146,7 @@ func (h *Handler) Revisions(w http.ResponseWriter, r *http.Request) {
 
 const (
 	maxFeedbackBodyBytes    = 8192
-	maxFeedbackCommentRunes = 2000
+	maxFeedbackCommentRunes = limits.SetEvaluationFeedbackBodyCommentMaxLength
 )
 
 func (h *Handler) SetFeedback(w http.ResponseWriter, r *http.Request) {
@@ -168,7 +170,7 @@ func (h *Handler) SetFeedback(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "`helpful` is required")
 		return
 	}
-	if len([]rune(body.Comment)) > maxFeedbackCommentRunes {
+	if utf8.RuneCountInString(body.Comment) > maxFeedbackCommentRunes {
 		httpx.WriteError(w, http.StatusBadRequest, "`comment` is limited to 2000 characters")
 		return
 	}
