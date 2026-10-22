@@ -431,7 +431,7 @@ docker run --rm --network container:skillhub-postgres-1 \
 **CI 的形狀**（`ci.yml`）：
 
 - main 上的 push 以 commit SHA 分組、**不互相取消**，每個 commit 都會被驗到；只有 PR 會被同一個 PR 的下一次 push 取消。改之前的三天內 87 次 run 有 14 次被取消，那些 commit 從來沒被驗過。
-- `images` 有自己的 path filter（見[Repo 結構、CI 與驗證層](../adr/README.md#repo-結構ci-與驗證層)），純文件 commit 不再建置、smoke、推送三個服務映像。它不再等語言 job，與它們並行；推送拆成 `images-push`，等所有 job 綠了才推，從同一次 run 的 GHA 快取重建，不重新編譯。
+- `images` 有自己的 path filter（見[Repo 結構、CI 與驗證層](../adr/README.md#repo-結構ci-與驗證層)），純文件 commit 不再建置、smoke、推送三個服務映像。它不再等語言 job，與它們並行；推送拆成 `images-push`，等待既有程式、工具、契約、依賴檢查與四個原生瀏覽器彙總閘門通過才推，從同一次 run 的 GHA 快取重建，不重新編譯。
 - 每週日一次 `schedule` 全量跑（所有 path filter 視為命中），`workflow_dispatch` 也是全量——手寫 path filter 漏掉的那一格由它兜底。
 - 每個 job 都有 `timeout-minutes`，一個卡住的 job 不會再佔滿預設的 6 小時。
 - 瀏覽器測試使用 Playwright 原生分片：Linux WebKit 四片，Linux Chromium／Firefox 與 Windows Chromium 各兩片，保留完整套件與既有逾時；失敗產物按環境、分片與總片數命名。原有四個 `web-browser` 檢查名稱保留為彙總閘門，只有全部分片成功才通過，分片失敗、取消或缺席都不得放行。
