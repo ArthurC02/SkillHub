@@ -23,6 +23,7 @@ from ..counterfactual import (
 )
 from ..coupling import CouplingLimits, CouplingReading, change_coupling
 from ..dependents import dependents
+from ..hitl import record_counterfactual, require_recordable_counterfactual
 from ..gates import quality_gates
 from ..impact import boundary_impact, registered_collaborations
 from ..mcp_server import ServerRoots, serve
@@ -306,11 +307,18 @@ def handle_quality_gates(args: argparse.Namespace) -> int:
 
 
 def handle_counterfactual(args: argparse.Namespace) -> int:
+    package = args.package_root
     try:
         if args.suite is not None:
+            if package is not None:
+                raise ValueError(
+                    "--package-root records one counterfactual; run each obligation's mutation on its own with --obligation-id"
+                )
             suite = counterfactual_suite(args.repo_root, load_json(args.suite))
             print_json(suite)
             return max((COUNTERFACTUAL_EXIT_CODES[entry["verdict"]] for entry in suite["results"]), default=0)
+        if package is not None:
+            require_recordable_counterfactual(package, args.obligation_id)
         result = counterfactual(
             args.repo_root,
             _one_mutation(args),
@@ -319,8 +327,21 @@ def handle_counterfactual(args: argparse.Namespace) -> int:
     except (ValueError, OSError) as error:
         details = error.details if isinstance(error, FailingBaselineError) else {}
         result = {"format": COUNTERFACTUAL_FORMAT, "verdict": "error", "reason": str(error), **details}
+    if package is not None and result["verdict"] != "error":
+        result = _with_record(package, args.repo_root, result)
     print_json(result)
-    return COUNTERFACTUAL_EXIT_CODES[result["verdict"]]
+    return COUNTERFACTUAL_EXIT_CODES["error" if "not_recorded" in result and result["verdict"] == "killed" else result["verdict"]]
+
+
+def _with_record(package: Path, repo_root: Path, result: dict) -> dict:
+    check = result.get("counterfactual_check")
+    if check is None:
+        return {**result, "not_recorded": "only a killed counterfactual whose file was restored is recorded"}
+    try:
+        recorded = record_counterfactual(package, check)
+    except ValueError as error:
+        return {**result, "not_recorded": str(error)}
+    return {**result, "recorded_in": shown_path(recorded, repo_root)}
 
 
 def _one_mutation(args: argparse.Namespace) -> Mutation:

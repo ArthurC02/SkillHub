@@ -24,7 +24,15 @@ from .common import (
     utc_now,
     write_json,
 )
-from .counterfactual import OUTPUT_TAIL, decoded, is_go_test, no_test_passed, reports_tests, working_directory
+from .counterfactual import (
+    OBLIGATION_PLACEHOLDER,
+    OUTPUT_TAIL,
+    decoded,
+    is_go_test,
+    no_test_passed,
+    reports_tests,
+    working_directory,
+)
 from .evidence import digest
 from .git import resolve_commit
 from .policy import approved_command_profiles, review_governance
@@ -322,6 +330,43 @@ def record_test_result(
     ]
     evidence["test_results"] = [*kept, result]
     write_json(evidence_path, evidence)
+
+
+def require_recordable_counterfactual(root: Path, obligation_id: str | None) -> None:
+    if not obligation_id or obligation_id == OBLIGATION_PLACEHOLDER:
+        raise ValueError("--package-root records the check under an obligation; name it with --obligation-id")
+    proposal = load_json(proposal_path(root))
+    status = proposal.get("status")
+    if status not in RECORDABLE_STATUSES:
+        raise ValueError(
+            f"the proposal is {status}: its counterfactual checks are what verify-proposal checked, so they stay "
+            "as they are; redraft it to record new ones"
+        )
+    if find_record(load_json(root / OBLIGATIONS_FILE).get("obligations", []), obligation_id) is None:
+        raise ValueError(f"test-obligations.json has no obligation {obligation_id}")
+    design = proposal.get("implementation_design")
+    planned = design.get("proof_obligations") if isinstance(design, dict) else None
+    if isinstance(planned, list) and obligation_id not in planned:
+        raise ValueError(
+            f"obligation {obligation_id} is not one of implementation_design's proof_obligations: "
+            + ", ".join(str(planned_id) for planned_id in planned)
+        )
+
+
+def record_counterfactual(root: Path, check: dict[str, Any]) -> Path:
+    require_recordable_counterfactual(root, check.get("obligation_id"))
+    path = root / EVIDENCE_FILE
+    evidence = load_json(path)
+    recorded = evidence.get("counterfactual_check")
+    runs = recorded if isinstance(recorded, list) else [recorded] if _passed_run(recorded) else []
+    kept = [run for run in runs if not (isinstance(run, dict) and run.get("obligation_id") == check["obligation_id"])]
+    evidence["counterfactual_check"] = [*kept, check]
+    write_json(path, evidence)
+    return path
+
+
+def _passed_run(recorded: Any) -> bool:
+    return isinstance(recorded, dict) and recorded.get("status") == "passed"
 
 
 def attest_signed_commit(root: Path, registry_root: Path, repo_root: Path, commit: str) -> str:
