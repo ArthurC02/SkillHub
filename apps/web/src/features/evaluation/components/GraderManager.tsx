@@ -127,12 +127,13 @@ function ReviseGrader({
 }: GraderActions & { grader: Grader }) {
   const [instructions, setInstructions] = useState(grader.instructions);
   const [reason, setReason] = useState("");
+  const [edited, setEdited] = useState(false);
   const [unconfirmed, setUnconfirmed] = useState<UnconfirmedWrite>();
   const revise = useReviseGrader(scope, grader.id, onCompleted);
   const [sourceVersion, setSourceVersion] = useState(grader.version_id);
   if (sourceVersion !== grader.version_id) {
     setSourceVersion(grader.version_id);
-    if (!unconfirmed && !revise.isPending) {
+    if (!edited && !unconfirmed && !revise.isPending) {
       setInstructions(grader.instructions);
       setReason("");
     }
@@ -149,6 +150,7 @@ function ReviseGrader({
   return (
     <form
       onInput={() => {
+        setEdited(true);
         if (!unconfirmed) revise.reset();
         onDraftChange();
       }}
@@ -165,6 +167,7 @@ function ReviseGrader({
               );
             },
             onSuccess: (saved) => {
+              setEdited(false);
               setUnconfirmed(undefined);
               setInstructions(saved.instructions);
               setReason("");
