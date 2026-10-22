@@ -1,22 +1,17 @@
 .check-editor {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 16px;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   margin-block: 16px;
 }
 
-@media (max-width: 800px) {
-  .check-editor {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.check-editor > .check-editor-picker {
-  grid-column: 1 / -1;
-}
-
 .check-flow {
-  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  flex: 3 1 320px;
+  min-width: 0;
+  height: 320px;
   border: 1px solid var(--border);
   background: var(--surface);
   --xy-edge-stroke: var(--border-strong);
@@ -27,14 +22,30 @@
   --xy-handle-border-color: var(--bg);
 }
 
+.check-flow-toolbar {
+  padding: 8px;
+  text-align: right;
+}
+
+.check-flow-canvas {
+  flex: 1;
+  min-height: 0;
+}
+
 .check-flow .check-flow-node {
-  max-width: 200px;
   padding: 8px;
   border: 1px solid var(--border-strong);
   border-radius: 4px;
   background: var(--bg);
   color: var(--text);
   font-size: 14px;
+}
+
+.check-flow .check-flow-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .check-flow .react-flow__attribution {
@@ -57,6 +68,7 @@
 }
 
 .check-editor-panel {
+  flex: 2 1 320px;
   min-width: 0;
   overflow-wrap: anywhere;
 }

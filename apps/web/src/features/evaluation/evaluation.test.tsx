@@ -154,6 +154,54 @@ function ValidatedEditor({ initial }: { initial: CheckNode }) {
   );
 }
 
+test("starting and clearing a check retain focus in its work area", async () => {
+  await renderEditor();
+  await act(async () => {
+    button("開始設計").focus();
+    button("開始設計").click();
+  });
+  await waitFor(() => container.querySelector(".check-editor-node") !== null);
+  const area = field('[aria-label="檢查方式與設計"]');
+  expect(area.contains(document.activeElement)).toBe(true);
+  await act(async () => {
+    button("拿掉整個檢查").focus();
+    button("拿掉整個檢查").click();
+  });
+  await waitFor(() => container.querySelector("#check-editor-root") !== null);
+  expect(area.contains(document.activeElement)).toBe(true);
+});
+
+test("adding and removing a child focus the selected node editor", async () => {
+  await renderEditor({ kind: "sequence", children: [] });
+  await act(async () => setValue(field("#check-node-0-add"), "contains_values"));
+  await act(async () => {
+    button("加入").focus();
+    button("加入").click();
+  });
+  await waitFor(() => container.querySelector("#check-node-0-0-value-0") !== null);
+  expect(document.activeElement).toBe(field(".check-editor-node"));
+  await act(async () => {
+    button("刪除這個節點與它底下的節點").focus();
+    button("刪除這個節點與它底下的節點").click();
+  });
+  await waitFor(() => container.querySelector("#check-node-0-add") !== null);
+  expect(document.activeElement).toBe(field(".check-editor-node"));
+  expect(latest).toEqual({ kind: "sequence", children: [] });
+});
+
+test("selected node headings and length errors avoid repeating full value content", async () => {
+  const values = ["a".repeat(201), "b".repeat(202)];
+  await renderNode(<ValidatedEditor initial={{ kind: "contains_values", values }} />);
+  await waitFor(() => container.querySelector("#check-node-0-value-1") !== null);
+  expect(field("#check-node-0-heading").textContent).toBe("選取的節點：回答提到指定的值");
+  expect(field<HTMLInputElement>("#check-node-0-value-0").value).toBe(values[0]);
+  expect(field<HTMLInputElement>("#check-node-0-value-1").value).toBe(values[1]);
+  const text = field(".check-editor-node").textContent!;
+  expect(text.split("值最多 200 個字，目前 201 個字。")).toHaveLength(2);
+  expect(text.split("值最多 200 個字，目前 202 個字。")).toHaveLength(2);
+  expect(button("送出檢查").disabled).toBe(true);
+});
+
 for (const character of ["a", "😀"]) {
   for (const count of [199, 200, 201]) {
     test(`check input preserves ${count} ${character} characters and explains its limit`, async () => {

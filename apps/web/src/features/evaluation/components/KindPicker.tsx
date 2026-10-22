@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { CheckKind } from "../check.model";
+import "./KindPicker.css";
 
 export function KindPicker({
   id,

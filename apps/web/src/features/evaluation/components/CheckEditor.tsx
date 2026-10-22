@@ -1,5 +1,5 @@
 import { CriterionCheckValuesItemMaxLength } from "@skillhub/api-client-ts/limits";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { textLengthReason } from "../../../shared/textLength.model";
@@ -40,6 +40,22 @@ function describe(node: CheckNode, palette: Palette): string {
   const shown = values.filter((v) => v.trim() !== "").join("、");
   const atLeast = node.at_least ? `（至少 ${node.at_least} 個）` : "";
   return shown ? `${label}：${shown}${atLeast}` : label;
+}
+
+function nodeHeading(node: CheckNode, palette: Palette): string {
+  return node.kind === PROMPT_GRADER
+    ? describe(node, palette)
+    : (palette.byKind.get(node.kind)?.label ?? node.kind);
+}
+
+function aggregateProblems(node: CheckNode, found: string[]): string[] {
+  if (node.kind === PROMPT_GRADER) return found;
+  const inline = new Set(
+    (node.values ?? []).map((v) =>
+      textLengthReason(v.trim(), "值", CriterionCheckValuesItemMaxLength),
+    ),
+  );
+  return found.filter((problem) => !inline.has(problem));
 }
 
 function ValuesField({
@@ -149,6 +165,7 @@ function NodeForm({
   onChange: (next: CheckNode | null) => void;
   onSelect: (path: Path) => void;
 }) {
+  const nodeRegion = useRef<HTMLElement>(null);
   const node = nodeAt(tree, path);
   const kind = palette.byKind.get(node.kind);
   const key = pathKey(path);
@@ -159,9 +176,15 @@ function NodeForm({
   const atLeastProblem = kind?.at_least
     ? atLeastReason(node.at_least ?? 0, (node.values ?? []).length)
     : null;
+  const shownProblems = aggregateProblems(node, found);
   return (
-    <section className="check-editor-node" aria-labelledby={`${idBase}-heading`}>
-      <h4 id={`${idBase}-heading`}>選取的節點：{describe(node, palette)}</h4>
+    <section
+      ref={nodeRegion}
+      tabIndex={-1}
+      className="check-editor-node"
+      aria-labelledby={`${idBase}-heading`}
+    >
+      <h4 id={`${idBase}-heading`}>選取的節點：{nodeHeading(node, palette)}</h4>
       {kind && <p className="note">{kind.description}</p>}
       {kind && kind.values.max > 0 && (
         <ValuesField
@@ -197,18 +220,19 @@ function NodeForm({
           kinds={palette.kinds}
           action="加入"
           onPick={(picked) => {
+            nodeRegion.current?.focus();
             onChange(appendChild(tree, path, emptyNode(picked)));
             onSelect([...path, children.length]);
           }}
         />
       )}
-      {found.length > 0 && (
+      {shownProblems.length > 0 && (
         <ul
           id={`${idBase}-problems`}
           className="check-editor-problems"
           aria-label="這個節點還要修正"
         >
-          {found.map((p) => (
+          {shownProblems.map((p) => (
             <li key={p}>{p}</li>
           ))}
         </ul>
@@ -217,6 +241,7 @@ function NodeForm({
         <button
           type="button"
           onClick={() => {
+            if (path.length > 0) nodeRegion.current?.focus();
             onChange(removeAt(tree, path));
             onSelect(path.slice(0, -1));
           }}

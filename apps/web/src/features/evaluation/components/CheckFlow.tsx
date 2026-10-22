@@ -1,9 +1,40 @@
-import { Position, ReactFlow, type Edge, type Node } from "@xyflow/react";
+import { useEffect } from "react";
+import {
+  Position,
+  ReactFlow,
+  ReactFlowProvider,
+  getNodesBounds,
+  useReactFlow,
+  useStore,
+  type Edge,
+  type Node,
+  type Rect,
+} from "@xyflow/react";
 import "@xyflow/react/dist/base.css";
 import { pathKey, placeNodes, type CheckNode, type Path } from "../check.model";
 
 const COLUMN_WIDTH = 240;
 const ROW_HEIGHT = 72;
+const NODE_WIDTH = 200;
+const NODE_HEIGHT = 48;
+
+function CanvasTools({ topology, bounds }: { topology: string; bounds: Rect }) {
+  const { x, y, width: contentWidth, height: contentHeight } = bounds;
+  const width = useStore((state) => state.width);
+  const height = useStore((state) => state.height);
+  const { fitBounds, viewportInitialized } = useReactFlow();
+  useEffect(() => {
+    if (viewportInitialized && width > 0 && height > 0)
+      void fitBounds({ x, y, width: contentWidth, height: contentHeight }, { padding: 0.2 });
+  }, [viewportInitialized, topology, width, height, x, y, contentWidth, contentHeight, fitBounds]);
+  return (
+    <div className="check-flow-toolbar">
+      <button type="button" onClick={() => void fitBounds(bounds, { padding: 0.2 })}>
+        顯示全部節點
+      </button>
+    </div>
+  );
+}
 
 export function CheckFlow({
   tree,
@@ -26,7 +57,9 @@ export function CheckFlow({
     return {
       id: key,
       position: { x: p.column * COLUMN_WIDTH, y: p.row * ROW_HEIGHT },
-      data: { label: describe(p.path) },
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
+      data: { label: <span className="check-flow-label">{describe(p.path)}</span> },
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
       selected: key === selectedKey,
@@ -41,15 +74,25 @@ export function CheckFlow({
       return { id: `${source}-${target}`, source, target };
     });
   return (
-    <div className="check-flow">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        fitView
-        nodesDraggable={false}
-        nodesConnectable={false}
-        onNodeClick={(_, node) => onSelect(byKey.get(node.id) ?? [])}
-      />
-    </div>
+    <ReactFlowProvider>
+      <div className="check-flow">
+        <CanvasTools
+          topology={nodes.map((node) => node.id).join("|")}
+          bounds={getNodesBounds(nodes)}
+        />
+        <div className="check-flow-canvas">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            minZoom={0.05}
+            nodesDraggable={false}
+            nodesConnectable={false}
+            nodesFocusable={false}
+            edgesFocusable={false}
+            onNodeClick={(_, node) => onSelect(byKey.get(node.id) ?? [])}
+          />
+        </div>
+      </div>
+    </ReactFlowProvider>
   );
 }

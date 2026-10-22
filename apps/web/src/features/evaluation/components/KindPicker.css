@@ -1,0 +1,10 @@
+.check-editor-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.check-editor-picker > .note {
+  flex-basis: 100%;
+}

@@ -146,13 +146,13 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
         </button>{" "}
         <button type="button" disabled={suggest.isPending} onClick={requestSuggestions}>
           {suggest.isPending ? "建議中…" : "請系統建議（選用）"}
-        </button>{" "}
-        {blocker && (
-          <span className="note" role="status" id={blocker.id}>
-            {blocker.say}
-          </span>
-        )}
+        </button>
       </p>
+      {blocker && (
+        <p className="note" role="status" id={blocker.id}>
+          {blocker.say}
+        </p>
+      )}
       {add.isSuccess && (
         <p role="status">
           已新增驗收條件。
