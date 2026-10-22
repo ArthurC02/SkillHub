@@ -961,3 +961,9 @@ exit 1（與 CI 的 I-06 失敗相同）；`2026.08-17` → `No vulnerabilities 
 ### 預設映像從 `-18` 移到 `-20`
 
 四項在 `-20` 的 digest 上通過之後，經負責人同意移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例，以及 `apps/sandbox/README.md` 的環境變數表與建置範例。
+
+### 2026-10-22：提問工具的真模型實測（同一個 `-20` digest）
+
+`TestEndToEndRunHandsAQuestionOnlyThePersonCanAnswerBackAndStops` 補上了 `-19` 那個缺口：一個說明「鞋碼制度只有本人知道」的 Skill，經真閘道跑一次 Run，PASS（48.82s，$0.017985）。Run 以 `succeeded` 結束，trace 有 `agent_output` `kind: question`，問題列出 EU／UK／US，`usage` 事件照常發出。
+
+**反證**：同一組斷言改跑從不提問的 run-marker Skill，測試以「the run finished without handing a question back to the person」變紅，所以斷言不是空的。另一個嘗試是在請求裡直接講明制度，模型仍然提問，測試照樣綠——這只說明 `gpt-5.4-mini` 傾向多問，不能拿來當反證。本節合計四次 Run $0.0780702，其中一次是編譯失敗的突變二進位沒被換掉、重跑了原版，白花約 $0.018。

@@ -69,6 +69,66 @@ func TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey(t *testing.T) {
 	}
 }
 
+func TestEndToEndRunHandsAQuestionOnlyThePersonCanAnswerBackAndStops(t *testing.T) {
+	pkg := zipOf(t, map[string]string{
+		"SKILL.md": "---\n" +
+			"name: shoe-size\n" +
+			"description: Converts a person's shoe size into the sizing system they shop in.\n" +
+			"license: MIT\n" +
+			"---\n\n" +
+			"The sizing system a person shops in (EU, UK or US) is a fact only they know,\n" +
+			"and nothing in this skill or the request can settle it. When the request does\n" +
+			"not name the system, call the ask_person tool once with one question asking\n" +
+			"which system they shop in, listing EU, UK and US as the options, and do nothing\n" +
+			"else.\n",
+	})
+	o := finishRealGatewayRun(t, realGatewayRunSpec{
+		user:   "e2e-ask-person",
+		pkg:    pkg,
+		prompt: "Use the shoe-size skill: my foot is 26 cm long, what size should I buy?",
+	})
+	if o.final.Status != "succeeded" {
+		t.Fatalf("run ended %s (%s / %s)", o.final.Status, o.final.FailureClass.Value, o.final.StatusReason)
+	}
+	questions := traceQuestions(t, o.client, o.runID)
+	if len(questions) == 0 {
+		t.Fatal("the run finished without handing a question back to the person")
+	}
+	if !strings.Contains(strings.ToUpper(fmt.Sprint(questions)), "EU") {
+		t.Errorf("questions = %v, want the sizing system the skill says only the person knows", questions)
+	}
+	cost, problems := gatewayUsageFindings(traceUsageEvent(t, o.client, o.runID))
+	for _, problem := range problems {
+		t.Error(problem)
+	}
+	t.Logf("gateway-reported cost for this run: $%.6f", cost)
+}
+
+func traceQuestions(t *testing.T, c *client, runID string) []any {
+	t.Helper()
+	resp, err := c.Get(c.base + "/runs/" + runID + "/trace?mode=advanced")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var body struct {
+		Events []struct {
+			Type    string         `json:"type"`
+			Payload map[string]any `json:"payload"`
+		} `json:"events"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range body.Events {
+		if e.Type == "agent_output" && e.Payload["kind"] == "question" {
+			questions, _ := e.Payload["questions"].([]any)
+			return questions
+		}
+	}
+	return nil
+}
+
 type realGatewayRunSpec struct {
 	user          string
 	pkg           []byte
