@@ -22,10 +22,10 @@ func SimulatedUserReply(facts []string) string {
 }
 
 type unsettledBatch struct {
-	id       pgtype.UUID
-	launched bool
-	actor    pgtype.UUID
-	runIDs   []pgtype.UUID
+	id     pgtype.UUID
+	status BatchStatus
+	actor  pgtype.UUID
+	runIDs []pgtype.UUID
 }
 
 func (s *BatchService) settleBatches(ctx context.Context, workspaceID pgtype.UUID) error {
@@ -62,10 +62,16 @@ func (s *BatchService) settleBatch(
 	ctx context.Context, workspaceID pgtype.UUID, batch *unsettledBatch,
 	ends map[pgtype.UUID]ChainEnd, facts map[pgtype.UUID][]string,
 ) error {
-	open := !batch.launched
+	if batch.status == BatchPaused {
+		return nil
+	}
+	open := batch.status != BatchLaunched
 	for _, runID := range batch.runIDs {
 		end := ends[runID]
 		trialOpen, err := s.answerTrial(ctx, workspaceID, batch.actor, end, facts[end.StartSnapshotID])
+		if refusal, refused := errors.AsType[RunRefusedError](err); refused && refusal.PausesBatch {
+			return pauseBatch(ctx, s.queries(), workspaceID, batch.id, refusal.Reason)
+		}
 		if err != nil {
 			return err
 		}
@@ -88,7 +94,7 @@ func (s *BatchService) unsettledBatches(ctx context.Context, workspaceID pgtype.
 	for _, row := range rows {
 		if len(batches) == 0 || batches[len(batches)-1].id != row.BatchID {
 			batches = append(batches, &unsettledBatch{
-				id: row.BatchID, launched: BatchStatus(row.Status) == BatchLaunched, actor: row.CreatedBy,
+				id: row.BatchID, status: BatchStatus(row.Status), actor: row.CreatedBy,
 			})
 		}
 		if row.RunID.Valid {

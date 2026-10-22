@@ -1,0 +1,55 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "batch-answer-refusal-pauses",
+  "proposal_id": "batch-answer-refusal-pauses",
+  "registry_revision": {
+    "observed_commit": "168172f9e5330d4b966493783b44bef6e4ba82cc",
+    "registry_digest": "sha256:83fb4447b27c7d25772c5ea521611452ccf5006453477f746257e2cef13519f5",
+    "committed_digest": "sha256:10ac768e288a173110d16805badbe08bd2d8a9c35dd0a2a908a296f86ee42248"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-refused-simulated-answer-pauses-the-batch",
+      "mutated_protection": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go:105: if refused && refusal.PausesBatch { -> if refused && refusal.PausesBatch && false {",
+      "failure_evidence": "=== RUN   TestASimulatedAnswerRefusedForCreditPausesTheBatchAndIsGivenAfterResume\n    evaluation_simulated_user_integration_test.go:226: batch after a credit refusal on the answer = launched/%!s(<nil>), want paused/credit_balance\n--- FAIL: TestASimulatedAnswerRefusedForCreditPausesTheBatchAndIsGivenAfterResume (0.21s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.835s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-settles-only-when-no-trial-is-open",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_simulated_user.go:65: if batch.status == BatchPaused { -> if batch.status == BatchPaused && false {",
+      "failure_evidence": "=== RUN   TestASimulatedAnswerRefusedForCreditPausesTheBatchAndIsGivenAfterResume\n    evaluation_simulated_user_integration_test.go:243: a paused batch answered [補充我剛才沒講的資訊：本期用水 45 度；上期沒有欠費。其他照我前面說的。] before it was resumed\n--- FAIL: TestASimulatedAnswerRefusedForCreditPausesTheBatchAndIsGivenAfterResume (0.32s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.715s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-refused-simulated-answer-pauses-the-batch",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestASimulatedAnswerRefusedForCreditPausesTheBatchAndIsGivenAfterResume$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:120886903918b5704d090bc3bc2709c82ce16290fba51793377ec0c942cd208a",
+      "finished_at": "2026-10-22T09:15:48.529904Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-batch-settles-only-when-no-trial-is-open",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^(TestABatchSettlesOnceNoTrialIsRunningAndNoSimulatedAnswerIsOwed|TestASimulatedAnswerRefusedForCreditPausesTheBatchAndIsGivenAfterResume)$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:2a98eb842db44bb8db8e6b98846e925ca70b0164aae7fce3be124dc82a1547ec",
+      "finished_at": "2026-10-22T09:16:00.048715Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

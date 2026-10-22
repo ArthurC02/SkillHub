@@ -8323,9 +8323,10 @@ type EvaluationBatch struct {
 	// Every trial also runs with the skill withheld.
 	WithSkillWithheld bool `json:"with_skill_withheld"`
 	// `launching` while some trials have not started, `launched` once every trial has its run, `paused`
-	// when the owner's credit or run quota ran out (trials already run are kept; resuming starts the next
-	// trial not yet run, and a batch paused for 30 days stops), `stopped` when a run was refused for a
-	// reason that neither waiting nor a top-up fixes.
+	// when the owner's credit or run quota ran out, either starting a trial or answering a simulated
+	// person's question (trials already run are kept and a paused batch answers nothing; resuming starts
+	// the next trial not yet run and gives the answers still owed, and a batch paused for 30 days stops),
+	// `stopped` when a run was refused for a reason that neither waiting nor a top-up fixes.
 	Status EvaluationBatchStatus `json:"status"`
 	// The run refusal reason that paused or stopped the batch, or `paused_too_long`; present only when
 	// paused or stopped.
@@ -8678,9 +8679,10 @@ func (s *EvaluationBatchReportPassRate95) SetHigh(val float64) {
 }
 
 // `launching` while some trials have not started, `launched` once every trial has its run, `paused`
-// when the owner's credit or run quota ran out (trials already run are kept; resuming starts the next
-// trial not yet run, and a batch paused for 30 days stops), `stopped` when a run was refused for a
-// reason that neither waiting nor a top-up fixes.
+// when the owner's credit or run quota ran out, either starting a trial or answering a simulated
+// person's question (trials already run are kept and a paused batch answers nothing; resuming starts
+// the next trial not yet run and gives the answers still owed, and a batch paused for 30 days stops),
+// `stopped` when a run was refused for a reason that neither waiting nor a top-up fixes.
 type EvaluationBatchStatus string
 
 const (

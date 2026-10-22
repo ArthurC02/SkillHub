@@ -1,0 +1,26 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "batch-answer-refusal-pauses",
+  "status": "draft",
+  "intent": "An owner whose credit runs out mid-batch gets every owed answer once they top up and resume.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context batch lists both rules as reviewed, proven by their tests.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-refused-simulated-answer-pauses-the-batch",
+      "statement": "When Run refuses a simulated person's answer because the owner's credit or run quota ran out, the batch pauses with that reason instead of closing the trial; a paused batch answers nothing, and resuming it gives the answers still owed."
+    },
+    {
+      "id": "enforced-a-batch-settles-only-when-no-trial-is-open",
+      "statement": "A batch is marked settled only once none of its trials is still running or owed an answer; a paused batch is neither answered nor settled until it is resumed."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/trial/batch/batch_simulated_user.go",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go"
+  ]
+}

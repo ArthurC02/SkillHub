@@ -378,7 +378,7 @@ func (q *Queries) MarkBatchesLaunched(ctx context.Context, workspaceID pgtype.UU
 
 const pauseEvaluationBatch = `-- name: PauseEvaluationBatch :execrows
 UPDATE evaluation_batches SET status = 'paused', stop_reason = $1, paused_at = now()
-WHERE id = $2 AND workspace_id = $3 AND status = 'launching'
+WHERE id = $2 AND workspace_id = $3 AND status <> 'paused' AND status <> 'stopped' AND settled_at IS NULL
 `
 
 type PauseEvaluationBatchParams struct {

@@ -209,3 +209,50 @@ func sameFacts(got any, want []string) bool {
 	}
 	return true
 }
+
+func TestASimulatedAnswerRefusedForCreditPausesTheBatchAndIsGivenAfterResume(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-simulated-credit")
+	asking := seedFactsAskingRun(t, pool, f, waterFacts, "本期用了幾度？")
+	batchID := seedBatchByCreator(t, pool, f, asking)
+	workspace := mustUUID(t, f.workspaceID)
+	setOwnerBalance(t, pool, f.userID, -1000)
+
+	if err := a.batches.AdvanceBatches(context.Background(), workspace); err != nil {
+		t.Fatal(err)
+	}
+	if status, reason := batchStatus(t, f, batchID); status != "paused" || reason != "credit_balance" {
+		t.Fatalf("batch after a credit refusal on the answer = %s/%s, want paused/credit_balance", status, reason)
+	}
+	if batchSettled(t, pool, batchID) {
+		t.Error("the batch settled with an answer still owed")
+	}
+	if answered, found := continuationOf(t, pool, asking); found {
+		t.Fatalf("the refused trial was answered %v", answered.answers)
+	}
+
+	setOwnerBalance(t, pool, f.userID, betaGrantCredits)
+	if err := a.batches.AdvanceBatches(context.Background(), workspace); err != nil {
+		t.Fatal(err)
+	}
+	if status, _ := batchStatus(t, f, batchID); status != "paused" {
+		t.Fatalf("a paused batch moved to %s without being resumed", status)
+	}
+	if answered, found := continuationOf(t, pool, asking); found {
+		t.Fatalf("a paused batch answered %v before it was resumed", answered.answers)
+	}
+
+	if err := a.batches.ResumeBatch(context.Background(), workspace, mustUUID(t, f.skillID), mustUUID(t, batchID)); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.batches.AdvanceBatches(context.Background(), workspace); err != nil {
+		t.Fatal(err)
+	}
+	if _, found := continuationOf(t, pool, asking); !found {
+		t.Error("the owed answer was not given after the owner topped up and resumed")
+	}
+	if status, _ := batchStatus(t, f, batchID); status != "launched" {
+		t.Errorf("batch after resume = %s, want launched", status)
+	}
+}

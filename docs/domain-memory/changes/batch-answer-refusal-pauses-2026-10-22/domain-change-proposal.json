@@ -1,0 +1,166 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "batch-answer-refusal-pauses",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "batch-answer-refusal-pauses",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-22T09:15:23.190537Z",
+  "verified_at": "2026-10-22T09:17:07.109125Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "168172f9e5330d4b966493783b44bef6e4ba82cc",
+    "registry_digest": "sha256:83fb4447b27c7d25772c5ea521611452ccf5006453477f746257e2cef13519f5",
+    "committed_digest": "sha256:10ac768e288a173110d16805badbe08bd2d8a9c35dd0a2a908a296f86ee42248"
+  },
+  "affected_contexts": [
+    "batch"
+  ],
+  "rule_ids": [
+    "a-refused-simulated-answer-pauses-the-batch",
+    "a-batch-settles-only-when-no-trial-is-open"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "batch",
+    "invariant": "Only batch decides whether a refused trial or answer pauses, stops or closes; run decides which refusals the owner can outwait or fix.",
+    "evidence": [
+      "apps/platform/internal/trial/batch/batch_simulated_user.go:61-85",
+      "apps/platform/internal/entrypoint/wiring/evaluation_batches.go:94-112"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "run-batch-trials: unchanged; the answer port now returns the same RunRefusedError the start port does when the refusal pauses a batch.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/batch/batch_simulated_user.go:61-85",
+      "apps/platform/internal/entrypoint/wiring/evaluation_batches.go:94-112"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A batch paused when a trial could not start for credit, but an answer refused for credit closed the trial as if the conversation had ended, so a top-up and resume could never give it; the report kept trials waiting for an answer forever."
+    ],
+    "decision": "Map a pausing refusal on the answer path to the same RunRefusedError, pause the batch from launched as well as launching, skip answering while paused, and let resume answer what is still owed.",
+    "invariants_preserved": [
+      "A trial that already ran is never run again.",
+      "A batch paused for thirty days stops."
+    ],
+    "rejected_alternatives": [
+      "Retrying the answer on every advance while paused: it would spend the owner's credit the moment it arrives, without the owner choosing to resume."
+    ],
+    "proof_obligations": [
+      "rule-a-refused-simulated-answer-pauses-the-batch",
+      "rule-a-batch-settles-only-when-no-trial-is-open"
+    ],
+    "counterfactual_check": "Letting the wiring close the trial on a pausing refusal fails TestASimulatedAnswerRefusedForCreditPausesTheBatchAndIsGivenAfterResume."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-refused-simulated-answer-pauses-the-batch",
+        "statement": "When Run refuses a simulated person's answer because the owner's credit or run quota ran out, the batch pauses with that reason instead of closing the trial; a paused batch answers nothing, and resuming it gives the answers still owed.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "An answer refused for credit_balance leaves the batch paused and the trial unanswered; topping up without resuming still answers nothing; resuming answers it and the batch is launched again."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_simulated_user.go",
+            "lines": {
+              "start": 65,
+              "end": 74
+            },
+            "excerpt_sha256": "sha256:285a06116bfd5191ac103086cbd1ae7caffa575abf1fdd80bca4b77cbb70d546"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 94,
+              "end": 112
+            },
+            "excerpt_sha256": "sha256:dd2b04e5c5e4a79fdeb7fc402ba0c70b0c71e721507e877b3048980f1bfce84e"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_simulated_user_integration_test.go",
+            "lines": {
+              "start": 213,
+              "end": 258
+            },
+            "excerpt_sha256": "sha256:1ab82cc01935301e00f061ed428abcafc632746a3ffc9d871440f32d97a823b5"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-batch-settles-only-when-no-trial-is-open",
+        "statement": "A batch is marked settled only once none of its trials is still running or owed an answer; a paused batch is neither answered nor settled until it is resumed.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A batch whose next trial is still running after a simulated answer stays unsettled."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_simulated_user.go",
+            "lines": {
+              "start": 48,
+              "end": 59
+            },
+            "excerpt_sha256": "sha256:54b626746fdb5d35b1a8a9e257a0876f89c464f7a4f335b38ce278d206b7d874"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_simulated_user_integration_test.go",
+            "lines": {
+              "start": 79,
+              "end": 113
+            },
+            "excerpt_sha256": "sha256:6c5df44dca15ccf4b7f9877ffc4b88b50436d234cf06b4828dda18a6ebc23a5f"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch_simulated_user.go",
+            "lines": {
+              "start": 61,
+              "end": 85
+            },
+            "content_sha256": "sha256:4a9cd75bd84cfa122354c4ff5174e8f88a733e225df1826c46fd8c768f5410ed",
+            "excerpt_sha256": "sha256:409230ac2c9b3e81ac0b65cc181c5f328bf8e355984b7ebf242a0a12658de6ec"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T09:17:06.348002Z",
+      "scope": "Record a-refused-simulated-answer-pauses-the-batch and amend a-batch-settles-only-when-no-trial-is-open",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "168172f9e5330d4b966493783b44bef6e4ba82cc",
+        "registry_digest": "sha256:83fb4447b27c7d25772c5ea521611452ccf5006453477f746257e2cef13519f5",
+        "committed_digest": "sha256:10ac768e288a173110d16805badbe08bd2d8a9c35dd0a2a908a296f86ee42248"
+      }
+    }
+  ],
+  "supersedes": [
+    "batch-harvest-rules-2026-10-17"
+  ]
+}

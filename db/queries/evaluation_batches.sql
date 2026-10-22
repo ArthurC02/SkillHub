@@ -42,7 +42,7 @@ WHERE id = @id AND workspace_id = @workspace_id AND status = 'launching';
 
 -- name: PauseEvaluationBatch :execrows
 UPDATE evaluation_batches SET status = 'paused', stop_reason = @pause_reason, paused_at = now()
-WHERE id = @id AND workspace_id = @workspace_id AND status = 'launching';
+WHERE id = @id AND workspace_id = @workspace_id AND status <> 'paused' AND status <> 'stopped' AND settled_at IS NULL;
 
 -- name: ResumeEvaluationBatch :execrows
 UPDATE evaluation_batches SET status = 'launching', stop_reason = NULL, paused_at = NULL

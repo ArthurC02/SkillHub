@@ -1,0 +1,37 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "batch-answer-refusal-pauses",
+  "proposal_id": "batch-answer-refusal-pauses",
+  "obligations": [
+    {
+      "id": "rule-a-refused-simulated-answer-pauses-the-batch",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-refused-simulated-answer-pauses-the-batch",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-refused-simulated-answer-pauses-the-batch"
+        }
+      ],
+      "expected_outcome": "When Run refuses a simulated person's answer because the owner's credit or run quota ran out, the batch pauses with that reason instead of closing the trial; a paused batch answers nothing, and resuming it gives the answers still owed.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestASimulatedAnswerRefusedForCreditPausesTheBatchAndIsGivenAfterResume$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-batch-settles-only-when-no-trial-is-open",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-batch-settles-only-when-no-trial-is-open",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-batch-settles-only-when-no-trial-is-open"
+        }
+      ],
+      "expected_outcome": "A batch is marked settled only once none of its trials is still running or owed an answer; a paused batch is neither answered nor settled until it is resumed.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^(TestABatchSettlesOnceNoTrialIsRunningAndNoSimulatedAnswerIsOwed|TestASimulatedAnswerRefusedForCreditPausesTheBatchAndIsGivenAfterResume)$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

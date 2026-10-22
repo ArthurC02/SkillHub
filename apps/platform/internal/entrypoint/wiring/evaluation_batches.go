@@ -101,7 +101,11 @@ func batchAnswerError(err error) error {
 		}
 	}
 	mapped := batchRunError(err)
-	if _, refused := errors.AsType[batch.RunRefusedError](mapped); refused || errors.Is(mapped, batch.ErrTargetGone) {
+	refusal, refused := errors.AsType[batch.RunRefusedError](mapped)
+	if refused && refusal.PausesBatch {
+		return mapped
+	}
+	if refused || errors.Is(mapped, batch.ErrTargetGone) {
 		return batch.ErrNoFurtherRound
 	}
 	return mapped
