@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -928,6 +929,28 @@ func TestNginxDoesNotBufferTheEventStream(t *testing.T) {
 
 	if !strings.Contains(block, "proxy_read_timeout") {
 		t.Errorf("the stream location sets no proxy_read_timeout, so nginx's 60s default cuts a quiet stream:\n%s", block)
+	}
+}
+
+func TestNginxAcceptsTheLongestSearchQueryTheAPIAccepts(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("no source path for this test file")
+	}
+	raw, err := os.ReadFile(filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..", "infra", "images", "web", "nginx.conf"))
+	if err != nil {
+		t.Fatalf("read nginx.conf: %v", err)
+	}
+	m := regexp.MustCompile(`large_client_header_buffers \d+ (\d+)k;`).FindStringSubmatch(string(raw))
+	if m == nil {
+		t.Fatal("nginx.conf keeps the 8k request-line buffer; a long Chinese search is refused with 414 before the API sees it")
+	}
+	kib, _ := strconv.Atoi(m[1])
+	longest := "/api/skills/search?" + url.Values{"q": {strings.Repeat("😀", 2000)}, "limit": {"100"},
+		"script": {"without"}, "validation": {"validated"}, "agent": {"claude-code"}, "tier": {"curated"},
+		"category": {"development"}, "purpose": {"reference"}}.Encode()
+	if line := len("GET  HTTP/1.1") + len(longest); line > kib*1024 {
+		t.Errorf("nginx buffers %dk for a request line, but the longest search the API accepts is %d bytes", kib, line)
 	}
 }
 
