@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.17
+
+### Removed
+
+- `hooks_dir`'s own absolute-path branch: joining an absolute path onto the repository root already yields it.
+
+### Added
+
+- Tests for the hooks directory Git names, relative and absolute, and for the conventional `.git/hooks` taken when Git names none, where installing a hook without that directory is refused.
+
 ## 2.2.16
 
 ### Added

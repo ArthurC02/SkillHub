@@ -7,11 +7,12 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.evidence import citation
-from domain_registry.git_hooks import EMPTY_SHA, install_pre_commit_hook, install_pre_push_hook
+from domain_registry.git_hooks import EMPTY_SHA, hooks_dir, install_pre_commit_hook, install_pre_push_hook
 from test_support import RegistryTestCase
 
 TOOL = Path(__file__).resolve().parent / "registry_tools.py"
@@ -473,6 +474,28 @@ class PreCommitHookTest(RegistryTestCase):
                     env={**inherited, **environment}, capture_output=True, text=True, encoding="utf-8", check=False,
                 )
                 self.assertEqual((1, expected), (result.returncode, result.stderr))
+
+    def test_the_hooks_directory_is_the_one_git_names_relative_or_absolute(self) -> None:
+        elsewhere = self.repo / "shared-hooks"
+        for label, configured, expected in (
+            ("relative", ".githooks", self.repo / ".githooks"),
+            ("absolute", str(elsewhere), elsewhere),
+        ):
+            with self.subTest(label):
+                self.git("config", "core.hooksPath", configured)
+                self.assertEqual(expected.resolve(), hooks_dir(self.repo).resolve())
+
+    def test_without_git_naming_one_the_hooks_directory_is_the_conventional_one_and_installing_is_refused(self) -> None:
+        failed = subprocess.CompletedProcess(["git"], 128, "", "fatal: not a git repository")
+        with patch("domain_registry.git_hooks.run_git", return_value=failed):
+            named = hooks_dir(self.repo)
+            shutil.rmtree(self.repo / ".git" / "hooks", ignore_errors=True)
+            with self.assertRaises(ValueError) as refused:
+                install_pre_push_hook(self.repo / "memory", self.repo, Path("registry_tools.py"))
+        self.assertEqual(
+            (self.repo / ".git" / "hooks", f"Git hooks require an existing hooks directory at {self.repo / '.git' / 'hooks'}"),
+            (named, str(refused.exception)),
+        )
 
     def test_a_hooks_directory_git_cannot_name_stops_the_commit(self) -> None:
         hook = self.install()
