@@ -45,6 +45,9 @@ export const BLOCKED_SENTENCE: Record<NonNullable<PreflightResponse["blocked"]>,
     "要跑自己的小工具,請用有真正沙箱的部署。",
 };
 
+export const NOT_INVITED_SENTENCE =
+  "這個帳號還沒有封測邀請，所以不能試跑。想試的話，用頁尾的「回報問題」選「我想要的東西，這裡沒有」告訴我們你想做什麼。";
+
 export function startFailureSentence(err: unknown): string {
   if (!err) return "";
   if (err instanceof SessionNotReadyError) return err.message;

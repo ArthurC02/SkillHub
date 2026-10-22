@@ -9,6 +9,8 @@ import { useTestCase } from "../testcases.service";
 import { PreflightShell } from "./components/PreflightShell";
 import { PreflightFacts } from "./components/PreflightFacts";
 import { RunStartControl } from "./components/RunStartControl";
+import { ApiError } from "../../../core/api/client";
+import { NOT_INVITED_SENTENCE } from "./preflight.model";
 import "./RunPreflight.page.css";
 
 type RunPreflightParams = { skillId?: string; testCaseId?: string };
@@ -128,6 +130,13 @@ function Preflight({ skill, linkedVersion, testCase, against }: PreflightProps) 
         <Loading what="權限摘要" />
       </PreflightShell>
     );
+  if (preflight.error instanceof ApiError && preflight.error.status === 403) {
+    return (
+      <PreflightShell {...shellProps}>
+        <p role="alert">{NOT_INVITED_SENTENCE}</p>
+      </PreflightShell>
+    );
+  }
   if (preflight.error) {
     return (
       <PreflightShell {...shellProps}>

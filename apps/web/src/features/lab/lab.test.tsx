@@ -107,6 +107,7 @@ function stubPlatform(
   let runBody: unknown = undefined;
   let skillStatus = 0;
   let testCaseStatus = 0;
+  let preflightStatus = 0;
   let testCaseSkill = SKILL;
   const json = (body: unknown, status = 200) =>
     Promise.resolve(
@@ -143,7 +144,10 @@ function stubPlatform(
         ? json({ confirmed: true, summary_hash: sent.summary_hash }, 201)
         : json({ error: "summary_hash does not match the current permission summary" }, 422);
     }
-    if (url.includes("/runs/preflight")) return json(current);
+    if (url.includes("/runs/preflight"))
+      return preflightStatus
+        ? json({ error: "Skill Hub is in a closed beta" }, preflightStatus)
+        : json(current);
     if (url.includes("/runs")) {
       if (refusal) return json({ error: refusal }, 422);
       if (runStatus) return json(runBody ?? { error: "run failed" }, runStatus);
@@ -168,6 +172,9 @@ function stubPlatform(
     },
     failTestCase(status: number) {
       testCaseStatus = status;
+    },
+    failPreflight(status: number) {
+      preflightStatus = status;
     },
     moveTestCaseTo(skillId: string) {
       testCaseSkill = skillId;
@@ -591,6 +598,21 @@ test("04 丙-144 a 403 on run-start says no invite, not the raw server message",
 
   await waitFor(() => text().includes("這個帳號還沒有封測邀請"));
   expect(text()).not.toContain("closed beta");
+});
+
+test("an uninvited account is told at the preflight summary, before confirming anything", async () => {
+  const platform = stubPlatform();
+  platform.failPreflight(403);
+  await renderLab();
+
+  await waitFor(() => text().includes("這個帳號還沒有封測邀請，所以不能試跑"));
+  expect(text()).not.toContain("暫時無法讀取權限摘要");
+  expect(text()).not.toContain("closed beta");
+  expect(confirmButton()).toBeUndefined();
+  expect(
+    Array.from(document.querySelectorAll("button")).some((b) => b.textContent?.includes("再試")),
+  ).toBe(false);
+  expect(platform.calls.some((call) => call.url.includes("/runs/preflight/confirm"))).toBe(false);
 });
 
 test("a 503 on run-start leaves the outcome unconfirmed without exposing the server message", async () => {

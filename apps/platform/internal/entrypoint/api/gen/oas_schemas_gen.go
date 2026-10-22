@@ -2221,6 +2221,10 @@ func (s *ConfirmRunPreflightCreated) SetConfirmedAt(val time.Time) {
 
 func (*ConfirmRunPreflightCreated) confirmRunPreflightRes() {}
 
+type ConfirmRunPreflightForbidden Error
+
+func (*ConfirmRunPreflightForbidden) confirmRunPreflightRes() {}
+
 type ConfirmRunPreflightNotFound Error
 
 func (*ConfirmRunPreflightNotFound) confirmRunPreflightRes() {}
@@ -12782,6 +12786,10 @@ func (*GetRunNotFound) getRunRes() {}
 type GetRunPreflightBadRequest Error
 
 func (*GetRunPreflightBadRequest) getRunPreflightRes() {}
+
+type GetRunPreflightForbidden Error
+
+func (*GetRunPreflightForbidden) getRunPreflightRes() {}
 
 type GetRunPreflightNotFound Error
 

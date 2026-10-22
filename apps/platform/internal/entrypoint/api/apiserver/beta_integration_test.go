@@ -364,8 +364,7 @@ func TestAdmissionListGatesForkRunAndDownloadOnly(t *testing.T) {
 	if msg, _ := body["error"].(string); !strings.Contains(msg, "封測") {
 		t.Errorf("the refusal does not explain itself: %v", body)
 	}
-	hash := bob.confirmPermissions(t)
-	if code, _ := bob.startWithHash(t, hash); code != http.StatusForbidden {
+	if code, _ := bob.startWithHash(t, "any"); code != http.StatusForbidden {
 		t.Errorf("POST run as an uninvited user: got %d, want 403", code)
 	}
 
@@ -374,6 +373,8 @@ func TestAdmissionListGatesForkRunAndDownloadOnly(t *testing.T) {
 		{"POST packaging", http.MethodPost, packagingPath(bob.skillID, bob.versionID), `{"target":"claude-code"}`},
 		{"GET download content", http.MethodGet, noSuchArtifact, ""},
 		{"POST criteria suggest", http.MethodPost, "/test-cases/00000000-0000-4000-8000-0000000000fe/criteria/suggest", ""},
+		{"GET run preflight", http.MethodGet, "/skills/" + bob.skillID + "/runs/preflight?version_id=" + bob.versionID + "&test_case_id=" + bob.testCaseID, ""},
+		{"POST run preflight confirm", http.MethodPost, "/skills/" + bob.skillID + "/runs/preflight/confirm", `{}`},
 	} {
 		code, body := bob.doJSON(t, gated.method, gated.path, gated.body)
 		if code != http.StatusForbidden {

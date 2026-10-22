@@ -277,8 +277,8 @@ func mountTestLabRoutes(mux *http.ServeMux, d Deps) {
 func mountRunRoutes(mux *http.ServeMux, d Deps) {
 	auth := d.Auth
 
-	mux.HandleFunc("GET /skills/{id}/runs/preflight", auth.RequireSession(d.Runs.Preflight))
-	mux.HandleFunc("POST /skills/{id}/runs/preflight/confirm", auth.RequireSession(d.Runs.ConfirmPreflight))
+	mux.HandleFunc("GET /skills/{id}/runs/preflight", auth.RequireSession(auth.RequireInvited(d.Runs.Preflight)))
+	mux.HandleFunc("POST /skills/{id}/runs/preflight/confirm", auth.RequireSession(auth.RequireInvited(d.Runs.ConfirmPreflight)))
 	mux.HandleFunc("POST /skills/{id}/runs", auth.RequireSession(auth.RequireInvited(d.Runs.Create)))
 
 	if d.Runs.Svc.Quota.Enforced() {
