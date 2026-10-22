@@ -249,6 +249,16 @@ test("丙-151: 413 印「檔案超過上限，請縮小套件再上傳。」", a
   expect(text()).not.toContain("file is larger than");
 });
 
+test("a 429 says the uploads came too fast and to wait", async () => {
+  stubOwner(() => json({ error: "rate limit exceeded" }, 429));
+  await render();
+  await submitUpload();
+  await waitFor(() => text().includes("上傳太頻繁"));
+
+  expect(text()).toContain("上傳太頻繁了，請稍等一下再上傳。");
+  expect(text()).not.toContain("這次上傳未被接受");
+});
+
 test.each([
   [false, "已存成 v3"],
   [true, "與現有的 v3 完全相同"],

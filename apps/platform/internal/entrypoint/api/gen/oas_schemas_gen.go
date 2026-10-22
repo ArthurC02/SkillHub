@@ -8101,6 +8101,7 @@ func (*ErrorHeaders) browseCatalogRes()                   {}
 func (*ErrorHeaders) generateSkillRes()                   {}
 func (*ErrorHeaders) importSkillFromURLRes()              {}
 func (*ErrorHeaders) publicSearchSkillsRes()              {}
+func (*ErrorHeaders) saveSkillVersionRes()                {}
 func (*ErrorHeaders) searchSkillsWithCorrectedIntentRes() {}
 func (*ErrorHeaders) uploadSkillPackageRes()              {}
 

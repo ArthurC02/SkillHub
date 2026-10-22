@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
@@ -370,6 +372,9 @@ func TestTheNamedEndpointsAreRateLimitedWhenALimiterIsConfigured(t *testing.T) {
 		}},
 		{"import upload", func(a *api, c *client) (*http.Response, error) {
 			return c.Post(c.base+"/skills/import/upload", "application/octet-stream", strings.NewReader("not a zip"))
+		}},
+		{"version upload", func(a *api, c *client) (*http.Response, error) {
+			return c.Post(c.base+"/skills/"+uuid.NewString()+"/versions", "application/zip", strings.NewReader("not a zip"))
 		}},
 		{"import url", func(a *api, c *client) (*http.Response, error) {
 			return c.Post(c.base+"/skills/import/url", "application/json",
