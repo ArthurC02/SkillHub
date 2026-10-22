@@ -549,7 +549,7 @@ class HarvestTest(RegistryTestCase):
         blank = self.discard(reason=" ")
         self.assertEqual(
             (1, "ERROR: the spec names no package: it has no name",
-             1, "ERROR: discarding a harvest requires the reason it is undone", True),
+             1, "ERROR: discarding a package requires the reason it is undone", True),
             (no_name.returncode, no_name.stderr.strip(), blank.returncode, blank.stderr.strip(), (self.repo / PACKAGE).is_dir()),
         )
 
@@ -599,7 +599,7 @@ class HarvestTest(RegistryTestCase):
         events = len(self.audit_lines())
         again = self.discard()
         self.assertEqual(
-            (1, f"ERROR: the package at {PACKAGE} is approved; only a draft, submitted or verified harvest is discarded",
+            (1, f"ERROR: the package at {PACKAGE} is approved; only a draft, submitted or verified package is discarded",
              1, f"ERROR: no package at {PACKAGE}", "", events),
             (approved.returncode, approved.stderr.strip(), again.returncode, again.stderr.strip(), again.stdout,
              len(self.audit_lines())),
@@ -619,7 +619,7 @@ class HarvestTest(RegistryTestCase):
         self.set_package_status("applied")
         applied = self.discard()
         self.assertEqual(
-            (1, f"ERROR: the package at {PACKAGE} is applied; only a draft, submitted or verified harvest is discarded", True),
+            (1, f"ERROR: the package at {PACKAGE} is applied; only a draft, submitted or verified package is discarded", True),
             (applied.returncode, applied.stderr.strip(), (self.repo / PACKAGE).exists()),
         )
 

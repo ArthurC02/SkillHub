@@ -464,11 +464,11 @@ def discard_harvest(package_root: Path, registry_root: Path, repo_root: Path, re
     if not (package_root / PROPOSAL_FILE).is_file():
         raise ValueError(f"no package at {shown}")
     if not reason.strip():
-        raise ValueError("discarding a harvest requires the reason it is undone")
+        raise ValueError("discarding a package requires the reason it is undone")
     proposal = load_json(package_root / PROPOSAL_FILE)
     status = proposal.get("status")
     if status not in DISCARDABLE:
-        raise ValueError(f"the package at {shown} is {status}; only a draft, submitted or verified harvest is discarded")
+        raise ValueError(f"the package at {shown} is {status}; only a draft, submitted or verified package is discarded")
     named_elsewhere = _named_by_other_packages(package_root)
     retracted, kept = [], []
     for asset, record_id in _updated_records(proposal):

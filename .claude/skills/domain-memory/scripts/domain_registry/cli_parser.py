@@ -443,7 +443,7 @@ def _add_harvest_command(commands: argparse._SubParsersAction) -> None:
     add_path(prove_parser, "--spec")
     add_path(prove_parser, "--changes-root", required=False)
     prove_parser.add_argument("--through", choices=HARVEST_STAGES, default="draft")
-    discard_parser = commands.add_parser("discard-harvest", help="Undo a harvest that did not finish")
+    discard_parser = commands.add_parser("discard-harvest", help="Withdraw a Change Package that is not applied, written by harvest or by hand")
     add_path(discard_parser, "--package-root", required=False)
     add_path(discard_parser, "--spec", required=False)
     add_path(discard_parser, "--changes-root", required=False)

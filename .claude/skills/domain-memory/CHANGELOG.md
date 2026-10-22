@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.3.4
+
+### Changed
+
+- `discard-harvest` says what it already did: it withdraws any Change Package that is not applied, harvested or written by hand. Its help reads `Withdraw a Change Package that is not applied, written by harvest or by hand`, its refusals say `package` where they said `harvest` (`only a draft, submitted or verified package is discarded`, `discarding a package requires the reason it is undone`), and the review path in AGENTS.md names it, so a submitted package a refactor left stale is withdrawn with one command instead of by deleting the directory and restoring the audit log by hand.
+
+### Added
+
+- A test that a submitted package written by hand is withdrawn: its candidate retracted, the directory removed and the reason in the audit event.
+
 ## 2.3.3
 
 ### Fixed

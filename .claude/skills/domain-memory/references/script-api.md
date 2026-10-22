@@ -210,11 +210,11 @@ A resume over the spec's own `draft` or `submitted` package skips what is alread
 
 ### `discard-harvest`
 
-*Undo a harvest that did not finish.*
+*Withdraw a Change Package that is not applied, written by harvest or by hand.*
 
 `discard-harvest (--package-root <path> | --spec <file> [--changes-root <dir>]) --registry-root <root> --repo-root <repo> --reason <text>`
 
-With `--spec` the package is the one `harvest` writes for that spec, under `--changes-root` or the Registry's `changes/`, so the pair takes the same arguments; exactly one of `--package-root` and `--spec` is given. Refuses a package whose proposal is not `draft`, `submitted` or `verified`, and a directory with no package, so a verified harvest that will not be shipped is undone the same way, and `harvest` names this command, with the package path, when it refuses to re-run a verified harvest. Retracts, as `retract-candidate` does and with the reason, each record the package's `registry_updates` name that is still a candidate, except one that another package beside it, not superseded, also names; a reviewed record is left alone. Then removes the package directory and appends one `discard-harvest` audit event with the package path, the `retracted` and `kept` records and the reason, and prints it.
+Withdraws a Change Package that is not applied, whether `harvest` wrote it or it was written by hand with `init-change-package`, such as a submitted package whose citations a refactor moved. With `--spec` the package is the one `harvest` writes for that spec, under `--changes-root` or the Registry's `changes/`, so the pair takes the same arguments; exactly one of `--package-root` and `--spec` is given. Refuses a package whose proposal is not `draft`, `submitted` or `verified`, and a directory with no package, so a verified harvest that will not be shipped is undone the same way, and `harvest` names this command, with the package path, when it refuses to re-run a verified harvest. Retracts, as `retract-candidate` does and with the reason, each record the package's `registry_updates` name that is still a candidate, except one that another package beside it, not superseded, also names; a reviewed record is left alone. Then removes the package directory and appends one `discard-harvest` audit event with the package path, the `retracted` and `kept` records and the reason, and prints it.
 
 ### `retract-candidate`
 

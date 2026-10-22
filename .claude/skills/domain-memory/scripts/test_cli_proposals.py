@@ -13,6 +13,8 @@ from domain_registry.changes import init_change_package, validate_change_package
 from domain_registry.evidence import citation
 from domain_registry.harvest_package import harvest_package, write_harvest_package
 from domain_registry.hitl import record_approval, submit_proposal
+from domain_registry.registry import record_by_id
+from domain_registry.updates import promote_candidate
 from test_support import RegistryTestCase, applied_by
 
 
@@ -521,6 +523,21 @@ class CliProposalsTest(RegistryTestCase):
         )
         self.assertEqual((0, {"current": 1, "shifted": 0}),
                          (result.returncode, {key: json.loads(result.stdout)["summary"][key] for key in ("current", "shifted")}))
+
+    def test_discard_harvest_withdraws_a_submitted_package_written_by_hand(self) -> None:
+        package = self.package_with_a_candidate_rule("An order total is non-negative.")
+        promote_candidate(package, self.repo / "memory", "rules", "order-total")
+        submit_proposal(package, self.repo / "memory", self.repo)
+        status = self.proposal_in(package)["status"]
+        result = self.run_cli(
+            "discard-harvest", "--package-root", str(package), "--registry-root", str(self.repo / "memory"),
+            "--repo-root", str(self.repo), "--reason", "a refactor moved the cited lines",
+        )
+        self.assertEqual(
+            ("submitted", 0, ["rules/order-total"], "a refactor moved the cited lines", None, False),
+            (status, result.returncode, json.loads(result.stdout)["retracted"], self.audit_lines()[-1]["reason"],
+             record_by_id(self.repo / "memory", "rules", "order-total"), package.exists()),
+        )
 
     def test_rebase_proposal_prints_the_restamped_package_and_a_refusal_goes_to_stderr(self) -> None:
         package = self.draft_package()
