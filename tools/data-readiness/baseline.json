@@ -5,7 +5,7 @@
     "partitions": 4,
     "columns": 654,
     "queries": 509,
-    "constraints": 357,
+    "constraints": 312,
     "foreign_keys": 145,
     "types": 2,
     "registry_records": 475,
@@ -54,7 +54,7 @@
     },
     "rules.constraints_cited_by_a_record": {
       "numerator": 2,
-      "denominator": 357,
+      "denominator": 312,
       "ratio": 0.006
     },
     "rules.foreign_keys_inside_one_context": {
