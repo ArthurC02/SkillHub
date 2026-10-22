@@ -3,12 +3,12 @@
   "proposal_id": "unevaluated-run-sweep",
   "proposer": "domain-memory-agent",
   "requirement_id": "unevaluated-run-sweep",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-22T22:47:40.644551Z",
   "verified_at": "2026-10-22T22:48:53.290159Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T22:51:21.429889Z",
+  "applied_at": "2026-10-22T22:51:55.175276Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "dd7bae26eae8183b5a102509f54ce3e0676e8a8d",
@@ -120,5 +120,9 @@
         "committed_digest": "sha256:cfa3f71cd7410b49ef4e03a47bde1874ae4870db309bcf3bea90f2f6275aa784"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "59c24d018b451b340244145ce20660e8ac15224c",
+    "registry_digest": "sha256:7f17ee0c5c6a2d11ea857b5446e77e55c30d6928fbad44772fdbd277886716ba"
+  }
 }
