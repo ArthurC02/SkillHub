@@ -1,0 +1,145 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "purge-reads-grouped-recite",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "purge-reads-grouped-recite",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-22T05:35:30.225433Z",
+  "verified_at": "2026-10-22T05:35:32.031937Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "57426f2b514f1aa0d9eb1e8ad5cbd9fa1aab1847",
+    "registry_digest": "sha256:12c9af9b713eed00ea169b7d63640ad457b2f48b6ddf9f506da2f64952146942",
+    "committed_digest": "sha256:12c9af9b713eed00ea169b7d63640ad457b2f48b6ddf9f506da2f64952146942"
+  },
+  "affected_contexts": [
+    "packaging",
+    "publishing",
+    "registry",
+    "run",
+    "testlab"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-registry-version-references",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "producer_context": "run",
+        "consumer_context": "registry",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 208,
+              "end": 208
+            },
+            "content_sha256": "sha256:38f4fecafa0e52de5570cb06df9480d3fbc0e93b2859f646eaf6d5b3139f47c6",
+            "excerpt_sha256": "sha256:9294d276b1997a4340eca9cbaffa3d1b553e0570fa05c5f5b05ac1dacedc5b5c",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "packaging-registry-version-references",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "producer_context": "packaging",
+        "consumer_context": "registry",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 209,
+              "end": 209
+            },
+            "content_sha256": "sha256:38f4fecafa0e52de5570cb06df9480d3fbc0e93b2859f646eaf6d5b3139f47c6",
+            "excerpt_sha256": "sha256:e15e580dafcd244d704d134b27136d2bcb90fbb118cd7fb942afeddc4b1fda80",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "publishing-registry-version-references",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "producer_context": "publishing",
+        "consumer_context": "registry",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 210,
+              "end": 210
+            },
+            "content_sha256": "sha256:38f4fecafa0e52de5570cb06df9480d3fbc0e93b2859f646eaf6d5b3139f47c6",
+            "excerpt_sha256": "sha256:e26bc149ef018334dc26aa8258b4d7553af266f31a16eaf0fe14f027f0f14e5f",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "testlab-registry-skill-references",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook inside the caller's transaction",
+        "producer_context": "testlab",
+        "consumer_context": "registry",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 211,
+              "end": 211
+            },
+            "content_sha256": "sha256:38f4fecafa0e52de5570cb06df9480d3fbc0e93b2859f646eaf6d5b3139f47c6",
+            "excerpt_sha256": "sha256:8a19f2f76fc08b0b256a21e00b3f06b218e56ca69e9283578561465901a80053",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "platform-shifted-recite"
+  ]
+}

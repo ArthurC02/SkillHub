@@ -1792,12 +1792,14 @@ func assertPurgedWorkspaceIsGone(t *testing.T, pool *pgxpool.Pool, workspaceID p
 
 func registryPurger(pool *pgxpool.Pool) *registry.Service {
 	return &registry.Service{
-		Pool:                pool,
-		VersionsInRuns:      run.SkillVersionsInRuns,
-		VersionsInDownloads: packaging.SkillVersionsInDownloads,
-		VersionsInBundles:   publishing.SkillVersionsInBundles,
-		SkillsWithTestCases: testlab.SkillsWithTestCases,
-		SkillsWithHeldNames: publishing.SkillsWithHeldNames,
+		Pool: pool,
+		PurgeReads: registry.PurgeReads{
+			VersionsInRuns:      run.SkillVersionsInRuns,
+			VersionsInDownloads: packaging.SkillVersionsInDownloads,
+			VersionsInBundles:   publishing.SkillVersionsInBundles,
+			SkillsWithTestCases: testlab.SkillsWithTestCases,
+			SkillsWithHeldNames: publishing.SkillsWithHeldNames,
+		},
 	}
 }
 

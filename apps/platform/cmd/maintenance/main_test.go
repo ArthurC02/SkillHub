@@ -156,7 +156,7 @@ func TestPurgeFeedbackRefusesWithoutARetentionWindow(t *testing.T) {
 }
 
 func TestTheDeletionSweepCarriesEveryReferenceRead(t *testing.T) {
-	svc := reflect.ValueOf(*registryPurger(nil))
+	svc := reflect.ValueOf(registryPurger(nil).PurgeReads)
 	for i := range svc.NumField() {
 		field := svc.Field(i)
 		if field.Type() == reflect.TypeFor[registry.ReferenceRead]() && field.IsNil() {

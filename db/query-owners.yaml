@@ -418,6 +418,7 @@ scope:
   ListSkillVersionsInRuns: user
   ListSkillVersionsInBundles: user
   ListSkillsPastDeletionGrace: user
+  ListSkillsWithHeldPublicationNames: user
   ListSkillsWithTestCases: user
   ListSnapshottedTestCases: user
   ListStalledCreationSessions: user

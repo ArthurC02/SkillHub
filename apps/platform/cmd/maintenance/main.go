@@ -371,13 +371,15 @@ func logSweep(sweep string, err error, counts ...any) {
 
 func registryPurger(pool *pgxpool.Pool) *registry.Service {
 	return &registry.Service{
-		Pool:                pool,
-		VersionsInRuns:      run.SkillVersionsInRuns,
-		VersionsInDownloads: packaging.SkillVersionsInDownloads,
-		VersionsInBundles:   publishing.SkillVersionsInBundles,
-		SkillsWithTestCases: testlab.SkillsWithTestCases,
-		SkillsWithHeldNames: publishing.SkillsWithHeldNames,
-		RemoveFromIndex:     catalog.RemoveSkillFromIndex,
+		Pool: pool,
+		PurgeReads: registry.PurgeReads{
+			VersionsInRuns:      run.SkillVersionsInRuns,
+			VersionsInDownloads: packaging.SkillVersionsInDownloads,
+			VersionsInBundles:   publishing.SkillVersionsInBundles,
+			SkillsWithTestCases: testlab.SkillsWithTestCases,
+			SkillsWithHeldNames: publishing.SkillsWithHeldNames,
+		},
+		RemoveFromIndex: catalog.RemoveSkillFromIndex,
 	}
 }
 

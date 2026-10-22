@@ -48,6 +48,10 @@ type Service struct {
 
 	CatalogWorkspaces func(ctx context.Context, db gen.DBTX) ([]pgtype.UUID, error)
 
+	PurgeReads
+}
+
+type PurgeReads struct {
 	VersionsInRuns      ReferenceRead
 	VersionsInDownloads ReferenceRead
 	VersionsInBundles   ReferenceRead

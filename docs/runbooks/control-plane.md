@@ -164,9 +164,11 @@ sudo systemctl start skillhub-backup
 ### 物件儲存遺失或被誤刪
 
 1. **先停物件備份**：`sudo systemctl stop skillhub-daily@backup-objects.timer`。它照常跑會把來源不見的物件全部記成刪除，35 天後連備份一起刪。
+   **也停 worker**：`$C stop platform-worker`。它每小時比對物件，同一個物件連兩輪不見就把資料集與下載包永久標成遺失，物件之後回來也救不回那些列。
 2. 用任何 S3 工具把備份 bucket 的 `objects/` 底下整份複製回應用程式 bucket，**去掉 `objects/` 前綴**（`objects/purge-ledger/…` 回到 `purge-ledger/…`）。備份 bucket 的 `tombstones/` 不要複製。
 3. 跑一次 `$C --profile jobs run --rm maintenance replay-purges`：清除紀錄跟著物件回來了，這一步把已清除帳號的物件再刪一次。
 4. `sudo systemctl start skillhub-daily@backup-objects.timer`，再手動跑一次 `$C --profile jobs run --rm maintenance backup-objects`：它會把回來的物件的刪除記號清掉，log 的 `revived` 是清掉的數目。
+5. 物件都回來之後才 `$C start platform-worker`。
 
 ## 5. 告警
 

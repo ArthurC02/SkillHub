@@ -203,13 +203,15 @@ func wireWorkspacePurge(identitySvc *identity.Service, testlabSvc *testlab.Servi
 	runPurgeSvc := &run.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	packagingPurgeSvc := &packaging.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	registryPurgeSvc := &registry.Service{
-		Pool:                pool,
-		VersionsInRuns:      run.SkillVersionsInRuns,
-		VersionsInDownloads: packaging.SkillVersionsInDownloads,
-		VersionsInBundles:   publishing.SkillVersionsInBundles,
-		SkillsWithTestCases: testlab.SkillsWithTestCases,
-		SkillsWithHeldNames: publishing.SkillsWithHeldNames,
-		RemoveFromIndex:     catalog.RemoveSkillFromIndex,
+		Pool: pool,
+		PurgeReads: registry.PurgeReads{
+			VersionsInRuns:      run.SkillVersionsInRuns,
+			VersionsInDownloads: packaging.SkillVersionsInDownloads,
+			VersionsInBundles:   publishing.SkillVersionsInBundles,
+			SkillsWithTestCases: testlab.SkillsWithTestCases,
+			SkillsWithHeldNames: publishing.SkillsWithHeldNames,
+		},
+		RemoveFromIndex: catalog.RemoveSkillFromIndex,
 	}
 	ingestPurgeSvc := &ingest.Service{Pool: pool, SourcesInVersions: registry.SourcesInVersions}
 

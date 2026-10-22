@@ -27,16 +27,16 @@ func TestEachReferenceReadIsRequiredBeforeAPurge(t *testing.T) {
 		missing string
 		service Service
 	}{
-		{"runs", Service{VersionsInDownloads: read, VersionsInBundles: read, SkillsWithTestCases: read}},
-		{"downloads", Service{VersionsInRuns: read, VersionsInBundles: read, SkillsWithTestCases: read}},
-		{"bundles", Service{VersionsInRuns: read, VersionsInDownloads: read, SkillsWithTestCases: read}},
-		{"test cases", Service{VersionsInRuns: read, VersionsInDownloads: read, VersionsInBundles: read}},
+		{"runs", Service{PurgeReads: PurgeReads{VersionsInDownloads: read, VersionsInBundles: read, SkillsWithTestCases: read}}},
+		{"downloads", Service{PurgeReads: PurgeReads{VersionsInRuns: read, VersionsInBundles: read, SkillsWithTestCases: read}}},
+		{"bundles", Service{PurgeReads: PurgeReads{VersionsInRuns: read, VersionsInDownloads: read, SkillsWithTestCases: read}}},
+		{"test cases", Service{PurgeReads: PurgeReads{VersionsInRuns: read, VersionsInDownloads: read, VersionsInBundles: read}}},
 	} {
 		if err := tc.service.requirePurgeReads(); !errors.Is(err, errPurgeReadsNotInjected) {
 			t.Errorf("without the %s read: err = %v, want errPurgeReadsNotInjected", tc.missing, err)
 		}
 	}
-	all := Service{VersionsInRuns: read, VersionsInDownloads: read, VersionsInBundles: read, SkillsWithTestCases: read}
+	all := Service{PurgeReads: PurgeReads{VersionsInRuns: read, VersionsInDownloads: read, VersionsInBundles: read, SkillsWithTestCases: read}}
 	if err := all.requirePurgeReads(); err != nil {
 		t.Errorf("with every read injected: err = %v, want nil", err)
 	}
@@ -44,7 +44,7 @@ func TestEachReferenceReadIsRequiredBeforeAPurge(t *testing.T) {
 
 func TestTheDeletionSweepRefusesWithoutTheHeldNameRead(t *testing.T) {
 	var read ReferenceRead = func(context.Context, gen.DBTX, []pgtype.UUID) ([]pgtype.UUID, error) { return nil, nil }
-	withoutNames := Service{VersionsInRuns: read, VersionsInDownloads: read, VersionsInBundles: read, SkillsWithTestCases: read}
+	withoutNames := Service{PurgeReads: PurgeReads{VersionsInRuns: read, VersionsInDownloads: read, VersionsInBundles: read, SkillsWithTestCases: read}}
 	if _, err := withoutNames.PurgeDeletedSkills(context.Background(), time.Hour, 10); !errors.Is(err, errPurgeReadsNotInjected) {
 		t.Errorf("without the held-name read: err = %v, want errPurgeReadsNotInjected", err)
 	}
