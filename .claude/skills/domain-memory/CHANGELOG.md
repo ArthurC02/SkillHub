@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.6
+
+### Fixed
+
+- A registry recovery journal that is not JSON is refused as `registry recovery journal is not JSON`, instead of leaking the JSON decoder's message without the file's name.
+
+### Added
+
+- Tests for the refusals of a source selection outside the repository, missing or empty; each way a record file cannot be read; a recovery journal that is not JSON, too large or not an object; the exact reasons a base revision is stale or cannot be compared; a record brief with nothing to point out and a Context the Registry lacks; and a configured hooks path that does not exist.
+
 ## 2.2.5
 
 ### Fixed

@@ -30,9 +30,10 @@ def transaction_path(root: Path) -> Path:
 def read_journal_document(journal: Path) -> Any:
     if journal.stat().st_size > MAX_JSON_BYTES:
         raise ValueError("registry recovery journal is too large")
-    return json.loads(
-        journal.read_text(encoding="utf-8"), object_pairs_hook=reject_duplicate_keys
-    )
+    try:
+        return json.loads(journal.read_text(encoding="utf-8"), object_pairs_hook=reject_duplicate_keys)
+    except json.JSONDecodeError as error:
+        raise ValueError("registry recovery journal is not JSON") from error
 
 
 def _clear_read_only_and_retry(function: Callable[[str], object], path: str, _error: object) -> None:

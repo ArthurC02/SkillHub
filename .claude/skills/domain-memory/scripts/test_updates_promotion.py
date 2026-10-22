@@ -436,7 +436,18 @@ class UpdatesPromotionTest(RegistryTestCase):
         value = json.loads(path.read_text(encoding="utf-8"))
         value["source_policy"]["authority"] = "somebody else entirely"
         path.write_text(json.dumps(value), encoding="utf-8")
-        with self.assertRaisesRegex(ValueError, "stale"):
+        with self.assertRaisesRegex(
+            ValueError, "^proposal base revision is stale; rebase-proposal, then obtain fresh approval: the Domain Memory policy changed$"
+        ):
+            require_current_registry_revision(captured, self.repo / "memory", self.repo)
+
+    def test_a_base_without_a_commit_cannot_be_compared_once_the_registry_moved(self) -> None:
+        captured = {"base_registry_revision": {"registry_digest": "sha256:" + "0" * 64, "observed_commit": None}}
+        with self.assertRaisesRegex(
+            ValueError,
+            "^proposal base revision is stale; rebase-proposal, then obtain fresh approval: the base revision names no commit, "
+            "so the records this proposal touches cannot be compared; rebase-proposal restamps the proposal on the current Registry$",
+        ):
             require_current_registry_revision(captured, self.repo / "memory", self.repo)
 
     def test_superseding_a_list_that_names_the_reviewing_proposal_replaces_a_reviewed_record(self) -> None:

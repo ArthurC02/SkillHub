@@ -134,6 +134,17 @@ class SourcesTest(RegistryTestCase):
         self.assertEqual(result["selection_status"], "agent-asserted")
         self.assertEqual(stored_policy_of(self.repo)["source_policy"]["selected_paths"], ["fact.md"])
 
+    def test_a_selection_outside_the_repository_missing_or_empty_is_refused_by_name(self) -> None:
+        (self.repo / "docs").mkdir()
+        for label, paths, message in (
+            ("outside", [self.repo.parent / "elsewhere"], f"source path is outside repository: {self.repo.parent / 'elsewhere'}"),
+            ("missing", [self.repo / "nowhere"], f"source path does not exist: {self.repo / 'nowhere'}"),
+            ("empty", [], "at least one source path is required"),
+        ):
+            with self.subTest(label), self.assertRaises(ValueError) as refused:
+                selected_source_map(self.repo, paths)
+            self.assertEqual(message, str(refused.exception))
+
     def test_a_source_map_with_mismatched_snapshot_paths_is_unverified(self) -> None:
         source = self.repo / "docs"
         source.mkdir()

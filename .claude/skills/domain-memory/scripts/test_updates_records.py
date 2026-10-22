@@ -99,6 +99,25 @@ class UpdatesRecordsTest(RegistryTestCase):
         self.assertEqual(recorded["selected_paths"], ["docs"])
         self.assertEqual("valid", verify_audit(self.repo / "memory")["status"])
 
+    def test_each_way_a_record_file_cannot_be_read_is_named(self) -> None:
+        one_record = " must hold one record object with a completed id, such as"
+        for label, content, message in (
+            ("missing", None, "no such record file: {path}"),
+            ("not JSON", "{not json", "invalid JSON: {path}"),
+            ("duplicate key", '{"id": "a", "id": "b"}', "invalid JSON: {path}"),
+            ("a list", "[]", "{path}" + one_record),
+            ("placeholder id", '{"id": "<pending>"}', "{path}" + one_record),
+        ):
+            with self.subTest(label):
+                path = self.repo / "record.json"
+                if content is None:
+                    path.unlink(missing_ok=True)
+                else:
+                    path.write_text(content, encoding="utf-8")
+                with self.assertRaises(ValueError) as refused:
+                    upsert_candidate(self.repo / "memory", self.repo, "contexts", path)
+                self.assertTrue(str(refused.exception).startswith(message.format(path=path)), str(refused.exception))
+
     def test_a_file_holding_several_records_says_how_many_it_should_hold(self) -> None:
         record = self.write_record("many.json", [{"id": "orders"}, {"id": "billing"}])
         with self.assertRaisesRegex(ValueError, "One record per file; give --record-file once for each record"):

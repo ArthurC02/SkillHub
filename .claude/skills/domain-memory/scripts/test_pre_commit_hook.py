@@ -93,6 +93,12 @@ class PreCommitHookTest(RegistryTestCase):
         self.assertNotIn("\r", content)
         self.assertIn(f"memory='memory'\nexisting{EXISTING_FROM_GIT}", content)
 
+    def test_a_configured_hooks_path_that_does_not_exist_is_refused_by_name(self) -> None:
+        self.git("config", "core.hooksPath", ".githooks")
+        with self.assertRaises(ValueError) as refused:
+            install_pre_commit_hook(self.repo / "memory", self.repo, self.repo / "registry_tools.py")
+        self.assertEqual(f"Git hooks require an existing hooks directory at {self.repo / '.githooks'}", str(refused.exception))
+
     def test_the_hook_installs_where_a_configured_hooks_path_points(self) -> None:
         (self.repo / ".githooks").mkdir()
         self.git("config", "core.hooksPath", ".githooks")

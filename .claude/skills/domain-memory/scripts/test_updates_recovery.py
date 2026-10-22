@@ -19,7 +19,7 @@ from domain_registry.updates import (
     reconcile_pending_update,
     upsert_candidate,
 )
-from domain_registry.common import registry_dir
+from domain_registry.common import MAX_JSON_BYTES, registry_dir
 from domain_registry.store import INDEX, has_registry, read_document
 from test_support import RegistryTestCase, append_audit
 
@@ -205,6 +205,21 @@ class UpdatesRecoveryTest(RegistryTestCase):
                 backup.exists(), staging.exists(), transaction_path(root).exists(),
             ),
         )
+
+    def test_a_journal_that_is_not_json_too_large_or_not_an_object_is_refused_by_name(self) -> None:
+        for label, content, message in (
+            ("not JSON", "{not json", "registry recovery journal is not JSON"),
+            ("a list", "[]", "registry recovery journal is malformed"),
+            ("too large", "[" + " " * MAX_JSON_BYTES + "]", "registry recovery journal is too large"),
+        ):
+            with self.subTest(label):
+                self.tearDown()
+                self.setUp()
+                root, backup, staging = self.interrupted_transaction("installed")
+                transaction_path(root).write_text(content, encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, f"^{message}$"):
+                    recover_interrupted_update(root, False)
+                self.assertEqual((True, True, True), (backup.exists(), staging.exists(), transaction_path(root).exists()))
 
     def test_a_journal_without_a_phase_or_an_operation_id_is_malformed(self) -> None:
         for missing in ("phase", "operation_id"):

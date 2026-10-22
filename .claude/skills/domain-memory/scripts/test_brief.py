@@ -7,7 +7,7 @@ import unittest
 from domain_registry.brief import brief_for_change, brief_for_record, to_markdown
 from domain_registry.evidence import citation
 from domain_registry.sources import confirm_sources, refresh_sources, selected_source_map, write_source_map
-from test_support import RegistryTestCase, applied_by
+from test_support import VERIFIED, RegistryTestCase, applied_by
 
 INTERACTION = {"id": "orders-bill", "producer_context": "orders", "consumer_context": "billing", "description": "Orders asks billing to invoice."}
 RULE = {"id": "order-total", "contexts": ["orders"], "statement": "An order total is non-negative."}
@@ -307,6 +307,19 @@ class RecordBriefTest(BriefTest):
              "1 stale citation; recite them before relying on the record."],
             brief["attention"],
         )
+
+    def test_a_reviewed_cited_and_current_record_has_nothing_to_point_out(self) -> None:
+        self.two_mapped_contexts(rules=[{**RULE, "contexts": [], "status": "reviewed", "verified": VERIFIED}])
+        brief = brief_for_record(self.repo / "memory", self.repo, "rules", "order-total")
+        self.assertEqual(
+            (["Nothing stands out; the record is reviewed, cited and verified."], 1),
+            (brief["attention"], brief["evidence"]["summary"]["current"]),
+        )
+
+    def test_a_context_the_registry_lacks_is_said_so_in_the_markdown(self) -> None:
+        self.two_mapped_contexts(rules=[{**RULE, "contexts": ["shipping"]}])
+        markdown = to_markdown(brief_for_record(self.repo / "memory", self.repo, "rules", "order-total"))
+        self.assertIn("### shipping\n\nNot in the Registry.\n", markdown)
 
     def test_a_record_that_cites_nothing_is_said_to_be_unverifiable(self) -> None:
         self.two_mapped_contexts(rules=[{"id": "bare", "contexts": [], "statement": "Bare.", "evidence": []}])
