@@ -156,6 +156,18 @@ func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
 	assertPackagingSharesTheTestLabService(t, set)
 	assertObjectReconcilerDependenciesWired(t, set)
 	assertRunEventAndSkillVersionQueuesWired(t, set)
+	if set.Creation.Billing.ModelCallsHalted == nil {
+		t.Error("creation steps in this process cannot see a P1 halt")
+	}
+}
+
+func TestTheEnrichmentBackfillSeesAP1Halt(t *testing.T) {
+	pool, deps := testDeps(t)
+	halted := func(context.Context) bool { return true }
+	svc := newBackfillService(pool, deps, halted)
+	if svc == nil || svc.Billing.ModelCallsHalted == nil || !svc.Billing.ModelCallsHalted(context.Background()) {
+		t.Error("the enrichment backfill was built without the P1 halt check; it would call the model during an incident")
+	}
 }
 
 func TestBuildWorkersLeavesTheJudgeUnsetWithoutAnLLM(t *testing.T) {

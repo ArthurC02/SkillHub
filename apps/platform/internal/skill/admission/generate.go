@@ -250,7 +250,7 @@ func (s *Service) admitGeneration(ctx context.Context, job generation) error {
 		})
 		return err
 	}
-	if s.Billing.ModelCallsHalted != nil && s.Billing.ModelCallsHalted(ctx) {
+	if s.Billing.halted(ctx) {
 		return ErrModelCallsHalted
 	}
 	if s.Billing.CanStart == nil {

@@ -1,0 +1,47 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "p1-halt-stops-enrichment",
+  "proposal_id": "p1-halt-stops-enrichment",
+  "registry_revision": {
+    "observed_commit": "6046eb7f0cd8d86716c04c25e397732a15c3ff21",
+    "registry_digest": "sha256:cd88d464926f80ced0feedd76b49d6d024bf229b66f91162f7460122bf30ce2b",
+    "committed_digest": "sha256:cd88d464926f80ced0feedd76b49d6d024bf229b66f91162f7460122bf30ce2b"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-user-started-model-calls-stop-under-a-p1-halt",
+      "mutated_protection": "apps/platform/internal/skill/admission/enrich.go:116: || s.Billing.halted(ctx) { -> {",
+      "failure_evidence": "=== RUN   TestAnImportUnderAP1HaltLeavesEnrichmentPendingWithoutCallingTheModel\n    cost_test.go:191: enrichment status = \"enriched\", want pending so the backfill picks it up after the halt\n    cost_test.go:194: cost events = [index_enrich index_enrich], want none: the model is not called under a P1 halt\n--- FAIL: TestAnImportUnderAP1HaltLeavesEnrichmentPendingWithoutCallingTheModel (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\t5.446s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/p1-halt-stops-enrichment-2026-10-23 --path apps/platform/internal/entrypoint/api/apiserver/app.go --path apps/platform/internal/entrypoint/worker/worker.go",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:7c07870e5aeab0a0456f6e79b38abb1087aa66570f3be97c4868bad6a5d597f2",
+      "finished_at": "2026-10-22T16:17:12.166483Z"
+    },
+    {
+      "obligation_id": "rule-user-started-model-calls-stop-under-a-p1-halt",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^(TestAnImportUnderAP1HaltLeavesEnrichmentPendingWithoutCallingTheModel|TestTheEnrichmentBackfillWaitsOutAP1Halt)$ ./internal/skill/admission/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:75a861489d953625168359389838464310d549f140731d31193adce71d5e495c",
+      "finished_at": "2026-10-22T16:17:22.486808Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

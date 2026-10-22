@@ -534,6 +534,9 @@ func (s *Service) ReindexPending(ctx context.Context, limit int32) (done, failed
 	if s.PendingEnrichments == nil {
 		return 0, 0, errors.New("ingest: pending enrichment lister not injected; refusing backfill")
 	}
+	if s.Billing.halted(ctx) {
+		return 0, 0, nil
+	}
 	rows, err := s.PendingEnrichments(ctx, limit)
 	if err != nil {
 		return 0, 0, err

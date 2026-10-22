@@ -54,6 +54,10 @@ type GenerateBilling struct {
 	Charge           func(ctx context.Context, charge GenerationCharge) error
 }
 
+func (b GenerateBilling) halted(ctx context.Context) bool {
+	return b.ModelCallsHalted != nil && b.ModelCallsHalted(ctx)
+}
+
 type GenerationCharge struct {
 	WorkspaceID    pgtype.UUID
 	IdempotencyKey string

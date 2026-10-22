@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
@@ -174,5 +175,41 @@ func TestGenerationChargeCarriesNoTaskDescription(t *testing.T) {
 	}
 	if strings.Contains(string(blob), secret) {
 		t.Errorf("the task description reached the charge: %s", blob)
+	}
+}
+
+func haltedBilling() GenerateBilling {
+	return GenerateBilling{ModelCallsHalted: func(context.Context) bool { return true }}
+}
+
+func TestAnImportUnderAP1HaltLeavesEnrichmentPendingWithoutCallingTheModel(t *testing.T) {
+	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusOK}
+	ledger := &fakeLedger{}
+	s := &Service{LLM: stub.start(t), Credit: ledger, Billing: haltedBilling()}
+
+	if e := s.enrichPackage(context.Background(), testPackage(), pgtype.UUID{}); e.status != enrichmentPending {
+		t.Errorf("enrichment status = %q, want pending so the backfill picks it up after the halt", e.status)
+	}
+	if len(ledger.events) != 0 {
+		t.Errorf("cost events = %v, want none: the model is not called under a P1 halt", ledger.kinds())
+	}
+}
+
+func TestTheEnrichmentBackfillWaitsOutAP1Halt(t *testing.T) {
+	listed := false
+	s := &Service{
+		LLM: &fakeModel{}, Billing: haltedBilling(),
+		IndexSkill: func(context.Context, pgx.Tx, SkillProjection) error { return nil },
+		PendingEnrichments: func(context.Context, int32) ([]PendingEnrichment, error) {
+			listed = true
+			return nil, nil
+		},
+	}
+	done, failed, err := s.ReindexPending(context.Background(), 10)
+	if err != nil || done != 0 || failed != 0 {
+		t.Errorf("ReindexPending = %d, %d, %v; want 0, 0, nil", done, failed, err)
+	}
+	if listed {
+		t.Error("the backfill listed pending skills under a P1 halt; it would call the model for each")
 	}
 }

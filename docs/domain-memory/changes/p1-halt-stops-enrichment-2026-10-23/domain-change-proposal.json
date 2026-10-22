@@ -1,0 +1,215 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "p1-halt-stops-enrichment",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "p1-halt-stops-enrichment",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-22T16:16:49.085366Z",
+  "verified_at": "2026-10-22T16:18:23.536285Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "6046eb7f0cd8d86716c04c25e397732a15c3ff21",
+    "registry_digest": "sha256:cd88d464926f80ced0feedd76b49d6d024bf229b66f91162f7460122bf30ce2b",
+    "committed_digest": "sha256:cd88d464926f80ced0feedd76b49d6d024bf229b66f91162f7460122bf30ce2b"
+  },
+  "affected_contexts": [
+    "creation",
+    "ingest",
+    "run",
+    "testlab"
+  ],
+  "rule_ids": [
+    "user-started-model-calls-stop-under-a-p1-halt"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "ingest",
+    "invariant": "Ingest decides whether an import or the backfill calls the model for enrichment, reading the halt through the hook the composition root hands it.",
+    "evidence": [
+      "apps/platform/internal/skill/admission/enrich.go:116-118",
+      "apps/platform/internal/skill/admission/service.go:537-539",
+      "apps/platform/internal/entrypoint/worker/worker.go:131-134"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "run-creation-model-call-halt: the worker hands the run context's halt check to the creation, version-creation and backfill ingest services.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/admission/enrich.go:116-118",
+      "apps/platform/internal/skill/admission/service.go:537-539",
+      "apps/platform/internal/entrypoint/worker/worker.go:131-134"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Enrichment on import and the enrichment backfill called the model during a P1 halt, the one situation in which every model call a person or the platform starts is meant to stop."
+    ],
+    "decision": "Under a P1 halt an import skips enrichment and leaves it pending, and the backfill returns without picking anything up; once the halt is lifted the backfill enriches the pending versions as usual.",
+    "invariants_preserved": [
+      "An import never fails because enrichment was skipped.",
+      "An unreadable halt state counts as halted."
+    ],
+    "rejected_alternatives": [
+      "Refusing the import under a halt: the import calls no model unless it enriches, so only the enrichment step stops."
+    ],
+    "proof_obligations": [
+      "rule-user-started-model-calls-stop-under-a-p1-halt"
+    ],
+    "counterfactual_check": "Removing the halt check from enrichment fails TestAnImportUnderAP1HaltLeavesEnrichmentPendingWithoutCallingTheModel; removing it from ReindexPending fails TestTheEnrichmentBackfillWaitsOutAP1Halt."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-creation-model-call-halt",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "producer_context": "run",
+        "consumer_context": "creation",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 654,
+              "end": 661
+            },
+            "excerpt_sha256": "sha256:a3328498e75275f977844508c68f206866494f6306b7df4b4641313603bebb32"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/worker/worker.go",
+            "lines": {
+              "start": 131,
+              "end": 134
+            },
+            "content_sha256": "sha256:1c07ae85f23c91b952d678d446b59dd98d9e7222ad42a335558954d012ae70e0",
+            "excerpt_sha256": "sha256:1d6e9d8aec939b04af79e97b2f941065b6a3dab4787c6fc48793c1462b5dc9c9",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "user-started-model-calls-stop-under-a-p1-halt",
+        "statement": "While a P1 incident halts dispatch, generating a skill, a creation step, a criteria suggestion and the enrichment of an imported version are refused before the model is called and nothing is charged; a creation step that was refused is not counted and the session waits for the person to send again, and an import still completes with its enrichment left pending for the backfill, which picks nothing up until the halt is lifted. An unreadable halt state counts as halted.",
+        "contexts": [
+          "creation",
+          "ingest",
+          "testlab"
+        ],
+        "examples": [
+          "Under a P1 halt a criteria suggestion answers 503 naming the halt, generation returns ErrModelCallsHalted, and the model stub is never called.",
+          "An import under a P1 halt is stored with its enrichment pending and the model stub never called; the backfill run under the halt enriches nothing and the version stays pending."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/cost.go",
+            "lines": {
+              "start": 22,
+              "end": 37
+            },
+            "excerpt_sha256": "sha256:6df644766cd397f4d57227d46082b1eb508bcbc096b2a7fa0ba43fb6a635b63b"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/job.go",
+            "lines": {
+              "start": 445,
+              "end": 447
+            },
+            "excerpt_sha256": "sha256:3f7684b057cdb1f15bb4f1130f90075c7504a2c745b24184a0ab12cebdd21266"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/job.go",
+            "lines": {
+              "start": 614,
+              "end": 619
+            },
+            "excerpt_sha256": "sha256:40352e3aaee09c5e33a426829b41a169b70e2bb148976f1edf54f28a2482c3e9"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/halt.go",
+            "lines": {
+              "start": 32,
+              "end": 46
+            },
+            "excerpt_sha256": "sha256:d230881335bad2a2fccc01812cfdaf34794d0fd3c247b3ab0973dc5ef85d14d3"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/p1_halt_model_calls_integration_test.go",
+            "lines": {
+              "start": 18,
+              "end": 81
+            },
+            "excerpt_sha256": "sha256:d8e8d8a5a0c369b973d2acacea3d5df6440e1e5f55fe9cae4bdc2618640a43fd"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/generate.go",
+            "lines": {
+              "start": 253,
+              "end": 255
+            },
+            "content_sha256": "sha256:6ba3880fdb9c0d8f778d7595e25d540b214dec6e9046b417acfa2f801a0c7c97",
+            "excerpt_sha256": "sha256:a210cb9d749a2bb04a447d71aacfb15c1e6f37e3946db16c419a030afdd5be2b"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/enrich.go",
+            "lines": {
+              "start": 116,
+              "end": 118
+            },
+            "content_sha256": "sha256:2d698687a915845d66dabcadccc934e556f518c8e72971e3d42562076a7ff0d5",
+            "excerpt_sha256": "sha256:b2e935bc0ef591576f4c3882d619298a1f09b40ebee0cd46eecc286a86e1ee35"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 537,
+              "end": 539
+            },
+            "content_sha256": "sha256:102f0d5be5ea56addeb447751be9af2de98f2cf40bf2514638a7fd4b385e68f6",
+            "excerpt_sha256": "sha256:b85be66aa7f8c261615dbffbb702ba8d542ff49022a70d7228372bf817b0ad13"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/cost_test.go",
+            "lines": {
+              "start": 185,
+              "end": 215
+            },
+            "content_sha256": "sha256:82eb64de1ec20ff867974a482359564614572781061139b400aa3ec5306ab880",
+            "excerpt_sha256": "sha256:40b94f7f9b0edd48ea14d038beab4d9f1300e3864868a388b5c49fa1bc9b5553"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T16:18:22.504359Z",
+      "scope": "P1 halt also stops enrichment on import and in the backfill; recite run-creation-model-call-halt",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "6046eb7f0cd8d86716c04c25e397732a15c3ff21",
+        "registry_digest": "sha256:cd88d464926f80ced0feedd76b49d6d024bf229b66f91162f7460122bf30ce2b",
+        "committed_digest": "sha256:cd88d464926f80ced0feedd76b49d6d024bf229b66f91162f7460122bf30ce2b"
+      }
+    }
+  ],
+  "supersedes": [
+    "dispatch-halt-reaches-model-calls-and-queue"
+  ]
+}

@@ -133,7 +133,7 @@ func (w *EnrichmentBackfillWorker) Work(ctx context.Context, _ *river.Job[Enrich
 	return nil
 }
 
-func newBackfillService(pool *pgxpool.Pool, deps Deps) *ingest.Service {
+func newBackfillService(pool *pgxpool.Pool, deps Deps, halted func(context.Context) bool) *ingest.Service {
 	if deps.LLM == nil || deps.Store == nil {
 		return nil
 	}
@@ -143,6 +143,7 @@ func newBackfillService(pool *pgxpool.Pool, deps Deps) *ingest.Service {
 		Budgets:            wiring.NewModelBudgets(pool),
 		IndexSkill:         wiring.EnrichedIndexer(catalogSvc),
 		PendingEnrichments: wiring.PendingEnrichments(catalogSvc),
+		Billing:            ingest.GenerateBilling{ModelCallsHalted: halted},
 	}
 }
 

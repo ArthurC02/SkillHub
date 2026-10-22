@@ -113,7 +113,7 @@ func pendingEnrichment(p preparedPackage) enrichment {
 
 func (s *Service) enrichPackage(ctx context.Context, p preparedPackage, workspaceID pgtype.UUID) enrichment {
 	e := pendingEnrichment(p)
-	if s.LLM == nil || p.skillMD == "" {
+	if s.LLM == nil || p.skillMD == "" || s.Billing.halted(ctx) {
 		return e
 	}
 
