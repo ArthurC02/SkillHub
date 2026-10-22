@@ -13,7 +13,7 @@ func TestCreationEnvironmentFailsClosedAndExposesOnlyWhenEnabled(t *testing.T) {
 		t.Fatal("missing limits enabled")
 	}
 
-	t.Setenv("CREATION_LIMITS_JSON", `{"max_cost_usd":1,"max_call_cost_usd":0.5,"max_steps":1,"max_tool_calls":1,"call_timeout_seconds":1,"session_timeout_seconds":1,"retention_seconds":1,"max_output_tokens":1}`)
+	t.Setenv("CREATION_LIMITS_JSON", `{"max_cost_usd":1,"max_call_cost_usd":0.5,"max_steps":1,"max_tool_calls":1,"call_timeout_seconds":1,"session_timeout_seconds":1,"retention_seconds":72,"max_output_tokens":1}`)
 	if limits, err := CreationLimitsFromEnv(); err != nil || !limits.Valid() {
 		t.Fatalf("valid limits = %+v, %v", limits, err)
 	}

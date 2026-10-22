@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "creation-session-outlives-last-step",
+  "proposal_id": "creation-session-outlives-last-step",
+  "obligations": [
+    {
+      "id": "rule-a-creation-session-outlives-its-last-step",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-creation-session-outlives-its-last-step",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-creation-session-outlives-its-last-step"
+        }
+      ],
+      "expected_outcome": "Creation limits are usable only when the retention outlasts the session timeout plus the longest step that can start just before it: the call timeout, ten seconds of slack and sixty seconds to revoke the key, search ahead and settle; otherwise a session row could be deleted before its last step's spend is charged.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestASessionIsKeptUntilAStepStartedAtItsDeadlineHasSettled$ ./internal/creator/creation/"
+    }
+  ]
+}

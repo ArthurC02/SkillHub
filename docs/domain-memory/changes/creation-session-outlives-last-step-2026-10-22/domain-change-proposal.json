@@ -1,0 +1,109 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "creation-session-outlives-last-step",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "creation-session-outlives-last-step",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-22T06:38:07.641852Z",
+  "verified_at": "2026-10-22T06:39:58.737308Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "ef316839cf5d79f7a3298265550c3aada7c16bb0",
+    "registry_digest": "sha256:1f54b37d4d61d704a26cc1cdcc73c12709a2cb61df1d668a022e2f98209a6022",
+    "committed_digest": "sha256:6e0087ca54f48804e0136b668b20d5511a5e7706611a7059e08f17cad61a44d5"
+  },
+  "affected_contexts": [
+    "creation"
+  ],
+  "rule_ids": [
+    "a-creation-session-outlives-its-last-step"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "creation",
+    "invariant": "Only creation decides which creation limits are usable.",
+    "evidence": [
+      "apps/platform/internal/creator/creation/service.go:84-86"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/creator/creation/service.go:84-86"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Validation allowed a retention equal to the session timeout; a step started just before the deadline runs past it, and the purge deletes the session row by expires_at, so finish found no row and the step's gateway spend was never charged."
+    ],
+    "decision": "Require the retention to cover the session timeout plus the active step and its wrap-up, computed from the same constants the step uses.",
+    "invariants_preserved": [
+      "A creation may take a step only before its deadline."
+    ],
+    "rejected_alternatives": [
+      "Skipping sessions with an open receipt in the purge: the purge would need creation's step state, and a bad configuration would still be accepted."
+    ],
+    "proof_obligations": [
+      "rule-a-creation-session-outlives-its-last-step"
+    ],
+    "counterfactual_check": "Reverting the retention bound to the session timeout fails TestASessionIsKeptUntilAStepStartedAtItsDeadlineHasSettled."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-creation-session-outlives-its-last-step",
+        "statement": "Creation limits are usable only when the retention outlasts the session timeout plus the longest step that can start just before it: the call timeout, ten seconds of slack and sixty seconds to revoke the key, search ahead and settle; otherwise a session row could be deleted before its last step's spend is charged.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "With a one-minute session and a one-second call timeout, a retention of one minute and seventy-one seconds is usable and one second less is not."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/service.go",
+            "lines": {
+              "start": 84,
+              "end": 86
+            },
+            "excerpt_sha256": "sha256:85bfa24839cfc3a63ecedff48c06a1ad2e8890426b8c8091b780a7ac2426cf76"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/limits_retention_test.go",
+            "lines": {
+              "start": 8,
+              "end": 26
+            },
+            "excerpt_sha256": "sha256:538dbabc0e0fbd9ce7aece4d83c4f0a1760ae4c610405be82bcccb7401235665"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T06:39:56.990309Z",
+      "scope": "Record a-creation-session-outlives-its-last-step",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "ef316839cf5d79f7a3298265550c3aada7c16bb0",
+        "registry_digest": "sha256:1f54b37d4d61d704a26cc1cdcc73c12709a2cb61df1d668a022e2f98209a6022",
+        "committed_digest": "sha256:6e0087ca54f48804e0136b668b20d5511a5e7706611a7059e08f17cad61a44d5"
+      }
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "creation-session-outlives-last-step",
+  "proposal_id": "creation-session-outlives-last-step",
+  "registry_revision": {
+    "observed_commit": "ef316839cf5d79f7a3298265550c3aada7c16bb0",
+    "registry_digest": "sha256:1f54b37d4d61d704a26cc1cdcc73c12709a2cb61df1d668a022e2f98209a6022",
+    "committed_digest": "sha256:6e0087ca54f48804e0136b668b20d5511a5e7706611a7059e08f17cad61a44d5"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-creation-session-outlives-its-last-step",
+      "mutated_protection": "apps/platform/internal/creator/creation/service.go:85: l.Retention >= l.SessionTimeout+l.activeStep()+attemptWrapUp && -> l.Retention >= l.SessionTimeout &&",
+      "failure_evidence": "=== RUN   TestASessionIsKeptUntilAStepStartedAtItsDeadlineHasSettled\n    limits_retention_test.go:23: retention equal to the session timeout: Valid() = true, want false\n    limits_retention_test.go:23: one second short of the last step settling: Valid() = true, want false\n--- FAIL: TestASessionIsKeptUntilAStepStartedAtItsDeadlineHasSettled (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t4.488s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-creation-session-outlives-its-last-step",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestASessionIsKeptUntilAStepStartedAtItsDeadlineHasSettled$ ./internal/creator/creation/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:7c5fdded8d6f455c49d6b6184575c4be77557fc1743211825534f75ba77d8dbf",
+      "finished_at": "2026-10-22T06:38:34.163039Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

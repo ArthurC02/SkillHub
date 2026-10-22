@@ -25,6 +25,7 @@
 - [a-creation-reference-is-selected-once](/rules/a-creation-reference-is-selected-once) — Selecting the same reference Skill twice is refused.
 - [a-creation-searches-the-catalogue-at-most-twice](/rules/a-creation-searches-the-catalogue-at-most-twice) — A creation searches the catalogue at most twice; a third search is answered with a note and searches nothing.
 - [a-creation-selects-at-most-three-references](/rules/a-creation-selects-at-most-three-references) — Selecting more than three reference Skills is refused.
+- [a-creation-session-outlives-its-last-step](/rules/a-creation-session-outlives-its-last-step) — Creation limits are usable only when the retention outlasts the session timeout plus the longest step that can start just before it: the call timeout, ten seco….
 - [a-creation-start-threshold-covers-its-first-step](/rules/a-creation-start-threshold-covers-its-first-step) — A creation session may start only when the balance also covers its first step: the start threshold is at least the first step's reserve in credits plus the deb….
 - [a-creation-takes-at-most-its-approved-steps](/rules/a-creation-takes-at-most-its-approved-steps) — A creation may take a step only while it has taken fewer than its approved number of steps, even with budget left.
 - [a-daily-report-must-have-items](/rules/a-daily-report-must-have-items) — A daily report with no items is rejected.

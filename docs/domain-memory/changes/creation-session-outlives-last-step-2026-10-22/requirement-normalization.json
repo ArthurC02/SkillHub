@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "creation-session-outlives-last-step",
+  "status": "draft",
+  "intent": "A creation step's spend is always charged, even when the step started just before the session deadline.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context creation lists the rule as reviewed, proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-creation-session-outlives-its-last-step",
+      "statement": "Creation limits are usable only when the retention outlasts the session timeout plus the longest step that can start just before it: the call timeout, ten seconds of slack and sixty seconds to revoke the key, search ahead and settle; otherwise a session row could be deleted before its last step's spend is charged."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/creator/creation/service.go",
+    "apps/platform/internal/creator/creation/limits_retention_test.go"
+  ]
+}

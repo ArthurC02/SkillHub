@@ -50,7 +50,7 @@ func TestCatalogCheckRunsBeforeTheTransaction(t *testing.T) {
 	checked := false
 	s := &Service{
 		Pool:   pool,
-		Limits: Limits{MaxCostUSD: 1, MaxCallCostUSD: 0.1, MaxSteps: 24, MaxToolCalls: 8, CallTimeout: time.Second, SessionTimeout: time.Hour, Retention: time.Hour, MaxOutputTokens: 16000},
+		Limits: Limits{MaxCostUSD: 1, MaxCallCostUSD: 0.1, MaxSteps: 24, MaxToolCalls: 8, CallTimeout: time.Second, SessionTimeout: time.Hour, Retention: 2 * time.Hour, MaxOutputTokens: 16000},
 		CatalogCheck: func(context.Context, identity.Workspace, string) ([]Reference, float64, error) {
 			checked = true
 			return nil, 0, errors.New("catalogue unreachable in this test")

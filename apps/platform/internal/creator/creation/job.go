@@ -142,6 +142,7 @@ const (
 	settleRetryDelay = time.Second
 	keyRevokeTimeout = 20 * time.Second
 	attemptWrapUp    = keyRevokeTimeout + searchAheadTimeout + settleTimeout
+	activeStepSlack  = 10 * time.Second
 )
 
 func (s *Service) settle(a JobArgs, call stepCall) error {
@@ -222,7 +223,7 @@ func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *Diagram,
 	s.attachFetched(&e.Snapshot, fetched)
 	e.Snapshot.Steps++
 	e.Snapshot.ReservedUSD += e.Limits.MaxCallCostUSD
-	e.ActiveDeadline = time.Now().Add(e.Limits.CallTimeout + 10*time.Second)
+	e.ActiveDeadline = time.Now().Add(e.Limits.activeStep())
 	if row, err = s.advance(ctx, tx, row, transition{StateWorking, "attempt_started"}, e); err != nil {
 		return nil, err
 	}
@@ -410,7 +411,7 @@ func (s *Service) callModel(ctx context.Context, a JobArgs, e envelope, req Step
 	if err = s.reserveCall(ctx, a.WorkspaceID, e.Limits.MaxCallCostUSD); err != nil {
 		return nil, knownZero, err
 	}
-	if req.GatewayKey, err = s.IssueKey(ctx, UUID(a.SessionID), UUID(a.ReceiptID), e.Limits.MaxCallCostUSD, e.Limits.CallTimeout+10*time.Second); err != nil {
+	if req.GatewayKey, err = s.IssueKey(ctx, UUID(a.SessionID), UUID(a.ReceiptID), e.Limits.MaxCallCostUSD, e.Limits.activeStep()); err != nil {
 		return nil, knownZero, err
 	}
 	if req.TimeoutSeconds, err = callTimeoutSeconds(time.Until(deadline)); err != nil {

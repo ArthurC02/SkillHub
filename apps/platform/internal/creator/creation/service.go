@@ -82,8 +82,10 @@ type Limits struct {
 }
 
 func (l Limits) Valid() bool {
-	return finite(l.MaxCostUSD) && finite(l.MaxCallCostUSD) && l.MaxCostUSD > 0 && l.MaxCallCostUSD > 0 && l.MaxCallCostUSD <= l.MaxCostUSD && l.MaxSteps > 0 && l.MaxToolCalls > 0 && l.CallTimeout >= time.Second && l.CallTimeout <= 120*time.Second && l.SessionTimeout >= l.CallTimeout && l.Retention >= l.SessionTimeout && l.MaxOutputTokens > 0 && l.MaxOutputTokens <= 16000
+	return finite(l.MaxCostUSD) && finite(l.MaxCallCostUSD) && l.MaxCostUSD > 0 && l.MaxCallCostUSD > 0 && l.MaxCallCostUSD <= l.MaxCostUSD && l.MaxSteps > 0 && l.MaxToolCalls > 0 && l.CallTimeout >= time.Second && l.CallTimeout <= 120*time.Second && l.SessionTimeout >= l.CallTimeout && l.Retention >= l.SessionTimeout+l.activeStep()+attemptWrapUp && l.MaxOutputTokens > 0 && l.MaxOutputTokens <= 16000
 }
+func (l Limits) activeStep() time.Duration { return l.CallTimeout + activeStepSlack }
+
 func finite(v float64) bool { return !math.IsNaN(v) && !math.IsInf(v, 0) }
 func LimitsFromJSON(raw string) (Limits, error) {
 	var v struct {
