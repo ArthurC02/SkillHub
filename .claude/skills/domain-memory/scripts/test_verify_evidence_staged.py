@@ -41,6 +41,24 @@ class VerifyStagedEvidenceTest(RegistryTestCase):
         report = json.loads(result.stdout) if result.stdout.startswith("{") else result.stdout
         return result.returncode, report, result.stderr
 
+    def test_two_stale_citations_are_counted_in_the_plural_and_an_unhashed_one_names_its_reason(self) -> None:
+        self.seed("rules.json", [
+            {"id": "cited-rule", "contexts": ["orders"], "statement": "S.",
+             "evidence": [citation(self.repo, "src/a.py", 1, 1), citation(self.repo, "src/a.py", 2, 2)]},
+            {"id": "unhashed-rule", "contexts": ["orders"], "statement": "S.",
+             "evidence": [{"path": "src/a.py", "lines": {"start": 1, "end": 1}}]},
+        ])
+        self.commit_all("cite twice")
+        self.write("x\ny\n")
+        self.git("add", "src/a.py")
+        _, _, stderr = self.verify_staged("src/a.py")
+        self.assertEqual(
+            ["rules/unhashed-rule: src/a.py:1-1 is unhashed; src/a.py was cited without an excerpt hash; "
+             "regenerate the citation with cite",
+             "verify-evidence failed: 2 stale, 1 unhashed citations"],
+            [line for line in stderr.splitlines() if line.startswith(("rules/unhashed-rule", "verify-evidence failed"))],
+        )
+
     def test_a_weakened_line_in_the_index_is_stale_while_the_disk_holds_the_original(self) -> None:
         self.write("changed\ntwo\n")
         self.git("add", "src/a.py")
@@ -103,7 +121,7 @@ class VerifyStagedEvidenceTest(RegistryTestCase):
             "--path", "src/a.py",
         )
         self.assertEqual(
-            (1, "missing", "verify-evidence failed: 1 missing citations; run recite on each to cite its current lines\n"),
+            (1, "missing", "verify-evidence failed: 1 missing citation; run recite on each to cite its current lines\n"),
             (result.returncode, json.loads(result.stdout)["results"][0]["status"], result.stderr),
         )
 
@@ -114,7 +132,7 @@ class VerifyStagedEvidenceTest(RegistryTestCase):
             "--path", "src/a.py",
         )
         self.assertEqual(
-            (1, "stale", "verify-evidence failed: 1 stale citations; run recite on each to cite its current lines\n"),
+            (1, "stale", "verify-evidence failed: 1 stale citation; run recite on each to cite its current lines\n"),
             (result.returncode, json.loads(result.stdout)["results"][0]["status"], result.stderr),
         )
 

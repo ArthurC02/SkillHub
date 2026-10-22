@@ -397,6 +397,19 @@ class UpdatesAuditTest(RegistryTestCase):
         )
         self.assertEqual("invalid", verify_audit(self.repo / "memory")["status"])
 
+    def test_nothing_is_appended_to_an_audit_log_past_the_size_limit(self) -> None:
+        root = self.repo / "memory"
+        append_audit(root, {"operation": "first"})
+        events_file = root / "audit" / "events.jsonl"
+        size = events_file.stat().st_size
+        with patch("domain_registry.audit.MAX_JSON_BYTES", size):
+            append_audit(root, {"operation": "at the limit"})
+        before = events_file.read_bytes()
+        with patch("domain_registry.audit.MAX_JSON_BYTES", len(before) - 1), \
+                self.assertRaisesRegex(ValueError, f"^audit log is invalid: audit log exceeds {len(before) - 1} bytes: "):
+            append_audit(root, {"operation": "past the limit"})
+        self.assertEqual(before, events_file.read_bytes())
+
     def test_nothing_is_appended_to_a_broken_audit_chain(self) -> None:
         root = self.repo / "memory"
         append_audit(root, {"operation": "first"})

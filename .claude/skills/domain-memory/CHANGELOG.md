@@ -2,6 +2,21 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.7
+
+### Fixed
+
+- `audit-attestations` refuses a `--changes-root` that does not exist (`no Change Packages directory at <path>; pass the directory that holds them`) instead of reporting every package carried and exiting 0; an existing empty directory still finds nothing.
+- `verify-evidence` without `--staged` counts one failing citation in the singular (`1 stale citation`), as `--staged` does.
+
+### Removed
+
+- The base-revision check for a Registry file that changed outside its records: the concept layout fixes a document's status and the manifest, so the check could never fire.
+
+### Added
+
+- Tests for a Registry update that fails at each step or succeeds leaving nothing behind, an audit log at and past its size limit, the secret scan's exit code at and past the file size limit, the staged summary in the plural and for an unhashed citation, and the rerun advice of a git deadline.
+
 ## 2.2.6
 
 ### Fixed

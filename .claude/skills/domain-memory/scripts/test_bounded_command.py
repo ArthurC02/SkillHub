@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.git import TIMEOUT_VARIABLE, deadline_seconds, run_bounded
+from domain_registry.git import TIMEOUT_VARIABLE, GitDeadline, deadline_seconds, rerun_is_safe, run_bounded
 
 DEADLINE_SECONDS = 2
 RETURNS_WITHIN_SECONDS = 10
@@ -48,6 +48,16 @@ def gone_within(pid: int, seconds: float) -> bool:
 
 
 class BoundedCommandTest(unittest.TestCase):
+    def test_a_deadline_says_a_rerun_is_safe_only_for_a_git_command_that_writes_nothing(self) -> None:
+        advice = f"; set {TIMEOUT_VARIABLE} to a larger number of seconds to wait longer"
+        self.assertEqual(
+            [f"Command '['git', 'ls-tree', 'HEAD']' timed out after 1 seconds; nothing was written, so it is safe to run again{advice}",
+             f"Command '['git', 'config', 'core.hooksPath', 'x']' timed out after 1 seconds{advice}",
+             f"Command '['ssh-keygen', '-l']' timed out after 1 seconds{advice}"],
+            [str(GitDeadline(argv, 1, rerun_is_safe=rerun_is_safe(argv)))
+             for argv in (["git", "ls-tree", "HEAD"], ["git", "config", "core.hooksPath", "x"], ["ssh-keygen", "-l"])],
+        )
+
     def test_a_grandchild_whose_parent_exited_and_that_holds_the_output_open_is_stopped_at_the_deadline(
         self,
     ) -> None:

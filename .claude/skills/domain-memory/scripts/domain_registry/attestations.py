@@ -324,8 +324,10 @@ def _attestation_verdict(
 
 
 def audit_attestations(repo_root: Path, changes_root: Path, token_env: str) -> list[dict[str, str]]:
+    if not changes_root.is_dir():
+        raise ValueError(f"no Change Packages directory at {changes_root}; pass the directory that holds them")
     audited = []
-    for package, proposal in readable_packages(changes_root) if changes_root.is_dir() else []:
+    for package, proposal in readable_packages(changes_root):
         if proposal.get("status") not in AUDITED_STATUSES:
             continue
         evidence_file = package / EVIDENCE_FILE

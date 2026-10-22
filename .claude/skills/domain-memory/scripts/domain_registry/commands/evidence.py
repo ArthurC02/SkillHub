@@ -171,11 +171,15 @@ def _failing_citation_line(item: dict) -> str:
     return f"{record}: {span} is {item['status']}" + (f"; {item['reason']}" if "reason" in item else "")
 
 
-def _staged_failure(result: dict, failing: tuple[str, ...], found: list[str]) -> str:
+def _failed_count(result: dict, failing: tuple[str, ...], found: list[str]) -> str:
     count = sum(result["summary"][status] for status in failing)
+    return f"verify-evidence failed: {', '.join(found)} citation{'' if count == 1 else 's'}"
+
+
+def _staged_failure(result: dict, failing: tuple[str, ...], found: list[str]) -> str:
     return "\n".join([
         *(_failing_citation_line(item) for item in result["results"] if item["status"] in failing),
-        f"verify-evidence failed: {', '.join(found)} citation{'' if count == 1 else 's'}",
+        _failed_count(result, failing, found),
     ])
 
 
@@ -191,7 +195,7 @@ def handle_verify_evidence(args: argparse.Namespace) -> int:
     if found:
         print(
             _staged_failure(result, failing, found) if args.staged
-            else f"verify-evidence failed: {', '.join(found)} citations; run recite on each to cite its current lines",
+            else f"{_failed_count(result, failing, found)}; run recite on each to cite its current lines",
             file=sys.stderr,
         )
     return int(bool(found))

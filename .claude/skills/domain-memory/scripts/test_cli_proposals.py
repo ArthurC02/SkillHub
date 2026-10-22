@@ -507,7 +507,7 @@ class CliProposalsTest(RegistryTestCase):
             "verify-evidence", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo), "--strict"
         )
         self.assertEqual(
-            (1, "verify-evidence failed: 1 shifted citations; run recite on each to cite its current lines"),
+            (1, "verify-evidence failed: 1 shifted citation; run recite on each to cite its current lines"),
             (result.returncode, result.stderr.strip()),
         )
 

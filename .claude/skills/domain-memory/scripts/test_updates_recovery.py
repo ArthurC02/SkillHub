@@ -20,7 +20,7 @@ from domain_registry.updates import (
     upsert_candidate,
 )
 from domain_registry.common import MAX_JSON_BYTES, registry_dir
-from domain_registry.store import INDEX, has_registry, read_document
+from domain_registry.store import INDEX, has_registry, read_document, write_document
 from test_support import RegistryTestCase, append_audit
 
 
@@ -164,6 +164,49 @@ class UpdatesRecoveryTest(RegistryTestCase):
         staging.rmdir()
         with self.assertRaisesRegex(ValueError, "registry transaction requires manual reconciliation"):
             recover_interrupted_update(root, False)
+
+    def test_an_update_that_fails_at_any_step_leaves_the_registry_as_it_was_and_nothing_behind(self) -> None:
+        def write_a_context(staging: Path) -> None:
+            write_document(staging, "contexts.json", {"contexts": [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}]})
+
+        def break_it(_staging: Path) -> None:
+            raise ValueError("mutation failed")
+
+        def unknown_context(staging: Path) -> None:
+            write_document(staging, "rules.json", {"rules": [{"id": "r", "contexts": ["nowhere"], "statement": "S."}]})
+
+        def refuse_the_audit() -> dict:
+            raise ValueError("audit refused")
+
+        for label, mutate, audit_event, message in (
+            ("the mutation raises", break_it, None, "^mutation failed$"),
+            ("the result is invalid", unknown_context, None, "^registry update is invalid: .*unknown context nowhere; add the Context first$"),
+            ("the audit event cannot be written", write_a_context, refuse_the_audit, "^audit refused$"),
+        ):
+            with self.subTest(label):
+                root = self.repo / "memory"
+                before = registry_digest(root)
+                with self.assertRaisesRegex(ValueError, message):
+                    mutate_registry(root, self.repo, mutate, audit_event=audit_event)
+                self.assertEqual(
+                    (before, [], False),
+                    (registry_digest(root), sorted(path.name for path in root.glob(".domain-registry-*")),
+                     transaction_path(root).exists()),
+                )
+
+    def test_a_successful_update_writes_its_change_and_leaves_nothing_behind(self) -> None:
+        root = self.repo / "memory"
+        mutate_registry(
+            root, self.repo,
+            lambda staging: write_document(
+                staging, "contexts.json", {"contexts": [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}]}
+            ),
+        )
+        self.assertEqual(
+            (["orders"], [], False),
+            ([context["id"] for context in read_document(root, "contexts.json")["contexts"]],
+             sorted(path.name for path in root.glob(".domain-registry-*")), transaction_path(root).exists()),
+        )
 
     def test_an_update_expecting_a_revision_the_registry_has_left_is_refused_and_writes_nothing(self) -> None:
         root = self.repo / "memory"
