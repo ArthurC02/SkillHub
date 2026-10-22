@@ -110,6 +110,31 @@ export const attributedToCommand = (before: string, after: string): string[] => 
   return porcelainPaths(after).filter(path => !was.has(path))
 }
 
+export const worktreePaths = (porcelain: string): string[] =>
+  porcelain.split('\n').filter(line => line.startsWith('worktree ')).map(line => line.slice('worktree '.length).trim())
+
+async function worktrees($: EngineInterface, root: string): Promise<string[]> {
+  const listed = await $.process.run(['git', '-C', root, 'worktree', 'list', '--porcelain'])
+  const paths = listed.exitCode === 0 ? worktreePaths(listed.stdout) : []
+  return paths.length > 0 ? paths : [root]
+}
+
+async function statuses($: EngineInterface, roots: string[]): Promise<Map<string, string>> {
+  const read = await Promise.all(roots.map(async root => [root, await status($, root)] as const))
+  const found = new Map<string, string>()
+  for (const [root, porcelain] of read) if (porcelain !== undefined) found.set(root, porcelain)
+  return found
+}
+
+const attributedAcrossWorktrees = (before: Map<string, string>, after: Map<string, string>): string[] => {
+  const changed: string[] = []
+  for (const [tree, was] of before) {
+    const now = after.get(tree)
+    if (now !== undefined) changed.push(...attributedToCommand(was, now).map(path => `${tree}/${path}`))
+  }
+  return changed
+}
+
 async function touched($: EngineInterface): Promise<string[]> {
   return (await $.state.get({ plugin: 'skillhub-guards', key: 'touched' })).value ?? []
 }
@@ -274,12 +299,11 @@ export const register: Register = on => {
       return { ...result, result: { ...shell, stdout: TEST_DATABASE_NOTE + shell.stdout } }
     }
 
-    const watched = TEST_RUN.test(e.command) ? undefined : await status($, root)
+    const roots = TEST_RUN.test(e.command) ? [] : await worktrees($, root)
+    const watched = await statuses($, roots)
     const result = await next(e)
-    const after = watched === undefined ? undefined : await status($, root)
-    if (watched !== undefined && after !== undefined) {
-      await remember($, attributedToCommand(watched, after).map(path => `${root}/${path}`))
-    }
+    const changed = attributedAcrossWorktrees(watched, await statuses($, [...watched.keys()]))
+    if (changed.length > 0) await remember($, changed)
     if (e.agentId === undefined && GIT_PUSH.test(e.command) && result.deny === undefined && result.isError !== true) {
       await watchCI($, root)
     }

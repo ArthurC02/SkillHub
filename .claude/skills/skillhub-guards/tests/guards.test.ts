@@ -2,6 +2,7 @@ import type { On } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
 import {
   attributedToCommand, isAgentCache, isGeneratedHeader, needsSignature, spawnProblem, subagentCommandProblem,
+  worktreePaths,
 } from '../hooks/register'
 
 const PARENT = 'claude-opus-5-5'
@@ -226,6 +227,39 @@ test('a file inside a new folder this session\'s own command created can then be
   }, '', tool => { if (tool === 'Bash') created = true; else edited.push(tool) })
   await $.tool.call({ tool: 'Bash', command: 'python tools.py init-change-package --output docs/pkg' })
   const result = await $.tool.call({ tool: 'Edit', file_path: `${ROOT}/docs/pkg/draft.md`, old_string: 'a', new_string: 'b' })
+  expect(result.deny).toBeUndefined()
+  expect(edited).toEqual(['Edit'])
+})
+
+const LINKED = 'c:/scratch/wt'
+const WORKTREES = `worktree ${ROOT}\nHEAD 1111\nbranch refs/heads/main\n\nworktree ${LINKED}\nHEAD 2222\ndetached\n\n`
+
+test('the worktree listing yields each worktree path and nothing else', () => {
+  expect(worktreePaths(WORKTREES)).toEqual([ROOT, LINKED])
+  expect(worktreePaths('')).toEqual([])
+})
+
+test('the Bash hook watches every worktree of the repository, before and after', async ($, on) => {
+  const watched: string[] = []
+  world(on, argv => {
+    if (argv.includes('worktree')) return WORKTREES
+    if (argv.includes('status')) watched.push(argv[argv.indexOf('-C') + 1] ?? '')
+    return ''
+  })
+  await $.tool.call({ tool: 'Bash', command: 'ls' })
+  expect(watched).toEqual([ROOT, LINKED, ROOT, LINKED])
+})
+
+test('a file this session\'s own command changed in another worktree can then be edited', async ($, on) => {
+  let applied = false
+  const edited: string[] = []
+  world(on, argv => {
+    if (argv.includes('worktree')) return WORKTREES
+    if (!argv.includes('--porcelain') || !applied) return ''
+    return argv.includes(LINKED) || argv.includes(`${LINKED}/apps`) ? ' M apps/b.ts\0' : ''
+  }, '', tool => { if (tool === 'Bash') applied = true; else edited.push(tool) })
+  await $.tool.call({ tool: 'Bash', command: 'python edit.py' })
+  const result = await $.tool.call({ tool: 'Edit', file_path: `${LINKED}/apps/b.ts`, old_string: 'a', new_string: 'b' })
   expect(result.deny).toBeUndefined()
   expect(edited).toEqual(['Edit'])
 })
