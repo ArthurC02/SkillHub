@@ -3,7 +3,7 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-22T16:18:22.504359Z"
+    at: "2026-10-22T22:18:29.722535Z"
 sources:
   - resource: "apps/platform/internal/trial/design/cost.go#L22-37"
     excerpt_sha256: "sha256:6df644766cd397f4d57227d46082b1eb508bcbc096b2a7fa0ba43fb6a635b63b"
@@ -22,7 +22,7 @@ sources:
   - resource: "apps/platform/internal/skill/admission/service.go#L537-539"
     excerpt_sha256: "sha256:b85be66aa7f8c261615dbffbb702ba8d542ff49022a70d7228372bf817b0ad13"
   - resource: "apps/platform/internal/skill/admission/cost_test.go#L185-215"
-    excerpt_sha256: "sha256:40b94f7f9b0edd48ea14d038beab4d9f1300e3864868a388b5c49fa1bc9b5553"
+    excerpt_sha256: "sha256:5c9abfbf675a78c854e387133a55471ecb709d64727d5833963dcca4cc66bcc1"
 ---
 While a P1 incident halts dispatch, generating a skill, a creation step, a criteria suggestion and the enrichment of an imported version are refused before the model is called and nothing is charged; a creation step that was refused is not counted and the session waits for the person to send again, and an import still completes with its enrichment left pending for the backfill, which picks nothing up until the halt is lifted. An unreadable halt state counts as halted.
 

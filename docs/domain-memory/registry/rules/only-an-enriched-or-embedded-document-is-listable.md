@@ -3,7 +3,7 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-22T21:56:36.425876Z"
+    at: "2026-10-22T22:18:29.722535Z"
 sources:
   - resource: "apps/platform/internal/skill/discovery/enrichment.go#L12-14"
     excerpt_sha256: "sha256:c8086abe2eb931f39133735544a49735766e725679ad1a32ddc72e9620f779b2"
@@ -13,12 +13,12 @@ sources:
     excerpt_sha256: "sha256:da55aa942302f94559e17233d087426deafb687be03efd9c32840365fb2c56c4"
   - resource: "apps/platform/internal/skill/admission/enrich.go#L147-148"
     excerpt_sha256: "sha256:1102bebb3ecf7d70ed2069e46b3cd3a67d8909cf1f29363fda139f1efc05d171"
-  - resource: "apps/platform/internal/skill/admission/enrich.go#L167-189"
-    excerpt_sha256: "sha256:78da6924f2e2b9380ca2e01779d130ea22d821c8649a302c54da7da9ef195516"
+  - resource: "apps/platform/internal/skill/discovery/enrichment_backfill.go#L64-85"
+    excerpt_sha256: "sha256:6f4467a736a9cac9d68b2d291db75297d5c741362b5257dc9bb88b457a2765d0"
   - resource: "db/queries/search.sql#L53-69"
     excerpt_sha256: "sha256:3de7d1355ee0226bf147d60b96fd8fa02d3b1723ec01683dfc563202ee113c30"
-  - resource: "apps/platform/internal/entrypoint/api/apiserver/search_embedding_backfill_integration_test.go#L14-63"
-    excerpt_sha256: "sha256:e223736c629e15502bc25a88433cd6f2e90784f427769cde3fab5d33a8795826"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/search_embedding_backfill_integration_test.go#L47-84"
+    excerpt_sha256: "sha256:8ee0514e3687b512bd5ad4fdc9b4d44fb5305de500808404ce53e7eef7123611"
 ---
 A search document is listable only once its enrichment is finished or it has an embedding a vector search can find. An enrichment whose embedding call failed is still stored as enriched, without a vector, so it is listable at once; the enrichment backfill later embeds that stored text without calling the enrichment model again, and stores the vector only if the document has not been rewritten since it was claimed.
 

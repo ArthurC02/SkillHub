@@ -3,12 +3,12 @@
   "proposal_id": "embedding-backfill-in-catalog",
   "proposer": "domain-memory-agent",
   "requirement_id": "embedding-backfill-in-catalog",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-22T22:18:27.832840Z",
   "verified_at": "2026-10-22T22:18:30.554109Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T22:18:47.904499Z",
+  "applied_at": "2026-10-22T22:19:26.474696Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "579f64083b63e35003085c6645e5d4bd9bc2596a",
@@ -231,5 +231,9 @@
   "supersedes": [
     "embedding-only-backfill",
     "p1-halt-stops-enrichment"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "477d5f84e5c2c602c60d8c8a4672cbd51bc994ab",
+    "registry_digest": "sha256:cfa3f71cd7410b49ef4e03a47bde1874ae4870db309bcf3bea90f2f6275aa784"
+  }
 }
