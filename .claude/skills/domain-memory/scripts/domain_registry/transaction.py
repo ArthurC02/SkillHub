@@ -93,12 +93,13 @@ def _recover_installed(transaction: InterruptedTransaction) -> None:
     if _was_audited(transaction):
         transaction.discard()
         return
-    if not transaction.backup.exists() or not transaction.staging.parent.exists():
+    if not transaction.backup.exists() or not transaction.staging.exists():
         raise ValueError("registry transaction requires manual reconciliation")
     target = registry_dir(transaction.root)
     if target.exists():
         replace_path(target, registry_dir(transaction.staging))
     replace_path(transaction.backup, target)
+    remove_tree(transaction.staging)
     transaction.journal.unlink(missing_ok=True)
 
 

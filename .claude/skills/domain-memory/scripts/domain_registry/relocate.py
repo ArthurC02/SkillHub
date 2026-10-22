@@ -69,9 +69,7 @@ class Relocation:
         if len(starts) != 1:
             self.unmatched.append({
                 "path": reference.get("path"), "lines": lines, "target": target, "found": len(starts),
-                "reason": f"the cited excerpt occurs {len(starts)} times in {target}; "
-                + ("its content changed, so check the fact and recite it" if not starts
-                   else f"recite it with the lines that hold the fact. {WIDEN_TO_UNIQUE}"),
+                "reason": _unmatched_reason(target, len(starts), excerpt, length),
             })
             return reference
         recited = citation(self.repo_root, target, starts[0], starts[0] + length - 1)
@@ -98,6 +96,16 @@ def line_range(text: str) -> tuple[int, int]:
     if not start.isdigit() or not (end or start).isdigit():
         raise ValueError(f"lines must be START or START-END, got {text}")
     return int(start), int(end or start)
+
+
+def _unmatched_reason(target: str, found: int, excerpt: Any, length: int) -> str:
+    if not excerpt:
+        return "the citation has no excerpt digest, so nothing can find its lines; cite it again with cite"
+    if length <= 0:
+        return "the cited line range is empty; cite it again with cite"
+    if found == 0:
+        return f"the cited excerpt occurs 0 times in {target}; its content changed, so check the fact and recite it"
+    return f"the cited excerpt occurs {found} times in {target}; recite it with the lines that hold the fact. {WIDEN_TO_UNIQUE}"
 
 
 @dataclass(frozen=True)

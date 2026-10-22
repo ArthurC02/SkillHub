@@ -205,7 +205,8 @@ def _similarity(first: set[str], second: set[str]) -> float:
 
 
 def _path_parts(path: Any) -> tuple[str, ...] | None:
-    return PurePosixPath(path.strip("/")).parts if isinstance(path, str) else None
+    parts = PurePosixPath(path.strip("/")).parts if isinstance(path, str) else None
+    return parts or None
 
 
 def _path_score(gold: tuple[str, ...] | None, candidate: tuple[str, ...] | None) -> int:

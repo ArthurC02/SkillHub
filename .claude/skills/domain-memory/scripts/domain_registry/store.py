@@ -62,7 +62,7 @@ def read_document(root: Path, name: str) -> dict[str, Any]:
     if name == MANIFEST:
         return manifest_document()
     directory = registry_dir(root) / asset_of(name)
-    concepts = sorted(directory.glob("*.md")) if directory.is_dir() else []
+    concepts = sorted(directory.glob("*.md"), key=lambda concept: concept.stem) if directory.is_dir() else []
     return asset_document(name, [
         (concept.stem, concept.read_text(encoding="utf-8"))
         for concept in concepts

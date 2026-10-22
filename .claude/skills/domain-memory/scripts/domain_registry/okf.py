@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from typing import Any
 
@@ -72,6 +73,7 @@ YAML_WORDS = {"true", "false", "null", "yes", "no", "on", "off", "y", "n", "~"}
 CONCEPT_ID = re.compile(r"[^\s()\[\]]+")
 RELATION_LINE = re.compile(r"- (.+?): \[[^\]]*\]\(/([a-z-]+)/([^)\s]+)\)")
 INTEGER = re.compile(r"-?\d+")
+DECIMAL = re.compile(r"-?\d+(\.\d+)?[eE][+-]?\d+|-?\d+\.\d+")
 CITED_RANGE = re.compile(r"(.+)#L(\d+)-(\d+)")
 
 
@@ -287,6 +289,8 @@ def _parse_body(body: str) -> tuple[str, dict[str, Any], dict[str, list[str]]]:
             _add_relation(relations, line)
         elif line.startswith("- "):
             sections.setdefault(_field(heading), []).append(line[2:])
+        elif line.strip():
+            raise ValueError(f"a line under {heading} must start with '- ': {line.strip()}")
     return "\n".join(prose_lines).strip(), relations, sections
 
 
@@ -307,6 +311,8 @@ def _document(front: dict[str, Any], body: str) -> str:
 
 
 def _scalar(value: Any) -> str:
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError("the concept format cannot write a number that is not finite")
     if value is None or isinstance(value, (bool, int, float)):
         return json.dumps(value)
     if value == []:
@@ -357,7 +363,7 @@ def _parse_scalar(text: str, number: int) -> Any:
             return json.loads(text)
         except ValueError as error:
             raise ValueError(f"frontmatter line {number}: unreadable quoted text") from error
-    if text in ("[]", "{}", "null", "true", "false") or INTEGER.fullmatch(text):
+    if text in ("[]", "{}", "null", "true", "false") or INTEGER.fullmatch(text) or DECIMAL.fullmatch(text):
         return json.loads(text)
     if text[:1] in ("'", "[", "{", "&", "*", "!", "|", ">", "%", "@", "`"):
         raise ValueError(f"frontmatter line {number}: write this value plainly or in double quotes: {text}")

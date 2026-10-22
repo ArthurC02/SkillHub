@@ -2,6 +2,20 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.0
+
+### Fixed
+
+- A concept file reads a decimal or exponent number back as a number; it read `1.5` back as the text `1.5`. A number that is not finite is refused on write.
+- A line under a section heading that is not a `- ` item is refused by name, instead of being dropped on read and lost on the next write.
+- A `=======` line on its own, a setext heading underline, is no longer taken for a merge conflict marker; `<<<<<<< `, `>>>>>>> ` and `||||||| ` still are. The audit log, whose every line is JSON, still strips it when reconciling a conflicted merge.
+- `readiness --registry-root` naming a path that does not exist reports the Registry `absent` instead of failing on the missing source map.
+- Records read in the same order from the working tree and from a commit when one id prefixes another, such as `order` and `order-line`, so the two digests agree.
+- `compare-registry` no longer pairs two Contexts whose `implementation_path` is blank.
+- `mcp-serve` answers a `tools/call` whose `name` is not text with an invalid-params error instead of an internal error.
+- Rolling back an interrupted install removes its staging directory, and a journal whose staging directory is gone asks for reconciliation instead of failing midway.
+- `relocate-evidence` says that a citation without a digest, or with an empty range, cannot be found, instead of claiming its content changed.
+
 ## 2.1.10
 
 ### Changed

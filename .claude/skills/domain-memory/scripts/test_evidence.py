@@ -373,6 +373,16 @@ class EvidenceTest(RegistryTestCase):
                     [(problem["id"], problem["found"]) for problem in moved["unmatched"]],
                 )
 
+    def test_relocating_a_citation_without_a_digest_says_nothing_can_find_its_lines(self) -> None:
+        self.evidence_moved("one\ntwo\n", "lib/a.py", "one\ntwo\n")
+        self.seed("rules.json", [{"id": "unhashed-rule", "contexts": ["orders"], "statement": "S.", "status": "candidate",
+                                  "evidence": [{"path": "src/a.py", "lines": {"start": 2, "end": 2}}]}])
+        moved = relocate_evidence(self.repo / "memory", self.repo, "src", "lib")
+        self.assertEqual(
+            [("unhashed-rule", 0, "the citation has no excerpt digest, so nothing can find its lines; cite it again with cite")],
+            [(problem["id"], problem["found"], problem["reason"]) for problem in moved["unmatched"]],
+        )
+
     def test_splitting_a_file_moves_only_the_citations_whose_lines_left_it(self) -> None:
         for kept_text, kept_status in (("keep\n", "current"), ("header\nkeep\n", "shifted")):
             with self.subTest(kept_status):

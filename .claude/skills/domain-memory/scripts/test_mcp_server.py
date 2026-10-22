@@ -291,6 +291,9 @@ class ToolErrorTest(McpServerTest):
             ("unknown method", request(2, "resources/list"), {"code": -32601, "message": "Method not found: resources/list"}),
             ("arguments not an object", request(2, "tools/call", name="get_context", arguments=["orders"]),
              {"code": -32602, "message": "tools/call arguments must be an object"}),
+            ("tool name not text", request(2, "tools/call", name=["get_context"], arguments={}),
+             {"code": -32602, "message": "Unknown tool: ['get_context']"}),
+            ("tool name missing", request(2, "tools/call", arguments={}), {"code": -32602, "message": "Unknown tool: None"}),
         ]
         for name, line, error in cases:
             with self.subTest(name):

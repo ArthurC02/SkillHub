@@ -110,6 +110,10 @@ class ConceptLayoutTest(RegistryTestCase):
             read_document(self.memory(), "rules.json"),
         )
 
+    def test_an_id_that_prefixes_another_reads_back_before_it_as_a_commit_lists_it(self) -> None:
+        write_document(self.memory(), "rules.json", {"rules": [{"id": "order-line"}, {"id": "order"}]})
+        self.assertEqual(["order", "order-line"], [rule["id"] for rule in read_document(self.memory(), "rules.json")["rules"]])
+
     def test_a_record_left_out_of_a_write_loses_its_concept_file(self) -> None:
         write_document(self.memory(), "rules.json", {"rules": [REFUND_RULE, ORDER_RULE]})
         write_document(self.memory(), "rules.json", {"rules": [ORDER_RULE]})

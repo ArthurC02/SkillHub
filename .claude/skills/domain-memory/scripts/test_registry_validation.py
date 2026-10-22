@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.common import DOMAIN_MEMORY_HINT, ASSET_KEYS, load_json
+from domain_registry.common import DOMAIN_MEMORY_HINT, ASSET_KEYS, conflict_marked_line, load_json
 from domain_registry.contracts import validate_schema
 from domain_registry.cli_commands import HANDLERS
 from domain_registry.cli_parser import build_parser
@@ -145,6 +145,16 @@ class RegistryValidationTest(RegistryTestCase):
         self.seed("events.json", [{"id": "e", "owner_context": "orders", "aggregate": "order", "contract_id": "c"}])
         self.assertEqual(
             [], [error for error in validate(root, None, False) if "aggregate" in error or "contract" in error]
+        )
+
+    def test_a_setext_underline_is_not_a_conflict_marker_but_a_conflict_block_is(self) -> None:
+        self.assertEqual(
+            (None, 1, 2),
+            (
+                conflict_marked_line("Title\n=======\nbody\n"),
+                conflict_marked_line("<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> theirs\n"),
+                conflict_marked_line("kept\n>>>>>>> theirs\n"),
+            ),
         )
 
     def test_validate_names_every_file_that_holds_git_conflict_markers_and_nothing_else(self) -> None:

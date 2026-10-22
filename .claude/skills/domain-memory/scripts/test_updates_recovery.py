@@ -148,6 +148,22 @@ class UpdatesRecoveryTest(RegistryTestCase):
              sorted(path.name for path in (self.repo / "memory").glob(".domain-registry-*"))),
         )
 
+    def test_rolling_back_an_installed_transaction_leaves_no_staging_or_backup_directory(self) -> None:
+        original = (registry_dir(self.repo / "memory") / INDEX).read_bytes()
+        root, _, _ = self.interrupted_transaction("installed")
+        recover_interrupted_update(root, False)
+        self.assertEqual(
+            (original, [], False),
+            ((registry_dir(root) / INDEX).read_bytes(), sorted(path.name for path in root.glob(".domain-registry-*")),
+             transaction_path(root).exists()),
+        )
+
+    def test_an_installed_transaction_whose_staging_directory_is_gone_needs_reconciliation(self) -> None:
+        root, _, staging = self.interrupted_transaction("installed")
+        staging.rmdir()
+        with self.assertRaisesRegex(ValueError, "registry transaction requires manual reconciliation"):
+            recover_interrupted_update(root, False)
+
     def test_recovery_restores_the_backup_when_a_prepared_swap_left_no_registry(self) -> None:
         original = (registry_dir(self.repo / "memory") / INDEX).read_bytes()
         root, backup, _ = self.interrupted_transaction("prepared")

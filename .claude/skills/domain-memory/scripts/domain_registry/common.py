@@ -278,7 +278,7 @@ def registry_dir(root: Path) -> Path:
     return root / "registry"
 
 
-CONFLICT_MARKERS = ("<<<<<<< ", "=======", ">>>>>>> ", "||||||| ")
+CONFLICT_MARKERS = ("<<<<<<< ", ">>>>>>> ", "||||||| ")
 
 
 def conflict_marked_line(text: str) -> int | None:

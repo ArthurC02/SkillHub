@@ -42,7 +42,7 @@ class CliReadTest(RegistryTestCase):
             "--asset", "vocabulary", "--record-file", str(order), "--record-file", str(line),
         )
         self.assertEqual((0, "2 candidate records written: 2 created, 0 updated."), (result.returncode, result.stdout.strip()))
-        self.assertEqual(["order-line", "order"],
+        self.assertEqual(["order", "order-line"],
                          [term["id"] for term in asset_records(self.repo / "memory", "vocabulary.json")])
 
     def test_upsert_candidate_names_a_record_file_that_does_not_exist(self) -> None:

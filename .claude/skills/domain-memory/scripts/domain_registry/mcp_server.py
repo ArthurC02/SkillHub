@@ -269,7 +269,8 @@ class McpServer:
         raise ProtocolError(METHOD_NOT_FOUND, f"Method not found: {method}")
 
     def call_tool(self, params: dict) -> dict[str, Any]:
-        tool = TOOLS_BY_NAME.get(params.get("name"))
+        name = params.get("name")
+        tool = TOOLS_BY_NAME.get(name) if isinstance(name, str) else None
         if tool is None:
             raise ProtocolError(INVALID_PARAMS, f"Unknown tool: {params.get('name')}")
         arguments = params.get("arguments", {})

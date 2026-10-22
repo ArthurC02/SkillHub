@@ -56,10 +56,14 @@ def _event_lines(root: Path) -> list[str]:
     return path.read_text(encoding="utf-8").splitlines()
 
 
+def _conflict_marker(line: str) -> bool:
+    return line.startswith(CONFLICT_MARKERS) or line == "======="
+
+
 def _parsed_events(lines: list[str], root: Path) -> list[tuple[int, dict[str, Any]]]:
     events = []
     for index, line in enumerate(lines, start=1):
-        if line.startswith(CONFLICT_MARKERS):
+        if _conflict_marker(line):
             raise ValueError(f"conflict markers at event {index}; run reconcile-audit --registry-root {shown_path(root, None)}")
         try:
             value = json.loads(line, object_pairs_hook=reject_duplicate_keys)
@@ -199,7 +203,7 @@ def reconcile(root: Path) -> dict[str, Any]:
         raise ValueError(missing_registry(root))
     with writer_lock(root):
         lines = _event_lines(root)
-        kept = [line for line in lines if not line.startswith(CONFLICT_MARKERS)]
+        kept = [line for line in lines if not _conflict_marker(line)]
         events: dict[str, dict[str, Any]] = {}
         for _, event in _parsed_events(kept, root):
             events.setdefault(str(event.get("event_sha256")), event)

@@ -31,6 +31,9 @@ class ContextMatchingTest(unittest.TestCase):
         result = asset_result(registry(contexts=gold), registry(contexts=candidate), "contexts")
         return [(pair["candidate"], pair["gold"], pair["by"]) for pair in result["matched"]]
 
+    def test_contexts_without_a_code_path_do_not_match_by_path(self) -> None:
+        self.assertEqual([], self.matched([{"id": "orders", "implementation_path": ""}], [{"id": "sales", "implementation_path": "/"}]))
+
     def test_a_context_at_the_same_code_path_matches_whatever_it_is_called(self) -> None:
         self.assertEqual([("sales", "orders", "path")], self.matched([ORDERS], [{"id": "sales", "implementation_path": "src/orders/"}]))
 

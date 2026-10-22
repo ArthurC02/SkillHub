@@ -72,6 +72,10 @@ class ConceptRoundTripTest(unittest.TestCase):
              {"id": "r", "evidence": [{**CITED, "lines": {"start": "1", "end": 2}}]}),
             ("name with a line break", "contexts", {"id": "c", "name": "Two\nlines"}),
             ("nested object", "contracts", {"id": "k", "idempotency": {"key": "origin key", "scope": "per Workspace"}}),
+            ("decimal number", "rules", {"id": "r", "weight": 1.5}),
+            ("number in exponent form", "rules", {"id": "r", "weight": 2.5e-07}),
+            ("whole number", "rules", {"id": "r", "weight": 2}),
+            ("text that looks like a number", "rules", {"id": "r", "weight": "1.5"}),
         ]
         for label, asset, record in cases:
             with self.subTest(label):
@@ -200,6 +204,15 @@ class ConceptDocumentTest(unittest.TestCase):
     def test_a_relations_line_that_is_not_a_link_is_refused(self) -> None:
         with self.assertRaisesRegex(ValueError, "a Relations line must read"):
             decode("rules", "r", "---\ntype: Business Rule\n---\n# Relations\n- Contexts: orders\n")
+
+    def test_a_number_that_is_not_finite_is_refused(self) -> None:
+        for value in (float("inf"), float("nan")):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "cannot write a number that is not finite"):
+                encode("rules", {"id": "r", "weight": value})
+
+    def test_free_text_under_a_section_is_refused_instead_of_dropped(self) -> None:
+        with self.assertRaisesRegex(ValueError, "a line under Examples must start with '- ': free text a human added"):
+            decode("rules", "r", "---\ntype: Business Rule\n---\n# Examples\n- one\nfree text a human added\n")
 
     def test_prose_on_an_asset_without_a_prose_field_is_refused(self) -> None:
         with self.assertRaisesRegex(ValueError, "an? interactions concept has no prose field"):

@@ -108,7 +108,7 @@ class UpdatesRecordsTest(RegistryTestCase):
         order, line = self.look_alike_terms()
         upsert_candidate(self.repo / "memory", self.repo, "vocabulary", order, line)
         self.assertEqual(
-            [("order-line", ["order"]), ("order", ["order-line"])],
+            [("order", ["order-line"]), ("order-line", ["order"])],
             [(term["id"], term["not_same_as"]) for term in asset_records(self.repo / "memory", "vocabulary.json")],
         )
         last = self.audit_lines()[-1]

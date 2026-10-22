@@ -120,7 +120,7 @@ def assess_readiness(
         registry_status, registry_records, blocks = registry_condition(
             repo_root, registry_root.resolve()
         )
-        if registry_status not in UNUSABLE_REGISTRY_STATUSES:
+        if registry_status != "absent" and registry_status not in UNUSABLE_REGISTRY_STATUSES:
             signals.append(_listing_signal(discovered, registry_root.resolve()))
         signals.append({"kind": "registry", "status": registry_status})
         signals.append({"kind": "registry_records", "count": registry_records})

@@ -907,6 +907,17 @@ class SourcesTest(RegistryTestCase):
             (toplevel(plain), scan_report(plain)["findings"]),
         )
 
+    def test_readiness_reports_a_registry_root_that_does_not_exist_as_absent(self) -> None:
+        result = assess_readiness(self.repo, self.repo / "nowhere")
+        self.assertEqual(
+            ("empty", [{"kind": "registry", "status": "absent"}], []),
+            (
+                result["state"],
+                [signal for signal in result["signals"] if signal["kind"] == "registry"],
+                [signal for signal in result["signals"] if signal["kind"] == "listing"],
+            ),
+        )
+
     def test_readiness_calls_a_repository_without_product_sources_empty(self) -> None:
         result = assess_readiness(self.repo)
         self.assertEqual(result["state"], "empty")
