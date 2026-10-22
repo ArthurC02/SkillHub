@@ -22,10 +22,11 @@ def test_modules(root: Path, chosen: list[str]) -> list[str]:
 
 
 FAILED, PASSED, NO_TESTS = "FAIL", "ok  ", "skip"
+NO_TESTS_EXIT_CODES = (0, 5)
 
 
 def status_of(code: int, output: str) -> str:
-    if "Ran 0 tests" in output:
+    if "Ran 0 tests" in output and code in NO_TESTS_EXIT_CODES:
         return NO_TESTS
     return PASSED if code == 0 else FAILED
 
@@ -48,6 +49,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     root = args.root.resolve()
     modules = test_modules(root, args.modules)
+    if not modules:
+        print(f"no test_*.py under {root}; nothing ran")
+        return 1
     started = time.monotonic()
     with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
         results = list(pool.map(lambda module: run_module(root, args.python, module), modules))

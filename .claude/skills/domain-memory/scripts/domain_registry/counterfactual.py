@@ -402,7 +402,7 @@ def _suite_entry(entry: Any, suite: dict[str, Any], index: int) -> tuple[Mutatio
     if missing:
         raise ValueError(f"mutations[{index}] needs {', '.join(missing)}; test_command may be set once for the suite")
     timeout = DEFAULT_TIMEOUT_SECONDS if values.get("timeout") is None else values["timeout"]
-    if not isinstance(timeout, int) or timeout < 1:
+    if isinstance(timeout, bool) or not isinstance(timeout, int) or timeout < 1:
         raise ValueError(f"mutations[{index}] timeout must be a positive number of seconds")
     for key in ("cwd", "expect", "obligation_id"):
         if values.get(key) is not None and not isinstance(values[key], str):

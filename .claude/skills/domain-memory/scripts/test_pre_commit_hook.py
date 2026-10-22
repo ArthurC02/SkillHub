@@ -150,6 +150,24 @@ class PreCommitHookTest(RegistryTestCase):
         result = self.commit_hook(hook, environment)
         self.assertEqual((1, f"ERROR: index unreadable\n{FULL_REPORT_OF_A}\n"), (result.returncode, result.stderr))
 
+    def test_a_cited_path_holding_a_space_or_non_ascii_letters_is_still_checked(self) -> None:
+        for relative in ("my docs/a.py", "資料/a.py"):
+            with self.subTest(relative):
+                self.tearDown()
+                self.setUp()
+                (self.repo / relative).parent.mkdir()
+                (self.repo / relative).write_text("one\ntwo\n", encoding="utf-8")
+                self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+                self.rule_citing_first_line_of(relative)
+                hook = self.install()
+                self.stage(relative, "changed\ntwo\n")
+                result = self.commit_hook(hook)
+                self.assertEqual(
+                    (1, f"rules/cited-rule: {relative}:1-1 changed; check that its statement still holds; "
+                     "recite only if it does, otherwise amend it"),
+                    (result.returncode, result.stderr.splitlines()[0] if result.stderr else result.stdout),
+                )
+
     def test_a_weakened_line_staged_while_the_disk_holds_the_original_stops_the_commit(self) -> None:
         self.cited_source()
         hook = self.install()

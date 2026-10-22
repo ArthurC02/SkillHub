@@ -2,6 +2,19 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.3
+
+### Fixed
+
+- A cited line ends at a line feed only, as editors and git count lines; a form feed, a U+2028 separator or a lone carriage return no longer starts a line, so cited line numbers match the editor's.
+- Discovery and the quality gates refuse with `git check-ignore failed in <root>, so ignored files cannot be told from sources: <stderr>` when git cannot say which files are ignored, instead of listing the ignored ones as sources; a git deadline surfaces as such.
+- `counterfactual` refuses a suite entry whose `timeout` is `true` or `false`; a boolean passed as one second before.
+- `run_tests.py` exits 1 and says `nothing ran` when no `test_*.py` is under its root, and fails a module that exits non-zero even if it printed `Ran 0 tests`.
+
+### Added
+
+- A pre-commit hook test for a cited path holding a space or non-ASCII letters.
+
 ## 2.2.2
 
 ### Removed

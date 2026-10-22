@@ -85,12 +85,11 @@ def ignored_relatives(root: Path, relatives: list[str]) -> set[str]:
     if not relatives or not (root / ".git").exists():
         return set()
     relatives = _untracked(root, relatives)
-    try:
-        result = run_git(root, "check-ignore", "-z", "--stdin", stdin=chr(0).join(relatives))
-    except (OSError, subprocess.TimeoutExpired):
-        return set()
+    result = run_git(root, "check-ignore", "-z", "--stdin", stdin=chr(0).join(relatives))
     if result.returncode not in (0, 1):
-        return set()
+        raise ValueError(
+            f"git check-ignore failed in {root}, so ignored files cannot be told from sources: {result.stderr.strip()}"
+        )
     asked = set(relatives)
     return {entry for entry in result.stdout.split(chr(0)) if entry in asked}
 

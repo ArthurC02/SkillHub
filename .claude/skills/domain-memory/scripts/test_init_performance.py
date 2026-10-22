@@ -1,10 +1,11 @@
+import subprocess
 import unittest
 from unittest.mock import patch
 
 from test_support import RegistryTestCase
 
 from domain_registry import sources
-from domain_registry.git import run_git
+from domain_registry.git import GitDeadline, run_git
 from domain_registry.sources import ignored_relatives, selected_source_map, source_files
 
 ASKED = ["kept.md", "tracked.log", "hidden.log", "fresh.md", "scratch.log", "build/out.txt"]
@@ -53,6 +54,25 @@ class TrackedPrefilterTest(RegistryTestCase):
         with patch.object(sources, "TRACKED_PREFILTER_MIN_PATHS", 1), \
                 patch("domain_registry.sources.run_git", side_effect=index_listing_fails):
             self.assertEqual(ignored_relatives(self.repo, ASKED), IGNORED)
+
+    def test_when_check_ignore_cannot_answer_nothing_is_listed_as_a_source(self) -> None:
+        deadline = GitDeadline(["git", "check-ignore"], 1, rerun_is_safe=True)
+        failed = subprocess.CompletedProcess(["git", "check-ignore"], 128, "", "fatal: not a git repository\n")
+        for label, outcome, raised, message in (
+            ("deadline", deadline, GitDeadline, "check-ignore"),
+            ("git error", failed, ValueError, "^git check-ignore failed in .*, so ignored files cannot be told from sources: "
+             "fatal: not a git repository$"),
+        ):
+            def check_ignore_answers(root: object, *arguments: str, answer: object = outcome, **options: object) -> object:
+                if "check-ignore" in arguments:
+                    if isinstance(answer, Exception):
+                        raise answer
+                    return answer
+                return run_git(root, *arguments, **options)
+
+            with self.subTest(label), patch("domain_registry.sources.run_git", side_effect=check_ignore_answers), \
+                    self.assertRaisesRegex(raised, message):
+                ignored_relatives(self.repo, ASKED)
 
 
 class SourceWalkCountTest(RegistryTestCase):

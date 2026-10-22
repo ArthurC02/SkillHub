@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import re
 from collections.abc import Callable
 from functools import cache
@@ -38,7 +39,11 @@ def _valid_line_range(start: Any, end: Any) -> bool:
 
 def _read_lines(path: Path) -> tuple[bytes, list[str]]:
     content = path.read_bytes()
-    return content, content.decode("utf-8", errors="replace").splitlines(keepends=True)
+    return content, _rows(content)
+
+
+def _rows(content: bytes) -> list[str]:
+    return io.StringIO(content.decode("utf-8", errors="replace")).readlines()
 
 
 def _excerpt(rows: list[str], start: int, end: int) -> bytes:
@@ -115,7 +120,7 @@ FUNCTION_START = r"^(?P<indent>[ \t]*)(?:(?P<go>func)(?:\s*\([^)]*\))?\s+|(?:asy
 
 
 def function_span(repo_root: Path, relative: str, name: str) -> tuple[int, int]:
-    rows = _cited_file(repo_root.resolve(), relative).read_text(encoding="utf-8", errors="replace").splitlines()
+    rows = _rows(_cited_file(repo_root.resolve(), relative).read_bytes())
     pattern = re.compile(FUNCTION_START.format(name=re.escape(name)))
     starts = [(number, found) for number, row in enumerate(rows, 1) if (found := pattern.match(row))]
     if len(starts) != 1:
@@ -142,7 +147,7 @@ def _defined_elsewhere(repo_root: Path, relative: str, pattern: re.Pattern[str])
     for path in repository_files(repo_root):
         if path == relative or not path.endswith(suffix):
             continue
-        rows = (repo_root / path).read_text(encoding="utf-8", errors="replace").splitlines()
+        rows = _rows((repo_root / path).read_bytes())
         found.extend(f"{path}:{number}" for number, row in enumerate(rows, 1) if pattern.match(row))
     found.sort()
     if not found:
@@ -305,7 +310,7 @@ def _rows_from(root: Path, path_text: str, content_of: ContentReader) -> dict[st
         return {"status": "missing", "path": path_text}
     if len(content) > MAX_EVIDENCE_BYTES:
         return {"status": "invalid", "reason": f"evidence source exceeds {MAX_EVIDENCE_BYTES} bytes", "path": path_text}
-    return content.decode("utf-8", errors="replace").splitlines(keepends=True)
+    return _rows(content)
 
 
 def _disk_rows(root: Path, path_text: str) -> dict[str, Any] | list[str]:

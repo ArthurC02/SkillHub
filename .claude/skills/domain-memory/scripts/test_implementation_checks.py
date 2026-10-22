@@ -261,7 +261,7 @@ class QualityGatesTest(RepositoryCase):
         self.assertEqual(self.gates(), [])
 
     def test_the_repository_is_searched_beside_its_own_checkout_marker(self) -> None:
-        self.write(".git", "gitdir: elsewhere\n")
+        subprocess.run(["git", "init", "-q"], cwd=self.repo, check=True)
         self.write("ruff.toml", "")
         self.assertEqual(
             self.gates(), [{"kind": "lint", "tool": "ruff", "path": "ruff.toml"}]
@@ -409,6 +409,18 @@ class CounterfactualTest(RepositoryCase):
             result = counterfactual_suite(self.repo, suite)
         self.assertEqual((["killed", "killed"], 3), ([entry["verdict"] for entry in result["results"]], run_tests.call_count))
         self.assert_untouched()
+
+    def test_a_suite_entry_whose_timeout_is_not_a_number_of_seconds_is_an_error(self) -> None:
+        for timeout in (True, 0, "5"):
+            with self.subTest(timeout=timeout):
+                suite = {"test_command": RUN_TESTS, "mutations": [
+                    {"file": "rule.py", "find": "LIMIT = 200", "replace": "LIMIT = 201", "timeout": timeout},
+                ]}
+                [result] = counterfactual_suite(self.repo, suite)["results"]
+                self.assertEqual(
+                    ("error", "mutations[1] timeout must be a positive number of seconds"),
+                    (result["verdict"], result["reason"]),
+                )
 
     def test_a_suite_without_mutations_is_refused(self) -> None:
         for suite in ({}, {"mutations": []}, [], {"mutations": "x"}):

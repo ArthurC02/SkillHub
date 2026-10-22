@@ -34,6 +34,15 @@ class EvidenceTest(RegistryTestCase):
         with self.assertRaisesRegex(ValueError, "invalid JSON"):
             source_map_for(self.repo / "memory")
 
+    def test_a_line_ends_at_a_line_feed_only_as_editors_count_lines(self) -> None:
+        (self.repo / "pages.py").write_bytes("a\x0cb\nc\u2028d\re\n".encode("utf-8"))
+        second = verify(citation(self.repo, "pages.py", 2, 2), self.repo)
+        third = verify({"path": "pages.py", "lines": {"start": 3, "end": 3}}, self.repo)
+        self.assertEqual(
+            ("current", "invalid", "evidence line range exceeds source"),
+            (second["status"], third["status"], third["reason"]),
+        )
+
     def test_each_evidence_defect_gets_its_verdict(self) -> None:
         source = self.repo / "fact.md"
         source.write_text("one\ntwo\nthree\n", encoding="utf-8")

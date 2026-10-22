@@ -48,6 +48,14 @@ class RunTestsTest(unittest.TestCase):
         code, output = self.run_in({"test_one": PASSING, "test_two": FAILING}, "test_one")
         self.assertEqual((0, True, True), (code, "test_two" not in output.split("failed:")[0], output.rstrip().endswith("failed: none")))
 
+    def test_a_root_without_test_modules_fails_instead_of_passing_vacuously(self) -> None:
+        code, output = self.run_in({"helper": PASSING})
+        self.assertEqual((1, True), (code, output.rstrip().endswith("; nothing ran")))
+
+    def test_a_module_that_exits_non_zero_after_reporting_no_test_is_failed_not_skipped(self) -> None:
+        code, output = self.run_in({"test_one": "import sys\nprint('Ran 0 tests')\nsys.exit(1)\n"}, "test_one")
+        self.assertEqual((1, "FAIL test_one"), (code, output.splitlines()[0][:13]))
+
     def test_a_module_sees_a_sixty_second_git_timeout_unless_the_environment_sets_one(self) -> None:
         for given, expected in ((None, "60"), ("7", "7")):
             with self.subTest(given=given), patch.dict(os.environ, {TIMEOUT_VARIABLE: given} if given else {}):
