@@ -1,3 +1,5 @@
+import { MISSING_EVALUATION_RECOVERY } from "../evaluation.model";
+
 export function NotEvaluatedNotice({
   showPollingNote,
   stoppedAsking,
@@ -16,7 +18,7 @@ export function NotEvaluatedNotice({
       )}
       {showPollingNote && stoppedAsking && (
         <p className="note" role="status">
-          已停止自動確認評估結果。可手動重新確認；這不代表評估失敗。
+          已停止自動確認評估結果。可手動重新確認；這不代表評估失敗。{MISSING_EVALUATION_RECOVERY}
         </p>
       )}
     </div>

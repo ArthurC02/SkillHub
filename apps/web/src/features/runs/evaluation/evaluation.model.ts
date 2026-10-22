@@ -19,6 +19,20 @@ export type EvaluationPanelState = {
   asksHistory: boolean;
 };
 
+const STALE_EVALUATION_MINUTES = 10; // one-number: evaluationStaleMinutes
+const EVALUATION_RECOVERY_MINUTES = 5; // one-number: evaluationRecoveryMinutes
+const UNEVALUATED_GRACE_MINUTES = 30; // one-number: unevaluatedGraceMinutes
+const UNEVALUATED_SWEEP_MINUTES = 30; // one-number: unevaluatedSweepMinutes
+const UNEVALUATED_LOOKBACK_HOURS = 24; // one-number: unevaluatedLookbackHours
+
+export const STALLED_EVALUATION_RECOVERY = `停住超過 ${STALE_EVALUATION_MINUTES} 分鐘的評估，平台會自動重新開始，最晚 ${
+  STALE_EVALUATION_MINUTES + EVALUATION_RECOVERY_MINUTES
+} 分鐘後再按「重新確認評估結果」就會看到。`;
+
+export const MISSING_EVALUATION_RECOVERY = `結束不到 ${UNEVALUATED_LOOKBACK_HOURS} 小時的試跑若沒有評估，平台會在結束後 ${
+  UNEVALUATED_GRACE_MINUTES + UNEVALUATED_SWEEP_MINUTES
+} 分鐘內自動補上。`;
+
 export function evaluationPanelState(query: {
   runStatus: string | undefined;
   revision: string | undefined;

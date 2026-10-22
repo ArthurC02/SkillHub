@@ -1,3 +1,4 @@
+import { STALLED_EVALUATION_RECOVERY } from "../evaluation.model";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 
 export function EvaluatingNotice({
@@ -21,7 +22,7 @@ export function EvaluatingNotice({
       </p>
       <p className="note">
         {pendingPollStopped
-          ? "已停止自動確認評估結果；這不代表評估失敗。"
+          ? `已停止自動確認評估結果；這不代表評估失敗。${STALLED_EVALUATION_RECOVERY}`
           : "這一頁每 3 秒自己查一次。"}
       </p>
     </div>

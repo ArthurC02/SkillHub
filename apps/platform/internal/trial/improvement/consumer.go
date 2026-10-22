@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	UnevaluatedSweepInterval = 30 * time.Minute
+	UnevaluatedSweepInterval = 30 * time.Minute // one-number: unevaluatedSweepMinutes
 
-	unevaluatedGrace    = 30 * time.Minute
-	unevaluatedLookback = 24 * time.Hour
+	unevaluatedGrace    = 30 * time.Minute // one-number: unevaluatedGraceMinutes
+	unevaluatedLookback = 24 * time.Hour   // one-number: unevaluatedLookbackHours
 	unevaluatedPage     = 200
 	unevaluatedMaxPages = 20
 )

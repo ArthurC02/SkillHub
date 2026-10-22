@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	RecoveryInterval   = 5 * time.Minute
-	RecoveryStaleAfter = 10 * time.Minute
+	RecoveryInterval   = 5 * time.Minute  // one-number: evaluationRecoveryMinutes
+	RecoveryStaleAfter = 10 * time.Minute // one-number: evaluationStaleMinutes
 
 	recoveryBatch = 100
 )

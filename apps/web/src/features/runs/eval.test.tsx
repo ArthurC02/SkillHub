@@ -836,6 +836,9 @@ test("EVAL-001 an old run with no evaluation stops being asked about, and says s
 
   expect(container.textContent).toContain("未評估");
   expect(container.textContent).toContain("已停止自動確認評估結果");
+  expect(container.textContent).toContain(
+    "結束不到 24 小時的試跑若沒有評估，平台會在結束後 60 分鐘內自動補上。",
+  );
   expect(container.textContent).not.toContain("結果會自己出現在這裡");
 });
 
@@ -885,6 +888,9 @@ test("EVAL-001 a judge that never finishes stops being polled, and the promise s
 
   expect(container.textContent).toContain("尚未確認完成判定");
   expect(container.textContent).toContain("已停止自動確認評估結果");
+  expect(container.textContent).toContain(
+    "停住超過 10 分鐘的評估，平台會自動重新開始，最晚 15 分鐘後再按「重新確認評估結果」就會看到。",
+  );
   expect(container.querySelector(".notice time")?.getAttribute("datetime")).toBe(
     "2026-10-15T00:04:57.000Z",
   );

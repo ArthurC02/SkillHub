@@ -44,6 +44,8 @@ var sharedNumberRoster = []string{
 	"creationMaxToolQueryChars",
 	"creationSessionList",
 	"embeddingDimensions",
+	"evaluationRecoveryMinutes",
+	"evaluationStaleMinutes",
 	"excerptLimit",
 	"generateFailureLimit",
 	"generateMaxAttempts",
@@ -83,6 +85,9 @@ var sharedNumberRoster = []string{
 	"suggestMaxTargetFileChars",
 	"suggestMaxTargetFiles",
 	"suggestMaxTargetPath",
+	"unevaluatedGraceMinutes",
+	"unevaluatedLookbackHours",
+	"unevaluatedSweepMinutes",
 }
 
 func sharedNumberOwnTest(relative string) bool {
