@@ -103,18 +103,21 @@ class CliCiteTest(RegistryTestCase):
     def test_cite_finds_the_span_of_a_go_func_or_python_def_by_name(self) -> None:
         (self.repo / "total_test.go").write_text(
             "package orders\n\nfunc TestTotalPos(t *testing.T) {}\n\nfunc TestTotal(t *testing.T) {\n"
-            "\tif total() < 0 {\n\t\tt.Fatal(\"negative\")\n\t}\n}\n\nfunc (s *suite) TestMethod() {\n}\n",
+            "\tif total() < 0 {\n\t\tt.Fatal(\"negative\")\n\t}\n}\n\nfunc (s *suite) TestMethod() {\n}\n"
+            "\nfunc Map[T any](xs []T) []T {\n\treturn xs\n}\n",
             encoding="utf-8",
         )
         (self.repo / "test_total.py").write_text(
             "class TotalTest:\n    def test_total(\n        self,\n    ) -> None:\n        x = 1\n\n"
-            "        assert x\n\n    def test_other(self) -> None:\n        pass\n",
+            "        assert x\n\n    def test_other(self) -> None:\n        pass\n"
+            "\n    async def test_async(self) -> None:\n        pass\n",
             encoding="utf-8",
         )
         for path, name, lines in (
             ("total_test.go", "TestTotal", (5, 9)), ("total_test.go", "TestTotalPos", (3, 3)),
             ("total_test.go", "TestMethod", (11, 12)), ("test_total.py", "test_total", (2, 7)),
-            ("test_total.py", "test_other", (9, 10)),
+            ("test_total.py", "test_other", (9, 10)), ("total_test.go", "Map", (14, 16)),
+            ("test_total.py", "test_async", (12, 13)),
         ):
             with self.subTest(name):
                 cited = json.loads(self.cite("--path", path, "--function", name).stdout)
