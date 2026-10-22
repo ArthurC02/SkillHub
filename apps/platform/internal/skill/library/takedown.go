@@ -14,7 +14,7 @@ type TakedownBefore struct {
 }
 
 func SetTakedown(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID, reason string) (TakedownBefore, error) {
-	root, err := loadSkillForOperator(ctx, gen.New(tx), skillID)
+	root, err := loadSkillForOperatorHold(ctx, gen.New(tx), skillID)
 	if err != nil {
 		return TakedownBefore{}, err
 	}

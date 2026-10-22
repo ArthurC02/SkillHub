@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "operator-holds-deleted-skill",
+  "proposal_id": "operator-holds-deleted-skill",
+  "obligations": [
+    {
+      "id": "rule-a-held-skill-is-not-purged",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-held-skill-is-not-purged",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-held-skill-is-not-purged"
+        }
+      ],
+      "expected_outcome": "The operator search lists a deleted skill with deleted_at; takedown and restriction on it succeed and it survives the sweep; redistribution on a deleted skill is 404; an unheld deleted skill is purged.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnOperatorCanHoldASkillItsOwnerDeletedFirst$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

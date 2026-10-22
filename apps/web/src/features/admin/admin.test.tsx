@@ -822,6 +822,7 @@ test("a completed takedown stays confirmed after its controls disappear and a la
     ...ADMIN_SKILLS.skills[0],
     takedown_at: "2026-09-11T10:00:00Z",
     takedown_reason: "DMCA notice",
+    deleted_at: null,
   };
   let reads = 0;
   stub(true, (path, method) => {
@@ -893,6 +894,7 @@ test("a new governance query does not inherit the previous takedown result", asy
                     ...ADMIN_SKILLS.skills[0],
                     takedown_at: "2026-09-11T10:00:00Z",
                     takedown_reason: "DMCA notice",
+                    deleted_at: null,
                   }
                 : ADMIN_SKILLS.skills[0],
             ],
@@ -2011,6 +2013,7 @@ test("OPS-004: a taken-down skill shows when and why, and offers no action", asy
                 ...ADMIN_SKILLS.skills[0],
                 takedown_at: "2026-09-10T00:00:00Z",
                 takedown_reason: "DMCA",
+                deleted_at: null,
               },
             ],
           },
@@ -2036,6 +2039,24 @@ test("a skill without a takedown has a visible neutral governance status", async
   const status = field<HTMLElement>(".badge-row [role='status']");
   expect(status.textContent).toBe("未下架");
   expect(status.className).toBe("badge");
+  expect(has("擁有者已刪除")()).toBe(false);
+});
+
+test("a skill its owner deleted says so and still offers the operator's actions", async () => {
+  stub(true, (path) =>
+    path === "/admin/skills"
+      ? {
+          body: {
+            skills: [{ ...ADMIN_SKILLS.skills[0], deleted_at: "2026-10-20T00:00:00Z" }],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("擁有者已刪除"));
+  expect(has("內容會保留到你解除為止")()).toBe(true);
+  expect(has("的動作")()).toBe(true);
 });
 
 test("OPS-004: a takedown with no reason on record says it was not recorded", async () => {
@@ -2048,6 +2069,7 @@ test("OPS-004: a takedown with no reason on record says it was not recorded", as
                 ...ADMIN_SKILLS.skills[0],
                 takedown_at: "2026-09-10T00:00:00Z",
                 takedown_reason: null,
+                deleted_at: null,
               },
             ],
           },

@@ -919,14 +919,14 @@ func (q *Queries) LockAccountWorkspaceObjects(ctx context.Context, workspaceID p
 	return err
 }
 
-const lockSkillForOperatorRelease = `-- name: LockSkillForOperatorRelease :one
+const lockSkillForOperatorHold = `-- name: LockSkillForOperatorHold :one
 SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by FROM skills
 WHERE id = $1
 FOR UPDATE
 `
 
-func (q *Queries) LockSkillForOperatorRelease(ctx context.Context, id pgtype.UUID) (Skill, error) {
-	row := q.db.QueryRow(ctx, lockSkillForOperatorRelease, id)
+func (q *Queries) LockSkillForOperatorHold(ctx context.Context, id pgtype.UUID) (Skill, error) {
+	row := q.db.QueryRow(ctx, lockSkillForOperatorHold, id)
 	var i Skill
 	err := row.Scan(
 		&i.ID,
@@ -1200,7 +1200,7 @@ func (q *Queries) SetSkillRedistribution(ctx context.Context, arg SetSkillRedist
 
 const setSkillTakedown = `-- name: SetSkillTakedown :one
 UPDATE skills SET takedown_at = now(), takedown_reason = $1, takedown_by = $2, updated_at = now()
-WHERE id = $3 AND deleted_at IS NULL
+WHERE id = $3
   AND (takedown_at IS NULL OR (takedown_by = 'owner' AND $2::text = 'operator'))
 RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by
 `

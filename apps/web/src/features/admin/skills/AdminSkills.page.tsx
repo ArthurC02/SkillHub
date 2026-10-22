@@ -110,7 +110,7 @@ function GovernanceResults({ q }: { q: string }) {
       {skills.data &&
         readable &&
         (found.length === 0 ? (
-          <p>沒有符合「{q}」的小工具：0 筆。已刪除的小工具不會出現。</p>
+          <p>沒有符合「{q}」的小工具：0 筆。已清除的小工具不會出現。</p>
         ) : (
           <>
             <p className="note" role="status">
@@ -157,7 +157,7 @@ export function AdminSkills() {
   return (
     <AdminPage
       heading="小工具治理"
-      lede="範圍是所有工作區，含私人的與已下架的；只顯示治理狀態，不顯示內容。"
+      lede="範圍是所有工作區，含私人的、已下架的，以及擁有者刪除但還沒清除的；只顯示治理狀態，不顯示內容。"
     >
       <SearchForm key={q} q={q} onDraftChange={(draft) => setEditing({ q, draft })} />
       {queryChanged ? (

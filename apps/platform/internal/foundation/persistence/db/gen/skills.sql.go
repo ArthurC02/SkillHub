@@ -80,10 +80,9 @@ func (q *Queries) CreateSkill(ctx context.Context, arg CreateSkillParams) (Skill
 }
 
 const findSkillsForGovernance = `-- name: FindSkillsForGovernance :many
-SELECT id, workspace_id, name, access_restriction, redistribution, takedown_at, takedown_reason
+SELECT id, workspace_id, name, access_restriction, redistribution, takedown_at, takedown_reason, deleted_at
 FROM skills
-WHERE deleted_at IS NULL
-  AND (id = $1::uuid
+WHERE (id = $1::uuid
        OR ($1::uuid IS NULL AND name ILIKE '%' || $2::text || '%'))
 ORDER BY created_at DESC, id
 LIMIT $3
@@ -103,6 +102,7 @@ type FindSkillsForGovernanceRow struct {
 	Redistribution    string
 	TakedownAt        pgtype.Timestamptz
 	TakedownReason    *string
+	DeletedAt         pgtype.Timestamptz
 }
 
 func (q *Queries) FindSkillsForGovernance(ctx context.Context, arg FindSkillsForGovernanceParams) ([]FindSkillsForGovernanceRow, error) {
@@ -122,6 +122,7 @@ func (q *Queries) FindSkillsForGovernance(ctx context.Context, arg FindSkillsFor
 			&i.Redistribution,
 			&i.TakedownAt,
 			&i.TakedownReason,
+			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}

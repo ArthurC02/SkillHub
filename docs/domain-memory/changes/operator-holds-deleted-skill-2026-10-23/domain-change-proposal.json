@@ -1,0 +1,188 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "operator-holds-deleted-skill",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "operator-holds-deleted-skill",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-22T18:31:30.099332Z",
+  "verified_at": "2026-10-22T18:32:15.272311Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "0a7e7ad8ad2f280d6f4166f0932260552e136695",
+    "registry_digest": "sha256:f61e73be64928d1a987c98cb8b0060415b79a90535ce1d0d16c7f1c1b5ecc9e9",
+    "committed_digest": "sha256:f61e73be64928d1a987c98cb8b0060415b79a90535ce1d0d16c7f1c1b5ecc9e9"
+  },
+  "affected_contexts": [
+    "registry"
+  ],
+  "rule_ids": [
+    "a-held-skill-is-not-purged"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Only registry decides whether an operator's takedown or restriction may land on a skill; a deleted skill that has not been purged is still a skill an operator can hold.",
+    "evidence": [
+      "apps/platform/internal/skill/library/takedown.go:16-20",
+      "apps/platform/internal/skill/library/restriction.go:24-28",
+      "db/queries/skills.sql:121-127"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/library/takedown.go:16-20",
+      "apps/platform/internal/skill/library/restriction.go:24-28",
+      "db/queries/skills.sql:121-127"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A skill its owner deleted before a complaint arrived could not be taken down or restricted, because the operator search and the operator lock skipped deleted skills, so the content was purged once the grace period ended."
+    ],
+    "decision": "The operator search lists deleted skills that have not been purged, with deleted_at; takedown and restriction lock the skill whether or not its owner deleted it. Curation and redistribution still refuse a deleted skill.",
+    "invariants_preserved": [
+      "A deleted skill held by an operator never returns to the owner's list or to search.",
+      "Curation and redistribution verdicts are refused on a deleted skill."
+    ],
+    "rejected_alternatives": [
+      "Treating a delete as a withdrawal and recording only that the owner deleted it: once grace ends nothing is left to review."
+    ],
+    "proof_obligations": [
+      "rule-a-held-skill-is-not-purged"
+    ],
+    "counterfactual_check": "Locking a deleted skill with the write loader in SetTakedown fails TestAnOperatorCanHoldASkillItsOwnerDeletedFirst with a 404."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-held-skill-is-not-purged",
+        "statement": "A purge keeps the row of a skill that has test cases or a version referenced by a run, a download or a bundle; the deleted-skill sweep also keeps a skill while its publication is unretired or retired less than the ninety-day name hold ago, and while an operator takedown or access restriction is in force on it. An operator can take down or restrict a skill its owner has deleted until the sweep purges it, and the operator's skill search lists such a skill with when it was deleted.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A deleted skill past grace that has test cases survives the sweep.",
+          "A deleted skill whose publication retired 89 days 23 hours ago survives the sweep; at 90 days and a minute it is purged.",
+          "A skill its owner deleted while an operator takedown was in force survives the sweep past grace; after the operator lifts the takedown the next sweep purges it.",
+          "A skill its owner deleted before any complaint is found by the operator's search, taken down or restricted, and then survives the sweep past grace; a deleted skill nobody holds is purged."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/purge.go",
+            "lines": {
+              "start": 30,
+              "end": 32
+            },
+            "excerpt_sha256": "sha256:c2abe36b9b8910dce5fa36fa4d38ea43b9d698b61470cbf444fbd146ffd2c441"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/purge_test.go",
+            "lines": {
+              "start": 45,
+              "end": 73
+            },
+            "excerpt_sha256": "sha256:280894e25a26feb7089be8921c52b7d5ac1d3225efa4834c3e5ba2772f28bcb3"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/publishing_integration_test.go",
+            "lines": {
+              "start": 719,
+              "end": 753
+            },
+            "excerpt_sha256": "sha256:9dd45542dbe00bd2e4e042590d0e326a07e57a43dcb4d625fc10ab43de51a0e1"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/purge.go",
+            "lines": {
+              "start": 126,
+              "end": 134
+            },
+            "excerpt_sha256": "sha256:740c1c6027baaceccc632dbcab93e90d552ae3e31910235701ed49ebdcd4726e"
+          },
+          {
+            "path": "db/queries/governance.sql",
+            "lines": {
+              "start": 228,
+              "end": 231
+            },
+            "excerpt_sha256": "sha256:190e8561239a6638065ea9082bdbd505a86f92361e6dc5b5ba2a8f78cbc555e4"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/operator_hold_deletion_integration_test.go",
+            "lines": {
+              "start": 11,
+              "end": 69
+            },
+            "excerpt_sha256": "sha256:226eea57802bfe6a599a5f215fdc8d268b887baa5a1f0aecd37400f7fb867e4a"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/takedown.go",
+            "lines": {
+              "start": 16,
+              "end": 20
+            },
+            "content_sha256": "sha256:c0e24af90c82f694bcb1c5d2edca3928485c9db880a39647d70993414b3fca43",
+            "excerpt_sha256": "sha256:97744b9d15042311d43d8f1b245577757bcfb2cf7bbcc45b1e56844ab03e3401"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/restriction.go",
+            "lines": {
+              "start": 24,
+              "end": 28
+            },
+            "content_sha256": "sha256:99a6c3c4a1e8eb39557e769e9e3b09560a2f9160e12c83caa4dbc200c9d2e4df",
+            "excerpt_sha256": "sha256:ce9617d0879ca7c8567941b98c9798c634760c6f250c2346bc55bd71bb6b41b5"
+          },
+          {
+            "path": "db/queries/skills.sql",
+            "lines": {
+              "start": 121,
+              "end": 127
+            },
+            "content_sha256": "sha256:47dd341e7e75cee7c168e32133fae084e3ec4434c7efb9800b67f07cf7365e4a",
+            "excerpt_sha256": "sha256:8ab7b9d355a9d498a9aeaf54b90c17f7321176e221bc666b3769a8cc7e2fb754"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/operator_hold_deletion_integration_test.go",
+            "lines": {
+              "start": 82,
+              "end": 130
+            },
+            "content_sha256": "sha256:a9a51d97b94230a05bd8053f053eb39af4bd44135ed4745929801db88215ab9d",
+            "excerpt_sha256": "sha256:6045aad5bf1816fc475abc6f20d25662638a1caa274f36f17ba74a10d23fa4ea"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T18:32:14.206745Z",
+      "scope": "R-120 (a): an operator can take down or restrict a skill its owner deleted until it is purged",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "0a7e7ad8ad2f280d6f4166f0932260552e136695",
+        "registry_digest": "sha256:f61e73be64928d1a987c98cb8b0060415b79a90535ce1d0d16c7f1c1b5ecc9e9",
+        "committed_digest": "sha256:f61e73be64928d1a987c98cb8b0060415b79a90535ce1d0d16c7f1c1b5ecc9e9"
+      }
+    }
+  ],
+  "supersedes": [
+    "operator-hold-keeps-deleted-skill"
+  ]
+}

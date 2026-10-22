@@ -137,7 +137,7 @@
 | OPS-001 | 有測試 | `TestBackOfficeReadsAnswerAMemberLikeAMissingPage`、`TestMeTellsTheCallerWhetherTheyAreAnOperator` | |
 | OPS-002 | 有測試 | `TestAccountLookupAuditsAHitAndNothingElse` | |
 | OPS-003 | 有測試 | `TestCreditLedgerShowsTheGrantAndAuditsEveryRead` | |
-| OPS-004 | 有測試 | `TestGovernanceLookupReachesPrivateAndTakenDownSkillsButNotDeleted` | |
+| OPS-004 | 有測試 | `TestGovernanceLookupReachesPrivateTakenDownAndDeletedSkills` | |
 | OPS-005 | 有測試 | `TestRostersShowWhatIsInForce`、`TestP1HaltStopsBothEntryPointsAndPreservesTheScene` | |
 | OPS-006 | 有測試 | `TestOperatorAuditLogListsOnlyOperatorActions` | |
 | OPS-007 | 有測試 | `TestCostStatisticsShowTheNewestWindowOfEachKind` | |

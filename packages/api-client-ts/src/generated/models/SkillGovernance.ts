@@ -47,6 +47,10 @@ export interface SkillGovernance {
      * 
      */
     takedownReason: string | null;
+    /**
+     * When the owner deleted the skill, or null. A deleted skill is listed until it is purged so an operator can still take it down or restrict it.
+     */
+    deletedAt: Date | null;
 }
 
 /**
@@ -60,6 +64,7 @@ export function instanceOfSkillGovernance(value: object): value is SkillGovernan
     if (!('redistribution' in value) || value['redistribution'] === undefined) return false;
     if ((!('takedownAt' in (value as Record<string, any>)) && !('takedown_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['takedownAt'] === undefined && (value as Record<string, any>)['takedown_at'] === undefined)) return false;
     if ((!('takedownReason' in (value as Record<string, any>)) && !('takedown_reason' in (value as Record<string, any>))) || ((value as Record<string, any>)['takedownReason'] === undefined && (value as Record<string, any>)['takedown_reason'] === undefined)) return false;
+    if ((!('deletedAt' in (value as Record<string, any>)) && !('deleted_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['deletedAt'] === undefined && (value as Record<string, any>)['deleted_at'] === undefined)) return false;
     return true;
 }
 
@@ -80,6 +85,7 @@ export function SkillGovernanceFromJSONTyped(json: any, ignoreDiscriminator: boo
         'redistribution': json['redistribution'],
         'takedownAt': (json['takedown_at'] == null ? null : parseDateTime(json['takedown_at'])),
         'takedownReason': json['takedown_reason'],
+        'deletedAt': (json['deleted_at'] == null ? null : parseDateTime(json['deleted_at'])),
     };
 }
 
@@ -101,6 +107,7 @@ export function SkillGovernanceToJSONTyped(value?: SkillGovernance | null, ignor
         'redistribution': value['redistribution'],
         'takedown_at': value['takedownAt'] == null ? value['takedownAt'] : serializeDateTime(value['takedownAt']),
         'takedown_reason': value['takedownReason'],
+        'deleted_at': value['deletedAt'] == null ? value['deletedAt'] : serializeDateTime(value['deletedAt']),
     };
 }
 

@@ -491,6 +491,7 @@ type Governance struct {
 	Redistribution    string
 	TakedownAt        pgtype.Timestamptz
 	TakedownReason    *string
+	DeletedAt         pgtype.Timestamptz
 }
 
 const governanceLookupLimit = 20

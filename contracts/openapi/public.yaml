@@ -8199,7 +8199,7 @@ components:
         created_at: { type: string, format: date-time }
     SkillGovernance:
       type: object
-      required: [skill_id, workspace_id, name, access_restriction, redistribution, takedown_at, takedown_reason]
+      required: [skill_id, workspace_id, name, access_restriction, redistribution, takedown_at, takedown_reason, deleted_at]
       properties:
         skill_id: { type: string, format: uuid }
         workspace_id: { type: string, format: uuid }
@@ -8212,6 +8212,10 @@ components:
           type: [string, "null"]
           format: date-time
         takedown_reason: { type: [string, "null"] }
+        deleted_at:
+          type: [string, "null"]
+          format: date-time
+          description: When the owner deleted the skill, or null. A deleted skill is listed until it is purged so an operator can still take it down or restrict it.
     ModelCallBudget:
       type: object
       required: [kind, seconds, default_seconds, min_seconds, max_seconds, reason, set_at]

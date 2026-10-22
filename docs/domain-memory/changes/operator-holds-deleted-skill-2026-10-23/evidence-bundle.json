@@ -1,0 +1,38 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "operator-holds-deleted-skill",
+  "proposal_id": "operator-holds-deleted-skill",
+  "registry_revision": {
+    "observed_commit": "0a7e7ad8ad2f280d6f4166f0932260552e136695",
+    "registry_digest": "sha256:f61e73be64928d1a987c98cb8b0060415b79a90535ce1d0d16c7f1c1b5ecc9e9",
+    "committed_digest": "sha256:f61e73be64928d1a987c98cb8b0060415b79a90535ce1d0d16c7f1c1b5ecc9e9"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-held-skill-is-not-purged",
+      "mutated_protection": "apps/platform/internal/skill/library/takedown.go:17: loadSkillForOperatorHold(ctx -> loadSkillForOperator(ctx",
+      "failure_evidence": "=== RUN   TestAnOperatorCanHoldASkillItsOwnerDeletedFirst\n    operator_hold_deletion_integration_test.go:110: operator takedown of a deleted skill: got 404 (map[error:找不到這個 Skill])\n--- FAIL: TestAnOperatorCanHoldASkillItsOwnerDeletedFirst (0.33s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t7.461s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-held-skill-is-not-purged",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnOperatorCanHoldASkillItsOwnerDeletedFirst$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:99252c7314ab994f7e910685f5134672c0b9a139c6f79ace8971aec3e3d485f5",
+      "finished_at": "2026-10-22T18:31:40.248193Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

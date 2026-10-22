@@ -1060,6 +1060,7 @@ export const ADMIN_SKILLS = {
       redistribution: "unknown",
       takedown_at: null,
       takedown_reason: null,
+      deleted_at: null,
     },
   ],
 } satisfies { skills: SkillGovernance[] };

@@ -78,3 +78,53 @@ func assertDeletionNote(t *testing.T, owner *client, skillID, want string) {
 		t.Errorf("deletion note for %s = %q, want it to say %q", skillID, note, want)
 	}
 }
+
+func TestAnOperatorCanHoldASkillItsOwnerDeletedFirst(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	a := newAPI(t, pool)
+	owner := a.login(t, freshName("deleted-first-owner"))
+	operator := a.login(t, freshName("deleted-first-operator"))
+	a.auth.Operators = map[string]bool{operator.userID: true}
+
+	takenDown := importPackage(t, pool, a.packages, owner, freshName("deleted-first-down"), false)
+	restricted := importPackage(t, pool, a.packages, owner, freshName("deleted-first-restricted"), false)
+	untouched := importPackage(t, pool, a.packages, owner, freshName("deleted-first-untouched"), false)
+	for _, id := range []string{takenDown, restricted, untouched} {
+		if code, out := deleteJSON(t, owner, "/skills/"+id); code != http.StatusOK {
+			t.Fatalf("owner delete %s: got %d (%v)", id, code, out)
+		}
+	}
+
+	code, out := operatorCall(t, operator, http.MethodGet, "/admin/skills?q="+takenDown, "")
+	skills, _ := out["skills"].([]any)
+	if code != http.StatusOK || len(skills) != 1 {
+		t.Fatalf("operator search for a deleted skill: got %d with %d skills (%v), want it listed", code, len(skills), out)
+	}
+	if found, _ := skills[0].(map[string]any); found["deleted_at"] == nil {
+		t.Errorf("the deleted skill is listed without deleted_at: %v", found)
+	}
+
+	if code, out := operatorCall(t, operator, http.MethodPut, "/admin/skills/"+takenDown+"/takedown",
+		`{"reason":"DMCA notice"}`); code != http.StatusOK {
+		t.Fatalf("operator takedown of a deleted skill: got %d (%v)", code, out)
+	}
+	if code, out := operatorCall(t, operator, http.MethodPut, "/admin/skills/"+restricted+"/restriction",
+		`{"reason":"license-review","note":"checking the licence"}`); code != http.StatusOK {
+		t.Fatalf("operator restriction of a deleted skill: got %d (%v)", code, out)
+	}
+	if code, out := operatorCall(t, operator, http.MethodPut, "/admin/skills/"+untouched+"/redistribution",
+		`{"value":"blocked","note":"no licence recorded"}`); code != http.StatusNotFound {
+		t.Errorf("redistribution verdict on a deleted skill: got %d (%v), want 404", code, out)
+	}
+
+	ageSkillDeletionsPastGrace(t, pool, takenDown, restricted, untouched)
+	if _, err := registryPurger(pool).PurgeDeletedSkills(ctx, 30*24*time.Hour, 100); err != nil {
+		t.Fatal(err)
+	}
+	assertSkillsKeptWithTheirVersions(t, pool, []keptSkill{
+		{takenDown, "an operator took it down after its owner deleted it"},
+		{restricted, "an operator restricted it after its owner deleted it"},
+	})
+	assertSkillAndItsVersionsPurged(t, pool, untouched)
+}

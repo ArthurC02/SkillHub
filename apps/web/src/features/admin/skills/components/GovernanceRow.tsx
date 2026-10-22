@@ -47,7 +47,14 @@ export function GovernanceRow({
         <span className="badge">
           再散布：{REDISTRIBUTION[skill.redistribution] ?? skill.redistribution}
         </span>{" "}
+        {skill.deleted_at && <span className="badge badge-unverified">擁有者已刪除</span>}
       </p>
+      {skill.deleted_at && (
+        <p>
+          擁有者於 <Timestamp at={skill.deleted_at} />{" "}
+          刪除了它，寬限期過後就會清除。下架或設限之後，內容會保留到你解除為止。
+        </p>
+      )}
       {skill.takedown_at && (
         <p>
           下架於 <Timestamp at={skill.takedown_at} />

@@ -85,7 +85,7 @@ func (t *Takedowns) Restore(ctx context.Context, ws identity.Workspace, skillID 
 }
 
 func LiftTakedown(ctx context.Context, tx pgx.Tx, registry *Service, skillID pgtype.UUID) (TakedownBefore, error) {
-	root, err := loadSkillForOperatorRelease(ctx, gen.New(tx), skillID)
+	root, err := loadSkillForOperatorHold(ctx, gen.New(tx), skillID)
 	if err != nil {
 		return TakedownBefore{}, err
 	}

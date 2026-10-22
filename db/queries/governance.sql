@@ -220,7 +220,7 @@ SELECT * FROM skills
 WHERE id = $1 AND deleted_at IS NULL
 FOR UPDATE;
 
--- name: LockSkillForOperatorRelease :one
+-- name: LockSkillForOperatorHold :one
 SELECT * FROM skills
 WHERE id = $1
 FOR UPDATE;
@@ -244,7 +244,7 @@ WHERE id = $1;
 
 -- name: SetSkillTakedown :one
 UPDATE skills SET takedown_at = now(), takedown_reason = @takedown_reason, takedown_by = @takedown_by, updated_at = now()
-WHERE id = @id AND deleted_at IS NULL
+WHERE id = @id
   AND (takedown_at IS NULL OR (takedown_by = 'owner' AND @takedown_by::text = 'operator'))
 RETURNING *;
 

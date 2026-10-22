@@ -241,7 +241,7 @@ func TestCreditLedgerShowsTheGrantAndAuditsEveryRead(t *testing.T) {
 	}
 }
 
-func TestGovernanceLookupReachesPrivateAndTakenDownSkillsButNotDeleted(t *testing.T) {
+func TestGovernanceLookupReachesPrivateTakenDownAndDeletedSkills(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	owner := a.login(t, "bo-gov-owner")
@@ -260,8 +260,12 @@ func TestGovernanceLookupReachesPrivateAndTakenDownSkillsButNotDeleted(t *testin
 	}
 
 	byName := adminSkillsByID(t, operator, "BANDERSNATCH")
-	if len(byName) != 2 || byName[private] == nil || byName[down] == nil {
-		t.Fatalf("name search found %v, want exactly the private and the taken-down skill", byName)
+	if len(byName) != 3 || byName[private] == nil || byName[down] == nil || byName[gone] == nil {
+		t.Fatalf("name search found %v, want the private, the taken-down and the deleted skill", byName)
+	}
+	if byName[gone]["deleted_at"] == nil || byName[private]["deleted_at"] != nil {
+		t.Errorf("deleted_at: deleted skill %v, private skill %v; want it set only on the deleted one",
+			byName[gone]["deleted_at"], byName[private]["deleted_at"])
 	}
 	assertPrivateSkillGovernance(t, byName[private], owner.workspaceID)
 	if s := byName[down]; s["takedown_at"] == nil || s["takedown_reason"] != "DMCA governance" {
@@ -270,8 +274,8 @@ func TestGovernanceLookupReachesPrivateAndTakenDownSkillsButNotDeleted(t *testin
 	if byID := adminSkillsByID(t, operator, private); len(byID) != 1 || byID[private] == nil {
 		t.Errorf("id search found %v, want only %s", byID, private)
 	}
-	if byID := adminSkillsByID(t, operator, gone); len(byID) != 0 {
-		t.Errorf("a deleted skill is still found by id: %v", byID)
+	if byID := adminSkillsByID(t, operator, gone); len(byID) != 1 || byID[gone] == nil {
+		t.Errorf("id search for a deleted skill found %v, want it until it is purged", byID)
 	}
 	if code, _ := getAdmin(t, operator, "/admin/skills?q=%20"); code != http.StatusBadRequest {
 		t.Errorf("blank q: got %d, want 400", code)

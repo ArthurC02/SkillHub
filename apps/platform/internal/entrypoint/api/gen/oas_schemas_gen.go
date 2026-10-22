@@ -31929,6 +31929,9 @@ type SkillGovernance struct {
 	Redistribution    string      `json:"redistribution"`
 	TakedownAt        NilDateTime `json:"takedown_at"`
 	TakedownReason    NilString   `json:"takedown_reason"`
+	// When the owner deleted the skill, or null. A deleted skill is listed until it is purged so an
+	// operator can still take it down or restrict it.
+	DeletedAt NilDateTime `json:"deleted_at"`
 }
 
 // GetSkillID returns the value of SkillID.
@@ -31966,6 +31969,11 @@ func (s *SkillGovernance) GetTakedownReason() NilString {
 	return s.TakedownReason
 }
 
+// GetDeletedAt returns the value of DeletedAt.
+func (s *SkillGovernance) GetDeletedAt() NilDateTime {
+	return s.DeletedAt
+}
+
 // SetSkillID sets the value of SkillID.
 func (s *SkillGovernance) SetSkillID(val uuid.UUID) {
 	s.SkillID = val
@@ -31999,6 +32007,11 @@ func (s *SkillGovernance) SetTakedownAt(val NilDateTime) {
 // SetTakedownReason sets the value of TakedownReason.
 func (s *SkillGovernance) SetTakedownReason(val NilString) {
 	s.TakedownReason = val
+}
+
+// SetDeletedAt sets the value of DeletedAt.
+func (s *SkillGovernance) SetDeletedAt(val NilDateTime) {
+	s.DeletedAt = val
 }
 
 // The ceilings and allowed sources an import is held to, read from what enforces them.

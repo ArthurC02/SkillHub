@@ -68,7 +68,7 @@ queries:
   ListWorkspaceSkillSourceIDs: ingest
   DeleteSkillSources: ingest
   LockSkillForOperatorWrite: registry
-  LockSkillForOperatorRelease: registry
+  LockSkillForOperatorHold: registry
   ListSkillsUnderOperatorHold: registry
   SetSkillAccessRestriction: registry
   SetSkillCuration: registry
@@ -371,7 +371,7 @@ scope:
   LiftDispatchHalt: user
   ListPlatformAuditEvents: user
   LockSkillForOperatorWrite: user
-  LockSkillForOperatorRelease: user
+  LockSkillForOperatorHold: user
   ListSkillsUnderOperatorHold: user
   ListRecentCreditEntries: user
   SetDispatchHaltClearRounds: user

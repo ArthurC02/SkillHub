@@ -1,0 +1,24 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "operator-holds-deleted-skill",
+  "status": "draft",
+  "intent": "An operator can preserve a skill its owner deleted before a complaint arrived.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context registry lists the amended rule as reviewed, proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-held-skill-is-not-purged",
+      "statement": "A purge keeps the row of a skill that has test cases or a version referenced by a run, a download or a bundle; the deleted-skill sweep also keeps a skill while its publication is unretired or retired less than the ninety-day name hold ago, and while an operator takedown or access restriction is in force on it. An operator can take down or restrict a skill its owner has deleted until the sweep purges it, and the operator's skill search lists such a skill with when it was deleted."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/skill/library/takedown.go",
+    "apps/platform/internal/skill/library/restriction.go",
+    "db/queries/skills.sql",
+    "apps/platform/internal/entrypoint/api/apiserver/operator_hold_deletion_integration_test.go"
+  ]
+}

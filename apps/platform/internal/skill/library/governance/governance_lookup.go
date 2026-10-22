@@ -19,6 +19,7 @@ type governanceView struct {
 	Redistribution    string  `json:"redistribution"`
 	TakedownAt        *string `json:"takedown_at"`
 	TakedownReason    *string `json:"takedown_reason"`
+	DeletedAt         *string `json:"deleted_at"`
 }
 
 type governanceSearchResponse struct {
@@ -49,6 +50,10 @@ func (h *Handler) FindSkillsForGovernance(w http.ResponseWriter, r *http.Request
 		if g.TakedownAt.Valid {
 			at := pgconv.RFC3339(g.TakedownAt)
 			view.TakedownAt = &at
+		}
+		if g.DeletedAt.Valid {
+			at := pgconv.RFC3339(g.DeletedAt)
+			view.DeletedAt = &at
 		}
 		views = append(views, view)
 	}

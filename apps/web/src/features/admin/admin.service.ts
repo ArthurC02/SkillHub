@@ -37,6 +37,7 @@ export type SkillGovernance = {
   redistribution: string;
   takedown_at: string | null;
   takedown_reason: string | null;
+  deleted_at: string | null;
 };
 
 export type DispatchHalt = {
