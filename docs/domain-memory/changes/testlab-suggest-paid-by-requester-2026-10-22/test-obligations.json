@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "testlab-suggest-paid-by-requester",
+  "proposal_id": "testlab-suggest-paid-by-requester",
+  "obligations": [
+    {
+      "id": "rule-a-criteria-suggestion-is-paid-for-by-its-requester",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-criteria-suggestion-is-paid-for-by-its-requester",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-criteria-suggestion-is-paid-for-by-its-requester"
+        }
+      ],
+      "expected_outcome": "Suggesting acceptance criteria is a model call the user starts, so it is open only to invited accounts, refused before the model is called when the owner's credit balance is below the start threshold for suggest_criteria, and debited by the usage the gateway reported once the model answers.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestSuggestingCriteria ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

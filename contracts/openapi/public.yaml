@@ -6468,8 +6468,22 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Not on the beta invite list.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: Test case not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: |
+            The account's credit balance is below the start threshold for this
+            call. The model was not called and nothing was charged. A suggestion
+            that does reach the model is debited by the usage the gateway
+            reported, the same way an interactive creation step is.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

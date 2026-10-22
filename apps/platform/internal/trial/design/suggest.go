@@ -61,6 +61,10 @@ func (s *Service) SuggestCriteria(ctx context.Context, ws identity.Workspace, id
 		return nil, ErrNotFound
 	}
 
+	if err := s.Billing.admit(ctx, ws.ID); err != nil {
+		return nil, err
+	}
+
 	datasets, err := q.ListDatasets(ctx, gen.ListDatasetsParams{TestCaseID: tc.ID, WorkspaceID: ws.ID})
 	if err != nil {
 		return nil, err
@@ -80,9 +84,13 @@ func (s *Service) SuggestCriteria(ctx context.Context, ws identity.Workspace, id
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrSuggestUnavailable, err)
 	}
-	s.recordSuggestCost(ctx, proposal.Usage)
+	s.Billing.charge(ctx, ws.ID, proposal.Usage)
 
-	current, err := DecodeCriteria(tc.AcceptanceCriteria)
+	return newSuggestions(tc.AcceptanceCriteria, proposal.Texts)
+}
+
+func newSuggestions(acceptanceCriteria []byte, proposed []string) ([]Suggestion, error) {
+	current, err := DecodeCriteria(acceptanceCriteria)
 	if err != nil {
 		return nil, err
 	}
@@ -90,8 +98,8 @@ func (s *Service) SuggestCriteria(ctx context.Context, ws identity.Workspace, id
 	for _, c := range current {
 		seen[c.Text] = true
 	}
-	out := make([]Suggestion, 0, len(proposal.Texts))
-	for _, criterion := range proposal.Texts {
+	out := make([]Suggestion, 0, len(proposed))
+	for _, criterion := range proposed {
 		if len(out) >= MaxCriteria {
 			break
 		}

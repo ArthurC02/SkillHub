@@ -83,7 +83,7 @@ type Service struct {
 
 	Budgets *modelbudget.Service
 
-	RecordSpend func(ctx context.Context, usage *ModelUsage) error
+	Billing SuggestBilling
 }
 
 type Criterion struct {

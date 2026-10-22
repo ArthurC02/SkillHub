@@ -33207,6 +33207,10 @@ type SubmitFeedbackUnauthorized Error
 
 func (*SubmitFeedbackUnauthorized) submitFeedbackRes() {}
 
+type SuggestAcceptanceCriteriaForbidden Error
+
+func (*SuggestAcceptanceCriteriaForbidden) suggestAcceptanceCriteriaRes() {}
+
 type SuggestAcceptanceCriteriaNotFound Error
 
 func (*SuggestAcceptanceCriteriaNotFound) suggestAcceptanceCriteriaRes() {}
@@ -33218,6 +33222,10 @@ func (*SuggestAcceptanceCriteriaServiceUnavailable) suggestAcceptanceCriteriaRes
 type SuggestAcceptanceCriteriaUnauthorized Error
 
 func (*SuggestAcceptanceCriteriaUnauthorized) suggestAcceptanceCriteriaRes() {}
+
+type SuggestAcceptanceCriteriaUnprocessableEntity Error
+
+func (*SuggestAcceptanceCriteriaUnprocessableEntity) suggestAcceptanceCriteriaRes() {}
 
 // Why a suggestion cannot be applied. One vocabulary, served from one place, so the preview and the
 // apply call can never disagree about what stops a change.

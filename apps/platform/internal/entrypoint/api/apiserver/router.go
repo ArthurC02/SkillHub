@@ -266,7 +266,7 @@ func mountTestLabRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("DELETE /test-cases/{id}", auth.RequireSession(lab.Delete))
 	mux.HandleFunc("POST /test-cases/{id}/criteria", auth.RequireSession(lab.AddCriterion))
 
-	mux.HandleFunc("POST /test-cases/{id}/criteria/suggest", auth.RequireSession(limited(d, metrics.RouteSuggest, lab.SuggestCriteria)))
+	mux.HandleFunc("POST /test-cases/{id}/criteria/suggest", auth.RequireSession(limited(d, metrics.RouteSuggest, auth.RequireInvited(lab.SuggestCriteria))))
 	mux.HandleFunc("PATCH /test-cases/{id}/criteria/{criterionId}", auth.RequireSession(lab.UpdateCriterion))
 	mux.HandleFunc("DELETE /test-cases/{id}/criteria/{criterionId}", auth.RequireSession(lab.DeleteCriterion))
 	mux.HandleFunc("POST /test-cases/{id}/datasets", auth.RequireSession(lab.UploadDataset))

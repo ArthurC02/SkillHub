@@ -71,6 +71,15 @@ function addBlocker(text: string, checkReady: boolean, sizeProblem: string | nul
   return null;
 }
 
+function suggestFailureSentence(error: unknown) {
+  const status = error instanceof ApiError ? error.status : 0;
+  if (status === 503) return "目前無法自動建議，驗收條件可以自己手動輸入。";
+  if (status === 403) return "自動建議只開放給封測受邀帳號，驗收條件可以自己手動輸入。";
+  if (status === 422)
+    return "點數不足，這次沒有呼叫模型、也沒有扣點。驗收條件可以自己手動輸入，或請管理者加點後再試。";
+  return "無法取得建議，可以再試一次。";
+}
+
 export function CriteriaSection({ testCase }: { testCase: TestCase }) {
   const [draft, setDraft] = useState<{ text: string; check: CheckNode | null }>({
     text: "",
@@ -171,9 +180,7 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
       />
       <ReadFailure error={suggestError} what="建議">
         <p role="alert">
-          {suggestError instanceof ApiError && suggestError.status === 503
-            ? "目前無法自動建議，驗收條件可以自己手動輸入。"
-            : "無法取得建議，可以再試一次。"}
+          {suggestFailureSentence(suggestError)}
         </p>
       </ReadFailure>
       {message && <p role="status">{message}</p>}

@@ -85,22 +85,44 @@ func (l *creditLedger) Grant(ctx context.Context, workspaceID pgtype.UUID, grant
 	return balance, nil
 }
 
-func wireCostRecording(svc *credit.Service, search *catalog.Service, versions *ingest.Service,
-	lab *testlab.Service, pool *pgxpool.Pool) {
+func wireCostRecording(svc *credit.Service, search *catalog.Service, versions *ingest.Service) {
 	search.Credit = svc
 	versions.Credit = svc
-	lab.RecordSpend = func(ctx context.Context, usage *testlab.ModelUsage) error {
-		e := credit.CostEvent{
-			Kind:           credit.KindSuggestCriteria,
-			IdempotencyKey: string(credit.KindSuggestCriteria) + ":" + uuid.NewString(),
-			Estimated:      true,
+}
+
+func wireSuggestCredit(lab *testlab.Service, svc *credit.Service, owners *identity.Service, pool *pgxpool.Pool) {
+	lab.Billing.CanStart = func(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+		userID, err := owners.WorkspaceOwner(ctx, workspaceID)
+		if err != nil {
+			return false, err
 		}
-		if usage != nil {
-			e.PromptTokens, e.CompletionTokens = usage.PromptTokens, usage.CompletionTokens
-			e.UsdMicros, e.Estimated = credit.UsageCost(usage.ReportedCostUSD())
+		check, err := svc.CanStart(ctx, userID, credit.KindSuggestCriteria)
+		if err != nil {
+			return false, err
 		}
-		_, _, err := svc.RecordCost(ctx, pool, e)
-		return err
+		return check.OK, nil
+	}
+	lab.Billing.Charge = func(ctx context.Context, workspaceID pgtype.UUID, usage *testlab.ModelUsage) error {
+		return pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
+			userID, err := owners.WorkspaceOwnerIn(ctx, tx, workspaceID)
+			if err != nil {
+				return err
+			}
+			in := credit.ChargeInput{
+				Kind:   credit.KindSuggestCriteria,
+				UserID: userID, WorkspaceID: workspaceID,
+				IdempotencyKey: string(credit.KindSuggestCriteria) + ":" + uuid.NewString(),
+			}
+			if usage != nil {
+				in.PromptTokens, in.CompletionTokens = usage.PromptTokens, usage.CompletionTokens
+				if usd := usage.ReportedCostUSD(); usd != nil {
+					micros, _ := credit.BillableMicros(*usd)
+					in.UsdMicros = &micros
+				}
+			}
+			_, err = svc.Charge(ctx, tx, in)
+			return err
+		})
 	}
 }
 

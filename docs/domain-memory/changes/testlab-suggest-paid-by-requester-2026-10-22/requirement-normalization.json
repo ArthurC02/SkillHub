@@ -1,0 +1,23 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "testlab-suggest-paid-by-requester",
+  "status": "draft",
+  "intent": "A user pays for the criteria suggestions they ask for, and cannot ask without an invitation or enough credit.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context testlab lists the rule as reviewed, proven by its integration tests.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-criteria-suggestion-is-paid-for-by-its-requester",
+      "statement": "Suggesting acceptance criteria is a model call the user starts, so it is open only to invited accounts, refused before the model is called when the owner's credit balance is below the start threshold for suggest_criteria, and debited by the usage the gateway reported once the model answers."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/trial/design/suggest.go",
+    "apps/platform/internal/trial/design/cost.go",
+    "apps/platform/internal/entrypoint/api/apiserver/credit_wiring.go"
+  ]
+}

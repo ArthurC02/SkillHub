@@ -70,6 +70,8 @@ func fail(w http.ResponseWriter, err error, generic string) {
 	case errors.Is(err, ErrLimitExceeded):
 		httpx.WriteError(w, http.StatusRequestEntityTooLarge, stripSentinelPrefix(err, ErrLimitExceeded))
 
+	case errors.Is(err, ErrCreditThreshold):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, ErrCreditThreshold.Error())
 	case errors.Is(err, ErrSuggestUnavailable):
 		httpx.WriteError(w, http.StatusServiceUnavailable, ErrSuggestUnavailable.Error())
 	default:

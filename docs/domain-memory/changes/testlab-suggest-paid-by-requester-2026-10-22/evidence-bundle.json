@@ -1,0 +1,38 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "testlab-suggest-paid-by-requester",
+  "proposal_id": "testlab-suggest-paid-by-requester",
+  "registry_revision": {
+    "observed_commit": "30a0c54228f1bcf9946f2287084e206e70e7070a",
+    "registry_digest": "sha256:1fba032ae28494d725fa4629a4692391c0f353463cd8d1adfa7a2e55b82db986",
+    "committed_digest": "sha256:7c6a25a9ba227966481e9e4a467876f253d362e43f10d3a286bf3f3259a9a158"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-criteria-suggestion-is-paid-for-by-its-requester",
+      "mutated_protection": "apps/platform/internal/trial/design/suggest.go:64: if err := s.Billing.admit(ctx, ws.ID); err != nil { -> if err := s.Billing.admit(ctx, ws.ID); err != nil && false {",
+      "failure_evidence": "=== RUN   TestSuggestingCriteriaBelowTheStartThresholdIsRefusedBeforeTheModelIsCalled\n    suggest_credit_integration_test.go:65: suggest at 69 credits: got 200 (map[suggestions:[map[text:The summary names every column.]]]), want 422\n--- FAIL: TestSuggestingCriteriaBelowTheStartThresholdIsRefusedBeforeTheModelIsCalled (0.09s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.075s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-criteria-suggestion-is-paid-for-by-its-requester",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestSuggestingCriteria ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:716cb935698f8aecf4a394264d9102772392440358890b277f039573d8a5f44c",
+      "finished_at": "2026-10-22T08:41:00.061403Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

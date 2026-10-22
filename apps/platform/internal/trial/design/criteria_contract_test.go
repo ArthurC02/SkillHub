@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
 
@@ -117,7 +119,7 @@ func TestAnAbsentModelDoesNotReachTheTestLabLookingPresent(t *testing.T) {
 
 type recordedSpend struct{ seen []*ModelUsage }
 
-func (r *recordedSpend) record(_ context.Context, u *ModelUsage) error {
+func (r *recordedSpend) record(_ context.Context, _ pgtype.UUID, u *ModelUsage) error {
 	r.seen = append(r.seen, u)
 	return nil
 }
@@ -141,15 +143,15 @@ func TestWhatTheGatewayChargedForAProposalIsRecorded(t *testing.T) {
 			ledger := &recordedSpend{}
 			var asked llmclient.SuggestCriteriaRequest
 			s := &Service{
-				LLM:         criteriaOverAWireServerWithUsage(t, &asked, []string{"the total is a number"}, tc.usage),
-				RecordSpend: ledger.record,
+				LLM:     criteriaOverAWireServerWithUsage(t, &asked, []string{"the total is a number"}, tc.usage),
+				Billing: SuggestBilling{Charge: ledger.record},
 			}
 
 			proposal, err := s.LLM.SuggestCriteria(context.Background(), aCriteriaRequest())
 			if err != nil {
 				t.Fatalf("suggesting criteria: %v", err)
 			}
-			s.recordSuggestCost(context.Background(), proposal.Usage)
+			s.Billing.charge(context.Background(), pgtype.UUID{}, proposal.Usage)
 
 			if len(ledger.seen) != 1 {
 				t.Fatalf("spend records = %d, want 1: a paid proposal must reach the ledger", len(ledger.seen))

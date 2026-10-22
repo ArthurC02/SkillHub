@@ -1,0 +1,148 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "testlab-suggest-paid-by-requester",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "testlab-suggest-paid-by-requester",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-22T08:40:40.275942Z",
+  "verified_at": "2026-10-22T08:41:36.905740Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "30a0c54228f1bcf9946f2287084e206e70e7070a",
+    "registry_digest": "sha256:1fba032ae28494d725fa4629a4692391c0f353463cd8d1adfa7a2e55b82db986",
+    "committed_digest": "sha256:7c6a25a9ba227966481e9e4a467876f253d362e43f10d3a286bf3f3259a9a158"
+  },
+  "affected_contexts": [
+    "credit",
+    "testlab"
+  ],
+  "rule_ids": [
+    "a-criteria-suggestion-is-paid-for-by-its-requester"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "testlab",
+    "invariant": "Only testlab decides when a criteria suggestion may call the model; credit decides the balance, the threshold and the debit.",
+    "evidence": [
+      "apps/platform/internal/trial/design/suggest.go:64-66",
+      "apps/platform/internal/entrypoint/api/apiserver/credit_wiring.go:93-127"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "credit-testlab-spend: the composition root hands testlab a start check and a charge hook backed by credit, the same shape generation uses.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "testlab importing credit"
+    ],
+    "evidence": [
+      "apps/platform/internal/trial/design/suggest.go:64-66",
+      "apps/platform/internal/entrypoint/api/apiserver/credit_wiring.go:93-127"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The suggestion route was the only user-started model call with neither the invitation gate nor a credit debit; its cost was recorded but never charged, so an account at zero credits could keep spending."
+    ],
+    "decision": "Gate the route on the invite list, check the owner's balance against the suggest_criteria start threshold before the model call, and charge the reported usage after it, through a hook the composition root wires to credit.",
+    "invariants_preserved": [
+      "A refused suggestion calls no model and charges nothing.",
+      "A suggestion stores nothing on the test case."
+    ],
+    "rejected_alternatives": [
+      "Reserving a per-call amount like a creation step: a suggestion is one short call, and the start threshold already bounds the overdraft at the debt floor."
+    ],
+    "proof_obligations": [
+      "rule-a-criteria-suggestion-is-paid-for-by-its-requester"
+    ],
+    "counterfactual_check": "Skipping the start check before the model call fails TestSuggestingCriteriaBelowTheStartThresholdIsRefusedBeforeTheModelIsCalled."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-criteria-suggestion-is-paid-for-by-its-requester",
+        "statement": "Suggesting acceptance criteria is a model call the user starts, so it is open only to invited accounts, refused before the model is called when the owner's credit balance is below the start threshold for suggest_criteria, and debited by the usage the gateway reported once the model answers.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "With no suggest_criteria statistics the threshold is the 70-credit fallback: a balance of 69 is refused with no model call and nothing charged; a balance of 70 is allowed and a $0.01 answer debits 13 credits at the default markup."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/suggest.go",
+            "lines": {
+              "start": 64,
+              "end": 66
+            },
+            "excerpt_sha256": "sha256:59952126e3d2651a7268888dc36abf67669d23566a5a623df2a050efeb443850"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/cost.go",
+            "lines": {
+              "start": 18,
+              "end": 30
+            },
+            "excerpt_sha256": "sha256:8f98309f6ddd0b5dab1b9c1225960799ad3ff203121106f80aaea6972031a5ee"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggest_credit_integration_test.go",
+            "lines": {
+              "start": 55,
+              "end": 96
+            },
+            "excerpt_sha256": "sha256:354e7871e1e63baa7eb16aa4708f2668691f5db5541b39b7a3a27427e463af06"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "credit-testlab-spend",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "producer_context": "credit",
+        "consumer_context": "testlab",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/credit_wiring.go",
+            "lines": {
+              "start": 93,
+              "end": 127
+            },
+            "content_sha256": "sha256:aac5b675699006fd8dc05ce4cfed5739da7de386657ac5279fe28f5680c1464b",
+            "excerpt_sha256": "sha256:628218eb64b5c436768b538c4d621e2f4e6cf7216b6ab0c7201867fd38644ca5"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T08:41:36.277660Z",
+      "scope": "Record a-criteria-suggestion-is-paid-for-by-its-requester and amend credit-testlab-spend",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "30a0c54228f1bcf9946f2287084e206e70e7070a",
+        "registry_digest": "sha256:1fba032ae28494d725fa4629a4692391c0f353463cd8d1adfa7a2e55b82db986",
+        "committed_digest": "sha256:7c6a25a9ba227966481e9e4a467876f253d362e43f10d3a286bf3f3259a9a158"
+      }
+    }
+  ],
+  "supersedes": [
+    "platform-shifted-recite"
+  ]
+}

@@ -373,6 +373,7 @@ func TestAdmissionListGatesForkRunAndDownloadOnly(t *testing.T) {
 	for _, gated := range []struct{ name, method, path, body string }{
 		{"POST packaging", http.MethodPost, packagingPath(bob.skillID, bob.versionID), `{"target":"claude-code"}`},
 		{"GET download content", http.MethodGet, noSuchArtifact, ""},
+		{"POST criteria suggest", http.MethodPost, "/test-cases/00000000-0000-4000-8000-0000000000fe/criteria/suggest", ""},
 	} {
 		code, body := bob.doJSON(t, gated.method, gated.path, gated.body)
 		if code != http.StatusForbidden {
