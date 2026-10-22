@@ -3,12 +3,12 @@
   "proposal_id": "sweep-holds-held-publication-names",
   "proposer": "domain-memory-agent",
   "requirement_id": "sweep-holds-held-publication-names",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-22T04:50:21.836735Z",
   "verified_at": "2026-10-22T04:51:08.882865Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T04:51:32.147217Z",
+  "applied_at": "2026-10-22T04:53:00.133585Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "8df4c34113dbda11beabcd62257bf4888aad55bb",
@@ -128,5 +128,9 @@
   ],
   "supersedes": [
     "registry-erase-own-run-content-2026-10-20"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "c9a33a71e5433cecd945c2fd3e54f39bd9cc86dc",
+    "registry_digest": "sha256:e096030c74295cff2c6919b2e7c7164edec0f11d5895088097f7a214e9a58e8e"
+  }
 }
