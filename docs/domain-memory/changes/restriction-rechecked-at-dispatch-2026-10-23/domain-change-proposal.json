@@ -3,12 +3,12 @@
   "proposal_id": "restriction-rechecked-at-dispatch",
   "proposer": "domain-memory-agent",
   "requirement_id": "restriction-rechecked-at-dispatch",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-22T16:41:11.413116Z",
   "verified_at": "2026-10-22T16:46:23.340798Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T16:46:25.744635Z",
+  "applied_at": "2026-10-22T16:47:52.542883Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "226f5c3fa0a3f838b8ad8e7e821ecee6e62adea6",
@@ -119,5 +119,9 @@
         "committed_digest": "sha256:932a9b97c120af9a39580c7df7dca9a80404390e1d367b2f5389d84915d7645f"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "cd9b15c81fae646d001d1d660ecc9b0a997c57b1",
+    "registry_digest": "sha256:de690bafa76d864b51e0f2f1a203e0d716f1aa8774a24875c1ae2cdf9c0f636b"
+  }
 }
