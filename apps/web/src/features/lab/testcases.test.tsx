@@ -1072,6 +1072,30 @@ test.each([
   expect((container.textContent ?? "").includes("評估只判定前 20 條")).toBe(warns);
 });
 
+test.each([
+  [19, false],
+  [20, true],
+])("a test case with %i criteria blocks adding and suggesting: %s", async (n, full) => {
+  stubPlatform({ testCase: { ...draft, acceptance_criteria: criteriaOf(n) } });
+  await render();
+
+  expect(button("請系統建議（選用）").disabled).toBe(full);
+  expect((container.textContent ?? "").includes("刪掉幾條才能再新增或請系統建議")).toBe(full);
+});
+
+test("a 413 from suggesting criteria says the list is full and nothing was charged", async () => {
+  stubPlatform({
+    testCase: { ...draft, acceptance_criteria: criteriaOf(19) },
+    suggest: { status: 413, error: "server words" },
+  });
+  await render();
+
+  await act(async () => button("請系統建議（選用）").click());
+  await waitFor(() => (container.textContent ?? "").includes("這次沒有呼叫模型、也沒有扣點"));
+  expect(container.textContent).toContain("已經有 20 條驗收條件");
+  expect(container.textContent).not.toContain("server words");
+});
+
 test("TEST-002 an adopted suggestion is listed as 系統建議，尚未確認", async () => {
   const withSuggested: TestCase = {
     ...draft,

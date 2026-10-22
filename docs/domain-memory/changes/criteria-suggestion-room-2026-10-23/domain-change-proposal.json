@@ -1,0 +1,152 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "criteria-suggestion-room",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "criteria-suggestion-room",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-22T19:14:32.962567Z",
+  "verified_at": "2026-10-22T19:15:40.066755Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "3bb518d1d18f15f64d9db508d67c868f4a69b8b0",
+    "registry_digest": "sha256:2c234a31034e22aa5ca44b908bf99e9234a5885925aeada35cd0db48e9dba1a7",
+    "committed_digest": "sha256:b68319f4090435caf5a5016fc7bd3cd53250de576e26ea5436d76908724baf3f"
+  },
+  "affected_contexts": [
+    "testlab"
+  ],
+  "rule_ids": [
+    "a-criteria-suggestion-is-paid-for-by-its-requester"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "testlab",
+    "invariant": "Testlab decides how many acceptance criteria a test case may hold and refuses a suggestion that could not add one.",
+    "evidence": [
+      "apps/platform/internal/trial/design/suggest.go:67-70",
+      "apps/platform/internal/trial/design/suggest.go:106-108"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/design/suggest.go:67-70",
+      "apps/platform/internal/trial/design/suggest.go:106-108"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A test case with 20 criteria still paid for a suggestion none of whose proposals could be adopted, and one with 19 paid for up to 20 proposals of which one fitted."
+    ],
+    "decision": "Count the criteria before admission and refuse with 413 when the list is full; cap the proposals at the room left. The page disables adding and suggesting when the list is full.",
+    "invariants_preserved": [
+      "A refused suggestion calls no model and charges nothing.",
+      "Proposals already in the list are never offered again."
+    ],
+    "rejected_alternatives": [
+      "Asking the model for exactly the room left: the model may still return more, so the cap stays on our side."
+    ],
+    "proof_obligations": [
+      "rule-a-criteria-suggestion-is-paid-for-by-its-requester"
+    ],
+    "counterfactual_check": "Allowing a full list past the count check fails TestSuggestionsFillOnlyTheRoomLeftAndAFullListIsRefusedBeforeTheModel with 200 instead of 413."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-criteria-suggestion-is-paid-for-by-its-requester",
+        "statement": "Suggesting acceptance criteria is a model call the user starts, so it is open only to invited accounts, refused before the model is called when the test case already holds the most criteria it may or when the owner's credit balance is below the start threshold for suggest_criteria, and debited by the usage the gateway reported once the model answers; it never proposes more criteria than there is room for.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "With no suggest_criteria statistics the threshold is the 70-credit fallback: a balance of 69 is refused with no model call and nothing charged; a balance of 70 is allowed and a $0.01 answer debits 13 credits at the default markup.",
+          "With 19 of 20 criteria a suggestion answers with one proposal out of three; with 20 it answers 413 and the model is not called."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggest_credit_integration_test.go",
+            "lines": {
+              "start": 55,
+              "end": 96
+            },
+            "excerpt_sha256": "sha256:354e7871e1e63baa7eb16aa4708f2668691f5db5541b39b7a3a27427e463af06"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/cost.go",
+            "lines": {
+              "start": 22,
+              "end": 38
+            },
+            "excerpt_sha256": "sha256:f1877a709e43f98fd927ff215c6c577ac8936f2de533870f1a7589689e79b748"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/suggest.go",
+            "lines": {
+              "start": 67,
+              "end": 70
+            },
+            "content_sha256": "sha256:5983866ae3f1b4114b91bb58895e68fce5353f91c565d12f56bcd4865ede26e9",
+            "excerpt_sha256": "sha256:33c1cc1a152d3e4539e0104f487240c34cffae4aed44e20a0b1237ee47418b49"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/suggest.go",
+            "lines": {
+              "start": 106,
+              "end": 108
+            },
+            "content_sha256": "sha256:5983866ae3f1b4114b91bb58895e68fce5353f91c565d12f56bcd4865ede26e9",
+            "excerpt_sha256": "sha256:8afa163d805819368d07518a001326a34747b86961d5058d7e6ec2bfc7b64ab5"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/preflight_integration_test.go",
+            "lines": {
+              "start": 689,
+              "end": 725
+            },
+            "content_sha256": "sha256:a5b3c07a0ffab8af1d2381916601d67b73344909bd16556d31d0d84a6ddc42c9",
+            "excerpt_sha256": "sha256:592c6f641a0c6ee7c64c6b0c60411bcf2f71502e48d4088762f23d23512826d8"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/suggest.go",
+            "lines": {
+              "start": 72,
+              "end": 74
+            },
+            "content_sha256": "sha256:5983866ae3f1b4114b91bb58895e68fce5353f91c565d12f56bcd4865ede26e9",
+            "excerpt_sha256": "sha256:59952126e3d2651a7268888dc36abf67669d23566a5a623df2a050efeb443850"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T19:15:37.883877Z",
+      "scope": "a criteria suggestion is refused before the model when the list is full and fills only the room left",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "3bb518d1d18f15f64d9db508d67c868f4a69b8b0",
+        "registry_digest": "sha256:2c234a31034e22aa5ca44b908bf99e9234a5885925aeada35cd0db48e9dba1a7",
+        "committed_digest": "sha256:b68319f4090435caf5a5016fc7bd3cd53250de576e26ea5436d76908724baf3f"
+      }
+    }
+  ],
+  "supersedes": [
+    "dispatch-halt-reaches-model-calls-and-queue"
+  ]
+}

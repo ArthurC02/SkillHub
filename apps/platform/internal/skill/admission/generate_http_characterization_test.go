@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -9,6 +10,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
@@ -27,6 +31,13 @@ func errorBody(t *testing.T, rec *httptest.ResponseRecorder) string {
 
 func TestEachGenerateRefusalHasItsOwnStatusAndMessage(t *testing.T) {
 	quota := fmt.Errorf("%w: 本月已用完", policy.ErrGenerateQuotaExceeded)
+	limits := policy.DefaultGenerateQuotaLimits()
+	_, spentToday := policy.EnforceGenerateQuota(context.Background(), policy.UsageReader{
+		WorkspaceCreatedAt: func(context.Context, pgtype.UUID) (time.Time, error) { return time.Now(), nil },
+		CountRuns: func(context.Context, pgtype.UUID, time.Time) (policy.RunUsage, error) {
+			return policy.RunUsage{Used: int64(limits.Daily)}, nil
+		},
+	}, limits, pgtype.UUID{})
 	for _, tc := range []struct {
 		name       string
 		err        error
@@ -38,7 +49,9 @@ func TestEachGenerateRefusalHasItsOwnStatusAndMessage(t *testing.T) {
 		{"unusable diagram", ErrDiagramInvalid, http.StatusBadRequest, "diagram 不是可用的圖片"},
 		{"too many references", ErrTooManyReferences, http.StatusUnprocessableEntity, "最多三個"},
 		{"reference unavailable", ErrReferenceUnavailable, http.StatusUnprocessableEntity, "無法使用"},
-		{"quota exceeded", quota, http.StatusUnprocessableEntity, quota.Error()},
+		{"quota exceeded", quota, http.StatusUnprocessableEntity, "免費生成額度已經用完了，這次沒有呼叫模型、也沒有花錢。"},
+		{"quota spent today", spentToday, http.StatusUnprocessableEntity,
+			fmt.Sprintf("每天上限 %d 次，從今天最早那一次算起 24 小時後恢復。", limits.Daily)},
 		{"allowance unknown", policy.ErrAllowanceUnavailable, http.StatusServiceUnavailable, "算不出"},
 		{"truncated generation", ErrGenerationTruncated, http.StatusUnprocessableEntity, "拆小一點"},
 		{"task too long", ErrGenerateTooLong, http.StatusUnprocessableEntity, "其餘可以省略"},

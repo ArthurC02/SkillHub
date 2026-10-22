@@ -57,6 +57,7 @@ type runView struct {
 	FailureClass  labelledJSON `json:"failure_class"`
 	CleanupStatus labelledJSON `json:"cleanup_status"`
 	Error         string       `json:"error"`
+	Reason        string       `json:"reason"`
 	Transitions   []struct {
 		From   string `json:"from_status"`
 		To     string `json:"to_status"`

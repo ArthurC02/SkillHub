@@ -142,8 +142,8 @@ func TestRunIsRefusedWhenTheDailyAllowanceIsSpent(t *testing.T) {
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("POST run over the daily allowance: got %d, want 422 (%s)", code, view.Error)
 	}
-	if !strings.Contains(view.Error, "免費試跑額度") {
-		t.Errorf("refusal does not say it is the allowance: %q", view.Error)
+	if !strings.Contains(view.Error, "免費試跑額度") || !strings.Contains(view.Error, "24 小時後恢復") {
+		t.Errorf("refusal does not say it is the allowance and when it frees up: %q", view.Error)
 	}
 
 	if after := betaCount(t, pool, `SELECT count(*) FROM runs WHERE workspace_id = $1`, mustUUID(t, f.workspaceID)); after != before {

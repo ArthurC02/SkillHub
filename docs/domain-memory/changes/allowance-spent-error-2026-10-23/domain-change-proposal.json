@@ -1,0 +1,208 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "allowance-spent-error",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "allowance-spent-error",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-22T19:48:57.951449Z",
+  "verified_at": "2026-10-22T19:49:00.448343Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "3bb518d1d18f15f64d9db508d67c868f4a69b8b0",
+    "registry_digest": "sha256:b9b566239cd9c519049b7cafbd1e4821c7cd754e0e6ab17408df0af6162e8089",
+    "committed_digest": "sha256:b68319f4090435caf5a5016fc7bd3cd53250de576e26ea5436d76908724baf3f"
+  },
+  "affected_contexts": [
+    "policy"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-spent-daily-allowance-refuses-the-next-run",
+        "statement": "A Workspace that has used its daily allowance in the trailing 24 hours is refused with reason quota_daily, and the message says when it resets.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "A Workspace with 5 runs in the last 24 hours is refused a sixth."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 182,
+              "end": 188
+            },
+            "content_sha256": "sha256:f27605f5f42ddf7948b571ab3f9b9d5d892188233d40efbda76d4d288de648a7",
+            "excerpt_sha256": "sha256:5f5171a7cd49e570c7ec22e90eae40e17639f4631d3337805e5239e550b50adc",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota_test.go",
+            "lines": {
+              "start": 107,
+              "end": 149
+            },
+            "excerpt_sha256": "sha256:c761b7938a96c3f4cb254095afec235845ebc6501b296ed7dda2c5ec9e5fb92a"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-spent-window-allowance-refuses-the-next-run",
+        "statement": "A Workspace that has used its rolling-window allowance is refused with reason quota_window, and the message says when the next one frees up.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "A Workspace with 30 runs in the last 30 days but none today is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 189,
+              "end": 195
+            },
+            "content_sha256": "sha256:f27605f5f42ddf7948b571ab3f9b9d5d892188233d40efbda76d4d288de648a7",
+            "excerpt_sha256": "sha256:8b4da22b6f8785c9253aeaed44fad6d49919e2dc89690152c59aacacd179ee23",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota_test.go",
+            "lines": {
+              "start": 107,
+              "end": 149
+            },
+            "excerpt_sha256": "sha256:c761b7938a96c3f4cb254095afec235845ebc6501b296ed7dda2c5ec9e5fb92a"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-daily-allowance-counts-the-last-24-hours",
+        "statement": "The daily allowance counts the runs of the 24 hours before now, not of the calendar day.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "A run at 23:00 yesterday still counts at 10:00 today."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 101,
+              "end": 101
+            },
+            "excerpt_sha256": "sha256:1797f3509bbc09245a741eb54d357af291c9c7282d56820b78049db85fe4efb6"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 182,
+              "end": 188
+            },
+            "content_sha256": "sha256:f27605f5f42ddf7948b571ab3f9b9d5d892188233d40efbda76d4d288de648a7",
+            "excerpt_sha256": "sha256:5f5171a7cd49e570c7ec22e90eae40e17639f4631d3337805e5239e550b50adc",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota_test.go",
+            "lines": {
+              "start": 152,
+              "end": 194
+            },
+            "excerpt_sha256": "sha256:c761b7938a96c3f4cb254095afec235845ebc6501b296ed7dda2c5ec9e5fb92a"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "when-both-allowances-are-spent-the-daily-reason-is-given",
+        "statement": "When the daily and the window allowance are both spent, the refusal names the daily allowance and when it resets.",
+        "contexts": [
+          "policy"
+        ],
+        "examples": [
+          "Five runs today and thirty this window refuse with quota_daily and its 24-hour reset."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/quota.go",
+            "lines": {
+              "start": 182,
+              "end": 195
+            },
+            "content_sha256": "sha256:f27605f5f42ddf7948b571ab3f9b9d5d892188233d40efbda76d4d288de648a7",
+            "excerpt_sha256": "sha256:2779ac232d676eefbe2539c47bed6031bd3282a831bd080e3aa4acb5ec1b0281",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/product/entitlements/quota_test.go",
+            "lines": {
+              "start": 142,
+              "end": 150
+            },
+            "excerpt_sha256": "sha256:d2f634cab52cfcf0202b2c705180959fea8a34c7b5316848535c8e12bfe38625"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T19:48:59.631039Z",
+      "scope": "re-cite the allowance rules after the refusal became a typed error carrying when it frees up",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "3bb518d1d18f15f64d9db508d67c868f4a69b8b0",
+        "registry_digest": "sha256:b9b566239cd9c519049b7cafbd1e4821c7cd754e0e6ab17408df0af6162e8089",
+        "committed_digest": "sha256:b68319f4090435caf5a5016fc7bd3cd53250de576e26ea5436d76908724baf3f"
+      }
+    }
+  ],
+  "supersedes": [
+    "policy-allowance-window-rules-2026-10-18",
+    "policy-harvest-rules-2026-10-17"
+  ]
+}

@@ -3045,7 +3045,11 @@ func (*CreateDownloadArtifactUnauthorized) createDownloadArtifactRes() {}
 
 // Merged schema.
 type CreateDownloadArtifactUnprocessableEntity struct {
-	Error         string                 `json:"error"`
+	Error string `json:"error"`
+	// A machine-readable refusal code, present only where the operation documents one. A 503 that carries
+	// it was answered by the platform and wrote nothing; a 503 without it may come from in front of the
+	// platform, where the outcome is unknown.
+	Reason        OptString              `json:"reason"`
 	BlockedReason PackagingBlockedReason `json:"blocked_reason"`
 	Validation    OptPackageValidation   `json:"validation"`
 }
@@ -3053,6 +3057,11 @@ type CreateDownloadArtifactUnprocessableEntity struct {
 // GetError returns the value of Error.
 func (s *CreateDownloadArtifactUnprocessableEntity) GetError() string {
 	return s.Error
+}
+
+// GetReason returns the value of Reason.
+func (s *CreateDownloadArtifactUnprocessableEntity) GetReason() OptString {
+	return s.Reason
 }
 
 // GetBlockedReason returns the value of BlockedReason.
@@ -3068,6 +3077,11 @@ func (s *CreateDownloadArtifactUnprocessableEntity) GetValidation() OptPackageVa
 // SetError sets the value of Error.
 func (s *CreateDownloadArtifactUnprocessableEntity) SetError(val string) {
 	s.Error = val
+}
+
+// SetReason sets the value of Reason.
+func (s *CreateDownloadArtifactUnprocessableEntity) SetReason(val OptString) {
+	s.Reason = val
 }
 
 // SetBlockedReason sets the value of BlockedReason.
@@ -3336,13 +3350,22 @@ func (*CreateSkillVersionFromSuggestionsUnauthorized) createSkillVersionFromSugg
 
 // Merged schema.
 type CreateSkillVersionFromSuggestionsUnprocessableEntity struct {
-	Error               string               `json:"error"`
+	Error string `json:"error"`
+	// A machine-readable refusal code, present only where the operation documents one. A 503 that carries
+	// it was answered by the platform and wrote nothing; a 503 without it may come from in front of the
+	// platform, where the outcome is unknown.
+	Reason              OptString            `json:"reason"`
 	RejectedSuggestions []RejectedSuggestion `json:"rejected_suggestions"`
 }
 
 // GetError returns the value of Error.
 func (s *CreateSkillVersionFromSuggestionsUnprocessableEntity) GetError() string {
 	return s.Error
+}
+
+// GetReason returns the value of Reason.
+func (s *CreateSkillVersionFromSuggestionsUnprocessableEntity) GetReason() OptString {
+	return s.Reason
 }
 
 // GetRejectedSuggestions returns the value of RejectedSuggestions.
@@ -3353,6 +3376,11 @@ func (s *CreateSkillVersionFromSuggestionsUnprocessableEntity) GetRejectedSugges
 // SetError sets the value of Error.
 func (s *CreateSkillVersionFromSuggestionsUnprocessableEntity) SetError(val string) {
 	s.Error = val
+}
+
+// SetReason sets the value of Reason.
+func (s *CreateSkillVersionFromSuggestionsUnprocessableEntity) SetReason(val OptString) {
+	s.Reason = val
 }
 
 // SetRejectedSuggestions sets the value of RejectedSuggestions.
@@ -8027,6 +8055,10 @@ func (s *EngagePlatformAgentBrakeReq) SetNote(val string) {
 // Ref: #/components/schemas/Error
 type Error struct {
 	Error string `json:"error"`
+	// A machine-readable refusal code, present only where the operation documents one. A 503 that carries
+	// it was answered by the platform and wrote nothing; a 503 without it may come from in front of the
+	// platform, where the outcome is unknown.
+	Reason OptString `json:"reason"`
 }
 
 // GetError returns the value of Error.
@@ -8034,9 +8066,19 @@ func (s *Error) GetError() string {
 	return s.Error
 }
 
+// GetReason returns the value of Reason.
+func (s *Error) GetReason() OptString {
+	return s.Reason
+}
+
 // SetError sets the value of Error.
 func (s *Error) SetError(val string) {
 	s.Error = val
+}
+
+// SetReason sets the value of Reason.
+func (s *Error) SetReason(val OptString) {
+	s.Reason = val
 }
 
 func (*Error) browseCatalogRes()                   {}
@@ -33195,6 +33237,10 @@ func (*SuggestAcceptanceCriteriaForbidden) suggestAcceptanceCriteriaRes() {}
 type SuggestAcceptanceCriteriaNotFound Error
 
 func (*SuggestAcceptanceCriteriaNotFound) suggestAcceptanceCriteriaRes() {}
+
+type SuggestAcceptanceCriteriaRequestEntityTooLarge Error
+
+func (*SuggestAcceptanceCriteriaRequestEntityTooLarge) suggestAcceptanceCriteriaRes() {}
 
 type SuggestAcceptanceCriteriaServiceUnavailable Error
 

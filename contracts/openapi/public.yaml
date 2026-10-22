@@ -4770,7 +4770,8 @@ paths:
 
             The body carries no incident detail: the person who cannot start a
             run is not the person the incident is about. Retrying is safe and
-            nothing was written.
+            nothing was written. The body's `reason` is `dispatch_halted`, which
+            tells this refusal apart from a 503 a proxy answered.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -6372,6 +6373,14 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "413":
+          description: |
+            The test case already holds the most acceptance criteria it may.
+            Checked before the model is called, so nothing was charged; a
+            suggestion never proposes more criteria than there is room for.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "422":
           description: |
             The account's credit balance is below the start threshold for this
@@ -7809,6 +7818,13 @@ components:
       properties:
         error:
           type: string
+        reason:
+          type: string
+          description: |
+            A machine-readable refusal code, present only where the operation
+            documents one. A 503 that carries it was answered by the platform
+            and wrote nothing; a 503 without it may come from in front of the
+            platform, where the outcome is unknown.
     TraceEvent:
       type: object
       description: |

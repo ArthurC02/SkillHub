@@ -23,6 +23,14 @@ export interface ModelError {
      * 
      */
     error: string;
+    /**
+     * A machine-readable refusal code, present only where the operation
+     * documents one. A 503 that carries it was answered by the platform
+     * and wrote nothing; a 503 without it may come from in front of the
+     * platform, where the outcome is unknown.
+     * 
+     */
+    reason?: string;
 }
 
 /**
@@ -44,6 +52,7 @@ export function ModelErrorFromJSONTyped(json: any, ignoreDiscriminator: boolean)
     return {
         
         'error': json['error'],
+        'reason': json['reason'] == null ? undefined : json['reason'],
     };
 }
 
@@ -59,6 +68,7 @@ export function ModelErrorToJSONTyped(value?: ModelError | null, ignoreDiscrimin
     return {
         
         'error': value['error'],
+        'reason': value['reason'],
     };
 }
 

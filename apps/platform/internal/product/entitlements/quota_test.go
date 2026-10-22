@@ -192,3 +192,41 @@ func TestTheRunAllowanceRefusesWithExactlyTheReasonsItPublishes(t *testing.T) {
 		}
 	}
 }
+
+func TestASpentAllowanceSaysWhenItFreesUpInTaipeiTime(t *testing.T) {
+	limits := DefaultQuotaLimits()
+	oldest := time.Date(2026, 10, 1, 16, 30, 0, 0, time.UTC)
+	windowSpent := UsageReader{
+		WorkspaceCreatedAt: func(context.Context, pgtype.UUID) (time.Time, error) {
+			return time.Now().Add(-365 * 24 * time.Hour), nil
+		},
+		CountRuns: func(_ context.Context, _ pgtype.UUID, since time.Time) (RunUsage, error) {
+			if since.Before(time.Now().Add(-25 * time.Hour)) {
+				return RunUsage{Used: int64(limits.Window), Oldest: &oldest}, nil
+			}
+			return RunUsage{}, nil
+		},
+	}
+	daySpent := splitReader(int64(limits.Daily), int64(limits.Daily), time.Now().Add(-365*24*time.Hour))
+
+	for _, tc := range []struct {
+		name   string
+		reader UsageReader
+		want   string
+	}{
+		{"window", windowSpent, fmt.Sprintf("每 %d 天上限 %d 次，下一次在 11 月 1 日 00:30（台北時間）恢復。",
+			limits.WindowDays, limits.Window)},
+		{"day", daySpent, fmt.Sprintf("每天上限 %d 次，從今天最早那一次算起 24 小時後恢復。", limits.Daily)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := EnforceQuota(context.Background(), tc.reader, limits, pgtype.UUID{})
+			spent, ok := errors.AsType[*AllowanceSpent](err)
+			if !ok || !errors.Is(err, ErrQuotaExceeded) {
+				t.Fatalf("err = %v, want an AllowanceSpent wrapping ErrQuotaExceeded", err)
+			}
+			if got := spent.WhenItFreesUp(); got != tc.want {
+				t.Errorf("WhenItFreesUp() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

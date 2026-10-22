@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "criteria-suggestion-room",
+  "proposal_id": "criteria-suggestion-room",
+  "obligations": [
+    {
+      "id": "rule-a-criteria-suggestion-is-paid-for-by-its-requester",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-criteria-suggestion-is-paid-for-by-its-requester",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-criteria-suggestion-is-paid-for-by-its-requester"
+        }
+      ],
+      "expected_outcome": "With one slot left a suggestion returns one proposal; with a full list it answers 413 and the model is not called.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^(TestSuggestionsFillOnlyTheRoomLeftAndAFullListIsRefusedBeforeTheModel|TestSuggestingCriteriaBelowTheStartThresholdIsRefusedBeforeTheModelIsCalled)$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

@@ -376,7 +376,7 @@ var generateRefusals = []generateRefusalEntry{
 	{ErrReferenceUnavailable, http.StatusUnprocessableEntity,
 		"其中一個參考的 Skill 無法使用，請換一個再試一次。"},
 	{policy.ErrGenerateQuotaExceeded, http.StatusUnprocessableEntity,
-		""},
+		"這個工作區的免費生成額度已經用完了，這次沒有呼叫模型、也沒有花錢。"},
 	{policy.ErrAllowanceUnavailable, http.StatusServiceUnavailable,
 		"目前算不出這個工作區剩下的生成額度，所以沒有呼叫模型、也沒有花錢。稍後再試。"},
 	{ErrGenerationTruncated, http.StatusUnprocessableEntity,
@@ -405,8 +405,8 @@ var generateRefusals = []generateRefusalEntry{
 func generateRefusal(err error) (status int, message string, refused bool) {
 	for _, r := range generateRefusals {
 		if errors.Is(err, r.err) {
-			if r.message == "" {
-				return r.status, err.Error(), true
+			if spent, ok := errors.AsType[*policy.AllowanceSpent](err); ok {
+				return r.status, r.message + spent.WhenItFreesUp(), true
 			}
 			return r.status, r.message, true
 		}

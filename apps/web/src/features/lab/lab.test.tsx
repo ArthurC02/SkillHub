@@ -606,6 +606,20 @@ test("a 503 on run-start leaves the outcome unconfirmed without exposing the ser
   expect(text()).not.toContain("temporarily unavailable");
 });
 
+test("a 503 the platform answered with dispatch_halted says the run did not start", async () => {
+  const platform = stubPlatform();
+  platform.failRunWith(503, { error: "server words", reason: "dispatch_halted" });
+  await renderLab();
+
+  await clickConfirm();
+
+  await waitFor(() => text().includes("平台暫停派送新的試跑"));
+  expect(text()).toContain("沒有用到額度");
+  expect(text()).not.toContain("無法確認試跑是否已開始");
+  expect(text()).not.toContain("server words");
+  expect(text()).not.toContain("查看試跑紀錄");
+});
+
 test("04 丙-143 a 404 on run-start says the skill version or test case is gone", async () => {
   const platform = stubPlatform();
   platform.failRunWith(404, { error: "run not found" });

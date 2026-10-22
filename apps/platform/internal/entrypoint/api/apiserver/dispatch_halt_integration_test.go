@@ -191,8 +191,8 @@ func declareP1Halt(t *testing.T, operator *client, note string) {
 
 func (sc haltScene) assertP1HaltHoldsNewAndQueuedWork(t *testing.T, hash, queuedRunID string) {
 	t.Helper()
-	if code, view := sc.f.startWithHash(t, hash); code != http.StatusServiceUnavailable {
-		t.Errorf("creating a run under a P1 halt: got %d (%s), want 503", code, view.Error)
+	if code, view := sc.f.startWithHash(t, hash); code != http.StatusServiceUnavailable || view.Reason != "dispatch_halted" {
+		t.Errorf("creating a run under a P1 halt: got %d reason %q (%s), want 503 dispatch_halted", code, view.Reason, view.Error)
 	}
 
 	if err := driveThroughPolls(context.Background(), sc.svc.Drive, sc.ws, mustUUID(t, queuedRunID)); err != nil {

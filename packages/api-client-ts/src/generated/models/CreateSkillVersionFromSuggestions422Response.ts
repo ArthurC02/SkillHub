@@ -32,6 +32,14 @@ export interface CreateSkillVersionFromSuggestions422Response {
      */
     error: string;
     /**
+     * A machine-readable refusal code, present only where the operation
+     * documents one. A 503 that carries it was answered by the platform
+     * and wrote nothing; a 503 without it may come from in front of the
+     * platform, where the outcome is unknown.
+     * 
+     */
+    reason?: string;
+    /**
      * 
      */
     rejectedSuggestions: Array<RejectedSuggestion>;
@@ -57,6 +65,7 @@ export function CreateSkillVersionFromSuggestions422ResponseFromJSONTyped(json: 
     return {
         
         'error': json['error'],
+        'reason': json['reason'] == null ? undefined : json['reason'],
         'rejectedSuggestions': ((json['rejected_suggestions'] as Array<any>).map(RejectedSuggestionFromJSON)),
     };
 }
@@ -73,6 +82,7 @@ export function CreateSkillVersionFromSuggestions422ResponseToJSONTyped(value?: 
     return {
         
         'error': value['error'],
+        'reason': value['reason'],
         'rejected_suggestions': ((value['rejectedSuggestions'] as Array<any>).map(RejectedSuggestionToJSON)),
     };
 }

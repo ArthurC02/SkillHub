@@ -139,9 +139,16 @@ export function useUploadDataset(testCaseId: string) {
   });
 }
 
+export function refusalReason(error: unknown): string | undefined {
+  if (!(error instanceof ApiError)) return undefined;
+  const reason = (error.body as { reason?: unknown } | undefined)?.reason;
+  return typeof reason === "string" ? reason : undefined;
+}
+
 export function isWriteResultUnknown(error: unknown): boolean {
   if (error instanceof SessionNotReadyError) return false;
   if (error instanceof RunNotStartedError) return false;
+  if (refusalReason(error) !== undefined) return false;
   return !(error instanceof ApiError) || error.status >= 500;
 }
 

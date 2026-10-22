@@ -263,10 +263,7 @@ func TestGovernanceLookupReachesPrivateTakenDownAndDeletedSkills(t *testing.T) {
 	if len(byName) != 3 || byName[private] == nil || byName[down] == nil || byName[gone] == nil {
 		t.Fatalf("name search found %v, want the private, the taken-down and the deleted skill", byName)
 	}
-	if byName[gone]["deleted_at"] == nil || byName[private]["deleted_at"] != nil {
-		t.Errorf("deleted_at: deleted skill %v, private skill %v; want it set only on the deleted one",
-			byName[gone]["deleted_at"], byName[private]["deleted_at"])
-	}
+	assertOnlyTheDeletedSkillCarriesDeletedAt(t, byName[gone], byName[private])
 	assertPrivateSkillGovernance(t, byName[private], owner.workspaceID)
 	if s := byName[down]; s["takedown_at"] == nil || s["takedown_reason"] != "DMCA governance" {
 		t.Errorf("taken-down skill governance: %v", s)
@@ -279,6 +276,14 @@ func TestGovernanceLookupReachesPrivateTakenDownAndDeletedSkills(t *testing.T) {
 	}
 	if code, _ := getAdmin(t, operator, "/admin/skills?q=%20"); code != http.StatusBadRequest {
 		t.Errorf("blank q: got %d, want 400", code)
+	}
+}
+
+func assertOnlyTheDeletedSkillCarriesDeletedAt(t *testing.T, deleted, live map[string]any) {
+	t.Helper()
+	if deleted["deleted_at"] == nil || live["deleted_at"] != nil {
+		t.Errorf("deleted_at: deleted skill %v, live skill %v; want it set only on the deleted one",
+			deleted["deleted_at"], live["deleted_at"])
 	}
 }
 

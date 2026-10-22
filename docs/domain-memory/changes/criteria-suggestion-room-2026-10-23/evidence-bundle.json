@@ -1,0 +1,38 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "criteria-suggestion-room",
+  "proposal_id": "criteria-suggestion-room",
+  "registry_revision": {
+    "observed_commit": "3bb518d1d18f15f64d9db508d67c868f4a69b8b0",
+    "registry_digest": "sha256:2c234a31034e22aa5ca44b908bf99e9234a5885925aeada35cd0db48e9dba1a7",
+    "committed_digest": "sha256:b68319f4090435caf5a5016fc7bd3cd53250de576e26ea5436d76908724baf3f"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-criteria-suggestion-is-paid-for-by-its-requester",
+      "mutated_protection": "apps/platform/internal/trial/design/suggest.go:67: if len(current) >= MaxCriteria { -> if len(current) > MaxCriteria {",
+      "failure_evidence": "=== RUN   TestSuggestionsFillOnlyTheRoomLeftAndAFullListIsRefusedBeforeTheModel\n    preflight_integration_test.go:718: suggest on a full list: got 200, body map[suggestions:[]], want 413\n--- FAIL: TestSuggestionsFillOnlyTheRoomLeftAndAFullListIsRefusedBeforeTheModel (0.28s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.778s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-criteria-suggestion-is-paid-for-by-its-requester",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^(TestSuggestionsFillOnlyTheRoomLeftAndAFullListIsRefusedBeforeTheModel|TestSuggestingCriteriaBelowTheStartThresholdIsRefusedBeforeTheModelIsCalled)$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:94dcebe77a53c92daf9298ff8d7d3664cbdb9c5384aaef454e762b2f84cd4413",
+      "finished_at": "2026-10-22T19:14:58.454339Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

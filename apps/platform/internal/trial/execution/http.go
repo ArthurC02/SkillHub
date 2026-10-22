@@ -199,7 +199,7 @@ var refusedRuns = []refusedRun{
 	{ErrPreflightTargetNotFound, http.StatusNotFound, messagePreflightTargetNotFound},
 	{ErrNotFound, http.StatusNotFound, messageRunNotFound},
 	{ErrDispatchHalted, http.StatusServiceUnavailable,
-		"執行環境現在沒有在派送新的試跑，請稍後再試。"},
+		"執行環境現在沒有在派送新的試跑，這次試跑沒有開始、也沒有用到額度，請稍後再試。"},
 	{ErrPermissionsNotConfirmed, http.StatusUnprocessableEntity,
 		"開始之前要先確認這次試跑會用到的權限。"},
 	{ErrNoModelGateway, http.StatusUnprocessableEntity,
@@ -236,10 +236,24 @@ func whatDidNotFit(err error) string {
 		error
 		inInterfaceLanguage() string
 	}
-	if !errors.As(err, &said) {
-		return ""
+	if errors.As(err, &said) {
+		return said.inInterfaceLanguage()
 	}
-	return said.inInterfaceLanguage()
+	if spent, ok := errors.AsType[*policy.AllowanceSpent](err); ok {
+		return spent.WhenItFreesUp()
+	}
+	return ""
+}
+
+const dispatchHaltedCode = "dispatch_halted"
+
+func writeRefusal(w http.ResponseWriter, refusal refusedRun, err error) {
+	message := refusal.message + whatDidNotFit(err)
+	if !errors.Is(err, ErrDispatchHalted) {
+		httpx.WriteError(w, refusal.status, message)
+		return
+	}
+	httpx.WriteJSON(w, refusal.status, map[string]string{"error": message, "reason": dispatchHaltedCode})
 }
 
 func refusalFor(err error) (refusedRun, bool) {
@@ -323,7 +337,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if refusal, ok := refusalFor(err); ok {
 		slog.Info("a run was refused before it started",
 			"workspace_id", pgconv.UUIDString(ws.ID), "error", err)
-		httpx.WriteError(w, refusal.status, refusal.message+whatDidNotFit(err))
+		writeRefusal(w, refusal, err)
 		return
 	}
 	if err != nil {
@@ -358,7 +372,7 @@ func (h *Handler) Continue(w http.ResponseWriter, r *http.Request) {
 		WorkspaceID: ws.ID, Actor: user.ID, RunID: runID, Answers: body.Answers,
 	})
 	if refusal, ok := refusalFor(err); ok {
-		httpx.WriteError(w, refusal.status, refusal.message+whatDidNotFit(err))
+		writeRefusal(w, refusal, err)
 		return
 	}
 	if err != nil {

@@ -8127,6 +8127,12 @@ func (s *CreateDownloadArtifactUnprocessableEntity) encodeFields(e *jx.Encoder) 
 		e.Str(s.Error)
 	}
 	{
+		if s.Reason.Set {
+			e.FieldStart("reason")
+			s.Reason.Encode(e)
+		}
+	}
+	{
 		e.FieldStart("blocked_reason")
 		s.BlockedReason.Encode(e)
 	}
@@ -8138,10 +8144,11 @@ func (s *CreateDownloadArtifactUnprocessableEntity) encodeFields(e *jx.Encoder) 
 	}
 }
 
-var jsonFieldsNameOfCreateDownloadArtifactUnprocessableEntity = [3]string{
+var jsonFieldsNameOfCreateDownloadArtifactUnprocessableEntity = [4]string{
 	0: "error",
-	1: "blocked_reason",
-	2: "validation",
+	1: "reason",
+	2: "blocked_reason",
+	3: "validation",
 }
 
 // Decode decodes CreateDownloadArtifactUnprocessableEntity from json.
@@ -8165,8 +8172,18 @@ func (s *CreateDownloadArtifactUnprocessableEntity) Decode(d *jx.Decoder) error 
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"error\"")
 			}
+		case "reason":
+			if err := func() error {
+				s.Reason.Reset()
+				if err := s.Reason.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"reason\"")
+			}
 		case "blocked_reason":
-			requiredBitSet[0] |= 1 << 1
+			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
 				if err := s.BlockedReason.Decode(d); err != nil {
 					return err
@@ -8195,7 +8212,7 @@ func (s *CreateDownloadArtifactUnprocessableEntity) Decode(d *jx.Decoder) error 
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000011,
+		0b00000101,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -9394,6 +9411,12 @@ func (s *CreateSkillVersionFromSuggestionsUnprocessableEntity) encodeFields(e *j
 		e.Str(s.Error)
 	}
 	{
+		if s.Reason.Set {
+			e.FieldStart("reason")
+			s.Reason.Encode(e)
+		}
+	}
+	{
 		e.FieldStart("rejected_suggestions")
 		e.ArrStart()
 		for _, elem := range s.RejectedSuggestions {
@@ -9403,9 +9426,10 @@ func (s *CreateSkillVersionFromSuggestionsUnprocessableEntity) encodeFields(e *j
 	}
 }
 
-var jsonFieldsNameOfCreateSkillVersionFromSuggestionsUnprocessableEntity = [2]string{
+var jsonFieldsNameOfCreateSkillVersionFromSuggestionsUnprocessableEntity = [3]string{
 	0: "error",
-	1: "rejected_suggestions",
+	1: "reason",
+	2: "rejected_suggestions",
 }
 
 // Decode decodes CreateSkillVersionFromSuggestionsUnprocessableEntity from json.
@@ -9429,8 +9453,18 @@ func (s *CreateSkillVersionFromSuggestionsUnprocessableEntity) Decode(d *jx.Deco
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"error\"")
 			}
+		case "reason":
+			if err := func() error {
+				s.Reason.Reset()
+				if err := s.Reason.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"reason\"")
+			}
 		case "rejected_suggestions":
-			requiredBitSet[0] |= 1 << 1
+			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
 				s.RejectedSuggestions = make([]RejectedSuggestion, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -9457,7 +9491,7 @@ func (s *CreateSkillVersionFromSuggestionsUnprocessableEntity) Decode(d *jx.Deco
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000011,
+		0b00000101,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -19841,10 +19875,17 @@ func (s *Error) encodeFields(e *jx.Encoder) {
 		e.FieldStart("error")
 		e.Str(s.Error)
 	}
+	{
+		if s.Reason.Set {
+			e.FieldStart("reason")
+			s.Reason.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfError = [1]string{
+var jsonFieldsNameOfError = [2]string{
 	0: "error",
+	1: "reason",
 }
 
 // Decode decodes Error from json.
@@ -19867,6 +19908,16 @@ func (s *Error) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"error\"")
+			}
+		case "reason":
+			if err := func() error {
+				s.Reason.Reset()
+				if err := s.Reason.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"reason\"")
 			}
 		default:
 			return d.Skip()
@@ -70386,6 +70437,44 @@ func (s *SuggestAcceptanceCriteriaNotFound) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *SuggestAcceptanceCriteriaNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SuggestAcceptanceCriteriaRequestEntityTooLarge as json.
+func (s *SuggestAcceptanceCriteriaRequestEntityTooLarge) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes SuggestAcceptanceCriteriaRequestEntityTooLarge from json.
+func (s *SuggestAcceptanceCriteriaRequestEntityTooLarge) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SuggestAcceptanceCriteriaRequestEntityTooLarge to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = SuggestAcceptanceCriteriaRequestEntityTooLarge(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *SuggestAcceptanceCriteriaRequestEntityTooLarge) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SuggestAcceptanceCriteriaRequestEntityTooLarge) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

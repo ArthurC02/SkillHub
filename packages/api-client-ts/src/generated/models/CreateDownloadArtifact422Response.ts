@@ -39,6 +39,14 @@ export interface CreateDownloadArtifact422Response {
      */
     error: string;
     /**
+     * A machine-readable refusal code, present only where the operation
+     * documents one. A 503 that carries it was answered by the platform
+     * and wrote nothing; a 503 without it may come from in front of the
+     * platform, where the outcome is unknown.
+     * 
+     */
+    reason?: string;
+    /**
      * 
      */
     blockedReason: PackagingBlockedReason;
@@ -70,6 +78,7 @@ export function CreateDownloadArtifact422ResponseFromJSONTyped(json: any, ignore
     return {
         
         'error': json['error'],
+        'reason': json['reason'] == null ? undefined : json['reason'],
         'blockedReason': PackagingBlockedReasonFromJSON(json['blocked_reason']),
         'validation': json['validation'] == null ? undefined : PackageValidationFromJSON(json['validation']),
     };
@@ -87,6 +96,7 @@ export function CreateDownloadArtifact422ResponseToJSONTyped(value?: CreateDownl
     return {
         
         'error': value['error'],
+        'reason': value['reason'],
         'blocked_reason': PackagingBlockedReasonToJSON(value['blockedReason']),
         'validation': PackageValidationToJSON(value['validation']),
     };

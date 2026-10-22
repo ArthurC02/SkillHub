@@ -180,15 +180,39 @@ func enforce(
 			ErrAllowanceUnavailable, err)
 	}
 	if state.RemainingToday <= 0 {
-		return a.prefix + suffixDaily,
-			fmt.Errorf("%w: %d %s a day is the limit; it resets 24 hours after your earliest %s today",
-				a.sentinel, l.Daily, a.noun, strings.TrimSuffix(a.noun, "s"))
+		return a.prefix + suffixDaily, &AllowanceSpent{
+			sentinel: a.sentinel, Limit: l.Daily,
+			detail: fmt.Sprintf("%d %s a day is the limit; it resets 24 hours after your earliest %s today",
+				l.Daily, a.noun, strings.TrimSuffix(a.noun, "s")),
+		}
 	}
 	if state.RemainingWindow <= 0 {
-		return a.prefix + suffixWindow,
-			fmt.Errorf("%w: %d %s per %d days is the limit; the next one frees up at %s",
-				a.sentinel, state.Limits.Window, a.noun, l.WindowDays,
-				state.WindowResetsAt.UTC().Format(time.RFC3339))
+		return a.prefix + suffixWindow, &AllowanceSpent{
+			sentinel: a.sentinel, Limit: state.Limits.Window, WindowDays: l.WindowDays, FreesAt: state.WindowResetsAt,
+			detail: fmt.Sprintf("%d %s per %d days is the limit; the next one frees up at %s",
+				state.Limits.Window, a.noun, l.WindowDays, state.WindowResetsAt.UTC().Format(time.RFC3339)),
+		}
 	}
 	return "", nil
+}
+
+type AllowanceSpent struct {
+	sentinel   error
+	detail     string
+	Limit      int
+	WindowDays int
+	FreesAt    time.Time
+}
+
+func (e *AllowanceSpent) Error() string { return e.sentinel.Error() + ": " + e.detail }
+func (e *AllowanceSpent) Unwrap() error { return e.sentinel }
+
+var taipei = time.FixedZone("UTC+8", 8*60*60)
+
+func (e *AllowanceSpent) WhenItFreesUp() string {
+	if e.WindowDays == 0 {
+		return fmt.Sprintf("每天上限 %d 次，從今天最早那一次算起 24 小時後恢復。", e.Limit)
+	}
+	return fmt.Sprintf("每 %d 天上限 %d 次，下一次在 %s（台北時間）恢復。",
+		e.WindowDays, e.Limit, e.FreesAt.In(taipei).Format("1 月 2 日 15:04"))
 }

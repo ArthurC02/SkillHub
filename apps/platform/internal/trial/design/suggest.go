@@ -60,6 +60,14 @@ func (s *Service) SuggestCriteria(ctx context.Context, ws identity.Workspace, id
 	if !found {
 		return nil, ErrNotFound
 	}
+	current, err := DecodeCriteria(tc.AcceptanceCriteria)
+	if err != nil {
+		return nil, err
+	}
+	if len(current) >= MaxCriteria {
+		return nil, fmt.Errorf("%w: 這個 Test Case 已經有 %d 條驗收條件，刪掉幾條再請系統建議；這次沒有呼叫模型，也沒有扣點",
+			ErrLimitExceeded, MaxCriteria)
+	}
 
 	if err := s.Billing.admit(ctx, ws.ID); err != nil {
 		return nil, err
@@ -86,21 +94,17 @@ func (s *Service) SuggestCriteria(ctx context.Context, ws identity.Workspace, id
 	}
 	s.Billing.charge(ctx, ws.ID, proposal.Usage)
 
-	return newSuggestions(tc.AcceptanceCriteria, proposal.Texts)
+	return newSuggestions(current, proposal.Texts), nil
 }
 
-func newSuggestions(acceptanceCriteria []byte, proposed []string) ([]Suggestion, error) {
-	current, err := DecodeCriteria(acceptanceCriteria)
-	if err != nil {
-		return nil, err
-	}
+func newSuggestions(current []Criterion, proposed []string) []Suggestion {
 	seen := make(map[string]bool, len(current))
 	for _, c := range current {
 		seen[c.Text] = true
 	}
 	out := make([]Suggestion, 0, len(proposed))
 	for _, criterion := range proposed {
-		if len(out) >= MaxCriteria {
+		if len(current)+len(out) >= MaxCriteria {
 			break
 		}
 		text, err := validateCriterion(criterion)
@@ -111,7 +115,7 @@ func newSuggestions(acceptanceCriteria []byte, proposed []string) ([]Suggestion,
 		seen[text] = true
 		out = append(out, Suggestion{Text: text})
 	}
-	return out, nil
+	return out
 }
 
 func (s *Service) outlineDatasets(ctx context.Context, rows []gen.Dataset) []DatasetOutline {

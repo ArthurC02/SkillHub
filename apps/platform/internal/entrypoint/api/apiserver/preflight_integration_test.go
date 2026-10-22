@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	testlab "github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
@@ -320,6 +321,9 @@ func TestRunIsRefusedWhenTheSkillIsAccessRestricted(t *testing.T) {
 	}
 	if !strings.Contains(refused.Error, "來源授權還在審查") {
 		t.Errorf("refusal = %q, want it to name the license restriction", refused.Error)
+	}
+	if refused.Reason != "" {
+		t.Errorf("reason = %q; only a refusal the contract documents a code for carries one", refused.Reason)
 	}
 	if refused.RunID != "" {
 		t.Error("a refused run still created a run row")
@@ -682,6 +686,45 @@ func TestSuggestedCriteriaAreReturnedWithoutBeingStored(t *testing.T) {
 		`{"text":"每個月都有一列總額,且含幣別"}`)
 	if edited := criteriaOf(t, body); edited[0]["source"] != "user" {
 		t.Errorf("source after the user rewrote the text = %v, want \"user\"", edited[0]["source"])
+	}
+}
+
+func TestSuggestionsFillOnlyTheRoomLeftAndAFullListIsRefusedBeforeTheModel(t *testing.T) {
+	pool := requireDB(t)
+	stub := newSuggestStub(t, `{"criteria":[{"text":"建議一"},{"text":"建議二"},{"text":"建議三"}]}`)
+	a := newAPIWithLLM(t, pool, stub.URL)
+	alice := a.login(t, "alice-suggest-full")
+	_, id := newTestCase(t, pool, a, alice, "suggest-full")
+	add := func(n int) {
+		t.Helper()
+		if code, body := alice.doJSON(t, http.MethodPost, "/test-cases/"+id+"/criteria",
+			fmt.Sprintf(`{"text":"手寫條件 %d"}`, n)); code != http.StatusCreated {
+			t.Fatalf("adding criterion %d: got %d, body %v", n, code, body)
+		}
+	}
+	for n := 1; n < testlab.MaxCriteria; n++ {
+		add(n)
+	}
+
+	code, body := alice.doJSON(t, http.MethodPost, "/test-cases/"+id+"/criteria/suggest", "")
+	if code != http.StatusOK {
+		t.Fatalf("suggest with one slot left: got %d, body %v", code, body)
+	}
+	if got := suggestionsOf(t, body); len(got) != 1 {
+		t.Errorf("suggestions with one slot left = %v, want exactly one", got)
+	}
+
+	add(testlab.MaxCriteria)
+	stub.lastBody = ""
+	code, body = alice.doJSON(t, http.MethodPost, "/test-cases/"+id+"/criteria/suggest", "")
+	if code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("suggest on a full list: got %d, body %v, want 413", code, body)
+	}
+	if msg, _ := body["error"].(string); !strings.Contains(msg, "沒有呼叫模型") {
+		t.Errorf("refusal = %q, want it to say the model was not called", msg)
+	}
+	if stub.lastBody != "" {
+		t.Error("the model was asked for suggestions although the list was full")
 	}
 }
 

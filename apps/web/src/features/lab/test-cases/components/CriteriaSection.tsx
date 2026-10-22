@@ -60,7 +60,10 @@ function Suggestions({
   );
 }
 
-function addBlocker(text: string, checkReady: boolean, sizeProblem: string | null) {
+const FULL_SENTENCE = `已經有 ${MAX_CRITERIA} 條驗收條件，刪掉幾條才能再新增或請系統建議。`;
+
+function addBlocker(text: string, checkReady: boolean, sizeProblem: string | null, full: boolean) {
+  if (full) return { id: "criterion-add-why", say: FULL_SENTENCE };
   if (text.trim() === "") return { id: "criterion-add-why", say: "欄位是空的" };
   if (sizeProblem) return { id: "criterion-add-why", say: sizeProblem };
   if (!checkReady)
@@ -75,6 +78,7 @@ function suggestFailureSentence(error: unknown) {
   const status = error instanceof ApiError ? error.status : 0;
   if (status === 503) return "目前無法自動建議，驗收條件可以自己手動輸入。";
   if (status === 403) return "自動建議只開放給封測受邀帳號，驗收條件可以自己手動輸入。";
+  if (status === 413) return `${FULL_SENTENCE}這次沒有呼叫模型、也沒有扣點。`;
   if (status === 422)
     return "點數不足，這次沒有呼叫模型、也沒有扣點。驗收條件可以自己手動輸入，或請管理者加點後再試。";
   return "無法取得建議，可以再試一次。";
@@ -93,7 +97,8 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
   const suggest = useSuggestCriteria(testCase.test_case_id);
   const suggestError = suggest.error;
   const sizeProblem = textLengthReason(text, "驗收條件", AcceptanceCriterionTextMaxLength);
-  const blocker = addBlocker(text, checkReady, sizeProblem);
+  const full = testCase.acceptance_criteria.length >= MAX_CRITERIA;
+  const blocker = addBlocker(text, checkReady, sizeProblem, full);
 
   const addCriterion = () => {
     const submitted = draft;
@@ -159,7 +164,12 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
         >
           {add.isPending ? "新增中…" : "新增"}
         </button>{" "}
-        <button type="button" disabled={suggest.isPending} onClick={requestSuggestions}>
+        <button
+          type="button"
+          disabled={suggest.isPending || full}
+          aria-describedby={full ? blocker?.id : undefined}
+          onClick={requestSuggestions}
+        >
           {suggest.isPending ? "建議中…" : "請系統建議（選用）"}
         </button>
       </p>
