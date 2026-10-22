@@ -6395,6 +6395,14 @@ func (s ListCreationSessionsOKApplicationJSON) Validate() error {
 	if alias == nil {
 		return errors.New("nil is invalid value")
 	}
+	if err := (validate.Array{
+		MinLength:    0,
+		MinLengthSet: false,
+		MaxLength:    50,
+		MaxLengthSet: true,
+	}).ValidateLength(len(alias)); err != nil {
+		return errors.Wrap(err, "array")
+	}
 	var failures []validate.FieldError
 	for i, elem := range alias {
 		if err := func() error {

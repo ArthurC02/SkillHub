@@ -4,7 +4,7 @@ import { Timestamp } from "../../../../shared/ui/Timestamp";
 import type { CreationSession } from "../../creation.service";
 import { creationStateLabel } from "../../creation.service";
 
-const MAX_VISIBLE_SESSIONS = 50;
+const MAX_VISIBLE_SESSIONS = 50; // one-number: creationSessionList
 
 export function SessionWorkspaceNav({
   sessionList,
@@ -72,8 +72,8 @@ export function SessionWorkspaceNav({
           ))}
         </ul>
       )}
-      {sessionList && sessionList.length > MAX_VISIBLE_SESSIONS && (
-        <p className="creation-session-limit">只顯示前 {MAX_VISIBLE_SESSIONS} 場。</p>
+      {sessionList && sessionList.length >= MAX_VISIBLE_SESSIONS && (
+        <p className="creation-session-limit">只列出最近 {MAX_VISIBLE_SESSIONS} 場。</p>
       )}
     </aside>
   );

@@ -69,6 +69,7 @@ var sharedNumberRoster = []string{
 	"maxFinalOutput",
 	"maxSkillPackageEntries",
 	"searchMaxQueryRunes",
+	"creationSessionList",
 
 	"suggestCriteriaMaxItems",
 	"suggestMaxDigestChars",

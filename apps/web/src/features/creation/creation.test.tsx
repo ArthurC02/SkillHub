@@ -1843,23 +1843,29 @@ test("an empty session list offers a new workspace without inventing session row
   expect(box.querySelector(".creation-session-empty")?.textContent).toContain("還沒有可續作的創作");
 });
 
-test("the work list states its 50-session boundary instead of implying the rest are visible", async () => {
-  const sessions = Array.from({ length: 51 }, (_, index) => {
-    const item = sample({ id: `s${index + 1}` });
-    item.snapshot.brief = `創作 ${index + 1}`;
-    return item;
-  });
-  vi.stubGlobal(
-    "fetch",
-    vi.fn((url: string) => routeGet(url, sessions, sessions[0])),
-  );
+test.each([
+  [50, "只列出最近 50 場"],
+  [49, undefined],
+])(
+  "a work list of %i sessions states the 50-session boundary only when it reaches it",
+  async (count, note) => {
+    const sessions = Array.from({ length: count }, (_, index) => {
+      const item = sample({ id: `s${index + 1}` });
+      item.snapshot.brief = `創作 ${index + 1}`;
+      return item;
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => routeGet(url, sessions, sessions[0])),
+    );
 
-  await render();
-  await waitFor(() => box.querySelectorAll(".creation-session-item").length === 50);
+    await render();
+    await waitFor(() => box.querySelectorAll(".creation-session-item").length === count);
 
-  expect(box.querySelectorAll(".creation-session-item")).toHaveLength(50);
-  expect(box.querySelector(".creation-session-limit")?.textContent).toContain("只顯示前 50 場");
-});
+    expect(box.querySelectorAll(".creation-session-item")).toHaveLength(count);
+    expect(box.querySelector(".creation-session-limit")?.textContent).toBe(note && `${note}。`);
+  },
+);
 test("the send key goes quiet while there is nothing to send", async () => {
   vi.stubGlobal(
     "fetch",

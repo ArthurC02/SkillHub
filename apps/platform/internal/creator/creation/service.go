@@ -41,7 +41,7 @@ var (
 )
 
 const (
-	sessionPageSize        = 50
+	sessionPageSize        = 50 // one-number: creationSessionList
 	versionSessionPageSize = 10
 
 	stalledSessionBatch = 100

@@ -7061,7 +7061,7 @@ paths:
     get:
       operationId: "listCreationSessions"
       summary: "listCreationSessions"
-      description: "Lists live sessions in the authenticated Workspace. When version_id is present, Creation returns only sessions whose current candidate is that immutable Skill Version; an empty array means no matching session remains inside Creation retention."
+      description: "Lists the 50 most recently updated live sessions in the authenticated Workspace. When version_id is present, Creation returns only sessions whose current candidate is that immutable Skill Version; an empty array means no matching session remains inside Creation retention."
       parameters:
         - name: "version_id"
           in: "query"
@@ -7077,6 +7077,7 @@ paths:
             application/json:
               schema:
                 type: "array"
+                maxItems: 50 # one-number: creationSessionList
                 items:
                   $ref: "#/components/schemas/CreationSession"
         400:
