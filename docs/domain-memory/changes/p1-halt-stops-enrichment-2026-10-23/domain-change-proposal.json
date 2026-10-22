@@ -3,12 +3,12 @@
   "proposal_id": "p1-halt-stops-enrichment",
   "proposer": "domain-memory-agent",
   "requirement_id": "p1-halt-stops-enrichment",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-22T16:16:49.085366Z",
   "verified_at": "2026-10-22T16:18:23.536285Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T16:18:56.381624Z",
+  "applied_at": "2026-10-22T16:20:10.589632Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "6046eb7f0cd8d86716c04c25e397732a15c3ff21",
@@ -211,5 +211,9 @@
   ],
   "supersedes": [
     "dispatch-halt-reaches-model-calls-and-queue"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "03979e7e907e3636dc966ae50c84c1c37192e730",
+    "registry_digest": "sha256:932a9b97c120af9a39580c7df7dca9a80404390e1d367b2f5389d84915d7645f"
+  }
 }
