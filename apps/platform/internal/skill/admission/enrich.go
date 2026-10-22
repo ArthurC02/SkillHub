@@ -144,22 +144,49 @@ func (s *Service) enrichPackage(ctx context.Context, p preparedPackage, workspac
 			"prompt_version", resp.PromptVersion)
 	}
 
-	embedCtx, cancelEmbed := context.WithTimeout(ctx, embedTimeout)
-	defer cancelEmbed()
-	emb, err := s.LLM.Embed(embedCtx, []string{embeddingText(p.report.Manifest.Name, e)})
+	e.status = enrichmentEnriched
+	e.embedding = s.embed(ctx, workspaceID, p.report.Manifest.Name, embeddingText(p.report.Manifest.Name, e))
+	return e
+}
+
+func (s *Service) embed(ctx context.Context, workspaceID pgtype.UUID, name, text string) *pgvector.Vector {
+	embedCtx, cancel := context.WithTimeout(ctx, embedTimeout)
+	defer cancel()
+	emb, err := s.LLM.Embed(embedCtx, []string{text})
 	if emb != nil {
 		s.recordCost(ctx, credit.KindIndexEnrich, workspaceID, modelCall{model: emb.Model, usage: emb.Usage})
 	}
 	if err != nil || len(emb.Vectors) == 0 {
-
-		slog.Warn("enrichment embedding failed; search document left pending",
-			"skill", p.report.Manifest.Name, "error", err)
-		return e
+		slog.Warn("enrichment embedding failed; the enriched document waits for its vector", "skill", name, "error", err)
+		return nil
 	}
 	v := pgvector.NewVector(emb.Vectors[0])
-	e.embedding = &v
-	e.status = enrichmentEnriched
-	return e
+	return &v
+}
+
+func (s *Service) embedEnrichedDocuments(ctx context.Context, limit int32) (done, failed int, err error) {
+	if s.EnrichedWithoutEmbedding == nil || s.StoreMissingEmbedding == nil {
+		return 0, 0, nil
+	}
+	docs, err := s.EnrichedWithoutEmbedding(ctx, limit)
+	if err != nil {
+		return 0, 0, err
+	}
+	for _, d := range docs {
+		v := s.embed(ctx, d.WorkspaceID, d.Name, EmbeddingText(d.Name, d.Summary, d.EnrichedSummary, d.TaskExamples, d.Tags))
+		if v == nil {
+			failed++
+			continue
+		}
+		stored, err := s.StoreMissingEmbedding(ctx, d.SkillID, d.WrittenAt, *v)
+		if err != nil {
+			return done, failed, err
+		}
+		if stored {
+			done++
+		}
+	}
+	return done, failed, nil
 }
 
 func embeddingText(name string, e enrichment) string {

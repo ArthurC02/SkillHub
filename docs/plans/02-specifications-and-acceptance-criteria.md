@@ -148,7 +148,7 @@
 - 匯入結果顯示成功、警告或失敗，並列出原因；一個來源展開出多個 Skill 時逐筆各自呈現。
 - 重複內容可透過內容雜湊識別，且不覆蓋既有版本。
 
-**補充（`05` R-52 裁定，負責人「先資安確認、再抽 metadata、才入庫」）**：入庫的機器順序固定為**資安確認（`skillpkg.Validate`＋靜態掃描）→ LLM 抽 metadata（索引時增強，見[意圖搜尋](../adr/README.md#意圖搜尋)）→ 進目錄**。前兩步不變（阻擋級 finding 一律先擋、增強在同一交易寫索引）；**改變的是第三步**——**沒有 metadata 的文件不進公開目錄**：版本仍然建立、擁有者仍然看得到自己的東西，只是還沒有 metadata（`enrichment_status` 不是 `enriched` 且沒有向量）的版本不出現在 `PublicSearchSkills`／`BrowseCatalogSkills`／`PublicHybridSearchSkills`／`CreationLexicalSearchSkills` 的結果裡，直到每小時的 backfill 幫它補上。這不推翻 `SKILL-001` 第一條「匯入前後均不得直接執行套件內 Script」與[意圖搜尋](../adr/README.md#意圖搜尋)「匯入不因增強失敗而失敗」的原則——**建版本與進目錄是兩件事**，失敗的仍然建版本。
+**補充（`05` R-52 裁定，負責人「先資安確認、再抽 metadata、才入庫」）**：入庫的機器順序固定為**資安確認（`skillpkg.Validate`＋靜態掃描）→ LLM 抽 metadata（索引時增強，見[意圖搜尋](../adr/README.md#意圖搜尋)）→ 進目錄**。前兩步不變（阻擋級 finding 一律先擋、增強在同一交易寫索引）；**改變的是第三步**——**沒有 metadata 的文件不進公開目錄**：版本仍然建立、擁有者仍然看得到自己的東西，只是還沒有 metadata（`enrichment_status` 不是 `enriched` 且沒有向量）的版本不出現在 `PublicSearchSkills`／`BrowseCatalogSkills`／`PublicHybridSearchSkills`／`CreationLexicalSearchSkills` 的結果裡，直到每小時的 backfill 幫它補上。只有向量化（embedding）呼叫失敗時，已經付費取得的 metadata 照樣以 `enriched` 寫入、沒有向量也進目錄（靠詞彙搜尋找得到），backfill 之後只補向量、不再呼叫增強模型；補向量期間文件若被重新匯入改寫，算好的向量不寫入。這不推翻 `SKILL-001` 第一條「匯入前後均不得直接執行套件內 Script」與[意圖搜尋](../adr/README.md#意圖搜尋)「匯入不因增強失敗而失敗」的原則——**建版本與進目錄是兩件事**，失敗的仍然建版本。
 
 #### SKILL-002：規格與靜態驗證
 

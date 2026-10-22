@@ -3,11 +3,15 @@ package ingest
 import (
 	"context"
 	"encoding/json"
-	"github.com/jackc/pgx/v5/pgtype"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
@@ -25,12 +29,14 @@ type stubEnricher struct {
 	enrichStatus int
 	embedStatus  int
 	embedded     []string
+	enrichCalls  int
 }
 
 func (s *stubEnricher) start(t *testing.T) Model {
 	t.Helper()
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/enrich-skill", func(w http.ResponseWriter, _ *http.Request) {
+		s.enrichCalls++
 		if s.enrichStatus != http.StatusOK {
 			http.Error(w, `{"detail":"gateway error"}`, s.enrichStatus)
 			return
@@ -216,14 +222,14 @@ func TestEnrichPackageFallsBackToPendingWhenEnrichFails(t *testing.T) {
 	}
 }
 
-func TestEnrichPackageStaysPendingWhenEmbedFails(t *testing.T) {
+func TestEnrichPackageKeepsThePaidEnrichmentWhenEmbedFails(t *testing.T) {
 	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusBadGateway}
 	s := &Service{LLM: stub.start(t)}
 
 	e := s.enrichPackage(context.Background(), testPackage(), pgtype.UUID{})
 
-	if e.status != enrichmentPending {
-		t.Fatalf("status = %q, want %q", e.status, enrichmentPending)
+	if e.status != enrichmentEnriched {
+		t.Fatalf("status = %q, want %q so the backfill only embeds it", e.status, enrichmentEnriched)
 	}
 	if e.embedding != nil {
 		t.Fatal("embedding stored despite the embed call failing")
@@ -259,5 +265,56 @@ func TestReadPackageCollectsEnrichmentInputs(t *testing.T) {
 	}
 	if len(p.fileTree) != 2 {
 		t.Fatalf("fileTree = %v, want both files", p.fileTree)
+	}
+}
+
+func TestTheBackfillEmbedsAStoredEnrichmentWithoutPayingForTheEnrichmentAgain(t *testing.T) {
+	skill := pgtype.UUID{Bytes: [16]byte{9}, Valid: true}
+	written := pgtype.Timestamptz{Time: time.Unix(1_700_000_000, 0), Valid: true}
+	for _, tc := range []struct {
+		name               string
+		embedStatus        int
+		wantDone, wantFail int
+	}{
+		{"the embedding answers", http.StatusOK, 1, 0},
+		{"the embedding still fails", http.StatusBadGateway, 0, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: tc.embedStatus}
+			var stored []pgtype.Timestamptz
+			s := embedOnlyBackfill(t, stub, MissingEmbedding{SkillID: skill, Name: "pdf-tools", Summary: testDescription, EnrichedSummary: testEnrichedSummary, WrittenAt: written}, &stored)
+
+			done, failed, err := s.ReindexPending(context.Background(), 10)
+
+			if err != nil || done != tc.wantDone || failed != tc.wantFail {
+				t.Fatalf("done=%d failed=%d err=%v, want %d/%d/nil", done, failed, err, tc.wantDone, tc.wantFail)
+			}
+			if stub.enrichCalls != 0 {
+				t.Fatalf("enrich calls = %d, want 0: the stored enrichment was already paid for", stub.enrichCalls)
+			}
+			if len(stub.embedded) != 1 || !strings.Contains(stub.embedded[0], testEnrichedSummary) {
+				t.Fatalf("embedded %q, want the stored enriched summary", stub.embedded)
+			}
+			if wantStored := tc.wantDone; len(stored) != wantStored || (wantStored == 1 && stored[0] != written) {
+				t.Fatalf("stored writes = %v, want %d guarded by the claimed write time", stored, wantStored)
+			}
+		})
+	}
+}
+
+func embedOnlyBackfill(t *testing.T, stub *stubEnricher, doc MissingEmbedding, stored *[]pgtype.Timestamptz) *Service {
+	t.Helper()
+	return &Service{
+		LLM:                      stub.start(t),
+		IndexSkill:               func(context.Context, pgx.Tx, SkillProjection) error { return nil },
+		PendingEnrichments:       func(context.Context, int32) ([]PendingEnrichment, error) { return nil, nil },
+		EnrichedWithoutEmbedding: func(context.Context, int32) ([]MissingEmbedding, error) { return []MissingEmbedding{doc}, nil },
+		StoreMissingEmbedding: func(_ context.Context, id pgtype.UUID, at pgtype.Timestamptz, _ pgvector.Vector) (bool, error) {
+			if id != doc.SkillID {
+				t.Errorf("stored the vector for %v, want %v", id, doc.SkillID)
+			}
+			*stored = append(*stored, at)
+			return true, nil
+		},
 	}
 }

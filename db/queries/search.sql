@@ -50,6 +50,24 @@ SELECT c.skill_id, c.workspace_id, c.name, candidates.version_id, candidates.pac
        candidates.source_path
 FROM claimed c JOIN candidates USING (skill_id);
 
+-- name: ClaimEnrichedWithoutEmbedding :many
+WITH candidates AS (
+SELECT sd.skill_id
+FROM search_documents sd
+WHERE sd.enrichment_status = 'enriched' AND sd.embedding IS NULL
+  AND (sd.enrichment_attempted_at IS NULL OR sd.enrichment_attempted_at < now() - @claim_lease::interval)
+ORDER BY sd.enrichment_attempted_at NULLS FIRST, sd.updated_at, sd.skill_id
+LIMIT @batch_size FOR UPDATE OF sd SKIP LOCKED
+)
+UPDATE search_documents sd SET enrichment_attempted_at = now()
+FROM candidates c WHERE sd.skill_id = c.skill_id
+RETURNING sd.skill_id, sd.workspace_id, sd.name, sd.summary, sd.enriched_summary, sd.task_examples, sd.tags, sd.updated_at;
+
+-- name: StoreMissingEmbedding :execrows
+UPDATE search_documents
+SET embedding = @embedding
+WHERE skill_id = @skill_id AND enrichment_status = 'enriched' AND embedding IS NULL AND updated_at = @written_at;
+
 -- name: SearchSkills :many
 SELECT s.skill_id, s.workspace_id, s.name, s.summary
 FROM search_documents s

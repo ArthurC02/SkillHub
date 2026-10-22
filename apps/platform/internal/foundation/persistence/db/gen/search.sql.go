@@ -152,6 +152,65 @@ func (q *Queries) BrowseCatalogSkills(ctx context.Context, arg BrowseCatalogSkil
 	return items, nil
 }
 
+const claimEnrichedWithoutEmbedding = `-- name: ClaimEnrichedWithoutEmbedding :many
+WITH candidates AS (
+SELECT sd.skill_id
+FROM search_documents sd
+WHERE sd.enrichment_status = 'enriched' AND sd.embedding IS NULL
+  AND (sd.enrichment_attempted_at IS NULL OR sd.enrichment_attempted_at < now() - $1::interval)
+ORDER BY sd.enrichment_attempted_at NULLS FIRST, sd.updated_at, sd.skill_id
+LIMIT $2 FOR UPDATE OF sd SKIP LOCKED
+)
+UPDATE search_documents sd SET enrichment_attempted_at = now()
+FROM candidates c WHERE sd.skill_id = c.skill_id
+RETURNING sd.skill_id, sd.workspace_id, sd.name, sd.summary, sd.enriched_summary, sd.task_examples, sd.tags, sd.updated_at
+`
+
+type ClaimEnrichedWithoutEmbeddingParams struct {
+	ClaimLease pgtype.Interval
+	BatchSize  int32
+}
+
+type ClaimEnrichedWithoutEmbeddingRow struct {
+	SkillID         pgtype.UUID
+	WorkspaceID     pgtype.UUID
+	Name            string
+	Summary         string
+	EnrichedSummary string
+	TaskExamples    string
+	Tags            []byte
+	UpdatedAt       pgtype.Timestamptz
+}
+
+func (q *Queries) ClaimEnrichedWithoutEmbedding(ctx context.Context, arg ClaimEnrichedWithoutEmbeddingParams) ([]ClaimEnrichedWithoutEmbeddingRow, error) {
+	rows, err := q.db.Query(ctx, claimEnrichedWithoutEmbedding, arg.ClaimLease, arg.BatchSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ClaimEnrichedWithoutEmbeddingRow
+	for rows.Next() {
+		var i ClaimEnrichedWithoutEmbeddingRow
+		if err := rows.Scan(
+			&i.SkillID,
+			&i.WorkspaceID,
+			&i.Name,
+			&i.Summary,
+			&i.EnrichedSummary,
+			&i.TaskExamples,
+			&i.Tags,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const creationLexicalSearchSkills = `-- name: CreationLexicalSearchSkills :many
 SELECT s.skill_id, s.name
 FROM search_documents s
@@ -1113,6 +1172,26 @@ func (q *Queries) SetSearchDocumentListing(ctx context.Context, arg SetSearchDoc
 		arg.SkillID,
 	)
 	return err
+}
+
+const storeMissingEmbedding = `-- name: StoreMissingEmbedding :execrows
+UPDATE search_documents
+SET embedding = $1
+WHERE skill_id = $2 AND enrichment_status = 'enriched' AND embedding IS NULL AND updated_at = $3
+`
+
+type StoreMissingEmbeddingParams struct {
+	Embedding *pgvector.Vector
+	SkillID   pgtype.UUID
+	WrittenAt pgtype.Timestamptz
+}
+
+func (q *Queries) StoreMissingEmbedding(ctx context.Context, arg StoreMissingEmbeddingParams) (int64, error) {
+	result, err := q.db.Exec(ctx, storeMissingEmbedding, arg.Embedding, arg.SkillID, arg.WrittenAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const upsertSearchDocument = `-- name: UpsertSearchDocument :exec

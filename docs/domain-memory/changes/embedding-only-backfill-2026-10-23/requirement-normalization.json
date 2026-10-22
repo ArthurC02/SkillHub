@@ -1,0 +1,23 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "embedding-only-backfill",
+  "status": "draft",
+  "intent": "An enrichment already paid for is never bought again because its embedding failed.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context catalog lists the amended rule as reviewed, proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-only-an-enriched-or-embedded-document-is-listable",
+      "statement": "A search document is listable only once its enrichment is finished or it has an embedding a vector search can find. An enrichment whose embedding call failed is still stored as enriched, without a vector, so it is listable at once; the enrichment backfill later embeds that stored text without calling the enrichment model again, and stores the vector only if the document has not been rewritten since it was claimed."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/skill/admission/enrich.go",
+    "db/queries/search.sql",
+    "apps/platform/internal/entrypoint/api/apiserver/search_embedding_backfill_integration_test.go"
+  ]
+}

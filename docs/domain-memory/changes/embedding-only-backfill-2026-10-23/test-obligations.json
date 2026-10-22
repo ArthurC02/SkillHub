@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "embedding-only-backfill",
+  "proposal_id": "embedding-only-backfill",
+  "obligations": [
+    {
+      "id": "rule-only-an-enriched-or-embedded-document-is-listable",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-only-an-enriched-or-embedded-document-is-listable",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "only-an-enriched-or-embedded-document-is-listable"
+        }
+      ],
+      "expected_outcome": "Only enriched documents without a vector are claimed, once per lease; a vector computed before a rewrite is not stored; one computed against the current write is.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestTheEmbeddingBackfillClaimsOnlyEnrichedDocumentsWithoutAVectorAndSkipsARewrittenOne$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

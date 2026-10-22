@@ -58,6 +58,10 @@ type Service struct {
 
 	PendingEnrichments func(ctx context.Context, limit int32) ([]PendingEnrichment, error)
 
+	EnrichedWithoutEmbedding func(ctx context.Context, limit int32) ([]MissingEmbedding, error)
+
+	StoreMissingEmbedding func(ctx context.Context, skillID pgtype.UUID, writtenAt pgtype.Timestamptz, embedding pgvector.Vector) (bool, error)
+
 	Credit CostRecorder
 
 	Billing GenerateBilling
@@ -83,6 +87,17 @@ type SkillProjection struct {
 	EnrichmentStatus        string
 	EnrichmentModel         *string
 	EnrichmentPromptVersion *string
+}
+
+type MissingEmbedding struct {
+	SkillID         pgtype.UUID
+	WorkspaceID     pgtype.UUID
+	Name            string
+	Summary         string
+	EnrichedSummary string
+	TaskExamples    string
+	Tags            []byte
+	WrittenAt       pgtype.Timestamptz
 }
 
 type PendingEnrichment struct {
@@ -537,9 +552,13 @@ func (s *Service) ReindexPending(ctx context.Context, limit int32) (done, failed
 	if s.Billing.halted(ctx) {
 		return 0, 0, nil
 	}
+	done, failed, err = s.embedEnrichedDocuments(ctx, limit)
+	if err != nil {
+		return done, failed, err
+	}
 	rows, err := s.PendingEnrichments(ctx, limit)
 	if err != nil {
-		return 0, 0, err
+		return done, failed, err
 	}
 	for _, row := range rows {
 		indexed, err := s.reindexOne(ctx, row)

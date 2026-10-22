@@ -52,6 +52,37 @@ func (s *Service) PendingEnrichments(ctx context.Context, limit int32) ([]Pendin
 	return result, nil
 }
 
+type MissingEmbedding struct {
+	SkillID         pgtype.UUID
+	WorkspaceID     pgtype.UUID
+	Name            string
+	Summary         string
+	EnrichedSummary string
+	TaskExamples    string
+	Tags            []byte
+	WrittenAt       pgtype.Timestamptz
+}
+
+func (s *Service) EnrichedWithoutEmbedding(ctx context.Context, limit int32) ([]MissingEmbedding, error) {
+	rows, err := gen.New(s.Pool).ClaimEnrichedWithoutEmbedding(ctx, gen.ClaimEnrichedWithoutEmbeddingParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: limit})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]MissingEmbedding, len(rows))
+	for i, row := range rows {
+		result[i] = MissingEmbedding{
+			SkillID: row.SkillID, WorkspaceID: row.WorkspaceID, Name: row.Name, Summary: row.Summary,
+			EnrichedSummary: row.EnrichedSummary, TaskExamples: row.TaskExamples, Tags: row.Tags, WrittenAt: row.UpdatedAt,
+		}
+	}
+	return result, nil
+}
+
+func (s *Service) StoreMissingEmbedding(ctx context.Context, skillID pgtype.UUID, writtenAt pgtype.Timestamptz, embedding pgvector.Vector) (bool, error) {
+	stored, err := gen.New(s.Pool).StoreMissingEmbedding(ctx, gen.StoreMissingEmbeddingParams{Embedding: &embedding, SkillID: skillID, WrittenAt: writtenAt})
+	return stored == 1, err
+}
+
 type SkillProjection struct {
 	SkillID     pgtype.UUID
 	WorkspaceID pgtype.UUID

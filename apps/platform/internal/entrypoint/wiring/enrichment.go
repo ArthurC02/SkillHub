@@ -37,3 +37,17 @@ func PendingEnrichments(catalogSvc *catalog.Service) func(context.Context, int32
 		return out, nil
 	}
 }
+
+func EnrichedWithoutEmbedding(catalogSvc *catalog.Service) func(context.Context, int32) ([]ingest.MissingEmbedding, error) {
+	return func(ctx context.Context, limit int32) ([]ingest.MissingEmbedding, error) {
+		rows, err := catalogSvc.EnrichedWithoutEmbedding(ctx, limit)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]ingest.MissingEmbedding, len(rows))
+		for i, row := range rows {
+			out[i] = ingest.MissingEmbedding(row)
+		}
+		return out, nil
+	}
+}

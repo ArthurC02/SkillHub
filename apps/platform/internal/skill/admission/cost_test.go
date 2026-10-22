@@ -88,8 +88,8 @@ func TestAFailedEmbeddingStillLeavesTheEnrichmentCallRecorded(t *testing.T) {
 	ledger := &fakeLedger{}
 	s := &Service{LLM: stub.start(t), Credit: ledger}
 
-	if e := s.enrichPackage(context.Background(), testPackage(), pgtype.UUID{}); e.status != enrichmentPending {
-		t.Fatalf("enrichment status = %q, want pending", e.status)
+	if e := s.enrichPackage(context.Background(), testPackage(), pgtype.UUID{}); e.embedding != nil {
+		t.Fatal("an embedding was stored although the embed call failed")
 	}
 	if got := ledger.kinds(); len(got) != 1 || got[0] != credit.KindIndexEnrich {
 		t.Fatalf("cost event kinds = %v, want one %q", got, credit.KindIndexEnrich)
