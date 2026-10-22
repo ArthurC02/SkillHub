@@ -3,12 +3,12 @@
   "proposal_id": "testlab-suggest-paid-by-requester",
   "proposer": "domain-memory-agent",
   "requirement_id": "testlab-suggest-paid-by-requester",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-22T08:40:40.275942Z",
   "verified_at": "2026-10-22T08:41:36.905740Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T08:45:16.053449Z",
+  "applied_at": "2026-10-22T08:46:13.148107Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "30a0c54228f1bcf9946f2287084e206e70e7070a",
@@ -144,5 +144,9 @@
   ],
   "supersedes": [
     "platform-shifted-recite"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "6a8c7ede267bea77e1eef588be3d061fa1fcec65",
+    "registry_digest": "sha256:224c97f42397774fb2290fd1ff153b257a490ad705e8213986158f22f4827c3d"
+  }
 }
