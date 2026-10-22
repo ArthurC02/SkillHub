@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 from .common import DOMAIN_MEMORY_HINT, REGISTRY_MARKERS, holds_domain_memory, is_domain_source_map, shown_path
@@ -37,7 +36,7 @@ def _domain_memories_known_to_git(repo_root: Path) -> list[Path] | None:
         result = run_git(
             repo_root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", *DOMAIN_MEMORY_MARKERS
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError:
         return None
     if result.returncode != 0:
         return None

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import subprocess
 from pathlib import Path
 from typing import Any, TypeGuard
 
@@ -36,7 +35,7 @@ def _feed(digest: Any, name: str, content: bytes) -> None:
 def git_commit(repo_root: Path) -> str | None:
     try:
         result = run_git(repo_root, "rev-parse", "HEAD")
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError:
         return None
     if result.returncode != 0:
         return None
