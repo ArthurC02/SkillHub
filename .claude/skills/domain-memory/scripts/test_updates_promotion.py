@@ -22,7 +22,7 @@ from domain_registry.revision import (
     valid_digest,
 )
 from domain_registry.sources import write_source_map
-from domain_registry.updates import apply_approved_updates, promote_candidate, upsert_candidate
+from domain_registry.updates import add_promoted_evidence, apply_approved_updates, promote_candidate, upsert_candidate
 from domain_registry.common import registry_dir
 from domain_registry.store import INDEX, read_document
 from test_support import VERIFIED, RegistryTestCase, amend_policy, applied_by
@@ -278,6 +278,33 @@ class UpdatesPromotionTest(RegistryTestCase):
         package = self.package_with_a_candidate_rule("An order total is non-negative.")
         self.assertIsNone(promote_candidate(package, self.repo / "memory", "rules", "order-total", amend=True))
         self.assertEqual(["order-total"], [entry["record"]["id"] for entry in self.registry_updates(package)])
+
+    def test_promoting_again_keeps_the_citations_the_package_already_added(self) -> None:
+        package = self.package_with_a_candidate_rule("An order total is non-negative.")
+        (self.repo / "total.py").write_text("limit\n", encoding="utf-8")
+        added = citation(self.repo, "total.py", 1, 1)
+        promote_candidate(package, self.repo / "memory", "rules", "order-total")
+        add_promoted_evidence(package, "rules", "order-total", (added,))
+        [before] = self.registry_updates(package)
+        promote_candidate(package, self.repo / "memory", "rules", "order-total")
+        [after] = self.registry_updates(package)
+        self.assertEqual(
+            (2, added, before["record"]["evidence"]),
+            (len(after["record"]["evidence"]), after["record"]["evidence"][1], after["record"]["evidence"]),
+        )
+
+    def test_citing_lines_the_record_already_cites_replaces_the_stale_citation_in_place(self) -> None:
+        package = self.package_with_a_candidate_rule("An order total is non-negative.")
+        (self.repo / "total.py").write_text("limit\n", encoding="utf-8")
+        promote_candidate(package, self.repo / "memory", "rules", "order-total")
+        add_promoted_evidence(package, "rules", "order-total", (citation(self.repo, "total.py", 1, 1),))
+        stale = self.readme_citation()
+        (self.repo / "README.md").write_text("evidence, reworded\n", encoding="utf-8")
+        fresh = citation(self.repo, "README.md", 1, 1)
+        add_promoted_evidence(package, "rules", "order-total", (fresh,))
+        [update] = self.registry_updates(package)
+        self.assertNotEqual(stale, fresh)
+        self.assertEqual([fresh, citation(self.repo, "total.py", 1, 1)], update["record"]["evidence"])
 
     def test_promoting_into_a_proposal_that_is_no_longer_a_draft_is_refused(self) -> None:
         package = self.package_with_a_candidate_rule("An order total is non-negative.")

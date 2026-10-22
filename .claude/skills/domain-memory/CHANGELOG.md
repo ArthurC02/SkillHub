@@ -2,6 +2,14 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.3.9
+
+### Fixed
+
+- `promote-candidate` run again for a record, with or without `--amend`, keeps the citations an earlier run's `--cite` or `--cite-function` added to the package's copy; it rebuilt the entry from the Registry and dropped them without a word.
+- A `--cite` naming lines the promoted record already cites replaces that citation in place instead of appending a second one, so a citation gone stale is refreshed by citing it again; the two were told apart by their excerpt digest, which is what changes when the lines change.
+- `record-approval` takes `--registry-root` and `--repo-root`, which it does not read, as `submit-proposal`, `record-test-result`, `verify-proposal` and `ship-package` do; the flow's flags no longer fail at the approval step with `unrecognized arguments`.
+
 ## 2.3.8
 
 ### Fixed

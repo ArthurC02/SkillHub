@@ -230,7 +230,7 @@ Removes a candidate that examination rejected and records the reason in the audi
 
 `promote-candidate --package-root <path> --registry-root <path> --asset <asset> --id <id> [--amend] [--repo-root <repo> (--cite <path>:<start>-<end> | --cite-function <path>:<name>) ...]`
 
-Copies the candidate record, without its review fields, into the draft proposal's `registry_updates` as an upsert; promoting the same record again replaces its entry. The Contexts the record names are added to the proposal's `affected_contexts`. It refuses a record the Registry does not hold, a reviewed record, and a proposal that is no longer a draft. With `--amend` a reviewed record is copied the same way and the proposal that last reviewed it, read from the audit log, is added to `supersedes`, so a rule can be re-proven or changed by editing its entry, such as adding the citation of the test that proves it; it refuses a reviewed record no applied package reviewed. `--cite` and `--cite-function`, each repeatable, add citations built as `cite` builds them to the promoted record's evidence, skipping one it already holds, so re-proving a rule needs no hand edit.
+Copies the candidate record, without its review fields, into the draft proposal's `registry_updates` as an upsert; promoting the same record again replaces its entry and keeps the citations `--cite` added to it earlier. The Contexts the record names are added to the proposal's `affected_contexts`. It refuses a record the Registry does not hold, a reviewed record, and a proposal that is no longer a draft. With `--amend` a reviewed record is copied the same way and the proposal that last reviewed it, read from the audit log, is added to `supersedes`, so a rule can be re-proven or changed by editing its entry, such as adding the citation of the test that proves it; it refuses a reviewed record no applied package reviewed. `--cite` and `--cite-function`, each repeatable, add citations built as `cite` builds them to the promoted record's evidence; one naming lines the record already cites replaces that citation in place, so a stale citation is refreshed by citing it again and re-proving a rule needs no hand edit.
 
 ### `init-change-package`
 
@@ -292,9 +292,9 @@ Keeps the status the proposal died in, its reason, and its replacement, rather t
 
 *Record human approval.*
 
-`record-approval --package-root <path> --role <role> --reviewer <identity> --scope <scope> [--approved-at <ISO-8601>]`
+`record-approval --package-root <path> --role <role> --reviewer <identity> --scope <scope> [--approved-at <ISO-8601>] [--registry-root <path>] [--repo-root <repo>]`
 
-Rejects self-approval and duplicate approval for the same role and revision.
+Takes `--registry-root` and `--repo-root` as the other steps of the flow do and reads neither. Rejects self-approval and duplicate approval for the same role and revision.
 
 ### `record-test-result`
 

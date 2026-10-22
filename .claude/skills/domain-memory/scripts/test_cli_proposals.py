@@ -470,6 +470,14 @@ class CliProposalsTest(RegistryTestCase):
             self.validated_package(updates=False),
         )
 
+    def test_record_approval_takes_the_roots_the_other_steps_of_the_flow_take(self) -> None:
+        package = self.submitted_package()
+        result = self.run_cli(
+            "record-approval", "--package-root", str(package), "--role", "domain-owner", "--reviewer", "reviewer",
+            "--scope", "entire proposal", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+        )
+        self.assertEqual((0, "Human approval recorded.\n", ""), (result.returncode, result.stdout, result.stderr))
+
     def test_a_preview_before_approval_says_approvals_are_not_asked_for(self) -> None:
         package = self.draft_package()
         result = self.run_cli(
