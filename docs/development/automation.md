@@ -440,7 +440,7 @@ docker run --rm --network container:skillhub-postgres-1 \
 - 每次都跑、沒有 path filter 的有三個並行 job：`devctl`（devctl 自己的 vet／race 測試、`automation-check`、`agent-sync`）、`contracts-drift`（`gen --check` 與 `contracts/` 的各項檢查）與 `dependency-audit`（見下一條）。純文件 commit 的等待時間由三者中最慢的那個決定，不再是相加。
 - **依賴漏洞**（見[開發自動化與依賴治理](../adr/README.md#開發自動化與依賴治理)）：push／PR 跑 `devctl dep-audit`，只看會出貨的四個專案——`apps/web` 的 production 依賴（high 以上）、`apps/platform`／`apps/sandbox` 程式呼叫得到的漏洞、`apps/llm` 的非 dev 依賴——而且**只擋有修補版的**，沒有修補版的印成 `NOTE`。每週排程與 `workflow_dispatch` 改跑 `--full`：每個有 lockfile 的專案連 dev 依賴、npm 取 moderate 以上、Go 連沒呼叫到的模組也算，紅了就是那一週的報告。`images-push` 等它綠了才推。本機 `task deps:audit`（加 `-- --full` 全掃）；同一條命令也擋出貨依賴的授權與 workflow 的 zizmor 稽核（用法見〈依賴的准入、更新與閘門〉）；job 帶 `GH_TOKEN`，zizmor 連網的稽核項目只在 CI 跑。工具版本在 `tools/toolchain.yaml` 的 `govulncheck`／`pip_audit`／`go_licenses`／`zizmor`。
 - `golangci-lint` 由 [`.github/actions/golangci-lint`](../../.github/actions/golangci-lint/action.yml) 安裝：版本讀 `tools/toolchain.yaml` 的 `golangci_lint`，編好的 binary 以「版本＋OS＋Go 版本」為鍵另外快取。不能指望 `setup-go` 的快取帶著它——那份快取的鍵只有 `go.sum` 的雜湊，第一次存下之後內容就不再更新，`go.sum` 沒動過的模組會一直拿到那天的舊內容。
-- `sandbox` 的 filter 只看 `infra/images/runtime-agent-sdk/**`：其他服務映像與 `infra/images/` 下的說明文件不影響 sandbox 的任何測試。
+- `sandbox` 的 filter 只看 `infra/images/runtime-agent-sdk/**`：其他服務映像與 `infra/images/` 下的說明文件不影響 sandbox 的任何測試。`infra/nodes/gvisor-baseline.txt` 與 `infra/deploy/sandbox/daemon.json` 也在 filter 裡：Suite 1 安裝的就是基準檔指名的 release、註冊 runsc 用的就是那份 runtimeArgs，換基準不跑 sandbox 等於沒驗新版。
 
 **Runtime Image**（`runtime-image.yml`）：發佈前先查 registry 有沒有這個版本的 tag，**有就只跑閘門、不推送、不移 tag**。版本 tag 一旦發佈就不再變，因為 [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)那項決策的事實來源是 digest，而 build 不是位元可重現的——同版重推會讓同一個版本字串悄悄指向另一份沒量過的映像。attestation 失敗會在同一個 run 裡自動重試一次；發佈中的 run 不會被下一次 push 取消。
 
@@ -476,6 +476,8 @@ docker run --rm --network container:skillhub-postgres-1 \
 - 有修補版的漏洞 → 升到訊息裡的版本。
 - 出貨依賴的授權不在允許清單 → 換一個依賴。確認授權其實可以接受（例如分類器認不出的 MIT 變體）時，在 `tools/devctl/license_audit.go` 的 `acceptedLicenses` 加一筆，附上理由，並在 commit message 說明你讀過的授權原文。
 - zizmor 的 medium 以上 → 照訊息裡的連結修 workflow。本機沒有 `GH_TOKEN` 時只跑離線稽核，CI 會多跑連網的幾項。
+
+npm registry 對 `npm audit` 回 5xx 時，`dep-audit` 會再問，最多三次、間隔 15 秒與 30 秒；三次都是 5xx 就以「稽核沒有執行」失敗，不會當成沒有漏洞。看到這句就是 registry 故障，稍後重跑即可，不是你的 diff。
 
 Go 全掃仍保留模組層級 advisory。有修補版仍是 `FAIL`；沒有修補版且已匯入受影響套件時是 `NOTE`。只有 source 掃描明確完成 package／symbol 分析、且 advisory 僅有模組層級證據時，才以 `INFO` 說明受影響套件未匯入；缺少分析能力資訊時不作這個判定。同一筆 advisory 有多份證據，以較高可達性為準。已停止維護的 OpenPGP 套件另外由 Go 出貨依賴檢查禁止引入，不以安裝另一個未使用的套件來取代。
 
