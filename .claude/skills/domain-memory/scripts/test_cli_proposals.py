@@ -407,6 +407,16 @@ class CliProposalsTest(RegistryTestCase):
                                  str(self.repo / "c"), "--proposal-id", "PRO-3", *lifecycle)
         self.assertEqual(0, redrafted.returncode, redrafted.stdout)
 
+    def test_a_failing_verify_evidence_writes_only_the_report_to_stdout(self) -> None:
+        self.seed_two_cited_rules()
+        (self.repo / "fact.md").write_text("nothing the records cite\n", encoding="utf-8")
+        result = self.run_cli("verify-evidence", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo))
+        report = json.loads(result.stdout)
+        self.assertEqual(
+            (1, 2, True),
+            (result.returncode, report["summary"]["stale"], result.stderr.startswith("verify-evidence failed: 2 stale citations")),
+        )
+
     def test_a_shifted_citation_does_not_fail_verify_evidence(self) -> None:
         self.seed_two_cited_rules()
         result = self.run_cli("verify-evidence", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo))

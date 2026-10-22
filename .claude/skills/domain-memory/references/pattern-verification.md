@@ -36,6 +36,7 @@ Mutate the line that states the rule, where the rule's evidence cites it.
 - Weakening only the predicate in the query that call runs, `AND workspace_id = $2` to `AND $2::uuid IS NOT NULL`, keeps the parameter referenced and the owner's rows matching, and only another Workspace's rows leak, so the test that dies is the one about strangers.
 - The mutated line must lie on the execution path of a cited line; `validate-change-package` prints a NOTE when a counterfactual mutates a file the rule does not cite, for the reviewer to check that it does.
 - A leak caught only because two tests shared a database is a test still to write.
+- When the cited source is compiled into a generated file, such as a SQL query that a generator embeds in Go, mutating the source changes nothing the test runs and the counterfactual survives for the wrong reason: mutate the generated file that the test actually executes, or give `--test-command` a command that regenerates before it tests.
 
 Derive the expected value from something other than the artifact under test. A check that compares a record with the reasoning that produced it passes whatever that reasoning got wrong, and reports the mistake as evidence. Where the claim is that two representations of a rule agree, compute one of them from the enforcing mechanism — the compiled guard, the schema, the migration — and compare it with the recorded one. A check that cannot fail while the artifact is wrong is not evidence, however many of them pass.
 

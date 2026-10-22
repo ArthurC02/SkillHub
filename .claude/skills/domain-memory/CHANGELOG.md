@@ -2,6 +2,17 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.4.2
+
+### Changed
+
+- The pattern-verification reference says what to mutate when the cited source is compiled into a generated file, such as a SQL query a generator embeds in Go: the generated file the test runs, or a `--test-command` that regenerates first, since mutating the source alone leaves the counterfactual surviving for the wrong reason.
+- A failing `verify-evidence` is covered by a test that reads its whole stdout as one JSON document and finds the failure line on stderr only, after a report that stdout had carried more than the JSON; the report could not be reproduced in any mode, and the test holds the contract.
+
+### Fixed
+
+- The test that a grandchild holding the output open is stopped at the deadline gave the hanging command two seconds to start two interpreters, which a loaded machine can miss, and then failed on a missing pid file; it now allows six seconds and names the spawn race when the pid file is still absent.
+
 ## 2.4.1
 
 ### Added
