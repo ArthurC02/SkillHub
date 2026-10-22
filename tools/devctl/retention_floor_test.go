@@ -13,7 +13,9 @@ func writeRetention(t *testing.T, retention, env string) string {
 	return writeRetentionFull(t, retention, manifestSQL, env, defaultWindowDoc)
 }
 
-const defaultWindowDoc = "## 8. 附錄\n\n### 8.2 B 版：封閉測試（14 天，自己使用）\n\n內文。\n"
+const participantPromise = "> - 使用行為事件：**180 天**\n"
+
+const defaultWindowDoc = "## 8. 附錄\n\n### 8.2 B 版：封閉測試（14 天，自己使用）\n\n內文。\n" + participantPromise
 
 func writeRetentionFull(t *testing.T, retention, sql, env, window string) string {
 	t.Helper()
@@ -51,7 +53,7 @@ const allFloorsMet = "METRICS_ADDR=\n" +
 	"# Trace event retention.\n" +
 	"TRACE_RETENTION=2160h\n" +
 	"DOWNLOAD_ARTIFACT_RETENTION=720h\n" +
-	"ANALYTICS_RETENTION=8760h\n" +
+	"ANALYTICS_RETENTION=4320h\n" +
 	"RUN_QUOTA=off\n"
 
 func TestRetentionFloorAcceptsATreeWhereAllThreeFloorsAreMet(t *testing.T) {
@@ -102,13 +104,25 @@ func TestRetentionFloorSpeaksForEachOfTheThreeRules(t *testing.T) {
 		name:      "rule 1: the study got longer and nothing else moved",
 		retention: ninetyDays,
 		env:       allFloorsMet,
-		window:    "### 8.2 B 版：封閉測試（60 天，自己使用）\n",
+		window:    "### 8.2 B 版：封閉測試（60 天，自己使用）\n" + participantPromise,
 		want:      "rule 1 requires download retention",
 	}, {
 		name:      "rule 3: analytics below one complete funnel",
 		retention: ninetyDays,
-		env:       strings.Replace(allFloorsMet, "ANALYTICS_RETENTION=8760h", "ANALYTICS_RETENTION=720h", 1),
+		env:       strings.Replace(allFloorsMet, "ANALYTICS_RETENTION=4320h", "ANALYTICS_RETENTION=720h", 1),
+		window:    strings.Replace(defaultWindowDoc, "**180 天**", "**30 天**", 1),
 		want:      "rule 3 requires analytics retention",
+	}, {
+		name:      "the deployment keeps usage events longer than participants were told",
+		retention: ninetyDays,
+		env:       strings.Replace(allFloorsMet, "ANALYTICS_RETENTION=4320h", "ANALYTICS_RETENTION=4344h", 1),
+		want:      "must keep exactly what participants were told",
+	}, {
+		name:      "the deployment keeps usage events shorter than participants were told",
+		retention: ninetyDays,
+		env:       allFloorsMet,
+		window:    strings.Replace(defaultWindowDoc, "**180 天**", "**181 天**", 1),
+		want:      "must keep exactly what participants were told",
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -221,7 +235,7 @@ func TestRetentionFloorSaysSoWhenAnEnvFloorLosesItsSubject(t *testing.T) {
 		{
 			name:      "ANALYTICS_RETENTION is gone",
 			retention: retentionFloorNinetyDaysGo,
-			env:       strings.Replace(allFloorsMet, "ANALYTICS_RETENTION=8760h\n", "", 1),
+			env:       strings.Replace(allFloorsMet, "ANALYTICS_RETENTION=4320h\n", "", 1),
 			want:      "no longer assigns ANALYTICS_RETENTION",
 		},
 		{
@@ -240,7 +254,7 @@ func TestRetentionFloorSaysSoWhenTheObservationWindowLosesItsSubject(t *testing.
 			name:      "the observation window heading is gone",
 			retention: retentionFloorNinetyDaysGo,
 			env:       allFloorsMet,
-			window:    "### 8.2 B 版\n\n長度搬到別處了。\n",
+			window:    "### 8.2 B 版\n\n長度搬到別處了。\n" + participantPromise,
 			want:      "lost half its subject",
 		},
 		{
@@ -249,6 +263,20 @@ func TestRetentionFloorSaysSoWhenTheObservationWindowLosesItsSubject(t *testing.
 			env:       allFloorsMet,
 			window:    defaultWindowDoc + "### 8.3 C 版：封閉測試（21 天）\n",
 			want:      "cannot have two lengths",
+		},
+		{
+			name:      "the participant-facing usage-event retention is gone",
+			retention: retentionFloorNinetyDaysGo,
+			env:       allFloorsMet,
+			window:    strings.Replace(defaultWindowDoc, participantPromise, "", 1),
+			want:      "usage-event retention 0 times",
+		},
+		{
+			name:      "two participant-facing usage-event retentions",
+			retention: retentionFloorNinetyDaysGo,
+			env:       allFloorsMet,
+			window:    defaultWindowDoc + participantPromise,
+			want:      "usage-event retention 2 times",
 		},
 	})
 }

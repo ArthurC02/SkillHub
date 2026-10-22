@@ -30,6 +30,8 @@ const observationWindowDoc = "docs/plans/mvp/gate-test/consent-and-data-policy.m
 
 var observationWindowHeading = regexp.MustCompile(`(?m)^#{2,4}\s.*封閉測試（(\d+)\s*天`)
 
+var participantAnalyticsPromise = regexp.MustCompile(`(?m)^>\s*-\s*使用行為事件：\*\*(\d+)\s*天\*\*`)
+
 func retentionFloorProblems(root string) []string {
 	var problems []string
 
@@ -72,6 +74,15 @@ func retentionFloorProblems(root string) []string {
 				"can never be joined into an answer",
 			analyticsFunnelFloor, envExampleDoc, analytics))
 	}
+	promiseProblems, promised := participantAnalyticsRetention(root)
+	problems = append(problems, promiseProblems...)
+	if len(analyticsProblems) == 0 && len(promiseProblems) == 0 && analytics != promised {
+		problems = append(problems, fmt.Sprintf(
+			"retention-floor: %s tells participants usage events are kept %s, but %s states "+
+				"ANALYTICS_RETENTION=%s. The deployment must keep exactly what participants were told; "+
+				"changing either number changes the consent text and needs legal re-review",
+			observationWindowDoc, promised, envExampleDoc, analytics))
+	}
 
 	sort.Strings(problems)
 	return problems
@@ -101,6 +112,22 @@ func observationWindow(root string) ([]string, time.Duration) {
 			"retention-floor: %s states a closed-beta length of %q days, which is not a positive number",
 			observationWindowDoc, matches[0][1])}, 0
 	}
+	return nil, time.Duration(days) * 24 * time.Hour
+}
+
+func participantAnalyticsRetention(root string) ([]string, time.Duration) {
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(observationWindowDoc)))
+	if err != nil {
+		return []string{fmt.Sprintf("retention-floor: %v", err)}, 0
+	}
+	matches := participantAnalyticsPromise.FindAllStringSubmatch(string(data), -1)
+	if len(matches) != 1 {
+		return []string{fmt.Sprintf(
+			"retention-floor: %s states the participant-facing usage-event retention %d times; it must "+
+				"state it exactly once as 「使用行為事件：**N 天**」 so ANALYTICS_RETENTION can be held to it",
+			observationWindowDoc, len(matches))}, 0
+	}
+	days, _ := strconv.Atoi(matches[0][1])
 	return nil, time.Duration(days) * 24 * time.Hour
 }
 
