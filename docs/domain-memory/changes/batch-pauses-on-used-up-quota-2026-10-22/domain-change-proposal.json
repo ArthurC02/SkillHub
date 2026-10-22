@@ -3,12 +3,12 @@
   "proposal_id": "batch-pauses-on-used-up-quota",
   "proposer": "domain-memory-agent",
   "requirement_id": "batch-pauses-on-used-up-quota",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-22T05:06:10.599112Z",
   "verified_at": "2026-10-22T05:09:39.392760Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T05:09:59.174004Z",
+  "applied_at": "2026-10-22T05:11:24.081319Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "2906e620b62f61c1ce8ab28b55300b91349955c0",
@@ -255,5 +255,9 @@
   "supersedes": [
     "patrol-shift-recite",
     "batch-pause-for-credit-2026-10-20"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "8f7a31c7ec696bbe06b06dcf22b9e24ef86c2a15",
+    "registry_digest": "sha256:12c9af9b713eed00ea169b7d63640ad457b2f48b6ddf9f506da2f64952146942"
+  }
 }
