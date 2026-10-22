@@ -2,6 +2,18 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.14
+
+### Fixed
+
+- `verify-git-governance` (and the pre-push hook) accepts a signed merge commit that joins two lines which each changed Domain Memory, such as the merge `reconcile-audit` resolves; it read the merge's changed files without naming a parent, got none, and refused it with `Git commit does not change Domain Memory files`. A merge is now compared with its first parent.
+
+## 2.2.13
+
+### Added
+
+- Tests for a Taskfile and a golangci configuration that are not UTF-8, and for `cite --function` placing a Python `async def` and a Go generic func.
+
 ## 2.2.12
 
 ### Added

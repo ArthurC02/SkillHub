@@ -212,6 +212,29 @@ class ReviewSigningTest(RegistryTestCase):
              key_file.read_text(encoding="utf-8").replace("\r\n", "\n").strip(), signs),
         )
 
+    def test_a_signed_merge_joining_two_lines_that_each_changed_domain_memory_is_valid(self) -> None:
+        self.signing_for_the_registry()
+        base = self.sign_a_commit_changing("memory/base.txt")
+        self.git("checkout", "-q", "-b", "side")
+        self.sign_a_commit_changing("memory/side.txt")
+        self.git("checkout", "-q", base)
+        self.sign_a_commit_changing("memory/main.txt")
+        subprocess.run(
+            ["git", "-c", "user.name=Probe", "-c", "user.email=probe@example.com",
+             "merge", "-q", "-S", "--no-ff", "-m", "join the two lines", "side"],
+            cwd=self.repo, check=True,
+        )
+        merge = self.git("rev-parse", "HEAD")
+        verified = self.run_cli(
+            "verify-git-governance", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+            "--stdin", stdin=self.git("rev-list", f"{base}..HEAD", "--", "memory") + "\n",
+        )
+        self.assertEqual(
+            (True, 0, "Git governance is valid for 3 commits.", ""),
+            (merge in self.git("rev-list", f"{base}..HEAD", "--", "memory").split(),
+             verified.returncode, verified.stdout.strip(), verified.stderr.strip()),
+        )
+
     def test_key_material_with_crlf_line_endings_and_no_final_newline_rebuilds(self) -> None:
         with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
             first = init_signing_key(

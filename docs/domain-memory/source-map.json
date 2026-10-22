@@ -804,6 +804,7 @@
         "apps/web/e2e/fork-recovery.spec.ts",
         "apps/web/e2e/form-validation-feedback.spec.ts",
         "apps/web/e2e/grader-draft-recovery.spec.ts",
+        "apps/web/e2e/grader-draft-refresh.spec.ts",
         "apps/web/e2e/grader-read-response.spec.ts",
         "apps/web/e2e/grader-write-outcome.spec.ts",
         "apps/web/e2e/header-scroll-clearance.spec.ts",

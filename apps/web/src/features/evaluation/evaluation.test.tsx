@@ -599,3 +599,89 @@ test.each([false, true])(
     }
   },
 );
+
+for (const scope of ["workspace", "platform"] as const) {
+  const grader = scope === "workspace" ? WORKSPACE_GRADER : PLATFORM_GRADER;
+  test.each(["instructions", "reason", "both", "cleared", "reverted"] as const)(
+    `${scope} version refresh preserves an owned %s draft`,
+    async (mode) => {
+      await renderNode(<GraderManager scope={scope} />);
+      await waitFor(() => container.textContent!.includes(grader.name));
+      const instructions = field<HTMLTextAreaElement>(`#grader-${grader.id}-instructions`);
+      const reason = field<HTMLInputElement>(`#grader-${grader.id}-reason`);
+      await act(async () => {
+        if (mode !== "reason") setValue(instructions, "未送出的評分指示");
+        if (mode !== "instructions") setValue(reason, "未送出的變更原因");
+      });
+      if (mode === "cleared" || mode === "reverted") {
+        await act(async () => {
+          setValue(instructions, mode === "cleared" ? "" : grader.instructions);
+          setValue(reason, "");
+        });
+      }
+      const expected = {
+        instructions:
+          mode === "cleared"
+            ? ""
+            : mode === "reason" || mode === "reverted"
+              ? grader.instructions
+              : "未送出的評分指示",
+        reason: mode === "reason" || mode === "both" ? "未送出的變更原因" : "",
+      };
+      const refreshed = {
+        ...grader,
+        instructions: "剛讀到的另一份評分指示",
+        version: grader.version + 1,
+        version_id: "11111111-1111-4111-8111-111111111111",
+      };
+      await act(async () =>
+        queryClient.setQueryData(queryKeys.checks.graders(scope), { graders: [refreshed] }),
+      );
+      await waitFor(() => container.textContent!.includes(`${grader.name} v${refreshed.version}`));
+      expect(field(".grader-instructions").textContent).toBe("剛讀到的另一份評分指示");
+      expect(instructions.value).toBe(expected.instructions);
+      expect(reason.value).toBe(expected.reason);
+      expect(calls.filter((call) => call.method === "POST")).toEqual([]);
+    },
+  );
+
+  test(`${scope} successful revision lets pristine fields follow the next version`, async () => {
+    let latest = grader;
+    vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+      if (String(input) === "/me") return json({ ...ME, operator: true });
+      if (init?.method === "POST") {
+        latest = {
+          ...grader,
+          instructions: "已保存的評分指示",
+          version: grader.version + 1,
+          version_id: "22222222-2222-4222-8222-222222222222",
+        };
+        return json(latest, 201);
+      }
+      return json({ graders: [latest] });
+    });
+    await renderNode(<GraderManager scope={scope} />);
+    await waitFor(() => container.textContent!.includes(grader.name));
+    const instructions = field<HTMLTextAreaElement>(`#grader-${grader.id}-instructions`);
+    const reason = field<HTMLInputElement>(`#grader-${grader.id}-reason`);
+    await act(async () => {
+      setValue(instructions, "已保存的評分指示");
+      setValue(reason, "改善判定方式");
+      button("存成新版本").click();
+    });
+    await waitFor(() => container.querySelector("#grader-result") !== null);
+    await waitFor(() => reason.value === "");
+    latest = {
+      ...latest,
+      instructions: "之後讀到的評分指示",
+      version: grader.version + 2,
+      version_id: "33333333-3333-4333-8333-333333333333",
+    };
+    await act(async () =>
+      queryClient.setQueryData(queryKeys.checks.graders(scope), { graders: [latest] }),
+    );
+    await waitFor(() => container.textContent!.includes(`${grader.name} v${latest.version}`));
+    expect(instructions.value).toBe("之後讀到的評分指示");
+    expect(reason.value).toBe("");
+  });
+}

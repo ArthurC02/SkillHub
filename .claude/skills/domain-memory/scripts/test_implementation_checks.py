@@ -231,6 +231,14 @@ class QualityGatesTest(RepositoryCase):
         (self.repo / "pyproject.toml").write_bytes(b"# \xa4\x40\n[tool.ruff]\n")
         self.assertEqual(self.gates(), [])
 
+    def test_a_taskfile_that_is_not_utf8_names_no_task(self) -> None:
+        (self.repo / "Taskfile.yml").write_bytes(b"# \xa4\x40\ntasks:\n  lint:\n    cmd: x\n")
+        self.assertEqual([], self.gates())
+
+    def test_a_lint_configuration_that_is_not_utf8_is_a_lint_gate_and_no_architecture_gate(self) -> None:
+        (self.repo / ".golangci.yml").write_bytes(b"# \xa4\x40\nlinters-settings:\n  depguard:\n    rules: {}\n")
+        self.assertEqual([{"kind": "lint", "tool": "golangci-lint", "path": ".golangci.yml"}], self.gates())
+
     def test_a_dependency_directory_is_not_searched(self) -> None:
         self.write("node_modules/pkg/.eslintrc.json", "")
         self.write(".eslintrc.json", "")
