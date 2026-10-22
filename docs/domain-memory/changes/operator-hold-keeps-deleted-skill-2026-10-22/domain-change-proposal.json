@@ -3,12 +3,12 @@
   "proposal_id": "operator-hold-keeps-deleted-skill",
   "proposer": "domain-memory-agent",
   "requirement_id": "operator-hold-keeps-deleted-skill",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-22T10:56:43.926424Z",
   "verified_at": "2026-10-22T10:58:44.919064Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T11:02:51.493726Z",
+  "applied_at": "2026-10-22T11:03:49.380591Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "1354b5d1653c3a50f0e68288edb1ae788ce04424",
@@ -149,5 +149,9 @@
   ],
   "supersedes": [
     "sweep-holds-held-publication-names"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "dea1d7b38981efaaba0401138c347eefd0dd3daf",
+    "registry_digest": "sha256:1c1e2274eb72358df38cafe9e7a6942104f9366bd77c3ec95b558a95b77e8734"
+  }
 }
