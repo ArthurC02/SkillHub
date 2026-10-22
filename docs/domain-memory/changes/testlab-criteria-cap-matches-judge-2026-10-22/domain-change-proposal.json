@@ -3,12 +3,12 @@
   "proposal_id": "testlab-criteria-cap-matches-judge",
   "proposer": "domain-memory-agent",
   "requirement_id": "testlab-criteria-cap-matches-judge",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-22T09:00:53.498553Z",
   "verified_at": "2026-10-22T09:01:28.541057Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T09:03:14.124388Z",
+  "applied_at": "2026-10-22T09:04:15.535219Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "a4d72cfb725bb98d6e0e82fe2c000b337a95e278",
@@ -121,5 +121,9 @@
   ],
   "supersedes": [
     "testlab-harvest-rules-2026-10-17"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "fdfd2de816852a19afa55411a27299a26fb8e2eb",
+    "registry_digest": "sha256:10ac768e288a173110d16805badbe08bd2d8a9c35dd0a2a908a296f86ee42248"
+  }
 }
