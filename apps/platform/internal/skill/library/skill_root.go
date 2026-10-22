@@ -208,6 +208,10 @@ func (s *SkillRoot) Generated() bool { return s.Redistribution() == Redistributi
 
 func (s *SkillRoot) TakenDown() bool { return s.row.TakedownAt.Valid }
 
+func (s *SkillRoot) takenDownBy(by TakedownBy) bool {
+	return s.TakenDown() && s.row.TakedownBy != nil && TakedownBy(*s.row.TakedownBy) == by
+}
+
 func (s *SkillRoot) Redistribution() Redistribution { return Redistribution(s.row.Redistribution) }
 
 func (s *SkillRoot) NewestLicense() LicenseClaim { return s.newest.license }
@@ -224,7 +228,7 @@ func (s *SkillRoot) Refusal() (Refused, bool) {
 }
 
 func (s *SkillRoot) TakeDown(reason string, by TakedownBy) {
-	if s.TakenDown() {
+	if s.TakenDown() && !(by == TakedownByOperator && s.takenDownBy(TakedownByOwner)) {
 		s.record(Refused{Reason: RefusedAlreadyTakenDown})
 		return
 	}
@@ -240,7 +244,7 @@ func (s *SkillRoot) Restore(by TakedownBy, now time.Time) {
 	switch {
 	case !s.TakenDown():
 		s.record(Refused{Reason: RefusedNotTakenDown})
-	case by == TakedownByOwner && (s.row.TakedownBy == nil || TakedownBy(*s.row.TakedownBy) != TakedownByOwner):
+	case by == TakedownByOwner && !s.takenDownBy(TakedownByOwner):
 		s.record(Refused{Reason: RefusedRestoreNotTheOwners})
 	case by == TakedownByOwner && now.Sub(s.row.TakedownAt.Time) > OwnerRestoreWindow:
 		s.record(Refused{Reason: RefusedRestoreWindowClosed})

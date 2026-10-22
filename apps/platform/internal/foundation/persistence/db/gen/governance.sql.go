@@ -1116,7 +1116,8 @@ func (q *Queries) SetSkillRedistribution(ctx context.Context, arg SetSkillRedist
 
 const setSkillTakedown = `-- name: SetSkillTakedown :one
 UPDATE skills SET takedown_at = now(), takedown_reason = $1, takedown_by = $2, updated_at = now()
-WHERE id = $3 AND deleted_at IS NULL AND takedown_at IS NULL
+WHERE id = $3 AND deleted_at IS NULL
+  AND (takedown_at IS NULL OR (takedown_by = 'owner' AND $2::text = 'operator'))
 RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by
 `
 

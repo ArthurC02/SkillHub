@@ -1,0 +1,116 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "operator-takedown-supersedes-owner",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "operator-takedown-supersedes-owner",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-22T04:28:15.265088Z",
+  "verified_at": "2026-10-22T04:31:48.683690Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "5808b1091046cac706472ff7cebea06f94368ca2",
+    "registry_digest": "sha256:2f588110df9e369db14f0be1b65cd2bfa3b38aef0c20461ca66159867e5f6da9",
+    "committed_digest": "sha256:2f588110df9e369db14f0be1b65cd2bfa3b38aef0c20461ca66159867e5f6da9"
+  },
+  "affected_contexts": [
+    "registry"
+  ],
+  "rule_ids": [
+    "a-skill-is-taken-down-once"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Only registry decides whether a Skill may be taken down.",
+    "evidence": [
+      "apps/platform/internal/skill/library/skill_root.go:230-240"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/library/skill_root.go:230-240"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "An operator answering a violation got 409 on a Skill its owner had taken down, and the owner could then restore the violating Skill with no operator takedown on record."
+    ],
+    "decision": "Let an operator's takedown replace the owner's, in the aggregate and in the guarded update.",
+    "invariants_preserved": [
+      "An owner restores only their own takedown within thirty days.",
+      "A takedown needs a reason."
+    ],
+    "rejected_alternatives": [
+      "Answering 409 and asking the operator to watch the Skill: the owner's restore window stays open."
+    ],
+    "proof_obligations": [
+      "rule-a-skill-is-taken-down-once"
+    ],
+    "counterfactual_check": "Reverting the operator exception in TakeDown fails TestOnlyAnOperatorTakedownSupersedesAnOwnersOwn; reverting the SQL guard fails TestAnOperatorTakedownSupersedesTheOwnersOwnSoTheOwnerCannotUndoIt with 500."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-skill-is-taken-down-once",
+        "statement": "A Skill already taken down cannot be taken down again, except that an operator's takedown supersedes the owner's own: the Skill stays down, now as the operator's, and only an operator lifts it. Any other second attempt is refused and the Skill stays down.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A second report against a taken-down Skill is refused as already_taken_down.",
+          "An operator taking down a Skill its owner already took down succeeds; the owner can no longer restore it."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 230,
+              "end": 240
+            },
+            "content_sha256": "sha256:bebd0dd789b43fd0ca616013ad0edb3bf9065d737f41093eab4e022e25f295fb",
+            "excerpt_sha256": "sha256:7e5b09a7a7d17071725b9b52222dd3df558484fc53fafbb71fb7694096917cfe"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root_test.go",
+            "lines": {
+              "start": 26,
+              "end": 68
+            },
+            "content_sha256": "sha256:6a039d097560c7596cad601e6affae967e1953009ed25c0bfb6a93e27b338e34",
+            "excerpt_sha256": "sha256:1bf6a2c8ea47c0aada434e072d458147ea3c7e9c53487be898f76749561c3799"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T04:31:47.232098Z",
+      "scope": "Amend a-skill-is-taken-down-once: an operator takedown supersedes the owner's own",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "5808b1091046cac706472ff7cebea06f94368ca2",
+        "registry_digest": "sha256:2f588110df9e369db14f0be1b65cd2bfa3b38aef0c20461ca66159867e5f6da9",
+        "committed_digest": "sha256:2f588110df9e369db14f0be1b65cd2bfa3b38aef0c20461ca66159867e5f6da9"
+      }
+    }
+  ],
+  "supersedes": [
+    "patrol-shift-recite"
+  ]
+}

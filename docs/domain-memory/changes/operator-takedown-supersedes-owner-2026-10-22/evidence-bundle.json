@@ -1,0 +1,38 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "operator-takedown-supersedes-owner",
+  "proposal_id": "operator-takedown-supersedes-owner",
+  "registry_revision": {
+    "observed_commit": "5808b1091046cac706472ff7cebea06f94368ca2",
+    "registry_digest": "sha256:2f588110df9e369db14f0be1b65cd2bfa3b38aef0c20461ca66159867e5f6da9",
+    "committed_digest": "sha256:2f588110df9e369db14f0be1b65cd2bfa3b38aef0c20461ca66159867e5f6da9"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-skill-is-taken-down-once",
+      "mutated_protection": "apps/platform/internal/skill/library/skill_root.go:231: if s.TakenDown() && !(by == TakedownByOperator && s.takenDownBy(TakedownByOwner)) { -> if s.TakenDown() {",
+      "failure_evidence": "=== RUN   TestOnlyAnOperatorTakedownSupersedesAnOwnersOwn\n=== RUN   TestOnlyAnOperatorTakedownSupersedesAnOwnersOwn/operator_over_the_owner's_own\n    skill_root_test.go:65: events = []registry.Event{registry.Refused{Reason:\"already_taken_down\", Recorded:registry.LicenseClaim{Expression:\"\", Source:\"\"}}}, want []registry.Event{registry.SkillTakenDown{}}\n=== RUN   TestOnlyAnOperatorTakedownSupersedesAnOwnersOwn/operator_over_an_operator's\n=== RUN   TestOnlyAnOperatorTakedownSupersedesAnOwnersOwn/owner_over_an_operator's\n=== RUN   TestOnlyAnOperatorTakedownSupersedesAnOwnersOwn/owner_over_their_own\n--- FAIL: TestOnlyAnOperatorTakedownSupersedesAnOwnersOwn (0.00s)\n    --- FAIL: TestOnlyAnOperatorTakedownSupersedesAnOwnersOwn/operator_over_the_owner's_own (0.00s)\n    --- PASS: TestOnlyAnOperatorTakedownSupersedesAnOwnersOwn/operator_over_an_operator's (0.00s)\n    --- PASS: TestOnlyAnOperatorTakedownSupersedesAnOwnersOwn/owner_over_an_operator's (0.00s)\n    --- PASS: TestOnlyAnOperatorTakedownSupersedesAnOwnersOwn/owner_over_their_own (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t4.391s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-skill-is-taken-down-once",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^(TestTakingDownASkillHidesItOnce|TestOnlyAnOperatorTakedownSupersedesAnOwnersOwn)$ ./internal/skill/library/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:6073d0ef4ab88c99b612be59805dd6f331529f5f43e417d1eac287f7ff3a6bcc",
+      "finished_at": "2026-10-22T04:29:03.009460Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

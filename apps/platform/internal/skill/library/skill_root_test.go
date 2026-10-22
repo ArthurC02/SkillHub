@@ -42,6 +42,31 @@ func TestTakingDownASkillHidesItOnce(t *testing.T) {
 	assertSkillEvents(t, again, Refused{Reason: RefusedAlreadyTakenDown})
 }
 
+func TestOnlyAnOperatorTakedownSupersedesAnOwnersOwn(t *testing.T) {
+	takenDownBy := func(by TakedownBy) *SkillRoot {
+		who := string(by)
+		return &SkillRoot{row: gen.Skill{TakedownAt: pgtype.Timestamptz{Valid: true}, TakedownBy: &who}}
+	}
+	cases := []struct {
+		name  string
+		skill *SkillRoot
+		by    TakedownBy
+		want  Event
+	}{
+		{"operator over the owner's own", takenDownBy(TakedownByOwner), TakedownByOperator, SkillTakenDown{}},
+		{"operator over an operator's", takenDownBy(TakedownByOperator), TakedownByOperator, Refused{Reason: RefusedAlreadyTakenDown}},
+		{"owner over an operator's", takenDownBy(TakedownByOperator), TakedownByOwner, Refused{Reason: RefusedAlreadyTakenDown}},
+		{"owner over their own", takenDownBy(TakedownByOwner), TakedownByOwner, Refused{Reason: RefusedAlreadyTakenDown}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			c.skill.TakeDown("a report", c.by)
+
+			assertSkillEvents(t, c.skill, c.want)
+		})
+	}
+}
+
 func TestOnlyTheOwnersOwnTakedownWithinThirtyDaysIsRestoredByTheOwner(t *testing.T) {
 	now := time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
 	takenDown := func(by TakedownBy, ago time.Duration) *SkillRoot {

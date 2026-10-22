@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "operator-takedown-supersedes-owner",
+  "status": "draft",
+  "intent": "An operator's takedown cannot be undone by the owner who took the Skill down first.",
+  "actor": "operator",
+  "observable_outcome": "get-context registry lists the amended rule as reviewed, proven by its tests.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-skill-is-taken-down-once",
+      "statement": "An operator's takedown supersedes the owner's own takedown and the owner can no longer restore it; every other second takedown is refused as already_taken_down and the Skill stays down."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/skill/library/skill_root.go",
+    "apps/platform/internal/entrypoint/api/apiserver/takedown_operator_integration_test.go"
+  ]
+}

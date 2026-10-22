@@ -134,3 +134,32 @@ func TestTheOperatorTakedownRouteIsInvisibleWithoutTheRole(t *testing.T) {
 		t.Fatal("a takedown with no reason went through")
 	}
 }
+
+func TestAnOperatorTakedownSupersedesTheOwnersOwnSoTheOwnerCannotUndoIt(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "owner-supersede-takedown")
+	operator := a.login(t, "operator-supersede-takedown")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	skill := importPackage(t, pool, a.packages, owner, "manxome-superseded", false)
+
+	if code, out := postJSON(t, owner, "/skills/"+skill+"/takedown", `{"reason":"my own mistake"}`); code != http.StatusOK {
+		t.Fatalf("owner takedown: got %d (%v)", code, out)
+	}
+	if code, out := operatorCall(t, operator, http.MethodPut, "/admin/skills/"+skill+"/takedown", `{"reason":"DMCA"}`); code != http.StatusOK {
+		t.Fatalf("operator takedown over the owner's: got %d (%v), want 200", code, out)
+	}
+	var by string
+	if err := pool.QueryRow(context.Background(), "SELECT takedown_by FROM skills WHERE id = $1", mustUUID(t, skill)).Scan(&by); err != nil || by != "operator" {
+		t.Fatalf("takedown_by = %q (%v), want operator", by, err)
+	}
+	if reason, n := auditReason(t, operator, skill); n != 1 || reason != "DMCA" {
+		t.Errorf("operator takedown audit = %d events, reason %q; want 1 naming DMCA", n, reason)
+	}
+	if code, _ := postJSON(t, owner, "/skills/"+skill+"/restore", `{}`); code == http.StatusNoContent || !takenDown(t, skill) {
+		t.Errorf("the owner undid an operator takedown: restore answered %d", code)
+	}
+	if code, _ := postJSON(t, owner, "/skills/"+skill+"/takedown", `{"reason":"again"}`); code != http.StatusConflict {
+		t.Errorf("an owner takedown over the operator's: got %d, want 409", code)
+	}
+}

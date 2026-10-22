@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "operator-takedown-supersedes-owner",
+  "proposal_id": "operator-takedown-supersedes-owner",
+  "obligations": [
+    {
+      "id": "rule-a-skill-is-taken-down-once",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-skill-is-taken-down-once",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-skill-is-taken-down-once"
+        }
+      ],
+      "expected_outcome": "An operator's takedown supersedes the owner's own takedown and the owner can no longer restore it; every other second takedown is refused as already_taken_down and the Skill stays down.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^(TestTakingDownASkillHidesItOnce|TestOnlyAnOperatorTakedownSupersedesAnOwnersOwn)$ ./internal/skill/library/"
+    }
+  ]
+}
