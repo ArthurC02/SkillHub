@@ -661,6 +661,11 @@ jobs:
             python "$test"
           done
 
+      - name: Data readiness report
+        run: >-
+          python tools/data-readiness/measure_readiness.py --repo-root .
+          --baseline tools/data-readiness/baseline.json
+
       - name: Domain Memory plugin tests
         run: >-
           bash tools/ci/report-failure.sh 'Domain Memory plugin tests'
