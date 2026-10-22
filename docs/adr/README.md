@@ -12,7 +12,7 @@
 
 ## 資料所有權與核心基礎設施
 
-[ADR-002](./ADR-002-data-ownership-and-core-infrastructure.md)｜哪些資料歸誰、存在哪裡，以及資料庫、物件儲存與佇列的選擇。
+[ADR-002](./ADR-002-data-ownership-and-core-infrastructure.md)｜哪些資料歸誰、存在哪裡，資料庫、物件儲存與佇列的選擇，以及資料層「代理讀得懂」的完成定義與量測。
 
 ## Run 編排與非同步工作流程
 

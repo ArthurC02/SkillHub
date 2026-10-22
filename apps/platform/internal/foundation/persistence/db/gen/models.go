@@ -107,844 +107,1341 @@ func (ns NullRunStatus) Value() (driver.Value, error) {
 
 // One anonymous product-usage event (search, detail view, session start, download start) with coarse query shape and no query text; feeds the beta funnel measurements. Partitioned by month and expired after the configured analytics retention.
 type AnalyticsEvent struct {
-	EventID        pgtype.UUID
-	EventName      string
-	OccurredAt     pgtype.Timestamptz
-	SessionID      string
-	WorkspaceID    pgtype.UUID
-	QueryLength    *int32
-	QueryLanguage  *string
-	ResultCount    *int32
-	HasResults     *bool
+	// Random identifier of this event; together with occurred_at it is the primary key of the partitioned table.
+	EventID pgtype.UUID
+	// Which funnel step happened: search_performed (an intent was submitted), skill_detail_viewed (a detail page was opened), session_started (a visitor came back after first use) or download_started (a download began; its success is recorded in download_records).
+	EventName string
+	// When the event happened; also the partition key, so a row lives in the monthly partition containing this instant.
+	OccurredAt pgtype.Timestamptz
+	// Opaque anonymous visitor-session identifier carried in a cookie, used to group one visitor's events into a funnel; it is not a user or login session id.
+	SessionID string
+	// Workspace the event was emitted for, when the visitor was signed in and the event concerns one; NULL for anonymous events, and set to NULL if the workspace is deleted.
+	WorkspaceID pgtype.UUID
+	// Number of characters in the search text, recorded instead of the text itself; NULL for events that are not searches.
+	QueryLength *int32
+	// Coarse script bucket of the search text (han, latin or mixed), not a locale; NULL for events that are not searches.
+	QueryLanguage *string
+	ResultCount   *int32
+	// Whether the search returned at least one result; NULL for events that are not searches.
+	HasResults *bool
+	// Whether the visitor narrowed the search with at least one filter; NULL for events that are not searches.
 	FiltersApplied *bool
-	SkillID        pgtype.UUID
-	ArtifactID     pgtype.UUID
-	Target         *string
+	// The platform's own public identifier of the skill the event concerns; NULL for events about no particular skill.
+	SkillID pgtype.UUID
+	// Download artifact the visitor started downloading; set only on download_started events and NULL otherwise.
+	ArtifactID pgtype.UUID
+	// Install target chosen for a download, recorded only when the caller supplies one; the current emitter does not, so it is NULL on every existing row.
+	Target *string
 }
 
 type AnalyticsEvents202608 struct {
-	EventID        pgtype.UUID
-	EventName      string
-	OccurredAt     pgtype.Timestamptz
-	SessionID      string
-	WorkspaceID    pgtype.UUID
-	QueryLength    *int32
-	QueryLanguage  *string
-	ResultCount    *int32
-	HasResults     *bool
+	// Random identifier of this event; together with occurred_at it is the primary key of the partitioned table.
+	EventID pgtype.UUID
+	// Which funnel step happened: search_performed (an intent was submitted), skill_detail_viewed (a detail page was opened), session_started (a visitor came back after first use) or download_started (a download began; its success is recorded in download_records).
+	EventName string
+	// When the event happened; also the partition key, so a row lives in the monthly partition containing this instant.
+	OccurredAt pgtype.Timestamptz
+	// Opaque anonymous visitor-session identifier carried in a cookie, used to group one visitor's events into a funnel; it is not a user or login session id.
+	SessionID string
+	// Workspace the event was emitted for, when the visitor was signed in and the event concerns one; NULL for anonymous events, and set to NULL if the workspace is deleted.
+	WorkspaceID pgtype.UUID
+	// Number of characters in the search text, recorded instead of the text itself; NULL for events that are not searches.
+	QueryLength *int32
+	// Coarse script bucket of the search text (han, latin or mixed), not a locale; NULL for events that are not searches.
+	QueryLanguage *string
+	ResultCount   *int32
+	// Whether the search returned at least one result; NULL for events that are not searches.
+	HasResults *bool
+	// Whether the visitor narrowed the search with at least one filter; NULL for events that are not searches.
 	FiltersApplied *bool
-	SkillID        pgtype.UUID
-	Arrival        *string
-	ArrivalRank    *int32
-	ArtifactID     pgtype.UUID
-	Target         *string
+	// The platform's own public identifier of the skill the event concerns; NULL for events about no particular skill.
+	SkillID     pgtype.UUID
+	Arrival     *string
+	ArrivalRank *int32
+	// Download artifact the visitor started downloading; set only on download_started events and NULL otherwise.
+	ArtifactID pgtype.UUID
+	// Install target chosen for a download, recorded only when the caller supplies one; the current emitter does not, so it is NULL on every existing row.
+	Target *string
 }
 
 type AnalyticsEventsDefault struct {
-	EventID        pgtype.UUID
-	EventName      string
-	OccurredAt     pgtype.Timestamptz
-	SessionID      string
-	WorkspaceID    pgtype.UUID
-	QueryLength    *int32
-	QueryLanguage  *string
-	ResultCount    *int32
-	HasResults     *bool
+	// Random identifier of this event; together with occurred_at it is the primary key of the partitioned table.
+	EventID pgtype.UUID
+	// Which funnel step happened: search_performed (an intent was submitted), skill_detail_viewed (a detail page was opened), session_started (a visitor came back after first use) or download_started (a download began; its success is recorded in download_records).
+	EventName string
+	// When the event happened; also the partition key, so a row lives in the monthly partition containing this instant.
+	OccurredAt pgtype.Timestamptz
+	// Opaque anonymous visitor-session identifier carried in a cookie, used to group one visitor's events into a funnel; it is not a user or login session id.
+	SessionID string
+	// Workspace the event was emitted for, when the visitor was signed in and the event concerns one; NULL for anonymous events, and set to NULL if the workspace is deleted.
+	WorkspaceID pgtype.UUID
+	// Number of characters in the search text, recorded instead of the text itself; NULL for events that are not searches.
+	QueryLength *int32
+	// Coarse script bucket of the search text (han, latin or mixed), not a locale; NULL for events that are not searches.
+	QueryLanguage *string
+	ResultCount   *int32
+	// Whether the search returned at least one result; NULL for events that are not searches.
+	HasResults *bool
+	// Whether the visitor narrowed the search with at least one filter; NULL for events that are not searches.
 	FiltersApplied *bool
-	SkillID        pgtype.UUID
-	Arrival        *string
-	ArrivalRank    *int32
-	ArtifactID     pgtype.UUID
-	Target         *string
+	// The platform's own public identifier of the skill the event concerns; NULL for events about no particular skill.
+	SkillID     pgtype.UUID
+	Arrival     *string
+	ArrivalRank *int32
+	// Download artifact the visitor started downloading; set only on download_started events and NULL otherwise.
+	ArtifactID pgtype.UUID
+	// Install target chosen for a download, recorded only when the caller supplies one; the current emitter does not, so it is NULL on every existing row.
+	Target *string
 }
 
 // One stored output file of a run or a download package, with its object key, content hash, size and scan status. The row stays after the object expires; maintenance marks it purged once the retention window passes.
 type Artifact struct {
-	ID          pgtype.UUID
+	ID pgtype.UUID
+	// The workspace that owns the file; every read of it is scoped to this workspace.
 	WorkspaceID pgtype.UUID
-	RunID       pgtype.UUID
-	Kind        string
-	FileName    string
+	// The run that produced the file; NULL for a package built for download, which belongs to no run.
+	RunID pgtype.UUID
+	// What the file is: run_output is a file produced by a run, download_package is a packaged skill built for the owner to download.
+	Kind string
+	// The name the file is offered under when it is downloaded.
+	FileName string
+	// The media type the file is served with.
 	ContentType string
-	SizeBytes   int64
+	// The size of the stored file in bytes.
+	SizeBytes int64
+	// The hash of the file's bytes, used to detect corruption and to recognise identical content.
 	ContentHash string
-	ObjectKey   string
-	ScanStatus  string
-	ExpiresAt   pgtype.Timestamptz
-	CreatedAt   pgtype.Timestamptz
-	DeletedAt   pgtype.Timestamptz
+	// Where the file's bytes live in object storage.
+	ObjectKey string
+	// Whether the file may be served: quarantined until it has been scanned, available once it passed, rejected when the scan refused it.
+	ScanStatus string
+	// When retention removes the stored object; after that the row stays but the bytes are gone.
+	ExpiresAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+	// When the owner deleted the file, which hides it from every listing and download. NULL while it still exists for the owner.
+	DeletedAt pgtype.Timestamptz
 	// When the stored object was removed while the row was kept: retention expiry, or a reconciler finding the bytes gone. Distinct from deleted_at, which is the owner deleting it and hides the row (SEC-006). Serving the bytes requires this to be NULL. See 0028.
-	PurgedAt             pgtype.Timestamptz
-	ReconcileCheckedAt   pgtype.Timestamptz
+	PurgedAt pgtype.Timestamptz
+	// When the object reconciler last compared this row with object storage. NULL if never; the least recently checked rows are taken first so every row gets a turn.
+	ReconcileCheckedAt pgtype.Timestamptz
+	// When retention last tried to remove this file's object. NULL if never; the least recently attempted rows go first so one failing row cannot starve the others.
 	RetentionAttemptedAt pgtype.Timestamptz
 }
 
 // One security-relevant action by an actor on a resource, with structured metadata. Immutable: a trail that could be rewritten would not be a trail. Expires after the configured audit retention.
 type AuditEvent struct {
-	ID           int64
-	ActorUserID  pgtype.UUID
-	WorkspaceID  pgtype.UUID
-	Action       string
+	ID int64
+	// The user who performed the action. NULL when an agent or the system acted; at most one of this and actor_agent_id is set.
+	ActorUserID pgtype.UUID
+	// The workspace the action happened in. NULL for actions that belong to no workspace.
+	WorkspaceID pgtype.UUID
+	// What was done, as a dotted name from the platform's fixed audit vocabulary, such as auth.login, skill.import, skill.takedown, account.purged, run.create or run.transition.
+	Action string
+	// The kind of thing the action was done to; resource_id says which one.
 	ResourceType string
-	ResourceID   pgtype.UUID
-	Metadata     []byte
-	CreatedAt    pgtype.Timestamptz
+	// The id of the resource the action was done to. NULL when the action has no single target.
+	ResourceID pgtype.UUID
+	// Details of the action as JSON, such as what changed; callers must not put secrets here. Empty object when there are none.
+	Metadata  []byte
+	CreatedAt pgtype.Timestamptz
+	// The platform agent that performed the action. NULL when a user or the system acted.
 	ActorAgentID pgtype.UUID
 }
 
 // A named, workspace-owned collection of skills that is versioned and downloaded as one unit.
 type Bundle struct {
-	ID          pgtype.UUID
+	ID pgtype.UUID
+	// Workspace that owns the bundle.
 	WorkspaceID pgtype.UUID
-	Name        string
-	CreatedAt   pgtype.Timestamptz
+	// Bundle name, unique within its workspace.
+	Name      string
+	CreatedAt pgtype.Timestamptz
 }
 
 // One skill version pinned inside a bundle version, with its manifest name, content hash and position. Immutable: changing it would rewrite the set someone already installed.
 type BundleMember struct {
+	// Bundle version this member belongs to; members are deleted together with it.
 	BundleVersionID pgtype.UUID
-	SkillID         pgtype.UUID
-	SkillVersionID  pgtype.UUID
-	VersionNumber   int32
-	ManifestName    string
-	ContentHash     string
-	Position        int32
+	// Skill that this member represents; a bundle version holds at most one version of any skill.
+	SkillID pgtype.UUID
+	// The exact skill version pinned in this bundle version.
+	SkillVersionID pgtype.UUID
+	// Version number of the pinned skill version, copied so the bundle can be displayed without a join.
+	VersionNumber int32
+	// Name declared in the skill's manifest at pin time; unique within the bundle version, because it is the name the installed plugin exposes.
+	ManifestName string
+	// Content hash of the pinned skill version at pin time, copied into the bundle so the bundle's own hash can be recomputed from its members.
+	ContentHash string
+	// Order of this member within the bundle version; unique within it and fixes the order in which the bundle lists and hashes its members.
+	Position int32
 }
 
 // One released, pinned list of skill versions under a bundle, identified by a version label and a content hash. Immutable: upgrading a member creates a new bundle version instead of editing this one.
 type BundleVersion struct {
-	ID          pgtype.UUID
-	BundleID    pgtype.UUID
-	Version     string
+	ID pgtype.UUID
+	// Bundle this version belongs to; versions are deleted together with the bundle.
+	BundleID pgtype.UUID
+	// Version label chosen when the bundle was released, unique within its bundle.
+	Version string
+	// Release description the creator wrote for this bundle version.
 	Description string
+	// Hash over the ordered members' content hashes, identifying exactly what this bundle version contains.
 	ContentHash string
-	CreatedBy   pgtype.UUID
-	CreatedAt   pgtype.Timestamptz
+	// User who released this bundle version.
+	CreatedBy pgtype.UUID
+	CreatedAt pgtype.Timestamptz
 }
 
 // One paid model call made by the platform, with model, token counts, cost in micro-dollars and whether the cost was measured or estimated. Immutable and never deleted; recomputing statistics creates new windows instead of changing events.
 type CostEvent struct {
-	ID               pgtype.UUID
-	Kind             string
-	Model            string
-	PromptVersion    *string
-	PromptTokens     int64
+	ID pgtype.UUID
+	// Which feature made the paid call: creation_step (one step of an interactive creation session), search_embedding (embedding a search query), index_enrich (enriching a skill's catalog metadata), review (an AI review), suggestion (an improvement suggestion), generate (generating a skill from a description), run (a trial run), match_reasons, suggest_criteria, search_intent (search-time model calls) or platform_agent (a platform agent step).
+	Kind string
+	// Identifier of the model that served the call, as the gateway reported it.
+	Model string
+	// Revision label of the prompt used for the call; NULL when the call had no versioned prompt.
+	PromptVersion *string
+	// Number of input tokens the call consumed.
+	PromptTokens int64
+	// Number of output tokens the call produced.
 	CompletionTokens int64
-	UsdMicros        int64
-	CostSource       string
-	WorkspaceID      pgtype.UUID
-	UserID           pgtype.UUID
-	RefType          *string
-	RefID            pgtype.UUID
-	IdempotencyKey   string
-	CreatedAt        pgtype.Timestamptz
+	// Provider cost of the call in micro-dollars (one millionth of a dollar), before any markup.
+	UsdMicros int64
+	// Where usd_micros came from: gateway means the gateway reported the actual spend, estimated means the platform computed it from token counts.
+	CostSource string
+	// Workspace the call was made for; NULL for calls not tied to one.
+	WorkspaceID pgtype.UUID
+	// User who is charged for the call; NULL for platform-initiated calls with no payer.
+	UserID pgtype.UUID
+	// Kind of object the call belongs to (creation_session, run, skill_version or platform_agent_run); NULL when it belongs to none. Read together with ref_id.
+	RefType *string
+	// Identifier of the object named by ref_type; no foreign key, so it may point at something since deleted.
+	RefID pgtype.UUID
+	// Caller-supplied key that makes recording the same call twice a no-op; unique across all events.
+	IdempotencyKey string
+	CreatedAt      pgtype.Timestamptz
 }
 
 // Per creation session roll-up of cost: total micro-dollars, number of steps and whether any step was estimated. Kept permanently, even across account purge.
 type CostSessionSummary struct {
-	SessionID  pgtype.UUID
-	UserID     pgtype.UUID
-	UsdMicros  int64
-	Steps      int32
-	Estimated  bool
+	// Creation session this roll-up describes; one row per session.
+	SessionID pgtype.UUID
+	// User who paid for the session's steps; NULL when none was recorded.
+	UserID pgtype.UUID
+	// Total provider cost of all the session's paid steps, in micro-dollars.
+	UsdMicros int64
+	// Number of paid steps the session has made; at least one, since sessions with no paid step have no row.
+	Steps int32
+	// True when at least one step's cost was estimated rather than reported by the gateway; estimated sessions are left out of the percentile statistics.
+	Estimated bool
+	// When the session's most recent paid step happened; decides which statistics window the session falls into.
 	LastStepAt pgtype.Timestamptz
 }
 
 // One percentile summary (median, 90th, 95th, maximum cost) of a kind of model call over a time window, used to decide whether a paid call may start and what it is expected to cost. Derived data recomputed daily.
 type CostStatistic struct {
-	ID           pgtype.UUID
-	Kind         string
-	WindowStart  pgtype.Timestamptz
-	WindowEnd    pgtype.Timestamptz
-	SampleCount  int64
+	ID pgtype.UUID
+	// Kind of model call or session these percentiles describe; the call kinds match cost_events.kind, plus creation_session for whole creation sessions.
+	Kind string
+	// Inclusive start of the time window the samples were taken from.
+	WindowStart pgtype.Timestamptz
+	// Exclusive end of the time window; later windows supersede earlier ones, and the newest window per kind is the one in force.
+	WindowEnd pgtype.Timestamptz
+	// Number of measured (not estimated) samples in the window; a window with fewer than 20 samples is ignored when deciding whether a call may start.
+	SampleCount int64
+	// Median cost per sample in the window, in micro-dollars.
 	P50UsdMicros *int64
+	// 90th percentile cost per sample in the window, in micro-dollars.
 	P90UsdMicros *int64
+	// 95th percentile cost per sample, in micro-dollars; when the window has at least 20 measured samples and ended within the last 48 hours, it (with markup) sets the minimum balance required to start a new paid call, otherwise a configured fallback is used.
 	P95UsdMicros *int64
+	// Highest cost of any sample in the window, in micro-dollars.
 	MaxUsdMicros *int64
 	CreatedAt    pgtype.Timestamptz
 }
 
 // One command or attempt received by a creation session, with the revision it expected, a hash of the request and its result and usage; lets a retried request return the same outcome. Deleted with its session.
 type CreationReceipt struct {
-	ID               pgtype.UUID
-	SessionID        pgtype.UUID
-	WorkspaceID      pgtype.UUID
-	Kind             string
-	Status           string
+	ID pgtype.UUID
+	// Creation session that received the command or attempt; the receipt is deleted with the session.
+	SessionID pgtype.UUID
+	// Workspace that owns the session; always matches the session's own workspace.
+	WorkspaceID pgtype.UUID
+	// command is a request made by the person (for example confirming or finalizing); attempt is one run of background work the session started.
+	Kind string
+	// queued (accepted, not started), running, unknown (the attempt was interrupted while running, so its model cost is not known; a late result can still settle it), finished, failed or cancelled. Command receipts are written directly as finished.
+	Status string
+	// For a command, the session revision the caller said it was acting on (a stale one is rejected); for an attempt, the session revision when the work was queued, and the worker only starts it if that still matches.
 	ExpectedRevision int64
-	RequestHash      string
-	Result           []byte
-	Usage            []byte
-	CreatedAt        pgtype.Timestamptz
-	FinishedAt       pgtype.Timestamptz
+	// SHA-256 (hex) of the command or attempt arguments; a retry that reuses the receipt id with a different hash is rejected as a reused command rather than replayed.
+	RequestHash string
+	// For a command, the view returned to the caller, stored so a retry gets the same response; for an attempt always an empty object.
+	Result []byte
+	// Model usage and cost the receipt incurred, as JSON; an empty object until it settles, and JSON null when the attempt ended without a known cost.
+	Usage     []byte
+	CreatedAt pgtype.Timestamptz
+	// When the receipt left the queued or running statuses, whether finished, failed, cancelled or unknown; NULL while queued or running.
+	FinishedAt pgtype.Timestamptz
 }
 
 // One interactive skill-authoring conversation in a workspace, holding its current state, revision counter and snapshot. Expires at expires_at.
 type CreationSession struct {
-	ID          pgtype.UUID
+	ID pgtype.UUID
+	// Workspace that owns the session.
 	WorkspaceID pgtype.UUID
-	State       string
-	Revision    int64
-	Snapshot    []byte
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
-	ExpiresAt   pgtype.Timestamptz
+	// Current stage of the session: queued, working, waiting_input, waiting_confirmation, draft_ready, candidate_ready, saved, cancelled, failed or needs_reupload.
+	State string
+	// Counter that starts at 1 and increases with every accepted change; callers must present the revision they last saw, so concurrent edits cannot overwrite each other.
+	Revision int64
+	// The session as JSON: an envelope holding the conversation, brief, acceptance criteria, references, pending action, spend counters, current draft and candidate under "snapshot", plus the limits, deadlines and active receipt id that govern the session. The session is resumed from it.
+	Snapshot  []byte
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+	// Fixed at creation (creation time plus the configured retention) and never extended by activity; once passed the session is treated as not found and is deleted together with its history.
+	ExpiresAt pgtype.Timestamptz
 }
 
 // One revision of a creation session, storing the full session snapshot after an event so the session history can be replayed. Deleted with its session.
 type CreationSessionEvent struct {
-	SessionID   pgtype.UUID
+	// Creation session this revision belongs to.
+	SessionID pgtype.UUID
+	// Workspace that owns the session.
 	WorkspaceID pgtype.UUID
-	Revision    int64
-	EventType   string
-	CreatedAt   pgtype.Timestamptz
-	State       *string
+	// Session revision number this row records; strictly increasing within a session and unique per session.
+	Revision int64
+	// Name of the transition that produced this revision: created, started, attempt_started, attempt_settled, attempt_refused, attempt_interrupted, or the kind of the command applied (such as message, confirm_brief, select_references, diagram, attach_run, raise_budget, materialize, finalize or cancel).
+	EventType string
+	CreatedAt pgtype.Timestamptz
+	// The session's state (for example working, waiting_input, draft_ready, saved) after this revision was applied.
+	State *string
 }
 
 // One row per user holding the current credit balance; the balance is the running total of the user's credit entries. Never deleted, not even by account purge.
 type CreditAccount struct {
-	UserID         pgtype.UUID
+	// User who owns the account; there is exactly one account per user.
+	UserID pgtype.UUID
+	// Current balance in credits, equal to the sum of the user's credit entries; may go negative, but a new paid call starts only while balance minus reservations is at or above the configured debt floor, and the database never allows a balance below -1000000.
 	BalanceCredits int64
 	UpdatedAt      pgtype.Timestamptz
 }
 
 // One change to a user's credit balance: a debit for model use, a grant, a top-up or an adjustment, each with an idempotency key. Immutable: corrections are new entries. Never deleted, not even by account purge.
 type CreditEntry struct {
-	ID             pgtype.UUID
-	UserID         pgtype.UUID
-	Kind           string
-	DeltaCredits   int64
-	UsdMicros      *int64
-	MarkupBps      *int32
-	Model          *string
-	PromptVersion  *string
-	RefType        *string
-	RefID          pgtype.UUID
-	CostEventID    pgtype.UUID
-	Estimated      bool
+	ID pgtype.UUID
+	// Account holder whose balance this entry changes.
+	UserID pgtype.UUID
+	// debit is spending on model use; grant and topup are operator-posted credit increases (grant for free credits, topup for bought credits); adjustment is an operator correction and the only non-debit kind that may be negative.
+	Kind string
+	// Signed change to the balance in credits: negative for debits, positive for grants and top-ups, either sign for adjustments, never zero.
+	DeltaCredits int64
+	// Provider cost in micro-dollars that a debit was billed for; NULL for entries that are not tied to model cost.
+	UsdMicros *int64
+	// Markup applied to the provider cost, in basis points where 10000 means billed at cost; NULL for entries that are not debits.
+	MarkupBps *int32
+	// Model that served the call this debit pays for; not filled by the current ledger writers, so NULL on every row, and the model is found on the matching cost event.
+	Model *string
+	// Prompt revision of the call this debit pays for; not filled by the current ledger writers, so NULL on every row.
+	PromptVersion *string
+	// Kind of object the entry relates to (creation_session, run or skill_version; operator_grant is allowed but not written by current grants); NULL when none. Read together with ref_id.
+	RefType *string
+	// Identifier of the object named by ref_type, for example the session a debit was incurred in.
+	RefID pgtype.UUID
+	// The cost event a debit pays for; required on debits and NULL on other kinds.
+	CostEventID pgtype.UUID
+	// True when the debit was based on an estimated rather than gateway-reported cost.
+	Estimated bool
+	// Caller-supplied key that makes posting the same entry twice a no-op; unique across all entries.
 	IdempotencyKey string
 	CreatedAt      pgtype.Timestamptz
 }
 
 // One measurement of the total database size per calendar day, used to watch storage growth. One row is kept per day.
 type DatabaseSizeSample struct {
-	SampledOn     pgtype.Date
+	// The calendar day this sample stands for; sampling again on the same day overwrites the row.
+	SampledOn pgtype.Date
+	// The total size of the database in bytes when it was sampled.
 	DatabaseBytes int64
-	SampledAt     pgtype.Timestamptz
+	// When the measurement was actually taken.
+	SampledAt pgtype.Timestamptz
 }
 
 // One uploaded input file attached to a test case, with its object key, size and content hash. The row stays after the object expires; maintenance marks it purged once the retention window passes.
 type Dataset struct {
-	ID                   pgtype.UUID
-	WorkspaceID          pgtype.UUID
-	TestCaseID           pgtype.UUID
-	FileName             string
-	ContentType          string
-	SizeBytes            int64
-	ContentHash          string
-	ObjectKey            string
-	CreatedAt            pgtype.Timestamptz
-	ExpiresAt            pgtype.Timestamptz
-	DeletedAt            pgtype.Timestamptz
-	ReconcileCheckedAt   pgtype.Timestamptz
+	ID pgtype.UUID
+	// The workspace that owns the dataset; every read is scoped by it.
+	WorkspaceID pgtype.UUID
+	// The test case this input file is attached to.
+	TestCaseID pgtype.UUID
+	// The original name of the uploaded file as the user gave it.
+	FileName string
+	// The media type recorded for the uploaded file.
+	ContentType string
+	// The size of the uploaded file in bytes; never negative.
+	SizeBytes int64
+	// The hash of the file bytes, used to pin exactly which content a test case snapshot refers to.
+	ContentHash string
+	// The storage key under which the file bytes are kept in object storage.
+	ObjectKey string
+	CreatedAt pgtype.Timestamptz
+	// When the retention window ends; after this time maintenance deletes the stored object and marks the row purged.
+	ExpiresAt pgtype.Timestamptz
+	// When the dataset was deleted, by its owner, by deleting its test case, or by maintenance once the stored object was purged or found lost; null while live. A deleted dataset is no longer offered to runs and its object becomes due for cleanup.
+	DeletedAt pgtype.Timestamptz
+	// When maintenance last picked this row up to verify that its stored object still exists; set when the row is claimed, null means never. Not picked up again until the claim lease has passed, least recently picked first.
+	ReconcileCheckedAt pgtype.Timestamptz
+	// When maintenance last picked this row up to remove the stored object of an expired or deleted dataset; set when the row is claimed, null means never. Not retried until the claim lease has passed.
 	RetentionAttemptedAt pgtype.Timestamptz
-	PurgedAt             pgtype.Timestamptz
+	// When the stored object was confirmed gone; null while the object may still exist. The row itself is kept.
+	PurgedAt pgtype.Timestamptz
 }
 
 // A pending promise to delete a dataset object that was uploaded but never recorded in a manifest, due after not_before. The row is deleted once the object is gone.
 type DatasetObjectCleanupIntent struct {
-	ID          pgtype.UUID
+	ID pgtype.UUID
+	// The workspace that uploaded the object; scopes the cleanup to its owner.
 	WorkspaceID pgtype.UUID
-	ObjectKey   string
-	NotBefore   pgtype.Timestamptz
+	// The storage key of the uploaded dataset object that has no manifest row; unique, so each object has at most one pending cleanup.
+	ObjectKey string
+	// The earliest time the object may be deleted; set when the upload slot is reserved, one hour ahead, so an upload still in flight is not cleaned up. The row is deleted once the manifest row is recorded.
+	NotBefore pgtype.Timestamptz
+	// When maintenance last tried to delete the object; null means never tried. Due rows are worked least recently attempted first so a stuck row cannot starve the rest.
 	AttemptedAt pgtype.Timestamptz
 	CreatedAt   pgtype.Timestamptz
 }
 
 // Active rows stop new Runs being dispatched (03:SEC-012 P1 first action, X-04 drain/suspend). provider = ” is the whole pool. Shared by both triggers on purpose: one state, one release path. See 0030.
 type DispatchHalt struct {
-	ID               pgtype.UUID
-	Provider         string
-	Source           string
-	Reason           string
-	DeclaredBy       pgtype.UUID
-	DeclaredAt       pgtype.Timestamptz
-	ClearRounds      int32
-	LiftedAt         pgtype.Timestamptz
-	LiftedBy         pgtype.UUID
-	LiftReason       *string
+	ID pgtype.UUID
+	// The execution provider whose dispatch is stopped. The empty string means the whole provider pool.
+	Provider string
+	// What stopped dispatch: p1_incident is a halt an operator declared, orphan_threshold is one raised automatically because too many provider runs had no matching platform run.
+	Source string
+	// Why dispatch was stopped, in the operator's words. Never blank.
+	Reason string
+	// The user who declared the halt. NULL when it was raised automatically or the user has since been removed.
+	DeclaredBy pgtype.UUID
+	// When the halt took effect.
+	DeclaredAt pgtype.Timestamptz
+	// How many consecutive reconciliation rounds have found the triggering condition gone; an automatic halt is lifted only after enough clear rounds.
+	ClearRounds int32
+	// When the halt was lifted. NULL while it is still in force.
+	LiftedAt pgtype.Timestamptz
+	// The user who lifted the halt. NULL while it is in force, or when it was lifted automatically.
+	LiftedBy pgtype.UUID
+	// Why the halt was lifted. Set exactly when lifted_at is set.
+	LiftReason *string
+	// When the most recent clear round was counted. NULL until the first one.
 	LastClearRoundAt pgtype.Timestamptz
 }
 
 // The package-specific details of a downloadable artifact: which skill version, target, profile and packager version, manifest hash and whether test cases are included. Immutable: the produced bytes and their hashes never change, repackaging is a new row. The row stays after the object expires.
 type DownloadArtifact struct {
-	ArtifactID        pgtype.UUID
-	Kind              string
-	WorkspaceID       pgtype.UUID
-	SkillVersionID    pgtype.UUID
-	Target            string
-	ProfileVersion    string
-	PackagerVersion   string
-	ManifestHash      string
+	// Identifier of the stored artifact (the downloadable object) these package details describe; one row per artifact.
+	ArtifactID pgtype.UUID
+	// Always download_package; it ties the row to artifacts of that kind.
+	Kind string
+	// Workspace that owns the artifact.
+	WorkspaceID pgtype.UUID
+	// Skill version a single-skill package was built from; NULL for a plugin package, whose skills are in download_artifact_members.
+	SkillVersionID pgtype.UUID
+	// Identifier of the packaging profile the package was built for: standard, claude-code or claude-agent-sdk; multi-skill plugin packages always use standard.
+	Target string
+	// Version of the target's packaging profile used to build a single-skill package; for a plugin package it holds the revision of the plugin specification the package follows.
+	ProfileVersion string
+	// Version of the packaging code that produced the bytes; part of the key used to reuse an earlier identical package.
+	PackagerVersion string
+	// Hash of the package's manifest of files, identifying exactly what the package contains.
+	ManifestHash string
+	// Whether the package also carries the skill's test cases; packages that differ only here are separate artifacts.
 	IncludesTestCases bool
-	PluginName        *string
-	PluginVersion     *string
+	// Name of the plugin when the package is a multi-skill plugin; NULL for a single-skill package. Set exactly when skill_version_id is NULL.
+	PluginName *string
+	// Version label of the plugin when the package is a multi-skill plugin; NULL for a single-skill package.
+	PluginVersion *string
 }
 
 // One skill version that a downloadable plugin package was built from, with its position. Immutable: repackaging creates new rows.
 type DownloadArtifactMember struct {
-	ArtifactID     pgtype.UUID
-	WorkspaceID    pgtype.UUID
+	// Plugin package this member is part of.
+	ArtifactID pgtype.UUID
+	// Workspace that owns the package; always matches the package's own workspace.
+	WorkspaceID pgtype.UUID
+	// The skill version bundled into the package; one row per skill version in a package.
 	SkillVersionID pgtype.UUID
-	Position       int32
+	// Order of this skill within the plugin package, which fixes the order they are listed in the plugin.
+	Position int32
 }
 
 // A pending promise to delete a package object that was uploaded but never recorded in a manifest, due after not_before. The row is deleted once the object is gone.
 type DownloadObjectCleanupIntent struct {
-	ID          pgtype.UUID
+	ID pgtype.UUID
+	// Workspace on whose behalf the object was uploaded.
 	WorkspaceID pgtype.UUID
-	ObjectKey   string
-	NotBefore   pgtype.Timestamptz
+	// Storage key of the uploaded package object that may need deleting; unique, so a key is tracked once.
+	ObjectKey string
+	// Earliest time the cleanup may delete the object; the default leaves one hour for the package to be recorded first.
+	NotBefore pgtype.Timestamptz
+	// When cleanup last tried to process this row; NULL if never tried. Rows never tried are picked first, so one stuck row cannot starve the others.
 	AttemptedAt pgtype.Timestamptz
 	CreatedAt   pgtype.Timestamptz
 }
 
 // One fact that a user downloaded a package at a given time. Immutable: it records what happened and is not editable state. Deleted with the owner by account purge.
 type DownloadRecord struct {
-	ID           int64
-	WorkspaceID  pgtype.UUID
-	ArtifactID   pgtype.UUID
-	ActorUserID  pgtype.UUID
+	ID int64
+	// Workspace whose member performed the download.
+	WorkspaceID pgtype.UUID
+	// Package that was downloaded.
+	ArtifactID pgtype.UUID
+	// User who downloaded the package.
+	ActorUserID pgtype.UUID
+	// When the download took place.
 	DownloadedAt pgtype.Timestamptz
 }
 
 // The verdict on one run: overall result, per-criterion results, summary, judge model and the user's feedback on the verdict.
 type Evaluation struct {
-	ID                    pgtype.UUID
-	WorkspaceID           pgtype.UUID
-	RunID                 pgtype.UUID
-	Overall               string
-	Summary               *string
-	CriterionResults      []byte
-	JudgeModel            *string
-	FeedbackHelpful       *bool
-	FeedbackComment       *string
-	CreatedAt             pgtype.Timestamptz
-	UpdatedAt             pgtype.Timestamptz
-	Status                string
-	JudgePromptVersion    *string
-	RubricVersion         *string
-	EvidenceComplete      bool
+	ID pgtype.UUID
+	// The workspace of the run being judged; every read is scoped by it.
+	WorkspaceID pgtype.UUID
+	// The run this verdict is about. A run can have several evaluations over time but only one current one.
+	RunID pgtype.UUID
+	// The verdict on the run. met: every criterion is satisfied. partially_met: some are. not_met: none that matter are. undetermined: there was not enough evidence to decide.
+	Overall string
+	// A short written explanation of the verdict; null when none was produced.
+	Summary *string
+	// One entry per acceptance criterion with its result and the evidence behind it; every evidence item names its kind, whether it was available and an excerpt.
+	CriterionResults []byte
+	// The model that actually gave the verdict. Null when the platform's own checks decided every criterion or there were no criteria. A failed evaluation keeps the judge model declared at its start, null when no judge is configured.
+	JudgeModel *string
+	// Whether the user found the verdict helpful; null until they answer. One of the few columns editable after the evaluation completes.
+	FeedbackHelpful *bool
+	// The free-text comment the user left about the verdict; null when none. Editable after the evaluation completes.
+	FeedbackComment *string
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	// pending: judging has started but has no result. completed: the verdict is final and the row is frozen apart from feedback. failed: judging could not finish.
+	Status string
+	// The identifier of the judge prompt that produced the verdict. Null when no model judged; a failed evaluation keeps the version declared at its start.
+	JudgePromptVersion *string
+	// The version of the test case rubric the model judged against. Null when the test case has no rubric and when the platform's own checks completed the evaluation without a model.
+	RubricVersion *string
+	// Whether every observation the verdict depends on could be read; false means the verdict was reached with some evidence missing.
+	EvidenceComplete bool
+	// Checks made by plain code rather than the judge model, each with the evidence it found; they are recorded next to the model's verdict.
 	DeterministicFindings []byte
-	CostUsd               pgtype.Numeric
-	CostSource            *string
-	CostIsLowerBound      bool
-	EvaluatedAt           pgtype.Timestamptz
-	SupersededAt          pgtype.Timestamptz
+	// The cost of producing this evaluation in US dollars; null when unknown, and then cost_source is null too.
+	CostUsd pgtype.Numeric
+	// gateway: the cost was reported by the model gateway. estimated: it was computed from token counts. Null exactly when cost_usd is null.
+	CostSource *string
+	// Always true: nothing sets it, and the gateway's per-key spend is the authoritative cost, so cost_usd is only what the judge call reported.
+	CostIsLowerBound bool
+	// When judging finished; null while it has not.
+	EvaluatedAt pgtype.Timestamptz
+	// When a newer evaluation of the same run replaced this one; null for the current evaluation, which is the only one a run may have.
+	SupersededAt pgtype.Timestamptz
 }
 
 // One evaluation set run against one skill version, every test case the given number of trials.
 type EvaluationBatch struct {
-	ID             pgtype.UUID
-	WorkspaceID    pgtype.UUID
-	SkillID        pgtype.UUID
+	ID pgtype.UUID
+	// The workspace that launched the batch; the skill and version must belong to it.
+	WorkspaceID pgtype.UUID
+	// The skill whose test cases are evaluated.
+	SkillID pgtype.UUID
+	// The skill version every run in the batch uses; fixed at launch so results compare one version.
 	SkillVersionID pgtype.UUID
-	Trials         int32
-	Status         string
-	StopReason     *string
-	CreatedBy      pgtype.UUID
-	CreatedAt      pgtype.Timestamptz
+	// How many times each test case is run, from 1 to 10.
+	Trials int32
+	// launching: items exist but not all runs are started yet. launched: every run has been started. paused: held back, with stop_reason saying why. stopped: ended early, with stop_reason saying why.
+	Status string
+	// Why a paused or stopped batch is not continuing; set exactly when status is paused or stopped and null otherwise.
+	StopReason *string
+	// The user who launched the batch; null if that account was later removed.
+	CreatedBy pgtype.UUID
+	CreatedAt pgtype.Timestamptz
 	// Every trial is also run once with the skill withheld, so the report can show what the skill adds.
 	WithBaseline bool
 	// Every trial has ended and no simulated answer is still owed.
 	SettledAt pgtype.Timestamptz
-	PausedAt  pgtype.Timestamptz
+	// When the batch was paused so no further runs are started; set exactly while status is paused and null otherwise.
+	PausedAt pgtype.Timestamptz
 }
 
 // One trial of one test case in a batch; the run is linked once the batch starts it.
 type EvaluationBatchItem struct {
-	BatchID     pgtype.UUID
+	// The batch this trial belongs to.
+	BatchID pgtype.UUID
+	// The workspace of the batch; the batch, test case and run must all belong to it.
 	WorkspaceID pgtype.UUID
-	TestCaseID  pgtype.UUID
-	Position    int32
-	Trial       int32
+	// The test case this trial runs.
+	TestCaseID pgtype.UUID
+	// The zero-based order of the test case within the batch, which decides the order runs are started in.
+	Position int32
+	// Which repetition of the test case this is, counting from 1 up to the batch's trials.
+	Trial int32
+	// The hash of the run permission summary the user confirmed for this skill version and test case when the batch was launched; the run is only started if the permission summary still hashes the same.
 	SummaryHash string
-	RunID       pgtype.UUID
+	// The run started for this trial; null until the batch starts it, and unique so one run serves at most one trial.
+	RunID pgtype.UUID
 	// This trial ran the same test case without loading the skill.
 	SkillWithheld bool
 }
 
 // A named way of judging a criterion with the judge model. No workspace means operators defined it for every workspace.
 type EvaluationGrader struct {
-	ID          pgtype.UUID
+	ID pgtype.UUID
+	// The workspace that defined the grader; null means operators defined it for every workspace.
 	WorkspaceID pgtype.UUID
-	Name        string
-	CreatedBy   pgtype.UUID
-	CreatedAt   pgtype.Timestamptz
+	// The grader's name, up to 100 characters; unique within its workspace, or among platform graders when there is no workspace.
+	Name string
+	// The user who created the grader; null if that account was later removed.
+	CreatedBy pgtype.UUID
+	CreatedAt pgtype.Timestamptz
 }
 
 // The judging instructions of a grader, one immutable row per version; a check names the version it uses.
 type EvaluationGraderVersion struct {
-	ID           pgtype.UUID
-	GraderID     pgtype.UUID
-	Version      int32
+	ID pgtype.UUID
+	// The grader these instructions belong to.
+	GraderID pgtype.UUID
+	// The version number of the grader, counting from 1; a check refers to a grader by name and version.
+	Version int32
+	// The text given to the judge model that says how to decide whether a criterion is met, at most 4000 characters.
 	Instructions string
-	Reason       string
-	CreatedBy    pgtype.UUID
-	CreatedAt    pgtype.Timestamptz
+	// Why this version was written, so a later reader can see what changed and why.
+	Reason string
+	// The user who wrote this version.
+	CreatedBy pgtype.UUID
+	CreatedAt pgtype.Timestamptz
 }
 
 // The model, prompt version, token counts and cost used by one judging or suggestion step of an evaluation. Immutable: re-evaluating appends new rows.
 type EvaluationModelUsage struct {
-	ID               pgtype.UUID
-	EvaluationID     pgtype.UUID
-	WorkspaceID      pgtype.UUID
-	Operation        string
-	Model            string
-	PromptVersion    string
-	PromptTokens     int64
+	ID pgtype.UUID
+	// The evaluation this model call was made for.
+	EvaluationID pgtype.UUID
+	// The workspace of the evaluation; the evaluation must belong to it.
+	WorkspaceID pgtype.UUID
+	// Which step of the evaluation made the call. judge: deciding the verdict. suggest: writing improvement suggestions. Each evaluation has at most one row per operation.
+	Operation string
+	// The model that actually served the call, as reported by the gateway.
+	Model string
+	// The version of the prompt sent for this model call; 'unknown' when the caller did not declare one.
+	PromptVersion string
+	// The number of input tokens the call consumed.
+	PromptTokens int64
+	// The number of output tokens the call produced.
 	CompletionTokens int64
-	CostUsd          pgtype.Numeric
-	CostSource       *string
-	CreatedAt        pgtype.Timestamptz
+	// The cost of the call in US dollars; null when the cost is unknown, and then cost_source is null too.
+	CostUsd pgtype.Numeric
+	// gateway: the cost was reported by the model gateway. estimated: the cost was computed from token counts. Null exactly when cost_usd is null.
+	CostSource *string
+	CreatedAt  pgtype.Timestamptz
 }
 
 // Operator-set evaluation policy. An absent row means every setting is at its default: one judge, no panel.
 type EvaluationSetting struct {
-	Singleton  bool
+	// Always true; the primary key makes the table hold at most one row.
+	Singleton bool
+	// Whether evaluations are judged by a panel of several judges instead of a single judge.
 	JudgePanel bool
-	Reason     string
-	SetBy      pgtype.UUID
-	SetAt      pgtype.Timestamptz
+	// Why the operator chose this setting.
+	Reason string
+	// The operator who last changed the setting; null if that account was later removed.
+	SetBy pgtype.UUID
+	// When the setting was last changed.
+	SetAt pgtype.Timestamptz
 }
 
 // One proposed improvement produced from an evaluation, with the problem, evidence, target file, proposed change, expected impact and the user's decision. Accepting a suggestion creates a new skill version rather than editing in place.
 type EvaluationSuggestion struct {
-	ID                    pgtype.UUID
-	WorkspaceID           pgtype.UUID
-	EvaluationID          pgtype.UUID
-	Category              string
-	Problem               string
-	Evidence              []byte
-	TargetPath            string
-	ProposedContent       string
-	ExpectedImpact        string
-	Decision              string
-	DecidedAt             pgtype.Timestamptz
+	ID pgtype.UUID
+	// The workspace the evaluation belongs to, so every read of a suggestion is scoped to its workspace.
+	WorkspaceID pgtype.UUID
+	// The evaluation whose result this suggestion was derived from.
+	EvaluationID pgtype.UUID
+	// What the problem is about. skill: the skill's own content. runtime: the execution environment or its dependencies. tool: the tools the run used. dataset: the test input. mcp is accepted by the constraint but never stored.
+	Category string
+	// What went wrong in the run, in the judge's words.
+	Problem string
+	// The one observation from the evaluation whose excerpt contains a fragment the suggestion quoted verbatim, with its kind, whether it was available and an excerpt. A suggestion with no matching observation is not stored.
+	Evidence []byte
+	// The file inside the skill package that the change would touch; always a relative path that stays inside the package.
+	TargetPath string
+	// The full new content of the target file; applying the suggestion replaces that file with this text in a new skill version.
+	ProposedContent string
+	// What the judge expects to improve if the change is made.
+	ExpectedImpact string
+	// pending: the user has not decided. accepted: the user wants it applied. rejected: the user declined it.
+	Decision string
+	// When the user accepted or rejected the suggestion; null exactly while the decision is pending.
+	DecidedAt pgtype.Timestamptz
+	// The skill version created when the suggestion was applied; null until then and only possible for accepted suggestions.
 	AppliedSkillVersionID pgtype.UUID
 	CreatedAt             pgtype.Timestamptz
 }
 
 // The link between an accepted evaluation suggestion and the new skill version created from it. Immutable and append-only: later applications never overwrite an earlier source.
 type EvaluationSuggestionApplication struct {
-	WorkspaceID    pgtype.UUID
-	SuggestionID   pgtype.UUID
+	// The workspace of both the suggestion and the skill version it produced.
+	WorkspaceID pgtype.UUID
+	// The accepted suggestion that was applied.
+	SuggestionID pgtype.UUID
+	// The new skill version created by applying the suggestion; deleted along with that version.
 	SkillVersionID pgtype.UUID
-	AppliedAt      pgtype.Timestamptz
+	// When the suggestion was applied to create the version.
+	AppliedAt pgtype.Timestamptz
 }
 
 // One operator decision to approve or revoke the public exposure of a publication release, with the reason and the content digest that was reviewed. Immutable: a revocation is a new row and earlier judgements stay on record.
 type ExposureReview struct {
-	ID             pgtype.UUID
-	PublicationID  pgtype.UUID
-	Sequence       int32
-	ReleaseID      pgtype.UUID
-	ContentHash    string
+	ID pgtype.UUID
+	// Publication whose public exposure was judged.
+	PublicationID pgtype.UUID
+	// Position of this decision in the publication's review history, starting at 1; the highest sequence is the decision currently in force.
+	Sequence int32
+	// The publication release the decision applies to.
+	ReleaseID pgtype.UUID
+	// Content hash of the release at review time, recording exactly which bytes were judged.
+	ContentHash string
+	// Digest of the listing text a reader sees (version, name, summary, enriched summary, task examples, tags, limitations) at review time; if the current listing no longer produces the same digest, the approval stops covering it.
 	SnapshotDigest string
-	Decision       string
-	Reason         string
+	// approved allows the release to be shown publicly; revoked withdraws that permission.
+	Decision string
+	// Operator's written justification for the decision; never empty.
+	Reason string
+	// Operator who made the decision.
 	ReviewerUserID pgtype.UUID
-	ReviewedAt     pgtype.Timestamptz
+	// When the decision was made.
+	ReviewedAt pgtype.Timestamptz
 }
 
 // One piece of feedback a user submitted, either a blocking issue or a signal of need, with the page it came from. Expires after the configured feedback retention.
 type FeedbackReport struct {
-	ID          pgtype.UUID
+	ID pgtype.UUID
+	// Workspace the reporter was working in; NULL if not known or the workspace was deleted.
 	WorkspaceID pgtype.UUID
-	UserID      pgtype.UUID
-	Kind        string
-	Message     *string
-	PagePath    *string
-	RunID       pgtype.UUID
-	CreatedAt   pgtype.Timestamptz
-	BuildID     *string
+	// User who sent the report; NULL if the account was removed.
+	UserID pgtype.UUID
+	// blocking_issue means the user could not continue; need_signal means the user is asking for something the product lacks.
+	Kind string
+	// Free text the user wrote, between 1 and 2000 characters.
+	Message *string
+	// Path of the page the user was on when sending, at most 512 characters; NULL if not given.
+	PagePath *string
+	// Run the report is about, when sent from a run's page; NULL otherwise.
+	RunID     pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+	// Identifier of the web build the user was running, to tie a report to a release; at most 64 characters, NULL if not sent.
+	BuildID *string
 }
 
 // A short-lived per-workspace lock that allows only one skill generation at a time; a row exists only while the lease is held or not yet expired.
 type GenerationLease struct {
+	// Workspace that currently holds the generation lease; at most one lease per workspace.
 	WorkspaceID pgtype.UUID
-	ExpiresAt   pgtype.Timestamptz
+	// When the lease lapses on its own if the holder never released it; after this instant another generation may start.
+	ExpiresAt pgtype.Timestamptz
 }
 
 // One row per scheduled maintenance job recording its period and when it last succeeded, so overdue jobs can be detected. Jobs no longer scheduled are forgotten.
 type MaintenanceJobRun struct {
-	Job           string
+	// The name of the scheduled maintenance job.
+	Job string
+	// How often the job is expected to succeed, in seconds; a job that has not succeeded within this period is overdue.
 	PeriodSeconds int32
-	RegisteredAt  pgtype.Timestamptz
-	SucceededAt   pgtype.Timestamptz
+	// When the job was first registered; for a job that has never succeeded, the overdue clock runs from here.
+	RegisteredAt pgtype.Timestamptz
+	// When the job last finished successfully. NULL if it never has.
+	SucceededAt pgtype.Timestamptz
 }
 
 // An operator-set per-call ceiling for one model endpoint (02:OPS-009). An absent row means the compiled default. Which kinds exist, and how far below the compiled deadline a value may sit, are decided in Go; this table stores a number and who set it.
 type ModelCallBudget struct {
-	Kind    string
+	// The model endpoint the ceiling applies to: one of enrich-skill, generate-skill, analyze-intent, match-reasons, suggest-criteria, judge-run or suggest-improvements.
+	Kind string
+	// The longest a call to this endpoint may run, in seconds: at least 1 and at most the calling code's deadline minus a five-second safety margin.
 	Seconds int32
-	Reason  string
-	SetBy   pgtype.UUID
-	SetAt   pgtype.Timestamptz
+	// Why the operator set this value. Never blank.
+	Reason string
+	// The operator who set the value. NULL if that account has since been removed.
+	SetBy pgtype.UUID
+	// When the value was set.
+	SetAt pgtype.Timestamptz
 }
 
 // Package object keys whose last referencing skill_versions row was deleted (04 丙-73). A key is removed from storage only when no skill_versions row references it, because the object is shared with every fork of the same content.
 type ObjectCollectionQueue struct {
-	ObjectKey  string
+	// Storage key of a package object waiting to be checked for deletion; one entry per key.
+	ObjectKey string
+	// When the key was queued, which sets the order in which the collector processes keys.
 	EnqueuedAt pgtype.Timestamptz
 }
 
 // A dataset or artifact whose object was seen missing or stray, with how many reconciliation rounds it has persisted; an object is acted on only after repeated sightings. Deleted when the sighting clears.
 type ObjectReconcileSighting struct {
+	// Which kind of record the object belongs to: dataset or artifact.
 	ResourceKind string
-	ResourceID   pgtype.UUID
-	ObjectKey    string
-	FirstSeenAt  pgtype.Timestamptz
-	LastSeenAt   pgtype.Timestamptz
-	Rounds       int32
+	// The id of the dataset or artifact whose object was seen missing or stray.
+	ResourceID pgtype.UUID
+	// The object storage key that was seen missing or stray.
+	ObjectKey string
+	// When the problem was first seen.
+	FirstSeenAt pgtype.Timestamptz
+	// When the problem was most recently seen.
+	LastSeenAt pgtype.Timestamptz
+	// How many reconciliation rounds in a row have seen the problem; action is taken only after repeated sightings.
+	Rounds int32
 }
 
 // One domain event written in the same transaction as the state change that caused it, waiting to be published to consumers. Published events expire after seven days; dead letters stay.
 type OutboxEvent struct {
-	EventID          pgtype.UUID
-	EventType        string
-	EventVersion     int32
-	OccurredAt       pgtype.Timestamptz
-	CorrelationID    pgtype.UUID
-	CausationID      pgtype.UUID
-	WorkspaceID      pgtype.UUID
-	AggregateType    string
-	AggregateID      pgtype.UUID
-	Payload          []byte
-	PublishedAt      pgtype.Timestamptz
+	// The unique id of the event; consumers use it to recognise a redelivery of an event they have already handled.
+	EventID pgtype.UUID
+	// What happened, as a dotted name such as run.succeeded, drawn from a fixed catalogue of event types.
+	EventType string
+	// The version of the payload layout for this event type.
+	EventVersion int32
+	// When the state change that caused the event was committed.
+	OccurredAt pgtype.Timestamptz
+	// An id shared by every event and piece of work that came from the same originating request, so they can be traced together.
+	CorrelationID pgtype.UUID
+	// The id of the event or command that directly caused this one. NULL for an event that starts a chain.
+	CausationID pgtype.UUID
+	// The workspace the event belongs to. NULL for events outside any workspace.
+	WorkspaceID pgtype.UUID
+	// The kind of record the event is about: run, evaluation or skill.
+	AggregateType string
+	// The id of the run, evaluation or skill the event is about.
+	AggregateID pgtype.UUID
+	// The body of the event as consumers receive it.
+	Payload []byte
+	// When the event was delivered to consumers. NULL while it is still waiting.
+	PublishedAt pgtype.Timestamptz
+	// How many deliveries of this event have failed so far; at the configured maximum the event is dead-lettered.
 	DeliveryAttempts int32
-	DeadLetteredAt   pgtype.Timestamptz
-	NextDeliveryAt   pgtype.Timestamptz
+	// When delivery was given up after too many failures. A dead-lettered event is no longer retried and is not purged.
+	DeadLetteredAt pgtype.Timestamptz
+	// The earliest moment the event may be claimed again: set while a dispatcher holds the event and after a failed delivery to space out retries; NULL when it is ready now.
+	NextDeliveryAt pgtype.Timestamptz
 }
 
 // One platform agent defined in code, with its purpose, model role, daily spend cap, allowed tools and actions, owner and whether it is enabled. One row per agent.
 type PlatformAgent struct {
-	ID                  pgtype.UUID
-	Name                string
-	Purpose             string
-	ModelRole           string
+	ID pgtype.UUID
+	// The agent's unique name, lowercase letters, digits and hyphens, starting with a letter.
+	Name string
+	// What the agent is for, in one sentence.
+	Purpose string
+	// The model role alias the gateway resolves to the model this agent uses.
+	ModelRole string
+	// The most the agent may spend per day, in millionths of a US dollar, as defined in code; an operator override replaces it.
 	DailySpendCapMicros int64
-	Tools               []string
-	Actions             []string
-	Enabled             bool
-	OwnerID             pgtype.UUID
-	RegisteredAt        pgtype.Timestamptz
+	// The names of the read tools the agent is allowed to call.
+	Tools []string
+	// The names of the actions the agent is allowed to propose.
+	Actions []string
+	// Whether the agent runs; false by default, and an agent can only be enabled once it has an owner.
+	Enabled bool
+	// The operator accountable for the agent; required while it is enabled.
+	OwnerID pgtype.UUID
+	// When the agent was first registered in the database.
+	RegisteredAt pgtype.Timestamptz
 	// An operator-set daily spend cap that replaces the one defined in code; null means the defined cap applies.
 	DailySpendCapOverrideMicros *int64
 }
 
 // A single row that exists only while the operator has engaged the emergency brake that stops all platform agents, with who engaged it and why.
 type PlatformAgentBrake struct {
-	Engaged   bool
+	// Always true; the primary key makes the table hold at most one row, and the row's presence means the brake is on.
+	Engaged bool
+	// The operator who most recently engaged the brake; engaging again replaces it.
 	EngagedBy pgtype.UUID
+	// When the brake was last engaged; engaging again replaces it.
 	EngagedAt pgtype.Timestamptz
-	Reason    string
+	// Why the operator most recently stopped all platform agents; engaging again replaces it.
+	Reason string
 }
 
 // One deduplicated problem reported by a platform agent, with its title, cited evidence, status, assignee and how often it has been seen.
 type PlatformAgentFinding struct {
-	ID              pgtype.UUID
-	AgentID         pgtype.UUID
-	Status          string
-	Title           string
-	Cites           []string
-	AssigneeID      pgtype.UUID
-	FirstSeenAt     pgtype.Timestamptz
-	LastSeenAt      pgtype.Timestamptz
-	SeenCount       int32
+	ID pgtype.UUID
+	// The platform agent that reported the problem.
+	AgentID pgtype.UUID
+	// open: reported and not yet handled. acknowledged: an operator took it on. resolved: an operator fixed it. dismissed: an operator judged it not a problem. recovered: the agent stopped seeing the problem on its own.
+	Status string
+	// A short description of the problem, refreshed each time the agent sees it again.
+	Title string
+	// Values the agent quoted from what its tools returned, at least one. A new sighting that shares any cite with an earlier finding is treated as the same problem. Replaced on every sighting.
+	Cites []string
+	// The operator responsible for the finding; required once it is acknowledged and null before that.
+	AssigneeID pgtype.UUID
+	// When the agent first reported the problem.
+	FirstSeenAt pgtype.Timestamptz
+	// When the agent most recently reported the problem; findings are listed newest sighting first.
+	LastSeenAt pgtype.Timestamptz
+	// How many times the agent has reported this same problem, starting at 1.
+	SeenCount int32
+	// When the status last changed.
 	StatusChangedAt pgtype.Timestamptz
 }
 
 // One step in the life of a platform agent finding (opened, seen again, acknowledged, resolved and so on), made either by an agent run or by an operator with a note. Archivable with the finding.
 type PlatformAgentFindingEvent struct {
-	FindingID  pgtype.UUID
-	Seq        int32
-	Kind       string
-	RunID      pgtype.UUID
+	// The finding this event is part of.
+	FindingID pgtype.UUID
+	// The position of the event in its finding's history, counting from 0.
+	Seq int32
+	// What happened. opened: first reported. seen: reported again. reopened: came back after being closed. recovered: the problem no longer shows. acknowledged: an operator took it on. resolved: an operator fixed it. dismissed: an operator judged it not a problem.
+	Kind string
+	// The agent run that made the observation; set when an agent caused the event and null when an operator did.
+	RunID pgtype.UUID
+	// The operator who made the change; set when a person caused the event and null when an agent run did.
 	OperatorID pgtype.UUID
-	Text       *string
-	Evidence   []byte
-	Note       *string
+	// The finding title the agent reported at that sighting; null for recovered events and every operator event.
+	Text *string
+	// The evidence map the agent attached to that sighting; null for recovered events and every operator event.
+	Evidence []byte
+	// The operator's explanation for their action; required whenever an operator made the event.
+	Note *string
+	// When the event happened.
 	OccurredAt pgtype.Timestamptz
 }
 
 // One action a platform agent proposes for an operator to approve, with its risk tier, reason, cited evidence, preview and lifecycle from proposed to executed or expired.
 type PlatformAgentProposal struct {
-	ID           pgtype.UUID
-	AgentID      pgtype.UUID
-	RunID        pgtype.UUID
-	Action       string
-	Tier         string
-	Reason       string
-	Cites        []string
-	Preview      []byte
-	Status       string
-	ProposedAt   pgtype.Timestamptz
-	ExpiresAt    pgtype.Timestamptz
-	DecidedBy    pgtype.UUID
-	DecidedAt    pgtype.Timestamptz
+	ID pgtype.UUID
+	// The platform agent that made the proposal.
+	AgentID pgtype.UUID
+	// The agent run in which the proposal was made.
+	RunID pgtype.UUID
+	// The name of the maintenance job action the agent wants run, in the form run-<job>; at most one proposal per action can be proposed, approved or running at a time.
+	Action string
+	// How risky the action is. read_only: changes nothing. reversible: changes something that can be undone. destructive: cannot be undone.
+	Tier string
+	// Why the agent proposes the action.
+	Reason string
+	// Values the agent quoted from what its tools returned to justify the proposal, at least one, checked against those results before it is stored.
+	Cites []string
+	// How many items each part of the action would affect, as counts with an at-most flag, plus the batch limit when there is one; recorded when the proposal is made and shown to the operator before they decide.
+	Preview []byte
+	// proposed: waiting for an operator. approved: accepted and waiting to run. rejected: declined. expired: no decision before expires_at. running: being executed. succeeded: executed successfully. failed: execution failed and outcome says why.
+	Status string
+	// When the agent made the proposal.
+	ProposedAt pgtype.Timestamptz
+	// The time after which an undecided proposal can no longer be approved; always later than proposed_at.
+	ExpiresAt pgtype.Timestamptz
+	// The operator who approved or rejected the proposal; null while it is proposed or after it expired unanswered.
+	DecidedBy pgtype.UUID
+	// When the operator decided; null exactly when decided_by is null.
+	DecidedAt pgtype.Timestamptz
+	// The operator's explanation for approving or rejecting; required whenever a decision was made.
 	DecisionNote *string
-	StartedAt    pgtype.Timestamptz
-	FinishedAt   pgtype.Timestamptz
-	Outcome      *string
+	// When execution of the approved action began; null if it never started.
+	StartedAt pgtype.Timestamptz
+	// When the proposal reached a closing state (rejected, expired, succeeded or failed); null while it is still open or running.
+	FinishedAt pgtype.Timestamptz
+	// Why the action failed, or that it was abandoned by a stopped maintenance process; null for any proposal that did not fail.
+	Outcome *string
 }
 
 // One execution of a platform agent, with its status, start and finish time and the reason it stopped or failed.
 type PlatformAgentRun struct {
-	ID              pgtype.UUID
-	AgentID         pgtype.UUID
-	Status          string
-	StartedAt       pgtype.Timestamptz
-	FinishedAt      pgtype.Timestamptz
-	Reason          *string
-	Result          []byte
+	ID pgtype.UUID
+	// The platform agent that was run.
+	AgentID pgtype.UUID
+	// running: still executing. completed: finished its work. incomplete: ended because it hit a limit (daily spend cap, step limit, token limit or time limit). stopped: halted because the agent brake was engaged or the agent was disabled. failed: ended with an error.
+	Status string
+	// When the run began.
+	StartedAt pgtype.Timestamptz
+	// When the run ended; null exactly while it is running.
+	FinishedAt pgtype.Timestamptz
+	// Why a run that did not complete ended; required for incomplete, stopped and failed runs.
+	Reason *string
+	// The structured result the agent returned at the end of the run; also kept on a run that failed because its result did not pass validation. Null on other runs.
+	Result []byte
+	// The spending limit, in millionths of a US dollar, of the model key issued for this run; counted as the run's spend when any of its steps could not be priced. Null when the run ended before a key was issued.
 	KeyBudgetMicros *int64
 }
 
 // One tool call made during a platform agent run, with its arguments, result, model and token and cost usage.
 type PlatformAgentStep struct {
-	RunID            pgtype.UUID
-	Seq              int32
-	Tool             string
-	Arguments        string
-	Result           string
-	Model            string
-	PromptTokens     int64
+	// The agent run this tool call belongs to.
+	RunID pgtype.UUID
+	// The position of the call within the run, counting from 0.
+	Seq int32
+	// The name of the tool the agent called.
+	Tool string
+	// The arguments the agent passed to the tool, as text.
+	Arguments string
+	// What the tool returned to the agent, as text.
+	Result string
+	// The model that produced this step.
+	Model string
+	// The number of input tokens this step consumed.
+	PromptTokens int64
+	// The number of output tokens this step produced.
 	CompletionTokens int64
-	UsdMicros        *int64
-	CreatedAt        pgtype.Timestamptz
+	// The cost of the step in millionths of a US dollar; null when it could not be priced.
+	UsdMicros *int64
+	CreatedAt pgtype.Timestamptz
 }
 
 // A skill made publicly available under a publisher and a name, with whether it is currently published or delisted.
 type Publication struct {
-	ID              pgtype.UUID
-	PublisherID     pgtype.UUID
-	Name            string
-	SkillID         pgtype.UUID
-	Status          string
+	ID pgtype.UUID
+	// Publisher under which the publication appears publicly.
+	PublisherID pgtype.UUID
+	// Public name, unique among the publisher's live publications.
+	Name string
+	// Skill being published; NULL when a bundle is published instead. Exactly one of skill_id and bundle_id is set.
+	SkillID pgtype.UUID
+	// published means listed publicly; delisted means withdrawn from the public catalog.
+	Status string
+	// When status last changed, or when the publication was created.
 	StatusChangedAt pgtype.Timestamptz
 	CreatedAt       pgtype.Timestamptz
-	BundleID        pgtype.UUID
-	RetiredAt       pgtype.Timestamptz
+	// Bundle being published; NULL when a single skill is published.
+	BundleID pgtype.UUID
+	// When the skill behind the publication was deleted, taken from the delete event time; NULL while live. The publication name stays held for 90 days after this and can then be reused. Withdrawing a publication from the catalog is status delisted, not retirement.
+	RetiredAt pgtype.Timestamptz
 }
 
 // The fact that a particular skill version was published under a name, with its content hash, scan findings, rights attestation and releaser. Immutable: a new release is a new row, because rewriting it would rewrite what others have seen.
 type PublicationRelease struct {
-	ID              pgtype.UUID
-	PublicationID   pgtype.UUID
-	SkillVersionID  pgtype.UUID
-	VersionNumber   *int32
-	ContentHash     string
-	Findings        []byte
-	RightsAttested  bool
-	ReleasedBy      pgtype.UUID
-	ReleasedAt      pgtype.Timestamptz
+	ID pgtype.UUID
+	// Publication this release belongs to; releases are deleted with it.
+	PublicationID pgtype.UUID
+	// Skill version that was released; NULL when the release is a bundle version instead. Exactly one of this and bundle_version_id is set.
+	SkillVersionID pgtype.UUID
+	// Version number of the released skill version, copied at release time; NULL for bundle releases.
+	VersionNumber *int32
+	// Content hash of what was released, fixed at release time so later changes cannot alter what the release means.
+	ContentHash string
+	// Result of the safety and license scan that ran before release, as JSON.
+	Findings []byte
+	// Whether the releaser confirmed they have the right to redistribute this content.
+	RightsAttested bool
+	// User who released it.
+	ReleasedBy pgtype.UUID
+	// When the release was made; the newest release of a publication is its current one.
+	ReleasedAt pgtype.Timestamptz
+	// Bundle version that was released; NULL when the release is a single skill version.
 	BundleVersionID pgtype.UUID
+	// License the releaser declared for this release, one of a fixed list of SPDX identifiers; NULL when none was declared.
 	DeclaredLicense *string
 }
 
 // The public identity of a workspace under which it publishes skills; one publisher per workspace with a unique name.
 type Publisher struct {
-	ID          pgtype.UUID
+	ID pgtype.UUID
+	// Workspace this public identity belongs to; each workspace has at most one.
 	WorkspaceID pgtype.UUID
-	Name        string
-	CreatedAt   pgtype.Timestamptz
+	// Public publisher name shown on its publications, unique across the platform.
+	Name      string
+	CreatedAt pgtype.Timestamptz
 }
 
 // The token-bucket state of one rate-limit key, used to throttle requests across API processes. Idle buckets are swept by the limiter.
 type RateLimitBucket struct {
-	Key     string
-	Tokens  float64
-	At      pgtype.Timestamptz
+	// What is being throttled: the route, then a bar, then the caller, as account:<id> for a signed-in caller or addr:<address> otherwise.
+	Key string
+	// The tokens left in the bucket as of the at time, as a fraction; it refills at the limiter's rate up to its burst size and each admitted request spends one.
+	Tokens float64
+	// When the bucket was last refilled and evaluated.
+	At pgtype.Timestamptz
+	// Whether the most recent request on this key was admitted.
 	Allowed bool
 }
 
 // A provider run that exists at the execution provider but has no matching platform run, with how many reconciliation rounds it has persisted before it is cleaned up. Deleted when the orphan clears.
 type ReconcilerOrphanSighting struct {
-	Provider      string
+	// The execution provider where the unmatched run exists.
+	Provider string
+	// The id the provider gave the run that has no matching platform run.
 	ProviderRunID string
-	FirstSeenAt   pgtype.Timestamptz
-	LastSeenAt    pgtype.Timestamptz
-	Rounds        int32
+	// When the orphan was first seen.
+	FirstSeenAt pgtype.Timestamptz
+	// When the orphan was most recently seen.
+	LastSeenAt pgtype.Timestamptz
+	// How many reconciliation rounds in a row have seen the orphan; it is cleaned up only after repeated sightings.
+	Rounds int32
 }
 
 // One execution of a skill version against a frozen test case snapshot, with its status, attempt count, provider and cleanup state. The permanent identity of a run; its child rows are archivable.
 type Run struct {
-	ID                   pgtype.UUID
-	WorkspaceID          pgtype.UUID
-	SkillVersionID       pgtype.UUID
-	TestCaseSnapshotID   pgtype.UUID
-	Status               RunStatus
-	StatusReason         *string
-	Provider             string
-	CleanupStatus        RunCleanupStatus
-	CleanupAt            pgtype.Timestamptz
-	CreatedAt            pgtype.Timestamptz
-	StartedAt            pgtype.Timestamptz
-	FinishedAt           pgtype.Timestamptz
-	CancelRequestedAt    pgtype.Timestamptz
-	FailureClass         *string
+	ID pgtype.UUID
+	// The workspace that owns the run.
+	WorkspaceID pgtype.UUID
+	// The exact, immutable skill version that was run.
+	SkillVersionID pgtype.UUID
+	// The frozen copy of the test case the version was run against.
+	TestCaseSnapshotID pgtype.UUID
+	// Where the run is in its lifecycle: queued, provisioning, preparing, running, evaluating, then one of the final states succeeded, failed, cancelled or timed_out.
+	Status RunStatus
+	// The reason given for the run's most recent status change, in words shown to people and sometimes relayed from the provider. Replaced on each change; NULL when none was given.
+	StatusReason *string
+	// The execution provider chosen for the run.
+	Provider string
+	// How far releasing the run's execution resources has got: pending, cleaning_up, cleaned or failed.
+	CleanupStatus RunCleanupStatus
+	// When cleanup finished, whether it ended cleaned or failed. NULL until then; moving to cleaning_up does not set it.
+	CleanupAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+	// When the run first entered the running status. NULL until then, and for runs that ended before they ran.
+	StartedAt pgtype.Timestamptz
+	// When the run reached a final status. Set exactly when the status is final.
+	FinishedAt pgtype.Timestamptz
+	// When the user asked to cancel the run. NULL if they have not.
+	CancelRequestedAt pgtype.Timestamptz
+	// Why a failed run failed: provider_error, workload_error, timeout, cancelled, capability_mismatch, policy_refused, platform_error or resource_limit. NULL when the run did not fail.
+	FailureClass *string
+	// When the supervisor last examined this unfinished run. NULL if never; the least recently checked runs go first.
 	SupervisionCheckedAt pgtype.Timestamptz
-	CleanupAttemptedAt   pgtype.Timestamptz
-	ArtifactsTruncated   bool
-	ActivityUpdatedAt    pgtype.Timestamptz
+	// When cleanup of this finished run last ran. NULL if never; the least recently attempted runs go first.
+	CleanupAttemptedAt pgtype.Timestamptz
+	// True when the provider reported that collecting the run's output was cut short, either because files were dropped or because a file was cut off, so the stored output is incomplete.
+	ArtifactsTruncated bool
+	// When the run last changed status or received a cancel request; the workspace activity feed orders runs by it.
+	ActivityUpdatedAt pgtype.Timestamptz
 	// The caller's name for the request that started this run; asking again with the same name returns this run instead of starting another.
-	OriginKey        *string
-	CostSettledAt    pgtype.Timestamptz
+	OriginKey *string
+	// When the run's final model spend was read from the model gateway and recorded. NULL while still waiting for it.
+	CostSettledAt pgtype.Timestamptz
+	// When the platform last asked the model gateway for this run's spend while waiting for it to settle. NULL if it has not yet.
 	SpendRecheckedAt pgtype.Timestamptz
 }
 
 // A pending promise to delete an object uploaded by a run attempt if no output manifest ever records it, due after not_before. The row is deleted once the object is settled.
 type RunArtifactUploadIntent struct {
-	ID           pgtype.UUID
+	ID pgtype.UUID
+	// The run attempt whose uploaded output archive this promise covers; one per attempt.
 	RunAttemptID pgtype.UUID
-	WorkspaceID  pgtype.UUID
-	ObjectKey    string
-	NotBefore    pgtype.Timestamptz
-	AttemptedAt  pgtype.Timestamptz
-	CreatedAt    pgtype.Timestamptz
+	// The workspace that owns the run attempt.
+	WorkspaceID pgtype.UUID
+	// The object storage key of the output archive the attempt may have uploaded.
+	ObjectKey string
+	// The earliest time the object may be deleted, set safely after the attempt's upload grants have expired.
+	NotBefore pgtype.Timestamptz
+	// When cleanup last tried to settle this object. NULL if never; the least recently attempted rows go first.
+	AttemptedAt pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
 }
 
 // One execution attempt of a run at a provider, with its provider run id, timing and error class and message. Archivable with the run.
 type RunAttempt struct {
-	ID                       pgtype.UUID
-	RunID                    pgtype.UUID
-	WorkspaceID              pgtype.UUID
-	AttemptNumber            int32
-	Provider                 string
-	ProviderRunID            *string
-	ErrorClass               *string
-	ErrorMessage             *string
-	CreatedAt                pgtype.Timestamptz
-	StartedAt                pgtype.Timestamptz
-	FinishedAt               pgtype.Timestamptz
-	ObjectGrantsExpireAt     pgtype.Timestamptz
-	ObjectGrantsState        string
+	ID pgtype.UUID
+	// The run this attempt belongs to.
+	RunID pgtype.UUID
+	// The workspace that owns the run.
+	WorkspaceID pgtype.UUID
+	// The position of this attempt within its run, counting from 1; unique per run.
+	AttemptNumber int32
+	// The execution provider this attempt was sent to.
+	Provider string
+	// The id the provider gave this attempt. NULL until the provider has accepted it.
+	ProviderRunID *string
+	// Why the attempt failed: provision, execution, cleanup, capability_mismatch, budget_exhausted, provider_lost, timeout, cancelled or resource_limit. NULL when it did not fail.
+	ErrorClass *string
+	// Diagnostic detail the provider or platform gave when the attempt failed, kept for operators; the API shows fixed wording per error_class instead of this text. NULL when the attempt did not fail or gave no detail.
+	ErrorMessage *string
+	CreatedAt    pgtype.Timestamptz
+	// When the provider began executing the attempt. NULL if it never started.
+	StartedAt pgtype.Timestamptz
+	// When the attempt ended. NULL while it is still going.
+	FinishedAt pgtype.Timestamptz
+	// When the short-lived object storage grants handed to this attempt stop working; a far-future placeholder until they are issued.
+	ObjectGrantsExpireAt pgtype.Timestamptz
+	// Whether object grants were issued for this attempt: unissued, recorded once issued, closed when the attempt or run ended before any grant was issued (its expiry is then already past), or legacy_unknown for rows older than this tracking.
+	ObjectGrantsState string
+	// When the provider first stopped answering for this attempt. NULL while it is reachable.
 	ProviderUnreachableSince pgtype.Timestamptz
 }
 
 // A run started from the questions another run ended with and the person's answers to them; one continuation per asking run.
 type RunContinuation struct {
-	RunID          pgtype.UUID
-	WorkspaceID    pgtype.UUID
+	// The run that was started from the answers; it is the continuation.
+	RunID pgtype.UUID
+	// The workspace that owns both runs.
+	WorkspaceID pgtype.UUID
+	// The earlier run that ended with questions; each run can be continued at most once.
 	ContinuesRunID pgtype.UUID
-	Questions      []byte
-	Answers        []byte
-	AnsweredBy     pgtype.UUID
-	CreatedAt      pgtype.Timestamptz
+	// The questions the earlier run ended with, as a non-empty JSON array.
+	Questions []byte
+	// The answers given to those questions, as a JSON array with one entry per question in the same order.
+	Answers []byte
+	// The user who submitted the answers, or on whose behalf a simulated user answered when answered_as_simulated_user is true. NULL if that account has since been removed.
+	AnsweredBy pgtype.UUID
+	CreatedAt  pgtype.Timestamptz
 	// The answers were given by a test case's simulated user, not by a person.
 	AnsweredAsSimulatedUser bool
 }
 
 // The record that a user confirmed the permissions a skill version requests before it was run with a given test case. Kept permanently.
 type RunPermissionConfirmation struct {
-	ID             pgtype.UUID
-	WorkspaceID    pgtype.UUID
+	ID pgtype.UUID
+	// The workspace in which the user confirmed.
+	WorkspaceID pgtype.UUID
+	// The skill version whose requested permissions were confirmed.
 	SkillVersionID pgtype.UUID
-	TestCaseID     pgtype.UUID
-	SummaryHash    string
-	ConfirmedBy    pgtype.UUID
-	ConfirmedAt    pgtype.Timestamptz
+	// The test case the version was confirmed to run with.
+	TestCaseID pgtype.UUID
+	// The hash of the permission summary the user was shown, so a change in what the skill asks for no longer matches an earlier confirmation.
+	SummaryHash string
+	// The user who confirmed the permissions.
+	ConfirmedBy pgtype.UUID
+	// When the user confirmed.
+	ConfirmedAt pgtype.Timestamptz
 }
 
 // Operator-set run policy. An absent row means every setting is at its default.
 type RunSetting struct {
-	Singleton          bool
+	// Always true; it limits the table to a single row.
+	Singleton bool
+	// How many times in a row a run may be continued with answers to its questions, from 1 to 10.
 	ContinuationRounds int32
-	Reason             string
-	SetBy              pgtype.UUID
-	SetAt              pgtype.Timestamptz
+	// Why the operator set this value. Never blank.
+	Reason string
+	// The operator who set the value. NULL if that account has since been removed.
+	SetBy pgtype.UUID
+	// When the value was set.
+	SetAt pgtype.Timestamptz
 }
 
 // The runtime and policy configuration that applied to one run, kept apart from the hot run row. Archivable with the run.
 type RunSnapshot struct {
-	RunID           pgtype.UUID
-	WorkspaceID     pgtype.UUID
+	// The run the snapshots describe; one row per run.
+	RunID pgtype.UUID
+	// The workspace that owns the run.
+	WorkspaceID pgtype.UUID
+	// The runtime image and configuration the run executes with; it can be completed while the run is open and is frozen once the run has finished.
 	RuntimeSnapshot []byte
-	PolicySnapshot  []byte
+	// The limits and permissions that applied to the run, fixed when the row is created.
+	PolicySnapshot []byte
 }
 
 // One change of a run from one status to another, with the reason and time. Immutable: it is the history of what happened to the run, and rewriting it would rewrite that history. Archivable.
 type RunStatusTransition struct {
-	ID           int64
-	RunID        pgtype.UUID
-	WorkspaceID  pgtype.UUID
-	FromStatus   *RunStatus
-	ToStatus     RunStatus
-	Reason       *string
-	OccurredAt   pgtype.Timestamptz
+	ID int64
+	// The run whose status changed.
+	RunID pgtype.UUID
+	// The workspace that owns the run.
+	WorkspaceID pgtype.UUID
+	// The status the run left. NULL for the first row, which records the run being created.
+	FromStatus *RunStatus
+	// The status the run entered.
+	ToStatus RunStatus
+	// Why the change happened, in words shown to people. NULL when no reason was given.
+	Reason *string
+	// When the status changed.
+	OccurredAt pgtype.Timestamptz
+	// The attempt that was current when the status changed. NULL for changes not tied to one attempt.
 	RunAttemptID pgtype.UUID
 }
 
 // The searchable projection of one skill: name, summary, full-text vector and embedding used by catalog search. Derived data kept in step with the skill.
 type SearchDocument struct {
-	SkillID                 pgtype.UUID
-	WorkspaceID             pgtype.UUID
-	Name                    string
-	Summary                 string
-	Tsv                     interface{}
-	Embedding               *pgvector.Vector
-	UpdatedAt               pgtype.Timestamptz
-	EnrichedSummary         string
-	TaskExamples            string
-	EnrichmentStatus        string
-	EnrichmentModel         *string
+	// The skill this searchable projection describes; one row per skill.
+	SkillID pgtype.UUID
+	// The workspace that owns the skill.
+	WorkspaceID pgtype.UUID
+	// The skill's name as catalog search matches and shows it.
+	Name string
+	// The skill's own summary as written by its author. Empty when it has none.
+	Summary string
+	// The full-text vector over name and summary, weighting the name above the summary. Derived by the database.
+	Tsv interface{}
+	// The semantic vector of the skill's text used for similarity search. NULL until it has been computed.
+	Embedding *pgvector.Vector
+	UpdatedAt pgtype.Timestamptz
+	// A summary written by the enrichment model to make the skill easier to find. Empty until enrichment has run.
+	EnrichedSummary string
+	// Example tasks the skill can do, written by the enrichment model. Empty until enrichment has run.
+	TaskExamples string
+	// pending while the enrichment model has not yet processed the skill, enriched once it has.
+	EnrichmentStatus string
+	// The model that produced the enrichment. NULL until enriched.
+	EnrichmentModel *string
+	// The version of the enrichment prompt used, so older enrichments can be redone when the prompt changes. NULL until enriched.
 	EnrichmentPromptVersion *string
-	Tags                    []byte
-	Limitations             string
-	Scan                    []byte
-	EnrichmentAttemptedAt   pgtype.Timestamptz
-	Bigram                  interface{}
-	Generated               bool
-	Category                *string
-	CategorySource          *string
-	LatestVersionID         pgtype.UUID
-	VerifiedAt              pgtype.Timestamptz
-	LatestPackageObjectKey  *string
-	CuratedVersionID        pgtype.UUID
-	AgentCapability         *string
-	AgentRuntime            *string
-	AgentRuntimeImage       *string
-	AgentMeasuredAt         pgtype.Timestamptz
-	Listable                bool
-	HasScript               *bool
-	LatestSourcePath        string
-	ExposureDigest          *string
-	Curated                 bool
+	// The tags the enrichment model chose for the skill, as a JSON object with arrays named inputs, outputs, tools and dependencies. NULL until enriched.
+	Tags []byte
+	// What the skill cannot do or should not be used for, written by enrichment. Empty until enriched.
+	Limitations string
+	// A summary of the static safety scan of the skill's package as JSON: the number of warnings and the distinct finding codes. NULL when no scan result is available.
+	Scan []byte
+	// When enrichment last tried this skill. NULL if never; the least recently attempted skills go first.
+	EnrichmentAttemptedAt pgtype.Timestamptz
+	// Full-text vector of lexical tokens from the name, summary, enriched summary, task examples and tags: lowercased Latin words plus overlapping two-character pieces of Chinese characters, which the word-based vector cannot segment. Used for the lexical leg of search.
+	Bigram interface{}
+	// True when the skill was generated by the platform rather than contributed as an existing package.
+	Generated bool
+	// The catalog category the skill is filed under. NULL when it has none.
+	Category *string
+	// Who chose the category: curated by a catalog curator, or owner by the skill's owner. NULL exactly when category is NULL.
+	CategorySource *string
+	// The newest version of the skill. NULL when the skill has no version.
+	LatestVersionID pgtype.UUID
+	// When the newest version was created. Catalog search treats a non-NULL value as the skill having a validated version and uses it to rank recency. NULL when the skill has no version.
+	VerifiedAt pgtype.Timestamptz
+	// Where the newest version's package is stored. NULL exactly when latest_version_id is NULL.
+	LatestPackageObjectKey *string
+	// The version a curator approved. NULL unless the skill is in the curated tier.
+	CuratedVersionID pgtype.UUID
+	// Whether the agent noticed and activated the skill on the runtime image it was measured on: activated, not_activated, or unverified when it has not been measured.
+	AgentCapability *string
+	// How the skill's scripts ran on the runtime image: native (as written), transpiled (after the platform adapted them), failed, or unverified when it has not been measured.
+	AgentRuntime *string
+	// The runtime image the measurement was made on. Empty when unverified.
+	AgentRuntimeImage *string
+	// When the runtime compatibility was measured. NULL when it never was.
+	AgentMeasuredAt pgtype.Timestamptz
+	// Whether catalog search may show the skill: true once it has been enriched or has an embedding.
+	Listable bool
+	// True when the scan found a script file or embedded script in the package. NULL when there is no scan result to tell.
+	HasScript *bool
+	// The folder inside the source repository that the newest version came from. Empty when it is at the root.
+	LatestSourcePath string
+	// A hash of everything a reader sees in the listing, so a change to the shown content can be told from an unchanged one. Derived by the database.
+	ExposureDigest *string
+	// True when the version a curator approved is the newest version. Derived by the database.
+	Curated bool
 }
 
 // One login session of a user, identified by a hashed token and valid until expires_at.
 type Session struct {
-	ID        pgtype.UUID
-	UserID    pgtype.UUID
+	ID pgtype.UUID
+	// User who is signed in with this session; sessions are deleted with the user.
+	UserID pgtype.UUID
+	// SHA-256 digest of the random session token held in the browser cookie, so the raw token is never stored; unique.
 	TokenHash []byte
 	CreatedAt pgtype.Timestamptz
+	// When the session stops being accepted, regardless of activity.
 	ExpiresAt pgtype.Timestamptz
 }
 
 // One skill owned by a workspace: its name, summary, category, curation tier, licensing and redistribution gates and, for a fork, the skill it came from. deleted_at marks a deletion that waits for the grace period before purge.
 type Skill struct {
-	ID                  pgtype.UUID
-	WorkspaceID         pgtype.UUID
-	Name                string
-	Summary             *string
-	ForkedFromSkillID   pgtype.UUID
+	ID pgtype.UUID
+	// Workspace that owns the skill.
+	WorkspaceID pgtype.UUID
+	// Skill name, unique within its workspace.
+	Name string
+	// Short description of what the skill does, shown in lists; NULL when none has been written.
+	Summary *string
+	// Skill this one was forked from; NULL for skills that are not forks.
+	ForkedFromSkillID pgtype.UUID
+	// Version of the original skill that the fork started from; NULL for skills that are not forks.
 	ForkedFromVersionID pgtype.UUID
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
-	DeletedAt           pgtype.Timestamptz
-	TakedownAt          pgtype.Timestamptz
-	TakedownReason      *string
+	// When the skill was deleted, by its owner or when its owner's account is being closed; NULL for live skills. Deleted skills are hidden immediately and physically purged after a configured grace period; nothing restores them.
+	DeletedAt pgtype.Timestamptz
+	// When the skill was pulled from public view by its owner or an operator; NULL while it is available. Always has a takedown_reason; lifting the takedown clears it.
+	TakedownAt pgtype.Timestamptz
+	// Why the skill was taken down; set whenever takedown_at is set.
+	TakedownReason *string
 	// Reason code for a licensing hold on the package materials; NULL = none. Set by review, copied onto forks at fork time. See 0023.
 	AccessRestriction *string
 	// May a Download Artifact be produced from this skill? 'allowed' (a verdict about the licence), 'self_supplied' (this workspace brought the bytes) and 'generated' (the platform wrote them for this workspace) release; 'unknown' and 'blocked' refuse. license_status = Confirmed must never set this on its own (CONTENT-002). Copied onto forks at fork time, like access_restriction — a fork of a generated skill stays 'generated'. See 0027, 0036 and 0037.
@@ -957,30 +1454,45 @@ type Skill struct {
 	Category *string
 	// Who assigned skills.category: curated (PDM-001 backfill) | owner (PUT /skills/{id}/category, 05 R-19). NULL iff category is NULL. See 0061.
 	CategorySource *string
-	TakedownBy     *string
+	// Who took the skill down: owner or operator. NULL while it is not taken down. An operator takedown cannot be lifted by the owner.
+	TakedownBy *string
 }
 
 // The measured result of whether a skill version activated and ran on a given runtime image, and which run measured it.
 type SkillRuntimeCompatibility struct {
+	// Skill version that was measured; rows are deleted with it.
 	SkillVersionID pgtype.UUID
-	RuntimeImage   string
-	Capability     string
-	Runtime        string
-	SourceRunID    pgtype.UUID
-	MeasuredAt     pgtype.Timestamptz
+	// Identifier of the runtime image the skill was tried on; one row per skill version and image.
+	RuntimeImage string
+	// Whether the run trace shows the skill being activated in that image: activated (a skill_activation event for the skill), not_activated (the run completed and the skill was offered but something else was used), or unverified (no run, or the run ended before the question could be answered; never inferred from silence).
+	Capability string
+	// Whether the image provides the runtimes the package declares for its scripts: native (all provided, scripts can run as written), transpiled (not provided, so the observed result came from the model re-implementing the script rather than running it), failed, or unverified when not measured.
+	Runtime string
+	// The run whose result produced this measurement; NULL if it did not come from a run.
+	SourceRunID pgtype.UUID
+	// When the measurement was taken; the newest per skill version is the current answer, regardless of which image it was measured on.
+	MeasuredAt pgtype.Timestamptz
 }
 
 // Where an imported skill package came from (a git repository at a ref, or an upload) with the content hash of what was fetched.
 type SkillSource struct {
-	ID               pgtype.UUID
-	WorkspaceID      pgtype.UUID
-	SourceType       string
-	SourceUrl        *string
-	SourceRef        *string
-	ContentHash      string
-	FetchedAt        pgtype.Timestamptz
-	CreatedAt        pgtype.Timestamptz
-	LastCheckedAt    pgtype.Timestamptz
+	ID pgtype.UUID
+	// Workspace that imported or generated the package.
+	WorkspaceID pgtype.UUID
+	// git (fetched from a repository URL), upload (supplied directly rather than fetched: a zip archive, a saved edit or an applied improvement; no URL), or generated (written by the platform from a task description, including interactive creation).
+	SourceType string
+	// Repository address for git sources, which must have one; NULL for uploads and generated packages.
+	SourceUrl *string
+	// The commit SHA or tag the package was fetched at; NULL for uploads, which have no source revision.
+	SourceRef *string
+	// Hash of the fetched package as a whole, used to tell whether a later fetch of the same source changed anything.
+	ContentHash string
+	// When the package contents were obtained, which is when content_hash was taken.
+	FetchedAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+	// When the origin was last re-checked for availability and changes; NULL if never checked.
+	LastCheckedAt pgtype.Timestamptz
+	// First time a re-check found the origin gone or unreachable; NULL while it is reachable.
 	UnavailableSince pgtype.Timestamptz
 	// The user's own words that produced a generated package (GEN-001). NULL for git and upload. Free text the user submitted, so it is subject to NFR-002 deletion like any other user content — unlike the analytics events, which never record query text at all (02:O11Y-004).
 	TaskDescription *string
@@ -991,144 +1503,221 @@ type SkillSource struct {
 	// First sweep on which a re-fetch hashed differently from content_hash. NULL means every check so far matched, or no check has compared content yet. Never cleared: the snapshot we hold does not become current again.
 	ContentChangedAt pgtype.Timestamptz
 	// Inputs beyond task_description that produced a generated package: the diagram's digest, media type and byte count, and the reference skills' ids and names. NULL for git, upload and text-only generations. Never the image bytes.
-	GenerationInputs          []byte
+	GenerationInputs []byte
+	// Whether this generated package counts against the workspace's generation allowance; false for packages from interactive creation and for sources that are not generated.
 	CountsTowardGenerateQuota bool
-	PluginName                *string
-	PluginVersion             *string
-	PluginRepository          *string
+	// Name of the plugin the package was found in when it was imported from a plugin; NULL otherwise.
+	PluginName *string
+	// Version of the plugin the package was found in; NULL otherwise.
+	PluginVersion *string
+	// Repository address the plugin's own metadata declares for itself; NULL when none was declared.
+	PluginRepository *string
 }
 
 // One numbered version of a skill: its package location, content hash, parsed manifest and declared license. Immutable: adopting a suggestion creates a new version instead of overwriting this one.
 type SkillVersion struct {
-	ID                pgtype.UUID
-	WorkspaceID       pgtype.UUID
-	SkillID           pgtype.UUID
-	SourceID          pgtype.UUID
-	VersionNumber     int32
-	ContentHash       string
-	PackageObjectKey  string
-	Manifest          []byte
+	ID pgtype.UUID
+	// Workspace that owns the version.
+	WorkspaceID pgtype.UUID
+	// Skill this is a version of.
+	SkillID pgtype.UUID
+	// Where this version's package came from; NULL when it has no recorded source.
+	SourceID pgtype.UUID
+	// Sequence number of this version within its skill, starting at 1.
+	VersionNumber int32
+	// Hash of the package contents; a skill never holds two versions with the same hash.
+	ContentHash string
+	// The key under which object storage holds the package itself; the row only describes it.
+	PackageObjectKey string
+	// The SKILL.md frontmatter as parsed at import, as JSON; an empty object when the package carried none.
+	Manifest []byte
+	// The SPDX license expression the package declares; NULL when the package declares none, which the platform treats as unknown rather than permissive.
 	LicenseExpression *string
 	CreatedAt         pgtype.Timestamptz
 	// Provenance tier of license_expression, strongest first: manifest (author declared it in SKILL.md frontmatter), manifest-referenced-file (frontmatter pointed at a package file, e.g. "SEE LICENSE IN LICENSE.txt", and that file's text was recognised), package-license-file (a LICENSE file in the package itself), repo-license-file (repository-level LICENSE carried into a package cut from a monorepo subdirectory). NULL whenever license_expression is NULL.
 	LicenseSource *string
-	SourcePath    string
+	// Folder of the skill inside its source when the source holds several skills, relative with no leading slash; empty when the skill is at the root.
+	SourcePath string
 	// Set once when the owner's account purge erased this version's content (manifest, import source, package object) because only the owner's own Runs still referenced it. The row stays as a tombstone so those Runs keep their identity.
 	ContentErasedAt pgtype.Timestamptz
 }
 
 // One test scenario for a skill: a user prompt and acceptance criteria that runs are judged against.
 type TestCase struct {
-	ID                 pgtype.UUID
-	WorkspaceID        pgtype.UUID
-	SkillID            pgtype.UUID
-	Name               string
-	UserPrompt         string
+	ID pgtype.UUID
+	// The workspace that owns the test case; every read is scoped by it.
+	WorkspaceID pgtype.UUID
+	// The skill this test case checks.
+	SkillID pgtype.UUID
+	// The name the user gave the test case; never blank.
+	Name string
+	// The request the simulated user puts to the skill at the start of a run; never blank.
+	UserPrompt string
+	// The list of conditions a run's result must satisfy to count as met; empty when none were written.
 	AcceptanceCriteria []byte
 	CreatedAt          pgtype.Timestamptz
 	UpdatedAt          pgtype.Timestamptz
-	DeletedAt          pgtype.Timestamptz
-	Rubric             []byte
+	// When the user deleted the test case; null while it is live. A deleted test case is hidden but runs that used it keep their snapshot.
+	DeletedAt pgtype.Timestamptz
+	// Optional structured grading guide with a version and a list of items, each with an id, text and whether evidence is required; null when the test case is judged by its criteria alone.
+	Rubric []byte
 	// What the person in this test case knows but did not say; a batch answers the skill's questions with them.
 	SimulatedUserFacts []string
 }
 
 // The frozen copy of a test case's prompt, criteria and dataset references taken when a run starts. Immutable: changing it would make the inputs of historical runs lie. Archivable.
 type TestCaseSnapshot struct {
-	ID                 pgtype.UUID
-	WorkspaceID        pgtype.UUID
-	TestCaseID         pgtype.UUID
-	UserPrompt         string
+	ID pgtype.UUID
+	// The workspace that owns the test case.
+	WorkspaceID pgtype.UUID
+	// The test case that was frozen.
+	TestCaseID pgtype.UUID
+	// The prompt the test case contained when the snapshot was taken.
+	UserPrompt string
+	// The acceptance criteria the test case contained when the snapshot was taken.
 	AcceptanceCriteria []byte
-	DatasetRefs        []byte
-	ContentHash        string
-	CreatedAt          pgtype.Timestamptz
-	Rubric             []byte
+	// The datasets the test case referred to when frozen, one entry per dataset with its id, file name, content hash and size.
+	DatasetRefs []byte
+	// The SHA-256 of the frozen content: prompt, acceptance criteria, dataset refs, rubric and simulated user facts; identical content yields the same hash.
+	ContentHash string
+	CreatedAt   pgtype.Timestamptz
+	// The rubric the test case had at that moment, with a version and a list of items; null when it had none.
+	Rubric []byte
 	// The simulated person's facts, frozen with the rest of the test case.
 	SimulatedUserFacts []string
 }
 
 // One execution fact emitted during a run, with its sequence number, type, source and payload. Immutable and partitioned by month; expires after the configured trace retention by dropping partitions.
 type TraceEvent struct {
-	ID               pgtype.UUID
-	WorkspaceID      pgtype.UUID
-	RunID            pgtype.UUID
-	Seq              int64
-	OccurredAt       pgtype.Timestamptz
-	EventType        string
-	Source           string
-	Status           *string
-	Payload          []byte
+	ID pgtype.UUID
+	// The workspace that owns the run.
+	WorkspaceID pgtype.UUID
+	// The run the event was emitted during.
+	RunID pgtype.UUID
+	// The producer's own running number for its events, so a gap shows that an event was lost.
+	Seq        int64
+	OccurredAt pgtype.Timestamptz
+	// What kind of fact this is: skill_activation, resource_read, tool_call, mcp_call, script_log, agent_output, error, usage, run_lifecycle, evaluation_started or evaluation_completed.
+	EventType string
+	// Who emitted the event: sandbox, orchestrator or llm_service.
+	Source string
+	// How the step ended: ok, error, skipped, cancelled or timed_out. NULL when the event has no outcome.
+	Status *string
+	// The event's content as JSON, with secrets masked.
+	Payload []byte
+	// Where the payload is stored in object storage when it was too large to keep in the row. NULL otherwise.
 	PayloadObjectKey *string
-	EventID          pgtype.UUID
-	Attempt          int32
-	SchemaVersion    string
-	Masked           bool
-	MaskedFields     []byte
-	Late             bool
-	IngestSeq        int64
+	// The id the producer gave the event, so sending the same event twice stores it once.
+	EventID pgtype.UUID
+	// The run attempt, counting from 1, during which the event was emitted.
+	Attempt int32
+	// The version of the event layout the producer used.
+	SchemaVersion string
+	// Always true: the payload was masked of secrets before it was stored.
+	Masked bool
+	// The names of the payload fields that were masked.
+	MaskedFields []byte
+	// True when the event arrived after its run had already reached a final status.
+	Late bool
+	// The order in which the platform received events, assigned per run, so a reader can resume from the last number it saw.
+	IngestSeq int64
 }
 
 type TraceEvents202608 struct {
-	ID               pgtype.UUID
-	WorkspaceID      pgtype.UUID
-	RunID            pgtype.UUID
-	Seq              int64
-	OccurredAt       pgtype.Timestamptz
-	EventType        string
-	Source           string
-	Status           *string
-	Payload          []byte
+	ID pgtype.UUID
+	// The workspace that owns the run.
+	WorkspaceID pgtype.UUID
+	// The run the event was emitted during.
+	RunID pgtype.UUID
+	// The producer's own running number for its events, so a gap shows that an event was lost.
+	Seq        int64
+	OccurredAt pgtype.Timestamptz
+	// What kind of fact this is: skill_activation, resource_read, tool_call, mcp_call, script_log, agent_output, error, usage, run_lifecycle, evaluation_started or evaluation_completed.
+	EventType string
+	// Who emitted the event: sandbox, orchestrator or llm_service.
+	Source string
+	// How the step ended: ok, error, skipped, cancelled or timed_out. NULL when the event has no outcome.
+	Status *string
+	// The event's content as JSON, with secrets masked.
+	Payload []byte
+	// Where the payload is stored in object storage when it was too large to keep in the row. NULL otherwise.
 	PayloadObjectKey *string
 }
 
 type TraceEventsDefault struct {
-	ID               pgtype.UUID
-	WorkspaceID      pgtype.UUID
-	RunID            pgtype.UUID
-	Seq              int64
-	OccurredAt       pgtype.Timestamptz
-	EventType        string
-	Source           string
-	Status           *string
-	Payload          []byte
+	ID pgtype.UUID
+	// The workspace that owns the run.
+	WorkspaceID pgtype.UUID
+	// The run the event was emitted during.
+	RunID pgtype.UUID
+	// The producer's own running number for its events, so a gap shows that an event was lost.
+	Seq        int64
+	OccurredAt pgtype.Timestamptz
+	// What kind of fact this is: skill_activation, resource_read, tool_call, mcp_call, script_log, agent_output, error, usage, run_lifecycle, evaluation_started or evaluation_completed.
+	EventType string
+	// Who emitted the event: sandbox, orchestrator or llm_service.
+	Source string
+	// How the step ended: ok, error, skipped, cancelled or timed_out. NULL when the event has no outcome.
+	Status *string
+	// The event's content as JSON, with secrets masked.
+	Payload []byte
+	// Where the payload is stored in object storage when it was too large to keep in the row. NULL otherwise.
 	PayloadObjectKey *string
-	EventID          pgtype.UUID
-	Attempt          int32
-	SchemaVersion    string
-	Masked           bool
-	MaskedFields     []byte
-	Late             bool
+	// The id the producer gave the event, so sending the same event twice stores it once.
+	EventID pgtype.UUID
+	// The run attempt, counting from 1, during which the event was emitted.
+	Attempt int32
+	// The version of the event layout the producer used.
+	SchemaVersion string
+	// Always true: the payload was masked of secrets before it was stored.
+	Masked bool
+	// The names of the payload fields that were masked.
+	MaskedFields []byte
+	// True when the event arrived after its run had already reached a final status.
+	Late bool
 }
 
 // One person with an account, with email and display name; deleted_at marks a closed account. The row stays after account purge so credit records keep their reference.
 type User struct {
-	ID                  pgtype.UUID
-	Email               string
-	DisplayName         string
-	CreatedAt           pgtype.Timestamptz
-	UpdatedAt           pgtype.Timestamptz
-	DeletedAt           pgtype.Timestamptz
+	ID pgtype.UUID
+	// Email address of the account; unique case-insensitively among accounts that have not been deleted.
+	Email string
+	// Name shown for the user in the product.
+	DisplayName string
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+	// When the account closure finished: personal data was erased and the user row kept with anonymized email and display name; NULL for open accounts.
+	DeletedAt pgtype.Timestamptz
+	// When the user asked to delete the account; NULL if no request is pending. The purge runs after this and sets deleted_at when finished.
 	DeletionRequestedAt pgtype.Timestamptz
-	PurgeAttemptedAt    pgtype.Timestamptz
-	PurgeStartedAt      pgtype.Timestamptz
-	ErasureExpeditedAt  pgtype.Timestamptz
+	// When the purge job last tried to process this account; used to take accounts in turn so one failing account cannot block others.
+	PurgeAttemptedAt pgtype.Timestamptz
+	// When the purge of this account first began; NULL until it has.
+	PurgeStartedAt pgtype.Timestamptz
+	// When an operator moved the purge ahead of its normal waiting period; NULL if not expedited. Can only be set while a deletion request exists.
+	ErasureExpeditedAt pgtype.Timestamptz
 }
 
 // The link between a user and an external login identity, unique per provider and provider user id.
 type UserIdentity struct {
-	UserID         pgtype.UUID
-	Provider       string
+	// User who owns this external login identity.
+	UserID pgtype.UUID
+	// Name of the sign-in provider, such as github, or dev for the development login; a user has at most one identity per provider.
+	Provider string
+	// The user's identifier at that provider; with provider it is unique across the platform.
 	ProviderUserID string
 	CreatedAt      pgtype.Timestamptz
 }
 
 // The tenant boundary that owns skills, test cases, runs and other user data; each is owned by one user.
 type Workspace struct {
-	ID          pgtype.UUID
+	ID pgtype.UUID
+	// User who owns the workspace; each user owns exactly one.
 	OwnerUserID pgtype.UUID
-	Name        string
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
-	IsCatalog   bool
+	// Display name of the workspace.
+	Name      string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+	// True for a workspace whose skills make up the public catalog; any number of workspaces can be flagged, it is set directly in the database by operators, and ordinary user workspaces are false.
+	IsCatalog bool
 }

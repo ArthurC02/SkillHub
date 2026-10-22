@@ -70,6 +70,12 @@ MVP 規模下由單一 PostgreSQL 同時承載交易資料、全文與向量檢�
 
 編排層取 docker compose，不預先建設 k3s 或 Kubernetes；升遷的觸發條件見決策 10。生產控制平面的組合定義是 `infra/compose/control-plane.yml`（`infra/compose/docker-compose.yml` 是本機開發用），節點設定由 cloud-init 產生、`tools/deploy/render.py` 渲染，節點上只 checkout 部署需要的路徑，不放應用程式原始碼。不含秘密的設定（角色、commit、網域、釘住 digest 的映像）進 `/etc/skillhub/release.env`；秘密一律是 `/etc/skillhub/secrets/` 底下的檔案，目錄 700、檔案 600、由人手動放置，不進 git、不進 compose 檔、不進映像。操作步驟見 [控制平面 Runbook](../runbooks/control-plane.md)。
 
+### 決策 12：資料層的完成定義包含「代理讀得懂」，並以檔案量測
+
+一張表或一個欄位要算完成，除了正確的型別與約束，還要讓一個沒讀過程式的代理只憑儲存庫裡的檔案就回答得出七個問題：這筆資料是什麼意思（每張表與每個非慣例欄位都有 `COMMENT ON`，sqlc 會把它帶進 Go 的型別）；誰擁有它（`db/query-owners.yaml` 的 `tables:` 指向一個 Registry 認得的 Bounded Context，寫入只來自一個 context）；它守什麼規則（schema 強制的 CHECK、UNIQUE、trigger 以引用 migration 行號的 Registry Rule 說明用意；跨 context 的外鍵有 Dependency Policy）；誰能怎麼讀（每條 query 有 owner）；哪些欄位敏感（候選欄位有 Registry 記錄說明保護方式）；一致性是哪一層（每條 Interaction 標明同步或最終一致）；來源與版本（不可變表與保存政策在 `query-owners.yaml` 宣告且 Registry 知道）。
+
+這七項由 `tools/data-readiness/measure_readiness.py` 只讀 `db/` 與 `docs/domain-memory/registry` 量成比率，不連資料庫；`targets.json` 是目標，`baseline.json` 是上一次達到的水位，CI 對基線不得退步，進步時基線隨之上移。Registry 內容仍由 Domain Memory 的審稿流程產生：`extract-sql-schema` 把 schema 的約束變成有出處的候選 Rule，審過才算數。
+
 ## 影響
 
 ### 正面
