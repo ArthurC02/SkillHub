@@ -13794,6 +13794,10 @@ func (s *LiftDispatchHaltReq) SetNote(val string) {
 	s.Note = val
 }
 
+type LiftSkillTakedownBadRequest Error
+
+func (*LiftSkillTakedownBadRequest) liftSkillTakedownRes() {}
+
 type LiftSkillTakedownConflict Error
 
 func (*LiftSkillTakedownConflict) liftSkillTakedownRes() {}
@@ -13806,6 +13810,22 @@ func (*LiftSkillTakedownNoContent) liftSkillTakedownRes() {}
 type LiftSkillTakedownNotFound Error
 
 func (*LiftSkillTakedownNotFound) liftSkillTakedownRes() {}
+
+type LiftSkillTakedownReq struct {
+	// Why the takedown was lifted, recorded in the audit event. Required, the same rule as clearing a
+	// restriction.
+	Note string `json:"note"`
+}
+
+// GetNote returns the value of Note.
+func (s *LiftSkillTakedownReq) GetNote() string {
+	return s.Note
+}
+
+// SetNote sets the value of Note.
+func (s *LiftSkillTakedownReq) SetNote(val string) {
+	s.Note = val
+}
 
 type ListCheckKindsOK struct {
 	Kinds    []CheckKind `json:"kinds"`

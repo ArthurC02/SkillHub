@@ -6,7 +6,7 @@ import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { AdminPage } from "../components/AdminPage";
 import { GovernanceRow } from "./components/GovernanceRow";
-import { GovernanceActions } from "./components/GovernanceActions";
+import { GovernanceActions, LiftTakedownAction } from "./components/GovernanceActions";
 
 function SearchForm({ q, onDraftChange }: { q: string; onDraftChange: (draft: string) => void }) {
   const navigate = useNavigate();
@@ -143,6 +143,13 @@ function GovernanceResults({ q }: { q: string }) {
           }
           onOutcome={(message) => setCompleted({ id: found[0].skill_id, message })}
           onDraftChange={() => setCompleted(undefined)}
+        />
+      )}
+      {found.length === 1 && found[0].takedown_at !== null && (
+        <LiftTakedownAction
+          key={found[0].skill_id}
+          skill={found[0]}
+          onOutcome={(message) => setCompleted({ id: found[0].skill_id, message })}
         />
       )}
     </>

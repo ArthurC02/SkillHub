@@ -2883,9 +2883,26 @@ paths:
         Operator only. Clears the takedown and writes the skill's search
         document back pending enrichment, in one transaction with the audit
         event.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Why the takedown was lifted, recorded in the audit event. Required, the same rule as clearing a restriction.
       responses:
         "204":
           description: The takedown is lifted.
+        "400":
+          description: Body is not JSON, or `note` is blank or over 1000 characters.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: No such skill — or the caller is not an operator; the two answer identically.
           content:

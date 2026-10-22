@@ -42,6 +42,7 @@ export const GenerateSkillBodyTaskDescriptionMaxLength = 4000;
 export const GrantCreditsBodyIdempotencyKeyMaxLength = 128;
 export const IngestTraceEventsBodyMaxItems = 1000;
 export const LiftDispatchHaltBodyNoteMaxLength = 1000;
+export const LiftSkillTakedownBodyNoteMaxLength = 1000;
 export const MovePlatformAgentFindingBodyNoteMaxLength = 1000;
 export const PublicSearchSkillsQMaxLength = 2000;
 export const ReleasePlatformAgentBrakeBodyNoteMaxLength = 1000;

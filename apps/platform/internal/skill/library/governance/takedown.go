@@ -59,6 +59,10 @@ func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) LiftTakedown(w http.ResponseWriter, r *http.Request) {
+	body, ok := decodeRestrictionRequest(w, r)
+	if !ok {
+		return
+	}
 	var skillID pgtype.UUID
 	if err := skillID.Scan(r.PathValue("id")); err != nil {
 		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
@@ -68,8 +72,11 @@ func (h *Handler) LiftTakedown(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	err := h.Svc.LiftTakedown(r.Context(), skillID, user.ID)
+	err := h.Svc.LiftTakedown(r.Context(), skillID, user.ID, body.Note)
+	var inputErr restrictionInputError
 	switch {
+	case errors.As(err, &inputErr):
+		httpx.WriteError(w, http.StatusBadRequest, inputErr.Error())
 	case errors.Is(err, errSkillNotFound):
 		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
 	case errors.Is(err, registry.ErrNotTakenDown):
@@ -81,9 +88,13 @@ func (h *Handler) LiftTakedown(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Service) LiftTakedown(ctx context.Context, skillID, actor pgtype.UUID) error {
+func (s *Service) LiftTakedown(ctx context.Context, skillID, actor pgtype.UUID, note string) error {
 	if s.Registry == nil || s.Registry.IndexSkill == nil {
 		return errHookMissing
+	}
+	note, err := validRestrictionNote(note)
+	if err != nil {
+		return err
 	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
@@ -104,7 +115,7 @@ func (s *Service) LiftTakedown(ctx context.Context, skillID, actor pgtype.UUID) 
 		Action:       audit.ActionSkillRestore,
 		ResourceType: audit.ResourceSkill,
 		ResourceID:   skillID,
-		Metadata:     map[string]any{"scope": audit.ScopeOperator},
+		Metadata:     map[string]any{"scope": audit.ScopeOperator, auditNote: note},
 	}); err != nil {
 		return err
 	}

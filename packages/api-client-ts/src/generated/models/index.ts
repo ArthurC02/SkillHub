@@ -147,6 +147,7 @@ export * from './ImportedSkill';
 export * from './ImprovementSuggestion';
 export * from './Labelled';
 export * from './LiftDispatchHaltRequest';
+export * from './LiftSkillTakedownRequest';
 export * from './ListCheckKinds200Response';
 export * from './ListDatasets200Response';
 export * from './ListDownloadArtifacts200Response';

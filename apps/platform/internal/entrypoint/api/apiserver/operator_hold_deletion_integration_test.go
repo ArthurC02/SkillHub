@@ -50,7 +50,7 @@ func TestAnOwnerDeletionUnderAnOperatorHoldKeepsTheContentUntilTheOperatorReleas
 	assertSkillAndItsVersionsPurged(t, pool, selfDown)
 	assertSkillAndItsVersionsPurged(t, pool, free)
 
-	if code, out := operatorCall(t, operator, http.MethodDelete, "/admin/skills/"+operatorDown+"/takedown", ""); code != http.StatusNoContent {
+	if code, out := operatorCall(t, operator, http.MethodDelete, "/admin/skills/"+operatorDown+"/takedown", `{"note":"review closed"}`); code != http.StatusNoContent {
 		t.Fatalf("operator lift on a skill its owner deleted: got %d (%v)", code, out)
 	}
 	if c := countRow(t, pool, "SELECT count(*) FROM search_documents WHERE skill_id = $1", mustUUID(t, operatorDown)); c != 0 {

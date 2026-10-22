@@ -414,6 +414,11 @@ import {
     LiftDispatchHaltRequestToJSON,
 } from '../models/LiftDispatchHaltRequest';
 import {
+    type LiftSkillTakedownRequest,
+    LiftSkillTakedownRequestFromJSON,
+    LiftSkillTakedownRequestToJSON,
+} from '../models/LiftSkillTakedownRequest';
+import {
     type ListCheckKinds200Response,
     ListCheckKinds200ResponseFromJSON,
     ListCheckKinds200ResponseToJSON,
@@ -1475,11 +1480,15 @@ export interface LiftDispatchHaltOperationRequest {
     liftDispatchHaltRequest: LiftDispatchHaltRequest;
 }
 
-export interface LiftSkillTakedownRequest {
+export interface LiftSkillTakedownOperationRequest {
     /**
      * 
      */
     id: string;
+    /**
+     * 
+     */
+    liftSkillTakedownRequest: LiftSkillTakedownRequest;
 }
 
 export interface ListCreationSessionsRequest {
@@ -4193,26 +4202,28 @@ export interface DefaultApiInterface {
     /**
      * Creates request options for liftSkillTakedown without sending the request
      * @param {string} id 
+     * @param {LiftSkillTakedownRequest} liftSkillTakedownRequest 
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
-    liftSkillTakedownRequestOpts(requestParameters: LiftSkillTakedownRequest): Promise<runtime.RequestOpts>;
+    liftSkillTakedownRequestOpts(requestParameters: LiftSkillTakedownOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
      * Operator only. Clears the takedown and writes the skill\'s search document back pending enrichment, in one transaction with the audit event. 
      * @summary Lift a takedown, whoever made it (SEC-011)
      * @param {string} id 
+     * @param {LiftSkillTakedownRequest} liftSkillTakedownRequest 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
-    liftSkillTakedownRaw(requestParameters: LiftSkillTakedownRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+    liftSkillTakedownRaw(requestParameters: LiftSkillTakedownOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
 
     /**
      * Operator only. Clears the takedown and writes the skill\'s search document back pending enrichment, in one transaction with the audit event. 
      * Lift a takedown, whoever made it (SEC-011)
      */
-    liftSkillTakedown(requestParameters: LiftSkillTakedownRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+    liftSkillTakedown(requestParameters: LiftSkillTakedownOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for listCheckKinds without sending the request
@@ -10057,7 +10068,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     /**
      * Creates request options for liftSkillTakedown without sending the request
      */
-    async liftSkillTakedownRequestOpts(requestParameters: LiftSkillTakedownRequest): Promise<runtime.RequestOpts> {
+    async liftSkillTakedownRequestOpts(requestParameters: LiftSkillTakedownOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -10065,9 +10076,18 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
             );
         }
 
+        if (requestParameters['liftSkillTakedownRequest'] == null) {
+            throw new runtime.RequiredError(
+                'liftSkillTakedownRequest',
+                'Required parameter "liftSkillTakedownRequest" was null or undefined when calling liftSkillTakedown().'
+            );
+        }
+
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
 
 
         let urlPath = `/admin/skills/{id}/takedown`;
@@ -10078,6 +10098,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
+            body: LiftSkillTakedownRequestToJSON(requestParameters['liftSkillTakedownRequest']),
         };
     }
 
@@ -10085,7 +10106,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      * Operator only. Clears the takedown and writes the skill\'s search document back pending enrichment, in one transaction with the audit event. 
      * Lift a takedown, whoever made it (SEC-011)
      */
-    async liftSkillTakedownRaw(requestParameters: LiftSkillTakedownRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async liftSkillTakedownRaw(requestParameters: LiftSkillTakedownOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         const requestOptions = await this.liftSkillTakedownRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
@@ -10096,7 +10117,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      * Operator only. Clears the takedown and writes the skill\'s search document back pending enrichment, in one transaction with the audit event. 
      * Lift a takedown, whoever made it (SEC-011)
      */
-    async liftSkillTakedown(requestParameters: LiftSkillTakedownRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+    async liftSkillTakedown(requestParameters: LiftSkillTakedownOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.liftSkillTakedownRaw(requestParameters, initOverrides);
     }
 

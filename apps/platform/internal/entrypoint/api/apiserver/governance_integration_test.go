@@ -1229,8 +1229,11 @@ func TestAnOwnerUndoesOnlyTheirOwnTakedownWithinThirtyDaysAndAnOperatorLiftsAny(
 
 func assertAnOperatorLiftsAnyTakedown(t *testing.T, pool *pgxpool.Pool, operator *client, lapsed, operatorDown string) {
 	t.Helper()
+	if code, _ := operatorCall(t, operator, http.MethodDelete, "/admin/skills/"+operatorDown+"/takedown", `{"note":"  "}`); code != http.StatusBadRequest {
+		t.Fatalf("lifting a takedown with a blank note: got %d, want 400", code)
+	}
 	for _, id := range []string{lapsed, operatorDown} {
-		if code, out := operatorCall(t, operator, http.MethodDelete, "/admin/skills/"+id+"/takedown", ""); code != http.StatusNoContent {
+		if code, out := operatorCall(t, operator, http.MethodDelete, "/admin/skills/"+id+"/takedown", `{"note":"review closed"}`); code != http.StatusNoContent {
 			t.Fatalf("operator lifting a takedown: got %d (%v), want 204", code, out)
 		}
 	}
@@ -1238,11 +1241,11 @@ func assertAnOperatorLiftsAnyTakedown(t *testing.T, pool *pgxpool.Pool, operator
 		[]string{lapsed, operatorDown}); c != 2 {
 		t.Fatalf("operator lifted %d of 2 takedowns", c)
 	}
-	if c := countRow(t, pool, "SELECT count(*) FROM audit_events WHERE action = 'skill.restore' AND resource_id = $1 AND actor_user_id = $2",
+	if c := countRow(t, pool, "SELECT count(*) FROM audit_events WHERE action = 'skill.restore' AND resource_id = $1 AND actor_user_id = $2 AND metadata->>'note' = 'review closed'",
 		mustUUID(t, operatorDown), mustUUID(t, operator.userID)); c != 1 {
-		t.Fatal("lifting a takedown left no audit event naming the operator")
+		t.Fatal("lifting a takedown left no audit event naming the operator and the note")
 	}
-	if code, _ := operatorCall(t, operator, http.MethodDelete, "/admin/skills/"+operatorDown+"/takedown", ""); code != http.StatusConflict {
+	if code, _ := operatorCall(t, operator, http.MethodDelete, "/admin/skills/"+operatorDown+"/takedown", `{"note":"review closed"}`); code != http.StatusConflict {
 		t.Fatalf("lifting a takedown that is not there: got %d, want 409", code)
 	}
 }

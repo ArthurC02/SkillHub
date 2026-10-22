@@ -383,7 +383,7 @@ func TestOperatorAuditLogListsOnlyOperatorActions(t *testing.T) {
 	if code, _ := getAdmin(t, operator, "/admin/credits/"+owner.workspaceID); code != http.StatusOK {
 		t.Fatalf("ledger read: got %d", code)
 	}
-	if code, out := operatorCall(t, operator, http.MethodDelete, "/admin/skills/"+operatorDown+"/takedown", ""); code != http.StatusNoContent {
+	if code, out := operatorCall(t, operator, http.MethodDelete, "/admin/skills/"+operatorDown+"/takedown", `{"note":"review closed"}`); code != http.StatusNoContent {
 		t.Fatalf("operator lift: got %d (%v)", code, out)
 	}
 	if code, out := postJSON(t, owner, "/skills/"+selfDown+"/restore", `{}`); code != http.StatusNoContent {

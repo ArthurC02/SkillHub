@@ -45,6 +45,7 @@ const (
 	GrantCreditsBodyIdempotencyKeyMaxLength                   = 128
 	IngestTraceEventsBodyMaxItems                             = 1000
 	LiftDispatchHaltBodyNoteMaxLength                         = 1000
+	LiftSkillTakedownBodyNoteMaxLength                        = 1000
 	MovePlatformAgentFindingBodyNoteMaxLength                 = 1000
 	PublicSearchSkillsQMaxLength                              = 2000
 	ReleasePlatformAgentBrakeBodyNoteMaxLength                = 1000

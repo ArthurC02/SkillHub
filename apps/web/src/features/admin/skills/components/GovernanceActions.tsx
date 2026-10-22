@@ -5,7 +5,7 @@ import { WriteFailure } from "../../components/WriteFailure";
 import { ActionForm } from "../../components/ActionForm";
 
 const TAKEDOWN_SCOPE =
-  "下架後這個小工具從目錄與搜尋消失，不能再下載或試跑；既有的試跑紀錄仍可追溯。後台目前不提供恢復，下架前請先確認。";
+  "下架後這個小工具從目錄與搜尋消失，不能再下載或試跑；既有的試跑紀錄仍可追溯。審查結束後可以在這裡恢復上架，下架前請先確認。";
 
 export function GovernanceActions({
   skill,
@@ -219,6 +219,36 @@ function TakedownAction({
           />
         )}
         <WriteFailure error={takedown.error} />
+      </details>
+    </>
+  );
+}
+
+export function LiftTakedownAction({
+  skill,
+  onOutcome,
+}: {
+  skill: SkillGovernance;
+  onOutcome: (message: string) => void;
+}) {
+  const lift = useGovernanceAction(skill.skill_id, "takedown", () =>
+    onOutcome(`「${skill.name}」已恢復上架。`),
+  );
+
+  return (
+    <>
+      <h2>對「{skill.name}」的動作</h2>
+      <h3>恢復上架</h3>
+      <p className="note">恢復後它回到目錄與搜尋，可以再下載或試跑。審查結束才恢復。</p>
+      <details id="admin-skill-lift-takedown">
+        <summary>填寫恢復理由</summary>
+        <ActionForm
+          id="admin-lift-takedown"
+          submitLabel="恢復上架"
+          pending={lift.isPending}
+          error={lift.error}
+          onSubmit={(note) => lift.mutate({ method: "DELETE", body: { note } })}
+        />
       </details>
     </>
   );

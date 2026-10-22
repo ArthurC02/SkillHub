@@ -805,7 +805,7 @@ test("OPS-004: takedown of the one skill found takes a reason and a second click
   await type("#admin-takedown-reason", " DMCA notice ");
   await click(button("下架"));
   expect(container.querySelector("#admin-takedown-scope")?.textContent).toContain(
-    "後台目前不提供恢復",
+    "審查結束後可以在這裡恢復上架",
   );
   expect(calls.some((c) => c.method === "PUT")).toBe(false);
   await click(button("確認下架"));
@@ -851,6 +851,49 @@ test("a completed takedown stays confirmed after its controls disappear and a la
   expect(has("「PDF Summariser」已下架。")()).toBe(true);
   expect(has("已下架")()).toBe(true);
   expect(container.querySelector("#admin-skill-takedown")).toBeNull();
+});
+
+test("OPS-004: an operator lifts a takedown with a note and the skill reads as listed again", async () => {
+  let lifted = false;
+  stub(true, (path, method) => {
+    if (path === `/admin/skills/${SKILL}/takedown` && method === "DELETE") {
+      lifted = true;
+      return { body: null, status: 204 };
+    }
+    return path === "/admin/skills"
+      ? {
+          body: {
+            skills: [
+              lifted
+                ? ADMIN_SKILLS.skills[0]
+                : {
+                    ...ADMIN_SKILLS.skills[0],
+                    takedown_at: "2026-09-11T10:00:00Z",
+                    takedown_reason: "DMCA notice",
+                    deleted_at: null,
+                  },
+            ],
+          },
+          status: 200,
+        }
+      : undefined;
+  });
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("恢復上架"));
+  expect(container.querySelector("#admin-skill-takedown")).toBeNull();
+  expect(has("後台目前不提供恢復")()).toBe(false);
+
+  await click(field<HTMLElement>("#admin-skill-lift-takedown summary"));
+  await type("#admin-lift-takedown-note", " counter-notice accepted ");
+  await click(button("恢復上架"));
+  await waitFor(has("「PDF Summariser」已恢復上架。"));
+  expect(calls.find((c) => c.method === "DELETE")).toEqual({
+    method: "DELETE",
+    url: `/admin/skills/${SKILL}/takedown`,
+    body: { note: "counter-notice accepted" },
+  });
+  await waitFor(has("未下架"));
+  expect(container.querySelector("#admin-skill-lift-takedown")).toBeNull();
 });
 
 test("a successful takedown remains identified when the first refresh fails", async () => {
@@ -941,7 +984,7 @@ test("OPS-004: governance choices stay scannable without hiding takedown scope",
     item.textContent?.startsWith("下架後這個小工具從目錄與搜尋消失"),
   );
   expect(scope?.closest("details")).toBeNull();
-  expect(scope?.textContent).toContain("後台目前不提供恢復");
+  expect(scope?.textContent).toContain("審查結束後可以在這裡恢復上架");
 
   await click(field<HTMLElement>("#admin-skill-redistribution summary"));
   expect(choices[1].open).toBe(true);
@@ -2003,7 +2046,7 @@ test("OPS-004: a name matching several skills lists a way to pick each and offer
   expect(has("的動作")()).toBe(false);
 });
 
-test("OPS-004: a taken-down skill shows when and why, and offers no action", async () => {
+test("OPS-004: a taken-down skill shows when and why, and offers only lifting the takedown", async () => {
   stub(true, (path) =>
     path === "/admin/skills"
       ? {
@@ -2029,7 +2072,9 @@ test("OPS-004: a taken-down skill shows when and why, and offers no action", asy
     field<HTMLLIElement>("li.download-item").querySelector(".badge-row")?.nextElementSibling
       ?.textContent,
   ).toContain("理由：DMCA");
-  expect(has("的動作")()).toBe(false);
+  expect(
+    Array.from(container.querySelectorAll("details[id^='admin-skill-']")).map((d) => d.id),
+  ).toEqual(["admin-skill-lift-takedown"]);
 });
 
 test("a skill without a takedown has a visible neutral governance status", async () => {

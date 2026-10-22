@@ -58,7 +58,8 @@ export function GovernanceRow({
       {skill.takedown_at && (
         <p>
           下架於 <Timestamp at={skill.takedown_at} />
-          ，理由：{skill.takedown_reason ?? "未記錄"}。重新上架須先完成審查；後台目前不提供恢復。
+          ，理由：{skill.takedown_reason ?? "未記錄"}
+          。重新上架須先完成審查，審查結束後在下方恢復上架。
         </p>
       )}
       <p className="note">
