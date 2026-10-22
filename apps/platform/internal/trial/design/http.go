@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -23,7 +24,7 @@ type Handler struct {
 	Identity *identity.Service
 }
 
-const maxJSONBytes = 64 << 10
+const maxJSONBytes = utf8.UTFMax*(MaxNameChars+MaxPromptChars+MaxCriteria*MaxCriterionChars) + 64<<10
 
 func (h *Handler) workspace(w http.ResponseWriter, r *http.Request) (identity.Workspace, bool) {
 	user, ok := identity.SessionUser(r.Context())

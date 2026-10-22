@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
+	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 const askingPrompt = "summarise the attached csv"
@@ -289,5 +291,26 @@ func TestTheConversationIsEvaluatedAtItsAnswerNotAtItsQuestion(t *testing.T) {
 	}
 	if r := body.CriterionResults[0]; r.Source != "rule" || r.Result != "passed" {
 		t.Errorf("asks-first on the answered run = %+v, want passed by the rule from the earlier round", r)
+	}
+}
+
+func TestAnswersAtTheCharacterLimitInFourByteCharactersAreAccepted(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-continue-wide")
+	answers := func(chars int) string {
+		body, _ := json.Marshal(map[string][]string{"answers": {
+			strings.Repeat("𠮷", run.MaxAnswerChars), strings.Repeat("𠮷", run.MaxAnswerChars), strings.Repeat("𠮷", chars),
+		}})
+		return string(body)
+	}
+
+	past := seedAskingRun(t, pool, f, "一？", "二？", "三？")
+	if code, _ := f.postJSON(t, "/runs/"+past+"/continuations", answers(run.MaxAnswerChars+1)); code != http.StatusBadRequest {
+		t.Errorf("an answer one character past the limit: got %d, want 400", code)
+	}
+	at := seedAskingRun(t, pool, f, "一？", "二？", "三？")
+	if code, view := f.postJSON(t, "/runs/"+at+"/continuations", answers(run.MaxAnswerChars)); code != http.StatusCreated {
+		t.Errorf("three answers at the character limit: got %d %+v, want 201", code, view)
 	}
 }

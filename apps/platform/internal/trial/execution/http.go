@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -17,9 +18,12 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
 const maxRequestBodyBytes = 4096
+
+const maxAnswersBodyBytes = utf8.UTFMax*limits.ContinueRunBodyAnswersMaxItems*MaxAnswerChars + maxRequestBodyBytes
 
 type Handler struct {
 	Svc      *Service
@@ -347,7 +351,7 @@ func (h *Handler) Continue(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Answers []string `json:"answers"`
 	}
-	if !httpx.DecodeJSON(w, r, maxRequestBodyBytes, &body, "body must be JSON with answers") {
+	if !httpx.DecodeJSON(w, r, maxAnswersBodyBytes, &body, "body must be JSON with answers") {
 		return
 	}
 	run, err := h.Svc.Continue(r.Context(), ContinueParams{
