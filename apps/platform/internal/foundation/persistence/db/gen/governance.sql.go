@@ -1028,6 +1028,32 @@ func (q *Queries) RestoreSkill(ctx context.Context, id pgtype.UUID) (Skill, erro
 	return i, err
 }
 
+const retireRemainingWorkspaceSkills = `-- name: RetireRemainingWorkspaceSkills :many
+UPDATE skills SET deleted_at = now(), updated_at = now()
+WHERE workspace_id = $1 AND deleted_at IS NULL
+RETURNING id
+`
+
+func (q *Queries) RetireRemainingWorkspaceSkills(ctx context.Context, workspaceID pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, retireRemainingWorkspaceSkills, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const saveAccountDeletionRequest = `-- name: SaveAccountDeletionRequest :one
 UPDATE users
 SET deletion_requested_at = $1,

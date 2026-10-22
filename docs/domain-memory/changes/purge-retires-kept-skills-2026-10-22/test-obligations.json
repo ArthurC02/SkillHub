@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "purge-retires-kept-skills",
+  "proposal_id": "purge-retires-kept-skills",
+  "obligations": [
+    {
+      "id": "rule-an-account-purge-erases-a-skill-only-its-own-workspace-holds",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-account-purge-erases-a-skill-only-its-own-workspace-holds",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-account-purge-erases-a-skill-only-its-own-workspace-holds"
+        }
+      ],
+      "expected_outcome": "An account purge erases the content of a skill that only the workspace's own Runs or frozen test cases hold: every version loses its manifest and import source, its package object goes to collection, the skill loses its summary and search entry, and the version rows stay so those Runs still point at them. A skill another workspace forked, bundled or downloaded keeps its content. Every skill the purge keeps is marked deleted and leaves search, so the deletion sweep removes it once nothing holds it any more.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^(TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest|TestAccountPurgeLeavesAVersionOnlyItsOwnRunsUsedAsATombstoneWithoutContent|TestAccountPurgeErasesASkillWhoseOnlyForkIsTheAccountsOwn)$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

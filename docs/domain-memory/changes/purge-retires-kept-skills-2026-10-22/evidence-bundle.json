@@ -1,0 +1,38 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "purge-retires-kept-skills",
+  "proposal_id": "purge-retires-kept-skills",
+  "registry_revision": {
+    "observed_commit": "51cf05be4a1c7de78c239938e2c23c420bd5218c",
+    "registry_digest": "sha256:72a2f6fb3fd5e1dfdd17b355c6d46780b67e488ab24c98475df40158ae36a0ce",
+    "committed_digest": "sha256:72a2f6fb3fd5e1dfdd17b355c6d46780b67e488ab24c98475df40158ae36a0ce"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-account-purge-erases-a-skill-only-its-own-workspace-holds",
+      "mutated_protection": "apps/platform/internal/skill/library/purge.go:73: return retireRemaining(ctx, tx, workspaceID, s.RemoveFromIndex) -> _ = retireRemaining return nil",
+      "failure_evidence": "=== RUN   TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest\n    governance_integration_test.go:650: the skill kept only for bob's fork is still live; the deletion sweep will never revisit it once the fork is gone\n--- FAIL: TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest (0.56s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.743s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-an-account-purge-erases-a-skill-only-its-own-workspace-holds",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^(TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest|TestAccountPurgeLeavesAVersionOnlyItsOwnRunsUsedAsATombstoneWithoutContent|TestAccountPurgeErasesASkillWhoseOnlyForkIsTheAccountsOwn)$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:e1266de066eaa20725bf52ac8102546561f9d8d34492c36bde2bc4fcb85efc52",
+      "finished_at": "2026-10-22T05:48:01.683043Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

@@ -57,6 +57,7 @@ queries:
   ListWorkspacePurgeCandidates: registry
   PurgeSkillsByID: registry
   EraseSkillContent: registry
+  RetireRemainingWorkspaceSkills: registry
   ListSkillVersionsInRuns: run
   ListSkillsPastDeletionGrace: registry
   ListCollectableObjects: registry

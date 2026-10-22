@@ -150,6 +150,11 @@ versions AS (
 )
 DELETE FROM skills WHERE id IN (SELECT id FROM purgeable);
 
+-- name: RetireRemainingWorkspaceSkills :many
+UPDATE skills SET deleted_at = now(), updated_at = now()
+WHERE workspace_id = @workspace_id AND deleted_at IS NULL
+RETURNING id;
+
 -- name: EraseSkillContent :execrows
 WITH erased AS (
     UPDATE skill_versions

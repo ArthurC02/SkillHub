@@ -1,0 +1,124 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "purge-retires-kept-skills",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "purge-retires-kept-skills",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-22T05:47:34.113037Z",
+  "verified_at": "2026-10-22T05:48:41.149975Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "51cf05be4a1c7de78c239938e2c23c420bd5218c",
+    "registry_digest": "sha256:72a2f6fb3fd5e1dfdd17b355c6d46780b67e488ab24c98475df40158ae36a0ce",
+    "committed_digest": "sha256:72a2f6fb3fd5e1dfdd17b355c6d46780b67e488ab24c98475df40158ae36a0ce"
+  },
+  "affected_contexts": [
+    "registry"
+  ],
+  "rule_ids": [
+    "an-account-purge-erases-a-skill-only-its-own-workspace-holds"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Only registry decides what an account purge does to the workspace's skills.",
+    "evidence": [
+      "apps/platform/internal/skill/library/purge.go:41-87"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/library/purge.go:41-87"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A skill kept by an account purge because another workspace forked it never got deleted_at, so the deletion sweep, which visits only deleted skills, never removed it after the fork went away; an erased person's content stayed live and searchable."
+    ],
+    "decision": "After the purge, mark every skill still in the workspace deleted and remove it from search; the sweep and its fork-chain hold finish the job.",
+    "invariants_preserved": [
+      "A purge keeps a source skill while any fork of it stays.",
+      "A skill another workspace forked keeps its content."
+    ],
+    "rejected_alternatives": [
+      "A separate sweep for purged workspaces: a second path to the same deletion rule."
+    ],
+    "proof_obligations": [
+      "rule-an-account-purge-erases-a-skill-only-its-own-workspace-holds"
+    ],
+    "counterfactual_check": "Skipping retireRemaining fails TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest: the kept skill is still live."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-account-purge-erases-a-skill-only-its-own-workspace-holds",
+        "statement": "An account purge erases the content of a skill that only the workspace's own Runs or frozen test cases hold: every version loses its manifest and import source, its package object goes to collection, the skill loses its summary and search entry, and the version rows stay so those Runs still point at them. A skill another workspace forked, bundled or downloaded keeps its content. Every skill the purge keeps is marked deleted and leaves search, so the deletion sweep removes it once nothing holds it any more.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "Erin's private skill used by one of her Runs: after her purge the Run and a version row with an empty manifest remain, the import source and search entry are gone, and collection removes the package; Alice's skill that Bob forked keeps its content.",
+          "Alice's skill that Bob forked is marked deleted by her purge, so once Bob's fork is gone the sweep can remove it."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/governance_integration_test.go",
+            "lines": {
+              "start": 727,
+              "end": 789
+            },
+            "excerpt_sha256": "sha256:1a12a02dc9ccd89d0b758f4ceb14911c4c48488ce847174bc0ec91813b3591c2"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/purge.go",
+            "lines": {
+              "start": 41,
+              "end": 87
+            },
+            "content_sha256": "sha256:d220285fa6ed7eec1f324d6c50c825a6bc5651b2b50fc371a2bef213e63a0f79",
+            "excerpt_sha256": "sha256:d801eb8bd393e660cfe7fc39fe1515c442f9f3d066d0480226adce6bd7afdf0a"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/governance_integration_test.go",
+            "lines": {
+              "start": 980,
+              "end": 998
+            },
+            "content_sha256": "sha256:a41da1a9b135fcd915278cc15d4be8205df8229468e46b5fe256dd40952b156e",
+            "excerpt_sha256": "sha256:51b7b316b3d25c27fab824e84431149643a0c04b865ed61813ea35b9b64ab0b2"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T05:48:39.999420Z",
+      "scope": "Amend an-account-purge-erases-a-skill-only-its-own-workspace-holds: kept skills are marked deleted and leave search",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "51cf05be4a1c7de78c239938e2c23c420bd5218c",
+        "registry_digest": "sha256:72a2f6fb3fd5e1dfdd17b355c6d46780b67e488ab24c98475df40158ae36a0ce",
+        "committed_digest": "sha256:72a2f6fb3fd5e1dfdd17b355c6d46780b67e488ab24c98475df40158ae36a0ce"
+      }
+    }
+  ],
+  "supersedes": [
+    "registry-erase-own-run-content-2026-10-20"
+  ]
+}

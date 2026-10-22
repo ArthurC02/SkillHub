@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "purge-retires-kept-skills",
+  "status": "draft",
+  "intent": "Nothing of a purged account stays live once nothing holds it.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context registry lists the amended rule as reviewed, proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-an-account-purge-erases-a-skill-only-its-own-workspace-holds",
+      "statement": "An account purge erases the content of a skill that only the workspace's own Runs or frozen test cases hold: every version loses its manifest and import source, its package object goes to collection, the skill loses its summary and search entry, and the version rows stay so those Runs still point at them. A skill another workspace forked, bundled or downloaded keeps its content. Every skill the purge keeps is marked deleted and leaves search, so the deletion sweep removes it once nothing holds it any more."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/skill/library/purge.go",
+    "apps/platform/internal/entrypoint/api/apiserver/governance_integration_test.go"
+  ]
+}

@@ -992,6 +992,9 @@ func assertReferencedRowsSurvivedThePurge(t *testing.T, pool *pgxpool.Pool, w pu
 	if ids := forker.skillIDs(t, "/skills"); len(ids) == 0 {
 		t.Fatal("bob's fork disappeared with alice's account")
 	}
+	if c := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1 AND deleted_at IS NULL", mustUUID(t, w.shared)); c != 0 {
+		t.Fatal("the skill kept only for bob's fork is still live; the deletion sweep will never revisit it once the fork is gone")
+	}
 }
 
 func assertAccountDeIdentified(t *testing.T, pool *pgxpool.Pool, alice *client) {

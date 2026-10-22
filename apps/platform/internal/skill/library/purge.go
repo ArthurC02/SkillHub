@@ -67,7 +67,23 @@ func (s *Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgt
 			return err
 		}
 	}
-	return eraseContent(ctx, tx, workspaceID, without(unsharedWithOthers, purgeable), s.RemoveFromIndex)
+	if err := eraseContent(ctx, tx, workspaceID, without(unsharedWithOthers, purgeable), s.RemoveFromIndex); err != nil {
+		return err
+	}
+	return retireRemaining(ctx, tx, workspaceID, s.RemoveFromIndex)
+}
+
+func retireRemaining(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, removeFromIndex func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) error) error {
+	retained, err := gen.New(tx).RetireRemainingWorkspaceSkills(ctx, workspaceID)
+	if err != nil {
+		return err
+	}
+	for _, id := range retained {
+		if err := removeFromIndex(ctx, tx, workspaceID, id); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func eraseContent(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, skillIDs []pgtype.UUID, removeFromIndex func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) error) error {
