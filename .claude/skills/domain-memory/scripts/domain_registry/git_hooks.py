@@ -15,8 +15,7 @@ def hooks_dir(repo_root: Path) -> Path:
     result = run_git(repo_root, "rev-parse", "--git-path", "hooks")
     if result.returncode != 0:
         return repo_root / ".git" / "hooks"
-    reported = Path(result.stdout.strip())
-    return reported if reported.is_absolute() else repo_root / reported
+    return repo_root / result.stdout.strip()
 
 
 def governance_readiness(registry_root: Path, repo_root: Path) -> dict[str, object]:
