@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "lift-takedown-note",
+  "proposal_id": "lift-takedown-note",
+  "registry_revision": {
+    "observed_commit": "1d701ec9eaa5cf4243773de55855296a8aa74375",
+    "registry_digest": "sha256:df265c9e5acffa3ac20e3998cf866ef5f49b700751ba59d95bebc3986e4d0f06",
+    "committed_digest": "sha256:df265c9e5acffa3ac20e3998cf866ef5f49b700751ba59d95bebc3986e4d0f06"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/lift-takedown-note-2026-10-23 --path apps/platform/internal/entrypoint/api/apiserver/operator_hold_deletion_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/publishing_integration_test.go --path apps/platform/internal/skill/library/purge.go --path apps/platform/internal/skill/library/purge_test.go --path apps/platform/internal/skill/library/restriction.go --path apps/platform/internal/skill/library/takedown.go --path db/queries/governance.sql --path db/queries/skills.sql",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:fd5120ab198ef5e36cac05a862966f4d5310fe413ee98c7f48c69c6979da4c05",
+      "finished_at": "2026-10-22T21:18:54.195400Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
