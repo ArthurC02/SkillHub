@@ -3,7 +3,7 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-22T18:32:14.206745Z"
+    at: "2026-10-22T21:18:54.679348Z"
 sources:
   - resource: "apps/platform/internal/skill/library/purge.go#L30-32"
     excerpt_sha256: "sha256:c2abe36b9b8910dce5fa36fa4d38ea43b9d698b61470cbf444fbd146ffd2c441"
@@ -16,7 +16,7 @@ sources:
   - resource: "db/queries/governance.sql#L228-231"
     excerpt_sha256: "sha256:190e8561239a6638065ea9082bdbd505a86f92361e6dc5b5ba2a8f78cbc555e4"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/operator_hold_deletion_integration_test.go#L11-69"
-    excerpt_sha256: "sha256:226eea57802bfe6a599a5f215fdc8d268b887baa5a1f0aecd37400f7fb867e4a"
+    excerpt_sha256: "sha256:bc2879540fef3ef47d73a4a59cc46f4b2b0f401a1a7afcf156e2ebf4d0f0b019"
   - resource: "apps/platform/internal/skill/library/takedown.go#L16-20"
     excerpt_sha256: "sha256:97744b9d15042311d43d8f1b245577757bcfb2cf7bbcc45b1e56844ab03e3401"
   - resource: "apps/platform/internal/skill/library/restriction.go#L24-28"

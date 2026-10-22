@@ -3,12 +3,12 @@
   "proposal_id": "lift-takedown-note",
   "proposer": "domain-memory-agent",
   "requirement_id": "lift-takedown-note",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-22T21:18:53.033244Z",
   "verified_at": "2026-10-22T21:18:55.718324Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T21:24:52.388748Z",
+  "applied_at": "2026-10-22T21:26:14.183861Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "1d701ec9eaa5cf4243773de55855296a8aa74375",
@@ -157,5 +157,9 @@
   ],
   "supersedes": [
     "operator-holds-deleted-skill"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "1b323f561425d3f26d326e18730c06723ee69abe",
+    "registry_digest": "sha256:f4a1ffebe6da019e1c33a52aeec0df3faf3b27d4e3c52cbeee31bf274c676ae8"
+  }
 }
