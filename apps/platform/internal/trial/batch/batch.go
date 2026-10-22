@@ -61,7 +61,7 @@ func (e UnconfirmedTestCasesError) Error() string {
 
 type RunRefusedError struct {
 	Reason      string
-	AwaitsTopUp bool
+	PausesBatch bool
 	Err         error
 }
 
@@ -275,7 +275,7 @@ func (s *BatchService) startNextTrial(ctx context.Context, workspaceID pgtype.UU
 		return true, stopBatch(ctx, q, workspaceID, next.BatchID, stopReasonTargetGone)
 	}
 	if refused, isRefused := errors.AsType[RunRefusedError](err); isRefused {
-		if refused.AwaitsTopUp {
+		if refused.PausesBatch {
 			return true, pauseBatch(ctx, q, workspaceID, next.BatchID, refused.Reason)
 		}
 		return true, stopBatch(ctx, q, workspaceID, next.BatchID, refused.Reason)

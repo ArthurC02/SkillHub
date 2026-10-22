@@ -41,9 +41,9 @@ export interface EvaluationBatch {
     withSkillWithheld: boolean;
     /**
      * `launching` while some trials have not started, `launched` once every
-     * trial has its run, `paused` when the owner's credit ran out (trials
-     * already run are kept; resuming starts the next trial not yet run, and a
-     * batch paused for 30 days stops), `stopped` when a run was refused for a
+     * trial has its run, `paused` when the owner's credit or run quota ran out
+     * (trials already run are kept; resuming starts the next trial not yet run,
+     * and a batch paused for 30 days stops), `stopped` when a run was refused for a
      * reason that neither waiting nor a top-up fixes.
      * 
      */

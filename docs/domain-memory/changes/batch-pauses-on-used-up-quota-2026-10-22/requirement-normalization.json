@@ -1,0 +1,26 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "batch-pauses-on-used-up-quota",
+  "status": "draft",
+  "intent": "A used-up run quota pauses an evaluation batch instead of ending it.",
+  "actor": "workspace owner",
+  "observable_outcome": "get-context batch lists the amended rule as reviewed, proven by its tests.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-batch-waits-only-on-a-passing-refusal",
+      "statement": "An evaluation batch waits when Run refuses a trial with a refusal Run says will pass on its own, including a run quota that could not be counted; pauses with the reason recorded when the refusal is one the owner can outwait or fix, a credit top-up or a used-up daily or windowed run quota; and stops with the reason recorded on any other refusal."
+    },
+    {
+      "id": "enforced-a-batch-whose-test-case-is-gone-stops",
+      "statement": "When starting a batch's next trial finds its target gone, the batch stops with reason target_gone and starts no further trial."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/trial/batch/batch.go",
+    "apps/platform/internal/trial/execution/batch_facts.go"
+  ]
+}

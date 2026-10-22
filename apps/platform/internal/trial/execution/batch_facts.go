@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	policy "github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 )
 
 func (s *Service) ConfirmedPermissionHash(
@@ -36,9 +37,9 @@ var passingRefusals = map[string]bool{
 	ReasonScanUnavailable:      true,
 }
 
-func RefusalAwaitsTopUp(err error) bool {
+func RefusalPausesBatch(err error) bool {
 	reason, refused := RefusalReason(err)
-	return refused && reason == ReasonCreditBalance
+	return refused && (reason == ReasonCreditBalance || errors.Is(err, policy.ErrQuotaExceeded))
 }
 
 func RefusalPasses(err error) bool {
@@ -46,5 +47,5 @@ func RefusalPasses(err error) bool {
 		return true
 	}
 	reason, refused := RefusalReason(err)
-	return refused && passingRefusals[reason]
+	return refused && (passingRefusals[reason] || errors.Is(err, policy.ErrAllowanceUnavailable))
 }

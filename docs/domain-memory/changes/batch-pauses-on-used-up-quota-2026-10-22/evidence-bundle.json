@@ -1,0 +1,55 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "batch-pauses-on-used-up-quota",
+  "proposal_id": "batch-pauses-on-used-up-quota",
+  "registry_revision": {
+    "observed_commit": "2906e620b62f61c1ce8ab28b55300b91349955c0",
+    "registry_digest": "sha256:e096030c74295cff2c6919b2e7c7164edec0f11d5895088097f7a214e9a58e8e",
+    "committed_digest": "sha256:e096030c74295cff2c6919b2e7c7164edec0f11d5895088097f7a214e9a58e8e"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-batch-waits-only-on-a-passing-refusal",
+      "mutated_protection": "apps/platform/internal/trial/execution/batch_facts.go:42: reason == ReasonCreditBalance || errors.Is(err, policy.ErrQuotaExceeded) -> reason == ReasonCreditBalance",
+      "failure_evidence": "=== RUN   TestOnlyRefusalsTheOwnerCanOutwaitPauseABatch\n    refusal_passes_test.go:58: the daily run quota is used up: RefusalPausesBatch = false, want true\n    refusal_passes_test.go:58: the windowed run quota is used up: RefusalPausesBatch = false, want true\n--- FAIL: TestOnlyRefusalsTheOwnerCanOutwaitPauseABatch (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/execution\t6.298s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-whose-test-case-is-gone-stops",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch.go:274: if errors.Is(err, ErrTargetGone) { -> if false && errors.Is(err, ErrTargetGone) {",
+      "failure_evidence": "=== RUN   TestABatchWhoseTestCaseWasDeletedStopsAsTargetGone\n    evaluation_batch_integration_test.go:424: the skill, version or test case this trial runs is gone: run not found\n--- FAIL: TestABatchWhoseTestCaseWasDeletedStopsAsTargetGone (0.24s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.265s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-batch-waits-only-on-a-passing-refusal",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^(TestOnlyRefusalsThatWillPassOnTheirOwnAreReportedAsPassing|TestOnlyRefusalsTheOwnerCanOutwaitPauseABatch)$ ./internal/trial/execution/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:7dcac2faa7e7b255835b2048128017dba734dd89927b71db154871531630264f",
+      "finished_at": "2026-10-22T05:06:24.902911Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-batch-whose-test-case-is-gone-stops",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run Batch ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ca19843d397237f80baa41afa73733feefc490887257d95d1727373dbb141b45",
+      "finished_at": "2026-10-22T05:07:10.825643Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

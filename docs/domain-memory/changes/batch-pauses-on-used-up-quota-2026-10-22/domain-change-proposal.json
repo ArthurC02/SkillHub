@@ -1,0 +1,259 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "batch-pauses-on-used-up-quota",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "batch-pauses-on-used-up-quota",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-22T05:06:10.599112Z",
+  "verified_at": "2026-10-22T05:09:39.392760Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "2906e620b62f61c1ce8ab28b55300b91349955c0",
+    "registry_digest": "sha256:e096030c74295cff2c6919b2e7c7164edec0f11d5895088097f7a214e9a58e8e",
+    "committed_digest": "sha256:e096030c74295cff2c6919b2e7c7164edec0f11d5895088097f7a214e9a58e8e"
+  },
+  "affected_contexts": [
+    "batch",
+    "run"
+  ],
+  "rule_ids": [
+    "batch-waits-only-on-a-passing-refusal",
+    "a-batch-whose-test-case-is-gone-stops"
+  ],
+  "contract_ids": [
+    "run-batch-trials-v1"
+  ],
+  "ownership_decision": {
+    "owner_context": "batch",
+    "invariant": "Only batch decides whether a refused trial makes the batch wait, pause or stop; Run only classifies its refusal.",
+    "evidence": [
+      "apps/platform/internal/trial/batch/batch.go:277-282"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: Run's batch facts classify a refusal and wiring maps it to batch's RunRefusedError.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/execution/batch_facts.go:40-51"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A batch stopped for good on a used-up run quota, although the quota resets on its own and the contract keeps stopped for refusals neither waiting nor a top-up fixes; a single failure to count the quota stopped it too."
+    ],
+    "decision": "Classify an exhausted run quota as pausing and an uncounted one as passing, by the entitlement sentinels the refusal wraps.",
+    "invariants_preserved": [
+      "A batch paused for thirty days stops.",
+      "A batch whose test case is gone stops."
+    ],
+    "rejected_alternatives": [
+      "Waiting on an exhausted quota: a windowed quota can stay exhausted for weeks while the batch retries every tick."
+    ],
+    "proof_obligations": [
+      "rule-batch-waits-only-on-a-passing-refusal",
+      "rule-a-batch-whose-test-case-is-gone-stops"
+    ],
+    "counterfactual_check": "Dropping the quota sentinel from RefusalPausesBatch fails the pause table; dropping it from RefusalPasses fails the passing table."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-batch-whose-test-case-is-gone-stops",
+        "statement": "When starting a batch's next trial finds its target gone, the batch stops with reason target_gone and starts no further trial.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A test case deleted mid-batch: the batch becomes stopped with target_gone."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+            "lines": {
+              "start": 317,
+              "end": 347
+            },
+            "excerpt_sha256": "sha256:65c59c22f7d7a9b26eac1b275c201f12a679a063856768fc72eda07bcceea0e5"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 271,
+              "end": 282
+            },
+            "content_sha256": "sha256:60bb86f35f6898099dcec6ceecf338419ed7d837a4af599db8672e1e5a5b2ca4",
+            "excerpt_sha256": "sha256:78953e71e4115a816caa77617f8239e8be9bd1a7f74925359ff1e35ab2908677"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contracts",
+      "record": {
+        "id": "run-batch-trials-v1",
+        "kind": "internal-port",
+        "version": "v1",
+        "compatibility_policy": "Run starts and continues trials for an evaluation batch through the ports the composition root fills; Run publishes whether a refusal passes on its own and never hands its transaction to the batch.",
+        "data_classification": "internal",
+        "idempotency": {
+          "key": "origin key: the batch, the Test Case, the trial number and whether the Skill is withheld",
+          "scope": "per Workspace",
+          "on_replay": "returns the Run already started under that key, without admitting or charging again",
+          "on_conflict": "refused when the key already started a Run of a different Skill Version"
+        },
+        "producer_context": "run",
+        "consumer_contexts": [
+          "batch"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 46,
+              "end": 88
+            },
+            "excerpt_sha256": "sha256:81f47701455768a93e0f9330943c273785dd34ee7ef9af66468493c2ee38f32d"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/service.go",
+            "lines": {
+              "start": 874,
+              "end": 891
+            },
+            "excerpt_sha256": "sha256:b33d744e5dc035dd07b22002b8fd5e71cba0dd4fb652efe02fe1d92a6a91ae62"
+          },
+          {
+            "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+            "lines": {
+              "start": 104,
+              "end": 104
+            },
+            "excerpt_sha256": "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/batch_facts.go",
+            "lines": {
+              "start": 35,
+              "end": 51
+            },
+            "content_sha256": "sha256:cf5dd8afddc0fe07f2d2a294b9d773ccb2ea59fdc90c6a5ebc49e7e6ae5793fc",
+            "excerpt_sha256": "sha256:4ce1a570d590d6e8dab11f9e8bdebe20db4f3394d49f79ad0ab4207be2f421a7"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-batch-trials",
+        "consistency": "synchronous request, idempotent by origin key; the batch records the trial in its own statement afterwards",
+        "delivery": "composition-root port",
+        "producer_context": "run",
+        "consumer_context": "batch",
+        "contract_id": "run-batch-trials-v1",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 46,
+              "end": 88
+            },
+            "excerpt_sha256": "sha256:81f47701455768a93e0f9330943c273785dd34ee7ef9af66468493c2ee38f32d"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 253,
+              "end": 291
+            },
+            "content_sha256": "sha256:60bb86f35f6898099dcec6ceecf338419ed7d837a4af599db8672e1e5a5b2ca4",
+            "excerpt_sha256": "sha256:f59f6851992723f666c594a0f96028394f3305b6ef1ef897c7ca561cf9d36999"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "batch-waits-only-on-a-passing-refusal",
+        "statement": "An evaluation batch waits when Run refuses a trial with a refusal Run says will pass on its own, including a run quota that could not be counted; pauses with the reason recorded when the refusal is one the owner can outwait or fix, a credit top-up or a used-up daily or windowed run quota; and stops with the reason recorded on any other refusal.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A credit_balance refusal pauses the batch with only its first trial run; a missing permission confirmation stops it.",
+          "A quota_daily or quota_window refusal pauses the batch; a quota_unavailable refusal makes it wait."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+            "lines": {
+              "start": 332,
+              "end": 375
+            },
+            "excerpt_sha256": "sha256:97a20ef07e639edb269a472b52c57ade107f8b83f7adbc381782462397866e8b"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 277,
+              "end": 282
+            },
+            "content_sha256": "sha256:60bb86f35f6898099dcec6ceecf338419ed7d837a4af599db8672e1e5a5b2ca4",
+            "excerpt_sha256": "sha256:9a314bdcfa0e4bf33fe6ed064481f873d11a9c462093eae2253ff570f871a157"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/batch_facts.go",
+            "lines": {
+              "start": 40,
+              "end": 51
+            },
+            "content_sha256": "sha256:cf5dd8afddc0fe07f2d2a294b9d773ccb2ea59fdc90c6a5ebc49e7e6ae5793fc",
+            "excerpt_sha256": "sha256:3ed0ac9bad6e46ca0157c2b48d8aa1b77a609de28b83605192dc3c59990a5de9"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/refusal_passes_test.go",
+            "lines": {
+              "start": 13,
+              "end": 61
+            },
+            "content_sha256": "sha256:8a192e34dde389d681b3d22271025c155ccf7afa8fa6b58c1465e9620971cad8",
+            "excerpt_sha256": "sha256:3c3adb560ba58920f1c35fcb618a3a464fa1bf48892c058c37fc65aced100e99"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T05:08:48.592136Z",
+      "scope": "Amend batch-waits-only-on-a-passing-refusal: a used-up run quota pauses, an uncounted one waits; re-cite the moved batch evidence",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "2906e620b62f61c1ce8ab28b55300b91349955c0",
+        "registry_digest": "sha256:e096030c74295cff2c6919b2e7c7164edec0f11d5895088097f7a214e9a58e8e",
+        "committed_digest": "sha256:e096030c74295cff2c6919b2e7c7164edec0f11d5895088097f7a214e9a58e8e"
+      }
+    }
+  ],
+  "supersedes": [
+    "patrol-shift-recite",
+    "batch-pause-for-credit-2026-10-20"
+  ]
+}

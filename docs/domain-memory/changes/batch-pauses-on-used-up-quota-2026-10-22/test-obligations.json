@@ -1,0 +1,41 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "batch-pauses-on-used-up-quota",
+  "proposal_id": "batch-pauses-on-used-up-quota",
+  "obligations": [
+    {
+      "id": "rule-batch-waits-only-on-a-passing-refusal",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-batch-waits-only-on-a-passing-refusal",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "batch-waits-only-on-a-passing-refusal"
+        },
+        {
+          "source_type": "contract",
+          "source_id": "run-batch-trials-v1"
+        }
+      ],
+      "expected_outcome": "An evaluation batch waits when Run refuses a trial with a refusal Run says will pass on its own, including a run quota that could not be counted; pauses with the reason recorded when the refusal is one the owner can outwait or fix, a credit top-up or a used-up daily or windowed run quota; and stops with the reason recorded on any other refusal.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^(TestOnlyRefusalsThatWillPassOnTheirOwnAreReportedAsPassing|TestOnlyRefusalsTheOwnerCanOutwaitPauseABatch)$ ./internal/trial/execution/"
+    },
+    {
+      "id": "rule-a-batch-whose-test-case-is-gone-stops",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-batch-whose-test-case-is-gone-stops",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-batch-whose-test-case-is-gone-stops"
+        }
+      ],
+      "expected_outcome": "A test case deleted mid-batch: the batch becomes stopped with target_gone.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run Batch ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}
