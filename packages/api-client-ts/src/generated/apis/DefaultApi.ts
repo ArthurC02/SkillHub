@@ -5198,7 +5198,7 @@ export interface DefaultApiInterface {
     resumeEvaluationBatchRequestOpts(requestParameters: ResumeEvaluationBatchRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Starts the batch again from the next trial that has no run; trials that already ran are never run again, so nothing is paid twice. If the credit is still short, the next trial pauses the batch again. 
+     * Starts the batch again from the next trial that has no run, and answers the simulated person\'s questions still owed; trials that already ran are never run again, so nothing is paid twice. If the credit is still short, the next trial or answer pauses the batch again. 
      * @summary Resume a batch paused for credit (EVAL-014)
      * @param {string} id 
      * @param {string} batchId 
@@ -5209,7 +5209,7 @@ export interface DefaultApiInterface {
     resumeEvaluationBatchRaw(requestParameters: ResumeEvaluationBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
 
     /**
-     * Starts the batch again from the next trial that has no run; trials that already ran are never run again, so nothing is paid twice. If the credit is still short, the next trial pauses the batch again. 
+     * Starts the batch again from the next trial that has no run, and answers the simulated person\'s questions still owed; trials that already ran are never run again, so nothing is paid twice. If the credit is still short, the next trial or answer pauses the batch again. 
      * Resume a batch paused for credit (EVAL-014)
      */
     resumeEvaluationBatch(requestParameters: ResumeEvaluationBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
@@ -11987,7 +11987,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Starts the batch again from the next trial that has no run; trials that already ran are never run again, so nothing is paid twice. If the credit is still short, the next trial pauses the batch again. 
+     * Starts the batch again from the next trial that has no run, and answers the simulated person\'s questions still owed; trials that already ran are never run again, so nothing is paid twice. If the credit is still short, the next trial or answer pauses the batch again. 
      * Resume a batch paused for credit (EVAL-014)
      */
     async resumeEvaluationBatchRaw(requestParameters: ResumeEvaluationBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
@@ -11998,7 +11998,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Starts the batch again from the next trial that has no run; trials that already ran are never run again, so nothing is paid twice. If the credit is still short, the next trial pauses the batch again. 
+     * Starts the batch again from the next trial that has no run, and answers the simulated person\'s questions still owed; trials that already ran are never run again, so nothing is paid twice. If the credit is still short, the next trial or answer pauses the batch again. 
      * Resume a batch paused for credit (EVAL-014)
      */
     async resumeEvaluationBatch(requestParameters: ResumeEvaluationBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
