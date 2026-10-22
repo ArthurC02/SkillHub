@@ -3,7 +3,7 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-22T10:57:40.060126Z"
+    at: "2026-10-22T18:32:14.206745Z"
 sources:
   - resource: "apps/platform/internal/skill/library/purge.go#L30-32"
     excerpt_sha256: "sha256:c2abe36b9b8910dce5fa36fa4d38ea43b9d698b61470cbf444fbd146ffd2c441"
@@ -17,8 +17,16 @@ sources:
     excerpt_sha256: "sha256:190e8561239a6638065ea9082bdbd505a86f92361e6dc5b5ba2a8f78cbc555e4"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/operator_hold_deletion_integration_test.go#L11-69"
     excerpt_sha256: "sha256:226eea57802bfe6a599a5f215fdc8d268b887baa5a1f0aecd37400f7fb867e4a"
+  - resource: "apps/platform/internal/skill/library/takedown.go#L16-20"
+    excerpt_sha256: "sha256:97744b9d15042311d43d8f1b245577757bcfb2cf7bbcc45b1e56844ab03e3401"
+  - resource: "apps/platform/internal/skill/library/restriction.go#L24-28"
+    excerpt_sha256: "sha256:ce9617d0879ca7c8567941b98c9798c634760c6f250c2346bc55bd71bb6b41b5"
+  - resource: "db/queries/skills.sql#L121-127"
+    excerpt_sha256: "sha256:8ab7b9d355a9d498a9aeaf54b90c17f7321176e221bc666b3769a8cc7e2fb754"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/operator_hold_deletion_integration_test.go#L82-130"
+    excerpt_sha256: "sha256:6045aad5bf1816fc475abc6f20d25662638a1caa274f36f17ba74a10d23fa4ea"
 ---
-A purge keeps the row of a skill that has test cases or a version referenced by a run, a download or a bundle; the deleted-skill sweep also keeps a skill while its publication is unretired or retired less than the ninety-day name hold ago, and while an operator takedown or access restriction is in force on it.
+A purge keeps the row of a skill that has test cases or a version referenced by a run, a download or a bundle; the deleted-skill sweep also keeps a skill while its publication is unretired or retired less than the ninety-day name hold ago, and while an operator takedown or access restriction is in force on it. An operator can take down or restrict a skill its owner has deleted until the sweep purges it, and the operator's skill search lists such a skill with when it was deleted.
 
 # Relations
 - Contexts: [registry](/contexts/registry)
@@ -27,3 +35,4 @@ A purge keeps the row of a skill that has test cases or a version referenced by 
 - A deleted skill past grace that has test cases survives the sweep.
 - A deleted skill whose publication retired 89 days 23 hours ago survives the sweep; at 90 days and a minute it is purged.
 - A skill its owner deleted while an operator takedown was in force survives the sweep past grace; after the operator lifts the takedown the next sweep purges it.
+- A skill its owner deleted before any complaint is found by the operator's search, taken down or restricted, and then survives the sweep past grace; a deleted skill nobody holds is purged.
