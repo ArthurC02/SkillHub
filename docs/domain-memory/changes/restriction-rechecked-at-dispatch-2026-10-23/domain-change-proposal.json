@@ -1,0 +1,123 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "restriction-rechecked-at-dispatch",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "restriction-rechecked-at-dispatch",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-22T16:41:11.413116Z",
+  "verified_at": "2026-10-22T16:46:23.340798Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "226f5c3fa0a3f838b8ad8e7e821ecee6e62adea6",
+    "registry_digest": "sha256:fc48c20d331eed4fe473b6e2244e9405396a982af9f05460a24811a4165f3be4",
+    "committed_digest": "sha256:932a9b97c120af9a39580c7df7dca9a80404390e1d367b2f5389d84915d7645f"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [
+    "an-access-restricted-skill-never-reaches-a-sandbox"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Run decides whether a run may reach a sandbox, reading the skill's restriction through its registry port at creation and again at dispatch.",
+    "evidence": [
+      "apps/platform/internal/trial/execution/service.go:490-514",
+      "apps/platform/internal/trial/execution/job.go:174-179"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: run reads skill facts through its existing registry port.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/execution/service.go:490-514",
+      "apps/platform/internal/trial/execution/job.go:174-179"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A restriction set while a run waited in the queue did not stop it: dispatch read only the version, minted the package grant and handed the package to a sandbox."
+    ],
+    "decision": "Dispatch re-reads the skill's restriction before placement; a restricted skill ends the run as policy_refused with the license-review wording, and an unreadable restriction keeps the run queued.",
+    "invariants_preserved": [
+      "The restriction is never read as lifted because a read failed.",
+      "A version that is gone still fails through the existing unbuildable path."
+    ],
+    "rejected_alternatives": [
+      "Cancelling queued runs when the restriction is set: it needs a consumer for the restriction event, and a run admitted in the same instant would still slip through; the dispatch check covers both."
+    ],
+    "proof_obligations": [
+      "rule-an-access-restricted-skill-never-reaches-a-sandbox"
+    ],
+    "counterfactual_check": "Making requireStillRunnable ignore the restriction fails TestARestrictionSetWhileARunWaitsStopsItBeforeAnySandbox with the run succeeded."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-access-restricted-skill-never-reaches-a-sandbox",
+        "statement": "A run of a skill under an access restriction is refused when it is created, and a run that was queued before the restriction was set fails as policy_refused at dispatch, before any sandbox receives the package; while the restriction cannot be read the run stays queued.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A run queued before an operator sets license-review fails as policy_refused naming the license review, and the sandbox sees no dispatch; after the restriction is cleared a new run succeeds."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/service.go",
+            "lines": {
+              "start": 490,
+              "end": 514
+            },
+            "content_sha256": "sha256:9f20c8eec28a562eebbc6cd942032f9f19042d95b8f3be76f7e86bfa14c76538",
+            "excerpt_sha256": "sha256:d5b3ce56d56a3fa7ef8abf7dace064656c3b1d9d7dce6d974e5ebaef5bfad9de"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/job.go",
+            "lines": {
+              "start": 174,
+              "end": 179
+            },
+            "content_sha256": "sha256:cfe2417a66acbe8eb19de5bde26371e78dad6f36e95a85f96203b002fef7710d",
+            "excerpt_sha256": "sha256:5fda0f513f4ab3ca1f69f66999132c2bea3e4167bc6823a4b6545c6821d198c5"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/preflight_integration_test.go",
+            "lines": {
+              "start": 329,
+              "end": 369
+            },
+            "content_sha256": "sha256:cf9a7a95bd3bc9dfe78c51802b7946680341b5797f2e1718a363d0a9d4aad738",
+            "excerpt_sha256": "sha256:99269089bfff4f8e108fb63c47cedaa14c6d45f61f0df459bd2fc489c6bb6d18"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T16:46:22.676701Z",
+      "scope": "A licensing hold set while a run is queued stops it at dispatch; new run-context rule",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "226f5c3fa0a3f838b8ad8e7e821ecee6e62adea6",
+        "registry_digest": "sha256:fc48c20d331eed4fe473b6e2244e9405396a982af9f05460a24811a4165f3be4",
+        "committed_digest": "sha256:932a9b97c120af9a39580c7df7dca9a80404390e1d367b2f5389d84915d7645f"
+      }
+    }
+  ]
+}

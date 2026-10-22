@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "restriction-rechecked-at-dispatch",
+  "proposal_id": "restriction-rechecked-at-dispatch",
+  "obligations": [
+    {
+      "id": "rule-an-access-restricted-skill-never-reaches-a-sandbox",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-access-restricted-skill-never-reaches-a-sandbox",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-access-restricted-skill-never-reaches-a-sandbox"
+        }
+      ],
+      "expected_outcome": "A run queued before the restriction was set fails as policy_refused naming the license review with no dispatch; once cleared a new run succeeds.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestARestrictionSetWhileARunWaitsStopsItBeforeAnySandbox$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

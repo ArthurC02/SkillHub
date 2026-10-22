@@ -171,6 +171,13 @@ func (d *driver) dispatch(ctx context.Context) error {
 		return err
 	}
 
+	if err := d.svc.requireStillRunnable(ctx, d.cur); errors.Is(err, ErrAccessRestricted) {
+		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failurePolicy,
+			d.reasonFor(failurePolicy, err))
+	} else if err != nil {
+		return d.waitForRestrictionRead(err)
+	}
+
 	if err := d.svc.requireModelGateway(); err != nil {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider,
 			d.reasonFor(failureNoProvider, err))
@@ -594,6 +601,8 @@ func namedRefusal(err error) statusReason {
 		return "執行沙箱沒有回應"
 	case errors.Is(err, ErrNoModelGateway):
 		return "這個部署沒有接上模型閘道,試跑沒有辦法連到模型"
+	case errors.Is(err, ErrAccessRestricted):
+		return "這個 Skill 的來源授權還在審查中，審查期間不能試跑"
 	case errors.Is(err, ErrContentNotCurated):
 		return "淨測試模式只跑已策展的內容,這個版本不在其中"
 	case errors.Is(err, ErrNoProvider):
@@ -1000,6 +1009,12 @@ func (d *driver) waitForSandbox(err error) error {
 
 func (d *driver) waitForSpend(err error) error {
 	slog.Warn("the earlier attempts' model spend cannot be read yet; the run waits instead of failing or running past its budget",
+		"run_id", pgconv.UUIDString(d.cur.ID), "error", err)
+	return tryAgainIn(d.svc.slotWaitInterval())
+}
+
+func (d *driver) waitForRestrictionRead(err error) error {
+	slog.Warn("whether this skill is under an access restriction cannot be read yet; the run waits instead of reaching a sandbox unchecked",
 		"run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 	return tryAgainIn(d.svc.slotWaitInterval())
 }

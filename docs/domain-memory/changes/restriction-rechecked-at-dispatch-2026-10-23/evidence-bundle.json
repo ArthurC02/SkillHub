@@ -1,0 +1,38 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "restriction-rechecked-at-dispatch",
+  "proposal_id": "restriction-rechecked-at-dispatch",
+  "registry_revision": {
+    "observed_commit": "226f5c3fa0a3f838b8ad8e7e821ecee6e62adea6",
+    "registry_digest": "sha256:fc48c20d331eed4fe473b6e2244e9405396a982af9f05460a24811a4165f3be4",
+    "committed_digest": "sha256:932a9b97c120af9a39580c7df7dca9a80404390e1d367b2f5389d84915d7645f"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-access-restricted-skill-never-reaches-a-sandbox",
+      "mutated_protection": "apps/platform/internal/trial/execution/service.go:509: skill, found, err := s.Registry.Skill(ctx, run.WorkspaceID, version.SkillID) -> _ = version; skill, found, err := SkillFacts{}, true, error(nil)",
+      "failure_evidence": "=== RUN   TestARestrictionSetWhileARunWaitsStopsItBeforeAnySandbox\n    preflight_integration_test.go:351: status = \"succeeded\" class = \"\" (工作負載自己跑到結束並回報成功;任務究竟有沒有達成是另一個判斷(見這次 Run 的評估)), want failed policy_refused\n--- FAIL: TestARestrictionSetWhileARunWaitsStopsItBeforeAnySandbox (0.46s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t6.062s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-an-access-restricted-skill-never-reaches-a-sandbox",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestARestrictionSetWhileARunWaitsStopsItBeforeAnySandbox$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:8feac756e3715383469c8034d7964f5b6fb3fb39176549b60aa6eb45fe21af7e",
+      "finished_at": "2026-10-22T16:43:50.852000Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

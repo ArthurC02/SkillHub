@@ -1,0 +1,23 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "restriction-rechecked-at-dispatch",
+  "status": "draft",
+  "intent": "A licensing hold stops a run that was already queued, not only new ones.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context run lists the new rule as reviewed, proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-an-access-restricted-skill-never-reaches-a-sandbox",
+      "statement": "A run of a skill under an access restriction is refused when it is created, and a run that was queued before the restriction was set fails as policy_refused at dispatch, before any sandbox receives the package; while the restriction cannot be read the run stays queued."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/trial/execution/service.go",
+    "apps/platform/internal/trial/execution/job.go",
+    "apps/platform/internal/entrypoint/api/apiserver/preflight_integration_test.go"
+  ]
+}

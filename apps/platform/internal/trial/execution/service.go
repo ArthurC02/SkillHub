@@ -498,6 +498,21 @@ func (s *Service) requireRunnableSkill(ctx context.Context, p CreateParams) erro
 	return requireNotAccessRestricted(skill)
 }
 
+func (s *Service) requireStillRunnable(ctx context.Context, run gen.Run) error {
+	if s.Registry == nil {
+		return nil
+	}
+	version, found, err := s.Registry.Version(ctx, run.WorkspaceID, run.SkillVersionID)
+	if err != nil || !found {
+		return err
+	}
+	skill, found, err := s.Registry.Skill(ctx, run.WorkspaceID, version.SkillID)
+	if err != nil || !found {
+		return err
+	}
+	return requireNotAccessRestricted(skill)
+}
+
 func (s *Service) reserveRunCapacity(ctx context.Context, tx pgx.Tx, q *gen.Queries, workspaceID pgtype.UUID) error {
 	if err := requireRunSlot(ctx, q, workspaceID); err != nil {
 		return err

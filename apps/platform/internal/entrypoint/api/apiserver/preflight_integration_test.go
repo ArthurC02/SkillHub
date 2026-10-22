@@ -15,6 +15,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
@@ -322,6 +323,48 @@ func TestRunIsRefusedWhenTheSkillIsAccessRestricted(t *testing.T) {
 	}
 	if refused.RunID != "" {
 		t.Error("a refused run still created a run row")
+	}
+}
+
+func TestARestrictionSetWhileARunWaitsStopsItBeforeAnySandbox(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	fake, svc := haltHarness(t, a, pool)
+	f := newFixture(t, a, pool, "alice-gate-b-restricted-while-queued")
+	ws := mustUUID(t, f.workspaceID)
+
+	queued := f.start(t)
+	restrict := func(value any) {
+		t.Helper()
+		if _, err := pool.Exec(context.Background(),
+			"UPDATE skills SET access_restriction = $2 WHERE id = $1", mustUUID(t, f.skillID), value); err != nil {
+			t.Fatal(err)
+		}
+	}
+	restrict("license-review")
+
+	if err := driveThroughPolls(context.Background(), svc.Drive, ws, mustUUID(t, queued.RunID)); err != nil {
+		t.Fatalf("driving the queued run: %v", err)
+	}
+	_, view := f.getRun(t, queued.RunID)
+	if view.Status != string(gen.RunStatusFailed) || view.FailureClass.Value != "policy_refused" {
+		t.Fatalf("status = %q class = %q (%s), want failed policy_refused",
+			view.Status, view.FailureClass.Value, view.StatusReason)
+	}
+	if !strings.Contains(view.StatusReason, "來源授權還在審查") {
+		t.Errorf("status reason = %q, want it to name the license restriction", view.StatusReason)
+	}
+	if fake.Dispatches() != 0 {
+		t.Fatalf("dispatches = %d; a restricted skill's package reached a sandbox", fake.Dispatches())
+	}
+
+	restrict(nil)
+	lifted := f.start(t)
+	if err := driveThroughPolls(context.Background(), svc.Drive, ws, mustUUID(t, lifted.RunID)); err != nil {
+		t.Fatalf("driving a run after the restriction was lifted: %v", err)
+	}
+	if _, view := f.getRun(t, lifted.RunID); view.Status != string(gen.RunStatusSucceeded) {
+		t.Fatalf("after lifting the restriction the run ended as %q (%s), want succeeded", view.Status, view.StatusReason)
 	}
 }
 
