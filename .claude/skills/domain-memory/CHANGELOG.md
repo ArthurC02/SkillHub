@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.3.6
+
+### Fixed
+
+- `validate` checks the `domain-memory-policy.json` beside the Registry, as `validate-policy` does, and fails on what it finds; it said `Registry is valid.` and exited 0 over a policy with `storage_mode: "cloud"`, so a CI or an agent running only `validate` passed a Domain Memory whose policy was broken. A policy that is not JSON is named the same way; a Registry without a policy file is checked as before. Like git conflict markers, a refused policy is reported alone, since the policy decides what the rest of the check requires.
+
 ## 2.3.5
 
 ### Changed

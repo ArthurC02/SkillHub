@@ -303,6 +303,39 @@ class RegistryValidationTest(RegistryTestCase):
         with self.assertRaisesRegex(ValueError, f"^invalid JSON: {re.escape(str(path))}$"):
             load_json(path)
 
+    def test_validate_checks_the_policy_beside_the_registry(self) -> None:
+        policy_file = self.repo / "memory" / "domain-memory-policy.json"
+        sound = policy_file.read_text(encoding="utf-8")
+        cases = [
+            ("a sound policy", sound, []),
+            ("a policy with an unknown storage_mode", json.dumps({**json.loads(sound), "storage_mode": "cloud"}),
+             ["policy has an invalid storage_mode: 'cloud' is not one of external, ignored, tracked"]),
+            ("a policy that is not JSON", "{", [f"invalid JSON: {policy_file}"]),
+        ]
+        for label, text, errors in cases:
+            with self.subTest(label):
+                policy_file.write_text(text, encoding="utf-8")
+                self.assertEqual(errors, validate(self.repo / "memory", None, False))
+        with self.subTest("a broken policy is reported alone when reviewed records are required"):
+            policy_file.write_text(json.dumps({**json.loads(sound), "storage_mode": "cloud"}), encoding="utf-8")
+            self.assertEqual(
+                ["policy has an invalid storage_mode: 'cloud' is not one of external, ignored, tracked"],
+                validate(self.repo / "memory", None, True),
+            )
+        with self.subTest("no policy"):
+            policy_file.unlink()
+            self.assertEqual([], validate(self.repo / "memory", None, False))
+
+    def test_the_validate_command_fails_on_a_broken_policy_it_would_have_called_valid(self) -> None:
+        policy_file = self.repo / "memory" / "domain-memory-policy.json"
+        policy_file.write_text(json.dumps({**json.loads(policy_file.read_text(encoding="utf-8")), "storage_mode": "cloud"}),
+                               encoding="utf-8")
+        result = self.run_cli("validate", "--registry-root", str(self.repo / "memory"))
+        self.assertEqual(
+            (1, "", "ERROR: policy has an invalid storage_mode: 'cloud' is not one of external, ignored, tracked"),
+            (result.returncode, result.stdout, result.stderr.strip()),
+        )
+
     def test_requiring_reviewed_records_rejects_a_candidate_registry(self) -> None:
         self.seed(
             "contexts.json",

@@ -27,7 +27,7 @@ from .evidence import (
     verifier,
     without_derived_keys,
 )
-from .policy import review_mode
+from .policy import existing_policy, review_mode, validate_policy
 from .sources import lies_under, repository_files
 from .store import (
     create_concept_layout,
@@ -403,6 +403,9 @@ def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list
     errors = _conflict_marker_errors(root)
     if errors:
         return errors
+    errors.extend(_policy_errors(root))
+    if errors:
+        return errors
     if require_reviewed and review_mode(root) != "scm-verified":
         errors.append("local-draft-only Domain Memory cannot satisfy --require-reviewed")
     records, documents, load_errors = _load_registry_assets(root)
@@ -417,6 +420,14 @@ def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list
     if repo_root is not None and "contexts.json" in documents:
         errors.extend(_implementation_path_errors(documents["contexts.json"], repo_root))
     return errors
+
+
+def _policy_errors(root: Path) -> list[str]:
+    try:
+        policy = existing_policy(root)
+    except ValueError as error:
+        return [str(error)]
+    return [] if policy is None else validate_policy(policy)
 
 
 def _conflict_marker_errors(root: Path) -> list[str]:
