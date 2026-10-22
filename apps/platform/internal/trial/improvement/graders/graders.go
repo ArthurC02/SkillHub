@@ -164,10 +164,13 @@ func recordVersion(
 	if err != nil {
 		return Grader{}, err
 	}
+	metadata := map[string]any{"name": grader.Name, "version": v.Version, "reason": rev.reason}
+	if !grader.WorkspaceID.Valid {
+		metadata["scope"] = audit.ScopeOperator
+	}
 	err = audit.Log(ctx, tx, audit.Event{
 		Actor: actor, Workspace: grader.WorkspaceID, Action: audit.ActionGraderVersionCreate,
-		ResourceType: audit.ResourceEvaluationGrader, ResourceID: grader.ID,
-		Metadata: map[string]any{"name": grader.Name, "version": v.Version, "reason": rev.reason},
+		ResourceType: audit.ResourceEvaluationGrader, ResourceID: grader.ID, Metadata: metadata,
 	})
 	return listedGrader(gen.ListVisibleEvaluationGradersRow{
 		ID: grader.ID, WorkspaceID: grader.WorkspaceID, Name: grader.Name,

@@ -23,6 +23,8 @@ var operatorActions = audit.PlatformFilter{
 		audit.ActionSkillRedistribution,
 		audit.ActionSkillCuration,
 		audit.ActionCreditGrant,
+		audit.ActionAccountErasureExpedite,
+		audit.ActionExposureReview,
 		audit.ActionDispatchHalt,
 		audit.ActionDispatchResume,
 		audit.ActionModelBudgetSet,
@@ -50,7 +52,7 @@ var operatorActions = audit.PlatformFilter{
 		audit.ActionProposalSucceed,
 		audit.ActionProposalFail,
 	},
-	ScopedActions: []string{audit.ActionSkillTakedown},
+	ScopedActions: []string{audit.ActionSkillTakedown, audit.ActionSkillRestore, audit.ActionGraderVersionCreate},
 	Scope:         audit.ScopeOperator,
 }
 

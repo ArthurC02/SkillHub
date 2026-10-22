@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 
@@ -188,6 +189,11 @@ func (w exposureWorld) approveAndAssertExposedToAnyone(t *testing.T) {
 	if n := countRow(t, w.pool, `SELECT count(*) FROM audit_events WHERE action = 'publication.exposure.review' AND resource_id = (SELECT id FROM publications WHERE skill_id = $1)`,
 		mustUUID(t, w.skillID)); n != 1 {
 		t.Errorf("the review wrote %d audit events, want 1", n)
+	}
+	if !slices.ContainsFunc(allAuditEvents(t, w.operator), func(e map[string]any) bool {
+		return e["action"] == "publication.exposure.review" && e["actor_user_id"] == w.operator.userID
+	}) {
+		t.Error("the operator log leaves out the exposure review")
 	}
 }
 

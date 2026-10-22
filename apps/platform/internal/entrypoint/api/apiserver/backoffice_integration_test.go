@@ -363,6 +363,18 @@ func TestOperatorAuditLogListsOnlyOperatorActions(t *testing.T) {
 	if code, _ := getAdmin(t, operator, "/admin/credits/"+owner.workspaceID); code != http.StatusOK {
 		t.Fatalf("ledger read: got %d", code)
 	}
+	if code, out := operatorCall(t, operator, http.MethodDelete, "/admin/skills/"+operatorDown+"/takedown", ""); code != http.StatusNoContent {
+		t.Fatalf("operator lift: got %d (%v)", code, out)
+	}
+	if code, out := postJSON(t, owner, "/skills/"+selfDown+"/restore", `{}`); code != http.StatusNoContent {
+		t.Fatalf("owner restore: got %d (%v)", code, out)
+	}
+	erased := a.login(t, "bo-log-erased")
+	if code, out := operatorCall(t, operator, http.MethodPost, "/admin/accounts/"+erased.userID+"/erasure", `{"reason":"emailed erasure request"}`); code != http.StatusAccepted {
+		t.Fatalf("operator erasure: got %d (%v)", code, out)
+	}
+	platformGrader, _ := createGrader(t, operator, "/admin/evaluation/graders", freshName("bo-log-platform"), "fail when rude")["id"].(string)
+	ownGrader, _ := createGrader(t, owner, "/evaluation/graders", freshName("bo-log-own"), "fail when rude")["id"].(string)
 	if _, err := pool.Exec(context.Background(), `INSERT INTO audit_events
 		(actor_user_id, action, resource_type, resource_id, metadata, created_at)
 		VALUES ($1, 'credit.lookup', 'credit_account', $2, '{}', '2020-01-01T00:00:00Z')`,
@@ -376,8 +388,17 @@ func TestOperatorAuditLogListsOnlyOperatorActions(t *testing.T) {
 			return e["action"] == action && e["resource_id"] == resource && e["actor_user_id"] == operator.userID
 		})
 	}
-	if !has("skill.takedown", operatorDown) || !has("skill.access_restrict", held) || !has("credit.lookup", owner.userID) {
-		t.Errorf("the log misses an operator action; got %d events", len(events))
+	for _, want := range []struct{ action, resource string }{
+		{"skill.takedown", operatorDown}, {"skill.restore", operatorDown}, {"skill.access_restrict", held},
+		{"credit.lookup", owner.userID}, {"account.erasure_expedited", erased.userID},
+		{"evaluation_grader.version_create", platformGrader},
+	} {
+		if !has(want.action, want.resource) {
+			t.Errorf("the log misses the operator's %s on %s; got %d events", want.action, want.resource, len(events))
+		}
+	}
+	if slices.ContainsFunc(events, func(e map[string]any) bool { return e["resource_id"] == ownGrader }) {
+		t.Error("a workspace grader version is in the operator log")
 	}
 	assertOnlyOperatorEventsWithObjectMetadata(t, events, selfDown)
 	assertAuditLogNewestFirst(t, events)
