@@ -275,6 +275,7 @@ type GenerateRejected struct {
 }
 
 func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(GenerateLongest))
 	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {
 		return

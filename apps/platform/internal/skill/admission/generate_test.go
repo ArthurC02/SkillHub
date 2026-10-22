@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -922,5 +923,28 @@ func TestTheGenerationLeaseOutlastsEveryAttemptPlusTheImportThatFollowsTheLast(t
 	longestRun := generateMaxAttempts*generateTimeout + importEnrichmentWindow
 	if generateSlotLease <= longestRun {
 		t.Fatalf("lease %v ends before the longest generation %v; a second paid generation could take the slot", generateSlotLease, longestRun)
+	}
+}
+
+type deadlineRecorder struct {
+	*httptest.ResponseRecorder
+	deadline time.Time
+}
+
+func (d *deadlineRecorder) SetWriteDeadline(t time.Time) error {
+	d.deadline = t
+	return nil
+}
+
+func TestAGenerateRequestMayWriteItsAnswerForAsLongAsTheLongestGenerationTakes(t *testing.T) {
+	rec := &deadlineRecorder{ResponseRecorder: httptest.NewRecorder()}
+	before := time.Now()
+	(&Handler{}).Generate(rec, httptest.NewRequest(http.MethodPost, "/skills/generate", strings.NewReader("{}")))
+	if rec.deadline.Before(before.Add(GenerateLongest)) {
+		t.Errorf("write deadline = %v after the request, want at least %v so a paid generation is not cut off before its answer",
+			rec.deadline.Sub(before), GenerateLongest)
+	}
+	if longestRun := generateMaxAttempts*generateTimeout + importEnrichmentWindow; GenerateLongest <= longestRun {
+		t.Errorf("GenerateLongest = %v, want longer than every attempt plus the import %v", GenerateLongest, longestRun)
 	}
 }

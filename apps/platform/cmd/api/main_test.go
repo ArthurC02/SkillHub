@@ -931,6 +931,25 @@ func TestNginxDoesNotBufferTheEventStream(t *testing.T) {
 	}
 }
 
+func TestNginxWaitsForTheLongestGeneration(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("no source path for this test file")
+	}
+	raw, err := os.ReadFile(filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..", "infra", "images", "web", "nginx.conf"))
+	if err != nil {
+		t.Fatalf("read nginx.conf: %v", err)
+	}
+	m := regexp.MustCompile(`location = /skills/generate \{[^}]*proxy_read_timeout (\d+)s;`).FindStringSubmatch(string(raw))
+	if m == nil {
+		t.Fatal("nginx.conf has no /skills/generate location with its own proxy_read_timeout; the 150s default cuts a paid generation off")
+	}
+	seconds, _ := strconv.Atoi(m[1])
+	if got := time.Duration(seconds) * time.Second; got <= ingest.GenerateLongest {
+		t.Errorf("nginx waits %v for /skills/generate, want longer than the longest generation %v", got, ingest.GenerateLongest)
+	}
+}
+
 func TestTheAPIRefusesToStartWithItsPostureRefusalsATokenlessProviderAndBadTrustedProxies(t *testing.T) {
 	refusals := startupRefusals(envx.Posture{SecureCookies: true}, run.NewRegistry(run.NewProvider("tokenless", "http://tokenless", "")), nil,
 		errors.New("TRUSTED_PROXIES entry \"caddy\" is neither an address nor a CIDR prefix"))

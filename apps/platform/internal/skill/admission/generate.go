@@ -587,7 +587,8 @@ func generateUsageReader(tx pgx.Tx) policy.UsageReader {
 }
 
 const (
-	generateSlotLease          = generateMaxAttempts*generateTimeout + importEnrichmentWindow + time.Minute
+	GenerateLongest            = generateMaxAttempts*generateTimeout + importEnrichmentWindow + time.Minute
+	generateSlotLease          = GenerateLongest
 	generateSlotReleaseTimeout = 5 * time.Second
 )
 
