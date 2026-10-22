@@ -179,9 +179,7 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
         onChange={(check) => setDraft((current) => ({ ...current, check }))}
       />
       <ReadFailure error={suggestError} what="建議">
-        <p role="alert">
-          {suggestFailureSentence(suggestError)}
-        </p>
+        <p role="alert">{suggestFailureSentence(suggestError)}</p>
       </ReadFailure>
       {message && <p role="status">{message}</p>}
 

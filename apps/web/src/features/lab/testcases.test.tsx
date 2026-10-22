@@ -1080,15 +1080,18 @@ test("TEST-002 a 503 is worded as unavailable and names the manual path, without
 test.each([
   [403, "封測受邀", "not on the invite list"],
   [422, "這次沒有呼叫模型、也沒有扣點", "點數不足，無法開始建議驗收條件"],
-])("a %i from suggesting criteria says what happened and names the manual path", async (status, sentence, serverWords) => {
-  stubPlatform({ suggest: { status, error: serverWords } });
-  await render();
+])(
+  "a %i from suggesting criteria says what happened and names the manual path",
+  async (status, sentence, serverWords) => {
+    stubPlatform({ suggest: { status, error: serverWords } });
+    await render();
 
-  await act(async () => button("請系統建議（選用）").click());
-  await waitFor(() => (container.textContent ?? "").includes(sentence));
-  expect(container.textContent).toContain("驗收條件可以自己手動輸入");
-  expect(container.textContent).not.toContain(serverWords);
-});
+    await act(async () => button("請系統建議（選用）").click());
+    await waitFor(() => (container.textContent ?? "").includes(sentence));
+    expect(container.textContent).toContain("驗收條件可以自己手動輸入");
+    expect(container.textContent).not.toContain(serverWords);
+  },
+);
 
 test("丙-150 建立失敗於 401 走 ReadFailure，印登入而不是 not authenticated", async () => {
   const calls = stubPlatform({ create: { status: 401, error: "not authenticated" } });
