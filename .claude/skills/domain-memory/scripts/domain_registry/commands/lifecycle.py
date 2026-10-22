@@ -44,6 +44,7 @@ from ..transaction import recover_interrupted_update, transaction_path
 from ..updates import (
     add_promoted_evidence,
     demote_local_reviews,
+    drop_promoted_evidence,
     promote_candidate,
     reconcile_pending_update,
     reconciliation_path,
@@ -156,13 +157,20 @@ def _added_citations(args: argparse.Namespace) -> tuple[dict, ...]:
     return tuple(citation(repo_root, path, *lines) for path, lines in spans)
 
 
+def _dropped_spans(args: argparse.Namespace) -> tuple[tuple[str, int, int], ...]:
+    return tuple((path, *line_range(lines)) for path, _, lines in (given.rpartition(":") for given in args.drop_cite))
+
+
 def handle_promote_candidate(args: argparse.Namespace) -> int:
     citations = _added_citations(args)
+    dropped = _dropped_spans(args)
     superseded = promote_candidate(
         args.package_root.resolve(), args.registry_root.resolve(), args.asset, args.id, amend=args.amend
     )
     if citations:
         add_promoted_evidence(args.package_root.resolve(), args.asset, args.id, citations)
+    if dropped:
+        drop_promoted_evidence(args.package_root.resolve(), args.asset, args.id, dropped)
     print(
         f"{args.asset}/{args.id} is in registry_updates; "
         "ship-package reviews it once the proposal is approved."

@@ -136,26 +136,29 @@ def _write_text(path: Path, text: str) -> None:
         output.write(text)
 
 
-def stale_indexes(root: Path) -> list[Path]:
-    return [path for path, text in _expected_indexes(root).items() if not path.is_file() or path.read_text(encoding="utf-8") != text]
+def stale_indexes(root: Path, documents: dict[str, dict[str, Any]] | None = None) -> list[Path]:
+    expected = _expected_indexes(root, documents)
+    return [path for path, text in expected.items() if not path.is_file() or path.read_text(encoding="utf-8") != text]
 
 
 def refresh_indexes(root: Path) -> list[Path]:
-    stale = stale_indexes(root)
     expected = _expected_indexes(root)
+    stale = [path for path, text in expected.items() if not path.is_file() or path.read_text(encoding="utf-8") != text]
     for path in stale:
         _write_text(path, expected[path])
     return stale
 
 
-def _expected_indexes(root: Path) -> dict[Path, str]:
+def _expected_indexes(root: Path, documents: dict[str, dict[str, Any]] | None = None) -> dict[Path, str]:
     if not has_registry(root):
         return {}
+    loaded = documents or {}
     expected = {registry_dir(root) / INDEX: root_index()}
     for name in ASSET_KEYS:
         asset = asset_of(name)
         if (registry_dir(root) / asset).is_dir():
-            expected[registry_dir(root) / asset / INDEX] = asset_index(asset, read_document(root, name)[ASSET_KEYS[name]])
+            document = loaded[name] if name in loaded else read_document(root, name)
+            expected[registry_dir(root) / asset / INDEX] = asset_index(asset, document[ASSET_KEYS[name]])
     return expected
 
 

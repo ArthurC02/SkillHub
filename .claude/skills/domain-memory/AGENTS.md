@@ -79,7 +79,7 @@ It offers no command that writes; candidates and Change Packages stay on the com
 | Prove rules the code already enforces and package them | `harvest --spec <file> [--through verified]`, which stops before the signed commit; run the same spec again to resume after a failed step, or `discard-harvest --package-root <package> --reason <text>` to undo it |
 | Extract the model from a requirement, code or a change | [domain-memory-extract](skills/domain-memory-extract/SKILL.md); `change-coupling --repo-root <repo> --root <code root>` shows which modules change together, `extract-sql-schema` turns a schema's constraints into candidate rules, and `compare-registry` scores an extraction against a reviewed Registry |
 | Propose a new fact | `cite --path <file> --lines <a>-<b> --show`, then `upsert-candidate --asset <asset> --record-file <file>`, once per record |
-| Undo a candidate | `retract-candidate --asset <asset> --id <id> --reason <text>`; a reviewed record is withdrawn by a superseding proposal instead |
+| Undo a candidate | `retract-candidate --asset <asset> --id <id> --reason <text>`, with `--id` repeated to withdraw several in one update; a reviewed record is withdrawn by a superseding proposal instead |
 | See every Change Package and its state | `list-proposals --changes-root <dir>` |
 | Change a reviewed fact | `init-change-package --output <dir> --requirement-id <id> --proposal-id <id> --proposer <you>`, add `registry_updates`, then `validate-change-package --package-root <dir> --as-status <the next status>` before each transition; [proposal lifecycle](references/proposal-lifecycle.md) has the states |
 | Recover after a crash | `recover-registry-update --repo-root <repo>` |

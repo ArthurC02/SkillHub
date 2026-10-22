@@ -166,10 +166,12 @@ def mutate_registry(
         backup = root / f".domain-registry-backup-{operation}"
         staging_registry = registry_dir(staging)
         try:
-            already = set(validate(root, repo_root, require_reviewed=False))
             shutil.copytree(registry_dir(root), staging_registry)
             mutate(staging)
-            errors = [error for error in validate(staging, repo_root, require_reviewed=False) if error not in already]
+            errors = validate(staging, repo_root, require_reviewed=False)
+            if errors:
+                already = set(validate(root, repo_root, require_reviewed=False))
+                errors = [error for error in errors if error not in already]
             if errors:
                 raise ValueError("registry update is invalid: " + "; ".join(errors))
             journal = transaction_path(root)

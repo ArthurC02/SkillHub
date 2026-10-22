@@ -176,16 +176,35 @@ class SqlSchemaTest(unittest.TestCase):
             ("check", "shipments.weight", 13, 13), ("unique", "orders.code", 4, 4), ("unique-index", "orders_code_key", 12, 12),
         ])
 
-    def test_a_comment_after_the_column_comma_describes_that_column_and_a_plain_index_is_no_rule(self) -> None:
+    def test_only_comment_on_describes_a_column_and_a_plain_or_partial_index_is_no_rule(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         root = Path(temporary.name)
         (root / "m").mkdir()
         (root / "m" / "0001.sql").write_text(MIGRATION, encoding="utf-8")
+        (root / "m" / "0002.sql").write_text(
+            "CREATE INDEX orders_live ON orders (code) WHERE code IS NOT NULL;\n"
+            "COMMENT ON COLUMN orders.code IS 'the public code';\n", encoding="utf-8")
         schema = read_schema(root / "m", root)
         columns = schema.tables["orders"].columns
-        self.assertEqual((columns["total"]["described"], columns["code"]["described"]), (True, False))
-        self.assertNotIn("orders_total_idx", [c.name for c in schema.constraints])
+        self.assertEqual((columns["total"]["described"], columns["code"]["described"]), (False, True))
+        self.assertEqual(["orders_code_key"], [c.name for c in schema.constraints if c.kind == "unique-index"])
+        self.assertEqual([], [c.name for c in schema.constraints if c.name in {"orders_total_idx", "orders_live"}])
+
+    def test_a_renamed_column_keeps_its_line_and_takes_the_comment_under_its_new_name(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / "m").mkdir()
+        (root / "m" / "0001.sql").write_text(MIGRATION, encoding="utf-8")
+        (root / "m" / "0002.sql").write_text(
+            "ALTER TABLE orders RENAME COLUMN total TO amount;\n"
+            "ALTER TABLE orders RENAME code TO reference;\n"
+            "COMMENT ON COLUMN orders.amount IS 'what the buyer pays';\n", encoding="utf-8")
+        schema = read_schema(root / "m", root)
+        columns = schema.tables["orders"].columns
+        self.assertEqual(["amount", "id", "reference"], sorted(columns))
+        self.assertEqual(({"line": 3, "described": True}, []), (columns["amount"], [u for u in schema.unparsed if "RENAME" in u]))
 
 
 if __name__ == "__main__":

@@ -170,7 +170,7 @@ def test_tables_columns_and_partitions_are_counted_from_create_alter_and_drop():
     assert sorted(inputs.tables) == ["runs", "users"]
     assert sorted(inputs.tables["runs"].columns) == ["id", "state", "token_hash", "user_id"]
     assert report["inventory"] == {
-        "migrations": 2, "tables": 2, "partitions": 1, "columns": 8, "queries": 5, "constraints": 7,
+        "migrations": 2, "tables": 2, "partitions": 1, "columns": 8, "queries": 5, "constraints": 6,
         "foreign_keys": 3, "types": 0, "registry_records": 6, "unparsed_statements": 4,
     }
 
@@ -185,21 +185,21 @@ def test_every_unread_statement_is_named_with_its_file_and_line():
     ]
 
 
-def test_a_column_is_described_by_a_trailing_comment_a_comment_line_above_or_comment_on():
+def test_a_column_is_described_only_by_comment_on_not_by_a_comment_beside_or_above_it():
     inputs, report = measured()
     users = inputs.tables["users"].columns
     assert [(name, info["line"], info["described"]) for name, info in users.items()] == \
-        [("id", 2, False), ("email", 3, True), ("home_workspace", 5, True), ("plain", 6, True)]
+        [("id", 2, False), ("email", 3, False), ("home_workspace", 5, False), ("plain", 6, True)]
     assert (inputs.tables["users"].described, inputs.tables["runs"].described) == (True, False)
     assert ratio(report, "meaning.tables_described") == (1, 2)
-    assert ratio(report, "meaning.columns_described") == (3, 8)
+    assert ratio(report, "meaning.columns_described") == (1, 8)
 
 
 def test_column_and_table_level_rules_are_counted_and_a_primary_key_is_not():
     inputs, _ = measured()
     assert sorted((c.kind, c.name, c.file[-8:], c.line) for c in inputs.schema.constraints) == [
         ("check", "runs.state", "init.sql", 14), ("check", "runs_done_has_note", "init.sql", 16),
-        ("partial-index", "runs_live", "init.sql", 24), ("trigger", "runs_guard", "init.sql", 31),
+        ("trigger", "runs_guard", "init.sql", 31),
         ("unique", "runs_token_key", "more.sql", 2), ("unique", "users.email", "init.sql", 3),
         ("unique-index", "runs_note_key", "init.sql", 23),
     ]
@@ -213,7 +213,7 @@ def test_foreign_keys_come_from_column_references_table_constraints_and_added_co
 
 def test_a_constraint_counts_as_cited_only_when_a_record_cites_its_line():
     _, report = measured()
-    assert ratio(report, "rules.constraints_cited_by_a_record") == (1, 7)
+    assert ratio(report, "rules.constraints_cited_by_a_record") == (1, 6)
     assert "db/migrations/0001_init.sql:16 check runs_done_has_note" not in report["details"]["uncited_constraints"]
     assert "db/migrations/0001_init.sql:14 check runs.state" in report["details"]["uncited_constraints"]
 

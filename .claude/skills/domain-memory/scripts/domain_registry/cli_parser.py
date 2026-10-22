@@ -404,7 +404,7 @@ def _add_candidate_commands(commands: argparse._SubParsersAction) -> None:
     add_path(retract_parser, "--registry-root")
     add_path(retract_parser, "--repo-root")
     add_asset(retract_parser)
-    retract_parser.add_argument("--id", required=True)
+    retract_parser.add_argument("--id", required=True, action="append", help="repeatable: every record is withdrawn in one update")
     retract_parser.add_argument("--reason", required=True)
     _add_promote_command(commands)
 
@@ -425,6 +425,9 @@ def _add_promote_command(commands: argparse._SubParsersAction) -> None:
     )
     promote_parser.add_argument(
         "--cite-function", action="append", default=[], help="repeatable PATH:NAME, a Go func or Python def to add as evidence"
+    )
+    promote_parser.add_argument(
+        "--drop-cite", action="append", default=[], help="repeatable PATH:START-END to remove from the promoted record's evidence"
     )
 
 

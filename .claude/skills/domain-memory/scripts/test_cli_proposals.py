@@ -95,6 +95,24 @@ class CliProposalsTest(RegistryTestCase):
              for entry in update["record"]["evidence"]],
         )
 
+    def test_promote_candidate_drops_a_cited_span_and_refuses_one_the_record_does_not_cite(self) -> None:
+        package = self.package_with_a_candidate_rule("An order total is non-negative.")
+        (self.repo / "total_test.py").write_text("def test_total():\n    assert True\n", encoding="utf-8")
+        promote = ("promote-candidate", "--package-root", str(package), "--registry-root", str(self.repo / "memory"),
+                   "--asset", "rules", "--id", "order-total", "--repo-root", str(self.repo))
+        self.run_cli(*promote, "--cite", "README.md:1-1", "--cite-function", "total_test.py:test_total")
+        refused = self.run_cli(*promote, "--drop-cite", "README.md:2-2")
+        self.assertEqual(
+            (1, "ERROR: rules/order-total does not cite README.md:2-2, so there is nothing to drop"),
+            (refused.returncode, refused.stderr.strip()),
+        )
+        self.assertEqual(0, self.run_cli(*promote, "--drop-cite", "README.md:1-1").returncode)
+        [update] = self.registry_updates(package)
+        self.assertEqual(
+            [("total_test.py", 1, 2)],
+            [(entry["path"], entry["lines"]["start"], entry["lines"]["end"]) for entry in update["record"]["evidence"]],
+        )
+
     def harvest_spec(self, **changes: object) -> Path:
         check = "go test -v -run ^TestTotal$ ./orders/"
         entry = {

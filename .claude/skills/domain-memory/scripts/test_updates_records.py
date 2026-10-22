@@ -217,15 +217,34 @@ class UpdatesRecordsTest(RegistryTestCase):
             self.repo / "memory",
             self.repo,
             "contexts",
-            "billing",
+            ["billing"],
             "Examination found no Billing boundary in this repository.",
         )
         self.assertEqual([entry["id"] for entry in self.stored_contexts()], ["orders"])
 
+    def test_retracting_several_candidates_is_one_update_with_one_audit_event(self) -> None:
+        self.two_contexts()
+        retract_candidate(self.repo / "memory", self.repo, "contexts", ["billing", "orders"], "Neither is a boundary.")
+        events = (self.repo / "memory" / "audit" / "events.jsonl").read_text(encoding="utf-8").splitlines()
+        retractions = [json.loads(line) for line in events if json.loads(line)["operation"] == "retract-candidate"]
+        self.assertEqual(([], [["billing", "orders"]]), ([entry["id"] for entry in self.stored_contexts()], [event["record_ids"] for event in retractions]))
+
+    def test_retracting_several_candidates_writes_none_when_one_is_missing(self) -> None:
+        self.two_contexts()
+        with self.assertRaisesRegex(ValueError, "no such record: contexts/shipping"):
+            retract_candidate(self.repo / "memory", self.repo, "contexts", ["billing", "shipping"], "Gone.")
+        self.assertEqual([entry["id"] for entry in self.stored_contexts()], ["billing", "orders"])
+
+    def test_retracting_without_an_id_is_refused(self) -> None:
+        self.two_contexts()
+        with self.assertRaisesRegex(ValueError, "at least one --id"):
+            retract_candidate(self.repo / "memory", self.repo, "contexts", [], "Gone.")
+        self.assertEqual([entry["id"] for entry in self.stored_contexts()], ["billing", "orders"])
+
     def test_retracting_a_candidate_records_its_reason(self) -> None:
         self.two_contexts()
         retract_candidate(
-            self.repo / "memory", self.repo, "contexts", "billing", "Not a boundary."
+            self.repo / "memory", self.repo, "contexts", ["billing"], "Not a boundary."
         )
         recorded = json.loads(
             (self.repo / "memory" / "audit" / "events.jsonl")
@@ -233,7 +252,7 @@ class UpdatesRecordsTest(RegistryTestCase):
             .splitlines()[-1]
         )
         self.assertEqual(recorded["operation"], "retract-candidate")
-        self.assertEqual(recorded["record_id"], "billing")
+        self.assertEqual(recorded["record_ids"], ["billing"])
         self.assertEqual(recorded["reason"], "Not a boundary.")
 
     def test_a_reviewed_record_cannot_be_retracted(self) -> None:
@@ -243,7 +262,7 @@ class UpdatesRecordsTest(RegistryTestCase):
         write_document(self.repo / "memory", "contexts.json", value)
         with self.assertRaisesRegex(ValueError, "superseding proposal"):
             retract_candidate(
-                self.repo / "memory", self.repo, "contexts", "orders", "Changed my mind."
+                self.repo / "memory", self.repo, "contexts", ["orders"], "Changed my mind."
             )
         self.assertEqual(
             [entry["id"] for entry in self.stored_contexts()], ["billing", "orders"]
@@ -264,7 +283,7 @@ class UpdatesRecordsTest(RegistryTestCase):
         self.two_contexts()
         with self.assertRaisesRegex(ValueError, "no such record"):
             retract_candidate(
-                self.repo / "memory", self.repo, "contexts", "shipping", "Never existed."
+                self.repo / "memory", self.repo, "contexts", ["shipping"], "Never existed."
             )
         self.assertEqual(
             [entry["id"] for entry in self.stored_contexts()], ["billing", "orders"]
@@ -273,7 +292,7 @@ class UpdatesRecordsTest(RegistryTestCase):
     def test_retracting_a_candidate_requires_a_reason(self) -> None:
         self.two_contexts()
         with self.assertRaisesRegex(ValueError, "requires the reason"):
-            retract_candidate(self.repo / "memory", self.repo, "contexts", "billing", "   ")
+            retract_candidate(self.repo / "memory", self.repo, "contexts", ["billing"], "   ")
 
     def test_a_referenced_candidate_cannot_be_retracted(self) -> None:
         self.two_contexts()
@@ -289,7 +308,7 @@ class UpdatesRecordsTest(RegistryTestCase):
         )
         with self.assertRaisesRegex(ValueError, "references unknown context"):
             retract_candidate(
-                self.repo / "memory", self.repo, "contexts", "billing", "No longer wanted."
+                self.repo / "memory", self.repo, "contexts", ["billing"], "No longer wanted."
             )
         self.assertEqual(
             [entry["id"] for entry in self.stored_contexts()], ["billing", "orders"]

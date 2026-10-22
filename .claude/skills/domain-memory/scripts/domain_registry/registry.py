@@ -415,7 +415,7 @@ def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list
     errors.extend(_validate_evidence(records, repo_root))
     errors.extend(
         f"{shown_path(path, root)} does not list the records beside it; run refresh-indexes --registry-root {shown_path(root, None)}"
-        for path in stale_indexes(root)
+        for path in stale_indexes(root, documents)
     )
     if repo_root is not None and "contexts.json" in documents:
         errors.extend(_implementation_path_errors(documents["contexts.json"], repo_root))

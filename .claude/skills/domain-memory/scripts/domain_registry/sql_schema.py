@@ -13,6 +13,7 @@ DROP_TABLE = re.compile(rf"^\s*DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?({IDENT})", re.
 ALTER_TABLE = re.compile(rf"^\s*ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?({IDENT})\s+(.*)$", re.I | re.S)
 ADD_COLUMN = re.compile(rf"^ADD\s+(?:COLUMN\s+)?(?:IF\s+NOT\s+EXISTS\s+)?({IDENT})\s+", re.I)
 DROP_COLUMN = re.compile(rf"^DROP\s+(?:COLUMN\s+)?(?:IF\s+EXISTS\s+)?({IDENT})", re.I)
+RENAME_COLUMN = re.compile(rf"^RENAME\s+(?:COLUMN\s+)?({IDENT})\s+TO\s+({IDENT})", re.I)
 ADD_CONSTRAINT = re.compile(
     rf"^ADD\s+(?:CONSTRAINT\s+({IDENT})\s+)?(CHECK|UNIQUE|FOREIGN\s+KEY|PRIMARY\s+KEY|EXCLUDE)\b", re.I)
 OTHER_ALTER = re.compile(
@@ -21,7 +22,6 @@ OTHER_ALTER = re.compile(
 CREATE_INDEX = re.compile(
     rf"^\s*CREATE\s+(UNIQUE\s+)?INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+NOT\s+EXISTS\s+)?({IDENT})\s+ON\s+"
     rf"(?:ONLY\s+)?({IDENT})", re.I)
-PARTIAL_INDEX = re.compile(r"\)\s*WHERE\b", re.I)
 CREATE_TRIGGER = re.compile(
     rf"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?TRIGGER\s+({IDENT})\s.*?\bON\s+({IDENT})", re.I | re.S)
 COMMENT_ON = re.compile(rf"^\s*COMMENT\s+ON\s+(TABLE|COLUMN)\s+({IDENT})(?:\.({IDENT}))?\s+IS\s+", re.I)
@@ -33,7 +33,7 @@ IGNORED_STATEMENT = re.compile(
     r"^(CREATE\s+(OR\s+REPLACE\s+)?(FUNCTION|VIEW)|CREATE\s+(EXTENSION|SCHEMA|POLICY|SEQUENCE)"
     r"|DROP\s+(FUNCTION|TYPE|EXTENSION)|ALTER\s+(INDEX|TYPE|SEQUENCE|FUNCTION)"
     r"|LOCK\s+TABLE|GRANT|REVOKE|INSERT|UPDATE|DELETE|SET|SELECT|DO\s+\$|BEGIN|COMMIT)", re.I)
-INDEX_KINDS = {"unique-index", "partial-index"}
+UNIQUE_INDEX = "unique-index"
 REFERENCES = re.compile(rf"\bREFERENCES\s+({IDENT})", re.I)
 COLUMN_LINE = re.compile(rf"^\s*({IDENT})\s+\S")
 TABLE_LEVEL = re.compile(r"^\s*(CONSTRAINT|PRIMARY\s+KEY|UNIQUE|CHECK|FOREIGN\s+KEY|EXCLUDE|LIKE)\b", re.I)
@@ -96,7 +96,7 @@ class Schema:
 
 
 def _declares_the_same(earlier: Constraint, later: Constraint) -> bool:
-    if earlier.kind in INDEX_KINDS or later.kind in INDEX_KINDS:
+    if UNIQUE_INDEX in (earlier.kind, later.kind):
         return False
     return (earlier.kind == "trigger") == (later.kind == "trigger") and (earlier.table, earlier.name) == (later.table, later.name)
 
@@ -237,7 +237,7 @@ def _read_table(schema: Schema, file: str, line: int, statement: str, match: re.
         if column is None:
             schema.unparsed.append(f"{file}:{first}: {text[:60]}")
             continue
-        table.columns[column.group(1)] = {"line": first, "described": "--" in part}
+        table.columns[column.group(1)] = {"line": first, "described": False}
         _read_column_rules(schema, name, span, text)
 
 
@@ -280,6 +280,7 @@ def _read_alter(schema: Schema, file: str, line: int, statement: str, match: re.
             continue
         added = ADD_COLUMN.match(text)
         dropped = DROP_COLUMN.match(text)
+        renamed = RENAME_COLUMN.match(text)
         dropped_constraint = DROP_CONSTRAINT.match(text)
         if dropped_constraint:
             _drop_constraint(schema, table, dropped_constraint.group(1))
@@ -290,12 +291,19 @@ def _read_alter(schema: Schema, file: str, line: int, statement: str, match: re.
             _read_column_rules(schema, table, span, text[len("ADD "):].replace("COLUMN ", "", 1).strip())
         elif dropped:
             schema.tables[table].columns.pop(dropped.group(1), None)
+        elif renamed:
+            _rename_column(schema.tables[table], renamed.group(1), renamed.group(2))
         elif not OTHER_ALTER.match(text):
             schema.unparsed.append(f"{file}:{line}: ALTER TABLE {table} {text[:50]}")
 
 
+def _rename_column(table: Table, old: str, new: str) -> None:
+    if old in table.columns:
+        table.columns[new] = table.columns.pop(old)
+
+
 def _drop_constraint(schema: Schema, table: str, name: str) -> None:
-    _undeclare(schema, lambda c: c.kind == "trigger" or c.kind in INDEX_KINDS or (c.table, c.name) != (table, name))
+    _undeclare(schema, lambda c: c.kind in ("trigger", UNIQUE_INDEX) or (c.table, c.name) != (table, name))
 
 
 def _read_drop(schema: Schema, _file: str, _line: int, _statement: str, match: re.Match[str]) -> None:
@@ -304,11 +312,9 @@ def _read_drop(schema: Schema, _file: str, _line: int, _statement: str, match: r
 
 def _read_index(schema: Schema, file: str, line: int, statement: str, match: re.Match[str]) -> None:
     unique, name, table = match.group(1), match.group(2), match.group(3)
-    partial = PARTIAL_INDEX.search(strip_comments(statement)) is not None
-    _undeclare(schema, lambda c: c.kind not in INDEX_KINDS or c.name != name)
-    if unique or partial:
-        kind = "unique-index" if unique else "partial-index"
-        _declare(schema, Constraint.at(kind, table, Span(file, line, line + statement.count("\n")), name, statement))
+    _undeclare(schema, lambda c: c.kind != UNIQUE_INDEX or c.name != name)
+    if unique:
+        _declare(schema, Constraint.at(UNIQUE_INDEX, table, Span(file, line, line + statement.count("\n")), name, statement))
 
 
 def _read_trigger(schema: Schema, file: str, line: int, statement: str, match: re.Match[str]) -> None:
@@ -318,7 +324,7 @@ def _read_trigger(schema: Schema, file: str, line: int, statement: str, match: r
 
 def _read_drop_index(schema: Schema, _file: str, _line: int, _statement: str, match: re.Match[str]) -> None:
     name = match.group(1)
-    _undeclare(schema, lambda c: c.kind not in INDEX_KINDS or c.name != name)
+    _undeclare(schema, lambda c: c.kind != UNIQUE_INDEX or c.name != name)
 
 
 def _read_drop_trigger(schema: Schema, _file: str, _line: int, _statement: str, match: re.Match[str]) -> None:

@@ -471,6 +471,7 @@ def discard_harvest(package_root: Path, registry_root: Path, repo_root: Path, re
         raise ValueError(f"the package at {shown} is {status}; only a draft, submitted or verified package is discarded")
     named_elsewhere = _named_by_other_packages(package_root)
     retracted, kept = [], []
+    drafts: dict[str, list[str]] = {}
     for asset, record_id in _updated_records(proposal):
         record = record_by_id(registry_root, asset, record_id)
         if record is None or _reviewed(registry_root, asset, record):
@@ -478,8 +479,10 @@ def discard_harvest(package_root: Path, registry_root: Path, repo_root: Path, re
         if (asset, record_id) in named_elsewhere:
             kept.append(f"{asset}/{record_id}")
             continue
-        retract_candidate(registry_root, repo_root, asset, record_id, reason)
+        drafts.setdefault(asset, []).append(record_id)
         retracted.append(f"{asset}/{record_id}")
+    for asset, record_ids in drafts.items():
+        retract_candidate(registry_root, repo_root, asset, record_ids, reason)
     event = {"operation": "discard-harvest", "package": shown, "retracted": retracted, "kept": kept, "reason": reason.strip()}
     with writer_lock(registry_root):
         append_locked(registry_root, event)

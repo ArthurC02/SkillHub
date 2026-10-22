@@ -2,6 +2,22 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.4.1
+
+### Added
+
+- `retract-candidate` takes `--id` more than once and removes every named candidate of the asset in one Registry update with one audit event listing their ids, so a batch of extraction candidates is withdrawn in one validation pass rather than one per record; `discard-harvest` retracts a package's drafts the same way. A missing or reviewed id refuses the whole batch.
+- `promote-candidate --drop-cite PATH:START-END`, repeatable, removes the citation of those lines from the promoted record's evidence, so an amendment can drop lines the code no longer holds instead of re-merging a stale citation from the reviewed record; it refuses lines the record does not cite.
+
+### Changed
+
+- A Registry update validates the Registry it started from only when the updated copy fails validation, to tell new errors from inherited ones, and validation builds the expected indexes from the records it has already loaded, so an update on a large Registry reads each record once rather than four times.
+
+### Fixed
+
+- `extract-sql-schema` no longer writes a rule for a non-unique index, partial or not: such an index only serves queries and states no rule, and reviewers were retracting every one of them. A unique index still yields a rule.
+- The SQL reader follows `ALTER TABLE ... RENAME COLUMN`, so a `COMMENT ON COLUMN` under the new name is attributed to the column instead of being dropped, and a column counts as described only by `COMMENT ON COLUMN`, which the database catalog holds, not by a `--` comment beside its declaration.
+
 ## 2.4.0
 
 ### Added

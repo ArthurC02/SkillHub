@@ -1,4 +1,5 @@
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -276,26 +277,29 @@ def _citing_the_same_excerpts(asset: str, records: list[dict[str, Any]], record:
 
 
 def retract_candidate(
-    root: Path, repo_root: Path | None, asset: str, record_id: str, reason: str
+    root: Path, repo_root: Path | None, asset: str, record_ids: Sequence[str], reason: str
 ) -> None:
     name = asset_file_name(asset)
     if not reason.strip():
         raise ValueError(
             "retracting a candidate requires the reason it does not belong"
         )
+    if not record_ids:
+        raise ValueError("retracting a candidate requires at least one --id")
 
     def mutate(staging: Path) -> None:
         document = read_document(staging, name)
         records = document[ASSET_KEYS[name]]
-        existing = find_record(records, record_id)
-        if existing is None:
-            raise ValueError(f"no such record: {asset}/{record_id}")
-        if is_reviewed(asset, document, existing):
-            raise ValueError(
-                f"cannot retract reviewed record: {record_id}; a reviewed record "
-                "is withdrawn through a superseding proposal"
-            )
-        records.remove(existing)
+        for record_id in record_ids:
+            existing = find_record(records, record_id)
+            if existing is None:
+                raise ValueError(f"no such record: {asset}/{record_id}")
+            if is_reviewed(asset, document, existing):
+                raise ValueError(
+                    f"cannot retract reviewed record: {record_id}; a reviewed record "
+                    "is withdrawn through a superseding proposal"
+                )
+            records.remove(existing)
         write_document(staging, name, document)
 
     mutate_registry(
@@ -305,7 +309,7 @@ def retract_candidate(
         audit_event=lambda: {
             "operation": "retract-candidate",
             "asset": asset,
-            "record_id": record_id,
+            "record_ids": list(record_ids),
             "reason": reason.strip(),
         },
     )
@@ -489,6 +493,23 @@ def add_promoted_evidence(
     for update in proposal.get("registry_updates", []):
         if updates_record(update, asset, record_id) and isinstance(update.get("record"), dict):
             update["record"]["evidence"] = _with_citations(update["record"].get("evidence"), citations)
+    write_json(path, proposal)
+
+
+def drop_promoted_evidence(
+    package_root: Path, asset: str, record_id: str, spans: Sequence[tuple[str, int, int]]
+) -> None:
+    path = package_root / PROPOSAL_FILE
+    proposal = load_json(path)
+    for update in proposal.get("registry_updates", []):
+        if updates_record(update, asset, record_id) and isinstance(update.get("record"), dict):
+            evidence = update["record"].get("evidence")
+            cited = list(evidence) if isinstance(evidence, list) else []
+            held = {_cited_span(reference) for reference in cited}
+            for span in spans:
+                if span not in held:
+                    raise ValueError(f"{asset}/{record_id} does not cite {span[0]}:{span[1]}-{span[2]}, so there is nothing to drop")
+            update["record"]["evidence"] = [reference for reference in cited if _cited_span(reference) not in set(spans)]
     write_json(path, proposal)
 
 
