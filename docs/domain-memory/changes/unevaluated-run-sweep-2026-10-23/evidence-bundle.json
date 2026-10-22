@@ -1,0 +1,38 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "unevaluated-run-sweep",
+  "proposal_id": "unevaluated-run-sweep",
+  "registry_revision": {
+    "observed_commit": "dd7bae26eae8183b5a102509f54ce3e0676e8a8d",
+    "registry_digest": "sha256:ab8d077f5ae10f74b959ce293017a8b9f33f93ab89eb7d2022ba8ee0ffe18db0",
+    "committed_digest": "sha256:cfa3f71cd7410b49ef4e03a47bde1874ae4870db309bcf3bea90f2f6275aa784"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-finished-run-without-an-evaluation-is-enqueued-again",
+      "mutated_protection": "apps/platform/internal/trial/improvement/consumer.go:99: if has[run.ID] { -> if false && has[run.ID] {",
+      "failure_evidence": "=== RUN   TestAFinishedRunWhoseEvaluationNeverStartedIsEnqueuedAgain\n    unevaluated_run_sweep_integration_test.go:72: run dfc58773-2e73-449f-ba2a-ea4ed6842f72 enqueued = true, want false\n--- FAIL: TestAFinishedRunWhoseEvaluationNeverStartedIsEnqueuedAgain (0.11s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.563s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-finished-run-without-an-evaluation-is-enqueued-again",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAFinishedRunWhoseEvaluationNeverStartedIsEnqueuedAgain$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:1fa9ad863573420fd0ee4f8e170b548852baac96fcefd4bbc606600af4974847",
+      "finished_at": "2026-10-22T22:48:10.584078Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

@@ -1,0 +1,124 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "unevaluated-run-sweep",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "unevaluated-run-sweep",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-22T22:47:40.644551Z",
+  "verified_at": "2026-10-22T22:48:53.290159Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "dd7bae26eae8183b5a102509f54ce3e0676e8a8d",
+    "registry_digest": "sha256:ab8d077f5ae10f74b959ce293017a8b9f33f93ab89eb7d2022ba8ee0ffe18db0",
+    "committed_digest": "sha256:cfa3f71cd7410b49ef4e03a47bde1874ae4870db309bcf3bea90f2f6275aa784"
+  },
+  "affected_contexts": [
+    "eval",
+    "run"
+  ],
+  "rule_ids": [
+    "a-finished-run-without-an-evaluation-is-enqueued-again"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "eval",
+    "invariant": "eval decides which finished runs still need an evaluation; run only answers which runs finished in a time window, through its read model.",
+    "evidence": [
+      "apps/platform/internal/trial/improvement/consumer.go:64-108",
+      "db/queries/runs.sql:394-401"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "eval reads finished runs from the run read model through a function injected at the worker entrypoint, as it already reads run facts for an evaluation.",
+    "consistency": "eventual",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/improvement/consumer.go:64-108",
+      "db/queries/runs.sql:394-401"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The evaluation of a finished run was triggered only by the run-succeeded and run-failed outbox events; once an event was dead-lettered or the evaluation job was discarded, the run showed as not evaluated forever and nothing noticed."
+    ],
+    "decision": "A periodic job pages through runs that finished as succeeded or failed between a day and 30 minutes ago, keeps those with no evaluation record, and enqueues them through the existing unique enqueue; evaluation itself is idempotent.",
+    "invariants_preserved": [
+      "A run whose evaluation job is still live is not enqueued twice.",
+      "Cancelled and timed-out runs are not evaluated."
+    ],
+    "rejected_alternatives": [
+      "Re-delivering dead-lettered outbox events: it misses evaluation jobs discarded after the event was delivered, and it replays events to every consumer."
+    ],
+    "proof_obligations": [
+      "rule-a-finished-run-without-an-evaluation-is-enqueued-again"
+    ],
+    "counterfactual_check": "Enqueueing a run even when it already has an evaluation fails TestAFinishedRunWhoseEvaluationNeverStartedIsEnqueuedAgain."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-finished-run-without-an-evaluation-is-enqueued-again",
+        "statement": "Every run that finished as succeeded or failed is evaluated even when the event or job that triggers its evaluation exhausted its retries: every 30 minutes, runs that finished more than 30 minutes and less than a day ago and have no evaluation record are enqueued for evaluation again, through the same enqueue that ignores a run whose evaluation job is still live.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A succeeded run whose run-succeeded event was dead-lettered has no evaluation; the next sweep enqueues it. A cancelled run, a run that finished ten minutes ago, a run that finished two days ago and a run that already has an evaluation are left alone."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/consumer.go",
+            "lines": {
+              "start": 64,
+              "end": 108
+            },
+            "content_sha256": "sha256:4417f4a40ebcca2482a12f1badb459ef79adbac8791d0092f185ec62054fa963",
+            "excerpt_sha256": "sha256:33488562383e1078444b1794af7e88cb16108f61e769fdda74729aca78b62caf"
+          },
+          {
+            "path": "db/queries/runs.sql",
+            "lines": {
+              "start": 394,
+              "end": 401
+            },
+            "content_sha256": "sha256:6592202645cdfd5ff97591f562a9c3a8d5a638f886ab95809a0c27e8b17357e8",
+            "excerpt_sha256": "sha256:dbd7b2941986772cd727383424957612fd207c197585d76a739215aef7a2e795"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/unevaluated_run_sweep_integration_test.go",
+            "lines": {
+              "start": 35,
+              "end": 75
+            },
+            "content_sha256": "sha256:eaddbd925db0441a6b45879180cce76be5be7a00d7fd3ce4a51ab0bb66b931ba",
+            "excerpt_sha256": "sha256:f763701ea710e0f644c556b40ebd566d5714bdc41f2f6cd2179d8878231f87be"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T22:48:52.366604Z",
+      "scope": "A finished run whose evaluation trigger was lost is enqueued again",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "dd7bae26eae8183b5a102509f54ce3e0676e8a8d",
+        "registry_digest": "sha256:ab8d077f5ae10f74b959ce293017a8b9f33f93ab89eb7d2022ba8ee0ffe18db0",
+        "committed_digest": "sha256:cfa3f71cd7410b49ef4e03a47bde1874ae4870db309bcf3bea90f2f6275aa784"
+      }
+    }
+  ]
+}

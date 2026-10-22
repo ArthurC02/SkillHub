@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "unevaluated-run-sweep",
+  "proposal_id": "unevaluated-run-sweep",
+  "obligations": [
+    {
+      "id": "rule-a-finished-run-without-an-evaluation-is-enqueued-again",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-finished-run-without-an-evaluation-is-enqueued-again",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-finished-run-without-an-evaluation-is-enqueued-again"
+        }
+      ],
+      "expected_outcome": "Succeeded and failed runs inside the window without an evaluation are enqueued; cancelled, too recent, too old and evaluated runs are not.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAFinishedRunWhoseEvaluationNeverStartedIsEnqueuedAgain$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

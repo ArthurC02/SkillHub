@@ -1,0 +1,23 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "unevaluated-run-sweep",
+  "status": "draft",
+  "intent": "No finished run stays unevaluated because its trigger was lost.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context eval lists the new rule as reviewed, proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-finished-run-without-an-evaluation-is-enqueued-again",
+      "statement": "Every run that finished as succeeded or failed is evaluated even when the event or job that triggers its evaluation exhausted its retries: every 30 minutes, runs that finished more than 30 minutes and less than a day ago and have no evaluation record are enqueued for evaluation again, through the same enqueue that ignores a run whose evaluation job is still live."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/trial/improvement/consumer.go",
+    "db/queries/runs.sql",
+    "apps/platform/internal/entrypoint/api/apiserver/unevaluated_run_sweep_integration_test.go"
+  ]
+}

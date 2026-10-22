@@ -390,3 +390,12 @@ ORDER BY 1;
 SELECT count(*)::bigint FROM run_artifact_upload_intents
 WHERE not_before <= now()
   AND (attempted_at IS NULL OR attempted_at < now() - @claim_lease::interval);
+
+-- name: ListFinishedRunsBetween :many
+SELECT id, workspace_id, finished_at::timestamptz AS finished_at
+FROM runs
+WHERE status::text = ANY(@statuses::text[])
+  AND finished_at <= @finished_before
+  AND (finished_at, id) > (@cursor_at::timestamptz, @cursor_id::uuid)
+ORDER BY finished_at, id
+LIMIT @page_size;

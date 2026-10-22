@@ -713,6 +713,30 @@ func (q *Queries) ListEvaluationSuggestions(ctx context.Context, arg ListEvaluat
 	return items, nil
 }
 
+const listRunsWithAnEvaluation = `-- name: ListRunsWithAnEvaluation :many
+SELECT DISTINCT run_id FROM evaluations WHERE run_id = ANY($1::uuid[])
+`
+
+func (q *Queries) ListRunsWithAnEvaluation(ctx context.Context, runIds []pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listRunsWithAnEvaluation, runIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var run_id pgtype.UUID
+		if err := rows.Scan(&run_id); err != nil {
+			return nil, err
+		}
+		items = append(items, run_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listStalePendingEvaluations = `-- name: ListStalePendingEvaluations :many
 SELECT id, workspace_id, run_id
 FROM evaluations

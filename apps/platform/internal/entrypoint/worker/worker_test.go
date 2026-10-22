@@ -264,6 +264,7 @@ func TestEveryScheduledJobHasAWorker(t *testing.T) {
 
 	want := map[string]bool{
 		EvaluationRecoveryArgs{}.Kind():     true,
+		UnevaluatedRunSweepArgs{}.Kind():    false,
 		batch.BatchAdvanceArgs{}.Kind():     true,
 		RunSuperviseArgs{}.Kind():           true,
 		RunOrphanScanArgs{}.Kind():          true,

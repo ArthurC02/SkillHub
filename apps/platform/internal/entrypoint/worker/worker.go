@@ -90,7 +90,7 @@ func addEvaluationServices(set *Set, pool *pgxpool.Pool, deps Deps, r evaluation
 	wireEvaluationModelAndEvents(set.Evaluations, pool, deps.LLM)
 	set.Batches = wiring.NewEvaluationBatches(pool, set.Runs, r.testlab, r.trace)
 
-	set.RunEvents = &eval.RunEventConsumer{HasCurrentEvaluation: set.Evaluations.HasCurrentEvaluation}
+	set.RunEvents = wiring.NewRunEventConsumer(pool, set.Evaluations, set.Runs)
 	set.SkillVersions = &eval.SkillVersionConsumer{}
 	set.BatchEvents = &batch.BatchEventConsumer{HasUnsettledBatch: set.Batches.HasUnsettledBatch}
 }
@@ -231,6 +231,7 @@ func addDomainWorkers(set *Set, workers *river.Workers) {
 	addWorker(set, workers, &RunSuperviseWorker{Runs: set.Runs})
 	addWorker(set, workers, &EvaluationExecuteWorker{Svc: set.Evaluations})
 	addWorker(set, workers, &EvaluationRecoveryWorker{Svc: set.Evaluations})
+	addWorker(set, workers, &UnevaluatedRunSweepWorker{Consumer: set.RunEvents})
 	addWorker(set, workers, &SuggestionsAppliedWorker{Svc: set.Evaluations})
 	addWorker(set, workers, &EvaluationBatchAdvanceWorker{Svc: set.Batches})
 }
@@ -267,6 +268,7 @@ func periodicJobs(set *Set, deps Deps, outboxWorker *outbox.Worker) []*river.Per
 		scheduleAt(args, river.PeriodicInterval(every), runOnStart)
 	}
 	schedule(EvaluationRecoveryArgs{}, eval.RecoveryInterval, true)
+	schedule(UnevaluatedRunSweepArgs{}, eval.UnevaluatedSweepInterval, false)
 	schedule(batch.BatchAdvanceArgs{}, batch.BatchAdvanceInterval, true)
 	schedule(RunSuperviseArgs{}, run.SuperviseInterval, true)
 	if deps.CreationLimits.Valid() {

@@ -2,6 +2,7 @@ package wiring
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -167,5 +168,21 @@ func evalRunFacts(evaluated readmodel.EvaluationRun) facts.Run {
 		Status: evaluated.Status, StatusReason: evaluated.StatusReason, RuntimeSnapshot: evaluated.RuntimeSnapshot,
 		StartedAt: evaluated.StartedAt, FinishedAt: evaluated.FinishedAt, FailureClass: evaluated.FailureClass,
 		Terminal: evaluated.Terminal, Succeeded: evaluated.Succeeded,
+	}
+}
+
+func NewRunEventConsumer(pool *pgxpool.Pool, evaluations *eval.Service, runs *run.Service) *eval.RunEventConsumer {
+	reads := readmodel.Reader{Pool: runs.Pool}
+	return &eval.RunEventConsumer{
+		HasCurrentEvaluation: evaluations.HasCurrentEvaluation,
+		Pool:                 pool,
+		FinishedRunsAfter: func(ctx context.Context, after eval.FinishedRun, before time.Time, limit int32) ([]eval.FinishedRun, error) {
+			rows, err := reads.EvaluableRunsFinishedAfter(ctx, readmodel.FinishedRun(after), before, limit)
+			out := make([]eval.FinishedRun, len(rows))
+			for i, row := range rows {
+				out[i] = eval.FinishedRun(row)
+			}
+			return out, err
+		},
 	}
 }

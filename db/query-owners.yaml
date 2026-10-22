@@ -154,6 +154,7 @@ queries:
   ListRunPolicies: run
   AccountPurgeReady: run
   GetRun: run
+  ListFinishedRunsBetween: run
   GetRunByOriginKey: run
   GetRunCancellation: run
   ListWorkspaceRuns: run
@@ -482,6 +483,8 @@ scope:
   GetPublicPublication: platform-wide
   ListExposureStates: platform-wide
   ListStalePendingEvaluations: worker
+  ListFinishedRunsBetween: worker
+  ListRunsWithAnEvaluation: worker
   StopLongPausedBatches: worker
   ListSourcesToCheck: worker
   ListArtifactsClaimingObject: worker

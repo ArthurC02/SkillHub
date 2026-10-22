@@ -2,6 +2,8 @@ package worker
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	"github.com/riverqueue/river"
 
@@ -19,4 +21,21 @@ type EvaluationRecoveryWorker struct {
 
 func (w *EvaluationRecoveryWorker) Work(ctx context.Context, _ *river.Job[EvaluationRecoveryArgs]) error {
 	return w.Svc.RecoverPending(ctx)
+}
+
+type UnevaluatedRunSweepArgs struct{}
+
+func (UnevaluatedRunSweepArgs) Kind() string { return "enqueue_unevaluated_runs" }
+
+type UnevaluatedRunSweepWorker struct {
+	river.WorkerDefaults[UnevaluatedRunSweepArgs]
+	Consumer *eval.RunEventConsumer
+}
+
+func (w *UnevaluatedRunSweepWorker) Work(ctx context.Context, _ *river.Job[UnevaluatedRunSweepArgs]) error {
+	enqueued, err := w.Consumer.EnqueueUnevaluated(ctx, time.Now())
+	if enqueued > 0 {
+		slog.Warn("finished runs had no evaluation; enqueued them again", "runs", enqueued)
+	}
+	return err
 }

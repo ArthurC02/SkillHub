@@ -180,3 +180,6 @@ VALUES (@judge_panel, @reason, sqlc.narg(set_by))
 ON CONFLICT (singleton) DO UPDATE
 SET judge_panel = EXCLUDED.judge_panel, reason = EXCLUDED.reason, set_by = EXCLUDED.set_by, set_at = now()
 RETURNING *;
+
+-- name: ListRunsWithAnEvaluation :many
+SELECT DISTINCT run_id FROM evaluations WHERE run_id = ANY(@run_ids::uuid[]);

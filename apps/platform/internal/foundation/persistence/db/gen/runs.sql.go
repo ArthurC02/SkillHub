@@ -840,6 +840,56 @@ func (q *Queries) ListActiveRuns(ctx context.Context, arg ListActiveRunsParams) 
 	return items, nil
 }
 
+const listFinishedRunsBetween = `-- name: ListFinishedRunsBetween :many
+SELECT id, workspace_id, finished_at::timestamptz AS finished_at
+FROM runs
+WHERE status::text = ANY($1::text[])
+  AND finished_at <= $2
+  AND (finished_at, id) > ($3::timestamptz, $4::uuid)
+ORDER BY finished_at, id
+LIMIT $5
+`
+
+type ListFinishedRunsBetweenParams struct {
+	Statuses       []string
+	FinishedBefore pgtype.Timestamptz
+	CursorAt       pgtype.Timestamptz
+	CursorID       pgtype.UUID
+	PageSize       int32
+}
+
+type ListFinishedRunsBetweenRow struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	FinishedAt  pgtype.Timestamptz
+}
+
+func (q *Queries) ListFinishedRunsBetween(ctx context.Context, arg ListFinishedRunsBetweenParams) ([]ListFinishedRunsBetweenRow, error) {
+	rows, err := q.db.Query(ctx, listFinishedRunsBetween,
+		arg.Statuses,
+		arg.FinishedBefore,
+		arg.CursorAt,
+		arg.CursorID,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListFinishedRunsBetweenRow
+	for rows.Next() {
+		var i ListFinishedRunsBetweenRow
+		if err := rows.Scan(&i.ID, &i.WorkspaceID, &i.FinishedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOutboxEventsByAggregate = `-- name: ListOutboxEventsByAggregate :many
 SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at, next_delivery_at FROM outbox_events
 WHERE aggregate_type = $1 AND aggregate_id = $2

@@ -50,6 +50,7 @@
 - [a-fetch-request-starts-without-an-earlier-approval](/rules/a-fetch-request-starts-without-an-earlier-approval) — Each new fetch the model asks for waits for the person to confirm that exact URL; an earlier approval never carries over.
 - [a-fetched-package-is-at-most-the-zip-ceiling](/rules/a-fetched-package-is-at-most-the-zip-ceiling) — An import from a URL accepts a package of exactly the zip ceiling and refuses one byte more.
 - [a-finished-agent-run-takes-no-more-steps](/rules/a-finished-agent-run-takes-no-more-steps) — A run that has finished cannot take another step.
+- [a-finished-run-without-an-evaluation-is-enqueued-again](/rules/a-finished-run-without-an-evaluation-is-enqueued-again) — Every run that finished as succeeded or failed is evaluated even when the event or job that triggers its evaluation exhausted its retries: every 30 minutes, ru….
 - [a-forged-analytics-session-cookie-is-replaced](/rules/a-forged-analytics-session-cookie-is-replaced) — An analytics session cookie that is not a minted id is never used as the session id; it is replaced with a fresh one.
 - [a-fork-carries-its-sources-access-restriction](/rules/a-fork-carries-its-sources-access-restriction) — A fork starts with its source's access restriction, so forking cannot get around a licensing hold.
 - [a-fork-name-series-stays-flat](/rules/a-fork-name-series-stays-flat) — A fork of a fork reuses the base name instead of growing it, treating only an ordinal of two or more as a series number.
