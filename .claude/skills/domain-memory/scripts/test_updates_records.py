@@ -290,11 +290,8 @@ class UpdatesRecordsTest(RegistryTestCase):
         demote_local_reviews(self.repo / "memory", self.repo)
         return read_document(self.repo / "memory", "contexts.json")
 
-    def test_demoting_local_reviews_sets_a_reviewed_record_to_candidate(self) -> None:
-        self.assertEqual("candidate", self.demoted_contexts()["contexts"][0]["status"])
-
-    def test_demoting_local_reviews_sets_the_other_record_to_candidate_too(self) -> None:
-        self.assertEqual("candidate", self.demoted_contexts()["contexts"][1]["status"])
+    def test_demoting_local_reviews_sets_every_reviewed_record_to_candidate(self) -> None:
+        self.assertEqual(["candidate", "candidate"], [record["status"] for record in self.demoted_contexts()["contexts"]])
 
     def test_demoting_local_reviews_drops_the_review_of_every_record(self) -> None:
         demoted = self.demoted_contexts()

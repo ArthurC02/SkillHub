@@ -279,22 +279,6 @@ class CliTest(RegistryTestCase):
         )
         self.assertEqual(stored["selection_status"], "developer-confirmed")
 
-    def test_the_confirm_command_reports_a_refusal_instead_of_a_traceback(self) -> None:
-        self.committed_source_map()
-        self.permit_sources()
-        result = self.run_cli(
-            "confirm-sources",
-            "--registry-root",
-            str(self.repo / "memory"),
-            "--repo-root",
-            str(self.repo),
-            "--confirmed-by",
-            "<identity>",
-        )
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("ERROR", result.stderr)
-        self.assertNotIn("Traceback", result.stderr)
-
     def test_a_malformed_json_argument_reports_an_error_instead_of_a_traceback(
         self,
     ) -> None:

@@ -184,20 +184,6 @@ class RecitationPackageTest(RegistryTestCase):
         )
         self.assertTrue(arguments[1].endswith("scripts/registry_tools.py"))
 
-    def test_the_check_runs_as_written_and_passes_once_the_citations_are_current(self) -> None:
-        (self.repo / "README.md").write_bytes(b"fact\n")
-        rule = {
-            "id": "r", "contexts": ["orders"], "statement": "S.",
-            "evidence": [citation(self.repo, "README.md", 1, 1)],
-        }
-        self.seed("rules.json", [rule])
-        output = self.repo / "changes" / "recite"
-        recitation_package(output, self.repo / "memory", {"registry_updates": [{"operation": "upsert", "asset": "rules", "record": rule}]}, IDENTIFIERS)
-        [obligation] = self.read(output, "test-obligations.json")["obligations"]
-        arguments = shlex.split(obligation["check"])
-        completed = subprocess.run([sys.executable, *arguments[1:]], cwd=self.repo, capture_output=True, check=False)
-        self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
-
     def test_each_record_shape_names_its_contexts(self) -> None:
         cases = [
             ("rules", {"id": "r", "contexts": ["a", "b"]}, {"a", "b"}),

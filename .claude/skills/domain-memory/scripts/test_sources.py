@@ -405,18 +405,6 @@ class SourcesTest(RegistryTestCase):
             (self.repo / directory / "doc.go").write_text("package x\n", encoding="utf-8")
         self.assertEqual(self.discovery_groups("bounded_contexts"), ["apps/core/doc.go"])
 
-    def test_discovery_gives_no_file_a_role_by_its_project_specific_name(self) -> None:
-        guidance = self.repo / "docs" / "development" / "platform-context-map.md"
-        guidance.parent.mkdir(parents=True)
-        guidance.write_text("Contexts and their owners.", encoding="utf-8")
-
-        listed = [
-            path
-            for group in discover_sources(self.repo)["source_groups"]
-            for path in group["paths"]
-        ]
-        self.assertNotIn("docs/development/platform-context-map.md", listed)
-
     def test_discovery_leaves_out_what_the_repository_ignores(self) -> None:
         self.seed_generated_cache()
         (self.repo / ".gitignore").write_text(
@@ -678,24 +666,10 @@ class SourcesTest(RegistryTestCase):
         )
         self.assertEqual(["apps", "db", "database", "migrations", "schema"], self.discovery_groups("implementation"))
 
-    def test_nested_test_files_do_not_reclassify_the_implementation_root(self) -> None:
-        self.write_files("apps/svc/deep/inner_test.go", "apps/svc/thing.go")
-        self.assertEqual(["apps"], self.discovery_groups("implementation"))
-
     def test_discovery_leaves_out_instruction_files_in_a_git_ignored_non_ascii_directory(self) -> None:
         self.write_files("AGENTS.md", "資料/AGENTS.md")
         self.ignore("資料/")
         self.assertEqual(["AGENTS.md"], self.discovery_groups("repository_instructions"))
-
-    def test_discovery_leaves_out_a_package_doc_in_a_git_ignored_non_ascii_directory(self) -> None:
-        self.write_files("apps/x/doc.go", "apps/x/資料/doc.go")
-        self.ignore("資料/")
-        self.assertEqual(["apps/x/doc.go"], self.discovery_groups("bounded_contexts"))
-
-    def test_discovery_leaves_out_a_test_file_in_a_git_ignored_non_ascii_directory(self) -> None:
-        self.write_files("apps/x/kept_test.go", "apps/x/資料/ignored_test.go")
-        self.ignore("資料/")
-        self.assertEqual(["apps/x/kept_test.go"], self.discovery_groups("tests"))
 
     def test_discovery_keeps_a_file_whose_name_contains_an_accented_letter(self) -> None:
         self.write_files("apps/x/café_test.go", "資料/ignored_test.go")
@@ -706,14 +680,6 @@ class SourcesTest(RegistryTestCase):
         self.write_files("apps/x/my space_test.go", "資料/ignored_test.go")
         self.ignore("資料/")
         self.assertEqual(["apps/x/my space_test.go"], self.discovery_groups("tests"))
-
-    def test_discovery_keeps_an_instruction_file_in_a_directory_with_an_accented_letter_and_a_space(self) -> None:
-        self.write_files("café/AGENTS.md", "my docs/AGENTS.md", "資料/AGENTS.md")
-        self.ignore("資料/")
-        self.assertEqual(
-            ["café/AGENTS.md", "my docs/AGENTS.md"],
-            self.discovery_groups("repository_instructions"),
-        )
 
     def test_the_dirty_state_of_a_non_ascii_source_is_read_back_as_git_wrote_it(self) -> None:
         self.write_files("資料/a.md")

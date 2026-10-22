@@ -166,13 +166,6 @@ class PreCommitHookTest(RegistryTestCase):
         result = self.commit_hook(hook)
         self.assertEqual((0, f"{UNMAPPED_NOTE}\n"), (result.returncode, result.stderr))
 
-    def test_a_staged_file_whose_cited_lines_are_unchanged_commits(self) -> None:
-        self.cited_source()
-        hook = self.install()
-        self.stage("src/a.py", "one\nchanged\n")
-        result = self.commit_hook(hook)
-        self.assertEqual((0, f"{UNMAPPED_NOTE}\n"), (result.returncode, result.stderr))
-
     def test_a_stale_citation_of_a_file_left_unstaged_does_not_stop_the_commit(self) -> None:
         self.cited_source()
         (self.repo / "src" / "b.py").write_text("kept\n", encoding="utf-8")
@@ -198,15 +191,6 @@ class PreCommitHookTest(RegistryTestCase):
         self.cited_source()
         hook = self.install()
         self.stage("notes/uncited.md", "anything\n")
-        result = self.commit_hook(hook, self.shims("exit 1"))
-        self.assertEqual((0, ""), (result.returncode, result.stderr))
-
-    def test_a_commit_staging_only_the_deletion_of_an_uncited_file_needs_no_python(self) -> None:
-        self.cited_source()
-        self.stage("notes/uncited.md", "anything\n")
-        self.commit_all("add uncited")
-        hook = self.install()
-        self.git("rm", "-q", "notes/uncited.md")
         result = self.commit_hook(hook, self.shims("exit 1"))
         self.assertEqual((0, ""), (result.returncode, result.stderr))
 

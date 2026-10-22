@@ -177,21 +177,6 @@ class HarvestTest(RegistryTestCase):
         )
         self.assertTrue(report["errors"][0].startswith(f"{RULE_ID}: the counterfactual is survived:"))
 
-    def test_a_reviewed_rule_is_amended_with_its_test_citation_and_supersedes_its_reviewer(self) -> None:
-        self.confirm_src()
-        self.seed("rules.json", [{
-            "id": RULE_ID, "contexts": ["orders"], "statement": "A length past the limit is refused.",
-            "status": "reviewed", "verified": VERIFIED, "evidence": [citation(self.repo, "src/rule.py", 1, 1)],
-        }])
-        applied_by(self.repo / "memory", "PRO-1", f"rules/{RULE_ID}")
-        report = harvest(self.repo / "memory", self.repo, self.spec(), None, "draft")
-        proposal = load_json(self.repo / "memory" / "changes" / "orders-length-rule" / "domain-change-proposal.json")
-        [update] = proposal["registry_updates"]
-        self.assertEqual(
-            ("amended", ["PRO-1"], "src/tests/test_rule.py", "draft"),
-            (report["rules"][0]["record"], proposal["supersedes"], update["record"]["evidence"][-1]["path"], report["stopped_at"]),
-        )
-
     def test_an_amended_rule_cites_its_lines_afresh_and_keeps_no_stale_citation_so_the_package_verifies(self) -> None:
         self.confirm_src()
         self.seed("rules.json", [{

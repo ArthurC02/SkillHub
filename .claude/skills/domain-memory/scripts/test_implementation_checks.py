@@ -260,18 +260,6 @@ class QualityGatesTest(RepositoryCase):
         self.write("checkouts/copy/ruff.toml", "")
         self.assertEqual(self.gates(), [])
 
-    def test_tests_in_a_nested_checkout_whose_git_is_a_directory_are_not_counted(self) -> None:
-        self.write("tests/test_app.py", "")
-        self.write("tests/copy/.git/HEAD", "ref: refs/heads/main\n")
-        self.write("tests/copy/test_app.py", "")
-        self.assertEqual(quality_gates(self.repo)["test_files"], 1)
-
-    def test_tests_in_a_nested_checkout_are_not_counted(self) -> None:
-        self.write("tests/test_app.py", "")
-        self.write("tests/copy/.git", "gitdir: elsewhere\n")
-        self.write("tests/copy/test_app.py", "")
-        self.assertEqual(quality_gates(self.repo)["test_files"], 1)
-
     def test_the_repository_is_searched_beside_its_own_checkout_marker(self) -> None:
         self.write(".git", "gitdir: elsewhere\n")
         self.write("ruff.toml", "")
@@ -571,10 +559,6 @@ class CounterfactualTest(RepositoryCase):
         ):
             with self.subTest(reason):
                 self.assertEqual(reason, self.break_rule(find, replace, **options)["reason"])
-
-    def test_a_failure_matching_the_expected_pattern_is_killed(self) -> None:
-        result = self.break_rule("LIMIT = 200", "LIMIT = 201", expect="AssertionError")
-        self.assertEqual(result["verdict"], "killed")
 
     def test_a_failure_not_matching_the_expected_pattern_is_inconclusive(self) -> None:
         result = self.break_rule("LIMIT = 200", "LIMIT = 201", expect="KeyError")

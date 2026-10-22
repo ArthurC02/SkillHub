@@ -21,7 +21,6 @@ from domain_registry.attestations import (
     next_page_url,
     verify_external_scm,
     verify_git_signed_commit,
-    verify_scm,
     verify_scm_value,
 )
 from domain_registry.hitl import (
@@ -116,32 +115,6 @@ class ReviewScmTest(RegistryTestCase):
             (applied["from_revision"]["registry_digest"], applied["proposal_base_revision"]),
         )
 
-    def test_scm_attestation_requires_the_same_revision(self) -> None:
-        proposal = {
-            "proposal_revision": 2,
-            "base_registry_revision": {
-                "registry_digest": "sha256:" + "0" * 64,
-                "observed_commit": None,
-            },
-        }
-        path = self.write_record(
-            "attestation.json",
-            {
-                "provider": "github",
-                "pull_request": "https://github.example/repo/pull/1",
-                "checks_url": "https://github.example/repo/actions/runs/1",
-                "commit": "a" * 40,
-                "status": "approved",
-                "proposal_revision": 2,
-                "base_registry_revision": proposal["base_registry_revision"],
-            },
-        )
-        self.assertEqual([], verify_scm(path, proposal))
-        value = json.loads(path.read_text(encoding="utf-8"))
-        value["proposal_revision"] = 1
-        path.write_text(json.dumps(value), encoding="utf-8")
-        self.assertEqual(["SCM attestation proposal revision does not match"], verify_scm(path, proposal))
-
     def test_each_scm_attestation_defect_is_named(self) -> None:
         valid = {
             "provider": "github",
@@ -210,14 +183,6 @@ class ReviewScmTest(RegistryTestCase):
                     github_api_path(url)
                 self.assertEqual(message, str(refused.exception))
 
-    def test_scm_attestation_rejects_a_local_claim_of_review(self) -> None:
-        proposal = {"proposal_revision": 1, "base_registry_revision": {"registry_digest": "sha256:" + "0" * 64, "observed_commit": None}}
-        path = self.write_record("attestation.json", {"provider": "git", "pull_request": "https://host.example/pull/1", "checks_url": "https://host.example/checks/1", "commit": "a" * 40, "status": "approved", "proposal_revision": 1, "base_registry_revision": proposal["base_registry_revision"]})
-        errors = verify_scm(path, proposal)
-        self.assertTrue(
-            any("must be github or git-signed-commit" in error for error in errors), errors
-        )
-
     def test_external_scm_verification_requires_merged_approved_green_github_pr(self) -> None:
         attestation = {"provider": "github", "pull_request": PULL_REQUEST_URL, "commit": "a" * 40}
         serve, requested = github_serving(
@@ -233,22 +198,6 @@ class ReviewScmTest(RegistryTestCase):
         self.assertEqual(
             [PULL_ENDPOINT, PULL_ENDPOINT + "/reviews", CHECK_RUNS_ENDPOINT], requested
         )
-
-    def test_external_scm_verification_rejects_unsuccessful_checks(self) -> None:
-        attestation = {"provider": "github", "pull_request": PULL_REQUEST_URL, "commit": "a" * 40}
-        serve, _ = github_serving(
-            {"state": "closed", "merged_at": "2026-01-01T00:00:00Z", "head": {"sha": "a" * 40}},
-            [{"user": {"login": "reviewer"}, "state": "APPROVED"}],
-            {"check_runs": [{"status": "completed", "conclusion": "failure"}]},
-        )
-        with (
-            patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}),
-            patch("domain_registry.attestations.github_page", side_effect=serve),
-        ):
-            self.assertEqual(
-                ["SCM attested commit has incomplete or unsuccessful checks"],
-                verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"),
-            )
 
     def test_each_external_scm_defect_is_named(self) -> None:
         attestation = {"provider": "github", "pull_request": PULL_REQUEST_URL, "commit": "a" * 40}

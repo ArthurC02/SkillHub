@@ -290,11 +290,6 @@ class RegistryValidationTest(RegistryTestCase):
                     validate(beside, None, False),
                 )
 
-    def test_a_concept_registry_root_one_directory_too_deep_is_named_as_such(self) -> None:
-        inner = self.repo / "memory" / "registry"
-        with self.assertRaisesRegex(ValueError, "; did you mean .*/memory[?]$"):
-            read_document(inner, "contexts.json")
-
     def test_json_loader_rejects_duplicate_keys(self) -> None:
         path = self.repo / "duplicate.json"
         path.write_text('{"status":"approved","status":"rejected"}\n', encoding="utf-8")

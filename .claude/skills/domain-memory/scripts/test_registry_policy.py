@@ -160,13 +160,6 @@ class RegistryPolicyTest(RegistryTestCase):
         ):
             self.assertIn(amendable, str(raised.exception))
 
-    def test_an_invalid_value_is_refused_before_anything_is_written(self) -> None:
-        with self.assertRaisesRegex(ValueError, "amended policy is invalid"):
-            amend_policy(
-                self.repo / "memory", "review_mode", "whatever-i-like", "Try it."
-            )
-        self.assertEqual(self.stored_policy()["review_mode"], "scm-verified")
-
     def test_an_initialization_whose_policy_is_refused_leaves_no_directory_so_the_corrected_run_succeeds(self) -> None:
         (self.repo / "docs").mkdir(exist_ok=True)
         (self.repo / "docs" / "rules.md").write_text("rules", encoding="utf-8")

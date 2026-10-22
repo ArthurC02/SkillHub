@@ -23,11 +23,6 @@ EXPOSED_TOOLS = {
     "get_context", "get_record", "resolve_terms", "lookup", "dependents", "coverage", "brief", "boundary_impact",
     "verify_evidence", "validate", "readiness", "list_proposals", "validate_change_package",
 }
-MUTATING_COMMANDS = (
-    "apply-approved-updates", "upsert-candidate", "record-approval", "ship-package", "harvest", "recite",
-    "relocate-evidence", "retract-candidate", "promote-candidate", "submit-proposal", "record-test-result",
-    "init-change-package", "init-domain-memory", "amend-policy", "counterfactual", "harvest-candidates",
-)
 
 
 def request(identifier: object, method: str, **params: object) -> str:
@@ -120,27 +115,6 @@ class HandshakeTest(McpServerTest):
             self.exchange(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}), request(7, "ping")),
         )
 
-    def test_a_result_carries_result_type_only_when_the_request_declared_its_version(self) -> None:
-        replies = self.exchange(
-            request(1, "initialize", protocolVersion="2025-06-18", capabilities={}), request(2, "tools/list"),
-            request(3, "ping"), request(4, "tools/list", _meta=MODERN_META), request(5, "ping", _meta=MODERN_META),
-        )
-        self.assertEqual(
-            [(1, False), (2, False), (3, False), (4, True), (5, True)],
-            [(reply["id"], "resultType" in reply["result"]) for reply in replies],
-        )
-
-    def test_requests_before_initialize_and_a_repeated_initialize_are_answered(self) -> None:
-        replies = self.exchange(
-            request(1, "tools/list"), request(2, "initialize", protocolVersion="2025-06-18", capabilities={}),
-            request(3, "initialize", protocolVersion="2025-03-26", capabilities={}),
-        )
-        self.assertEqual(
-            [(1, 13), (2, "2025-06-18"), (3, "2025-03-26")],
-            [(reply["id"], len(reply["result"]["tools"]) if reply["id"] == 1 else reply["result"]["protocolVersion"])
-             for reply in replies],
-        )
-
 
 class ToolListTest(McpServerTest):
     def test_tools_list_offers_exactly_the_read_only_commands_and_no_mutating_one(self) -> None:
@@ -149,7 +123,6 @@ class ToolListTest(McpServerTest):
                 [reply] = self.exchange(request(1, "tools/list", **meta))
                 names = {tool["name"] for tool in reply["result"]["tools"]}
                 self.assertEqual(EXPOSED_TOOLS, names)
-                self.assertEqual(set(), names & {command.replace("-", "_") for command in MUTATING_COMMANDS})
 
     def test_each_tool_declares_its_parameters_as_a_closed_json_schema(self) -> None:
         [reply] = self.exchange(request(1, "tools/list"))

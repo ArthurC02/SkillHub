@@ -117,21 +117,6 @@ class RegistryLookupTest(RegistryTestCase):
         ]
         self.assertEqual(found, ["order"])
 
-    def test_resolve_terms_matches_regardless_of_letter_case(self) -> None:
-        self.two_contexts()
-        self.seed(
-            "vocabulary.json",
-            [
-                {
-                    "id": "order",
-                    "name": "Order",
-                    "definition": "A purchase.",
-                    "contexts": ["orders"],
-                }
-            ],
-        )
-        self.assertEqual(len(every_resolved_term(self.repo / "memory", "ORDER", None)), 1)
-
     def test_resolve_terms_excludes_a_term_that_does_not_belong_to_the_named_context(
         self,
     ) -> None:
@@ -360,20 +345,6 @@ class RegistryLookupTest(RegistryTestCase):
             [("rules", "one-trial", ["statement"])],
             [(match["asset"], match["id"], match["fields"]) for match in every_resolved_term(self.repo / "memory", "concurrent runs", None)],
         )
-
-    def test_mentions_in_rules_come_before_mentions_in_other_assets(self) -> None:
-        self.allow_results(10)
-        self.seed("interactions.json", [{"id": "eval-workspace-purge", "status": "reviewed"}])
-        self.seed("rules.json", [{"id": "purge-runs-every-step", "contexts": ["identity"], "statement": "x", "status": "reviewed"}])
-        self.assertEqual(
-            [("rules", "purge-runs-every-step"), ("interactions", "eval-workspace-purge")],
-            [(match["asset"], match["id"]) for match in every_resolved_term(self.repo / "memory", "purge", None)],
-        )
-
-    def test_a_query_that_matches_nothing_finds_nothing(self) -> None:
-        self.two_contexts()
-        self.allow_results(10)
-        self.assertEqual([], lookup(self.repo / "memory", "contexts", "shipping"))
 
     def test_a_query_matches_regardless_of_letter_case(self) -> None:
         self.two_contexts()

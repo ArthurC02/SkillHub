@@ -70,7 +70,6 @@ class ConceptRoundTripTest(unittest.TestCase):
             ("evidence without lines", "rules", {"id": "r", "evidence": [{"path": "a.py"}]}),
             ("evidence lines that are not integers", "rules",
              {"id": "r", "evidence": [{**CITED, "lines": {"start": "1", "end": 2}}]}),
-            ("name with a line break", "contexts", {"id": "c", "name": "Two\nlines"}),
             ("nested object", "contracts", {"id": "k", "idempotency": {"key": "origin key", "scope": "per Workspace"}}),
             ("decimal number", "rules", {"id": "r", "weight": 1.5}),
             ("number in exponent form", "rules", {"id": "r", "weight": 2.5e-07}),

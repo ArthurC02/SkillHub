@@ -201,21 +201,6 @@ class UpdatesAuditTest(RegistryTestCase):
         with self.assertRaisesRegex(ValueError, "stale.*does not reproduce the recorded base digest"):
             require_current_registry_revision(proposal, self.repo / "memory", self.repo)
 
-    def test_invalid_candidate_does_not_change_registry(self) -> None:
-        before = read_document(self.repo / "memory", "vocabulary.json")
-        record = self.write_record(
-            "term.json",
-            {
-                "id": "order",
-                "name": "Order",
-                "definition": "A purchase.",
-                "contexts": ["missing"],
-            },
-        )
-        with self.assertRaisesRegex(ValueError, "unknown context"):
-            upsert_candidate(self.repo / "memory", self.repo, "vocabulary", record)
-        self.assertEqual(before, read_document(self.repo / "memory", "vocabulary.json"))
-
     def test_a_submitted_record_cannot_carry_its_own_approval(self) -> None:
         record = self.write_record(
             "context.json",

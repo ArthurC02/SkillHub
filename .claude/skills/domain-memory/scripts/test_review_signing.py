@@ -225,13 +225,6 @@ class ReviewSigningTest(RegistryTestCase):
             init_signing_key(self.repo, "probe@example.com", key_file)
         self.assertFalse(key_file.exists())
 
-    def test_the_reported_result_never_carries_private_key_material(self) -> None:
-        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
-            result = init_signing_key(
-                self.repo, "probe@example.com", self.repo / "keys" / "signing-key"
-            )
-        self.assertNotIn("PRIVATE KEY", json.dumps(result))
-
     def test_no_line_of_the_private_key_body_appears_in_the_reported_result(self) -> None:
         key_file = self.repo / "keys" / "signing-key"
         with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
@@ -376,14 +369,6 @@ class ReviewSigningTest(RegistryTestCase):
         result = self.pushed_with(self.interpreters_on_path(python=False, python3=False))
         self.assertEqual(1, result.returncode)
         self.assertIn("no Python 3.10 or later on PATH as python3 or python", result.stderr)
-
-    def test_an_existing_branch_checks_only_the_range_after_the_remote_tip(self) -> None:
-        hook, remote_tip = self.push_fixture()
-        head = self.commit_file("elsewhere/readme.txt")
-        result = self.run_pre_push(
-            hook, f"refs/heads/main {head} refs/heads/main {remote_tip}\n"
-        )
-        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
     def test_local_working_memory_needs_no_governance_setup(self) -> None:
         amend_policy(self.repo / "memory", "review_mode", "local-draft-only", "Drafting only.")

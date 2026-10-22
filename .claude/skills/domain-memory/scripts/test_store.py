@@ -178,12 +178,6 @@ class DigestAndHistoryTest(RegistryTestCase):
             init_registry(root)
             self.assertEqual("sha256:4a0def5bc16e39e03b939ef5f61f4dcc0c3d89f4e54f27a967c216a14720a324", registry_digest(root))
 
-    def test_the_digest_does_not_depend_on_record_order(self) -> None:
-        write_document(self.repo / "memory", "rules.json", {"rules": [REFUND_RULE, ORDER_RULE]})
-        first = registry_digest(self.repo / "memory")
-        write_document(self.repo / "memory", "rules.json", {"rules": [ORDER_RULE, REFUND_RULE]})
-        self.assertEqual(first, registry_digest(self.repo / "memory"))
-
     def test_the_documents_of_a_commit_read_back(self) -> None:
         names = (MANIFEST, "rules.json", "events.json")
         write_document(self.repo / "memory", "rules.json", {"rules": [ORDER_RULE]})

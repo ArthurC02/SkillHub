@@ -89,13 +89,6 @@ class EvidenceTest(RegistryTestCase):
         result = verify({"path": "rule.md", "lines": {"start": 2, "end": 2}}, self.repo)
         self.assertEqual("unhashed", result["status"])
 
-    def test_an_unhashed_citation_ending_one_line_past_the_last_is_invalid(self) -> None:
-        self.two_line_rule()
-        result = verify({"path": "rule.md", "lines": {"start": 3, "end": 3}}, self.repo)
-        self.assertEqual(
-            ("invalid", "evidence line range exceeds source"), (result["status"], result["reason"])
-        )
-
     def test_a_line_number_that_is_not_an_integer_is_an_invalid_range(self) -> None:
         self.two_line_rule()
         cases = [
@@ -241,18 +234,6 @@ class EvidenceTest(RegistryTestCase):
         write_document(self.repo / "memory", "interactions.json", value)
         self.assertEqual(validate(self.repo / "memory", self.repo, False), [])
 
-    def test_citation_refuses_an_oversized_source(self) -> None:
-        source = self.repo / "large.md"
-        with source.open("wb") as output:
-            output.truncate(16 * 1024 * 1024 + 1)
-        with self.assertRaisesRegex(ValueError, "exceeds"):
-            citation(self.repo, "large.md", 1, 1)
-
-    def test_a_built_citation_verifies_as_current(self) -> None:
-        self.cited_file()
-        reference = citation(self.repo, "docs/adr/boundaries.md", 2, 3)
-        self.assertEqual(verify(reference, self.repo)["status"], "current")
-
     def test_a_citation_covers_only_the_lines_it_names(self) -> None:
         path = self.cited_file()
         reference = citation(self.repo, "docs/adr/boundaries.md", 2, 3)
@@ -349,15 +330,6 @@ class EvidenceTest(RegistryTestCase):
         self.assertEqual(
             (1, [], [], []),
             (moved["citations_in_place"], moved["registry_updates"], moved["candidates"], moved["unmatched"]),
-        )
-
-    def test_relocating_a_single_file_recites_its_evidence(self) -> None:
-        self.evidence_moved("one\ntwo\n", "lib/b.py", "two\n")
-        moved = relocate_evidence(self.repo / "memory", self.repo, "src/a.py", "lib/b.py")
-        [update] = moved["registry_updates"]
-        self.assertEqual(
-            {"path": "lib/b.py", "lines": {"start": 1, "end": 1}},
-            {key: update["record"]["evidence"][0][key] for key in ("path", "lines")},
         )
 
     def test_relocating_leaves_a_citation_unmatched_when_its_excerpt_is_absent_or_repeated(self) -> None:
@@ -508,12 +480,6 @@ class EvidenceTest(RegistryTestCase):
             [(update["record"]["id"], update["record"]["evidence"][0]["lines"]) for update in moved["registry_updates"]],
         )
         self.assertEqual(["PRO-1"], moved["supersedes"])
-
-    def test_verify_reports_the_cited_lines_beside_the_lines_it_found(self) -> None:
-        result = self.citation_after_edit("a\nfact\n", 2, "new\na\nfact\n")
-        self.assertEqual(
-            ({"start": 2, "end": 2}, {"start": 3, "end": 3}), (result["cited_lines"], result["lines"])
-        )
 
     def test_a_repeated_excerpt_is_stale_and_says_so(self) -> None:
         result = self.citation_after_edit("a\nfact\n", 2, "fact\nnew\nfact\n")

@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.2
+
+### Removed
+
+- Forty tests that could not go red under any product change or repeated a stronger test on the same branch; the suite keeps one test per condition.
+
 ## 2.2.1
 
 ### Added

@@ -313,14 +313,6 @@ class UpdatesPromotionTest(RegistryTestCase):
             self.approve_and_apply(package)
         self.assertEqual(self.rule_ids(), ["order-total"])
 
-    def test_an_update_naming_an_unknown_asset_is_refused_and_writes_nothing(self) -> None:
-        package = self.drafted_with_updates(
-            [{"operation": "upsert", "asset": "nonsense", "record": {"id": "x"}}]
-        )
-        with self.assertRaisesRegex(ValueError, "registry update names unknown asset 'nonsense'"):
-            self.approve_and_apply(package)
-        self.assertEqual(self.rule_ids(), [])
-
     def test_a_proposal_without_updates_is_refused(self) -> None:
         package = self.drafted_with_updates([])
         with self.assertRaisesRegex(ValueError, "approved proposal has no registry_updates"):

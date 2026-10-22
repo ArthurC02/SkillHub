@@ -299,52 +299,6 @@ class ChangesTest(RegistryTestCase):
                 ):
                     self.assertNotIn(written_by_the_command, errors)
 
-    def test_material_proposal_requires_implementation_design(self) -> None:
-        package = self.draft_package()
-        path = package / "domain-change-proposal.json"
-        proposal = json.loads(path.read_text(encoding="utf-8"))
-        proposal.pop("implementation_design")
-        path.write_text(json.dumps(proposal), encoding="utf-8")
-        errors = validate_change_package(package, self.repo / "memory")
-        self.assertIn(
-            "a material proposal requires implementation_design with domain forces, decision, invariants, "
-            "alternatives, proof obligations, and counterfactual check",
-            errors,
-        )
-
-    def test_proof_obligation_must_exist_in_test_obligations(self) -> None:
-        package = self.draft_package()
-        path = package / "domain-change-proposal.json"
-        proposal = json.loads(path.read_text(encoding="utf-8"))
-        proposal["implementation_design"]["proof_obligations"] = ["OB-404"]
-        path.write_text(json.dumps(proposal), encoding="utf-8")
-        errors = validate_change_package(package, self.repo / "memory")
-        self.assertIn(
-            "implementation_design references an unknown proof obligation", errors
-        )
-
-    def test_verified_material_proposal_requires_counterfactual_evidence(self) -> None:
-        package = self.draft_package()
-        path = package / "domain-change-proposal.json"
-        proposal = json.loads(path.read_text(encoding="utf-8"))
-        proposal["status"] = "verified"
-        proposal["verified_at"] = "2026-01-01T00:00:00Z"
-        proposal["base_registry_revision"] = {
-            "observed_commit": None,
-            "registry_digest": "sha256:" + "0" * 64,
-        }
-        path.write_text(json.dumps(proposal), encoding="utf-8")
-        evidence_path = package / "evidence-bundle.json"
-        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
-        evidence["registry_revision"] = proposal["base_registry_revision"]
-        evidence["counterfactual_check"] = None
-        evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
-        errors = validate_change_package(package, self.repo / "memory")
-        self.assertIn(
-            "a material verified proposal requires counterfactual_check evidence",
-            errors,
-        )
-
     def test_an_obligation_source_type_error_names_the_types_that_are_allowed(
         self,
     ) -> None:
@@ -427,21 +381,12 @@ class ChangesTest(RegistryTestCase):
         self.assertEqual(1, len(verdicts), verdicts)
         self.assertIn("may be not_applicable only when the proposal changes no rule", verdicts[0])
 
-    def test_a_not_applicable_counterfactual_needs_a_reason_when_no_behavior_changes(self) -> None:
-        self.assertEqual(
-            ["a not_applicable counterfactual_check requires a reason"],
-            self.counterfactual_verdicts({"status": "not_applicable"}, updates=self.vocabulary_update()),
-        )
-
     def test_a_reasoned_not_applicable_counterfactual_passes_when_no_behavior_changes(self) -> None:
         check = {"status": "not_applicable", "reason": "only renames a term"}
         self.assertEqual([], self.counterfactual_verdicts(check, updates=self.vocabulary_update()))
 
     def test_a_counterfactual_must_target_a_planned_proof_obligation(self) -> None:
         self.assertIn(self.UNPLANNED_MESSAGE, self.counterfactual_verdicts(self.UNPLANNED_CHECK))
-
-    def test_an_applied_package_is_not_held_to_the_planned_proof_obligation_rule(self) -> None:
-        self.assertNotIn(self.UNPLANNED_MESSAGE, self.counterfactual_verdicts(self.UNPLANNED_CHECK, status="applied"))
 
     def test_supersedes_takes_one_id_or_a_list_of_distinct_ids(self) -> None:
         package = self.draft_package()

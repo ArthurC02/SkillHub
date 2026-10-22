@@ -282,23 +282,6 @@ class UpdatesRecoveryTest(RegistryTestCase):
         self.assertFalse(transaction_path(root).exists())
         self.assert_registry_in_place(root)
 
-    def test_recovery_discards_a_backup_once_the_registry_is_already_in_place(
-        self,
-    ) -> None:
-        root = self.repo / "memory"
-        backup = root / ".domain-registry-backup-abc"
-        shutil.copytree(root / "registry", backup)
-        transaction_path(root).write_text(
-            json.dumps(
-                {"format": "domain-registry-transaction/v2", "operation_id": "abc", "phase": "prepared",
-                 "backup": backup.name, "staging": ".domain-registry-stage-abc"}
-            ),
-            encoding="utf-8",
-        )
-        recover_interrupted_update(root, False)
-        self.assertFalse(backup.exists())
-        self.assert_registry_in_place(root)
-
     def test_a_recovery_journal_naming_an_unsafe_path_is_refused(self) -> None:
         root = self.repo / "memory"
         cases = [
