@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -32,31 +33,52 @@ func browserWorkflowJob(t *testing.T, name string) string {
 
 func TestBrowserShardsRetainEverySupportedEnvironment(t *testing.T) {
 	job := browserWorkflowJob(t, "web-browser-shards")
-	for _, environment := range []string{
-		"ubuntu-latest\n            browser: chromium",
-		"ubuntu-latest\n            browser: firefox",
-		"ubuntu-latest\n            browser: webkit",
-		"windows-latest\n            browser: chromium",
+	for environment, total := range map[string]int{
+		"ubuntu-latest\n            browser: chromium":  2,
+		"ubuntu-latest\n            browser: firefox":   2,
+		"ubuntu-latest\n            browser: webkit":    4,
+		"windows-latest\n            browser: chromium": 2,
 	} {
-		for _, shard := range []string{"1", "2"} {
-			row := "- os: " + environment + "\n            shard: " + shard + "\n"
+		for shard := 1; shard <= total; shard++ {
+			row := "- os: " + environment + "\n            shard: " + strconv.Itoa(shard) + "\n            total: " + strconv.Itoa(total) + "\n"
 			if strings.Count(job, row) != 1 {
-				t.Errorf("expected exactly one matrix entry for %s shard %s", environment, shard)
+				t.Errorf("expected exactly one matrix entry for %s shard %d of %d", environment, shard, total)
 			}
 		}
 	}
-	if strings.Count(job, "- os:") != 8 {
-		t.Error("browser matrix must contain exactly eight shards")
+	if strings.Count(job, "- os:") != 10 {
+		t.Error("browser matrix must contain exactly ten shards")
 	}
 	for _, required := range []string{
 		"fail-fast: false",
 		"timeout-minutes: 30",
-		"npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/2",
-		"name: playwright-report-${{ matrix.os }}-${{ matrix.browser }}-${{ matrix.shard }}-of-2",
+		"npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/${{ matrix.total }}",
+		"name: playwright-report-${{ matrix.os }}-${{ matrix.browser }}-${{ matrix.shard }}-of-${{ matrix.total }}",
 	} {
 		if !strings.Contains(job, required) {
 			t.Errorf("browser shards must retain %q", required)
 		}
+	}
+}
+
+func TestWebInstallsLeaveAuditingToTheRequiredDependencyAudit(t *testing.T) {
+	for _, name := range []string{"web", "web-browser-shards"} {
+		job := browserWorkflowJob(t, name)
+		if strings.Count(job, "- run: npm ci --no-audit\n") != 2 || strings.Contains(job, "- run: npm ci\n") {
+			t.Errorf("%s must install both locked packages without a duplicate advisory request", name)
+		}
+	}
+	job := browserWorkflowJob(t, "dependency-audit")
+	for _, command := range []string{
+		"'Dependency audit' go -C tools/devctl run . dep-audit\n",
+		"'Full dependency audit' go -C tools/devctl run . dep-audit --full\n",
+	} {
+		if !strings.Contains(job, command) {
+			t.Errorf("retain the required audit command %q", command)
+		}
+	}
+	if strings.Contains(job, "continue-on-error:") {
+		t.Error("dependency audit failures must fail the job")
 	}
 }
 

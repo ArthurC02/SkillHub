@@ -141,14 +141,14 @@ jobs:
           cache-dependency-path: |
             apps/web/package-lock.json
             packages/api-client-ts/package-lock.json
-      - run: npm ci
+      - run: npm ci --no-audit
         working-directory: packages/api-client-ts
       - if: runner.os == 'Linux'
         run: npm run typecheck
         working-directory: packages/api-client-ts
       - run: npm run build
         working-directory: packages/api-client-ts
-      - run: npm ci
+      - run: npm ci --no-audit
       - if: runner.os == 'Linux'
         run: npm run format:check
       - if: runner.os == 'Linux'
@@ -169,27 +169,43 @@ jobs:
           - os: ubuntu-latest
             browser: chromium
             shard: 1
+            total: 2
           - os: ubuntu-latest
             browser: chromium
             shard: 2
+            total: 2
           - os: ubuntu-latest
             browser: firefox
             shard: 1
+            total: 2
           - os: ubuntu-latest
             browser: firefox
             shard: 2
+            total: 2
           - os: ubuntu-latest
             browser: webkit
             shard: 1
+            total: 4
           - os: ubuntu-latest
             browser: webkit
             shard: 2
+            total: 4
+          - os: ubuntu-latest
+            browser: webkit
+            shard: 3
+            total: 4
+          - os: ubuntu-latest
+            browser: webkit
+            shard: 4
+            total: 4
           - os: windows-latest
             browser: chromium
             shard: 1
+            total: 2
           - os: windows-latest
             browser: chromium
             shard: 2
+            total: 2
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:
@@ -206,20 +222,20 @@ jobs:
           cache-dependency-path: |
             apps/web/package-lock.json
             packages/api-client-ts/package-lock.json
-      - run: npm ci
+      - run: npm ci --no-audit
         working-directory: packages/api-client-ts
       - run: npm run build
         working-directory: packages/api-client-ts
-      - run: npm ci
+      - run: npm ci --no-audit
       - if: runner.os == 'Linux'
         run: npx playwright install --with-deps ${{ matrix.browser }}
       - if: runner.os != 'Linux'
         run: npx playwright install ${{ matrix.browser }}
-      - run: npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/2
+      - run: npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/${{ matrix.total }}
       - if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-report-${{ matrix.os }}-${{ matrix.browser }}-${{ matrix.shard }}-of-2
+          name: playwright-report-${{ matrix.os }}-${{ matrix.browser }}-${{ matrix.shard }}-of-${{ matrix.total }}
           path: |
             apps/web/playwright-report/
             apps/web/test-results/
