@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.12
+
+### Added
+
+- Counterfactual tests: a suite entry whose `cwd`, `expect` or `obligation_id` is not text, an entry overriding the command the suite sets for every entry, and a `--cwd` naming a file.
+
 ## 2.2.11
 
 ### Added

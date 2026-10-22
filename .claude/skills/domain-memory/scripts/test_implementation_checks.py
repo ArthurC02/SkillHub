@@ -425,6 +425,25 @@ class CounterfactualTest(RepositoryCase):
                     (result["verdict"], result["reason"]),
                 )
 
+    def test_a_suite_entry_whose_cwd_expect_or_obligation_is_not_text_is_an_error(self) -> None:
+        for key in ("cwd", "expect", "obligation_id"):
+            with self.subTest(key=key):
+                suite = {"test_command": RUN_TESTS, "mutations": [
+                    {"file": "rule.py", "find": "LIMIT = 200", "replace": "LIMIT = 201", key: 7},
+                ]}
+                [result] = counterfactual_suite(self.repo, suite)["results"]
+                self.assertEqual(("error", f"mutations[1] {key} must be text"), (result["verdict"], result["reason"]))
+        self.assert_untouched()
+
+    def test_an_entry_overrides_what_the_suite_sets_for_every_entry(self) -> None:
+        failing = f'"{sys.executable}" -c "raise SystemExit(1)"'
+        suite = {"test_command": failing, "mutations": [
+            {"file": "rule.py", "find": "LIMIT = 200", "replace": "LIMIT = 201", "test_command": RUN_TESTS},
+        ]}
+        [result] = counterfactual_suite(self.repo, suite)["results"]
+        self.assertEqual(("killed", RUN_TESTS), (result["verdict"], result["test_command"]))
+        self.assert_untouched()
+
     def test_a_suite_without_mutations_is_refused(self) -> None:
         for suite in ({}, {"mutations": []}, [], {"mutations": "x"}):
             with self.subTest(suite), self.assertRaisesRegex(ValueError, "mutations is a non-empty list"):
@@ -609,9 +628,13 @@ class CounterfactualTest(RepositoryCase):
         )
         self.assertEqual(result["verdict"], "killed")
 
-    def test_a_cwd_outside_the_repository_is_refused(self) -> None:
-        with self.assertRaisesRegex(ValueError, "--cwd must name a directory inside the repository"):
-            self.break_rule("LIMIT = 200", "LIMIT = 201", cwd="..")
+    def test_a_cwd_outside_the_repository_or_naming_a_file_is_refused(self) -> None:
+        for cwd in ("..", "rule.py"):
+            with self.subTest(cwd=cwd), self.assertRaisesRegex(
+                ValueError, f"^--cwd must name a directory inside the repository: {cwd}$"
+            ):
+                self.break_rule("LIMIT = 200", "LIMIT = 201", cwd=cwd)
+        self.assert_untouched()
 
     def test_a_killed_rule_prints_the_check_a_change_package_records(self) -> None:
         result = self.break_rule("LIMIT = 200", "LIMIT = 201", obligation_id="limit-refused")
