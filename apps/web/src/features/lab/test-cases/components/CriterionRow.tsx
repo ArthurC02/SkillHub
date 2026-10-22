@@ -7,6 +7,7 @@ import type { AcceptanceCriterion } from "../../testcases.service";
 import { MutationError } from "./MutationError";
 import { countNodes, type CheckNode } from "../../../evaluation";
 import { textLengthReason } from "../test-cases.model";
+import { useRevealOnChange } from "../../../../shared/ui/useRevealOnChange";
 
 function criterionState(c: AcceptanceCriterion): string {
   if (c.confirmed_at) return `已確認（${formatAt(c.confirmed_at)}）`;
@@ -43,6 +44,7 @@ export function CriterionRow({
   const edited = text !== criterion.text;
   const problem = criterionTextProblem(text);
   const saveReason = saveTextReason(edited, problem);
+  const saveReasonNote = useRevealOnChange<HTMLParagraphElement>(saveReason);
 
   function saveText() {
     const submitted = text;
@@ -123,7 +125,12 @@ export function CriterionRow({
         />
       </p>
       {saveReason && (
-        <p className="note" role="status" id={`criterion-save-${criterion.id}`}>
+        <p
+          className="note"
+          role="status"
+          id={`criterion-save-${criterion.id}`}
+          ref={saveReasonNote}
+        >
           {saveReason}
         </p>
       )}

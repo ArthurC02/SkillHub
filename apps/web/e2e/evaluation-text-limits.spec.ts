@@ -146,6 +146,7 @@ for (const field of fields) {
             description: "",
           });
         }
+        await input.evaluate((element) => element.scrollIntoView({ block: "end" }));
         let inspectedInvalid = false;
         for (const phase of phases) {
           await assertPhase(page, input, save, phase);

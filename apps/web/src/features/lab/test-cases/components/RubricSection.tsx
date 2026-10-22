@@ -5,6 +5,7 @@ import type { RubricItem, TestCase } from "../../testcases.service";
 import { MutationError } from "./MutationError";
 import { RubricCriterionItem } from "./RubricCriterionItem";
 import { textLengthReason } from "../test-cases.model";
+import { useRevealOnChange } from "../../../../shared/ui/useRevealOnChange";
 
 type RubricBlocker = { field: "version" | "item"; id: string; say: string };
 type RubricDraft = { version?: string; items?: Record<string, Partial<RubricItem>> };
@@ -50,6 +51,7 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
     .filter((i): i is RubricItem => i !== undefined && i.text.trim() !== "");
   const blocker = rubricBlocker(version, list);
   const versionProblem = blocker?.field === "version" ? blocker.say : null;
+  const versionProblemNote = useRevealOnChange<HTMLSpanElement>(versionProblem);
   const saveRubric = () => {
     const submitted = draft;
     save.mutate(
@@ -97,7 +99,12 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
             <br />
             {versionProblem && (
               <>
-                <span id="rubric-version-reason" className="note" role="status">
+                <span
+                  id="rubric-version-reason"
+                  className="note"
+                  role="status"
+                  ref={versionProblemNote}
+                >
                   {versionProblem}
                 </span>
                 <br />

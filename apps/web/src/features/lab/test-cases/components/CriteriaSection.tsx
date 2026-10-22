@@ -9,6 +9,7 @@ import type { TestCase } from "../../testcases.service";
 import { MutationError } from "./MutationError";
 import { CriterionRow } from "./CriterionRow";
 import { textLengthReason } from "../test-cases.model";
+import { useRevealOnChange } from "../../../../shared/ui/useRevealOnChange";
 
 const MAX_CRITERIA = 20; // one-number: maxCriteria
 
@@ -99,6 +100,7 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
   const sizeProblem = textLengthReason(text, "驗收條件", AcceptanceCriterionTextMaxLength);
   const full = testCase.acceptance_criteria.length >= MAX_CRITERIA;
   const blocker = addBlocker(text, checkReady, sizeProblem, full);
+  const blockerNote = useRevealOnChange<HTMLParagraphElement>(blocker?.say);
 
   const addCriterion = () => {
     const submitted = draft;
@@ -174,7 +176,7 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
         </button>
       </p>
       {blocker && (
-        <p className="note" role="status" id={blocker.id}>
+        <p className="note" role="status" id={blocker.id} ref={blockerNote}>
           {blocker.say}
         </p>
       )}

@@ -1,6 +1,7 @@
 import { RubricItemTextMaxLength } from "@skillhub/api-client-ts/limits";
 import type { RubricItem } from "../../testcases.service";
 import { textLengthReason } from "../test-cases.model";
+import { useRevealOnChange } from "../../../../shared/ui/useRevealOnChange";
 
 export function RubricCriterionItem({
   criterionId,
@@ -18,6 +19,7 @@ export function RubricCriterionItem({
   const text = item?.text ?? "";
   const problem =
     text.trim() === "" ? null : textLengthReason(text, "Rubric 說明", RubricItemTextMaxLength);
+  const problemNote = useRevealOnChange<HTMLParagraphElement>(problem);
   return (
     <li className="criterion">
       <p className="note">驗收條件：{criterionText}</p>
@@ -36,7 +38,7 @@ export function RubricCriterionItem({
         readOnly={pending}
       />
       {problem && (
-        <p className="note" role="status" id={`rubric-size-${criterionId}`}>
+        <p className="note" role="status" id={`rubric-size-${criterionId}`} ref={problemNote}>
           {problem}
         </p>
       )}
