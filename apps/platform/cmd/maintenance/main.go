@@ -376,6 +376,7 @@ func registryPurger(pool *pgxpool.Pool) *registry.Service {
 		VersionsInDownloads: packaging.SkillVersionsInDownloads,
 		VersionsInBundles:   publishing.SkillVersionsInBundles,
 		SkillsWithTestCases: testlab.SkillsWithTestCases,
+		SkillsWithHeldNames: publishing.SkillsWithHeldNames,
 		RemoveFromIndex:     catalog.RemoveSkillFromIndex,
 	}
 }

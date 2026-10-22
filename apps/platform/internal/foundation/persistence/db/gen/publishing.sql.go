@@ -835,6 +835,37 @@ func (q *Queries) ListSkillVersionsInBundles(ctx context.Context, versionIds []p
 	return items, nil
 }
 
+const listSkillsWithHeldPublicationNames = `-- name: ListSkillsWithHeldPublicationNames :many
+SELECT DISTINCT skill_id FROM publications
+WHERE skill_id = ANY($1::uuid[])
+  AND (retired_at IS NULL OR retired_at > now() - $2::interval)
+`
+
+type ListSkillsWithHeldPublicationNamesParams struct {
+	SkillIds   []pgtype.UUID
+	Quarantine pgtype.Interval
+}
+
+func (q *Queries) ListSkillsWithHeldPublicationNames(ctx context.Context, arg ListSkillsWithHeldPublicationNamesParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listSkillsWithHeldPublicationNames, arg.SkillIds, arg.Quarantine)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var skill_id pgtype.UUID
+		if err := rows.Scan(&skill_id); err != nil {
+			return nil, err
+		}
+		items = append(items, skill_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkspaceBundlePublicationSummaries = `-- name: ListWorkspaceBundlePublicationSummaries :many
 SELECT b.name AS bundle_name,
        p.id AS publication_id, p.bundle_id, p.name, p.status, p.status_changed_at,

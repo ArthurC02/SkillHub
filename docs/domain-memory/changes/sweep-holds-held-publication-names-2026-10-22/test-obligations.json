@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "sweep-holds-held-publication-names",
+  "proposal_id": "sweep-holds-held-publication-names",
+  "obligations": [
+    {
+      "id": "rule-a-held-skill-is-not-purged",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-held-skill-is-not-purged",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-held-skill-is-not-purged"
+        }
+      ],
+      "expected_outcome": "A purge keeps the row of a skill that has test cases or a version referenced by a run, a download or a bundle; the deleted-skill sweep also keeps a skill while its publication is unretired or retired less than the ninety-day name hold ago.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^(TestAPurgeKeepsASkillWhileAnythingStillHoldsItOrOneOfItsVersions|TestTheDeletionSweepKeepsASkillWhilePublicationNameIsHeld)$ ./internal/skill/library/ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

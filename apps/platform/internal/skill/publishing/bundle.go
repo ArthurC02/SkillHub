@@ -661,6 +661,12 @@ func (s *Service) bundleAvailability(ctx context.Context, owner pgtype.UUID, sta
 	return AvailabilityAvailable, "", nil
 }
 
+func SkillsWithHeldNames(ctx context.Context, db gen.DBTX, skillIDs []pgtype.UUID) ([]pgtype.UUID, error) {
+	return gen.New(db).ListSkillsWithHeldPublicationNames(ctx, gen.ListSkillsWithHeldPublicationNamesParams{
+		SkillIds: skillIDs, Quarantine: pgconv.Interval(DeletedSkillNameHold),
+	})
+}
+
 func SkillVersionsInBundles(ctx context.Context, db gen.DBTX, versionIDs []pgtype.UUID) ([]pgtype.UUID, error) {
 	return gen.New(db).ListSkillVersionsInBundles(ctx, versionIDs)
 }

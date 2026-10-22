@@ -42,6 +42,14 @@ func TestEachReferenceReadIsRequiredBeforeAPurge(t *testing.T) {
 	}
 }
 
+func TestTheDeletionSweepRefusesWithoutTheHeldNameRead(t *testing.T) {
+	var read ReferenceRead = func(context.Context, gen.DBTX, []pgtype.UUID) ([]pgtype.UUID, error) { return nil, nil }
+	withoutNames := Service{VersionsInRuns: read, VersionsInDownloads: read, VersionsInBundles: read, SkillsWithTestCases: read}
+	if _, err := withoutNames.PurgeDeletedSkills(context.Background(), time.Hour, 10); !errors.Is(err, errPurgeReadsNotInjected) {
+		t.Errorf("without the held-name read: err = %v, want errPurgeReadsNotInjected", err)
+	}
+}
+
 func TestAPurgeKeepsASkillWhileAnythingStillHoldsItOrOneOfItsVersions(t *testing.T) {
 	skill := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
 	first := pgtype.UUID{Bytes: [16]byte{2}, Valid: true}

@@ -1,0 +1,132 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "sweep-holds-held-publication-names",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "sweep-holds-held-publication-names",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-22T04:50:21.836735Z",
+  "verified_at": "2026-10-22T04:51:08.882865Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "8df4c34113dbda11beabcd62257bf4888aad55bb",
+    "registry_digest": "sha256:cf2396c3ed484104a3dbfe7af593077bb7ca85f2affcacbd8a5bdac8474486e4",
+    "committed_digest": "sha256:cf2396c3ed484104a3dbfe7af593077bb7ca85f2affcacbd8a5bdac8474486e4"
+  },
+  "affected_contexts": [
+    "registry"
+  ],
+  "rule_ids": [
+    "a-held-skill-is-not-purged"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Only registry decides which deleted skills the sweep removes.",
+    "evidence": [
+      "apps/platform/internal/skill/library/purge.go:110-114"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "publishing answers which skills still hold a publication name, injected into registry as a reference read like the bundle read.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/library/purge.go:110-114"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The 30-day skill purge cascaded away a retired publication whose name the 90-day hold still reserved, so the old address stopped answering withdrawn and the name could be reused early."
+    ],
+    "decision": "Add a skill hold read owned by publishing to the deletion sweep only.",
+    "invariants_preserved": [
+      "A deleted skill is purged only after its grace.",
+      "A deleted skill's publication name is held ninety days."
+    ],
+    "rejected_alternatives": [
+      "ON DELETE SET NULL on publications.skill_id: the hold would outlive the skill but the withdrawn address would lose what it points at."
+    ],
+    "proof_obligations": [
+      "rule-a-held-skill-is-not-purged"
+    ],
+    "counterfactual_check": "Swapping deletionHolds back to everyHold in the sweep fails TestTheDeletionSweepKeepsASkillWhilePublicationNameIsHeld."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-held-skill-is-not-purged",
+        "statement": "A purge keeps the row of a skill that has test cases or a version referenced by a run, a download or a bundle; the deleted-skill sweep also keeps a skill while its publication is unretired or retired less than the ninety-day name hold ago.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A deleted skill past grace that has test cases survives the sweep.",
+          "A deleted skill whose publication retired 89 days 23 hours ago survives the sweep; at 90 days and a minute it is purged."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/purge.go",
+            "lines": {
+              "start": 30,
+              "end": 32
+            },
+            "excerpt_sha256": "sha256:c2abe36b9b8910dce5fa36fa4d38ea43b9d698b61470cbf444fbd146ffd2c441"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/purge_test.go",
+            "lines": {
+              "start": 45,
+              "end": 73
+            },
+            "excerpt_sha256": "sha256:280894e25a26feb7089be8921c52b7d5ac1d3225efa4834c3e5ba2772f28bcb3"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/purge.go",
+            "lines": {
+              "start": 110,
+              "end": 114
+            },
+            "content_sha256": "sha256:20cfd53ab03b573e62f62a946f20bcfc576dc74baa0e000aea9ca37968eaea3f",
+            "excerpt_sha256": "sha256:e9f818746e1f8791396134115a4a8e838d0021652ae3c55f20eaa13f15f51a19"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/publishing_integration_test.go",
+            "lines": {
+              "start": 719,
+              "end": 753
+            },
+            "content_sha256": "sha256:20f79f41763260e48688d1e29f42b483b9cadb1978b4c739a6d1418eae93efe2",
+            "excerpt_sha256": "sha256:9dd45542dbe00bd2e4e042590d0e326a07e57a43dcb4d625fc10ab43de51a0e1"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T04:51:07.826389Z",
+      "scope": "Amend a-held-skill-is-not-purged: the sweep keeps a skill while its publication name is held",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "8df4c34113dbda11beabcd62257bf4888aad55bb",
+        "registry_digest": "sha256:cf2396c3ed484104a3dbfe7af593077bb7ca85f2affcacbd8a5bdac8474486e4",
+        "committed_digest": "sha256:cf2396c3ed484104a3dbfe7af593077bb7ca85f2affcacbd8a5bdac8474486e4"
+      }
+    }
+  ],
+  "supersedes": [
+    "registry-erase-own-run-content-2026-10-20"
+  ]
+}

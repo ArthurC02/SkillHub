@@ -1,0 +1,38 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "sweep-holds-held-publication-names",
+  "proposal_id": "sweep-holds-held-publication-names",
+  "registry_revision": {
+    "observed_commit": "8df4c34113dbda11beabcd62257bf4888aad55bb",
+    "registry_digest": "sha256:cf2396c3ed484104a3dbfe7af593077bb7ca85f2affcacbd8a5bdac8474486e4",
+    "committed_digest": "sha256:cf2396c3ed484104a3dbfe7af593077bb7ca85f2affcacbd8a5bdac8474486e4"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-held-skill-is-not-purged",
+      "mutated_protection": "apps/platform/internal/skill/library/purge.go:222: candidates, deletionHolds(s)) -> candidates, everyHold(s))",
+      "failure_evidence": "=== RUN   TestTheDeletionSweepKeepsASkillWhilePublicationNameIsHeld\n    publishing_integration_test.go:748: the sweep purged a skill whose publication name is still held: 0 publications left, want 1\n--- FAIL: TestTheDeletionSweepKeepsASkillWhilePublicationNameIsHeld (0.22s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.293s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-held-skill-is-not-purged",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^(TestAPurgeKeepsASkillWhileAnythingStillHoldsItOrOneOfItsVersions|TestTheDeletionSweepKeepsASkillWhilePublicationNameIsHeld)$ ./internal/skill/library/ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:66b488cc1a9d04848e6c5bcf2aed85680170fefb2c3697be75dcbbcf0bfe4a2b",
+      "finished_at": "2026-10-22T04:50:37.844221Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

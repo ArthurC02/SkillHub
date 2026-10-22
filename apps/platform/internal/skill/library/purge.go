@@ -107,6 +107,12 @@ func everyHold(s *Service) holdReads {
 	}
 }
 
+func deletionHolds(s *Service) holdReads {
+	holds := everyHold(s)
+	holds.skills = append(holds.skills, s.SkillsWithHeldNames)
+	return holds
+}
+
 func holdsOutsideTheWorkspace(s *Service) holdReads {
 	return holdReads{versions: []ReferenceRead{s.VersionsInDownloads, s.VersionsInBundles}}
 }
@@ -191,6 +197,9 @@ func (s *Service) PurgeDeletedSkills(ctx context.Context, grace time.Duration, l
 	if err := s.requirePurgeReads(); err != nil {
 		return DeletionSweep{}, err
 	}
+	if s.SkillsWithHeldNames == nil {
+		return DeletionSweep{}, errPurgeReadsNotInjected
+	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return DeletionSweep{}, err
@@ -210,7 +219,7 @@ func (s *Service) PurgeDeletedSkills(ctx context.Context, grace time.Duration, l
 	for i, r := range rows {
 		candidates[i] = purgeCandidate{skillID: r.ID, versionIDs: r.VersionIds}
 	}
-	purgeable, kept, err := s.unreferenced(ctx, tx, candidates, everyHold(s))
+	purgeable, kept, err := s.unreferenced(ctx, tx, candidates, deletionHolds(s))
 	if err != nil {
 		return DeletionSweep{}, err
 	}

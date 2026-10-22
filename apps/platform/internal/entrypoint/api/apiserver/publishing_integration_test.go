@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -712,5 +713,41 @@ func TestPublishingTheSameVersionAgainKeepsItsOneRelease(t *testing.T) {
 	}
 	if releases := objects(t, body["releases"]); len(releases) != 1 {
 		t.Errorf("releases = %v, want the one release kept: a repeated publish must not reset its exposure review", releases)
+	}
+}
+
+func TestTheDeletionSweepKeepsASkillWhilePublicationNameIsHeld(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, freshName("sweep-held-alice"))
+	registerPublisher(t, alice, freshName("sweep-held"))
+	deleted := uploadedSkill(t, alice, freshName("sweep-deleted"), "One.")
+	if code, body := publish(t, alice, deleted, `{"name":"`+freshName("sweep-name")+`","rights_attested":true}`); code != http.StatusOK {
+		t.Fatalf("publishing: %d %v", code, body)
+	}
+	if code := alice.status(t, http.MethodDelete, "/skills/"+deleted); code >= 300 {
+		t.Fatalf("deleting the published skill: %d", code)
+	}
+	deliverSkillDeleted(t, pool, deleted)
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, "UPDATE skills SET deleted_at = now() - interval '31 days' WHERE id = $1", mustUUID(t, deleted)); err != nil {
+		t.Fatal(err)
+	}
+	sweepAfterRetiring := func(ago string) int {
+		t.Helper()
+		if _, err := pool.Exec(ctx, "UPDATE publications SET retired_at = now() - $2::interval WHERE skill_id = $1", mustUUID(t, deleted), ago); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := registryPurger(pool).PurgeDeletedSkills(ctx, 30*24*time.Hour, 1000); err != nil {
+			t.Fatal(err)
+		}
+		return countRow(t, pool, "SELECT count(*) FROM publications WHERE skill_id = $1", mustUUID(t, deleted))
+	}
+
+	if n := sweepAfterRetiring("89 days 23 hours"); n != 1 {
+		t.Fatalf("the sweep purged a skill whose publication name is still held: %d publications left, want 1", n)
+	}
+	if n := sweepAfterRetiring("90 days 1 minute"); n != 0 {
+		t.Errorf("the sweep kept a skill whose name hold has ended: %d publications left, want 0", n)
 	}
 }

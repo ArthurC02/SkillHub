@@ -68,6 +68,11 @@ SELECT EXISTS (
       AND p.retired_at > now() - @quarantine::interval
 );
 
+-- name: ListSkillsWithHeldPublicationNames :many
+SELECT DISTINCT skill_id FROM publications
+WHERE skill_id = ANY(@skill_ids::uuid[])
+  AND (retired_at IS NULL OR retired_at > now() - @quarantine::interval);
+
 -- name: RetireSkillPublication :execrows
 UPDATE publications p SET retired_at = @retired_at
 FROM publishers pb

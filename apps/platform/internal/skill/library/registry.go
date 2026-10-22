@@ -52,6 +52,7 @@ type Service struct {
 	VersionsInDownloads ReferenceRead
 	VersionsInBundles   ReferenceRead
 	SkillsWithTestCases ReferenceRead
+	SkillsWithHeldNames ReferenceRead
 }
 
 func (s *Service) requireProjection() error {
