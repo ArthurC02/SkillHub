@@ -3,12 +3,12 @@
   "proposal_id": "operator-takedown-supersedes-owner",
   "proposer": "domain-memory-agent",
   "requirement_id": "operator-takedown-supersedes-owner",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-22T04:28:15.265088Z",
   "verified_at": "2026-10-22T04:31:48.683690Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T04:32:11.370071Z",
+  "applied_at": "2026-10-22T04:33:44.888416Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "5808b1091046cac706472ff7cebea06f94368ca2",
@@ -112,5 +112,9 @@
   ],
   "supersedes": [
     "patrol-shift-recite"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "360d1564dc0ba539fd1556b9d077875abeb12a00",
+    "registry_digest": "sha256:cf2396c3ed484104a3dbfe7af593077bb7ca85f2affcacbd8a5bdac8474486e4"
+  }
 }

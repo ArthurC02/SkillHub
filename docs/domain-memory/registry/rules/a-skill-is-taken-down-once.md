@@ -3,17 +3,18 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-19T17:32:50.132592Z"
+    at: "2026-10-22T04:31:47.232098Z"
 sources:
-  - resource: "apps/platform/internal/skill/library/skill_root.go#L206-209"
-    excerpt_sha256: "sha256:3cbf71fa47d03be6f2fd425040d690723372ce560beac77080e4b4c8a2b4af2a"
-  - resource: "apps/platform/internal/skill/library/skill_root_test.go#L26-43"
-    excerpt_sha256: "sha256:e19237875319083945f7841bf7a8794d596cde976e85c19264f31b6ace865687"
+  - resource: "apps/platform/internal/skill/library/skill_root.go#L230-240"
+    excerpt_sha256: "sha256:7e5b09a7a7d17071725b9b52222dd3df558484fc53fafbb71fb7694096917cfe"
+  - resource: "apps/platform/internal/skill/library/skill_root_test.go#L26-68"
+    excerpt_sha256: "sha256:1bf6a2c8ea47c0aada434e072d458147ea3c7e9c53487be898f76749561c3799"
 ---
-A Skill already taken down cannot be taken down again; the second attempt is refused and the Skill stays down.
+A Skill already taken down cannot be taken down again, except that an operator's takedown supersedes the owner's own: the Skill stays down, now as the operator's, and only an operator lifts it. Any other second attempt is refused and the Skill stays down.
 
 # Relations
 - Contexts: [registry](/contexts/registry)
 
 # Examples
 - A second report against a taken-down Skill is refused as already_taken_down.
+- An operator taking down a Skill its owner already took down succeeds; the owner can no longer restore it.
