@@ -379,6 +379,7 @@
         "apps/platform/internal/entrypoint/api/apiserver/suggestion_apply_characterization_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/takedown_operator_integration_test.go",
+        "apps/platform/internal/entrypoint/api/apiserver/test_case_body_limit_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/testlab_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/testlab_patch_a4_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/trace_fold_a4_integration_test.go",

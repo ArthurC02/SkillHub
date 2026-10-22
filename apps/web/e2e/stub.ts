@@ -7,12 +7,14 @@ const STATIC_RETRY_DELAY_MS = 250;
 
 export async function serveStatic(route: Route, url?: string): Promise<void> {
   if (route.request().resourceType() === "document") return route.continue();
+  const context = route.request().frame().page().context();
   const failures: string[] = [];
   for (let attempt = 1; attempt <= STATIC_ATTEMPTS; attempt += 1) {
     try {
       const response = await route.fetch(url ? { url } : {});
       return await route.fulfill({ response });
     } catch (error) {
+      if (context.isClosed()) return;
       failures.push(error instanceof Error ? error.message : String(error));
     }
     if (attempt < STATIC_ATTEMPTS)

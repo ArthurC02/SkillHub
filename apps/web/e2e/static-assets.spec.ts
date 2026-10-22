@@ -2,6 +2,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { expect, type Page, test } from "@playwright/test";
 import { retryTransientNavigation, serveStatic, stubPlatform } from "./stub";
+import { PLATFORM_GRADER } from "../src/testing/fixtures/platform";
 
 function droppingOrigin(drops: number, hits: number[]): Server {
   return createServer((request, response) => {
@@ -21,6 +22,85 @@ async function listening(server: Server): Promise<string> {
   });
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}/asset.txt`;
 }
+
+function signal() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => (resolve = done));
+  return { promise, resolve: () => resolve() };
+}
+
+test("a static response owned by a closing context is cancelled without failing a later page", async ({
+  browser,
+  page,
+}) => {
+  const fetched = signal();
+  const release = signal();
+  const disposed = signal();
+  const finishClose = signal();
+  const hits: number[] = [];
+  const server = droppingOrigin(0, hits);
+  const origin = await listening(server);
+  const context = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+  const owner = await context.newPage();
+  let closing: Promise<void> | undefined;
+  let serving!: Promise<{ status: string; message?: string }>;
+  let fetches = 0;
+  try {
+    await owner.route("**/probe.txt", (route) => {
+      const fetch = route.fetch.bind(route);
+      route.fetch = async (options) => {
+        fetches += 1;
+        const response = await fetch(options);
+        fetched.resolve();
+        await release.promise;
+        return response;
+      };
+      serving = serveStatic(route, origin).then(
+        () => ({ status: "resolved" }),
+        (error: unknown) => ({ status: "rejected", message: String(error) }),
+      );
+      return serving.then(() => undefined);
+    });
+    await owner.goto("/");
+    await owner.evaluate(() => {
+      void fetch("/probe.txt").catch(() => undefined);
+    });
+    await fetched.promise;
+    const dispose = context.request.dispose.bind(context.request);
+    context.request.dispose = async (options) => {
+      await dispose(options);
+      disposed.resolve();
+      await finishClose.promise;
+    };
+    closing = context.close();
+    await disposed.promise;
+    expect(context.isClosed()).toBe(true);
+    expect(owner.isClosed()).toBe(false);
+    await stubPlatform(page);
+    await page.goto("/admin/graders");
+    const grader = page.getByRole("heading", {
+      name: `${PLATFORM_GRADER.name} v${PLATFORM_GRADER.version}`,
+      exact: true,
+    });
+    await expect(grader).toBeVisible();
+    release.resolve();
+    const outcome = await serving;
+    finishClose.resolve();
+    await closing;
+    expect(outcome).toEqual({ status: "resolved" });
+    expect(fetches).toBe(1);
+    expect(hits).toEqual([1]);
+    await expect(grader).toBeVisible();
+  } finally {
+    release.resolve();
+    finishClose.resolve();
+    await closing;
+    await context.close();
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  }
+});
 
 test("a static asset the origin drops twice is served on the third attempt", async ({ page }) => {
   const hits: number[] = [];
