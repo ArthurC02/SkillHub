@@ -171,11 +171,13 @@ func (d *driver) dispatch(ctx context.Context) error {
 		return err
 	}
 
-	if err := d.svc.requireStillRunnable(ctx, d.cur); errors.Is(err, ErrAccessRestricted) {
+	if err := requireStillRunnable(ctx, d.svc.Registry, d.cur); errors.Is(err, ErrAccessRestricted) {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failurePolicy,
 			d.reasonFor(failurePolicy, err))
 	} else if err != nil {
-		return d.waitForRestrictionRead(err)
+		slog.Warn("whether this skill is under an access restriction cannot be read yet; the run waits instead of reaching a sandbox unchecked",
+			"run_id", pgconv.UUIDString(d.cur.ID), "error", err)
+		return tryAgainIn(d.svc.slotWaitInterval())
 	}
 
 	if err := d.svc.requireModelGateway(); err != nil {
@@ -1009,12 +1011,6 @@ func (d *driver) waitForSandbox(err error) error {
 
 func (d *driver) waitForSpend(err error) error {
 	slog.Warn("the earlier attempts' model spend cannot be read yet; the run waits instead of failing or running past its budget",
-		"run_id", pgconv.UUIDString(d.cur.ID), "error", err)
-	return tryAgainIn(d.svc.slotWaitInterval())
-}
-
-func (d *driver) waitForRestrictionRead(err error) error {
-	slog.Warn("whether this skill is under an access restriction cannot be read yet; the run waits instead of reaching a sandbox unchecked",
 		"run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 	return tryAgainIn(d.svc.slotWaitInterval())
 }

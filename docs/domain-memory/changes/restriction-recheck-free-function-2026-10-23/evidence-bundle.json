@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "restriction-recheck-free-function",
+  "proposal_id": "restriction-recheck-free-function",
+  "registry_revision": {
+    "observed_commit": "eaf29dd130cbc75a90a053b340652fd72f8b9e8f",
+    "registry_digest": "sha256:de690bafa76d864b51e0f2f1a203e0d716f1aa8774a24875c1ae2cdf9c0f636b",
+    "committed_digest": "sha256:de690bafa76d864b51e0f2f1a203e0d716f1aa8774a24875c1ae2cdf9c0f636b"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/restriction-recheck-free-function-2026-10-23 --path apps/platform/internal/entrypoint/api/apiserver/preflight_integration_test.go --path apps/platform/internal/trial/execution/job.go --path apps/platform/internal/trial/execution/service.go",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:45ddb18f6a5b26f7f6cb500c80370d659e7e984eda710b5c017c3e7698685631",
+      "finished_at": "2026-10-22T16:51:52.867538Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

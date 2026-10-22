@@ -1,0 +1,104 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "restriction-recheck-free-function",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "restriction-recheck-free-function",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-22T16:51:51.613422Z",
+  "verified_at": "2026-10-22T16:51:54.680065Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "eaf29dd130cbc75a90a053b340652fd72f8b9e8f",
+    "registry_digest": "sha256:de690bafa76d864b51e0f2f1a203e0d716f1aa8774a24875c1ae2cdf9c0f636b",
+    "committed_digest": "sha256:de690bafa76d864b51e0f2f1a203e0d716f1aa8774a24875c1ae2cdf9c0f636b"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-access-restricted-skill-never-reaches-a-sandbox",
+        "statement": "A run of a skill under an access restriction is refused when it is created, and a run that was queued before the restriction was set fails as policy_refused at dispatch, before any sandbox receives the package; while the restriction cannot be read the run stays queued.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A run queued before an operator sets license-review fails as policy_refused naming the license review, and the sandbox sees no dispatch; after the restriction is cleared a new run succeeds."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/service.go",
+            "lines": {
+              "start": 490,
+              "end": 514
+            },
+            "content_sha256": "sha256:bf3b09bb6c875153a2d4cf6ebef8110e13ed82a1cfd189e218db7d62f6f55338",
+            "excerpt_sha256": "sha256:93fc41c9e61caed47c19d53aba63834e2aea46dc488f83b259aa084349b48e04",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/job.go",
+            "lines": {
+              "start": 174,
+              "end": 181
+            },
+            "content_sha256": "sha256:0fc92d16c4335b6fb9be9780e4c434ef3c3fa054a72b8569737b00be3ddddf32",
+            "excerpt_sha256": "sha256:4810ff4a644c9d8dd79c248465077894aab424b2f122ba150a3d761898a5d2af",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/preflight_integration_test.go",
+            "lines": {
+              "start": 329,
+              "end": 369
+            },
+            "excerpt_sha256": "sha256:99269089bfff4f8e108fb63c47cedaa14c6d45f61f0df459bd2fc489c6bb6d18"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T16:51:53.380662Z",
+      "scope": "re-cite the dispatch restriction recheck after it became a free function",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "eaf29dd130cbc75a90a053b340652fd72f8b9e8f",
+        "registry_digest": "sha256:de690bafa76d864b51e0f2f1a203e0d716f1aa8774a24875c1ae2cdf9c0f636b",
+        "committed_digest": "sha256:de690bafa76d864b51e0f2f1a203e0d716f1aa8774a24875c1ae2cdf9c0f636b"
+      }
+    }
+  ],
+  "supersedes": [
+    "restriction-rechecked-at-dispatch"
+  ]
+}

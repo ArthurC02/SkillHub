@@ -498,15 +498,15 @@ func (s *Service) requireRunnableSkill(ctx context.Context, p CreateParams) erro
 	return requireNotAccessRestricted(skill)
 }
 
-func (s *Service) requireStillRunnable(ctx context.Context, run gen.Run) error {
-	if s.Registry == nil {
+func requireStillRunnable(ctx context.Context, registry RegistryReader, run gen.Run) error {
+	if registry == nil {
 		return nil
 	}
-	version, found, err := s.Registry.Version(ctx, run.WorkspaceID, run.SkillVersionID)
+	version, found, err := registry.Version(ctx, run.WorkspaceID, run.SkillVersionID)
 	if err != nil || !found {
 		return err
 	}
-	skill, found, err := s.Registry.Skill(ctx, run.WorkspaceID, version.SkillID)
+	skill, found, err := registry.Skill(ctx, run.WorkspaceID, version.SkillID)
 	if err != nil || !found {
 		return err
 	}
