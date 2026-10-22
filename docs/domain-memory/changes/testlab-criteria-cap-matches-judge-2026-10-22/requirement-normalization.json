@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "testlab-criteria-cap-matches-judge",
+  "status": "draft",
+  "intent": "Every criterion a Test Case holds is one the judge actually judges.",
+  "actor": "coding-agent",
+  "observable_outcome": "get-context testlab lists the amended rule as reviewed, proven by its test.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-test-case-holds-at-most-50-criteria",
+      "statement": "A Test Case holds at most as many acceptance criteria as the judge reads in one evaluation, twenty; one more is refused as over the limit, so no Test Case can carry a criterion the judge would never see."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/trial/design/testlab.go",
+    "apps/platform/internal/trial/design/testlab_test.go"
+  ]
+}

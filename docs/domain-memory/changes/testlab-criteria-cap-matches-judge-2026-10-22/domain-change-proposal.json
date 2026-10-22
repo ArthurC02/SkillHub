@@ -1,0 +1,125 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "testlab-criteria-cap-matches-judge",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "testlab-criteria-cap-matches-judge",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-22T09:00:53.498553Z",
+  "verified_at": "2026-10-22T09:01:28.541057Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "a4d72cfb725bb98d6e0e82fe2c000b337a95e278",
+    "registry_digest": "sha256:224c97f42397774fb2290fd1ff153b257a490ad705e8213986158f22f4827c3d",
+    "committed_digest": "sha256:224c97f42397774fb2290fd1ff153b257a490ad705e8213986158f22f4827c3d"
+  },
+  "affected_contexts": [
+    "testlab"
+  ],
+  "rule_ids": [
+    "a-test-case-holds-at-most-50-criteria"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "testlab",
+    "invariant": "Only testlab decides how many criteria a Test Case may hold; the judge's batch size is the same marked number.",
+    "evidence": [
+      "apps/platform/internal/trial/design/testlab.go:43-43",
+      "apps/platform/internal/trial/design/testlab.go:640-642"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/design/testlab.go:43-43",
+      "apps/platform/internal/trial/design/testlab.go:640-642"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A Test Case could hold fifty criteria while the judge reads twenty and marks the whole evaluation truncated past that, so a Test Case with more than twenty criteria could never pass and the author could not see why."
+    ],
+    "decision": "Lower the Test Case cap to the judge's twenty and put both on the same one-number roster so they cannot drift; existing Test Cases over the cap keep their criteria and the editor says only the first twenty are judged.",
+    "invariants_preserved": [
+      "A refused criterion leaves the Test Case unchanged.",
+      "Existing criteria are never deleted by a limit change."
+    ],
+    "rejected_alternatives": [
+      "Judging in batches of twenty and merging: the judge cost multiplies with the number of criteria, and atomic criteria are the better practice."
+    ],
+    "proof_obligations": [
+      "rule-a-test-case-holds-at-most-50-criteria"
+    ],
+    "counterfactual_check": "Raising MaxCriteria back to fifty fails TestAddCriterionAcceptsUpToTheLimitAndRefusesOneOver."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-test-case-holds-at-most-50-criteria",
+        "statement": "A Test Case holds at most as many acceptance criteria as the judge reads in one evaluation, twenty; one more is refused as over the limit, so no Test Case can carry a criterion the judge would never see.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "The 20th criterion is accepted and the 21st refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/testlab.go",
+            "lines": {
+              "start": 640,
+              "end": 642
+            },
+            "excerpt_sha256": "sha256:f5065104f232d1879c455e454199732e37886328586f6043ec3eb55a1c6a2b53"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/testlab_test.go",
+            "lines": {
+              "start": 184,
+              "end": 203
+            },
+            "content_sha256": "sha256:61d5c99ca510ae24f57756f81a2caf257d49bc8f64e6d7e2ec0c596c5c218421",
+            "excerpt_sha256": "sha256:475ac1e8de06fea989845dfe405c4b4d36c77c6cb3e5e417af1ae52bf92f3e1d"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/testlab.go",
+            "lines": {
+              "start": 43,
+              "end": 43
+            },
+            "content_sha256": "sha256:4aad44ae6ef8ebe95ee92045f4894df3ec55f447e7660243d753c801e9468367",
+            "excerpt_sha256": "sha256:b6fa3916607a1c82184b7ad47e27619b37e6c5904113cdc8445bba062a111f8c"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T09:01:27.787074Z",
+      "scope": "Amend a-test-case-holds-at-most-50-criteria",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "a4d72cfb725bb98d6e0e82fe2c000b337a95e278",
+        "registry_digest": "sha256:224c97f42397774fb2290fd1ff153b257a490ad705e8213986158f22f4827c3d",
+        "committed_digest": "sha256:224c97f42397774fb2290fd1ff153b257a490ad705e8213986158f22f4827c3d"
+      }
+    }
+  ],
+  "supersedes": [
+    "testlab-harvest-rules-2026-10-17"
+  ]
+}

@@ -10483,7 +10483,7 @@ components:
       properties:
         suggestions:
           type: array
-          maxItems: 50
+          maxItems: 20  # one-number: maxCriteria
           items:
             type: object
             required: [text]

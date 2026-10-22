@@ -22,7 +22,7 @@ func (s *AcceptanceCriteriaSuggestions) Validate() error {
 		if err := (validate.Array{
 			MinLength:    0,
 			MinLengthSet: false,
-			MaxLength:    50,
+			MaxLength:    20,
 			MaxLengthSet: true,
 		}).ValidateLength(len(s.Suggestions)); err != nil {
 			return errors.Wrap(err, "array")

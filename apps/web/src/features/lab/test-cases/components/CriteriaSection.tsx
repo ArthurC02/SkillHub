@@ -10,7 +10,7 @@ import { MutationError } from "./MutationError";
 import { CriterionRow } from "./CriterionRow";
 import { textLengthReason } from "../test-cases.model";
 
-const MAX_CRITERIA = 50;
+const MAX_CRITERIA = 20; // one-number: maxCriteria
 
 function Suggestions({
   testCaseId,
@@ -132,6 +132,12 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
       )}
 
       <p className="note">一個測試題最多 {MAX_CRITERIA} 條驗收條件。</p>
+      {testCase.acceptance_criteria.length > MAX_CRITERIA && (
+        <p role="status">
+          這個測試題有 {testCase.acceptance_criteria.length} 條驗收條件，評估只判定前 {MAX_CRITERIA}{" "}
+          條；超過的部分會讓整次判定標為無法判定。刪到 {MAX_CRITERIA} 條以內才可能通過。
+        </p>
+      )}
       <p>
         <label htmlFor="new-criterion">新增驗收條件</label>{" "}
         <input

@@ -1,0 +1,38 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "testlab-criteria-cap-matches-judge",
+  "proposal_id": "testlab-criteria-cap-matches-judge",
+  "registry_revision": {
+    "observed_commit": "a4d72cfb725bb98d6e0e82fe2c000b337a95e278",
+    "registry_digest": "sha256:224c97f42397774fb2290fd1ff153b257a490ad705e8213986158f22f4827c3d",
+    "committed_digest": "sha256:224c97f42397774fb2290fd1ff153b257a490ad705e8213986158f22f4827c3d"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-test-case-holds-at-most-50-criteria",
+      "mutated_protection": "apps/platform/internal/trial/design/testlab.go:43: MaxCriteria = 20 // one-number -> MaxCriteria = 50 // one-number",
+      "failure_evidence": "=== RUN   TestAddCriterionAcceptsUpToTheLimitAndRefusesOneOver\n    testlab_test.go:201: criterion 21 returned <nil>, want ErrLimitExceeded\n--- FAIL: TestAddCriterionAcceptsUpToTheLimitAndRefusesOneOver (0.15s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design\t4.269s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-test-case-holds-at-most-50-criteria",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAddCriterionAcceptsUpToTheLimitAndRefusesOneOver$ ./internal/trial/design/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b1446bea5143d0c41fc9b1b5439e4b9f471963226151b677ae919aa94f4224a4",
+      "finished_at": "2026-10-22T09:01:01.613442Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

@@ -40,7 +40,7 @@ const (
 	MaxNameChars      = limits.CreateTestCaseBodyNameMaxLength
 	MaxPromptChars    = limits.CreateTestCaseBodyUserPromptMaxLength
 	MaxCriterionChars = limits.AcceptanceCriterionTextMaxLength
-	MaxCriteria       = 50
+	MaxCriteria       = 20 // one-number: maxCriteria
 
 	maxConfirmedCreationCriteria = 12
 )

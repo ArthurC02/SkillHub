@@ -1054,6 +1054,24 @@ test("TEST-002 asking for suggestions writes nothing; each one is adopted or ign
   expect(calls.length).toBe(before);
 });
 
+const criteriaOf = (n: number): TestCase["acceptance_criteria"] =>
+  Array.from({ length: n }, (_, i) => ({
+    id: `c${i}`,
+    text: `條件 ${i}`,
+    source: "user" as const,
+    confirmed_at: null,
+  }));
+
+test.each([
+  [20, false],
+  [21, true],
+])("a test case with %i criteria warns that only the first 20 are judged: %s", async (n, warns) => {
+  stubPlatform({ testCase: { ...draft, acceptance_criteria: criteriaOf(n) } });
+  await render();
+
+  expect((container.textContent ?? "").includes("評估只判定前 20 條")).toBe(warns);
+});
+
 test("TEST-002 an adopted suggestion is listed as 系統建議，尚未確認", async () => {
   const withSuggested: TestCase = {
     ...draft,

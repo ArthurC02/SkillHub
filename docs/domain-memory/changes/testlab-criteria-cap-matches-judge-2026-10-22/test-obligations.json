@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "testlab-criteria-cap-matches-judge",
+  "proposal_id": "testlab-criteria-cap-matches-judge",
+  "obligations": [
+    {
+      "id": "rule-a-test-case-holds-at-most-50-criteria",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-test-case-holds-at-most-50-criteria",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-test-case-holds-at-most-50-criteria"
+        }
+      ],
+      "expected_outcome": "A Test Case holds at most as many acceptance criteria as the judge reads in one evaluation, twenty; one more is refused as over the limit, so no Test Case can carry a criterion the judge would never see.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAddCriterionAcceptsUpToTheLimitAndRefusesOneOver$ ./internal/trial/design/"
+    }
+  ]
+}

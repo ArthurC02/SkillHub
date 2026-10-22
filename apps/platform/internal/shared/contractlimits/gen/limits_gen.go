@@ -4,7 +4,7 @@ package gen
 
 const (
 	AcceptanceCriteriaSuggestionsSuggestionsItemTextMaxLength = 2000
-	AcceptanceCriteriaSuggestionsSuggestionsMaxItems          = 50
+	AcceptanceCriteriaSuggestionsSuggestionsMaxItems          = 20
 	AcceptanceCriterionTextMaxLength                          = 2000
 	AddAcceptanceCriterionBodyTextMaxLength                   = 2000
 	ClearModelCallBudgetBodyReasonMaxLength                   = 1000
