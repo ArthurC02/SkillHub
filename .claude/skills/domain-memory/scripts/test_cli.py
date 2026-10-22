@@ -1,19 +1,23 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
+import io
 import json
-import os
 import re
 import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.changes import validate_change_package
+from domain_registry.cli import main
 from domain_registry.cli_parser import build_parser
+from domain_registry.git import GitDeadline
 from domain_registry.git_hooks import governance_readiness, install_pre_push_hook
 from domain_registry.store import has_registry, write_document
 from test_support import RegistryTestCase, amend_policy, stored_policy_of
@@ -42,17 +46,20 @@ class CliTest(RegistryTestCase):
 
     def test_a_git_deadline_ends_in_one_error_line_that_names_the_variable(self) -> None:
         self.committed_source_map()
-        result = subprocess.run(
-            [sys.executable, "-m", "domain_registry.cli", "refresh-listing",
-             "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo)],
-            cwd=Path(__file__).parent, capture_output=True, text=True, encoding="utf-8", check=False,
-            env={**os.environ, "PYTHONIOENCODING": "utf-8", "DOMAIN_MEMORY_GIT_TIMEOUT": "0.001"},
-        )
+        deadline = GitDeadline(["git", "status"], 0.001, rerun_is_safe=True)
+        shown = io.StringIO()
+        argv = ["registry_tools.py", "refresh-listing", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo)]
+        with (
+            patch("domain_registry.git.run_bounded", side_effect=deadline),
+            patch.object(sys, "argv", argv),
+            contextlib.redirect_stderr(shown),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            code = main()
         self.assertEqual(
-            (1, True, True, 1),
-            (result.returncode, result.stderr.startswith("ERROR: Command '['git', "),
-             result.stderr.rstrip().endswith("; set DOMAIN_MEMORY_GIT_TIMEOUT to a larger number of seconds to wait longer"),
-             len(result.stderr.rstrip().splitlines())),
+            (1, ["ERROR: Command '['git', 'status']' timed out after 0.001 seconds; nothing was written, so it is safe "
+                 "to run again; set DOMAIN_MEMORY_GIT_TIMEOUT to a larger number of seconds to wait longer"]),
+            (code, shown.getvalue().splitlines()),
         )
 
     def test_adding_a_source_keeps_the_rest_of_the_selection(self) -> None:
