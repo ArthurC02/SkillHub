@@ -62,10 +62,10 @@ func runReindex() int {
 
 	svc := &ingest.Service{
 		Pool: pool, Store: store,
-		LLM:                ingest.ModelOrNone(wiring.LLMClient(llmURL, llmToken)),
-		Budgets:            wiring.NewModelBudgets(pool),
-		IndexSkill:         wiring.EnrichedIndexer(catalogSvc),
-		Worklist:           wiring.EnrichmentWorklist(&catalog.EnrichmentBackfill{Pool: pool}),
+		LLM:        ingest.ModelOrNone(wiring.LLMClient(llmURL, llmToken)),
+		Budgets:    wiring.NewModelBudgets(pool),
+		IndexSkill: wiring.EnrichedIndexer(catalogSvc),
+		Worklist:   wiring.EnrichmentWorklist(&catalog.EnrichmentBackfill{Pool: pool}),
 	}
 
 	if svc.Credit, err = wiring.NewCreditService(pool); err != nil {
