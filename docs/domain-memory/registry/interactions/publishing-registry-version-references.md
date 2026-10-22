@@ -7,8 +7,8 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-16T16:45:42.836437Z"
 sources:
-  - resource: "apps/platform/internal/entrypoint/api/apiserver/app.go#L209-209"
-    excerpt_sha256: "sha256:7037d57ed2d2592a8edb3a1773b456d4d78a6096b9890836d7b36df52aba69a4"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/app.go#L210-210"
+    excerpt_sha256: "sha256:e26bc149ef018334dc26aa8258b4d7553af266f31a16eaf0fe14f027f0f14e5f"
 ---
 # Relations
 - Producer context: [publishing](/contexts/publishing)

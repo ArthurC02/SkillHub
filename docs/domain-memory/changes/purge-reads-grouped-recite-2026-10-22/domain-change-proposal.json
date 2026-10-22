@@ -3,12 +3,12 @@
   "proposal_id": "purge-reads-grouped-recite",
   "proposer": "domain-memory-agent",
   "requirement_id": "purge-reads-grouped-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-22T05:35:30.225433Z",
   "verified_at": "2026-10-22T05:35:32.031937Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T05:35:37.787497Z",
+  "applied_at": "2026-10-22T05:36:55.740133Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "57426f2b514f1aa0d9eb1e8ad5cbd9fa1aab1847",
@@ -141,5 +141,9 @@
   "approvals": [],
   "supersedes": [
     "platform-shifted-recite"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "2e505a941de1b6f549bdcd1499e60128be68d9c1",
+    "registry_digest": "sha256:72a2f6fb3fd5e1dfdd17b355c6d46780b67e488ab24c98475df40158ae36a0ce"
+  }
 }
