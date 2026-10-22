@@ -17,10 +17,10 @@ class PolicyTest(RegistryTestCase):
         signed = {"verifier": "git-signed-commit", "trigger": "git-push", "ci_requirement": "none",
                   "authorized_signers": ["SHA256:key"]}
         cases = [
-            ("format", {"format": "domain-memory-policy/v2"}, "policy has an invalid format"),
-            ("storage", {"storage_mode": "cloud"}, "policy has an invalid storage_mode"),
-            ("classification", {"data_classification": "secret"}, "policy has an invalid data_classification"),
-            ("review mode", {"review_mode": "maybe"}, "policy has an invalid review_mode"),
+            ("format", {"format": "domain-memory-policy/v2"}, "policy has an invalid format: 'domain-memory-policy/v2' is not one of domain-memory-policy/v1"),
+            ("storage", {"storage_mode": "cloud"}, "policy has an invalid storage_mode: 'cloud' is not one of external, ignored, tracked"),
+            ("classification", {"data_classification": "secret"}, "policy has an invalid data_classification: 'secret' is not one of confidential, internal, public, restricted"),
+            ("review mode", {"review_mode": "maybe"}, "policy has an invalid review_mode: 'maybe' is not one of local-draft-only, scm-verified"),
             ("no governance", {"review_governance": None}, "policy requires review_governance"),
             ("unknown verifier", {"review_governance": {**sound["review_governance"], "verifier": "fax"}},
              "policy has invalid review_governance"),
@@ -76,7 +76,8 @@ class PolicyTest(RegistryTestCase):
             "review_governance": None, "source_policy": None, "limits": None,
         }
         self.assertEqual(
-            ["policy has an invalid format", "policy has an invalid storage_mode", "policy requires review_governance",
+            ["policy has an invalid format: 'v0' is not one of domain-memory-policy/v1",
+             "policy has an invalid storage_mode: 'cloud' is not one of external, ignored, tracked", "policy requires review_governance",
              "policy requires selected source paths and authority", "policy has invalid limits"],
             validate_policy(broken),
         )

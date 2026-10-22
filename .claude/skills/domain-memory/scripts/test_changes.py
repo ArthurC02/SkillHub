@@ -38,7 +38,7 @@ class ChangesTest(RegistryTestCase):
         cases = [
             ("complete", material, []),
             ("unknown classification", {**material, "change_classification": "minor"},
-             ["domain-change-proposal.json has an invalid change_classification"]),
+             ["domain-change-proposal.json has an invalid change_classification: 'minor' is not one of material, routine"]),
             ("material without design", {"change_classification": "material"},
              ["a material proposal requires implementation_design with domain forces, decision, invariants, "
               "alternatives, proof obligations, and counterfactual check"]),
@@ -95,7 +95,8 @@ class ChangesTest(RegistryTestCase):
             ("dropped flag", {"risk_flags": [flagged]}, {},
              ["domain-change-proposal.json must retain requirement risk flags"]),
             ("kept flag", {"risk_flags": [flagged]}, {"risk_flags": [flagged]}, []),
-            ("status", {}, {"status": "shipped"}, ["domain-change-proposal.json has an invalid status"]),
+            ("status", {}, {"status": "shipped"}, ["domain-change-proposal.json has an invalid status: 'shipped' is not one of "
+                                                  "applied, approved, draft, rejected, submitted, superseded, verified"]),
             ("revision zero", {}, {"proposal_revision": 0},
              ["domain-change-proposal.json requires a positive proposal_revision"]),
             ("revision given as true", {}, {"proposal_revision": True},
@@ -513,7 +514,7 @@ class ChangesTest(RegistryTestCase):
             ("blank check", [{**good, "check": ""}], [], [],
              ["test obligation OB-1 requires expected_outcome and check"], {"OB-1"}),
             ("invalid status", [{**good, "status": "done"}], [], [],
-             ["test obligation OB-1 has an invalid status"], {"OB-1"}),
+             ["test obligation OB-1 has an invalid status: 'done' is not one of blocked, executed, planned"], {"OB-1"}),
             ("rule lacks an obligation", [good], ["order-total"], [],
              ["rule order-total lacks a test obligation"], {"OB-1"}),
             ("rule named only by an invariant obligation",

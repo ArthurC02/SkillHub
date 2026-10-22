@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -309,6 +309,10 @@ def change_template_dir() -> Path:
 
 def completed_identifier(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip()) and not value.startswith("<")
+
+
+def invalid_choice(label: str, field: str, value: Any, allowed: Iterable[str]) -> str:
+    return f"{label} has an invalid {field}: {value!r} is not one of {', '.join(sorted(allowed))}"
 
 
 def whole_number(value: Any) -> bool:

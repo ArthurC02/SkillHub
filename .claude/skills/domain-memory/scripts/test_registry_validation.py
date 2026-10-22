@@ -40,9 +40,9 @@ class RegistryValidationTest(RegistryTestCase):
         invoice_term = {"id": "invoice", "name": "Invoice", "contexts": ["orders"]}
         cases = [
             ("unknown status", "contexts.json", [{**orders, "status": "pending"}, billing],
-             "contexts/orders has an invalid status"),
+             "contexts/orders has an invalid status: 'pending' is not one of candidate, deprecated, reviewed, superseded"),
             ("decision review status", "decisions.json", [{"id": "d", "review_status": "bogus", "status": "candidate"}],
-             "decisions/d has an invalid status"),
+             "decisions/d has an invalid status: 'bogus' is not one of candidate, deprecated, reviewed, superseded"),
             ("reviewed without fields", "rules.json",
              [{"id": "r", "contexts": ["orders"], "status": "reviewed", "evidence": ["x"]}],
              "rules/r is reviewed but missing statement, verified"),

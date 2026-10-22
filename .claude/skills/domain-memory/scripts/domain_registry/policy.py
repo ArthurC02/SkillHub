@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .common import change_template_dir, load_json, whole_number, write_json, writer_lock
+from .common import change_template_dir, invalid_choice, load_json, whole_number, write_json, writer_lock
 
 STORAGE_MODES = ("tracked", "ignored", "external")
 CLASSIFICATIONS = ("public", "internal", "confidential", "restricted")
@@ -29,10 +29,10 @@ def _nonblank_strings(value: Any) -> bool:
 
 
 ENUMERATED_FIELDS = (
-    ("format", {"domain-memory-policy/v1"}, "policy has an invalid format"),
-    ("storage_mode", STORAGE_MODES, "policy has an invalid storage_mode"),
-    ("data_classification", CLASSIFICATIONS, "policy has an invalid data_classification"),
-    ("review_mode", REVIEW_MODES, "policy has an invalid review_mode"),
+    ("format", {"domain-memory-policy/v1"}),
+    ("storage_mode", STORAGE_MODES),
+    ("data_classification", CLASSIFICATIONS),
+    ("review_mode", REVIEW_MODES),
 )
 LIMIT_KEYS = ("max_file_count", "max_file_bytes", "max_total_bytes", "max_query_results")
 GOVERNANCE_RULES = (
@@ -89,7 +89,11 @@ def _limits_error(limits: Any) -> str | None:
 
 
 def validate_policy(value: dict[str, Any]) -> list[str]:
-    errors = [message for key, allowed, message in ENUMERATED_FIELDS if value.get(key) not in allowed]
+    errors = [
+        invalid_choice("policy", key, value.get(key), allowed)
+        for key, allowed in ENUMERATED_FIELDS
+        if value.get(key) not in allowed
+    ]
     found = (
         _governance_error(value.get("review_mode"), value.get("review_governance")),
         _source_error(value.get("source_policy")),

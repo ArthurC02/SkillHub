@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.3.5
+
+### Changed
+
+- A field with a closed set of values names the value it was given and the values it takes when it is refused, as an unknown subdomain already did: `domain-change-proposal.json has an invalid change_classification: 'refactor' is not one of material, routine`. The same holds for a proposal's status, a test obligation's status, a record's status, and a policy's format, storage_mode, data_classification and review_mode; before, each said only `has an invalid <field>` and sent the reader to the schema.
+
 ## 2.3.4
 
 ### Changed

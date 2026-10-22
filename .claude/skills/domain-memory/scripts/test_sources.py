@@ -548,7 +548,7 @@ class SourcesTest(RegistryTestCase):
         policy = stored_policy_of(self.repo)
         with self.subTest("an invalid policy"):
             result = probe_sources(self.repo, path, {**policy, "storage_mode": "cloud"})
-            self.assertEqual(("invalid", "policy has an invalid storage_mode"), (result["status"], result["reason"]))
+            self.assertEqual(("invalid", "policy has an invalid storage_mode: 'cloud' is not one of external, ignored, tracked"), (result["status"], result["reason"]))
         with self.subTest("a policy report that cannot be built"), \
                 patch("domain_registry.sources.source_policy_report", side_effect=OSError("disk gone")):
             result = probe_sources(self.repo, path, policy)

@@ -24,6 +24,7 @@ from .common import (
     RISK_FLAGS,
     change_template_dir,
     completed_identifier,
+    invalid_choice,
     iso_timestamp,
     iter_packages,
     load_json,
@@ -275,7 +276,7 @@ def implementation_design_errors(
 ) -> list[str]:
     classification = proposal.get("change_classification")
     if classification not in CHANGE_CLASSIFICATIONS:
-        return ["domain-change-proposal.json has an invalid change_classification"]
+        return [invalid_choice(PROPOSAL_FILE, "change_classification", classification, CHANGE_CLASSIFICATIONS)]
     design = proposal.get("implementation_design")
     if isinstance(design, dict):
         return _design_field_errors(design, obligation_ids, classification)
@@ -414,7 +415,7 @@ def _obligation_errors(
                 f"test obligation {obligation_id} requires expected_outcome and check"
             )
         if obligation.get("status") not in OBLIGATION_STATUSES:
-            errors.append(f"test obligation {obligation_id} has an invalid status")
+            errors.append(invalid_choice(f"test obligation {obligation_id}", "status", obligation.get("status"), OBLIGATION_STATUSES))
     errors.extend(
         f"acceptance criterion {criterion_id} lacks a test obligation: "
         f"add one whose source_type is acceptance-criterion and whose source_id is {criterion_id}"
@@ -667,7 +668,7 @@ def _risk_flag_errors(requirement: dict[str, Any], proposal: dict[str, Any]) -> 
 def _proposal_field_errors(proposal: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     if proposal.get("status") not in PROPOSAL_STATUSES:
-        errors.append("domain-change-proposal.json has an invalid status")
+        errors.append(invalid_choice(PROPOSAL_FILE, "status", proposal.get("status"), PROPOSAL_STATUSES))
     revision = proposal.get("proposal_revision")
     if not whole_number(revision) or revision < 1:
         errors.append(

@@ -11,6 +11,7 @@ from .common import (
     REGISTRY_STATUSES,
     REVIEW_REQUIRED_FIELDS,
     conflict_marked_line,
+    invalid_choice,
     is_reviewed,
     load_json,
     record_status,
@@ -123,7 +124,7 @@ def _entry_status_errors(
 ) -> list[str]:
     label = f"{name.removesuffix('.json')}/{entry.get('id')}"
     if status not in REGISTRY_STATUSES:
-        return [f"{label} has an invalid status"]
+        return [invalid_choice(label, "status", status, REGISTRY_STATUSES)]
     errors: list[str] = []
     if "review" in entry:
         errors.append(f"{label} holds a review block; this version reads verified only")
