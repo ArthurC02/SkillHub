@@ -1,7 +1,7 @@
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { ApiError, SessionNotReadyError } from "../../../core/api/client";
 import { useMe } from "../../../core/session/me.service";
 import {
@@ -104,17 +104,6 @@ function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?
         retrying={stored.fetchStatus !== "idle"}
         focusTarget="dataset-heading"
       />
-      {rules && (
-        <section className="dataset-upload-guide" aria-labelledby="dataset-guide-heading">
-          <h2 id="dataset-guide-heading">上傳前請先確認</h2>
-          <UploadRulesFacts
-            limits={rules}
-            used={used}
-            usageFailed={Boolean(stored.error)}
-            testCase={testCase.test_case_id}
-          />
-        </section>
-      )}
       <DatasetIntake
         testCaseId={testCase.test_case_id}
         limits={rules}
@@ -124,10 +113,34 @@ function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?
         reading={stored.fetchStatus !== "idle"}
         waiting={limits.isPending || stored.isPending || limits.isFetching || stored.isFetching}
         paused={limits.fetchStatus === "paused" || stored.fetchStatus === "paused"}
-      />
+      >
+        {rules && (
+          <section className="dataset-upload-guide" aria-labelledby="dataset-guide-heading">
+            <h3 id="dataset-guide-heading">上傳前請先確認</h3>
+            <UploadRulesFacts
+              limits={rules}
+              used={used}
+              usageFailed={Boolean(stored.error)}
+              testCase={testCase.test_case_id}
+            />
+          </section>
+        )}
+      </DatasetIntake>
     </>
   );
 }
+
+type DatasetIntakeProps = {
+  testCaseId: string;
+  limits: DatasetLimits | undefined;
+  used: TestCaseUsage | undefined;
+  datasets: Dataset[] | undefined;
+  onRetryRead: () => void;
+  reading: boolean;
+  waiting: boolean;
+  paused: boolean;
+  children: ReactNode;
+};
 
 function DatasetIntake({
   testCaseId,
@@ -138,16 +151,8 @@ function DatasetIntake({
   reading,
   waiting,
   paused,
-}: {
-  testCaseId: string;
-  limits: DatasetLimits | undefined;
-  used: TestCaseUsage | undefined;
-  datasets: Dataset[] | undefined;
-  onRetryRead: () => void;
-  reading: boolean;
-  waiting: boolean;
-  paused: boolean;
-}) {
+  children,
+}: DatasetIntakeProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState("");
   const [uploaded, setUploaded] = useState<Dataset[]>([]);
@@ -170,6 +175,7 @@ function DatasetIntake({
           <label htmlFor="dataset-file">選擇檔案</label>
           <input id="dataset-file" type="file" ref={fileInput} />
         </div>
+        {children}
         {readUnavailable && (
           <p id="upload-read-why" role="status" className="note">
             {paused

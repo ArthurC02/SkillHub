@@ -7,6 +7,66 @@ import { TEST_CASE, VERSION, platformResponse } from "../src/testing/fixtures/pl
 import type { Dataset } from "../src/features/lab/lab.service";
 import { stubPlatform } from "./stub";
 
+test("dataset selection starts in the first phone viewport with rules before submission", async ({
+  page,
+}) => {
+  await stubPlatform(page);
+  for (const width of [375, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`/lab/test-cases/${TEST_CASE}/datasets`);
+    await expect(page.locator(".auth-name")).toHaveText("tester");
+    const file = page.getByLabel("選擇檔案", { exact: true });
+    const guide = page.getByRole("region", { name: "上傳前請先確認", exact: true });
+    const submit = page.getByRole("button", { name: "上傳", exact: true });
+    await expect(submit).toBeEnabled();
+    const box = await file.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(900);
+    expect(
+      await file.evaluate((element) =>
+        Boolean(
+          element.compareDocumentPosition(document.querySelector(".dataset-upload-guide")!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      await guide.evaluate((element) =>
+        Boolean(
+          element.compareDocumentPosition(
+            document.querySelector(".dataset-upload-picker button")!,
+          ) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+      ),
+    ).toBe(true);
+    for (const term of ["大小限制", "支援格式", "保存政策", "資料使用範圍"]) {
+      await expect(guide.getByText(term, { exact: true })).toBeVisible();
+    }
+    expect(await guide.locator("details, [hidden]").count()).toBe(0);
+    await file.focus();
+    await page.keyboard.press("Tab");
+    await expect(guide.getByRole("link")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(submit).toBeFocused();
+    const report = await new AxeBuilder({ page }).analyze();
+    await writeFile(
+      test.info().outputPath(`dataset-task-order-${width}-a11y.json`),
+      JSON.stringify(report),
+    );
+    expect(report.violations).toEqual([]);
+    expect(report.incomplete).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({
+      path: test.info().outputPath(`dataset-task-order-${width}.png`),
+      fullPage: true,
+    });
+  }
+});
+
 function uploadReceiver(transport: string, onBody: (body: string) => void) {
   return createServer(async (request, response) => {
     const headers = {

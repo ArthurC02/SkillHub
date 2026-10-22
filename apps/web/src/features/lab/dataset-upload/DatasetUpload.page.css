@@ -3,7 +3,8 @@
 }
 
 .dataset-upload-guide {
-  margin-top: 16px;
+  grid-column: 1 / -1;
+  min-width: 0;
   padding: 20px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -11,7 +12,7 @@
   box-shadow: var(--shadow-rest);
 }
 
-.dataset-upload-guide > h2:first-child {
+.dataset-upload-guide > h3:first-child {
   margin-top: 0;
 }
 
