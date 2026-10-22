@@ -19,27 +19,28 @@ def domain_memory_hint(root: Path, repo_root: Path | None = None) -> str:
     return f"{DOMAIN_MEMORY_HINT}; Domain Memories in this repository: {', '.join(shown)}"
 
 
-def domain_memories_in(repo_root: Path) -> list[Path]:
-    return sorted({place.resolve() for place in _domain_memories_known_to_git(repo_root) or []})
+def domain_memories_in(repo_root: Path) -> list[Path] | str:
+    listed = _domain_memories_known_to_git(repo_root)
+    return listed if isinstance(listed, str) else sorted({place.resolve() for place in listed})
 
 
 def _candidates(asked: Path, repo_root: Path | None) -> list[Path]:
     if repo_root is not None:
         listed = _domain_memories_known_to_git(repo_root)
-        if listed is not None:
+        if isinstance(listed, list):
             return sorted({place.resolve() for place in listed})
     return [place for place in _neighbours(asked) if holds_domain_memory(place)]
 
 
-def _domain_memories_known_to_git(repo_root: Path) -> list[Path] | None:
+def _domain_memories_known_to_git(repo_root: Path) -> list[Path] | str:
     try:
         result = run_git(
             repo_root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", *DOMAIN_MEMORY_MARKERS
         )
-    except OSError:
-        return None
+    except OSError as error:
+        return str(error)
     if result.returncode != 0:
-        return None
+        return result.stderr.strip()
     markers = [repo_root / path for path in result.stdout.split("\0") if path]
     return [_home_of(marker) for marker in markers if marker.name != "source-map.json" or is_domain_source_map(marker)]
 

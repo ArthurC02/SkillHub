@@ -87,6 +87,10 @@ def readiness_report(repo_root: Path, registry_root: Path | None) -> tuple[dict[
     if registry_root is not None:
         return assess_readiness(repo_root, registry_root) | {"registry_root": shown_path(registry_root.resolve(), repo_root)}, None
     found = domain_memories_in(repo_root)
+    if isinstance(found, str):
+        report = assess_readiness(repo_root, None) | {"registry_root": None, "domain_memories": None}
+        return report, ("NOTE: git could not list the Domain Memories this repository holds: "
+                        f"{found}; pass --registry-root to assess one.")
     shown = [shown_path(place, repo_root) for place in found]
     chosen = found[0] if len(found) == 1 else None
     report = assess_readiness(repo_root, chosen) | {

@@ -23,12 +23,12 @@ VANISHED = OSError("git vanished")
 
 
 class GitDeadlineSurfacesTest(RegistryTestCase):
-    def test_the_domain_memories_git_lists_stop_at_a_deadline_and_are_none_without_git(self) -> None:
+    def test_the_domain_memories_git_lists_stop_at_a_deadline_and_name_the_reason_without_git(self) -> None:
         with self.subTest("deadline"), patch("domain_registry.locate.run_git", side_effect=DEADLINE), \
                 self.assertRaises(GitDeadline):
             domain_memories_in(self.repo)
         with self.subTest("no git"), patch("domain_registry.locate.run_git", side_effect=VANISHED):
-            self.assertEqual([], domain_memories_in(self.repo))
+            self.assertEqual("git vanished", domain_memories_in(self.repo))
 
     def test_the_secret_scan_stops_at_a_deadline_and_walks_the_same_files_without_git(self) -> None:
         listed_by_git = scan_report(self.repo)

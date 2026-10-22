@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.3.8
+
+### Fixed
+
+- `readiness` without `--registry-root` no longer reports that the repository holds no Domain Memory when git could not list them: with no git on the path, or a directory that is not a repository, `domain_memories` is now `null` and a `NOTE:` gives git's reason (`NOTE: git could not list the Domain Memories this repository holds: <reason>; pass --registry-root to assess one.`); it listed `[]` and assessed nothing, as it does for a repository that truly holds none. The hint under `no Domain Memory at …` still falls back to the neighbouring directories as before.
+
 ## 2.3.7
 
 ### Fixed
