@@ -350,5 +350,21 @@ class RecordBriefTest(BriefTest):
         )
 
 
+    def test_an_asset_without_an_id_an_id_without_an_asset_and_a_base_with_an_asset_are_refused(self) -> None:
+        self.two_mapped_contexts(rules=[RULE])
+        roots = ("--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo))
+        for label, given in (
+            ("asset only", ("--asset", "rules")),
+            ("id only", ("--id", "order-total")),
+            ("base and asset", ("--base", "HEAD", "--asset", "rules")),
+        ):
+            with self.subTest(label):
+                refused = self.run_cli("brief", *roots, *given)
+                self.assertEqual(
+                    (1, "ERROR: brief needs --base <revision>, or --asset <asset> --id <id>, not both"),
+                    (refused.returncode, refused.stderr.strip()),
+                )
+
+
 if __name__ == "__main__":
     unittest.main()

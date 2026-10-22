@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.11
+
+### Added
+
+- Tests for `brief` given an asset without an id, an id without an asset, or a base with an asset, and for `dependents` walking out of a context and skipping a reference to a record the registry lacks.
+
 ## 2.2.10
 
 ### Added
