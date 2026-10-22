@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -291,6 +292,8 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 
 const maxGenerateRequestBytes = 6 << 20
 
+var diagramLimit = fmt.Sprintf("%d 位元組（約 %s）", generateMaxDiagramBytes, skillpkg.HumanMB(generateMaxDiagramBytes))
+
 func decodeGenerateInput(w http.ResponseWriter, r *http.Request) (GenerateInput, bool) {
 	var body struct {
 		TaskDescription string `json:"task_description"`
@@ -310,7 +313,7 @@ func decodeGenerateInput(w http.ResponseWriter, r *http.Request) (GenerateInput,
 
 		if len(body.Diagram.Data) > base64.StdEncoding.EncodedLen(generateMaxDiagramBytes)+4 {
 			httpx.WriteError(w, http.StatusBadRequest,
-				"diagram 超過 4 MB 上限，或不是合法的 base64。接受的格式：PNG、JPEG、WebP。")
+				"diagram 超過 "+diagramLimit+"上限，或不是合法的 base64。接受的格式：PNG、JPEG、WebP。")
 			return GenerateInput{}, false
 		}
 		decoded, err := base64.StdEncoding.DecodeString(body.Diagram.Data)
@@ -367,7 +370,7 @@ var generateRefusals = []generateRefusalEntry{
 	{ErrGenerateNoInput, http.StatusUnprocessableEntity,
 		"請描述你要完成的任務：做什麼、輸入是什麼、預期產出是什麼；或上傳一張流程圖／示意圖。兩者至少要有一項。"},
 	{ErrDiagramInvalid, http.StatusBadRequest,
-		"diagram 不是可用的圖片。接受的格式：PNG、JPEG、WebP，解碼後大小不超過 4 MB。"},
+		"diagram 不是可用的圖片。接受的格式：PNG、JPEG、WebP，解碼後大小不超過 " + diagramLimit + "。"},
 	{ErrTooManyReferences, http.StatusUnprocessableEntity,
 		"參考的 Skill 最多三個，請減少後再試一次。"},
 	{ErrReferenceUnavailable, http.StatusUnprocessableEntity,

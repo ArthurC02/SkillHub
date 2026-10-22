@@ -3,6 +3,7 @@ package analytics
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -94,7 +95,7 @@ func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {
 	}
 	message := strings.TrimSpace(body.Message)
 	if message == "" || utf8.RuneCountInString(message) > maxFeedbackMessage {
-		httpx.WriteError(w, http.StatusBadRequest, "message 不能空白，且最多 2000 字")
+		httpx.WriteError(w, http.StatusBadRequest, fmt.Sprintf("message 不能空白，且最多 %d 字", maxFeedbackMessage))
 		return
 	}
 

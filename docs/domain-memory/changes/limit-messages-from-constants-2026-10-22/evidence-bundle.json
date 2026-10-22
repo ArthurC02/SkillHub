@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "limit-messages-from-constants",
+  "proposal_id": "limit-messages-from-constants",
+  "registry_revision": {
+    "observed_commit": "97e8db991ab53bea0d8e8be68329e030f0d78e9f",
+    "registry_digest": "sha256:a5e65a53c5e581a79a043584519092c09d1010b1ab4e429cc164818516b53473",
+    "committed_digest": "sha256:a5e65a53c5e581a79a043584519092c09d1010b1ab4e429cc164818516b53473"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/limit-messages-from-constants-2026-10-22 --path apps/platform/internal/creator/workspace/http.go --path apps/platform/internal/creator/workspace/http_test.go --path apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/feedback_limits_integration_test.go --path apps/platform/internal/product/learning/feedback.go",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:907b84ddcbd29b938f1e7b79f828d7e1f0f8218e33cc7e7b19b1e812606b5614",
+      "finished_at": "2026-10-22T15:44:46.595157Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

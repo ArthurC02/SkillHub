@@ -1,0 +1,166 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "limit-messages-from-constants",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "limit-messages-from-constants",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-22T15:44:44.912471Z",
+  "verified_at": "2026-10-22T15:44:48.168952Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "97e8db991ab53bea0d8e8be68329e030f0d78e9f",
+    "registry_digest": "sha256:a5e65a53c5e581a79a043584519092c09d1010b1ab4e429cc164818516b53473",
+    "committed_digest": "sha256:a5e65a53c5e581a79a043584519092c09d1010b1ab4e429cc164818516b53473"
+  },
+  "affected_contexts": [
+    "analytics",
+    "identity"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-dev-login-name-is-at-most-64-characters",
+        "statement": "A development login name longer than 64 characters is refused with 400 before any account is touched.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "A 64-character name logs in; 65 characters answer 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/http.go",
+            "lines": {
+              "start": 78,
+              "end": 81
+            },
+            "content_sha256": "sha256:cf8eaaa18f0f9928a1534ef311c8f1293066136f7edc6cdd387ca159339e9792",
+            "excerpt_sha256": "sha256:b9e0f9c6d0e2437cefe5fbc3de87db6d27321918a57f92a4d6a60e4d1bc7ca70",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/http_test.go",
+            "lines": {
+              "start": 34,
+              "end": 49
+            },
+            "excerpt_sha256": "sha256:434ad64af8102470abc001f76704971f08b61c83a80582c1fae6c20d47782ab7"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-feedback-message-is-at-most-2000-characters",
+        "statement": "A feedback message is trimmed, must be non-blank and may hold at most 2000 characters; otherwise it is refused with 400.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "A 2001-character message answers 400; exactly 2000 is accepted."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/feedback.go",
+            "lines": {
+              "start": 96,
+              "end": 100
+            },
+            "content_sha256": "sha256:56232788ad340fef2799411fdce0258cda37c0e091e2312a35c68affe18e4888",
+            "excerpt_sha256": "sha256:1e6de10296c6850b4ff34b7228999f36d80c1363a6f183f98e4754ca8c4a8f00",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go",
+            "lines": {
+              "start": 695,
+              "end": 751
+            },
+            "excerpt_sha256": "sha256:c382a294cb7c64621f66bbfb1e7622ccd4c23012efbe2a5e60d6e672be116dae"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-feedback-message-limit-counts-characters",
+        "statement": "The feedback message limit counts characters, not bytes, so 2000 Chinese characters are accepted.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "A 2000-character Chinese message is accepted; 2001 are refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/feedback.go",
+            "lines": {
+              "start": 96,
+              "end": 100
+            },
+            "content_sha256": "sha256:56232788ad340fef2799411fdce0258cda37c0e091e2312a35c68affe18e4888",
+            "excerpt_sha256": "sha256:1e6de10296c6850b4ff34b7228999f36d80c1363a6f183f98e4754ca8c4a8f00",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/feedback_limits_integration_test.go",
+            "lines": {
+              "start": 11,
+              "end": 26
+            },
+            "excerpt_sha256": "sha256:631f403c2acfd51a9f785b1fe5454d79db40e3ee8e961ba00572bdf444906a49"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T15:44:47.139362Z",
+      "scope": "Re-cite three limit rules after their refusal messages format the limit from its constant; limits unchanged",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "97e8db991ab53bea0d8e8be68329e030f0d78e9f",
+        "registry_digest": "sha256:a5e65a53c5e581a79a043584519092c09d1010b1ab4e429cc164818516b53473",
+        "committed_digest": "sha256:a5e65a53c5e581a79a043584519092c09d1010b1ab4e429cc164818516b53473"
+      }
+    }
+  ],
+  "supersedes": [
+    "contract-limits-from-generated",
+    "identity-harvest-rules-2026-10-18"
+  ]
+}

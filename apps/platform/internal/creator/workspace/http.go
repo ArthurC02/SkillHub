@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"slices"
@@ -75,7 +76,7 @@ func (h *Handler) devLogin(w http.ResponseWriter, r *http.Request) {
 		name = "dev"
 	}
 	if utf8.RuneCountInString(name) > maxDevLoginNameChars {
-		httpx.WriteError(w, http.StatusBadRequest, "使用者名稱最多 64 個字元")
+		httpx.WriteError(w, http.StatusBadRequest, fmt.Sprintf("使用者名稱最多 %d 個字元", maxDevLoginNameChars))
 		return
 	}
 	token, err := h.Service.LoginOrSignup(r.Context(), ExternalIdentity{

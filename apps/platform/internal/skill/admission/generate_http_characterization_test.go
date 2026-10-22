@@ -90,7 +90,7 @@ func TestGenerateRequestDecoding(t *testing.T) {
 		{"not JSON", "task", false, "body must be JSON"},
 		{"diagram data that is not base64", `{"diagram":{"media_type":"image/png","data":"@@@"}}`, false, "diagram.data 不是合法的 base64"},
 		{"diagram over the encoded ceiling", `{"diagram":{"media_type":"image/png","data":"` +
-			strings.Repeat("A", base64.StdEncoding.EncodedLen(generateMaxDiagramBytes)+8) + `"}}`, false, "diagram 超過 4 MB 上限"},
+			strings.Repeat("A", base64.StdEncoding.EncodedLen(generateMaxDiagramBytes)+8) + `"}}`, false, "diagram 超過 4000000 位元組（約 3.8 MB）上限"},
 		{"reference id that is not a UUID", `{"task_description":"整理表格","reference_skill_ids":["` + refID + `","nope"]}`, false, "reference_skill_ids"},
 		{"task with one reference", `{"task_description":"整理表格","reference_skill_ids":["` + refID + `"]}`, true, ""},
 	} {
