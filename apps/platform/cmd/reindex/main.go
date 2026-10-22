@@ -65,7 +65,7 @@ func runReindex() int {
 		LLM:                ingest.ModelOrNone(wiring.LLMClient(llmURL, llmToken)),
 		Budgets:            wiring.NewModelBudgets(pool),
 		IndexSkill:         wiring.EnrichedIndexer(catalogSvc),
-		PendingEnrichments: wiring.PendingEnrichments(catalogSvc),
+		Worklist:           wiring.EnrichmentWorklist(&catalog.EnrichmentBackfill{Pool: pool}),
 	}
 
 	if svc.Credit, err = wiring.NewCreditService(pool); err != nil {

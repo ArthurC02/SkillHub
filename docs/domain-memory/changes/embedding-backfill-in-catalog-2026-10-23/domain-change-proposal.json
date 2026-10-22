@@ -1,0 +1,235 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "embedding-backfill-in-catalog",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "embedding-backfill-in-catalog",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-22T22:18:27.832840Z",
+  "verified_at": "2026-10-22T22:18:30.554109Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "579f64083b63e35003085c6645e5d4bd9bc2596a",
+    "registry_digest": "sha256:36c087e3200650e6c220d66636b3836aeffb44da54f5d19d19cb1a63b6141329",
+    "committed_digest": "sha256:36c087e3200650e6c220d66636b3836aeffb44da54f5d19d19cb1a63b6141329"
+  },
+  "affected_contexts": [
+    "catalog",
+    "creation",
+    "ingest",
+    "testlab"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-an-enriched-or-embedded-document-is-listable",
+        "statement": "A search document is listable only once its enrichment is finished or it has an embedding a vector search can find. An enrichment whose embedding call failed is still stored as enriched, without a vector, so it is listable at once; the enrichment backfill later embeds that stored text without calling the enrichment model again, and stores the vector only if the document has not been rewritten since it was claimed.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "A pending document without a vector is not listable; the same document with a vector is.",
+          "The enrichment answers and the embedding call fails: the document is enriched and listable without a vector; the next backfill pass makes one embedding call and no enrichment call, and a vector computed before a re-import rewrote the document is dropped."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/enrichment.go",
+            "lines": {
+              "start": 12,
+              "end": 14
+            },
+            "excerpt_sha256": "sha256:c8086abe2eb931f39133735544a49735766e725679ad1a32ddc72e9620f779b2"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/projection.go",
+            "lines": {
+              "start": 109,
+              "end": 109
+            },
+            "excerpt_sha256": "sha256:199c4d254986e18f47af0f6f37dbfd906346d604dd293e8696da7c047ac560a2"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/projection_test.go",
+            "lines": {
+              "start": 26,
+              "end": 44
+            },
+            "excerpt_sha256": "sha256:da55aa942302f94559e17233d087426deafb687be03efd9c32840365fb2c56c4"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/enrich.go",
+            "lines": {
+              "start": 147,
+              "end": 148
+            },
+            "excerpt_sha256": "sha256:1102bebb3ecf7d70ed2069e46b3cd3a67d8909cf1f29363fda139f1efc05d171"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/enrichment_backfill.go",
+            "lines": {
+              "start": 64,
+              "end": 85
+            },
+            "content_sha256": "sha256:ed8713a0613f59da54e9b143fd1312cb4d2806cdcfe8802cf25904bf3b3ff97c",
+            "excerpt_sha256": "sha256:6f4467a736a9cac9d68b2d291db75297d5c741362b5257dc9bb88b457a2765d0",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "db/queries/search.sql",
+            "lines": {
+              "start": 53,
+              "end": 69
+            },
+            "excerpt_sha256": "sha256:3de7d1355ee0226bf147d60b96fd8fa02d3b1723ec01683dfc563202ee113c30"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/search_embedding_backfill_integration_test.go",
+            "lines": {
+              "start": 47,
+              "end": 84
+            },
+            "content_sha256": "sha256:e860f2306c5a133ceb88bc192c10547a7496b64305816b2912f8b93ba44e5a67",
+            "excerpt_sha256": "sha256:8ee0514e3687b512bd5ad4fdc9b4d44fb5305de500808404ce53e7eef7123611",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "user-started-model-calls-stop-under-a-p1-halt",
+        "statement": "While a P1 incident halts dispatch, generating a skill, a creation step, a criteria suggestion and the enrichment of an imported version are refused before the model is called and nothing is charged; a creation step that was refused is not counted and the session waits for the person to send again, and an import still completes with its enrichment left pending for the backfill, which picks nothing up until the halt is lifted. An unreadable halt state counts as halted.",
+        "contexts": [
+          "creation",
+          "ingest",
+          "testlab"
+        ],
+        "examples": [
+          "Under a P1 halt a criteria suggestion answers 503 naming the halt, generation returns ErrModelCallsHalted, and the model stub is never called.",
+          "An import under a P1 halt is stored with its enrichment pending and the model stub never called; the backfill run under the halt enriches nothing and the version stays pending."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/cost.go",
+            "lines": {
+              "start": 22,
+              "end": 37
+            },
+            "excerpt_sha256": "sha256:6df644766cd397f4d57227d46082b1eb508bcbc096b2a7fa0ba43fb6a635b63b"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/job.go",
+            "lines": {
+              "start": 445,
+              "end": 447
+            },
+            "excerpt_sha256": "sha256:3f7684b057cdb1f15bb4f1130f90075c7504a2c745b24184a0ab12cebdd21266"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/job.go",
+            "lines": {
+              "start": 614,
+              "end": 619
+            },
+            "excerpt_sha256": "sha256:40352e3aaee09c5e33a426829b41a169b70e2bb148976f1edf54f28a2482c3e9"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/halt.go",
+            "lines": {
+              "start": 32,
+              "end": 46
+            },
+            "excerpt_sha256": "sha256:d230881335bad2a2fccc01812cfdaf34794d0fd3c247b3ab0973dc5ef85d14d3"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/p1_halt_model_calls_integration_test.go",
+            "lines": {
+              "start": 18,
+              "end": 81
+            },
+            "excerpt_sha256": "sha256:d8e8d8a5a0c369b973d2acacea3d5df6440e1e5f55fe9cae4bdc2618640a43fd"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/generate.go",
+            "lines": {
+              "start": 253,
+              "end": 255
+            },
+            "excerpt_sha256": "sha256:a210cb9d749a2bb04a447d71aacfb15c1e6f37e3946db16c419a030afdd5be2b"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/enrich.go",
+            "lines": {
+              "start": 116,
+              "end": 118
+            },
+            "excerpt_sha256": "sha256:b2e935bc0ef591576f4c3882d619298a1f09b40ebee0cd46eecc286a86e1ee35"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 537,
+              "end": 539
+            },
+            "excerpt_sha256": "sha256:b85be66aa7f8c261615dbffbb702ba8d542ff49022a70d7228372bf817b0ad13"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/cost_test.go",
+            "lines": {
+              "start": 185,
+              "end": 215
+            },
+            "content_sha256": "sha256:a72809208824823758446670462ccb677b35287abf74b1e1dd3fc21a90e3b6b8",
+            "excerpt_sha256": "sha256:5c9abfbf675a78c854e387133a55471ecb709d64727d5833963dcca4cc66bcc1",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T22:18:29.722535Z",
+      "scope": "Re-cite the embed-only backfill after it moved into catalog's EnrichmentBackfill",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "579f64083b63e35003085c6645e5d4bd9bc2596a",
+        "registry_digest": "sha256:36c087e3200650e6c220d66636b3836aeffb44da54f5d19d19cb1a63b6141329",
+        "committed_digest": "sha256:36c087e3200650e6c220d66636b3836aeffb44da54f5d19d19cb1a63b6141329"
+      }
+    }
+  ],
+  "supersedes": [
+    "embedding-only-backfill",
+    "p1-halt-stops-enrichment"
+  ]
+}

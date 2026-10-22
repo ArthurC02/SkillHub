@@ -12,76 +12,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
-
-type PendingEnrichment struct {
-	SkillID          pgtype.UUID
-	VersionID        pgtype.UUID
-	WorkspaceID      pgtype.UUID
-	Name             string
-	PackageObjectKey string
-	SourcePath       string
-}
-
-func (s *Service) OldestPendingEnrichment(ctx context.Context) (pgtype.Timestamptz, error) {
-	return gen.New(s.Pool).OldestPendingEnrichment(ctx, string(EnrichmentPending))
-}
-
-func (s *Service) PendingEnrichments(ctx context.Context, limit int32) ([]PendingEnrichment, error) {
-	rows, err := gen.New(s.Pool).ListPendingEnrichment(ctx, gen.ListPendingEnrichmentParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: limit})
-	if err != nil {
-		return nil, err
-	}
-	result := make([]PendingEnrichment, 0, len(rows))
-	for _, row := range rows {
-		if row.PackageObjectKey == nil {
-			continue
-		}
-		result = append(result, PendingEnrichment{
-			SkillID:          row.SkillID,
-			VersionID:        row.VersionID,
-			WorkspaceID:      row.WorkspaceID,
-			Name:             row.Name,
-			PackageObjectKey: *row.PackageObjectKey,
-			SourcePath:       row.SourcePath,
-		})
-	}
-	return result, nil
-}
-
-type MissingEmbedding struct {
-	SkillID         pgtype.UUID
-	WorkspaceID     pgtype.UUID
-	Name            string
-	Summary         string
-	EnrichedSummary string
-	TaskExamples    string
-	Tags            []byte
-	WrittenAt       pgtype.Timestamptz
-}
-
-func (s *Service) EnrichedWithoutEmbedding(ctx context.Context, limit int32) ([]MissingEmbedding, error) {
-	rows, err := gen.New(s.Pool).ClaimEnrichedWithoutEmbedding(ctx, gen.ClaimEnrichedWithoutEmbeddingParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: limit})
-	if err != nil {
-		return nil, err
-	}
-	result := make([]MissingEmbedding, len(rows))
-	for i, row := range rows {
-		result[i] = MissingEmbedding{
-			SkillID: row.SkillID, WorkspaceID: row.WorkspaceID, Name: row.Name, Summary: row.Summary,
-			EnrichedSummary: row.EnrichedSummary, TaskExamples: row.TaskExamples, Tags: row.Tags, WrittenAt: row.UpdatedAt,
-		}
-	}
-	return result, nil
-}
-
-func (s *Service) StoreMissingEmbedding(ctx context.Context, skillID pgtype.UUID, writtenAt pgtype.Timestamptz, embedding pgvector.Vector) (bool, error) {
-	stored, err := gen.New(s.Pool).StoreMissingEmbedding(ctx, gen.StoreMissingEmbeddingParams{Embedding: &embedding, SkillID: skillID, WrittenAt: writtenAt})
-	return stored == 1, err
-}
 
 type SkillProjection struct {
 	SkillID     pgtype.UUID

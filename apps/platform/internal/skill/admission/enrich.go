@@ -164,31 +164,6 @@ func (s *Service) embed(ctx context.Context, workspaceID pgtype.UUID, name, text
 	return &v
 }
 
-func (s *Service) embedEnrichedDocuments(ctx context.Context, limit int32) (done, failed int, err error) {
-	if s.EnrichedWithoutEmbedding == nil || s.StoreMissingEmbedding == nil {
-		return 0, 0, nil
-	}
-	docs, err := s.EnrichedWithoutEmbedding(ctx, limit)
-	if err != nil {
-		return 0, 0, err
-	}
-	for _, d := range docs {
-		v := s.embed(ctx, d.WorkspaceID, d.Name, EmbeddingText(d.Name, d.Summary, d.EnrichedSummary, d.TaskExamples, d.Tags))
-		if v == nil {
-			failed++
-			continue
-		}
-		stored, err := s.StoreMissingEmbedding(ctx, d.SkillID, d.WrittenAt, *v)
-		if err != nil {
-			return done, failed, err
-		}
-		if stored {
-			done++
-		}
-	}
-	return done, failed, nil
-}
-
 func embeddingText(name string, e enrichment) string {
 	body := e.enrichedSummary
 	if body == "" {

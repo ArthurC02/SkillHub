@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/pgvector/pgvector-go"
 
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
@@ -21,33 +22,23 @@ func EnrichedIndexer(catalogSvc *catalog.Service) func(context.Context, pgx.Tx, 
 	}
 }
 
-func PendingEnrichments(catalogSvc *catalog.Service) func(context.Context, int32) ([]ingest.PendingEnrichment, error) {
-	return func(ctx context.Context, limit int32) ([]ingest.PendingEnrichment, error) {
-		rows, err := catalogSvc.PendingEnrichments(ctx, limit)
-		if err != nil {
-			return nil, err
-		}
-		out := make([]ingest.PendingEnrichment, len(rows))
-		for i, row := range rows {
-			out[i] = ingest.PendingEnrichment{
-				VersionID: row.VersionID, SkillID: row.SkillID, WorkspaceID: row.WorkspaceID,
-				Name: row.Name, PackageObjectKey: row.PackageObjectKey, SourcePath: row.SourcePath,
+func EnrichmentWorklist(backfill *catalog.EnrichmentBackfill) ingest.EnrichmentWorklist {
+	return ingest.EnrichmentWorklist{
+		Pending: func(ctx context.Context, limit int32) ([]ingest.PendingEnrichment, error) {
+			rows, err := backfill.Pending(ctx, limit)
+			if err != nil {
+				return nil, err
 			}
-		}
-		return out, nil
-	}
-}
-
-func EnrichedWithoutEmbedding(catalogSvc *catalog.Service) func(context.Context, int32) ([]ingest.MissingEmbedding, error) {
-	return func(ctx context.Context, limit int32) ([]ingest.MissingEmbedding, error) {
-		rows, err := catalogSvc.EnrichedWithoutEmbedding(ctx, limit)
-		if err != nil {
-			return nil, err
-		}
-		out := make([]ingest.MissingEmbedding, len(rows))
-		for i, row := range rows {
-			out[i] = ingest.MissingEmbedding(row)
-		}
-		return out, nil
+			out := make([]ingest.PendingEnrichment, len(rows))
+			for i, row := range rows {
+				out[i] = ingest.PendingEnrichment(row)
+			}
+			return out, nil
+		},
+		EmbedMissing: func(ctx context.Context, limit int32, embed func(context.Context, ingest.MissingEmbedding) *pgvector.Vector) (int, int, error) {
+			return backfill.EmbedMissing(ctx, limit, func(ctx context.Context, doc catalog.MissingEmbedding) *pgvector.Vector {
+				return embed(ctx, ingest.MissingEmbedding(doc))
+			})
+		},
 	}
 }

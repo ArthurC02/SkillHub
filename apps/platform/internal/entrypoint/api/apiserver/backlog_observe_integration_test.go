@@ -138,6 +138,6 @@ func TestTheEnrichmentBacklogCountsOnlyPendingDocumentsThatHaveAPackage(t *testi
 			WHERE skill_id = ANY($1)`, skills, string(catalog.EnrichmentEnriched))
 	})
 
-	got, err := (&catalog.Service{Pool: pool}).OldestPendingEnrichment(ctx)
+	got, err := (&catalog.EnrichmentBackfill{Pool: pool}).OldestPending(ctx)
 	assertOldest(t, "enrichment", got, err, backlogDay(5))
 }

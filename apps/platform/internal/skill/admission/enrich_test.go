@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -270,7 +269,6 @@ func TestReadPackageCollectsEnrichmentInputs(t *testing.T) {
 
 func TestTheBackfillEmbedsAStoredEnrichmentWithoutPayingForTheEnrichmentAgain(t *testing.T) {
 	skill := pgtype.UUID{Bytes: [16]byte{9}, Valid: true}
-	written := pgtype.Timestamptz{Time: time.Unix(1_700_000_000, 0), Valid: true}
 	for _, tc := range []struct {
 		name               string
 		embedStatus        int
@@ -281,8 +279,8 @@ func TestTheBackfillEmbedsAStoredEnrichmentWithoutPayingForTheEnrichmentAgain(t 
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: tc.embedStatus}
-			var stored []pgtype.Timestamptz
-			s := embedOnlyBackfill(t, stub, MissingEmbedding{SkillID: skill, Name: "pdf-tools", Summary: testDescription, EnrichedSummary: testEnrichedSummary, WrittenAt: written}, &stored)
+			var stored []pgtype.UUID
+			s := embedOnlyBackfill(t, stub, MissingEmbedding{SkillID: skill, Name: "pdf-tools", Summary: testDescription, EnrichedSummary: testEnrichedSummary}, &stored)
 
 			done, failed, err := s.ReindexPending(context.Background(), 10)
 
@@ -295,26 +293,27 @@ func TestTheBackfillEmbedsAStoredEnrichmentWithoutPayingForTheEnrichmentAgain(t 
 			if len(stub.embedded) != 1 || !strings.Contains(stub.embedded[0], testEnrichedSummary) {
 				t.Fatalf("embedded %q, want the stored enriched summary", stub.embedded)
 			}
-			if wantStored := tc.wantDone; len(stored) != wantStored || (wantStored == 1 && stored[0] != written) {
-				t.Fatalf("stored writes = %v, want %d guarded by the claimed write time", stored, wantStored)
+			if len(stored) != tc.wantDone {
+				t.Fatalf("stored vectors for %v, want %d", stored, tc.wantDone)
 			}
 		})
 	}
 }
 
-func embedOnlyBackfill(t *testing.T, stub *stubEnricher, doc MissingEmbedding, stored *[]pgtype.Timestamptz) *Service {
+func embedOnlyBackfill(t *testing.T, stub *stubEnricher, doc MissingEmbedding, stored *[]pgtype.UUID) *Service {
 	t.Helper()
 	return &Service{
-		LLM:                      stub.start(t),
-		IndexSkill:               func(context.Context, pgx.Tx, SkillProjection) error { return nil },
-		PendingEnrichments:       func(context.Context, int32) ([]PendingEnrichment, error) { return nil, nil },
-		EnrichedWithoutEmbedding: func(context.Context, int32) ([]MissingEmbedding, error) { return []MissingEmbedding{doc}, nil },
-		StoreMissingEmbedding: func(_ context.Context, id pgtype.UUID, at pgtype.Timestamptz, _ pgvector.Vector) (bool, error) {
-			if id != doc.SkillID {
-				t.Errorf("stored the vector for %v, want %v", id, doc.SkillID)
-			}
-			*stored = append(*stored, at)
-			return true, nil
+		LLM:        stub.start(t),
+		IndexSkill: func(context.Context, pgx.Tx, SkillProjection) error { return nil },
+		Worklist: EnrichmentWorklist{
+			Pending: func(context.Context, int32) ([]PendingEnrichment, error) { return nil, nil },
+			EmbedMissing: func(ctx context.Context, _ int32, embed func(context.Context, MissingEmbedding) *pgvector.Vector) (int, int, error) {
+				if embed(ctx, doc) == nil {
+					return 0, 1, nil
+				}
+				*stored = append(*stored, doc.SkillID)
+				return 1, 0, nil
+			},
 		},
 	}
 }

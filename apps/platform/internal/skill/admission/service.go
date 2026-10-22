@@ -56,11 +56,7 @@ type Service struct {
 
 	IndexSkill func(ctx context.Context, tx pgx.Tx, projection SkillProjection) error
 
-	PendingEnrichments func(ctx context.Context, limit int32) ([]PendingEnrichment, error)
-
-	EnrichedWithoutEmbedding func(ctx context.Context, limit int32) ([]MissingEmbedding, error)
-
-	StoreMissingEmbedding func(ctx context.Context, skillID pgtype.UUID, writtenAt pgtype.Timestamptz, embedding pgvector.Vector) (bool, error)
+	Worklist EnrichmentWorklist
 
 	Credit CostRecorder
 
@@ -89,6 +85,12 @@ type SkillProjection struct {
 	EnrichmentPromptVersion *string
 }
 
+type EnrichmentWorklist struct {
+	Pending func(ctx context.Context, limit int32) ([]PendingEnrichment, error)
+
+	EmbedMissing func(ctx context.Context, limit int32, embed func(context.Context, MissingEmbedding) *pgvector.Vector) (done, failed int, err error)
+}
+
 type MissingEmbedding struct {
 	SkillID         pgtype.UUID
 	WorkspaceID     pgtype.UUID
@@ -97,7 +99,6 @@ type MissingEmbedding struct {
 	EnrichedSummary string
 	TaskExamples    string
 	Tags            []byte
-	WrittenAt       pgtype.Timestamptz
 }
 
 type PendingEnrichment struct {
@@ -117,8 +118,8 @@ func (s *Service) GenerateFailures(ctx context.Context, workspaceID pgtype.UUID,
 		[]string{audit.ActionSkillGenerateFailed}, limit)
 }
 
-func (s *Service) requireProjection() error {
-	if s.IndexSkill == nil {
+func requireProjection(indexSkill func(ctx context.Context, tx pgx.Tx, projection SkillProjection) error) error {
+	if indexSkill == nil {
 		return errors.New("ingest: search projection write not injected; refusing to write")
 	}
 	return nil
@@ -447,7 +448,7 @@ type incomingVersion struct {
 
 func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Workspace, root *registry.SkillRoot, in incomingVersion) (registry.Version, bool, error) {
 	p, src, e := in.pkg, in.source, in.enrichment
-	if err := s.requireProjection(); err != nil {
+	if err := requireProjection(s.IndexSkill); err != nil {
 		return registry.Version{}, false, err
 	}
 	if err := src.provenanceComplete(); err != nil {
@@ -543,20 +544,23 @@ func (s *Service) ReindexPending(ctx context.Context, limit int32) (done, failed
 		return 0, 0, errors.New("ingest: enrichment backfill needs an LLM service")
 	}
 
-	if err := s.requireProjection(); err != nil {
+	if err := requireProjection(s.IndexSkill); err != nil {
 		return 0, 0, err
 	}
-	if s.PendingEnrichments == nil {
+	if s.Worklist.Pending == nil {
 		return 0, 0, errors.New("ingest: pending enrichment lister not injected; refusing backfill")
 	}
 	if s.Billing.halted(ctx) {
 		return 0, 0, nil
 	}
-	done, failed, err = s.embedEnrichedDocuments(ctx, limit)
-	if err != nil {
-		return done, failed, err
+	if s.Worklist.EmbedMissing != nil {
+		if done, failed, err = s.Worklist.EmbedMissing(ctx, limit, func(ctx context.Context, d MissingEmbedding) *pgvector.Vector {
+			return s.embed(ctx, d.WorkspaceID, d.Name, EmbeddingText(d.Name, d.Summary, d.EnrichedSummary, d.TaskExamples, d.Tags))
+		}); err != nil {
+			return done, failed, err
+		}
 	}
-	rows, err := s.PendingEnrichments(ctx, limit)
+	rows, err := s.Worklist.Pending(ctx, limit)
 	if err != nil {
 		return done, failed, err
 	}

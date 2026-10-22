@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "embedding-backfill-in-catalog",
+  "proposal_id": "embedding-backfill-in-catalog",
+  "registry_revision": {
+    "observed_commit": "579f64083b63e35003085c6645e5d4bd9bc2596a",
+    "registry_digest": "sha256:36c087e3200650e6c220d66636b3836aeffb44da54f5d19d19cb1a63b6141329",
+    "committed_digest": "sha256:36c087e3200650e6c220d66636b3836aeffb44da54f5d19d19cb1a63b6141329"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/embedding-backfill-in-catalog-2026-10-23 --path apps/platform/internal/creator/creation/job.go --path apps/platform/internal/entrypoint/api/apiserver/p1_halt_model_calls_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/search_embedding_backfill_integration_test.go --path apps/platform/internal/skill/admission/cost_test.go --path apps/platform/internal/skill/admission/enrich.go --path apps/platform/internal/skill/admission/generate.go --path apps/platform/internal/skill/admission/service.go --path apps/platform/internal/skill/discovery/enrichment.go --path apps/platform/internal/skill/discovery/enrichment_backfill.go --path apps/platform/internal/skill/discovery/projection.go --path apps/platform/internal/skill/discovery/projection_test.go --path apps/platform/internal/trial/design/cost.go --path apps/platform/internal/trial/execution/halt.go --path db/queries/search.sql",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:c988987582f761304040936967f7801027d5f835bcb0c5b01c1e7d299e217054",
+      "finished_at": "2026-10-22T22:18:29.083267Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

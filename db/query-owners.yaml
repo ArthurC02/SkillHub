@@ -494,6 +494,8 @@ scope:
   GetRunAttemptForReconcile: worker
   ListRunArtifactUploadIntents: worker
   ListPendingEnrichment: worker
+  ClaimEnrichedWithoutEmbedding: worker
+  StoreMissingEmbedding: worker
   GetRunForTraceIngest: worker
 allow:
 

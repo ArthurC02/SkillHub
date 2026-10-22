@@ -82,10 +82,10 @@ func runBackfillScenario(t *testing.T, pool *pgxpool.Pool, scenario string) {
 	svc := &Service{
 		Pool: pool, Store: &creationTestStore{data: map[string][]byte{pkg.objectKey: archive}},
 		LLM: stub.start(t),
-		PendingEnrichments: func(context.Context, int32) ([]PendingEnrichment, error) {
+		Worklist: EnrichmentWorklist{Pending: func(context.Context, int32) ([]PendingEnrichment, error) {
 			err := applyBackfillScenarioSideEffect(ctx, q, ws, skill.ID, scenario, pkg.objectKey, addVersion)
 			return []PendingEnrichment{pending}, err
-		},
+		}},
 		IndexSkill: func(_ context.Context, _ pgx.Tx, projection SkillProjection) error {
 			writes++
 			if projection.SkillID != skill.ID || projection.EnrichedSummary != testEnrichedSummary {
@@ -120,9 +120,9 @@ func TestBackfillDiscardsAnUnidentifiedSkill(t *testing.T) {
 	svc := &Service{
 		Pool: pool, Store: &creationTestStore{data: map[string][]byte{pkg.objectKey: archive}},
 		LLM: stub.start(t),
-		PendingEnrichments: func(context.Context, int32) ([]PendingEnrichment, error) {
+		Worklist: EnrichmentWorklist{Pending: func(context.Context, int32) ([]PendingEnrichment, error) {
 			return []PendingEnrichment{{WorkspaceID: ws.ID, SkillID: pgtype.UUID{}, VersionID: ws.ID, PackageObjectKey: pkg.objectKey}}, nil
-		},
+		}},
 		IndexSkill: func(context.Context, pgx.Tx, SkillProjection) error {
 			t.Error("unidentified Skill reached projection writer")
 			return nil

@@ -19,7 +19,7 @@
       "fields": 18
     },
     "skill/discovery.Service": {
-      "methods": 46,
+      "methods": 44,
       "fields": 19
     },
     "skill/library.Service": {

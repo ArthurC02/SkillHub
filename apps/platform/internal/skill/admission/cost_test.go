@@ -200,10 +200,10 @@ func TestTheEnrichmentBackfillWaitsOutAP1Halt(t *testing.T) {
 	s := &Service{
 		LLM: &fakeModel{}, Billing: haltedBilling(),
 		IndexSkill: func(context.Context, pgx.Tx, SkillProjection) error { return nil },
-		PendingEnrichments: func(context.Context, int32) ([]PendingEnrichment, error) {
+		Worklist: EnrichmentWorklist{Pending: func(context.Context, int32) ([]PendingEnrichment, error) {
 			listed = true
 			return nil, nil
-		},
+		}},
 	}
 	done, failed, err := s.ReindexPending(context.Background(), 10)
 	if err != nil || done != 0 || failed != 0 {

@@ -147,7 +147,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	addGaugePublishers(set, workers, outboxWorker, map[string]backlogOldest{
 		metrics.BacklogOrphanObjects: registrySvc.OldestCollectableObject,
 		metrics.BacklogSourceChecks:  creationVersions.OldestSourceCheck,
-		metrics.BacklogEnrichment:    set.CreationSearch.OldestPendingEnrichment,
+		metrics.BacklogEnrichment:    (&catalog.EnrichmentBackfill{Pool: pool}).OldestPending,
 	})
 	addCapacityObserver(set, workers, capacity.Store{Pool: pool, Rate: deps.RestoreRate})
 

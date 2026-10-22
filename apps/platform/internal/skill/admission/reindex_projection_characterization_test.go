@@ -59,9 +59,9 @@ func TestAReindexedSkillIsProjectedUnderItsOwnNameAndWorkspace(t *testing.T) {
 		Pool:  pool,
 		Store: &creationTestStore{data: map[string][]byte{pkg.objectKey: archive}},
 		LLM:   (&stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusOK}).start(t),
-		PendingEnrichments: func(context.Context, int32) ([]PendingEnrichment, error) {
+		Worklist: EnrichmentWorklist{Pending: func(context.Context, int32) ([]PendingEnrichment, error) {
 			return []PendingEnrichment{{SkillID: skill.ID, VersionID: version.ID, WorkspaceID: ws.ID, Name: skill.Name, PackageObjectKey: pkg.objectKey}}, nil
-		},
+		}},
 		IndexSkill: func(_ context.Context, _ pgx.Tx, p SkillProjection) error {
 			indexed = append(indexed, p)
 			return nil

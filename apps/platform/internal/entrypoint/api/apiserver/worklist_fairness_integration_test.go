@@ -13,12 +13,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	packaging "github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
+	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
@@ -968,7 +968,7 @@ func TestEnrichmentClaimsTheExactVersionAndLeavesVersionlessSkillsUnclaimed(t *t
 			t.Fatal(err)
 		}
 	}
-	claimed, err := wiring.NewCatalogService(pool).PendingEnrichments(ctx, 10)
+	claimed, err := (&catalog.EnrichmentBackfill{Pool: pool}).Pending(ctx, 10)
 	if err != nil {
 		t.Fatal(err)
 	}

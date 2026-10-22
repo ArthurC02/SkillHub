@@ -17,6 +17,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/partition"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
@@ -140,12 +141,10 @@ func newBackfillService(pool *pgxpool.Pool, deps Deps, halted func(context.Conte
 	catalogSvc := wiring.NewCatalogService(pool)
 	return &ingest.Service{
 		Pool: pool, Store: deps.Store, LLM: ingest.ModelOrNone(deps.LLM),
-		Budgets:                  wiring.NewModelBudgets(pool),
-		IndexSkill:               wiring.EnrichedIndexer(catalogSvc),
-		PendingEnrichments:       wiring.PendingEnrichments(catalogSvc),
-		EnrichedWithoutEmbedding: wiring.EnrichedWithoutEmbedding(catalogSvc),
-		StoreMissingEmbedding:    catalogSvc.StoreMissingEmbedding,
-		Billing:                  ingest.GenerateBilling{ModelCallsHalted: halted},
+		Budgets:    wiring.NewModelBudgets(pool),
+		IndexSkill: wiring.EnrichedIndexer(catalogSvc),
+		Worklist:   wiring.EnrichmentWorklist(&catalog.EnrichmentBackfill{Pool: pool}),
+		Billing:    ingest.GenerateBilling{ModelCallsHalted: halted},
 	}
 }
 
