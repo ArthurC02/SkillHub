@@ -600,6 +600,32 @@ func (q *Queries) ListSkillsPastDeletionGrace(ctx context.Context, cutoff pgtype
 	return items, nil
 }
 
+const listSkillsUnderOperatorHold = `-- name: ListSkillsUnderOperatorHold :many
+SELECT id FROM skills
+WHERE id = ANY($1::uuid[])
+  AND ((takedown_at IS NOT NULL AND takedown_by = 'operator') OR access_restriction IS NOT NULL)
+`
+
+func (q *Queries) ListSkillsUnderOperatorHold(ctx context.Context, skillIds []pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listSkillsUnderOperatorHold, skillIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSourcesToCheck = `-- name: ListSourcesToCheck :many
 SELECT id, workspace_id, source_url, unavailable_since, content_hash, content_changed_at
 FROM skill_sources
@@ -893,6 +919,38 @@ func (q *Queries) LockAccountWorkspaceObjects(ctx context.Context, workspaceID p
 	return err
 }
 
+const lockSkillForOperatorRelease = `-- name: LockSkillForOperatorRelease :one
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by FROM skills
+WHERE id = $1
+FOR UPDATE
+`
+
+func (q *Queries) LockSkillForOperatorRelease(ctx context.Context, id pgtype.UUID) (Skill, error) {
+	row := q.db.QueryRow(ctx, lockSkillForOperatorRelease, id)
+	var i Skill
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Summary,
+		&i.ForkedFromSkillID,
+		&i.ForkedFromVersionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.TakedownAt,
+		&i.TakedownReason,
+		&i.AccessRestriction,
+		&i.Redistribution,
+		&i.CurationTier,
+		&i.CuratedVersionID,
+		&i.Category,
+		&i.CategorySource,
+		&i.TakedownBy,
+	)
+	return i, err
+}
+
 const lockSkillForOperatorWrite = `-- name: LockSkillForOperatorWrite :one
 SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by FROM skills
 WHERE id = $1 AND deleted_at IS NULL
@@ -998,7 +1056,7 @@ func (q *Queries) PurgeSkillsByID(ctx context.Context, arg PurgeSkillsByIDParams
 
 const restoreSkill = `-- name: RestoreSkill :one
 UPDATE skills SET takedown_at = NULL, takedown_reason = NULL, takedown_by = NULL, updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL AND takedown_at IS NOT NULL
+WHERE id = $1 AND takedown_at IS NOT NULL
 RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source, takedown_by
 `
 
@@ -1096,7 +1154,7 @@ func (q *Queries) SaveAccountDeletionRequest(ctx context.Context, arg SaveAccoun
 
 const setSkillAccessRestriction = `-- name: SetSkillAccessRestriction :exec
 UPDATE skills SET access_restriction = $2, updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL
+WHERE id = $1
 `
 
 type SetSkillAccessRestrictionParams struct {

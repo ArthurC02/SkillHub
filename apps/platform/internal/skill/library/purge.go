@@ -125,8 +125,12 @@ func everyHold(s *Service) holdReads {
 
 func deletionHolds(s *Service) holdReads {
 	holds := everyHold(s)
-	holds.skills = append(holds.skills, s.SkillsWithHeldNames)
+	holds.skills = append(holds.skills, s.SkillsWithHeldNames, skillsUnderOperatorHold)
 	return holds
+}
+
+func skillsUnderOperatorHold(ctx context.Context, db gen.DBTX, ids []pgtype.UUID) ([]pgtype.UUID, error) {
+	return gen.New(db).ListSkillsUnderOperatorHold(ctx, ids)
 }
 
 func holdsOutsideTheWorkspace(s *Service) holdReads {

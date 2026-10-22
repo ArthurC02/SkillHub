@@ -142,12 +142,22 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, deletedSkillResponse{
 		Deleted:          true,
 		VersionsRetained: res.VersionsRetained,
-		Note:             deletionNote,
+		Note:             deletionNoteFor(res),
 	})
 }
 
 const deletionNote = "已從你的工作區、清單與搜尋移除；版本快照維持凍結，這次刪除不會移除它們；" +
 	"Fork 引用的共用套件物件不受影響"
+
+const heldDeletionNote = "已從你的工作區、清單與搜尋移除；這個 Skill 正由平台營運處理中，" +
+	"內容會保留到處理結束，之後依一般刪除流程清除"
+
+func deletionNoteFor(res DeleteResult) string {
+	if res.HeldUntilOperator {
+		return heldDeletionNote
+	}
+	return deletionNote
+}
 
 const maxJSONBodyBytes = 4096
 

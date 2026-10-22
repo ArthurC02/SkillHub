@@ -1,0 +1,38 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "operator-hold-keeps-deleted-skill",
+  "proposal_id": "operator-hold-keeps-deleted-skill",
+  "registry_revision": {
+    "observed_commit": "1354b5d1653c3a50f0e68288edb1ae788ce04424",
+    "registry_digest": "sha256:696624d415cc81953f6f32a46fed88aa07eeb341623854effba43e4d5dd315d5",
+    "committed_digest": "sha256:696624d415cc81953f6f32a46fed88aa07eeb341623854effba43e4d5dd315d5"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-held-skill-is-not-purged",
+      "mutated_protection": "apps/platform/internal/skill/library/purge.go:128: holds.skills = append(holds.skills, s.SkillsWithHeldNames, skillsUnderOperatorHold) -> holds.skills = append(holds.skills, s.SkillsWithHeldNames)",
+      "failure_evidence": "=== RUN   TestAnOwnerDeletionUnderAnOperatorHoldKeepsTheContentUntilTheOperatorReleasesIt\n    operator_hold_deletion_integration_test.go:46: skill was purged although an operator takedown is still in force\n    operator_hold_deletion_integration_test.go:46: frozen versions were purged although an operator takedown is still in force\n    operator_hold_deletion_integration_test.go:46: skill was purged although an operator access restriction is still in force\n    operator_hold_deletion_integration_test.go:46: frozen versions were purged although an operator access restriction is still in force\n    operator_hold_deletion_integration_test.go:54: operator lift on a skill its owner deleted: got 404 (map[error:找不到這個 Skill])\n--- FAIL: TestAnOwnerDeletionUnderAnOperatorHoldKeepsTheContentUntilTheOperatorReleasesIt (0.41s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t11.761s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-held-skill-is-not-purged",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnOwnerDeletionUnderAnOperatorHoldKeepsTheContentUntilTheOperatorReleasesIt$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:16143fb6877b032566894ae7101981f6de150cf84252c0e1c725ae21c59e9837",
+      "finished_at": "2026-10-22T10:57:05.167420Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

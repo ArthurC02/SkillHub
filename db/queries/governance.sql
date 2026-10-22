@@ -220,6 +220,16 @@ SELECT * FROM skills
 WHERE id = $1 AND deleted_at IS NULL
 FOR UPDATE;
 
+-- name: LockSkillForOperatorRelease :one
+SELECT * FROM skills
+WHERE id = $1
+FOR UPDATE;
+
+-- name: ListSkillsUnderOperatorHold :many
+SELECT id FROM skills
+WHERE id = ANY(@skill_ids::uuid[])
+  AND ((takedown_at IS NOT NULL AND takedown_by = 'operator') OR access_restriction IS NOT NULL);
+
 -- name: SetSkillRedistribution :exec
 UPDATE skills SET redistribution = $2, updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL;
@@ -230,7 +240,7 @@ WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: SetSkillAccessRestriction :exec
 UPDATE skills SET access_restriction = $2, updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL;
+WHERE id = $1;
 
 -- name: SetSkillTakedown :one
 UPDATE skills SET takedown_at = now(), takedown_reason = @takedown_reason, takedown_by = @takedown_by, updated_at = now()
@@ -240,7 +250,7 @@ RETURNING *;
 
 -- name: RestoreSkill :one
 UPDATE skills SET takedown_at = NULL, takedown_reason = NULL, takedown_by = NULL, updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL AND takedown_at IS NOT NULL
+WHERE id = $1 AND takedown_at IS NOT NULL
 RETURNING *;
 
 -- name: ListSourcesToCheck :many

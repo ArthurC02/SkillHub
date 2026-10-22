@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "operator-hold-keeps-deleted-skill",
+  "proposal_id": "operator-hold-keeps-deleted-skill",
+  "obligations": [
+    {
+      "id": "rule-a-held-skill-is-not-purged",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-held-skill-is-not-purged",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-held-skill-is-not-purged"
+        }
+      ],
+      "expected_outcome": "A skill deleted by its owner under an operator takedown or restriction survives the sweep past grace; one under the owner's own takedown or no hold is purged; after the operator releases it, it stays out of search and the next sweep purges it.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestAnOwnerDeletionUnderAnOperatorHoldKeepsTheContentUntilTheOperatorReleasesIt$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

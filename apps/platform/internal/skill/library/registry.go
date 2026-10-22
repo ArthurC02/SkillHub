@@ -181,7 +181,8 @@ func (s *Service) ForkIn(ctx context.Context, tx pgx.Tx, ws identity.Workspace, 
 }
 
 type DeleteResult struct {
-	VersionsRetained int64
+	VersionsRetained  int64
+	HeldUntilOperator bool
 }
 
 func (s *Service) Delete(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID) (DeleteResult, error) {
@@ -199,6 +200,7 @@ func (s *Service) Delete(ctx context.Context, ws identity.Workspace, skillID pgt
 	if err != nil {
 		return DeleteResult{}, err
 	}
+	heldByOperator := root.UnderOperatorHold()
 	root.Delete()
 	if err := SaveSkill(ctx, tx, root); err != nil {
 		return DeleteResult{}, err
@@ -221,7 +223,7 @@ func (s *Service) Delete(ctx context.Context, ws identity.Workspace, skillID pgt
 	}); err != nil {
 		return DeleteResult{}, err
 	}
-	return DeleteResult{VersionsRetained: n}, tx.Commit(ctx)
+	return DeleteResult{VersionsRetained: n, HeldUntilOperator: heldByOperator}, tx.Commit(ctx)
 }
 
 var (

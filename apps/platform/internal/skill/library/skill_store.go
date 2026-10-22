@@ -65,6 +65,11 @@ func loadSkillForOperator(ctx context.Context, q *gen.Queries, skillID pgtype.UU
 	return skillRootOf(ctx, q, row, err)
 }
 
+func loadSkillForOperatorRelease(ctx context.Context, q *gen.Queries, skillID pgtype.UUID) (*SkillRoot, error) {
+	row, err := q.LockSkillForOperatorRelease(ctx, skillID)
+	return skillRootOf(ctx, q, row, err)
+}
+
 func skillRootOf(ctx context.Context, q *gen.Queries, row gen.Skill, err error) (*SkillRoot, error) {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound

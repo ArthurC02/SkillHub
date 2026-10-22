@@ -22,7 +22,11 @@ type RestrictionBefore struct {
 }
 
 func SetAccessRestriction(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID, reason *string) (RestrictionBefore, error) {
-	root, err := loadSkillForOperator(ctx, gen.New(tx), skillID)
+	load := loadSkillForOperator
+	if reason == nil {
+		load = loadSkillForOperatorRelease
+	}
+	root, err := load(ctx, gen.New(tx), skillID)
 	if err != nil {
 		return RestrictionBefore{}, err
 	}

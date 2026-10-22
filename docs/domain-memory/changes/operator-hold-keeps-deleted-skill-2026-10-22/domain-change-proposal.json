@@ -1,0 +1,153 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "operator-hold-keeps-deleted-skill",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "operator-hold-keeps-deleted-skill",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-22T10:56:43.926424Z",
+  "verified_at": "2026-10-22T10:58:44.919064Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "1354b5d1653c3a50f0e68288edb1ae788ce04424",
+    "registry_digest": "sha256:696624d415cc81953f6f32a46fed88aa07eeb341623854effba43e4d5dd315d5",
+    "committed_digest": "sha256:696624d415cc81953f6f32a46fed88aa07eeb341623854effba43e4d5dd315d5"
+  },
+  "affected_contexts": [
+    "registry"
+  ],
+  "rule_ids": [
+    "a-held-skill-is-not-purged"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Only registry decides when a deleted skill's row and versions may be purged; an operator hold is read from the skill's own takedown and restriction columns.",
+    "evidence": [
+      "apps/platform/internal/skill/library/purge.go:126-134",
+      "db/queries/governance.sql:228-231"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/library/purge.go:126-134",
+      "db/queries/governance.sql:228-231"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "An owner could delete a skill an operator had taken down or restricted, and the sweep would purge it after the grace period, leaving nothing to show what had been taken down."
+    ],
+    "decision": "While an operator takedown or access restriction is in force, an owner's delete still hides the skill from the owner's list and search, but the deleted-skill sweep keeps its row and versions; lifting the takedown or clearing the restriction works on the deleted skill, does not return it to search, and lets the next sweep purge it. An account purge is unchanged.",
+    "invariants_preserved": [
+      "An owner's own takedown is not a hold.",
+      "A lifted takedown never re-lists a deleted skill.",
+      "An account purge still erases the account's skills."
+    ],
+    "rejected_alternatives": [
+      "Refusing the owner's delete: the owner keeps the right to remove it from their own view; only the content is preserved."
+    ],
+    "proof_obligations": [
+      "rule-a-held-skill-is-not-purged"
+    ],
+    "counterfactual_check": "Removing skillsUnderOperatorHold from deletionHolds fails TestAnOwnerDeletionUnderAnOperatorHoldKeepsTheContentUntilTheOperatorReleasesIt."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-held-skill-is-not-purged",
+        "statement": "A purge keeps the row of a skill that has test cases or a version referenced by a run, a download or a bundle; the deleted-skill sweep also keeps a skill while its publication is unretired or retired less than the ninety-day name hold ago, and while an operator takedown or access restriction is in force on it.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "A deleted skill past grace that has test cases survives the sweep.",
+          "A deleted skill whose publication retired 89 days 23 hours ago survives the sweep; at 90 days and a minute it is purged.",
+          "A skill its owner deleted while an operator takedown was in force survives the sweep past grace; after the operator lifts the takedown the next sweep purges it."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/purge.go",
+            "lines": {
+              "start": 30,
+              "end": 32
+            },
+            "excerpt_sha256": "sha256:c2abe36b9b8910dce5fa36fa4d38ea43b9d698b61470cbf444fbd146ffd2c441"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/purge_test.go",
+            "lines": {
+              "start": 45,
+              "end": 73
+            },
+            "excerpt_sha256": "sha256:280894e25a26feb7089be8921c52b7d5ac1d3225efa4834c3e5ba2772f28bcb3"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/publishing_integration_test.go",
+            "lines": {
+              "start": 719,
+              "end": 753
+            },
+            "excerpt_sha256": "sha256:9dd45542dbe00bd2e4e042590d0e326a07e57a43dcb4d625fc10ab43de51a0e1"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/purge.go",
+            "lines": {
+              "start": 126,
+              "end": 134
+            },
+            "content_sha256": "sha256:a463864e7cacabb85388432edecfa5da657e62a3f71f1a78fb6b0ebe44d89e7c",
+            "excerpt_sha256": "sha256:740c1c6027baaceccc632dbcab93e90d552ae3e31910235701ed49ebdcd4726e"
+          },
+          {
+            "path": "db/queries/governance.sql",
+            "lines": {
+              "start": 228,
+              "end": 231
+            },
+            "content_sha256": "sha256:a376644b7b614512255869cd901d062ab52d865bd9a5d6dc88b98b876f283848",
+            "excerpt_sha256": "sha256:190e8561239a6638065ea9082bdbd505a86f92361e6dc5b5ba2a8f78cbc555e4"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/operator_hold_deletion_integration_test.go",
+            "lines": {
+              "start": 11,
+              "end": 69
+            },
+            "content_sha256": "sha256:6cdf4aba2bfa924bf0feadc1a1c92c3bddaadb7ca68835bd64b84c7db66a98bf",
+            "excerpt_sha256": "sha256:226eea57802bfe6a599a5f215fdc8d268b887baa5a1f0aecd37400f7fb867e4a"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-22T10:57:40.060126Z",
+      "scope": "Owner deletion under an operator hold keeps the skill until the operator releases it (R-115)",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "1354b5d1653c3a50f0e68288edb1ae788ce04424",
+        "registry_digest": "sha256:696624d415cc81953f6f32a46fed88aa07eeb341623854effba43e4d5dd315d5",
+        "committed_digest": "sha256:696624d415cc81953f6f32a46fed88aa07eeb341623854effba43e4d5dd315d5"
+      }
+    }
+  ],
+  "supersedes": [
+    "sweep-holds-held-publication-names"
+  ]
+}

@@ -498,8 +498,6 @@ func TestARefusedVersionDoesNotTakeANumber(t *testing.T) {
 
 func (s *SkillRoot) ID() pgtype.UUID { return s.row.ID }
 
-func (s *SkillRoot) Deleted() bool { return s.row.DeletedAt.Valid }
-
 func (s *SkillRoot) Restriction() AccessRestriction { return RestrictionFrom(s.row.AccessRestriction) }
 
 func (s *SkillRoot) Events() []Event {

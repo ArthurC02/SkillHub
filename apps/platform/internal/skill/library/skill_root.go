@@ -212,6 +212,12 @@ func (s *SkillRoot) takenDownBy(by TakedownBy) bool {
 	return s.TakenDown() && s.row.TakedownBy != nil && TakedownBy(*s.row.TakedownBy) == by
 }
 
+func (s *SkillRoot) Deleted() bool { return s.row.DeletedAt.Valid }
+
+func (s *SkillRoot) UnderOperatorHold() bool {
+	return s.takenDownBy(TakedownByOperator) || RestrictionFrom(s.row.AccessRestriction).InEffect()
+}
+
 func (s *SkillRoot) Redistribution() Redistribution { return Redistribution(s.row.Redistribution) }
 
 func (s *SkillRoot) NewestLicense() LicenseClaim { return s.newest.license }
