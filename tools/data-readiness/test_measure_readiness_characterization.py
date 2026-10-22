@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import contextlib
+import io
 import json
 import sys
 import tempfile
@@ -319,17 +321,50 @@ def test_render_shows_the_delta_against_a_baseline_and_na_for_empty_denominators
     report = {"inventory": {"tables": 2}, "metrics": {"m": mr._ratio(1, 2), "e": mr._ratio(0, 0)}}
     baseline = {"metrics": {"m": mr._ratio(1, 4)}}
     assert mr.render(report, baseline).splitlines()[4:] == [
-        "| m | 1/2 | 50.0% | 25.0% | +0.250 |",
-        "| e | 0/0 | n/a |  |  |",
+        "| m | 1/2 | 50.0% | 25.0% | +0.250 |  |",
+        "| e | 0/0 | n/a |  |  |  |",
     ]
-    assert mr.render(report, None).splitlines()[4] == "| m | 1/2 | 50.0% |  |  |"
+    assert mr.render(report, None).splitlines()[4] == "| m | 1/2 | 50.0% |  |  |  |"
+
+
+def test_render_marks_a_target_met_on_the_target_and_below_under_it_or_with_nothing_to_count():
+    report = {"inventory": {}, "metrics": {"m": mr._ratio(1, 2), "n": mr._ratio(1, 2), "e": mr._ratio(0, 0)}}
+    assert mr.render(report, None, {"m": 0.5, "n": 0.501, "e": 1.0}).splitlines()[4:] == [
+        "| m | 1/2 | 50.0% |  |  | 50.0% met |",
+        "| n | 1/2 | 50.0% |  |  | 50.1% below |",
+        "| e | 0/0 | n/a |  |  | 100.0% below |",
+    ]
+
+
+def test_a_regression_is_a_ratio_below_its_baseline_and_not_one_equal_higher_or_unmeasured():
+    report = {"metrics": {"down": mr._ratio(1, 4), "same": mr._ratio(1, 2), "up": mr._ratio(3, 4),
+                          "empty": mr._ratio(0, 0), "new": mr._ratio(1, 2)}}
+    baseline = {"metrics": {"down": mr._ratio(1, 2), "same": mr._ratio(1, 2), "up": mr._ratio(1, 2),
+                            "empty": mr._ratio(1, 2), "gone": mr._ratio(1, 2)}}
+    assert mr.regressions(report, baseline) == ["down fell from 50.0% to 25.0%"]
+
+
+def test_main_fails_only_when_asked_and_a_ratio_fell_below_the_baseline():
+    with tempfile.TemporaryDirectory() as root:
+        fixture(Path(root))
+        higher = Path(root) / "higher.json"
+        higher.write_text(json.dumps({"metrics": {"meaning.tables_described": mr._ratio(2, 2)}}), encoding="utf-8")
+        same = Path(root) / "same.json"
+        same.write_text(json.dumps({"metrics": {"meaning.tables_described": mr._ratio(1, 2)}}), encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as errors:
+            codes = (mr.main(["--repo-root", root, "--baseline", str(higher)]),
+                     mr.main(["--repo-root", root, "--baseline", str(same), "--fail-on-regression"]),
+                     mr.main(["--repo-root", root, "--baseline", str(higher), "--fail-on-regression"]))
+    assert codes == (0, 0, 1)
+    assert "ERROR: meaning.tables_described fell from 100.0% to 50.0%" in errors.getvalue()
 
 
 def test_main_writes_the_json_report_and_exits_zero_even_with_unread_statements():
     with tempfile.TemporaryDirectory() as root:
         fixture(Path(root))
         out = Path(root) / "report.json"
-        code = mr.main(["--repo-root", root, "--json", str(out)])
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            code = mr.main(["--repo-root", root, "--json", str(out)])
         written = json.loads(out.read_text(encoding="utf-8"))
     assert code == 0
     assert written["inventory"]["unparsed_statements"] == 4

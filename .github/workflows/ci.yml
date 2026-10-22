@@ -661,10 +661,12 @@ jobs:
             python "$test"
           done
 
-      - name: Data readiness report
+      - name: Data readiness — no ratio below its baseline
         run: >-
+          bash tools/ci/report-failure.sh 'Data readiness'
           python tools/data-readiness/measure_readiness.py --repo-root .
-          --baseline tools/data-readiness/baseline.json
+          --baseline tools/data-readiness/baseline.json --targets tools/data-readiness/targets.json
+          --fail-on-regression
 
       - name: Domain Memory plugin tests
         run: >-

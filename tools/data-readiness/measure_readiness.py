@@ -574,18 +574,32 @@ def measure(inputs: Inputs) -> dict[str, Any]:
     }
 
 
-def render(report: dict[str, Any], baseline: dict[str, Any] | None) -> str:
-    lines = ["| metric | now | ratio | baseline | delta |", "| --- | --- | --- | --- | --- |"]
+def _percent(ratio: float | None) -> str:
+    return "" if ratio is None else f"{ratio:.1%}"
+
+
+def render(report: dict[str, Any], baseline: dict[str, Any] | None, targets: dict[str, float] | None = None) -> str:
+    lines = ["| metric | now | ratio | baseline | delta | target |", "| --- | --- | --- | --- | --- | --- |"]
     base_metrics = (baseline or {}).get("metrics", {})
     for name, value in report["metrics"].items():
         ratio = value["ratio"]
         base = base_metrics.get(name, {}).get("ratio")
+        target = (targets or {}).get(name)
         delta = "" if ratio is None or base is None else f"{ratio - base:+.3f}"
         shown = "n/a" if ratio is None else f"{ratio:.1%}"
-        shown_base = "" if base is None else f"{base:.1%}"
-        lines.append(f"| {name} | {value['numerator']}/{value['denominator']} | {shown} | {shown_base} | {delta} |")
+        met = "" if target is None else f"{_percent(target)} {'met' if ratio is not None and ratio >= target else 'below'}"
+        lines.append(f"| {name} | {value['numerator']}/{value['denominator']} | {shown} | {_percent(base)} | {delta} | {met} |")
     inventory = ", ".join(f"{key} {value}" for key, value in report["inventory"].items())
     return f"{inventory}\n\n" + "\n".join(lines)
+
+
+def regressions(report: dict[str, Any], baseline: dict[str, Any]) -> list[str]:
+    found = []
+    for name, value in report["metrics"].items():
+        base = baseline.get("metrics", {}).get(name, {}).get("ratio")
+        if base is not None and value["ratio"] is not None and value["ratio"] < base:
+            found.append(f"{name} fell from {_percent(base)} to {_percent(value['ratio'])}")
+    return found
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -594,19 +608,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     parser.add_argument("--registry-root", type=Path, default=None)
     parser.add_argument("--baseline", type=Path, default=None)
+    parser.add_argument("--targets", type=Path, default=None)
+    parser.add_argument("--fail-on-regression", action="store_true", help="exit 1 when a ratio is below its baseline")
     parser.add_argument("--json", type=Path, default=None, help="write the full report here")
     args = parser.parse_args(argv)
     repo_root = args.repo_root.resolve()
     registry_root = (args.registry_root or repo_root / "docs" / "domain-memory").resolve()
     report = measure(read_inputs(repo_root, registry_root))
     baseline = json.loads(args.baseline.read_text(encoding="utf-8")) if args.baseline else None
+    targets = json.loads(args.targets.read_text(encoding="utf-8")) if args.targets else None
     if args.json:
         args.json.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
-    print(render(report, baseline))
+    print(render(report, baseline, targets))
     unparsed = report["inventory"]["unparsed_statements"]
     if unparsed:
         print(f"\n{unparsed} statement(s) not read; see details.unparsed_statements", file=sys.stderr)
-    return 0
+    fallen = regressions(report, baseline) if args.fail_on_regression and baseline else []
+    for line in fallen:
+        print(f"ERROR: {line}", file=sys.stderr)
+    return 1 if fallen else 0
 
 
 if __name__ == "__main__":
