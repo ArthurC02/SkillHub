@@ -752,6 +752,7 @@
         "apps/web/e2e/bundle-read-recovery.spec.ts",
         "apps/web/e2e/category-edit-recovery.spec.ts",
         "apps/web/e2e/check-editor-layout.spec.ts",
+        "apps/web/e2e/check-editor-scroll.spec.ts",
         "apps/web/e2e/check-editor-validation.spec.ts",
         "apps/web/e2e/check-kind-response.spec.ts",
         "apps/web/e2e/check-palette-connectivity.spec.ts",

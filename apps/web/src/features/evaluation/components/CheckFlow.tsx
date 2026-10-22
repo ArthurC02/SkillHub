@@ -85,6 +85,7 @@ export function CheckFlow({
             nodes={nodes}
             edges={edges}
             minZoom={0.05}
+            preventScrolling={false}
             nodesDraggable={false}
             nodesConnectable={false}
             nodesFocusable={false}
