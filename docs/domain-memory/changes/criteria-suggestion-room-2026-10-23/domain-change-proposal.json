@@ -3,12 +3,12 @@
   "proposal_id": "criteria-suggestion-room",
   "proposer": "domain-memory-agent",
   "requirement_id": "criteria-suggestion-room",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-22T19:14:32.962567Z",
   "verified_at": "2026-10-22T19:15:40.066755Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T19:51:23.211014Z",
+  "applied_at": "2026-10-22T19:52:43.138375Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "3bb518d1d18f15f64d9db508d67c868f4a69b8b0",
@@ -148,5 +148,9 @@
   ],
   "supersedes": [
     "dispatch-halt-reaches-model-calls-and-queue"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "ca2733287d839e96f5a8b3b9ae0eb4292b869044",
+    "registry_digest": "sha256:bfd4961de0cb85e875d4256bac9f92f16f4631af5645d0f33edbff6b52906ea7"
+  }
 }

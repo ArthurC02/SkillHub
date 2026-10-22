@@ -3,12 +3,12 @@
   "proposal_id": "allowance-spent-error",
   "proposer": "domain-memory-agent",
   "requirement_id": "allowance-spent-error",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-22T19:48:57.951449Z",
   "verified_at": "2026-10-22T19:49:00.448343Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-22T19:52:48.171396Z",
+  "applied_at": "2026-10-22T19:54:00.591348Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "3bb518d1d18f15f64d9db508d67c868f4a69b8b0",
@@ -204,5 +204,9 @@
   "supersedes": [
     "policy-allowance-window-rules-2026-10-18",
     "policy-harvest-rules-2026-10-17"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "ca2733287d839e96f5a8b3b9ae0eb4292b869044",
+    "registry_digest": "sha256:df265c9e5acffa3ac20e3998cf866ef5f49b700751ba59d95bebc3986e4d0f06"
+  }
 }
