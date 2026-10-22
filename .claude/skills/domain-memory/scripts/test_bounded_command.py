@@ -11,8 +11,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.git import TIMEOUT_VARIABLE, GitDeadline, deadline_seconds, rerun_is_safe, run_bounded
 
-DEADLINE_SECONDS = 2
-RETURNS_WITHIN_SECONDS = 10
+DEADLINE_SECONDS = 6
+RETURNS_WITHIN_SECONDS = 15
 GRANDCHILD_SLEEP_SECONDS = 30
 GONE_WITHIN_SECONDS = 5
 SPAWN_AND_EXIT = (
@@ -72,6 +72,7 @@ class BoundedCommandTest(unittest.TestCase):
                     self.assertRaises(subprocess.TimeoutExpired) as stopped:
                 run_bounded([sys.executable, str(script), str(pid_file)], errors="replace")
             elapsed = time.monotonic() - started
+            self.assertTrue(pid_file.is_file(), f"the grandchild was not spawned within {DEADLINE_SECONDS} seconds; the deadline is shorter than two interpreter starts on this machine")
             grandchild = int(pid_file.read_text(encoding="utf-8"))
             self.assertEqual(
                 (f"timed out after {DEADLINE_SECONDS} seconds; set {TIMEOUT_VARIABLE} to a larger number of "
