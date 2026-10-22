@@ -42,6 +42,7 @@ var sharedNumberRoster = []string{
 	"creationMaxSearchRewrites",
 	"creationMaxTextRunes",
 	"creationMaxToolQueryChars",
+	"creationSessionList",
 	"embeddingDimensions",
 	"excerptLimit",
 	"generateFailureLimit",
@@ -69,9 +70,8 @@ var sharedNumberRoster = []string{
 	"maxFinalOutput",
 	"maxSkillPackageEntries",
 	"searchMaxQueryRunes",
-	"creationSessionList",
-	"simulatedUserFactsChars",
 
+	"simulatedUserFactsChars",
 	"suggestCriteriaMaxItems",
 	"suggestMaxDigestChars",
 	"suggestMaxEvidence",
