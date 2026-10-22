@@ -4719,7 +4719,7 @@ paths:
         "422":
           description: |
             Well formed, the platform is working, and the run still may not
-            start. Six causes, and the message says which. The list read three
+            start. The causes are below, and the message says which. The list read three
             for a while, which is the drift this file warns about under
             `/api/skills/search`: a cause missing from it is how a handler and
             its contract come apart. The three that were missing are the last
@@ -4727,8 +4727,10 @@ paths:
             another does not clear until tomorrow - a client that folded them
             into a fallback branch told the user the wrong one.
 
-            - No configured provider can satisfy the run's requirements
-              (RUN-005); the message names the requirement each one failed.
+            - This deployment has no sandbox provider, no provider can satisfy
+              the run's requirements (RUN-005; the message names the
+              requirement each one failed), or no model gateway is connected.
+              None of these clears by retrying; an operator has to act.
             - `confirmed_summary_hash` is absent, is not the current summary's,
               or names a summary nobody confirmed (TEST-005). The fix is the same
               in all three cases: GET the preflight summary again, confirm the
@@ -4737,7 +4739,8 @@ paths:
               nobody gave.
             - The free run allowance is spent (PDM-010). The daily and the
               rolling-window ceilings both land here, and the message carries the
-              reset time. Enforced in the same transaction that would have
+              reset time: 24 hours after the earliest run today, or the window's
+              next free date and time in Taipei time. Enforced in the same transaction that would have
               inserted the run and under the same advisory lock as the
               concurrency limit, so a refusal leaves no run behind.
               The counters are the same ones GET /me/quota reports.
@@ -4745,6 +4748,8 @@ paths:
               (SEC-002 gate B). Unlike the allowance above this one clears by
               itself, in about as long as a run takes, so the message says wait
               rather than come back tomorrow.
+            - The owner's credit balance is below what starting a run needs.
+              It clears when credit is granted, not by waiting.
             - The package's static scan blocks, or could not be performed
               (SEC-002 gate B). Unperformable is refused as well as blocking:
               a scan that did not run is not a scan that passed.

@@ -12,11 +12,8 @@ import {
   type SkillImportLimits,
 } from "../import.service";
 import type { ImportResult, ImportedSkill, RefusedSkill } from "../../../core/api/types";
+import { importRefusal, mb } from "../import.model";
 import "./ImportSkill.page.css";
-
-function mb(bytes: number): string {
-  return (bytes / (1 << 20)).toFixed(1).replace(/\.0$/, "") + " MB";
-}
 
 export function ImportSkill() {
   const me = useMe();
@@ -34,10 +31,17 @@ export function ImportSkill() {
   const blockedError = mutation.error instanceof SessionNotReadyError ? mutation.error : undefined;
   const result = blockedError && previousImport ? previousImport.result : mutation.data;
   const failure = blockedError && previousImport ? previousImport.error : mutation.error;
+  const refusal = rules ? importRefusal(source, url, file, rules) : null;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!rules || !identityConfirmed || mutation.isPending || (source === "upload" && !file))
+    if (
+      !rules ||
+      refusal ||
+      !identityConfirmed ||
+      mutation.isPending ||
+      (source === "upload" && !file)
+    )
       return;
     mutation.mutate(source === "url" ? { url: url.trim() } : { file }, {
       onError: (error) => {
@@ -93,6 +97,7 @@ export function ImportSkill() {
               onFileChange={setFile}
               mutation={mutation}
               rulesReady={Boolean(rules)}
+              refusal={refusal}
               identityConfirmed={identityConfirmed}
               onSubmit={submit}
             />
@@ -177,6 +182,7 @@ function ImportSourceForm({
   onFileChange,
   mutation,
   rulesReady,
+  refusal,
   identityConfirmed,
   onSubmit,
 }: {
@@ -187,6 +193,7 @@ function ImportSourceForm({
   onFileChange: (file: File | undefined) => void;
   mutation: ReturnType<typeof useImportSkill>;
   rulesReady: boolean;
+  refusal: string | null;
   identityConfirmed: boolean;
   onSubmit: (event: FormEvent) => void;
 }) {
@@ -246,16 +253,23 @@ function ImportSourceForm({
           />
         </p>
       )}
+      {refusal && (
+        <p id="import-refusal" role="status" className="note">
+          {refusal}
+        </p>
+      )}
       <button
         type="submit"
         className="action"
-        disabled={!rulesReady || !identityConfirmed || mutation.isPending}
+        disabled={!rulesReady || Boolean(refusal) || !identityConfirmed || mutation.isPending}
         aria-describedby={
           !identityConfirmed
             ? "import-session-unavailable"
             : !rulesReady
               ? "import-rules-unavailable"
-              : undefined
+              : refusal
+                ? "import-refusal"
+                : undefined
         }
       >
         {mutation.isPending ? "匯入中…" : "開始匯入"}

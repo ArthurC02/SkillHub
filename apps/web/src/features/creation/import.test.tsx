@@ -162,6 +162,22 @@ async function submitURL(url = "https://github.com/example/skill") {
   });
 }
 
+test("a URL outside the allowed hosts is not sent and the page says why", async () => {
+  const posts: string[] = [];
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const path = typeof input === "string" ? input : String(input);
+    if (path.endsWith("/me")) return json(ME);
+    if (path.endsWith("/skills/import/limits")) return json(IMPORT_LIMITS);
+    if (init?.method === "POST") posts.push(path);
+    return json({ error: "not found" }, 404);
+  });
+
+  await submitURL("https://example.com/skill.zip");
+  await waitFor(() => text().includes("example.com 不在允許的來源"));
+  expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
+  expect(posts).toEqual([]);
+});
+
 test("04 丙-150(a): a session that expired mid-import says 需要登入, not the raw server string", async () => {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const path = typeof input === "string" ? input : String(input);
