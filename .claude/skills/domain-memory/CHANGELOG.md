@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.2.10
+
+### Added
+
+- Lookup tests: a query of stop words only finds nothing and says `none`, and the result limit holds for records holding every word of the query and for records holding some of its words.
+
 ## 2.2.9
 
 ### Added
