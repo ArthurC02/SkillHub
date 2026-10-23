@@ -5450,6 +5450,122 @@ const OPERATOR_RATE = {
   },
 };
 
+for (const setting of [
+  {
+    name: "spend ceiling",
+    key: "model_budget",
+    selector: "#admin-settings-run-budget-value",
+    note: "#admin-settings-run-budget-note",
+    changed: OPERATOR_BUDGET,
+    latest: "260",
+    original: "650",
+    edited: "300",
+    current: "目前：每次試跑最多花 260 點的模型費用",
+    initial: "目前：每次試跑最多花 650 點的模型費用",
+    reset: "回到部署預設 650 點",
+    receipt: "已回到部署預設 650 點，新建立的試跑就照這個上限。",
+    warning: "設定已變更；草稿改為目前的 260 點，請確認後再送出。",
+  },
+  {
+    name: "token rate",
+    key: "tokens_per_minute",
+    selector: "#admin-settings-run-tpm-value",
+    note: "#admin-settings-run-tpm-note",
+    changed: OPERATOR_RATE,
+    latest: "20000",
+    original: "200000",
+    edited: "30000",
+    current: "目前：試跑的模型金鑰最多 每分鐘 20,000 tokens",
+    initial: "目前：試跑的模型金鑰最多 每分鐘 200,000 tokens",
+    reset: "回到部署預設每分鐘 200,000 tokens",
+    receipt: "已回到部署預設每分鐘 200,000 tokens，之後發出的金鑰就照這個值。",
+    warning: "設定已變更；草稿改為每分鐘 20,000 tokens，請確認後再送出。",
+  },
+] as const) {
+  for (const phase of ["pristine", "edited", "round trip", "unchanged blank"] as const) {
+    test(`run setting ${setting.name} synchronizes its draft after ${phase} refresh`, async () => {
+      let current: unknown = RUN_SETTINGS;
+      stub(true, (path, method) =>
+        path === "/admin/settings/runs" && method === "GET"
+          ? { body: current, status: 200 }
+          : undefined,
+      );
+      await mountAt("/admin/settings");
+      await waitFor(() => Boolean(container.querySelector(setting.selector)));
+      if (phase !== "pristine") {
+        await type(setting.selector, phase === "unchanged blank" ? "" : setting.edited);
+      }
+      current = phase === "unchanged blank" ? RUN_SETTINGS : setting.changed;
+      await act(async () => {
+        await queryClient.refetchQueries({ queryKey: queryKeys.admin.runSettings, exact: true });
+      });
+      if (phase === "round trip") {
+        await waitFor(has(setting.current));
+        current = RUN_SETTINGS;
+        await act(async () => {
+          await queryClient.refetchQueries({ queryKey: queryKeys.admin.runSettings, exact: true });
+        });
+      }
+      await waitFor(() => queryClient.isFetching() === 0);
+      await waitFor(
+        has(
+          phase === "round trip" || phase === "unchanged blank" ? setting.initial : setting.current,
+        ),
+      );
+      const expected =
+        phase === "round trip"
+          ? setting.original
+          : phase === "unchanged blank"
+            ? ""
+            : setting.latest;
+      expect(field<HTMLInputElement>(setting.selector).value).toBe(expected);
+      expect(calls.filter((call) => call.method !== "GET")).toEqual([]);
+      if (phase === "pristine" || phase === "edited") expect(has(setting.warning)()).toBe(true);
+      if (phase === "unchanged blank") expect(has("設定已變更；草稿改為")()).toBe(false);
+    });
+  }
+
+  test(`run setting ${setting.name} synchronizes its draft after a same-value restore`, async () => {
+    stubRunSettings(
+      { body: RUN_SETTINGS, status: 200 },
+      {
+        ...RUN_SETTINGS,
+        [setting.key]: { ...RUN_SETTINGS[setting.key], reason: "explicit default-sized override" },
+      },
+    );
+    await mountAt("/admin/settings");
+    await waitFor(() => Boolean(container.querySelector(setting.selector)));
+    await type(setting.selector, setting.edited);
+    await type(setting.note.replace("-note", "-clear-note"), "restore deployment defaults");
+    await click(button(setting.reset));
+    await waitFor(has(setting.receipt));
+    expect(field<HTMLInputElement>(setting.selector).value).toBe(setting.original);
+    expect(container.querySelector('[role="status"]:focus')?.textContent).toContain(
+      setting.receipt,
+    );
+    expect(calls.filter((call) => call.method === "DELETE")).toHaveLength(1);
+    expect(calls.filter((call) => call.method === "PUT")).toEqual([]);
+    await type(setting.selector, setting.edited);
+    expect(field<HTMLInputElement>(setting.selector).value).toBe(setting.edited);
+    expect(has(setting.receipt)()).toBe(false);
+  });
+
+  test(`run setting ${setting.name} synchronizes its draft after restoring the default`, async () => {
+    stubRunSettings({ body: RUN_SETTINGS, status: 200 }, setting.changed);
+    await mountAt("/admin/settings");
+    await waitFor(() => Boolean(container.querySelector(setting.selector)));
+    const clearNote = setting.note.replace("-note", "-clear-note");
+    await type(clearNote, "restore the deployment default");
+    await click(button(setting.reset));
+    await waitFor(has(setting.receipt));
+    expect(field<HTMLInputElement>(setting.selector).value).toBe(setting.original);
+    expect(container.querySelector('[role="status"]:focus')?.textContent).toContain(
+      setting.receipt,
+    );
+    expect(calls.filter((call) => call.method === "DELETE")).toHaveLength(1);
+  });
+}
+
 test("the run key tokens-per-minute limit shows the deployment default and sends the new limit with its reason", async () => {
   stubRunSettings({ body: OPERATOR_RATE, status: 200 });
   await mountAt("/admin/settings");

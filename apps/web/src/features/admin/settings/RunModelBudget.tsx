@@ -1,10 +1,11 @@
-import { useState } from "react";
 import { useRunModelBudget, type RunSettings } from "../admin.service";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ActionForm } from "../components/ActionForm";
 import { SettingsResult } from "./SettingsResult";
+import { useRunSettingDraft } from "./useRunSettingDraft";
 
 type Budget = RunSettings["model_budget"];
+type RunModelBudgetProps = { setting: Budget; readable: boolean; refreshing: boolean };
 
 const points = (credits: number) => `${credits} 點`;
 
@@ -39,17 +40,10 @@ function resultSentence(credits: number | undefined, defaultCredits: number) {
     : `已改為 ${points(credits)}，新建立的試跑就照這個上限。`;
 }
 
-export function RunModelBudget({
-  setting,
-  readable,
-  refreshing,
-}: {
-  setting: Budget;
-  readable: boolean;
-  refreshing: boolean;
-}) {
+export function RunModelBudget({ setting, readable, refreshing }: RunModelBudgetProps) {
   const set = useRunModelBudget();
-  const [value, setValue] = useState(String(setting.credits));
+  const draft = useRunSettingDraft(setting.credits, set.isSuccess);
+  const value = draft.value;
   const credits = Number(value);
   const valid =
     value.trim() !== "" &&
@@ -71,6 +65,11 @@ export function RunModelBudget({
       {readable && !unverified && (
         <>
           <BudgetFacts setting={setting} />
+          {draft.changed && (
+            <p role="status">
+              設定已變更；草稿改為目前的 {points(setting.credits)}，請確認後再送出。
+            </p>
+          )}
           <details>
             <summary>調整花費上限</summary>
             <ActionForm
@@ -93,7 +92,7 @@ export function RunModelBudget({
                   max={setting.max_credits}
                   step={1}
                   value={value}
-                  onChange={(event) => setValue(event.target.value)}
+                  onChange={(event) => draft.update(event.target.value)}
                   readOnly={set.isPending}
                 />
               </div>
@@ -123,7 +122,7 @@ export function RunModelBudget({
           disabled={refreshing}
           aria-describedby="admin-settings-run-budget-result"
           onClick={() => {
-            setValue(String(setting.credits));
+            draft.update(String(setting.credits));
             set.reset();
             document.getElementById("admin-settings-run-budget-heading")?.focus();
           }}

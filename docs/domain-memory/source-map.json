@@ -998,6 +998,8 @@
         "tools/contracts/test_validate_egress_records_characterization.py",
         "tools/contracts/test_validate_packaging_characterization.py",
         "tools/contracts/test_validate_trace_events_characterization.py",
+        "tools/data-readiness/test_export_contracts_characterization.py",
+        "tools/data-readiness/test_known_answers_characterization.py",
         "tools/data-readiness/test_measure_readiness_characterization.py",
         "tools/deploy/test_checkout.py",
         "tools/deploy/test_checkout_characterization.py",
