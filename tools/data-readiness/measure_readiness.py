@@ -19,6 +19,8 @@ WRITES = re.compile(r"\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\b", re.I)
 CITATION = re.compile(r"^(?P<path>[^#]+)#L(?P<start>\d+)(?:-(?P<end>\d+))?$")
 CITED_RESOURCE = re.compile(r'resource:\s*"([^"]+)"')
 CONTEXT_LINK = re.compile(r"\(/contexts/([a-z0-9-]+)\)")
+PRODUCER = re.compile(r"Producer context: \[[^\]]*\]\(/contexts/([a-z0-9-]+)\)")
+CONSUMER = re.compile(r"Consumer context: \[[^\]]*\]\(/contexts/([a-z0-9-]+)\)")
 RECORD_TYPE = re.compile(r"^type:\s*(.+)$", re.M)
 RECORD_CONSISTENCY = re.compile(r"^consistency:\s*(.+)$", re.M)
 RECORD_STATUS = re.compile(r"^status:\s*(\S+)", re.M)
@@ -244,6 +246,18 @@ def _cross_context(inputs: Inputs, key: ForeignKey) -> tuple[str, str] | None:
     return None
 
 
+def _recorded_collaborations(inputs: Inputs) -> set[tuple[str, str]]:
+    pairs = {
+        (record.contexts[0], record.contexts[1]) for record in inputs.reviewed
+        if record.asset == "dependency-policies" and len(record.contexts) > 1
+    }
+    for record in inputs.reviewed:
+        producer, consumer = PRODUCER.search(record.text), CONSUMER.search(record.text)
+        if record.asset == "interactions" and producer and consumer:
+            pairs.add((consumer.group(1), producer.group(1)))
+    return pairs
+
+
 def _rules(inputs: Inputs) -> tuple[dict[str, Any], dict[str, Any]]:
     tables = inputs.tables
     constraints = [constraint for constraint in inputs.schema.constraints
@@ -252,22 +266,19 @@ def _rules(inputs: Inputs) -> tuple[dict[str, Any], dict[str, Any]]:
     generic_keys = [key for key in inputs.schema.foreign_keys if inputs.is_generic(key.child) or inputs.is_generic(key.parent)]
     governed = [key for key in inputs.schema.foreign_keys if key not in generic_keys]
     crossing = {key: pair for key in governed if (pair := _cross_context(inputs, key))}
-    policies = {
-        (record.contexts[0], record.contexts[1]) for record in inputs.reviewed
-        if record.asset == "dependency-policies" and len(record.contexts) > 1
-    }
+    collaborations = _recorded_collaborations(inputs)
     awaiting_review = [c for c in constraints if c not in cited and inputs.cited_by_a_candidate(c.file, c.line)]
-    covered = [key for key, pair in crossing.items() if pair in policies]
+    covered = [key for key, pair in crossing.items() if pair in collaborations]
     metrics = {
         "rules.constraints_cited_by_a_record": _ratio(len(cited), len(constraints)),
         "rules.foreign_keys_inside_one_context": _ratio(len(governed) - len(crossing), len(governed)),
-        "rules.cross_context_foreign_keys_with_a_dependency_policy": _ratio(len(covered), len(crossing)),
+        "rules.cross_context_foreign_keys_with_a_recorded_collaboration": _ratio(len(covered), len(crossing)),
     }
     details = {
         "uncited_constraints": sorted(f"{c.file}:{c.line} {c.kind} {c.name}" for c in constraints if c not in cited),
         "constraints_cited_only_by_a_candidate": len(awaiting_review),
-        "cross_context_foreign_keys_without_a_policy": sorted({
-            f"{key.child}->{key.parent} ({pair[0]}->{pair[1]})" for key, pair in crossing.items() if pair not in policies}),
+        "cross_context_foreign_keys_without_a_recorded_collaboration": sorted({
+            f"{key.child}->{key.parent} ({pair[0]}->{pair[1]})" for key, pair in crossing.items() if pair not in collaborations}),
         "foreign_keys_from_generic_tables": sorted({f"{key.child}->{key.parent}" for key in generic_keys}),
     }
     return metrics, details

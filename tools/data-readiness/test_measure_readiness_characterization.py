@@ -284,14 +284,14 @@ def test_a_draft_context_or_policy_does_not_count_as_the_registry_knowing_it():
         report = mr.measure(mr.read_inputs(Path(root), Path(root) / "docs/domain-memory"))
     assert ratio(report, "ownership.tables_with_a_known_owner") == (1, 2)
     assert report["details"]["tables_without_a_known_owner"] == {"runs": ["run", "trial"]}
-    assert ratio(report, "rules.cross_context_foreign_keys_with_a_dependency_policy") == (0, 3)
+    assert ratio(report, "rules.cross_context_foreign_keys_with_a_recorded_collaboration") == (0, 3)
 
 
 def test_a_cross_context_foreign_key_is_covered_by_a_dependency_policy_from_child_to_parent():
     _, report = measured()
     assert ratio(report, "rules.foreign_keys_inside_one_context") == (0, 3)
-    assert ratio(report, "rules.cross_context_foreign_keys_with_a_dependency_policy") == (3, 3)
-    assert report["details"]["cross_context_foreign_keys_without_a_policy"] == []
+    assert ratio(report, "rules.cross_context_foreign_keys_with_a_recorded_collaboration") == (3, 3)
+    assert report["details"]["cross_context_foreign_keys_without_a_recorded_collaboration"] == []
 
 
 def test_a_policy_in_the_other_direction_does_not_cover_the_foreign_key():
@@ -301,8 +301,50 @@ def test_a_policy_in_the_other_direction_does_not_cover_the_foreign_key():
         policy.write_text(POLICY.replace("[run](/contexts/run)", "[x](/contexts/identity)", 1)
                           .replace("[identity](/contexts/identity)\n", "[run](/contexts/run)\n"), encoding="utf-8")
         report = mr.measure(mr.read_inputs(Path(root), Path(root) / "docs/domain-memory"))
-    assert ratio(report, "rules.cross_context_foreign_keys_with_a_dependency_policy") == (0, 3)
-    assert report["details"]["cross_context_foreign_keys_without_a_policy"] == ["runs->users (run->identity)"]
+    assert ratio(report, "rules.cross_context_foreign_keys_with_a_recorded_collaboration") == (0, 3)
+    assert report["details"]["cross_context_foreign_keys_without_a_recorded_collaboration"] == ["runs->users (run->identity)"]
+
+
+LABELED_INTERACTION = """---
+type: Interaction
+consistency: synchronous
+---
+Runs reference the account that owns them.
+
+# Relations
+- Producer context: [identity](/contexts/identity)
+- Consumer context: [run](/contexts/run)
+"""
+
+
+def _foreign_keys_covered_with(interaction: str) -> dict:
+    with tempfile.TemporaryDirectory() as root:
+        fixture(Path(root))
+        registry = Path(root) / "docs/domain-memory/registry"
+        (registry / "dependency-policies" / "run-to-identity.md").unlink()
+        (registry / "interactions" / "identity-serves-run.md").write_text(interaction, encoding="utf-8")
+        return mr.measure(mr.read_inputs(Path(root), Path(root) / "docs/domain-memory"))
+
+
+def test_a_reviewed_interaction_from_the_parent_to_the_child_records_the_foreign_key_without_a_policy():
+    report = _foreign_keys_covered_with(LABELED_INTERACTION)
+    assert ratio(report, "rules.cross_context_foreign_keys_with_a_recorded_collaboration") == (3, 3)
+
+
+def test_an_interaction_whose_consumer_is_the_parent_does_not_record_the_foreign_key():
+    reversed_roles = (
+        LABELED_INTERACTION
+        .replace("Producer context: [identity](/contexts/identity)", "Producer context: [run](/contexts/run)", 1)
+        .replace("Consumer context: [run](/contexts/run)", "Consumer context: [identity](/contexts/identity)", 1)
+    )
+    report = _foreign_keys_covered_with(reversed_roles)
+    assert ratio(report, "rules.cross_context_foreign_keys_with_a_recorded_collaboration") == (0, 3)
+    assert report["details"]["cross_context_foreign_keys_without_a_recorded_collaboration"] == ["runs->users (run->identity)"]
+
+
+def test_a_draft_interaction_does_not_record_the_foreign_key():
+    report = _foreign_keys_covered_with(LABELED_INTERACTION.replace("---\ntype", "---\nstatus: draft\ntype", 1))
+    assert ratio(report, "rules.cross_context_foreign_keys_with_a_recorded_collaboration") == (0, 3)
 
 
 def test_queries_name_only_known_tables_and_not_their_ctes():
@@ -361,7 +403,7 @@ def test_a_generic_table_states_no_rule_and_its_foreign_keys_need_no_dependency_
     assert report["inventory"]["constraints"] == 7
     assert ratio(report, "rules.constraints_cited_by_a_record") == (1, 6)
     assert ratio(report, "rules.foreign_keys_inside_one_context") == (0, 3)
-    assert ratio(report, "rules.cross_context_foreign_keys_with_a_dependency_policy") == (3, 3)
+    assert ratio(report, "rules.cross_context_foreign_keys_with_a_recorded_collaboration") == (3, 3)
     assert report["details"]["foreign_keys_from_generic_tables"] == ["audit_events->users"]
     assert "db/migrations/0003_audit.sql:4 check audit_events.action" not in report["details"]["uncited_constraints"]
 
