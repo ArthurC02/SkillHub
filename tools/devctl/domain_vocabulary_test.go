@@ -255,6 +255,15 @@ CREATE TABLE events (
 			want: []string{"run", "session"},
 		},
 		{
+			name: "a required list is a vocabulary",
+			migrations: map[string]string{"0001_events.sql": `CREATE TABLE events (
+    state text CHECK (state IS NOT NULL AND state IN ('queued', 'done')) NOT VALID
+);
+`},
+			key:  "events.state",
+			want: []string{"done", "queued"},
+		},
+		{
 			name: "a null test on another column is not a vocabulary",
 			migrations: map[string]string{"0001_events.sql": `CREATE TABLE events (
     CHECK (ref_id IS NULL OR ref_type IN ('run'))

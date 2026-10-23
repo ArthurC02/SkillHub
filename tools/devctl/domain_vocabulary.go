@@ -766,7 +766,7 @@ func compositeIdentifiers(path, listName string, expression ast.Expr) ([]string,
 
 var (
 	migrationTablePattern  = regexp.MustCompile(`(?i)\b(?:CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?|ALTER\s+TABLE(?:\s+IF\s+EXISTS)?(?:\s+ONLY)?)\s+(\w+)`)
-	migrationCheckPattern  = regexp.MustCompile(`(?i)\bCHECK\s*\(\s*(?:(\w+)\s+IS\s+NULL\s+OR\s+)?(\w+)\s+IN\s*\(([^)]*)\)`)
+	migrationCheckPattern  = regexp.MustCompile(`(?i)\bCHECK\s*\(\s*(?:(\w+)\s+IS\s+(?:NULL\s+OR|NOT\s+NULL\s+AND)\s+)?(\w+)\s+IN\s*\(([^)]*)\)`)
 	migrationDropPattern   = regexp.MustCompile(`(?i)\bDROP\s+COLUMN\s+(?:IF\s+EXISTS\s+)?(\w+)`)
 	migrationRenamePattern = regexp.MustCompile(`(?i)\bRENAME\s+COLUMN\s+(\w+)\s+TO\s+(\w+)`)
 )

@@ -446,10 +446,10 @@ SET LOCAL skillhub.purge = 'off';
 
 INSERT INTO creation_sessions (id, workspace_id, state, revision, snapshot, expires_at)
 VALUES ('e0000000-0000-4000-8000-000000000001', '22222222-2222-2222-2222-222222222222',
-        'gathering', 1, '{}'::jsonb, now() + interval '7 days');
+        'working', 1, '{}'::jsonb, now() + interval '7 days');
 INSERT INTO creation_session_events (session_id, workspace_id, revision, event_type, state)
 VALUES ('e0000000-0000-4000-8000-000000000001', '22222222-2222-2222-2222-222222222222',
-        1, 'session_started', 'gathering');
+        1, 'session_started', 'working');
 SELECT must_fail_saying($$UPDATE creation_session_events SET state = 'rewritten'
                           WHERE session_id = 'e0000000-0000-4000-8000-000000000001'$$,
                         'immutable');
