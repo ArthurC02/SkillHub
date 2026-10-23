@@ -1,0 +1,152 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "foreign-key-collaborations",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "foreign-key-collaborations",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-23T07:11:37.177308Z",
+  "verified_at": "2026-10-23T07:12:39.802832Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "516c9ae01642d59b3d6d61555a036090d5ce8035",
+    "registry_digest": "sha256:ad7a4a3ccc05e976ccfb5d6a325025211bc0d25a288388c27c1cfeb7fcbea78a",
+    "committed_digest": "sha256:fb63b56ae1f354431919da661cf2e13173d4e80f8ffc521caa2c2827b4f5db73"
+  },
+  "affected_contexts": [
+    "batch",
+    "identity",
+    "ingest",
+    "operations",
+    "registry"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "A row that references another Context's row is supplied that row's identity by the owning Context: registry supplies the skill version a batch pins and erases the batch with it, ingest supplies the source a version names, identity supplies the operator operations records.",
+    "evidence": [
+      "db/migrations/0118_evaluation_batches.sql:13-16",
+      "apps/platform/internal/skill/admission/service.go:499-501",
+      "apps/platform/internal/entrypoint/api/apiserver/app.go:371"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "registry-batch-pinned-version, ingest-registry-version-source and identity-operations-operator record collaborations the code already has; no import or dependency policy changes.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "batch, registry or operations importing the Context that supplies the referenced row"
+    ],
+    "evidence": [
+      "db/migrations/0118_evaluation_batches.sql:13-16",
+      "apps/platform/internal/skill/admission/service.go:499-501",
+      "apps/platform/internal/entrypoint/api/apiserver/app.go:371"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Eight cross-context foreign keys had no reviewed collaboration, so the Registry could not say which Context supplies the rows they point at.",
+      "A dependency policy would open a code import that depguard enforces, which none of these references needs."
+    ],
+    "decision": "Record each reference as an Interaction whose Producer owns the referenced row and whose Consumer holds the foreign key; prove each with a focused integration test.",
+    "invariants_preserved": [
+      "No new code import between Contexts.",
+      "A purge of a deleted skill never fails on an evaluation batch."
+    ],
+    "rejected_alternatives": [
+      "Allowed dependency policies for each pair: depguard would then permit code imports the boundary forbids."
+    ],
+    "proof_obligations": [
+      "ac-batch-goes-with-the-version-it-pins",
+      "ac-an-admitted-version-names-its-source",
+      "ac-operations-records-the-signed-in-operator"
+    ],
+    "counterfactual_check": "Mutate each cited line: the batch foreign keys to ON DELETE RESTRICT, the admitted version's source id to NULL, and the operations actor to a blank id; each focused test must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "registry-batch-pinned-version",
+        "consistency": "synchronous",
+        "delivery": "workspace-scoped foreign key; a batch is deleted with the skill version it pins",
+        "producer_context": "registry",
+        "consumer_context": "batch",
+        "evidence": [
+          {
+            "path": "db/migrations/0118_evaluation_batches.sql",
+            "lines": {
+              "start": 13,
+              "end": 16
+            },
+            "excerpt_sha256": "sha256:0653a3cb8aa469832ecf0022862f6b14fa7a26fbf3654a6fe0207cf5e1f15b1f"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "ingest-registry-version-source",
+        "consistency": "synchronous",
+        "delivery": "admission hands the recorded source id to the new version in the same transaction",
+        "producer_context": "ingest",
+        "consumer_context": "registry",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 499,
+              "end": 501
+            },
+            "excerpt_sha256": "sha256:35c4b3b20980d35f1e806531c7a8f51580f0d8026ac4aae82befd5138f7c1535"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "identity-operations-operator",
+        "consistency": "synchronous",
+        "delivery": "composition-root session actor hook",
+        "producer_context": "identity",
+        "consumer_context": "operations",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 371,
+              "end": 371
+            },
+            "excerpt_sha256": "sha256:b0e5c42eb48e6bea1b182f6b899d1641f510e354ab03f74671151a69b31a0a34"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-23T07:12:38.614001Z",
+      "scope": "three interactions behind cross-context foreign keys",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "516c9ae01642d59b3d6d61555a036090d5ce8035",
+        "registry_digest": "sha256:ad7a4a3ccc05e976ccfb5d6a325025211bc0d25a288388c27c1cfeb7fcbea78a",
+        "committed_digest": "sha256:fb63b56ae1f354431919da661cf2e13173d4e80f8ffc521caa2c2827b4f5db73"
+      }
+    }
+  ]
+}

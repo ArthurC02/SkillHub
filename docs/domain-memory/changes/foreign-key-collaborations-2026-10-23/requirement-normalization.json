@@ -1,0 +1,31 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "foreign-key-collaborations",
+  "status": "draft",
+  "intent": "The Registry names the collaboration behind every foreign key that crosses a Context, so an agent reading one table knows which Context supplies the rows it points at and what happens when they go.",
+  "actor": "developer",
+  "observable_outcome": "get-context batch, registry and operations each list the new interaction as reviewed, and the data readiness measurer counts every cross-context foreign key as covered.",
+  "acceptance_criteria": [
+    {
+      "id": "batch-goes-with-the-version-it-pins",
+      "statement": "An evaluation batch references the skill and skill version it ran against within its own Workspace, and is deleted with them when registry purges a deleted skill past its grace period; the purge never fails on a batch."
+    },
+    {
+      "id": "an-admitted-version-names-its-source",
+      "statement": "Every skill version ingest admits records the import source it came from, so the version joins to its skill_sources row."
+    },
+    {
+      "id": "operations-records-the-signed-in-operator",
+      "statement": "Every operations change an operator makes, such as dismissing a finding, records the user identity resolved from the signed-in session as its operator."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "db/migrations/0118_evaluation_batches.sql",
+    "apps/platform/internal/skill/admission/service.go",
+    "apps/platform/internal/entrypoint/api/apiserver/app.go"
+  ]
+}

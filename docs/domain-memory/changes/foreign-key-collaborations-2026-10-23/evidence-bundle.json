@@ -1,0 +1,72 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "foreign-key-collaborations",
+  "proposal_id": "foreign-key-collaborations",
+  "registry_revision": {
+    "observed_commit": "516c9ae01642d59b3d6d61555a036090d5ce8035",
+    "registry_digest": "sha256:ad7a4a3ccc05e976ccfb5d6a325025211bc0d25a288388c27c1cfeb7fcbea78a",
+    "committed_digest": "sha256:fb63b56ae1f354431919da661cf2e13173d4e80f8ffc521caa2c2827b4f5db73"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "ac-batch-goes-with-the-version-it-pins",
+      "mutated_protection": "db/migrations/0118_evaluation_batches.sql:14: REFERENCES skills (id, workspace_id) ON DELETE CASCADE -> REFERENCES skills (id, workspace_id) ON DELETE RESTRICT",
+      "failure_evidence": "=== RUN   TestPurgingADeletedSkillTakesItsEvaluationBatchesWithIt\n    evaluation_batch_integration_test.go:693: purging a skill that an evaluation batch pinned: ERROR: update or delete on table \"skills\" violates RESTRICT setting of foreign key constraint \"evaluation_batches_skill_fkey\" on table \"evaluation_batches\" (SQLSTATE 23001)\n--- FAIL: TestPurgingADeletedSkillTakesItsEvaluationBatchesWithIt (0.16s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t8.440s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "ac-an-admitted-version-names-its-source",
+      "mutated_protection": "apps/platform/internal/skill/admission/service.go:500: SourceID: source.ID, -> SourceID: pgtype.UUID{Bytes: source.ID.Bytes},",
+      "failure_evidence": "=== RUN   TestEverySkillOfAPluginKeepsThePluginsOwnFacts\n    import_source_integration_test.go:290: reading the source row of skills/one: no rows in result set\n--- FAIL: TestEverySkillOfAPluginKeepsThePluginsOwnFacts (0.12s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.111s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "ac-operations-records-the-signed-in-operator",
+      "mutated_protection": "apps/platform/internal/entrypoint/api/apiserver/app.go:371: &operations.Service{Pool: cfg.Pool}, Actor: sessionActorID} -> &operations.Service{Pool: cfg.Pool}, Actor: func(r *http.Request) (pgtype.UUID, bool) { _, ok := sessionActorID(r); return pgtype.UUID{}, ok }}",
+      "failure_evidence": "=== RUN   TestOperatorsListLiveFindingsWithCountsAndReadOneWithItsHistory\n2026/10/23 14:12:21 ERROR request failed on the server method=PUT path=/admin/agents/agent-findings-read/enabled status=500\n    platform_agent_findings_integration_test.go:322: PUT enabled=true: got 500 map[error:agent update failed], want 200\n--- FAIL: TestOperatorsListLiveFindingsWithCountsAndReadOneWithItsHistory (0.12s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.540s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "ac-batch-goes-with-the-version-it-pins",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestPurgingADeletedSkillTakesItsEvaluationBatchesWithIt$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:276d688d4cfedd0843f14cc2c33399b22a7d8eff9a2546ff6706905685371889",
+      "finished_at": "2026-10-23T07:12:05.193669Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "ac-an-admitted-version-names-its-source",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestEverySkillOfAPluginKeepsThePluginsOwnFacts$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:0c681b97404e1b763203d521e259189b2e434ce019f8cd0e23ecd352ad474625",
+      "finished_at": "2026-10-23T07:12:22.462892Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "ac-operations-records-the-signed-in-operator",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestOperatorsListLiveFindingsWithCountsAndReadOneWithItsHistory$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:62653b75bd9ab3664e272cc8ef1b1a23487392c11373a462782efda2d3aede1f",
+      "finished_at": "2026-10-23T07:12:38.155342Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
