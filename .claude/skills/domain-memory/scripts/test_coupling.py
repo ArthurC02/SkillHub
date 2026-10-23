@@ -52,7 +52,7 @@ class ChangeCouplingTest(RegistryTestCase):
     def test_a_since_limit_reaches_git_and_a_git_that_cannot_answer_is_named(self) -> None:
         deadline = GitDeadline(["git", "log"], 1, rerun_is_safe=True)
         with (
-            patch("domain_registry.coupling.run_git", side_effect=deadline) as run,
+            patch("domain_registry.git.run_git", side_effect=deadline) as run,
             self.assertRaisesRegex(ValueError, "^git could not read the history: Command '\\['git', 'log'\\]' timed out"),
         ):
             change_coupling(self.repo, ["src"], 1, LOW, CouplingReading(since="2026-01-01"))

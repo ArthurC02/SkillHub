@@ -1,5 +1,4 @@
 import re
-import subprocess
 import sys
 from collections.abc import Callable
 from itertools import combinations
@@ -8,7 +7,7 @@ from typing import Any
 
 from .common import ASSET_KEYS, whole_number
 from .evidence import all_references, classifier, source_map_for, verifier
-from .git import run_git
+from .git import checked_git
 from .sources import lies_under
 from .store import read_document
 
@@ -27,27 +26,17 @@ WHOLE_FILE = [(1, sys.maxsize)]
 
 
 def _changes(repo_root: Path, base: str) -> tuple[set[str], set[str]]:
-    try:
-        changed = run_git(repo_root, "diff", "--name-only", "-z", base, "--")
-        untracked = run_git(repo_root, "ls-files", "--others", "--exclude-standard", "-z")
-    except (OSError, subprocess.TimeoutExpired) as error:
-        raise ValueError(f"git could not list the changes since {base}: {error}") from error
-    for result in (changed, untracked):
-        if result.returncode != 0:
-            raise ValueError(f"git could not list the changes since {base}: {result.stderr.strip()}")
+    failure = f"git could not list the changes since {base}"
+    changed = checked_git(repo_root, "diff", "--name-only", "-z", base, "--", failure=failure)
+    untracked = checked_git(repo_root, "ls-files", "--others", "--exclude-standard", "-z", failure=failure)
     return ({path for path in changed.stdout.split("\0") if path}, {path for path in untracked.stdout.split("\0") if path})
 
 
 def _hunks(repo_root: Path, base: str, paths: list[str]) -> dict[str, list[tuple[int, int]]]:
     if not paths:
         return {}
-    try:
-        result = run_git(repo_root, "--literal-pathspecs", "-c", "core.quotepath=false", "diff", "-U0", "--no-color",
-                         "--no-ext-diff", base, "--", *paths)
-    except (OSError, subprocess.TimeoutExpired) as error:
-        raise ValueError(f"git could not read the changes since {base}: {error}") from error
-    if result.returncode != 0:
-        raise ValueError(f"git could not read the changes since {base}: {result.stderr.strip()}")
+    result = checked_git(repo_root, "--literal-pathspecs", "-c", "core.quotepath=false", "diff", "-U0", "--no-color",
+                         "--no-ext-diff", base, "--", *paths, failure=f"git could not read the changes since {base}")
     hunks: dict[str, list[tuple[int, int]]] = {}
     current = None
     for line in result.stdout.splitlines():

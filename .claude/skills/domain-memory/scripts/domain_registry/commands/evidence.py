@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ..changes import parsed_update
-from ..common import FAILING_EVIDENCE, PROPOSAL_FILE, load_json
+from ..common import inside, FAILING_EVIDENCE, PROPOSAL_FILE, load_json
 from ..evidence import (
     citation,
     classified,
@@ -221,7 +221,7 @@ def handle_init_domain_memory(args: argparse.Namespace) -> int:
             )
         if args.review_trigger != "git-push":
             raise ValueError("git-signed-commit requires --review-trigger git-push")
-    if not output.is_relative_to(repo_root):
+    if inside(repo_root, output) is None:
         raise ValueError("output must be inside the repository")
     selected = sources_under(repo_root, args.source)
     preliminary = selected_source_map(repo_root, selected)

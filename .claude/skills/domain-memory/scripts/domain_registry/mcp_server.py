@@ -11,6 +11,7 @@ from typing import Any, TextIO
 
 from .changes import PREVIEW_STATUSES
 from .cli_parser import ASSET_CHOICES, UsageError
+from .common import inside
 from .version import PLUGIN_VERSION
 
 MODERN_VERSIONS = ("2026-07-28",)
@@ -162,8 +163,8 @@ class ProtocolError(Exception):
 
 
 def _inside_repository(repo_root: Path, name: str, given: str) -> Path:
-    resolved = (repo_root / given).resolve()
-    if not resolved.is_relative_to(repo_root.resolve()):
+    resolved = inside(repo_root, given)
+    if resolved is None:
         raise ValueError(f"argument {name} must lie inside the repository {repo_root}: {given}")
     return resolved
 

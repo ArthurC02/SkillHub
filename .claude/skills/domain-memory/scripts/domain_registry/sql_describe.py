@@ -11,7 +11,7 @@ from typing import Any
 
 from .common import ASSET_KEYS
 from .policy import schema_conventions
-from .git import run_git_bytes
+from .git import checked_git_bytes
 from .sql_schema import (
     IDENT,
     Constraint,
@@ -160,16 +160,13 @@ def gaps_since(repo_root: Path, migrations_dir: Path, base: str, only: str | Non
 
 
 def _migrations_at(repo_root: Path, base: str, relative: str, into: Path) -> Path:
-    listed = run_git_bytes(repo_root, "ls-tree", "-d", base, "--", relative)
-    if listed.returncode != 0:
-        raise ValueError(f"could not read {relative} at {base}: {listed.stderr.decode('utf-8', errors='replace').strip()}")
+    failure = f"could not read {relative} at {base}"
+    listed = checked_git_bytes(repo_root, "ls-tree", "-d", base, "--", relative, failure=failure)
     target = into / relative
     if not listed.stdout.strip():
         target.mkdir(parents=True)
         return target
-    archive = run_git_bytes(repo_root, "archive", "--format=tar", base, "--", relative)
-    if archive.returncode != 0:
-        raise ValueError(f"could not read {relative} at {base}: {archive.stderr.decode('utf-8', errors='replace').strip()}")
+    archive = checked_git_bytes(repo_root, "archive", "--format=tar", base, "--", relative, failure=failure)
     with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
         members = [member for member in tar.getmembers() if member.isfile() and ".." not in Path(member.name).parts]
         tar.extractall(into, members=members)

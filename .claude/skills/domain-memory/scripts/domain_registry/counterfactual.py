@@ -13,8 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .common import whole_number
-from .evidence import digest
+from .common import inside, sha256_of, whole_number
 from .sources import EXCLUDED_DIRECTORIES
 
 FORMAT = "domain-memory-counterfactual/v1"
@@ -177,9 +176,8 @@ def decoded(output: bytes) -> str:
 def working_directory(repo_root: Path, cwd: str | None) -> Path:
     if cwd is None:
         return repo_root
-    root = repo_root.resolve()
-    directory = (root / cwd).resolve()
-    if not directory.is_relative_to(root) or not directory.is_dir():
+    directory = inside(repo_root, cwd)
+    if directory is None or not directory.is_dir():
         raise ValueError(f"--cwd must name a directory inside the repository: {cwd}")
     return directory
 
@@ -200,8 +198,8 @@ def run_tests(directory: Path, command: str, timeout: int) -> TestRun:
 
 
 def target_inside(repo_root: Path, file: Path) -> Path:
-    target = (repo_root / file).resolve()
-    if not target.is_relative_to(repo_root):
+    target = inside(repo_root, file)
+    if target is None:
         raise ValueError(f"file is outside the repository: {file}")
     if not target.is_file():
         raise ValueError(f"file does not exist: {file}")
@@ -448,7 +446,7 @@ def _prove(
         "reason": reason,
         "failure_evidence": failure_evidence(broken_run.output),
         "failing_tests": failing_tests(broken_run.output),
-        "restoration_result": {"restored": restored, "content_sha256": digest(original)},
+        "restoration_result": {"restored": restored, "content_sha256": sha256_of(original)},
     }
     if verdict == "killed" and restored:
         result["counterfactual_check"] = {

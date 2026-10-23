@@ -4,7 +4,7 @@ import contextlib
 import os
 import signal
 import subprocess
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 
@@ -120,6 +120,26 @@ def run_git(root: Path, *arguments: str, stdin: str | None = None) -> subprocess
 
 def run_git_bytes(root: Path, *arguments: str, stdin: bytes | None = None) -> subprocess.CompletedProcess[bytes]:
     return run_bounded(["git", "-C", str(root), *arguments], stdin=stdin)
+
+
+def checked_git(root: Path, *arguments: str, failure: str, stdin: str | None = None) -> subprocess.CompletedProcess[str]:
+    return _refusing(failure, lambda: run_git(root, *arguments, stdin=stdin))
+
+
+def checked_git_bytes(root: Path, *arguments: str, failure: str) -> subprocess.CompletedProcess[bytes]:
+    return _refusing(failure, lambda: run_git_bytes(root, *arguments))
+
+
+def _refusing(failure: str, run: Callable[[], subprocess.CompletedProcess[Any]]) -> subprocess.CompletedProcess[Any]:
+    try:
+        result = run()
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise ValueError(f"{failure}: {error}") from error
+    if result.returncode != 0:
+        stderr = result.stderr
+        reason = stderr.decode("utf-8", errors="replace") if isinstance(stderr, bytes) else stderr
+        raise ValueError(f"{failure}: {reason.strip()}")
+    return result
 
 
 def resolve_commit(repo_root: Path, ref: str) -> str | None:

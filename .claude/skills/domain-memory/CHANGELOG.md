@@ -2,6 +2,14 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.10.1
+
+### Changed
+
+- One `canonical_json` and one `sha256_of` in `common.py` replace the three copies the audit log, the Registry revision and citations kept; the bytes they produce are unchanged, so every recorded digest still verifies (checked against a 665-event audit log and its Registry digest before and after).
+- One `checked_git` / `checked_git_bytes` pair in `git.py` runs a git command and refuses with the caller's sentence on a failure, a timeout or a non-zero exit, replacing five hand-written checks and the attestation module's own runner; each refusal reads as before.
+- One `inside` in `common.py` answers whether a path resolves under a root, replacing eleven inline checks; each caller keeps its own refusal.
+
 ## 2.10.0
 
 ### Changed

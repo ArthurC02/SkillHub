@@ -9,7 +9,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.audit import read_events as read_audit_events
 from domain_registry.audit import verify as verify_audit
-from domain_registry.evidence import citation, digest, verify
+from domain_registry.common import sha256_of as digest
+from domain_registry.evidence import citation, verify
 from domain_registry.registry import asset_records, verify_evidence
 from domain_registry.sources import (
     confirm_sources,

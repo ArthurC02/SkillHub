@@ -12,10 +12,11 @@ from domain_registry.evidence import (
     all_references,
     citation,
     classify_all,
-    digest,
     source_map_for,
     verify,
 )
+from domain_registry.common import inside
+from domain_registry.common import sha256_of as digest
 from domain_registry.relocate import Recitation, recite, relocate_evidence
 from domain_registry.registry import (
     coverage,
@@ -26,6 +27,15 @@ from test_support import VERIFIED, RegistryTestCase, applied_by
 
 
 class EvidenceTest(RegistryTestCase):
+    def test_inside_resolves_a_path_under_the_root_and_refuses_one_that_escapes(self) -> None:
+        root = self.repo.resolve()
+        (root / "src").mkdir(exist_ok=True)
+        self.assertEqual(
+            (root / "src", root, root / "src", None, None),
+            (inside(self.repo, "src/../src"), inside(self.repo, "."), inside(self.repo, root / "src"),
+             inside(self.repo, "../outside"), inside(self.repo, root.parent / "sibling")),
+        )
+
     def test_a_malformed_source_map_is_rejected_instead_of_treated_as_empty(
         self,
     ) -> None:

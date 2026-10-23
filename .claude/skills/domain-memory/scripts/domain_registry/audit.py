@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 from pathlib import Path
 from typing import Any
 
 from .common import (
+    canonical_json,
+    sha256_of,
     APPLY_OPERATION,
     CONFLICT_MARKERS,
     MAX_JSON_BYTES,
@@ -26,14 +27,8 @@ MANIFEST_FORMAT = "domain-memory-audit/v1"
 RECONCILE_OPERATION = "reconcile-audit"
 
 
-def canonical(value: dict[str, Any]) -> bytes:
-    return json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
-
-
 def event_digest(value: dict[str, Any]) -> str:
-    return "sha256:" + hashlib.sha256(canonical(value)).hexdigest()
+    return sha256_of(canonical_json(value))
 
 
 def events_path(root: Path) -> Path:

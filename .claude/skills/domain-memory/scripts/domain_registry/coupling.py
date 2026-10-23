@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-import subprocess
 from collections import Counter, defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -10,7 +9,7 @@ from itertools import combinations
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from .git import run_git
+from .git import checked_git
 
 COMMIT_MARKER = "\x1e"
 SUBJECTS_SHOWN = 10
@@ -185,12 +184,7 @@ def _commits(repo_root: Path, since: str | None) -> list[Commit]:
                  "--format=%x1e%h %s"]
     if since:
         arguments.append(f"--since={since}")
-    try:
-        result = run_git(repo_root, *arguments)
-    except (OSError, subprocess.TimeoutExpired) as error:
-        raise ValueError(f"git could not read the history: {error}") from error
-    if result.returncode != 0:
-        raise ValueError(f"git could not read the history: {result.stderr.strip()}")
+    result = checked_git(repo_root, *arguments, failure="git could not read the history")
     commits = (_commit(block) for block in result.stdout.split(COMMIT_MARKER)[1:])
     return [commit for commit in commits if commit.files]
 

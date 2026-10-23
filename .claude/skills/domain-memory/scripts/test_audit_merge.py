@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.audit import anchor_error, event_digest, parents_of, read_events, reconcile
 from domain_registry.audit import verify as verify_audit
-from domain_registry.common import load_json
+from domain_registry.common import canonical_json, load_json, sha256_of
 from domain_registry.registry import init_registry
 from test_support import RegistryTestCase, append_audit
 
@@ -18,6 +18,15 @@ MARKED = "<<<<<<< HEAD\n{ours}=======\n{theirs}>>>>>>> theirs\n"
 
 
 class AuditMergeTest(RegistryTestCase):
+    def test_canonical_json_sorts_keys_drops_spaces_and_keeps_non_ascii(self) -> None:
+        self.assertEqual('{"a":"é","b":[1,{"c":3,"d":2}]}'.encode(), canonical_json({"b": [1, {"d": 2, "c": 3}], "a": "é"}))
+
+    def test_a_digest_is_the_prefixed_sha256_of_the_bytes(self) -> None:
+        self.assertEqual("sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", sha256_of(b""))
+
+    def test_an_event_digest_does_not_depend_on_key_order(self) -> None:
+        self.assertEqual(event_digest({"operation": "x", "sequence": 1}), event_digest({"sequence": 1, "operation": "x"}))
+
     def setUp(self) -> None:
         super().setUp()
         self.memory = self.repo / "memory"
