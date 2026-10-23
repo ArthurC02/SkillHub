@@ -1,0 +1,108 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-budget-credits-recite",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "run-budget-credits-recite",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-23T04:19:24.096326Z",
+  "verified_at": "2026-10-23T04:19:27.744419Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "ac7fbdfc4e79d10e46a9df75fca85f4f3513d8df",
+    "registry_digest": "sha256:16248450809578e710465c8a8dae07f59d80f7904a5493f19c9f77b6920ae501",
+    "committed_digest": "sha256:16248450809578e710465c8a8dae07f59d80f7904a5493f19c9f77b6920ae501"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-run-starts-only-when-its-budget-is-reserved",
+        "statement": "When a credit ledger is configured, a Run is admitted only if the Workspace can reserve the run budget in force when it is created: the operator-set ceiling, or the deployment's when none is set. The Run keeps that ceiling in its policy snapshot, and its attempts run under it whatever the setting becomes later; a Workspace that cannot reserve it is refused with credit_balance.",
+        "owner": "run-execution",
+        "version": "unknown",
+        "effective_from": "unknown",
+        "effective_until": "unknown",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A Workspace with 100 credits is refused with credit_balance under a 0.50 USD ceiling and admitted once the operator lowers it to 0.05 USD.",
+          "A Run created under a 0.05 USD ceiling issues its first gateway key at 0.05 USD after the operator raises the ceiling to 2 USD.",
+          "A deployment with no credit ledger admits the Run without a reservation."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/credit.go",
+            "lines": {
+              "start": 18,
+              "end": 32
+            },
+            "excerpt_sha256": "sha256:b03908f4fa9e0d491325f7655607d7471852a8a7807f8805a05d178ba5d0b874"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/service.go",
+            "lines": {
+              "start": 484,
+              "end": 488
+            },
+            "excerpt_sha256": "sha256:8a51b03b8c4724e338df9afdc667fa4caa5b8645c5383b09a892ac2661f15061"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/run_budget_setting_integration_test.go",
+            "lines": {
+              "start": 85,
+              "end": 134
+            },
+            "content_sha256": "sha256:a71b939b55db554e9fdca2f982e342f00c08a110ccffc4c71ed9934db9f3e9e1",
+            "excerpt_sha256": "sha256:d39f0b17e410dcf9b0e75848cb089d3a790361b89f957f159b72f00f1483ac73",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-23T04:19:26.420971Z",
+      "scope": "re-citation of the run budget rule test",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "ac7fbdfc4e79d10e46a9df75fca85f4f3513d8df",
+        "registry_digest": "sha256:16248450809578e710465c8a8dae07f59d80f7904a5493f19c9f77b6920ae501",
+        "committed_digest": "sha256:16248450809578e710465c8a8dae07f59d80f7904a5493f19c9f77b6920ae501"
+      }
+    }
+  ],
+  "supersedes": [
+    "run-budget-setting"
+  ]
+}

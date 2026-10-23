@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-budget-credits-recite",
+  "proposal_id": "run-budget-credits-recite",
+  "registry_revision": {
+    "observed_commit": "ac7fbdfc4e79d10e46a9df75fca85f4f3513d8df",
+    "registry_digest": "sha256:16248450809578e710465c8a8dae07f59d80f7904a5493f19c9f77b6920ae501",
+    "committed_digest": "sha256:16248450809578e710465c8a8dae07f59d80f7904a5493f19c9f77b6920ae501"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/run-budget-credits-recite-2026-10-23 --path apps/platform/internal/entrypoint/api/apiserver/run_budget_setting_integration_test.go --path apps/platform/internal/trial/execution/credit.go --path apps/platform/internal/trial/execution/service.go",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:ad9b22c2bd031c76886119aedef1ca425a5b89da5185b153361455c7cbfb1619",
+      "finished_at": "2026-10-23T04:19:25.609008Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

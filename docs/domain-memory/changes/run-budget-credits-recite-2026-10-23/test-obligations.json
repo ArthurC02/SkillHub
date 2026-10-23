@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "run-budget-credits-recite",
+  "proposal_id": "run-budget-credits-recite",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/run-budget-credits-recite-2026-10-23 --path apps/platform/internal/entrypoint/api/apiserver/run_budget_setting_integration_test.go --path apps/platform/internal/trial/execution/credit.go --path apps/platform/internal/trial/execution/service.go"
+    }
+  ]
+}
