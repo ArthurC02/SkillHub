@@ -6,7 +6,7 @@ from itertools import combinations
 from pathlib import Path
 from typing import Any
 
-from .common import ASSET_KEYS
+from .common import ASSET_KEYS, whole_number
 from .evidence import all_references, classifier, source_map_for, verifier
 from .git import run_git
 from .sources import lies_under
@@ -65,7 +65,7 @@ def _cited_ranges(entry: dict[str, Any]) -> list[tuple[str, int, int]]:
         for reference in all_references(entry)
         if isinstance(reference, dict) and isinstance(reference.get("path"), str)
         and isinstance(lines := reference.get("lines"), dict)
-        and isinstance(lines.get("start"), int) and isinstance(lines.get("end"), int)
+        and whole_number(lines.get("start")) and whole_number(lines.get("end"))
     ]
 
 

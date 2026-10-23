@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.9.2
+
+### Fixed
+
+- The term tokenizer read only ASCII letters, so an ideographic word vanished and `café` became `caf`; it now normalizes to NFKC, keeps every Unicode letter and digit, searches an ideographic run character by character (a multi-character term is found wherever all its characters occur) and keeps an accented word whole, so `lookup`, `resolve-terms` and `--with-mentions` work on prose in any script.
+- Three places still read a boolean as a line number or an audit sequence (`compare`, `boundary-impact` and `reconcile-audit`); they use the same whole-number rule as the rest.
+- `init-signing-key` and `audit-attestations` print non-ASCII text as written instead of `\uXXXX` escapes.
+- The packaging page counted six code rules where there are seven; the host-integration page said no leaf Skill restates readiness while Read and Extract do; the Maintain Skill credited `probe` with naming moved sources, which `verify-sources` does under `changed_sources`.
+- The requirements now say that `init-signing-key` alone needs OpenSSH's `ssh-keygen`, and its reference names the Git config keys it sets.
+
 ## 2.9.1
 
 ### Fixed

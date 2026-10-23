@@ -464,7 +464,7 @@ Names the missing pieces: no authorized signer, or no pre-push hook on this mach
 
 `init-signing-key --repo-root <repo> --principal <identity> [--key-file <path>] [--force] [--sign-every-commit]`
 
-Creates or adopts an ed25519 key, writes the allowed-signers file the verifier reads, points Git at both, and reports the principal and fingerprint to authorize. It prints no private key material. When `DOMAIN_MEMORY_SIGNING_KEY` holds an OpenSSH private key it adopts that instead of generating one, so a container receives the identity as a secret; material it cannot derive a public key from is refused and the partial file removed.
+Creates or adopts an ed25519 key with OpenSSH's `ssh-keygen`, the one external program besides `git` that any command needs, writes the allowed-signers file the verifier reads, points Git at both by setting `gpg.format`, `user.signingkey` and `gpg.ssh.allowedSignersFile` in the repository's Git config (`commit.gpgsign` too with `--sign-every-commit`), lists the keys it set under `git_config`, and reports the principal and fingerprint to authorize. It prints no private key material. When `DOMAIN_MEMORY_SIGNING_KEY` holds an OpenSSH private key it adopts that instead of generating one, so a container receives the identity as a secret; material it cannot derive a public key from is refused and the partial file removed.
 
 ### `amend-policy`
 

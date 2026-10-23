@@ -35,6 +35,12 @@ class ReviewSigningTest(RegistryTestCase):
         )
         policy_path.write_text(json.dumps(policy), encoding="utf-8")
 
+    def test_the_signing_command_prints_a_non_ascii_principal_as_written(self) -> None:
+        result = self.run_cli("init-signing-key", "--repo-root", str(self.repo), "--principal", "dev@例.com",
+                              "--key-file", str(self.repo / "keys" / "signing-key"))
+        self.assertEqual((0, "dev@例.com"), (result.returncode, json.loads(result.stdout)["principal"]), result.stderr)
+        self.assertIn('"principal": "dev@例.com"', result.stdout)
+
     def test_one_governance_call_checks_every_commit_it_reads_and_names_the_one_that_fails(self) -> None:
         self.signing_for_the_registry()
         first = self.sign_a_commit_changing("memory/a.txt")

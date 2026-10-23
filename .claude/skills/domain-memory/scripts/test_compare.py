@@ -5,7 +5,7 @@ import subprocess
 import unittest
 
 from domain_registry.common import ASSET_KEYS
-from domain_registry.compare import compare_registries
+from domain_registry.compare import _citations, compare_registries
 from domain_registry.registry import init_registry
 from domain_registry.store import read_document, write_document
 from test_support import RegistryTestCase
@@ -104,6 +104,13 @@ class RecordMatchingTest(unittest.TestCase):
 
     def test_a_rule_with_the_same_id_up_to_case_and_punctuation_matches_by_name(self) -> None:
         self.assertEqual("name", self.rules({"id": "Order_Total_Is_Positive"})["matched"][0]["by"])
+
+    def test_a_boolean_line_number_is_not_a_line_number(self) -> None:
+        self.assertEqual(
+            [("purge.go", 0, -1), ("purge.go", 4, 9)],
+            _citations({"evidence": [{"path": "purge.go", "lines": {"start": True, "end": 9}},
+                                     {"path": "purge.go", "lines": {"start": 4, "end": 9}}]}),
+        )
 
     def test_a_rule_in_the_matching_context_citing_the_same_file_matches(self) -> None:
         rule = {"id": "totals", "contexts": ["sales"], "evidence": cited("src/orders/total.py")}

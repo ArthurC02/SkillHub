@@ -124,6 +124,18 @@ class AuditMergeTest(RegistryTestCase):
             (repeated, result["duplicates_dropped"], result["events"], verify_audit(self.memory)["status"]),
         )
 
+    def test_reconcile_does_not_read_a_boolean_sequence_as_the_number_one(self) -> None:
+        append_audit(self.memory, {"operation": "more"})
+        *earlier, last = read_events(self.memory)
+        self.assertEqual(1, len(earlier))
+        unsigned = {key: value for key, value in last.items() if key != "event_sha256"}
+        forged = {**unsigned, "sequence": True}
+        forged["event_sha256"] = event_digest(forged)
+        self.events_file().write_text("".join(json.dumps(event, sort_keys=True) + "\n" for event in (*earlier, forged)),
+                                      encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "audit chain is broken"):
+            reconcile(self.memory)
+
     def test_reconcile_refuses_a_log_whose_parent_is_missing_rather_than_papering_over_it(self) -> None:
         append_audit(self.memory, {"operation": "more"})
         lines = self.events_file().read_text(encoding="utf-8").splitlines(keepends=True)

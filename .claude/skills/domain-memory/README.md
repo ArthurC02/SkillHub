@@ -2,7 +2,7 @@
 
 Agents start at `AGENTS.md`; this page is for people changing the plugin itself.
 
-Requirements: Python 3.10 or later, the standard library, and `git`. The suite runs on Linux and Windows.
+Requirements: Python 3.10 or later, the standard library, and `git`; `init-signing-key` alone also needs OpenSSH's `ssh-keygen`. The suite runs on Linux and Windows.
 
 Run from this directory:
 

@@ -210,7 +210,7 @@ def reconcile(root: Path) -> dict[str, Any]:
         events: dict[str, dict[str, Any]] = {}
         for _, event in _parsed_events(kept, root):
             events.setdefault(str(event.get("event_sha256")), event)
-        ordered = sorted(events.values(), key=lambda event: event.get("sequence", 0) if isinstance(event.get("sequence"), int) else 0)
+        ordered = sorted(events.values(), key=lambda event: event["sequence"] if whole_number(event.get("sequence")) else 0)
         heads, _ = _dag_heads(ordered)
         text = "".join(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n" for event in ordered)
         rewritten = text != "".join(line + "\n" for line in lines)

@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from domain_registry.common import load_json, write_json
 from domain_registry.evidence import digest
 from domain_registry.git import toplevel
-from domain_registry.impact import boundary_impact
+from domain_registry.impact import _cited_ranges, boundary_impact
 from domain_registry.policy import validate_policy
 from domain_registry.readiness import assess_readiness
 from domain_registry.security import scan_report
@@ -247,6 +247,13 @@ class SourcesTest(RegistryTestCase):
         self.assertEqual(
             ("registered-co-change", [{"asset": "events", "id": "invoice-issued", "status": "candidate"}]),
             (impact["verdict"], impact["co_changed_pairs"][0]["collaborations"]),
+        )
+
+    def test_a_boolean_line_number_is_not_a_cited_range(self) -> None:
+        self.assertEqual(
+            [("port.py", 4, 9)],
+            _cited_ranges({"evidence": [{"path": "port.py", "lines": {"start": True, "end": 9}},
+                                       {"path": "port.py", "lines": {"start": 4, "end": 9}}]}),
         )
 
     def test_a_changed_file_cited_by_a_boundary_record_is_named(self) -> None:

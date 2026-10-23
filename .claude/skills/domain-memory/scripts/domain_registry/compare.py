@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pathlib import PurePosixPath
 from typing import Any
 
-from .common import ASSET_KEYS
+from .common import ASSET_KEYS, whole_number
 from .evidence import all_references, one_cites_within_the_other
 from .okf import contexts_named_by
 
@@ -241,7 +241,7 @@ def _citations(record: dict[str, Any]) -> list[Citation]:
         if isinstance(reference, dict) and isinstance(reference.get("path"), str):
             lines = reference.get("lines") if isinstance(reference.get("lines"), dict) else {}
             start, end = lines.get("start"), lines.get("end")
-            valid = isinstance(start, int) and isinstance(end, int)
+            valid = whole_number(start) and whole_number(end)
             citations.append((reference["path"], start if valid else 0, end if valid else -1))
     return citations
 

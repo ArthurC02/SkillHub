@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.registry import coverage, verify_evidence
-from domain_registry.search import _is_common, every_resolved_term, ranked_lookup
+from domain_registry.search import _is_common, every_resolved_term, query_words, ranked_lookup
 from test_support import RegistryTestCase, lookup, word_stems
 
 
@@ -260,6 +260,18 @@ class RegistryLookupTest(RegistryTestCase):
     def found(self, query: str) -> tuple[list[str], str]:
         entries, how = ranked_lookup(self.repo / "memory", "rules", query)
         return [entry["id"] for entry in entries], how
+
+    def test_ideographic_and_accented_words_are_searched_character_and_whole_word_wise(self) -> None:
+        self.allow_results(10)
+        self.seed("rules.json", [
+            {"id": "order-state", "contexts": ["orders"], "statement": "訂單的狀態只能前進。", "status": "reviewed"},
+            {"id": "opening-hours", "contexts": ["orders"], "statement": "The café opens at nine.", "status": "reviewed"},
+        ])
+        self.assertEqual(["訂", "單", "狀", "態", "café", "order"], query_words("訂單狀態 Ｃａｆé order"))
+        for query, expected in (("訂單狀態", (["order-state"], "all-words")), ("nine Café", (["opening-hours"], "all-words")),
+                                ("nine caf", (["opening-hours"], "some-words"))):
+            with self.subTest(query):
+                self.assertEqual(expected, self.found(query))
 
     def test_a_query_whose_words_appear_apart_and_in_another_form_finds_the_record(self) -> None:
         self.runs_rules()

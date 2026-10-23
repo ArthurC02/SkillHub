@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -57,7 +56,7 @@ def handle_init_signing_key(args: argparse.Namespace) -> int:
         args.force,
         args.sign_every_commit,
     )
-    print(json.dumps(result, indent=2))
+    print_json(result)
     return 0
 
 
@@ -144,7 +143,7 @@ def handle_audit_attestations(args: argparse.Namespace) -> int:
     findings = audit_attestations(
         args.repo_root.resolve(), args.changes_root.resolve(), args.verification_token_env
     )
-    print(json.dumps(findings, indent=2, ensure_ascii=False))
+    print_json(findings)
     return 0 if all(finding["verdict"] == "carried" for finding in findings) else 1
 
 

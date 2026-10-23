@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from functools import cache
 from itertools import pairwise
 from pathlib import Path
@@ -61,10 +62,18 @@ STOP_WORDS = frozenset({
 
 
 CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+IDEOGRAPHIC = r"\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uac00-\ud7af"
+WORD = re.compile(r"[^\W_]+")
+SCRIPT_RUN = re.compile(rf"([{IDEOGRAPHIC}]+)|([^{IDEOGRAPHIC}]+)")
 
 
 def _words(text: str) -> list[str]:
-    return [word for word in re.findall(r"[a-z0-9]+", CAMEL_BOUNDARY.sub(" ", text).casefold()) if word not in STOP_WORDS]
+    plain = unicodedata.normalize("NFKC", CAMEL_BOUNDARY.sub(" ", text)).casefold()
+    words: list[str] = []
+    for token in WORD.findall(plain):
+        for ideographic, other in SCRIPT_RUN.findall(token):
+            words.extend(ideographic or ([other] if other not in STOP_WORDS else []))
+    return words
 
 
 def held_stems(text: str) -> set[str]:
