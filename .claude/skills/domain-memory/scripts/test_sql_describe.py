@@ -379,6 +379,22 @@ class CompletenessDescribeTest(RegistryTestCase):
         quiet = self.run_cli(*self.common, "--table", "users")
         self.assertNotIn("builds DDL", quiet.stderr)
 
+    def test_a_relative_migrations_path_resolves_against_the_repo_root_and_one_outside_it_is_refused(self) -> None:
+        self.commit_all("migrations")
+        relative = self.run_cli("describe-table", "--repo-root", str(self.repo), "--migrations", "db/migrations", "--table", "orders")
+        since = self.run_cli("describe-table", "--repo-root", str(self.repo), "--migrations", "db/migrations", "--base", "HEAD")
+        extracted = self.run_cli("extract-sql-schema", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+                                 "--migrations", "db/migrations")
+        self.assertEqual((0, "orders", 0, {}, 0, 1),
+                         (relative.returncode, json.loads(relative.stdout)["table"], since.returncode, json.loads(since.stdout)["tables"],
+                          extracted.returncode, json.loads(extracted.stdout)["migrations"]))
+        outside = self.run_cli("describe-table", "--repo-root", str(self.repo), "--migrations", "../elsewhere", "--table", "orders")
+        self.assertEqual(
+            (1, f"ERROR: --migrations resolves outside --repo-root ({(self.repo / '..' / 'elsewhere').resolve()}); pass it relative "
+                "to the repo root or as an absolute path inside it"),
+            (outside.returncode, outside.stderr.strip()),
+        )
+
     def test_gaps_since_a_ref_lists_only_what_the_change_opened_or_closed_per_table(self) -> None:
         self.commit_all("migrations")
         (self.migrations / "0002_change.sql").write_text(

@@ -674,5 +674,14 @@ def read_schema(migrations_dir: Path, repo_root: Path) -> Schema:
     return schema
 
 
+def migrations_inside(repo_root: Path, migrations: Path) -> Path:
+    root = repo_root.resolve()
+    located = (migrations if migrations.is_absolute() else root / migrations).resolve()
+    if not located.is_relative_to(root):
+        raise ValueError(f"--migrations resolves outside --repo-root ({located}); pass it relative to the repo root or as an "
+                         "absolute path inside it")
+    return located
+
+
 def live_tables(schema: Schema) -> dict[str, Table]:
     return {name: table for name, table in schema.tables.items() if table.partition_of is None}

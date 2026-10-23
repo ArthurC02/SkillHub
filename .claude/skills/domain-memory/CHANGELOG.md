@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.8.4
+
+### Fixed
+
+- A relative `--migrations` path given to `describe-table` or `extract-sql-schema` resolved against the working directory, so a run from another repository read that repository's migrations and died on a raw path error; it now resolves against `--repo-root`, which the citations are relative to anyway, and a directory outside the repo root is refused with a sentence that says how to pass it.
+
 ## 2.8.3
 
 ### Fixed

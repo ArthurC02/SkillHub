@@ -39,6 +39,7 @@ from ..registry import (
 from ..relocate import line_range
 from ..ship import ship_package
 from ..sql_candidates import extract_sql_rules
+from ..sql_schema import migrations_inside
 from ..store import read_document
 from ..transaction import recover_interrupted_update, transaction_path
 from ..updates import (
@@ -226,7 +227,7 @@ def _pairs(entries: list[str], option: str, shape: str) -> dict[str, str]:
 
 def handle_extract_sql_schema(args: argparse.Namespace) -> int:
     report = extract_sql_rules(
-        args.registry_root.resolve(), args.repo_root.resolve(), args.migrations.resolve(),
+        args.registry_root.resolve(), args.repo_root.resolve(), migrations_inside(args.repo_root, args.migrations),
         _pairs(args.table_context, "--table-context", "TABLE=CONTEXT"), args.default_context,
     )
     print_json(report)
