@@ -34,7 +34,7 @@ func RunDeploymentFromEnv() run.Deployment {
 	} else if os.Getenv("DEV_LOGIN") == "1" {
 		minimumIsolation = run.WeakIsolation
 	}
-	return run.Deployment{Model: os.Getenv("SKILLHUB_RUN_MODEL"), GatewayURL: strings.TrimSuffix(os.Getenv("SKILLHUB_MODEL_GATEWAY_URL"), "/"), BudgetUSD: budget, MinimumIsolation: minimumIsolation, CleanMode: cleanMode, CleanModeReleases: os.Getenv("SKILLHUB_CLEAN_MODE_RELEASES")}
+	return run.Deployment{Model: os.Getenv("SKILLHUB_RUN_MODEL"), GatewayURL: strings.TrimSuffix(os.Getenv("SKILLHUB_MODEL_GATEWAY_URL"), "/"), BudgetUSD: budget, TPMLimit: runTPMLimitFromEnv(), MinimumIsolation: minimumIsolation, CleanMode: cleanMode, CleanModeReleases: os.Getenv("SKILLHUB_CLEAN_MODE_RELEASES")}
 }
 
 const runBudgetVariable = "SKILLHUB_RUN_MAX_BUDGET_USD"

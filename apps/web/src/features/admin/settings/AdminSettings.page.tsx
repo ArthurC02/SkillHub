@@ -15,6 +15,7 @@ import { AdminPage } from "../components/AdminPage";
 import { ActionForm } from "../components/ActionForm";
 import { SettingsResult } from "./SettingsResult";
 import { RunModelBudget } from "./RunModelBudget";
+import { RunTokensPerMinute } from "./RunTokensPerMinute";
 import "./AdminSettings.page.css";
 
 function JudgePanel({
@@ -276,6 +277,11 @@ export function AdminSettings() {
               />
               <RunModelBudget
                 setting={runSettings.data.model_budget}
+                readable={!runSettings.error}
+                refreshing={runSettings.isFetching}
+              />
+              <RunTokensPerMinute
+                setting={runSettings.data.tokens_per_minute}
                 readable={!runSettings.error}
                 refreshing={runSettings.isFetching}
               />

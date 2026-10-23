@@ -23,6 +23,18 @@ func (q *Queries) ClearRunModelBudgetSetting(ctx context.Context) (int64, error)
 	return result.RowsAffected(), nil
 }
 
+const clearRunRateLimitSetting = `-- name: ClearRunRateLimitSetting :execrows
+DELETE FROM run_rate_limit_setting
+`
+
+func (q *Queries) ClearRunRateLimitSetting(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, clearRunRateLimitSetting)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const countContinuationChain = `-- name: CountContinuationChain :one
 WITH RECURSIVE chain AS (
     SELECT c.continues_run_id, 1 AS depth
@@ -59,6 +71,23 @@ func (q *Queries) GetRunModelBudgetSetting(ctx context.Context) (RunModelBudgetS
 	err := row.Scan(
 		&i.Singleton,
 		&i.BudgetMicros,
+		&i.Reason,
+		&i.SetBy,
+		&i.SetAt,
+	)
+	return i, err
+}
+
+const getRunRateLimitSetting = `-- name: GetRunRateLimitSetting :one
+SELECT singleton, tpm_limit, reason, set_by, set_at FROM run_rate_limit_setting
+`
+
+func (q *Queries) GetRunRateLimitSetting(ctx context.Context) (RunRateLimitSetting, error) {
+	row := q.db.QueryRow(ctx, getRunRateLimitSetting)
+	var i RunRateLimitSetting
+	err := row.Scan(
+		&i.Singleton,
+		&i.TpmLimit,
 		&i.Reason,
 		&i.SetBy,
 		&i.SetAt,
@@ -260,6 +289,36 @@ func (q *Queries) SetRunModelBudgetSetting(ctx context.Context, arg SetRunModelB
 	err := row.Scan(
 		&i.Singleton,
 		&i.BudgetMicros,
+		&i.Reason,
+		&i.SetBy,
+		&i.SetAt,
+	)
+	return i, err
+}
+
+const setRunRateLimitSetting = `-- name: SetRunRateLimitSetting :one
+INSERT INTO run_rate_limit_setting (singleton, tpm_limit, reason, set_by)
+VALUES (true, $1, $2, $3)
+ON CONFLICT (singleton) DO UPDATE
+SET tpm_limit = EXCLUDED.tpm_limit,
+    reason = EXCLUDED.reason,
+    set_by = EXCLUDED.set_by,
+    set_at = now()
+RETURNING singleton, tpm_limit, reason, set_by, set_at
+`
+
+type SetRunRateLimitSettingParams struct {
+	TpmLimit int32
+	Reason   string
+	SetBy    pgtype.UUID
+}
+
+func (q *Queries) SetRunRateLimitSetting(ctx context.Context, arg SetRunRateLimitSettingParams) (RunRateLimitSetting, error) {
+	row := q.db.QueryRow(ctx, setRunRateLimitSetting, arg.TpmLimit, arg.Reason, arg.SetBy)
+	var i RunRateLimitSetting
+	err := row.Scan(
+		&i.Singleton,
+		&i.TpmLimit,
 		&i.Reason,
 		&i.SetBy,
 		&i.SetAt,

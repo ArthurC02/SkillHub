@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { RunSettingsTokensPerMinute } from './RunSettingsTokensPerMinute';
+import {
+    RunSettingsTokensPerMinuteFromJSON,
+    RunSettingsTokensPerMinuteFromJSONTyped,
+    RunSettingsTokensPerMinuteToJSON,
+    RunSettingsTokensPerMinuteToJSONTyped,
+} from './RunSettingsTokensPerMinute';
 import type { RunSettingsModelBudget } from './RunSettingsModelBudget';
 import {
     RunSettingsModelBudgetFromJSON,
@@ -37,6 +44,10 @@ export interface RunSettings {
     /**
      * 
      */
+    tokensPerMinute: RunSettingsTokensPerMinute;
+    /**
+     * 
+     */
     modelBudget: RunSettingsModelBudget;
     /**
      * 
@@ -48,6 +59,7 @@ export interface RunSettings {
  * Check if a given object implements the RunSettings interface.
  */
 export function instanceOfRunSettings(value: object): value is RunSettings {
+    if ((!('tokensPerMinute' in (value as Record<string, any>)) && !('tokens_per_minute' in (value as Record<string, any>))) || ((value as Record<string, any>)['tokensPerMinute'] === undefined && (value as Record<string, any>)['tokens_per_minute'] === undefined)) return false;
     if ((!('modelBudget' in (value as Record<string, any>)) && !('model_budget' in (value as Record<string, any>))) || ((value as Record<string, any>)['modelBudget'] === undefined && (value as Record<string, any>)['model_budget'] === undefined)) return false;
     if ((!('continuationRounds' in (value as Record<string, any>)) && !('continuation_rounds' in (value as Record<string, any>))) || ((value as Record<string, any>)['continuationRounds'] === undefined && (value as Record<string, any>)['continuation_rounds'] === undefined)) return false;
     return true;
@@ -63,6 +75,7 @@ export function RunSettingsFromJSONTyped(json: any, ignoreDiscriminator: boolean
     }
     return {
         
+        'tokensPerMinute': RunSettingsTokensPerMinuteFromJSON(json['tokens_per_minute']),
         'modelBudget': RunSettingsModelBudgetFromJSON(json['model_budget']),
         'continuationRounds': RunSettingsContinuationRoundsFromJSON(json['continuation_rounds']),
     };
@@ -79,6 +92,7 @@ export function RunSettingsToJSONTyped(value?: RunSettings | null, ignoreDiscrim
 
     return {
         
+        'tokens_per_minute': RunSettingsTokensPerMinuteToJSON(value['tokensPerMinute']),
         'model_budget': RunSettingsModelBudgetToJSON(value['modelBudget']),
         'continuation_rounds': RunSettingsContinuationRoundsToJSON(value['continuationRounds']),
     };

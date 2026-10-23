@@ -509,6 +509,22 @@ type attemptTerms struct {
 	budgetUSD float64
 }
 
+func issueAttemptKey(ctx context.Context, s *Service, run gen.Run, attempt gen.RunAttempt, terms AttemptKeyTerms) (*ModelGatewayGrant, error) {
+	if s.Gateway == nil {
+		return nil, nil
+	}
+	rate, err := runRateLimitIn(ctx, s.queries(), s.Deployment)
+	if err != nil {
+		return nil, err
+	}
+	terms.TPMLimit = rate.Limit
+	grant, err := s.Gateway.Issue(ctx, pgconv.UUIDString(run.ID), pgconv.UUIDString(attempt.ID), terms)
+	if err != nil && !errors.Is(err, ErrModelGatewayUnavailable) {
+		return nil, unbuildable(err)
+	}
+	return grant, err
+}
+
 func (s *Service) buildRunRequest(ctx context.Context, run gen.Run, attempt gen.RunAttempt, terms attemptTerms) (RunRequest, error) {
 	profile, policy, budgetUSD := terms.profile, terms.policy, terms.budgetUSD
 	if s.Registry == nil {
@@ -549,15 +565,9 @@ func (s *Service) buildRunRequest(ctx context.Context, run gen.Run, attempt gen.
 		})
 	}
 
-	var gatewayGrant *ModelGatewayGrant
-	if s.Gateway != nil {
-		gatewayGrant, err = s.Gateway.Issue(ctx, pgconv.UUIDString(run.ID), pgconv.UUIDString(attempt.ID), ttl, budgetUSD)
-		if err != nil {
-			if errors.Is(err, ErrModelGatewayUnavailable) {
-				return RunRequest{}, err
-			}
-			return RunRequest{}, unbuildable(err)
-		}
+	gatewayGrant, err := issueAttemptKey(ctx, s, run, attempt, AttemptKeyTerms{TTL: ttl, BudgetUSD: budgetUSD})
+	if err != nil {
+		return RunRequest{}, err
 	}
 
 	return RunRequest{

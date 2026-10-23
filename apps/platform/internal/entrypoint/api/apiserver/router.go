@@ -236,6 +236,8 @@ func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("PUT /admin/settings/runs/continuation-rounds", auth.RequireOperator(d.RunSettings.SetContinuationRounds))
 	mux.HandleFunc("PUT /admin/settings/runs/model-budget", auth.RequireOperator(d.RunSettings.SetRunModelBudget))
 	mux.HandleFunc("DELETE /admin/settings/runs/model-budget", auth.RequireOperator(d.RunSettings.ClearRunModelBudget))
+	mux.HandleFunc("PUT /admin/settings/runs/tokens-per-minute", auth.RequireOperator(d.RunSettings.SetRunTokensPerMinute))
+	mux.HandleFunc("DELETE /admin/settings/runs/tokens-per-minute", auth.RequireOperator(d.RunSettings.ClearRunTokensPerMinute))
 	mux.HandleFunc("GET /admin/trends/runs", auth.RequireOperator(d.Trends.Runs))
 	mux.HandleFunc("GET /admin/trends/funnel", auth.RequireOperator(d.Trends.Funnel))
 	mux.HandleFunc("GET /admin/trends/operator-actions", auth.RequireOperator(d.Trends.OperatorActions))

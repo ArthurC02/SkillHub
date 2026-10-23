@@ -1574,6 +1574,7 @@ test.each(["judge panel", "answer rounds"] as const)(
               : {
                   continuation_rounds: { rounds: 5, min: 1, max: 10 },
                   model_budget: ADMIN_RUN_SETTINGS.model_budget,
+                  tokens_per_minute: ADMIN_RUN_SETTINGS.tokens_per_minute,
                 },
             status: 200,
           }
@@ -1658,6 +1659,7 @@ test("unreadable cached platform settings hide their controls and retry each set
             : {
                 continuation_rounds: { rounds: 3, min: 1, max: 10 },
                 model_budget: ADMIN_RUN_SETTINGS.model_budget,
+                tokens_per_minute: ADMIN_RUN_SETTINGS.tokens_per_minute,
               },
         status: 200,
       };
@@ -1694,6 +1696,7 @@ test("a refreshed answer-round limit replaces a stale draft with the current val
           body: {
             continuation_rounds: { rounds, min: 1, max: 10 },
             model_budget: ADMIN_RUN_SETTINGS.model_budget,
+            tokens_per_minute: ADMIN_RUN_SETTINGS.tokens_per_minute,
           },
           status: 200,
         }
@@ -5363,6 +5366,7 @@ test("agent and brake controls disappear when their refreshed status cannot be r
 const RUN_SETTINGS = {
   continuation_rounds: { rounds: 3, min: 1, max: 10 },
   model_budget: ADMIN_RUN_SETTINGS.model_budget,
+  tokens_per_minute: ADMIN_RUN_SETTINGS.tokens_per_minute,
 };
 
 function stubRunSettings(put: { body: unknown; status: number }, read: unknown = RUN_SETTINGS) {
@@ -5371,7 +5375,11 @@ function stubRunSettings(put: { body: unknown; status: number }, read: unknown =
       return { body: read, status: 200 };
     }
     if (path === "/admin/settings/runs/continuation-rounds" && method === "PUT") return put;
-    if (path === "/admin/settings/runs/model-budget" && (method === "PUT" || method === "DELETE"))
+    if (
+      (path === "/admin/settings/runs/model-budget" ||
+        path === "/admin/settings/runs/tokens-per-minute") &&
+      (method === "PUT" || method === "DELETE")
+    )
       return put;
     return undefined;
   });
@@ -5430,6 +5438,73 @@ test("the run spend ceiling input accepts the range edges and refuses just past 
   }
 });
 
+const OPERATOR_RATE = {
+  ...RUN_SETTINGS,
+  tokens_per_minute: {
+    limit: 20000,
+    default_limit: 200000,
+    min: 10000,
+    max: 2000000,
+    reason: "provider throttling",
+    set_at: "2026-10-20T08:00:00Z",
+  },
+};
+
+test("the run key tokens-per-minute limit shows the deployment default and sends the new limit with its reason", async () => {
+  stubRunSettings({ body: OPERATOR_RATE, status: 200 });
+  await mountAt("/admin/settings");
+  await waitFor(has("試跑模型金鑰的每分鐘 tokens 上限"));
+  expect(has("目前：試跑的模型金鑰最多 每分鐘 200,000 tokens（部署預設）")()).toBe(true);
+
+  await type("#admin-settings-run-tpm-value", "20000");
+  await type("#admin-settings-run-tpm-note", "provider throttling");
+  await click(button("改每分鐘上限"));
+  await waitFor(has("已改為每分鐘 20,000 tokens，之後發出的金鑰就照這個值。"));
+
+  expect(calls.find((c) => c.method === "PUT")).toEqual({
+    method: "PUT",
+    url: "/admin/settings/runs/tokens-per-minute",
+    body: { limit: 20000, note: "provider throttling" },
+  });
+  expect(has("（部署預設每分鐘 200,000 tokens）")()).toBe(true);
+  expect(has("理由：provider throttling")()).toBe(true);
+});
+
+test("the run key tokens-per-minute input accepts the range edges and refuses just past them", async () => {
+  stubRunSettings({ body: RUN_SETTINGS, status: 200 });
+  await mountAt("/admin/settings");
+  await waitFor(has("試跑模型金鑰的每分鐘 tokens 上限"));
+  await type("#admin-settings-run-tpm-note", "boundary check");
+
+  for (const [value, refused] of [
+    ["9999", true],
+    ["10000", false],
+    ["2000000", false],
+    ["2000001", true],
+    ["15000.5", true],
+    ["", true],
+  ] as const) {
+    await type("#admin-settings-run-tpm-value", value);
+    expect(button("改每分鐘上限").disabled, JSON.stringify(value)).toBe(refused);
+  }
+});
+
+test("an operator-set run key tokens-per-minute limit can be returned to the deployment default", async () => {
+  stubRunSettings({ body: RUN_SETTINGS, status: 200 }, OPERATOR_RATE);
+  await mountAt("/admin/settings");
+  await waitFor(has("理由：provider throttling"));
+
+  await type("#admin-settings-run-tpm-clear-note", "throttling over");
+  await click(button("回到部署預設每分鐘 200,000 tokens"));
+  await waitFor(has("已回到部署預設每分鐘 200,000 tokens，之後發出的金鑰就照這個值。"));
+
+  expect(calls.find((c) => c.method === "DELETE")).toEqual({
+    method: "DELETE",
+    url: "/admin/settings/runs/tokens-per-minute",
+    body: { note: "throttling over" },
+  });
+});
+
 test("an operator-set run spend ceiling can be returned to the deployment default", async () => {
   stubRunSettings({ body: RUN_SETTINGS, status: 200 }, OPERATOR_BUDGET);
   await mountAt("/admin/settings");
@@ -5458,6 +5533,7 @@ test("the answered-rounds setting shows the current value and its range, and sen
         set_at: "2026-10-10T08:00:00Z",
       },
       model_budget: ADMIN_RUN_SETTINGS.model_budget,
+      tokens_per_minute: ADMIN_RUN_SETTINGS.tokens_per_minute,
     },
     status: 200,
   });

@@ -13,12 +13,13 @@ type Gateway struct {
 
 func NewGateway() *Gateway { return &Gateway{} }
 
-func (g *Gateway) Issue(_ context.Context, _, runAttemptID string, ttl time.Duration, maxBudgetUSD float64) (*run.ModelGatewayGrant, error) {
+func (g *Gateway) Issue(_ context.Context, _, runAttemptID string, terms run.AttemptKeyTerms) (*run.ModelGatewayGrant, error) {
 	return &run.ModelGatewayGrant{
 		BaseURL:      "http://model-gateway.test",
 		VirtualKey:   "sk-test-" + runAttemptID,
-		MaxBudgetUSD: maxBudgetUSD,
-		ExpiresAt:    time.Now().Add(ttl),
+		MaxBudgetUSD: terms.BudgetUSD,
+		TPMLimit:     terms.TPMLimit,
+		ExpiresAt:    time.Now().Add(terms.TTL),
 	}, nil
 }
 

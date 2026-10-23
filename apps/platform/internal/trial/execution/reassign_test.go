@@ -104,7 +104,7 @@ type gatewayStub struct {
 	err        error
 }
 
-func (g gatewayStub) Issue(context.Context, string, string, time.Duration, float64) (*ModelGatewayGrant, error) {
+func (g gatewayStub) Issue(context.Context, string, string, AttemptKeyTerms) (*ModelGatewayGrant, error) {
 	return &ModelGatewayGrant{}, nil
 }
 

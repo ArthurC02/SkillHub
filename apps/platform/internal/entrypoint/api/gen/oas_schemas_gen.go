@@ -2023,6 +2023,28 @@ func (s *ClearRunModelBudgetReq) SetNote(val string) {
 	s.Note = val
 }
 
+type ClearRunTokensPerMinuteBadRequest Error
+
+func (*ClearRunTokensPerMinuteBadRequest) clearRunTokensPerMinuteRes() {}
+
+type ClearRunTokensPerMinuteNotFound Error
+
+func (*ClearRunTokensPerMinuteNotFound) clearRunTokensPerMinuteRes() {}
+
+type ClearRunTokensPerMinuteReq struct {
+	Note string `json:"note"`
+}
+
+// GetNote returns the value of Note.
+func (s *ClearRunTokensPerMinuteReq) GetNote() string {
+	return s.Note
+}
+
+// SetNote sets the value of Note.
+func (s *ClearRunTokensPerMinuteReq) SetNote(val string) {
+	s.Note = val
+}
+
 type ClearSkillRestrictionBadRequest Error
 
 func (*ClearSkillRestrictionBadRequest) clearSkillRestrictionRes() {}
@@ -28857,11 +28879,19 @@ func (s *RunResourceLimitsTokenBudget) SetMaxOutputTokens(val int) {
 
 // Ref: #/components/schemas/RunSettings
 type RunSettings struct {
+	// How many model tokens one run attempt's gateway key may use per minute. Every key issued from now on
+	// reads the current value, so a change also reaches runs already created at their next attempt.
+	TokensPerMinute RunSettingsTokensPerMinute `json:"tokens_per_minute"`
 	// The model spend ceiling of one run, in credits. A new run reserves these credits, its gateway key
 	// cannot spend past their worth, and a reassigned attempt gets what is left of it. Each run keeps the
 	// ceiling it was created under.
 	ModelBudget        RunSettingsModelBudget        `json:"model_budget"`
 	ContinuationRounds RunSettingsContinuationRounds `json:"continuation_rounds"`
+}
+
+// GetTokensPerMinute returns the value of TokensPerMinute.
+func (s *RunSettings) GetTokensPerMinute() RunSettingsTokensPerMinute {
+	return s.TokensPerMinute
 }
 
 // GetModelBudget returns the value of ModelBudget.
@@ -28874,6 +28904,11 @@ func (s *RunSettings) GetContinuationRounds() RunSettingsContinuationRounds {
 	return s.ContinuationRounds
 }
 
+// SetTokensPerMinute sets the value of TokensPerMinute.
+func (s *RunSettings) SetTokensPerMinute(val RunSettingsTokensPerMinute) {
+	s.TokensPerMinute = val
+}
+
 // SetModelBudget sets the value of ModelBudget.
 func (s *RunSettings) SetModelBudget(val RunSettingsModelBudget) {
 	s.ModelBudget = val
@@ -28884,10 +28919,12 @@ func (s *RunSettings) SetContinuationRounds(val RunSettingsContinuationRounds) {
 	s.ContinuationRounds = val
 }
 
-func (*RunSettings) clearRunModelBudgetRes()   {}
-func (*RunSettings) getRunSettingsRes()        {}
-func (*RunSettings) setContinuationRoundsRes() {}
-func (*RunSettings) setRunModelBudgetRes()     {}
+func (*RunSettings) clearRunModelBudgetRes()     {}
+func (*RunSettings) clearRunTokensPerMinuteRes() {}
+func (*RunSettings) getRunSettingsRes()          {}
+func (*RunSettings) setContinuationRoundsRes()   {}
+func (*RunSettings) setRunModelBudgetRes()       {}
+func (*RunSettings) setRunTokensPerMinuteRes()   {}
 
 type RunSettingsContinuationRounds struct {
 	// Answered rounds one conversation may hold.
@@ -29043,6 +29080,91 @@ func (s *RunSettingsModelBudget) SetSetByUserID(val OptUUID) {
 
 // SetSetAt sets the value of SetAt.
 func (s *RunSettingsModelBudget) SetSetAt(val OptDateTime) {
+	s.SetAt = val
+}
+
+// How many model tokens one run attempt's gateway key may use per minute. Every key issued from now on
+// reads the current value, so a change also reaches runs already created at their next attempt.
+type RunSettingsTokensPerMinute struct {
+	// The limit a key issued now gets.
+	Limit int `json:"limit"`
+	// The deployment's limit.
+	DefaultLimit int `json:"default_limit"`
+	Min          int `json:"min"`
+	Max          int `json:"max"`
+	// Present while an operator-set limit replaces the default.
+	Reason      OptString   `json:"reason"`
+	SetByUserID OptUUID     `json:"set_by_user_id"`
+	SetAt       OptDateTime `json:"set_at"`
+}
+
+// GetLimit returns the value of Limit.
+func (s *RunSettingsTokensPerMinute) GetLimit() int {
+	return s.Limit
+}
+
+// GetDefaultLimit returns the value of DefaultLimit.
+func (s *RunSettingsTokensPerMinute) GetDefaultLimit() int {
+	return s.DefaultLimit
+}
+
+// GetMin returns the value of Min.
+func (s *RunSettingsTokensPerMinute) GetMin() int {
+	return s.Min
+}
+
+// GetMax returns the value of Max.
+func (s *RunSettingsTokensPerMinute) GetMax() int {
+	return s.Max
+}
+
+// GetReason returns the value of Reason.
+func (s *RunSettingsTokensPerMinute) GetReason() OptString {
+	return s.Reason
+}
+
+// GetSetByUserID returns the value of SetByUserID.
+func (s *RunSettingsTokensPerMinute) GetSetByUserID() OptUUID {
+	return s.SetByUserID
+}
+
+// GetSetAt returns the value of SetAt.
+func (s *RunSettingsTokensPerMinute) GetSetAt() OptDateTime {
+	return s.SetAt
+}
+
+// SetLimit sets the value of Limit.
+func (s *RunSettingsTokensPerMinute) SetLimit(val int) {
+	s.Limit = val
+}
+
+// SetDefaultLimit sets the value of DefaultLimit.
+func (s *RunSettingsTokensPerMinute) SetDefaultLimit(val int) {
+	s.DefaultLimit = val
+}
+
+// SetMin sets the value of Min.
+func (s *RunSettingsTokensPerMinute) SetMin(val int) {
+	s.Min = val
+}
+
+// SetMax sets the value of Max.
+func (s *RunSettingsTokensPerMinute) SetMax(val int) {
+	s.Max = val
+}
+
+// SetReason sets the value of Reason.
+func (s *RunSettingsTokensPerMinute) SetReason(val OptString) {
+	s.Reason = val
+}
+
+// SetSetByUserID sets the value of SetByUserID.
+func (s *RunSettingsTokensPerMinute) SetSetByUserID(val OptUUID) {
+	s.SetByUserID = val
+}
+
+// SetSetAt sets the value of SetAt.
+func (s *RunSettingsTokensPerMinute) SetSetAt(val OptDateTime) {
 	s.SetAt = val
 }
 
@@ -30628,6 +30750,41 @@ func (s *SetRunModelBudgetReq) SetCredits(val int) {
 
 // SetNote sets the value of Note.
 func (s *SetRunModelBudgetReq) SetNote(val string) {
+	s.Note = val
+}
+
+type SetRunTokensPerMinuteBadRequest Error
+
+func (*SetRunTokensPerMinuteBadRequest) setRunTokensPerMinuteRes() {}
+
+type SetRunTokensPerMinuteNotFound Error
+
+func (*SetRunTokensPerMinuteNotFound) setRunTokensPerMinuteRes() {}
+
+type SetRunTokensPerMinuteReq struct {
+	// Outside the range is 400 rather than clamped.
+	Limit int `json:"limit"`
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetLimit returns the value of Limit.
+func (s *SetRunTokensPerMinuteReq) GetLimit() int {
+	return s.Limit
+}
+
+// GetNote returns the value of Note.
+func (s *SetRunTokensPerMinuteReq) GetNote() string {
+	return s.Note
+}
+
+// SetLimit sets the value of Limit.
+func (s *SetRunTokensPerMinuteReq) SetLimit(val int) {
+	s.Limit = val
+}
+
+// SetNote sets the value of Note.
+func (s *SetRunTokensPerMinuteReq) SetNote(val string) {
 	s.Note = val
 }
 

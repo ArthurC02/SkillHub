@@ -81,7 +81,7 @@ func (s *Service) SetContinuationRounds(ctx context.Context, operator pgtype.UUI
 		updated = settingsOf(row)
 		return audit.Log(ctx, tx, audit.Event{
 			Actor: operator, Action: audit.ActionRunSettingsSet, ResourceType: audit.ResourceRunSettings,
-			Metadata: map[string]any{"setting": "continuation_rounds", "from": before, "to": rounds, auditReasonKey: reason},
+			Metadata: settingChange("continuation_rounds", before, rounds, reason),
 		})
 	})
 	return updated, err
@@ -211,7 +211,7 @@ type budgetChange struct{ from, to float64 }
 func auditRunBudget(ctx context.Context, tx pgx.Tx, operator pgtype.UUID, change budgetChange, reason string) error {
 	return audit.Log(ctx, tx, audit.Event{
 		Actor: operator, Action: audit.ActionRunSettingsSet, ResourceType: audit.ResourceRunSettings,
-		Metadata: map[string]any{"setting": "model_budget_usd", "from": change.from, "to": change.to, auditReasonKey: reason},
+		Metadata: settingChange("model_budget_usd", change.from, change.to, reason),
 	})
 }
 
@@ -221,4 +221,86 @@ func settingsReason(reason string) (string, error) {
 		return "", ErrSettingsReasonRequired
 	}
 	return reason, nil
+}
+
+const (
+	MinRunTPMLimit = 10_000
+	MaxRunTPMLimit = 2_000_000
+)
+
+var ErrRunRateLimitOutOfRange = errors.New("run: the tokens-per-minute limit of a run key must be between 10000 and 2000000")
+
+type RunRateLimitSetting struct {
+	Limit        int
+	DefaultLimit int
+	Reason       string
+	SetBy        pgtype.UUID
+	SetAt        time.Time
+	Overridden   bool
+}
+
+func runRateLimitIn(ctx context.Context, q *gen.Queries, d Deployment) (RunRateLimitSetting, error) {
+	setting := RunRateLimitSetting{Limit: d.TokensPerMinute(), DefaultLimit: d.TokensPerMinute()}
+	row, err := q.GetRunRateLimitSetting(ctx)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return setting, nil
+	}
+	if err != nil {
+		return RunRateLimitSetting{}, err
+	}
+	setting.Limit = int(row.TpmLimit)
+	setting.Reason, setting.SetBy, setting.SetAt, setting.Overridden = row.Reason, row.SetBy, row.SetAt.Time, true
+	return setting, nil
+}
+
+func setRunRateLimit(ctx context.Context, s *Service, operator pgtype.UUID, limit int, reason string) error {
+	reason, err := settingsReason(reason)
+	if err != nil {
+		return err
+	}
+	if limit < MinRunTPMLimit || limit > MaxRunTPMLimit {
+		return ErrRunRateLimitOutOfRange
+	}
+	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		q := gen.New(tx)
+		before, err := runRateLimitIn(ctx, q, s.Deployment)
+		if err != nil {
+			return err
+		}
+		if _, err := q.SetRunRateLimitSetting(ctx, gen.SetRunRateLimitSettingParams{
+			TpmLimit: int32(limit), Reason: reason, SetBy: operator,
+		}); err != nil {
+			return err
+		}
+		return auditRunRateLimit(ctx, tx, operator, [2]int{before.Limit, limit}, reason)
+	})
+}
+
+func clearRunRateLimit(ctx context.Context, s *Service, operator pgtype.UUID, reason string) error {
+	reason, err := settingsReason(reason)
+	if err != nil {
+		return err
+	}
+	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		q := gen.New(tx)
+		before, err := runRateLimitIn(ctx, q, s.Deployment)
+		if err != nil {
+			return err
+		}
+		if _, err := q.ClearRunRateLimitSetting(ctx); err != nil {
+			return err
+		}
+		return auditRunRateLimit(ctx, tx, operator, [2]int{before.Limit, s.Deployment.TokensPerMinute()}, reason)
+	})
+}
+
+func auditRunRateLimit(ctx context.Context, tx pgx.Tx, operator pgtype.UUID, fromTo [2]int, reason string) error {
+	return audit.Log(ctx, tx, audit.Event{
+		Actor: operator, Action: audit.ActionRunSettingsSet, ResourceType: audit.ResourceRunSettings,
+		Metadata: settingChange("tokens_per_minute", fromTo[0], fromTo[1], reason),
+	})
+}
+
+func settingChange(setting string, from, to any, reason string) map[string]any {
+	return map[string]any{"setting": setting, "from": from, "to": to, auditReasonKey: reason}
 }

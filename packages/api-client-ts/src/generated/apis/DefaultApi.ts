@@ -714,6 +714,11 @@ import {
     SetRunModelBudgetRequestToJSON,
 } from '../models/SetRunModelBudgetRequest';
 import {
+    type SetRunTokensPerMinuteRequest,
+    SetRunTokensPerMinuteRequestFromJSON,
+    SetRunTokensPerMinuteRequestToJSON,
+} from '../models/SetRunTokensPerMinuteRequest';
+import {
     type SetSkillCategoryRequest,
     SetSkillCategoryRequestFromJSON,
     SetSkillCategoryRequestToJSON,
@@ -920,6 +925,13 @@ export interface ClearModelCallBudgetRequest {
 }
 
 export interface ClearRunModelBudgetOperationRequest {
+    /**
+     * 
+     */
+    clearRunModelBudgetRequest: ClearRunModelBudgetRequest;
+}
+
+export interface ClearRunTokensPerMinuteRequest {
     /**
      * 
      */
@@ -2005,6 +2017,13 @@ export interface SetRunModelBudgetOperationRequest {
     setRunModelBudgetRequest: SetRunModelBudgetRequest;
 }
 
+export interface SetRunTokensPerMinuteOperationRequest {
+    /**
+     * 
+     */
+    setRunTokensPerMinuteRequest: SetRunTokensPerMinuteRequest;
+}
+
 export interface SetSkillCategoryOperationRequest {
     /**
      * 
@@ -2364,6 +2383,30 @@ export interface DefaultApiInterface {
      * Return the run spend ceiling to the deployment default (TEST-005)
      */
     clearRunModelBudget(requestParameters: ClearRunModelBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings>;
+
+    /**
+     * Creates request options for clearRunTokensPerMinute without sending the request
+     * @param {ClearRunModelBudgetRequest} clearRunModelBudgetRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    clearRunTokensPerMinuteRequestOpts(requestParameters: ClearRunTokensPerMinuteRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Keys issued from now on get `default_limit` again. Clearing a limit nobody had set is still answered and still audited. 
+     * @summary Return the run key tokens-per-minute limit to the deployment default (TEST-005)
+     * @param {ClearRunModelBudgetRequest} clearRunModelBudgetRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    clearRunTokensPerMinuteRaw(requestParameters: ClearRunTokensPerMinuteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>>;
+
+    /**
+     * Operator only. Keys issued from now on get `default_limit` again. Clearing a limit nobody had set is still answered and still audited. 
+     * Return the run key tokens-per-minute limit to the deployment default (TEST-005)
+     */
+    clearRunTokensPerMinute(requestParameters: ClearRunTokensPerMinuteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings>;
 
     /**
      * Creates request options for clearSkillRestriction without sending the request
@@ -3989,7 +4032,7 @@ export interface DefaultApiInterface {
     getRunSettingsRequestOpts(): Promise<runtime.RequestOpts>;
 
     /**
-     * Operator only. How many answered rounds one conversation may hold (a run that asks, the run that continues it, and so on) and the model spend ceiling of one run. A setting nobody has changed is at its default. 
+     * Operator only. How many answered rounds one conversation may hold (a run that asks, the run that continues it, and so on), the model spend ceiling of one run, and the tokens-per-minute limit of its gateway key. A setting nobody has changed is at its default. 
      * @summary Run settings an operator can change (GEN-014)
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3998,7 +4041,7 @@ export interface DefaultApiInterface {
     getRunSettingsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>>;
 
     /**
-     * Operator only. How many answered rounds one conversation may hold (a run that asks, the run that continues it, and so on) and the model spend ceiling of one run. A setting nobody has changed is at its default. 
+     * Operator only. How many answered rounds one conversation may hold (a run that asks, the run that continues it, and so on), the model spend ceiling of one run, and the tokens-per-minute limit of its gateway key. A setting nobody has changed is at its default. 
      * Run settings an operator can change (GEN-014)
      */
     getRunSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings>;
@@ -5633,6 +5676,30 @@ export interface DefaultApiInterface {
     setRunModelBudget(requestParameters: SetRunModelBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings>;
 
     /**
+     * Creates request options for setRunTokensPerMinute without sending the request
+     * @param {SetRunTokensPerMinuteRequest} setRunTokensPerMinuteRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setRunTokensPerMinuteRequestOpts(requestParameters: SetRunTokensPerMinuteOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Every run attempt key issued from now on gets this limit. Writes the value and its audit event in one transaction. 
+     * @summary Set the tokens-per-minute limit of a run\'s gateway key (TEST-005)
+     * @param {SetRunTokensPerMinuteRequest} setRunTokensPerMinuteRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setRunTokensPerMinuteRaw(requestParameters: SetRunTokensPerMinuteOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>>;
+
+    /**
+     * Operator only. Every run attempt key issued from now on gets this limit. Writes the value and its audit event in one transaction. 
+     * Set the tokens-per-minute limit of a run\'s gateway key (TEST-005)
+     */
+    setRunTokensPerMinute(requestParameters: SetRunTokensPerMinuteOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings>;
+
+    /**
      * Creates request options for setSkillCategory without sending the request
      * @param {string} id 
      * @param {SetSkillCategoryRequest} setSkillCategoryRequest 
@@ -6438,6 +6505,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async clearRunModelBudget(requestParameters: ClearRunModelBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings> {
         const response = await this.clearRunModelBudgetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for clearRunTokensPerMinute without sending the request
+     */
+    async clearRunTokensPerMinuteRequestOpts(requestParameters: ClearRunTokensPerMinuteRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['clearRunModelBudgetRequest'] == null) {
+            throw new runtime.RequiredError(
+                'clearRunModelBudgetRequest',
+                'Required parameter "clearRunModelBudgetRequest" was null or undefined when calling clearRunTokensPerMinute().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/settings/runs/tokens-per-minute`;
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ClearRunModelBudgetRequestToJSON(requestParameters['clearRunModelBudgetRequest']),
+        };
+    }
+
+    /**
+     * Operator only. Keys issued from now on get `default_limit` again. Clearing a limit nobody had set is still answered and still audited. 
+     * Return the run key tokens-per-minute limit to the deployment default (TEST-005)
+     */
+    async clearRunTokensPerMinuteRaw(requestParameters: ClearRunTokensPerMinuteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>> {
+        const requestOptions = await this.clearRunTokensPerMinuteRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RunSettingsFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Keys issued from now on get `default_limit` again. Clearing a limit nobody had set is still answered and still audited. 
+     * Return the run key tokens-per-minute limit to the deployment default (TEST-005)
+     */
+    async clearRunTokensPerMinute(requestParameters: ClearRunTokensPerMinuteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings> {
+        const response = await this.clearRunTokensPerMinuteRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -9695,7 +9811,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. How many answered rounds one conversation may hold (a run that asks, the run that continues it, and so on) and the model spend ceiling of one run. A setting nobody has changed is at its default. 
+     * Operator only. How many answered rounds one conversation may hold (a run that asks, the run that continues it, and so on), the model spend ceiling of one run, and the tokens-per-minute limit of its gateway key. A setting nobody has changed is at its default. 
      * Run settings an operator can change (GEN-014)
      */
     async getRunSettingsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>> {
@@ -9706,7 +9822,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. How many answered rounds one conversation may hold (a run that asks, the run that continues it, and so on) and the model spend ceiling of one run. A setting nobody has changed is at its default. 
+     * Operator only. How many answered rounds one conversation may hold (a run that asks, the run that continues it, and so on), the model spend ceiling of one run, and the tokens-per-minute limit of its gateway key. A setting nobody has changed is at its default. 
      * Run settings an operator can change (GEN-014)
      */
     async getRunSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings> {
@@ -12924,6 +13040,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async setRunModelBudget(requestParameters: SetRunModelBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings> {
         const response = await this.setRunModelBudgetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setRunTokensPerMinute without sending the request
+     */
+    async setRunTokensPerMinuteRequestOpts(requestParameters: SetRunTokensPerMinuteOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['setRunTokensPerMinuteRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setRunTokensPerMinuteRequest',
+                'Required parameter "setRunTokensPerMinuteRequest" was null or undefined when calling setRunTokensPerMinute().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/settings/runs/tokens-per-minute`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetRunTokensPerMinuteRequestToJSON(requestParameters['setRunTokensPerMinuteRequest']),
+        };
+    }
+
+    /**
+     * Operator only. Every run attempt key issued from now on gets this limit. Writes the value and its audit event in one transaction. 
+     * Set the tokens-per-minute limit of a run\'s gateway key (TEST-005)
+     */
+    async setRunTokensPerMinuteRaw(requestParameters: SetRunTokensPerMinuteOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>> {
+        const requestOptions = await this.setRunTokensPerMinuteRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RunSettingsFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Every run attempt key issued from now on gets this limit. Writes the value and its audit event in one transaction. 
+     * Set the tokens-per-minute limit of a run\'s gateway key (TEST-005)
+     */
+    async setRunTokensPerMinute(requestParameters: SetRunTokensPerMinuteOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings> {
+        const response = await this.setRunTokensPerMinuteRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

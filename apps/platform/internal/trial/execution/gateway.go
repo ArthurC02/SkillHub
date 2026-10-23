@@ -21,7 +21,7 @@ const (
 )
 
 type ModelGateway interface {
-	Issue(ctx context.Context, runID, runAttemptID string, ttl time.Duration, maxBudgetUSD float64) (*ModelGatewayGrant, error)
+	Issue(ctx context.Context, runID, runAttemptID string, terms AttemptKeyTerms) (*ModelGatewayGrant, error)
 	Revoke(ctx context.Context, runAttemptID string) error
 	Usage(ctx context.Context, runAttemptID string, since time.Time) (AttemptUsage, error)
 }
@@ -68,6 +68,7 @@ type GatewayConfig struct {
 type Deployment struct {
 	Model, GatewayURL string
 	BudgetUSD         float64
+	TPMLimit          int
 	MinimumIsolation  IsolationStrength
 	CleanMode         bool
 	CleanModeReleases string
@@ -75,6 +76,13 @@ type Deployment struct {
 
 func (d Deployment) Budget() float64 {
 	return budgetOrDefault(d.BudgetUSD)
+}
+
+func (d Deployment) TokensPerMinute() int {
+	if d.TPMLimit > 0 {
+		return d.TPMLimit
+	}
+	return defaultKeyTPMLimit
 }
 
 func budgetOrDefault(usd float64) float64 {
@@ -110,11 +118,15 @@ func NewGateway(c GatewayConfig) *Gateway {
 
 func keyAlias(runAttemptID string) string { return "skillhub-attempt-" + runAttemptID }
 
-func (g *Gateway) Issue(
-	ctx context.Context, runID, runAttemptID string, ttl time.Duration, maxBudgetUSD float64,
-) (*ModelGatewayGrant, error) {
+type AttemptKeyTerms struct {
+	TTL       time.Duration
+	BudgetUSD float64
+	TPMLimit  int
+}
+
+func (g *Gateway) Issue(ctx context.Context, runID, runAttemptID string, terms AttemptKeyTerms) (*ModelGatewayGrant, error) {
 	return g.issue(ctx, virtualKeyTerms{
-		attemptID: runAttemptID, ttl: ttl, maxBudgetUSD: maxBudgetUSD, model: g.model,
+		attemptID: runAttemptID, ttl: terms.TTL, maxBudgetUSD: terms.BudgetUSD, tpmLimit: terms.TPMLimit, model: g.model,
 		metadata: map[string]string{"run_id": runID, "run_attempt_id": runAttemptID},
 	})
 }
@@ -143,6 +155,7 @@ type virtualKeyTerms struct {
 	attemptID    string
 	ttl          time.Duration
 	maxBudgetUSD float64
+	tpmLimit     int
 	model        string
 	metadata     map[string]string
 }
@@ -168,11 +181,15 @@ func (g *Gateway) issue(ctx context.Context, terms virtualKeyTerms) (*ModelGatew
 	if maxBudgetUSD <= 0 {
 		maxBudgetUSD = g.maxBudgetUSD
 	}
+	tpmLimit := terms.tpmLimit
+	if tpmLimit <= 0 {
+		tpmLimit = g.tpmLimit
+	}
 	body := keyGenerationRequest{
 		KeyAlias:  keyAlias(runAttemptID),
 		Duration:  strconv.Itoa(int(ttl.Seconds())) + "s",
 		MaxBudget: maxBudgetUSD,
-		TPMLimit:  g.tpmLimit,
+		TPMLimit:  tpmLimit,
 		Metadata:  metadata,
 	}
 	if model != "" {
@@ -194,7 +211,7 @@ func (g *Gateway) issue(ctx context.Context, terms virtualKeyTerms) (*ModelGatew
 		BaseURL:      g.sandboxBaseURL,
 		VirtualKey:   out.Key,
 		MaxBudgetUSD: maxBudgetUSD,
-		TPMLimit:     g.tpmLimit,
+		TPMLimit:     tpmLimit,
 		ExpiresAt:    time.Now().UTC().Add(ttl),
 	}, nil
 }

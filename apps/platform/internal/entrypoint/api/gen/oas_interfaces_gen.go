@@ -33,6 +33,10 @@ type ClearRunModelBudgetRes interface {
 	clearRunModelBudgetRes()
 }
 
+type ClearRunTokensPerMinuteRes interface {
+	clearRunTokensPerMinuteRes()
+}
+
 type ClearSkillRestrictionRes interface {
 	clearSkillRestrictionRes()
 }
@@ -551,6 +555,10 @@ type SetPlatformAgentSpendCapRes interface {
 
 type SetRunModelBudgetRes interface {
 	setRunModelBudgetRes()
+}
+
+type SetRunTokensPerMinuteRes interface {
+	setRunTokensPerMinuteRes()
 }
 
 type SetSkillCategoryRes interface {

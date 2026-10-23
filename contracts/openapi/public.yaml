@@ -3521,8 +3521,9 @@ paths:
       summary: Run settings an operator can change (GEN-014)
       description: |
         Operator only. How many answered rounds one conversation may hold (a run
-        that asks, the run that continues it, and so on) and the model spend
-        ceiling of one run. A setting nobody has changed is at its default.
+        that asks, the run that continues it, and so on), the model spend
+        ceiling of one run, and the tokens-per-minute limit of its gateway key.
+        A setting nobody has changed is at its default.
       responses:
         "200":
           description: Every operator-set run setting.
@@ -3618,6 +3619,79 @@ paths:
       description: |
         Operator only. Runs created from now on get `default_credits` again. Clearing
         a ceiling nobody had set is still answered and still audited.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note:
+                  type: string
+                  maxLength: 1000
+      responses:
+        "200":
+          description: The settings as they now stand.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RunSettings" }
+        "400":
+          description: Body is not JSON, or `note` is blank or over 1000 characters.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/settings/runs/tokens-per-minute:
+    put:
+      operationId: setRunTokensPerMinute
+      summary: Set the tokens-per-minute limit of a run's gateway key (TEST-005)
+      description: |
+        Operator only. Every run attempt key issued from now on gets this limit.
+        Writes the value and its audit event in one transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [limit, note]
+              properties:
+                limit:
+                  type: integer
+                  minimum: 10000
+                  maximum: 2000000
+                  description: Outside the range is 400 rather than clamped.
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Why, in the operator's own words. Whitespace does not satisfy it.
+      responses:
+        "200":
+          description: The settings as they now stand.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RunSettings" }
+        "400":
+          description: Body is not JSON, `limit` is missing or outside 10000–2000000, or `note` is blank or over 1000 characters.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      operationId: clearRunTokensPerMinute
+      summary: Return the run key tokens-per-minute limit to the deployment default (TEST-005)
+      description: |
+        Operator only. Keys issued from now on get `default_limit` again. Clearing
+        a limit nobody had set is still answered and still audited.
       requestBody:
         required: true
         content:
@@ -7708,8 +7782,23 @@ components:
             set_at: { type: string, format: date-time }
     RunSettings:
       type: object
-      required: [continuation_rounds, model_budget]
+      required: [continuation_rounds, model_budget, tokens_per_minute]
       properties:
+        tokens_per_minute:
+          type: object
+          required: [limit, default_limit, min, max]
+          description: |
+            How many model tokens one run attempt's gateway key may use per
+            minute. Every key issued from now on reads the current value, so a
+            change also reaches runs already created at their next attempt.
+          properties:
+            limit: { type: integer, description: The limit a key issued now gets. }
+            default_limit: { type: integer, description: The deployment's limit, which applies when no operator has set one. }
+            min: { type: integer }
+            max: { type: integer }
+            reason: { type: string, description: Present while an operator-set limit replaces the default. }
+            set_by_user_id: { type: string, format: uuid }
+            set_at: { type: string, format: date-time }
         model_budget:
           type: object
           required: [credits, default_credits, min_credits, max_credits]

@@ -12,6 +12,29 @@ import (
 	"time"
 )
 
+func TestIssueUsesTheAttemptsOwnBrakesOverTheGatewayDefaults(t *testing.T) {
+	var got map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+		_ = json.Unmarshal(body, &got)
+		_, _ = w.Write([]byte(`{"key":"sk-virtual-test"}`))
+	}))
+	defer srv.Close()
+
+	g := &Gateway{adminBaseURL: srv.URL, adminKey: "sk-master-test", maxBudgetUSD: 0.5, tpmLimit: 1000, client: srv.Client()}
+	grant, err := g.Issue(context.Background(), "run-1", "attempt-1",
+		AttemptKeyTerms{TTL: time.Minute, BudgetUSD: 0.05, TPMLimit: 20000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["max_budget"] != 0.05 || got["tpm_limit"] != float64(20000) {
+		t.Errorf("sent max_budget %v and tpm_limit %v, want the attempt's 0.05 and 20000", got["max_budget"], got["tpm_limit"])
+	}
+	if grant.MaxBudgetUSD != 0.05 || grant.TPMLimit != 20000 {
+		t.Errorf("grant = %#v, want it to carry the brakes the key was minted with", grant)
+	}
+}
+
 func TestIssueSendsBothBrakesAndScopesTheKey(t *testing.T) {
 	var got map[string]any
 	var auth string
@@ -27,7 +50,7 @@ func TestIssueSendsBothBrakesAndScopesTheKey(t *testing.T) {
 		adminBaseURL: srv.URL, adminKey: "sk-master-test", sandboxBaseURL: "http://gateway:4000",
 		model: "gpt-5.4-mini", maxBudgetUSD: 0.5, tpmLimit: 1000, client: srv.Client(),
 	}
-	grant, err := g.Issue(context.Background(), "run-1", "attempt-1", 30*time.Minute, 0)
+	grant, err := g.Issue(context.Background(), "run-1", "attempt-1", AttemptKeyTerms{TTL: 30 * time.Minute})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +140,7 @@ func TestIssueFailsWhenTheGatewayAnswersNothing(t *testing.T) {
 	}))
 	defer srv.Close()
 	g := &Gateway{adminBaseURL: srv.URL, adminKey: "k", client: srv.Client()}
-	if _, err := g.Issue(context.Background(), "run-1", "attempt-1", time.Minute, 0); err == nil {
+	if _, err := g.Issue(context.Background(), "run-1", "attempt-1", AttemptKeyTerms{TTL: time.Minute}); err == nil {
 		t.Fatal("a gateway that returned no key was treated as success")
 	}
 }
@@ -140,7 +163,7 @@ func TestAKeyTheGatewayCouldNotIssueIsAnOutageOnlyWhenTheGatewayIsNotAnswering(t
 			defer srv.Close()
 			g := &Gateway{adminBaseURL: srv.URL, adminKey: "k", client: srv.Client()}
 
-			_, err := g.Issue(context.Background(), "run-1", "attempt-1", time.Minute, 0)
+			_, err := g.Issue(context.Background(), "run-1", "attempt-1", AttemptKeyTerms{TTL: time.Minute})
 
 			if err == nil || errors.Is(err, ErrModelGatewayUnavailable) != tc.unavailable {
 				t.Fatalf("err = %v, want unavailable = %v", err, tc.unavailable)
@@ -152,7 +175,7 @@ func TestAKeyTheGatewayCouldNotIssueIsAnOutageOnlyWhenTheGatewayIsNotAnswering(t
 		srv.Close()
 		g := &Gateway{adminBaseURL: srv.URL, adminKey: "k", client: srv.Client()}
 
-		_, err := g.Issue(context.Background(), "run-1", "attempt-1", time.Minute, 0)
+		_, err := g.Issue(context.Background(), "run-1", "attempt-1", AttemptKeyTerms{TTL: time.Minute})
 
 		if !errors.Is(err, ErrModelGatewayUnavailable) {
 			t.Fatalf("err = %v, want ErrModelGatewayUnavailable", err)

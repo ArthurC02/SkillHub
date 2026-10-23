@@ -81,3 +81,19 @@ RETURNING *;
 
 -- name: ClearRunModelBudgetSetting :execrows
 DELETE FROM run_model_budget_setting;
+
+-- name: GetRunRateLimitSetting :one
+SELECT * FROM run_rate_limit_setting;
+
+-- name: SetRunRateLimitSetting :one
+INSERT INTO run_rate_limit_setting (singleton, tpm_limit, reason, set_by)
+VALUES (true, @tpm_limit, @reason, @set_by)
+ON CONFLICT (singleton) DO UPDATE
+SET tpm_limit = EXCLUDED.tpm_limit,
+    reason = EXCLUDED.reason,
+    set_by = EXCLUDED.set_by,
+    set_at = now()
+RETURNING *;
+
+-- name: ClearRunRateLimitSetting :execrows
+DELETE FROM run_rate_limit_setting;

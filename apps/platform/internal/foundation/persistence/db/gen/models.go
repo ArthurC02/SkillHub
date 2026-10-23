@@ -1311,6 +1311,20 @@ type RunPermissionConfirmation struct {
 	ConfirmedAt pgtype.Timestamptz
 }
 
+// The operator-set tokens-per-minute limit of a run's model gateway key. An absent row means the deployment default applies; every key issued from then on reads the current value.
+type RunRateLimitSetting struct {
+	// Always true; it limits the table to a single row.
+	Singleton bool
+	// How many model tokens a run attempt's gateway key may use per minute, from 10,000 to 2,000,000.
+	TpmLimit int32
+	// Why the operator set this value. Never blank.
+	Reason string
+	// The operator who set the value. NULL if that account has since been removed.
+	SetBy pgtype.UUID
+	// When the value was set.
+	SetAt pgtype.Timestamptz
+}
+
 // Operator-set run policy. An absent row means every setting is at its default.
 type RunSetting struct {
 	// Always true; it limits the table to a single row.

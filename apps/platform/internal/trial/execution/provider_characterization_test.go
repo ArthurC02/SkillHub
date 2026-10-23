@@ -86,7 +86,7 @@ func TestARunKeyIsAttributedToItsRunAndAttempt(t *testing.T) {
 	defer srv.Close()
 
 	g := &Gateway{adminBaseURL: srv.URL, client: srv.Client()}
-	if _, err := g.Issue(context.Background(), "run-1", "attempt-1", time.Minute, 0); err != nil {
+	if _, err := g.Issue(context.Background(), "run-1", "attempt-1", AttemptKeyTerms{TTL: time.Minute}); err != nil {
 		t.Fatal(err)
 	}
 	if len(got.Metadata) != 2 || got.Metadata["run_id"] != "run-1" || got.Metadata["run_attempt_id"] != "attempt-1" {

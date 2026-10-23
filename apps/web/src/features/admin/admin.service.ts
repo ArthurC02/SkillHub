@@ -563,6 +563,15 @@ export type RunSettings = {
     set_by_user_id?: string;
     set_at?: string;
   };
+  tokens_per_minute: {
+    limit: number;
+    default_limit: number;
+    min: number;
+    max: number;
+    reason?: string;
+    set_by_user_id?: string;
+    set_at?: string;
+  };
   model_budget: {
     credits: number;
     default_credits: number;
@@ -598,6 +607,18 @@ export function useRunModelBudget() {
       apiFetch<RunSettings>(
         "/admin/settings/runs/model-budget",
         send(body.credits === undefined ? "DELETE" : "PUT", body),
+      ),
+    onSuccess: (settings) => queryClient.setQueryData(queryKeys.admin.runSettings, settings),
+  });
+}
+
+export function useRunTokensPerMinute() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { limit?: number; note: string }) =>
+      apiFetch<RunSettings>(
+        "/admin/settings/runs/tokens-per-minute",
+        send(body.limit === undefined ? "DELETE" : "PUT", body),
       ),
     onSuccess: (settings) => queryClient.setQueryData(queryKeys.admin.runSettings, settings),
   });
