@@ -258,6 +258,18 @@ COMMENT ON COLUMN tidy.id IS 'the switch';
 COMMENT ON COLUMN tidy.state IS 'on while lit; off otherwise';
 COMMENT ON COLUMN tidy.owner IS 'who flips it';
 """
+RESTATED_FENCE = """CREATE TRIGGER fence BEFORE INSERT ON orders FOR EACH ROW EXECUTE FUNCTION guard();
+DO $$ BEGIN
+    EXECUTE format('CREATE TRIGGER fence BEFORE INSERT ON %I FOR EACH ROW EXECUTE FUNCTION guard()', 'users', 'orders');
+END $$;
+DO $$ BEGIN
+    EXECUTE format('CREATE TRIGGER %I BEFORE INSERT ON %I FOR EACH ROW EXECUTE FUNCTION guard()', 'fence', 'orders');
+END $$;
+"""
+RESTATEMENT = """DROP TRIGGER fence ON users;
+CREATE TRIGGER fence BEFORE INSERT ON users FOR EACH ROW EXECUTE FUNCTION guard();
+CREATE TRIGGER other BEFORE INSERT ON orders FOR EACH ROW EXECUTE FUNCTION guard();
+"""
 ORDERS_GAPS = [
     "the comment on state does not say what these values mean: it's odd",
     "column buyer_id has no COMMENT ON saying what it means",
@@ -309,7 +321,7 @@ class CompletenessDescribeTest(RegistryTestCase):
         self.assertEqual(
             (["the table has no COMMENT ON saying what one row is",
               "the statement at db/migrations/0002_fence.sql:1 builds DDL at run time and names users; the files cannot show what it "
-              "creates, so write a static statement per table"],
+              "creates, so restate it on this table with a static CREATE TRIGGER of the trigger it names"],
              [{"at": "db/migrations/0002_fence.sql:1", "statement": "EXECUTE format('CREATE TRIGGER fence BEFORE INSERT ON %I FOR EACH "
                                                                       "ROW EXECUTE FUNCTION guard()', 'users'); END $$"}]),
             (users["gaps"], users["dynamic_ddl"]),
@@ -344,6 +356,28 @@ class CompletenessDescribeTest(RegistryTestCase):
         self.assertIn("NOTE: orders is not complete: 11 gaps listed under gaps; the change is not done until they are closed",
                       refused.stderr)
         self.assertNotIn("not complete", lenient.stderr + tidy.stderr)
+
+    def test_a_later_static_trigger_of_the_templated_name_supersedes_the_run_time_ddl_for_that_table_only(self) -> None:
+        (self.migrations / "0002_fence.sql").write_text(RESTATED_FENCE, encoding="utf-8")
+        self.commit_all("fence")
+        (self.migrations / "0003_restate.sql").write_text(RESTATEMENT, encoding="utf-8")
+        users, orders = self.describe("users"), self.describe("orders")
+        self.assertEqual(
+            ([], ["the table has no COMMENT ON saying what one row is"],
+             ["db/migrations/0002_fence.sql:2", "db/migrations/0002_fence.sql:5"],
+             ["fence", "other"]),
+            (users["dynamic_ddl"], users["gaps"], [statement["at"] for statement in orders["dynamic_ddl"]],
+             [c["name"] for c in orders["constraints"] if c["kind"] == "trigger"]),
+        )
+        since = gaps_since(self.repo, self.migrations, "HEAD")
+        self.assertEqual(
+            {"users": {"new_gaps": [], "closed_gaps": [
+                "the statement at db/migrations/0002_fence.sql:2 builds DDL at run time and names users; the files cannot show what "
+                "it creates, so restate it on this table with a static CREATE TRIGGER of the trigger it names"]}},
+            since["tables"],
+        )
+        quiet = self.run_cli(*self.common, "--table", "users")
+        self.assertNotIn("builds DDL", quiet.stderr)
 
     def test_gaps_since_a_ref_lists_only_what_the_change_opened_or_closed_per_table(self) -> None:
         self.commit_all("migrations")

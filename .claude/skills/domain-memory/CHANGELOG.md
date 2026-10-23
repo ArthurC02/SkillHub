@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.8.3
+
+### Fixed
+
+- The run-time DDL gap can now close: a later migration that declares the trigger the template names with a static `CREATE TRIGGER` on a table supersedes the dynamic statement for that table, so `describe-table` lists no `dynamic_ddl`, raises no gap and prints no NOTE for it, and `--base` reports the gap as closed. A trigger declared before the dynamic statement, a trigger of another name, or a template whose trigger name is itself a placeholder does not supersede it. The gap sentence now says what clears it.
+
 ## 2.8.2
 
 ### Fixed

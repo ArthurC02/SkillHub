@@ -59,7 +59,7 @@ def describe_table(registry_root: Path | None, repo_root: Path, migrations_dir: 
     outgoing = [key for key in schema.foreign_keys if key.child == name]
     incoming = [key for key in schema.foreign_keys if key.parent == name and key.child in tables]
     retired = [gone for gone in schema.retired if gone.table == name]
-    dynamic = [statement for statement in schema.dynamic if name in statement.tables]
+    dynamic = dynamic_for(schema, name, constraints)
     spans = [(table.file, table.line, table.line), *((c.file, c.line, c.end) for c in primary + constraints),
              *((key.file, key.line, key.line) for key in outgoing)]
     return {
@@ -160,11 +160,21 @@ def _migrations_at(repo_root: Path, base: str, relative: str, into: Path) -> Pat
 
 def _gaps_by_table(migrations_dir: Path, repo_root: Path) -> dict[str, list[str]]:
     schema = read_schema(migrations_dir, repo_root)
-    return {
-        name: _gaps(table, [c for c in schema.constraints if c.table == name], [k for k in schema.foreign_keys if k.child == name],
-                    [statement for statement in schema.dynamic if name in statement.tables], schema)
-        for name, table in live_tables(schema).items()
-    }
+    gaps = {}
+    for name, table in live_tables(schema).items():
+        constraints = [c for c in schema.constraints if c.table == name]
+        keys = [k for k in schema.foreign_keys if k.child == name]
+        gaps[name] = _gaps(table, constraints, keys, dynamic_for(schema, name, constraints), schema)
+    return gaps
+
+
+def dynamic_for(schema: Schema, table: str, constraints: list[Constraint]) -> list[Dynamic]:
+    return [statement for statement in schema.dynamic if table in statement.tables and not _restated(statement, constraints)]
+
+
+def _restated(statement: Dynamic, constraints: list[Constraint]) -> bool:
+    return any(c.kind == "trigger" and c.name in statement.triggers and (c.file, c.line) > (statement.file, statement.line)
+               for c in constraints)
 
 
 def _gaps(table: Table, constraints: list[Constraint], keys: list[ForeignKey], dynamic: list[Dynamic], schema: Schema) -> list[str]:
@@ -174,7 +184,7 @@ def _gaps(table: Table, constraints: list[Constraint], keys: list[ForeignKey], d
     gaps.extend(f"foreign key {key.name} to {key.parent} does not say ON DELETE; choose CASCADE, RESTRICT, SET NULL or NO ACTION"
                 for key in keys if key.on_delete is None)
     gaps.extend(f"the statement at {statement.file}:{statement.line} builds DDL at run time and names {table.name}; "
-                "the files cannot show what it creates, so write a static statement per table" for statement in dynamic)
+                "the files cannot show what it creates, so restate it on this table with a static CREATE TRIGGER of the trigger it names" for statement in dynamic)
     return gaps
 
 

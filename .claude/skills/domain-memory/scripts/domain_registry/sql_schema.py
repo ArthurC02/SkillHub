@@ -41,6 +41,7 @@ IGNORED_STATEMENT = re.compile(
     r"|LOCK\s+TABLE|GRANT|REVOKE|INSERT|UPDATE|DELETE|SET|SELECT|DO\s+\$|BEGIN|COMMIT)", re.I)
 UNIQUE_INDEX = "unique-index"
 DYNAMIC_DDL = re.compile(r"\bEXECUTE\s+(?!FUNCTION\b|PROCEDURE\b)", re.I)
+TEMPLATED_TRIGGER = re.compile(rf"\bCREATE\s+(?:OR\s+REPLACE\s+)?TRIGGER\s+({IDENT})\b", re.I)
 DYNAMIC_EXCERPT = 160
 PARENT = re.compile(rf"\bREFERENCES\s+({IDENT})\s*(?:\(([^)]*)\))?", re.I)
 REFERENTIAL_ACTION = r"(CASCADE|RESTRICT|NO\s+ACTION|SET\s+NULL|SET\s+DEFAULT)"
@@ -150,6 +151,7 @@ class Dynamic:
     line: int
     tables: tuple[str, ...]
     text: str
+    triggers: tuple[str, ...] = ()
 
 
 @dataclass
@@ -658,7 +660,8 @@ def _read_dynamic(schema: Schema, file: str, line: int, head: str) -> None:
     named = tuple(dict.fromkeys(literal for literal in STRING_LITERAL.findall(head) if literal in schema.tables))
     text = one_line(head)
     start = DYNAMIC_DDL.search(text).start()
-    schema.dynamic.append(Dynamic(file, line, named, text[start:start + DYNAMIC_EXCERPT]))
+    triggers = tuple(dict.fromkeys(TEMPLATED_TRIGGER.findall(head)))
+    schema.dynamic.append(Dynamic(file, line, named, text[start:start + DYNAMIC_EXCERPT], triggers))
 
 
 def read_schema(migrations_dir: Path, repo_root: Path) -> Schema:
