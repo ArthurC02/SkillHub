@@ -123,6 +123,35 @@ free text
 """
 
 
+GENERIC_MIGRATION = """CREATE TABLE audit_events (
+    id uuid PRIMARY KEY,
+    user_id uuid REFERENCES users(id),
+    action text NOT NULL CHECK (action <> '')
+);
+"""
+
+IDENTITY = """packages:
+  - id: skillpkg
+    kind: Shared Kernel
+    path: shared/skillpkg
+  - id: audit
+    kind: Generic
+    path: foundation/observability/audit
+  - id: billing
+    kind: Bounded Context
+    path: billing
+"""
+
+
+def with_a_generic_table(root: Path) -> mr.Inputs:
+    fixture(root)
+    (root / "db" / "migrations" / "0003_audit.sql").write_text(GENERIC_MIGRATION, encoding="utf-8")
+    (root / "apps" / "platform").mkdir(parents=True)
+    (root / "apps" / "platform" / "architecture-identity.yaml").write_text(IDENTITY, encoding="utf-8")
+    (root / "db" / "query-owners.yaml").write_text(OWNERS.replace("  runs: run, trial\n", "  runs: run, trial\n  audit_events: audit\n"), encoding="utf-8")
+    return mr.read_inputs(root, root / "docs" / "domain-memory")
+
+
 def fixture(root: Path) -> mr.Inputs:
     (root / "db" / "migrations").mkdir(parents=True)
     (root / "db" / "queries").mkdir()
@@ -218,6 +247,46 @@ def test_a_constraint_counts_as_cited_only_when_a_record_cites_its_line():
     assert "db/migrations/0001_init.sql:14 check runs.state" in report["details"]["uncited_constraints"]
 
 
+DRAFT_RULE = """---
+type: Rule
+status: draft
+sources:
+  - resource: "db/migrations/0001_init.sql#L14"
+    excerpt_sha256: "sha256:z"
+---
+A run state is queued or done.
+
+# Relations
+- Context: [run](/contexts/run)
+"""
+
+
+def test_a_draft_record_cites_nothing_the_registry_knows_until_it_is_reviewed():
+    with tempfile.TemporaryDirectory() as root:
+        inputs = fixture(Path(root))
+        rules = Path(root) / "docs/domain-memory/registry/rules"
+        (rules / "run-state").with_suffix(".md").write_text(DRAFT_RULE, encoding="utf-8")
+        draft = mr.measure(mr.read_inputs(Path(root), Path(root) / "docs/domain-memory"))
+        (rules / "run-state.md").write_text(DRAFT_RULE.replace("status: draft", "status: stable"), encoding="utf-8")
+        reviewed = mr.measure(mr.read_inputs(Path(root), Path(root) / "docs/domain-memory"))
+    assert [record.status for record in inputs.records if record.asset == "rules"] == ["reviewed"]
+    assert (ratio(draft, "rules.constraints_cited_by_a_record"), draft["details"]["constraints_cited_only_by_a_candidate"]) == ((1, 6), 1)
+    assert "db/migrations/0001_init.sql:14 check runs.state" in draft["details"]["uncited_constraints"]
+    assert (ratio(reviewed, "rules.constraints_cited_by_a_record"), reviewed["details"]["constraints_cited_only_by_a_candidate"]) == ((2, 6), 0)
+
+
+def test_a_draft_context_or_policy_does_not_count_as_the_registry_knowing_it():
+    with tempfile.TemporaryDirectory() as root:
+        fixture(Path(root))
+        registry = Path(root) / "docs/domain-memory/registry"
+        (registry / "contexts" / "run.md").write_text("---\ntype: Context\nstatus: draft\n---\n", encoding="utf-8")
+        (registry / "dependency-policies" / "run-to-identity.md").write_text(POLICY.replace("---\ntype", "---\nstatus: candidate\ntype", 1), encoding="utf-8")
+        report = mr.measure(mr.read_inputs(Path(root), Path(root) / "docs/domain-memory"))
+    assert ratio(report, "ownership.tables_with_a_known_owner") == (1, 2)
+    assert report["details"]["tables_without_a_known_owner"] == {"runs": ["run", "trial"]}
+    assert ratio(report, "rules.cross_context_foreign_keys_with_a_dependency_policy") == (0, 3)
+
+
 def test_a_cross_context_foreign_key_is_covered_by_a_dependency_policy_from_child_to_parent():
     _, report = measured()
     assert ratio(report, "rules.foreign_keys_inside_one_context") == (0, 3)
@@ -260,11 +329,47 @@ def test_ownership_counts_declared_owners_writers_aggregates_and_touch():
     _, report = measured()
     assert ratio(report, "ownership.tables_with_exactly_one_declared_owner") == (1, 2)
     assert report["details"]["tables_without_one_owner"] == {"runs": ["run", "trial"]}
-    assert ratio(report, "ownership.tables_owned_by_registry_contexts_only") == (1, 2)
-    assert report["details"]["tables_owned_outside_the_registry"] == {"runs": ["trial"]}
+    assert ratio(report, "ownership.tables_with_a_known_owner") == (1, 2)
+    assert report["details"]["tables_without_a_known_owner"] == {"runs": ["trial"]}
     assert ratio(report, "ownership.tables_written_by_at_most_one_owner") == (2, 2)
     assert ratio(report, "ownership.tables_claimed_by_an_aggregate") == (0, 2)
     assert ratio(report, "ownership.tables_touched_by_a_query") == (2, 2)
+
+
+def test_a_generic_package_from_the_identity_file_is_a_known_owner_but_a_bounded_context_entry_is_not():
+    with tempfile.TemporaryDirectory() as root:
+        inputs = with_a_generic_table(Path(root))
+        report = mr.measure(inputs)
+    assert inputs.generic == {"skillpkg", "audit"}
+    assert ratio(report, "ownership.tables_with_a_known_owner") == (2, 3)
+    assert report["details"]["tables_without_a_known_owner"] == {"runs": ["trial"]}
+
+
+def test_a_table_without_any_owner_is_not_known_even_when_nothing_is_unknown_about_it():
+    with tempfile.TemporaryDirectory() as root:
+        with_a_generic_table(Path(root))
+        owners = Path(root) / "db/query-owners.yaml"
+        owners.write_text(owners.read_text(encoding="utf-8").replace("  audit_events: audit\n", ""), encoding="utf-8")
+        report = mr.measure(mr.read_inputs(Path(root), Path(root) / "docs/domain-memory"))
+    assert ratio(report, "ownership.tables_with_a_known_owner") == (1, 3)
+    assert report["details"]["tables_without_a_known_owner"] == {"runs": ["trial"]}
+
+
+def test_a_generic_table_states_no_rule_and_its_foreign_keys_need_no_dependency_policy():
+    with tempfile.TemporaryDirectory() as root:
+        report = mr.measure(with_a_generic_table(Path(root)))
+    assert report["inventory"]["constraints"] == 7
+    assert ratio(report, "rules.constraints_cited_by_a_record") == (1, 6)
+    assert ratio(report, "rules.foreign_keys_inside_one_context") == (0, 3)
+    assert ratio(report, "rules.cross_context_foreign_keys_with_a_dependency_policy") == (3, 3)
+    assert report["details"]["foreign_keys_from_generic_tables"] == ["audit_events->users"]
+    assert "db/migrations/0003_audit.sql:4 check audit_events.action" not in report["details"]["uncited_constraints"]
+
+
+def test_without_an_identity_file_no_owner_is_generic():
+    with tempfile.TemporaryDirectory() as root:
+        inputs = fixture(Path(root))
+    assert inputs.generic == set()
 
 
 def test_two_contexts_writing_one_table_are_listed_as_its_writers():
