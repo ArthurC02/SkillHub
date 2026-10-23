@@ -6,14 +6,14 @@ import { SettingsResult } from "./SettingsResult";
 
 type Budget = RunSettings["model_budget"];
 
-const dollars = (usd: number) => `US$${usd.toFixed(2)}`;
+const points = (credits: number) => `${credits} 點`;
 
 function BudgetFacts({ setting }: { setting: Budget }) {
   return (
     <>
       <p>
-        目前：每次試跑最多花 <strong>{dollars(setting.usd)}</strong> 的模型費用
-        {setting.reason ? `（部署預設 ${dollars(setting.default_usd)}）` : "（部署預設）"}
+        目前：每次試跑最多花 <strong>{points(setting.credits)}</strong>的模型費用
+        {setting.reason ? `（部署預設 ${points(setting.default_credits)}）` : "（部署預設）"}
       </p>
       <p className="note">
         開始試跑前先確認點數夠付這個上限，試跑的模型金鑰也花不超過它；實際扣點仍照實付。
@@ -33,10 +33,10 @@ function BudgetFacts({ setting }: { setting: Budget }) {
   );
 }
 
-function resultSentence(usd: number | undefined, defaultUSD: number) {
-  return usd === undefined
-    ? `已回到部署預設 ${dollars(defaultUSD)}，新建立的試跑就照這個上限。`
-    : `已改為 ${dollars(usd)}，新建立的試跑就照這個上限。`;
+function resultSentence(credits: number | undefined, defaultCredits: number) {
+  return credits === undefined
+    ? `已回到部署預設 ${points(defaultCredits)}，新建立的試跑就照這個上限。`
+    : `已改為 ${points(credits)}，新建立的試跑就照這個上限。`;
 }
 
 export function RunModelBudget({
@@ -49,13 +49,16 @@ export function RunModelBudget({
   refreshing: boolean;
 }) {
   const set = useRunModelBudget();
-  const [value, setValue] = useState(setting.usd.toFixed(2));
-  const usd = Number(value);
+  const [value, setValue] = useState(String(setting.credits));
+  const credits = Number(value);
   const valid =
-    value.trim() !== "" && Number.isFinite(usd) && usd >= setting.min_usd && usd <= setting.max_usd;
-  const clearing = set.variables !== undefined && set.variables.usd === undefined;
-  const expected = set.variables?.usd ?? setting.default_usd;
-  const unverified = set.isSuccess && (!readable || setting.usd !== expected);
+    value.trim() !== "" &&
+    Number.isInteger(credits) &&
+    credits >= setting.min_credits &&
+    credits <= setting.max_credits;
+  const clearing = set.variables !== undefined && set.variables.credits === undefined;
+  const expected = set.variables?.credits ?? setting.default_credits;
+  const unverified = set.isSuccess && (!readable || setting.credits !== expected);
   return (
     <section
       className="admin-settings-policy"
@@ -77,18 +80,18 @@ export function RunModelBudget({
               error={clearing ? null : set.error}
               ready={valid}
               contextKey={value}
-              onSubmit={(note) => valid && set.mutate({ usd, note })}
+              onSubmit={(note) => valid && set.mutate({ credits, note })}
             >
               <div className="field">
                 <label htmlFor="admin-settings-run-budget-value">
-                  美元（{dollars(setting.min_usd)}–{dollars(setting.max_usd)}）
+                  點數（{setting.min_credits}–{setting.max_credits}）
                 </label>
                 <input
                   id="admin-settings-run-budget-value"
                   type="number"
-                  min={setting.min_usd}
-                  max={setting.max_usd}
-                  step={0.01}
+                  min={setting.min_credits}
+                  max={setting.max_credits}
+                  step={1}
                   value={value}
                   onChange={(event) => setValue(event.target.value)}
                   readOnly={set.isPending}
@@ -98,7 +101,7 @@ export function RunModelBudget({
             {setting.reason && (
               <ActionForm
                 id="admin-settings-run-budget-clear"
-                submitLabel={`回到部署預設 ${dollars(setting.default_usd)}`}
+                submitLabel={`回到部署預設 ${points(setting.default_credits)}`}
                 pending={set.isPending}
                 error={clearing ? set.error : null}
                 onSubmit={(note) => set.mutate({ note })}
@@ -111,7 +114,7 @@ export function RunModelBudget({
         <SettingsResult id="admin-settings-run-budget-result" verified={!unverified}>
           {unverified
             ? "花費上限變更請求已完成；目前設定尚未確認，請重新整理。"
-            : resultSentence(set.variables.usd, setting.default_usd)}
+            : resultSentence(set.variables.credits, setting.default_credits)}
         </SettingsResult>
       )}
       {unverified && readable && (
@@ -120,7 +123,7 @@ export function RunModelBudget({
           disabled={refreshing}
           aria-describedby="admin-settings-run-budget-result"
           onClick={() => {
-            setValue(setting.usd.toFixed(2));
+            setValue(String(setting.credits));
             set.reset();
             document.getElementById("admin-settings-run-budget-heading")?.focus();
           }}

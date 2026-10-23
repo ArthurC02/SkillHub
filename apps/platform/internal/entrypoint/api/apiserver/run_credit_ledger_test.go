@@ -13,7 +13,9 @@ type runCreditLedger struct {
 	settle func(context.Context, pgx.Tx, run.RunSettlement) error
 }
 
-func (runCreditLedger) CreditsForUSD(float64) (int64, bool) { return 0, false }
+func (runCreditLedger) CreditsForUSD(float64) (int64, bool)    { return 0, false }
+func (runCreditLedger) CreditsWithinUSD(float64) (int64, bool) { return 0, false }
+func (runCreditLedger) USDForCredits(int64) (float64, bool)    { return 0, false }
 func (runCreditLedger) Reserve(context.Context, pgx.Tx, pgtype.UUID, float64) (bool, error) {
 	return true, nil
 }

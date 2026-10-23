@@ -28,6 +28,18 @@ func modelBudgetOf(t *testing.T, body map[string]any) map[string]any {
 	return budget
 }
 
+func requireTheDeploymentCeilingInItsBand(t *testing.T, operator *client) {
+	t.Helper()
+	code, body := operatorCall(t, operator, http.MethodGet, "/admin/settings/runs", "")
+	b := modelBudgetOf(t, body)
+	if code != http.StatusOK || b["credits"] != float64(650) || b["default_credits"] != float64(650) || b["reason"] != nil {
+		t.Fatalf("default: %d %v, want the deployment's 650 credits that nobody set", code, body)
+	}
+	if b["min_credits"] != float64(65) || b["max_credits"] != float64(6500) {
+		t.Fatalf("band = %v..%v, want 65..6500 credits (0.05 to 5 USD)", b["min_credits"], b["max_credits"])
+	}
+}
+
 func TestAnOperatorSetsTheRunSpendCeilingWithinItsBoundsAndClearsIt(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -35,33 +47,31 @@ func TestAnOperatorSetsTheRunSpendCeilingWithinItsBoundsAndClearsIt(t *testing.T
 	operator := a.login(t, freshName("operator-run-budget"))
 	a.auth.Operators = map[string]bool{operator.userID: true}
 
-	code, body := operatorCall(t, operator, http.MethodGet, "/admin/settings/runs", "")
-	if b := modelBudgetOf(t, body); code != http.StatusOK || b["usd"] != b["default_usd"] || b["usd"] != 0.5 || b["reason"] != nil {
-		t.Fatalf("default: %d %v, want the deployment's 0.50 that nobody set", code, body)
-	}
+	requireTheDeploymentCeilingInItsBand(t, operator)
 
 	refusesEach(t, operator, runBudgetPath, map[string]string{
-		"just under the minimum": `{"usd":0.049,"note":"n"}`,
-		"just over the maximum":  `{"usd":5.01,"note":"n"}`,
-		"no usd":                 `{"note":"n"}`,
-		"a blank note":           `{"usd":1,"note":"  "}`,
-		"usd as words":           `{"usd":"one","note":"n"}`,
+		"just under the minimum": `{"credits":64,"note":"n"}`,
+		"just over the maximum":  `{"credits":6501,"note":"n"}`,
+		"no credits":             `{"note":"n"}`,
+		"a blank note":           `{"credits":650,"note":"  "}`,
+		"credits as words":       `{"credits":"many","note":"n"}`,
+		"a fraction of a credit": `{"credits":65.5,"note":"n"}`,
 	})
 
-	for _, usd := range []float64{0.05, 5} {
-		raw, _ := json.Marshal(map[string]any{"usd": usd, "note": "bounds"})
+	for _, credits := range []float64{65, 6500} {
+		raw, _ := json.Marshal(map[string]any{"credits": credits, "note": "bounds"})
 		code, body := operatorCall(t, operator, http.MethodPut, runBudgetPath, string(raw))
-		if b := modelBudgetOf(t, body); code != http.StatusOK || b["usd"] != usd || b["reason"] != "bounds" {
-			t.Errorf("usd %v: %d %v", usd, code, body)
+		if b := modelBudgetOf(t, body); code != http.StatusOK || b["credits"] != credits || b["reason"] != "bounds" {
+			t.Errorf("credits %v: %d %v", credits, code, body)
 		}
 	}
 
 	if code, answer := operatorCall(t, operator, http.MethodDelete, runBudgetPath, `{"note":" "}`); code != http.StatusBadRequest {
 		t.Errorf("clearing with a blank note: %d %v, want 400", code, answer)
 	}
-	code, body = operatorCall(t, operator, http.MethodDelete, runBudgetPath, `{"note":"back to the deployment value"}`)
-	if b := modelBudgetOf(t, body); code != http.StatusOK || b["usd"] != 0.5 || b["reason"] != nil {
-		t.Errorf("cleared: %d %v, want the deployment's 0.50 again", code, body)
+	code, body := operatorCall(t, operator, http.MethodDelete, runBudgetPath, `{"note":"back to the deployment value"}`)
+	if b := modelBudgetOf(t, body); code != http.StatusOK || b["credits"] != float64(650) || b["reason"] != nil {
+		t.Errorf("cleared: %d %v, want the deployment's 650 credits again", code, body)
 	}
 
 	var n int
@@ -93,7 +103,7 @@ func TestARunReservesAndKeepsTheCeilingInForceWhenItWasCreated(t *testing.T) {
 	if code, body := startRun(); code != http.StatusUnprocessableEntity {
 		t.Fatalf("100 credits against the default 0.50 ceiling: got %d (%+v), want 422", code, body)
 	}
-	if code, body := operatorCall(t, operator, http.MethodPut, runBudgetPath, `{"usd":0.05,"note":"small runs"}`); code != http.StatusOK {
+	if code, body := operatorCall(t, operator, http.MethodPut, runBudgetPath, `{"credits":65,"note":"small runs"}`); code != http.StatusOK {
 		t.Fatalf("lower the ceiling: %d %v", code, body)
 	}
 	if _, view := f.preflight(t); view.Blocked == "credit_balance" {
@@ -103,7 +113,7 @@ func TestARunReservesAndKeepsTheCeilingInForceWhenItWasCreated(t *testing.T) {
 	if code != http.StatusCreated {
 		t.Fatalf("100 credits against a 0.05 ceiling: got %d (%+v), want 201", code, created)
 	}
-	if code, body := operatorCall(t, operator, http.MethodPut, runBudgetPath, `{"usd":2,"note":"bigger runs"}`); code != http.StatusOK {
+	if code, body := operatorCall(t, operator, http.MethodPut, runBudgetPath, `{"credits":2600,"note":"bigger runs"}`); code != http.StatusOK {
 		t.Fatalf("raise the ceiling: %d %v", code, body)
 	}
 

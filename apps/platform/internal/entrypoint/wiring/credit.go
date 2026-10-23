@@ -162,6 +162,14 @@ func (l runCreditLedger) CreditsForUSD(usd float64) (int64, bool) {
 	return l.credits.CreditsForUSD(usd)
 }
 
+func (l runCreditLedger) CreditsWithinUSD(usd float64) (int64, bool) {
+	return l.credits.CreditsWithinUSD(usd)
+}
+
+func (l runCreditLedger) USDForCredits(credits int64) (float64, bool) {
+	return l.credits.USDForCredits(credits)
+}
+
 func (l runCreditLedger) Reserve(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, reservedUSD float64) (bool, error) {
 	userID, err := l.identities.WorkspaceOwnerIn(ctx, tx, workspaceID)
 	if err != nil {

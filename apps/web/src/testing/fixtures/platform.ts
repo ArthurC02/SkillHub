@@ -1232,7 +1232,7 @@ export const ADMIN_SETTINGS = {
 
 export const ADMIN_RUN_SETTINGS = {
   continuation_rounds: { rounds: 3, min: 1, max: 10 },
-  model_budget: { usd: 0.5, default_usd: 0.5, min_usd: 0.05, max_usd: 5 },
+  model_budget: { credits: 650, default_credits: 650, min_credits: 65, max_credits: 6500 },
 } satisfies RunSettings;
 
 export const ADMIN_MODEL_BUDGETS = {

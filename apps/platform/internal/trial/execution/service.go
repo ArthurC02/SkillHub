@@ -153,6 +153,8 @@ type RunSettlement struct {
 
 type CreditLedger interface {
 	CreditsForUSD(float64) (int64, bool)
+	CreditsWithinUSD(float64) (int64, bool)
+	USDForCredits(int64) (float64, bool)
 	Reserve(context.Context, pgx.Tx, pgtype.UUID, float64) (bool, error)
 	Settle(ctx context.Context, tx pgx.Tx, run RunSettlement) error
 	FinalCostRecorded(ctx context.Context, runID pgtype.UUID) (bool, error)

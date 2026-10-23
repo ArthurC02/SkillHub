@@ -20,9 +20,11 @@ import { mapValues } from '../runtime';
  */
 export interface SetRunModelBudgetRequest {
     /**
-     * Outside the range is 400 rather than clamped.
+     * Between the `min_credits` and `max_credits` the settings
+     * report; outside them is 400 rather than clamped.
+     * 
      */
-    usd: number;
+    credits: number;
     /**
      * Why, in the operator's own words. Whitespace does not satisfy it.
      */
@@ -33,7 +35,7 @@ export interface SetRunModelBudgetRequest {
  * Check if a given object implements the SetRunModelBudgetRequest interface.
  */
 export function instanceOfSetRunModelBudgetRequest(value: object): value is SetRunModelBudgetRequest {
-    if (!('usd' in value) || value['usd'] === undefined) return false;
+    if (!('credits' in value) || value['credits'] === undefined) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
     return true;
 }
@@ -48,7 +50,7 @@ export function SetRunModelBudgetRequestFromJSONTyped(json: any, ignoreDiscrimin
     }
     return {
         
-        'usd': json['usd'],
+        'credits': json['credits'],
         'note': json['note'],
     };
 }
@@ -64,7 +66,7 @@ export function SetRunModelBudgetRequestToJSONTyped(value?: SetRunModelBudgetReq
 
     return {
         
-        'usd': value['usd'],
+        'credits': value['credits'],
         'note': value['note'],
     };
 }

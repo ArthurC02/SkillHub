@@ -14,9 +14,10 @@
 
 import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
- * The model spend ceiling of one run. A new run reserves credits for it,
- * its gateway key cannot spend past it, and a reassigned attempt gets
- * what is left of it. Each run keeps the ceiling it was created under.
+ * The model spend ceiling of one run, in credits. A new run reserves
+ * these credits, its gateway key cannot spend past their worth, and a
+ * reassigned attempt gets what is left of it. Each run keeps the ceiling
+ * it was created under.
  * 
  * @export
  * @interface RunSettingsModelBudget
@@ -25,19 +26,19 @@ export interface RunSettingsModelBudget {
     /**
      * The ceiling a run created now gets.
      */
-    usd: number;
+    credits: number;
     /**
      * The deployment's ceiling
      */
-    defaultUsd: number;
+    defaultCredits: number;
     /**
      * 
      */
-    minUsd: number;
+    minCredits: number;
     /**
      * 
      */
-    maxUsd: number;
+    maxCredits: number;
     /**
      * Present while an operator-set ceiling replaces the default.
      */
@@ -56,10 +57,10 @@ export interface RunSettingsModelBudget {
  * Check if a given object implements the RunSettingsModelBudget interface.
  */
 export function instanceOfRunSettingsModelBudget(value: object): value is RunSettingsModelBudget {
-    if (!('usd' in value) || value['usd'] === undefined) return false;
-    if ((!('defaultUsd' in (value as Record<string, any>)) && !('default_usd' in (value as Record<string, any>))) || ((value as Record<string, any>)['defaultUsd'] === undefined && (value as Record<string, any>)['default_usd'] === undefined)) return false;
-    if ((!('minUsd' in (value as Record<string, any>)) && !('min_usd' in (value as Record<string, any>))) || ((value as Record<string, any>)['minUsd'] === undefined && (value as Record<string, any>)['min_usd'] === undefined)) return false;
-    if ((!('maxUsd' in (value as Record<string, any>)) && !('max_usd' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxUsd'] === undefined && (value as Record<string, any>)['max_usd'] === undefined)) return false;
+    if (!('credits' in value) || value['credits'] === undefined) return false;
+    if ((!('defaultCredits' in (value as Record<string, any>)) && !('default_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['defaultCredits'] === undefined && (value as Record<string, any>)['default_credits'] === undefined)) return false;
+    if ((!('minCredits' in (value as Record<string, any>)) && !('min_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['minCredits'] === undefined && (value as Record<string, any>)['min_credits'] === undefined)) return false;
+    if ((!('maxCredits' in (value as Record<string, any>)) && !('max_credits' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxCredits'] === undefined && (value as Record<string, any>)['max_credits'] === undefined)) return false;
     return true;
 }
 
@@ -73,10 +74,10 @@ export function RunSettingsModelBudgetFromJSONTyped(json: any, ignoreDiscriminat
     }
     return {
         
-        'usd': json['usd'],
-        'defaultUsd': json['default_usd'],
-        'minUsd': json['min_usd'],
-        'maxUsd': json['max_usd'],
+        'credits': json['credits'],
+        'defaultCredits': json['default_credits'],
+        'minCredits': json['min_credits'],
+        'maxCredits': json['max_credits'],
         'reason': json['reason'] == null ? undefined : json['reason'],
         'setByUserId': json['set_by_user_id'] == null ? undefined : json['set_by_user_id'],
         'setAt': json['set_at'] == null ? undefined : (parseDateTime(json['set_at'])),
@@ -94,10 +95,10 @@ export function RunSettingsModelBudgetToJSONTyped(value?: RunSettingsModelBudget
 
     return {
         
-        'usd': value['usd'],
-        'default_usd': value['defaultUsd'],
-        'min_usd': value['minUsd'],
-        'max_usd': value['maxUsd'],
+        'credits': value['credits'],
+        'default_credits': value['defaultCredits'],
+        'min_credits': value['minCredits'],
+        'max_credits': value['maxCredits'],
         'reason': value['reason'],
         'set_by_user_id': value['setByUserId'],
         'set_at': value['setAt'] == null ? value['setAt'] : serializeDateTime(value['setAt']),

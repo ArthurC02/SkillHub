@@ -564,10 +564,10 @@ export type RunSettings = {
     set_at?: string;
   };
   model_budget: {
-    usd: number;
-    default_usd: number;
-    min_usd: number;
-    max_usd: number;
+    credits: number;
+    default_credits: number;
+    min_credits: number;
+    max_credits: number;
     reason?: string;
     set_by_user_id?: string;
     set_at?: string;
@@ -594,10 +594,10 @@ export function useContinuationRounds() {
 export function useRunModelBudget() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: { usd?: number; note: string }) =>
+    mutationFn: (body: { credits?: number; note: string }) =>
       apiFetch<RunSettings>(
         "/admin/settings/runs/model-budget",
-        send(body.usd === undefined ? "DELETE" : "PUT", body),
+        send(body.credits === undefined ? "DELETE" : "PUT", body),
       ),
     onSuccess: (settings) => queryClient.setQueryData(queryKeys.admin.runSettings, settings),
   });

@@ -28857,9 +28857,9 @@ func (s *RunResourceLimitsTokenBudget) SetMaxOutputTokens(val int) {
 
 // Ref: #/components/schemas/RunSettings
 type RunSettings struct {
-	// The model spend ceiling of one run. A new run reserves credits for it, its gateway key cannot spend
-	// past it, and a reassigned attempt gets what is left of it. Each run keeps the ceiling it was created
-	// under.
+	// The model spend ceiling of one run, in credits. A new run reserves these credits, its gateway key
+	// cannot spend past their worth, and a reassigned attempt gets what is left of it. Each run keeps the
+	// ceiling it was created under.
 	ModelBudget        RunSettingsModelBudget        `json:"model_budget"`
 	ContinuationRounds RunSettingsContinuationRounds `json:"continuation_rounds"`
 }
@@ -28960,40 +28960,40 @@ func (s *RunSettingsContinuationRounds) SetSetAt(val OptDateTime) {
 	s.SetAt = val
 }
 
-// The model spend ceiling of one run. A new run reserves credits for it, its gateway key cannot spend
-// past it, and a reassigned attempt gets what is left of it. Each run keeps the ceiling it was created
-// under.
+// The model spend ceiling of one run, in credits. A new run reserves these credits, its gateway key
+// cannot spend past their worth, and a reassigned attempt gets what is left of it. Each run keeps the
+// ceiling it was created under.
 type RunSettingsModelBudget struct {
 	// The ceiling a run created now gets.
-	Usd float64 `json:"usd"`
+	Credits int `json:"credits"`
 	// The deployment's ceiling.
-	DefaultUsd float64 `json:"default_usd"`
-	MinUsd     float64 `json:"min_usd"`
-	MaxUsd     float64 `json:"max_usd"`
+	DefaultCredits int `json:"default_credits"`
+	MinCredits     int `json:"min_credits"`
+	MaxCredits     int `json:"max_credits"`
 	// Present while an operator-set ceiling replaces the default.
 	Reason      OptString   `json:"reason"`
 	SetByUserID OptUUID     `json:"set_by_user_id"`
 	SetAt       OptDateTime `json:"set_at"`
 }
 
-// GetUsd returns the value of Usd.
-func (s *RunSettingsModelBudget) GetUsd() float64 {
-	return s.Usd
+// GetCredits returns the value of Credits.
+func (s *RunSettingsModelBudget) GetCredits() int {
+	return s.Credits
 }
 
-// GetDefaultUsd returns the value of DefaultUsd.
-func (s *RunSettingsModelBudget) GetDefaultUsd() float64 {
-	return s.DefaultUsd
+// GetDefaultCredits returns the value of DefaultCredits.
+func (s *RunSettingsModelBudget) GetDefaultCredits() int {
+	return s.DefaultCredits
 }
 
-// GetMinUsd returns the value of MinUsd.
-func (s *RunSettingsModelBudget) GetMinUsd() float64 {
-	return s.MinUsd
+// GetMinCredits returns the value of MinCredits.
+func (s *RunSettingsModelBudget) GetMinCredits() int {
+	return s.MinCredits
 }
 
-// GetMaxUsd returns the value of MaxUsd.
-func (s *RunSettingsModelBudget) GetMaxUsd() float64 {
-	return s.MaxUsd
+// GetMaxCredits returns the value of MaxCredits.
+func (s *RunSettingsModelBudget) GetMaxCredits() int {
+	return s.MaxCredits
 }
 
 // GetReason returns the value of Reason.
@@ -29011,24 +29011,24 @@ func (s *RunSettingsModelBudget) GetSetAt() OptDateTime {
 	return s.SetAt
 }
 
-// SetUsd sets the value of Usd.
-func (s *RunSettingsModelBudget) SetUsd(val float64) {
-	s.Usd = val
+// SetCredits sets the value of Credits.
+func (s *RunSettingsModelBudget) SetCredits(val int) {
+	s.Credits = val
 }
 
-// SetDefaultUsd sets the value of DefaultUsd.
-func (s *RunSettingsModelBudget) SetDefaultUsd(val float64) {
-	s.DefaultUsd = val
+// SetDefaultCredits sets the value of DefaultCredits.
+func (s *RunSettingsModelBudget) SetDefaultCredits(val int) {
+	s.DefaultCredits = val
 }
 
-// SetMinUsd sets the value of MinUsd.
-func (s *RunSettingsModelBudget) SetMinUsd(val float64) {
-	s.MinUsd = val
+// SetMinCredits sets the value of MinCredits.
+func (s *RunSettingsModelBudget) SetMinCredits(val int) {
+	s.MinCredits = val
 }
 
-// SetMaxUsd sets the value of MaxUsd.
-func (s *RunSettingsModelBudget) SetMaxUsd(val float64) {
-	s.MaxUsd = val
+// SetMaxCredits sets the value of MaxCredits.
+func (s *RunSettingsModelBudget) SetMaxCredits(val int) {
+	s.MaxCredits = val
 }
 
 // SetReason sets the value of Reason.
@@ -30604,15 +30604,16 @@ type SetRunModelBudgetNotFound Error
 func (*SetRunModelBudgetNotFound) setRunModelBudgetRes() {}
 
 type SetRunModelBudgetReq struct {
-	// Outside the range is 400 rather than clamped.
-	Usd float64 `json:"usd"`
+	// Between the `min_credits` and `max_credits` the settings report; outside them is 400 rather than
+	// clamped.
+	Credits int `json:"credits"`
 	// Why, in the operator's own words. Whitespace does not satisfy it.
 	Note string `json:"note"`
 }
 
-// GetUsd returns the value of Usd.
-func (s *SetRunModelBudgetReq) GetUsd() float64 {
-	return s.Usd
+// GetCredits returns the value of Credits.
+func (s *SetRunModelBudgetReq) GetCredits() int {
+	return s.Credits
 }
 
 // GetNote returns the value of Note.
@@ -30620,9 +30621,9 @@ func (s *SetRunModelBudgetReq) GetNote() string {
 	return s.Note
 }
 
-// SetUsd sets the value of Usd.
-func (s *SetRunModelBudgetReq) SetUsd(val float64) {
-	s.Usd = val
+// SetCredits sets the value of Credits.
+func (s *SetRunModelBudgetReq) SetCredits(val int) {
+	s.Credits = val
 }
 
 // SetNote sets the value of Note.

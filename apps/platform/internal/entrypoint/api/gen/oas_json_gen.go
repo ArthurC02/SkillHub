@@ -61267,20 +61267,20 @@ func (s *RunSettingsModelBudget) Encode(e *jx.Encoder) {
 // encodeFields encodes fields.
 func (s *RunSettingsModelBudget) encodeFields(e *jx.Encoder) {
 	{
-		e.FieldStart("usd")
-		e.Float64(s.Usd)
+		e.FieldStart("credits")
+		e.Int(s.Credits)
 	}
 	{
-		e.FieldStart("default_usd")
-		e.Float64(s.DefaultUsd)
+		e.FieldStart("default_credits")
+		e.Int(s.DefaultCredits)
 	}
 	{
-		e.FieldStart("min_usd")
-		e.Float64(s.MinUsd)
+		e.FieldStart("min_credits")
+		e.Int(s.MinCredits)
 	}
 	{
-		e.FieldStart("max_usd")
-		e.Float64(s.MaxUsd)
+		e.FieldStart("max_credits")
+		e.Int(s.MaxCredits)
 	}
 	{
 		if s.Reason.Set {
@@ -61303,10 +61303,10 @@ func (s *RunSettingsModelBudget) encodeFields(e *jx.Encoder) {
 }
 
 var jsonFieldsNameOfRunSettingsModelBudget = [7]string{
-	0: "usd",
-	1: "default_usd",
-	2: "min_usd",
-	3: "max_usd",
+	0: "credits",
+	1: "default_credits",
+	2: "min_credits",
+	3: "max_credits",
 	4: "reason",
 	5: "set_by_user_id",
 	6: "set_at",
@@ -61321,53 +61321,53 @@ func (s *RunSettingsModelBudget) Decode(d *jx.Decoder) error {
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
-		case "usd":
+		case "credits":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := d.Float64()
-				s.Usd = float64(v)
+				v, err := d.Int()
+				s.Credits = int(v)
 				if err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"usd\"")
+				return errors.Wrap(err, "decode field \"credits\"")
 			}
-		case "default_usd":
+		case "default_credits":
 			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
-				v, err := d.Float64()
-				s.DefaultUsd = float64(v)
+				v, err := d.Int()
+				s.DefaultCredits = int(v)
 				if err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"default_usd\"")
+				return errors.Wrap(err, "decode field \"default_credits\"")
 			}
-		case "min_usd":
+		case "min_credits":
 			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
-				v, err := d.Float64()
-				s.MinUsd = float64(v)
+				v, err := d.Int()
+				s.MinCredits = int(v)
 				if err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"min_usd\"")
+				return errors.Wrap(err, "decode field \"min_credits\"")
 			}
-		case "max_usd":
+		case "max_credits":
 			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
-				v, err := d.Float64()
-				s.MaxUsd = float64(v)
+				v, err := d.Int()
+				s.MaxCredits = int(v)
 				if err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"max_usd\"")
+				return errors.Wrap(err, "decode field \"max_credits\"")
 			}
 		case "reason":
 			if err := func() error {
@@ -64928,8 +64928,8 @@ func (s *SetRunModelBudgetReq) Encode(e *jx.Encoder) {
 // encodeFields encodes fields.
 func (s *SetRunModelBudgetReq) encodeFields(e *jx.Encoder) {
 	{
-		e.FieldStart("usd")
-		e.Float64(s.Usd)
+		e.FieldStart("credits")
+		e.Int(s.Credits)
 	}
 	{
 		e.FieldStart("note")
@@ -64938,7 +64938,7 @@ func (s *SetRunModelBudgetReq) encodeFields(e *jx.Encoder) {
 }
 
 var jsonFieldsNameOfSetRunModelBudgetReq = [2]string{
-	0: "usd",
+	0: "credits",
 	1: "note",
 }
 
@@ -64951,17 +64951,17 @@ func (s *SetRunModelBudgetReq) Decode(d *jx.Decoder) error {
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
-		case "usd":
+		case "credits":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := d.Float64()
-				s.Usd = float64(v)
+				v, err := d.Int()
+				s.Credits = int(v)
 				if err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"usd\"")
+				return errors.Wrap(err, "decode field \"credits\"")
 			}
 		case "note":
 			requiredBitSet[0] |= 1 << 1

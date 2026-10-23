@@ -2350,7 +2350,7 @@ export interface DefaultApiInterface {
     clearRunModelBudgetRequestOpts(requestParameters: ClearRunModelBudgetOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Operator only. Runs created from now on get `default_usd` again. Clearing a ceiling nobody had set is still answered and still audited. 
+     * Operator only. Runs created from now on get `default_credits` again. Clearing a ceiling nobody had set is still answered and still audited. 
      * @summary Return the run spend ceiling to the deployment default (TEST-005)
      * @param {ClearRunModelBudgetRequest} clearRunModelBudgetRequest 
      * @param {*} [options] Override http request option.
@@ -2360,7 +2360,7 @@ export interface DefaultApiInterface {
     clearRunModelBudgetRaw(requestParameters: ClearRunModelBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>>;
 
     /**
-     * Operator only. Runs created from now on get `default_usd` again. Clearing a ceiling nobody had set is still answered and still audited. 
+     * Operator only. Runs created from now on get `default_credits` again. Clearing a ceiling nobody had set is still answered and still audited. 
      * Return the run spend ceiling to the deployment default (TEST-005)
      */
     clearRunModelBudget(requestParameters: ClearRunModelBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings>;
@@ -6422,7 +6422,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Runs created from now on get `default_usd` again. Clearing a ceiling nobody had set is still answered and still audited. 
+     * Operator only. Runs created from now on get `default_credits` again. Clearing a ceiling nobody had set is still answered and still audited. 
      * Return the run spend ceiling to the deployment default (TEST-005)
      */
     async clearRunModelBudgetRaw(requestParameters: ClearRunModelBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>> {
@@ -6433,7 +6433,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Runs created from now on get `default_usd` again. Clearing a ceiling nobody had set is still answered and still audited. 
+     * Operator only. Runs created from now on get `default_credits` again. Clearing a ceiling nobody had set is still answered and still audited. 
      * Return the run spend ceiling to the deployment default (TEST-005)
      */
     async clearRunModelBudget(requestParameters: ClearRunModelBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings> {

@@ -5380,10 +5380,10 @@ function stubRunSettings(put: { body: unknown; status: number }, read: unknown =
 const OPERATOR_BUDGET = {
   ...RUN_SETTINGS,
   model_budget: {
-    usd: 0.2,
-    default_usd: 0.5,
-    min_usd: 0.05,
-    max_usd: 5,
+    credits: 260,
+    default_credits: 650,
+    min_credits: 65,
+    max_credits: 6500,
     reason: "smaller runs while we measure",
     set_at: "2026-10-20T08:00:00Z",
   },
@@ -5393,20 +5393,20 @@ test("the run spend ceiling shows the deployment default and sends the new ceili
   stubRunSettings({ body: OPERATOR_BUDGET, status: 200 });
   await mountAt("/admin/settings");
   await waitFor(has("每次試跑的模型花費上限"));
-  expect(has("目前：每次試跑最多花 US$0.50 的模型費用（部署預設）")()).toBe(true);
-  expect(has("回到部署預設 US$0.50")()).toBe(false);
+  expect(has("目前：每次試跑最多花 650 點的模型費用（部署預設）")()).toBe(true);
+  expect(has("回到部署預設 650 點")()).toBe(false);
 
-  await type("#admin-settings-run-budget-value", "0.2");
+  await type("#admin-settings-run-budget-value", "260");
   await type("#admin-settings-run-budget-note", "smaller runs while we measure");
   await click(button("改上限"));
-  await waitFor(has("已改為 US$0.20，新建立的試跑就照這個上限。"));
+  await waitFor(has("已改為 260 點，新建立的試跑就照這個上限。"));
 
   expect(calls.find((c) => c.method === "PUT")).toEqual({
     method: "PUT",
     url: "/admin/settings/runs/model-budget",
-    body: { usd: 0.2, note: "smaller runs while we measure" },
+    body: { credits: 260, note: "smaller runs while we measure" },
   });
-  expect(has("目前：每次試跑最多花 US$0.20 的模型費用（部署預設 US$0.50）")()).toBe(true);
+  expect(has("目前：每次試跑最多花 260 點的模型費用（部署預設 650 點）")()).toBe(true);
   expect(has("理由：smaller runs while we measure")()).toBe(true);
 });
 
@@ -5417,10 +5417,11 @@ test("the run spend ceiling input accepts the range edges and refuses just past 
   await type("#admin-settings-run-budget-note", "boundary check");
 
   for (const [value, refused] of [
-    ["0.04", true],
-    ["0.05", false],
-    ["5", false],
-    ["5.01", true],
+    ["64", true],
+    ["65", false],
+    ["6500", false],
+    ["6501", true],
+    ["100.5", true],
     ["", true],
     ["abc", true],
   ] as const) {
@@ -5435,15 +5436,15 @@ test("an operator-set run spend ceiling can be returned to the deployment defaul
   await waitFor(has("理由：smaller runs while we measure"));
 
   await type("#admin-settings-run-budget-clear-note", "measurement finished");
-  await click(button("回到部署預設 US$0.50"));
-  await waitFor(has("已回到部署預設 US$0.50，新建立的試跑就照這個上限。"));
+  await click(button("回到部署預設 650 點"));
+  await waitFor(has("已回到部署預設 650 點，新建立的試跑就照這個上限。"));
 
   expect(calls.find((c) => c.method === "DELETE")).toEqual({
     method: "DELETE",
     url: "/admin/settings/runs/model-budget",
     body: { note: "measurement finished" },
   });
-  expect(has("目前：每次試跑最多花 US$0.50 的模型費用（部署預設）")()).toBe(true);
+  expect(has("目前：每次試跑最多花 650 點的模型費用（部署預設）")()).toBe(true);
 });
 
 test("the answered-rounds setting shows the current value and its range, and sends the new value with its reason", async () => {

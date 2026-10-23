@@ -28,13 +28,13 @@ type continuationRoundsView struct {
 }
 
 type modelBudgetView struct {
-	USD         float64 `json:"usd"`
-	DefaultUSD  float64 `json:"default_usd"`
-	MinUSD      float64 `json:"min_usd"`
-	MaxUSD      float64 `json:"max_usd"`
-	Reason      string  `json:"reason,omitempty"`
-	SetByUserID string  `json:"set_by_user_id,omitempty"`
-	SetAt       string  `json:"set_at,omitempty"`
+	Credits        int64  `json:"credits"`
+	DefaultCredits int64  `json:"default_credits"`
+	MinCredits     int64  `json:"min_credits"`
+	MaxCredits     int64  `json:"max_credits"`
+	Reason         string `json:"reason,omitempty"`
+	SetByUserID    string `json:"set_by_user_id,omitempty"`
+	SetAt          string `json:"set_at,omitempty"`
 }
 
 type runSettingsView struct {
@@ -57,19 +57,24 @@ func (h *SettingsHandler) writeSettings(w http.ResponseWriter, r *http.Request) 
 		httpx.WriteError(w, http.StatusInternalServerError, "settings lookup failed")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, viewOfSettings(settings, budget))
+	priced, ok := viewOfRunBudget(h.Svc.Ledger, budget)
+	if !ok {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "the run spend ceiling cannot be priced in credits")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, viewOfSettings(settings, priced))
 }
 
 func (h *SettingsHandler) SetRunModelBudget(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		USD  *float64 `json:"usd"`
-		Note string   `json:"note"`
+		Credits *int64 `json:"credits"`
+		Note    string `json:"note"`
 	}
 	if !httpx.DecodeJSON(w, r, maxSettingsBodyBytes, &body, "body must be JSON") {
 		return
 	}
-	if body.USD == nil {
-		httpx.WriteError(w, http.StatusBadRequest, "usd is required")
+	if body.Credits == nil {
+		httpx.WriteError(w, http.StatusBadRequest, "credits is required")
 		return
 	}
 	operator, ok := h.Actor(r)
@@ -77,7 +82,7 @@ func (h *SettingsHandler) SetRunModelBudget(w http.ResponseWriter, r *http.Reque
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 		return
 	}
-	_, err := setRunBudget(r.Context(), h.Svc, operator, *body.USD, body.Note)
+	_, err := setRunBudget(r.Context(), h.Svc, operator, *body.Credits, body.Note)
 	h.answerSettingsChange(w, r, err)
 }
 
@@ -102,7 +107,9 @@ func (h *SettingsHandler) answerSettingsChange(w http.ResponseWriter, r *http.Re
 	case errors.Is(err, ErrSettingsReasonRequired):
 		httpx.WriteError(w, http.StatusBadRequest, "note is required and at most 1000 characters")
 	case errors.Is(err, ErrRunBudgetOutOfRange):
-		httpx.WriteError(w, http.StatusBadRequest, "usd must be between 0.05 and 5")
+		httpx.WriteError(w, http.StatusBadRequest, "credits must be within the reported min_credits and max_credits")
+	case errors.Is(err, ErrRunBudgetUnpriced):
+		httpx.WriteError(w, http.StatusServiceUnavailable, "the run spend ceiling cannot be priced in credits")
 	case err != nil:
 		httpx.WriteError(w, http.StatusInternalServerError, "settings update failed")
 	default:
@@ -135,7 +142,7 @@ func (h *SettingsHandler) SetContinuationRounds(w http.ResponseWriter, r *http.R
 	h.answerSettingsChange(w, r, err)
 }
 
-func viewOfSettings(s Settings, budget RunBudgetSetting) runSettingsView {
+func viewOfSettings(s Settings, budget modelBudgetView) runSettingsView {
 	rounds := continuationRoundsView{
 		Rounds: s.ContinuationRounds, Min: MinContinuationRounds, Max: MaxContinuationRounds,
 	}
@@ -146,11 +153,17 @@ func viewOfSettings(s Settings, budget RunBudgetSetting) runSettingsView {
 			rounds.SetByUserID = pgconv.UUIDString(s.SetBy)
 		}
 	}
-	return runSettingsView{ContinuationRounds: rounds, ModelBudget: viewOfRunBudget(budget)}
+	return runSettingsView{ContinuationRounds: rounds, ModelBudget: budget}
 }
 
-func viewOfRunBudget(b RunBudgetSetting) modelBudgetView {
-	view := modelBudgetView{USD: b.USD, DefaultUSD: b.DefaultUSD, MinUSD: MinRunBudgetUSD, MaxUSD: MaxRunBudgetUSD}
+func viewOfRunBudget(l CreditLedger, b RunBudgetSetting) (modelBudgetView, bool) {
+	band, ok := runBudgetBand(l)
+	if !ok {
+		return modelBudgetView{}, false
+	}
+	current, okCurrent := l.CreditsForUSD(b.USD)
+	fallback, okDefault := l.CreditsForUSD(b.DefaultUSD)
+	view := modelBudgetView{Credits: current, DefaultCredits: fallback, MinCredits: band.MinCredits, MaxCredits: band.MaxCredits}
 	if b.Overridden {
 		view.Reason = b.Reason
 		view.SetAt = b.SetAt.UTC().Format(time.RFC3339)
@@ -158,5 +171,5 @@ func viewOfRunBudget(b RunBudgetSetting) modelBudgetView {
 			view.SetByUserID = pgconv.UUIDString(b.SetBy)
 		}
 	}
-	return view
+	return view, okCurrent && okDefault
 }

@@ -100,7 +100,36 @@ const (
 	microsPerUSD    = 1_000_000
 )
 
-var ErrRunBudgetOutOfRange = errors.New("run: the model spend ceiling of a run must be between 0.05 and 5 USD")
+var (
+	ErrRunBudgetOutOfRange = errors.New("run: the model spend ceiling of a run is outside the credits its band allows")
+	ErrRunBudgetUnpriced   = errors.New("run: the model spend ceiling of a run cannot be priced in credits without a credit ledger")
+)
+
+type RunBudgetBand struct{ MinCredits, MaxCredits int64 }
+
+func runBudgetBand(l CreditLedger) (RunBudgetBand, bool) {
+	if l == nil {
+		return RunBudgetBand{}, false
+	}
+	lo, okLo := l.CreditsForUSD(MinRunBudgetUSD)
+	hi, okHi := l.CreditsWithinUSD(MaxRunBudgetUSD)
+	return RunBudgetBand{MinCredits: lo, MaxCredits: hi}, okLo && okHi && lo <= hi
+}
+
+func usdForCeiling(l CreditLedger, credits int64) (float64, error) {
+	band, ok := runBudgetBand(l)
+	if !ok {
+		return 0, ErrRunBudgetUnpriced
+	}
+	if credits < band.MinCredits || credits > band.MaxCredits {
+		return 0, ErrRunBudgetOutOfRange
+	}
+	usd, ok := l.USDForCredits(credits)
+	if !ok {
+		return 0, ErrRunBudgetUnpriced
+	}
+	return math.Min(math.Max(usd, MinRunBudgetUSD), MaxRunBudgetUSD), nil
+}
 
 type RunBudgetSetting struct {
 	USD        float64
@@ -125,14 +154,15 @@ func runBudgetIn(ctx context.Context, q *gen.Queries, d Deployment) (RunBudgetSe
 	return setting, nil
 }
 
-func setRunBudget(ctx context.Context, s *Service, operator pgtype.UUID, usd float64, reason string) (RunBudgetSetting, error) {
+func setRunBudget(ctx context.Context, s *Service, operator pgtype.UUID, credits int64, reason string) (RunBudgetSetting, error) {
 	d := s.Deployment
 	reason, err := settingsReason(reason)
 	if err != nil {
 		return RunBudgetSetting{}, err
 	}
-	if math.IsNaN(usd) || usd < MinRunBudgetUSD || usd > MaxRunBudgetUSD {
-		return RunBudgetSetting{}, ErrRunBudgetOutOfRange
+	usd, err := usdForCeiling(s.Ledger, credits)
+	if err != nil {
+		return RunBudgetSetting{}, err
 	}
 	var updated RunBudgetSetting
 	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {

@@ -3585,13 +3585,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [usd, note]
+              required: [credits, note]
               properties:
-                usd:
-                  type: number
-                  minimum: 0.05
-                  maximum: 5
-                  description: Outside the range is 400 rather than clamped.
+                credits:
+                  type: integer
+                  description: |
+                    Between the `min_credits` and `max_credits` the settings
+                    report; outside them is 400 rather than clamped.
                 note:
                   type: string
                   maxLength: 1000
@@ -3603,7 +3603,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/RunSettings" }
         "400":
-          description: Body is not JSON, `usd` is missing or outside 0.05–5, or `note` is blank or over 1000 characters.
+          description: Body is not JSON, `credits` is missing or outside the reported range, or `note` is blank or over 1000 characters.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3616,7 +3616,7 @@ paths:
       operationId: clearRunModelBudget
       summary: Return the run spend ceiling to the deployment default (TEST-005)
       description: |
-        Operator only. Runs created from now on get `default_usd` again. Clearing
+        Operator only. Runs created from now on get `default_credits` again. Clearing
         a ceiling nobody had set is still answered and still audited.
       requestBody:
         required: true
@@ -7712,16 +7712,17 @@ components:
       properties:
         model_budget:
           type: object
-          required: [usd, default_usd, min_usd, max_usd]
+          required: [credits, default_credits, min_credits, max_credits]
           description: |
-            The model spend ceiling of one run. A new run reserves credits for it,
-            its gateway key cannot spend past it, and a reassigned attempt gets
-            what is left of it. Each run keeps the ceiling it was created under.
+            The model spend ceiling of one run, in credits. A new run reserves
+            these credits, its gateway key cannot spend past their worth, and a
+            reassigned attempt gets what is left of it. Each run keeps the ceiling
+            it was created under.
           properties:
-            usd: { type: number, description: The ceiling a run created now gets. }
-            default_usd: { type: number, description: The deployment's ceiling, which applies when no operator has set one. }
-            min_usd: { type: number }
-            max_usd: { type: number }
+            credits: { type: integer, description: The ceiling a run created now gets. }
+            default_credits: { type: integer, description: The deployment's ceiling, which applies when no operator has set one. }
+            min_credits: { type: integer }
+            max_credits: { type: integer }
             reason: { type: string, description: Present while an operator-set ceiling replaces the default. }
             set_by_user_id: { type: string, format: uuid }
             set_at: { type: string, format: date-time }
