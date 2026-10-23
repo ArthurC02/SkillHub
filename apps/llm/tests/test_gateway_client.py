@@ -147,6 +147,21 @@ def test_a_confirmed_key_is_not_asked_about_again(monkeypatch) -> None:
     assert asked == ["sk-a"]
 
 
+def test_confirmed_keys_are_remembered_only_up_to_the_limit(monkeypatch) -> None:
+    asked = []
+
+    async def check(base_url, key, transport=None):
+        asked.append(key)
+        return True
+
+    monkeypatch.setattr(gateway, "key_has_finite_budget", check)
+    monkeypatch.setattr(gateway, "BUDGETED_KEYS_REMEMBERED", 2)
+    for key in ["sk-a", "sk-b", "sk-a", "sk-c", "sk-a"]:
+        assert asyncio.run(gateway.key_is_budgeted(key)) is True
+    assert len(gateway._budgeted_keys) == 2
+    assert asked == ["sk-a", "sk-b", "sk-c", "sk-a"]
+
+
 def test_a_refused_key_is_asked_about_again(monkeypatch) -> None:
     asked = []
 

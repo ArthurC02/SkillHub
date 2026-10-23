@@ -43,6 +43,7 @@ def gateway() -> tuple[str, str]:
 
 
 KEY_CHECK_TIMEOUT = 5.0
+BUDGETED_KEYS_REMEMBERED = 1024
 _budgeted_keys: set[str] = set()
 
 
@@ -89,6 +90,8 @@ async def key_is_budgeted(key: str) -> bool:
         return True
     if not await key_has_finite_budget(base_url, key):
         return False
+    if len(_budgeted_keys) >= BUDGETED_KEYS_REMEMBERED:
+        _budgeted_keys.clear()
     _budgeted_keys.add(fingerprint)
     return True
 
