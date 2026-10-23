@@ -65,7 +65,7 @@ It offers no command that writes; candidates and Change Packages stay on the com
 | --- | --- |
 | Know what this repository has | `readiness --repo-root <repo> [--registry-root <root>]`; `extract` means code exists and the Registry holds no record yet |
 | Start a Domain Memory | `init-domain-memory`, which records the destination, sources and policy choices a Registry needs |
-| Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`; before changing a record, `dependents --asset <asset> --id <id>` lists what else it may touch |
+| Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`; before changing a record, `dependents --asset <asset> --id <id>` lists what else it may touch; before reading or writing a table, `describe-table --migrations <dir> --table <name>` gives its meaning, allowed values, constraints, relations and the records that mention it |
 | Review a branch for what it does to the model | `brief --base <branch point> --markdown`, or `brief --asset <asset> --id <id>` for one record; [domain-memory-review-change](skills/domain-memory-review-change/SKILL.md) turns the verdict and the attention list into what to ask for |
 | See which boundaries your change touches | `boundary-impact --base <branch point>`; `unknown` means no Context records an `implementation_path` |
 | Catch stale citations before they are committed | `install-pre-commit-hook`, once per clone |

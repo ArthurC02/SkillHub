@@ -28,6 +28,7 @@ from ..gates import quality_gates
 from ..impact import boundary_impact, registered_collaborations
 from ..mcp_server import ServerRoots, serve
 from ..policy import policy_path, query_result_limit
+from ..sql_describe import describe_table
 from ..readiness import readiness_report
 from ..registry import (
     asset_records,
@@ -163,6 +164,21 @@ def handle_get_context(args: argparse.Namespace) -> int:
     if result is None:
         raise ValueError(f"context not found: {args.id}{_did_you_mean(args.id, asset_records(root, 'contexts.json'))}")
     print_json(context_summary(result) if args.summary else result)
+    return 0
+
+
+def handle_describe_table(args: argparse.Namespace) -> int:
+    registry_root = args.registry_root.resolve() if args.registry_root else None
+    result = describe_table(registry_root, args.repo_root.resolve(), args.migrations.resolve(), args.table)
+    print_json(result)
+    missing = result["undescribed_columns"]
+    if missing:
+        print(f"NOTE: {len(missing)} column{'' if len(missing) == 1 else 's'} of {args.table} carr{'ies' if len(missing) == 1 else 'y'} "
+              f"no COMMENT ON, so the files do not say what {'it' if len(missing) == 1 else 'they'} mean{'s' if len(missing) == 1 else ''}: "
+              + ", ".join(missing), file=sys.stderr)
+    if registry_root is None:
+        print("NOTE: without --registry-root the description carries no Registry records; pass it to see the rules and "
+              "aggregates that mention the table.", file=sys.stderr)
     return 0
 
 
@@ -377,6 +393,7 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "get-context": handle_get_context,
     "get-record": handle_get_record,
     "dependents": handle_dependents,
+    "describe-table": handle_describe_table,
     "brief": handle_brief,
     "analyze-boundary": handle_analyze_boundary,
     "boundary-impact": handle_boundary_impact,

@@ -25,6 +25,7 @@ CREATE_INDEX = re.compile(
 CREATE_TRIGGER = re.compile(
     rf"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?TRIGGER\s+({IDENT})\s.*?\bON\s+({IDENT})", re.I | re.S)
 COMMENT_ON = re.compile(rf"^\s*COMMENT\s+ON\s+(TABLE|COLUMN)\s+({IDENT})(?:\.({IDENT}))?\s+IS\s+", re.I)
+COMMENT_TEXT = re.compile(r"\bIS\s+'((?:[^']|'')*)'", re.I | re.S)
 CREATE_TYPE = re.compile(rf"^\s*CREATE\s+(TYPE|DOMAIN)\s+({IDENT})", re.I)
 DROP_CONSTRAINT = re.compile(rf"^DROP\s+CONSTRAINT\s+(?:IF\s+EXISTS\s+)?({IDENT})", re.I)
 DROP_INDEX = re.compile(rf"^\s*DROP\s+INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+EXISTS\s+)?({IDENT})", re.I)
@@ -53,6 +54,7 @@ class Table:
     columns: dict[str, dict[str, Any]] = field(default_factory=dict)
     described: bool = False
     partition_of: str | None = None
+    comment: str | None = None
 
 
 @dataclass(frozen=True)
@@ -237,7 +239,7 @@ def _read_table(schema: Schema, file: str, line: int, statement: str, match: re.
         if column is None:
             schema.unparsed.append(f"{file}:{first}: {text[:60]}")
             continue
-        table.columns[column.group(1)] = {"line": first, "described": False}
+        table.columns[column.group(1)] = {"line": first, "described": False, "comment": None}
         _read_column_rules(schema, name, span, text)
 
 
@@ -287,7 +289,7 @@ def _read_alter(schema: Schema, file: str, line: int, statement: str, match: re.
         elif ADD_CONSTRAINT.match(text):
             _read_table_constraint(schema, table, span, text[len("ADD "):].strip())
         elif added:
-            schema.tables[table].columns[added.group(1)] = {"line": line, "described": False}
+            schema.tables[table].columns[added.group(1)] = {"line": line, "described": False, "comment": None}
             _read_column_rules(schema, table, span, text[len("ADD "):].replace("COLUMN ", "", 1).strip())
         elif dropped:
             schema.tables[table].columns.pop(dropped.group(1), None)
@@ -332,14 +334,17 @@ def _read_drop_trigger(schema: Schema, _file: str, _line: int, _statement: str, 
     _undeclare(schema, lambda c: c.kind != "trigger" or (c.table, c.name) != (table, name))
 
 
-def _read_comment(schema: Schema, file: str, line: int, _statement: str, match: re.Match[str]) -> None:
+def _read_comment(schema: Schema, file: str, line: int, statement: str, match: re.Match[str]) -> None:
     table = schema.tables.get(match.group(2))
+    quoted = COMMENT_TEXT.search(strip_comments(statement))
+    text = one_line(quoted.group(1).replace("''", "'")) if quoted else ""
     if table is None:
         schema.unparsed.append(f"{file}:{line}: COMMENT ON unknown table {match.group(2)}")
     elif match.group(1).upper() == "TABLE":
         table.described = True
+        table.comment = text
     elif match.group(3) in table.columns:
-        table.columns[match.group(3)]["described"] = True
+        table.columns[match.group(3)].update(described=True, comment=text)
 
 
 def _read_type(schema: Schema, _file: str, _line: int, _statement: str, match: re.Match[str]) -> None:

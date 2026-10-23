@@ -23,7 +23,7 @@ SINGULAR_ASSETS = {
 }
 COMMAND_GROUPS = {
     "everyday": (
-        "readiness", "probe", "lookup", "resolve-terms", "get-context", "get-record", "dependents", "brief",
+        "readiness", "probe", "lookup", "resolve-terms", "get-context", "get-record", "dependents", "describe-table", "brief",
         "analyze-boundary", "boundary-impact", "validate", "coverage", "verify-evidence", "verify-sources",
         "verify-audit", "reconcile-audit", "refresh-indexes", "cite", "recite", "relocate-evidence", "upsert-candidate", "retract-candidate",
         "promote-candidate", "harvest", "discard-harvest", "init-change-package", "validate-change-package", "submit-proposal",
@@ -158,6 +158,11 @@ def _add_lookup_commands(commands: argparse._SubParsersAction) -> None:
     add_path(dependents_parser, "--registry-root")
     add_asset(dependents_parser)
     dependents_parser.add_argument("--id", required=True)
+    describe_parser = commands.add_parser("describe-table", help="Describe a table from its migrations and the Registry")
+    add_path(describe_parser, "--registry-root", required=False)
+    add_path(describe_parser, "--repo-root")
+    add_path(describe_parser, "--migrations")
+    describe_parser.add_argument("--table", required=True)
     brief_parser = commands.add_parser("brief", help="Brief a change or a record")
     add_path(brief_parser, "--registry-root")
     add_path(brief_parser, "--repo-root")

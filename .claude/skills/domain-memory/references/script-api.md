@@ -94,6 +94,14 @@ Produces the digest-backed citation object a record's `evidence` requires; `--fu
 
 Returns the exact stored record or fails, naming up to three ids that start with or resemble the one given. A reviewed rule or contract also carries `proven_by`, read from `--changes-root` or, without it, the Registry's own `changes/` directory when there is one: each test obligation whose source or `also_covers` names it, from the most recent Change Package that reviewed it with such an obligation, so a later re-citation, which carries none, does not hide the proof (a NOTE names it), with the obligation's `check` and the `working_directory` its passing run was recorded in (`.` for the repository root). A NOTE says when the record was not reviewed through a package, or when that package is not under the directory, so the proof is unknown rather than absent.
 
+### `describe-table`
+
+*Describe a table from its migrations and the Registry.*
+
+`describe-table --repo-root <repo> --migrations <dir> --table <name> [--registry-root <root>]`
+
+Read-only. One document about one table, for the agent about to read or write it, built from the migrations as the database would apply them and from the Registry: the table's `meaning` (its `COMMENT ON TABLE`), where it is declared, each column with its line, its `meaning` (its `COMMENT ON COLUMN`, null when none) and its `allowed_values` when a CHECK is exactly a list of them (a conditional CHECK that mentions some values is not that list), the constraints and unique indexes still in force with their text and lines, the tables it `references` and is `referenced_by`, its `partitions`, and under `registry` every record of any asset that names the table or cites its declaring lines, with the record's status and one line of summary, so a draft is told from a reviewed fact. `undescribed_columns` lists the columns whose meaning the files do not state, and a NOTE names them; without `--registry-root` a NOTE says the Registry part is absent. An unknown table is refused with the closest names. It never connects to a database, and a dropped table or a partition is not described on its own.
+
 ### `brief`
 
 *Brief a change or a record.*
