@@ -223,6 +223,104 @@ class RewrittenTableDescribeTest(RegistryTestCase):
             [(column["name"], column["default"], column["at"]) for column in described["columns"] if column["name"] in ("enabled", "both_cols", "extra")],
         )
         self.assertNotIn("legacy", [column["name"] for column in described["columns"]])
+        self.assertEqual(
+            [("foreign", "child_parent_id_fkey"), ("check", "child_legacy_check"), ("check", "child_check1"),
+             ("unique-index", "child_legacy_key"), ("unique", "child_ws_name_key")],
+            [(gone.kind, gone.name) for gone in read_schema(self.migrations, self.repo).retired if gone.table == "child"],
+        )
+        self.assertEqual({"db/migrations/0002_rewrite.sql:1"}, {gone.replaced_at for gone in read_schema(self.migrations, self.repo).retired})
+
+WIDENED = """ALTER TABLE orders DROP CONSTRAINT orders_state_check,
+    ADD CONSTRAINT orders_state_check CHECK (state IN ('open', 'paid', 'it''s odd', 'void'));
+"""
+FENCE = """DO $$ BEGIN
+    EXECUTE format('CREATE TRIGGER fence BEFORE INSERT ON %I FOR EACH ROW EXECUTE FUNCTION guard()', 'users');
+END $$;
+CREATE TABLE loose (id uuid PRIMARY KEY, mode text, updated_at timestamptz);
+"""
+TIDY = """CREATE TABLE tidy (id uuid PRIMARY KEY, state text NOT NULL CHECK (state IN ('on', 'off')), owner uuid REFERENCES users (id) ON DELETE CASCADE);
+COMMENT ON TABLE tidy IS 'one switch per owner';
+COMMENT ON COLUMN tidy.id IS 'the switch';
+COMMENT ON COLUMN tidy.state IS 'on while lit; off otherwise';
+COMMENT ON COLUMN tidy.owner IS 'who flips it';
+"""
+ORDERS_GAPS = [
+    "the comment on state does not say what these values mean: it's odd",
+    "column buyer_id has no COMMENT ON saying what it means",
+    "column note has no COMMENT ON saying what it means",
+    "column kind has no COMMENT ON saying what it means",
+    "column source has no COMMENT ON saying what it means",
+    "column mood has no COMMENT ON saying what it means",
+    "column mood lists its values without deciding NULL; make it NOT NULL, or write CHECK (mood IS NULL OR mood IN (...)) "
+    "or CHECK (mood IS NOT NULL AND mood IN (...))",
+    "column mood_check has no COMMENT ON saying what it means",
+    "column mood_check lists its values without deciding NULL; make it NOT NULL, or write CHECK (mood_check IS NULL OR "
+    "mood_check IN (...)) or CHECK (mood_check IS NOT NULL AND mood_check IN (...))",
+    "column only_one has no COMMENT ON saying what it means",
+    "column strict has no COMMENT ON saying what it means",
+    "foreign key orders_buyer_id_fkey to users does not say ON DELETE; choose CASCADE, RESTRICT, SET NULL or NO ACTION",
+]
+
+
+class CompletenessDescribeTest(RegistryTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.migrations = self.repo / "db" / "migrations"
+        self.migrations.mkdir(parents=True)
+        (self.migrations / "0001_init.sql").write_text(MIGRATION, encoding="utf-8")
+        self.common = ("describe-table", "--repo-root", str(self.repo), "--migrations", str(self.migrations))
+
+    def describe(self, table: str, registry: bool = False) -> dict:
+        return describe_table(self.repo / "memory" if registry else None, self.repo, self.migrations, table)
+
+    def test_a_record_citing_a_constraint_a_later_migration_replaced_is_flagged_and_noted(self) -> None:
+        (self.migrations / "0002_widen.sql").write_text(WIDENED, encoding="utf-8")
+        self.seed("rules.json", [
+            {"id": "old-list", "contexts": ["sales"], "statement": "A state is open or paid.", "status": "draft",
+             "evidence": [citation(self.repo, "db/migrations/0001_init.sql", 3, 3)]},
+            {"id": "new-list", "contexts": ["sales"], "statement": "A state may be void.", "status": "draft",
+             "evidence": [citation(self.repo, "db/migrations/0002_widen.sql", 1, 2)]},
+        ])
+        self.assertEqual(
+            [("new-list", None), ("old-list", {"kind": "check", "name": "orders_state_check", "at": "db/migrations/0001_init.sql:3",
+                                               "replaced_at": "db/migrations/0002_widen.sql:1"})],
+            [(mention["id"], mention["cites_replaced"]) for mention in self.describe("orders", registry=True)["registry"]],
+        )
+        result = self.run_cli(*self.common, "--table", "orders", "--registry-root", str(self.repo / "memory"))
+        self.assertIn("NOTE: 1 Registry record cites a constraint a later migration replaced; the constraints listed above are the "
+                      "ones in force: old-list", result.stderr)
+
+    def test_gaps_name_missing_meanings_undecided_nulls_unexplained_values_silent_deletes_and_run_time_ddl(self) -> None:
+        (self.migrations / "0002_fence.sql").write_text(FENCE, encoding="utf-8")
+        orders, users = self.describe("orders"), self.describe("users")
+        self.assertEqual((ORDERS_GAPS, []), (orders["gaps"], orders["dynamic_ddl"]))
+        self.assertEqual(
+            (["the table has no COMMENT ON saying what one row is",
+              "the statement at db/migrations/0002_fence.sql:1 builds DDL at run time and names users; the files cannot show what it "
+              "creates, so write a static statement per table"],
+             [{"at": "db/migrations/0002_fence.sql:1", "statement": "EXECUTE format('CREATE TRIGGER fence BEFORE INSERT ON %I FOR EACH "
+                                                                      "ROW EXECUTE FUNCTION guard()', 'users'); END $$"}]),
+            (users["gaps"], users["dynamic_ddl"]),
+        )
+        self.assertEqual(
+            ["the table has no COMMENT ON saying what one row is", "column mode has no COMMENT ON saying what it means",
+             "status-like column mode has no value list; add CHECK (mode IN (...)) or an enum type"],
+            self.describe("loose")["gaps"],
+        )
+        result = self.run_cli(*self.common, "--table", "users")
+        self.assertIn("NOTE: 1 statement builds DDL at run time naming users, which the description cannot show: "
+                      "db/migrations/0002_fence.sql:1", result.stderr)
+
+    def test_require_complete_fails_on_a_table_with_gaps_and_passes_a_fully_described_one(self) -> None:
+        (self.migrations / "0002_tidy.sql").write_text(TIDY, encoding="utf-8")
+        refused = self.run_cli(*self.common, "--table", "orders", "--require-complete")
+        lenient = self.run_cli(*self.common, "--table", "orders")
+        tidy = self.run_cli(*self.common, "--table", "tidy", "--require-complete")
+        self.assertEqual((1, 12, 0, 0, []), (refused.returncode, len(json.loads(refused.stdout)["gaps"]), lenient.returncode,
+                                             tidy.returncode, json.loads(tidy.stdout)["gaps"]))
+        self.assertIn("NOTE: orders is not complete: 12 gaps listed under gaps; the change is not done until they are closed",
+                      refused.stderr)
+        self.assertNotIn("not complete", lenient.stderr + tidy.stderr)
 
 
 if __name__ == "__main__":

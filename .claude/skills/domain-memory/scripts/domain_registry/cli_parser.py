@@ -163,6 +163,7 @@ def _add_lookup_commands(commands: argparse._SubParsersAction) -> None:
     add_path(describe_parser, "--repo-root")
     add_path(describe_parser, "--migrations")
     describe_parser.add_argument("--table", required=True)
+    describe_parser.add_argument("--require-complete", action="store_true")
     brief_parser = commands.add_parser("brief", help="Brief a change or a record")
     add_path(brief_parser, "--registry-root")
     add_path(brief_parser, "--repo-root")

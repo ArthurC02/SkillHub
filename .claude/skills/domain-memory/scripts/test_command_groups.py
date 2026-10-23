@@ -196,7 +196,7 @@ class PagesTest(unittest.TestCase):
 
     def test_the_code_rules_read_the_same_on_the_entry_and_the_hygiene_page(self) -> None:
         entry = code_rules(PLUGIN / "AGENTS.md")
-        self.assertEqual((6, entry), (len(entry), code_rules(PLUGIN / "skills/domain-memory-implementation-hygiene/SKILL.md")))
+        self.assertEqual((7, entry), (len(entry), code_rules(PLUGIN / "skills/domain-memory-implementation-hygiene/SKILL.md")))
 
 
 if __name__ == "__main__":

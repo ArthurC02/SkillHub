@@ -169,17 +169,40 @@ def handle_get_context(args: argparse.Namespace) -> int:
 
 def handle_describe_table(args: argparse.Namespace) -> int:
     registry_root = args.registry_root.resolve() if args.registry_root else None
-    result = describe_table(registry_root, args.repo_root.resolve(), args.migrations.resolve(), args.table.strip())
+    table = args.table.strip()
+    result = describe_table(registry_root, args.repo_root.resolve(), args.migrations.resolve(), table)
     print_json(result)
+    for note in _describe_notes(result, table, without_registry=registry_root is None, require_complete=args.require_complete):
+        print(f"NOTE: {note}", file=sys.stderr)
+    return 1 if args.require_complete and result["gaps"] else 0
+
+
+def _describe_notes(result: dict, table: str, *, without_registry: bool, require_complete: bool) -> list[str]:
+    notes = []
+    dynamic = result["dynamic_ddl"]
+    if dynamic:
+        notes.append(f"{len(dynamic)} statement{_s(dynamic)} build{'s' if len(dynamic) == 1 else ''} DDL at run time naming {table}, "
+                     "which the description cannot show: " + ", ".join(statement["at"] for statement in dynamic))
     missing = result["undescribed_columns"]
     if missing:
-        print(f"NOTE: {len(missing)} column{'' if len(missing) == 1 else 's'} of {args.table} carr{'ies' if len(missing) == 1 else 'y'} "
-              f"no COMMENT ON, so the files do not say what {'it' if len(missing) == 1 else 'they'} mean{'s' if len(missing) == 1 else ''}: "
-              + ", ".join(missing), file=sys.stderr)
-    if registry_root is None:
-        print("NOTE: without --registry-root the description carries no Registry records; pass it to see the rules and "
-              "aggregates that mention the table.", file=sys.stderr)
-    return 0
+        carries, they, mean = ("carries", "it", "means") if len(missing) == 1 else ("carry", "they", "mean")
+        notes.append(f"{len(missing)} column{_s(missing)} of {table} {carries} no COMMENT ON, so the files do not say what {they} {mean}: "
+                     + ", ".join(missing))
+    replaced = [mention["id"] for mention in result["registry"] if mention["cites_replaced"]]
+    if replaced:
+        notes.append(f"{len(replaced)} Registry record{_s(replaced)} cite{'s' if len(replaced) == 1 else ''} a constraint a later "
+                     f"migration replaced; the constraints listed above are the ones in force: " + ", ".join(replaced))
+    if without_registry:
+        notes.append("without --registry-root the description carries no Registry records; pass it to see the rules and "
+                     "aggregates that mention the table.")
+    if require_complete and result["gaps"]:
+        notes.append(f"{table} is not complete: {len(result['gaps'])} gap{_s(result['gaps'])} listed under gaps; "
+                     "the change is not done until they are closed")
+    return notes
+
+
+def _s(items: list) -> str:
+    return "" if len(items) == 1 else "s"
 
 
 def handle_get_record(args: argparse.Namespace) -> int:

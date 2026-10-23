@@ -73,5 +73,6 @@ def extract_sql_rules(
         "extracted": written(), "created": result.created, "updated": len(written()) - result.created,
         "skipped_reviewed": result.skipped_reviewed, "skipped_duplicate": result.skipped_duplicate,
         "unplaced_tables": sorted(unplaced), "unread_statements": schema.unparsed,
+        "dynamic_ddl": [f"{statement.file}:{statement.line}: {statement.text}" for statement in schema.dynamic],
         "outside_sources": sorted(set(result.outside)),
     }

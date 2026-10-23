@@ -2,6 +2,14 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.7.0
+
+### Added
+
+- `describe-table` lists `gaps`, what keeps a table from being complete: a table or column without a `COMMENT ON` (`id`, `created_at` and `updated_at` need none), a status-like column without a value list, a value list on a nullable column whose CHECK decides nothing about NULL (a bare `IN (...)` lets NULL through), a listed value the column's or type's comment does not explain, a foreign key without `ON DELETE`, and run-time DDL naming the table. `--require-complete` exits 1 while gaps remain, so an agent adding or altering a table has a check to pass rather than prose to remember; the implementation-hygiene skill and AGENTS.md name it as the seventh condition of a source change.
+- A Registry record whose evidence cites a constraint, key, unique index or trigger that a later migration dropped or replaced is marked `cites_replaced` in `describe-table`, with the constraint and the migration that retired it, and a NOTE names such records; the reader keeps every retired declaration with the statement that retired it.
+- A `DO` block or function body that executes DDL built at run time is recorded: `describe-table` lists it under `dynamic_ddl` for each table it names and counts it as a gap, and `extract-sql-schema` lists it under `dynamic_ddl` with a NOTE, so a description is never silently incomplete.
+
 ## 2.6.0
 
 ### Added

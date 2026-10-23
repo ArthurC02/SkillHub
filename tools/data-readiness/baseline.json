@@ -9,7 +9,8 @@
     "foreign_keys": 129,
     "types": 2,
     "registry_records": 752,
-    "unparsed_statements": 0
+    "unparsed_statements": 0,
+    "dynamic_ddl_statements": 1
   },
   "metrics": {
     "meaning.tables_described": {

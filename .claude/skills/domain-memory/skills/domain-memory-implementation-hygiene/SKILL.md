@@ -11,7 +11,7 @@ The repository's automation owns formatting and every numeric limit. This check 
 
 ## When you are the one writing the code
 
-The commands are run as `<python> <path>/scripts/registry_tools.py <command>`; [AGENTS.md](../../AGENTS.md) has the runtime. These six hold for every change to source:
+The commands are run as `<python> <path>/scripts/registry_tools.py <command>`; [AGENTS.md](../../AGENTS.md) has the runtime. These seven hold for every change to source:
 
 1. Run `quality-gates --repo-root <repo>`. The checks it lists must pass, and a check met by a change of form alone is not met: when one forces a change, remove the cause it points at. A flag kept as a keyword argument or a default is a change of form; when it chooses between kinds the domain names, including a kind the handoff says is coming, name that concept in this change. When `standard` is `none`, say so in your report and claim no standard the repository does not enforce.
 2. Search for what already exists, and use it or extend it.
@@ -19,6 +19,7 @@ The commands are run as `<python> <path>/scripts/registry_tools.py <command>`; [
 4. Every rule you add or move ends with a test in the repository that fails when the rule is broken. Prove it with `counterfactual`, once for each rule: `survived` means no test protects that rule, so write the test and run it again. A comparison you run once and discard does not count. Report each rule that survived before you wrote its test.
 5. An external system goes behind a Port named in the domain's terms and declared where a decision can reach it without loading the provider. Address, credentials, and status codes stay in the Adapter. A failure the domain survives is handed to the caller or recorded, never dropped.
 6. A mechanical change gets the change, the tests, and a short report.
+7. A migration that creates or alters a table is done when `describe-table --repo-root <repo> --migrations <dir> --table <name> --require-complete` exits 0: the table and every column but `id`, `created_at` and `updated_at` say what they mean in a `COMMENT ON`; a status-like column lists its values in a CHECK or an enum and decides whether NULL is allowed (`NOT NULL`, or `col IS NULL OR` / `col IS NOT NULL AND` written into the CHECK, because `col IN (...)` alone lets NULL through); the comment explains each listed value; each foreign key states `ON DELETE`; and no `DO` block or function builds the table's DDL at run time. `gaps` lists what is missing.
 
 ## Inputs
 

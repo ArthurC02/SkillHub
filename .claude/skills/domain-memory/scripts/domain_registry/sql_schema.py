@@ -40,6 +40,8 @@ IGNORED_STATEMENT = re.compile(
     r"|DROP\s+(FUNCTION|TYPE|EXTENSION)|ALTER\s+(INDEX|TYPE|SEQUENCE|FUNCTION)"
     r"|LOCK\s+TABLE|GRANT|REVOKE|INSERT|UPDATE|DELETE|SET|SELECT|DO\s+\$|BEGIN|COMMIT)", re.I)
 UNIQUE_INDEX = "unique-index"
+DYNAMIC_DDL = re.compile(r"\bEXECUTE\s+(?!FUNCTION\b|PROCEDURE\b)", re.I)
+DYNAMIC_EXCERPT = 160
 PARENT = re.compile(rf"\bREFERENCES\s+({IDENT})\s*(?:\(([^)]*)\))?", re.I)
 REFERENTIAL_ACTION = r"(CASCADE|RESTRICT|NO\s+ACTION|SET\s+NULL|SET\s+DEFAULT)"
 ON_DELETE = re.compile(rf"\bON\s+DELETE\s+{REFERENTIAL_ACTION}", re.I)
@@ -130,6 +132,25 @@ class Index:
     columns: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class Retired:
+    kind: str
+    table: str
+    name: str
+    file: str
+    line: int
+    end: int
+    replaced_at: str
+
+
+@dataclass(frozen=True)
+class Dynamic:
+    file: str
+    line: int
+    tables: tuple[str, ...]
+    text: str
+
+
 @dataclass
 class Schema:
     tables: dict[str, Table] = field(default_factory=dict)
@@ -137,6 +158,8 @@ class Schema:
     foreign_keys: list[ForeignKey] = field(default_factory=list)
     primary_keys: dict[str, Constraint] = field(default_factory=dict)
     indexes: list[Index] = field(default_factory=list)
+    retired: list[Retired] = field(default_factory=list)
+    dynamic: list[Dynamic] = field(default_factory=list)
     types: list[str] = field(default_factory=list)
     enums: dict[str, list[str]] = field(default_factory=dict)
     type_comments: dict[str, str] = field(default_factory=dict)
@@ -151,12 +174,28 @@ def _declares_the_same(earlier: Constraint, later: Constraint) -> bool:
 
 
 def _declare(schema: Schema, constraint: Constraint) -> None:
-    schema.constraints = [kept for kept in schema.constraints if not _declares_the_same(kept, constraint)]
+    _undeclare(schema, lambda kept: not _declares_the_same(kept, constraint), Span(constraint.file, constraint.line, constraint.end))
     schema.constraints.append(constraint)
 
 
-def _undeclare(schema: Schema, keep: Callable[[Constraint], bool]) -> None:
+def _undeclare(schema: Schema, keep: Callable[[Constraint], bool], at: Span) -> None:
+    _retire(schema, [constraint for constraint in schema.constraints if not keep(constraint)], at)
     schema.constraints = [constraint for constraint in schema.constraints if keep(constraint)]
+
+
+def _retire(schema: Schema, gone: list[Constraint], at: Span) -> None:
+    schema.retired.extend(Retired(c.kind, c.table, c.name, c.file, c.line, c.end, f"{at.file}:{at.first}") for c in gone)
+
+
+def _drop_keys(schema: Schema, keep: Callable[[ForeignKey], bool], at: Span) -> None:
+    schema.retired.extend(Retired("foreign", key.child, key.name, key.file, key.line, key.line, f"{at.file}:{at.first}")
+                          for key in schema.foreign_keys if not keep(key))
+    schema.foreign_keys = [key for key in schema.foreign_keys if keep(key)]
+
+
+def _drop_primary_key(schema: Schema, table: str, at: Span) -> None:
+    if table in schema.primary_keys:
+        _retire(schema, [schema.primary_keys.pop(table)], at)
 
 
 def _opaque_end(text: str, index: int) -> int | None:
@@ -432,6 +471,7 @@ def _add_primary_key(schema: Schema, declared: Declared, listed: tuple[str, ...]
         if column in columns:
             columns[column].update(not_null=True, primary_key=True)
     name = given or _default_name(schema, declared.table, "", "pkey")
+    _drop_primary_key(schema, declared.table, declared.span)
     schema.primary_keys[declared.table] = Constraint.at("primary", declared, name, listed)
 
 
@@ -475,13 +515,13 @@ def _read_alter_action(schema: Schema, table: str, span: Span, text: str) -> boo
     elif default and default.group(1) in columns:
         columns[default.group(1)]["default"] = one_line(default.group(2)) if default.group(2) else None
     elif dropped_constraint:
-        _drop_constraint(schema, table, dropped_constraint.group(1))
+        _drop_constraint(schema, table, dropped_constraint.group(1), span)
     elif ADD_CONSTRAINT.match(text):
         _read_table_constraint(schema, Declared(table, span, text[len("ADD "):].strip()))
     elif added:
         return _read_column(schema, Declared(table, span, text[added.start(1):]))
     elif dropped:
-        _drop_column(schema, table, dropped.group(1))
+        _drop_column(schema, table, dropped.group(1), span)
     elif renamed:
         _rename_column(schema, table, renamed.group(1), renamed.group(2))
     else:
@@ -504,28 +544,29 @@ def _rename_column(schema: Schema, table: str, old: str, new: str) -> None:
         schema.primary_keys[table] = replace(schema.primary_keys[table], columns=renamed(schema.primary_keys[table].columns))
 
 
-def _drop_constraint(schema: Schema, table: str, name: str) -> None:
-    _undeclare(schema, lambda c: c.kind in ("trigger", UNIQUE_INDEX) or (c.table, c.name) != (table, name))
-    schema.foreign_keys = [key for key in schema.foreign_keys if (key.child, key.name) != (table, name)]
+def _drop_constraint(schema: Schema, table: str, name: str, at: Span) -> None:
+    _undeclare(schema, lambda c: c.kind in ("trigger", UNIQUE_INDEX) or (c.table, c.name) != (table, name), at)
+    _drop_keys(schema, lambda key: (key.child, key.name) != (table, name), at)
     if table in schema.primary_keys and schema.primary_keys[table].name == name:
-        del schema.primary_keys[table]
+        _drop_primary_key(schema, table, at)
 
 
-def _drop_column(schema: Schema, table: str, column: str) -> None:
+def _drop_column(schema: Schema, table: str, column: str, at: Span) -> None:
     schema.tables[table].columns.pop(column, None)
-    _undeclare(schema, lambda c: c.kind == "trigger" or c.table != table or column not in c.columns)
-    schema.foreign_keys = [key for key in schema.foreign_keys if key.child != table or column not in key.columns]
+    _undeclare(schema, lambda c: c.kind == "trigger" or c.table != table or column not in c.columns, at)
+    _drop_keys(schema, lambda key: key.child != table or column not in key.columns, at)
     schema.indexes = [index for index in schema.indexes if index.table != table or column not in index.columns]
     if table in schema.primary_keys and column in schema.primary_keys[table].columns:
-        del schema.primary_keys[table]
+        _drop_primary_key(schema, table, at)
 
 
-def _read_drop(schema: Schema, _file: str, _line: int, _statement: str, match: re.Match[str]) -> None:
+def _read_drop(schema: Schema, file: str, line: int, _statement: str, match: re.Match[str]) -> None:
     table = match.group(1)
+    at = Span(file, line, line)
     schema.tables.pop(table, None)
-    schema.primary_keys.pop(table, None)
-    _undeclare(schema, lambda c: c.table != table)
-    schema.foreign_keys = [key for key in schema.foreign_keys if table not in (key.child, key.parent)]
+    _drop_primary_key(schema, table, at)
+    _undeclare(schema, lambda c: c.table != table, at)
+    _drop_keys(schema, lambda key: table not in (key.child, key.parent), at)
     schema.indexes = [index for index in schema.indexes if index.table != table]
 
 
@@ -535,9 +576,10 @@ def _read_index(schema: Schema, file: str, line: int, statement: str, match: re.
     columns = _columns_named_in(definition, schema.tables[table].columns if table in schema.tables else {})
     schema.indexes = [index for index in schema.indexes if index.name != name]
     schema.indexes.append(Index(name, table, file, line, unique, definition, columns))
-    _undeclare(schema, lambda c: c.kind != UNIQUE_INDEX or c.name != name)
+    span = Span(file, line, line + statement.count("\n"))
+    _undeclare(schema, lambda c: c.kind != UNIQUE_INDEX or c.name != name, span)
     if unique:
-        _declare(schema, Constraint.at(UNIQUE_INDEX, Declared(table, Span(file, line, line + statement.count("\n")), statement), name, columns))
+        _declare(schema, Constraint.at(UNIQUE_INDEX, Declared(table, span, statement), name, columns))
 
 
 def _read_trigger(schema: Schema, file: str, line: int, statement: str, match: re.Match[str]) -> None:
@@ -545,15 +587,15 @@ def _read_trigger(schema: Schema, file: str, line: int, statement: str, match: r
     _declare(schema, Constraint.at("trigger", declared, match.group(1)))
 
 
-def _read_drop_index(schema: Schema, _file: str, _line: int, _statement: str, match: re.Match[str]) -> None:
+def _read_drop_index(schema: Schema, file: str, line: int, _statement: str, match: re.Match[str]) -> None:
     name = match.group(1)
     schema.indexes = [index for index in schema.indexes if index.name != name]
-    _undeclare(schema, lambda c: c.kind != UNIQUE_INDEX or c.name != name)
+    _undeclare(schema, lambda c: c.kind != UNIQUE_INDEX or c.name != name, Span(file, line, line))
 
 
-def _read_drop_trigger(schema: Schema, _file: str, _line: int, _statement: str, match: re.Match[str]) -> None:
+def _read_drop_trigger(schema: Schema, file: str, line: int, _statement: str, match: re.Match[str]) -> None:
     name, table = match.group(1), match.group(2)
-    _undeclare(schema, lambda c: c.kind != "trigger" or (c.table, c.name) != (table, name))
+    _undeclare(schema, lambda c: c.kind != "trigger" or (c.table, c.name) != (table, name), Span(file, line, line))
 
 
 def _read_comment(schema: Schema, file: str, line: int, statement: str, match: re.Match[str]) -> None:
@@ -605,8 +647,17 @@ def read_statement(schema: Schema, file: str, line: int, statement: str) -> None
         if match:
             reader(schema, file, line, statement, match)
             return
+    if DYNAMIC_DDL.search(head):
+        _read_dynamic(schema, file, line, head)
     if not IGNORED_STATEMENT.match(head):
         schema.unparsed.append(f"{file}:{line}: {head[:60]}")
+
+
+def _read_dynamic(schema: Schema, file: str, line: int, head: str) -> None:
+    named = tuple(dict.fromkeys(literal for literal in STRING_LITERAL.findall(head) if literal in schema.tables))
+    text = one_line(head)
+    start = DYNAMIC_DDL.search(text).start()
+    schema.dynamic.append(Dynamic(file, line, named, text[start:start + DYNAMIC_EXCERPT]))
 
 
 def read_schema(migrations_dir: Path, repo_root: Path) -> Schema:

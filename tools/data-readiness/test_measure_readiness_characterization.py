@@ -47,6 +47,7 @@ ALTER TABLE runs ADD CONSTRAINT runs_token_key UNIQUE (token_hash);
 ALTER TABLE runs ALTER COLUMN state SET DEFAULT 'queued';
 ALTER TABLE ghosts ADD COLUMN x int;
 ALTER TABLE runs FROB everything;
+DO $$ BEGIN EXECUTE format('CREATE TRIGGER f BEFORE INSERT ON %I FOR EACH ROW EXECUTE FUNCTION guard()', 'runs'); END $$;
 """
 
 QUERIES_RUN = """-- name: ListRuns :many
@@ -200,8 +201,16 @@ def test_tables_columns_and_partitions_are_counted_from_create_alter_and_drop():
     assert sorted(inputs.tables["runs"].columns) == ["id", "note", "state", "token_hash", "user_id"]
     assert report["inventory"] == {
         "migrations": 2, "tables": 2, "partitions": 1, "columns": 9, "queries": 5, "constraints": 6,
-        "foreign_keys": 3, "types": 0, "registry_records": 6, "unparsed_statements": 4,
+        "foreign_keys": 3, "types": 0, "registry_records": 6, "unparsed_statements": 4, "dynamic_ddl_statements": 1,
     }
+
+
+def test_run_time_ddl_is_counted_and_named_with_its_file_and_line():
+    _, report = measured()
+    assert report["details"]["dynamic_ddl_statements"] == [
+        "db/migrations/0002_more.sql:6: EXECUTE format('CREATE TRIGGER f BEFORE INSERT ON %I FOR EACH ROW EXECUTE FUNCTION guard()', "
+        "'runs'); END $$",
+    ]
 
 
 def test_every_unread_statement_is_named_with_its_file_and_line():

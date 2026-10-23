@@ -33,6 +33,9 @@ CREATE UNIQUE INDEX orders_code_key ON orders (code) WHERE code IS NOT NULL;
 CREATE TABLE shipments (id uuid PRIMARY KEY, weight integer CHECK (weight > 0));
 CREATE MATERIALIZED VIEW oddity AS SELECT 1;
 CREATE INDEX orders_total_idx ON orders (total);
+DO $$ BEGIN
+    EXECUTE format('CREATE TRIGGER fence BEFORE INSERT ON %I FOR EACH ROW EXECUTE FUNCTION guard()', 'orders');
+END $$;
 """
 
 
@@ -83,6 +86,8 @@ class SqlExtractionTest(RegistryTestCase):
         report = self.extract(default="orders")
         self.assertNotIn("rules/scratch-n-check", report["extracted"])
         self.assertEqual(report["unread_statements"], ["db/migrations/0001_init.sql:14: CREATE MATERIALIZED VIEW oddity AS SELECT 1"])
+        self.assertEqual(report["dynamic_ddl"], ["db/migrations/0001_init.sql:16: EXECUTE format('CREATE TRIGGER fence BEFORE INSERT "
+                                                 "ON %I FOR EACH ROW EXECUTE FUNCTION guard()', 'orders'); END $$"])
 
     def test_extracting_again_updates_the_candidates_and_leaves_a_reviewed_rule_alone(self) -> None:
         self.seed("rules.json", [{
@@ -120,6 +125,7 @@ class SqlExtractionTest(RegistryTestCase):
         self.assertEqual(json.loads(done.stdout)["unplaced_tables"], ["shipments"])
         self.assertIn("NOTE: no Context for the constraints of shipments", done.stderr)
         self.assertIn("NOTE: 1 statement(s) were not read", done.stderr)
+        self.assertIn("NOTE: 1 statement(s) build DDL at run time inside a DO block or function", done.stderr)
         refused = subprocess.run([*base, "--table-context", "orders"], capture_output=True, text=True, env=env, check=False)
         self.assertEqual(refused.returncode, 1)
         self.assertIn("ERROR: --table-context takes TABLE=CONTEXT, got orders", refused.stderr)
@@ -163,6 +169,11 @@ class SqlSchemaTest(unittest.TestCase):
         self.assertEqual(sorted((c.kind, c.name, c.file[-8:], c.line) for c in schema.constraints), [
             ("check", "a_x", "0002.sql", 1), ("trigger", "a_guard", "0002.sql", 6), ("unique-index", "a_x_key", "0002.sql", 4),
         ])
+        self.assertEqual(
+            [("check", "a_x", 1, "m/0002.sql:1"), ("check", "a_y", 1, "m/0002.sql:2"), ("unique-index", "a_x_key", 2, "m/0002.sql:3"),
+             ("trigger", "a_guard", 4, "m/0002.sql:6"), ("trigger", "a_other", 5, "m/0002.sql:7")],
+            [(gone.kind, gone.name, gone.line, gone.replaced_at) for gone in schema.retired],
+        )
 
     def test_constraints_carry_their_first_and_last_line(self) -> None:
         temporary = tempfile.TemporaryDirectory()

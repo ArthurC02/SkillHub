@@ -66,6 +66,7 @@ It offers no command that writes; candidates and Change Packages stay on the com
 | Know what this repository has | `readiness --repo-root <repo> [--registry-root <root>]`; `extract` means code exists and the Registry holds no record yet |
 | Start a Domain Memory | `init-domain-memory`, which records the destination, sources and policy choices a Registry needs |
 | Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`; before changing a record, `dependents --asset <asset> --id <id>` lists what else it may touch; before reading or writing a table, `describe-table --migrations <dir> --table <name>` gives its meaning, allowed values, constraints, relations and the records that mention it |
+| Add or change a table | `describe-table --repo-root <repo> --migrations <dir> --table <name> --require-complete` exits 1 until the table and every column but `id`, `created_at` and `updated_at` carry a `COMMENT ON`, every status-like column lists its values and decides NULL, each listed value is explained, every foreign key states `ON DELETE`, and no `DO` block builds the table's DDL at run time; `gaps` says what is missing |
 | Review a branch for what it does to the model | `brief --base <branch point> --markdown`, or `brief --asset <asset> --id <id>` for one record; [domain-memory-review-change](skills/domain-memory-review-change/SKILL.md) turns the verdict and the attention list into what to ask for |
 | See which boundaries your change touches | `boundary-impact --base <branch point>`; `unknown` means no Context records an `implementation_path` |
 | Catch stale citations before they are committed | `install-pre-commit-hook`, once per clone |
@@ -98,7 +99,7 @@ The two re-cite commands print `registry_updates` and `supersedes` for a Change 
 
 ## When you are the one writing the code
 
-The reviewed facts say what must stay true. These six hold for every change to source, and they are stated here because this page is the one every Agent reads:
+The reviewed facts say what must stay true. These seven hold for every change to source, and they are stated here because this page is the one every Agent reads:
 
 1. Run `quality-gates --repo-root <repo>`. The checks it lists must pass, and a check met by a change of form alone is not met: when one forces a change, remove the cause it points at. A flag kept as a keyword argument or a default is a change of form; when it chooses between kinds the domain names, including a kind the handoff says is coming, name that concept in this change. When `standard` is `none`, say so in your report and claim no standard the repository does not enforce.
 2. Search for what already exists, and use it or extend it.
@@ -106,5 +107,6 @@ The reviewed facts say what must stay true. These six hold for every change to s
 4. Every rule you add or move ends with a test in the repository that fails when the rule is broken. Prove it with `counterfactual`, once for each rule: `survived` means no test protects that rule, so write the test and run it again. A comparison you run once and discard does not count. Report each rule that survived before you wrote its test.
 5. An external system goes behind a Port named in the domain's terms and declared where a decision can reach it without loading the provider. Address, credentials, and status codes stay in the Adapter. A failure the domain survives is handed to the caller or recorded, never dropped.
 6. A mechanical change gets the change, the tests, and a short report.
+7. A migration that creates or alters a table is done when `describe-table --repo-root <repo> --migrations <dir> --table <name> --require-complete` exits 0: the table and every column but `id`, `created_at` and `updated_at` say what they mean in a `COMMENT ON`; a status-like column lists its values in a CHECK or an enum and decides whether NULL is allowed (`NOT NULL`, or `col IS NULL OR` / `col IS NOT NULL AND` written into the CHECK, because `col IN (...)` alone lets NULL through); the comment explains each listed value; each foreign key states `ON DELETE`; and no `DO` block or function builds the table's DDL at run time. `gaps` lists what is missing.
 
 The reasoning, the evidence each claim needs, and the cases where these do not apply are in [references/code-expression.md](references/code-expression.md) and [references/ports-and-adapters.md](references/ports-and-adapters.md).

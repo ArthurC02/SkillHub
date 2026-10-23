@@ -385,10 +385,12 @@ def measure(inputs: Inputs) -> dict[str, Any]:
             "constraints": sum(constraint.table in tables for constraint in inputs.schema.constraints),
             "foreign_keys": len(inputs.schema.foreign_keys), "types": len(inputs.schema.types),
             "registry_records": len(inputs.records), "unparsed_statements": len(inputs.schema.unparsed),
+            "dynamic_ddl_statements": len(inputs.schema.dynamic),
         },
         "metrics": {**meaning, **ownership, **rules, **access, **_consistency_and_provenance(inputs)},
-        "details": {"unparsed_statements": inputs.schema.unparsed, **meaning_details, **ownership_details, **rule_details,
-                    **access_details},
+        "details": {"unparsed_statements": inputs.schema.unparsed,
+                    "dynamic_ddl_statements": [f"{s.file}:{s.line}: {s.text}" for s in inputs.schema.dynamic],
+                    **meaning_details, **ownership_details, **rule_details, **access_details},
     }
 
 

@@ -236,6 +236,9 @@ def handle_extract_sql_schema(args: argparse.Namespace) -> int:
     if report["unread_statements"]:
         print(f"NOTE: {len(report['unread_statements'])} statement(s) were not read, so their constraints are not "
               "extracted; see unread_statements.", file=sys.stderr)
+    if report["dynamic_ddl"]:
+        print(f"NOTE: {len(report['dynamic_ddl'])} statement(s) build DDL at run time inside a DO block or function, which the "
+              "reader cannot see; see dynamic_ddl.", file=sys.stderr)
     if report["outside_sources"]:
         print("NOTE: the extracted rules rest on files the confirmed source map does not cover: "
               + ", ".join(report["outside_sources"]) + ". " + OUTSIDE_SOURCES_CONSEQUENCE, file=sys.stderr)
