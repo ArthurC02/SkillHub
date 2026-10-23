@@ -41,6 +41,43 @@ const fields = [
 
 type Phase = { value: string; invalid: boolean; enabled: boolean; description: string | RegExp };
 
+for (const width of [375, 1280]) {
+  test(`Rubric version validation remains visible when typing near the viewport bottom at ${width}px`, async ({
+    page,
+  }, info) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`/lab/test-cases/${TEST_CASE}`);
+    const input = page.locator("#rubric-version");
+    await input.click();
+    await input.press("ControlOrMeta+A");
+    await input.evaluate((element) =>
+      window.scrollTo({
+        top: scrollY + element.getBoundingClientRect().bottom - innerHeight + 16,
+        behavior: "instant",
+      }),
+    );
+    await page.keyboard.insertText("X".repeat(201));
+    const reason = page.locator("#rubric-version-reason");
+    await expect(input).toHaveValue("X".repeat(201));
+    await expect(reason).toHaveText("Rubric 版本最多 200 個字，目前 201 個字。");
+    await expect(input).toBeFocused();
+    await expect(input).toBeInViewport({ ratio: 1 });
+    await expect(reason).toBeInViewport({ ratio: 1 });
+    await inspect(page, "p:has(#rubric-version)", info, "bottom-overflow");
+    await replaceText(page, input, "");
+    await expect(reason).toContainText("Rubric 版本是空的");
+    await expect(input).toBeFocused();
+    await expect(input).toBeInViewport({ ratio: 1 });
+    await expect(reason).toBeInViewport({ ratio: 1 });
+    await inspect(page, "p:has(#rubric-version)", info, "bottom-empty");
+    await replaceText(page, input, "X".repeat(200));
+    await expect(reason).toHaveCount(0);
+    await expect(input).toBeFocused();
+    await expect(page.getByRole("button", { name: "儲存 Rubric", exact: true })).toBeEnabled();
+  });
+}
+
 async function replaceText(page: Page, input: Locator, value: string) {
   await input.click();
   await input.press("ControlOrMeta+A");
