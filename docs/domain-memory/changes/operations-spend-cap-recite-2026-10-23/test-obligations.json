@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "operations-spend-cap-recite",
+  "proposal_id": "operations-spend-cap-recite-2026-10-23",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/operations-spend-cap-recite-2026-10-23 --path apps/platform/internal/entrypoint/api/apiserver/platform_settings_integration_test.go --path apps/platform/internal/product/operations/agents.go"
+    }
+  ]
+}
