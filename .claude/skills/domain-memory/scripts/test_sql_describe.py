@@ -242,7 +242,10 @@ CREATE TABLE loose (
     role text,
     level text CHECK (level <> ''),
     category text,
-    kind text
+    kind text,
+    grade text CHECK (grade IN ('a', 'b')),
+    rank text CHECK (rank IN ('x', 'y')) CHECK (rank <> 'z'),
+    CHECK ((grade IS NULL) = (updated_at IS NULL))
 );
 COMMENT ON COLUMN loose.step IS 'running: the step is executing; run: it finished.';
 COMMENT ON COLUMN loose.role IS 'free text job title';
@@ -317,7 +320,11 @@ class CompletenessDescribeTest(RegistryTestCase):
              "'free text' or constrain it with another CHECK",
              "column level has no COMMENT ON saying what it means",
              "status-like column category has no value list; add CHECK (category IN (...)) or an enum type, or begin its comment "
-             "with 'free text' or constrain it with another CHECK"],
+             "with 'free text' or constrain it with another CHECK",
+             "column grade has no COMMENT ON saying what it means",
+             "column rank has no COMMENT ON saying what it means",
+             "column rank lists its values without deciding NULL; make it NOT NULL, or write CHECK (rank IS NULL OR rank IN (...)) "
+             "or CHECK (rank IS NOT NULL AND rank IN (...))"],
             self.describe("loose")["gaps"],
         )
         with_run = FENCE.replace("running: the step is executing; run: it finished.", "running: the step is executing.")

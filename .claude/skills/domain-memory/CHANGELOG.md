@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.8.2
+
+### Fixed
+
+- A nullable column whose value list is a bare `IN (...)` is no longer asked to decide NULL when another CHECK on the table already does, such as `CHECK ((cost_usd IS NULL) = (cost_source IS NULL))` or `CHECK (takedown_by IS NULL OR takedown_at IS NOT NULL)`; the decision was written, only in a different constraint.
+- A column declared with two inline CHECKs, such as `qty int CHECK (qty > 0) CHECK (qty < 9)`, gave both constraints the whole declaration as text, so neither body parsed: the value list, the NULL decision and the allowed values went missing. Each check now also carries its own `clause`, which `describe-table` prints and the readers parse.
+
 ## 2.8.1
 
 ### Fixed

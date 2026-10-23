@@ -54,7 +54,7 @@ def _property(column: dict[str, Any], table: str, inputs: mr.Inputs) -> dict[str
 
 
 def _check_quality(table: str, constraint: dict[str, Any]) -> dict[str, Any]:
-    body = CHECK_BODY.search(strip_comments(constraint["text"]))
+    body = CHECK_BODY.search(strip_comments(constraint.get("clause") or constraint["text"]))
     return {
         "type": "sql", "name": constraint["name"], "description": constraint["text"],
         "query": f"SELECT COUNT(*) FROM {table} WHERE NOT ({body.group(1) if body else 'true'})", "mustBe": 0,

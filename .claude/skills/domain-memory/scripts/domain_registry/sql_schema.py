@@ -100,6 +100,7 @@ class Constraint:
     text: str
     columns: tuple[str, ...] = ()
     column: str | None = None
+    clause: str = ""
 
     @classmethod
     def at(cls, kind: str, declared: Declared, name: str, columns: tuple[str, ...] = (), column: str | None = None) -> Constraint:
@@ -457,7 +458,7 @@ def _default_name(schema: Schema, table: str, middle: str, label: str) -> str:
 def _add_check(schema: Schema, declared: Declared, clause: str, given: str | None, column: str | None) -> None:
     involved = _columns_named_in(clause[len("CHECK"):], schema.tables[declared.table].columns)
     name = given or _default_name(schema, declared.table, involved[0] if len(involved) == 1 else "", "check")
-    _declare(schema, Constraint.at("check", declared, name, involved, column))
+    _declare(schema, replace(Constraint.at("check", declared, name, involved, column), clause=one_line(clause)))
 
 
 def _add_unique(schema: Schema, declared: Declared, listed: tuple[str, ...], given: str | None, column: str | None) -> None:

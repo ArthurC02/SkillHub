@@ -102,12 +102,18 @@ def _column(column: str, info: dict[str, Any], constraints: list[Constraint], sc
 
 def value_list(column: str, constraints: list[Constraint], enum_values: list[str] | None = None) -> ValueList | None:
     for constraint in constraints:
-        body = CHECK_BODY.search(strip_comments(constraint.text)) if constraint.kind == "check" else None
+        body = CHECK_BODY.search(strip_comments(constraint.clause or constraint.text)) if constraint.kind == "check" else None
         listed = ONLY_AN_IN_LIST.match(body.group(1)) if body else None
         if listed and listed.group(2) == column and listed.group(1) in (None, column):
             values = [value.replace("''", "'") for value in QUOTED.findall(listed.group(3) or listed.group(4))]
-            return ValueList(values, null_decided=listed.group(1) is not None)
+            decided = listed.group(1) is not None or _null_decided_elsewhere(column, constraints)
+            return ValueList(values, null_decided=decided)
     return ValueList(list(enum_values), null_decided=False) if enum_values else None
+
+
+def _null_decided_elsewhere(column: str, constraints: list[Constraint]) -> bool:
+    names_null = re.compile(rf"\b{re.escape(column)}\s+IS\s+(?:NOT\s+)?NULL\b", re.I)
+    return any(c.kind == "check" and names_null.search(strip_comments(c.clause or c.text)) for c in constraints)
 
 
 def allowed_values(column: str, constraints: list[Constraint], enum_values: list[str] | None = None) -> list[str] | None:
@@ -201,7 +207,7 @@ def _mentions_value(text: str, value: str) -> bool:
 
 def _constraint(constraint: Constraint) -> dict[str, Any]:
     return {"kind": constraint.kind, "name": constraint.name, "text": one_line(constraint.text),
-            "at": f"{constraint.file}:{constraint.line}"}
+            "at": f"{constraint.file}:{constraint.line}", **({"clause": constraint.clause} if constraint.clause else {})}
 
 
 def _foreign_constraint(key: ForeignKey) -> dict[str, Any]:

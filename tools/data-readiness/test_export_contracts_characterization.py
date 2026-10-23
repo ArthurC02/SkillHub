@@ -18,6 +18,7 @@ CREATE TABLE runs (
     state text NOT NULL CHECK (state IN ('queued', 'done')),
     speed lane,
     cost numeric(12, 6),
+    qty int CHECK (qty > 0) CHECK (qty < 9),
     CONSTRAINT runs_cost_positive CHECK (cost IS NULL OR cost >= 0)
 );
 COMMENT ON TABLE runs IS 'one execution';
@@ -67,7 +68,7 @@ def test_a_contract_carries_meaning_types_requirements_values_classification_own
     properties = {p["name"]: p for p in runs["schema"][0]["properties"]}
     assert [(p["name"], p["logicalType"], p["required"], p["primaryKey"]) for p in runs["schema"][0]["properties"]] == [
         ("id", "string", True, True), ("user_id", "string", True, False), ("state", "string", True, False),
-        ("speed", "string", False, False), ("cost", "number", False, False)]
+        ("speed", "string", False, False), ("cost", "number", False, False), ("qty", "integer", False, False)]
     assert properties["state"]["quality"] == [{
         "type": "library", "metric": "invalidValues", "arguments": {"validValues": ["queued", "done"]}, "mustBe": 0,
         "name": "state_valid_values", "description": "state holds one of its listed values"}]
@@ -76,6 +77,8 @@ def test_a_contract_carries_meaning_types_requirements_values_classification_own
     assert "description" not in properties["cost"] and "classification" not in properties["cost"]
     assert [(q["name"], q["query"], q["mustBe"]) for q in runs["schema"][0]["quality"]] == [
         ("runs_state_check", "SELECT COUNT(*) FROM runs WHERE NOT (state IN ('queued', 'done'))", 0),
+        ("runs_qty_check", "SELECT COUNT(*) FROM runs WHERE NOT (qty > 0)", 0),
+        ("runs_qty_check1", "SELECT COUNT(*) FROM runs WHERE NOT (qty < 9)", 0),
         ("runs_cost_positive", "SELECT COUNT(*) FROM runs WHERE NOT (cost IS NULL OR cost >= 0)", 0)]
     assert runs["schema"][0]["relationships"] == [{
         "type": "foreignKey", "from": "runs.user_id", "to": "users.id",
