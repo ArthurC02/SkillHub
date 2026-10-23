@@ -17,6 +17,7 @@ var limitKeywords = []struct{ key, suffix string }{
 	{"maxLength", "MaxLength"},
 	{"maxItems", "MaxItems"},
 	{"x-max-bytes", "MaxBytes"},
+	{"maximum", "Maximum"},
 }
 
 var httpMethods = []string{"get", "put", "post", "delete", "patch"}

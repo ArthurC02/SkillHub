@@ -1,3 +1,4 @@
+import { SetPlatformAgentSpendCapBodyDailySpendCapUsdMicrosMaximum } from "@skillhub/api-client-ts/limits";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, apiFetch, isLastingReadFailure } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
@@ -512,7 +513,7 @@ export function usePlatformAgentSwitch() {
   });
 }
 
-export const MAX_AGENT_SPEND_CAP_MICROS = 5_000_000;
+export const MAX_AGENT_SPEND_CAP_MICROS = SetPlatformAgentSpendCapBodyDailySpendCapUsdMicrosMaximum;
 
 export function usePlatformAgentSpendCap() {
   const queryClient = useQueryClient();

@@ -13,6 +13,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
 type Definition struct {
@@ -35,7 +36,7 @@ type Agent struct {
 	SpendCapOverrideMicros *int64
 }
 
-const MaxDailySpendCapMicros = 5_000_000
+const MaxDailySpendCapMicros = limits.SetPlatformAgentSpendCapBodyDailySpendCapUsdMicrosMaximum
 
 func (a Agent) EffectiveSpendCapMicros() int64 {
 	if a.SpendCapOverrideMicros != nil {
