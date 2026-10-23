@@ -1,6 +1,6 @@
 {
   "inventory": {
-    "migrations": 140,
+    "migrations": 141,
     "tables": 73,
     "partitions": 4,
     "columns": 665,
@@ -18,9 +18,9 @@
       "ratio": 1.0
     },
     "meaning.columns_described": {
-      "numerator": 576,
+      "numerator": 578,
       "denominator": 665,
-      "ratio": 0.866
+      "ratio": 0.869
     },
     "meaning.enum_columns_whose_comment_names_every_value": {
       "numerator": 50,
@@ -99,7 +99,7 @@
     },
     "provenance.migrations_cited_by_a_record": {
       "numerator": 2,
-      "denominator": 140,
+      "denominator": 141,
       "ratio": 0.014
     },
     "provenance.immutable_tables_known_to_registry": {

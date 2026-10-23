@@ -123,7 +123,8 @@ type AnalyticsEvent struct {
 	QueryLength *int32
 	// Coarse script bucket of the search text (han, latin or mixed), not a locale; NULL for events that are not searches.
 	QueryLanguage *string
-	ResultCount   *int32
+	// For a search event, how many results the search returned; NULL for events that are not searches. has_results is true exactly when this is greater than zero.
+	ResultCount *int32
 	// Whether the search returned at least one result; NULL for events that are not searches.
 	HasResults *bool
 	// Whether the visitor narrowed the search with at least one filter; NULL for events that are not searches.
@@ -151,7 +152,8 @@ type AnalyticsEvents202608 struct {
 	QueryLength *int32
 	// Coarse script bucket of the search text (han, latin or mixed), not a locale; NULL for events that are not searches.
 	QueryLanguage *string
-	ResultCount   *int32
+	// For a search event, how many results the search returned; NULL for events that are not searches. has_results is true exactly when this is greater than zero.
+	ResultCount *int32
 	// Whether the search returned at least one result; NULL for events that are not searches.
 	HasResults *bool
 	// Whether the visitor narrowed the search with at least one filter; NULL for events that are not searches.
@@ -181,7 +183,8 @@ type AnalyticsEventsDefault struct {
 	QueryLength *int32
 	// Coarse script bucket of the search text (han, latin or mixed), not a locale; NULL for events that are not searches.
 	QueryLanguage *string
-	ResultCount   *int32
+	// For a search event, how many results the search returned; NULL for events that are not searches. has_results is true exactly when this is greater than zero.
+	ResultCount *int32
 	// Whether the search returned at least one result; NULL for events that are not searches.
 	HasResults *bool
 	// Whether the visitor narrowed the search with at least one filter; NULL for events that are not searches.
@@ -1627,7 +1630,8 @@ type TraceEvent struct {
 	// The run the event was emitted during.
 	RunID pgtype.UUID
 	// The producer's own running number for its events, so a gap shows that an event was lost.
-	Seq        int64
+	Seq int64
+	// When the producer's own clock says the event happened. Clocks differ between producers, so within one (run, attempt, producer) stream seq is the order and occurred_at only merges streams; an event is refused when this lies too far in the future or before the retention window.
 	OccurredAt pgtype.Timestamptz
 	// What kind of fact this is: skill_activation, resource_read, tool_call, mcp_call, script_log, agent_output, error, usage, run_lifecycle, evaluation_started or evaluation_completed.
 	EventType string
@@ -1662,7 +1666,8 @@ type TraceEvents202608 struct {
 	// The run the event was emitted during.
 	RunID pgtype.UUID
 	// The producer's own running number for its events, so a gap shows that an event was lost.
-	Seq        int64
+	Seq int64
+	// When the producer's own clock says the event happened. Clocks differ between producers, so within one (run, attempt, producer) stream seq is the order and occurred_at only merges streams; an event is refused when this lies too far in the future or before the retention window.
 	OccurredAt pgtype.Timestamptz
 	// What kind of fact this is: skill_activation, resource_read, tool_call, mcp_call, script_log, agent_output, error, usage, run_lifecycle, evaluation_started or evaluation_completed.
 	EventType string
@@ -1683,7 +1688,8 @@ type TraceEventsDefault struct {
 	// The run the event was emitted during.
 	RunID pgtype.UUID
 	// The producer's own running number for its events, so a gap shows that an event was lost.
-	Seq        int64
+	Seq int64
+	// When the producer's own clock says the event happened. Clocks differ between producers, so within one (run, attempt, producer) stream seq is the order and occurred_at only merges streams; an event is refused when this lies too far in the future or before the retention window.
 	OccurredAt pgtype.Timestamptz
 	// What kind of fact this is: skill_activation, resource_read, tool_call, mcp_call, script_log, agent_output, error, usage, run_lifecycle, evaluation_started or evaluation_completed.
 	EventType string
