@@ -230,9 +230,19 @@ jobs:
         working-directory: packages/api-client-ts
       - run: npm ci --no-audit
       - if: runner.os == 'Linux'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/playwright-debs
+          key: playwright-debs-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('apps/web/package-lock.json') }}
+          restore-keys: |
+            playwright-debs-${{ runner.os }}-${{ matrix.browser }}-
+            playwright-debs-${{ runner.os }}-
+      - if: runner.os == 'Linux'
         timeout-minutes: 9
         run: |
-          printf 'Acquire::Retries "5";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' |
+          mkdir -p ~/playwright-debs
+          find ~/playwright-debs -name '*.deb' -exec sudo cp -t /var/cache/apt/archives {} +
+          printf 'Acquire::Retries "5";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\nBinary::apt::APT::Keep-Downloaded-Packages "true";\n' |
             sudo tee /etc/apt/apt.conf.d/80-stalled-mirror >/dev/null
           for attempt in 1 2 3; do
             sudo timeout -k 10 120 env "PATH=$PATH" npx playwright install-deps ${{ matrix.browser }} && break
@@ -242,6 +252,7 @@ jobs:
             fi
             echo "::warning::playwright install-deps attempt $attempt stalled past 120 s or failed; resuming"
           done
+          find /var/cache/apt/archives -maxdepth 1 -name '*.deb' -exec cp -t ~/playwright-debs {} +
           npx playwright install ${{ matrix.browser }}
       - if: runner.os != 'Linux'
         run: npx playwright install ${{ matrix.browser }}
