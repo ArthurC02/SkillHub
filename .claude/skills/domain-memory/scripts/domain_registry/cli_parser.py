@@ -56,6 +56,11 @@ def add_path(parser: argparse.ArgumentParser, name: str, required: bool = True) 
     parser.add_argument(name, required=required, type=Path)
 
 
+def add_profile_flags(parser: argparse.ArgumentParser) -> None:
+    for flag in ("--implementation-root", "--excluded-directory", "--decision-root", "--boundary-marker"):
+        parser.add_argument(flag, action="append", help="repeatable")
+
+
 def add_lifecycle_roots(parser: argparse.ArgumentParser) -> None:
     add_path(parser, "--registry-root", required=False)
     add_path(parser, "--repo-root", required=False)
@@ -255,7 +260,7 @@ def _add_citation_commands(commands: argparse._SubParsersAction) -> None:
     add_path(cite_parser, "--repo-root")
     cite_parser.add_argument("--path", required=True)
     cite_parser.add_argument("--lines", help="START-END")
-    cite_parser.add_argument("--function", help="a Go func or Python def in --path; cites its whole body")
+    cite_parser.add_argument("--function", help="a function defined in --path (Go, Python, TypeScript, JavaScript, Java, Kotlin, Rust); cites its whole body")
     add_path(cite_parser, "--registry-root", required=False)
     cite_parser.add_argument("--show", action="store_true")
     evidence_verify_parser = commands.add_parser("verify-evidence", help="Verify citations")
@@ -285,6 +290,7 @@ def _add_source_commands(commands: argparse._SubParsersAction) -> None:
     source_parser = commands.add_parser("discover-sources", help="Map repository sources")
     add_path(source_parser, "--repo-root")
     add_path(source_parser, "--output", required=False)
+    add_profile_flags(source_parser)
     source_verify_parser = commands.add_parser("verify-sources", help="Verify selected sources")
     add_path(source_verify_parser, "--repo-root")
     add_path(source_verify_parser, "--source-map")
@@ -327,6 +333,8 @@ def _add_source_selection_commands(commands: argparse._SubParsersAction) -> None
         "--ci-requirement", choices=CI_REQUIREMENTS, default="none"
     )
     memory_init_parser.add_argument("--authorized-signer", action="append")
+    memory_init_parser.add_argument("--distinct-signer", action="store_true")
+    add_profile_flags(memory_init_parser)
     memory_init_parser.add_argument("--include", action="append")
     memory_init_parser.add_argument("--exclude", action="append")
     confirm_parser = commands.add_parser("confirm-sources", help="Confirm the selected sources")
@@ -417,7 +425,7 @@ def _add_promote_command(commands: argparse._SubParsersAction) -> None:
         "--cite", action="append", default=[], help="repeatable PATH:START-END to add to the promoted record's evidence"
     )
     promote_parser.add_argument(
-        "--cite-function", action="append", default=[], help="repeatable PATH:NAME, a Go func or Python def to add as evidence"
+        "--cite-function", action="append", default=[], help="repeatable PATH:NAME, a function the file defines, to add as evidence"
     )
     promote_parser.add_argument(
         "--drop-cite", action="append", default=[], help="repeatable PATH:START-END to remove from the promoted record's evidence"
@@ -497,7 +505,6 @@ def _add_proposal_commands(commands: argparse._SubParsersAction) -> None:
     add_path(ship_parser, "--registry-root")
     add_path(ship_parser, "--repo-root")
     ship_parser.add_argument("--commit")
-    ship_parser.add_argument("--verification-token-env", default="GITHUB_TOKEN")
 
 
 def _add_proposal_check_commands(commands: argparse._SubParsersAction) -> None:
@@ -545,7 +552,6 @@ def _add_attestation_commands(commands: argparse._SubParsersAction) -> None:
     audit_attestations_parser = commands.add_parser("audit-attestations", help="Audit past attestations")
     add_path(audit_attestations_parser, "--repo-root")
     add_path(audit_attestations_parser, "--changes-root")
-    audit_attestations_parser.add_argument("--verification-token-env", default="GITHUB_TOKEN")
     audit_parser = commands.add_parser("verify-audit", help="Verify audit trail")
     add_path(audit_parser, "--registry-root")
     add_path(audit_parser, "--changes-root", required=False)

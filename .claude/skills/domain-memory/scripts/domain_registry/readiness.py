@@ -5,7 +5,7 @@ from typing import Any
 
 from .common import load_json, one_level_too_deep_hint, shown_path
 from .locate import domain_memories_in
-from .policy import existing_policy
+from .policy import existing_policy, project_profile
 from .registry import coverage, validate
 from .sources import discover_sources, listing_drift, verify_source_map
 
@@ -105,11 +105,20 @@ def readiness_report(repo_root: Path, registry_root: Path | None) -> tuple[dict[
     return report, note
 
 
+def _readable_policy(registry_root: Path | None) -> dict[str, Any] | None:
+    if registry_root is None:
+        return None
+    try:
+        return existing_policy(registry_root.resolve())
+    except ValueError:
+        return None
+
+
 def assess_readiness(
     repo_root: Path, registry_root: Path | None = None
 ) -> dict[str, Any]:
     repo_root = repo_root.resolve()
-    discovered = discover_sources(repo_root)
+    discovered = discover_sources(repo_root, project_profile(_readable_policy(registry_root)))
     groups = {group["kind"]: group["paths"] for group in discovered["source_groups"]}
     present = {kind: bool(groups.get(kind)) for kind in PRODUCT_GROUPS}
     product_sources = any(present.values())

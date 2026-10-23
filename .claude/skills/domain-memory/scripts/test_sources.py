@@ -14,7 +14,7 @@ from domain_registry.common import load_json, write_json
 from domain_registry.common import sha256_of as digest
 from domain_registry.git import checked_git, toplevel
 from domain_registry.impact import _cited_ranges, boundary_impact
-from domain_registry.policy import validate_policy
+from domain_registry.policy import profile_from, validate_policy
 from domain_registry.readiness import assess_readiness
 from domain_registry.security import scan_report
 from domain_registry.sources import (
@@ -787,18 +787,61 @@ class SourcesTest(RegistryTestCase):
                 report = source_policy_report(root, [root / "docs"], policy)
                 self.assertEqual((files, errors), (report["files"], report["errors"]))
 
-    def test_ci_discovery_offers_candidates_without_selecting_governance(self) -> None:
+    def test_ci_discovery_lists_the_pipeline_and_recommends_signed_commits_whichever_host_runs_it(self) -> None:
         (self.repo / ".github" / "workflows").mkdir(parents=True)
-        self.assertEqual(["github-actions"], discover_ci_tools(self.repo))
-        discovered = discover_sources(self.repo)
-        self.assertEqual("github-pr", discovered["governance_candidates"]["recommended_verifier"])
-        self.assertEqual("discovered", discovered["selection_status"])
-
-    def test_ci_that_is_not_the_one_the_pull_request_verifier_reads_gets_the_signed_commit_recommendation(self) -> None:
         (self.repo / ".gitlab-ci.yml").write_text("stages: [test]\n", encoding="utf-8")
+        self.assertEqual(["github-actions", "gitlab-ci"], discover_ci_tools(self.repo))
+        discovered = discover_sources(self.repo)
         self.assertEqual(
-            {"ci_tools": ["gitlab-ci"], "recommended_verifier": "git-signed-commit", "recommended_trigger": "git-push"},
-            discover_sources(self.repo)["governance_candidates"],
+            ({"ci_tools": ["github-actions", "gitlab-ci"], "recommended_verifier": "git-signed-commit",
+              "recommended_trigger": "git-push"}, "discovered"),
+            (discovered["governance_candidates"], discovered["selection_status"]),
+        )
+
+    def test_discovery_follows_the_project_profile_and_the_defaults_without_one(self) -> None:
+        self.write_files(
+            "lib/orders/package-info.java", "lib/orders/Order.java", "apps/core/doc.go", "docs/decisions/0001.md",
+            "target/gen_test.go", "lib/orders/OrderTest.java",
+        )
+        profile = profile_from({
+            "implementation_roots": ["lib"], "boundary_markers": ["package-info.java"],
+            "decision_roots": ["docs/decisions"], "excluded_directories": ["target"],
+        })
+        profiled = {group["kind"]: group["paths"] for group in discover_sources(self.repo, profile)["source_groups"]}
+        default = {group["kind"]: group["paths"] for group in discover_sources(self.repo)["source_groups"]}
+        self.assertEqual(
+            (["lib/orders/package-info.java"], ["docs/decisions"], ["lib"], []),
+            (profiled["bounded_contexts"], profiled["decisions"], profiled["implementation"], profiled["tests"]),
+        )
+        self.assertEqual(
+            (["apps/core/doc.go"], [], ["apps"], ["target/gen_test.go"]),
+            (default["bounded_contexts"], default["decisions"], default["implementation"], default["tests"]),
+        )
+
+    def test_the_profile_excluded_directories_leave_the_snapshot_and_readiness_too(self) -> None:
+        self.write_files("docs/a.md", "docs/target/b.md", "target/gen_test.go")
+        stored = stored_policy_of(self.repo)
+        policy = {**stored, "project_profile": {"excluded_directories": ["target"]}}
+        self.assertEqual(
+            (["a.md"], ["a.md", "b.md"]),
+            (sorted(path.name for path in source_files(self.repo, [self.repo / "docs"], policy)),
+             sorted(path.name for path in source_files(self.repo, [self.repo / "docs"], stored))),
+        )
+        (self.repo / "memory" / "domain-memory-policy.json").write_text(json.dumps(policy), encoding="utf-8")
+        signals = {signal["kind"]: signal.get("status") for signal in assess_readiness(self.repo, self.repo / "memory")["signals"]}
+        self.assertEqual("missing", signals["tests"])
+
+    def test_the_discover_command_takes_the_profile_as_flags_and_refuses_a_marker_with_a_path(self) -> None:
+        self.write_files("lib/orders/package-info.java", "apps/core/doc.go")
+        common = ("discover-sources", "--repo-root", str(self.repo))
+        listed = self.run_cli(*common, "--implementation-root", "lib", "--boundary-marker", "package-info.java")
+        groups = {group["kind"]: group["paths"] for group in json.loads(listed.stdout)["source_groups"]}
+        refused = self.run_cli(*common, "--excluded-directory", "build/out")
+        self.assertEqual(
+            (["lib/orders/package-info.java"], ["lib"], 1,
+             "ERROR: invalid project profile: project_profile.excluded_directories[0] must be a bare name without a "
+             "path separator, got 'build/out'"),
+            (groups["bounded_contexts"], groups["implementation"], refused.returncode, refused.stderr.strip()),
         )
 
     def test_discovery_only_recommends_governance_a_policy_accepts(self) -> None:

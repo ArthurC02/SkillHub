@@ -23,6 +23,7 @@ from .evidence import citation, classified, function_span, source_map_for
 from .harvest_package import harvest_package, obligation_of, write_harvest_package
 from .hitl import ObligationRun, record_approval, record_test_result, same_command, submit_proposal, verify_proposal
 from .registry import as_stored, record_by_id
+from .policy import existing_policy
 from .sources import discovery_placements, refresh_listing_advice
 from .store import read_document
 from .transaction import remove_tree
@@ -286,7 +287,7 @@ def _record(run: Harvest, rule: dict[str, Any], source_map: dict[str, Any]) -> d
 
 
 def _placement_hint(run: Harvest, outside: list[str]) -> str:
-    placed = discovery_placements(run.repo_root, outside)
+    placed = discovery_placements(run.repo_root, outside, existing_policy(run.registry_root))
     if not placed:
         return ""
     run.relisting = refresh_listing_advice(Path(shown_path(run.registry_root, run.repo_root)), Path("."))

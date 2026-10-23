@@ -15,7 +15,7 @@ from ..evidence import (
     source_map_for,
     staged_content,
 )
-from ..policy import existing_policy, policy_path, write_policy
+from ..policy import existing_policy, policy_path, profile_errors, profile_from, write_policy
 from ..registry import init_registry, verify_evidence
 from ..relocate import Recitation, line_range, recite, relocate_evidence
 from ..security import scan_report
@@ -138,8 +138,22 @@ def _show_cited_lines(repo_root: Path, reference: dict) -> None:
         print(f"{reference['path']}:{end}: {rows[end - 1]}", file=sys.stderr)
 
 
+PROFILE_FLAGS = (
+    ("implementation_root", "implementation_roots"), ("excluded_directory", "excluded_directories"),
+    ("decision_root", "decision_roots"), ("boundary_marker", "boundary_markers"),
+)
+
+
+def given_profile(args: argparse.Namespace) -> dict[str, list[str]]:
+    given = {key: getattr(args, flag) for flag, key in PROFILE_FLAGS if getattr(args, flag)}
+    errors = profile_errors(given)
+    if errors:
+        raise ValueError("invalid project profile: " + "; ".join(errors))
+    return given
+
+
 def handle_discover_sources(args: argparse.Namespace) -> int:
-    source_map = discover_sources(args.repo_root.resolve())
+    source_map = discover_sources(args.repo_root.resolve(), profile_from(given_profile(args)))
     if args.output:
         write_source_map(args.output.resolve(), source_map)
     print_json(source_map)
@@ -221,7 +235,8 @@ def handle_init_domain_memory(args: argparse.Namespace) -> int:
     if inside(repo_root, output) is None:
         raise ValueError("output must be inside the repository")
     selected = sources_under(repo_root, args.source)
-    preliminary = selected_source_map(repo_root, selected)
+    profile = given_profile(args)
+    preliminary = selected_source_map(repo_root, selected, profile=profile_from(profile))
     init_registry(output)
     try:
         write_policy(
@@ -238,7 +253,9 @@ def handle_init_domain_memory(args: argparse.Namespace) -> int:
                 "trigger": args.review_trigger or "none",
                 "ci_requirement": args.ci_requirement,
                 "authorized_signers": args.authorized_signer or [],
+                "distinct_signer": args.distinct_signer,
             },
+            profile,
         )
         source_map = selected_source_map(
             repo_root, selected, load_json(policy_path(output))

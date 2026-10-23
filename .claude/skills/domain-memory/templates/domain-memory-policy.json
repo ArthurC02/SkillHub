@@ -4,10 +4,11 @@
   "data_classification": "<public|internal|confidential|restricted>",
   "review_mode": "<local-draft-only|scm-verified>",
   "review_governance": {
-    "verifier": "<github-pr|git-signed-commit|none>",
-    "trigger": "<external-scm|git-commit|git-push|none>",
+    "verifier": "<git-signed-commit|none>",
+    "trigger": "<git-commit|git-push|none>",
     "ci_requirement": "<required|optional|none>",
-    "authorized_signers": []
+    "authorized_signers": [],
+    "distinct_signer": false
   },
   "source_policy": {
     "selected_paths": [],
@@ -27,6 +28,12 @@
                              "phase", "stage", "level", "priority", "severity", "visibility", "category"],
     "free_text_markers": ["free text", "free-text"],
     "value_comment_limit": 12
+  },
+  "project_profile": {
+    "implementation_roots": ["apps", "src", "services", "packages", "db", "database", "migrations", "schema"],
+    "excluded_directories": [],
+    "decision_roots": ["docs/adr", "adr", "docs/architecture", "architecture"],
+    "boundary_markers": ["doc.go"]
   },
   "approved_command_profiles": []
 }

@@ -111,33 +111,69 @@ def _cited_file(root: Path, relative: str) -> Path:
     return path
 
 
-FUNCTION_START = r"^(?P<indent>[ \t]*)(?:(?P<go>func)(?:\s*\([^)]*\))?\s+|(?:async\s+)?def\s+){name}\s*[(\[]"
+INDENT = r"^(?P<indent>[ \t]*)"
+GO_START = r"func(?:\s*\([^)]*\))?\s+{name}\s*[(\[]"
+PYTHON_START = r"(?:async\s+)?def\s+{name}\s*[(\[]"
+SCRIPT_START = (
+    r"(?:export\s+)?(?:default\s+)?(?:"
+    r"(?:async\s+)?function\s*\*?\s*{name}\s*[(<]"
+    r"|(?:const|let|var)\s+{name}\s*(?::[^=]*)?=\s*(?:async\s+)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*(?::[^=]*)?=>"
+    r"|(?:(?:public|private|protected|static|async|readonly|override)\s+)*{name}\s*[(<][^;]*$"
+    r")"
+)
+JAVA_START = (
+    r"(?!return\b|new\b|throw\b|else\b)(?:(?:public|private|protected|static|final|abstract|synchronized|native|default)\s+)*"
+    r"(?:<[^>]+>\s+)?(?:[\w.$<>\[\],?]+\s+)?{name}\s*\([^;]*$"
+)
+KOTLIN_START = (
+    r"(?:(?:public|private|protected|internal|override|open|abstract|final|suspend|inline|infix|operator|tailrec|external|actual|expect)\s+)*"
+    r"fun\s+(?:<[^>]+>\s+)?(?:[\w.<>?]+\.)?{name}\s*[(<]"
+)
+RUST_START = r"(?:pub(?:\([^)]*\))?\s+)?(?:(?:const|async|unsafe|extern\s+\"[^\"]*\")\s+)*fn\s+{name}\s*[(<]"
+BRACES, INDENTATION = "braces", "indentation"
+LANGUAGES: dict[str, tuple[str, str, str]] = {
+    ".go": ("Go", GO_START, BRACES),
+    ".py": ("Python", PYTHON_START, INDENTATION),
+    ".ts": ("TypeScript", SCRIPT_START, BRACES),
+    ".tsx": ("TypeScript", SCRIPT_START, BRACES),
+    ".js": ("JavaScript", SCRIPT_START, BRACES),
+    ".jsx": ("JavaScript", SCRIPT_START, BRACES),
+    ".mjs": ("JavaScript", SCRIPT_START, BRACES),
+    ".java": ("Java", JAVA_START, BRACES),
+    ".kt": ("Kotlin", KOTLIN_START, BRACES),
+    ".rs": ("Rust", RUST_START, BRACES),
+}
+LANGUAGE_NAMES = ", ".join(dict.fromkeys(language for language, _, _ in LANGUAGES.values()))
+
+
+def _language(relative: str) -> tuple[str, str, str]:
+    suffix = Path(relative).suffix
+    if suffix not in LANGUAGES:
+        shown = f"a {suffix} file" if suffix else "a file without a suffix"
+        raise ValueError(f"{relative}: --function reads {LANGUAGE_NAMES} files; cite {shown} with --lines")
+    return LANGUAGES[suffix]
 
 
 def function_span(repo_root: Path, relative: str, name: str) -> tuple[int, int]:
+    _, start_form, end_form = _language(relative)
     rows = _rows(_cited_file(repo_root.resolve(), relative).read_bytes())
-    pattern = re.compile(FUNCTION_START.format(name=re.escape(name)))
+    pattern = re.compile(INDENT + start_form.format(name=re.escape(name)))
     starts = [(number, found) for number, row in enumerate(rows, 1) if (found := pattern.match(row))]
     if len(starts) != 1:
         raise ValueError(
-            f"{relative} defines no Go func or Python def named {name}{_defined_elsewhere(repo_root.resolve(), relative, pattern)}"
+            f"{relative} defines no function named {name}{_defined_elsewhere(repo_root.resolve(), relative, pattern)}"
             if not starts
             else f"{relative} defines {name} {len(starts)} times; cite the one you mean with --lines"
         )
     start, found = starts[0]
-    end = _go_end(rows, start, found["indent"]) if found["go"] else _python_end(rows, start, len(found["indent"]))
+    end = _brace_end(rows, start) if end_form == BRACES else _python_end(rows, start, len(found["indent"]))
     if end is None:
         raise ValueError(f"{relative}: the body of {name} starting on line {start} does not end; cite it with --lines")
     return start, end
 
 
-SOURCE_SUFFIXES = (".go", ".py")
-
-
 def _defined_elsewhere(repo_root: Path, relative: str, pattern: re.Pattern[str]) -> str:
     suffix = Path(relative).suffix
-    if suffix not in SOURCE_SUFFIXES:
-        return ""
     found = []
     for path in repository_files(repo_root):
         if path == relative or not path.endswith(suffix):
@@ -150,10 +186,18 @@ def _defined_elsewhere(repo_root: Path, relative: str, pattern: re.Pattern[str])
     return f"; it is defined in {found[0]}" if len(found) == 1 else "; it is defined in several files: " + ", ".join(found)
 
 
-def _go_end(rows: list[str], start: int, indent: str) -> int | None:
-    if rows[start - 1].rstrip().endswith("}"):
-        return start
-    return next((number for number in range(start + 1, len(rows) + 1) if rows[number - 1].rstrip() == indent + "}"), None)
+def _brace_end(rows: list[str], start: int) -> int | None:
+    depth = 0
+    opened = False
+    for number in range(start, len(rows) + 1):
+        row = rows[number - 1]
+        depth += row.count("{") - row.count("}")
+        opened = opened or "{" in row
+        if opened and depth <= 0:
+            return number
+        if not opened and row.rstrip().endswith(";"):
+            return number
+    return None
 
 
 def _python_end(rows: list[str], start: int, indent: int) -> int | None:

@@ -135,9 +135,7 @@ def handle_refresh_indexes(args: argparse.Namespace) -> int:
 
 
 def handle_audit_attestations(args: argparse.Namespace) -> int:
-    findings = audit_attestations(
-        args.repo_root.resolve(), args.changes_root.resolve(), args.verification_token_env
-    )
+    findings = audit_attestations(args.repo_root.resolve(), args.changes_root.resolve())
     print_json(findings)
     return 0 if all(finding["verdict"] == "carried" for finding in findings) else 1
 

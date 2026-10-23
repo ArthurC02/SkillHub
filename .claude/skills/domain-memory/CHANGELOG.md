@@ -2,6 +2,22 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.0.0
+
+### Removed
+
+- The `github-pr` verifier and the `external-scm` trigger, with the provider API calls behind them, `--verification-token-env` on `ship-package` and `audit-attestations`, the `GITHUB_TOKEN` default and the `pull_request` and `checks_url` attestation fields. The plugin verifies git signatures only, offline, in any clone on any host or none; a policy that still names `github-pr` is refused by `validate` and `validate-policy` with the `amend-policy` that moves it to `git-signed-commit`. `discover-sources` recommends `git-signed-commit` with `git-push` for every repository and still lists the CI it finds.
+
+### Added
+
+- `review_governance.distinct_signer` (false unless set): the attested commit's signer must be someone other than its author, read from git; set it with `init-domain-memory --distinct-signer` or `amend-policy --set distinct_signer=true`. The pre-push hook does not apply it.
+- `project_profile` in the policy: `implementation_roots`, `excluded_directories` (added to the built-in list), `decision_roots` and `boundary_markers`, given to `discover-sources` and `init-domain-memory` as the repeatable `--implementation-root`, `--excluded-directory`, `--decision-root` and `--boundary-marker`, amended with `amend-policy`, and read by discovery, `readiness`, the source snapshots and `refresh-listing`. Absent, the defaults are the previous behaviour, so an existing policy validates unchanged; a bad section is refused one line per defect.
+- `cite --function` reads TypeScript, JavaScript, Java, Kotlin and Rust beside Go and Python, ending a brace body at its closing brace; a file of another kind is refused with the list and `--lines`.
+
+### Changed
+
+- `ci_requirement` states what the project's own pipeline runs (`verify-git-governance`, `audit-attestations`); the plugin no longer reads a provider's check runs.
+
 ## 3.0.0
 
 ### Removed

@@ -155,14 +155,14 @@ class ShipPackageTest(RegistryTestCase):
                                             "then obtain fresh approval: "), len(report["errors"])),
         )
 
-    def test_without_a_commit_the_pull_request_verifier_needs_its_attestation_written_first(self) -> None:
+    def test_without_a_commit_finalizing_needs_the_attestation_written_first(self) -> None:
         package = self.draft_package()
         submit_proposal(package, self.repo / "memory", self.repo)
         record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
         verify_proposal(package, self.repo / "memory", self.repo)
         report = ship_package(package, self.repo / "memory", self.repo, None)
         self.assertEqual(([], 1, "verified"), (report["completed"], len(report["errors"]), report["status"]))
-        self.assertTrue(report["errors"][0].startswith("finalize-proposal: finalizing a proposal requires SCM attestation: after the pull request merges"))
+        self.assertTrue(report["errors"][0].startswith("finalize-proposal: finalizing a proposal requires SCM attestation: after the signed commit"))
 
     def test_a_proposal_that_is_not_verified_is_named_with_its_status(self) -> None:
         package = self.draft_package()
