@@ -28,4 +28,4 @@ The base revision and the stale check:
 
 `ship-package` classifies the citations of each promoted record against the selected sources, and refuses a record citing a path outside them, since a reviewed fact rests on a corpus a developer confirmed.
 
-The Skill prepares proposals and identifies required review. It must not fabricate approval, treat a comment as approval, or bypass repository, CI, change-management, or deployment controls.
+Record an approval only through `record-approval` after a reviewer gave it: a comment is not an approval, and repository, CI, change-management and deployment controls stay in force around the package.

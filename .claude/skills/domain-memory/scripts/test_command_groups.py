@@ -194,9 +194,13 @@ class PagesTest(unittest.TestCase):
                 refused[snippet] = refusals[0]
         self.assertEqual({}, refused)
 
-    def test_the_code_rules_read_the_same_on_the_entry_and_the_hygiene_page(self) -> None:
-        entry = code_rules(PLUGIN / "AGENTS.md")
-        self.assertEqual((7, entry), (len(entry), code_rules(PLUGIN / "skills/domain-memory-implementation-hygiene/SKILL.md")))
+    def test_the_code_rules_live_on_the_entry_page_alone_and_the_hygiene_page_points_there(self) -> None:
+        hygiene = (PLUGIN / "skills/domain-memory-implementation-hygiene/SKILL.md").read_text(encoding="utf-8")
+        self.assertEqual(
+            (7, True, False),
+            (len(code_rules(PLUGIN / "AGENTS.md")), "AGENTS.md#when-you-are-the-one-writing-the-code" in hygiene,
+             "## When you are the one writing the code" in hygiene),
+        )
 
 
 if __name__ == "__main__":

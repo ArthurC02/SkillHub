@@ -2,7 +2,7 @@
 
 A file-backed Registry of reviewed domain facts, and the commands that read it and change it under review. The next Agent inherits what this one established about the domain, instead of re-deriving it from the code and guessing where it was wrong.
 
-Nothing here is specific to one Agent or one host: the state is files in the repository, the behavior is Markdown plus Python, and the review boundary is Git. Read this page once. Then [SKILL.md](SKILL.md) chooses the capability for the work at hand, [references/script-api.md](references/script-api.md) holds every command with what it guarantees and how it refuses, and [references/host-integration.md](references/host-integration.md) wires this into a host that dispatches work to several Agents. To change the plugin itself, read `README.md`.
+Read this page once. Then [SKILL.md](SKILL.md) chooses the capability for the work at hand, [references/script-api.md](references/script-api.md) holds every command with what it guarantees and how it refuses, and [references/host-integration.md](references/host-integration.md) is for a host that dispatches work to several Agents. To change the plugin itself, read `README.md`.
 
 ## Two rules that hold whoever is reading
 
@@ -23,7 +23,7 @@ Everything lives under one Registry root, inside the repository:
   changes/<package>/          Change Packages, by convention; any directory inside the repository works
 ```
 
-Only the scripts write, and every write takes the same route: a lock, a copy of the Registry, the change applied to the copy, the whole copy validated. A write that adds a new error is refused; a valid copy is swapped in and the write is appended to the audit chain. An interrupted write is finished or rolled back by `recover-registry-update`. The trust boundaries behind this are in [reliability architecture](references/reliability-architecture.md).
+Only the scripts write. Every write is applied to a copy of the Registry, validated whole, swapped in and appended to the audit chain, as [the write protocol](references/reliability-architecture.md#the-write-protocol) describes; `recover-registry-update` finishes or rolls back an interrupted one.
 
 ## How a fact changes
 
@@ -31,7 +31,7 @@ A record moves along one of three paths:
 
 1. **Read.** Lookups, `validate` and `verify-evidence` change nothing.
 2. **Candidate.** `upsert-candidate` adds or revises a candidate at once, with no review. It never becomes a fact by itself, and it cannot overwrite a reviewed record.
-3. **Review.** A Change Package carries `registry_updates`. Start one with `init-change-package` and write the updates, or copy an existing candidate in with `promote-candidate`; a fact need not be a candidate first. Then, in order: `submit-proposal` freezes the package against the Registry's current revision; `record-approval` records each reviewer and `record-test-result` each planned test; `verify-proposal` checks the test results; `ship-package` checks proof from outside the package, a merged pull request or a signed commit as the policy says, then writes the package. Only then is a record `reviewed`. Until it is applied, `discard-harvest --package-root <package> --reason <text>` withdraws a package, written by `harvest` or by hand: it retracts the candidates no other package names, leaves reviewed records alone, removes the directory and appends one audit event, so the audit log is never edited back.
+3. **Review.** A Change Package carries `registry_updates`, started by `init-change-package` or by `promote-candidate`; a fact need not be a candidate first. `submit-proposal` freezes it against the Registry's current revision, `record-approval` and `record-test-result` record each reviewer and each planned test, `verify-proposal` checks the test results, and `ship-package` checks proof from outside the package, a merged pull request or a signed commit as the policy says, then writes it. Only then is a record `reviewed`. [Proposal lifecycle](references/proposal-lifecycle.md) has each state. Until a package is applied, `discard-harvest --package-root <package> --reason <text>` withdraws it, retracting the candidates no other package names and leaving the audit log as it was.
 
 ## Running the commands
 
@@ -43,13 +43,7 @@ Python 3.10 or later, its standard library, and `git` on the path. Call the inte
 
 Commands that read or change the Registry take `--registry-root <root>`: the directory that holds `registry/`, `source-map.json` and the policy, not `registry/` itself. Commands that read repository files take `--repo-root <repo>`; the everyday Registry readers accept it unused, so one set of flags fits every command. The table below leaves both flags out; `<command> --help` lists the exact flags, and an argument a command does not take is refused with that command's usage.
 
-A host that speaks the Model Context Protocol gets the read commands as tools from `mcp-serve`, registered as a stdio server, with `python` in place of `python3` on Windows:
-
-```json
-{"command": "python3", "args": ["<path>/scripts/registry_tools.py", "mcp-serve", "--registry-root", "<root>", "--repo-root", "<repo>"]}
-```
-
-It offers no command that writes; candidates and Change Packages stay on the command line.
+A host that speaks the Model Context Protocol gets the read commands as tools from [`mcp-serve`](references/script-api.md#mcp-serve), which offers no command that writes.
 
 ## Words you will meet
 
@@ -61,31 +55,29 @@ It offers no command that writes; candidates and Change Packages stay on the com
 
 ## Common tasks
 
+Each row names the command and the flags that matter; [script-api.md](references/script-api.md) has every option, what the command guarantees and how it refuses.
+
 | You want to | Run |
 | --- | --- |
-| Know what this repository has | `readiness --repo-root <repo> [--registry-root <root>]`; `extract` means code exists and the Registry holds no record yet |
-| Start a Domain Memory | `init-domain-memory`, which records the destination, sources and policy choices a Registry needs |
-| Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`; before changing a record, `dependents --asset <asset> --id <id>` lists what else it may touch; before reading or writing a table, `describe-table --migrations <dir> --table <name>` gives its meaning, allowed values, constraints, relations and the records that mention it |
-| Add or change a table | `describe-table --repo-root <repo> --migrations <dir> --table <name> --require-complete` exits 1 until the table and every column but the policy's exempt columns carry a `COMMENT ON`, every status-like column (the policy's suffixes) lists its values (or its comment begins with a free-text marker) and a CHECK list decides NULL, each listed value is explained, every foreign key states `ON DELETE`, and no `DO` block builds the table's DDL at run time that a later static `CREATE TRIGGER` of the templated trigger has not restated on that table; `gaps` says what is missing. `--base <ref>` lists only the gaps the migrations since that ref opened or closed, per table or for the `--table` given, so a change is gated without the older tables' backlog |
-| Review a branch for what it does to the model | `brief --base <branch point> --markdown`, or `brief --asset <asset> --id <id>` for one record; [domain-memory-review-change](skills/domain-memory-review-change/SKILL.md) turns the verdict and the attention list into what to ask for |
-| See which boundaries your change touches | `boundary-impact --base <branch point>`; `unknown` means no Context records an `implementation_path` |
+| Know what this repository has | `readiness --repo-root <repo> [--registry-root <root>]` |
+| Start a Domain Memory | `discover-sources --repo-root <repo>`, then `init-domain-memory` with the destination, sources and policy a developer chose |
+| Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`; `dependents --asset <asset> --id <id>` before changing a record |
+| Read or write a table | `describe-table --repo-root <repo> --migrations <dir> --table <name>` |
+| Finish a migration | `describe-table --repo-root <repo> --migrations <dir> --table <name> --require-complete`, or `--base <ref>` in place of `--table`; exit 0 means done |
+| Review a branch against the model | `brief --base <branch point> --markdown` |
+| See which boundaries a change touches | `boundary-impact --base <branch point>` |
+| Check the Registry | `validate`; `verify-evidence` for whether citations still match the code; `coverage` for the Contexts that still lack rules |
+| Check files you edited | `verify-evidence --path <file>` |
+| Re-cite after moving or editing code | `relocate-evidence --from <old> --to <new>`; `recite --asset <asset> --id <id> --path <file> --lines <a>-<b>` |
+| Put a re-citation through review | `init-change-package --output <dir> --recitation <file> --requirement-id <id> --proposal-id <id> --proposer <you>` |
+| Prove rules the code already enforces | `harvest --spec <file> [--through verified]`; `discard-harvest --package-root <package> --reason <text>` undoes it |
+| Prove that a test protects a rule | `counterfactual --repo-root <repo> --file <path> --find <text> --replace <text> --test-command <command>` |
 | Catch stale citations before they are committed | `install-pre-commit-hook`, once per clone |
-| Check the Registry's shape and references | `validate`; whether citations still match the code is `verify-evidence` |
-| Check the evidence of files you edited | `verify-evidence --path <file>`; `stale` needs `recite` after you check the fact, `shifted` passes every check and is re-cited with `relocate-evidence --from <file> --to <file>` in the next package that touches the record |
-| Re-cite after moving code | `relocate-evidence --from <old> --to <new>`, with the path as the repository holds it |
-| Re-cite after editing code in place | `recite --asset <asset> --id <id> --path <file> --lines <a>-<b>`; `--onto <file>` chains it after what an earlier `relocate-evidence` or `recite` printed, so one record never gets two competing updates |
-| Put a re-citation through review | `init-change-package --registry-root <root> --output <dir> --recitation <file printed by recite or relocate-evidence> --requirement-id <id> --proposal-id <id> --proposer <you>` writes the whole package; then submit it, record its one test result, and review it as usual |
-| Rebase a stale proposal | `rebase-proposal --package-root <package>` when verify, finalize or `ship-package` says the base is stale; then `record-approval`, `verify-proposal`, a new signed commit holding the package, and `ship-package --package-root <package> --commit <that commit>` |
-| Finish a verified package after its signed commit | `ship-package --package-root <package> --commit <sha>`: attests, finalizes and applies, stopping at the first refusal; no git writes |
-| Prove rules the code already enforces and package them | `harvest --spec <file> [--through verified]`, which stops before the signed commit; run the same spec again to resume after a failed step, or `discard-harvest --package-root <package> --reason <text>` to undo it |
-| Extract the model from a requirement, code or a change | [domain-memory-extract](skills/domain-memory-extract/SKILL.md); `change-coupling --repo-root <repo> --root <code root>` shows which modules change together, `extract-sql-schema` turns a schema's constraints into candidate rules, and `compare-registry` scores an extraction against a reviewed Registry |
-| Propose a new fact | `cite --path <file> --lines <a>-<b> --show`, then `upsert-candidate --asset <asset> --record-file <file>`, once per record |
-| Undo a candidate | `retract-candidate --asset <asset> --id <id> --reason <text>`, with `--id` repeated to withdraw several in one update; a reviewed record is withdrawn by a superseding proposal instead |
-| See every Change Package and its state | `list-proposals --changes-root <dir>` |
-| Change a reviewed fact | `init-change-package --output <dir> --requirement-id <id> --proposal-id <id> --proposer <you>`, add `registry_updates`, then `validate-change-package --package-root <dir> --as-status <the next status>` before each transition; [proposal lifecycle](references/proposal-lifecycle.md) has the states |
+| Propose a new fact | `cite --path <file> --lines <a>-<b> --show`, then `upsert-candidate --asset <asset> --record-file <file>` |
+| Undo a candidate | `retract-candidate --asset <asset> --id <id> --reason <text>` |
+| Change a reviewed fact | `init-change-package --output <dir> --requirement-id <id> --proposal-id <id> --proposer <you>`, then `validate-change-package --package-root <dir> --as-status <next status>` before each transition |
+| Finish a verified package | `ship-package --package-root <package> --commit <sha>`; `rebase-proposal --package-root <package>` first when it says the base is stale |
 | Recover after a crash | `recover-registry-update --repo-root <repo>` |
-
-The two re-cite commands print `registry_updates` and `supersedes` for a Change Package. A record that is not reviewed comes back under `candidates`; pass it to `upsert-candidate`.
 
 ## Mistakes that cost a redo
 
@@ -107,6 +99,6 @@ The reviewed facts say what must stay true. These seven hold for every change to
 4. Every rule you add or move ends with a test in the repository that fails when the rule is broken. Prove it with `counterfactual`, once for each rule: `survived` means no test protects that rule, so write the test and run it again. A comparison you run once and discard does not count. Report each rule that survived before you wrote its test.
 5. An external system goes behind a Port named in the domain's terms and declared where a decision can reach it without loading the provider. Address, credentials, and status codes stay in the Adapter. A failure the domain survives is handed to the caller or recorded, never dropped.
 6. A mechanical change gets the change, the tests, and a short report.
-7. A migration that creates or alters a table is done when `describe-table --repo-root <repo> --migrations <dir> --table <name> --require-complete` exits 0, or `--base <ref>` in place of `--table` when older tables carry gaps of their own: the table and every column but the policy's exempt columns (`id`, `created_at` and `updated_at` unless `schema_conventions` says otherwise) say what they mean in a `COMMENT ON`; a status-like column (its name ends in one of the policy's status-like suffixes) lists its values in a CHECK or an enum, or its comment begins with one of the policy's free-text markers (`free text` by default), or another CHECK constrains it; a CHECK list on a nullable column decides whether NULL is allowed (`NOT NULL`, `col IS NULL OR` / `col IS NOT NULL AND` written into the CHECK, or another CHECK on the table that writes `col IS NULL` or `col IS NOT NULL`, because `col IN (...)` alone lets NULL through); the comment explains each listed value; each foreign key states `ON DELETE`; and no `DO` block or function builds the table's DDL at run time, unless a later migration restates the trigger the template names with a static `CREATE TRIGGER` on that table. `gaps` lists what is missing.
+7. A migration that creates or alters a table is done when `describe-table --repo-root <repo> --migrations <dir> --table <name> --require-complete` exits 0, or `--base <ref>` in place of `--table` when older tables carry gaps of their own. `gaps` lists what is missing, and [describe-table](references/script-api.md#describe-table) defines each gap: a table or column without a `COMMENT ON`, a status-like column without a value list, a value list that leaves NULL undecided, a listed value the comment does not explain, a foreign key without `ON DELETE`, and DDL built at run time.
 
 The reasoning, the evidence each claim needs, and the cases where these do not apply are in [references/code-expression.md](references/code-expression.md) and [references/ports-and-adapters.md](references/ports-and-adapters.md).

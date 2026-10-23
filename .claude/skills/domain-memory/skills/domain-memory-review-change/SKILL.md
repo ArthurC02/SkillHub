@@ -1,6 +1,6 @@
 ---
 name: domain-memory-review-change
-description: Review a pull request or a branch for what it does to the reviewed domain model, starting from one brief, and decide whether it needs a Change Package, a recite, or nothing.
+description: Review a pull request or a branch for what it does to the reviewed domain model. Use when asked to review a PR or a branch; from one brief it decides whether the change needs a Change Package, a recite, or nothing.
 ---
 
 # Review a change against Domain Memory

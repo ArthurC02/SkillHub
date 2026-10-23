@@ -1,12 +1,8 @@
 # Seven-step domain change workflow
 
-Start with `readiness --repo-root <repo> [--registry-root <root>]` and use the result only to choose the smallest next action, as [readiness](readiness.md) describes. It is a read-only filesystem observation; it never selects sources or changes the Registry.
-
 Use this workflow for a material change. A change is material when it changes an owner, a boundary, an invariant, a public or event contract, an event, a consistency rule or a material business rule, a regulated rule and an irreversible behaviour among them, or when it adds a cross-Context dependency; this is the one definition the other pages refer to. A routine implementation contained within one approved owner does not need the full workflow, but it still reads the Registry before coding and checks whether the implementation changed the domain documents afterward.
 
 A brownfield refactoring that preserves the reviewed model takes the [brownfield refactoring fast path](brownfield-refactoring.md), which escalates back here.
-
-The workflow is continuous: the Registry is the input to implementation and the implementation is evidence for the next Registry revision. A code change that leaves a model change, as [extraction](extraction.md#from-a-change) lists them, undocumented is not complete.
 
 ## Before Step 0: Map repository sources
 
@@ -72,18 +68,9 @@ Complete the package's [evidence bundle](../templates/evidence-bundle.json) and 
 
 ## Harvesting proven rules from existing code
 
-`harvest --spec <file> [--through verified]` runs the whole loop below from one spec, one entry per rule, and stops before the signed commit; [harvest](script-api.md#harvest) has the spec format, what it writes and what a resume skips. The steps are spelled out here for a rule that needs a hand on one of them. When a step fails after the package is written, running the same spec again resumes from where it stopped without writing the unchanged records again, and `discard-harvest --package-root <package>` undoes a harvest that will not be finished.
+`harvest --spec <file> [--through verified]` runs the whole loop below from one spec, one entry per rule, and stops before the signed commit; [harvest](script-api.md#harvest) has the spec format, what it writes and what a resume skips, and `discard-harvest --package-root <package>` undoes a harvest that will not be finished. The steps are spelled out here for a rule that needs a hand on one of them.
 
-When reviewed rules are drawn from code that already enforces them rather than from a new requirement, start from the Contexts with the fewest reviewed rules in `coverage`'s `rules_by_context`. For each rule, cite the code that enforces it and, with `cite --function`, the test that proves it; record it with `upsert-candidate` and promote it into one package. Its `check` runs only that test, with `-v` for Go. Then show that every rule can fail before anything is submitted, once per rule:
-
-```sh
-DM="python3 <path>/registry_tools.py"
-$DM counterfactual --repo-root . --file <enforcing file> --find '<protection>' --replace '<broken protection>' --test-command '<check>' --cwd <directory> --obligation-id <obligation>
-```
-
-Several rules at once go through `counterfactual --suite <json>`, one entry per rule with its `obligation_id`; [counterfactual](script-api.md#counterfactual) has the file format.
-
-The intact run is made once per distinct command and directory, and each mutation is judged and restored before the next. Continue only when every verdict is `killed`. `harvest --spec` keeps each whole output and writes nothing while a rule's counterfactual is not killed. A rule whose mutation survives is either untested or not the rule it claims: write the test, or leave the rule out and say why in `rejected_alternatives`.
+When reviewed rules are drawn from code that already enforces them rather than from a new requirement, start from the Contexts with the fewest reviewed rules in `coverage`'s `rules_by_context`. For each rule, cite the code that enforces it and, with `cite --function`, the test that proves it; record it with `upsert-candidate` and promote it into one package. Its `check` runs only that test, with `-v` for Go. Then show that every rule can fail before anything is submitted, once per rule with [counterfactual](script-api.md#counterfactual) and its `--obligation-id`, or `--suite` for several at once. Continue only when every verdict is `killed`: a rule whose mutation survives is either untested or not the rule it claims, so write the test, or leave the rule out and say why in `rejected_alternatives`.
 
 ### Signing and shipping a harvest
 

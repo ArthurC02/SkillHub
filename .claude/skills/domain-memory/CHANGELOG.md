@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.10.0
+
+### Changed
+
+- The agent-facing pages say each thing once. The seven code rules live on `AGENTS.md` alone and the hygiene Skill points there; rule 7 names the gaps and leaves their definitions to `describe-table`'s reference, which is now a structured section instead of one paragraph. `AGENTS.md` keeps a one-line-per-task command table and no longer restates the write route, the MCP registration (now under `mcp-serve`) or the review path in full.
+- `references/host-integration.md` keeps what a host must do and drops the capability sequence and event table that repeated the Skills. `references/packaging.md` is gone; its maintainer facts (manifest fields, evals, release check) are in `README.md`. `references/reliability-architecture.md` points to the pages that own record and proposal statuses and the approval authority instead of restating them. The seven-step workflow's harvest section points to `harvest` and `counterfactual` instead of restating them, and readiness-first is stated on `AGENTS.md`, the router and the Read and Extract Skills only.
+- `references/readiness.md` maps each `next_capability` value to the Skill or commands to open; two of the values open no Skill, which no page said before.
+- The Read, Maintain and Review Skills link the tactical questions instead of paraphrasing them; the Skill descriptions no longer collide (review: before relying on a fact; review-change: when asked to review a PR or branch; extract: the Registry has never seen the source; maintain: merged code moved cited lines; hygiene: while writing code).
+- `references/script-api.md` opens with an index of its 64 commands, and the notes on reading a counterfactual result sit under `counterfactual`; the protocol-revision details under `mcp-serve` are removed.
+
 ## 2.9.2
 
 ### Fixed

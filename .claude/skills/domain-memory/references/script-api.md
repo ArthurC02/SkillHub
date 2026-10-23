@@ -4,6 +4,12 @@
 
 The commands fall into two groups, which `registry_tools.py --help` lists too. Everyday commands are the seven-step workflow, harvest, review and reading. Advanced commands set up, govern, recover and measure: rarely run, still needed. Each command has one section: its synopsis, then what it guarantees and how it refuses.
 
+Everyday: [`readiness`](#readiness), [`verify-sources`](#verify-sources), [`verify-evidence`](#verify-evidence), [`verify-audit`](#verify-audit), [`reconcile-audit`](#reconcile-audit), [`refresh-indexes`](#refresh-indexes), [`probe`](#probe), [`validate`](#validate), [`coverage`](#coverage), [`cite`](#cite), [`get-record`](#get-record), [`describe-table`](#describe-table), [`brief`](#brief), [`dependents`](#dependents), [`resolve-terms`](#resolve-terms), [`get-context`](#get-context), [`analyze-boundary`](#analyze-boundary), [`boundary-impact`](#boundary-impact), [`lookup`](#lookup), [`upsert-candidate`](#upsert-candidate), [`harvest`](#harvest), [`discard-harvest`](#discard-harvest), [`retract-candidate`](#retract-candidate), [`promote-candidate`](#promote-candidate), [`init-change-package`](#init-change-package), [`validate-change-package`](#validate-change-package), [`recite`](#recite), [`relocate-evidence`](#relocate-evidence), [`submit-proposal`](#submit-proposal), [`list-proposals`](#list-proposals), [`supersede-proposal`](#supersede-proposal), [`record-approval`](#record-approval), [`record-test-result`](#record-test-result), [`ship-package`](#ship-package), [`verify-proposal`](#verify-proposal), [`rebase-proposal`](#rebase-proposal), [`quality-gates`](#quality-gates), [`counterfactual`](#counterfactual).
+
+Advanced: [`discover-sources`](#discover-sources), [`init-domain-memory`](#init-domain-memory), [`refine-sources`](#refine-sources), [`recover-registry-update`](#recover-registry-update), [`export`](#export), [`change-coupling`](#change-coupling), [`compare-registry`](#compare-registry), [`confirm-sources`](#confirm-sources), [`harvest-candidates`](#harvest-candidates), [`extract-sql-schema`](#extract-sql-schema), [`redraft-proposal`](#redraft-proposal), [`audit-attestations`](#audit-attestations), [`governance-readiness`](#governance-readiness), [`init-signing-key`](#init-signing-key), [`amend-policy`](#amend-policy), [`install-git-hitl-hook`](#install-git-hitl-hook), [`install-pre-commit-hook`](#install-pre-commit-hook), [`verify-git-governance`](#verify-git-governance), [`validate-policy`](#validate-policy), [`verify-scm-attestation`](#verify-scm-attestation), [`demote-local-reviews`](#demote-local-reviews), [`refresh-sources`](#refresh-sources), [`refresh-listing`](#refresh-listing), [`scan-secrets`](#scan-secrets), [`mcp-serve`](#mcp-serve), [`validate-contract`](#validate-contract).
+
+Then [preparing the approval authority](#preparing-the-approval-authority), [output and refusals](#output-and-refusals) and [the shape of an update](#the-shape-of-an-update).
+
 ## Everyday commands
 
 ### `readiness`
@@ -100,7 +106,34 @@ Returns the exact stored record or fails, naming up to three ids that start with
 
 `describe-table --repo-root <repo> --migrations <dir> (--table <name> | --base <ref> | --table <name> --base <ref>) [--registry-root <root>] [--require-complete]`
 
-Read-only. One document about one table, for the agent about to read or write it, built from the migrations as the database would apply them and from the Registry: the table's `meaning` (its `COMMENT ON TABLE`), where it is declared, each column with its line, its declared `type`, whether it is `required` and part of the `primary_key`, its `meaning` (its `COMMENT ON COLUMN`, null when none), its `allowed_values` when a CHECK is exactly a list of them or exactly one equality (a conditional CHECK that mentions some values is not that list) or, failing that, when its type is an enum the migrations create (then `type_meaning` carries that type's `COMMENT ON TYPE`, null when none), its `default` and `at` (the file and line that declared it, the `ALTER TABLE` for an added column), the `constraints` still in force under the names the database holds them by (the primary key, each CHECK, UNIQUE and EXCLUDE, each unique index and each foreign key, with their text and lines, and for a CHECK its own `clause`, which differs from the text when a column declaration carries two; an unnamed constraint gets the database's default name, numbered on a collision and shortened to 63 bytes), its `indexes`, the tables it `references` and is `referenced_by` with each key's `name`, `columns`, `parent_columns`, `on_delete` and `on_update`, its `partitions`, and under `registry` every record of any asset that names the table or cites its declaring lines, with the record's status and one line of summary, so a draft is told from a reviewed fact. `undescribed_columns` lists the columns whose meaning the files do not state, and a NOTE names them; without `--registry-root` a NOTE says the Registry part is absent. An unknown table is refused with its name quoted and the closest names; the `--table` argument is stripped of surrounding whitespace first. `gaps` lists what keeps the table from being complete: a table or column without a `COMMENT ON` (the policy's `exempt_columns` need none: `id`, `created_at` and `updated_at` by default); a status-like column (its name is, or ends in `_` plus, one of the policy's `status_like_suffixes`: `status`, `state`, `kind`, `mode`, `tier`, `role`, `decision`, `verdict`, `outcome`, `phase`, `stage`, `level`, `priority`, `severity`, `visibility` and `category` by default) without a value list, unless its comment begins with one of the policy's `free_text_markers` (`free text` and `free-text` by default, any case; a comment that merely mentions the phrase, such as `not free text`, does not count) or another CHECK constrains it; a CHECK value list on a nullable column that says neither `IS NULL OR` nor `IS NOT NULL AND` while no other CHECK on the table writes `col IS NULL` or `col IS NOT NULL` (a bare `IN (...)` lets NULL through; an enum type cannot hold an unlisted value, so a nullable enum column is not flagged); a listed value, when the list has no more values than the policy's `value_comment_limit` (twelve by default), that neither the column's nor its type's comment mentions as a whole word (`run` is not explained by `running`); a foreign key without `ON DELETE`; and a `DO` block or function that builds DDL naming the table at run time, which `dynamic_ddl` lists with its lines and a NOTE names, since the files cannot show what it creates; a later migration that declares the trigger the template names with a static `CREATE TRIGGER` on the table clears it for that table, while a template whose trigger name is itself a placeholder is never cleared. `--require-complete` exits 1 while `gaps` is not empty, so a migration is done when it exits 0. `--base <ref>` reads the migrations as they were at that Git ref and lists, per table, the gaps the migrations since then opened (`new_gaps`) and closed (`closed_gaps`), with the total under `new_gaps`; given with `--table`, the report and the total cover that table alone; with `--require-complete` it exits 1 while a listed table has a new gap, so a change is gated without first closing every older table's gaps; a ref that cannot be read, or a table the migrations do not create, is refused. A relative `--migrations` resolves against `--repo-root`; a directory outside the repo root, one that does not exist, or one that holds no `.sql` file is refused by name before any table is looked up. A Registry record whose evidence cites a constraint a later migration dropped or replaced carries `cites_replaced` (the constraint's kind, name, lines and the migration that replaced it) and a NOTE names such records, because `verify-evidence` stays green on migration lines that never change. These four conventions come from the `schema_conventions` section of the Registry's `domain-memory-policy.json` when `--registry-root` is given, so each project names its own exempt columns, status-like suffixes, free-text markers and value limit; without a Registry the defaults apply. `validate` refuses a bad section one line per defect, naming the key, the index and the value (`schema_conventions.exempt_column is not a known key; did you mean exempt_columns?`, `schema_conventions.status_like_suffixes[1] is blank`, `schema_conventions.value_comment_limit must be a whole number 0 or more, got -1`). It never connects to a database, and a dropped table or a partition is not described on its own. The reader understands PostgreSQL DDL as one directory of forward-only `*.sql` files applies it in file-name order: `CREATE`/`ALTER`/`DROP TABLE`, column and table constraints with the database's default names, indexes, triggers, `CREATE TYPE ... AS ENUM`, `COMMENT ON`, and `DO` blocks only as disclosed run-time DDL; another dialect, down-migrations kept in the same file, or files whose name order differs from their application order are not read correctly, and a project in that shape should not rely on it until the reader learns that shape.
+Read-only. One document about one table, for the agent about to read or write it, built from the migrations as the database would apply them and from the Registry. It never connects to a database, and a dropped table or a partition is not described on its own.
+
+The document carries:
+
+- `meaning`, the table's `COMMENT ON TABLE`, and where the table is declared;
+- each column with its line, its declared `type`, whether it is `required` and part of the `primary_key`, its `meaning` (its `COMMENT ON COLUMN`, null when none), its `allowed_values` when a CHECK is exactly a list of them or exactly one equality (a conditional CHECK that mentions some values is not that list) or, failing that, when its type is an enum the migrations create (then `type_meaning` carries that type's `COMMENT ON TYPE`, null when none), and its `default` and `at` (the file and line that declared it, the `ALTER TABLE` for an added column);
+- the `constraints` still in force under the names the database holds them by: the primary key, each CHECK, UNIQUE and EXCLUDE, each unique index and each foreign key, with their text and lines, and for a CHECK its own `clause`, which differs from the text when a column declaration carries two; an unnamed constraint gets the database's default name, numbered on a collision and shortened to 63 bytes;
+- its `indexes`, its `partitions`, and the tables it `references` and is `referenced_by`, each key with its `name`, `columns`, `parent_columns`, `on_delete` and `on_update`;
+- under `registry`, every record of any asset that names the table or cites its declaring lines, with the record's status and one line of summary, so a draft is told from a reviewed fact; without `--registry-root` a NOTE says this part is absent. A record whose evidence cites a constraint a later migration dropped or replaced carries `cites_replaced` (the constraint's kind, name, lines and the migration that replaced it), and a NOTE names such records, because `verify-evidence` stays green on migration lines that never change;
+- `undescribed_columns`, the columns whose meaning the files do not state, which a NOTE also names;
+- `dynamic_ddl`, each `DO` block or function that builds DDL naming the table at run time, with its lines, which a NOTE names, since the files cannot show what it creates.
+
+`gaps` lists what keeps the table from being complete, and `--require-complete` exits 1 while it is not empty, so a migration is done when it exits 0:
+
+- a table or column without a `COMMENT ON`; the policy's `exempt_columns` need none (`id`, `created_at` and `updated_at` by default);
+- a status-like column (its name is, or ends in `_` plus, one of the policy's `status_like_suffixes`: `status`, `state`, `kind`, `mode`, `tier`, `role`, `decision`, `verdict`, `outcome`, `phase`, `stage`, `level`, `priority`, `severity`, `visibility` and `category` by default) without a value list, unless its comment begins with one of the policy's `free_text_markers` (`free text` and `free-text` by default, any case; a comment that merely mentions the phrase, such as `not free text`, does not count) or another CHECK constrains it;
+- a CHECK value list on a nullable column that says neither `IS NULL OR` nor `IS NOT NULL AND` while no other CHECK on the table writes `col IS NULL` or `col IS NOT NULL`: a bare `IN (...)` lets NULL through; an enum type cannot hold an unlisted value, so a nullable enum column is not flagged;
+- a listed value, when the list has no more values than the policy's `value_comment_limit` (twelve by default), that neither the column's nor its type's comment mentions as a whole word (`run` is not explained by `running`);
+- a foreign key without `ON DELETE`;
+- a `DO` block or function that builds the table's DDL at run time; a later migration that declares the trigger the template names with a static `CREATE TRIGGER` on the table clears it for that table, while a template whose trigger name is itself a placeholder is never cleared.
+
+The four conventions come from the `schema_conventions` section of the Registry's `domain-memory-policy.json` when `--registry-root` is given, so each project names its own exempt columns, status-like suffixes, free-text markers and value limit; without a Registry the defaults apply. `validate` refuses a bad section one line per defect, naming the key, the index and the value (`schema_conventions.exempt_column is not a known key; did you mean exempt_columns?`, `schema_conventions.status_like_suffixes[1] is blank`, `schema_conventions.value_comment_limit must be a whole number 0 or more, got -1`).
+
+`--base <ref>` reads the migrations as they were at that Git ref and lists, per table, the gaps the migrations since then opened (`new_gaps`) and closed (`closed_gaps`), with the total under `new_gaps`; given with `--table`, the report and the total cover that table alone; with `--require-complete` it exits 1 while a listed table has a new gap, so a change is gated without first closing every older table's gaps; a ref that cannot be read, or a table the migrations do not create, is refused.
+
+An unknown table is refused with its name quoted and the closest names; the `--table` argument is stripped of surrounding whitespace first. A relative `--migrations` resolves against `--repo-root`; a directory outside the repo root, one that does not exist, or one that holds no `.sql` file is refused by name before any table is looked up.
+
+The reader understands PostgreSQL DDL as one directory of forward-only `*.sql` files applies it in file-name order: `CREATE`/`ALTER`/`DROP TABLE`, column and table constraints with the database's default names, indexes, triggers, `CREATE TYPE ... AS ENUM`, `COMMENT ON`, and `DO` blocks only as disclosed run-time DDL; another dialect, down-migrations kept in the same file, or files whose name order differs from their application order are not read correctly, and a project in that shape should not rely on it until the reader learns that shape.
 
 ### `brief`
 
@@ -352,6 +385,33 @@ Lists the lint, type, architecture, test, hook, and pipeline configuration it fi
 
 `--suite` runs the mutations of one JSON file holding `test_command`, `cwd`, `timeout`, `expect` and `mutations` at the top level and, in each entry of `mutations`, `file`, `find`, `replace`, `test_command`, `cwd`, `timeout`, `expect` and `obligation_id`, an entry inheriting the top-level values it leaves out. The output is `results`, one object per entry in order, and `summary` with the count of each verdict; an entry's refusal becomes its own `error` result with its `entry` number instead of ending the suite, and the exit code is the worst verdict's. The command runs first on the intact file and is refused when it does not pass, giving that run's failure lines with its tail as `failure_evidence`, its `failing_tests`, and `log_path`, a file holding the whole output. A command that passes while running no test is refused on the intact file and `inconclusive` on the broken one. The one occurrence of `--find` is then replaced; a text that occurs more than once is refused with the first ten lines it occurs on and how many more. The command runs again and the file is restored byte for byte whatever the run did; a restore that still fails is an error naming the copy to restore from. Every verdict carries a `reason`: `killed` exits 0, `survived` exits 1, `inconclusive` exits 2. `--expect` is a pattern of the failing assertion, so a verdict word such as `FAIL` or `passed` is refused; write `--expect=PATTERN` when the pattern starts with `-`. A killed run prints `counterfactual_check`, the object a Change Package's evidence records, naming `--obligation-id` or a placeholder to fill. With `--package-root` and `--obligation-id`, a killed run whose file was restored also records that object in the package's `evidence-bundle.json` and prints `recorded_in`: it replaces the run recorded for the same obligation, keeps the others as a list, and replaces a `not_applicable` entry. The package must be draft or submitted and the obligation must be in `test-obligations.json` and, when the design lists them, in its `proof_obligations`; these are checked before anything runs, and a refusal is an `error`. Any other verdict writes nothing and prints `not_recorded`; `--package-root` does not combine with `--suite`. Every refusal, including a failing intact run and a usage mistake such as an unknown option, prints JSON with `verdict` `error` and its `reason` and exits 3. How to read a result: [Checks on the code being written](#checks-on-the-code-being-written).
 
+#### Checks on the code being written
+
+`quality-gates` and `counterfactual` need no Registry. They answer two questions an Agent otherwise answers from memory, and gets wrong.
+
+`counterfactual` runs the command the caller passes:
+
+- in the repository root or `--cwd`, with the caller's permissions;
+- like `record-test-result`, without a shell: the command is split by POSIX quoting rules, so a pipeline or several commands go in a script.
+
+It refuses:
+
+- text that is absent or occurs more than once;
+- a file outside the repository;
+- any repository in which an earlier run left a `.counterfactual-original` copy, because that file may still hold a mutation every later proof would run against.
+
+Reading a result:
+
+- Break a protection so the code still builds: in Go, `if ready && false {` keeps `ready` used where `if false {` would not compile. A broken file that does not build, such as an unused variable or import or a syntax error, is `inconclusive`.
+- Two guards that cover each other each survive alone; each needs a test only it can satisfy.
+- Read `failure_evidence` before trusting a `killed`: it starts with the output's failure lines, such as `--- FAIL:`, `FAIL:`, `ERROR:` or `panic:`, each with up to three lines indented under it, such as the assertion message, then its last part.
+- `inconclusive` means the run did not finish in time, the broken code did not build (whatever `--expect` matches), or, with `--expect`, the failure does not match the pattern.
+- `killed` means the tests failed on the broken file. `survived` means they still passed, so nothing protects that line; its `reason` says the change may not break the protection at all (an equivalent mutation), which to rule out before you write a test for it.
+- A run that judges nothing can kill nothing: `go test` without `-v` or `-json`, a `go test -v` or `-json` run in which every test was skipped (the refusal counts them and quotes the first skip's message, such as a missing environment variable) or no test matched, a unittest run of 0 tests or every test skipped, and a pytest run in which nothing passed are refused on the intact file and `inconclusive` on the broken one.
+- `failing_tests` names the tests that failed on the broken file, read from `go test -v` or `-json`, where a subtest is named by its top-level test, pytest and unittest output, so a broad test command answers which test proves the protection; it is empty for any other runner.
+- A restore the system refuses is retried for a few seconds before it is an error.
+- Every refusal exits 3 with the same JSON shape, so a script never takes a refusal for `survived` or a usage mistake for `inconclusive`.
+
 ## Advanced commands
 
 ### `discover-sources`
@@ -560,9 +620,11 @@ Reports findings, skipped paths, and how much was read. Inside a repository it r
 
 Runs a Model Context Protocol server on standard input and output, one JSON-RPC message per line, until its input closes. It offers thirteen read commands as tools, named with `_` for `-`: `get_context`, `get_record`, `resolve_terms`, `lookup`, `dependents`, `coverage`, `brief`, `boundary_impact`, `verify_evidence`, `validate`, `readiness`, `list_proposals` and `validate_change_package`. Each takes the command's own options as arguments, such as `id`, `asset`, `base`, `markdown` or `path`, and returns what the command prints as text, with its NOTEs as a second text. When the command succeeds and prints a JSON object, the result also carries that object as `structuredContent`; `get_context`, `get_record`, `dependents`, `coverage`, `boundary_impact`, `verify_evidence` and `readiness` always print one and declare an object `outputSchema`, while a list, Markdown or a plain line comes back as text only. No command that writes is offered. The Registry and the repository are the server's own arguments, never the client's, and a path argument, `changes_root` or `package_root`, is read relative to the repository and refused outside it. A refusal, a usage mistake, a required argument left out (named as the JSON argument, such as `get_context: argument id is required`), an argument the command does not take and a non-zero exit come back as a result with `isError`; an unknown tool or method, a malformed line and an unsupported protocol version as a JSON-RPC error. It answers the `initialize` handshake of the protocol versions from 2024-11-05 to 2025-11-25 and the per-request `_meta` of 2026-07-28 with `server/discover`. Nothing but replies reaches stdout.
 
-- A result carries `resultType` only when the request declared its version in `_meta`; a session negotiated through `initialize` gets the plain result shape, which strict clients of those revisions require.
-- Under 2026-07-28 the `server/discover` and `tools/list` results carry the caching hints that revision requires, `ttlMs` 300000 and `cacheScope` `public`, because the tool list holds no user-specific data.
-- It keeps no session: it answers requests sent before `initialize` and accepts a repeated `initialize`.
+Register it as a stdio server, with `python` in place of `python3` on Windows:
+
+```json
+{"command": "python3", "args": ["<path>/scripts/registry_tools.py", "mcp-serve", "--registry-root", "<root>", "--repo-root", "<repo>"]}
+```
 
 ### `validate-contract`
 
@@ -581,33 +643,6 @@ A repository whose pull requests are reviewed uses `github-pr`: the merged, appr
 A repository without that reviewer uses `git-signed-commit`: the maintainer signs the commit that carries the change, and the signature is the evidence. That commit must add this Change Package with the same `proposal_id` and `proposal_revision`, so a signature on an earlier commit cannot stand in for this proposal's review.
 
 Authorize a key by its fingerprint rather than its principal when the address it was created under may change. Both are reported by `init-signing-key` and either satisfies the check.
-
-## Checks on the code being written
-
-`quality-gates` and `counterfactual` need no Registry. They answer two questions an Agent otherwise answers from memory, and gets wrong.
-
-`counterfactual` runs the command the caller passes:
-
-- in the repository root or `--cwd`, with the caller's permissions;
-- like `record-test-result`, without a shell: the command is split by POSIX quoting rules, so a pipeline or several commands go in a script.
-
-It refuses:
-
-- text that is absent or occurs more than once;
-- a file outside the repository;
-- any repository in which an earlier run left a `.counterfactual-original` copy, because that file may still hold a mutation every later proof would run against.
-
-Reading a result:
-
-- Break a protection so the code still builds: in Go, `if ready && false {` keeps `ready` used where `if false {` would not compile. A broken file that does not build, such as an unused variable or import or a syntax error, is `inconclusive`.
-- Two guards that cover each other each survive alone; each needs a test only it can satisfy.
-- Read `failure_evidence` before trusting a `killed`: it starts with the output's failure lines, such as `--- FAIL:`, `FAIL:`, `ERROR:` or `panic:`, each with up to three lines indented under it, such as the assertion message, then its last part.
-- `inconclusive` means the run did not finish in time, the broken code did not build (whatever `--expect` matches), or, with `--expect`, the failure does not match the pattern.
-- `killed` means the tests failed on the broken file. `survived` means they still passed, so nothing protects that line; its `reason` says the change may not break the protection at all (an equivalent mutation), which to rule out before you write a test for it.
-- A run that judges nothing can kill nothing: `go test` without `-v` or `-json`, a `go test -v` or `-json` run in which every test was skipped (the refusal counts them and quotes the first skip's message, such as a missing environment variable) or no test matched, a unittest run of 0 tests or every test skipped, and a pytest run in which nothing passed are refused on the intact file and `inconclusive` on the broken one.
-- `failing_tests` names the tests that failed on the broken file, read from `go test -v` or `-json`, where a subtest is named by its top-level test, pytest and unittest output, so a broad test command answers which test proves the protection; it is empty for any other runner.
-- A restore the system refuses is retried for a few seconds before it is an error.
-- Every refusal exits 3 with the same JSON shape, so a script never takes a refusal for `survived` or a usage mistake for `inconclusive`.
 
 ## Output and refusals
 
