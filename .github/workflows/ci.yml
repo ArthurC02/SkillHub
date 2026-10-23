@@ -230,13 +230,11 @@ jobs:
         working-directory: packages/api-client-ts
       - run: npm ci --no-audit
       - if: runner.os == 'Linux'
+        timeout-minutes: 8
         run: |
-          for attempt in 1 2; do
-            timeout 3m npx playwright install --with-deps ${{ matrix.browser }} && exit 0
-            echo "::warning::playwright install attempt $attempt failed or ran past 3 minutes"
-          done
-          echo "::error::playwright install --with-deps ${{ matrix.browser }} failed twice"
-          exit 1
+          printf 'Acquire::Retries "5";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' |
+            sudo tee /etc/apt/apt.conf.d/80-stalled-mirror >/dev/null
+          npx playwright install --with-deps ${{ matrix.browser }}
       - if: runner.os != 'Linux'
         run: npx playwright install ${{ matrix.browser }}
       - run: npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/${{ matrix.total }}
