@@ -5,12 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from .changes import missing_approval_roles, test_attestation_errors, unconfirmed_evidence_errors, validate_change_package
-from .attestations import (
-    commit_carries_proposal,
-    github_commit_carries_proposal,
-    verify_external_scm,
-    verify_git_signed_commit,
-)
+from .attestations import commit_carries_proposal, verify_git_signed_commit
 from .common import (
     sha256_of,
     EVIDENCE_FILE,
@@ -377,7 +372,8 @@ def attest_signed_commit(root: Path, registry_root: Path, repo_root: Path, commi
     if full is None:
         raise ValueError(f"no commit {commit} in {repo_root}")
     errors = verify_git_signed_commit(
-        {"commit": full}, repo_root, registry_root, governance["authorized_signers"]
+        {"commit": full}, repo_root, registry_root, governance["authorized_signers"],
+        governance.get("distinct_signer", False),
     ) or commit_carries_proposal(repo_root, full, root, proposal)
     if errors:
         raise ValueError("the commit cannot attest this proposal: " + "; ".join(errors))
@@ -395,12 +391,6 @@ def attest_signed_commit(root: Path, registry_root: Path, repo_root: Path, commi
 
 
 ATTESTATION_STEPS = {
-    "github-pr": (
-        "after the pull request merges, add scm_attestation to evidence-bundle.json with provider "
-        '"github", status "approved", the merged head commit as 40 hex characters, pull_request and '
-        "checks_url as https URLs, and proposal_revision and base_registry_revision copied from "
-        "domain-change-proposal.json; check it with verify-scm-attestation"
-    ),
     "git-signed-commit": (
         "after the signed commit that adds this Change Package and changes the Domain Memory files "
         "exists, run ship-package --commit <that commit>; it checks the signature and the "
@@ -416,9 +406,7 @@ def missing_attestation_message(verifier: str) -> str:
     return f"finalizing a proposal requires SCM attestation: {steps}, then finalize again"
 
 
-def finalize_proposal(
-    root: Path, registry_root: Path, repo_root: Path, verification_token_env: str = "GITHUB_TOKEN"
-) -> None:
+def finalize_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
     path = proposal_path(root)
     proposal = load_json(path)
     if proposal.get("status") != "verified":
@@ -429,17 +417,10 @@ def finalize_proposal(
     governance = review_governance(registry_root)
     if not isinstance(attestation, dict):
         raise ValueError(missing_attestation_message(governance["verifier"]))
-    if governance["verifier"] == "github-pr":
-        errors = verify_external_scm(
-            attestation,
-            verification_token_env,
-            governance["ci_requirement"] == "required",
-        ) or github_commit_carries_proposal(
-            attestation, verification_token_env, repo_root, root, proposal
-        )
-    elif governance["verifier"] == "git-signed-commit":
+    if governance["verifier"] == "git-signed-commit":
         errors = verify_git_signed_commit(
-            attestation, repo_root, registry_root, governance["authorized_signers"]
+            attestation, repo_root, registry_root, governance["authorized_signers"],
+            governance.get("distinct_signer", False),
         ) or commit_carries_proposal(repo_root, attestation["commit"], root, proposal)
     else:
         errors = ["policy has no review verifier"]

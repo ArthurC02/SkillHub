@@ -26,16 +26,14 @@ STALE_NEXT = (
 )
 
 
-def ship_package(
-    package_root: Path, registry_root: Path, repo_root: Path, commit: str | None, verification_token_env: str = "GITHUB_TOKEN"
-) -> dict[str, Any]:
+def ship_package(package_root: Path, registry_root: Path, repo_root: Path, commit: str | None) -> dict[str, Any]:
     package_root, registry_root, repo_root = package_root.resolve(), registry_root.resolve(), repo_root.resolve()
     report: dict[str, Any] = {"format": FORMAT, "package": shown_path(package_root, repo_root), "completed": [], "errors": []}
     proposal = load_json(proposal_path(package_root))
     status = proposal.get("status")
     actions: dict[str, Callable[[], Any]] = {
         ATTEST: lambda: attest_signed_commit(package_root, registry_root, repo_root, commit),
-        FINALIZE: lambda: finalize_proposal(package_root, registry_root, repo_root, verification_token_env),
+        FINALIZE: lambda: finalize_proposal(package_root, registry_root, repo_root),
         APPLY: lambda: apply_approved_updates(package_root, registry_root, repo_root),
     }
     names = STEPS_FROM.get(status, (ATTEST, FINALIZE, APPLY) if commit is not None else (FINALIZE, APPLY))

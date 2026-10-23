@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import tempfile
 import unittest
@@ -9,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.commands.governance import policy_assignments
+from domain_registry.policy import amend_policy_fields
 from domain_registry.registry import (
     coverage,
     validate,
@@ -97,16 +99,15 @@ class RegistryPolicyTest(RegistryTestCase):
                 "A reviewer exists now.",
             )
         self.assertEqual(self.stored_policy()["review_mode"], "local-draft-only")
-        amend_policy(
+        amend_policy_fields(
             self.repo / "memory",
-            "review_mode",
-            "scm-verified",
+            [("review_mode", "scm-verified"), ("review_verifier", "git-signed-commit"), ("review_trigger", "git-push"),
+             ("authorized_signers", "SHA256:k")],
             "A reviewer exists now.",
-            verifier="github-pr",
         )
         self.assertEqual(self.stored_policy()["review_mode"], "scm-verified")
         self.assertEqual(
-            self.stored_policy()["review_governance"]["verifier"], "github-pr"
+            self.stored_policy()["review_governance"]["verifier"], "git-signed-commit"
         )
 
     def test_a_repository_without_ci_can_adopt_and_rotate_a_signer(self) -> None:
@@ -148,7 +149,8 @@ class RegistryPolicyTest(RegistryTestCase):
             amend_policy(self.repo / "memory", "limits", "0", "Loosen the limits.")
         for amendable in (
             "review_mode", "storage_mode", "data_classification", "source_authority",
-            "review_verifier", "review_trigger", "ci_requirement", "authorized_signers",
+            "review_verifier", "review_trigger", "ci_requirement", "authorized_signers", "distinct_signer",
+            "implementation_roots", "excluded_directories", "decision_roots", "boundary_markers",
         ):
             self.assertIn(amendable, str(raised.exception))
 
@@ -161,7 +163,10 @@ class RegistryPolicyTest(RegistryTestCase):
             "--source", str(self.repo / "docs"), "--storage-mode", "ignored",
             "--data-classification", "internal", "--review-mode", "local-draft-only", "--source-authority", "test",
         ]
-        refused = self.run_cli(*arguments, "--review-verifier", "github-pr")
+        refused = self.run_cli(
+            *arguments, "--review-verifier", "git-signed-commit", "--review-trigger", "git-push",
+            "--authorized-signer", "SHA256:k",
+        )
         self.assertEqual(
             (1, "ERROR: invalid policy: local-draft-only policy must not select a review verifier"),
             (refused.returncode, refused.stderr.strip()),
@@ -170,6 +175,33 @@ class RegistryPolicyTest(RegistryTestCase):
         corrected = self.run_cli(*arguments)
         self.assertEqual(0, corrected.returncode, corrected.stderr)
         self.assertTrue((destination / "domain-memory-policy.json").is_file())
+
+    def test_an_initialization_records_the_project_profile_and_distinct_signer_it_is_given(self) -> None:
+        (self.repo / "docs").mkdir(exist_ok=True)
+        (self.repo / "docs" / "rules.md").write_text("rules", encoding="utf-8")
+        destination = self.repo / "domain-memory"
+        arguments = [
+            "init-domain-memory", "--repo-root", str(self.repo), "--output", str(destination),
+            "--source", str(self.repo / "docs"), "--storage-mode", "ignored", "--data-classification", "internal",
+            "--review-mode", "scm-verified", "--source-authority", "test", "--review-verifier", "git-signed-commit",
+            "--review-trigger", "git-push", "--authorized-signer", "SHA256:k", "--distinct-signer",
+            "--implementation-root", "lib", "--implementation-root", "services", "--boundary-marker", "package-info.java",
+            "--excluded-directory", "target", "--decision-root", "docs/decisions",
+        ]
+        refused = self.run_cli(*arguments, "--boundary-marker", "pkg/doc.go")
+        self.assertEqual(
+            (1, "ERROR: invalid project profile: project_profile.boundary_markers[1] must be a bare name without a "
+                "path separator, got 'pkg/doc.go'", False),
+            (refused.returncode, refused.stderr.strip(), destination.exists()),
+        )
+        accepted = self.run_cli(*arguments)
+        self.assertEqual(0, accepted.returncode, accepted.stderr)
+        policy = json.loads((destination / "domain-memory-policy.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            ({"implementation_roots": ["lib", "services"], "excluded_directories": ["target"],
+              "decision_roots": ["docs/decisions"], "boundary_markers": ["package-info.java"]}, True),
+            (policy["project_profile"], policy["review_governance"]["distinct_signer"]),
+        )
 
     def test_an_initialization_whose_review_flags_contradict_is_refused_naming_the_flag_and_writes_nothing(self) -> None:
         (self.repo / "docs").mkdir(exist_ok=True)

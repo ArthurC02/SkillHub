@@ -9,8 +9,13 @@ from .common import change_template_dir, invalid_choice, load_json, whole_number
 STORAGE_MODES = ("tracked", "ignored", "external")
 CLASSIFICATIONS = ("public", "internal", "confidential", "restricted")
 REVIEW_MODES = ("local-draft-only", "scm-verified")
-GOVERNANCE_VERIFIERS = ("github-pr", "git-signed-commit", "none")
-GOVERNANCE_TRIGGERS = ("external-scm", "git-commit", "git-push", "none")
+GOVERNANCE_VERIFIERS = ("git-signed-commit", "none")
+GOVERNANCE_TRIGGERS = ("git-commit", "git-push", "none")
+REMOVED_VERIFIER = (
+    "policy names the github-pr verifier, which the plugin no longer provides: it verifies git signatures only; "
+    "amend-policy --set review_verifier=git-signed-commit --set review_trigger=git-push "
+    "--set authorized_signers=<fingerprint,...> --reason <text>"
+)
 CI_REQUIREMENTS = ("required", "optional", "none")
 
 
@@ -44,6 +49,13 @@ SCHEMA_CONVENTION_DEFAULTS: dict[str, Any] = {
     "value_comment_limit": 12,
 }
 CONVENTION_LISTS = ("exempt_columns", "status_like_suffixes", "free_text_markers")
+PROJECT_PROFILE_DEFAULTS: dict[str, list[str]] = {
+    "implementation_roots": ["apps", "src", "services", "packages", "db", "database", "migrations", "schema"],
+    "excluded_directories": [],
+    "decision_roots": ["docs/adr", "adr", "docs/architecture", "architecture"],
+    "boundary_markers": ["doc.go"],
+}
+BARE_NAME_KEYS = ("excluded_directories", "boundary_markers")
 GOVERNANCE_RULES = (
     (lambda mode, rules: mode == "local-draft-only" and rules["verifier"] != "none",
      "local-draft-only policy must not select a review verifier"),
@@ -59,6 +71,10 @@ GOVERNANCE_RULES = (
 def _governance_error(review_mode: Any, governance: Any) -> str | None:
     if not isinstance(governance, dict):
         return "policy requires review_governance"
+    if governance.get("verifier") == "github-pr" or governance.get("trigger") == "external-scm":
+        return REMOVED_VERIFIER
+    if "distinct_signer" in governance and not isinstance(governance["distinct_signer"], bool):
+        return f"review_governance.distinct_signer must be true or false, got {governance['distinct_signer']!r}"
     if (
         governance.get("verifier") not in GOVERNANCE_VERIFIERS
         or governance.get("trigger") not in GOVERNANCE_TRIGGERS
@@ -124,8 +140,8 @@ def _list_errors(name: str, items: Any) -> list[str]:
             for index, item in enumerate(items) if not (isinstance(item, str) and item.strip())]
 
 
-def _closest(key: str) -> str:
-    close = difflib.get_close_matches(key, list(SCHEMA_CONVENTION_DEFAULTS), n=1, cutoff=0.6)
+def _closest(key: str, known: dict[str, Any] = SCHEMA_CONVENTION_DEFAULTS) -> str:
+    close = difflib.get_close_matches(key, list(known), n=1, cutoff=0.6)
     return f"; did you mean {close[0]}?" if close else ""
 
 
@@ -134,6 +150,44 @@ def _kind_of(value: Any) -> str:
         return "null"
     kinds = {bool: "a boolean", int: "a number", float: "a number", str: "a string", list: "a list", dict: "an object"}
     return kinds.get(type(value), type(value).__name__)
+
+
+def profile_from(section: Any) -> dict[str, list[str]]:
+    given = section if isinstance(section, dict) else {}
+    return {key: list(given[key]) if isinstance(given.get(key), list) else list(default)
+            for key, default in PROJECT_PROFILE_DEFAULTS.items()}
+
+
+def project_profile(policy: dict[str, Any] | None) -> dict[str, list[str]]:
+    return profile_from(policy.get("project_profile") if policy else None)
+
+
+def excluded_directories(policy: dict[str, Any] | None) -> frozenset[str]:
+    from .sources import EXCLUDED_DIRECTORIES
+
+    return EXCLUDED_DIRECTORIES | frozenset(project_profile(policy)["excluded_directories"])
+
+
+def profile_errors(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, dict):
+        return [f"project_profile must be an object, got {_kind_of(value)}"]
+    errors = [f"project_profile.{key} is not a known key{_closest(key, PROJECT_PROFILE_DEFAULTS)}"
+              for key in value if key not in PROJECT_PROFILE_DEFAULTS]
+    for key in PROJECT_PROFILE_DEFAULTS:
+        if key in value:
+            errors.extend(_list_errors(f"project_profile.{key}", value[key]) or _entry_errors(key, value[key]))
+    return errors
+
+
+def _entry_errors(key: str, items: list[str]) -> list[str]:
+    if key in BARE_NAME_KEYS:
+        return [f"project_profile.{key}[{index}] must be a bare name without a path separator, got {item!r}"
+                for index, item in enumerate(items) if "/" in item or "\\" in item]
+    return [f"project_profile.{key}[{index}] must be a relative path inside the repository, got {item!r}"
+            for index, item in enumerate(items)
+            if item.startswith(("/", "\\")) or ".." in item.replace("\\", "/").split("/") or ":" in item]
 
 
 def validate_policy(value: dict[str, Any]) -> list[str]:
@@ -147,7 +201,8 @@ def validate_policy(value: dict[str, Any]) -> list[str]:
         _source_error(value.get("source_policy")),
         _limits_error(value.get("limits")),
     )
-    return errors + [error for error in found if error] + _conventions_errors(value.get("schema_conventions"))
+    return (errors + [error for error in found if error] + _conventions_errors(value.get("schema_conventions"))
+            + profile_errors(value.get("project_profile")))
 
 
 def _default_governance(review_mode: str) -> dict[str, Any]:
@@ -170,6 +225,7 @@ def write_policy(  # noqa: PLR0913, PLR0917
     include: list[str] | None = None,
     exclude: list[str] | None = None,
     governance: dict[str, Any] | None = None,
+    profile: dict[str, list[str]] | None = None,
 ) -> None:
     template = change_template_dir() / "domain-memory-policy.json"
     value = load_json(template)
@@ -183,6 +239,7 @@ def write_policy(  # noqa: PLR0913, PLR0917
         value["source_policy"]["include"] = include
     if exclude is not None:
         value["source_policy"]["exclude"] = exclude
+    value["project_profile"] = profile_from(profile)
     errors = validate_policy(value)
     if errors:
         raise ValueError("invalid policy: " + "; ".join(errors))
@@ -198,21 +255,31 @@ AMENDABLE_FIELDS = {
     "review_trigger": ("review_governance", "trigger"),
     "ci_requirement": ("review_governance", "ci_requirement"),
     "authorized_signers": ("review_governance", "authorized_signers"),
+    "distinct_signer": ("review_governance", "distinct_signer"),
+    "implementation_roots": ("project_profile", "implementation_roots"),
+    "excluded_directories": ("project_profile", "excluded_directories"),
+    "decision_roots": ("project_profile", "decision_roots"),
+    "boundary_markers": ("project_profile", "boundary_markers"),
 }
 
-LIST_FIELDS = {"authorized_signers"}
+LIST_FIELDS = {"authorized_signers", *PROJECT_PROFILE_DEFAULTS}
+BOOLEAN_FIELDS = {"distinct_signer"}
 
 
 def _amended_value(field: str, value: str) -> Any:
     if field in LIST_FIELDS:
         return [entry.strip() for entry in value.split(",") if entry.strip()]
+    if field in BOOLEAN_FIELDS:
+        if value.strip().lower() not in ("true", "false"):
+            raise ValueError(f"{field} takes true or false, got {value!r}")
+        return value.strip().lower() == "true"
     return value
 
 
 def _field_parent(document: dict[str, Any], field: str) -> dict[str, Any]:
     target = document
     for key in AMENDABLE_FIELDS[field][:-1]:
-        target = target[key]
+        target = target.setdefault(key, {})
     return target
 
 

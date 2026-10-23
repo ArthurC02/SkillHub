@@ -18,9 +18,10 @@ from .common import (
 )
 from .locate import domain_memory_hint
 from .git import run_git
+from .policy import excluded_directories, project_profile
 
 SELECTED_KIND = "selected"
-EXCLUDED_DIRECTORIES = {
+EXCLUDED_DIRECTORIES = frozenset({
     ".git",
     ".hg",
     ".svn",
@@ -30,9 +31,7 @@ EXCLUDED_DIRECTORIES = {
     "dist",
     "build",
     "generated",
-}
-
-IMPLEMENTATION_ROOTS = ("apps", "src", "services", "packages", "db", "database", "migrations", "schema")
+})
 
 CI_MARKERS = {
     ".github/workflows": "github-actions",
@@ -45,12 +44,7 @@ CI_MARKERS = {
 
 
 def governance_candidates(ci_tools: list[str]) -> dict[str, object]:
-    verifier = "github-pr" if "github-actions" in ci_tools else "git-signed-commit"
-    return {
-        "ci_tools": ci_tools,
-        "recommended_verifier": verifier,
-        "recommended_trigger": "external-scm" if verifier == "github-pr" else "git-push",
-    }
+    return {"ci_tools": ci_tools, "recommended_verifier": "git-signed-commit", "recommended_trigger": "git-push"}
 
 
 def discover_ci_tools(root: Path) -> list[str]:
@@ -105,22 +99,22 @@ def relative(root: Path, path: Path) -> str:
         return path.resolve().relative_to(root.resolve()).as_posix()
 
 
-def in_excluded_directory(relative_path: str) -> bool:
-    return any(part in EXCLUDED_DIRECTORIES for part in PurePosixPath(relative_path).parts)
+def in_excluded_directory(relative_path: str, excluded: frozenset[str] = EXCLUDED_DIRECTORIES) -> bool:
+    return any(part in excluded for part in PurePosixPath(relative_path).parts)
 
 
 def existing_directories(root: Path, candidates: tuple[str, ...]) -> list[str]:
     return [candidate for candidate in candidates if (root / candidate).is_dir()]
 
 
-def repository_files(root: Path) -> list[str]:
+def repository_files(root: Path, excluded: frozenset[str] = EXCLUDED_DIRECTORIES) -> list[str]:
     top = str(root)
     found = []
     for directory, children, files in os.walk(top):
         if directory != top and (".git" in children or ".git" in files):
             children[:] = []
             continue
-        children[:] = [name for name in children if name not in EXCLUDED_DIRECTORIES]
+        children[:] = [name for name in children if name not in excluded]
         prefix = "" if directory == top else directory[len(top) + 1 :].replace(os.sep, "/") + "/"
         found.extend(prefix + name for name in files)
     return found
@@ -131,15 +125,16 @@ def file_name(relative_path: str) -> str:
 
 
 INSTRUCTION_FILE_NAME = "AGENTS.md"
-BOUNDARY_BASES = tuple(f"{base}/" for base in IMPLEMENTATION_ROOTS)
 
 
 def _instruction_candidates(files: list[str]) -> list[str]:
     return sorted(entry for entry in files if file_name(entry) == INSTRUCTION_FILE_NAME)
 
 
-def _boundary_candidates(files: list[str]) -> list[str]:
-    return sorted(entry for entry in files if entry.startswith(BOUNDARY_BASES) and file_name(entry) == "doc.go")
+def _boundary_candidates(files: list[str], profile: dict[str, list[str]]) -> list[str]:
+    bases = tuple(f"{base}/" for base in profile["implementation_roots"])
+    markers = set(profile["boundary_markers"])
+    return sorted(entry for entry in files if entry.startswith(bases) and file_name(entry) in markers)
 
 
 def test_candidates(files: list[str]) -> list[str]:
@@ -155,11 +150,12 @@ def is_test_file(name: str) -> bool:
     )
 
 
-def discover_sources(root: Path) -> dict[str, Any]:
+def discover_sources(root: Path, profile: dict[str, list[str]] | None = None) -> dict[str, Any]:
     root = root.resolve()
+    profile = profile or project_profile(None)
     ci_tools = discover_ci_tools(root)
-    files = repository_files(root)
-    candidates = (_instruction_candidates(files), _boundary_candidates(files), test_candidates(files))
+    files = repository_files(root, EXCLUDED_DIRECTORIES | frozenset(profile["excluded_directories"]))
+    candidates = (_instruction_candidates(files), _boundary_candidates(files, profile), test_candidates(files))
     ignored = ignored_relatives(root, [entry for group in candidates for entry in group])
     instructions, boundaries, tests = ([entry for entry in group if entry not in ignored] for group in candidates)
     groups = [
@@ -172,9 +168,7 @@ def discover_sources(root: Path) -> dict[str, Any]:
         {
             "kind": "decisions",
             "authority": "current approved decisions when their status says so",
-            "paths": existing_directories(
-                root, ("docs/adr", "adr", "docs/architecture", "architecture")
-            ),
+            "paths": existing_directories(root, tuple(profile["decision_roots"])),
         },
         {
             "kind": "requirements",
@@ -203,7 +197,7 @@ def discover_sources(root: Path) -> dict[str, Any]:
         {
             "kind": "implementation",
             "authority": "current executable behavior",
-            "paths": existing_directories(root, IMPLEMENTATION_ROOTS),
+            "paths": existing_directories(root, tuple(profile["implementation_roots"])),
         },
         {
             "kind": "tests",
@@ -239,21 +233,21 @@ def _directory_entries(directory: str) -> list[os.DirEntry[str]]:
         return []
 
 
-def _regular_files_under(directory: Path) -> Iterator[Path]:
+def _regular_files_under(directory: Path, excluded: frozenset[str]) -> Iterator[Path]:
     pending = [str(directory)]
     while pending:
         for entry in _directory_entries(pending.pop()):
             if entry.is_dir(follow_symlinks=False):
-                if entry.name not in EXCLUDED_DIRECTORIES:
+                if entry.name not in excluded:
                     pending.append(entry.path)
             elif entry.is_file(follow_symlinks=False):
                 yield Path(entry.path)
 
 
-def _regular_files(selected: Path) -> Iterable[Path]:
+def _regular_files(selected: Path, excluded: frozenset[str]) -> Iterable[Path]:
     if selected.is_file():
         return [] if selected.is_symlink() else [selected]
-    return _regular_files_under(selected)
+    return _regular_files_under(selected, excluded)
 
 
 def source_files(
@@ -262,6 +256,7 @@ def source_files(
     source_policy = policy.get("source_policy", {}) if policy else {}
     include = source_policy.get("include", ["**"])
     exclude = source_policy.get("exclude", [])
+    excluded = excluded_directories(policy)
     files: set[Path] = set()
     roots = []
     for selected in selected_paths:
@@ -274,9 +269,9 @@ def source_files(
             continue
         roots.append(resolved)
     for resolved in roots:
-        for candidate in _regular_files(resolved):
+        for candidate in _regular_files(resolved, excluded):
             relative_path = relative(root, candidate)
-            if not in_excluded_directory(relative_path) and policy_matches(
+            if not in_excluded_directory(relative_path, excluded) and policy_matches(
                 relative_path, include, exclude
             ):
                 files.add(candidate)
@@ -423,7 +418,8 @@ def _containing_paths(path: str) -> list[str]:
 
 
 def selected_source_map(
-    root: Path, selected_paths: list[Path], policy: dict[str, Any] | None = None
+    root: Path, selected_paths: list[Path], policy: dict[str, Any] | None = None,
+    profile: dict[str, list[str]] | None = None,
 ) -> dict[str, Any]:
     root = root.resolve()
     selected = []
@@ -437,7 +433,7 @@ def selected_source_map(
             raise ValueError(f"source path does not exist: {path}")
     if not selected:
         raise ValueError("at least one source path is required")
-    source_map = discover_sources(root)
+    source_map = discover_sources(root, profile or project_profile(policy))
     source_map["selection_status"] = "agent-asserted"
     selected = source_map["selected_paths"] = sorted(set(selected))
     files = source_files(root, [root / path for path in selected], policy)
@@ -572,7 +568,7 @@ def refresh_listing(
             "run refresh-sources, then confirm-sources"
         )
     source_map = load_json(path)
-    discovered = discover_sources(repo_root)
+    discovered = discover_sources(repo_root, project_profile(policy))
     listed = _listed_paths(source_map)
     current = _listed_paths(discovered)
     change = {"added": sorted(current - listed), "removed": sorted(listed - current)}
@@ -713,7 +709,7 @@ def verify_against_discovery(
     result = verify_source_map(root, source_map_path, policy)
     if "discovered_but_gone" not in result:
         return result
-    gone, unlisted = listing_drift(discover_sources(root.resolve()), load_json(source_map_path))
+    gone, unlisted = listing_drift(discover_sources(root.resolve(), project_profile(policy)), load_json(source_map_path))
     status = "discovery_drifted" if (gone or unlisted) and result["status"] == "current" else result["status"]
     return result | {"status": status, "discovered_but_gone": gone, "discovered_but_unlisted": unlisted}
 
@@ -723,8 +719,8 @@ def shown_argument(path: Path) -> str:
     return f'"{text}"' if " " in text else text
 
 
-def discovery_placements(repo_root: Path, paths: list[str]) -> list[tuple[str, str]]:
-    kind_of = source_kind_index(discover_sources(repo_root))
+def discovery_placements(repo_root: Path, paths: list[str], policy: dict[str, Any] | None = None) -> list[tuple[str, str]]:
+    kind_of = source_kind_index(discover_sources(repo_root, project_profile(policy)))
     placed = [(path, kind_of(path)) for path in paths]
     return [(path, kind) for path, kind in placed if kind != "unclassified"]
 
@@ -864,6 +860,6 @@ def probe_sources(
         result = verify_source_map(root, source_map_path, policy) | {"checked": "hash"}
     if result["status"] != "current":
         return result
-    gone, unlisted = listing_drift(discover_sources(root.resolve()), source_map)
+    gone, unlisted = listing_drift(discover_sources(root.resolve(), project_profile(policy)), source_map)
     status = "discovery_drifted" if gone or unlisted else "current"
     return result | {"status": status, "discovered_but_gone": gone, "discovered_but_unlisted": unlisted}

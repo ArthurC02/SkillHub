@@ -6,11 +6,25 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.policy import amend_policy_fields, validate_policy
+from domain_registry.policy import REMOVED_VERIFIER, amend_policy_fields, validate_policy
 from test_support import RegistryTestCase, amend_policy, stored_policy_of
 
 
 class PolicyTest(RegistryTestCase):
+    def test_distinct_signer_and_the_profile_fields_amend_like_the_rest(self) -> None:
+        root = self.repo / "memory"
+        distinct = amend_policy(root, "distinct_signer", "true", "Two people review.")
+        markers = amend_policy(root, "boundary_markers", "doc.go, package-info.java", "Java packages are boundaries too.")
+        stored = stored_policy_of(self.repo)
+        self.assertEqual(
+            (True, ["doc.go", "package-info.java"], (False, None), (None, ["doc.go", "package-info.java"])),
+            (stored["review_governance"]["distinct_signer"], stored["project_profile"]["boundary_markers"],
+             (distinct["from"] is True, markers["from"]), (None, markers["to"])),
+        )
+        with self.assertRaisesRegex(ValueError, "distinct_signer takes true or false, got 'maybe'"):
+            amend_policy(root, "distinct_signer", "maybe", "Unsure.")
+        self.assertEqual(True, stored_policy_of(self.repo)["review_governance"]["distinct_signer"])
+
     def test_each_policy_defect_is_named_and_governance_reports_only_its_first(self) -> None:
         sound = stored_policy_of(self.repo)
         self.assertEqual([], validate_policy(sound))
@@ -46,6 +60,20 @@ class PolicyTest(RegistryTestCase):
             ("unknown ci requirement",
              {"review_governance": {**sound["review_governance"], "ci_requirement": "sometimes"}},
              "policy has invalid review_governance"),
+            ("removed verifier", {"review_governance": {**sound["review_governance"], "verifier": "github-pr"}}, REMOVED_VERIFIER),
+            ("removed trigger", {"review_governance": {**sound["review_governance"], "trigger": "external-scm"}}, REMOVED_VERIFIER),
+            ("distinct signer not a boolean", {"review_governance": {**sound["review_governance"], "distinct_signer": "yes"}},
+             "review_governance.distinct_signer must be true or false, got 'yes'"),
+            ("profile not an object", {"project_profile": "lib"}, "project_profile must be an object, got a string"),
+            ("profile unknown key", {"project_profile": {"implementation_root": ["lib"]}},
+             "project_profile.implementation_root is not a known key; did you mean implementation_roots?"),
+            ("profile marker with a path", {"project_profile": {"boundary_markers": ["pkg/doc.go"]}},
+             "project_profile.boundary_markers[0] must be a bare name without a path separator, got 'pkg/doc.go'"),
+            ("profile root outside the repository", {"project_profile": {"implementation_roots": ["../lib"]}},
+             "project_profile.implementation_roots[0] must be a relative path inside the repository, got '../lib'"),
+            ("profile blank entry", {"project_profile": {"decision_roots": [" "]}}, "project_profile.decision_roots[0] is blank"),
+            ("profile entry not a string", {"project_profile": {"excluded_directories": [1]}},
+             "project_profile.excluded_directories[0] must be a string, got a number"),
             ("source policy is not an object", {"source_policy": "docs"},
              "policy requires selected source paths and authority"),
             ("blank selected path", {"source_policy": {**sound["source_policy"], "selected_paths": ["docs", " "]}},

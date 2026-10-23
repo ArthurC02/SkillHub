@@ -408,9 +408,10 @@ class UpdatesPromotionTest(RegistryTestCase):
         changes = amend_policy_fields(
             root,
             [
-                ("review_verifier", "github-pr"),
-                ("review_trigger", "external-scm"),
+                ("review_verifier", "git-signed-commit"),
+                ("review_trigger", "git-push"),
                 ("ci_requirement", "required"),
+                ("authorized_signers", "SHA256:k"),
                 ("review_mode", "scm-verified"),
             ],
             "A reviewer and CI exist now.",
@@ -418,15 +419,16 @@ class UpdatesPromotionTest(RegistryTestCase):
         policy = self.stored_policy()
         self.assertEqual("scm-verified", policy["review_mode"])
         self.assertEqual(
-            ("github-pr", "external-scm", "required"),
+            ("git-signed-commit", "git-push", "required"),
             tuple(policy["review_governance"][key] for key in ("verifier", "trigger", "ci_requirement")),
         )
         self.assertEqual(
             [
                 ("review_mode", "local-draft-only", "scm-verified"),
-                ("review_verifier", "none", "github-pr"),
-                ("review_trigger", "none", "external-scm"),
+                ("review_verifier", "none", "git-signed-commit"),
+                ("review_trigger", "none", "git-push"),
                 ("ci_requirement", "none", "required"),
+                ("authorized_signers", [], ["SHA256:k"]),
             ],
             [(change["field"], change["from"], change["to"]) for change in changes],
         )

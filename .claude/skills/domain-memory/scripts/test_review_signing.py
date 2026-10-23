@@ -19,6 +19,7 @@ from domain_registry.hitl import (
     submit_proposal,
     verify_proposal,
 )
+from domain_registry.git import run_git
 from domain_registry.git_hooks import governance_readiness, install_pre_push_hook
 from domain_registry.signing import SIGNING_KEY_ENV, init_signing_key
 from test_support import RegistryTestCase, amend_policy
@@ -112,16 +113,70 @@ class ReviewSigningTest(RegistryTestCase):
 
     def test_attesting_needs_the_signed_commit_verifier_and_a_submitted_proposal(self) -> None:
         package = self.draft_package()
-        with self.assertRaisesRegex(ValueError, "this policy uses github-pr"):
+        amend_policy(self.repo / "memory", "review_mode", "local-draft-only", "Drafting only.")
+        with self.assertRaisesRegex(ValueError, "this policy uses none"):
             attest_signed_commit(package, self.repo / "memory", self.repo, "HEAD")
         policy_path = self.repo / "memory" / "domain-memory-policy.json"
         policy = json.loads(policy_path.read_text(encoding="utf-8"))
+        policy["review_mode"] = "scm-verified"
         policy["review_governance"].update(
             verifier="git-signed-commit", trigger="git-push", authorized_signers=["probe@example.com"]
         )
         policy_path.write_text(json.dumps(policy), encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "submit the proposal first"):
             attest_signed_commit(package, self.repo / "memory", self.repo, "HEAD")
+
+    def test_distinct_signer_refuses_the_commit_its_author_signed_and_accepts_one_another_person_signed(self) -> None:
+        key = self.probe_signing_key()
+        own = self.sign_a_domain_memory_commit("the author signs")
+        (self.repo / "docs" / "domain-memory" / "reviewed.txt").write_text("reviewed", encoding="utf-8")
+        subprocess.run(["git", "add", "docs"], cwd=self.repo, check=True)
+        subprocess.run(
+            ["git", "-c", "user.name=Author", "-c", "user.email=author@example.com", "-c", "commit.gpgsign=true",
+             "commit", "-qm", "a reviewer signs"], cwd=self.repo, check=True,
+        )
+        reviewed = self.head()
+        registry = self.repo / "docs" / "domain-memory"
+        self.assertEqual(
+            ([], [], ["Git commit author probe@example.com is also its signer; the policy requires distinct_signer, "
+                      "a reviewer other than the author signing the commit that carries the package"]),
+            (verify_git_signed_commit({"commit": reviewed}, self.repo, registry, key["authorized_signers"], True),
+             verify_git_signed_commit({"commit": own}, self.repo, registry, key["authorized_signers"]),
+             verify_git_signed_commit({"commit": own}, self.repo, registry, key["authorized_signers"], True)),
+        )
+
+    def test_distinct_signer_is_not_confirmed_when_git_shows_no_signer_identity(self) -> None:
+        key = self.probe_signing_key()
+        commit = self.sign_a_domain_memory_commit("signed")
+        real = run_git
+
+        def without_identities(root: Path, *arguments: str, **options: object) -> subprocess.CompletedProcess:
+            result = real(root, *arguments, **options)
+            return subprocess.CompletedProcess(result.args, 0, "", "") if arguments[0] == "log" else result
+
+        with patch("domain_registry.attestations.run_git", side_effect=without_identities):
+            refused = verify_git_signed_commit(
+                {"commit": commit}, self.repo, self.repo / "docs" / "domain-memory", key["authorized_signers"], True
+            )
+        self.assertEqual(
+            [f"Git commit {commit} author or signer identity could not be read, so a signer other than the author "
+             "cannot be confirmed; the policy requires distinct_signer"],
+            refused,
+        )
+
+    def test_attesting_honours_the_policy_distinct_signer(self) -> None:
+        key = self.probe_signing_key()
+        policy_path = self.repo / "memory" / "domain-memory-policy.json"
+        policy = json.loads(policy_path.read_text(encoding="utf-8"))
+        policy["review_governance"].update(
+            verifier="git-signed-commit", trigger="git-push", authorized_signers=[key["fingerprint"]], distinct_signer=True
+        )
+        policy_path.write_text(json.dumps(policy), encoding="utf-8")
+        package = self.draft_package()
+        submit_proposal(package, self.repo / "memory", self.repo)
+        signed = self.commit_everything("the author signs the package", signed=True)
+        with self.assertRaisesRegex(ValueError, "author probe@example.com is also its signer"):
+            attest_signed_commit(package, self.repo / "memory", self.repo, signed)
 
     def test_a_generated_signing_key_signs_a_commit_git_can_verify(self) -> None:
         result = self.probe_signing_key()

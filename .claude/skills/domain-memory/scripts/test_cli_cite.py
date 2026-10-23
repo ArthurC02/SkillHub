@@ -98,7 +98,24 @@ class CliCiteTest(RegistryTestCase):
         result = self.cite("--start", "1", "--end", "1")
         self.assertEqual((2, True), (result.returncode, "unrecognized arguments: --start 1 --end 1" in result.stderr), result.stderr)
 
-    def test_cite_finds_the_span_of_a_go_func_or_python_def_by_name(self) -> None:
+    def test_cite_finds_the_span_of_a_function_by_name_in_each_language(self) -> None:
+        (self.repo / "orders.ts").write_text(
+            "export async function total(a: number): Promise<number> {\n  return a;\n}\n\n"
+            "const sum = (xs: number[]) =>\n  xs.reduce((a, b) => a + b, 0);\n\nexport const one = () => 1;\n\n"
+            "class Cart {\n  add(item: Item): void {\n    this.items.push(item);\n  }\n}\n",
+            encoding="utf-8",
+        )
+        (self.repo / "app.js").write_text("function render(state) {\n  return state;\n}\n\nmodule.exports = { render };\n", encoding="utf-8")
+        (self.repo / "Order.java").write_text(
+            "package shop;\n\npublic class Order {\n    public static int total(List<Integer> xs) {\n"
+            "        return xs.stream().mapToInt(x -> x).sum();\n    }\n\n    Order(int id) {\n        this.id = id;\n    }\n}\n",
+            encoding="utf-8",
+        )
+        (self.repo / "Order.kt").write_text("fun total(xs: List<Int>): Int {\n    return xs.sum()\n}\n", encoding="utf-8")
+        (self.repo / "lib.rs").write_text(
+            "pub fn total(xs: &[i32]) -> i32 {\n    xs.iter().sum()\n}\n\npub(crate) async fn fetch<T>(x: T) -> T {\n    x\n}\n",
+            encoding="utf-8",
+        )
         (self.repo / "total_test.go").write_text(
             "package orders\n\nfunc TestTotalPos(t *testing.T) {}\n\nfunc TestTotal(t *testing.T) {\n"
             "\tif total() < 0 {\n\t\tt.Fatal(\"negative\")\n\t}\n}\n\nfunc (s *suite) TestMethod() {\n}\n"
@@ -115,7 +132,10 @@ class CliCiteTest(RegistryTestCase):
             ("total_test.go", "TestTotal", (5, 9)), ("total_test.go", "TestTotalPos", (3, 3)),
             ("total_test.go", "TestMethod", (11, 12)), ("test_total.py", "test_total", (2, 7)),
             ("test_total.py", "test_other", (9, 10)), ("total_test.go", "Map", (14, 16)),
-            ("test_total.py", "test_async", (12, 13)),
+            ("test_total.py", "test_async", (12, 13)), ("orders.ts", "total", (1, 3)), ("orders.ts", "sum", (5, 6)),
+            ("orders.ts", "one", (8, 8)), ("orders.ts", "add", (11, 13)), ("app.js", "render", (1, 3)),
+            ("Order.java", "total", (4, 6)), ("Order.java", "Order", (8, 10)), ("Order.kt", "total", (1, 3)),
+            ("lib.rs", "total", (1, 3)), ("lib.rs", "fetch", (5, 7)),
         ):
             with self.subTest(name):
                 cited = json.loads(self.cite("--path", path, "--function", name).stdout)
@@ -131,9 +151,11 @@ class CliCiteTest(RegistryTestCase):
         (self.repo / "more" / "again.py").write_text("def g():\n    pass\n", encoding="utf-8")
         (self.repo / "prose.md").write_text("def h():\n", encoding="utf-8")
         for path, name, refusal in (
-            ("twice.py", "g", "ERROR: twice.py defines no Go func or Python def named g; "
+            ("twice.py", "g", "ERROR: twice.py defines no function named g; "
                                "it is defined in several files: elsewhere.py:1, more/again.py:1"),
-            ("twice.py", "h", "ERROR: twice.py defines no Go func or Python def named h"),
+            ("twice.py", "h", "ERROR: twice.py defines no function named h"),
+            ("prose.md", "h", "ERROR: prose.md: --function reads Go, Python, TypeScript, JavaScript, Java, Kotlin, Rust "
+                               "files; cite a .md file with --lines"),
             ("twice.py", "f", "ERROR: twice.py defines f 2 times; cite the one you mean with --lines"),
             ("open.go", "Open", "ERROR: open.go: the body of Open starting on line 3 does not end; cite it with --lines"),
         ):

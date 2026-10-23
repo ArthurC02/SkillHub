@@ -365,11 +365,11 @@ class ReviewLifecycleTest(RegistryTestCase):
     def test_a_finalization_the_package_fails_writes_the_proposal_once_as_submitted_again(self) -> None:
         package = self.draft_package()
         self.submit_and_approve_after_committing(package)
-        self.attest_by_pull_request(package)
+        self.attest_by_signed_commit(package)
         verify_proposal(package, self.repo / "memory", self.repo)
         path = self.break_registry_updates(package)
-        with patch("domain_registry.hitl.verify_external_scm", return_value=[]), patch(
-            "domain_registry.hitl.github_commit_carries_proposal", return_value=[]
+        with patch("domain_registry.hitl.verify_git_signed_commit", return_value=[]), patch(
+            "domain_registry.hitl.commit_carries_proposal", return_value=[]
         ), patch("domain_registry.hitl.write_json", wraps=write_json) as written, self.assertRaisesRegex(
             ValueError,
             "^proposal lacks required approvals or traceability, and is submitted again so it can be corrected, "
@@ -417,23 +417,22 @@ class ReviewLifecycleTest(RegistryTestCase):
             rebase_proposal(package, self.repo / "memory", self.repo)
         self.assertEqual(written, path.read_bytes())
 
-    def attest_by_pull_request(self, package: Path) -> None:
+    def attest_by_signed_commit(self, package: Path) -> None:
         proposal = self.proposal_in(package)
         evidence_path = package / "evidence-bundle.json"
         evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
         evidence["scm_attestation"] = {
-            "provider": "github", "pull_request": "https://github.example/repo/pull/1",
-            "checks_url": "https://github.example/repo/actions/runs/1", "commit": "a" * 40, "status": "approved",
+            "provider": "git-signed-commit", "commit": "a" * 40, "status": "approved",
             "proposal_revision": proposal["proposal_revision"], "base_registry_revision": proposal["base_registry_revision"],
         }
         evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
 
-    def ship_by_pull_request(self, package: Path) -> None:
+    def ship_by_signed_commit(self, package: Path) -> None:
         record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
-        self.attest_by_pull_request(package)
+        self.attest_by_signed_commit(package)
         verify_proposal(package, self.repo / "memory", self.repo)
-        with patch("domain_registry.hitl.verify_external_scm", return_value=[]), \
-                patch("domain_registry.hitl.github_commit_carries_proposal", return_value=[]):
+        with patch("domain_registry.hitl.verify_git_signed_commit", return_value=[]), \
+                patch("domain_registry.hitl.commit_carries_proposal", return_value=[]):
             finalize_proposal(package, self.repo / "memory", self.repo)
         apply_approved_updates(package, self.repo / "memory", self.repo)
 
@@ -463,7 +462,7 @@ class ReviewLifecycleTest(RegistryTestCase):
             submit_proposal(package, self.repo / "memory", self.repo)
         self.commit_everything("both packages and their drafts")
         for package in (first, second):
-            self.ship_by_pull_request(package)
+            self.ship_by_signed_commit(package)
         rules = read_document(self.repo / "memory", "rules.json")["rules"]
         self.assertEqual(
             [("order-count", "reviewed"), ("order-total", "reviewed")],
@@ -475,7 +474,7 @@ class ReviewLifecycleTest(RegistryTestCase):
         package = self.draft_package()
         self.submit_and_approve_after_committing(package)
         submitted_base = self.proposal_in(package)["base_registry_revision"]
-        self.attest_by_pull_request(package)
+        self.attest_by_signed_commit(package)
         verify_proposal(package, self.repo / "memory", self.repo)
         tested = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))["test_results"]
         self.another_apply_rewrites_the_proposed_rule()
@@ -575,11 +574,10 @@ class ReviewLifecycleTest(RegistryTestCase):
             finalize_proposal(package, self.repo / "memory", self.repo)
         message = str(refused.exception)
         for expected in (
-            "after the pull request merges",
-            'add scm_attestation to evidence-bundle.json with provider "github"',
-            "pull_request and checks_url",
-            "base_registry_revision copied from domain-change-proposal.json",
-            "verify-scm-attestation",
+            "after the signed commit that adds this Change Package and changes the Domain Memory files exists",
+            "run ship-package --commit <that commit>",
+            'writes scm_attestation with provider "git-signed-commit"',
+            "then finalize again",
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, message)
@@ -602,21 +600,21 @@ class ReviewLifecycleTest(RegistryTestCase):
         evidence_path = package / "evidence-bundle.json"
         evidence = load_json(evidence_path)
         evidence["scm_attestation"] = {
-            "provider": "github", "pull_request": "https://github.example/repo/pull/1",
-            "checks_url": "https://github.example/repo/actions/runs/1", "commit": "a" * 40, "status": "approved",
+            "provider": "git-signed-commit", "commit": "a" * 40, "status": "approved",
             "proposal_revision": 1, "base_registry_revision": self.proposal_in(package)["base_registry_revision"],
         }
         write_json(evidence_path, evidence)
         verify_proposal(package, self.repo / "memory", self.repo)
         return package, evidence["scm_attestation"]
 
-    def test_a_policy_that_requires_no_ci_tells_the_scm_check_so(self) -> None:
-        amend_policy(self.repo / "memory", "ci_requirement", "none", "No CI runs here.")
+
+    def test_finalizing_hands_the_signature_check_the_policy_signers_and_distinct_signer(self) -> None:
+        amend_policy(self.repo / "memory", "distinct_signer", "true", "Two people review.")
         package, attestation = self.attested_verified_package()
-        with patch("domain_registry.hitl.verify_external_scm", return_value=[]) as verify_scm, \
-                patch("domain_registry.hitl.github_commit_carries_proposal", return_value=[]):
+        with patch("domain_registry.hitl.verify_git_signed_commit", return_value=[]) as signed, \
+                patch("domain_registry.hitl.commit_carries_proposal", return_value=[]):
             finalize_proposal(package, self.repo / "memory", self.repo)
-        verify_scm.assert_called_once_with(attestation, "GITHUB_TOKEN", False)
+        signed.assert_called_once_with(attestation, self.repo, self.repo / "memory", ["SHA256:seed"], True)
         self.assertEqual("approved", self.proposal_in(package)["status"])
 
     def test_a_policy_without_a_review_verifier_cannot_finalize(self) -> None:
@@ -648,9 +646,7 @@ class ReviewLifecycleTest(RegistryTestCase):
         evidence_path = package / "evidence-bundle.json"
         evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
         evidence["scm_attestation"] = {
-            "provider": "github",
-            "pull_request": "https://github.example/repo/pull/1",
-            "checks_url": "https://github.example/repo/actions/runs/1",
+            "provider": "git-signed-commit",
             "commit": "a" * 40,
             "status": "approved",
             "proposal_revision": 1,
@@ -658,10 +654,10 @@ class ReviewLifecycleTest(RegistryTestCase):
         }
         evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
         verify_proposal(package, self.repo / "memory", self.repo)
-        with patch("domain_registry.hitl.verify_external_scm", return_value=[]) as verify_scm, \
-                patch("domain_registry.hitl.github_commit_carries_proposal", return_value=[]):
+        with patch("domain_registry.hitl.verify_git_signed_commit", return_value=[]) as verify_scm, \
+                patch("domain_registry.hitl.commit_carries_proposal", return_value=[]):
             finalize_proposal(package, self.repo / "memory", self.repo)
-        verify_scm.assert_called_once_with(evidence["scm_attestation"], "GITHUB_TOKEN", True)
+        verify_scm.assert_called_once_with(evidence["scm_attestation"], self.repo, self.repo / "memory", ["SHA256:seed"], False)
         digest_before_apply = registry_digest(self.repo / "memory")
         apply_approved_updates(package, self.repo / "memory", self.repo)
         rules = read_document(self.repo / "memory", "rules.json")

@@ -357,7 +357,7 @@ def handle_record_test_result(args: argparse.Namespace) -> int:
 
 
 def handle_ship_package(args: argparse.Namespace) -> int:
-    report = ship_package(args.package_root, args.registry_root, args.repo_root, args.commit, args.verification_token_env)
+    report = ship_package(args.package_root, args.registry_root, args.repo_root, args.commit)
     print_json(report)
     return 1 if report["errors"] else 0
 

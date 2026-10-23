@@ -23,6 +23,6 @@ Then choose one capability:
 
 A brownfield refactoring that preserves the reviewed model takes the [brownfield refactoring fast path](references/brownfield-refactoring.md) before anyone opens a Change Package: it is a proof of preservation, not a way around unknown ownership or a changed contract.
 
-A Registry that has never named an approval authority holds candidates only, and no capability can promote one. *Preparing the approval authority* in [script-api.md](references/script-api.md#preparing-the-approval-authority) covers the two cases: pull requests that are reviewed, or a maintainer who signs.
+A Registry that has never named an approval authority holds candidates only, and no capability can promote one. *Preparing the approval authority* in [script-api.md](references/script-api.md#preparing-the-approval-authority) covers it: a maintainer or reviewer who signs, and the two-person rule when the policy asks for it.
 
 Where the rest is: [the seven-step workflow](references/seven-step-workflow.md) for a material change; [script-api.md](references/script-api.md) for every command and what it guarantees; [host integration](references/host-integration.md) when a host dispatches these capabilities to its own agents; [reliability architecture](references/reliability-architecture.md) for the trust boundaries and the write protocol behind the scripts.

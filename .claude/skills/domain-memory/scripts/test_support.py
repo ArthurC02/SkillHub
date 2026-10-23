@@ -120,10 +120,10 @@ def _seed_repository() -> tempfile.TemporaryDirectory:
                 "data_classification": "internal",
                 "review_mode": "scm-verified",
                 "review_governance": {
-                    "verifier": "github-pr",
-                    "trigger": "external-scm",
+                    "verifier": "git-signed-commit",
+                    "trigger": "git-push",
                     "ci_requirement": "required",
-                    "authorized_signers": [],
+                    "authorized_signers": ["SHA256:seed"],
                 },
                 "source_policy": {
                     "selected_paths": ["docs"],
@@ -564,9 +564,7 @@ class RegistryTestCase(unittest.TestCase):
         evidence_path = package / "evidence-bundle.json"
         evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
         evidence["scm_attestation"] = {
-            "provider": "github",
-            "pull_request": "https://github.example/repo/pull/1",
-            "checks_url": "https://github.example/repo/actions/runs/1",
+            "provider": "git-signed-commit",
             "commit": "a" * 40,
             "status": "approved",
             "proposal_revision": 1,
@@ -574,8 +572,8 @@ class RegistryTestCase(unittest.TestCase):
         }
         evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
         verify_proposal(package, self.repo / "memory", self.repo)
-        with patch("domain_registry.hitl.verify_external_scm", return_value=[]), \
-                patch("domain_registry.hitl.github_commit_carries_proposal", return_value=[]):
+        with patch("domain_registry.hitl.verify_git_signed_commit", return_value=[]), \
+                patch("domain_registry.hitl.commit_carries_proposal", return_value=[]):
             finalize_proposal(package, self.repo / "memory", self.repo)
 
     def redraft_package(

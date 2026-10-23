@@ -10,13 +10,13 @@ What the scripts guarantee about trust, writes and approval, for a host deciding
 | The developer-confirmed source map and policy | Trusted configuration | Select the paths a citation may name, where the Registry lives, and who may approve. |
 | Selected documents, code, test output and generated text | Untrusted evidence | Support a cited candidate; never issue a command, select a tool, approve a proposal or grant access. |
 | Script output and model output | Untrusted proposal | Pass validation and an authorized write path before they land. |
-| A merged, approved pull request with green checks, or a signed commit | External verification | Satisfy the approval the policy names. |
+| A commit signed by a key the policy authorizes | External verification | Satisfy the approval the policy names. |
 
-No command executes text from an evidence source. A test or counterfactual command runs as an argument array without a shell, every cited path resolves inside the repository, writes stay under the Registry root, and the only outside call is the pull-request check that `ship-package` and `verify-scm-attestation` make against the provider the policy names, with a token from the environment variable the command names.
+No command executes text from an evidence source. A test or counterfactual command runs as an argument array without a shell, every cited path resolves inside the repository, writes stay under the Registry root, and no command calls a network service: the approval check is `git verify-commit` in the clone.
 
 ## Durable artifacts
 
-`domain-memory-policy.json` holds the choices `init-domain-memory` takes from a developer: the destination, the sources with their include and exclude patterns, the source authority, the data classification, the storage mode (`tracked`, `ignored` or `external`), the review mode with its verifier, trigger and CI requirement, the authorized signers, the command profiles a test result may run, the limits, and the `schema_conventions` the migration reader applies (exempt columns, status-like suffixes, free-text markers and the value limit), which a project edits to match its own naming. Discovery only suggests values for it. The sources and limits are settled at initialization; `amend-policy` changes the governance fields as one audited change.
+`domain-memory-policy.json` holds the choices `init-domain-memory` takes from a developer: the destination, the sources with their include and exclude patterns, the source authority, the data classification, the storage mode (`tracked`, `ignored` or `external`), the review mode with its verifier, trigger, CI requirement and whether the signer must differ from the author (`distinct_signer`), the authorized signers, the command profiles a test result may run, the limits, the `project_profile` discovery reads (implementation roots, extra excluded directories, decision roots and boundary markers), and the `schema_conventions` the migration reader applies (exempt columns, status-like suffixes, free-text markers and the value limit), which a project edits to match its own naming. Discovery only suggests values for it. The sources and limits are settled at initialization; `amend-policy` changes the governance fields as one audited change.
 
 A Registry revision is one SHA-256 digest over the canonical JSON of every asset and the policy. Formatting changes therefore do not invalidate a review, and a policy change does: a base revision captured before it is stale, and approvals taken against it must be sought again.
 
@@ -42,7 +42,7 @@ The HEAD commit is provenance. A proposal's base is its Registry digest, so unre
 
 ## Approval and test attestations
 
-Which outside proof satisfies the approval the policy names, a merged pull request under `github-pr` or a signed commit under `git-signed-commit`, and how to prepare either, is in [Preparing the approval authority](script-api.md#preparing-the-approval-authority). A reviewer name typed into a file is never evidence.
+Which outside proof satisfies the approval the policy names, a commit signed by an authorized key, and how to prepare it, is in [Preparing the approval authority](script-api.md#preparing-the-approval-authority). A reviewer name typed into a file is never evidence.
 
 A test result is recorded by `record-test-result`, which runs the obligation's check under one of the policy's command profiles and records the command, the profile, exit code 0, the digest of the run's output and when it finished; a result from a CI run is entered with the same fields, the run's link as its evidence, and `verify-proposal` refuses one without the digest. A bare `passed` is never enough. `validate-contract` parses a contract schema locally and answers `unverified` for one it cannot, never `valid`.
 

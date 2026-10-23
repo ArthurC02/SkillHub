@@ -259,7 +259,7 @@ class HarvestTest(RegistryTestCase):
         spec["rules"][0]["test"] = "test_nothing"
         report = harvest(self.repo / "memory", self.repo, spec, None, "verified")
         self.assertEqual(
-            ("citation", [f"{RULE_ID}: src/tests/test_rule.py defines no Go func or Python def named test_nothing"], None),
+            ("citation", [f"{RULE_ID}: src/tests/test_rule.py defines no function named test_nothing"], None),
             (report["stopped_at"], report["errors"], report["package"]),
         )
 
@@ -270,7 +270,7 @@ class HarvestTest(RegistryTestCase):
         spec["rules"][0]["test"] = "test_elsewhere"
         report = harvest(self.repo / "memory", self.repo, spec, None, "verified")
         self.assertEqual(
-            ("citation", [f"{RULE_ID}: src/tests/test_rule.py defines no Go func or Python def named test_elsewhere; "
+            ("citation", [f"{RULE_ID}: src/tests/test_rule.py defines no function named test_elsewhere; "
                           "it is defined in src/tests/test_other.py:4"], None),
             (report["stopped_at"], report["errors"], report["package"]),
         )

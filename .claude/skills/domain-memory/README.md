@@ -36,7 +36,7 @@ The suite takes several minutes. While working on one area, run its file from `s
 | `hitl.py` | Moving a proposal through submit, approve, verify and finalize |
 | `updates.py` | Candidates, and applying an approved package |
 | `revision.py` | The Registry digest a proposal is pinned to, and when it counts as stale |
-| `attestations.py`, `signing.py`, `git_hooks.py` | Outside proof: GitHub pull requests, signed commits, the pre-push hook |
+| `attestations.py`, `signing.py`, `git_hooks.py` | Outside proof: signed commits and the pre-push hook |
 | `counterfactual.py`, `contracts.py` | Breaking one line to prove a test protects it; schema checks |
 
 Three rules keep this shape. Once a Registry exists, its records change only through `mutate_registry`; every Registry read and write goes through `store.py`, so no other module knows the file layout. Every JSON document the plugin builds is written through `write_json`. A rule that two modules need lives once, in the lower one, and the other imports it.
