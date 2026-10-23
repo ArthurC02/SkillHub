@@ -46,7 +46,7 @@ func (s *Service) CleanRun(ctx context.Context, workspaceID, runID pgtype.UUID) 
 
 // Spend can be unreadable at teardown and become readable later; a repeat
 // call must still reach the real cost without tearing the sandbox down
-// again, which a provider need not tolerate.
+// again.
 func (s *Service) settleLateSpend(ctx context.Context, run gen.Run) error {
 	if s.Ledger == nil {
 		return markCostSettled(ctx, s.queries(), run)
