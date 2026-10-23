@@ -24,7 +24,7 @@ from domain_registry.revision import (
 from domain_registry.registry import init_registry
 from domain_registry.updates import upsert_candidate
 from domain_registry.store import read_document
-from test_support import RegistryTestCase, append_audit, applied_by
+from test_support import RegistryTestCase, append_audit, applied_by, orders_context
 
 DRAFTED_RULE = {"id": "order-total", "contexts": ["orders"], "statement": "A total."}
 
@@ -225,7 +225,7 @@ class UpdatesAuditTest(RegistryTestCase):
         before = read_document(self.repo / "memory", "contexts.json")
         record = self.write_record(
             "context.json",
-            {"id": "orders", "name": "Orders", "responsibility": "Own orders."},
+            orders_context(),
         )
         with (
             patch(

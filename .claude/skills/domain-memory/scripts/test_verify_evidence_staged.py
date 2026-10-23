@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.evidence import citation
-from test_support import RegistryTestCase
+from test_support import RegistryTestCase, orders_context
 
 STALE_LINE = (
     "rules/cited-rule: src/a.py:1-1 changed; check that its statement still holds; recite only if it does, "
@@ -23,7 +23,7 @@ class VerifyStagedEvidenceTest(RegistryTestCase):
         super().setUp()
         (self.repo / "src").mkdir()
         (self.repo / "src" / "a.py").write_text("one\ntwo\n", encoding="utf-8")
-        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        self.seed("contexts.json", [orders_context()])
         self.seed("rules.json", [{
             "id": "cited-rule", "contexts": ["orders"], "statement": "S.",
             "evidence": [citation(self.repo, "src/a.py", 1, 1)],

@@ -31,7 +31,7 @@ from domain_registry.sources import (
 )
 from domain_registry.sources import discover_ci_tools
 from domain_registry.sources import source_snapshots
-from test_support import RegistryTestCase, source_kind_for, stored_policy_of
+from test_support import RegistryTestCase, source_kind_for, stored_policy_of, orders_context
 
 
 class SourcesTest(RegistryTestCase):
@@ -1016,7 +1016,7 @@ class SourcesTest(RegistryTestCase):
         )
         self.seed(
             "contexts.json",
-            [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}],
+            [orders_context()],
         )
         result = assess_readiness(self.repo, self.repo / "memory")
         self.assertEqual(result["state"], "greenfield")
@@ -1042,7 +1042,7 @@ class SourcesTest(RegistryTestCase):
         result = assess_readiness(self.repo, self.repo / "memory")
 
         self.assertEqual(("brownfield", "extract"), (result["state"], result["next_capability"]))
-        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        self.seed("contexts.json", [orders_context()])
         self.commit_all("one record")
         self.assertEqual("read-and-maintain", assess_readiness(self.repo, self.repo / "memory")["next_capability"])
         self.assertEqual(

@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import re
 import shutil
-import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -34,12 +33,12 @@ from domain_registry.revision import (
 )
 from domain_registry.store import read_document
 from domain_registry.updates import apply_approved_updates, promote_candidate, upsert_candidate
-from test_support import RegistryTestCase, amend_policy
+from test_support import RegistryTestCase, amend_policy, orders_context
 
 
 class ReviewLifecycleTest(RegistryTestCase):
     def test_without_any_implementation_path_the_impact_is_unknown(self) -> None:
-        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        self.seed("contexts.json", [orders_context()])
         self.commit_all("unmapped")
         self.assertEqual("unknown", self.change("src/orders/port.py")["verdict"])
 
@@ -481,9 +480,7 @@ class ReviewLifecycleTest(RegistryTestCase):
         tested = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))["test_results"]
         self.another_apply_rewrites_the_proposed_rule()
         expected_base = {
-            "observed_commit": subprocess.run(
-                ["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True
-            ).stdout.strip(),
+            "observed_commit": self.head(),
             "registry_digest": registry_digest(self.repo / "memory"),
             "committed_digest": submitted_base["registry_digest"],
         }
@@ -673,9 +670,7 @@ class ReviewLifecycleTest(RegistryTestCase):
             (package / "domain-change-proposal.json").read_text(encoding="utf-8")
         )
         self.assertEqual("applied", applied["status"])
-        head = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True
-        ).stdout.strip()
+        head = self.head()
         self.assertEqual(
             {"observed_commit": head, "registry_digest": registry_digest(self.repo / "memory")},
             applied["applied_registry_revision"],

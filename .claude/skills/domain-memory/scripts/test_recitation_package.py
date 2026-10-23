@@ -15,7 +15,7 @@ from domain_registry.okf import contexts_named_by
 from domain_registry.recitation_package import recitation_package
 from domain_registry.relocate import Recitation, recite
 from domain_registry.store import read_document, write_document
-from test_support import RegistryTestCase
+from test_support import RegistryTestCase, orders_context
 
 IDENTIFIERS = ("rq-recite", "pr-recite", "probe")
 TOOL = Path(__file__).resolve().parent / "registry_tools.py"
@@ -161,7 +161,7 @@ class RecitationPackageTest(RegistryTestCase):
         (self.repo / "src").mkdir()
         (self.repo / "src" / "a.py").write_text("one\ntwo\nthree\n", encoding="utf-8")
         (self.repo / "src" / "b.py").write_text("four\nfive\n", encoding="utf-8")
-        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        self.seed("contexts.json", [orders_context()])
         rule = {
             "id": "rule", "contexts": ["orders"], "statement": "S.", "status": "reviewed",
             "evidence": [

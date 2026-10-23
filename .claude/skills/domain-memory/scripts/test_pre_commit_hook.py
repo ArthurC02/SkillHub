@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.evidence import citation
 from domain_registry.git_hooks import EMPTY_SHA, hooks_dir, install_pre_commit_hook, install_pre_push_hook
-from test_support import RegistryTestCase
+from test_support import RegistryTestCase, orders_context
 
 TOOL = Path(__file__).resolve().parent / "registry_tools.py"
 REAL_PYTHON = Path(sys.executable).as_posix()
@@ -83,7 +83,7 @@ class PreCommitHookTest(RegistryTestCase):
     def cited_source(self) -> None:
         (self.repo / "src").mkdir()
         (self.repo / "src" / "a.py").write_text("one\ntwo\n", encoding="utf-8")
-        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        self.seed("contexts.json", [orders_context()])
         self.rule_citing_first_line_of("src/a.py")
 
     def test_the_hook_installs_where_git_runs_hooks_with_relative_paths_only(self) -> None:
@@ -92,7 +92,7 @@ class PreCommitHookTest(RegistryTestCase):
         self.assertEqual(self.repo / ".git" / "hooks" / "pre-commit", hook)
         self.assertEqual("#!/bin/sh\n# domain-memory-pre-commit\n", content[: content.index("tool=")])
         self.assertNotIn("\r", content)
-        self.assertIn(f"memory='memory'\nexisting{EXISTING_FROM_GIT}", content)
+        self.assertEqual((True, True), ("memory='memory'\n" in content, f"existing{EXISTING_FROM_GIT}" in content))
 
     def test_a_configured_hooks_path_that_does_not_exist_is_refused_by_name(self) -> None:
         self.git("config", "core.hooksPath", ".githooks")
@@ -108,7 +108,10 @@ class PreCommitHookTest(RegistryTestCase):
         self.assertEqual(self.repo / ".githooks" / "pre-commit", hook)
         self.assertFalse((self.repo / ".git" / "hooks" / "pre-commit").exists())
         self.assertNotIn(self.repo.resolve().as_posix(), content)
-        self.assertIn(f"tool='registry_tools.py'\nmemory='memory'\nexisting{EXISTING_FROM_GIT}", content)
+        self.assertEqual(
+            (True, True, True),
+            ("tool='registry_tools.py'\n" in content, "memory='memory'\n" in content, f"existing{EXISTING_FROM_GIT}" in content),
+        )
 
     @unittest.skipUnless(os.name == "posix", "only a POSIX file system records the executable bit")
     def test_the_installed_hook_is_executable(self) -> None:
@@ -164,7 +167,7 @@ class PreCommitHookTest(RegistryTestCase):
                 self.setUp()
                 (self.repo / relative).parent.mkdir()
                 (self.repo / relative).write_text("one\ntwo\n", encoding="utf-8")
-                self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+                self.seed("contexts.json", [orders_context()])
                 self.rule_citing_first_line_of(relative)
                 hook = self.install()
                 self.stage(relative, "changed\ntwo\n")
@@ -454,9 +457,7 @@ class PreCommitHookTest(RegistryTestCase):
             ["git", "-c", "user.name=T", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false",
              "commit", "-qm", "registry change"], cwd=self.repo, check=True,
         )
-        head = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True,
-        ).stdout.strip()
+        head = self.head()
         shims = self.shims('case $1 in -c) exit 0 ;; esac\necho "timeout=$DOMAIN_MEMORY_GIT_TIMEOUT" >&2\nexit 1')
         for label, configured, environment, expected in (
             ("config only", "42", {}, "timeout=42\n"),

@@ -38,6 +38,7 @@ from domain_registry.registry import (
     validate,
 )
 from domain_registry.search import _stem, _words, ranked_lookup
+from domain_registry.signing import SIGNING_KEY_ENV, init_signing_key
 from domain_registry.security import scan_report
 from domain_registry.sources import (
     source_kind_index,
@@ -164,6 +165,10 @@ def _seed_repository() -> tempfile.TemporaryDirectory:
     return seed
 
 
+def orders_context(**fields: Any) -> dict[str, Any]:
+    return {"id": "orders", "name": "Orders", "responsibility": "Own orders.", **fields}
+
+
 class RegistryTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -280,10 +285,7 @@ class RegistryTestCase(unittest.TestCase):
              "commit", "-qS", "-m", message],
             cwd=self.repo, check=True,
         )
-        return subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=self.repo,
-            capture_output=True, text=True, check=True,
-        ).stdout.strip()
+        return self.head()
 
     def commit_everything(self, message: str, signed: bool = False) -> str:
         subprocess.run(["git", "add", "-A"], cwd=self.repo, check=True)
@@ -292,10 +294,7 @@ class RegistryTestCase(unittest.TestCase):
              "-c", f"commit.gpgsign={'true' if signed else 'false'}", "commit", "--allow-empty", "-qm", message],
             cwd=self.repo, check=True,
         )
-        return subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=self.repo,
-            capture_output=True, text=True, check=True,
-        ).stdout.strip()
+        return self.head()
 
     def declare_check(self, package: Path, command: str) -> str:
         path = package / "test-obligations.json"
@@ -400,21 +399,28 @@ class RegistryTestCase(unittest.TestCase):
             (self.repo / path).write_text("v2\n", encoding="utf-8")
         return boundary_impact(self.repo / "memory", self.repo, "HEAD")
 
-    def interrupted_transaction(self, phase: str) -> tuple[Path, Path, Path]:
+    def interrupted_transaction(self, phase: str, operation_id: str = "op") -> tuple[Path, Path, Path]:
         root = self.repo / "memory"
-        backup = root / ".domain-registry-backup-op"
-        staging = root / ".domain-registry-stage-op"
+        backup = root / f".domain-registry-backup-{operation_id}"
+        staging = root / f".domain-registry-stage-{operation_id}"
         shutil.copytree(root / "registry", backup)
         staging.mkdir()
         (registry_dir(root) / INDEX).write_text("{}\n", encoding="utf-8")
         transaction_path(root).write_text(
             json.dumps({
-                "format": "domain-registry-transaction/v2", "operation_id": "op",
+                "format": "domain-registry-transaction/v2", "operation_id": operation_id,
                 "phase": phase, "backup": backup.name, "staging": staging.name,
             }),
             encoding="utf-8",
         )
         return root, backup, staging
+
+    def probe_signing_key(self) -> dict[str, Any]:
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            return init_signing_key(self.repo, "probe@example.com", self.repo / "keys" / "signing-key")
+
+    def head(self) -> str:
+        return self.git("rev-parse", "HEAD")
 
     def draft_package(self) -> Path:
         self.add_context()
@@ -994,6 +1000,4 @@ class RegistryTestCase(unittest.TestCase):
              "commit", "-qS", "-m", f"change {relative}"],
             cwd=self.repo, check=True,
         )
-        return subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True,
-        ).stdout.strip()
+        return self.head()

@@ -203,10 +203,7 @@ class CliTest(RegistryTestCase):
              "-c", "commit.gpgsign=false", "commit", "-qm", "unsigned domain memory change"],
             cwd=self.repo, check=True,
         )
-        head = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=self.repo,
-            capture_output=True, text=True, check=True,
-        ).stdout.strip()
+        head = self.head()
         parent = subprocess.run(
             ["git", "rev-parse", "HEAD~1"], cwd=self.repo,
             capture_output=True, text=True, check=True,

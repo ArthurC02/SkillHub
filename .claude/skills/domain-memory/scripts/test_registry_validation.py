@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import json
 import re
 import sys
@@ -11,11 +10,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.common import DOMAIN_MEMORY_HINT, ASSET_KEYS, conflict_marked_line, load_json
 from domain_registry.contracts import validate_schema
-from domain_registry.cli_commands import HANDLERS
-from domain_registry.cli_parser import build_parser
 from domain_registry.registry import validate, verify_evidence
 from domain_registry.store import read_document, refresh_indexes, write_document
-from test_support import VERIFIED, RegistryTestCase, append_audit, lookup, scan_secrets
+from test_support import VERIFIED, RegistryTestCase, append_audit, lookup, scan_secrets, orders_context
 
 
 class RegistryValidationTest(RegistryTestCase):
@@ -34,7 +31,7 @@ class RegistryValidationTest(RegistryTestCase):
         self.assertEqual(2, len(lookup(self.repo / "memory", "contexts", "")))
 
     def test_each_record_and_reference_defect_is_named(self) -> None:
-        orders = {"id": "orders", "name": "Orders", "responsibility": "Own orders."}
+        orders = orders_context()
         billing = {"id": "billing", "name": "Billing", "responsibility": "Own invoices."}
         order_term = {"id": "order", "name": "Order", "contexts": ["orders"]}
         invoice_term = {"id": "invoice", "name": "Invoice", "contexts": ["orders"]}
@@ -132,7 +129,7 @@ class RegistryValidationTest(RegistryTestCase):
              [{"id": "e", "owner_context": "orders", "contract_id": "none"}],
              "events/e references unknown contract"),
         ]
-        orders = {"id": "orders", "name": "Orders", "responsibility": "Own orders."}
+        orders = orders_context()
         billing = {"id": "billing", "name": "Billing", "responsibility": "Own invoices."}
         root = self.repo / "memory"
         for label, name, records, message in cases:
@@ -159,7 +156,7 @@ class RegistryValidationTest(RegistryTestCase):
         )
 
     def test_validate_names_every_file_that_holds_git_conflict_markers_and_nothing_else(self) -> None:
-        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        self.seed("contexts.json", [orders_context()])
         root = self.repo / "memory"
         marked = "---\nname: Orders\n<<<<<<< HEAD\nresponsibility: Own orders.\n=======\nresponsibility: Own all orders.\n>>>>>>> theirs\n---\n"
         (root / "registry" / "contexts" / "orders.md").write_text(marked, encoding="utf-8")
@@ -178,7 +175,7 @@ class RegistryValidationTest(RegistryTestCase):
         )
 
     def test_validate_refuses_a_stale_or_missing_index_and_refresh_indexes_rebuilds_it_from_the_concept_files(self) -> None:
-        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        self.seed("contexts.json", [orders_context()])
         root = self.repo / "memory"
         index = root / "registry" / "contexts" / "index.md"
         current = index.read_text(encoding="utf-8")
@@ -219,7 +216,7 @@ class RegistryValidationTest(RegistryTestCase):
             ("blank part", {**sound, "scope": " "}, "contracts/c idempotency fields must be non-empty text: scope"),
             ("blank expiry", {**sound, "expiry": ""}, "contracts/c idempotency fields must be non-empty text: expiry"),
         ]
-        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        self.seed("contexts.json", [orders_context()])
         contract = {"id": "c", "producer_context": "orders", "consumer_contexts": []}
         for label, idempotency, message in cases:
             with self.subTest(label):
@@ -231,7 +228,7 @@ class RegistryValidationTest(RegistryTestCase):
 
     def test_term_labels_may_reuse_a_name_from_another_context_and_point_at_a_look_alike(self) -> None:
         self.seed("contexts.json", [
-            {"id": "orders", "name": "Orders", "responsibility": "Own orders."},
+            orders_context(),
             {"id": "billing", "name": "Billing", "responsibility": "Own invoices."},
         ])
         self.seed("vocabulary.json", [
@@ -339,7 +336,7 @@ class RegistryValidationTest(RegistryTestCase):
     def test_requiring_reviewed_records_rejects_a_candidate_registry(self) -> None:
         self.seed(
             "contexts.json",
-            [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}],
+            [orders_context()],
         )
         self.assertEqual(validate(self.repo / "memory", None, False), [])
         self.assertEqual(
@@ -407,12 +404,6 @@ class RegistryValidationTest(RegistryTestCase):
         finding = scan_secrets(secrets)[0]
         self.assertEqual(sorted(finding), ["kind", "line", "path"])
         self.assertNotIn("c" * 30, json.dumps(finding))
-
-    def test_every_parsed_command_has_a_handler_and_every_handler_a_command(self) -> None:
-        subcommands = next(
-            action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)
-        )
-        self.assertEqual(set(HANDLERS), set(subcommands.choices))
 
 
 if __name__ == "__main__":

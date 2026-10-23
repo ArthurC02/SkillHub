@@ -4,13 +4,13 @@ import json
 import unittest
 
 from domain_registry.dependents import dependents
-from test_support import RegistryTestCase
+from test_support import RegistryTestCase, orders_context
 
 
 class DependentsTest(RegistryTestCase):
     def coupled_registry(self) -> None:
         self.seed("contexts.json", [
-            {"id": "orders", "name": "Orders", "responsibility": "Own orders."},
+            orders_context(),
             {"id": "billing", "name": "Billing", "responsibility": "Own invoices."},
         ])
         self.seed("aggregates.json", [{"id": "order", "context": "orders", "root": "Order"}])

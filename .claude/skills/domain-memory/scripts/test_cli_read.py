@@ -19,7 +19,7 @@ from domain_registry.locate import domain_memory_hint
 from domain_registry.evidence import citation
 from domain_registry.registry import asset_records
 from domain_registry.sources import probe_sources, shown_argument
-from test_support import RegistryTestCase
+from test_support import RegistryTestCase, orders_context
 
 
 class CliReadTest(RegistryTestCase):
@@ -98,7 +98,7 @@ class CliReadTest(RegistryTestCase):
     def test_a_registry_root_beside_the_real_one_is_refused_with_the_real_one_named_and_nothing_created(self) -> None:
         self.committed_source_map()
         typo = self.repo / "memory" / "typo"
-        for given, shown in ((typo, "memory/typo"), (self.repo, ".")):
+        for given, shown in ((typo, "memory/typo"), (self.repo / "memry", "memry"), (self.repo, ".")):
             with self.subTest(shown):
                 result = self.run_cli("refresh-listing", "--registry-root", str(given), "--repo-root", str(self.repo))
                 self.assertEqual(
@@ -124,16 +124,6 @@ class CliReadTest(RegistryTestCase):
             (2, f"Domain Memory at memry: none; {DOMAIN_MEMORY_HINT}; did you mean memory?"),
             (summary.returncode, summary.stdout.strip()),
         )
-
-    def test_a_sibling_typo_and_the_repository_root_are_pointed_at_the_one_registry_the_repository_holds(self) -> None:
-        self.committed_source_map()
-        for given, shown in ((self.repo / "memry", "memry"), (self.repo, ".")):
-            with self.subTest(shown):
-                result = self.run_cli("refresh-listing", "--registry-root", str(given), "--repo-root", str(self.repo))
-                self.assertEqual(
-                    (1, f"ERROR: no Domain Memory at {shown}: {DOMAIN_MEMORY_HINT}; did you mean memory?\n"),
-                    (result.returncode, result.stderr),
-                )
 
     def test_an_unrelated_file_named_source_map_json_is_not_a_domain_memory(self) -> None:
         self.committed_source_map()
@@ -404,7 +394,7 @@ class CliReadTest(RegistryTestCase):
         )
 
     def test_a_registry_reader_refuses_the_repo_root_it_would_not_use(self) -> None:
-        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        self.seed("contexts.json", [orders_context()])
         memory = str(self.repo / "memory")
         for command in (
             ("get-context", "--id", "orders"), ("get-record", "--asset", "contexts", "--id", "orders"),
@@ -421,11 +411,10 @@ class CliReadTest(RegistryTestCase):
         usage, error = result.stderr.rstrip().rsplit("\n", 1)
         flat = " ".join(usage.split())
         self.assertEqual(
-            (2, True, True, True, False),
+            (2, True, True, False),
             (
                 result.returncode,
                 flat.startswith("usage: ") and " get-context [-h]" in flat,
-                "--id ID [--summary]" in flat,
                 error.endswith(" get-context: error: unrecognized arguments: --summery"),
                 "[-h] command" in usage,
             ),

@@ -21,32 +21,15 @@ from domain_registry.updates import (
 )
 from domain_registry.common import MAX_JSON_BYTES, registry_dir
 from domain_registry.store import INDEX, has_registry, read_document, write_document
-from test_support import RegistryTestCase, append_audit
+from test_support import RegistryTestCase, append_audit, orders_context
 
 
 class UpdatesRecoveryTest(RegistryTestCase):
     def test_recovery_rolls_back_an_installed_transaction_without_its_audit_event(
         self,
     ) -> None:
-        root = self.repo / "memory"
-        backup = root / ".domain-registry-backup-new"
-        staging = root / ".domain-registry-stage-new"
-        original = (registry_dir(root) / INDEX).read_bytes()
-        shutil.copytree(root / "registry", backup)
-        staging.mkdir()
-        (registry_dir(root) / INDEX).write_text("{}\n", encoding="utf-8")
-        transaction_path(root).write_text(
-            json.dumps(
-                {
-                    "format": "domain-registry-transaction/v2",
-                    "operation_id": "new",
-                    "phase": "installed",
-                    "backup": backup.name,
-                    "staging": staging.name,
-                }
-            ),
-            encoding="utf-8",
-        )
+        original = (registry_dir(self.repo / "memory") / INDEX).read_bytes()
+        root, _, _ = self.interrupted_transaction("installed", "new")
         recover_interrupted_update(root, False)
         self.assertEqual(original, (registry_dir(root) / INDEX).read_bytes())
 
@@ -68,25 +51,8 @@ class UpdatesRecoveryTest(RegistryTestCase):
     def test_recovery_keeps_an_installed_transaction_whose_audit_event_is_present(
         self,
     ) -> None:
-        root = self.repo / "memory"
-        backup = root / ".domain-registry-backup-audited"
-        staging = root / ".domain-registry-stage-audited"
-        shutil.copytree(root / "registry", backup)
-        staging.mkdir()
-        (registry_dir(root) / INDEX).write_text("{}\n", encoding="utf-8")
-        append_audit(root, {"operation": "update", "operation_id": "audited"})
-        transaction_path(root).write_text(
-            json.dumps(
-                {
-                    "format": "domain-registry-transaction/v2",
-                    "operation_id": "audited",
-                    "phase": "installed",
-                    "backup": backup.name,
-                    "staging": staging.name,
-                }
-            ),
-            encoding="utf-8",
-        )
+        append_audit(self.repo / "memory", {"operation": "update", "operation_id": "audited"})
+        root, backup, _ = self.interrupted_transaction("installed", "audited")
         recover_interrupted_update(root, False)
         self.assertEqual(
             "{}\n", (registry_dir(root) / INDEX).read_text(encoding="utf-8")
@@ -114,7 +80,7 @@ class UpdatesRecoveryTest(RegistryTestCase):
 
     def test_a_registry_swap_refused_by_windows_restores_the_registry_in_place(self) -> None:
         before = read_document(self.repo / "memory", "contexts.json")
-        record = self.write_record("context.json", {"id": "orders", "name": "Orders", "responsibility": "Own orders."})
+        record = self.write_record("context.json", orders_context())
         replace = Path.replace
 
         def refuse_installing(source: Path, target: Path) -> Path:
@@ -126,7 +92,7 @@ class UpdatesRecoveryTest(RegistryTestCase):
 
     def test_a_registry_that_cannot_be_moved_aside_leaves_no_interrupted_transaction(self) -> None:
         before = read_document(self.repo / "memory", "contexts.json")
-        record = self.write_record("context.json", {"id": "orders", "name": "Orders", "responsibility": "Own orders."})
+        record = self.write_record("context.json", orders_context())
         replace = Path.replace
 
         def refuse_moving_aside(source: Path, target: Path) -> Path:
@@ -167,7 +133,7 @@ class UpdatesRecoveryTest(RegistryTestCase):
 
     def test_an_update_that_fails_at_any_step_leaves_the_registry_as_it_was_and_nothing_behind(self) -> None:
         def write_a_context(staging: Path) -> None:
-            write_document(staging, "contexts.json", {"contexts": [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}]})
+            write_document(staging, "contexts.json", {"contexts": [orders_context()]})
 
         def break_it(_staging: Path) -> None:
             raise ValueError("mutation failed")
@@ -199,7 +165,7 @@ class UpdatesRecoveryTest(RegistryTestCase):
         mutate_registry(
             root, self.repo,
             lambda staging: write_document(
-                staging, "contexts.json", {"contexts": [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}]}
+                staging, "contexts.json", {"contexts": [orders_context()]}
             ),
         )
         self.assertEqual(

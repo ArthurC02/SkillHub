@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -10,14 +9,12 @@ from domain_registry.common import load_json
 from domain_registry.hitl import record_approval, submit_proposal, verify_proposal
 from domain_registry.registry import record_by_id
 from domain_registry.ship import ship_package
-from domain_registry.signing import SIGNING_KEY_ENV, init_signing_key
 from test_support import RegistryTestCase
 
 
 class ShipPackageTest(RegistryTestCase):
     def verified_package_under_signed_governance(self) -> tuple[Path, str]:
-        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
-            key = init_signing_key(self.repo, "probe@example.com", self.repo / "keys" / "signing-key")
+        key = self.probe_signing_key()
         policy_path = self.repo / "memory" / "domain-memory-policy.json"
         policy = json.loads(policy_path.read_text(encoding="utf-8"))
         policy["review_governance"].update(verifier="git-signed-commit", trigger="git-push", authorized_signers=[key["fingerprint"]])
@@ -187,7 +184,7 @@ class ShipPackageTest(RegistryTestCase):
             ((failed.returncode, json.loads(failed.stdout)["status"]),
              (passed.returncode, json.loads(passed.stdout)["status"], json.loads(passed.stdout)["commit"])),
         )
-        self.assertEqual(signed, subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True).stdout.strip())
+        self.assertEqual(signed, self.head())
 
 
 if __name__ == "__main__":

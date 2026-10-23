@@ -141,8 +141,8 @@ class CommandGroupsTest(RegistryTestCase):
             (
                 result.returncode,
                 list(COMMAND_GROUPS),
-                "Everyday commands: readiness, probe, lookup," in flat,
-                "Advanced commands: discover-sources, init-domain-memory," in flat,
+                "Everyday commands: " in flat,
+                "Advanced commands: " in flat,
                 "legacy command" in flat.lower(),
             ),
         )

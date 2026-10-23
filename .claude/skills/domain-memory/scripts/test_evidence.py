@@ -23,7 +23,7 @@ from domain_registry.registry import (
     validate,
 )
 from domain_registry.store import read_document, write_document
-from test_support import VERIFIED, RegistryTestCase, applied_by
+from test_support import VERIFIED, RegistryTestCase, applied_by, orders_context
 
 
 class EvidenceTest(RegistryTestCase):
@@ -382,7 +382,7 @@ class EvidenceTest(RegistryTestCase):
                 self.setUp()
                 (self.repo / "src").mkdir()
                 (self.repo / "src" / "a.py").write_text("keep\nmove\n", encoding="utf-8")
-                self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+                self.seed("contexts.json", [orders_context()])
                 self.seed("rules.json", [
                     {"id": "kept", "contexts": ["orders"], "statement": "S.", "evidence": [citation(self.repo, "src/a.py", 1, 1)]},
                     {"id": "moved", "contexts": ["orders"], "statement": "S.", "evidence": [citation(self.repo, "src/a.py", 2, 2)]},
@@ -440,7 +440,7 @@ class EvidenceTest(RegistryTestCase):
 
     def shifted_and_stale_in_one_record(self) -> dict:
         (self.repo / "fact.md").write_text("fact\na\nold\n", encoding="utf-8")
-        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        self.seed("contexts.json", [orders_context()])
         self.seed("rules.json", [
             {"id": "both", "contexts": ["orders"], "statement": "S.", "status": "reviewed",
              "evidence": [citation(self.repo, "fact.md", 1, 1), citation(self.repo, "fact.md", 3, 3)],

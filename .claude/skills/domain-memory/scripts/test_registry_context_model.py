@@ -15,7 +15,7 @@ from domain_registry.registry import (
     validate,
 )
 from domain_registry.evidence import citation
-from test_support import VERIFIED, RegistryTestCase, amend_policy
+from test_support import VERIFIED, RegistryTestCase, amend_policy, orders_context
 
 
 class RegistryContextModelTest(RegistryTestCase):
@@ -145,7 +145,7 @@ class RegistryContextModelTest(RegistryTestCase):
              [{"id": "p", "from_context": "orders", "to_context": "billing", "mode": "none", "policy": ["forbidden"]}],
              "dependency-policies/p has an unknown policy: ['forbidden'] is not one of allowed, forbidden"),
         ]
-        orders = {"id": "orders", "name": "Orders", "responsibility": "Own orders."}
+        orders = orders_context()
         billing = {"id": "billing", "name": "Billing", "responsibility": "Own invoices."}
         for label, name, records, message in cases:
             with self.subTest(label):
@@ -310,7 +310,7 @@ class RegistryContextModelTest(RegistryTestCase):
     def test_coverage_reports_a_context_only_under_the_asset_it_lacks(self) -> None:
         self.seed(
             "contexts.json",
-            [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}],
+            [orders_context()],
         )
         self.seed(
             "vocabulary.json",
@@ -365,7 +365,7 @@ class RegistryContextModelTest(RegistryTestCase):
 
     def test_coverage_counts_events_and_takes_a_confirmed_absence_of_events(self) -> None:
         self.seed("contexts.json", [
-            {"id": "orders", "name": "Orders", "responsibility": "Own orders."},
+            orders_context(),
             {"id": "billing", "name": "Billing", "responsibility": "Own invoices.",
              "confirmed_absences": [{"asset": "events", "reason": "Billing publishes nothing."}]},
         ])

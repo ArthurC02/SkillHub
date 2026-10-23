@@ -19,7 +19,7 @@ from domain_registry.store import (
     read_document,
     write_document,
 )
-from test_support import RegistryTestCase, snapshot_of_files
+from test_support import RegistryTestCase, snapshot_of_files, orders_context
 
 ORDER_RULE = {"id": "order-total", "statement": "An order total is never negative. It is checked on save.",
               "contexts": ["orders"], "status": "reviewed"}
@@ -226,14 +226,11 @@ class DigestAndHistoryTest(RegistryTestCase):
             documents = committed_documents(self.repo, commit, self.repo / "memory", (MANIFEST, "rules.json"))
         self.assertEqual([ORDER_RULE], documents["rules.json"]["rules"])
 
-    def head(self) -> str:
-        return subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True).stdout.strip()
-
 
 class ReadRecordTest(RegistryTestCase):
     def test_a_record_is_read_from_its_own_concept_file_and_an_absent_or_unsafe_id_is_none(self) -> None:
         self.seed("contexts.json", [
-            {"id": "orders", "name": "Orders", "responsibility": "Own orders."},
+            orders_context(),
             {"id": "billing", "name": "Billing", "responsibility": "Own invoices."},
         ])
         root = self.repo / "memory"

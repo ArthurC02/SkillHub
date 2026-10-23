@@ -26,8 +26,7 @@ from test_support import RegistryTestCase, amend_policy
 
 class ReviewSigningTest(RegistryTestCase):
     def signing_for_the_registry(self) -> None:
-        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
-            key = init_signing_key(self.repo, "probe@example.com", self.repo / "keys" / "signing-key")
+        key = self.probe_signing_key()
         policy_path = self.repo / "memory" / "domain-memory-policy.json"
         policy = json.loads(policy_path.read_text(encoding="utf-8"))
         policy["review_governance"].update(
@@ -81,17 +80,14 @@ class ReviewSigningTest(RegistryTestCase):
                 self.assertEqual((0, expected), (pushed.returncode, pushed.stdout.strip()), pushed.stderr)
 
     def test_attesting_a_signed_commit_that_carries_the_package_lets_it_finalize(self) -> None:
-        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
-            key = init_signing_key(self.repo, "probe@example.com", self.repo / "keys" / "signing-key")
+        key = self.probe_signing_key()
         policy_path = self.repo / "memory" / "domain-memory-policy.json"
         policy = json.loads(policy_path.read_text(encoding="utf-8"))
         policy["review_governance"].update(
             verifier="git-signed-commit", trigger="git-push", authorized_signers=[key["fingerprint"]]
         )
         policy_path.write_text(json.dumps(policy), encoding="utf-8")
-        unsigned = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True
-        ).stdout.strip()
+        unsigned = self.head()
         signed_before = self.commit_everything("signs the policy before the package", signed=True)
         package = self.draft_package()
         submit_proposal(package, self.repo / "memory", self.repo)
@@ -128,10 +124,7 @@ class ReviewSigningTest(RegistryTestCase):
             attest_signed_commit(package, self.repo / "memory", self.repo, "HEAD")
 
     def test_a_generated_signing_key_signs_a_commit_git_can_verify(self) -> None:
-        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
-            result = init_signing_key(
-                self.repo, "probe@example.com", self.repo / "keys" / "signing-key"
-            )
+        result = self.probe_signing_key()
         self.assertEqual("generated", result["source"])
         self.assertTrue(result["fingerprint"].startswith("SHA256:"))
         self.assertEqual(
@@ -179,20 +172,16 @@ class ReviewSigningTest(RegistryTestCase):
             r"Install the signing program, or point gpg\.ssh\.program or gpg\.program at it, and verify again$",
         )
 
-    def test_the_same_key_rebuilds_from_the_environment(self) -> None:
-        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
-            first = init_signing_key(
-                self.repo, "probe@example.com", self.repo / "keys" / "signing-key"
-            )
+    def test_the_same_key_rebuilds_from_the_environment_pasted_with_lf_or_with_crlf_and_no_final_newline(self) -> None:
+        first = self.probe_signing_key()
         material = (self.repo / "keys" / "signing-key").read_text(encoding="utf-8")
-        elsewhere = self.repo / "elsewhere"
-        subprocess.run(["git", "init", "-q", str(elsewhere)], check=True)
-        with patch.dict("os.environ", {SIGNING_KEY_ENV: material}):
-            second = init_signing_key(
-                elsewhere, "probe@example.com", elsewhere / "keys" / "signing-key"
-            )
-        self.assertEqual("environment", second["source"])
-        self.assertEqual(first["fingerprint"], second["fingerprint"])
+        for label, pasted in (("lf", material), ("crlf", material.rstrip("\n").replace("\n", "\r\n"))):
+            with self.subTest(label):
+                elsewhere = self.repo / f"elsewhere-{label}"
+                subprocess.run(["git", "init", "-q", str(elsewhere)], check=True)
+                with patch.dict("os.environ", {SIGNING_KEY_ENV: pasted}):
+                    second = init_signing_key(elsewhere, "probe@example.com", elsewhere / "keys" / "signing-key")
+                self.assertEqual(("environment", first["fingerprint"]), (second["source"], second["fingerprint"]))
 
     def test_an_environment_key_replaces_an_existing_key_file_only_when_forced(self) -> None:
         key_file = self.repo / "keys" / "signing-key"
@@ -240,22 +229,6 @@ class ReviewSigningTest(RegistryTestCase):
             (merge in self.git("rev-list", f"{base}..HEAD", "--", "memory").split(),
              verified.returncode, verified.stdout.strip(), verified.stderr.strip()),
         )
-
-    def test_key_material_with_crlf_line_endings_and_no_final_newline_rebuilds(self) -> None:
-        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
-            first = init_signing_key(
-                self.repo, "probe@example.com", self.repo / "keys" / "signing-key"
-            )
-        material = (self.repo / "keys" / "signing-key").read_text(encoding="utf-8")
-        pasted = material.rstrip("\n").replace("\n", "\r\n")
-        elsewhere = self.repo / "elsewhere"
-        subprocess.run(["git", "init", "-q", str(elsewhere)], check=True)
-        with patch.dict("os.environ", {SIGNING_KEY_ENV: pasted}):
-            second = init_signing_key(
-                elsewhere, "probe@example.com", elsewhere / "keys" / "signing-key"
-            )
-        self.assertEqual("environment", second["source"])
-        self.assertEqual(first["fingerprint"], second["fingerprint"])
 
     @unittest.skipUnless(os.name == "posix", "file modes are POSIX permissions")
     def test_a_key_from_the_environment_is_created_readable_by_its_owner_alone(self) -> None:
