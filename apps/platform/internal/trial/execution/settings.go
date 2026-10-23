@@ -3,6 +3,7 @@ package run
 import (
 	"context"
 	"errors"
+	"math"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -53,15 +54,15 @@ func (s *Service) ContinuationRounds(ctx context.Context) (int, error) {
 }
 
 func (s *Service) SetContinuationRounds(ctx context.Context, operator pgtype.UUID, rounds int, reason string) (Settings, error) {
-	reason = strings.TrimSpace(reason)
-	if reason == "" || utf8.RuneCountInString(reason) > maxSettingsReasonChars {
-		return Settings{}, ErrSettingsReasonRequired
+	reason, err := settingsReason(reason)
+	if err != nil {
+		return Settings{}, err
 	}
 	if rounds < MinContinuationRounds || rounds > MaxContinuationRounds {
 		return Settings{}, ErrRoundsOutOfRange
 	}
 	var updated Settings
-	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		q := gen.New(tx)
 		before := DefaultContinuationRounds
 		row, err := q.GetRunSettings(ctx)
@@ -91,4 +92,103 @@ func settingsOf(row gen.RunSetting) Settings {
 		ContinuationRounds: int(row.ContinuationRounds), Reason: row.Reason,
 		SetBy: row.SetBy, SetAt: row.SetAt.Time, Changed: true,
 	}
+}
+
+const (
+	MinRunBudgetUSD = 0.05
+	MaxRunBudgetUSD = 5.0
+	microsPerUSD    = 1_000_000
+)
+
+var ErrRunBudgetOutOfRange = errors.New("run: the model spend ceiling of a run must be between 0.05 and 5 USD")
+
+type RunBudgetSetting struct {
+	USD        float64
+	DefaultUSD float64
+	Reason     string
+	SetBy      pgtype.UUID
+	SetAt      time.Time
+	Overridden bool
+}
+
+func runBudgetIn(ctx context.Context, q *gen.Queries, d Deployment) (RunBudgetSetting, error) {
+	setting := RunBudgetSetting{USD: d.Budget(), DefaultUSD: d.Budget()}
+	row, err := q.GetRunModelBudgetSetting(ctx)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return setting, nil
+	}
+	if err != nil {
+		return RunBudgetSetting{}, err
+	}
+	setting.USD = float64(row.BudgetMicros) / microsPerUSD
+	setting.Reason, setting.SetBy, setting.SetAt, setting.Overridden = row.Reason, row.SetBy, row.SetAt.Time, true
+	return setting, nil
+}
+
+func setRunBudget(ctx context.Context, s *Service, operator pgtype.UUID, usd float64, reason string) (RunBudgetSetting, error) {
+	d := s.Deployment
+	reason, err := settingsReason(reason)
+	if err != nil {
+		return RunBudgetSetting{}, err
+	}
+	if math.IsNaN(usd) || usd < MinRunBudgetUSD || usd > MaxRunBudgetUSD {
+		return RunBudgetSetting{}, ErrRunBudgetOutOfRange
+	}
+	var updated RunBudgetSetting
+	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		q := gen.New(tx)
+		before, err := runBudgetIn(ctx, q, d)
+		if err != nil {
+			return err
+		}
+		if _, err := q.SetRunModelBudgetSetting(ctx, gen.SetRunModelBudgetSettingParams{
+			BudgetMicros: int64(math.Round(usd * microsPerUSD)), Reason: reason, SetBy: operator,
+		}); err != nil {
+			return err
+		}
+		if updated, err = runBudgetIn(ctx, q, d); err != nil {
+			return err
+		}
+		return auditRunBudget(ctx, tx, operator, budgetChange{from: before.USD, to: updated.USD}, reason)
+	})
+	return updated, err
+}
+
+func clearRunBudget(ctx context.Context, s *Service, operator pgtype.UUID, reason string) (RunBudgetSetting, error) {
+	d := s.Deployment
+	reason, err := settingsReason(reason)
+	if err != nil {
+		return RunBudgetSetting{}, err
+	}
+	var updated RunBudgetSetting
+	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		q := gen.New(tx)
+		before, err := runBudgetIn(ctx, q, d)
+		if err != nil {
+			return err
+		}
+		if _, err := q.ClearRunModelBudgetSetting(ctx); err != nil {
+			return err
+		}
+		updated = RunBudgetSetting{USD: d.Budget(), DefaultUSD: d.Budget()}
+		return auditRunBudget(ctx, tx, operator, budgetChange{from: before.USD, to: updated.USD}, reason)
+	})
+	return updated, err
+}
+
+type budgetChange struct{ from, to float64 }
+
+func auditRunBudget(ctx context.Context, tx pgx.Tx, operator pgtype.UUID, change budgetChange, reason string) error {
+	return audit.Log(ctx, tx, audit.Event{
+		Actor: operator, Action: audit.ActionRunSettingsSet, ResourceType: audit.ResourceRunSettings,
+		Metadata: map[string]any{"setting": "model_budget_usd", "from": change.from, "to": change.to, auditReasonKey: reason},
+	})
+}
+
+func settingsReason(reason string) (string, error) {
+	reason = strings.TrimSpace(reason)
+	if reason == "" || utf8.RuneCountInString(reason) > maxSettingsReasonChars {
+		return "", ErrSettingsReasonRequired
+	}
+	return reason, nil
 }

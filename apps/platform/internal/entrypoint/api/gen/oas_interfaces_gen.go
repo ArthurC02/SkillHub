@@ -29,6 +29,10 @@ type ClearModelCallBudgetRes interface {
 	clearModelCallBudgetRes()
 }
 
+type ClearRunModelBudgetRes interface {
+	clearRunModelBudgetRes()
+}
+
 type ClearSkillRestrictionRes interface {
 	clearSkillRestrictionRes()
 }
@@ -543,6 +547,10 @@ type SetPlatformAgentEnabledRes interface {
 
 type SetPlatformAgentSpendCapRes interface {
 	setPlatformAgentSpendCapRes()
+}
+
+type SetRunModelBudgetRes interface {
+	setRunModelBudgetRes()
 }
 
 type SetSkillCategoryRes interface {

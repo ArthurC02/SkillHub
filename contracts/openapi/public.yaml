@@ -3520,9 +3520,9 @@ paths:
       operationId: getRunSettings
       summary: Run settings an operator can change (GEN-014)
       description: |
-        Operator only. How many answered rounds one conversation may hold: a run
-        that asks, the run that continues it, and so on. A setting nobody has
-        changed is at its default.
+        Operator only. How many answered rounds one conversation may hold (a run
+        that asks, the run that continues it, and so on) and the model spend
+        ceiling of one run. A setting nobody has changed is at its default.
       responses:
         "200":
           description: Every operator-set run setting.
@@ -3563,6 +3563,80 @@ paths:
               schema: { $ref: "#/components/schemas/RunSettings" }
         "400":
           description: Body is not JSON, `rounds` is missing or outside 1–10, or `note` is blank or over 1000 characters.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/settings/runs/model-budget:
+    put:
+      operationId: setRunModelBudget
+      summary: Set the model spend ceiling of one run (TEST-005)
+      description: |
+        Operator only. Runs created from now on reserve credits for this ceiling
+        and run under it; runs already created keep theirs. Writes the value and
+        its audit event in one transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [usd, note]
+              properties:
+                usd:
+                  type: number
+                  minimum: 0.05
+                  maximum: 5
+                  description: Outside the range is 400 rather than clamped.
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Why, in the operator's own words. Whitespace does not satisfy it.
+      responses:
+        "200":
+          description: The settings as they now stand.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RunSettings" }
+        "400":
+          description: Body is not JSON, `usd` is missing or outside 0.05–5, or `note` is blank or over 1000 characters.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      operationId: clearRunModelBudget
+      summary: Return the run spend ceiling to the deployment default (TEST-005)
+      description: |
+        Operator only. Runs created from now on get `default_usd` again. Clearing
+        a ceiling nobody had set is still answered and still audited.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note:
+                  type: string
+                  maxLength: 1000
+      responses:
+        "200":
+          description: The settings as they now stand.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RunSettings" }
+        "400":
+          description: Body is not JSON, or `note` is blank or over 1000 characters.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -7634,8 +7708,23 @@ components:
             set_at: { type: string, format: date-time }
     RunSettings:
       type: object
-      required: [continuation_rounds]
+      required: [continuation_rounds, model_budget]
       properties:
+        model_budget:
+          type: object
+          required: [usd, default_usd, min_usd, max_usd]
+          description: |
+            The model spend ceiling of one run. A new run reserves credits for it,
+            its gateway key cannot spend past it, and a reassigned attempt gets
+            what is left of it. Each run keeps the ceiling it was created under.
+          properties:
+            usd: { type: number, description: The ceiling a run created now gets. }
+            default_usd: { type: number, description: The deployment's ceiling, which applies when no operator has set one. }
+            min_usd: { type: number }
+            max_usd: { type: number }
+            reason: { type: string, description: Present while an operator-set ceiling replaces the default. }
+            set_by_user_id: { type: string, format: uuid }
+            set_at: { type: string, format: date-time }
         continuation_rounds:
           type: object
           required: [rounds, min, max]

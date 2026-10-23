@@ -1280,6 +1280,20 @@ type RunContinuation struct {
 	AnsweredAsSimulatedUser bool
 }
 
+// The operator-set model spend ceiling of one run. An absent row means the deployment default applies; each run keeps the ceiling it was created under in its policy snapshot.
+type RunModelBudgetSetting struct {
+	// Always true; it limits the table to a single row.
+	Singleton bool
+	// The model spend ceiling of one run in millionths of a US dollar, from 0.05 to 5 dollars.
+	BudgetMicros int64
+	// Why the operator set this value. Never blank.
+	Reason string
+	// The operator who set the value. NULL if that account has since been removed.
+	SetBy pgtype.UUID
+	// When the value was set.
+	SetAt pgtype.Timestamptz
+}
+
 // The record that a user confirmed the permissions a skill version requests before it was run with a given test case. Kept permanently.
 type RunPermissionConfirmation struct {
 	ID pgtype.UUID

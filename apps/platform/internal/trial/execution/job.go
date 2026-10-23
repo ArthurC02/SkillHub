@@ -185,7 +185,7 @@ func (d *driver) dispatch(ctx context.Context) error {
 			d.reasonFor(failureNoProvider, err))
 	}
 
-	budget, err := d.budgetForNextAttempt(ctx, attempts)
+	budget, err := d.budgetForNextAttempt(ctx, attempts, policy.modelBudget(d.svc.Deployment))
 	if errors.Is(err, errSpendUnreadable) {
 		return d.waitForSpend(err)
 	}

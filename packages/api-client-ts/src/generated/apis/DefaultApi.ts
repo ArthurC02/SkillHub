@@ -69,6 +69,11 @@ import {
     CategorizedFindingsToJSON,
 } from '../models/CategorizedFindings';
 import {
+    type ClearRunModelBudgetRequest,
+    ClearRunModelBudgetRequestFromJSON,
+    ClearRunModelBudgetRequestToJSON,
+} from '../models/ClearRunModelBudgetRequest';
+import {
     type ClearSkillRestrictionRequest,
     ClearSkillRestrictionRequestFromJSON,
     ClearSkillRestrictionRequestToJSON,
@@ -704,6 +709,11 @@ import {
     SetPlatformAgentSpendCapRequestToJSON,
 } from '../models/SetPlatformAgentSpendCapRequest';
 import {
+    type SetRunModelBudgetRequest,
+    SetRunModelBudgetRequestFromJSON,
+    SetRunModelBudgetRequestToJSON,
+} from '../models/SetRunModelBudgetRequest';
+import {
     type SetSkillCategoryRequest,
     SetSkillCategoryRequestFromJSON,
     SetSkillCategoryRequestToJSON,
@@ -907,6 +917,13 @@ export interface ClearModelCallBudgetRequest {
      * 
      */
     expediteAccountErasureRequest: ExpediteAccountErasureRequest;
+}
+
+export interface ClearRunModelBudgetOperationRequest {
+    /**
+     * 
+     */
+    clearRunModelBudgetRequest: ClearRunModelBudgetRequest;
 }
 
 export interface ClearSkillRestrictionOperationRequest {
@@ -1981,6 +1998,13 @@ export interface SetPlatformAgentSpendCapOperationRequest {
     setPlatformAgentSpendCapRequest: SetPlatformAgentSpendCapRequest;
 }
 
+export interface SetRunModelBudgetOperationRequest {
+    /**
+     * 
+     */
+    setRunModelBudgetRequest: SetRunModelBudgetRequest;
+}
+
 export interface SetSkillCategoryOperationRequest {
     /**
      * 
@@ -2316,6 +2340,30 @@ export interface DefaultApiInterface {
      * Return one model call to its compiled default (02:OPS-009)
      */
     clearModelCallBudget(requestParameters: ClearModelCallBudgetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for clearRunModelBudget without sending the request
+     * @param {ClearRunModelBudgetRequest} clearRunModelBudgetRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    clearRunModelBudgetRequestOpts(requestParameters: ClearRunModelBudgetOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Runs created from now on get `default_usd` again. Clearing a ceiling nobody had set is still answered and still audited. 
+     * @summary Return the run spend ceiling to the deployment default (TEST-005)
+     * @param {ClearRunModelBudgetRequest} clearRunModelBudgetRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    clearRunModelBudgetRaw(requestParameters: ClearRunModelBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>>;
+
+    /**
+     * Operator only. Runs created from now on get `default_usd` again. Clearing a ceiling nobody had set is still answered and still audited. 
+     * Return the run spend ceiling to the deployment default (TEST-005)
+     */
+    clearRunModelBudget(requestParameters: ClearRunModelBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings>;
 
     /**
      * Creates request options for clearSkillRestriction without sending the request
@@ -3941,7 +3989,7 @@ export interface DefaultApiInterface {
     getRunSettingsRequestOpts(): Promise<runtime.RequestOpts>;
 
     /**
-     * Operator only. How many answered rounds one conversation may hold: a run that asks, the run that continues it, and so on. A setting nobody has changed is at its default. 
+     * Operator only. How many answered rounds one conversation may hold (a run that asks, the run that continues it, and so on) and the model spend ceiling of one run. A setting nobody has changed is at its default. 
      * @summary Run settings an operator can change (GEN-014)
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3950,7 +3998,7 @@ export interface DefaultApiInterface {
     getRunSettingsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>>;
 
     /**
-     * Operator only. How many answered rounds one conversation may hold: a run that asks, the run that continues it, and so on. A setting nobody has changed is at its default. 
+     * Operator only. How many answered rounds one conversation may hold (a run that asks, the run that continues it, and so on) and the model spend ceiling of one run. A setting nobody has changed is at its default. 
      * Run settings an operator can change (GEN-014)
      */
     getRunSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings>;
@@ -5561,6 +5609,30 @@ export interface DefaultApiInterface {
     setPlatformAgentSpendCap(requestParameters: SetPlatformAgentSpendCapOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgent>;
 
     /**
+     * Creates request options for setRunModelBudget without sending the request
+     * @param {SetRunModelBudgetRequest} setRunModelBudgetRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setRunModelBudgetRequestOpts(requestParameters: SetRunModelBudgetOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Runs created from now on reserve credits for this ceiling and run under it; runs already created keep theirs. Writes the value and its audit event in one transaction. 
+     * @summary Set the model spend ceiling of one run (TEST-005)
+     * @param {SetRunModelBudgetRequest} setRunModelBudgetRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setRunModelBudgetRaw(requestParameters: SetRunModelBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>>;
+
+    /**
+     * Operator only. Runs created from now on reserve credits for this ceiling and run under it; runs already created keep theirs. Writes the value and its audit event in one transaction. 
+     * Set the model spend ceiling of one run (TEST-005)
+     */
+    setRunModelBudget(requestParameters: SetRunModelBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings>;
+
+    /**
      * Creates request options for setSkillCategory without sending the request
      * @param {string} id 
      * @param {SetSkillCategoryRequest} setSkillCategoryRequest 
@@ -6318,6 +6390,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async clearModelCallBudget(requestParameters: ClearModelCallBudgetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.clearModelCallBudgetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for clearRunModelBudget without sending the request
+     */
+    async clearRunModelBudgetRequestOpts(requestParameters: ClearRunModelBudgetOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['clearRunModelBudgetRequest'] == null) {
+            throw new runtime.RequiredError(
+                'clearRunModelBudgetRequest',
+                'Required parameter "clearRunModelBudgetRequest" was null or undefined when calling clearRunModelBudget().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/settings/runs/model-budget`;
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ClearRunModelBudgetRequestToJSON(requestParameters['clearRunModelBudgetRequest']),
+        };
+    }
+
+    /**
+     * Operator only. Runs created from now on get `default_usd` again. Clearing a ceiling nobody had set is still answered and still audited. 
+     * Return the run spend ceiling to the deployment default (TEST-005)
+     */
+    async clearRunModelBudgetRaw(requestParameters: ClearRunModelBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>> {
+        const requestOptions = await this.clearRunModelBudgetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RunSettingsFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Runs created from now on get `default_usd` again. Clearing a ceiling nobody had set is still answered and still audited. 
+     * Return the run spend ceiling to the deployment default (TEST-005)
+     */
+    async clearRunModelBudget(requestParameters: ClearRunModelBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings> {
+        const response = await this.clearRunModelBudgetRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**
@@ -9574,7 +9695,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. How many answered rounds one conversation may hold: a run that asks, the run that continues it, and so on. A setting nobody has changed is at its default. 
+     * Operator only. How many answered rounds one conversation may hold (a run that asks, the run that continues it, and so on) and the model spend ceiling of one run. A setting nobody has changed is at its default. 
      * Run settings an operator can change (GEN-014)
      */
     async getRunSettingsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>> {
@@ -9585,7 +9706,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. How many answered rounds one conversation may hold: a run that asks, the run that continues it, and so on. A setting nobody has changed is at its default. 
+     * Operator only. How many answered rounds one conversation may hold (a run that asks, the run that continues it, and so on) and the model spend ceiling of one run. A setting nobody has changed is at its default. 
      * Run settings an operator can change (GEN-014)
      */
     async getRunSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings> {
@@ -12754,6 +12875,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async setPlatformAgentSpendCap(requestParameters: SetPlatformAgentSpendCapOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgent> {
         const response = await this.setPlatformAgentSpendCapRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setRunModelBudget without sending the request
+     */
+    async setRunModelBudgetRequestOpts(requestParameters: SetRunModelBudgetOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['setRunModelBudgetRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setRunModelBudgetRequest',
+                'Required parameter "setRunModelBudgetRequest" was null or undefined when calling setRunModelBudget().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/settings/runs/model-budget`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetRunModelBudgetRequestToJSON(requestParameters['setRunModelBudgetRequest']),
+        };
+    }
+
+    /**
+     * Operator only. Runs created from now on reserve credits for this ceiling and run under it; runs already created keep theirs. Writes the value and its audit event in one transaction. 
+     * Set the model spend ceiling of one run (TEST-005)
+     */
+    async setRunModelBudgetRaw(requestParameters: SetRunModelBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>> {
+        const requestOptions = await this.setRunModelBudgetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RunSettingsFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Runs created from now on reserve credits for this ceiling and run under it; runs already created keep theirs. Writes the value and its audit event in one transaction. 
+     * Set the model spend ceiling of one run (TEST-005)
+     */
+    async setRunModelBudget(requestParameters: SetRunModelBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings> {
+        const response = await this.setRunModelBudgetRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

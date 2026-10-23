@@ -100,7 +100,6 @@ func TestARunIsReassignableOnlyOnceAndOnlyAfterALoss(t *testing.T) {
 }
 
 type gatewayStub struct {
-	ceilingUSD float64
 	perAttempt AttemptUsage
 	err        error
 }
@@ -115,11 +114,8 @@ func (g gatewayStub) Usage(context.Context, string, time.Time) (AttemptUsage, er
 	return g.perAttempt, g.err
 }
 
-func (g gatewayStub) BudgetCeilingUSD() float64 { return g.ceilingUSD }
-
 func gatewaySpending(costPerAttempt float64) gatewayStub {
 	return gatewayStub{
-		ceilingUSD: 0.50,
 		perAttempt: AttemptUsage{
 			InputTokens: 10, OutputTokens: 5,
 			ModelCostUSD: costPerAttempt, CostReported: costPerAttempt > 0,
@@ -131,7 +127,7 @@ func TestANewAttemptOnlyGetsWhatIsLeftOfTheRunBudget(t *testing.T) {
 	svc := &Service{Gateway: gatewaySpending(0.10)}
 	attempts := []gen.RunAttempt{attemptOn("alpha", errClassProviderLost), attemptOn("beta_", errClassExecution)}
 
-	left, err := svc.budgetLeft(context.Background(), attempts)
+	left, err := svc.budgetLeft(context.Background(), attempts, 0.50)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +154,7 @@ func TestSpendThatCannotBeReadStopsTheRunFromStartingAnotherAttempt(t *testing.T
 	unreadable.err = errors.New("the gateway is not answering")
 	svc := &Service{Gateway: unreadable}
 
-	_, err := svc.budgetLeft(context.Background(), []gen.RunAttempt{attemptOn("alpha", errClassProviderLost)})
+	_, err := svc.budgetLeft(context.Background(), []gen.RunAttempt{attemptOn("alpha", errClassProviderLost)}, 0.50)
 	if !errors.Is(err, errSpendUnreadable) {
 		t.Errorf("budgetLeft error = %v, want it to refuse because the spend is unreadable", err)
 	}
@@ -169,7 +165,7 @@ func TestSpendReadOnlyInPartStopsTheRunFromStartingAnotherAttempt(t *testing.T) 
 	partial.perAttempt.Incomplete = true
 	svc := &Service{Gateway: partial}
 
-	_, err := svc.budgetLeft(context.Background(), []gen.RunAttempt{attemptOn("alpha", errClassProviderLost)})
+	_, err := svc.budgetLeft(context.Background(), []gen.RunAttempt{attemptOn("alpha", errClassProviderLost)}, 0.50)
 	if !errors.Is(err, errSpendUnreadable) {
 		t.Errorf("budgetLeft error = %v, want a refusal: a spend log read only in part overstates what is left", err)
 	}
@@ -180,7 +176,7 @@ func TestTheUnreadableSpendRefusalKeepsTheGatewaysReason(t *testing.T) {
 	unreadable.err = errors.New("the gateway is not answering")
 	svc := &Service{Gateway: unreadable}
 
-	_, err := svc.budgetLeft(context.Background(), []gen.RunAttempt{attemptOn("alpha", errClassProviderLost)})
+	_, err := svc.budgetLeft(context.Background(), []gen.RunAttempt{attemptOn("alpha", errClassProviderLost)}, 0.50)
 	if !errors.Is(err, unreadable.err) {
 		t.Errorf("budgetLeft error = %v, want it to carry the gateway's own error", err)
 	}

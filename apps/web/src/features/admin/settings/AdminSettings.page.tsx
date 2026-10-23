@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   useContinuationRounds,
@@ -13,33 +13,9 @@ import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { AdminPage } from "../components/AdminPage";
 import { ActionForm } from "../components/ActionForm";
+import { SettingsResult } from "./SettingsResult";
+import { RunModelBudget } from "./RunModelBudget";
 import "./AdminSettings.page.css";
-
-function SettingsResult({
-  id,
-  verified,
-  children,
-}: {
-  id: string;
-  verified: boolean;
-  children: ReactNode;
-}) {
-  const result = useRef<HTMLParagraphElement>(null);
-  useEffect(() => {
-    result.current?.focus();
-  }, []);
-  return (
-    <p
-      id={id}
-      ref={result}
-      tabIndex={-1}
-      role="status"
-      className={`notice ${verified ? "notice-success" : "notice-warning"}`}
-    >
-      {children}
-    </p>
-  );
-}
 
 function JudgePanel({
   panel,
@@ -242,7 +218,7 @@ export function AdminSettings() {
   return (
     <AdminPage
       heading="平台設定"
-      lede="調整平台的評估方式與對話限制；每次改動都要附理由，並記進動作紀錄。"
+      lede="調整平台的評估方式、對話限制與試跑花費上限；每次改動都要附理由，並記進動作紀錄。"
     >
       <p className="note">
         每日花費上限與啟停，前往{" "}
@@ -292,11 +268,18 @@ export function AdminSettings() {
             </button>
           </ReadFailure>
           {runSettings.data && (
-            <ContinuationRounds
-              setting={runSettings.data.continuation_rounds}
-              readable={!runSettings.error}
-              refreshing={runSettings.isFetching}
-            />
+            <>
+              <ContinuationRounds
+                setting={runSettings.data.continuation_rounds}
+                readable={!runSettings.error}
+                refreshing={runSettings.isFetching}
+              />
+              <RunModelBudget
+                setting={runSettings.data.model_budget}
+                readable={!runSettings.error}
+                refreshing={runSettings.isFetching}
+              />
+            </>
           )}
         </div>
       </div>

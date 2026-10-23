@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { RunSettingsModelBudget } from './RunSettingsModelBudget';
+import {
+    RunSettingsModelBudgetFromJSON,
+    RunSettingsModelBudgetFromJSONTyped,
+    RunSettingsModelBudgetToJSON,
+    RunSettingsModelBudgetToJSONTyped,
+} from './RunSettingsModelBudget';
 import type { RunSettingsContinuationRounds } from './RunSettingsContinuationRounds';
 import {
     RunSettingsContinuationRoundsFromJSON,
@@ -30,6 +37,10 @@ export interface RunSettings {
     /**
      * 
      */
+    modelBudget: RunSettingsModelBudget;
+    /**
+     * 
+     */
     continuationRounds: RunSettingsContinuationRounds;
 }
 
@@ -37,6 +48,7 @@ export interface RunSettings {
  * Check if a given object implements the RunSettings interface.
  */
 export function instanceOfRunSettings(value: object): value is RunSettings {
+    if ((!('modelBudget' in (value as Record<string, any>)) && !('model_budget' in (value as Record<string, any>))) || ((value as Record<string, any>)['modelBudget'] === undefined && (value as Record<string, any>)['model_budget'] === undefined)) return false;
     if ((!('continuationRounds' in (value as Record<string, any>)) && !('continuation_rounds' in (value as Record<string, any>))) || ((value as Record<string, any>)['continuationRounds'] === undefined && (value as Record<string, any>)['continuation_rounds'] === undefined)) return false;
     return true;
 }
@@ -51,6 +63,7 @@ export function RunSettingsFromJSONTyped(json: any, ignoreDiscriminator: boolean
     }
     return {
         
+        'modelBudget': RunSettingsModelBudgetFromJSON(json['model_budget']),
         'continuationRounds': RunSettingsContinuationRoundsFromJSON(json['continuation_rounds']),
     };
 }
@@ -66,6 +79,7 @@ export function RunSettingsToJSONTyped(value?: RunSettings | null, ignoreDiscrim
 
     return {
         
+        'model_budget': RunSettingsModelBudgetToJSON(value['modelBudget']),
         'continuation_rounds': RunSettingsContinuationRoundsToJSON(value['continuationRounds']),
     };
 }

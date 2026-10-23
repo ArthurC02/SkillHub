@@ -11,6 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearRunModelBudgetSetting = `-- name: ClearRunModelBudgetSetting :execrows
+DELETE FROM run_model_budget_setting
+`
+
+func (q *Queries) ClearRunModelBudgetSetting(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, clearRunModelBudgetSetting)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const countContinuationChain = `-- name: CountContinuationChain :one
 WITH RECURSIVE chain AS (
     SELECT c.continues_run_id, 1 AS depth
@@ -35,6 +47,23 @@ func (q *Queries) CountContinuationChain(ctx context.Context, arg CountContinuat
 	var depth int32
 	err := row.Scan(&depth)
 	return depth, err
+}
+
+const getRunModelBudgetSetting = `-- name: GetRunModelBudgetSetting :one
+SELECT singleton, budget_micros, reason, set_by, set_at FROM run_model_budget_setting
+`
+
+func (q *Queries) GetRunModelBudgetSetting(ctx context.Context) (RunModelBudgetSetting, error) {
+	row := q.db.QueryRow(ctx, getRunModelBudgetSetting)
+	var i RunModelBudgetSetting
+	err := row.Scan(
+		&i.Singleton,
+		&i.BudgetMicros,
+		&i.Reason,
+		&i.SetBy,
+		&i.SetAt,
+	)
+	return i, err
 }
 
 const getRunSettings = `-- name: GetRunSettings :one
@@ -206,6 +235,36 @@ func (q *Queries) RunWasContinued(ctx context.Context, arg RunWasContinuedParams
 	var continued bool
 	err := row.Scan(&continued)
 	return continued, err
+}
+
+const setRunModelBudgetSetting = `-- name: SetRunModelBudgetSetting :one
+INSERT INTO run_model_budget_setting (singleton, budget_micros, reason, set_by)
+VALUES (true, $1, $2, $3)
+ON CONFLICT (singleton) DO UPDATE
+SET budget_micros = EXCLUDED.budget_micros,
+    reason = EXCLUDED.reason,
+    set_by = EXCLUDED.set_by,
+    set_at = now()
+RETURNING singleton, budget_micros, reason, set_by, set_at
+`
+
+type SetRunModelBudgetSettingParams struct {
+	BudgetMicros int64
+	Reason       string
+	SetBy        pgtype.UUID
+}
+
+func (q *Queries) SetRunModelBudgetSetting(ctx context.Context, arg SetRunModelBudgetSettingParams) (RunModelBudgetSetting, error) {
+	row := q.db.QueryRow(ctx, setRunModelBudgetSetting, arg.BudgetMicros, arg.Reason, arg.SetBy)
+	var i RunModelBudgetSetting
+	err := row.Scan(
+		&i.Singleton,
+		&i.BudgetMicros,
+		&i.Reason,
+		&i.SetBy,
+		&i.SetAt,
+	)
+	return i, err
 }
 
 const setRunSettings = `-- name: SetRunSettings :one

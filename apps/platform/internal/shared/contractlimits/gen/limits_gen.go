@@ -8,6 +8,7 @@ const (
 	AcceptanceCriterionTextMaxLength                          = 2000
 	AddAcceptanceCriterionBodyTextMaxLength                   = 2000
 	ClearModelCallBudgetBodyReasonMaxLength                   = 1000
+	ClearRunModelBudgetBodyNoteMaxLength                      = 1000
 	ClearSkillRestrictionBodyNoteMaxLength                    = 1000
 	ContinueRunBodyAnswersItemMaxLength                       = 2000
 	ContinueRunBodyAnswersMaxItems                            = 3
@@ -67,6 +68,7 @@ const (
 	SetModelCallBudgetBodyReasonMaxLength                     = 1000
 	SetPlatformAgentEnabledBodyNoteMaxLength                  = 1000
 	SetPlatformAgentSpendCapBodyNoteMaxLength                 = 1000
+	SetRunModelBudgetBodyNoteMaxLength                        = 1000
 	SetSkillCurationTierBodyNoteMaxLength                     = 1000
 	SetSkillRedistributionBodyNoteMaxLength                   = 1000
 	SetSkillRestrictionBodyNoteMaxLength                      = 1000

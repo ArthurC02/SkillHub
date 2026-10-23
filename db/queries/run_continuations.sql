@@ -65,3 +65,19 @@ SET continuation_rounds = EXCLUDED.continuation_rounds,
     set_by = EXCLUDED.set_by,
     set_at = now()
 RETURNING *;
+
+-- name: GetRunModelBudgetSetting :one
+SELECT * FROM run_model_budget_setting;
+
+-- name: SetRunModelBudgetSetting :one
+INSERT INTO run_model_budget_setting (singleton, budget_micros, reason, set_by)
+VALUES (true, @budget_micros, @reason, @set_by)
+ON CONFLICT (singleton) DO UPDATE
+SET budget_micros = EXCLUDED.budget_micros,
+    reason = EXCLUDED.reason,
+    set_by = EXCLUDED.set_by,
+    set_at = now()
+RETURNING *;
+
+-- name: ClearRunModelBudgetSetting :execrows
+DELETE FROM run_model_budget_setting;

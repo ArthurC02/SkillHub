@@ -82,6 +82,7 @@ var anonymousRoutes = []anonCase{
 	{pattern: "POST /skills/generate", want: http.StatusMethodNotAllowed, conditional: "Config.GenerateExposed"},
 
 	{pattern: "GET /skills/generate/failures", want: http.StatusNotFound, conditional: "Config.GenerateExposed"},
+	{pattern: "GET /skills/generate/allowance", want: http.StatusNotFound, conditional: "Config.GenerateExposed"},
 	{pattern: "POST /skills/import/url", want: http.StatusUnauthorized},
 	{pattern: "GET /skills/search", query: "?q=anything", want: http.StatusUnauthorized},
 	{pattern: "GET /skills", want: http.StatusUnauthorized},
@@ -126,6 +127,8 @@ var anonymousRoutes = []anonCase{
 	{pattern: "PUT /admin/settings/judge-panel", want: http.StatusNotFound},
 	{pattern: "GET /admin/settings/runs", want: http.StatusNotFound},
 	{pattern: "PUT /admin/settings/runs/continuation-rounds", want: http.StatusNotFound},
+	{pattern: "PUT /admin/settings/runs/model-budget", want: http.StatusNotFound},
+	{pattern: "DELETE /admin/settings/runs/model-budget", want: http.StatusNotFound},
 	{pattern: "PUT /admin/agents/brake", want: http.StatusNotFound},
 	{pattern: "DELETE /admin/agents/brake", want: http.StatusNotFound},
 	{pattern: "GET /admin/agents/runs", want: http.StatusNotFound},

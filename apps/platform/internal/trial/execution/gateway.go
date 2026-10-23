@@ -24,7 +24,6 @@ type ModelGateway interface {
 	Issue(ctx context.Context, runID, runAttemptID string, ttl time.Duration, maxBudgetUSD float64) (*ModelGatewayGrant, error)
 	Revoke(ctx context.Context, runAttemptID string) error
 	Usage(ctx context.Context, runAttemptID string, since time.Time) (AttemptUsage, error)
-	BudgetCeilingUSD() float64
 }
 
 // An absent gateway must reach the run as a nil interface: a nil *Gateway
@@ -207,8 +206,6 @@ func (g *Gateway) Revoke(ctx context.Context, runAttemptID string) error {
 	}
 	return err
 }
-
-func (g *Gateway) BudgetCeilingUSD() float64 { return g.maxBudgetUSD }
 
 type AttemptUsage struct {
 	InputTokens  int

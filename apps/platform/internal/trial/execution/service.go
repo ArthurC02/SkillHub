@@ -312,6 +312,14 @@ type policySnapshot struct {
 	MinimumIsolation IsolationStrength `json:"minimum_isolation"`
 	CleanMode        bool              `json:"clean_mode"`
 	SkillWithheld    bool              `json:"skill_withheld,omitempty"`
+	ModelBudgetUSD   float64           `json:"model_budget_usd,omitempty"`
+}
+
+func (p policySnapshot) modelBudget(d Deployment) float64 {
+	if p.ModelBudgetUSD > 0 {
+		return p.ModelBudgetUSD
+	}
+	return d.Budget()
 }
 
 func (p policySnapshot) reachesAModel() bool {
@@ -390,7 +398,7 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := s.queries().WithTx(tx)
 
-	if err := s.reserveRunCapacity(ctx, tx, q, p.WorkspaceID); err != nil {
+	if err := s.reserveRunCapacity(ctx, tx, q, p.WorkspaceID, admitted.budgetUSD); err != nil {
 		return gen.Run{}, err
 	}
 
@@ -439,9 +447,10 @@ func (s *Service) launch(
 }
 
 type admittedRun struct {
-	version VersionFacts
-	policy  []byte
-	live    liveFacts
+	version   VersionFacts
+	policy    []byte
+	budgetUSD float64
+	live      liveFacts
 }
 
 func (s *Service) admitRun(ctx context.Context, p CreateParams) (admittedRun, error) {
@@ -472,6 +481,11 @@ func (s *Service) admitRun(ctx context.Context, p CreateParams) (admittedRun, er
 
 	decoded := defaultPolicy(s.Deployment)
 	decoded.SkillWithheld = p.WithholdSkill
+	budget, err := runBudgetIn(ctx, s.queries(), s.Deployment)
+	if err != nil {
+		return admittedRun{}, err
+	}
+	decoded.ModelBudgetUSD = budget.USD
 	policy, err := json.Marshal(decoded)
 	if err != nil {
 		return admittedRun{}, err
@@ -484,7 +498,7 @@ func (s *Service) admitRun(ctx context.Context, p CreateParams) (admittedRun, er
 	if err := requireScanNotBlocking(live.scan); err != nil {
 		return admittedRun{}, err
 	}
-	return admittedRun{version: version, policy: policy, live: live}, nil
+	return admittedRun{version: version, policy: policy, budgetUSD: budget.USD, live: live}, nil
 }
 
 func (s *Service) requireRunnableSkill(ctx context.Context, p CreateParams) error {
@@ -513,7 +527,7 @@ func requireStillRunnable(ctx context.Context, registry RegistryReader, run gen.
 	return requireNotAccessRestricted(skill)
 }
 
-func (s *Service) reserveRunCapacity(ctx context.Context, tx pgx.Tx, q *gen.Queries, workspaceID pgtype.UUID) error {
+func (s *Service) reserveRunCapacity(ctx context.Context, tx pgx.Tx, q *gen.Queries, workspaceID pgtype.UUID, budgetUSD float64) error {
 	if err := requireRunSlot(ctx, q, workspaceID); err != nil {
 		return err
 	}
@@ -522,7 +536,7 @@ func (s *Service) reserveRunCapacity(ctx context.Context, tx pgx.Tx, q *gen.Quer
 		return err
 	}
 
-	return s.requireCredit(ctx, tx, workspaceID)
+	return s.requireCredit(ctx, tx, workspaceID, budgetUSD)
 }
 
 func (s *Service) snapshotConfirmedTestCase(

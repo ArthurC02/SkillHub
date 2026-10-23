@@ -111,17 +111,17 @@ func reassignableAfter(attempts []gen.RunAttempt) bool {
 		timesLost(attempts) <= reassignmentsPerRun
 }
 
-func (d *driver) budgetForNextAttempt(ctx context.Context, attempts []gen.RunAttempt) (float64, error) {
+func (d *driver) budgetForNextAttempt(ctx context.Context, attempts []gen.RunAttempt, ceilingUSD float64) (float64, error) {
 	if d.svc.Gateway == nil || len(attempts) == 0 {
-		return 0, nil
+		return ceilingUSD, nil
 	}
-	left, err := d.svc.budgetLeft(ctx, attempts)
+	left, err := d.svc.budgetLeft(ctx, attempts, ceilingUSD)
 	if err != nil {
 		return 0, err
 	}
 	if left <= 0 {
 		return 0, fmt.Errorf("this run has spent its model budget of %.2f USD, so no further attempt can run within it",
-			d.svc.Gateway.BudgetCeilingUSD())
+			ceilingUSD)
 	}
 	return left, nil
 }
@@ -145,7 +145,7 @@ func (s *Service) usageOf(ctx context.Context, attempts []gen.RunAttempt) (Attem
 var errSpendUnreadable = errors.New("the model spend of this run's earlier attempts could not be read, " +
 	"so a new attempt cannot be held to what is left of its budget")
 
-func (s *Service) budgetLeft(ctx context.Context, attempts []gen.RunAttempt) (float64, error) {
+func (s *Service) budgetLeft(ctx context.Context, attempts []gen.RunAttempt, ceilingUSD float64) (float64, error) {
 	used, err := s.usageOf(ctx, attempts)
 	if err != nil {
 		return 0, fmt.Errorf("%w: %w", errSpendUnreadable, err)
@@ -153,5 +153,5 @@ func (s *Service) budgetLeft(ctx context.Context, attempts []gen.RunAttempt) (fl
 	if used.Incomplete {
 		return 0, errSpendUnreadable
 	}
-	return s.Gateway.BudgetCeilingUSD() - used.ModelCostUSD, nil
+	return ceilingUSD - used.ModelCostUSD, nil
 }

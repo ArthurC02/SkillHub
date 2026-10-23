@@ -563,6 +563,15 @@ export type RunSettings = {
     set_by_user_id?: string;
     set_at?: string;
   };
+  model_budget: {
+    usd: number;
+    default_usd: number;
+    min_usd: number;
+    max_usd: number;
+    reason?: string;
+    set_by_user_id?: string;
+    set_at?: string;
+  };
 };
 
 export function useRunSettings() {
@@ -578,6 +587,18 @@ export function useContinuationRounds() {
   return useMutation({
     mutationFn: (body: { rounds: number; note: string }) =>
       apiFetch<RunSettings>("/admin/settings/runs/continuation-rounds", send("PUT", body)),
+    onSuccess: (settings) => queryClient.setQueryData(queryKeys.admin.runSettings, settings),
+  });
+}
+
+export function useRunModelBudget() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { usd?: number; note: string }) =>
+      apiFetch<RunSettings>(
+        "/admin/settings/runs/model-budget",
+        send(body.usd === undefined ? "DELETE" : "PUT", body),
+      ),
     onSuccess: (settings) => queryClient.setQueryData(queryKeys.admin.runSettings, settings),
   });
 }

@@ -23,6 +23,7 @@ import {
   ADMIN_DISPATCH,
   ADMIN_LEDGER,
   ADMIN_MODEL_BUDGETS,
+  ADMIN_RUN_SETTINGS,
   ADMIN_ROSTERS,
   AGENT_FAILED_RUN,
   AGENT_FINDING,
@@ -1570,7 +1571,10 @@ test.each(["judge panel", "answer rounds"] as const)(
         ? {
             body: judge
               ? { judge_panel: { enabled: true } }
-              : { continuation_rounds: { rounds: 5, min: 1, max: 10 } },
+              : {
+                  continuation_rounds: { rounds: 5, min: 1, max: 10 },
+                  model_budget: ADMIN_RUN_SETTINGS.model_budget,
+                },
             status: 200,
           }
         : undefined,
@@ -1651,7 +1655,10 @@ test("unreadable cached platform settings hide their controls and retry each set
         body:
           path === "/admin/settings"
             ? { judge_panel: { enabled: false } }
-            : { continuation_rounds: { rounds: 3, min: 1, max: 10 } },
+            : {
+                continuation_rounds: { rounds: 3, min: 1, max: 10 },
+                model_budget: ADMIN_RUN_SETTINGS.model_budget,
+              },
         status: 200,
       };
     }
@@ -1683,7 +1690,13 @@ test("a refreshed answer-round limit replaces a stale draft with the current val
   let rounds = 3;
   stub(true, (path) =>
     path === "/admin/settings/runs"
-      ? { body: { continuation_rounds: { rounds, min: 1, max: 10 } }, status: 200 }
+      ? {
+          body: {
+            continuation_rounds: { rounds, min: 1, max: 10 },
+            model_budget: ADMIN_RUN_SETTINGS.model_budget,
+          },
+          status: 200,
+        }
       : undefined,
   );
   await mountAt("/admin/settings");
@@ -5347,17 +5360,91 @@ test("agent and brake controls disappear when their refreshed status cannot be r
   expect(has("停用 daily-report")()).toBe(false);
 });
 
-const RUN_SETTINGS = { continuation_rounds: { rounds: 3, min: 1, max: 10 } };
+const RUN_SETTINGS = {
+  continuation_rounds: { rounds: 3, min: 1, max: 10 },
+  model_budget: ADMIN_RUN_SETTINGS.model_budget,
+};
 
-function stubRunSettings(put: { body: unknown; status: number }) {
+function stubRunSettings(put: { body: unknown; status: number }, read: unknown = RUN_SETTINGS) {
   stub(true, (path, method) => {
     if (path === "/admin/settings/runs" && method === "GET") {
-      return { body: RUN_SETTINGS, status: 200 };
+      return { body: read, status: 200 };
     }
     if (path === "/admin/settings/runs/continuation-rounds" && method === "PUT") return put;
+    if (path === "/admin/settings/runs/model-budget" && (method === "PUT" || method === "DELETE"))
+      return put;
     return undefined;
   });
 }
+
+const OPERATOR_BUDGET = {
+  ...RUN_SETTINGS,
+  model_budget: {
+    usd: 0.2,
+    default_usd: 0.5,
+    min_usd: 0.05,
+    max_usd: 5,
+    reason: "smaller runs while we measure",
+    set_at: "2026-10-20T08:00:00Z",
+  },
+};
+
+test("the run spend ceiling shows the deployment default and sends the new ceiling with its reason", async () => {
+  stubRunSettings({ body: OPERATOR_BUDGET, status: 200 });
+  await mountAt("/admin/settings");
+  await waitFor(has("每次試跑的模型花費上限"));
+  expect(has("目前：每次試跑最多花 US$0.50 的模型費用（部署預設）")()).toBe(true);
+  expect(has("回到部署預設 US$0.50")()).toBe(false);
+
+  await type("#admin-settings-run-budget-value", "0.2");
+  await type("#admin-settings-run-budget-note", "smaller runs while we measure");
+  await click(button("改上限"));
+  await waitFor(has("已改為 US$0.20，新建立的試跑就照這個上限。"));
+
+  expect(calls.find((c) => c.method === "PUT")).toEqual({
+    method: "PUT",
+    url: "/admin/settings/runs/model-budget",
+    body: { usd: 0.2, note: "smaller runs while we measure" },
+  });
+  expect(has("目前：每次試跑最多花 US$0.20 的模型費用（部署預設 US$0.50）")()).toBe(true);
+  expect(has("理由：smaller runs while we measure")()).toBe(true);
+});
+
+test("the run spend ceiling input accepts the range edges and refuses just past them", async () => {
+  stubRunSettings({ body: RUN_SETTINGS, status: 200 });
+  await mountAt("/admin/settings");
+  await waitFor(has("每次試跑的模型花費上限"));
+  await type("#admin-settings-run-budget-note", "boundary check");
+
+  for (const [value, refused] of [
+    ["0.04", true],
+    ["0.05", false],
+    ["5", false],
+    ["5.01", true],
+    ["", true],
+    ["abc", true],
+  ] as const) {
+    await type("#admin-settings-run-budget-value", value);
+    expect(button("改上限").disabled, JSON.stringify(value)).toBe(refused);
+  }
+});
+
+test("an operator-set run spend ceiling can be returned to the deployment default", async () => {
+  stubRunSettings({ body: RUN_SETTINGS, status: 200 }, OPERATOR_BUDGET);
+  await mountAt("/admin/settings");
+  await waitFor(has("理由：smaller runs while we measure"));
+
+  await type("#admin-settings-run-budget-clear-note", "measurement finished");
+  await click(button("回到部署預設 US$0.50"));
+  await waitFor(has("已回到部署預設 US$0.50，新建立的試跑就照這個上限。"));
+
+  expect(calls.find((c) => c.method === "DELETE")).toEqual({
+    method: "DELETE",
+    url: "/admin/settings/runs/model-budget",
+    body: { note: "measurement finished" },
+  });
+  expect(has("目前：每次試跑最多花 US$0.50 的模型費用（部署預設）")()).toBe(true);
+});
 
 test("the answered-rounds setting shows the current value and its range, and sends the new value with its reason", async () => {
   stubRunSettings({
@@ -5369,6 +5456,7 @@ test("the answered-rounds setting shows the current value and its range, and sen
         reason: "longer interviews",
         set_at: "2026-10-10T08:00:00Z",
       },
+      model_budget: ADMIN_RUN_SETTINGS.model_budget,
     },
     status: 200,
   });

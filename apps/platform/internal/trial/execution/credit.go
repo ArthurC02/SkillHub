@@ -17,11 +17,11 @@ import (
 
 var ErrCreditBalance = errors.New("run: the workspace has too few credits to start a run")
 
-func (s *Service) requireCredit(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
+func (s *Service) requireCredit(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, budgetUSD float64) error {
 	if s.Ledger == nil {
 		return nil
 	}
-	ok, err := s.Ledger.Reserve(ctx, tx, workspaceID, s.Deployment.Budget())
+	ok, err := s.Ledger.Reserve(ctx, tx, workspaceID, budgetUSD)
 	if err != nil {
 		return err
 	}

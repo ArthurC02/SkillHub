@@ -234,6 +234,8 @@ func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("PUT /admin/settings/judge-panel", auth.RequireOperator(d.Settings.SetJudgePanel))
 	mux.HandleFunc("GET /admin/settings/runs", auth.RequireOperator(d.RunSettings.Get))
 	mux.HandleFunc("PUT /admin/settings/runs/continuation-rounds", auth.RequireOperator(d.RunSettings.SetContinuationRounds))
+	mux.HandleFunc("PUT /admin/settings/runs/model-budget", auth.RequireOperator(d.RunSettings.SetRunModelBudget))
+	mux.HandleFunc("DELETE /admin/settings/runs/model-budget", auth.RequireOperator(d.RunSettings.ClearRunModelBudget))
 	mux.HandleFunc("GET /admin/trends/runs", auth.RequireOperator(d.Trends.Runs))
 	mux.HandleFunc("GET /admin/trends/funnel", auth.RequireOperator(d.Trends.Funnel))
 	mux.HandleFunc("GET /admin/trends/operator-actions", auth.RequireOperator(d.Trends.OperatorActions))

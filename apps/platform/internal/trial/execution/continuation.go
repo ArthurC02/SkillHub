@@ -152,7 +152,7 @@ func (s *Service) continueRun(ctx context.Context, p CreateParams, c continuatio
 	if err := s.requireOpenRound(ctx, q, original); err != nil {
 		return gen.Run{}, err
 	}
-	if err := s.reserveRunCapacity(ctx, tx, q, p.WorkspaceID); err != nil {
+	if err := s.reserveRunCapacity(ctx, tx, q, p.WorkspaceID, admitted.budgetUSD); err != nil {
 		return gen.Run{}, err
 	}
 	snapshot, err := s.TestLab.ContinueSnapshot(ctx, tx, p.WorkspaceID, original.TestCaseSnapshotID, prompt)

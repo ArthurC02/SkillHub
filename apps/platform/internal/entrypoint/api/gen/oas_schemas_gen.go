@@ -2001,6 +2001,28 @@ func (s *ClearModelCallBudgetReq) SetReason(val string) {
 	s.Reason = val
 }
 
+type ClearRunModelBudgetBadRequest Error
+
+func (*ClearRunModelBudgetBadRequest) clearRunModelBudgetRes() {}
+
+type ClearRunModelBudgetNotFound Error
+
+func (*ClearRunModelBudgetNotFound) clearRunModelBudgetRes() {}
+
+type ClearRunModelBudgetReq struct {
+	Note string `json:"note"`
+}
+
+// GetNote returns the value of Note.
+func (s *ClearRunModelBudgetReq) GetNote() string {
+	return s.Note
+}
+
+// SetNote sets the value of Note.
+func (s *ClearRunModelBudgetReq) SetNote(val string) {
+	s.Note = val
+}
+
 type ClearSkillRestrictionBadRequest Error
 
 func (*ClearSkillRestrictionBadRequest) clearSkillRestrictionRes() {}
@@ -28835,7 +28857,16 @@ func (s *RunResourceLimitsTokenBudget) SetMaxOutputTokens(val int) {
 
 // Ref: #/components/schemas/RunSettings
 type RunSettings struct {
+	// The model spend ceiling of one run. A new run reserves credits for it, its gateway key cannot spend
+	// past it, and a reassigned attempt gets what is left of it. Each run keeps the ceiling it was created
+	// under.
+	ModelBudget        RunSettingsModelBudget        `json:"model_budget"`
 	ContinuationRounds RunSettingsContinuationRounds `json:"continuation_rounds"`
+}
+
+// GetModelBudget returns the value of ModelBudget.
+func (s *RunSettings) GetModelBudget() RunSettingsModelBudget {
+	return s.ModelBudget
 }
 
 // GetContinuationRounds returns the value of ContinuationRounds.
@@ -28843,13 +28874,20 @@ func (s *RunSettings) GetContinuationRounds() RunSettingsContinuationRounds {
 	return s.ContinuationRounds
 }
 
+// SetModelBudget sets the value of ModelBudget.
+func (s *RunSettings) SetModelBudget(val RunSettingsModelBudget) {
+	s.ModelBudget = val
+}
+
 // SetContinuationRounds sets the value of ContinuationRounds.
 func (s *RunSettings) SetContinuationRounds(val RunSettingsContinuationRounds) {
 	s.ContinuationRounds = val
 }
 
+func (*RunSettings) clearRunModelBudgetRes()   {}
 func (*RunSettings) getRunSettingsRes()        {}
 func (*RunSettings) setContinuationRoundsRes() {}
+func (*RunSettings) setRunModelBudgetRes()     {}
 
 type RunSettingsContinuationRounds struct {
 	// Answered rounds one conversation may hold.
@@ -28919,6 +28957,92 @@ func (s *RunSettingsContinuationRounds) SetSetByUserID(val OptUUID) {
 
 // SetSetAt sets the value of SetAt.
 func (s *RunSettingsContinuationRounds) SetSetAt(val OptDateTime) {
+	s.SetAt = val
+}
+
+// The model spend ceiling of one run. A new run reserves credits for it, its gateway key cannot spend
+// past it, and a reassigned attempt gets what is left of it. Each run keeps the ceiling it was created
+// under.
+type RunSettingsModelBudget struct {
+	// The ceiling a run created now gets.
+	Usd float64 `json:"usd"`
+	// The deployment's ceiling.
+	DefaultUsd float64 `json:"default_usd"`
+	MinUsd     float64 `json:"min_usd"`
+	MaxUsd     float64 `json:"max_usd"`
+	// Present while an operator-set ceiling replaces the default.
+	Reason      OptString   `json:"reason"`
+	SetByUserID OptUUID     `json:"set_by_user_id"`
+	SetAt       OptDateTime `json:"set_at"`
+}
+
+// GetUsd returns the value of Usd.
+func (s *RunSettingsModelBudget) GetUsd() float64 {
+	return s.Usd
+}
+
+// GetDefaultUsd returns the value of DefaultUsd.
+func (s *RunSettingsModelBudget) GetDefaultUsd() float64 {
+	return s.DefaultUsd
+}
+
+// GetMinUsd returns the value of MinUsd.
+func (s *RunSettingsModelBudget) GetMinUsd() float64 {
+	return s.MinUsd
+}
+
+// GetMaxUsd returns the value of MaxUsd.
+func (s *RunSettingsModelBudget) GetMaxUsd() float64 {
+	return s.MaxUsd
+}
+
+// GetReason returns the value of Reason.
+func (s *RunSettingsModelBudget) GetReason() OptString {
+	return s.Reason
+}
+
+// GetSetByUserID returns the value of SetByUserID.
+func (s *RunSettingsModelBudget) GetSetByUserID() OptUUID {
+	return s.SetByUserID
+}
+
+// GetSetAt returns the value of SetAt.
+func (s *RunSettingsModelBudget) GetSetAt() OptDateTime {
+	return s.SetAt
+}
+
+// SetUsd sets the value of Usd.
+func (s *RunSettingsModelBudget) SetUsd(val float64) {
+	s.Usd = val
+}
+
+// SetDefaultUsd sets the value of DefaultUsd.
+func (s *RunSettingsModelBudget) SetDefaultUsd(val float64) {
+	s.DefaultUsd = val
+}
+
+// SetMinUsd sets the value of MinUsd.
+func (s *RunSettingsModelBudget) SetMinUsd(val float64) {
+	s.MinUsd = val
+}
+
+// SetMaxUsd sets the value of MaxUsd.
+func (s *RunSettingsModelBudget) SetMaxUsd(val float64) {
+	s.MaxUsd = val
+}
+
+// SetReason sets the value of Reason.
+func (s *RunSettingsModelBudget) SetReason(val OptString) {
+	s.Reason = val
+}
+
+// SetSetByUserID sets the value of SetByUserID.
+func (s *RunSettingsModelBudget) SetSetByUserID(val OptUUID) {
+	s.SetByUserID = val
+}
+
+// SetSetAt sets the value of SetAt.
+func (s *RunSettingsModelBudget) SetSetAt(val OptDateTime) {
 	s.SetAt = val
 }
 
@@ -30468,6 +30592,41 @@ func (s *SetPlatformAgentSpendCapReq) SetDailySpendCapUsdMicros(val NilInt64) {
 
 // SetNote sets the value of Note.
 func (s *SetPlatformAgentSpendCapReq) SetNote(val string) {
+	s.Note = val
+}
+
+type SetRunModelBudgetBadRequest Error
+
+func (*SetRunModelBudgetBadRequest) setRunModelBudgetRes() {}
+
+type SetRunModelBudgetNotFound Error
+
+func (*SetRunModelBudgetNotFound) setRunModelBudgetRes() {}
+
+type SetRunModelBudgetReq struct {
+	// Outside the range is 400 rather than clamped.
+	Usd float64 `json:"usd"`
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetUsd returns the value of Usd.
+func (s *SetRunModelBudgetReq) GetUsd() float64 {
+	return s.Usd
+}
+
+// GetNote returns the value of Note.
+func (s *SetRunModelBudgetReq) GetNote() string {
+	return s.Note
+}
+
+// SetUsd sets the value of Usd.
+func (s *SetRunModelBudgetReq) SetUsd(val float64) {
+	s.Usd = val
+}
+
+// SetNote sets the value of Note.
+func (s *SetRunModelBudgetReq) SetNote(val string) {
 	s.Note = val
 }
 

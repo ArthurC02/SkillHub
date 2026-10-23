@@ -121,11 +121,15 @@ func (s *Service) blockingReason(
 		return reason, nil
 	}
 	if s.Ledger != nil && s.Pool != nil {
+		budget, err := runBudgetIn(ctx, s.queries(), s.Deployment)
+		if err != nil {
+			return "", err
+		}
 		tx, err := s.Pool.Begin(ctx)
 		if err != nil {
 			return "", err
 		}
-		affordable, err := s.Ledger.Reserve(ctx, tx, workspaceID, s.Deployment.Budget())
+		affordable, err := s.Ledger.Reserve(ctx, tx, workspaceID, budget.USD)
 		_ = tx.Rollback(ctx)
 		if err != nil {
 			return "", err
