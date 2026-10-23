@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import difflib
 from pathlib import Path
 from typing import Any
 
@@ -101,17 +102,38 @@ def schema_conventions(policy: dict[str, Any] | None) -> dict[str, Any]:
     return {**SCHEMA_CONVENTION_DEFAULTS, **(given if isinstance(given, dict) else {})}
 
 
-def _conventions_error(value: Any) -> str | None:
+def _conventions_errors(value: Any) -> list[str]:
     if value is None:
-        return None
-    if not isinstance(value, dict) or set(value) - set(SCHEMA_CONVENTION_DEFAULTS):
-        return "policy has invalid schema_conventions; its keys are " + ", ".join(SCHEMA_CONVENTION_DEFAULTS)
-    if any(key in value and not _nonblank_strings(value[key]) for key in CONVENTION_LISTS):
-        return "policy schema_conventions lists must hold non-blank strings"
+        return []
+    if not isinstance(value, dict):
+        return [f"schema_conventions must be an object, got {_kind_of(value)}"]
+    errors = [f"schema_conventions.{key} is not a known key{_closest(key)}" for key in value if key not in SCHEMA_CONVENTION_DEFAULTS]
+    for key in CONVENTION_LISTS:
+        if key in value:
+            errors.extend(_list_errors(f"schema_conventions.{key}", value[key]))
     limit = value.get("value_comment_limit", 0)
     if not whole_number(limit) or limit < 0:
-        return "policy schema_conventions value_comment_limit must be a whole number"
-    return None
+        errors.append(f"schema_conventions.value_comment_limit must be a whole number 0 or more, got {limit!r}")
+    return errors
+
+
+def _list_errors(name: str, items: Any) -> list[str]:
+    if not isinstance(items, list):
+        return [f"{name} must be a list, got {_kind_of(items)}"]
+    return [f"{name}[{index}] is blank" if isinstance(item, str) else f"{name}[{index}] must be a string, got {_kind_of(item)}"
+            for index, item in enumerate(items) if not (isinstance(item, str) and item.strip())]
+
+
+def _closest(key: str) -> str:
+    close = difflib.get_close_matches(key, list(SCHEMA_CONVENTION_DEFAULTS), n=1, cutoff=0.6)
+    return f"; did you mean {close[0]}?" if close else ""
+
+
+def _kind_of(value: Any) -> str:
+    if value is None:
+        return "null"
+    kinds = {bool: "a boolean", int: "a number", float: "a number", str: "a string", list: "a list", dict: "an object"}
+    return kinds.get(type(value), type(value).__name__)
 
 
 def validate_policy(value: dict[str, Any]) -> list[str]:
@@ -124,9 +146,8 @@ def validate_policy(value: dict[str, Any]) -> list[str]:
         _governance_error(value.get("review_mode"), value.get("review_governance")),
         _source_error(value.get("source_policy")),
         _limits_error(value.get("limits")),
-        _conventions_error(value.get("schema_conventions")),
     )
-    return errors + [error for error in found if error]
+    return errors + [error for error in found if error] + _conventions_errors(value.get("schema_conventions"))
 
 
 def _default_governance(review_mode: str) -> dict[str, Any]:

@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.9.1
+
+### Fixed
+
+- A bad `schema_conventions` section is refused one line per defect, naming the key, the index and the value: an unknown key suggests the closest known one, a value that is not a list says what it is, a blank or non-string entry names its position, and the limit's rule reads "a whole number 0 or more" with the value given; every defect is reported in one run instead of the first.
+
 ## 2.9.0
 
 ### Added
