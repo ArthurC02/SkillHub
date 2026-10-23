@@ -73,9 +73,9 @@
       "ratio": 0.394
     },
     "rules.cross_context_foreign_keys_with_a_recorded_collaboration": {
-      "numerator": 78,
+      "numerator": 86,
       "denominator": 86,
-      "ratio": 0.907
+      "ratio": 1.0
     },
     "access.queries_with_an_owner": {
       "numerator": 517,
