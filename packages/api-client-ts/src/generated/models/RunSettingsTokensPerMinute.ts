@@ -27,7 +27,7 @@ export interface RunSettingsTokensPerMinute {
      */
     limit: number;
     /**
-     * The deployment's limit
+     * The deployment's limit, which applies when no operator has set one.
      */
     defaultLimit: number;
     /**

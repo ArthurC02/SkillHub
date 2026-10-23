@@ -29003,7 +29003,7 @@ func (s *RunSettingsContinuationRounds) SetSetAt(val OptDateTime) {
 type RunSettingsModelBudget struct {
 	// The ceiling a run created now gets.
 	Credits int `json:"credits"`
-	// The deployment's ceiling.
+	// The deployment's ceiling, which applies when no operator has set one.
 	DefaultCredits int `json:"default_credits"`
 	MinCredits     int `json:"min_credits"`
 	MaxCredits     int `json:"max_credits"`
@@ -29088,7 +29088,7 @@ func (s *RunSettingsModelBudget) SetSetAt(val OptDateTime) {
 type RunSettingsTokensPerMinute struct {
 	// The limit a key issued now gets.
 	Limit int `json:"limit"`
-	// The deployment's limit.
+	// The deployment's limit, which applies when no operator has set one.
 	DefaultLimit int `json:"default_limit"`
 	Min          int `json:"min"`
 	Max          int `json:"max"`

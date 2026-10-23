@@ -28,7 +28,7 @@ export interface RunSettingsModelBudget {
      */
     credits: number;
     /**
-     * The deployment's ceiling
+     * The deployment's ceiling, which applies when no operator has set one.
      */
     defaultCredits: number;
     /**

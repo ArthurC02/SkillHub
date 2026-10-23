@@ -7793,7 +7793,7 @@ components:
             change also reaches runs already created at their next attempt.
           properties:
             limit: { type: integer, description: The limit a key issued now gets. }
-            default_limit: { type: integer, description: The deployment's limit, which applies when no operator has set one. }
+            default_limit: { type: integer, description: "The deployment's limit, which applies when no operator has set one." }
             min: { type: integer }
             max: { type: integer }
             reason: { type: string, description: Present while an operator-set limit replaces the default. }
@@ -7809,7 +7809,7 @@ components:
             it was created under.
           properties:
             credits: { type: integer, description: The ceiling a run created now gets. }
-            default_credits: { type: integer, description: The deployment's ceiling, which applies when no operator has set one. }
+            default_credits: { type: integer, description: "The deployment's ceiling, which applies when no operator has set one." }
             min_credits: { type: integer }
             max_credits: { type: integer }
             reason: { type: string, description: Present while an operator-set ceiling replaces the default. }
