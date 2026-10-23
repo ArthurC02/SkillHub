@@ -32,8 +32,8 @@ The last row is the counterfactual check. It must mutate the essential protectio
 
 Mutate the line that states the rule, where the rule's evidence cites it.
 
-- When that line cannot be weakened without also breaking the behaviour the rule permits, weaken the mechanism it reaches instead: a Workspace-scoping rule cites the call that passes the Workspace id, but blanking that id empties the owner's reads too, so whatever test dies proves nothing about strangers.
-- Weakening only the predicate in the query that call runs, `AND workspace_id = $2` to `AND $2::uuid IS NOT NULL`, keeps the parameter referenced and the owner's rows matching, and only another Workspace's rows leak, so the test that dies is the one about strangers.
+- When that line cannot be weakened without also breaking the behaviour the rule permits, weaken the mechanism it reaches instead: a tenant-scoping rule cites the call that passes the tenant id, but blanking that id empties the owner's reads too, so whatever test dies proves nothing about strangers.
+- Weakening only the predicate in the query that call runs, `AND tenant_id = $2` to `AND $2::uuid IS NOT NULL`, keeps the parameter referenced and the owner's rows matching, and only another tenant's rows leak, so the test that dies is the one about strangers.
 - The mutated line must lie on the execution path of a cited line; `validate-change-package` prints a NOTE when a counterfactual mutates a file the rule does not cite, for the reviewer to check that it does.
 - A leak caught only because two tests shared a database is a test still to write.
 - When the cited source is compiled into a generated file, such as a SQL query that a generator embeds in Go, mutating the source changes nothing the test runs and the counterfactual survives for the wrong reason: mutate the generated file that the test actually executes, or give `--test-command` a command that regenerates before it tests.

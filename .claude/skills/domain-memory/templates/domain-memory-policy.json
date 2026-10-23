@@ -21,5 +21,12 @@
     "max_total_bytes": 104857600,
     "max_query_results": 100
   },
+  "schema_conventions": {
+    "exempt_columns": ["id", "created_at", "updated_at"],
+    "status_like_suffixes": ["status", "state", "kind", "mode", "tier", "role", "decision", "verdict", "outcome",
+                             "phase", "stage", "level", "priority", "severity", "visibility", "category"],
+    "free_text_markers": ["free text", "free-text"],
+    "value_comment_limit": 12
+  },
   "approved_command_profiles": []
 }

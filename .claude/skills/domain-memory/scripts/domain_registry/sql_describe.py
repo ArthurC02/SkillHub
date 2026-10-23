@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .common import ASSET_KEYS
+from .policy import schema_conventions
 from .git import run_git_bytes
 from .sql_schema import (
     IDENT,
@@ -35,11 +36,26 @@ QUOTED = re.compile(r"'((?:[^']|'')*)'")
 SUMMARY_FIELDS = ("statement", "definition", "responsibility", "description", "name")
 SUMMARY_LENGTH = 160
 DEFAULT_ACTION = "NO ACTION"
-STATUS_LIKE = re.compile(
-    r"(^|_)(status|state|kind|mode|tier|role|decision|verdict|outcome|phase|stage|level|priority|severity|visibility|category)$")
-FREE_TEXT = re.compile(r"^\s*free[ -]text\b", re.I)
-VALUE_COMMENT_LIMIT = 12
-CONVENTIONAL_COLUMNS = frozenset({"id", "created_at", "updated_at"})
+
+
+@dataclass(frozen=True)
+class Conventions:
+    exempt_columns: frozenset[str]
+    status_like: re.Pattern[str]
+    free_text: re.Pattern[str]
+    marker: str
+    value_comment_limit: int
+
+    @classmethod
+    def from_policy(cls, policy: dict[str, Any] | None) -> Conventions:
+        given = schema_conventions(policy)
+        suffixes = "|".join(re.escape(word) for word in given["status_like_suffixes"])
+        markers = "|".join(re.escape(marker) for marker in given["free_text_markers"])
+        return cls(frozenset(given["exempt_columns"]), re.compile(rf"(^|_)(?:{suffixes})$"),
+                   re.compile(rf"^\s*(?:{markers})\b", re.I), given["free_text_markers"][0], given["value_comment_limit"])
+
+
+DEFAULT_CONVENTIONS = Conventions.from_policy(None)
 
 
 @dataclass(frozen=True)
@@ -48,7 +64,8 @@ class ValueList:
     null_decided: bool
 
 
-def describe_table(registry_root: Path | None, repo_root: Path, migrations_dir: Path, name: str) -> dict[str, Any]:
+def describe_table(registry_root: Path | None, repo_root: Path, migrations_dir: Path, name: str,
+                   conventions: Conventions = DEFAULT_CONVENTIONS) -> dict[str, Any]:
     schema = read_schema(migrations_dir, repo_root)
     tables = live_tables(schema)
     table = tables.get(name)
@@ -75,7 +92,7 @@ def describe_table(registry_root: Path | None, repo_root: Path, migrations_dir: 
         "dynamic_ddl": [{"at": f"{statement.file}:{statement.line}", "statement": statement.text} for statement in dynamic],
         "registry": _mentions(registry_root, name, spans, retired) if registry_root is not None else [],
         "undescribed_columns": [column for column, info in table.columns.items() if info.get("comment") is None],
-        "gaps": _gaps(table, constraints, outgoing, dynamic, schema),
+        "gaps": _gaps(table, schema, conventions),
     }
 
 
@@ -121,15 +138,16 @@ def allowed_values(column: str, constraints: list[Constraint], enum_values: list
     return listed.values if listed else None
 
 
-def gaps_since(repo_root: Path, migrations_dir: Path, base: str, only: str | None = None) -> dict[str, Any]:
+def gaps_since(repo_root: Path, migrations_dir: Path, base: str, only: str | None = None,
+               conventions: Conventions = DEFAULT_CONVENTIONS) -> dict[str, Any]:
     relative = migrations_dir.resolve().relative_to(repo_root.resolve()).as_posix()
-    now = _gaps_by_table(migrations_dir, repo_root)
+    now = _gaps_by_table(migrations_dir, repo_root, conventions)
     if only is not None:
         if only not in now:
             raise ValueError(f"no table {only!r} in {migrations_dir}{_did_you_mean(only, now)}")
         now = {only: now[only]}
     with tempfile.TemporaryDirectory() as temporary:
-        before = _gaps_by_table(_migrations_at(repo_root, base, relative, Path(temporary)), Path(temporary))
+        before = _gaps_by_table(_migrations_at(repo_root, base, relative, Path(temporary)), Path(temporary), conventions)
     if only is not None:
         before = {only: before.get(only, [])}
     tables = {}
@@ -158,14 +176,9 @@ def _migrations_at(repo_root: Path, base: str, relative: str, into: Path) -> Pat
     return target
 
 
-def _gaps_by_table(migrations_dir: Path, repo_root: Path) -> dict[str, list[str]]:
+def _gaps_by_table(migrations_dir: Path, repo_root: Path, conventions: Conventions) -> dict[str, list[str]]:
     schema = read_schema(migrations_dir, repo_root)
-    gaps = {}
-    for name, table in live_tables(schema).items():
-        constraints = [c for c in schema.constraints if c.table == name]
-        keys = [k for k in schema.foreign_keys if k.child == name]
-        gaps[name] = _gaps(table, constraints, keys, dynamic_for(schema, name, constraints), schema)
-    return gaps
+    return {name: _gaps(table, schema, conventions) for name, table in live_tables(schema).items()}
 
 
 def dynamic_for(schema: Schema, table: str, constraints: list[Constraint]) -> list[Dynamic]:
@@ -177,10 +190,13 @@ def _restated(statement: Dynamic, constraints: list[Constraint]) -> bool:
                for c in constraints)
 
 
-def _gaps(table: Table, constraints: list[Constraint], keys: list[ForeignKey], dynamic: list[Dynamic], schema: Schema) -> list[str]:
+def _gaps(table: Table, schema: Schema, conventions: Conventions) -> list[str]:
+    constraints = [c for c in schema.constraints if c.table == table.name]
+    keys = [k for k in schema.foreign_keys if k.child == table.name]
+    dynamic = dynamic_for(schema, table.name, constraints)
     gaps = [] if table.comment is not None else ["the table has no COMMENT ON saying what one row is"]
     for column, info in table.columns.items():
-        gaps.extend(_column_gaps(column, info, value_list(column, constraints, schema.enums.get(info["type"])), schema, constraints))
+        gaps.extend(_column_gaps(column, info, schema, constraints, conventions))
     gaps.extend(f"foreign key {key.name} to {key.parent} does not say ON DELETE; choose CASCADE, RESTRICT, SET NULL or NO ACTION"
                 for key in keys if key.on_delete is None)
     gaps.extend(f"the statement at {statement.file}:{statement.line} builds DDL at run time and names {table.name}; "
@@ -188,27 +204,28 @@ def _gaps(table: Table, constraints: list[Constraint], keys: list[ForeignKey], d
     return gaps
 
 
-def _column_gaps(column: str, info: dict[str, Any], listed: ValueList | None, schema: Schema,
-                 constraints: list[Constraint]) -> list[str]:
+def _column_gaps(column: str, info: dict[str, Any], schema: Schema, constraints: list[Constraint],
+                 conventions: Conventions) -> list[str]:
     gaps = []
+    listed = value_list(column, constraints, schema.enums.get(info["type"]))
     comment = info.get("comment")
     explained_in = " ".join(text for text in (comment, schema.type_comments.get(info["type"])) if text)
-    if comment is None and column not in CONVENTIONAL_COLUMNS:
+    if comment is None and column not in conventions.exempt_columns:
         gaps.append(f"column {column} has no COMMENT ON saying what it means")
-    if listed is None and STATUS_LIKE.search(column) and not _declared_open(column, comment, constraints):
+    if listed is None and conventions.status_like.search(column) and not _declared_open(column, comment, constraints, conventions):
         gaps.append(f"status-like column {column} has no value list; add CHECK ({column} IN (...)) or an enum type, "
-                    "or begin its comment with 'free text' or constrain it with another CHECK")
+                    f"or begin its comment with '{conventions.marker}' or constrain it with another CHECK")
     if listed and not info.get("not_null") and not listed.null_decided and info["type"] not in schema.enums:
         gaps.append(f"column {column} lists its values without deciding NULL; make it NOT NULL, or write "
                     f"CHECK ({column} IS NULL OR {column} IN (...)) or CHECK ({column} IS NOT NULL AND {column} IN (...))")
     unexplained = [value for value in listed.values if not _mentions_value(explained_in, value)] if listed and explained_in else []
-    if unexplained and len(listed.values) <= VALUE_COMMENT_LIMIT:
+    if unexplained and len(listed.values) <= conventions.value_comment_limit:
         gaps.append(f"the comment on {column} does not say what these values mean: {', '.join(unexplained)}")
     return gaps
 
 
-def _declared_open(column: str, comment: str | None, constraints: list[Constraint]) -> bool:
-    return bool(comment and FREE_TEXT.search(comment)) or any(c.kind == "check" and column in c.columns for c in constraints)
+def _declared_open(column: str, comment: str | None, constraints: list[Constraint], conventions: Conventions) -> bool:
+    return bool(comment and conventions.free_text.search(comment)) or any(c.kind == "check" and column in c.columns for c in constraints)
 
 
 def _mentions_value(text: str, value: str) -> bool:

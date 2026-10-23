@@ -41,7 +41,7 @@ A Context's abilities live in the Capability asset, one record each, not in a fi
 A Context may say where it lives and what it owns in the surrounding process:
 
 - `subdomain` is one of `core`, `supporting` or `generic`, the strategic classification that decides how much the boundary is worth defending; a shared kernel is not a kind of Context but a relationship between two, recorded as `relationship: shared-kernel` on their Interaction.
-- `implementation_path` is the directory its code occupies, such as `apps/platform/internal/trial/execution`; a file belongs to it when that directory sequence occurs anywhere among the file's directories, so `internal/trial/execution` owns the same files.
+- `implementation_path` is the directory its code occupies, such as `services/billing/internal/invoicing`; a file belongs to it when that directory sequence occurs anywhere among the file's directories, so `internal/invoicing` owns the same files.
 - `validate --repo-root` refuses a reviewed Context's path under which no repository file lies and notes a candidate's.
 - Two Contexts may not claim the same path or a path inside another's, because code belongs to one Context, while sibling directories that merely share a name prefix do not overlap.
 - `requirement_prefixes` lists the requirement-ID prefixes the Context owns.
@@ -81,8 +81,8 @@ sources:
 ---
 # Relations
 - Producer context: [registry](/contexts/registry)
-- Consumer context: [run](/contexts/run)
-- Contract id: [registry-run-facts-v1](/contracts/registry-run-facts-v1)
+- Consumer context: [billing](/contexts/billing)
+- Contract id: [registry-billing-facts-v1](/contracts/registry-billing-facts-v1)
 ```
 
 - `type` names the asset. A Context or term's `name` is the `title`.

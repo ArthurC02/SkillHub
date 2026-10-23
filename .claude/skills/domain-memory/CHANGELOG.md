@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.9.0
+
+### Added
+
+- `domain-memory-policy.json` takes an optional `schema_conventions` section (`exempt_columns`, `status_like_suffixes`, `free_text_markers`, `value_comment_limit`), so a project names the columns that need no comment, the suffixes that make a column status-like, the phrases that mark a column as free text and the list length up to which every value must be explained; `describe-table` applies it when `--registry-root` is given and the defaults otherwise. `validate` names each defect in the section. New Registries get the section with its defaults written out.
+
+### Changed
+
+- The API reference states the migration shape the reader understands (PostgreSQL DDL, one directory of forward-only files in name order) and the shapes it does not, and the reference pages use neutral example names.
+
 ## 2.8.5
 
 ### Fixed

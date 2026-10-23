@@ -16,7 +16,7 @@ No command executes text from an evidence source. A test or counterfactual comma
 
 ## Durable artifacts
 
-`domain-memory-policy.json` holds the choices `init-domain-memory` takes from a developer: the destination, the sources with their include and exclude patterns, the source authority, the data classification, the storage mode (`tracked`, `ignored` or `external`), the review mode with its verifier, trigger and CI requirement, the authorized signers, the command profiles a test result may run, and the limits. Discovery only suggests values for it. The sources and limits are settled at initialization; `amend-policy` changes the governance fields as one audited change.
+`domain-memory-policy.json` holds the choices `init-domain-memory` takes from a developer: the destination, the sources with their include and exclude patterns, the source authority, the data classification, the storage mode (`tracked`, `ignored` or `external`), the review mode with its verifier, trigger and CI requirement, the authorized signers, the command profiles a test result may run, the limits, and the `schema_conventions` the migration reader applies (exempt columns, status-like suffixes, free-text markers and the value limit), which a project edits to match its own naming. Discovery only suggests values for it. The sources and limits are settled at initialization; `amend-policy` changes the governance fields as one audited change.
 
 A Registry revision is one SHA-256 digest over the canonical JSON of every asset and the policy. Formatting changes therefore do not invalidate a review, and a policy change does: a base revision captured before it is stale, and approvals taken against it must be sought again.
 

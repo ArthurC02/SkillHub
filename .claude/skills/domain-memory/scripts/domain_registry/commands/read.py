@@ -28,7 +28,8 @@ from ..gates import quality_gates
 from ..impact import boundary_impact, registered_collaborations
 from ..mcp_server import ServerRoots, serve
 from ..policy import policy_path, query_result_limit
-from ..sql_describe import describe_table, gaps_since
+from ..policy import existing_policy
+from ..sql_describe import Conventions, describe_table, gaps_since
 from ..sql_schema import migrations_inside
 from ..readiness import readiness_report
 from ..registry import (
@@ -176,16 +177,22 @@ def handle_describe_table(args: argparse.Namespace) -> int:
         return 1
     registry_root = args.registry_root.resolve() if args.registry_root else None
     table = args.table.strip()
-    result = describe_table(registry_root, args.repo_root.resolve(), migrations_inside(args.repo_root, args.migrations), table)
+    result = describe_table(registry_root, args.repo_root.resolve(), migrations_inside(args.repo_root, args.migrations), table,
+                            _conventions_of(registry_root))
     print_json(result)
     for note in _describe_notes(result, table, without_registry=registry_root is None, require_complete=args.require_complete):
         print(f"NOTE: {note}", file=sys.stderr)
     return 1 if args.require_complete and result["gaps"] else 0
 
 
+def _conventions_of(registry_root: Path | None) -> Conventions:
+    return Conventions.from_policy(existing_policy(registry_root) if registry_root is not None else None)
+
+
 def _handle_gaps_since(args: argparse.Namespace) -> int:
+    registry_root = args.registry_root.resolve() if args.registry_root else None
     result = gaps_since(args.repo_root.resolve(), migrations_inside(args.repo_root, args.migrations), args.base,
-                        args.table.strip() if args.table else None)
+                        args.table.strip() if args.table else None, _conventions_of(registry_root))
     print_json(result)
     opened = {table: len(entry["new_gaps"]) for table, entry in result["tables"].items() if entry["new_gaps"]}
     if opened:

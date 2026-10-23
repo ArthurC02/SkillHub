@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.evidence import citation
 from domain_registry.sql_describe import describe_table, gaps_since
+from test_support import stored_policy_of
 from domain_registry.sql_schema import read_schema
 from test_support import RegistryTestCase
 
@@ -403,6 +404,35 @@ class CompletenessDescribeTest(RegistryTestCase):
              1, f"ERROR: --migrations directory {(self.repo / 'db' / 'empty').resolve()} holds no .sql files"),
             (missing.returncode, missing.stderr.strip(), empty.returncode, empty.stderr.strip()),
         )
+
+    def test_the_policy_schema_conventions_decide_which_columns_are_exempt_status_like_open_and_explained(self) -> None:
+        self.commit_all("migrations")
+        with_run = FENCE.replace("running: the step is executing; run: it finished.", "running: the step is executing.")
+        (self.migrations / "0002_fence.sql").write_text(with_run, encoding="utf-8")
+        policy = stored_policy_of(self.repo)
+        policy["schema_conventions"] = {"exempt_columns": ["id", "mode"], "status_like_suffixes": ["role"],
+                                        "free_text_markers": ["open text"], "value_comment_limit": 1}
+        (self.repo / "memory" / "domain-memory-policy.json").write_text(json.dumps(policy), encoding="utf-8")
+        tailored = [
+            "the table has no COMMENT ON saying what one row is",
+            "column updated_at has no COMMENT ON saying what it means",
+            "status-like column role has no value list; add CHECK (role IN (...)) or an enum type, or begin its comment with "
+            "'open text' or constrain it with another CHECK",
+            "column level has no COMMENT ON saying what it means",
+            "column grade has no COMMENT ON saying what it means",
+            "column rank has no COMMENT ON saying what it means",
+            "column rank lists its values without deciding NULL; make it NOT NULL, or write CHECK (rank IS NULL OR rank IN (...)) "
+            "or CHECK (rank IS NOT NULL AND rank IN (...))",
+        ]
+        with_policy = self.run_cli(*self.common, "--table", "loose", "--registry-root", str(self.repo / "memory"))
+        without = self.run_cli(*self.common, "--table", "loose")
+        since = self.run_cli(*self.common, "--base", "HEAD", "--registry-root", str(self.repo / "memory"))
+        self.assertEqual(
+            (tailored, 9, tailored),
+            (json.loads(with_policy.stdout)["gaps"], len(json.loads(without.stdout)["gaps"]),
+             json.loads(since.stdout)["tables"]["loose"]["new_gaps"]),
+        )
+        self.assertIn("the comment on step does not say what these values mean: run", json.loads(without.stdout)["gaps"])
 
     def test_gaps_since_a_ref_lists_only_what_the_change_opened_or_closed_per_table(self) -> None:
         self.commit_all("migrations")

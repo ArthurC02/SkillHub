@@ -82,6 +82,33 @@ class PolicyTest(RegistryTestCase):
             validate_policy(broken),
         )
 
+    def test_schema_conventions_are_optional_and_each_defect_is_named(self) -> None:
+        sound = stored_policy_of(self.repo)
+        whole = {"exempt_columns": ["id"], "status_like_suffixes": ["state"], "free_text_markers": ["free text"],
+                 "value_comment_limit": 0}
+        cases = [
+            ("absent", {}, []),
+            ("whole", {"schema_conventions": whole}, []),
+            ("one key", {"schema_conventions": {"value_comment_limit": 3}}, []),
+            ("not an object", {"schema_conventions": ["id"]},
+             ["policy has invalid schema_conventions; its keys are exempt_columns, status_like_suffixes, free_text_markers, "
+              "value_comment_limit"]),
+            ("unknown key", {"schema_conventions": {**whole, "colour": "blue"}},
+             ["policy has invalid schema_conventions; its keys are exempt_columns, status_like_suffixes, free_text_markers, "
+              "value_comment_limit"]),
+            ("blank suffix", {"schema_conventions": {**whole, "status_like_suffixes": [" "]}},
+             ["policy schema_conventions lists must hold non-blank strings"]),
+            ("markers not a list", {"schema_conventions": {**whole, "free_text_markers": "free text"}},
+             ["policy schema_conventions lists must hold non-blank strings"]),
+            ("negative limit", {"schema_conventions": {**whole, "value_comment_limit": -1}},
+             ["policy schema_conventions value_comment_limit must be a whole number"]),
+            ("boolean limit", {"schema_conventions": {**whole, "value_comment_limit": True}},
+             ["policy schema_conventions value_comment_limit must be a whole number"]),
+        ]
+        for label, change, expected in cases:
+            with self.subTest(label):
+                self.assertEqual(expected, validate_policy({**sound, **change}))
+
     def test_each_limit_accepts_one_and_refuses_zero(self) -> None:
         sound = stored_policy_of(self.repo)
         keys = ("max_file_count", "max_file_bytes", "max_total_bytes", "max_query_results")

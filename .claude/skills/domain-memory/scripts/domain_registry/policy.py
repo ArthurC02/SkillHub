@@ -35,6 +35,14 @@ ENUMERATED_FIELDS = (
     ("review_mode", REVIEW_MODES),
 )
 LIMIT_KEYS = ("max_file_count", "max_file_bytes", "max_total_bytes", "max_query_results")
+SCHEMA_CONVENTION_DEFAULTS: dict[str, Any] = {
+    "exempt_columns": ["id", "created_at", "updated_at"],
+    "status_like_suffixes": ["status", "state", "kind", "mode", "tier", "role", "decision", "verdict", "outcome",
+                             "phase", "stage", "level", "priority", "severity", "visibility", "category"],
+    "free_text_markers": ["free text", "free-text"],
+    "value_comment_limit": 12,
+}
+CONVENTION_LISTS = ("exempt_columns", "status_like_suffixes", "free_text_markers")
 GOVERNANCE_RULES = (
     (lambda mode, rules: mode == "local-draft-only" and rules["verifier"] != "none",
      "local-draft-only policy must not select a review verifier"),
@@ -88,6 +96,24 @@ def _limits_error(limits: Any) -> str | None:
     return None
 
 
+def schema_conventions(policy: dict[str, Any] | None) -> dict[str, Any]:
+    given = policy.get("schema_conventions") if policy else None
+    return {**SCHEMA_CONVENTION_DEFAULTS, **(given if isinstance(given, dict) else {})}
+
+
+def _conventions_error(value: Any) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) - set(SCHEMA_CONVENTION_DEFAULTS):
+        return "policy has invalid schema_conventions; its keys are " + ", ".join(SCHEMA_CONVENTION_DEFAULTS)
+    if any(key in value and not _nonblank_strings(value[key]) for key in CONVENTION_LISTS):
+        return "policy schema_conventions lists must hold non-blank strings"
+    limit = value.get("value_comment_limit", 0)
+    if not whole_number(limit) or limit < 0:
+        return "policy schema_conventions value_comment_limit must be a whole number"
+    return None
+
+
 def validate_policy(value: dict[str, Any]) -> list[str]:
     errors = [
         invalid_choice("policy", key, value.get(key), allowed)
@@ -98,6 +124,7 @@ def validate_policy(value: dict[str, Any]) -> list[str]:
         _governance_error(value.get("review_mode"), value.get("review_governance")),
         _source_error(value.get("source_policy")),
         _limits_error(value.get("limits")),
+        _conventions_error(value.get("schema_conventions")),
     )
     return errors + [error for error in found if error]
 
