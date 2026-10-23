@@ -1,11 +1,11 @@
 {
   "inventory": {
-    "migrations": 142,
+    "migrations": 143,
     "tables": 73,
     "partitions": 4,
     "columns": 665,
     "queries": 520,
-    "constraints": 278,
+    "constraints": 280,
     "foreign_keys": 129,
     "types": 2,
     "registry_records": 752,
@@ -24,8 +24,8 @@
       "ratio": 0.869
     },
     "meaning.enum_columns_whose_comment_names_every_value": {
-      "numerator": 50,
-      "denominator": 50,
+      "numerator": 51,
+      "denominator": 51,
       "ratio": 1.0
     },
     "meaning.status_like_columns_with_a_check_list": {
@@ -65,7 +65,7 @@
     },
     "rules.constraints_cited_by_a_record": {
       "numerator": 2,
-      "denominator": 269,
+      "denominator": 270,
       "ratio": 0.007
     },
     "rules.foreign_keys_inside_one_context": {
@@ -100,7 +100,7 @@
     },
     "provenance.migrations_cited_by_a_record": {
       "numerator": 2,
-      "denominator": 142,
+      "denominator": 143,
       "ratio": 0.014
     },
     "provenance.immutable_tables_known_to_registry": {

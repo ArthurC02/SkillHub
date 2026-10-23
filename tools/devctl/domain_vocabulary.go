@@ -463,6 +463,7 @@ var domainVocabularies = []domainVocabulary{
 		name: "skill category",
 		sources: []vocabularySource{
 			sqlColumnCheck("skills", "category"),
+			sqlColumnCheck("search_documents", "category"),
 			goConstEnum("apps/platform/internal/skill/library/category.go", "Category"),
 			goListedConstEnum(
 				"apps/platform/internal/skill/library/category.go", "AllCategories",
