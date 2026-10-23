@@ -32,8 +32,6 @@ const (
 	DonePath      = OutDir + "/.workload-done"
 	CollectedPath = OutDir + "/.collected"
 
-	artifactReadLimit = 128 << 20
-
 	execStreamDrainLimit = 1 << 20
 
 	execSettleWait = 2 * time.Second
@@ -124,7 +122,7 @@ func datasetNames(req sandbox.RunRequest) map[string]string {
 func (d *Driver) ReadArtifacts(ctx context.Context, id string) ([]byte, error) {
 	var out bytes.Buffer
 
-	err := d.execOut(ctx, id, []string{"/bin/tar", "-cf", "-", "-C", OutDir, "artifacts"}, &out, artifactReadLimit)
+	err := d.execOut(ctx, id, []string{"/bin/tar", "-cf", "-", "-C", OutDir, "artifacts"}, &out, sandbox.ArtifactArchiveReadLimit)
 	if err != nil {
 		return nil, err
 	}

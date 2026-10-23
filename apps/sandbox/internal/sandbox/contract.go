@@ -115,6 +115,7 @@ const (
 	defaultWallClockHardSeconds = 900
 	defaultArtifactTotalBytes   = 100 << 20
 	defaultArtifactFileBytes    = 25 << 20
+	ArtifactArchiveReadLimit    = 128 << 20
 	defaultMaxInputTokens       = 300_000
 	defaultMaxOutputTokens      = 60_000
 )

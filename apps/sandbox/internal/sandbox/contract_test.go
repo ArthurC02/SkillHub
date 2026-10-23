@@ -37,6 +37,13 @@ func TestOnlyReadableInputsAreFetchedIntoTheSandbox(t *testing.T) {
 	}
 }
 
+func TestTheArtifactArchiveReadLimitHoldsADefaultSizedArtifactSet(t *testing.T) {
+	if ArtifactArchiveReadLimit <= DefaultLimits.ArtifactTotalBytes {
+		t.Fatalf("archive read limit %d does not exceed the default artifact total %d, so tar headers would cut a full set short",
+			ArtifactArchiveReadLimit, DefaultLimits.ArtifactTotalBytes)
+	}
+}
+
 func TestTheDefaultDiskIsNoLargerThanTheDefaultMemoryItIsBackedBy(t *testing.T) {
 	if DefaultLimits.DiskBytes > DefaultLimits.MemoryBytes {
 		t.Fatalf("default disk %d exceeds default memory %d, but scratch files are counted against memory",

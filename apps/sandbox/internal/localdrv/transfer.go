@@ -26,8 +26,6 @@ const (
 	doneName       = ".workload-done"
 	collectedName  = ".collected"
 
-	artifactReadLimit = 128 << 20
-
 	traceReadLimit = 8 << 20
 )
 
@@ -116,7 +114,7 @@ func (d *Driver) ReadArtifacts(ctx context.Context, id string) ([]byte, error) {
 	if !existingDirectory(dir) {
 		return nil, nil
 	}
-	return archiveWithin(dir, artifactReadLimit)
+	return archiveWithin(dir, sandbox.ArtifactArchiveReadLimit)
 }
 
 func archiveWithin(dir string, limit int64) ([]byte, error) {
