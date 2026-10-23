@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "run-budget-setting",
+  "proposal_id": "run-budget-setting",
+  "obligations": [
+    {
+      "id": "rule-a-run-starts-only-when-its-budget-is-reserved",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-run-starts-only-when-its-budget-is-reserved",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-run-starts-only-when-its-budget-is-reserved"
+        }
+      ],
+      "expected_outcome": "100 credits are refused under the 0.50 USD default and admitted under an operator-set 0.05 USD; the Run's snapshot and first gateway key keep 0.05 USD after the ceiling is raised to 2 USD.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestARunReservesAndKeepsTheCeilingInForceWhenItWasCreated$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

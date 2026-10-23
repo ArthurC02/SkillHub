@@ -1,0 +1,38 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-budget-setting",
+  "proposal_id": "run-budget-setting",
+  "registry_revision": {
+    "observed_commit": "1abe14337e45dd59c530898457006c3277de6567",
+    "registry_digest": "sha256:91f9eac3b2e69aaf5d11339bd771e274a890ccbcc72b10408e16b734d7cb6ee8",
+    "committed_digest": "sha256:91f9eac3b2e69aaf5d11339bd771e274a890ccbcc72b10408e16b734d7cb6ee8"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-run-starts-only-when-its-budget-is-reserved",
+      "mutated_protection": "apps/platform/internal/trial/execution/credit.go:24: ok, err := s.Ledger.Reserve(ctx, tx, workspaceID, budgetUSD) -> ok, err := s.Ledger.Reserve(ctx, tx, workspaceID, s.Deployment.Budget())",
+      "failure_evidence": "=== RUN   TestARunReservesAndKeepsTheCeilingInForceWhenItWasCreated\n2026/10/23 11:55:40 INFO a run was refused before it started workspace_id=d5948454-90c9-463e-80b4-c88b1220347d error=\"run: the workspace has too few credits to start a run\"\n2026/10/23 11:55:41 INFO a run was refused before it started workspace_id=d5948454-90c9-463e-80b4-c88b1220347d error=\"run: the workspace has too few credits to start a run\"\n    run_budget_setting_integration_test.go:104: 100 credits against a 0.05 ceiling: got 422 ({RunID: Status: StatusReason: SkillID: TestCaseID: Provider: FailureClass:{Value: Label: Note:} CleanupStatus:{Value: Label: Note:} Error:點數不足，無法開始這次試跑。請聯絡管理者為這個帳號加點；已經開始的試跑不受影響。 Reason: Transitions:[] Attempts:[] CancelRequestedAt:}), want 201\n--- FAIL: TestARunReservesAndKeepsTheCeilingInForceWhenItWasCreated (0.31s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t5.996s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-run-starts-only-when-its-budget-is-reserved",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestARunReservesAndKeepsTheCeilingInForceWhenItWasCreated$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:b115b0f9c1337fa14e9203a7d67a5c751992d1013f58d4a6050d15fc987e8726",
+      "finished_at": "2026-10-23T03:56:01.993631Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

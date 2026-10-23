@@ -1,0 +1,133 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-budget-setting",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "run-budget-setting",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-23T03:54:56.758880Z",
+  "verified_at": "2026-10-23T03:56:04.580401Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "1abe14337e45dd59c530898457006c3277de6567",
+    "registry_digest": "sha256:91f9eac3b2e69aaf5d11339bd771e274a890ccbcc72b10408e16b734d7cb6ee8",
+    "committed_digest": "sha256:91f9eac3b2e69aaf5d11339bd771e274a890ccbcc72b10408e16b734d7cb6ee8"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [
+    "a-run-starts-only-when-its-budget-is-reserved"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "run decides how much a Run may spend: it reads the operator-set ceiling or the deployment's when the Run is created, reserves it and records it in the Run's policy snapshot.",
+    "evidence": [
+      "apps/platform/internal/trial/execution/credit.go:18-32",
+      "apps/platform/internal/trial/execution/service.go:484-488"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "No new collaboration: run already reserves credits through the ledger port injected at the entrypoint; only the amount it passes changed.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/execution/credit.go:18-32",
+      "apps/platform/internal/trial/execution/service.go:484-488"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The run ceiling lived only in SKILLHUB_RUN_MAX_BUDGET_USD, so operators had to redeploy to change what a run may spend.",
+      "A Run's attempts and its reservation must agree on one ceiling even when the setting changes between creation and dispatch."
+    ],
+    "decision": "An operator-set ceiling in a single-row table, read at admission and copied into the Run's policy snapshot; reservation uses that copy and every attempt reads it from the snapshot.",
+    "invariants_preserved": [
+      "A Workspace that cannot cover the ceiling is refused before any run row exists.",
+      "Runs created before the change keep the deployment ceiling, which an absent snapshot field falls back to."
+    ],
+    "rejected_alternatives": [
+      "Reading the setting on every attempt: a Run created under one ceiling would be dispatched under another, after credits were reserved for the first."
+    ],
+    "proof_obligations": [
+      "rule-a-run-starts-only-when-its-budget-is-reserved"
+    ],
+    "counterfactual_check": "Reserving the deployment ceiling instead of the snapshot's at admission fails TestARunReservesAndKeepsTheCeilingInForceWhenItWasCreated."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-run-starts-only-when-its-budget-is-reserved",
+        "statement": "When a credit ledger is configured, a Run is admitted only if the Workspace can reserve the run budget in force when it is created: the operator-set ceiling, or the deployment's when none is set. The Run keeps that ceiling in its policy snapshot, and its attempts run under it whatever the setting becomes later; a Workspace that cannot reserve it is refused with credit_balance.",
+        "owner": "run-execution",
+        "version": "unknown",
+        "effective_from": "unknown",
+        "effective_until": "unknown",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A Workspace with 100 credits is refused with credit_balance under a 0.50 USD ceiling and admitted once the operator lowers it to 0.05 USD.",
+          "A Run created under a 0.05 USD ceiling issues its first gateway key at 0.05 USD after the operator raises the ceiling to 2 USD.",
+          "A deployment with no credit ledger admits the Run without a reservation."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/credit.go",
+            "lines": {
+              "start": 18,
+              "end": 32
+            },
+            "content_sha256": "sha256:afa72125655b782c1884f660dbb1fa9cd5bcb13d6b4a9d063cd49096e0a69cde",
+            "excerpt_sha256": "sha256:b03908f4fa9e0d491325f7655607d7471852a8a7807f8805a05d178ba5d0b874"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/service.go",
+            "lines": {
+              "start": 484,
+              "end": 488
+            },
+            "content_sha256": "sha256:e13623fab511348491f4bb77311d2a11508245887866e545911d79cb3ae875e8",
+            "excerpt_sha256": "sha256:8a51b03b8c4724e338df9afdc667fa4caa5b8645c5383b09a892ac2661f15061"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/run_budget_setting_integration_test.go",
+            "lines": {
+              "start": 75,
+              "end": 124
+            },
+            "content_sha256": "sha256:8b1a76384f44cb98b8eb55ed9755e8014a8e9580abe1377ee09cd191b4054c0f",
+            "excerpt_sha256": "sha256:e70def8a7eb0f315a27a4036d0054d674b861330b5d7e50e1c5ce2e4abb73dfa"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-23T03:56:02.779143Z",
+      "scope": "rule amendment: run budget in force at creation",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "1abe14337e45dd59c530898457006c3277de6567",
+        "registry_digest": "sha256:91f9eac3b2e69aaf5d11339bd771e274a890ccbcc72b10408e16b734d7cb6ee8",
+        "committed_digest": "sha256:91f9eac3b2e69aaf5d11339bd771e274a890ccbcc72b10408e16b734d7cb6ee8"
+      }
+    }
+  ],
+  "supersedes": [
+    "run-harvest-rules"
+  ]
+}
