@@ -373,18 +373,13 @@ scope:
   GetNewestSkillVersion: user
   LiftDispatchHalt: user
   ListPlatformAuditEvents: user
-  LockSkillForOperatorWrite: user
-  LockSkillForOperatorHold: user
-  ListSkillsUnderOperatorHold: user
+  LockSkillForOperatorWrite: operator
+  LockSkillForOperatorHold: operator
+  ListSkillsUnderOperatorHold: worker
   ListRecentCreditEntries: user
   SetDispatchHaltClearRounds: user
   SetModelCallBudget: operator
   ClearModelCallBudget: operator
-  SetSkillAccessRestriction: user
-  SetSkillCuration: user
-  SetSkillRedistribution: user
-  SetSkillTakedown: user
-  RestoreSkill: user
   SumCostEventsByDay: user
   SumCreditEntriesByDay: user
 
@@ -419,7 +414,7 @@ scope:
   ListSkillForks: user
   ListOutboxEventsByAggregate: user
   ListRunsNeedingCleanup: user
-  ListRunsAwaitingSpend: user
+  ListRunsAwaitingSpend: worker
   ListSearchDocumentsMissingBigram: user
   GetSearchDocumentEnrichedText: user
   ListSkillSourcesInVersions: user
@@ -427,7 +422,7 @@ scope:
   ListSkillVersionsInRuns: user
   ListSkillVersionsInBundles: user
   ListSkillsPastDeletionGrace: user
-  ListSkillsWithHeldPublicationNames: user
+  ListSkillsWithHeldPublicationNames: worker
   ListSkillsWithTestCases: user
   ListSnapshottedTestCases: user
   ListStalledCreationSessions: user
@@ -443,7 +438,7 @@ scope:
   NextTraceSeq: user
   PruneDeletedSearchDocuments: user
   PurgeSkillsByID: user
-  EraseSkillContent: user
+  EraseSkillContent: worker
   RecordObjectSighting: user
   RecordOrphanSighting: user
   RecordOutboxDeliveryFailure: user

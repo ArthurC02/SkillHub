@@ -25,7 +25,7 @@ func applyBackfillScenarioSideEffect(ctx context.Context, q *gen.Queries, ws ide
 		return err
 	case "taken-down":
 		reason := "withdrawn package"
-		_, err := q.SetSkillTakedown(ctx, gen.SetSkillTakedownParams{ID: skillID, TakedownReason: &reason})
+		_, err := q.SetSkillTakedown(ctx, gen.SetSkillTakedownParams{ID: skillID, WorkspaceID: ws.ID, TakedownReason: &reason})
 		return err
 	}
 	return nil

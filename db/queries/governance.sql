@@ -232,25 +232,25 @@ WHERE id = ANY(@skill_ids::uuid[])
 
 -- name: SetSkillRedistribution :exec
 UPDATE skills SET redistribution = $2, updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL;
+WHERE id = $1 AND workspace_id = $3 AND deleted_at IS NULL;
 
 -- name: SetSkillCuration :exec
 UPDATE skills SET curation_tier = $2, curated_version_id = $3, updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL;
+WHERE id = $1 AND workspace_id = $4 AND deleted_at IS NULL;
 
 -- name: SetSkillAccessRestriction :exec
 UPDATE skills SET access_restriction = $2, updated_at = now()
-WHERE id = $1;
+WHERE id = $1 AND workspace_id = $3;
 
 -- name: SetSkillTakedown :one
 UPDATE skills SET takedown_at = now(), takedown_reason = @takedown_reason, takedown_by = @takedown_by, updated_at = now()
-WHERE id = @id
+WHERE id = @id AND workspace_id = @workspace_id
   AND (takedown_at IS NULL OR (takedown_by = 'owner' AND @takedown_by::text = 'operator'))
 RETURNING *;
 
 -- name: RestoreSkill :one
 UPDATE skills SET takedown_at = NULL, takedown_reason = NULL, takedown_by = NULL, updated_at = now()
-WHERE id = $1 AND takedown_at IS NOT NULL
+WHERE id = $1 AND workspace_id = $2 AND takedown_at IS NOT NULL
 RETURNING *;
 
 -- name: ListSourcesToCheck :many

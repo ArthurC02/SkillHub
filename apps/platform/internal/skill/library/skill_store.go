@@ -153,21 +153,21 @@ func writeSkillEvent(ctx context.Context, q *gen.Queries, root *SkillRoot, event
 	case SkillTakenDown:
 		by := string(root.takedownBy)
 		root.row, err = q.SetSkillTakedown(ctx, gen.SetSkillTakedownParams{
-			ID: root.row.ID, TakedownReason: &root.takedownReason, TakedownBy: &by,
+			ID: root.row.ID, WorkspaceID: root.row.WorkspaceID, TakedownReason: &root.takedownReason, TakedownBy: &by,
 		})
 	case SkillRestored:
-		root.row, err = q.RestoreSkill(ctx, root.row.ID)
+		root.row, err = q.RestoreSkill(ctx, gen.RestoreSkillParams{ID: root.row.ID, WorkspaceID: root.row.WorkspaceID})
 	case AccessRestricted, AccessRestrictionLifted:
 		err = q.SetSkillAccessRestriction(ctx, gen.SetSkillAccessRestrictionParams{
-			ID: root.row.ID, AccessRestriction: root.row.AccessRestriction,
+			ID: root.row.ID, WorkspaceID: root.row.WorkspaceID, AccessRestriction: root.row.AccessRestriction,
 		})
 	case RedistributionSet:
 		err = q.SetSkillRedistribution(ctx, gen.SetSkillRedistributionParams{
-			ID: root.row.ID, Redistribution: root.row.Redistribution,
+			ID: root.row.ID, WorkspaceID: root.row.WorkspaceID, Redistribution: root.row.Redistribution,
 		})
 	case CurationSet:
 		err = q.SetSkillCuration(ctx, gen.SetSkillCurationParams{
-			ID: root.row.ID, CurationTier: root.row.CurationTier, CuratedVersionID: root.row.CuratedVersionID,
+			ID: root.row.ID, WorkspaceID: root.row.WorkspaceID, CurationTier: root.row.CurationTier, CuratedVersionID: root.row.CuratedVersionID,
 		})
 	case SkillCategorized:
 		root.row, err = q.SetSkillCategory(ctx, gen.SetSkillCategoryParams{
