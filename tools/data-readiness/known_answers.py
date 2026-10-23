@@ -20,7 +20,8 @@ QUESTIONS = HERE / "known-answers.jsonl"
 SYSTEM_PROMPT = (
     "You answer questions about a database schema using only the documents provided. "
     'Reply with one JSON object {"answer": ...} and nothing else: a single table, column, context or class name as a string; '
-    'a list of names when the question asks for several; "yes" or "no"; or "none" when the documents show no such thing.'
+    'a JSON array of names when the question asks for several, even if only one applies; "yes" or "no"; '
+    'or "none" when the documents show no such thing.'
 )
 Post = Callable[[str, dict[str, str], dict[str, Any]], dict[str, Any]]
 
@@ -29,11 +30,15 @@ def load_questions(path: Path = QUESTIONS) -> list[dict[str, Any]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
+Oracle = dict[str, Any]
+
+
 def _present(inputs: mr.Inputs, table: str, column: str | None) -> bool:
     return table in inputs.tables and (column is None or column in inputs.tables[table].columns)
 
 
-def _allowed(inputs: mr.Inputs, table: str, column: str | None) -> Any:
+def _allowed(inputs: mr.Inputs, oracle: Oracle) -> Any:
+    table, column = oracle["table"], oracle.get("column")
     if not _present(inputs, table, column):
         return None
     constraints = [c for c in inputs.schema.constraints if c.table == table]
@@ -41,35 +46,66 @@ def _allowed(inputs: mr.Inputs, table: str, column: str | None) -> Any:
     return allowed_values(column, constraints, inputs.schema.enums.get(declared))
 
 
-def _owner(inputs: mr.Inputs, table: str, _column: str | None) -> Any:
-    owners = inputs.table_owners(table)
+def _owner(inputs: mr.Inputs, oracle: Oracle) -> Any:
+    owners = inputs.table_owners(oracle["table"])
     return owners[0] if len(owners) == 1 else None
 
 
-def _classification(inputs: mr.Inputs, table: str, column: str | None) -> Any:
-    declared = inputs.owners.get("classification", {}).get(f"{table}.{column}")
+def _classification(inputs: mr.Inputs, oracle: Oracle) -> Any:
+    declared = inputs.owners.get("classification", {}).get(f"{oracle['table']}.{oracle.get('column')}")
     return declared[0] if declared else None
 
 
-ORACLES: dict[str, Callable[[mr.Inputs, str, str | None], Any]] = {
-    "absent": lambda inputs, table, column: None if _present(inputs, table, column) else "none",
+def _keys_to(inputs: mr.Inputs, oracle: Oracle) -> list:
+    return [key for key in inputs.schema.foreign_keys if key.child == oracle["table"] and key.parent == oracle["parent"]]
+
+
+def _insert_must_supply(inputs: mr.Inputs, oracle: Oracle) -> Any:
+    if not _present(inputs, oracle["table"], oracle["column"]):
+        return None
+    info = inputs.tables[oracle["table"]].columns[oracle["column"]]
+    return _yes(info.get("not_null") and info.get("default") is None)
+
+
+def _checks_of(inputs: mr.Inputs, table: str) -> list:
+    return [c for c in inputs.schema.constraints if c.table == table and c.kind == "check"]
+
+
+def _unique_over(inputs: mr.Inputs, oracle: Oracle) -> Any:
+    wanted = set(oracle["columns"])
+    constraints = [c for c in inputs.schema.constraints if c.table == oracle["table"] and c.kind in ("unique", "unique-index")]
+    return _yes(not any(set(c.columns) == wanted for c in constraints))
+
+
+def _yes(condition: Any) -> str:
+    return "yes" if condition else "no"
+
+
+ORACLES: dict[str, Callable[[mr.Inputs, Oracle], Any]] = {
+    "absent": lambda inputs, oracle: None if _present(inputs, oracle["table"], oracle.get("column")) else "none",
     "allowed_values": _allowed,
-    "references": lambda inputs, table, _: sorted(
-        {key.parent for key in inputs.schema.foreign_keys if key.child == table and key.parent in inputs.tables}),
-    "referenced_by": lambda inputs, table, _: sorted(
-        {key.child for key in inputs.schema.foreign_keys if key.parent == table and key.child in inputs.tables}),
+    "references": lambda inputs, oracle: sorted(
+        {key.parent for key in inputs.schema.foreign_keys if key.child == oracle["table"] and key.parent in inputs.tables}),
+    "referenced_by": lambda inputs, oracle: sorted(
+        {key.child for key in inputs.schema.foreign_keys if key.parent == oracle["table"] and key.child in inputs.tables}),
     "owner": _owner,
-    "immutable": lambda inputs, table, _: "yes" if table in inputs.owners.get("immutable", {}) else "no",
+    "immutable": lambda inputs, oracle: _yes(oracle["table"] in inputs.owners.get("immutable", {})),
     "classification": _classification,
+    "deleted_with_parent": lambda inputs, oracle: _yes(any(key.on_delete == "CASCADE" for key in _keys_to(inputs, oracle))),
+    "fk_columns": lambda inputs, oracle: sorted({column for key in _keys_to(inputs, oracle) for column in key.columns}),
+    "insert_must_supply": _insert_must_supply,
+    "unique_over": _unique_over,
+    "check_over": lambda inputs, oracle: _yes(
+        not any(set(oracle["columns"]) <= set(c.columns) for c in _checks_of(inputs, oracle["table"]))),
+    "check_on_column": lambda inputs, oracle: _yes(any(oracle["column"] in c.columns for c in _checks_of(inputs, oracle["table"]))),
 }
 
 
 def expected(question: dict[str, Any], inputs: mr.Inputs) -> Any:
     oracle = question["oracle"]
-    kind, table, column = oracle["kind"], oracle["table"], oracle.get("column")
-    if kind == "exists":
-        return question["answer"] if _present(inputs, table, column) else None
-    return ORACLES[kind](inputs, table, column)
+    if oracle["kind"] == "exists":
+        return question["answer"] if _present(inputs, oracle["table"], oracle.get("column")) else None
+    return ORACLES[oracle["kind"]](inputs, oracle)
 
 
 def normalized(answer: Any) -> Any:
@@ -78,9 +114,17 @@ def normalized(answer: Any) -> Any:
     return str(answer).strip().lower()
 
 
+def as_list(given: Any) -> list:
+    if isinstance(given, list):
+        return given
+    return [part for part in str(given).split(",") if part.strip()]
+
+
 def correct(recorded: Any, given: Any) -> bool:
     if recorded == "none":
         return given in ("none", "", None, [])
+    if isinstance(recorded, list):
+        return normalized(recorded) == normalized(as_list(given))
     return normalized(recorded) == normalized(given)
 
 

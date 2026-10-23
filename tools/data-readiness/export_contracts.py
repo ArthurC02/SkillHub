@@ -10,9 +10,11 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import measure_readiness as mr  # noqa: E402
-from domain_registry.sql_describe import describe_table  # noqa: E402
+from domain_registry.sql_describe import CHECK_BODY, describe_table  # noqa: E402
+from domain_registry.sql_schema import strip_comments  # noqa: E402
 
-API_VERSION = "v3.0.2"
+API_VERSION = "v3.1.0"
+SCHEMA_FILE = HERE / "odcs-json-schema-v3.1.0.json"
 LOGICAL_TYPES = {
     "text": "string", "uuid": "string", "bytea": "string", "tsvector": "string", "date": "date",
     "timestamptz": "timestamp", "timestamp": "timestamp", "boolean": "boolean", "jsonb": "object", "json": "object",
@@ -44,8 +46,30 @@ def _property(column: dict[str, Any], table: str, inputs: mr.Inputs) -> dict[str
     if classification:
         declared["classification"] = classification[0]
     if column["allowed_values"]:
-        declared["quality"] = [{"type": "library", "rule": "validValues", "validValues": column["allowed_values"]}]
+        declared["quality"] = [{
+            "type": "library", "metric": "invalidValues", "arguments": {"validValues": column["allowed_values"]}, "mustBe": 0,
+            "name": f"{column['name']}_valid_values", "description": f"{column['name']} holds one of its listed values",
+        }]
     return declared
+
+
+def _check_quality(table: str, constraint: dict[str, Any]) -> dict[str, Any]:
+    body = CHECK_BODY.search(strip_comments(constraint["text"]))
+    return {
+        "type": "sql", "name": constraint["name"], "description": constraint["text"],
+        "query": f"SELECT COUNT(*) FROM {table} WHERE NOT ({body.group(1) if body else 'true'})", "mustBe": 0,
+    }
+
+
+def _relationship(table: str, edge: dict[str, Any]) -> dict[str, Any]:
+    source = [f"{table}.{column}" for column in edge["columns"]]
+    target = [f"{edge['parent']}.{column}" for column in edge["parent_columns"]]
+    return {
+        "type": "foreignKey",
+        "from": source[0] if len(source) == 1 else source,
+        "to": target[0] if len(target) == 1 else target,
+        "customProperties": [_custom("name", edge["name"]), _custom("onDelete", edge["on_delete"]), _custom("onUpdate", edge["on_update"])],
+    }
 
 
 def _custom(name: str, value: Any) -> dict[str, Any]:
@@ -65,6 +89,7 @@ def contract(table: str, inputs: mr.Inputs, repo_root: Path, registry_root: Path
         {"type": "businessDefinition", "url": f"{mention['asset']}/{mention['id']}", "description": mention["summary"]}
         for mention in described["registry"]
     ]
+    meaning = {"description": described["meaning"]} if described["meaning"] else {}
     return {
         "apiVersion": API_VERSION,
         "kind": "DataContract",
@@ -72,14 +97,14 @@ def contract(table: str, inputs: mr.Inputs, repo_root: Path, registry_root: Path
         "name": table,
         "version": str(len(inputs.schema.migrations)),
         "status": "active",
-        "description": {"purpose": described["meaning"]},
+        "description": {"purpose": described["meaning"]} if described["meaning"] else {},
         "schema": [{
             "name": table,
             "physicalType": "table",
-            "description": described["meaning"],
+            **meaning,
             "properties": [_property(column, table, inputs) for column in described["columns"]],
-            "quality": [{"type": "sql", "description": constraint["text"], "name": constraint["name"]}
-                        for constraint in described["constraints"] if constraint["kind"] == "check"],
+            "quality": [_check_quality(table, constraint) for constraint in described["constraints"] if constraint["kind"] == "check"],
+            "relationships": [_relationship(table, edge) for edge in described["references"]],
         }],
         "customProperties": custom,
         "authoritativeDefinitions": definitions,

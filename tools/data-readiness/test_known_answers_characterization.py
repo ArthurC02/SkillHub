@@ -17,6 +17,16 @@ CREATE TABLE runs (
     speed lane
 );
 COMMENT ON TABLE runs IS 'one execution';
+CREATE TABLE steps (
+    run_id uuid REFERENCES runs(id) ON DELETE CASCADE,
+    author uuid REFERENCES users(id),
+    ws uuid,
+    seq integer NOT NULL DEFAULT 0,
+    UNIQUE (run_id, ws),
+    CHECK (ws IS NOT NULL OR run_id IS NULL)
+);
+CREATE UNIQUE INDEX steps_live_seq ON steps (run_id, seq) WHERE ws IS NOT NULL;
+CREATE TABLE notes (user_id uuid REFERENCES users(id) ON DELETE SET NULL);
 """
 OWNERS = """files:
 queries:
@@ -25,6 +35,8 @@ read_allow:
 tables:
   users: identity
   runs: run
+  steps: run
+  notes: identity
 immutable:
   runs: history
 classification:
@@ -46,10 +58,10 @@ def inputs_of(root: Path) -> mr.Inputs:
     return mr.read_inputs(root, root / "docs" / "domain-memory")
 
 
-def question(kind: str, table: str, answer, column: str | None = None, **extra) -> dict:
+def question(kind: str, table: str, answer, column: str | None = None, parent: str | None = None, columns: list | None = None,
+             **extra) -> dict:
     oracle = {"kind": kind, "table": table}
-    if column:
-        oracle["column"] = column
+    oracle.update({key: value for key, value in (("column", column), ("parent", parent), ("columns", columns)) if value})
     return {"id": f"{kind}-{table}", "category": kind, "question": "?", "answer": answer, "oracle": oracle, **extra}
 
 
@@ -64,12 +76,28 @@ def test_every_oracle_kind_reads_its_answer_from_the_files():
         (question("allowed_values", "runs", ["queued", "done"], column="state"), ["queued", "done"]),
         (question("allowed_values", "runs", ["fast", "slow"], column="speed"), ["fast", "slow"]),
         (question("references", "runs", ["users"]), ["users"]),
-        (question("referenced_by", "users", ["runs"]), ["runs"]),
+        (question("referenced_by", "users", ["notes", "runs", "steps"]), ["notes", "runs", "steps"]),
         (question("owner", "runs", "run"), "run"),
         (question("immutable", "runs", "yes"), "yes"),
         (question("immutable", "users", "no"), "no"),
         (question("classification", "users", "personal", column="email"), "personal"),
         (question("classification", "users", "personal", column="id"), None),
+        (question("deleted_with_parent", "steps", "yes", parent="runs"), "yes"),
+        (question("deleted_with_parent", "runs", "no", parent="users"), "no"),
+        (question("deleted_with_parent", "notes", "no", parent="users"), "no"),
+        (question("fk_columns", "steps", ["run_id"], parent="runs"), ["run_id"]),
+        (question("insert_must_supply", "runs", "yes", column="state"), "yes"),
+        (question("insert_must_supply", "runs", "no", column="speed"), "no"),
+        (question("insert_must_supply", "steps", "no", column="seq"), "no"),
+        (question("insert_must_supply", "steps", None, column="gone"), None),
+        (question("unique_over", "steps", "no", columns=["ws", "run_id"]), "no"),
+        (question("unique_over", "steps", "yes", columns=["run_id", "seq"]), "yes"),
+        (question("unique_over", "runs", "yes", columns=["state"]), "yes"),
+        (question("check_over", "steps", "no", columns=["ws", "run_id"]), "no"),
+        (question("check_over", "runs", "yes", columns=["speed"]), "yes"),
+        (question("check_over", "runs", "yes", columns=["state", "speed"]), "yes"),
+        (question("check_on_column", "runs", "yes", column="state"), "yes"),
+        (question("check_on_column", "runs", "no", column="speed"), "no"),
     ]
     assert [ka.expected(q, inputs) for q, _ in cases] == [truth for _, truth in cases]
 
@@ -92,6 +120,8 @@ def test_grading_ignores_case_order_and_whitespace_but_not_content():
     assert ka.correct("Run", " run ")
     assert ka.correct("none", []) and ka.correct("none", "none") and ka.correct("none", None)
     assert not ka.correct(["users", "runs"], ["users"])
+    assert ka.correct(["a", "b"], "b, a") and ka.correct(["runs"], "runs") and ka.correct(["a", "b"], ["b", "a"])
+    assert not ka.correct(["a", "b"], "a") and not ka.correct("runs", ["runs"])
     assert not ka.correct("none", "users")
     assert not ka.correct("yes", "no")
 
