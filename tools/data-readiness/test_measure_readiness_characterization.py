@@ -22,7 +22,7 @@ CREATE TABLE runs (
     id uuid PRIMARY KEY,
     user_id uuid NOT NULL REFERENCES users(id),
     state text NOT NULL CHECK (state IN ('queued', 'done')),
-    note text,
+    note text, scrap text,
     CONSTRAINT runs_done_has_note CHECK (state <> 'done' OR note IS NOT NULL),
     PRIMARY KEY (id, state),
     FOREIGN KEY (user_id, note) REFERENCES users(id, plain)
@@ -42,7 +42,7 @@ CREATE TRIGGER runs_guard BEFORE UPDATE ON runs FOR EACH ROW EXECUTE FUNCTION gu
 CREATE MATERIALIZED VIEW oddity AS SELECT 1
 """
 
-MIGRATION_0002 = """ALTER TABLE runs ADD COLUMN token_hash text REFERENCES users(email), DROP COLUMN note;
+MIGRATION_0002 = """ALTER TABLE runs ADD COLUMN token_hash text REFERENCES users(email), DROP COLUMN scrap;
 ALTER TABLE runs ADD CONSTRAINT runs_token_key UNIQUE (token_hash);
 ALTER TABLE runs ALTER COLUMN state SET DEFAULT 'queued';
 ALTER TABLE ghosts ADD COLUMN x int;
@@ -197,9 +197,9 @@ def test_the_statement_line_is_where_its_first_word_starts_after_leading_comment
 def test_tables_columns_and_partitions_are_counted_from_create_alter_and_drop():
     inputs, report = measured()
     assert sorted(inputs.tables) == ["runs", "users"]
-    assert sorted(inputs.tables["runs"].columns) == ["id", "state", "token_hash", "user_id"]
+    assert sorted(inputs.tables["runs"].columns) == ["id", "note", "state", "token_hash", "user_id"]
     assert report["inventory"] == {
-        "migrations": 2, "tables": 2, "partitions": 1, "columns": 8, "queries": 5, "constraints": 6,
+        "migrations": 2, "tables": 2, "partitions": 1, "columns": 9, "queries": 5, "constraints": 6,
         "foreign_keys": 3, "types": 0, "registry_records": 6, "unparsed_statements": 4,
     }
 
@@ -221,15 +221,15 @@ def test_a_column_is_described_only_by_comment_on_not_by_a_comment_beside_or_abo
         [("id", 2, False), ("email", 3, False), ("home_workspace", 5, False), ("plain", 6, True)]
     assert (inputs.tables["users"].described, inputs.tables["runs"].described) == (True, False)
     assert ratio(report, "meaning.tables_described") == (1, 2)
-    assert ratio(report, "meaning.columns_described") == (1, 8)
+    assert ratio(report, "meaning.columns_described") == (1, 9)
 
 
 def test_column_and_table_level_rules_are_counted_and_a_primary_key_is_not():
     inputs, _ = measured()
     assert sorted((c.kind, c.name, c.file[-8:], c.line) for c in inputs.schema.constraints) == [
-        ("check", "runs.state", "init.sql", 14), ("check", "runs_done_has_note", "init.sql", 16),
+        ("check", "runs_done_has_note", "init.sql", 16), ("check", "runs_state_check", "init.sql", 14),
         ("trigger", "runs_guard", "init.sql", 31),
-        ("unique", "runs_token_key", "more.sql", 2), ("unique", "users.email", "init.sql", 3),
+        ("unique", "runs_token_key", "more.sql", 2), ("unique", "users_email_key", "init.sql", 3),
         ("unique-index", "runs_note_key", "init.sql", 23),
     ]
 
@@ -244,7 +244,7 @@ def test_a_constraint_counts_as_cited_only_when_a_record_cites_its_line():
     _, report = measured()
     assert ratio(report, "rules.constraints_cited_by_a_record") == (1, 6)
     assert "db/migrations/0001_init.sql:16 check runs_done_has_note" not in report["details"]["uncited_constraints"]
-    assert "db/migrations/0001_init.sql:14 check runs.state" in report["details"]["uncited_constraints"]
+    assert "db/migrations/0001_init.sql:14 check runs_state_check" in report["details"]["uncited_constraints"]
 
 
 DRAFT_RULE = """---
@@ -271,7 +271,7 @@ def test_a_draft_record_cites_nothing_the_registry_knows_until_it_is_reviewed():
         reviewed = mr.measure(mr.read_inputs(Path(root), Path(root) / "docs/domain-memory"))
     assert [record.status for record in inputs.records if record.asset == "rules"] == ["reviewed"]
     assert (ratio(draft, "rules.constraints_cited_by_a_record"), draft["details"]["constraints_cited_only_by_a_candidate"]) == ((1, 6), 1)
-    assert "db/migrations/0001_init.sql:14 check runs.state" in draft["details"]["uncited_constraints"]
+    assert "db/migrations/0001_init.sql:14 check runs_state_check" in draft["details"]["uncited_constraints"]
     assert (ratio(reviewed, "rules.constraints_cited_by_a_record"), reviewed["details"]["constraints_cited_only_by_a_candidate"]) == ((2, 6), 0)
 
 

@@ -2,6 +2,19 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.6.0
+
+### Added
+
+- The SQL reader names every constraint the way the database names an unnamed one, so `describe-table` and a `DROP CONSTRAINT` agree with the catalog: `<table>_pkey`, `<table>_<columns>_key`, `<table>_<columns>_fkey` with every key column, `<table>_<column>_check` when the CHECK mentions one column and `<table>_check` otherwise, `<table>_<columns>_excl`, a number appended to the label on a collision (`_check1`, `_check2`), and the two names shortened the way the database shortens them to fit 63 bytes. A column with two inline constraints keeps both.
+- `DROP CONSTRAINT` by any of those names removes the constraint, including an inline `REFERENCES` and an unnamed table-level `UNIQUE`; `DROP COLUMN` removes every constraint, foreign key and index that involves the column, as the database does; `DROP TABLE` removes the table's constraints and keys.
+- `describe-table` lists the primary key and each foreign key among `constraints` with its name; `references` and `referenced_by` carry the key's `name`, `columns`, `parent_columns` (the parent's primary key when the migration names none), `on_delete` and `on_update` (`NO ACTION` when unwritten); each column carries its `default` (following `SET DEFAULT` and `DROP DEFAULT`) and `at`, the file and line that declared it, which for a column added by `ALTER TABLE` is that statement; `indexes` lists the table's `CREATE INDEX` statements, unique or not, with their definition.
+- An unknown table is refused with the name quoted, so stray whitespace shows, and the command strips the `--table` argument first.
+
+### Changed
+
+- `extract-sql-schema` keeps its rule ids and statements for inline constraints (`<table>.<column>`), while a rule from an unnamed table-level constraint is now identified by the database's name for it (`<table>_check`, `<table>_<columns>_key`) instead of `<table>:<line>`; candidates recorded under the old line-numbered ids are not renamed and can be retracted after the next extraction.
+
 ## 2.5.4
 
 ### Fixed

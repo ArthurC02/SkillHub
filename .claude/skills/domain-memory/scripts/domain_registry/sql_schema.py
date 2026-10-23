@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import itertools
 import re
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -39,7 +40,11 @@ IGNORED_STATEMENT = re.compile(
     r"|DROP\s+(FUNCTION|TYPE|EXTENSION)|ALTER\s+(INDEX|TYPE|SEQUENCE|FUNCTION)"
     r"|LOCK\s+TABLE|GRANT|REVOKE|INSERT|UPDATE|DELETE|SET|SELECT|DO\s+\$|BEGIN|COMMIT)", re.I)
 UNIQUE_INDEX = "unique-index"
-REFERENCES = re.compile(rf"\bREFERENCES\s+({IDENT})", re.I)
+PARENT = re.compile(rf"\bREFERENCES\s+({IDENT})\s*(?:\(([^)]*)\))?", re.I)
+REFERENTIAL_ACTION = r"(CASCADE|RESTRICT|NO\s+ACTION|SET\s+NULL|SET\s+DEFAULT)"
+ON_DELETE = re.compile(rf"\bON\s+DELETE\s+{REFERENTIAL_ACTION}", re.I)
+ON_UPDATE = re.compile(rf"\bON\s+UPDATE\s+{REFERENTIAL_ACTION}", re.I)
+COLUMN_LIST = re.compile(r"\(([^)]*)\)")
 COLUMN_LINE = re.compile(
     rf"^\s*({IDENT})\s+(.+?)(?=\s+(?:NOT|NULL|DEFAULT|CHECK|REFERENCES|PRIMARY|UNIQUE|GENERATED|COLLATE|CONSTRAINT|EXCLUDE)\b|\s*$)",
     re.I | re.S)
@@ -47,13 +52,14 @@ TABLE_LEVEL = re.compile(r"^\s*(CONSTRAINT|PRIMARY\s+KEY|UNIQUE|CHECK|FOREIGN\s+
 CONSTRAINT_KIND = re.compile(r"\s*(CHECK|UNIQUE|EXCLUDE|FOREIGN|PRIMARY|LIKE)\b", re.I)
 NAMED_CONSTRAINT = re.compile(rf"CONSTRAINT\s+({IDENT})\s+(.*)$", re.I | re.S)
 TRAILING_COMMENT = re.compile(r"[ \t]*--[^\n]*")
-COLUMN_CHECK = re.compile(r"\bCHECK\s*\(", re.I)
 NOT_NULL = re.compile(r"\bNOT\s+NULL\b", re.I)
 PRIMARY_KEY = re.compile(r"\bPRIMARY\s+KEY\b", re.I)
-PRIMARY_KEY_COLUMNS = re.compile(r"\bPRIMARY\s+KEY\s*\(([^)]*)\)", re.I)
 SET_NOT_NULL = re.compile(rf"^ALTER\s+(?:COLUMN\s+)?({IDENT})\s+(SET|DROP)\s+NOT\s+NULL\b", re.I)
-COLUMN_UNIQUE = re.compile(r"\bUNIQUE\b", re.I)
+SET_DEFAULT = re.compile(rf"^ALTER\s+(?:COLUMN\s+)?({IDENT})\s+(?:SET\s+DEFAULT\s+(.*)|DROP\s+DEFAULT)$", re.I | re.S)
+CLAUSE_STARTERS = {"DEFAULT", "CHECK", "REFERENCES", "PRIMARY", "UNIQUE", "CONSTRAINT", "GENERATED", "NOT", "COLLATE",
+                   "DEFERRABLE", "INITIALLY"}
 OPAQUE_SPANS = (("--", "\n"), ("$$", "$$"), ("'", "'"))
+NAME_LIMIT = 63
 
 
 @dataclass
@@ -75,6 +81,13 @@ class Span:
 
 
 @dataclass(frozen=True)
+class Declared:
+    table: str
+    span: Span
+    text: str
+
+
+@dataclass(frozen=True)
 class Constraint:
     kind: str
     table: str
@@ -83,10 +96,13 @@ class Constraint:
     end: int
     name: str
     text: str
+    columns: tuple[str, ...] = ()
+    column: str | None = None
 
     @classmethod
-    def at(cls, kind: str, table: str, span: Span, name: str, text: str) -> Constraint:
-        return cls(kind, table, span.file, span.first, span.last, name, one_line(text))
+    def at(cls, kind: str, declared: Declared, name: str, columns: tuple[str, ...] = (), column: str | None = None) -> Constraint:
+        span = declared.span
+        return cls(kind, declared.table, span.file, span.first, span.last, name, one_line(declared.text), columns, column)
 
 
 @dataclass(frozen=True)
@@ -95,6 +111,23 @@ class ForeignKey:
     parent: str
     file: str
     line: int
+    name: str = ""
+    columns: tuple[str, ...] = ()
+    parent_columns: tuple[str, ...] = ()
+    on_delete: str | None = None
+    on_update: str | None = None
+    text: str = ""
+
+
+@dataclass(frozen=True)
+class Index:
+    name: str
+    table: str
+    file: str
+    line: int
+    unique: bool
+    definition: str
+    columns: tuple[str, ...]
 
 
 @dataclass
@@ -102,6 +135,8 @@ class Schema:
     tables: dict[str, Table] = field(default_factory=dict)
     constraints: list[Constraint] = field(default_factory=list)
     foreign_keys: list[ForeignKey] = field(default_factory=list)
+    primary_keys: dict[str, Constraint] = field(default_factory=dict)
+    indexes: list[Index] = field(default_factory=list)
     types: list[str] = field(default_factory=list)
     enums: dict[str, list[str]] = field(default_factory=dict)
     type_comments: dict[str, str] = field(default_factory=dict)
@@ -215,6 +250,40 @@ def _split_top_level(body: str) -> list[str]:
     return parts
 
 
+def _top_level_words(text: str) -> list[tuple[int, str]]:
+    found, depth, index = [], 0, 0
+    while index < len(text):
+        end = _opaque_end(text, index)
+        if end is not None:
+            index = end
+            continue
+        char = text[index]
+        depth += (char == "(") - (char == ")")
+        if depth == 0 and (char.isalpha() or char == "_"):
+            start = index
+            while index < len(text) and (text[index].isalnum() or text[index] == "_"):
+                index += 1
+            found.append((start, text[start:index].upper()))
+            continue
+        index += 1
+    return found
+
+
+def _clauses(declaration: str, start: int) -> list[tuple[str, str, str | None]]:
+    starters = [(at, word) for at, word in _top_level_words(declaration) if at >= start and word in CLAUSE_STARTERS]
+    clauses: list[tuple[str, str, str | None]] = []
+    given = None
+    for position, (at, word) in enumerate(starters):
+        stop = starters[position + 1][0] if position + 1 < len(starters) else len(declaration)
+        text = declaration[at:stop].strip()
+        if word == "CONSTRAINT":
+            given = text.split()[1] if len(text.split()) > 1 else None
+            continue
+        clauses.append((word, text, given))
+        given = None
+    return clauses
+
+
 def _with_trailing_comments_kept_on_their_line(parts: list[str]) -> list[str]:
     kept = list(parts)
     for index in range(1, len(kept)):
@@ -247,54 +316,138 @@ def _read_table(schema: Schema, file: str, line: int, statement: str, match: re.
         text = strip_comments(part).strip()
         if not text:
             continue
-        span = Span(file, first, last)
+        declared = Declared(name, Span(file, first, last), text)
         if TABLE_LEVEL.match(text):
-            _read_table_constraint(schema, name, span, text)
+            _read_table_constraint(schema, declared)
             continue
-        column = COLUMN_LINE.match(text)
-        if column is None:
+        if not _read_column(schema, declared):
             schema.unparsed.append(f"{file}:{first}: {text[:60]}")
-            continue
-        table.columns[column.group(1)] = _new_column(first, column.group(2), text)
-        _read_column_rules(schema, name, span, text)
 
 
-def _new_column(line: int, declared_type: str, declaration: str) -> dict[str, Any]:
+def _read_column(schema: Schema, declared: Declared) -> bool:
+    column = COLUMN_LINE.match(declared.text)
+    if column is None:
+        return False
+    span = declared.span
+    schema.tables[declared.table].columns[column.group(1)] = _new_column(span.file, span.first, column.group(2), declared.text)
+    _read_column_rules(schema, declared, column.group(1), column.end(2))
+    return True
+
+
+def _new_column(file: str, line: int, declared_type: str, declaration: str) -> dict[str, Any]:
     primary = bool(PRIMARY_KEY.search(declaration))
-    return {"line": line, "type": one_line(declared_type), "not_null": primary or bool(NOT_NULL.search(declaration)),
-            "primary_key": primary, "described": False, "comment": None}
+    return {"file": file, "line": line, "type": one_line(declared_type), "not_null": primary or bool(NOT_NULL.search(declaration)),
+            "primary_key": primary, "described": False, "comment": None, "default": None}
 
 
-def _read_column_rules(schema: Schema, table: str, span: Span, text: str) -> None:
-    column = f"{table}.{text.split()[0]}"
-    if COLUMN_CHECK.search(text):
-        _declare(schema, Constraint.at("check", table, span, column, text))
-    if COLUMN_UNIQUE.search(text):
-        _declare(schema, Constraint.at("unique", table, span, column, text))
-    referenced = REFERENCES.search(text)
-    if referenced:
-        schema.foreign_keys.append(ForeignKey(table, referenced.group(1), span.file, span.first))
+def _read_column_rules(schema: Schema, declared: Declared, column: str, start: int) -> None:
+    for keyword, clause, given in _clauses(declared.text, start):
+        if keyword == "DEFAULT":
+            schema.tables[declared.table].columns[column]["default"] = one_line(clause[len("DEFAULT"):])
+        elif keyword == "CHECK":
+            _add_check(schema, declared, clause, given, column)
+        elif keyword == "UNIQUE":
+            _add_unique(schema, declared, (column,), given, column)
+        elif keyword == "PRIMARY":
+            _add_primary_key(schema, declared, (column,), given)
+        elif keyword == "REFERENCES":
+            _add_foreign_key(schema, declared, (column,), clause, given)
 
 
-def _read_table_constraint(schema: Schema, table: str, span: Span, text: str) -> None:
-    named = NAMED_CONSTRAINT.match(text)
-    label = named.group(1) if named else f"{table}:{span.first}"
-    clause = named.group(2) if named else text
+def _read_table_constraint(schema: Schema, declared: Declared) -> None:
+    named = NAMED_CONSTRAINT.match(declared.text)
+    given = named.group(1) if named else None
+    clause = named.group(2) if named else declared.text
     leading = CONSTRAINT_KIND.match(clause)
     kind = leading.group(1).upper() if leading else ""
-    if kind in {"CHECK", "UNIQUE", "EXCLUDE"}:
-        _declare(schema, Constraint.at(kind.lower(), table, span, label, text))
+    listed = _listed_columns(clause)
+    if kind == "CHECK":
+        _add_check(schema, declared, clause, given, None)
+    elif kind == "UNIQUE":
+        _add_unique(schema, declared, listed, given, None)
+    elif kind == "EXCLUDE":
+        involved = _columns_named_in(clause, schema.tables[declared.table].columns)
+        name = given or _default_name(schema, declared.table, "_".join(involved), "excl")
+        _declare(schema, Constraint.at("exclude", declared, name, involved))
     elif kind == "FOREIGN":
-        referenced = REFERENCES.search(clause)
-        if referenced:
-            schema.foreign_keys.append(ForeignKey(table, referenced.group(1), span.file, span.first))
+        _add_foreign_key(schema, declared, listed, clause, given)
     elif kind == "PRIMARY":
-        listed = PRIMARY_KEY_COLUMNS.search(clause)
-        for column in (listed.group(1).split(",") if listed else []):
-            if column.strip() in schema.tables[table].columns:
-                schema.tables[table].columns[column.strip()].update(not_null=True, primary_key=True)
+        _add_primary_key(schema, declared, listed, given)
     elif kind != "LIKE":
-        schema.unparsed.append(f"{span.file}:{span.first}: {text[:60]}")
+        schema.unparsed.append(f"{declared.span.file}:{declared.span.first}: {declared.text[:60]}")
+
+
+def _listed_columns(clause: str) -> tuple[str, ...]:
+    listed = COLUMN_LIST.search(clause)
+    return tuple(column.strip() for column in listed.group(1).split(",") if column.strip()) if listed else ()
+
+
+def _columns_named_in(text: str, columns: dict[str, Any]) -> tuple[str, ...]:
+    words = re.findall(IDENT, STRING_LITERAL.sub("''", text))
+    return tuple(dict.fromkeys(word for word in words if word in columns))
+
+
+def _object_name(first: str, second: str, label: str) -> str:
+    first, second = first[:NAME_LIMIT], second[:NAME_LIMIT]
+    kept_first, kept_second = len(first), len(second)
+    overhead = len(label) + 1 + (1 if second else 0)
+    while kept_first + kept_second + overhead > NAME_LIMIT:
+        if kept_first > kept_second:
+            kept_first -= 1
+        else:
+            kept_second -= 1
+    return "_".join(part for part in (first[:kept_first], second[:kept_second], label) if part)
+
+
+def _used_names(schema: Schema, table: str) -> set[str]:
+    return ({c.name for c in schema.constraints if c.table == table and c.kind != "trigger"}
+            | {key.name for key in schema.foreign_keys if key.child == table}
+            | {primary.name for primary in schema.primary_keys.values()} | {index.name for index in schema.indexes}
+            | set(schema.tables))
+
+
+def _default_name(schema: Schema, table: str, middle: str, label: str) -> str:
+    used = _used_names(schema, table)
+    for attempt in itertools.count():
+        name = _object_name(table, middle, f"{label}{attempt}" if attempt else label)
+        if name not in used:
+            return name
+    raise AssertionError
+
+
+def _add_check(schema: Schema, declared: Declared, clause: str, given: str | None, column: str | None) -> None:
+    involved = _columns_named_in(clause[len("CHECK"):], schema.tables[declared.table].columns)
+    name = given or _default_name(schema, declared.table, involved[0] if len(involved) == 1 else "", "check")
+    _declare(schema, Constraint.at("check", declared, name, involved, column))
+
+
+def _add_unique(schema: Schema, declared: Declared, listed: tuple[str, ...], given: str | None, column: str | None) -> None:
+    name = given or _default_name(schema, declared.table, "_".join(listed), "key")
+    _declare(schema, Constraint.at("unique", declared, name, listed, column))
+
+
+def _add_primary_key(schema: Schema, declared: Declared, listed: tuple[str, ...], given: str | None) -> None:
+    columns = schema.tables[declared.table].columns
+    for column in listed:
+        if column in columns:
+            columns[column].update(not_null=True, primary_key=True)
+    name = given or _default_name(schema, declared.table, "", "pkey")
+    schema.primary_keys[declared.table] = Constraint.at("primary", declared, name, listed)
+
+
+def _add_foreign_key(schema: Schema, declared: Declared, listed: tuple[str, ...], clause: str, given: str | None) -> None:
+    parent = PARENT.search(clause)
+    span = declared.span
+    if parent is None:
+        schema.unparsed.append(f"{span.file}:{span.first}: {declared.text[:60]}")
+        return
+    deletion, update = ON_DELETE.search(clause), ON_UPDATE.search(clause)
+    schema.foreign_keys.append(ForeignKey(
+        declared.table, parent.group(1), span.file, span.first,
+        given or _default_name(schema, declared.table, "_".join(listed), "fkey"), listed,
+        _listed_columns(parent.group(0)) if parent.group(2) else (),
+        " ".join(deletion.group(1).upper().split()) if deletion else None,
+        " ".join(update.group(1).upper().split()) if update else None, one_line(declared.text)))
 
 
 def _read_alter(schema: Schema, file: str, line: int, statement: str, match: re.Match[str]) -> None:
@@ -316,59 +469,85 @@ def _read_alter_action(schema: Schema, table: str, span: Span, text: str) -> boo
     renamed = RENAME_COLUMN.match(text)
     dropped_constraint = DROP_CONSTRAINT.match(text)
     nullability = SET_NOT_NULL.match(text)
+    default = SET_DEFAULT.match(text)
     if nullability and nullability.group(1) in columns:
         columns[nullability.group(1)]["not_null"] = nullability.group(2).upper() == "SET"
+    elif default and default.group(1) in columns:
+        columns[default.group(1)]["default"] = one_line(default.group(2)) if default.group(2) else None
     elif dropped_constraint:
         _drop_constraint(schema, table, dropped_constraint.group(1))
     elif ADD_CONSTRAINT.match(text):
-        _read_table_constraint(schema, table, span, text[len("ADD "):].strip())
+        _read_table_constraint(schema, Declared(table, span, text[len("ADD "):].strip()))
     elif added:
-        declaration = text[added.start(1):]
-        columns[added.group(1)] = _new_column(span.first, COLUMN_LINE.match(declaration).group(2), declaration)
-        _read_column_rules(schema, table, span, declaration)
+        return _read_column(schema, Declared(table, span, text[added.start(1):]))
     elif dropped:
-        columns.pop(dropped.group(1), None)
+        _drop_column(schema, table, dropped.group(1))
     elif renamed:
-        _rename_column(schema.tables[table], renamed.group(1), renamed.group(2))
+        _rename_column(schema, table, renamed.group(1), renamed.group(2))
     else:
         return bool(OTHER_ALTER.match(text))
     return True
 
 
-def _rename_column(table: Table, old: str, new: str) -> None:
-    if old in table.columns:
-        table.columns[new] = table.columns.pop(old)
+def _rename_column(schema: Schema, table: str, old: str, new: str) -> None:
+    columns = schema.tables[table].columns
+    if old in columns:
+        columns[new] = columns.pop(old)
+
+    def renamed(listed: tuple[str, ...]) -> tuple[str, ...]:
+        return tuple(new if column == old else column for column in listed)
+
+    schema.constraints = [replace(c, columns=renamed(c.columns)) if c.table == table else c for c in schema.constraints]
+    schema.foreign_keys = [replace(k, columns=renamed(k.columns)) if k.child == table else k for k in schema.foreign_keys]
+    schema.indexes = [replace(i, columns=renamed(i.columns)) if i.table == table else i for i in schema.indexes]
+    if table in schema.primary_keys:
+        schema.primary_keys[table] = replace(schema.primary_keys[table], columns=renamed(schema.primary_keys[table].columns))
 
 
 def _drop_constraint(schema: Schema, table: str, name: str) -> None:
-    _undeclare(schema, lambda c: c.kind in ("trigger", UNIQUE_INDEX) or c.table != table or name not in _names_of(c))
+    _undeclare(schema, lambda c: c.kind in ("trigger", UNIQUE_INDEX) or (c.table, c.name) != (table, name))
+    schema.foreign_keys = [key for key in schema.foreign_keys if (key.child, key.name) != (table, name)]
+    if table in schema.primary_keys and schema.primary_keys[table].name == name:
+        del schema.primary_keys[table]
 
 
-def _names_of(constraint: Constraint) -> set[str]:
-    table, dot, column = constraint.name.partition(".")
-    if not dot or table != constraint.table:
-        return {constraint.name}
-    return {constraint.name, f"{table}_{column}_{'key' if constraint.kind == 'unique' else constraint.kind}"}
+def _drop_column(schema: Schema, table: str, column: str) -> None:
+    schema.tables[table].columns.pop(column, None)
+    _undeclare(schema, lambda c: c.kind == "trigger" or c.table != table or column not in c.columns)
+    schema.foreign_keys = [key for key in schema.foreign_keys if key.child != table or column not in key.columns]
+    schema.indexes = [index for index in schema.indexes if index.table != table or column not in index.columns]
+    if table in schema.primary_keys and column in schema.primary_keys[table].columns:
+        del schema.primary_keys[table]
 
 
 def _read_drop(schema: Schema, _file: str, _line: int, _statement: str, match: re.Match[str]) -> None:
-    schema.tables.pop(match.group(1), None)
+    table = match.group(1)
+    schema.tables.pop(table, None)
+    schema.primary_keys.pop(table, None)
+    _undeclare(schema, lambda c: c.table != table)
+    schema.foreign_keys = [key for key in schema.foreign_keys if table not in (key.child, key.parent)]
+    schema.indexes = [index for index in schema.indexes if index.table != table]
 
 
 def _read_index(schema: Schema, file: str, line: int, statement: str, match: re.Match[str]) -> None:
-    unique, name, table = match.group(1), match.group(2), match.group(3)
+    unique, name, table = bool(match.group(1)), match.group(2), match.group(3)
+    definition = one_line(strip_comments(statement).strip()[match.end():])
+    columns = _columns_named_in(definition, schema.tables[table].columns if table in schema.tables else {})
+    schema.indexes = [index for index in schema.indexes if index.name != name]
+    schema.indexes.append(Index(name, table, file, line, unique, definition, columns))
     _undeclare(schema, lambda c: c.kind != UNIQUE_INDEX or c.name != name)
     if unique:
-        _declare(schema, Constraint.at(UNIQUE_INDEX, table, Span(file, line, line + statement.count("\n")), name, statement))
+        _declare(schema, Constraint.at(UNIQUE_INDEX, Declared(table, Span(file, line, line + statement.count("\n")), statement), name, columns))
 
 
 def _read_trigger(schema: Schema, file: str, line: int, statement: str, match: re.Match[str]) -> None:
-    _declare(schema, Constraint.at(
-        "trigger", match.group(2), Span(file, line, line + statement.count("\n")), match.group(1), statement))
+    declared = Declared(match.group(2), Span(file, line, line + statement.count("\n")), statement)
+    _declare(schema, Constraint.at("trigger", declared, match.group(1)))
 
 
 def _read_drop_index(schema: Schema, _file: str, _line: int, _statement: str, match: re.Match[str]) -> None:
     name = match.group(1)
+    schema.indexes = [index for index in schema.indexes if index.name != name]
     _undeclare(schema, lambda c: c.kind != UNIQUE_INDEX or c.name != name)
 
 

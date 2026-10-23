@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .common import ASSET_KEYS
-from .sql_schema import IDENT, Constraint, ForeignKey, Schema, Table, live_tables, one_line, read_schema, strip_comments
+from .sql_schema import IDENT, Constraint, ForeignKey, Index, Schema, Table, live_tables, one_line, read_schema, strip_comments
 from .store import read_document
 
 CHECK_BODY = re.compile(r"\bCHECK\s*\((.*)\)", re.I | re.S)
@@ -16,6 +16,7 @@ ONLY_AN_IN_LIST = re.compile(
 QUOTED = re.compile(r"'((?:[^']|'')*)'")
 SUMMARY_FIELDS = ("statement", "definition", "responsibility", "description", "name")
 SUMMARY_LENGTH = 160
+DEFAULT_ACTION = "NO ACTION"
 
 
 def describe_table(registry_root: Path | None, repo_root: Path, migrations_dir: Path, name: str) -> dict[str, Any]:
@@ -23,18 +24,22 @@ def describe_table(registry_root: Path | None, repo_root: Path, migrations_dir: 
     tables = live_tables(schema)
     table = tables.get(name)
     if table is None:
-        raise ValueError(f"no table {name} in {migrations_dir}{_did_you_mean(name, tables)}")
+        raise ValueError(f"no table {name!r} in {migrations_dir}{_did_you_mean(name, tables)}")
     constraints = [constraint for constraint in schema.constraints if constraint.table == name]
+    primary = [schema.primary_keys[name]] if name in schema.primary_keys else []
+    outgoing = [key for key in schema.foreign_keys if key.child == name]
+    incoming = [key for key in schema.foreign_keys if key.parent == name and key.child in tables]
     return {
         "table": name,
         "declared_at": f"{table.file}:{table.line}",
         "meaning": table.comment,
         "columns": [_column(column, info, constraints, schema) for column, info in table.columns.items()],
-        "constraints": [_constraint(constraint) for constraint in constraints],
-        "references": [_edge("parent", key.parent, key) for key in schema.foreign_keys if key.child == name],
-        "referenced_by": [_edge("child", key.child, key) for key in schema.foreign_keys if key.parent == name and key.child in tables],
+        "constraints": [*(_constraint(c) for c in primary + constraints), *(_foreign_constraint(key) for key in outgoing)],
+        "indexes": [_index(index) for index in schema.indexes if index.table == name],
+        "references": [_edge("parent", key.parent, key, tables) for key in outgoing],
+        "referenced_by": [_edge("child", key.child, key, tables) for key in incoming],
         "partitions": sorted(partition for partition, declared in schema.tables.items() if declared.partition_of == name),
-        "registry": _mentions(registry_root, name, table, constraints) if registry_root is not None else [],
+        "registry": _mentions(registry_root, name, table, primary + constraints, outgoing) if registry_root is not None else [],
         "undescribed_columns": [column for column, info in table.columns.items() if info.get("comment") is None],
     }
 
@@ -49,10 +54,12 @@ def _column(column: str, info: dict[str, Any], constraints: list[Constraint], sc
     return {
         "name": column,
         "line": info["line"],
+        "at": f"{info['file']}:{info['line']}",
         "type": declared_type,
         "type_meaning": schema.type_comments.get(declared_type),
         "required": info.get("not_null", False),
         "primary_key": info.get("primary_key", False),
+        "default": info.get("default"),
         "meaning": info.get("comment"),
         "allowed_values": allowed_values(column, constraints, schema.enums.get(declared_type)),
     }
@@ -72,13 +79,28 @@ def _constraint(constraint: Constraint) -> dict[str, Any]:
             "at": f"{constraint.file}:{constraint.line}"}
 
 
-def _edge(role: str, other: str, key: ForeignKey) -> dict[str, str]:
-    return {role: other, "at": f"{key.file}:{key.line}"}
+def _foreign_constraint(key: ForeignKey) -> dict[str, Any]:
+    return {"kind": "foreign", "name": key.name, "text": key.text, "at": f"{key.file}:{key.line}"}
 
 
-def _mentions(registry_root: Path, name: str, table: Table, constraints: list[Constraint]) -> list[dict[str, Any]]:
+def _index(index: Index) -> dict[str, Any]:
+    return {"name": index.name, "unique": index.unique, "definition": index.definition, "at": f"{index.file}:{index.line}"}
+
+
+def _edge(role: str, other: str, key: ForeignKey, tables: dict[str, Table]) -> dict[str, Any]:
+    parent_columns = list(key.parent_columns) or _primary_columns(tables.get(key.parent))
+    return {role: other, "name": key.name, "columns": list(key.columns), "parent_columns": parent_columns,
+            "on_delete": key.on_delete or DEFAULT_ACTION, "on_update": key.on_update or DEFAULT_ACTION, "at": f"{key.file}:{key.line}"}
+
+
+def _primary_columns(table: Table | None) -> list[str]:
+    return [column for column, info in table.columns.items() if info.get("primary_key")] if table else []
+
+
+def _mentions(registry_root: Path, name: str, table: Table, constraints: list[Constraint], keys: list[ForeignKey]) -> list[dict[str, Any]]:
     word = re.compile(rf"\b{re.escape(name)}\b")
-    spans = [(table.file, table.line, table.line), *((c.file, c.line, c.end) for c in constraints)]
+    spans = [(table.file, table.line, table.line), *((c.file, c.line, c.end) for c in constraints),
+             *((key.file, key.line, key.line) for key in keys)]
     found = []
     for document_name, key in ASSET_KEYS.items():
         for record in read_document(registry_root, document_name).get(key, []):

@@ -1,12 +1,12 @@
 {
   "inventory": {
-    "migrations": 141,
+    "migrations": 142,
     "tables": 73,
     "partitions": 4,
     "columns": 665,
     "queries": 520,
-    "constraints": 283,
-    "foreign_keys": 147,
+    "constraints": 278,
+    "foreign_keys": 129,
     "types": 2,
     "registry_records": 752,
     "unparsed_statements": 0
@@ -64,17 +64,17 @@
     },
     "rules.constraints_cited_by_a_record": {
       "numerator": 2,
-      "denominator": 274,
+      "denominator": 269,
       "ratio": 0.007
     },
     "rules.foreign_keys_inside_one_context": {
-      "numerator": 56,
-      "denominator": 142,
-      "ratio": 0.394
+      "numerator": 45,
+      "denominator": 124,
+      "ratio": 0.363
     },
     "rules.cross_context_foreign_keys_with_a_recorded_collaboration": {
-      "numerator": 86,
-      "denominator": 86,
+      "numerator": 79,
+      "denominator": 79,
       "ratio": 1.0
     },
     "access.queries_with_an_owner": {
@@ -99,7 +99,7 @@
     },
     "provenance.migrations_cited_by_a_record": {
       "numerator": 2,
-      "denominator": 141,
+      "denominator": 142,
       "ratio": 0.014
     },
     "provenance.immutable_tables_known_to_registry": {

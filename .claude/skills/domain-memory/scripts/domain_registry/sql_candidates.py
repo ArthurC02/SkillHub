@@ -15,9 +15,13 @@ ID_SEPARATORS = re.compile(r"[^A-Za-z0-9_-]+")
 STATEMENT_LIMIT = 240
 
 
+def label_of(constraint: Constraint) -> str:
+    return f"{constraint.table}.{constraint.column}" if constraint.column else constraint.name
+
+
 def rule_id(constraint: Constraint) -> str:
-    if "." in constraint.name:
-        return ID_SEPARATORS.sub("-", f"{constraint.name}-{constraint.kind}").lower()
+    if constraint.column:
+        return ID_SEPARATORS.sub("-", f"{label_of(constraint)}-{constraint.kind}").lower()
     label = ID_SEPARATORS.sub("-", constraint.name).lower()
     return label if label.startswith(constraint.table.lower()) else f"{constraint.table.lower()}-{label}"
 
@@ -26,7 +30,7 @@ def statement_of(constraint: Constraint) -> str:
     text = constraint.text
     if len(text) > STATEMENT_LIMIT:
         text = text[: STATEMENT_LIMIT - 1] + "…"
-    return f"{constraint.table} keeps {constraint.kind} {constraint.name}: {text}"
+    return f"{constraint.table} keeps {constraint.kind} {label_of(constraint)}: {text}"
 
 
 def extract_sql_rules(

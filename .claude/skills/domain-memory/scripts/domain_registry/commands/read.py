@@ -169,7 +169,7 @@ def handle_get_context(args: argparse.Namespace) -> int:
 
 def handle_describe_table(args: argparse.Namespace) -> int:
     registry_root = args.registry_root.resolve() if args.registry_root else None
-    result = describe_table(registry_root, args.repo_root.resolve(), args.migrations.resolve(), args.table)
+    result = describe_table(registry_root, args.repo_root.resolve(), args.migrations.resolve(), args.table.strip())
     print_json(result)
     missing = result["undescribed_columns"]
     if missing:

@@ -63,7 +63,7 @@ def test_a_contract_carries_meaning_types_requirements_values_classification_own
     assert properties["speed"]["quality"][0]["validValues"] == ["fast", "slow"]
     assert properties["speed"]["description"] == "fast on the highway, slow in town"
     assert "description" not in properties["cost"] and "classification" not in properties["cost"]
-    assert [q["name"] for q in runs["schema"][0]["quality"]] == ["runs.state", "runs_cost_positive"]
+    assert [q["name"] for q in runs["schema"][0]["quality"]] == ["runs_state_check", "runs_cost_positive"]
     assert runs["customProperties"] == [
         {"property": "owner", "value": "run"}, {"property": "immutable", "value": "history"},
         {"property": "references", "value": ["users"]}, {"property": "referencedBy", "value": []}]
