@@ -1,6 +1,6 @@
 # Reliability architecture
 
-What the scripts guarantee about trust, writes and approval: for a host deciding what to rely on, and for an Agent asked whether a fact can be trusted. The commands themselves are in [script-api.md](script-api.md).
+What the scripts guarantee about trust, writes and approval, for a host deciding what to rely on and for an Agent asked whether a fact can be trusted. The commands themselves are in [script-api.md](script-api.md).
 
 ## Trust boundaries
 
@@ -24,25 +24,7 @@ A citation is an object, `{path, lines, excerpt_sha256}`, never a bare `path:lin
 
 ## State model
 
-Record maturity and Change Package workflow are separate states.
-
-| Record status | Meaning |
-| --- | --- |
-| `candidate` | Evidence or a proposed interpretation exists; it constrains no implementation. |
-| `reviewed` | The configured authority accepted this record revision and its evidence. |
-| `deprecated` | Kept for lookup, excluded from current decisions. |
-| `superseded` | Replaced by a named record or Change Package. |
-
-| Proposal status | What it proves |
-| --- | --- |
-| `draft` | The package validates and its unknowns are stated. |
-| `submitted` | The content is frozen, with the Registry revision it was built on. |
-| `verified` | Every test obligation has a passing result with the digest of the run's output, from `record-test-result` or from a CI run. |
-| `approved` | An approval is recorded for every role the policy and the requirement call for. |
-| `applied` | The Registry is written and the audit event appended. |
-| `superseded` or `rejected` | Terminal. |
-
-A change to the proposal's content, or to the records it touches, after submission invalidates `verified` and `approved`: `rebase-proposal` restamps the base and retires the approvals.
+Record maturity and Change Package workflow are separate states: a record is `candidate`, `reviewed`, `deprecated` or `superseded`, as [AGENTS.md](../AGENTS.md#words-you-will-meet) defines them, and a proposal moves through the states in [proposal lifecycle](proposal-lifecycle.md), which also says what makes a submitted proposal stale and how `rebase-proposal` restamps it.
 
 ## The write protocol
 
@@ -60,7 +42,7 @@ The HEAD commit is provenance. A proposal's base is its Registry digest, so unre
 
 ## Approval and test attestations
 
-A Registry whose review mode is `local-draft-only` makes candidates and nothing else; no command promotes a record until the policy names a verifier. `github-pr` reads the pull request through the provider's API: it must be merged, hold a current approval, have every check run completed and successful, and its head commit must carry this package with the same proposal id and revision. `git-signed-commit` checks the signature on the commit that carries the package against the authorized signers, by key fingerprint or principal. A reviewer name typed into a file is never evidence.
+Which outside proof satisfies the approval the policy names, a merged pull request under `github-pr` or a signed commit under `git-signed-commit`, and how to prepare either, is in [Preparing the approval authority](script-api.md#preparing-the-approval-authority). A reviewer name typed into a file is never evidence.
 
 A test result is recorded by `record-test-result`, which runs the obligation's check under one of the policy's command profiles and records the command, the profile, exit code 0, the digest of the run's output and when it finished; a result from a CI run is entered with the same fields, the run's link as its evidence, and `verify-proposal` refuses one without the digest. A bare `passed` is never enough. `validate-contract` parses a contract schema locally and answers `unverified` for one it cannot, never `valid`.
 

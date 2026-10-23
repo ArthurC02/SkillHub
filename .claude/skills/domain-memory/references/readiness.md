@@ -4,12 +4,12 @@
 
 ## States
 
-| State | Evidence | Next capability |
-| --- | --- | --- |
-| `empty` | No decisions, requirements, contracts, bounded-context files, implementation, or tests are discoverable. | `discover` |
-| `greenfield` | At least one design or product source is present, or a valid Registry contains domain records, but no implementation source is discoverable. | `design` |
-| `brownfield` | An implementation source is discoverable. Existing Registry facts still require the normal review checks. | `read-and-maintain`, or `extract` when the supplied Registry holds no record yet |
-| `dead` | A supplied Registry or source map is invalid, unverified, or stale, and no current product source is discoverable. | `recover-or-reconfirm` |
+| State | Evidence | `next_capability` | What to open |
+| --- | --- | --- | --- |
+| `empty` | No decisions, requirements, contracts, bounded-context files, implementation, or tests are discoverable. | `discover` | No Skill: `discover-sources`, then `init-domain-memory` with the developer's choices, as [the workflow](seven-step-workflow.md#before-step-0-map-repository-sources) says |
+| `greenfield` | At least one design or product source is present, or a valid Registry contains domain records, but no implementation source is discoverable. | `design` | [domain-memory-design](../skills/domain-memory-design/SKILL.md) |
+| `brownfield` | An implementation source is discoverable. Existing Registry facts still require the normal review checks. | `read-and-maintain`, or `extract` when the supplied Registry holds no record yet | [domain-memory-read](../skills/domain-memory-read/SKILL.md), then [domain-memory-maintain](../skills/domain-memory-maintain/SKILL.md) after the change; [domain-memory-extract](../skills/domain-memory-extract/SKILL.md) for `extract` |
+| `dead` | A supplied Registry or source map is invalid, unverified, or stale, and no current product source is discoverable. | `recover-or-reconfirm` | No Skill: `recover-registry-update` for an interrupted write, `confirm-sources` or `refresh-sources` for a source map that is unverified or stale, as `blocks` names them |
 
 The state is a posture, not a verdict about project ownership, quality, or whether the project is commercially active. Missing tests do not make a project dead. A repository with an unusual layout may be reported as empty or greenfield; run `discover-sources` and let a developer choose the corpus.
 

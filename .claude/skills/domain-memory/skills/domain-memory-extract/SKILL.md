@@ -1,6 +1,6 @@
 ---
 name: domain-memory-extract
-description: Extract DDD information into the Domain Registry as cited candidates. Use when the Registry has not learned a requirement, a codebase, or a change yet; it never promotes what it finds.
+description: Extract DDD information into the Domain Registry as cited candidates. Use when the Registry has never seen the source, a requirement, a codebase or a change; it never promotes what it finds.
 ---
 
 # Extract Domain Memory

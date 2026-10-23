@@ -1,6 +1,6 @@
 # Domain Memory — developing the plugin
 
-Agents start at `AGENTS.md`; this page is for people changing the plugin itself.
+Agents start at `AGENTS.md`, the entry for an Agent without Skill support; this page is for people changing the plugin itself. `skills/` holds the seven Skills the manifest points to, and `references/`, `templates/` and `scripts/` are shared by all of them.
 
 Requirements: Python 3.10 or later, the standard library, and `git`; `init-signing-key` alone also needs OpenSSH's `ssh-keygen`. The suite runs on Linux and Windows.
 
@@ -44,3 +44,9 @@ Three rules keep this shape. Once a Registry exists, its records change only thr
 `ruff.toml` pins every finding it tolerates with a line-level `noqa`. A new finding fails, and so does a `noqa` that no longer suppresses anything: simplify a pinned function and its marker has to go in the same change.
 
 Any change to what ships — everything except `evals/` and `scripts/test_*.py` — raises `version` in `.claude-plugin/plugin.json` and the same value in `scripts/domain_registry/version.py` (the MCP server reports the latter; a test keeps the two equal), so installed copies see it, and adds an entry to `CHANGELOG.md`.
+
+The manifest carries packaging identity only: `name`, `version`, `description`, `author`, `keywords` and the component pointers. Presentation and catalogue fields belong to the host or the marketplace entry; a host ignores unknown fields, so anything it does not define is silent drift rather than configuration.
+
+`evals/` holds scenarios, each directory stating them in `scenarios.json`: a small project, the handoff and task an Agent receives, the expectations a reader judges, and a `check.py` that computes the ones a machine can. Give each scenario to an Agent with the Plugin as released and again with the Plugin as changed, on more than one model tier, and compare. A change to a Skill or a reference that moves no scenario has not been shown to help.
+
+Before release, validate the Plugin manifest with the host's validator and run the suite. A valid manifest proves the packaging shape; it does not prove that a host invokes every capability.

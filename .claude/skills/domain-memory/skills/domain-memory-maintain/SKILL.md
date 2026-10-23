@@ -1,6 +1,6 @@
 ---
 name: domain-memory-maintain
-description: Keep the Domain Registry current after implementation or source drift. Use after code changed or a selected source moved; it re-cites evidence and records what the model learned as governed candidates.
+description: Keep the Domain Registry current after implementation. Use when merged code moved or edited cited lines, or a selected source moved; it re-cites evidence and records what the model learned as governed candidates.
 ---
 
 # Maintain Domain Memory
@@ -11,7 +11,7 @@ For a brownfield refactoring that preserves the reviewed model, follow the [brow
 
 1. Run `verify-sources --repo-root <repo> --source-map <registry>/source-map.json --policy <registry>/domain-memory-policy.json`, `verify-evidence --registry-root <registry> --repo-root <repo>`, `verify-audit --registry-root <registry>`, and `boundary-impact --registry-root <registry> --repo-root <repo> --base <branch point>`, which names the Contexts the change touched together and the boundary records whose evidence changed. Then re-cite what the change moved or edited, with the commands step 6 of the [brownfield refactoring fast path](../../references/brownfield-refactoring.md) lists. `<registry>` is the registry root, the directory that holds `registry/`, `source-map.json`, and the policy, not `registry/` itself.
 2. Compare the implemented behavior with the reviewed terms, owner, invariants, boundaries, events, contracts, and capabilities.
-3. Compare the implementation's tactical choice, including an explicit choice of no pattern, with the invariant, ownership, consistency, retry, and failure behavior it claims to preserve. Review behavior and dependencies, not a fixed language pattern. See [tactical design reasoning](../../references/tactical-reasoning.md).
+3. Compare the implementation's tactical choice, including an explicit choice of no pattern, with the forces it claims to preserve, using the [review questions](../../references/tactical-reasoning.md#review-questions); review behavior and dependencies, not a fixed language pattern.
    When the change touches an adapter, configuration, a client or a timeout, check it against [the assembly point](../../references/ports-and-adapters.md#at-the-assembly-point).
 4. Decide whether the model changed with the one list in [extraction](../../references/extraction.md#from-a-change).
    If the model changed, update the smallest affected asset, its fields as [the Registry schema](../../references/registry-schema.md) lists them: a candidate with `upsert-candidate`, a reviewed record with `promote-candidate` and `--amend` into a Change Package; prepare a Change Package for a material change. For a boundary-preserving refactor, retain the focused architecture check when one exists; otherwise retain affected tests and lint as preservation evidence.
