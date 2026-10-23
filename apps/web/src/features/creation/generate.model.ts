@@ -62,7 +62,7 @@ const GENERATE_FAILURE_BY_STATUS: Record<number, string> = {
 };
 
 export function generateFailureMessage(status: number | undefined, message: string): string {
-  if (status === 422 && /[㐀-鿿]/u.test(message)) return message;
+  if (status !== 401 && /[㐀-鿿]/u.test(message)) return message;
   return (
     (status !== undefined && GENERATE_FAILURE_BY_STATUS[status]) ||
     "生成沒有成功，請檢查連線後再試一次。"

@@ -249,6 +249,15 @@ test("丙-151: 413 印「檔案超過上限，請縮小套件再上傳。」", a
   expect(text()).not.toContain("file is larger than");
 });
 
+test("a 429 carrying the server's wait time shows that time", async () => {
+  stubOwner(() => json({ error: "太多請求了，請在 9 秒後再試。" }, 429));
+  await render();
+  await submitUpload();
+  await waitFor(() => text().includes("太多請求了，請在 9 秒後再試。"));
+
+  expect(text()).not.toContain("上傳太頻繁了，請稍等一下再上傳。");
+});
+
 test("a 429 says the uploads came too fast and to wait", async () => {
   stubOwner(() => json({ error: "rate limit exceeded" }, 429));
   await render();

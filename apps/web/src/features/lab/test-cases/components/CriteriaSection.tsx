@@ -3,7 +3,7 @@ import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { CheckEditor, forRequest, useCheckReady, type CheckNode } from "../../../evaluation";
-import { ApiError } from "../../../../core/api/client";
+import { ApiError, userFacingReason } from "../../../../core/api/client";
 import { useAddCriterion, useSuggestCriteria } from "../../testcases.service";
 import type { TestCase } from "../../testcases.service";
 import { MutationError } from "./MutationError";
@@ -82,7 +82,7 @@ function suggestFailureSentence(error: unknown) {
   if (status === 413) return `${FULL_SENTENCE}這次沒有呼叫模型、也沒有扣點。`;
   if (status === 422)
     return "點數不足，這次沒有呼叫模型、也沒有扣點。驗收條件可以自己手動輸入，或請管理者加點後再試。";
-  return "無法取得建議，可以再試一次。";
+  return userFacingReason(error) ?? "無法取得建議，可以再試一次。";
 }
 
 export function CriteriaSection({ testCase }: { testCase: TestCase }) {

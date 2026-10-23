@@ -1109,6 +1109,15 @@ test("TEST-002 an adopted suggestion is listed as 系統建議，尚未確認", 
   expect(container.textContent).toContain("系統建議，尚未確認");
 });
 
+test("TEST-002 a 429 on suggestions shows the server's wait time", async () => {
+  stubPlatform({ suggest: { status: 429, error: "太多請求了，請在 4 秒後再試。" } });
+  await render();
+
+  await act(async () => button("請系統建議（選用）").click());
+  await waitFor(() => (container.textContent ?? "").includes("太多請求了，請在 4 秒後再試。"));
+  expect(container.textContent).not.toContain("無法取得建議，可以再試一次。");
+});
+
 test("TEST-002 a 503 is worded as unavailable and names the manual path, without the server's own words", async () => {
   stubPlatform({ suggest: { status: 503, error: "目前無法自動建議驗收條件，請自己手動輸入" } });
   await render();

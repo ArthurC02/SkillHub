@@ -4,7 +4,12 @@ import { Findings } from "../../../shared/ui/Findings";
 import { LoginRequired, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { useMe } from "../../../core/session/me.service";
-import { ApiError, SessionNotReadyError, isWriteResultUnknown } from "../../../core/api/client";
+import {
+  ApiError,
+  SessionNotReadyError,
+  isWriteResultUnknown,
+  userFacingReason,
+} from "../../../core/api/client";
 import {
   isImportResult,
   useImportSkill,
@@ -156,13 +161,14 @@ function ImportFailure({
               </>
             ) : (
               <p>
-                {error instanceof ApiError && error.status === 400
-                  ? "這個檔案不是可用的 zip 套件，或網址抓不到內容。"
-                  : error instanceof ApiError && error.status === 413
-                    ? "檔案超過上限。"
-                    : error instanceof ApiError && error.status === 422
-                      ? "這次匯入未被接受，但無法讀取完整檢查細節。請檢查來源後再送出。"
-                      : "匯入失敗，請確認來源與目前權限後再送出。"}
+                {userFacingReason(error) ??
+                  (error instanceof ApiError && error.status === 400
+                    ? "這個檔案不是可用的 zip 套件，或網址抓不到內容。"
+                    : error instanceof ApiError && error.status === 413
+                      ? "檔案超過上限。"
+                      : error instanceof ApiError && error.status === 422
+                        ? "這次匯入未被接受，但無法讀取完整檢查細節。請檢查來源後再送出。"
+                        : "匯入失敗，請確認來源與目前權限後再送出。")}
               </p>
             )}
           </div>

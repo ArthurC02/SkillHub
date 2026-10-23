@@ -71,6 +71,11 @@ export function serverReason(error: unknown): string | undefined {
   return reason === "" ? undefined : reason;
 }
 
+export function userFacingReason(error: unknown): string | undefined {
+  if (!(error instanceof ApiError) || error.status === 401) return undefined;
+  return /[㐀-鿿]/u.test(error.message) ? error.message : undefined;
+}
+
 function errorMessageFromBody(body: unknown, fallback: string): string {
   if (typeof body !== "object" || body === null || !("error" in body)) return fallback;
   const error = (body as { error?: unknown }).error;

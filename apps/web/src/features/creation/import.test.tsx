@@ -206,6 +206,23 @@ test("04 丙-150(a): a 400 (bad zip / unreachable URL) gets the page's own sente
   await waitFor(() => text().includes("這個檔案不是可用的 zip 套件，或網址抓不到內容。"));
 });
 
+test.each([
+  [400, "來源回應 HTTP 404，沒有取得檔案。"],
+  [429, "太多請求了，請在 12 秒後再試。"],
+])("an import refused with %i shows the server's reason %s", async (status, reason) => {
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const path = typeof input === "string" ? input : String(input);
+    if (path.endsWith("/me")) return json(ME);
+    if (path.endsWith("/skills/import/limits")) return json(IMPORT_LIMITS);
+    if (init?.method === "POST") return json({ error: reason }, status);
+    return json({ error: "not found" }, 404);
+  });
+
+  await submitURL();
+  await waitFor(() => text().includes(reason));
+  expect(text()).not.toContain("這個檔案不是可用的 zip 套件");
+});
+
 test("a 413 (file too large) gets its own sentence", async () => {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const path = typeof input === "string" ? input : String(input);

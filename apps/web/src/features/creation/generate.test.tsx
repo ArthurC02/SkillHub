@@ -233,6 +233,28 @@ test("GEN-008: a session that expires while generating says 需要登入, not th
 });
 
 test.each([
+  [429, "太多請求了，請在 7 秒後再試。"],
+  [503, "平台暫停中，這次沒有呼叫模型、也沒有花錢。請稍後再試。"],
+  [400, "其中一個參考的 Skill 無法使用，請換一個再試一次。"],
+])("a generation refused with %i shows the server's own sentence %s", async (status, said) => {
+  stubSession({ features: { generate_skill: true }, generateError: { status, error: said } });
+  await render();
+  await act(async () => {
+    await router.navigate({ to: "/", search: { q: "寫一個摘要器" } });
+  });
+  await waitFor(() => container.querySelector("#generate-task") !== null);
+
+  await act(async () => {
+    container
+      .querySelector<HTMLTextAreaElement>("#generate-task")!
+      .closest("section")!
+      .querySelector<HTMLButtonElement>('button[type="button"]')!
+      .click();
+  });
+  await waitFor(() => (container.textContent ?? "").includes(said));
+});
+
+test.each([
   [500, "請檢查連線後再試一次"],
   [409, "已經有一個生成在進行，等它完成後再試一次"],
   [429, "送出太頻繁了，請稍等一下再試"],
