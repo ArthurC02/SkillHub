@@ -11,6 +11,7 @@ from typing import Any
 PLUGIN_SCRIPTS = Path(__file__).resolve().parents[2] / ".claude" / "skills" / "domain-memory" / "scripts"
 sys.path.insert(0, str(PLUGIN_SCRIPTS))
 
+from domain_registry.sql_describe import allowed_values  # noqa: E402
 from domain_registry.sql_schema import IDENT, ForeignKey, Schema, Table, read_schema, statements, strip_comments  # noqa: E402
 
 QUERY_NAME = re.compile(r"^--\s*name:\s*(\S+)\s+:(\w+)", re.M)
@@ -26,6 +27,8 @@ UNREVIEWED_STATUSES = {"draft", "candidate"}
 SENSITIVE = re.compile(
     r"(^|_)(email|token|secret|password|passwd|phone|dsn|credential|ssn|api_key|ip_address|client_ip)(_|$)", re.I)
 KNOWN_CONSISTENCIES = {"synchronous", "eventual"}
+STATUS_LIKE = re.compile(r"(^|_)(status|state|kind|mode|tier|role|decision|verdict|outcome)$")
+ENUM_COMMENT_LIMIT = 12
 _statements = statements
 _strip_comments = strip_comments
 
@@ -188,14 +191,52 @@ class Inputs:
         return any(owner in self.generic for owner in self.table_owners(table))
 
 
-def _meaning(inputs: Inputs) -> dict[str, Any]:
+def _enum_columns(inputs: Inputs) -> dict[tuple[str, str], list[str]]:
+    tables = inputs.tables
+    by_table: dict[str, list[Any]] = {}
+    for constraint in inputs.schema.constraints:
+        by_table.setdefault(constraint.table, []).append(constraint)
+    listed = {}
+    for name, table in tables.items():
+        for column, info in table.columns.items():
+            values = allowed_values(column, by_table.get(name, []), inputs.schema.enums.get(info.get("type", "")))
+            if values:
+                listed[(name, column)] = values
+    return listed
+
+
+def _values_missing_from_comments(inputs: Inputs, enum: dict[tuple[str, str], list[str]]) -> dict[str, list[str]]:
+    missing = {}
+    for (table, column), values in enum.items():
+        if len(values) > ENUM_COMMENT_LIMIT:
+            continue
+        info = inputs.tables[table].columns[column]
+        comment = (info.get("comment") or "") + " " + inputs.schema.type_comments.get(info.get("type", ""), "")
+        absent = [value for value in values if value not in comment]
+        if absent:
+            missing[f"{table}.{column}"] = absent
+    return missing
+
+
+def _meaning(inputs: Inputs) -> tuple[dict[str, Any], dict[str, Any]]:
     tables = inputs.tables
     columns = [info for table in tables.values() for info in table.columns.values()]
-    return {
+    enum = _enum_columns(inputs)
+    short = [key for key, values in enum.items() if len(values) <= ENUM_COMMENT_LIMIT]
+    missing = _values_missing_from_comments(inputs, enum)
+    status_like = [(name, column) for name, table in tables.items() for column in table.columns if STATUS_LIKE.search(column)]
+    metrics = {
         "meaning.tables_described": _ratio(sum(table.described for table in tables.values()), len(tables)),
         "meaning.columns_described": _ratio(sum(info["described"] for info in columns), len(columns)),
+        "meaning.enum_columns_whose_comment_names_every_value": _ratio(len(short) - len(missing), len(short)),
+        "meaning.status_like_columns_with_a_check_list": _ratio(sum(key in enum for key in status_like), len(status_like)),
         "meaning.tables_known_to_registry": _ratio(sum(_mentions(inputs.reviewed, name) for name in tables), len(tables)),
     }
+    details = {
+        "enum_comments_missing_values": missing,
+        "status_like_columns_without_a_check_list": sorted(f"{name}.{column}" for name, column in status_like if (name, column) not in enum),
+    }
+    return metrics, details
 
 
 def _writers(inputs: Inputs) -> dict[str, set[str]]:
@@ -278,12 +319,18 @@ def _access_and_sensitivity(inputs: Inputs) -> tuple[dict[str, Any], dict[str, A
     sensitive = [(name, column) for name, table in tables.items() for column in table.columns if SENSITIVE.search(column)]
     registered = [(name, column) for name, column in sensitive
                   if inputs.cited(tables[name].file, tables[name].columns[column]["line"])]
+    classification = inputs.owners.get("classification", {})
+    classified = [(name, column) for name, column in sensitive if classification.get(f"{name}.{column}")]
     metrics = {
         "access.queries_with_an_owner": _ratio(
             sum(bool(inputs.query_owner(query)) for query in inputs.queries), len(inputs.queries)),
+        "sensitivity.candidate_columns_classified": _ratio(len(classified), len(sensitive)),
         "sensitivity.candidate_columns_cited_by_a_record": _ratio(len(registered), len(sensitive)),
     }
-    details = {"sensitive_candidates": sorted(f"{name}.{column}" for name, column in sensitive)}
+    details = {
+        "sensitive_candidates": sorted(f"{name}.{column}" for name, column in sensitive),
+        "unclassified_sensitive_columns": sorted(f"{name}.{column}" for name, column in sensitive if (name, column) not in classified),
+    }
     return metrics, details
 
 
@@ -315,6 +362,7 @@ def read_inputs(repo_root: Path, registry_root: Path) -> Inputs:
 
 def measure(inputs: Inputs) -> dict[str, Any]:
     tables = inputs.tables
+    meaning, meaning_details = _meaning(inputs)
     ownership, ownership_details = _ownership(inputs)
     rules, rule_details = _rules(inputs)
     access, access_details = _access_and_sensitivity(inputs)
@@ -327,8 +375,9 @@ def measure(inputs: Inputs) -> dict[str, Any]:
             "foreign_keys": len(inputs.schema.foreign_keys), "types": len(inputs.schema.types),
             "registry_records": len(inputs.records), "unparsed_statements": len(inputs.schema.unparsed),
         },
-        "metrics": {**_meaning(inputs), **ownership, **rules, **access, **_consistency_and_provenance(inputs)},
-        "details": {"unparsed_statements": inputs.schema.unparsed, **ownership_details, **rule_details, **access_details},
+        "metrics": {**meaning, **ownership, **rules, **access, **_consistency_and_provenance(inputs)},
+        "details": {"unparsed_statements": inputs.schema.unparsed, **meaning_details, **ownership_details, **rule_details,
+                    **access_details},
     }
 
 

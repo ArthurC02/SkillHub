@@ -697,3 +697,7 @@ retention:
   platform_agent_findings: archivable
   platform_agent_finding_events: archivable
   platform_agent_proposals: archivable
+
+classification:
+  sessions.token_hash: secret, SHA-256 of the cookie token; the raw token is never stored and the hash never leaves the database
+  users.email: personal, shown only to the account itself and replaced by an anonymized value when the account is purged

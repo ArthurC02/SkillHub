@@ -12,6 +12,7 @@ import (
 	"github.com/pgvector/pgvector-go"
 )
 
+// How far releasing a run's execution resources has got. pending: nothing released yet; cleaning_up: the worker is revoking the attempts' model gateway keys, destroying their sandboxes and charging the run's cost; cleaned: every step completed; failed: at least one step did not complete and the reasons are recorded with the run. cleaned and failed are settled and never left.
 type RunCleanupStatus string
 
 const (
@@ -56,6 +57,7 @@ func (ns NullRunCleanupStatus) Value() (driver.Value, error) {
 	return string(ns.RunCleanupStatus), nil
 }
 
+// Lifecycle position of a run, in order. queued: accepted and waiting for a worker to pick a provider; provisioning: a provider was chosen and asked for a sandbox; preparing: the provider accepted the dispatch and is building the sandbox, from which point the run counts against the workspace quota; running: the skill is executing in the sandbox; evaluating: the output is being judged against the test cases; succeeded, failed, cancelled and timed_out are final and never left.
 type RunStatus string
 
 const (
@@ -341,7 +343,7 @@ type CostSessionSummary struct {
 // One percentile summary (median, 90th, 95th, maximum cost) of a kind of model call over a time window, used to decide whether a paid call may start and what it is expected to cost. Derived data recomputed daily.
 type CostStatistic struct {
 	ID pgtype.UUID
-	// Kind of model call or session these percentiles describe; the call kinds match cost_events.kind, plus creation_session for whole creation sessions.
+	// Kind of model call or session these percentiles describe. The call kinds match cost_events.kind: creation_step, search_embedding, index_enrich, review, suggestion, generate, run, match_reasons, suggest_criteria, search_intent and platform_agent; creation_session is the extra kind for a whole interactive creation session, so a new session can be refused before it starts when the balance cannot cover one.
 	Kind string
 	// Inclusive start of the time window the samples were taken from.
 	WindowStart pgtype.Timestamptz
