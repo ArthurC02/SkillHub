@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "suggestion-outcome-recite",
+  "proposal_id": "suggestion-outcome-recite-2026-10-23",
+  "registry_revision": {
+    "observed_commit": "7c1e102ad90e13418da47fa06d4454f416750c60",
+    "registry_digest": "sha256:7f17ee0c5c6a2d11ea857b5446e77e55c30d6928fbad44772fdbd277886716ba",
+    "committed_digest": "sha256:7f17ee0c5c6a2d11ea857b5446e77e55c30d6928fbad44772fdbd277886716ba"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/suggestion-outcome-recite-2026-10-23 --path apps/platform/internal/trial/improvement/suggest.go --path apps/platform/internal/trial/improvement/suggest_store_test.go",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:e76a2e8ee4f9bc97a112ea65e066623b3298ce708c71fce7201d129eb5655b21",
+      "finished_at": "2026-10-23T00:35:43.486050Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

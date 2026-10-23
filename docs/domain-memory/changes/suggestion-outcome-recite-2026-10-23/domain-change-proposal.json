@@ -1,0 +1,94 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "suggestion-outcome-recite-2026-10-23",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "suggestion-outcome-recite",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-23T00:35:42.180619Z",
+  "verified_at": "2026-10-23T00:35:45.532387Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "7c1e102ad90e13418da47fa06d4454f416750c60",
+    "registry_digest": "sha256:7f17ee0c5c6a2d11ea857b5446e77e55c30d6928fbad44772fdbd277886716ba",
+    "committed_digest": "sha256:7f17ee0c5c6a2d11ea857b5446e77e55c30d6928fbad44772fdbd277886716ba"
+  },
+  "affected_contexts": [
+    "eval"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "no-model-call-without-citable-evidence",
+        "statement": "When the verdict yields no citable evidence, suggestions are not requested and nothing is paid.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A not_met run whose findings carry no evidence makes no suggester call."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/suggest.go",
+            "lines": {
+              "start": 66,
+              "end": 70
+            },
+            "content_sha256": "sha256:01959e83661c99856c771a101eb55494365b083c864f50c7f3dcc7e7e0980c4a",
+            "excerpt_sha256": "sha256:d908a1782e1d710324c5e442413b0d319087b016c87c385e24051075e5d4ccdc",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/suggest_store_test.go",
+            "lines": {
+              "start": 26,
+              "end": 38
+            },
+            "excerpt_sha256": "sha256:2276cdfd212d6e93c68a6ff6efca7ce36e4683f9a19b37543c16d93591e4c1c3"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-23T00:35:44.284386Z",
+      "scope": "re-cite no-model-call-without-citable-evidence at suggest.go 66-70; the no-evidence branch now returns its outcome, the rule is unchanged",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "7c1e102ad90e13418da47fa06d4454f416750c60",
+        "registry_digest": "sha256:7f17ee0c5c6a2d11ea857b5446e77e55c30d6928fbad44772fdbd277886716ba",
+        "committed_digest": "sha256:7f17ee0c5c6a2d11ea857b5446e77e55c30d6928fbad44772fdbd277886716ba"
+      }
+    }
+  ],
+  "supersedes": [
+    "eval-suggestion-and-judging-rules-2026-10-18"
+  ]
+}
