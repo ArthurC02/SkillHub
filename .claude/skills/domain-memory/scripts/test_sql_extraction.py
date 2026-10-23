@@ -204,7 +204,8 @@ class SqlSchemaTest(unittest.TestCase):
         schema = read_schema(root / "m", root)
         columns = schema.tables["orders"].columns
         self.assertEqual(["amount", "id", "reference"], sorted(columns))
-        self.assertEqual(({"line": 3, "described": True}, []), (columns["amount"], [u for u in schema.unparsed if "RENAME" in u]))
+        self.assertEqual(({"line": 3, "described": True, "comment": "what the buyer pays"}, []),
+                         (columns["amount"], [u for u in schema.unparsed if "RENAME" in u]))
 
 
 if __name__ == "__main__":

@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.5.0
+
+### Added
+
+- `describe-table --repo-root <repo> --migrations <dir> --table <name> [--registry-root <root>]` describes one table for the agent about to read or write it: the table's and each column's `COMMENT ON` meaning, the values a CHECK allows, the constraints and unique indexes in force, the tables it references and is referenced by, its partitions, and every Registry record that names it or cites its lines, with status, so a draft is told from a reviewed fact. Columns with no meaning in the files are listed and named in a NOTE. The SQL reader now keeps the text of `COMMENT ON TABLE` and `COMMENT ON COLUMN` rather than only the fact that one exists.
+
 ## 2.4.3
 
 ### Fixed
