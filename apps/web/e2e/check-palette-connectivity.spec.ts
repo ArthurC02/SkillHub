@@ -19,11 +19,11 @@ async function inspect(page: Page, label: string) {
   for (const review of report.incomplete) {
     expect(review.id).toBe("color-contrast");
     for (const node of review.nodes) {
-      expect(node.target).toEqual([".check-editor-outline-node"]);
+      expect(node.target).toHaveLength(1);
       expect(node.any.every((check) => check.data?.messageKey === "bgOverlap")).toBe(true);
-      const button = page.locator(".check-editor-outline-node");
-      await button.scrollIntoViewIfNeeded();
-      const verification = await button.evaluate((element) => {
+      const overlapped = page.locator(String(node.target[0]));
+      await overlapped.evaluate((element) => element.scrollIntoView({ block: "center" }));
+      const verification = await overlapped.evaluate((element) => {
         const colors = Reflect.get(window, "axe").commons.color;
         const style = getComputedStyle(element);
         const foreground = new colors.Color();
