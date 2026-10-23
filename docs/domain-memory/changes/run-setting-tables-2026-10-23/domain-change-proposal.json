@@ -1,0 +1,183 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-setting-tables",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "run-setting-tables",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-23T05:40:12.750896Z",
+  "verified_at": "2026-10-23T05:42:32.737518Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "b6d1ed8169a19d302bce9c7883bc7c478428c990",
+    "registry_digest": "sha256:8e9a8ae3846757a34c8c467a04109af717eca69ddb7a932e492d1c57ec69bf98",
+    "committed_digest": "sha256:acdf72e17cbe65d5114e8b7a3942366f4d02f139a16295ba675915df91745acf"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [
+    "a-run-starts-only-when-its-budget-is-reserved",
+    "a-run-key-gets-the-tokens-per-minute-in-force-when-issued"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "run owns both operator settings that bound a run's model use: the spend ceiling it snapshots at creation and the tokens-per-minute limit it reads when issuing each attempt key.",
+    "evidence": [
+      "apps/platform/internal/trial/execution/schedule.go:512-526",
+      "apps/platform/internal/trial/execution/settings.go:242-255",
+      "apps/platform/internal/trial/execution/service.go:486-490"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "No new collaboration: both settings are tables run owns, read inside run, and the gateway is reached through the existing Gateway port.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/execution/schedule.go:512-526",
+      "apps/platform/internal/trial/execution/settings.go:242-255",
+      "apps/platform/internal/trial/execution/service.go:486-490"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Both limits lived only in environment variables, so changing what or how fast a run may spend meant a redeploy.",
+      "Money reserved for a Run must not change under it; a rate limit should reach running work as soon as an operator tightens it."
+    ],
+    "decision": "Two single-row settings tables owned by run. The spend ceiling is copied into the Run's policy snapshot at creation; the tokens-per-minute limit is read each time an attempt key is issued and is not snapshotted.",
+    "invariants_preserved": [
+      "A Run's reservation and its attempts agree on one ceiling.",
+      "A key issued with no operator value gets the deployment's limit."
+    ],
+    "rejected_alternatives": [
+      "Snapshotting the tokens-per-minute limit: throttling relief or tightening would then miss every Run already created."
+    ],
+    "proof_obligations": [
+      "rule-a-run-starts-only-when-its-budget-is-reserved",
+      "rule-a-run-key-gets-the-tokens-per-minute-in-force-when-issued"
+    ],
+    "counterfactual_check": "Issuing the key under the deployment's limit instead of the setting fails TestARunAttemptKeyGetsTheTokensPerMinuteInForceWhenItIsIssued; reserving the deployment ceiling fails TestARunReservesAndKeepsTheCeilingInForceWhenItWasCreated."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-run-key-gets-the-tokens-per-minute-in-force-when-issued",
+        "statement": "Every model gateway key issued for a run attempt gets the tokens-per-minute limit in force when it is issued: the operator-set value in run_rate_limit_setting, or the deployment's when none is set. The limit is not kept in the Run's snapshot, so a change reaches the next attempt of a Run already created.",
+        "owner": "run-execution",
+        "version": "unknown",
+        "effective_from": "unknown",
+        "effective_until": "unknown",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A Run created before the operator sets 20000 tokens per minute has its first attempt's key issued at 20000.",
+          "With no operator-set value, a key is issued at the deployment's limit, 200000 by default."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/schedule.go",
+            "lines": {
+              "start": 512,
+              "end": 526
+            },
+            "content_sha256": "sha256:81fe616315f8a4746048fb59c70f871cd3bcdf0fb6d25096331f1ac537dad4ec",
+            "excerpt_sha256": "sha256:7db70c2861a742c65279f29e957b4b5a5c1baefe9d394513e0e83fc1d4e4cf66"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/settings.go",
+            "lines": {
+              "start": 242,
+              "end": 255
+            },
+            "content_sha256": "sha256:4c88a7f3f86a676b154602fae44d14edcad15adcc0ce0eaedb52121611acb3fb",
+            "excerpt_sha256": "sha256:3e1c5c9cf48bed06ffbaf6b4371219d589b3e3934f433242dc3e221dd6d6c783"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/run_budget_setting_integration_test.go",
+            "lines": {
+              "start": 199,
+              "end": 219
+            },
+            "content_sha256": "sha256:2a8ff29eeb55130ed7e314e0b20a668bcbaff9431e58bf8b6ba49e33f11930d9",
+            "excerpt_sha256": "sha256:711332f125d91eb7b9e1664236e08a226db6289a7824e247cd871749efb87a6d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-run-starts-only-when-its-budget-is-reserved",
+        "statement": "When a credit ledger is configured, a Run is admitted only if the Workspace can reserve the run budget in force when it is created: the operator-set ceiling in run_model_budget_setting, or the deployment's when none is set. The Run keeps that ceiling in its policy snapshot, and its attempts run under it whatever the setting becomes later; a Workspace that cannot reserve it is refused with credit_balance.",
+        "owner": "run-execution",
+        "version": "unknown",
+        "effective_from": "unknown",
+        "effective_until": "unknown",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A Workspace with 100 credits is refused with credit_balance under a 0.50 USD ceiling and admitted once the operator lowers it to 0.05 USD.",
+          "A Run created under a 0.05 USD ceiling issues its first gateway key at 0.05 USD after the operator raises the ceiling to 2 USD.",
+          "A deployment with no credit ledger admits the Run without a reservation."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/credit.go",
+            "lines": {
+              "start": 18,
+              "end": 32
+            },
+            "excerpt_sha256": "sha256:b03908f4fa9e0d491325f7655607d7471852a8a7807f8805a05d178ba5d0b874"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/run_budget_setting_integration_test.go",
+            "lines": {
+              "start": 85,
+              "end": 134
+            },
+            "excerpt_sha256": "sha256:d39f0b17e410dcf9b0e75848cb089d3a790361b89f957f159b72f00f1483ac73"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/service.go",
+            "lines": {
+              "start": 486,
+              "end": 490
+            },
+            "content_sha256": "sha256:e58f4151aa3ad22e651cdce83cd4f127231339468d80bba540d9326a8a25dd32",
+            "excerpt_sha256": "sha256:8a51b03b8c4724e338df9afdc667fa4caa5b8645c5383b09a892ac2661f15061"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-23T05:42:31.923187Z",
+      "scope": "two run setting rules naming their tables",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "b6d1ed8169a19d302bce9c7883bc7c478428c990",
+        "registry_digest": "sha256:8e9a8ae3846757a34c8c467a04109af717eca69ddb7a932e492d1c57ec69bf98",
+        "committed_digest": "sha256:acdf72e17cbe65d5114e8b7a3942366f4d02f139a16295ba675915df91745acf"
+      }
+    }
+  ],
+  "supersedes": [
+    "run-budget-credits-recite"
+  ]
+}

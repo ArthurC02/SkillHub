@@ -1,0 +1,55 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-setting-tables",
+  "proposal_id": "run-setting-tables",
+  "registry_revision": {
+    "observed_commit": "b6d1ed8169a19d302bce9c7883bc7c478428c990",
+    "registry_digest": "sha256:8e9a8ae3846757a34c8c467a04109af717eca69ddb7a932e492d1c57ec69bf98",
+    "committed_digest": "sha256:acdf72e17cbe65d5114e8b7a3942366f4d02f139a16295ba675915df91745acf"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-run-starts-only-when-its-budget-is-reserved",
+      "mutated_protection": "apps/platform/internal/trial/execution/credit.go:24: ok, err := s.Ledger.Reserve(ctx, tx, workspaceID, budgetUSD) -> ok, err := s.Ledger.Reserve(ctx, tx, workspaceID, s.Deployment.Budget())",
+      "failure_evidence": "=== RUN   TestARunReservesAndKeepsTheCeilingInForceWhenItWasCreated\n2026/10/23 13:41:15 INFO a run was refused before it started workspace_id=a55bd291-b464-41ab-a76e-fae8b87c683f error=\"run: the workspace has too few credits to start a run\"\n2026/10/23 13:41:15 INFO a run was refused before it started workspace_id=a55bd291-b464-41ab-a76e-fae8b87c683f error=\"run: the workspace has too few credits to start a run\"\n    run_budget_setting_integration_test.go:114: 100 credits against a 0.05 ceiling: got 422 ({RunID: Status: StatusReason: SkillID: TestCaseID: Provider: FailureClass:{Value: Label: Note:} CleanupStatus:{Value: Label: Note:} Error:點數不足，無法開始這次試跑。請聯絡管理者為這個帳號加點；已經開始的試跑不受影響。 Reason: Transitions:[] Attempts:[] CancelRequestedAt:}), want 201\n--- FAIL: TestARunReservesAndKeepsTheCeilingInForceWhenItWasCreated (0.36s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t8.512s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-run-key-gets-the-tokens-per-minute-in-force-when-issued",
+      "mutated_protection": "apps/platform/internal/trial/execution/schedule.go:520: terms.TPMLimit = rate.Limit -> terms.TPMLimit = rate.DefaultLimit",
+      "failure_evidence": "=== RUN   TestARunAttemptKeyGetsTheTokensPerMinuteInForceWhenItIsIssued\n    run_budget_setting_integration_test.go:217: the attempt's gateway grant = &{BaseURL:http://model-gateway.test VirtualKey:sk-test-a8dff777-80a4-4813-bc88-5a0296bad682 MaxBudgetUSD:0.5 TPMLimit:200000 ExpiresAt:2026-10-23 14:02:03.1644095 +0800 CST} (sent true), want the 20000 tokens per minute set before it was issued\n--- FAIL: TestARunAttemptKeyGetsTheTokensPerMinuteInForceWhenItIsIssued (0.56s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t8.195s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-run-starts-only-when-its-budget-is-reserved",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestARunReservesAndKeepsTheCeilingInForceWhenItWasCreated$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ca3908afe22b11c0f49a262ebccd2a832461beb58ce91260027d3c9018fa9fd1",
+      "finished_at": "2026-10-23T05:42:19.279116Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-a-run-key-gets-the-tokens-per-minute-in-force-when-issued",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestARunAttemptKeyGetsTheTokensPerMinuteInForceWhenItIsIssued$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:2bbe6539031030214329524a24a78b91e79ad605dfb9d687082f920eb1336a72",
+      "finished_at": "2026-10-23T05:42:31.463369Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

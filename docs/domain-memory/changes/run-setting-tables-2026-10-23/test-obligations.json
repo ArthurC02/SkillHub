@@ -1,0 +1,37 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "run-setting-tables",
+  "proposal_id": "run-setting-tables",
+  "obligations": [
+    {
+      "id": "rule-a-run-starts-only-when-its-budget-is-reserved",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-run-starts-only-when-its-budget-is-reserved",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-run-starts-only-when-its-budget-is-reserved"
+        }
+      ],
+      "expected_outcome": "100 credits are refused under the 650-credit default and admitted at 65 credits; the Run keeps 0.05 USD after the ceiling is raised.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestARunReservesAndKeepsTheCeilingInForceWhenItWasCreated$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-run-key-gets-the-tokens-per-minute-in-force-when-issued",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-run-key-gets-the-tokens-per-minute-in-force-when-issued",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-run-key-gets-the-tokens-per-minute-in-force-when-issued"
+        }
+      ],
+      "expected_outcome": "A Run created before the operator sets 20000 tokens per minute has its first attempt key issued at 20000.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v -run ^TestARunAttemptKeyGetsTheTokensPerMinuteInForceWhenItIsIssued$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}
