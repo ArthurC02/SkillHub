@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .common import ASSET_KEYS
-from .sql_schema import IDENT, Constraint, ForeignKey, Table, live_tables, one_line, read_schema, strip_comments
+from .sql_schema import IDENT, Constraint, ForeignKey, Schema, Table, live_tables, one_line, read_schema, strip_comments
 from .store import read_document
 
 CHECK_BODY = re.compile(r"\bCHECK\s*\((.*)\)", re.I | re.S)
@@ -27,7 +27,7 @@ def describe_table(registry_root: Path | None, repo_root: Path, migrations_dir: 
         "table": name,
         "declared_at": f"{table.file}:{table.line}",
         "meaning": table.comment,
-        "columns": [_column(column, info, constraints) for column, info in table.columns.items()],
+        "columns": [_column(column, info, constraints, schema) for column, info in table.columns.items()],
         "constraints": [_constraint(constraint) for constraint in constraints],
         "references": [_edge("parent", key.parent, key) for key in schema.foreign_keys if key.child == name],
         "referenced_by": [_edge("child", key.child, key) for key in schema.foreign_keys if key.parent == name and key.child in tables],
@@ -42,22 +42,25 @@ def _did_you_mean(name: str, tables: dict[str, Table]) -> str:
     return f"; did you mean {', '.join(close)}?" if close else ""
 
 
-def _column(column: str, info: dict[str, Any], constraints: list[Constraint]) -> dict[str, Any]:
+def _column(column: str, info: dict[str, Any], constraints: list[Constraint], schema: Schema) -> dict[str, Any]:
+    declared_type = info.get("type", "")
     return {
         "name": column,
         "line": info["line"],
+        "type": declared_type,
+        "type_meaning": schema.type_comments.get(declared_type),
         "meaning": info.get("comment"),
-        "allowed_values": _allowed_values(column, constraints),
+        "allowed_values": allowed_values(column, constraints, schema.enums.get(declared_type)),
     }
 
 
-def _allowed_values(column: str, constraints: list[Constraint]) -> list[str] | None:
+def allowed_values(column: str, constraints: list[Constraint], enum_values: list[str] | None = None) -> list[str] | None:
     for constraint in constraints:
         body = CHECK_BODY.search(strip_comments(constraint.text)) if constraint.kind == "check" else None
         listed = ONLY_AN_IN_LIST.match(body.group(1)) if body else None
         if listed and listed.group(2) == column and listed.group(1) in (None, column):
             return [value.replace("''", "'") for value in QUOTED.findall(listed.group(3))]
-    return None
+    return list(enum_values) if enum_values else None
 
 
 def _constraint(constraint: Constraint) -> dict[str, Any]:

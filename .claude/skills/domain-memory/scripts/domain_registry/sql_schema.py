@@ -24,9 +24,13 @@ CREATE_INDEX = re.compile(
     rf"(?:ONLY\s+)?({IDENT})", re.I)
 CREATE_TRIGGER = re.compile(
     rf"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?TRIGGER\s+({IDENT})\s.*?\bON\s+({IDENT})", re.I | re.S)
-COMMENT_ON = re.compile(rf"^\s*COMMENT\s+ON\s+(TABLE|COLUMN)\s+({IDENT})(?:\.({IDENT}))?\s+IS\s+", re.I)
-COMMENT_TEXT = re.compile(r"\bIS\s+'((?:[^']|'')*)'", re.I | re.S)
+COMMENT_ON = re.compile(rf"^\s*COMMENT\s+ON\s+(TABLE|COLUMN|TYPE)\s+({IDENT})(?:\.({IDENT}))?\s+IS\s+", re.I)
+COMMENT_TEXT = re.compile(r"\bIS\s+('(?:[^']|'')*'(?:\s*'(?:[^']|'')*')*)", re.I | re.S)
+STRING_LITERAL = re.compile(r"'((?:[^']|'')*)'", re.S)
 CREATE_TYPE = re.compile(rf"^\s*CREATE\s+(TYPE|DOMAIN)\s+({IDENT})", re.I)
+ENUM_VALUES = re.compile(r"\bAS\s+ENUM\s*\((.*)\)", re.I | re.S)
+ADD_ENUM_VALUE = re.compile(
+    rf"^\s*ALTER\s+TYPE\s+({IDENT})\s+ADD\s+VALUE\s+(?:IF\s+NOT\s+EXISTS\s+)?'((?:[^']|'')*)'", re.I)
 DROP_CONSTRAINT = re.compile(rf"^DROP\s+CONSTRAINT\s+(?:IF\s+EXISTS\s+)?({IDENT})", re.I)
 DROP_INDEX = re.compile(rf"^\s*DROP\s+INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+EXISTS\s+)?({IDENT})", re.I)
 DROP_TRIGGER = re.compile(rf"^\s*DROP\s+TRIGGER\s+(?:IF\s+EXISTS\s+)?({IDENT})\s+ON\s+({IDENT})", re.I)
@@ -36,7 +40,9 @@ IGNORED_STATEMENT = re.compile(
     r"|LOCK\s+TABLE|GRANT|REVOKE|INSERT|UPDATE|DELETE|SET|SELECT|DO\s+\$|BEGIN|COMMIT)", re.I)
 UNIQUE_INDEX = "unique-index"
 REFERENCES = re.compile(rf"\bREFERENCES\s+({IDENT})", re.I)
-COLUMN_LINE = re.compile(rf"^\s*({IDENT})\s+\S")
+COLUMN_LINE = re.compile(
+    rf"^\s*({IDENT})\s+(.+?)(?=\s+(?:NOT|NULL|DEFAULT|CHECK|REFERENCES|PRIMARY|UNIQUE|GENERATED|COLLATE|CONSTRAINT|EXCLUDE)\b|\s*$)",
+    re.I | re.S)
 TABLE_LEVEL = re.compile(r"^\s*(CONSTRAINT|PRIMARY\s+KEY|UNIQUE|CHECK|FOREIGN\s+KEY|EXCLUDE|LIKE)\b", re.I)
 CONSTRAINT_KIND = re.compile(r"\s*(CHECK|UNIQUE|EXCLUDE|FOREIGN|PRIMARY|LIKE)\b", re.I)
 NAMED_CONSTRAINT = re.compile(rf"CONSTRAINT\s+({IDENT})\s+(.*)$", re.I | re.S)
@@ -93,6 +99,8 @@ class Schema:
     constraints: list[Constraint] = field(default_factory=list)
     foreign_keys: list[ForeignKey] = field(default_factory=list)
     types: list[str] = field(default_factory=list)
+    enums: dict[str, list[str]] = field(default_factory=dict)
+    type_comments: dict[str, str] = field(default_factory=dict)
     unparsed: list[str] = field(default_factory=list)
     migrations: list[str] = field(default_factory=list)
 
@@ -184,17 +192,21 @@ def _table_body(statement: str) -> str:
 
 
 def _split_top_level(body: str) -> list[str]:
-    parts, depth, current = [], 0, []
-    for char in body:
-        if char == "(":
-            depth += 1
-        elif char == ")":
-            depth -= 1
+    parts, depth, current, index = [], 0, [], 0
+    while index < len(body):
+        end = _opaque_end(body, index)
+        if end is not None:
+            current.append(body[index:end])
+            index = end
+            continue
+        char = body[index]
+        depth += (char == "(") - (char == ")")
         if char == "," and depth == 0:
             parts.append("".join(current))
             current = []
         else:
             current.append(char)
+        index += 1
     parts.append("".join(current))
     return parts
 
@@ -239,8 +251,12 @@ def _read_table(schema: Schema, file: str, line: int, statement: str, match: re.
         if column is None:
             schema.unparsed.append(f"{file}:{first}: {text[:60]}")
             continue
-        table.columns[column.group(1)] = {"line": first, "described": False, "comment": None}
+        table.columns[column.group(1)] = _new_column(first, column.group(2))
         _read_column_rules(schema, name, span, text)
+
+
+def _new_column(line: int, declared_type: str) -> dict[str, Any]:
+    return {"line": line, "type": one_line(declared_type), "described": False, "comment": None}
 
 
 def _read_column_rules(schema: Schema, table: str, span: Span, text: str) -> None:
@@ -289,8 +305,9 @@ def _read_alter(schema: Schema, file: str, line: int, statement: str, match: re.
         elif ADD_CONSTRAINT.match(text):
             _read_table_constraint(schema, table, span, text[len("ADD "):].strip())
         elif added:
-            schema.tables[table].columns[added.group(1)] = {"line": line, "described": False, "comment": None}
-            _read_column_rules(schema, table, span, text[len("ADD "):].replace("COLUMN ", "", 1).strip())
+            declaration = text[added.start(1):]
+            schema.tables[table].columns[added.group(1)] = _new_column(line, COLUMN_LINE.match(declaration).group(2))
+            _read_column_rules(schema, table, span, declaration)
         elif dropped:
             schema.tables[table].columns.pop(dropped.group(1), None)
         elif renamed:
@@ -305,7 +322,14 @@ def _rename_column(table: Table, old: str, new: str) -> None:
 
 
 def _drop_constraint(schema: Schema, table: str, name: str) -> None:
-    _undeclare(schema, lambda c: c.kind in ("trigger", UNIQUE_INDEX) or (c.table, c.name) != (table, name))
+    _undeclare(schema, lambda c: c.kind in ("trigger", UNIQUE_INDEX) or c.table != table or name not in _names_of(c))
+
+
+def _names_of(constraint: Constraint) -> set[str]:
+    table, dot, column = constraint.name.partition(".")
+    if not dot or table != constraint.table:
+        return {constraint.name}
+    return {constraint.name, f"{table}_{column}_{'key' if constraint.kind == 'unique' else constraint.kind}"}
 
 
 def _read_drop(schema: Schema, _file: str, _line: int, _statement: str, match: re.Match[str]) -> None:
@@ -335,27 +359,44 @@ def _read_drop_trigger(schema: Schema, _file: str, _line: int, _statement: str, 
 
 
 def _read_comment(schema: Schema, file: str, line: int, statement: str, match: re.Match[str]) -> None:
-    table = schema.tables.get(match.group(2))
+    kind, name = match.group(1).upper(), match.group(2)
+    table = schema.tables.get(name)
     quoted = COMMENT_TEXT.search(strip_comments(statement))
-    text = one_line(quoted.group(1).replace("''", "'")) if quoted else ""
-    if table is None:
-        schema.unparsed.append(f"{file}:{line}: COMMENT ON unknown table {match.group(2)}")
-    elif match.group(1).upper() == "TABLE":
+    text = one_line("".join(STRING_LITERAL.findall(quoted.group(1))).replace("''", "'")) if quoted else ""
+    if kind == "TYPE":
+        if name in schema.types:
+            schema.type_comments[name] = text
+        else:
+            schema.unparsed.append(f"{file}:{line}: COMMENT ON unknown type {name}")
+    elif table is None:
+        schema.unparsed.append(f"{file}:{line}: COMMENT ON unknown table {name}")
+    elif kind == "TABLE":
         table.described = True
         table.comment = text
     elif match.group(3) in table.columns:
         table.columns[match.group(3)].update(described=True, comment=text)
 
 
-def _read_type(schema: Schema, _file: str, _line: int, _statement: str, match: re.Match[str]) -> None:
+def _read_type(schema: Schema, _file: str, _line: int, statement: str, match: re.Match[str]) -> None:
     schema.types.append(match.group(2))
+    values = ENUM_VALUES.search(strip_comments(statement))
+    if values:
+        schema.enums[match.group(2)] = [_unquote(value) for value in STRING_LITERAL.findall(values.group(1))]
+
+
+def _read_enum_value(schema: Schema, _file: str, _line: int, _statement: str, match: re.Match[str]) -> None:
+    schema.enums.setdefault(match.group(1), []).append(_unquote(match.group(2)))
+
+
+def _unquote(literal: str) -> str:
+    return literal.replace("''", "'")
 
 
 Reader = Callable[[Schema, str, int, str, "re.Match[str]"], None]
 READERS: list[tuple[re.Pattern[str], Reader]] = [
     (CREATE_TABLE, _read_table), (DROP_TABLE, _read_drop), (ALTER_TABLE, _read_alter), (CREATE_INDEX, _read_index),
     (CREATE_TRIGGER, _read_trigger), (COMMENT_ON, _read_comment), (CREATE_TYPE, _read_type),
-    (DROP_INDEX, _read_drop_index), (DROP_TRIGGER, _read_drop_trigger),
+    (DROP_INDEX, _read_drop_index), (DROP_TRIGGER, _read_drop_trigger), (ADD_ENUM_VALUE, _read_enum_value),
 ]
 
 

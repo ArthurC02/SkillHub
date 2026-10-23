@@ -2,6 +2,15 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.5.1
+
+### Fixed
+
+- The SQL reader joins a `COMMENT ON` written as adjacent string literals (`'one ' 'two'`) into one text instead of keeping only the first literal, so `describe-table` shows the whole meaning and a column is not reported as missing values its comment does name.
+- `describe-table` reported no `allowed_values` for a column typed with a `CREATE TYPE ... AS ENUM`; the SQL reader now records each column's declared `type` and each enum type's values in order, including those an `ALTER TYPE ... ADD VALUE` appends, and such a column lists them when no CHECK lists its values. The description carries the column's `type` and, when the migrations give the type a `COMMENT ON TYPE`, its `type_meaning`, which the reader records per type and which is the one place to say what each value of an enum shared by several columns means.
+- A comma inside a trailing `--` comment or inside a string literal in a `CREATE TABLE` body no longer starts a phantom column, and `ADD COLUMN IF NOT EXISTS` no longer names its inline constraint after the word `IF`. A column's recorded `type` keeps all its words and parentheses (`double precision`, `numeric(12, 6)`, `text[]`).
+- `DROP CONSTRAINT` by the name the database gives an inline column constraint (`<table>_<column>_check`, `<table>_<column>_key`) removes that inline declaration, so a constraint re-declared under that name is read once, not twice, and `extract-sql-schema` does not offer the dropped one as a rule.
+
 ## 2.5.0
 
 ### Added

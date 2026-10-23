@@ -424,6 +424,72 @@ def test_two_contexts_writing_one_table_are_listed_as_its_writers():
     assert report["details"]["multi_writer_tables"] == {"runs": ["identity", "run"]}
 
 
+def with_extra_migration(root: Path, sql: str, owners: str | None = None) -> dict:
+    fixture(root)
+    (root / "db" / "migrations" / "0003_extra.sql").write_text(sql, encoding="utf-8")
+    if owners is not None:
+        (root / "db" / "query-owners.yaml").write_text(owners, encoding="utf-8")
+    return mr.measure(mr.read_inputs(root, root / "docs" / "domain-memory"))
+
+
+def test_an_enum_column_counts_as_explained_only_when_its_comment_names_every_allowed_value():
+    _, report = measured()
+    assert ratio(report, "meaning.enum_columns_whose_comment_names_every_value") == (0, 1)
+    assert report["details"]["enum_comments_missing_values"] == {"runs.state": ["queued", "done"]}
+    with tempfile.TemporaryDirectory() as root:
+        partial = with_extra_migration(Path(root), "COMMENT ON COLUMN runs.state IS 'queued until the worker picks it up';\n")
+    with tempfile.TemporaryDirectory() as root:
+        complete = with_extra_migration(Path(root), "COMMENT ON COLUMN runs.state IS 'queued until picked up, done once it finished';\n")
+    assert (ratio(partial, "meaning.enum_columns_whose_comment_names_every_value"), partial["details"]["enum_comments_missing_values"]) == ((0, 1), {"runs.state": ["done"]})
+    assert (ratio(complete, "meaning.enum_columns_whose_comment_names_every_value"), complete["details"]["enum_comments_missing_values"]) == ((1, 1), {})
+
+
+def test_a_column_typed_with_an_enum_is_explained_by_the_type_comment_when_its_own_comment_is_silent():
+    enum = "CREATE TYPE lane AS ENUM ('fast', 'slow');\nALTER TABLE runs ADD COLUMN lane lane;\n"
+    with tempfile.TemporaryDirectory() as root:
+        silent = with_extra_migration(Path(root), enum)
+    with tempfile.TemporaryDirectory() as root:
+        explained = with_extra_migration(Path(root), enum + "COMMENT ON TYPE lane IS 'fast on the highway, slow in town';\n")
+    assert silent["details"]["enum_comments_missing_values"] == {"runs.lane": ["fast", "slow"], "runs.state": ["queued", "done"]}
+    assert explained["details"]["enum_comments_missing_values"] == {"runs.state": ["queued", "done"]}
+
+
+def test_a_list_longer_than_twelve_values_is_a_vocabulary_the_check_itself_states_not_a_comment_to_write():
+    twelve = ", ".join(f"'v{index}'" for index in range(12))
+    thirteen = twelve + ", 'v12'"
+    with tempfile.TemporaryDirectory() as root:
+        at_limit = with_extra_migration(Path(root), f"CREATE TABLE codes (code text CHECK (code IN ({twelve})));\n")
+    with tempfile.TemporaryDirectory() as root:
+        past_limit = with_extra_migration(Path(root), f"CREATE TABLE codes (code text CHECK (code IN ({thirteen})));\n")
+    assert ratio(at_limit, "meaning.enum_columns_whose_comment_names_every_value") == (0, 2)
+    assert ratio(past_limit, "meaning.enum_columns_whose_comment_names_every_value") == (0, 1)
+
+
+def test_a_status_like_column_needs_a_check_that_is_exactly_its_value_list():
+    _, report = measured()
+    assert ratio(report, "meaning.status_like_columns_with_a_check_list") == (1, 1)
+    with tempfile.TemporaryDirectory() as root:
+        report = with_extra_migration(
+            Path(root),
+            "CREATE TYPE lane AS ENUM ('a');\n"
+            "ALTER TABLE runs ADD COLUMN verdict text, ADD COLUMN provider text, ADD COLUMN mode text CHECK (mode IS NULL OR mode IN ('fast', 'slow')), "
+            "ADD COLUMN decision text CHECK (decision <> 'x' OR mode = 'fast'), ADD COLUMN tier lane;\n",
+        )
+    assert ratio(report, "meaning.status_like_columns_with_a_check_list") == (3, 5)
+    assert report["details"]["status_like_columns_without_a_check_list"] == ["runs.decision", "runs.verdict"]
+
+
+def test_a_sensitive_column_is_classified_only_by_its_exact_table_dot_column_key():
+    _, report = measured()
+    assert ratio(report, "sensitivity.candidate_columns_classified") == (0, 2)
+    assert report["details"]["unclassified_sensitive_columns"] == ["runs.token_hash", "users.email"]
+    owners = OWNERS + "classification:\n  users.email: personal, anonymized at purge\n  token_hash: secret\n"
+    with tempfile.TemporaryDirectory() as root:
+        report = with_extra_migration(Path(root), "", owners)
+    assert ratio(report, "sensitivity.candidate_columns_classified") == (1, 2)
+    assert report["details"]["unclassified_sensitive_columns"] == ["runs.token_hash"]
+
+
 def test_a_table_the_registry_mentions_by_name_is_known_to_it():
     _, report = measured()
     assert ratio(report, "meaning.tables_known_to_registry") == (1, 2)

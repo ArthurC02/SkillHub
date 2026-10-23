@@ -26,10 +26,14 @@ CREATE TABLE orders_2026 PARTITION OF orders FOR VALUES FROM ('a') TO ('b');
 CREATE UNIQUE INDEX orders_note_key ON orders (note);
 COMMENT ON TABLE orders IS 'One row per order; the buyer''s request as placed.';
 COMMENT ON COLUMN orders.state IS
-    'open until paid;
-     paid once the charge settled.';
+    'open until paid; '
+    'paid once the charge settled.';
 CREATE TABLE scratch (id uuid PRIMARY KEY, order_id uuid REFERENCES orders (id));
 DROP TABLE scratch;
+CREATE TYPE mood AS ENUM ('calm', 'it''s odd');
+ALTER TYPE mood ADD VALUE IF NOT EXISTS 'wild';
+COMMENT ON TYPE mood IS 'calm by default; it''s odd when the buyer hesitated; wild once they bought twice.';
+ALTER TABLE orders ADD COLUMN mood mood, ADD COLUMN mood_check text CHECK (mood_check IN ('yes'));
 """
 
 
@@ -56,19 +60,24 @@ class SqlDescribeTest(RegistryTestCase):
         self.assertEqual("One row per order; the buyer's request as placed.", described["meaning"])
         self.assertEqual("db/migrations/0001_init.sql:1", described["declared_at"])
         self.assertEqual(
-            [("id", None), ("state", ["open", "paid", "it's odd"]), ("buyer_id", None), ("note", None), ("kind", ["gift", "plain"]),
-             ("source", None)],
-            [(column["name"], column["allowed_values"]) for column in described["columns"]],
+            [("id", "uuid", None), ("state", "text", ["open", "paid", "it's odd"]), ("buyer_id", "uuid", None), ("note", "text", None),
+             ("kind", "text", ["gift", "plain"]), ("source", "text", None), ("mood", "mood", ["calm", "it's odd", "wild"]),
+             ("mood_check", "text", ["yes"])],
+            [(column["name"], column["type"], column["allowed_values"]) for column in described["columns"]],
         )
         self.assertEqual("open until paid; paid once the charge settled.", described["columns"][1]["meaning"])
         self.assertEqual(
+            [(None, "state"), ("calm by default; it's odd when the buyer hesitated; wild once they bought twice.", "mood")],
+            [(column["type_meaning"], column["name"]) for column in described["columns"] if column["name"] in ("state", "mood")],
+        )
+        self.assertEqual(
             [("check", "orders.state"), ("check", "orders.kind"), ("check", "orders_note_when_paid"),
-             ("check", "orders_source_when_gift"), ("unique-index", "orders_note_key")],
+             ("check", "orders_source_when_gift"), ("unique-index", "orders_note_key"), ("check", "orders.mood_check")],
             [(constraint["kind"], constraint["name"]) for constraint in described["constraints"]],
         )
         self.assertEqual(([{"parent": "users", "at": "db/migrations/0001_init.sql:4"}], [{"child": "shipments", "at": "db/migrations/0001_init.sql:12"}]),
                          (described["references"], described["referenced_by"]))
-        self.assertEqual((["orders_2026"], ["id", "buyer_id", "note", "kind", "source"], []),
+        self.assertEqual((["orders_2026"], ["id", "buyer_id", "note", "kind", "source", "mood", "mood_check"], []),
                          (described["partitions"], described["undescribed_columns"], described["registry"]))
 
     def test_registry_records_that_name_the_table_or_cite_its_lines_are_listed_with_their_status(self) -> None:
@@ -97,8 +106,9 @@ class SqlDescribeTest(RegistryTestCase):
         common = ("describe-table", "--repo-root", str(self.repo), "--migrations", str(self.migrations))
         result = self.run_cli(*common, "--table", "orders", "--registry-root", str(self.repo / "memory"))
         self.assertEqual(
-            (0, "orders", ["id", "buyer_id", "note", "kind", "source"],
-             "NOTE: 5 columns of orders carry no COMMENT ON, so the files do not say what they mean: id, buyer_id, note, kind, source"),
+            (0, "orders", ["id", "buyer_id", "note", "kind", "source", "mood", "mood_check"],
+             "NOTE: 7 columns of orders carry no COMMENT ON, so the files do not say what they mean: "
+             "id, buyer_id, note, kind, source, mood, mood_check"),
             (result.returncode, json.loads(result.stdout)["table"], json.loads(result.stdout)["undescribed_columns"], result.stderr.strip()),
         )
         bare = self.run_cli(*common, "--table", "users")

@@ -1,26 +1,36 @@
 {
   "inventory": {
-    "migrations": 135,
-    "tables": 71,
+    "migrations": 138,
+    "tables": 72,
     "partitions": 4,
-    "columns": 654,
-    "queries": 511,
-    "constraints": 281,
-    "foreign_keys": 145,
+    "columns": 660,
+    "queries": 517,
+    "constraints": 277,
+    "foreign_keys": 146,
     "types": 2,
-    "registry_records": 747,
+    "registry_records": 748,
     "unparsed_statements": 0
   },
   "metrics": {
     "meaning.tables_described": {
-      "numerator": 71,
-      "denominator": 71,
+      "numerator": 72,
+      "denominator": 72,
       "ratio": 1.0
     },
     "meaning.columns_described": {
-      "numerator": 565,
-      "denominator": 654,
-      "ratio": 0.864
+      "numerator": 571,
+      "denominator": 660,
+      "ratio": 0.865
+    },
+    "meaning.enum_columns_whose_comment_names_every_value": {
+      "numerator": 45,
+      "denominator": 45,
+      "ratio": 1.0
+    },
+    "meaning.status_like_columns_with_a_check_list": {
+      "numerator": 26,
+      "denominator": 34,
+      "ratio": 0.765
     },
     "meaning.tables_known_to_registry": {
       "numerator": 11,
@@ -28,33 +38,33 @@
       "ratio": 0.151
     },
     "ownership.tables_with_exactly_one_declared_owner": {
-      "numerator": 70,
-      "denominator": 71,
+      "numerator": 71,
+      "denominator": 72,
       "ratio": 0.986
     },
     "ownership.tables_with_a_known_owner": {
-      "numerator": 71,
-      "denominator": 71,
+      "numerator": 72,
+      "denominator": 72,
       "ratio": 1.0
     },
     "ownership.tables_written_by_at_most_one_owner": {
-      "numerator": 70,
-      "denominator": 71,
+      "numerator": 71,
+      "denominator": 72,
       "ratio": 0.986
     },
     "ownership.tables_claimed_by_an_aggregate": {
       "numerator": 0,
-      "denominator": 71,
+      "denominator": 72,
       "ratio": 0.0
     },
     "ownership.tables_touched_by_a_query": {
-      "numerator": 71,
-      "denominator": 71,
+      "numerator": 72,
+      "denominator": 72,
       "ratio": 1.0
     },
     "rules.constraints_cited_by_a_record": {
       "numerator": 2,
-      "denominator": 272,
+      "denominator": 268,
       "ratio": 0.007
     },
     "rules.foreign_keys_inside_one_context": {
@@ -68,8 +78,13 @@
       "ratio": 0.907
     },
     "access.queries_with_an_owner": {
-      "numerator": 511,
-      "denominator": 511,
+      "numerator": 517,
+      "denominator": 517,
+      "ratio": 1.0
+    },
+    "sensitivity.candidate_columns_classified": {
+      "numerator": 2,
+      "denominator": 2,
       "ratio": 1.0
     },
     "sensitivity.candidate_columns_cited_by_a_record": {
@@ -84,7 +99,7 @@
     },
     "provenance.migrations_cited_by_a_record": {
       "numerator": 1,
-      "denominator": 135,
+      "denominator": 138,
       "ratio": 0.007
     },
     "provenance.immutable_tables_known_to_registry": {
@@ -93,8 +108,8 @@
       "ratio": 0.0
     },
     "provenance.tables_with_a_retention_policy": {
-      "numerator": 71,
-      "denominator": 71,
+      "numerator": 72,
+      "denominator": 72,
       "ratio": 1.0
     }
   }
