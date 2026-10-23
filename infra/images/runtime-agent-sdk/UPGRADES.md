@@ -995,3 +995,27 @@ exit 1（與 CI 的 I-06 失敗相同）；`2026.08-17` → `No vulnerabilities 
 ### 本機驗證（2026-10-24，沒有任何模型呼叫）
 
 以 CI 釘住的 `anchore/grype:v0.117.0@sha256:ddf9e9f2…` 掃描本機建置，`--only-fixed`：只剩 `pypdf` 6.21.0 的 GHSA-5hx5-vpf9-5wcv（Low，修在冷卻期內的 `6.21.1`）；換版之前同一個掃描列出上表五則 Medium，`npm audit` 列出 `ip-address`。同一個映像、無網路：`node --version` → `v22.23.2`，`ip-address` → `10.7.4`，`pypdf.__version__` → `6.21.0`；`pypdf` 寫出一頁 200×100 的 PDF 再讀回，頁數 1、寬 200.0，`pdfplumber` 讀同一份頁數 1；`id -u` → `65532`；`command -v npm` → 無；`.Size` → 1,365,221,511 bytes；version label → `2026.08-21`。
+
+### 2026-10-24：四項測項，全部跑在 CI 發佈的 digest 上
+
+| 欄位 | 值 |
+| --- | --- |
+| 映像 digest | `sha256:6c5472b41c78a4273fb10015469d7cf2d37a2b5168c26c99f571c286134d5e25`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-21`，於 commit `fd6e33e9` 發佈；以 tag `docker pull`，`RepoDigests` 對得上） |
+| 環境 | 與 `-20` 相同：本機 LiteLLM（`skillhub-litellm-1`）＋ `skillhub_egress`；`sandboxd` 以 HEAD 交叉編譯、在 `debian:12-slim` 容器跑，`SKILLHUB_SANDBOX_IMAGE` **直接指上面那個 digest**；兩支測試二進位交叉編譯後在容器裡跑；允許清單只在暫存副本裡填 litellm 的 egress IP，committed 的那份一字未動 |
+| 費用 | 合計 **$0.0841659**（`gpt-5.4-mini`，23 筆，以閘道 `LiteLLM_SpendLogs` 加總）：端到端三次 Run $0.0222719＋$0.0220791＋$0.0118205、harness 兩支 $0.0279945；撤銷探測與被換掉的套件 $0 |
+| 映像層 | 同一個 digest、無網路：`ip-address` → `10.7.4`、`pypdf.__version__` → `6.21.0`、`id -u` → `65532` |
+
+| 項次 | 狀態 | 實測輸出 / 判定 |
+| --- | --- | --- |
+| **1. Skill 載入條件** | ✅ **通過，三種形狀各跑一次** | `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` PASS（24.93s）、`TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone` PASS（28.70s）、`TestEndToEndRunOfAPluginInsideARepositoryDirectoryInstallsItsSkill` PASS（30.79s） |
+| **2. 全數經閘道；金鑰撤銷後回 401** | ✅ **通過** | 每次 Run 的模型呼叫都在該 Run 自己的 Virtual Key 下（`skillhub-attempt-<id>` 三把，各 6 筆）。撤銷：新開一把限 `gpt-5.4-mini`、0.5 USD、6 小時的 Virtual Key 打 `/v1/models` → **200**，`/key/delete` → 200，同一把再打 → **401** |
+| **3. Prompt caching 計費欄位與對帳** | ✅ **欄位通過；對帳三次 Run 有一次少了最後一筆** | 閘道把快取讀取記在 `usage_object.prompt_tokens_details.cached_tokens`：23 筆中 13 筆有值，合計 233,472。對帳：第二、三次 Run 測試回報的閘道費用 $0.022079、$0.011820 與該把 Virtual Key 的 `LiteLLM_SpendLogs` 加總逐位相同；**第一次回報 $0.020754，閘道記 $0.0222719，差 $0.0015179，正是那把金鑰最後一筆呼叫（5 個輸出 token，$0.0015183）** |
+| **4. `usage` 事件的發出條件** | ✅ **通過** | `TestHarnessReportsUsageForACompletedTurn` PASS（21.22s，`in=18011 out=29 token_source=result`）；`TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage` PASS（23.74s，撞上限仍回報 `in=18011 out=26`，provider 錯誤指向 `token_budget_exceeded`）。harness 以 master key 當 grant，`cost` 為 `null`，與 `-20` 相同 |
+
+**套件位元組核對（不在四項清單上，同批驗證）**：`TestEndToEndRunRefusesAPackageWhoseStoredBytesAreNotTheAdmittedOnes` PASS（15.82s），沒有呼叫模型。
+
+**第 3 項那筆差額的機制**：`run.mjs` 的 `gatewaySpend` 在 `/key/info` 連續兩次讀數相同（間隔 1.5 秒）時就把它當成已結算；閘道的 spend 是非同步寫入，最後一筆還沒寫進去時，兩次讀數同樣會相等。`run.mjs` 從 `-20` 起**一字未動**，所以這不是本次升版帶來的回歸，而是那個「讀數不再移動」判準本來就有的競態。**扣點不受影響**：平台結算 Credit 用的是 `trial/execution/credit.go` 的 `reportedSpend`，讀閘道自己的 spend log，讀不完整時記 `RunTokenUsageUnreadable` 並在之後重讀，不用沙箱回報的數字；受影響的只有 trace `usage` 事件上顯示的費用。要修 `gatewaySpend` 的判準得再升一次映像，留給下一版。
+
+### 預設映像從 `-20` 移到 `-21`
+
+四項在 `-21` 的 digest 上跑過之後，經負責人同意移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例，以及 `apps/sandbox/README.md` 的環境變數表與建置範例。
