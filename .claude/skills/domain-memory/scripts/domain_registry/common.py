@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import time
@@ -88,6 +89,20 @@ def find_record(records: Any, record_id: Any) -> dict[str, Any] | None:
 
 def updates_record(update: Any, asset: str, record_id: Any) -> bool:
     return update.get("asset") == asset and (update.get("record") or {}).get("id") == record_id
+
+
+def canonical_json(value: Any) -> bytes:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def sha256_of(data: bytes) -> str:
+    return f"sha256:{hashlib.sha256(data).hexdigest()}"
+
+
+def inside(root: Path, path: Path | str) -> Path | None:
+    top = root.resolve()
+    located = (top / path).resolve()
+    return located if located.is_relative_to(top) else None
 
 
 def shown_path(path: Path, top: Path | None) -> str:

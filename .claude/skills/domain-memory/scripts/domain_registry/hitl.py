@@ -12,6 +12,7 @@ from .attestations import (
     verify_git_signed_commit,
 )
 from .common import (
+    sha256_of,
     EVIDENCE_FILE,
     OBLIGATIONS_FILE,
     PROPOSAL_FILE,
@@ -33,7 +34,6 @@ from .counterfactual import (
     reports_tests,
     working_directory,
 )
-from .evidence import digest
 from .git import resolve_commit
 from .policy import approved_command_profiles, review_governance
 from .revision import StaleBaseError, base_registry_revision, require_current_registry_revision
@@ -317,7 +317,7 @@ def record_test_result(
         "evidence": command,
         "command_profile": command_profile,
         "exit_code": 0,
-        "output_sha256": digest(completed.stdout + completed.stderr),
+        "output_sha256": sha256_of(completed.stdout + completed.stderr),
         "finished_at": utc_now(),
     }
     if run.cwd is not None:

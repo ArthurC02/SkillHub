@@ -6,6 +6,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .common import (
+    inside,
     SOURCE_MAP_FORMAT,
     shown_path,
     completed_identifier,
@@ -629,9 +630,7 @@ def _snapshot_problem(snapshots: Any, selected_paths: Any) -> str | None:
 def _selection_problem(
     root: Path, selected_paths: list[str], policy: dict[str, Any] | None
 ) -> str | None:
-    escaping = next(
-        (path for path in selected_paths if not (root / path).resolve().is_relative_to(root)), None
-    )
+    escaping = next((path for path in selected_paths if inside(root, path) is None), None)
     if escaping is not None:
         return f"source path escapes repository: {escaping}"
     policy_paths = (policy or {}).get("source_policy", {}).get("selected_paths")

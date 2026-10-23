@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Any, TypeGuard
 
-from .common import ASSET_KEYS, find_record, registry_dir, shown_path
+from .common import ASSET_KEYS, canonical_json, find_record, inside, registry_dir, shown_path
 from .git import run_git, run_git_bytes
 from .policy import existing_policy, policy_path
 from .registry import as_stored
@@ -20,12 +20,6 @@ def _is_lowercase_hex(text: str, length: int) -> bool:
     return len(text) == length and all(
         character in "0123456789abcdef" for character in text
     )
-
-
-def _canonical_json(value: Any) -> bytes:
-    return json.dumps(
-        value, ensure_ascii=False, separators=(",", ":"), sort_keys=True
-    ).encode("utf-8")
 
 
 def _feed(digest: Any, name: str, content: bytes) -> None:
@@ -57,8 +51,8 @@ def _in_identifier_order(name: str, document: Any) -> Any:
 def _digest_of(documents: dict[str, Any], policy_name: str, policy: Any) -> str:
     digest = hashlib.sha256()
     for name in REGISTRY_FILES:
-        _feed(digest, name, _canonical_json(_in_identifier_order(name, documents[name])))
-    _feed(digest, policy_name, b"absent" if policy is None else _canonical_json(policy))
+        _feed(digest, name, canonical_json(_in_identifier_order(name, documents[name])))
+    _feed(digest, policy_name, b"absent" if policy is None else canonical_json(policy))
     return f"{DIGEST_PREFIX}{digest.hexdigest()}"
 
 
@@ -89,11 +83,9 @@ def base_registry_revision(root: Path, repo_root: Path) -> dict[str, str | None]
 
 
 def _digest_inside(root: Path, repo_root: Path) -> str:
-    resolved_root = root.resolve()
-    try:
-        resolved_root.relative_to(repo_root.resolve())
-    except ValueError as error:
-        raise ValueError("registry root must be inside repo root") from error
+    resolved_root = inside(repo_root, root)
+    if resolved_root is None:
+        raise ValueError("registry root must be inside repo root")
     return registry_digest(resolved_root)
 
 

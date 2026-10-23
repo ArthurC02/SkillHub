@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import io
 import re
 from collections.abc import Callable
@@ -8,17 +7,13 @@ from functools import cache
 from pathlib import Path
 from typing import Any
 
-from .common import MAX_EVIDENCE_BYTES, MAX_NESTING_DEPTH, load_json, review_field, whole_number
-from .git import run_git_bytes
+from .common import MAX_EVIDENCE_BYTES, MAX_NESTING_DEPTH, inside, load_json, review_field, sha256_of, whole_number
+from .git import checked_git_bytes
 from .sources import repository_files, source_kind_index
 
 
 DERIVED_EVIDENCE_KEYS = ("content_sha256", "source_kind")
 WIDEN_TO_UNIQUE ="Widen the citation to the enclosing block, so its lines occur once in the file."
-
-
-def digest(value: bytes) -> str:
-    return f"sha256:{hashlib.sha256(value).hexdigest()}"
 
 
 def source_map_for(registry_root: Path) -> dict[str, Any]:
@@ -108,8 +103,8 @@ def classify_all(value: Any, source_map: dict[str, Any]) -> Any:
 
 
 def _cited_file(root: Path, relative: str) -> Path:
-    path = (root / relative).resolve()
-    if not path.is_relative_to(root):
+    path = inside(root, relative)
+    if path is None:
         raise ValueError(f"evidence path escapes the repository: {relative}")
     if not path.is_file():
         raise ValueError(f"no such file to cite: {relative}")
@@ -195,8 +190,8 @@ def citation(repo_root: Path, relative: str, start: int, end: int) -> dict[str, 
     return {
         "path": path.relative_to(root).as_posix(),
         "lines": {"start": start, "end": end},
-        "content_sha256": digest(content),
-        "excerpt_sha256": digest(_excerpt(rows, start, end)),
+        "content_sha256": sha256_of(content),
+        "excerpt_sha256": sha256_of(_excerpt(rows, start, end)),
     }
 
 
@@ -258,7 +253,7 @@ def _shape_error(reference: Any) -> str | None:
 
 
 def _source_verdict(path: Path, path_text: str, root: Path) -> dict[str, Any] | None:
-    if not path.is_relative_to(root):
+    if inside(root, path) is None:
         return {"status": "invalid", "reason": "evidence path escapes repository"}
     if not path.is_file():
         return {"status": "missing", "path": path_text}
@@ -282,11 +277,7 @@ def staged_content(repo_root: Path) -> ContentReader:
     root = repo_root.resolve()
 
     def git(*arguments: str) -> bytes:
-        result = run_git_bytes(root, *arguments)
-        if result.returncode != 0:
-            reason = result.stderr.decode("utf-8", errors="replace").strip()
-            raise ValueError(f"could not read the Git index of {root}: {reason}")
-        return result.stdout
+        return checked_git_bytes(root, *arguments, failure=f"could not read the Git index of {root}").stdout
 
     @cache
     def read(path_text: str) -> bytes | None:
@@ -303,7 +294,7 @@ def staged_content(repo_root: Path) -> ContentReader:
 
 
 def _rows_from(root: Path, path_text: str, content_of: ContentReader) -> dict[str, Any] | list[str]:
-    if not (root / path_text).resolve().is_relative_to(root):
+    if inside(root, path_text) is None:
         return {"status": "invalid", "reason": "evidence path escapes repository"}
     content = content_of(path_text)
     if content is None:
@@ -357,7 +348,7 @@ def _cited_lines_verdict(reference: dict[str, Any], path_text: str, rows: list[s
             "path": path_text,
             "reason": f"{path_text} was cited without an excerpt hash; regenerate the citation with cite",
         }
-    if reference.get("excerpt_sha256") != digest(_excerpt(rows, start, end)):
+    if reference.get("excerpt_sha256") != sha256_of(_excerpt(rows, start, end)):
         return _moved_or_stale(reference["excerpt_sha256"], path_text, rows, end - start + 1)
     return {
         "status": "current",
@@ -370,7 +361,7 @@ def _starts_of(rows: list[str], length: int, excerpt_sha256: str) -> list[int]:
     return [
         start
         for start in range(1, len(rows) - length + 2)
-        if digest(_excerpt(rows, start, start + length - 1)) == excerpt_sha256
+        if sha256_of(_excerpt(rows, start, start + length - 1)) == excerpt_sha256
     ]
 
 

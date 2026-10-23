@@ -12,6 +12,7 @@ from .changes import (
     validate_change_package,
 )
 from .common import (
+    inside,
     APPLY_OPERATION,
     ASSET_KEYS,
     PROPOSAL_FILE,
@@ -78,13 +79,9 @@ def reconcile_pending_update(registry_root: Path, repo_root: Path) -> str | None
     proposal_id = marker.get("proposal_id")
     if not isinstance(relative, str) or not completed_identifier(proposal_id):
         raise ValueError("registry reconciliation marker is malformed")
-    package_root = (repo_root / relative).resolve()
-    try:
-        package_root.relative_to(repo_root.resolve())
-    except ValueError as error:
-        raise ValueError(
-            "registry reconciliation marker points outside the repository"
-        ) from error
+    package_root = inside(repo_root, relative)
+    if package_root is None:
+        raise ValueError("registry reconciliation marker points outside the repository")
     proposal_path = package_root / PROPOSAL_FILE
     proposal = load_json(proposal_path)
     if proposal.get("proposal_id") != proposal_id:

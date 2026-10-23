@@ -12,13 +12,14 @@ from urllib.parse import quote, urlparse
 HTTP_NOT_FOUND = 404
 
 from .common import (
+    inside,
     EVIDENCE_FILE,
     PROPOSAL_FILE,
     completed_identifier,
     load_json,
     readable_packages,
 )
-from .git import read_objects, run_bounded
+from .git import read_objects, run_git
 from .revision import valid_commit
 
 
@@ -139,10 +140,6 @@ def verify_external_scm(
     return [error] if error else []
 
 
-def _git(repo_root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
-    return run_bounded(["git", "-C", str(repo_root), *arguments], errors="replace")
-
-
 UNRUNNABLE_PROGRAM = ("cannot spawn ", "cannot run ")
 
 
@@ -154,7 +151,7 @@ def _invalid_signature(repo_root: Path, commit: str, verifier_stderr: str) -> st
             f"Git commit signature was not checked: {unrunnable}. Install the signing program, "
             "or point gpg.ssh.program or gpg.program at it, and verify again"
         )
-    header = _git(repo_root, "cat-file", "commit", commit).stdout.partition("\n\n")[0]
+    header = run_git(repo_root, "cat-file", "commit", commit).stdout.partition("\n\n")[0]
     if "\ngpgsig" in header:
         reason = f" ({reasons[-1]})" if reasons else ""
         return f"Git commit signature is invalid: {commit} is signed, but the signature does not verify{reason}"
@@ -172,7 +169,7 @@ def verify_git_signed_commit(
     commit = value.get("commit")
     if not isinstance(commit, str):
         return ["Git commit attestation requires a commit"]
-    verified = _git(repo_root, "verify-commit", "--raw", commit)
+    verified = run_git(repo_root, "verify-commit", "--raw", commit)
     if verified.returncode != 0:
         return [_invalid_signature(repo_root, commit, verified.stderr)]
     output = verified.stdout + verified.stderr
@@ -181,7 +178,7 @@ def verify_git_signed_commit(
     signers.update(re.findall(r"key (SHA256:[A-Za-z0-9+/=]+)", output))
     if not signers.intersection(authorized_signers):
         return ["Git commit signer is not authorized by Domain Memory policy"]
-    changed = _git(
+    changed = run_git(
         repo_root, "diff-tree", "--no-commit-id", "--name-only", "-r", "-m", "--first-parent", "--root", commit
     )
     root = registry_root.resolve().relative_to(repo_root.resolve()).as_posix()
@@ -196,8 +193,9 @@ OUTSIDE_THE_REPOSITORY = "the Change Package must be inside the repository, so t
 
 
 def package_path_in(repo_root: Path, package_root: Path) -> str | None:
+    located = inside(repo_root, package_root)
     try:
-        return package_root.resolve().relative_to(repo_root.resolve()).as_posix()
+        return None if located is None else located.relative_to(repo_root.resolve()).as_posix()
     except ValueError:
         return None
 
@@ -231,7 +229,7 @@ def commit_carries_proposal(
     relative = package_path_in(repo_root, package_root)
     if relative is None:
         return [OUTSIDE_THE_REPOSITORY]
-    shown = _git(repo_root, "show", f"{commit}:{relative}/{PROPOSAL_FILE}")
+    shown = run_git(repo_root, "show", f"{commit}:{relative}/{PROPOSAL_FILE}")
     return carried_proposal_errors(shown.stdout if shown.returncode == 0 else None, relative, proposal)
 
 

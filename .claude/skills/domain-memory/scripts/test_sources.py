@@ -11,8 +11,8 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.common import load_json, write_json
-from domain_registry.evidence import digest
-from domain_registry.git import toplevel
+from domain_registry.common import sha256_of as digest
+from domain_registry.git import checked_git, toplevel
 from domain_registry.impact import _cited_ranges, boundary_impact
 from domain_registry.policy import validate_policy
 from domain_registry.readiness import assess_readiness
@@ -330,6 +330,10 @@ class SourcesTest(RegistryTestCase):
         self.two_mapped_contexts()
         impact = self.change("lib/src/billing/new.py", "src/orders_archive/old.py", "x/src/orders")
         self.assertEqual({"billing": ["lib/src/billing/new.py"]}, impact["contexts_touched"])
+
+    def test_a_refused_git_call_names_the_failure_and_the_reason(self) -> None:
+        with self.assertRaisesRegex(ValueError, r"^git could not read x: fatal: Needed a single revision$"):
+            checked_git(self.repo, "rev-parse", "--verify", "no-such-ref", failure="git could not read x")
 
     def test_an_unknown_base_is_an_error_not_a_quiet_result(self) -> None:
         self.two_mapped_contexts()

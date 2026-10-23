@@ -8,7 +8,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.evidence import citation, digest
+from domain_registry.common import sha256_of as digest
+from domain_registry.evidence import citation
 from domain_registry.sources import selected_source_map, write_source_map
 from test_support import RegistryTestCase
 
