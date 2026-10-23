@@ -53,12 +53,12 @@ jobs:
           gh api repos/google/gvisor/security-advisories --jq \
             '.[] | select(.published_at != null)
                  | select((now - (.published_at | fromdateiso8601)) < 86400)
-                 | select(.severity == "critical" or (.summary | ascii_downcase | test("escape")))
+                 | select(.severity == "critical" or (.summary | ascii_downcase | test("(^|[^a-z])escap")))
                  | "GHSA \(.ghsa_id) [\(.severity)] \(.summary)"' > advisories.txt \
             || { echo "::error::gVisor security-advisories feed unreachable — cannot conclude 'no new advisory'"; exit 1; }
           gh api repos/google/gvisor/releases --jq \
             '[.[] | select(.prerelease == false)][0]
-             | select(.body != null and (.body | test("escape|CVE-"; "i")))
+             | select(.body != null and (.body | test("(^|[^a-z])escap|CVE-"; "i")))
              | select((now - (.published_at | fromdateiso8601)) < 86400)
              | "RELEASE \(.tag_name) notes mention escape/CVE"' > relnotes.txt \
             || { echo "::error::gVisor releases feed unreachable — cannot conclude 'no new advisory'"; exit 1; }
