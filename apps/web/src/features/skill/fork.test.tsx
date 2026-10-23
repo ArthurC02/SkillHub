@@ -142,13 +142,15 @@ test("丙-153: 複製一份 403（沒有封測邀請）印中文句，不印 bet
   expect(text()).not.toContain("closed beta");
 });
 
-test("丙-150: 複製一份 409（同名）印「你的工作區已經有同名的小工具。」，不印 ErrNameTaken 的英文句", async () => {
+test("丙-150: 複製一份 409（同名）說出同名並指出資產庫裡的出路，不印 ErrNameTaken 的英文句", async () => {
   stubOwner(() => json({ error: "a skill with this name already exists in your workspace" }, 409));
   await render(<SkillDetail />, settledAsOwner);
   await clickFork();
   await waitFor(() => text().includes("你的工作區已經有同名的小工具"));
 
-  expect(text()).toContain("你的工作區已經有同名的小工具。");
+  expect(text()).toContain(
+    "你的工作區已經有同名的小工具，通常就是你先前複製的那一份，可以直接到資產庫使用它；要重新複製，先在資產庫刪掉那一份。",
+  );
   expect(text()).not.toContain("already exists in your workspace");
   const recovery = Array.from(container.querySelectorAll("a")).find(
     (link) => link.textContent === "前往資產庫找出同名小工具",
@@ -268,4 +270,14 @@ test("小工具Files 403 說明尚未開放，不顯示伺服器原文", async (
 
   expect(text()).toContain("這份套件的檔案目前尚未開放查看");
   expect(text()).not.toContain("closed beta access denied");
+});
+
+test("a fork of a skill that is gone says so instead of asking to recheck", async () => {
+  stubOwner(() => json({ error: "not found" }, 404));
+  await render(<SkillDetail />, settledAsOwner);
+  await clickFork();
+  await waitFor(() => text().includes("這個小工具已經不在了"));
+
+  expect(text()).toContain("這個小工具已經不在了（可能被下架或刪除），所以無法複製。");
+  expect(text()).not.toContain("請重新確認小工具資訊後再試");
 });

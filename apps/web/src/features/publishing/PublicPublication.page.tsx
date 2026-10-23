@@ -91,7 +91,8 @@ function AcquireAction({
         {acquire.isSuccess && (
           <p role="status">
             <a href={`${API_BASE_URL}${acquire.data.content_url}`}>下載 {acquire.data.file_name}</a>
-            {" ｜ "}
+            （到期時間：
+            <Timestamp at={acquire.data.expires_at} />）{" ｜ "}
             <Link to="/workspace/downloads" search={{ artifact: acquire.data.artifact_id }}>
               在交付紀錄查看這一份
             </Link>

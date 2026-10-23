@@ -479,6 +479,9 @@ test("an older Bundle row exports and first publishes the immutable version show
     link.textContent?.includes("查看這次交付紀錄"),
   );
   expect(continuation?.getAttribute("href")).toBe(`/workspace/downloads?artifact=${ARTIFACT}`);
+  const exportReceipt = continuation!.closest("p")!;
+  expect(exportReceipt.textContent).toContain("到期時間：");
+  expect(exportReceipt.querySelector("time")).not.toBeNull();
 
   await act(async () => button("首次發佈 v1.0.0")?.click());
   await waitFor(() => published !== undefined);
@@ -1397,6 +1400,9 @@ test("PACK-006 acquisition.available=true 時顯示下載按鈕，按下後用 c
     (a.textContent ?? "").includes("在交付紀錄查看這一份"),
   );
   expect(continuation?.getAttribute("href")).toBe(`/workspace/downloads?artifact=${ARTIFACT}`);
+  const receipt = continuation!.closest("p")!;
+  expect(receipt.textContent).toContain("到期時間：");
+  expect(receipt.querySelector("time")).not.toBeNull();
 });
 
 test("PACK-006 401：未登入按下下載，交給既有登入元件說一次", async () => {

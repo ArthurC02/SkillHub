@@ -554,7 +554,8 @@ function BundleActionFeedback({
           <a href={`${API_BASE_URL}${exportBundle.data.content_url}`}>
             下載 {exportBundle.data.file_name}
           </a>
-          {" · "}
+          （到期時間：
+          <Timestamp at={exportBundle.data.expires_at} />）{" · "}
           <Link to="/workspace/downloads" search={{ artifact: exportBundle.data.artifact_id }}>
             查看這次交付紀錄
           </Link>
