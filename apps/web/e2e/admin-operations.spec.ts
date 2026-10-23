@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { writeFile } from "node:fs/promises";
 import {
   ADMIN_AGENT_PROPOSAL,
   ADMIN_AGENT_PROPOSALS,
@@ -14,6 +15,216 @@ import {
   SKILL,
 } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
+import type { RunSettings } from "../src/features/admin/admin.service";
+
+const RUN_SETTING_DRAFTS = [
+  {
+    name: "spend ceiling",
+    key: "model_budget",
+    field: "credits",
+    next: 260,
+    original: "650",
+    edited: "300",
+    selector: "#admin-settings-run-budget-value",
+    note: "#admin-settings-run-budget-note",
+    heading: "每次試跑的模型花費上限",
+    summary: "調整花費上限",
+    submit: "改上限",
+    reset: "回到部署預設 650 點",
+    view: "檢視目前的花費上限",
+    endpoint: "/admin/settings/runs/model-budget",
+    warning: "設定已變更；草稿改為目前的 260 點，請確認後再送出。",
+    receipt: "已改為 260 點，新建立的試跑就照這個上限。",
+  },
+  {
+    name: "token rate",
+    key: "tokens_per_minute",
+    field: "limit",
+    next: 20000,
+    original: "200000",
+    edited: "30000",
+    selector: "#admin-settings-run-tpm-value",
+    note: "#admin-settings-run-tpm-note",
+    heading: "試跑模型金鑰的每分鐘 tokens 上限",
+    summary: "調整每分鐘 tokens 上限",
+    submit: "改每分鐘上限",
+    reset: "回到部署預設每分鐘 200,000 tokens",
+    view: "檢視目前的每分鐘 tokens 上限",
+    endpoint: "/admin/settings/runs/tokens-per-minute",
+    warning: "設定已變更；草稿改為每分鐘 20,000 tokens，請確認後再送出。",
+    receipt: "已改為每分鐘 20,000 tokens，之後發出的金鑰就照這個值。",
+  },
+] as const;
+
+async function controlRunSetting(
+  page: Page,
+  scope: (typeof RUN_SETTING_DRAFTS)[number],
+  overridden: boolean,
+) {
+  const snapshot = (value: number, reason?: string): RunSettings => ({
+    ...ADMIN_RUN_SETTINGS,
+    [scope.key]: { ...ADMIN_RUN_SETTINGS[scope.key], [scope.field]: value, reason },
+  });
+  let current: RunSettings = overridden
+    ? snapshot(scope.next, "temporary restriction")
+    : ADMIN_RUN_SETTINGS;
+  const writes: { method: string; body: Record<string, unknown> }[] = [];
+  let heldRead: Promise<void> | undefined;
+  await page.route("**/admin/settings/runs", async (route) => {
+    if (heldRead) await heldRead;
+    return route.fulfill({ json: current });
+  });
+  await page.route(`**${scope.endpoint}`, (route) => {
+    const method = route.request().method();
+    const body = route.request().postDataJSON();
+    writes.push({ method, body });
+    current =
+      method === "DELETE" ? ADMIN_RUN_SETTINGS : snapshot(Number(body[scope.field]), body.note);
+    return route.fulfill({ json: current });
+  });
+  const refresh = page.getByRole("button", { name: /^重新整理(?:設定|中…)$/ });
+  return {
+    writes,
+    custom: (reason: string) => {
+      current = snapshot(scope.next, reason);
+    },
+    defaults: () => {
+      current = ADMIN_RUN_SETTINGS;
+    },
+    defaultOverride: () => {
+      current = snapshot(Number(scope.original), "explicit default-sized override");
+    },
+    reread: async () => {
+      let release!: () => void;
+      heldRead = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const response = page.waitForResponse((reply) =>
+        reply.url().endsWith("/admin/settings/runs"),
+      );
+      try {
+        await refresh.click();
+        await expect(refresh).toHaveText("重新整理中…");
+        await expect(refresh).toBeDisabled();
+      } finally {
+        release();
+        await response;
+        heldRead = undefined;
+      }
+      await expect(refresh).toBeEnabled();
+      await expect(refresh).toHaveText("重新整理設定");
+    },
+  };
+}
+
+for (const scope of RUN_SETTING_DRAFTS) {
+  for (const width of [375, 1280]) {
+    for (const phase of ["refresh", "restore", "same-value restore", "saved"] as const) {
+      test(`run setting ${scope.name} draft stays current through ${phase} at ${width}px`, async ({
+        page,
+      }, info) => {
+        await stubPlatform(page);
+        await page.setViewportSize({ width, height: 900 });
+        await page.emulateMedia({ colorScheme: width === 375 ? "light" : "dark" });
+        const { writes, reread, custom, defaults, defaultOverride } = await controlRunSetting(
+          page,
+          scope,
+          phase === "restore",
+        );
+        if (phase === "same-value restore") defaultOverride();
+        await page.goto("/admin/settings");
+        await expect(page.locator(".auth-name")).toHaveText("tester");
+        const region = page.getByRole("region", { name: scope.heading, exact: true });
+        await region.getByText(scope.summary, { exact: true }).click();
+        const input = page.locator(scope.selector);
+        const refresh = page.getByRole("button", { name: "重新整理設定", exact: true });
+        if (phase === "refresh") {
+          custom("another operator changed the setting");
+          await reread();
+          await expect(input).toHaveValue(String(scope.next));
+          await expect(region.getByText(scope.warning, { exact: true })).toBeVisible();
+          await input.fill(scope.edited);
+          await reread();
+          await expect(refresh).toBeEnabled();
+          await expect(input).toHaveValue(scope.edited);
+          defaults();
+          await reread();
+          await expect(input).toHaveValue(scope.original);
+          custom("changed back to the preceding value");
+          await reread();
+          await expect(input).toHaveValue(String(scope.next));
+          await input.fill("");
+          await reread();
+          await expect(refresh).toBeEnabled();
+          await expect(input).toHaveValue("");
+          expect(writes).toEqual([]);
+        } else if (phase === "restore" || phase === "same-value restore") {
+          if (phase === "same-value restore") await input.fill(scope.edited);
+          await page
+            .locator(scope.note.replace("-note", "-clear-note"))
+            .fill("restore deployment defaults");
+          await region.getByRole("button", { name: scope.reset, exact: true }).click();
+          const receipt = region.getByRole("status").filter({ hasText: "已回到部署預設" });
+          await expect(receipt).toBeFocused();
+          await expect(receipt).toBeInViewport({ ratio: 1 });
+          await expect(input).toHaveValue(scope.original);
+          const editor = region.locator("details").filter({ has: input });
+          if ((await editor.getAttribute("open")) === null) await editor.locator("summary").click();
+          await expect(input).toBeVisible();
+          await page.locator(scope.note).fill("confirm the displayed deployment default");
+          await region.getByRole("button", { name: scope.submit, exact: true }).click();
+          await expect(region.getByRole("status").filter({ hasText: "已改為" })).toBeFocused();
+          expect(writes).toEqual([
+            { method: "DELETE", body: { note: "restore deployment defaults" } },
+            {
+              method: "PUT",
+              body: {
+                [scope.field]: Number(scope.original),
+                note: "confirm the displayed deployment default",
+              },
+            },
+          ]);
+          await region.scrollIntoViewIfNeeded();
+          const report = await new AxeBuilder({ page })
+            .include(`section.admin-settings-policy:has(${scope.selector})`)
+            .analyze();
+          await writeFile(info.outputPath("run-setting-draft-a11y.json"), JSON.stringify(report));
+          expect(report.violations).toEqual([]);
+          expect(report.incomplete).toEqual([]);
+        } else {
+          await input.fill(String(scope.next));
+          await page.locator(scope.note).fill("lower the limit while measuring");
+          await region.getByRole("button", { name: scope.submit, exact: true }).click();
+          await expect
+            .poll(() => writes)
+            .toEqual([
+              {
+                method: "PUT",
+                body: { [scope.field]: scope.next, note: "lower the limit while measuring" },
+              },
+            ]);
+          await expect(region.getByText(scope.receipt, { exact: true })).toBeFocused();
+          await expect(input).toHaveValue(String(scope.next));
+          await expect(region.getByText(scope.warning, { exact: true })).toHaveCount(0);
+          defaults();
+          await reread();
+          await region.getByRole("button", { name: scope.view, exact: true }).click();
+          await expect(input).toHaveValue(scope.original);
+          expect(writes).toEqual([
+            {
+              method: "PUT",
+              body: { [scope.field]: scope.next, note: "lower the limit while measuring" },
+            },
+          ]);
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+          true,
+        );
+        await region.screenshot({ path: info.outputPath("run-setting-draft.png") });
+      });
+    }
+  }
+}
 
 for (const width of [375, 1280]) {
   test(`exposure refresh replaces stale approval drafts at ${width}px`, async ({

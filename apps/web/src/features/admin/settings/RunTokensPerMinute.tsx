@@ -1,10 +1,11 @@
-import { useState } from "react";
 import { useRunTokensPerMinute, type RunSettings } from "../admin.service";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ActionForm } from "../components/ActionForm";
 import { SettingsResult } from "./SettingsResult";
+import { useRunSettingDraft } from "./useRunSettingDraft";
 
 type Rate = RunSettings["tokens_per_minute"];
+type RunTokensPerMinuteProps = { setting: Rate; readable: boolean; refreshing: boolean };
 
 const perMinute = (limit: number) => `每分鐘 ${limit.toLocaleString("en-US")} tokens`;
 
@@ -39,17 +40,10 @@ function resultSentence(limit: number | undefined, defaultLimit: number) {
     : `已改為${perMinute(limit)}，之後發出的金鑰就照這個值。`;
 }
 
-export function RunTokensPerMinute({
-  setting,
-  readable,
-  refreshing,
-}: {
-  setting: Rate;
-  readable: boolean;
-  refreshing: boolean;
-}) {
+export function RunTokensPerMinute({ setting, readable, refreshing }: RunTokensPerMinuteProps) {
   const set = useRunTokensPerMinute();
-  const [value, setValue] = useState(String(setting.limit));
+  const draft = useRunSettingDraft(setting.limit, set.isSuccess);
+  const value = draft.value;
   const limit = Number(value);
   const valid =
     value.trim() !== "" && Number.isInteger(limit) && limit >= setting.min && limit <= setting.max;
@@ -68,6 +62,9 @@ export function RunTokensPerMinute({
       {readable && !unverified && (
         <>
           <RateFacts setting={setting} />
+          {draft.changed && (
+            <p role="status">設定已變更；草稿改為{perMinute(setting.limit)}，請確認後再送出。</p>
+          )}
           <details>
             <summary>調整每分鐘 tokens 上限</summary>
             <ActionForm
@@ -90,7 +87,7 @@ export function RunTokensPerMinute({
                   max={setting.max}
                   step={1}
                   value={value}
-                  onChange={(event) => setValue(event.target.value)}
+                  onChange={(event) => draft.update(event.target.value)}
                   readOnly={set.isPending}
                 />
               </div>
@@ -120,7 +117,7 @@ export function RunTokensPerMinute({
           disabled={refreshing}
           aria-describedby="admin-settings-run-tpm-result"
           onClick={() => {
-            setValue(String(setting.limit));
+            draft.update(String(setting.limit));
             set.reset();
             document.getElementById("admin-settings-run-tpm-heading")?.focus();
           }}
