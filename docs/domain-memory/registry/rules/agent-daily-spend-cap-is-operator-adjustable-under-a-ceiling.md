@@ -3,11 +3,11 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-17T05:42:18.112047Z"
+    at: "2026-10-23T13:27:36.058605Z"
 sources:
-  - resource: "apps/platform/internal/product/operations/agents.go#L38-45"
-    excerpt_sha256: "sha256:6211e42ac2359b958cd10d4857a002f3bc66b51d2ba7611f690b9dba4df51f66"
-  - resource: "apps/platform/internal/product/operations/agents.go#L146-151"
+  - resource: "apps/platform/internal/product/operations/agents.go#L39-46"
+    excerpt_sha256: "sha256:bc732245aafdedcae7a6f2eeb40243527dc57b9ac1b8021c877fbbcb0f04126b"
+  - resource: "apps/platform/internal/product/operations/agents.go#L147-152"
     excerpt_sha256: "sha256:340bcb7471e9f24e68d0ab5b19f3262013d77d69a40ce07f12ba96908a86e518"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/platform_settings_integration_test.go#L44-84"
     excerpt_sha256: "sha256:9da17d1845d4d40b7dced044969315d2916def066862fa0dc46684329f677b27"

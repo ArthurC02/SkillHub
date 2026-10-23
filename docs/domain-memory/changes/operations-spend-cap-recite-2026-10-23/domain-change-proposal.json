@@ -3,12 +3,12 @@
   "proposal_id": "operations-spend-cap-recite-2026-10-23",
   "proposer": "domain-memory-agent",
   "requirement_id": "operations-spend-cap-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-23T13:27:23.072835Z",
   "verified_at": "2026-10-23T13:27:37.111558Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-23T13:27:40.097782Z",
+  "applied_at": "2026-10-23T13:28:22.248387Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "5d67ac8f41cb7c9d7af4c5c0a70a8210ac9b2af7",
@@ -102,5 +102,9 @@
   ],
   "supersedes": [
     "operations-spend-cap-reprove-2026-10-17"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "3717e730c73d02e0583a0421bda436cbdc9298d8",
+    "registry_digest": "sha256:87ea99ebacc4c68081058c40cb791300ff288d5e17e0a9538d762ce496145eee"
+  }
 }
