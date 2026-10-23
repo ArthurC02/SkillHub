@@ -113,9 +113,27 @@ class CliCiteTest(RegistryTestCase):
             "        return xs.stream().mapToInt(x -> x).sum();\n    }\n\n    Order(int id) {\n        this.id = id;\n    }\n}\n",
             encoding="utf-8",
         )
-        (self.repo / "Order.kt").write_text("fun total(xs: List<Int>): Int {\n    return xs.sum()\n}\n", encoding="utf-8")
+        (self.repo / "Order.kt").write_text(
+            "fun total(xs: List<Int>): Int {\n    return xs.sum()\n}\n\nfun short(): Int = 1\n", encoding="utf-8"
+        )
+        (self.repo / "Repo.java").write_text(
+            "class Repo {\n    public void save() throws IOException {\n        write();\n    }\n}\n", encoding="utf-8"
+        )
+        (self.repo / "ret.go").write_text("package p\n\nfunc Pair() (int, error) {\n\treturn 1, nil\n}\n", encoding="utf-8")
+        (self.repo / "calls.ts").write_text(
+            "export function isMember(kind: string, kinds: readonly string[]): boolean {\n  return kinds.includes(\"{\" + kind);\n}\n\n"
+            "const ok =\n  isMember(\"a\", KINDS) &&\n  isMember(\"b\", KINDS);\nif (ok) {\n  run();\n}\n\n"
+            "export const list = async (id: string) =>\n  read(\n    await fetch(`/x/${flag ? `(` : `(`}`),\n  );\n\n"
+            "export const create = (body: {\n  id: string;\n}): Promise<void> =>\n  send(body);\n\n"
+            "const response = () => ({\n  status: 200,\n  headers: { a: \"}\" },\n});\n\n"
+            "describe(\"x\", () => {\n  it(\"y\", () => {});\n});\n\n"
+            "const strip = (text: string) => text.replace(/\\/\\*[\\s\\S]*?\\*\\//g, \"\");\n"
+            "const isOpen = (s: string) => /\\(/.test(s);\n",
+            encoding="utf-8",
+        )
         (self.repo / "lib.rs").write_text(
-            "pub fn total(xs: &[i32]) -> i32 {\n    xs.iter().sum()\n}\n\npub(crate) async fn fetch<T>(x: T) -> T {\n    x\n}\n",
+            "pub fn total(xs: &[i32]) -> i32 {\n    xs.iter().sum()\n}\n\npub(crate) async fn fetch<T>(x: T) -> T {\n    x\n}\n\n"
+            "pub fn first<'a>(xs: &'a [i32]) -> &'a i32 {\n    &xs[0]\n}\n",
             encoding="utf-8",
         )
         (self.repo / "total_test.go").write_text(
@@ -138,14 +156,19 @@ class CliCiteTest(RegistryTestCase):
             ("orders.ts", "one", (8, 8)), ("orders.ts", "add", (11, 13)), ("orders.ts", "member", (16, 18)),
             ("app.js", "render", (1, 3)),
             ("Order.java", "total", (4, 6)), ("Order.java", "Order", (8, 10)), ("Order.kt", "total", (1, 3)),
-            ("lib.rs", "total", (1, 3)), ("lib.rs", "fetch", (5, 7)),
+            ("lib.rs", "total", (1, 3)), ("lib.rs", "fetch", (5, 7)), ("lib.rs", "first", (9, 11)),
+            ("Order.kt", "short", (5, 5)), ("Repo.java", "save", (2, 4)), ("ret.go", "Pair", (3, 5)),
+            ("calls.ts", "isMember", (1, 3)), ("calls.ts", "list", (12, 15)), ("calls.ts", "create", (17, 20)),
+            ("calls.ts", "response", (22, 25)), ("calls.ts", "strip", (31, 31)), ("calls.ts", "isOpen", (32, 32)),
         ):
             with self.subTest(name):
                 cited = json.loads(self.cite("--path", path, "--function", name).stdout)
                 self.assertEqual(lines, (cited["lines"]["start"], cited["lines"]["end"]))
 
     def test_cite_refuses_a_function_it_cannot_place(self) -> None:
-        (self.repo / "orders.ts").write_text("export const limit =\n  5;\n", encoding="utf-8")
+        (self.repo / "orders.ts").write_text(
+            "export const limit =\n  5;\n\ndescribe(\"x\", () => {\n  it(\"y\", () => {});\n});\n", encoding="utf-8"
+        )
         (self.repo / "twice.py").write_text("def f():\n    pass\n\ndef f():\n    pass\n", encoding="utf-8")
         (self.repo / "open.go").write_text("package p\n\nfunc Open() {\n\treturn\n", encoding="utf-8")
         (self.repo / "elsewhere.py").write_text("def g():\n    pass\n", encoding="utf-8")
@@ -162,6 +185,8 @@ class CliCiteTest(RegistryTestCase):
                                "a definition of another form is cited with --lines"),
             ("orders.ts", "limit", "ERROR: orders.ts defines no function named limit in a form --function reads; "
                                    "a definition of another form is cited with --lines"),
+            ("orders.ts", "describe", "ERROR: orders.ts defines no function named describe in a form --function reads; "
+                                      "a definition of another form is cited with --lines"),
             ("prose.md", "h", "ERROR: prose.md: --function reads Go, Python, TypeScript, JavaScript, Java, Kotlin, Rust "
                                "files; cite a .md file with --lines"),
             ("twice.py", "f", "ERROR: twice.py defines f 2 times; cite the one you mean with --lines"),

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import bisect
 import io
 import re
 from collections.abc import Callable
@@ -112,24 +113,24 @@ def _cited_file(root: Path, relative: str) -> Path:
 
 
 INDENT = r"^(?P<indent>[ \t]*)"
-GO_START = r"func(?:\s*\([^)]*\))?\s+{name}\s*[(\[]"
+GO_START = r"func(?:\s*\([^)]*\))?\s+{name}\s*(?P<open>[(\[])"
 PYTHON_START = r"(?:async\s+)?def\s+{name}\s*[(\[]"
 SCRIPT_START = (
     r"(?:export\s+)?(?:default\s+)?(?:"
-    r"(?:async\s+)?function\s*\*?\s*{name}\s*[(<]"
-    r"|(?:const|let|var)\s+{name}\s*(?::[^=]*)?=\s*(?:(?:async\s+)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*(?::[^=]*)?=>|$)"
-    r"|(?:(?:public|private|protected|static|async|readonly|override)\s+)*{name}\s*[(<][^;]*$"
+    r"(?:async\s+)?function\s*\*?\s*{name}\s*(?P<open>[(<])"
+    r"|(?:const|let|var)\s+{name}\s*(?::[^=]*?)?(?P<arrow>=)(?!=)"
+    r"|(?:(?:public|private|protected|static|async|readonly|override)\s+)*{name}\s*(?P<method>[(<])"
     r")"
 )
 JAVA_START = (
     r"(?!return\b|new\b|throw\b|else\b)(?:(?:public|private|protected|static|final|abstract|synchronized|native|default)\s+)*"
-    r"(?:<[^>]+>\s+)?(?:[\w.$<>\[\],?]+\s+)?{name}\s*\([^;]*$"
+    r"(?:<[^>]+>\s+)?(?:[\w.$<>\[\],?]+\s+)?{name}\s*(?P<open>\()"
 )
 KOTLIN_START = (
     r"(?:(?:public|private|protected|internal|override|open|abstract|final|suspend|inline|infix|operator|tailrec|external|actual|expect)\s+)*"
-    r"fun\s+(?:<[^>]+>\s+)?(?:[\w.<>?]+\.)?{name}\s*[(<]"
+    r"fun\s+(?:<[^>]+>\s+)?(?:[\w.<>?]+\.)?{name}\s*(?P<open>[(<])"
 )
-RUST_START = r"(?:pub(?:\([^)]*\))?\s+)?(?:(?:const|async|unsafe|extern\s+\"[^\"]*\")\s+)*fn\s+{name}\s*[(<]"
+RUST_START = r"(?:pub(?:\([^)]*\))?\s+)?(?:(?:const|async|unsafe|extern\s+\"[^\"]*\")\s+)*fn\s+{name}\s*(?P<open>[(<])"
 BRACES, INDENTATION = "braces", "indentation"
 LANGUAGES: dict[str, tuple[str, str, str]] = {
     ".go": ("Go", GO_START, BRACES),
@@ -144,6 +145,13 @@ LANGUAGES: dict[str, tuple[str, str, str]] = {
     ".rs": ("Rust", RUST_START, BRACES),
 }
 LANGUAGE_NAMES = ", ".join(dict.fromkeys(language for language, _, _ in LANGUAGES.values()))
+SCRIPT_LANGUAGES = {"TypeScript", "JavaScript"}
+QUOTES = "'\"`"
+OPENERS = "([{"
+CLOSERS = ")]}"
+BLOCK, EXPRESSION, LINE = "block", "expression", "line"
+REGEX_AFTER_CHARACTERS = "(,=:[!&|?{};+-<>\n"
+REGEX_AFTER_WORDS = {"return", "typeof", "case", "in", "of", "void", "delete", "throw", "await", "yield", "instanceof"}
 
 
 def _language(relative: str) -> tuple[str, str, str]:
@@ -154,59 +162,299 @@ def _language(relative: str) -> tuple[str, str, str]:
     return LANGUAGES[suffix]
 
 
+def _is_name_char(character: str) -> bool:
+    return character.isalnum() or character in "_$"
+
+
+class _Source:
+    def __init__(self, rows: list[str], language: str) -> None:
+        self.text = "".join(rows)
+        self.lifetimes = language == "Rust"
+        self.regex_literals = language in SCRIPT_LANGUAGES
+        self.offsets = [0]
+        for row in rows:
+            self.offsets.append(self.offsets[-1] + len(row))
+
+    def line_of(self, index: int) -> int:
+        return bisect.bisect_right(self.offsets, index)
+
+    def word_at(self, index: int) -> str:
+        end = index
+        while end < len(self.text) and _is_name_char(self.text[end]):
+            end += 1
+        return self.text[index:end]
+
+    def skip_string(self, index: int) -> int:
+        quote = self.text[index]
+        if quote == "'" and self.lifetimes and not self.text.startswith("'", index + 2):
+            return index + 1
+        position = index + 1
+        while position < len(self.text):
+            character = self.text[position]
+            if character == "\\":
+                position += 2
+                continue
+            if character == quote:
+                return position + 1
+            if quote == "`" and self.text.startswith("${", position):
+                closed = self.skip_balanced(position + 2)
+                if closed is None:
+                    return len(self.text)
+                position = closed
+                continue
+            if quote != "`" and character == "\n":
+                return position
+            position += 1
+        return len(self.text)
+
+    def significant(self, index: int) -> int:
+        text = self.text
+        while index < len(text):
+            character = text[index]
+            if character.isspace():
+                index += 1
+            elif text.startswith("//", index):
+                newline = text.find("\n", index)
+                index = len(text) if newline < 0 else newline
+            elif text.startswith("/*", index):
+                closed = text.find("*/", index + 2)
+                index = len(text) if closed < 0 else closed + 2
+            elif character in QUOTES:
+                index = self.skip_string(index)
+            elif character == "/" and self.regex_starts(index):
+                index = self.skip_regex(index)
+            else:
+                return index
+        return index
+
+    def regex_starts(self, index: int) -> bool:
+        if not self.regex_literals:
+            return False
+        back = index - 1
+        while back >= 0 and self.text[back] in " \t":
+            back -= 1
+        if back < 0 or self.text[back] in REGEX_AFTER_CHARACTERS:
+            return True
+        start = back
+        while start >= 0 and _is_name_char(self.text[start]):
+            start -= 1
+        return self.text[start + 1:back + 1] in REGEX_AFTER_WORDS
+
+    def skip_regex(self, index: int) -> int:
+        position = index + 1
+        in_class = False
+        while position < len(self.text):
+            character = self.text[position]
+            if character == "\\":
+                position += 2
+                continue
+            if character == "\n":
+                return position
+            if in_class:
+                in_class = character != "]"
+            elif character == "[":
+                in_class = True
+            elif character == "/":
+                position += 1
+                while position < len(self.text) and self.text[position].isalpha():
+                    position += 1
+                return position
+            position += 1
+        return position
+
+    def skip_balanced(self, index: int) -> int | None:
+        depth = 1
+        while True:
+            index = self.significant(index)
+            if index >= len(self.text):
+                return None
+            character = self.text[index]
+            if character in OPENERS:
+                depth += 1
+            elif character in CLOSERS:
+                depth -= 1
+                if depth == 0:
+                    return index + 1
+            index += 1
+
+    def skip_type_parameters(self, index: int) -> int | None:
+        if self.text[index] == "[":
+            closed = self.skip_balanced(index + 1)
+        else:
+            depth, closed = 0, None
+            for position in range(index, len(self.text)):
+                depth += {"<": 1, ">": -1}.get(self.text[position], 0)
+                if depth == 0:
+                    closed = position + 1
+                    break
+        if closed is None:
+            return None
+        opener = self.significant(closed)
+        return opener if opener < len(self.text) and self.text[opener] == "(" else None
+
+
+def _definition(source: _Source, language: str, number: int, found: re.Match[str]) -> tuple[str, int] | None:
+    start = source.offsets[number - 1]
+    if found.groupdict().get("arrow"):
+        return _arrow_definition(source, start + found.end())
+    index = start + found.end() - 1
+    if source.text[index] in "[<":
+        index = source.skip_type_parameters(index)
+        if index is None:
+            return None
+    closed = source.skip_balanced(index + 1)
+    return None if closed is None else _body_after_parameters(source, language, closed)
+
+
+def _arrow_definition(source: _Source, index: int) -> tuple[str, int] | None:
+    text = source.text
+    index = source.significant(index)
+    if source.word_at(index) == "async":
+        index = source.significant(index + len("async"))
+    if source.word_at(index) == "function":
+        opener = text.find("(", index)
+        closed = None if opener < 0 else source.skip_balanced(opener + 1)
+        return None if closed is None else _body_after_parameters(source, "TypeScript", closed)
+    if index < len(text) and text[index] == "(":
+        closed = source.skip_balanced(index + 1)
+        return None if closed is None else _arrow_after_parameters(source, closed)
+    parameter = source.word_at(index)
+    if not parameter:
+        return None
+    index = source.significant(index + len(parameter))
+    return _arrow_body(source, index + 2) if text.startswith("=>", index) else None
+
+
+def _arrow_after_parameters(source: _Source, index: int) -> tuple[str, int] | None:
+    text = source.text
+    annotated = False
+    while True:
+        index = source.significant(index)
+        if index >= len(text):
+            return None
+        if text.startswith("=>", index):
+            return _arrow_body(source, index + 2)
+        character = text[index]
+        if not annotated:
+            if character != ":":
+                return None
+            annotated = True
+        elif character in ";=":
+            return None
+        elif character in OPENERS:
+            closed = source.skip_balanced(index + 1)
+            if closed is None:
+                return None
+            index = closed
+            continue
+        index += 1
+
+
+def _arrow_body(source: _Source, index: int) -> tuple[str, int]:
+    index = source.significant(index)
+    return (BLOCK if index < len(source.text) and source.text[index] == "{" else EXPRESSION, index)
+
+
+def _body_after_parameters(source: _Source, language: str, index: int) -> tuple[str, int] | None:
+    text = source.text
+    annotated = False
+    while True:
+        index = source.significant(index)
+        if index >= len(text):
+            return None
+        character = text[index]
+        if character == "{":
+            return BLOCK, index
+        if language in SCRIPT_LANGUAGES and not annotated:
+            if character != ":":
+                return None
+            annotated = True
+        elif language == "Kotlin" and character == "=" and not text.startswith("==", index):
+            return LINE, index + 1
+        elif character == ";" or (language in SCRIPT_LANGUAGES and character == "="):
+            return None
+        elif character in OPENERS:
+            closed = source.skip_balanced(index + 1)
+            if closed is None:
+                return None
+            index = closed
+            continue
+        index += 1
+
+
+def _end(source: _Source, body: tuple[str, int]) -> int | None:
+    kind, index = body
+    text = source.text
+    if kind == BLOCK:
+        closed = source.skip_balanced(index + 1)
+        return None if closed is None else source.line_of(closed - 1)
+    while index < len(text):
+        if kind == EXPRESSION:
+            index = source.significant(index)
+            if index >= len(text):
+                break
+        character = text[index]
+        if kind == EXPRESSION and character == ";":
+            return source.line_of(index)
+        if kind == LINE and character == "\n":
+            return source.line_of(index)
+        if kind == LINE and character in QUOTES:
+            index = source.skip_string(index)
+            continue
+        if character in OPENERS:
+            closed = source.skip_balanced(index + 1)
+            if closed is None:
+                return None
+            index = closed
+            continue
+        index += 1
+    return None if kind == EXPRESSION else source.line_of(len(text) - 1)
+
+
+def _definitions(rows: list[str], language: str, pattern: re.Pattern[str]) -> list[tuple[int, re.Match[str], tuple[str, int] | None]]:
+    source = _Source(rows, language)
+    found_all = []
+    for number, row in enumerate(rows, 1):
+        found = pattern.match(row)
+        if not found:
+            continue
+        body = None if language == "Python" else _definition(source, language, number, found)
+        if language == "Python" or body is not None:
+            found_all.append((number, found, body))
+    return found_all
+
+
 def function_span(repo_root: Path, relative: str, name: str) -> tuple[int, int]:
-    _, start_form, end_form = _language(relative)
+    language, start_form, end_form = _language(relative)
     rows = _rows(_cited_file(repo_root.resolve(), relative).read_bytes())
     pattern = re.compile(INDENT + start_form.format(name=re.escape(name)))
-    starts = [(number, found) for number, row in enumerate(rows, 1)
-              if (found := pattern.match(row)) and _continues_as_arrow(rows, number)]
+    starts = _definitions(rows, language, pattern)
     if len(starts) != 1:
         raise ValueError(
-            f"{relative} defines no function named {name} in a form --function reads{_defined_elsewhere(repo_root.resolve(), relative, pattern)}; a definition of another form is cited with --lines"
+            f"{relative} defines no function named {name} in a form --function reads"
+            f"{_defined_elsewhere(repo_root.resolve(), relative, language, pattern)}; a definition of another form is cited with --lines"
             if not starts
             else f"{relative} defines {name} {len(starts)} times; cite the one you mean with --lines"
         )
-    start, found = starts[0]
-    end = _brace_end(rows, start) if end_form == BRACES else _python_end(rows, start, len(found["indent"]))
+    start, found, body = starts[0]
+    end = _python_end(rows, start, len(found["indent"])) if end_form == INDENTATION else _end(_Source(rows, language), body)
     if end is None:
         raise ValueError(f"{relative}: the body of {name} starting on line {start} does not end; cite it with --lines")
     return start, end
 
 
-def _continues_as_arrow(rows: list[str], number: int) -> bool:
-    if not rows[number - 1].rstrip().endswith("="):
-        return True
-    following = next((row for row in rows[number:] if row.strip()), "")
-    return "=>" in following
-
-
-def _defined_elsewhere(repo_root: Path, relative: str, pattern: re.Pattern[str]) -> str:
+def _defined_elsewhere(repo_root: Path, relative: str, language: str, pattern: re.Pattern[str]) -> str:
     suffix = Path(relative).suffix
     found = []
     for path in repository_files(repo_root):
         if path == relative or not path.endswith(suffix):
             continue
         rows = _rows((repo_root / path).read_bytes())
-        found.extend(f"{path}:{number}" for number, row in enumerate(rows, 1)
-                     if pattern.match(row) and _continues_as_arrow(rows, number))
+        found.extend(f"{path}:{number}" for number, _, _ in _definitions(rows, language, pattern))
     found.sort()
     if not found:
         return ""
     return f"; it is defined in {found[0]}" if len(found) == 1 else "; it is defined in several files: " + ", ".join(found)
-
-
-def _brace_end(rows: list[str], start: int) -> int | None:
-    depth = 0
-    opened = False
-    for number in range(start, len(rows) + 1):
-        row = rows[number - 1]
-        depth += row.count("{") - row.count("}")
-        opened = opened or "{" in row
-        if opened and depth <= 0:
-            return number
-        if not opened and row.rstrip().endswith(";"):
-            return number
-    return None
 
 
 def _python_end(rows: list[str], start: int, indent: int) -> int | None:

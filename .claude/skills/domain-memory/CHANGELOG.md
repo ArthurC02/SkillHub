@@ -2,6 +2,15 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.0.2
+
+### Fixed
+
+- `cite --function` read a line that starts with `name(` as a definition in TypeScript and JavaScript, so a function called at the start of a line was reported defined several times; the parameter list is now read to its closing bracket and only `{`, a `: type` followed by `{`, or `=>` after it makes a definition. Measured on a web application's 109 top-level arrow functions against the TypeScript compiler, 14 refusals of this kind are gone.
+- An arrow function's expression body ended at the first balanced brace pair, so a template literal `${}` or an object literal inside it cut the range short; it ends at the semicolon that closes the statement, with strings, template literals, comments and brackets read as units. The same reader ends a block body at its matching brace, which a brace inside a string no longer disturbs.
+- An arrow function whose parameter list spans lines, such as a destructured object type, was refused; the arrow is looked for after the list closes, wherever that is.
+- A regular-expression literal is read as a unit, so a `//` or `/*` inside it is not a comment; a Rust lifetime (`'a`) is not read as the start of a string; a Go function returning a tuple, a Java method with `throws`, and a Kotlin expression body are read to their ends.
+
 ## 4.0.1
 
 ### Fixed
