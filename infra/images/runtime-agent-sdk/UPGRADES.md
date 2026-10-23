@@ -967,3 +967,31 @@ exit 1（與 CI 的 I-06 失敗相同）；`2026.08-17` → `No vulnerabilities 
 `TestEndToEndRunHandsAQuestionOnlyThePersonCanAnswerBackAndStops` 補上了 `-19` 那個缺口：一個說明「鞋碼制度只有本人知道」的 Skill，經真閘道跑一次 Run，PASS（48.82s，$0.017985）。Run 以 `succeeded` 結束，trace 有 `agent_output` `kind: question`，問題列出 EU／UK／US，`usage` 事件照常發出。
 
 **反證**：同一組斷言改跑從不提問的 run-marker Skill，測試以「the run finished without handing a question back to the person」變紅，所以斷言不是空的。另一個嘗試是在請求裡直接講明制度，模型仍然提問，測試照樣綠——這只說明 `gpt-5.4-mini` 傾向多問，不能拿來當反證。本節合計四次 Run $0.0780702，其中一次是編譯失敗的突變二進位沒被換掉、重跑了原版，白花約 $0.018。
+
+---
+
+## `2026.08-20` → `2026.08-21`（2026-10-24）— **安全性修補：`ip-address` 與 `pypdf`；四項實測尚未跑，預設映像仍留在 `-20`**
+
+`dep-audit` 對這個目錄的 npm 鎖檔回報可修的 Medium；同一份建置以 CI 釘住的 grype 掃描，另外列出 `pypdf` 的可修項。
+
+| 套件 | 原版本 | 修正版本 | 公告 |
+| --- | --- | --- | --- |
+| `ip-address`（npm，`@anthropic-ai/claude-agent-sdk` → `@modelcontextprotocol/sdk` → `express-rate-limit` 的傳遞依賴） | `10.7.2` | `10.7.4` | GHSA-rxp7-6hxx-x8q5（Medium） |
+| `pypdf`（Python） | `6.19.0` | `6.21.0` | GHSA-39mj-jf6j-2qj3、GHSA-qfv9-64jg-mh7p、GHSA-6vvc-x485-93v7、GHSA-cgf9-327m-v77c、GHSA-f54x-cmq8-qg57（Medium） |
+
+**暴露面**：`ip-address` 的公告是 IPv6 zone identifier 的二次方時間解析，只在 `express-rate-limit` 處理 HTTP 請求時走到；`run.mjs` 只用行程內的 MCP 伺服器，沒有 HTTP 傳輸、沒有監聽埠。`pypdf` 的五則都在解析 PDF，Skill 讀使用者上傳的 PDF 時會走到，影響範圍是那一次 Run 的沙箱。
+
+**冷卻期**：`ip-address` `10.7.4` 於 2026-10-11 發佈；`pypdf` `6.21.0` 於 2026-10-16 發佈，都已過 7 天。修 GHSA-5hx5-vpf9-5wcv（Low）的 `6.21.1` 於 2026-10-17 發佈，**這一版不收**，留給下一次升版。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `package-lock.json` 只換 `ip-address`（在 `express-rate-limit` 宣告的 `^10.2.0` 範圍內，`package.json` 一字未動）；`constraints.txt` 與 Dockerfile 的 `pypdf`；`ARG IMAGE_VERSION` |
+| 新增的依賴 | 無 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| `run.mjs` | **未變** |
+| 預設映像 | 仍是 `-20`；四項在 CI 發佈的 digest 上跑過、經負責人同意之後才移動 |
+
+### 本機驗證（2026-10-24，沒有任何模型呼叫）
+
+以 CI 釘住的 `anchore/grype:v0.117.0@sha256:ddf9e9f2…` 掃描本機建置，`--only-fixed`：只剩 `pypdf` 6.21.0 的 GHSA-5hx5-vpf9-5wcv（Low，修在冷卻期內的 `6.21.1`）；換版之前同一個掃描列出上表五則 Medium，`npm audit` 列出 `ip-address`。同一個映像、無網路：`node --version` → `v22.23.2`，`ip-address` → `10.7.4`，`pypdf.__version__` → `6.21.0`；`pypdf` 寫出一頁 200×100 的 PDF 再讀回，頁數 1、寬 200.0，`pdfplumber` 讀同一份頁數 1；`id -u` → `65532`；`command -v npm` → 無；`.Size` → 1,365,221,511 bytes；version label → `2026.08-21`。
