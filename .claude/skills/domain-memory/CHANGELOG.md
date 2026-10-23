@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.5.4
+
+### Fixed
+
+- A CHECK of the form `<column> IS NOT NULL AND <column> IN (...)` is read as that column's value list, as `<column> IS NULL OR <column> IN (...)` already was; the null clause only says whether the column is required.
+
 ## 2.5.3
 
 ### Added

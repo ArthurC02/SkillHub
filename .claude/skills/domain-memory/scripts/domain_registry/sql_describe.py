@@ -11,7 +11,8 @@ from .store import read_document
 
 CHECK_BODY = re.compile(r"\bCHECK\s*\((.*)\)", re.I | re.S)
 ONLY_AN_IN_LIST = re.compile(
-    rf"^\s*(?:({IDENT})\s+IS\s+NULL\s+OR\s+)?({IDENT})\s+(?:IN\s*\(([^)]*)\)|=\s*('(?:[^']|'')*'))\s*$", re.I | re.S)
+    rf"^\s*(?:({IDENT})\s+IS\s+(?:NULL\s+OR|NOT\s+NULL\s+AND)\s+)?({IDENT})\s+(?:IN\s*\(([^)]*)\)|=\s*('(?:[^']|'')*'))\s*$",
+    re.I | re.S)
 QUOTED = re.compile(r"'((?:[^']|'')*)'")
 SUMMARY_FIELDS = ("statement", "definition", "responsibility", "description", "name")
 SUMMARY_LENGTH = 160
