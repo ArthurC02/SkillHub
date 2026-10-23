@@ -394,6 +394,15 @@ class CompletenessDescribeTest(RegistryTestCase):
                 "to the repo root or as an absolute path inside it"),
             (outside.returncode, outside.stderr.strip()),
         )
+        missing = self.run_cli("describe-table", "--repo-root", str(self.repo), "--migrations", "db/nope", "--table", "orders")
+        (self.repo / "db" / "empty").mkdir()
+        empty = self.run_cli("extract-sql-schema", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+                             "--migrations", "db/empty")
+        self.assertEqual(
+            (1, f"ERROR: --migrations directory {self.repo / 'db' / 'nope'} does not exist",
+             1, f"ERROR: --migrations directory {self.repo / 'db' / 'empty'} holds no .sql files"),
+            (missing.returncode, missing.stderr.strip(), empty.returncode, empty.stderr.strip()),
+        )
 
     def test_gaps_since_a_ref_lists_only_what_the_change_opened_or_closed_per_table(self) -> None:
         self.commit_all("migrations")

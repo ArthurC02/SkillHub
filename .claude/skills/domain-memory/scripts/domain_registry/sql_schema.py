@@ -680,6 +680,10 @@ def migrations_inside(repo_root: Path, migrations: Path) -> Path:
     if not located.is_relative_to(root):
         raise ValueError(f"--migrations resolves outside --repo-root ({located}); pass it relative to the repo root or as an "
                          "absolute path inside it")
+    if not located.is_dir():
+        raise ValueError(f"--migrations directory {located} does not exist")
+    if not any(located.glob("*.sql")):
+        raise ValueError(f"--migrations directory {located} holds no .sql files")
     return located
 
 

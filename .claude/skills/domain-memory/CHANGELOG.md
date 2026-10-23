@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.8.5
+
+### Fixed
+
+- A `--migrations` directory that does not exist, or holds no `.sql` file, was reported as a missing table ("no table 'runs' in .../db/nope"); `describe-table` and `extract-sql-schema` now refuse the directory by name before looking anything up.
+
 ## 2.8.4
 
 ### Fixed
