@@ -3,7 +3,7 @@
   "meaning.columns_described": 0.5,
   "meaning.tables_known_to_registry": 1.0,
   "ownership.tables_with_exactly_one_declared_owner": 1.0,
-  "ownership.tables_owned_by_registry_contexts_only": 1.0,
+  "ownership.tables_with_a_known_owner": 1.0,
   "ownership.tables_written_by_at_most_one_owner": 1.0,
   "ownership.tables_claimed_by_an_aggregate": 0.5,
   "ownership.tables_touched_by_a_query": 1.0,

@@ -1,14 +1,14 @@
 {
   "inventory": {
-    "migrations": 134,
+    "migrations": 135,
     "tables": 71,
     "partitions": 4,
     "columns": 654,
-    "queries": 509,
+    "queries": 511,
     "constraints": 281,
     "foreign_keys": 145,
     "types": 2,
-    "registry_records": 475,
+    "registry_records": 747,
     "unparsed_statements": 0
   },
   "metrics": {
@@ -32,10 +32,10 @@
       "denominator": 71,
       "ratio": 0.986
     },
-    "ownership.tables_owned_by_registry_contexts_only": {
-      "numerator": 64,
+    "ownership.tables_with_a_known_owner": {
+      "numerator": 71,
       "denominator": 71,
-      "ratio": 0.901
+      "ratio": 1.0
     },
     "ownership.tables_written_by_at_most_one_owner": {
       "numerator": 70,
@@ -54,22 +54,22 @@
     },
     "rules.constraints_cited_by_a_record": {
       "numerator": 2,
-      "denominator": 281,
+      "denominator": 272,
       "ratio": 0.007
     },
     "rules.foreign_keys_inside_one_context": {
       "numerator": 56,
-      "denominator": 145,
-      "ratio": 0.386
+      "denominator": 140,
+      "ratio": 0.4
     },
     "rules.cross_context_foreign_keys_with_a_dependency_policy": {
       "numerator": 55,
-      "denominator": 89,
-      "ratio": 0.618
+      "denominator": 84,
+      "ratio": 0.655
     },
     "access.queries_with_an_owner": {
-      "numerator": 509,
-      "denominator": 509,
+      "numerator": 511,
+      "denominator": 511,
       "ratio": 1.0
     },
     "sensitivity.candidate_columns_cited_by_a_record": {
@@ -84,7 +84,7 @@
     },
     "provenance.migrations_cited_by_a_record": {
       "numerator": 1,
-      "denominator": 134,
+      "denominator": 135,
       "ratio": 0.007
     },
     "provenance.immutable_tables_known_to_registry": {

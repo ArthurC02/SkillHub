@@ -21,6 +21,8 @@ CITED_RESOURCE = re.compile(r'resource:\s*"([^"]+)"')
 CONTEXT_LINK = re.compile(r"\(/contexts/([a-z0-9-]+)\)")
 RECORD_TYPE = re.compile(r"^type:\s*(.+)$", re.M)
 RECORD_CONSISTENCY = re.compile(r"^consistency:\s*(.+)$", re.M)
+RECORD_STATUS = re.compile(r"^status:\s*(\S+)", re.M)
+UNREVIEWED_STATUSES = {"draft", "candidate"}
 SENSITIVE = re.compile(
     r"(^|_)(email|token|secret|password|passwd|phone|dsn|credential|ssn|api_key|ip_address|client_ip)(_|$)", re.I)
 KNOWN_CONSISTENCIES = {"synchronous", "eventual"}
@@ -81,6 +83,11 @@ class Record:
     contexts: list[str]
     consistency: str | None
     text: str
+    status: str
+
+    @property
+    def reviewed(self) -> bool:
+        return self.status not in UNREVIEWED_STATUSES
 
     def cites(self, file: str, line: int) -> bool:
         return any(path == file and start <= line <= end for path, start, end in self.citations)
@@ -103,9 +110,10 @@ def _read_record(path: Path) -> Record:
             citations.append((cited.group("path"), start, int(cited.group("end") or start)))
     kind = RECORD_TYPE.search(front)
     consistency = RECORD_CONSISTENCY.search(front)
+    status = RECORD_STATUS.search(front)
     return Record(
         path.parent.name, path.stem, kind.group(1).strip() if kind else "", citations, CONTEXT_LINK.findall(body),
-        consistency.group(1).strip().strip('"') if consistency else None, body,
+        consistency.group(1).strip().strip('"') if consistency else None, body, status.group(1) if status else "",
     )
 
 
@@ -124,12 +132,32 @@ def _mentions(records: list[Record], name: str) -> bool:
     return any(pattern.search(record.text) for record in records)
 
 
+GENERIC_KINDS = {"Generic", "Shared Kernel"}
+IDENTITY_ID = re.compile(r"^\s*-\s*id:\s*(\S+)")
+IDENTITY_KIND = re.compile(r"^\s*kind:\s*(.+?)\s*$")
+
+
+def read_identity(path: Path) -> set[str]:
+    if not path.is_file():
+        return set()
+    generic, current = set(), None
+    for line in path.read_text(encoding="utf-8").splitlines():
+        named = IDENTITY_ID.match(line)
+        kind = IDENTITY_KIND.match(line)
+        if named:
+            current = named.group(1)
+        elif kind and current and kind.group(1) in GENERIC_KINDS:
+            generic.add(current)
+    return generic
+
+
 @dataclass
 class Inputs:
     schema: Schema
     queries: list[Query]
     owners: dict[str, dict[str, list[str]]]
     records: list[Record]
+    generic: set[str]
 
     @property
     def tables(self) -> dict[str, Table]:
@@ -142,12 +170,22 @@ class Inputs:
         declared = self.owners.get("queries", {}).get(query.name) or self.owners.get("files", {}).get(query.file) or [""]
         return declared[0]
 
+    @property
+    def reviewed(self) -> list[Record]:
+        return [record for record in self.records if record.reviewed]
+
     def cited(self, file: str, line: int) -> bool:
-        return any(record.cites(file, line) for record in self.records)
+        return any(record.cites(file, line) for record in self.reviewed)
+
+    def cited_by_a_candidate(self, file: str, line: int) -> bool:
+        return any(record.cites(file, line) for record in self.records if not record.reviewed)
 
     @property
     def contexts(self) -> set[str]:
-        return {record.name for record in self.records if record.asset == "contexts"}
+        return {record.name for record in self.reviewed if record.asset == "contexts"}
+
+    def is_generic(self, table: str) -> bool:
+        return any(owner in self.generic for owner in self.table_owners(table))
 
 
 def _meaning(inputs: Inputs) -> dict[str, Any]:
@@ -156,7 +194,7 @@ def _meaning(inputs: Inputs) -> dict[str, Any]:
     return {
         "meaning.tables_described": _ratio(sum(table.described for table in tables.values()), len(tables)),
         "meaning.columns_described": _ratio(sum(info["described"] for info in columns), len(columns)),
-        "meaning.tables_known_to_registry": _ratio(sum(_mentions(inputs.records, name) for name in tables), len(tables)),
+        "meaning.tables_known_to_registry": _ratio(sum(_mentions(inputs.reviewed, name) for name in tables), len(tables)),
     }
 
 
@@ -174,16 +212,16 @@ def _ownership(inputs: Inputs) -> tuple[dict[str, Any], dict[str, Any]]:
     writers = _writers(inputs)
     touched = {table for query in inputs.queries for table in query.tables}
     claimed = {
-        name for record in inputs.records if record.asset == "aggregates"
+        name for record in inputs.reviewed if record.asset == "aggregates"
         for name in tables if re.search(rf"\b{name}\b", record.text)
     }
-    contexts = inputs.contexts
-    foreign = {name: [owner for owner in inputs.table_owners(name) if owner not in contexts] for name in tables}
+    known = inputs.contexts | inputs.generic
+    unknown = {name: [owner for owner in inputs.table_owners(name) if owner not in known] for name in tables}
     metrics = {
         "ownership.tables_with_exactly_one_declared_owner": _ratio(
             sum(len(inputs.table_owners(name)) == 1 for name in tables), len(tables)),
-        "ownership.tables_owned_by_registry_contexts_only": _ratio(
-            sum(not owners for owners in foreign.values()), len(tables)),
+        "ownership.tables_with_a_known_owner": _ratio(
+            sum(bool(inputs.table_owners(name)) and not unknown[name] for name in tables), len(tables)),
         "ownership.tables_written_by_at_most_one_owner": _ratio(
             sum(len(writers.get(name, set())) <= 1 for name in tables), len(tables)),
         "ownership.tables_claimed_by_an_aggregate": _ratio(len(claimed), len(tables)),
@@ -192,7 +230,7 @@ def _ownership(inputs: Inputs) -> tuple[dict[str, Any], dict[str, Any]]:
     details = {
         "tables_without_one_owner": {name: inputs.table_owners(name) for name in sorted(tables)
                                      if len(inputs.table_owners(name)) != 1},
-        "tables_owned_outside_the_registry": {name: owners for name, owners in sorted(foreign.items()) if owners},
+        "tables_without_a_known_owner": {name: owners for name, owners in sorted(unknown.items()) if owners},
         "tables_untouched": sorted(name for name in tables if name not in touched),
         "multi_writer_tables": {name: sorted(owners) for name, owners in sorted(writers.items()) if len(owners) > 1},
     }
@@ -208,24 +246,29 @@ def _cross_context(inputs: Inputs, key: ForeignKey) -> tuple[str, str] | None:
 
 def _rules(inputs: Inputs) -> tuple[dict[str, Any], dict[str, Any]]:
     tables = inputs.tables
-    constraints = [constraint for constraint in inputs.schema.constraints if constraint.table in tables]
+    constraints = [constraint for constraint in inputs.schema.constraints
+                   if constraint.table in tables and not inputs.is_generic(constraint.table)]
     cited = [constraint for constraint in constraints if inputs.cited(constraint.file, constraint.line)]
-    crossing = {key: pair for key in inputs.schema.foreign_keys if (pair := _cross_context(inputs, key))}
+    generic_keys = [key for key in inputs.schema.foreign_keys if inputs.is_generic(key.child) or inputs.is_generic(key.parent)]
+    governed = [key for key in inputs.schema.foreign_keys if key not in generic_keys]
+    crossing = {key: pair for key in governed if (pair := _cross_context(inputs, key))}
     policies = {
-        (record.contexts[0], record.contexts[1]) for record in inputs.records
+        (record.contexts[0], record.contexts[1]) for record in inputs.reviewed
         if record.asset == "dependency-policies" and len(record.contexts) > 1
     }
+    awaiting_review = [c for c in constraints if c not in cited and inputs.cited_by_a_candidate(c.file, c.line)]
     covered = [key for key, pair in crossing.items() if pair in policies]
     metrics = {
         "rules.constraints_cited_by_a_record": _ratio(len(cited), len(constraints)),
-        "rules.foreign_keys_inside_one_context": _ratio(
-            len(inputs.schema.foreign_keys) - len(crossing), len(inputs.schema.foreign_keys)),
+        "rules.foreign_keys_inside_one_context": _ratio(len(governed) - len(crossing), len(governed)),
         "rules.cross_context_foreign_keys_with_a_dependency_policy": _ratio(len(covered), len(crossing)),
     }
     details = {
         "uncited_constraints": sorted(f"{c.file}:{c.line} {c.kind} {c.name}" for c in constraints if c not in cited),
+        "constraints_cited_only_by_a_candidate": len(awaiting_review),
         "cross_context_foreign_keys_without_a_policy": sorted({
             f"{key.child}->{key.parent} ({pair[0]}->{pair[1]})" for key, pair in crossing.items() if pair not in policies}),
+        "foreign_keys_from_generic_tables": sorted({f"{key.child}->{key.parent}" for key in generic_keys}),
     }
     return metrics, details
 
@@ -248,7 +291,7 @@ def _consistency_and_provenance(inputs: Inputs) -> dict[str, Any]:
     tables = inputs.tables
     interactions = [record for record in inputs.records if record.asset == "interactions"]
     cited_migrations = {
-        path for record in inputs.records for path, _, _ in record.citations if path in inputs.schema.migrations}
+        path for record in inputs.reviewed for path, _, _ in record.citations if path in inputs.schema.migrations}
     immutable = list(inputs.owners.get("immutable", {}))
     retention = inputs.owners.get("retention", {})
     return {
@@ -256,7 +299,7 @@ def _consistency_and_provenance(inputs: Inputs) -> dict[str, Any]:
             sum(record.consistency in KNOWN_CONSISTENCIES for record in interactions), len(interactions)),
         "provenance.migrations_cited_by_a_record": _ratio(len(cited_migrations), len(inputs.schema.migrations)),
         "provenance.immutable_tables_known_to_registry": _ratio(
-            sum(_mentions(inputs.records, name) for name in immutable), len(immutable)),
+            sum(_mentions(inputs.reviewed, name) for name in immutable), len(immutable)),
         "provenance.tables_with_a_retention_policy": _ratio(sum(bool(retention.get(name)) for name in tables), len(tables)),
     }
 
@@ -266,6 +309,7 @@ def read_inputs(repo_root: Path, registry_root: Path) -> Inputs:
     return Inputs(
         schema, read_queries(repo_root / "db" / "queries", set(schema.tables)),
         read_owners(repo_root / "db" / "query-owners.yaml"), read_registry(registry_root),
+        read_identity(repo_root / "apps" / "platform" / "architecture-identity.yaml"),
     )
 
 
