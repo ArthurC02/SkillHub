@@ -668,6 +668,11 @@ jobs:
           --baseline tools/data-readiness/baseline.json --targets tools/data-readiness/targets.json
           --fail-on-regression
 
+      - name: Data readiness — every known answer still holds
+        run: >-
+          bash tools/ci/report-failure.sh 'Known answers'
+          python tools/data-readiness/known_answers.py check --repo-root .
+
       - name: Domain Memory plugin tests
         run: >-
           bash tools/ci/report-failure.sh 'Domain Memory plugin tests'
