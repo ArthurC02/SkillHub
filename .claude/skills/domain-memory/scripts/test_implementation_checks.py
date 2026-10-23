@@ -377,9 +377,9 @@ class CounterfactualTest(RepositoryCase):
             "import time\nimport unittest\n\nfrom rule import LIMIT\n\n\n"
             "class Slow(unittest.TestCase):\n"
             "    def test_waits_when_broken(self):\n"
-            "        time.sleep(0 if LIMIT == 200 else 30)\n",
+            "        time.sleep(0 if LIMIT == 200 else 60)\n",
         )
-        result = self.break_rule("LIMIT = 200", "LIMIT = 201", timeout=5)
+        result = self.break_rule("LIMIT = 200", "LIMIT = 201", timeout=15)
         self.assertEqual(result["verdict"], "inconclusive")
         self.assert_untouched()
 

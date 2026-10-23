@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.4.3
+
+### Fixed
+
+- The test that a counterfactual whose test run never finishes is inconclusive gave the intact baseline run five seconds, which a loaded machine can miss, so the baseline failed instead of the mutated run hanging; it now allows fifteen seconds against a sixty-second hang.
+
 ## 2.4.2
 
 ### Changed
