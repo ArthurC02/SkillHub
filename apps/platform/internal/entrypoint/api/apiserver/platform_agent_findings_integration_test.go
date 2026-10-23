@@ -402,8 +402,8 @@ func assertDismissedFindingDetail(t *testing.T, w *findingWorld, id pgtype.UUID)
 	if opened["kind"] != "opened" || opened["run_id"] == nil || opened["evidence"].(map[string]any)["/jobs/rotate/overdue"] != float64(3) {
 		t.Errorf("first event %v, want the opening sighting with its run and evidence", opened)
 	}
-	if dismissed["kind"] != "dismissed" || dismissed["note"] != "accepted" || dismissed["operator_user_id"] == nil {
-		t.Errorf("second event %v, want the operator's dismissal with the note", dismissed)
+	if dismissed["kind"] != "dismissed" || dismissed["note"] != "accepted" || dismissed["operator_user_id"] != w.operator.userID {
+		t.Errorf("second event %v, want the dismissal by the signed-in operator %s with the note", dismissed, w.operator.userID)
 	}
 }
 

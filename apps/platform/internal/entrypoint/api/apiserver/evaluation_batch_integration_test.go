@@ -673,3 +673,29 @@ func TestTheRunListShowsEachRunsCurrentVerdictAndSaysNotEvaluatedOtherwise(t *te
 		t.Errorf("verdicts = %v, want %s met and %s not_evaluated", verdicts, judged, unjudged)
 	}
 }
+
+func TestPurgingADeletedSkillTakesItsEvaluationBatchesWithIt(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, freshName("batch-purged-with-skill"))
+	skillID := seedSkill(t, pool, owner.workspaceID, freshName("batch-purged-skill"))
+	version := seedVersion(t, pool, owner.workspaceID, skillID, freshName("hash-batch-purged"))
+	batchID := seedBatchOfOneTrial(t, pool, fixture{client: owner, skillID: skillID, versionID: uuidText(version.ID)})
+	if n := countRow(t, pool, "SELECT count(*) FROM evaluation_batches WHERE id = $1", mustUUID(t, batchID)); n != 1 {
+		t.Fatalf("seeded %d batches, want 1; nothing below would be testing the purge", n)
+	}
+
+	if status, _ := deleteJSON(t, owner, "/skills/"+skillID); status != http.StatusOK {
+		t.Fatalf("DELETE /skills/%s: got %d", skillID, status)
+	}
+	ageSkillDeletionsPastGrace(t, pool, skillID)
+	if _, err := registryPurger(pool).PurgeDeletedSkills(context.Background(), 30*24*time.Hour, 100); err != nil {
+		t.Fatalf("purging a skill that an evaluation batch pinned: %v", err)
+	}
+	if n := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, skillID)); n != 0 {
+		t.Fatalf("the skill is still there after its grace purge; nothing below is testing the batch")
+	}
+	if n := countRow(t, pool, "SELECT count(*) FROM evaluation_batches WHERE id = $1", mustUUID(t, batchID)); n != 0 {
+		t.Errorf("%d evaluation batches outlived the skill version they pinned, want none", n)
+	}
+}
