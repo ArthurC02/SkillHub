@@ -23,9 +23,9 @@
       "ratio": 0.864
     },
     "meaning.tables_known_to_registry": {
-      "numerator": 9,
-      "denominator": 71,
-      "ratio": 0.127
+      "numerator": 11,
+      "denominator": 73,
+      "ratio": 0.151
     },
     "ownership.tables_with_exactly_one_declared_owner": {
       "numerator": 70,
@@ -59,8 +59,8 @@
     },
     "rules.foreign_keys_inside_one_context": {
       "numerator": 56,
-      "denominator": 140,
-      "ratio": 0.4
+      "denominator": 142,
+      "ratio": 0.394
     },
     "rules.cross_context_foreign_keys_with_a_recorded_collaboration": {
       "numerator": 78,
