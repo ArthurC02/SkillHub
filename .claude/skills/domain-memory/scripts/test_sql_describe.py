@@ -399,8 +399,8 @@ class CompletenessDescribeTest(RegistryTestCase):
         empty = self.run_cli("extract-sql-schema", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
                              "--migrations", "db/empty")
         self.assertEqual(
-            (1, f"ERROR: --migrations directory {self.repo / 'db' / 'nope'} does not exist",
-             1, f"ERROR: --migrations directory {self.repo / 'db' / 'empty'} holds no .sql files"),
+            (1, f"ERROR: --migrations directory {(self.repo / 'db' / 'nope').resolve()} does not exist",
+             1, f"ERROR: --migrations directory {(self.repo / 'db' / 'empty').resolve()} holds no .sql files"),
             (missing.returncode, missing.stderr.strip(), empty.returncode, empty.stderr.strip()),
         )
 
