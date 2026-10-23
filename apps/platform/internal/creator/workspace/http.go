@@ -524,6 +524,7 @@ type accountView struct {
 	DisplayName         string          `json:"display_name"`
 	WorkspaceID         string          `json:"workspace_id"`
 	Operator            bool            `json:"operator"`
+	Invited             bool            `json:"invited"`
 	DeletionRequestedAt *string         `json:"deletion_requested_at"`
 	PurgeAfter          *string         `json:"purge_after"`
 	DeletionScope       *string         `json:"deletion_scope"`
@@ -564,28 +565,27 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	invited, err := h.invited(r.Context(), user)
+	if err != nil {
+		writeInviteCheckUnavailable(w, err)
+		return
+	}
 	out := accountView{
 		UserID:      pgconv.UUIDString(user.ID),
 		Email:       user.Email,
 		DisplayName: user.DisplayName,
 		WorkspaceID: pgconv.UUIDString(ws.ID),
 		Operator:    h.Operators[pgconv.UUIDString(user.ID)],
+		Invited:     invited,
 	}
 
 	merged := map[string]bool{}
 	for name, on := range h.Disclosures {
 		merged[name] = on
 	}
-	if len(h.Features) > 0 {
-		invited, err := h.invited(r.Context(), user)
-		if err != nil {
-			writeInviteCheckUnavailable(w, err)
-			return
-		}
-		if invited {
-			for name, on := range h.Features {
-				merged[name] = on
-			}
+	if invited {
+		for name, on := range h.Features {
+			merged[name] = on
 		}
 	}
 	if len(merged) > 0 {

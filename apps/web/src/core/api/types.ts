@@ -50,6 +50,7 @@ export interface Me {
   display_name: string;
   workspace_id: string;
   operator: boolean;
+  invited: boolean;
   deletion_requested_at: string | null;
   deletion_scope: string | null;
   features?: Record<string, boolean>;

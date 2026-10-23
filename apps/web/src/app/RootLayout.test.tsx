@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   generateExposed: false,
   outletTitle: "工作台",
   pathname: "/workspace",
+  invited: true,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -38,7 +39,7 @@ vi.mock("../features/creation", () => ({
 }));
 
 vi.mock("../core/session/me.service", () => ({
-  useMe: () => ({ data: { display_name: "tester" } }),
+  useMe: () => ({ data: { display_name: "tester", invited: mocks.invited } }),
   useSessionBoundary: () => undefined,
 }));
 
@@ -146,6 +147,22 @@ test("the platform shell exposes stable places and hides Studio until generation
   expect(nav.textContent).not.toContain("測試題");
   expect(container.querySelector('form[role="search"]')).not.toBeNull();
 });
+
+test.each([
+  [false, true],
+  [true, false],
+])(
+  "an account whose invitation is %s is told about the invite-only actions: %s",
+  async (invited, told) => {
+    mocks.invited = invited;
+    try {
+      await renderShell();
+      expect((container.textContent ?? "").includes("這個帳號還沒有封測邀請")).toBe(told);
+    } finally {
+      mocks.invited = true;
+    }
+  },
+);
 
 test("keyboard users can skip repeated navigation and the browser tab names the current page", async () => {
   await renderShell();

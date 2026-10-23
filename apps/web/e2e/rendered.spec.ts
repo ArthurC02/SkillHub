@@ -1541,6 +1541,7 @@ test("手機平台框架維持兩列頁首與單列導覽（設計 §4.5）", as
         ...(body as object),
         display_name: "名稱很長的封測使用者".repeat(8),
         operator: true,
+        invited: true,
       },
     });
   });

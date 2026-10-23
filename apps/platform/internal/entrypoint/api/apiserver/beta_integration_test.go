@@ -781,3 +781,23 @@ func TestFeedbackRejectsWhatTheContractRejects(t *testing.T) {
 		t.Errorf("a page_path over the 512-character cap was not dropped: %d rows", n)
 	}
 }
+
+func TestTheSessionSaysWhetherTheAccountMayUseInviteOnlyActions(t *testing.T) {
+	pool := requireDB(t)
+	gated := betaAPI(t, pool, policy.QuotaLimits{}, []string{"alice-me-invited"}, 0)
+	open := betaAPI(t, pool, policy.QuotaLimits{}, nil, 0)
+	for _, c := range []struct {
+		name string
+		f    fixture
+		want bool
+	}{
+		{"an invited account under the gate", newFixture(t, gated, pool, "alice-me-invited"), true},
+		{"an uninvited account under the gate", newFixture(t, gated, pool, "bob-me-uninvited"), false},
+		{"any account with no gate", newFixture(t, open, pool, "carol-me-ungated"), true},
+	} {
+		code, body := c.f.doJSON(t, http.MethodGet, "/me", "")
+		if invited, ok := body["invited"].(bool); code != http.StatusOK || !ok || invited != c.want {
+			t.Errorf("%s: GET /me = %d invited=%v, want 200 invited=%v", c.name, code, body["invited"], c.want)
+		}
+	}
+}

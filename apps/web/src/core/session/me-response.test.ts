@@ -8,6 +8,7 @@ test.each([
   ["pending deletion", ME],
   ["no deletion", { ...ME, deletion_requested_at: null, purge_after: null, deletion_scope: null }],
   ["operator", { ...ME, operator: true }],
+  ["no beta invitation", { ...ME, invited: false }],
   ["entry flags", { ...ME, features: { generate_skill: true, clean_mode: false, future: true } }],
   ["empty entry flags", { ...ME, features: {} }],
   [
@@ -36,6 +37,7 @@ test.each<[string, unknown]>([
     "email",
     "display_name",
     "operator",
+    "invited",
     "deletion_scope",
     "deletion_requested_at",
     "purge_after",
@@ -47,6 +49,7 @@ test.each<[string, unknown]>([
   ["non-string display name", { ...ME, display_name: {} }],
   ["string operator flag", { ...ME, operator: "false" }],
   ["numeric operator flag", { ...ME, operator: 1 }],
+  ["string invitation flag", { ...ME, invited: "true" }],
   ["non-string deletion scope", { ...ME, deletion_scope: [] }],
   ["unreadable deletion timestamp", { ...ME, deletion_requested_at: "not-a-date" }],
   ["unreadable purge timestamp", { ...ME, purge_after: "not-a-date" }],

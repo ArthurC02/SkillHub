@@ -39783,6 +39783,10 @@ func (s *Me) encodeFields(e *jx.Encoder) {
 		e.Bool(s.Operator)
 	}
 	{
+		e.FieldStart("invited")
+		e.Bool(s.Invited)
+	}
+	{
 		if s.Features.Set {
 			e.FieldStart("features")
 			s.Features.Encode(e)
@@ -39802,16 +39806,17 @@ func (s *Me) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfMe = [9]string{
+var jsonFieldsNameOfMe = [10]string{
 	0: "user_id",
 	1: "email",
 	2: "display_name",
 	3: "workspace_id",
 	4: "operator",
-	5: "features",
-	6: "deletion_scope",
-	7: "deletion_requested_at",
-	8: "purge_after",
+	5: "invited",
+	6: "features",
+	7: "deletion_scope",
+	8: "deletion_requested_at",
+	9: "purge_after",
 }
 
 // Decode decodes Me from json.
@@ -39883,6 +39888,18 @@ func (s *Me) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"operator\"")
 			}
+		case "invited":
+			requiredBitSet[0] |= 1 << 5
+			if err := func() error {
+				v, err := d.Bool()
+				s.Invited = bool(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"invited\"")
+			}
 		case "features":
 			if err := func() error {
 				s.Features.Reset()
@@ -39894,7 +39911,7 @@ func (s *Me) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"features\"")
 			}
 		case "deletion_scope":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				if err := s.DeletionScope.Decode(d); err != nil {
 					return err
@@ -39904,7 +39921,7 @@ func (s *Me) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"deletion_scope\"")
 			}
 		case "deletion_requested_at":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				if err := s.DeletionRequestedAt.Decode(d, json.DecodeDateTime); err != nil {
 					return err
@@ -39914,7 +39931,7 @@ func (s *Me) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"deletion_requested_at\"")
 			}
 		case "purge_after":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				if err := s.PurgeAfter.Decode(d, json.DecodeDateTime); err != nil {
 					return err
@@ -39933,8 +39950,8 @@ func (s *Me) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
-		0b11011111,
-		0b00000001,
+		0b10111111,
+		0b00000011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

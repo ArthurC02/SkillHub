@@ -8165,6 +8165,7 @@ components:
           display_name,
           workspace_id,
           operator,
+          invited,
           deletion_requested_at,
           purge_after,
           deletion_scope,
@@ -8187,6 +8188,14 @@ components:
             tells the client whether to draw the entry to /admin; it grants
             nothing. Every /admin route checks the roster itself and answers a
             member 404 whatever this field says.
+        invited:
+          type: boolean
+          description: |
+            Whether this account may use the actions open only to invited
+            testers (copying a skill, trial runs, downloads and the like).
+            True on a deployment with no beta gate. Like `operator` it only
+            lets the client say so before a click; every gated route still
+            checks the allowlist itself.
         features:
           type: object
           additionalProperties:

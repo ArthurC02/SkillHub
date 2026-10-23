@@ -62,6 +62,7 @@ export const ME: Me = {
   display_name: "tester",
   workspace_id: "e2222222-2222-4222-8222-222222222222",
   operator: false,
+  invited: true,
   deletion_requested_at: "2026-08-17T00:00:00Z",
   purge_after: "2026-09-16T00:00:00Z",
   deletion_scope:

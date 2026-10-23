@@ -189,6 +189,7 @@ test("workspace home separates decisions, active work, and owned assets from ser
         email: "tester@example.com",
         display_name: "tester",
         operator: false,
+        invited: true,
       });
     }
     if (url.includes("/runs?")) {
@@ -273,6 +274,7 @@ test.each([
           email: "tester@example.com",
           display_name: "tester",
           operator: false,
+          invited: true,
           features,
         });
       }
@@ -305,6 +307,7 @@ test("workspace home does not claim complete 試跑紀錄 coverage when older pa
         email: "tester@example.com",
         display_name: "tester",
         operator: false,
+        invited: true,
       });
     }
     if (url.includes("/runs?")) {
@@ -340,6 +343,7 @@ test("workspace home resumes exact publication, release, and Catalog exposure co
         email: "tester@example.com",
         display_name: "tester",
         operator: false,
+        invited: true,
       });
     }
     if (url.includes("/runs?")) return json({ runs: [] });
@@ -414,6 +418,7 @@ test("workspace home keeps a publication read failure distinct from an empty res
         email: "tester@example.com",
         display_name: "tester",
         operator: false,
+        invited: true,
       });
     }
     if (url.includes("/runs?")) return json({ runs: [] });
@@ -456,6 +461,7 @@ test("workspace home resumes the three most recent actionable creation sessions"
         email: "tester@example.com",
         display_name: "tester",
         operator: false,
+        invited: true,
         features: { generate_skill: true, creation_skill: true },
       });
     }
@@ -558,6 +564,7 @@ test("workspace home keeps a creation read failure distinct from an empty contin
         email: "tester@example.com",
         display_name: "tester",
         operator: false,
+        invited: true,
         features: { generate_skill: true, creation_skill: true },
       });
     }
@@ -587,6 +594,7 @@ test("workspace home omits the continuation section when the recent session slic
         email: "tester@example.com",
         display_name: "tester",
         operator: false,
+        invited: true,
         features: { generate_skill: true, creation_skill: true },
       });
     }
@@ -616,6 +624,7 @@ test("workspace home surfaces a refresh failure after an earlier empty creation 
         email: "tester@example.com",
         display_name: "tester",
         operator: false,
+        invited: true,
         features: { generate_skill: true, creation_skill: true },
       });
     }
@@ -661,6 +670,7 @@ test.each([0, 99, 101])(
           email: "tester@example.com",
           display_name: "tester",
           operator: false,
+          invited: true,
           features: { generate_skill: true, creation_skill: true },
         });
       }
@@ -739,6 +749,7 @@ test("workspace home without active work does not show a stale refresh control",
         email: "tester@example.com",
         display_name: "tester",
         operator: false,
+        invited: true,
       });
     }
     if (url.includes("/runs?")) {

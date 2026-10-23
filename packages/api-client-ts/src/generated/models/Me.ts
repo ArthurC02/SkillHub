@@ -44,6 +44,15 @@ export interface Me {
      */
     operator: boolean;
     /**
+     * Whether this account may use the actions open only to invited
+     * testers (copying a skill, trial runs, downloads and the like).
+     * True on a deployment with no beta gate. Like `operator` it only
+     * lets the client say so before a click; every gated route still
+     * checks the allowlist itself.
+     * 
+     */
+    invited: boolean;
+    /**
      * Optional entry points this deployment turns on. **Absent** when there
      * are none — not an empty object, so a client never has to tell "off"
      * apart from "this build predates the flag".
@@ -98,6 +107,7 @@ export function instanceOfMe(value: object): value is Me {
     if ((!('displayName' in (value as Record<string, any>)) && !('display_name' in (value as Record<string, any>))) || ((value as Record<string, any>)['displayName'] === undefined && (value as Record<string, any>)['display_name'] === undefined)) return false;
     if ((!('workspaceId' in (value as Record<string, any>)) && !('workspace_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['workspaceId'] === undefined && (value as Record<string, any>)['workspace_id'] === undefined)) return false;
     if (!('operator' in value) || value['operator'] === undefined) return false;
+    if (!('invited' in value) || value['invited'] === undefined) return false;
     if ((!('deletionScope' in (value as Record<string, any>)) && !('deletion_scope' in (value as Record<string, any>))) || ((value as Record<string, any>)['deletionScope'] === undefined && (value as Record<string, any>)['deletion_scope'] === undefined)) return false;
     if ((!('deletionRequestedAt' in (value as Record<string, any>)) && !('deletion_requested_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['deletionRequestedAt'] === undefined && (value as Record<string, any>)['deletion_requested_at'] === undefined)) return false;
     if ((!('purgeAfter' in (value as Record<string, any>)) && !('purge_after' in (value as Record<string, any>))) || ((value as Record<string, any>)['purgeAfter'] === undefined && (value as Record<string, any>)['purge_after'] === undefined)) return false;
@@ -119,6 +129,7 @@ export function MeFromJSONTyped(json: any, ignoreDiscriminator: boolean): Me {
         'displayName': json['display_name'],
         'workspaceId': json['workspace_id'],
         'operator': json['operator'],
+        'invited': json['invited'],
         'features': json['features'] == null ? undefined : json['features'],
         'deletionScope': json['deletion_scope'],
         'deletionRequestedAt': (json['deletion_requested_at'] == null ? null : parseDateTime(json['deletion_requested_at'])),
@@ -142,6 +153,7 @@ export function MeToJSONTyped(value?: Me | null, ignoreDiscriminator: boolean = 
         'display_name': value['displayName'],
         'workspace_id': value['workspaceId'],
         'operator': value['operator'],
+        'invited': value['invited'],
         'features': value['features'],
         'deletion_scope': value['deletionScope'],
         'deletion_requested_at': value['deletionRequestedAt'] == null ? value['deletionRequestedAt'] : serializeDateTime(value['deletionRequestedAt']),

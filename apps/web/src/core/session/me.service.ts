@@ -31,6 +31,7 @@ function isMe(value: unknown): value is Me {
     typeof profile.email === "string" &&
     typeof profile.display_name === "string" &&
     typeof profile.operator === "boolean" &&
+    typeof profile.invited === "boolean" &&
     (profile.deletion_scope === null || typeof profile.deletion_scope === "string") &&
     [profile.deletion_requested_at, profile.purge_after].every(
       (at) => at === null || (typeof at === "string" && Number.isFinite(Date.parse(at))),

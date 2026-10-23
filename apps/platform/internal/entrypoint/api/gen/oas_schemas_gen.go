@@ -14914,6 +14914,10 @@ type Me struct {
 	// draw the entry to /admin; it grants nothing. Every /admin route checks the roster itself and answers
 	// a member 404 whatever this field says.
 	Operator bool `json:"operator"`
+	// Whether this account may use the actions open only to invited testers (copying a skill, trial runs,
+	// downloads and the like). True on a deployment with no beta gate. Like `operator` it only lets the
+	// client say so before a click; every gated route still checks the allowlist itself.
+	Invited bool `json:"invited"`
 	// Optional entry points this deployment turns on. Absent when there are none — not an empty object,
 	// so a client never has to tell "off" apart from "this build predates the flag".
 	//
@@ -14966,6 +14970,11 @@ func (s *Me) GetOperator() bool {
 	return s.Operator
 }
 
+// GetInvited returns the value of Invited.
+func (s *Me) GetInvited() bool {
+	return s.Invited
+}
+
 // GetFeatures returns the value of Features.
 func (s *Me) GetFeatures() OptMeFeatures {
 	return s.Features
@@ -15009,6 +15018,11 @@ func (s *Me) SetWorkspaceID(val uuid.UUID) {
 // SetOperator sets the value of Operator.
 func (s *Me) SetOperator(val bool) {
 	s.Operator = val
+}
+
+// SetInvited sets the value of Invited.
+func (s *Me) SetInvited(val bool) {
+	s.Invited = val
 }
 
 // SetFeatures sets the value of Features.
