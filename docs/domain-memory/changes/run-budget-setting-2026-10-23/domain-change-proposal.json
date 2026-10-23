@@ -3,12 +3,12 @@
   "proposal_id": "run-budget-setting",
   "proposer": "domain-memory-agent",
   "requirement_id": "run-budget-setting",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-23T03:54:56.758880Z",
   "verified_at": "2026-10-23T03:56:04.580401Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-23T03:56:15.712378Z",
+  "applied_at": "2026-10-23T03:57:00.527177Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "1abe14337e45dd59c530898457006c3277de6567",
@@ -129,5 +129,9 @@
   ],
   "supersedes": [
     "run-harvest-rules"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "56d2d27b1877b8988cee98c8468b3eb833e530c4",
+    "registry_digest": "sha256:16248450809578e710465c8a8dae07f59d80f7904a5493f19c9f77b6920ae501"
+  }
 }
