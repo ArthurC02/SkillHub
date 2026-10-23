@@ -77,8 +77,8 @@ for (const [status, message] of [
   [400, "這次複製請求未獲接受"],
   [401, "複製小工具需要登入。"],
   [403, "這個帳號還沒有封測邀請"],
-  [404, "這次複製請求未獲接受"],
-  [409, "你的工作區已經有同名的小工具。"],
+  [404, "這個小工具已經不在了"],
+  [409, "你的工作區已經有同名的小工具，"],
 ] as const) {
   test(`HTTP ${status} refuses a fork without suggesting that its outcome is unknown`, async ({
     page,
