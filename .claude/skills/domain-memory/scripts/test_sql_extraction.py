@@ -191,6 +191,66 @@ class SqlSchemaTest(unittest.TestCase):
         self.assertEqual(["orders_code_key"], [c.name for c in schema.constraints if c.kind == "unique-index"])
         self.assertEqual([], [c.name for c in schema.constraints if c.name in {"orders_total_idx", "orders_live"}])
 
+    def test_dropping_a_column_constraint_by_the_name_the_database_gives_it_removes_the_inline_declaration(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / "m").mkdir()
+        (root / "m" / "0001.sql").write_text(
+            "CREATE TABLE a (x text CHECK (x IN ('p')), y text UNIQUE, z int CHECK (z > 0));\n", encoding="utf-8")
+        (root / "m" / "0002.sql").write_text(
+            "ALTER TABLE a DROP CONSTRAINT IF EXISTS a_x_check;\n"
+            "ALTER TABLE a ADD CONSTRAINT a_x_check CHECK (x IN ('p', 'q'));\n"
+            "ALTER TABLE a DROP CONSTRAINT a_y_key;\n"
+            "ALTER TABLE a DROP CONSTRAINT b_z_check;\n", encoding="utf-8")
+        schema = read_schema(root / "m", root)
+        self.assertEqual(
+            [("check", "a.z", 1), ("check", "a_x_check", 2)],
+            sorted((c.kind, c.name, c.line) for c in schema.constraints),
+        )
+
+    def test_a_comma_inside_a_comment_or_a_string_starts_no_column_and_a_type_keeps_all_its_words(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / "m").mkdir()
+        (root / "m" / "0001.sql").write_text(
+            "CREATE TABLE a (\n"
+            "    seq bigint NOT NULL, -- producer sequence, lets gaps be detected\n"
+            "    tags text NOT NULL DEFAULT 'x,y',\n"
+            "    cost numeric(12, 6) CHECK (cost >= 0),\n"
+            "    weight double precision\n"
+            ");\n"
+            "ALTER TABLE a ADD COLUMN IF NOT EXISTS extra text CHECK (extra <> '');\n", encoding="utf-8")
+        schema = read_schema(root / "m", root)
+        self.assertEqual(
+            ([("seq", "bigint"), ("tags", "text"), ("cost", "numeric(12, 6)"), ("weight", "double precision"), ("extra", "text")],
+             [("check", "a.cost"), ("check", "a.extra")], []),
+            ([(name, info["type"]) for name, info in schema.tables["a"].columns.items()],
+             sorted((c.kind, c.name) for c in schema.constraints), schema.unparsed),
+        )
+
+    def test_an_enum_type_keeps_its_values_in_order_including_those_added_later(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / "m").mkdir()
+        (root / "m" / "0001.sql").write_text(
+            "CREATE TYPE lane AS ENUM ('fast', 'it''s slow');\nCREATE DOMAIN money AS numeric(12, 2);\n"
+            "CREATE TABLE a (x lane NOT NULL, y money, z numeric(12,2));\n", encoding="utf-8")
+        (root / "m" / "0002.sql").write_text(
+            "ALTER TYPE lane ADD VALUE 'stopped';\nALTER TYPE lane ADD VALUE IF NOT EXISTS 'it''s odd';\n"
+            "ALTER TABLE a ADD COLUMN w lane;\n"
+            "COMMENT ON TYPE lane IS 'fast when the road is clear; it''s slow otherwise.';\n"
+            "COMMENT ON TYPE gone IS 'never created';\n", encoding="utf-8")
+        schema = read_schema(root / "m", root)
+        self.assertEqual(
+            ({"lane": ["fast", "it's slow", "stopped", "it's odd"]}, ["lane", "money"], ["lane", "money", "numeric(12,2)", "lane"],
+             {"lane": "fast when the road is clear; it's slow otherwise."}, ["m/0002.sql:5: COMMENT ON unknown type gone"]),
+            (schema.enums, schema.types, [info["type"] for info in schema.tables["a"].columns.values()], schema.type_comments,
+             schema.unparsed),
+        )
+
     def test_a_renamed_column_keeps_its_line_and_takes_the_comment_under_its_new_name(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -204,7 +264,7 @@ class SqlSchemaTest(unittest.TestCase):
         schema = read_schema(root / "m", root)
         columns = schema.tables["orders"].columns
         self.assertEqual(["amount", "id", "reference"], sorted(columns))
-        self.assertEqual(({"line": 3, "described": True, "comment": "what the buyer pays"}, []),
+        self.assertEqual(({"line": 3, "type": "integer", "described": True, "comment": "what the buyer pays"}, []),
                          (columns["amount"], [u for u in schema.unparsed if "RENAME" in u]))
 
 
