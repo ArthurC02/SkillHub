@@ -6,6 +6,7 @@ import {
   ADMIN_DISPATCH,
   ADMIN_EXPOSURE_CASE,
   ADMIN_MODEL_BUDGETS,
+  ADMIN_RUN_SETTINGS,
   ADMIN_SKILLS,
   AGENT_PROPOSAL,
   PUBLICATION,
@@ -252,7 +253,9 @@ test("platform policies lead with both current settings and reveal an editor by 
   await stubPlatform(page);
   await page.route("**/admin/settings/runs/continuation-rounds", async (route) => {
     expect(route.request().postDataJSON()).toEqual({ rounds: 5, note: "longer interviews" });
-    await route.fulfill({ json: { continuation_rounds: { rounds: 5, min: 1, max: 10 } } });
+    await route.fulfill({
+      json: { ...ADMIN_RUN_SETTINGS, continuation_rounds: { rounds: 5, min: 1, max: 10 } },
+    });
   });
   await page.goto("/admin/settings");
   await expect(page.getByText("關閉：一個判定（預設）", { exact: true })).toBeInViewport();
@@ -297,7 +300,7 @@ for (const policy of ["judge panel", "answer rounds"] as const) {
         return route.fulfill({
           json: judge
             ? { judge_panel: { enabled: true } }
-            : { continuation_rounds: { rounds: 5, min: 1, max: 10 } },
+            : { ...ADMIN_RUN_SETTINGS, continuation_rounds: { rounds: 5, min: 1, max: 10 } },
         });
       },
     );
