@@ -30,7 +30,7 @@ func evidenceRepoCiting(t *testing.T, citedPath, content string, withoutHash boo
 	repo := newGitRepo(t)
 	repo.git(t, "config", "core.autocrlf", "true")
 	writeAt(t, repo.root, citedPath, content)
-	cited, err := domainMemoryTool(repo.root, "cite", "--repo-root", repo.root, "--path", citedPath, "--start", "1", "--end", "1")
+	cited, err := domainMemoryTool(repo.root, "cite", "--repo-root", repo.root, "--path", citedPath, "--lines", "1-1")
 	if err != nil {
 		t.Fatalf("cite: %v\n%s", err, cited)
 	}
@@ -177,7 +177,7 @@ func TestAPushedCommitThatIsNotCheckedOutIsStoppedAsStale(t *testing.T) {
 func TestACitationAddedInAPushThatIsNotCheckedOutIsChecked(t *testing.T) {
 	repo, base := evidenceRepo(t)
 	writeAt(t, repo.root, "src/c.py", "fact = 1\n")
-	cited, err := domainMemoryTool(repo.root, "cite", "--repo-root", repo.root, "--path", "src/c.py", "--start", "1", "--end", "1")
+	cited, err := domainMemoryTool(repo.root, "cite", "--repo-root", repo.root, "--path", "src/c.py", "--lines", "1-1")
 	if err != nil {
 		t.Fatalf("cite: %v\n%s", err, cited)
 	}

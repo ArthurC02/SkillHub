@@ -8,7 +8,6 @@ from .common import ASSET_KEYS
 from .counterfactual import DEFAULT_TIMEOUT_SECONDS
 from .harvest_run import STAGES as HARVEST_STAGES
 from .policy import (
-    AMENDABLE_FIELDS,
     CI_REQUIREMENTS,
     CLASSIFICATIONS,
     GOVERNANCE_TRIGGERS,
@@ -100,13 +99,6 @@ def command_parser(parser: argparse.ArgumentParser, command: str | None) -> argp
     return parser
 
 
-REPO_ROOT_ACCEPTED_UNUSED = (
-    "lookup", "resolve-terms", "get-context", "get-record", "dependents", "analyze-boundary",
-    "verify-audit", "reconcile-audit", "refresh-indexes", "init-change-package",
-)
-
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = CliParser(
         description="Initialize, validate, or assess a file-backed Domain Registry.",
@@ -117,10 +109,6 @@ def build_parser() -> argparse.ArgumentParser:
         _add_read_commands, _add_evidence_commands, _add_lifecycle_commands, _add_governance_commands,
     ):
         add_commands(commands)
-    for name in REPO_ROOT_ACCEPTED_UNUSED:
-        commands.choices[name].add_argument(
-            "--repo-root", type=Path, required=False, help="accepted so one set of flags fits every command; not used here"
-        )
     commands._choices_actions.sort(key=lambda action: COMMAND_ORDER[action.dest])
     return parser
 
@@ -266,9 +254,7 @@ def _add_citation_commands(commands: argparse._SubParsersAction) -> None:
     cite_parser = commands.add_parser("cite", help="Build an evidence citation")
     add_path(cite_parser, "--repo-root")
     cite_parser.add_argument("--path", required=True)
-    cite_parser.add_argument("--lines", help="START-END, or --start and --end")
-    cite_parser.add_argument("--start", type=int)
-    cite_parser.add_argument("--end", type=int)
+    cite_parser.add_argument("--lines", help="START-END")
     cite_parser.add_argument("--function", help="a Go func or Python def in --path; cites its whole body")
     add_path(cite_parser, "--registry-root", required=False)
     cite_parser.add_argument("--show", action="store_true")
@@ -501,9 +487,6 @@ def _add_proposal_commands(commands: argparse._SubParsersAction) -> None:
     add_path(result_parser, "--repo-root")
     result_parser.add_argument("--obligation", required=True)
     result_parser.add_argument(
-        "--command", dest="obligation_command", help="the obligation's check, which is also the default"
-    )
-    result_parser.add_argument(
         "--command-profile", required=True,
         help="a label for the kind of run, one of the policy's approved_command_profiles; it never expands into a command",
     )
@@ -534,8 +517,6 @@ def _add_governance_commands(commands: argparse._SubParsersAction) -> None:
 def _add_policy_commands(commands: argparse._SubParsersAction) -> None:
     amend_parser = commands.add_parser("amend-policy", help="Change governance fields")
     add_path(amend_parser, "--registry-root")
-    amend_parser.add_argument("--field", choices=sorted(AMENDABLE_FIELDS))
-    amend_parser.add_argument("--value")
     amend_parser.add_argument("--set", action="append", default=[], metavar="FIELD=VALUE")
     amend_parser.add_argument("--reason", required=True)
     amend_parser.add_argument("--verifier")

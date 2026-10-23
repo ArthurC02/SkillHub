@@ -68,28 +68,18 @@ class RegistryPolicyTest(RegistryTestCase):
         for allowed in ("aggregates", "contracts", "events", "rules", "vocabulary"):
             self.assertIn(allowed, named)
 
-    def test_the_command_line_takes_one_field_or_several_sets_but_not_both(self) -> None:
+    def test_the_command_line_takes_one_or_more_sets_and_refuses_none_or_a_bare_name(self) -> None:
         def parsed(**values) -> argparse.Namespace:
-            return argparse.Namespace(**{"field": None, "value": None, "set": [], **values})
+            return argparse.Namespace(**{"set": [], **values})
 
-        self.assertEqual(
-            [("ci_requirement", "required")],
-            policy_assignments(parsed(field="ci_requirement", value="required")),
-        )
         self.assertEqual(
             [("review_mode", "scm-verified"), ("authorized_signers", "a=b,c")],
             policy_assignments(parsed(set=["review_mode=scm-verified", "authorized_signers=a=b,c"])),
         )
-        both = "give --field with --value, or one or more --set FIELD=VALUE, not both"
-        neither = "each --set takes FIELD=VALUE; give at least one, or --field with --value"
-        for refused, message in (
-            (parsed(), neither),
-            (parsed(field="ci_requirement"), both),
-            (parsed(value="required"), both),
-            (parsed(field="ci_requirement", value="required", set=["review_mode=scm-verified"]), both),
-            (parsed(set=["review_mode"]), neither),
-        ):
-            with self.subTest(refused=vars(refused)), self.assertRaisesRegex(ValueError, f"^{message}$"):
+        for refused in (parsed(), parsed(set=["review_mode"])):
+            with self.subTest(refused=vars(refused)), self.assertRaisesRegex(
+                ValueError, "^each --set takes FIELD=VALUE; give at least one$"
+            ):
                 policy_assignments(refused)
 
     def test_a_policy_can_leave_local_draft_only_for_external_review(self) -> None:

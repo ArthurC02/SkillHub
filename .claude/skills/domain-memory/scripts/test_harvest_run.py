@@ -49,7 +49,7 @@ class HarvestTest(RegistryTestCase):
     def spec(self, **changes: object) -> dict:
         rule = {
             "id": RULE_ID, "statement": "A length past the limit is refused.", "example": "201 is refused.",
-            "enforcing": [["src/rule.py", 1, 1], "src/rule.py:5-6"],
+            "enforcing": ["src/rule.py:1-1", "src/rule.py:5-6"],
             "test_file": "src/tests/test_rule.py", "test": "test_one_past_the_limit_is_refused",
             "check": self.check, "command_profile": "unit", "level": "unit",
             "mutate": {"file": "src/rule.py", "find": "LIMIT = 200", "replace": "LIMIT = 201"},
@@ -315,13 +315,14 @@ class HarvestTest(RegistryTestCase):
             (report["rules"][0]["record"], proposal["supersedes"], report["errors"], report["stopped_at"]),
         )
 
-    def test_an_enforcing_span_whose_lines_are_true_is_named(self) -> None:
+    def test_an_enforcing_span_given_as_a_list_or_without_lines_is_named(self) -> None:
         [rule] = self.spec()["rules"]
-        spec = self.spec(rules=[{**rule, "enforcing": [["src/rule.py", True, True]]}])
-        self.assertEqual(
-            [f"rule {rule['id']}: enforcing must be a non-empty list of [path, start, end] or path:start-end"],
-            spec_errors(spec),
-        )
+        for span in (["src/rule.py", 1, 1], "src/rule.py", "src/rule.py:a-b"):
+            with self.subTest(span):
+                self.assertEqual(
+                    [f"rule {rule['id']}: enforcing must be a non-empty list of path:start-end"],
+                    spec_errors(self.spec(rules=[{**rule, "enforcing": [span]}])),
+                )
 
     def test_a_spec_with_gaps_names_each_gap(self) -> None:
         self.assertEqual(["the spec must be a JSON object"], spec_errors([]))
@@ -336,7 +337,7 @@ class HarvestTest(RegistryTestCase):
             ["approval must be an object with role and reviewer",
              "rule r: statement must be text", "rule r: test_file must be text", "rule r: test must be text",
              "rule r: check must be text",
-             "rule r: enforcing must be a non-empty list of [path, start, end] or path:start-end",
+             "rule r: enforcing must be a non-empty list of path:start-end",
              "rule r: mutate must be an object with file, find and replace", "rule r: level must be text",
              "rule 2: must be an object", "rule 3: id must be text"],
             spec_errors(spec),

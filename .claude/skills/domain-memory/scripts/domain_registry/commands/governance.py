@@ -22,14 +22,9 @@ from .common import note_unsettled, print_json, report_errors
 
 
 def policy_assignments(args: argparse.Namespace) -> list[tuple[str, str]]:
-    single = (args.field, args.value)
-    if any(part is not None for part in single):
-        if None in single or args.set:
-            raise ValueError("give --field with --value, or one or more --set FIELD=VALUE, not both")
-        return [single]
     malformed = [entry for entry in args.set if "=" not in entry]
     if not args.set or malformed:
-        raise ValueError("each --set takes FIELD=VALUE; give at least one, or --field with --value")
+        raise ValueError("each --set takes FIELD=VALUE; give at least one")
     return [tuple(entry.split("=", 1)) for entry in args.set]
 
 

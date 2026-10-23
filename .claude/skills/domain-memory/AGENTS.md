@@ -41,7 +41,7 @@ python3 scripts/registry_tools.py <command> [options]
 
 Python 3.10 or later, its standard library, and `git` on the path. Call the interpreter by the name your system gives it: `python3` on most Linux and macOS systems, `python` on Windows, where `python3` is often a store stub. Nothing to install, and the script runs from any working directory. What a command prints and how it refuses: [output and refusals](references/script-api.md#output-and-refusals).
 
-Commands that read or change the Registry take `--registry-root <root>`: the directory that holds `registry/`, `source-map.json` and the policy, not `registry/` itself. Commands that read repository files take `--repo-root <repo>`; the everyday Registry readers accept it unused, so one set of flags fits every command. The table below leaves both flags out; `<command> --help` lists the exact flags, and an argument a command does not take is refused with that command's usage.
+Commands that read or change the Registry take `--registry-root <root>`: the directory that holds `registry/`, `source-map.json` and the policy, not `registry/` itself. Commands that read repository files take `--repo-root <repo>`. The table below leaves both flags out; `<command> --help` lists the exact flags, and an argument a command does not take is refused with that command's usage.
 
 A host that speaks the Model Context Protocol gets the read commands as tools from [`mcp-serve`](references/script-api.md#mcp-serve), which offers no command that writes.
 

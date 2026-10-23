@@ -67,10 +67,8 @@ class ReviewLifecycleTest(RegistryTestCase):
         stuck_evidence = json.loads((stuck / "evidence-bundle.json").read_text(encoding="utf-8"))
         evidence["counterfactual_check"] = stuck_evidence["counterfactual_check"]
         evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
-        record_test_result(
-            redraft, self.repo / "memory", self.repo,
-            ObligationRun("OB-1", self.declare_check(redraft, self.run_writing("ok")), "unit"), 60,
-        )
+        self.declare_check(redraft, self.run_writing("ok"))
+        record_test_result(redraft, self.repo / "memory", self.repo, ObligationRun("OB-1", "unit"), 60)
         self.approve_and_apply(redraft)
         self.assertEqual(["order-total"], self.rule_ids())
 

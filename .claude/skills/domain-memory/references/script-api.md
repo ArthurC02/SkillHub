@@ -88,7 +88,7 @@ Lists Contexts holding no vocabulary, aggregate, rule, contract, or event, separ
 
 *Build an evidence citation.*
 
-`cite --repo-root <repo> --path <file> (--lines <start>-<end> | --start <line> --end <line> | --function <name>) [--registry-root <path>] [--show]`
+`cite --repo-root <repo> --path <file> (--lines <start>-<end> | --function <name>) [--registry-root <path>] [--show]`
 
 Produces the digest-backed citation object a record's `evidence` requires; `--function` cites the whole body of the one Go `func` or Python `def` of that name in the file, such as the test that proves a rule (a name the file does not define is refused with the file and line that defines it among the repository's files of the same language, or every such file when several do), and refuses a name defined twice or not at all; pass the object whole, and the Registry keeps only its path, lines and `excerpt_sha256`. `--show` prints the first and last cited lines on stderr, so a range that starts mid-function or points at other code is seen before it is stored. When the cited text also occurs elsewhere in the file, it prints a NOTE on stderr naming where, because such a citation cannot be told apart after the next edit; widen it to lines that occur once.
 
@@ -228,7 +228,7 @@ The package:
 Each entry of `rules`:
 
 - `id`, `statement`, and `example` or `examples`;
-- `enforcing` spans, each `[path, start, end]` or `path:start-end`, citing what enforces the rule, the code, a migration's constraint or trigger, or a contract, in any confirmed source; the decision or requirement that states the rule is evidence of its statement, not of its enforcement, so it is cited beside the enforcing lines, not in their place;
+- `enforcing` spans, each `path:start-end`, citing what enforces the rule, the code, a migration's constraint or trigger, or a contract, in any confirmed source; the decision or requirement that states the rule is evidence of its statement, not of its enforcement, so it is cited beside the enforcing lines, not in their place;
 - the proving test as `test_file` and `test`, and the full `check` that runs it with an optional `cwd`, `command_profile` and `level`;
 - `mutate`, with `file`, `find`, `replace` and an optional `expect`.
 
@@ -341,9 +341,9 @@ Takes `--registry-root` and `--repo-root` as the other steps of the flow do and 
 
 *Record a test result.*
 
-`record-test-result --package-root <path> --registry-root <root> --repo-root <repo> --obligation <id> [--command "<command>"] --command-profile <profile> [--timeout <seconds>] [--cwd <directory>]`
+`record-test-result --package-root <path> --registry-root <root> --repo-root <repo> --obligation <id> --command-profile <profile> [--timeout <seconds>] [--cwd <directory>]`
 
-Runs the obligation's `check`, or `--command` when it is that check with other spacing, while the proposal is draft or submitted, from the repository root, or from `--cwd`, a directory inside the repository recorded as the result's `working_directory`, without a shell, split into arguments by POSIX quoting rules on every platform, so `^`, `|` and `$` reach the program unchanged and pipes, `&&` and `VAR=value` prefixes are not available; set environment variables before calling it, and quote a Windows path that holds backslashes. The command profile only labels the run and never expands into a command, so the check is the full invocation, such as `python3 <path>/registry_tools.py verify-audit --registry-root <root>`, not a shorthand. It records it for that obligation only when it exits 0 and a test passed, with the digest of its full output, replacing any earlier result for the obligation. A run that passed no test writes nothing: `go test` without `-v` or `-json`, because it does not say which tests passed, or with every test skipped; output saying `[no tests to run]`; unittest that ran nothing or skipped every test; a pytest summary without `passed`. A failing run, a command other than the check, a proposal past submitted, an unknown obligation, or a profile outside a non-empty `approved_command_profiles` writes nothing; an empty list approves any profile.
+Runs the obligation's `check` while the proposal is draft or submitted, from the repository root, or from `--cwd`, a directory inside the repository recorded as the result's `working_directory`, without a shell, split into arguments by POSIX quoting rules on every platform, so `^`, `|` and `$` reach the program unchanged and pipes, `&&` and `VAR=value` prefixes are not available; set environment variables before calling it, and quote a Windows path that holds backslashes. The command profile only labels the run and never expands into a command, so the check is the full invocation, such as `python3 <path>/registry_tools.py verify-audit --registry-root <root>`, not a shorthand. It records it for that obligation only when it exits 0 and a test passed, with the digest of its full output, replacing any earlier result for the obligation. A run that passed no test writes nothing: `go test` without `-v` or `-json`, because it does not say which tests passed, or with every test skipped; output saying `[no tests to run]`; unittest that ran nothing or skipped every test; a pytest summary without `passed`. A failing run, a proposal past submitted, an unknown obligation, or a profile outside a non-empty `approved_command_profiles` writes nothing; an empty list approves any profile.
 
 ### `ship-package`
 
@@ -530,7 +530,7 @@ Creates or adopts an ed25519 key with OpenSSH's `ssh-keygen`, the one external p
 
 *Change governance fields.*
 
-`amend-policy --registry-root <path> --field <field> --value <value> --reason <text> [--verifier <verifier>]`, or several fields at once with `--set <field>=<value>` repeated in place of `--field`/`--value`
+`amend-policy --registry-root <path> --set <field>=<value> [--set <field>=<value> ...] --reason <text> [--verifier <verifier>]`
 
 Refuses a policy the validator rejects before writing, and appends the old value, new value, and reason of each field to the audit chain. Fields set together are applied as one change: only the final policy is validated, it is written once, and approvals go stale once, so a review mode and its verifier, trigger, and CI requirement move in one command. When `--set review_verifier=<verifier>` is among them, it serves as the verifier for leaving `local-draft-only`. Leaving `local-draft-only` requires `--verifier`, because a review mode and the authority behind it move together. `authorized_signers` takes a comma-separated list, so a lost key can be rotated out. Selected source paths and limits are settled at initialization and are not amendable.
 

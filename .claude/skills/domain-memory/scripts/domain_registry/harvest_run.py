@@ -15,7 +15,6 @@ from .common import (
     iter_packages,
     load_json,
     shown_path,
-    whole_number,
     write_json,
     writer_lock,
 )
@@ -35,7 +34,6 @@ SPEC_FIELDS = ("name", "context", "proposer", "intent", "outcome", "scope")
 RULE_FIELDS = ("id", "statement", "test_file", "test", "check")
 DECISIONS = (("ownership", "ownership_decision"), ("boundary", "boundary_decision"), ("design", "implementation_design"))
 DEFAULT_TIMEOUT_SECONDS = 600
-SPAN_PARTS = 3
 RULE_DEFAULTS = {"cwd": None, "command_profile": "unit", "level": "unit", "timeout": DEFAULT_TIMEOUT_SECONDS}
 SUPERSEDING = ("amended", "reproven")
 HARVESTED_FIELDS = ("statement", "contexts", "examples", "evidence")
@@ -212,7 +210,7 @@ def _rule_errors(rule: Any) -> list[str]:
     errors = [f"{name} must be text" for name in RULE_FIELDS if not _text(rule.get(name))]
     spans = rule.get("enforcing")
     if not isinstance(spans, list) or not spans or any(_span(span) is None for span in spans):
-        errors.append("enforcing must be a non-empty list of [path, start, end] or path:start-end")
+        errors.append("enforcing must be a non-empty list of path:start-end")
     mutate = rule.get("mutate")
     if not isinstance(mutate, dict) or not all(_text(mutate.get(name)) for name in ("file", "find", "replace")):
         errors.append("mutate must be an object with file, find and replace")
@@ -240,9 +238,6 @@ def _span(span: Any) -> tuple[str, int, int] | None:
         start, _, end = lines.partition("-")
         if path and start.isdigit() and (end or start).isdigit():
             return path, int(start), int(end or start)
-        return None
-    if isinstance(span, list) and len(span) == SPAN_PARTS and _text(span[0]) and all(whole_number(n) for n in span[1:]):
-        return span[0], span[1], span[2]
     return None
 
 
@@ -393,7 +388,7 @@ def _verify(run: Harvest) -> None:
             continue
         record_test_result(
             package_root, run.registry_root, run.repo_root,
-            ObligationRun(obligation_of(rule["id"]), None, _setting(spec, rule, "command_profile"), _setting(spec, rule, "cwd")),
+            ObligationRun(obligation_of(rule["id"]), _setting(spec, rule, "command_profile"), _setting(spec, rule, "cwd")),
             _setting(spec, rule, "timeout"),
         )
     run.stopped_at = "tested"

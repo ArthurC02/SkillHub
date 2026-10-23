@@ -120,15 +120,12 @@ def handle_cite(args: argparse.Namespace) -> int:
 
 
 def _cited_lines(args: argparse.Namespace) -> tuple[int, int]:
-    given = [form for form, value in (("lines", args.lines), ("start", args.start), ("end", args.end),
-                                      ("function", args.function)) if value is not None]
-    if given == ["start", "end"]:
-        return args.start, args.end
+    given = [form for form, value in (("lines", args.lines), ("function", args.function)) if value is not None]
     if given == ["lines"]:
         return line_range(args.lines)
     if given == ["function"]:
         return function_span(args.repo_root, args.path, args.function)
-    raise ValueError("cite takes --lines START-END, --start and --end, or --function NAME")
+    raise ValueError("cite takes --lines START-END or --function NAME")
 
 
 def _show_cited_lines(repo_root: Path, reference: dict) -> None:

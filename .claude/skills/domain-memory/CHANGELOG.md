@@ -2,6 +2,18 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 3.0.0
+
+### Removed
+
+Every input form that existed beside the one the reference names. Each is refused by argparse now, so a script that still uses one stops at once with `unrecognized arguments`.
+
+- `cite --start <line> --end <line>`: write `--lines <start>-<end>`.
+- `amend-policy --field <field> --value <value>`: write `--set <field>=<value>`.
+- `record-test-result --command`, which only refused a command that differed from the obligation's `check`; the check is what runs.
+- A harvest spec's `enforcing` span as `[path, start, end]`: write `path:start-end`.
+- `--repo-root` on the ten Registry readers that never used it (`lookup`, `resolve-terms`, `get-context`, `get-record`, `dependents`, `analyze-boundary`, `verify-audit`, `reconcile-audit`, `refresh-indexes`, `init-change-package`); a host that passed it to every command drops it for these.
+
 ## 2.10.1
 
 ### Changed

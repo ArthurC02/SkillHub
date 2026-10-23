@@ -16,10 +16,8 @@ from test_support import RegistryTestCase
 class ReviewTestResultsTest(RegistryTestCase):
     def test_a_passing_run_replaces_the_obligation_result_with_its_output_digest(self) -> None:
         package = self.draft_package()
-        record_test_result(
-            package, self.repo / "memory", self.repo,
-            ObligationRun("OB-1", self.declare_check(package, self.run_writing("ok")), "unit"), 60,
-        )
+        self.declare_check(package, self.run_writing("ok"))
+        record_test_result(package, self.repo / "memory", self.repo, ObligationRun("OB-1", "unit"), 60)
         evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
         [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
         self.assertEqual(
@@ -30,10 +28,8 @@ class ReviewTestResultsTest(RegistryTestCase):
     def test_a_recorded_command_passes_shell_characters_through_unchanged(self) -> None:
         package = self.draft_package()
         echo = "import sys; sys.stdout.write(sys.argv[1])"
-        record_test_result(
-            package, self.repo / "memory", self.repo,
-            ObligationRun("OB-1", self.declare_check(package, f'"{sys.executable}" -c "{echo}" ^(A|B)$'), "unit"), 60,
-        )
+        self.declare_check(package, f'"{sys.executable}" -c "{echo}" ^(A|B)$')
+        record_test_result(package, self.repo / "memory", self.repo, ObligationRun("OB-1", "unit"), 60)
         evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
         [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
         self.assertEqual("sha256:" + hashlib.sha256(b"^(A|B)$").hexdigest(), result["output_sha256"])
@@ -43,19 +39,16 @@ class ReviewTestResultsTest(RegistryTestCase):
         before = (package / "evidence-bundle.json").read_bytes()
         sleeper = f'"{sys.executable}" -c "import time; time.sleep(5)"'
         with self.assertRaisesRegex(ValueError, "^" + re.escape(sleeper) + " gave no result within 1 seconds; nothing recorded$"):
-            record_test_result(
-                package, self.repo / "memory", self.repo, ObligationRun("OB-1", self.declare_check(package, sleeper), "unit"), 1,
-            )
+            self.declare_check(package, sleeper)
+            record_test_result(package, self.repo / "memory", self.repo, ObligationRun("OB-1", "unit"), 1)
         self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
 
     def test_a_command_that_cannot_start_records_nothing(self) -> None:
         package = self.draft_package()
         before = (package / "evidence-bundle.json").read_bytes()
         with self.assertRaisesRegex(ValueError, "could not start: .*runs as written, with no shell and no aliases"):
-            record_test_result(
-                package, self.repo / "memory", self.repo,
-                ObligationRun("OB-1", self.declare_check(package, "no-such-program-for-domain-memory --version"), "unit"), 60,
-            )
+            self.declare_check(package, "no-such-program-for-domain-memory --version")
+            record_test_result(package, self.repo / "memory", self.repo, ObligationRun("OB-1", "unit"), 60)
         self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
 
     def test_a_policy_without_approved_profiles_accepts_any_profile(self) -> None:
@@ -64,10 +57,8 @@ class ReviewTestResultsTest(RegistryTestCase):
         policy = json.loads(policy_path.read_text(encoding="utf-8"))
         policy["approved_command_profiles"] = []
         policy_path.write_text(json.dumps(policy), encoding="utf-8")
-        record_test_result(
-            package, self.repo / "memory", self.repo,
-            ObligationRun("OB-1", self.declare_check(package, self.run_writing("ok")), "release"), 60,
-        )
+        self.declare_check(package, self.run_writing("ok"))
+        record_test_result(package, self.repo / "memory", self.repo, ObligationRun("OB-1", "release"), 60)
         evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
         [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
         self.assertEqual("release", result["command_profile"])
@@ -83,10 +74,8 @@ class ReviewTestResultsTest(RegistryTestCase):
         for obligation, command, profile, refusal in cases:
             with self.subTest(refusal=refusal):
                 with self.assertRaisesRegex(ValueError, refusal):
-                    record_test_result(
-                        package, self.repo / "memory", self.repo,
-                        ObligationRun(obligation, self.declare_check(package, command), profile), 60,
-                    )
+                    self.declare_check(package, command)
+                    record_test_result(package, self.repo / "memory", self.repo, ObligationRun(obligation, profile), 60)
                 self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
 
     def test_a_test_run_in_a_subdirectory_records_where_it_ran(self) -> None:
@@ -95,10 +84,8 @@ class ReviewTestResultsTest(RegistryTestCase):
         command = self.run_writing("ok").replace(
             "sys.stdout.write('ok')", "import os; sys.stdout.write(os.path.basename(os.getcwd()))"
         )
-        record_test_result(
-            package, self.repo / "memory", self.repo,
-            ObligationRun("OB-1", self.declare_check(package, command), "unit", cwd="apps/web"), 60,
-        )
+        self.declare_check(package, command)
+        record_test_result(package, self.repo / "memory", self.repo, ObligationRun("OB-1", "unit", cwd="apps/web"), 60)
         evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
         [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
         self.assertEqual(
@@ -111,10 +98,8 @@ class ReviewTestResultsTest(RegistryTestCase):
         before = (package / "evidence-bundle.json").read_bytes()
         for cwd in ("..", "missing"):
             with self.subTest(cwd=cwd), self.assertRaisesRegex(ValueError, "--cwd must name a directory inside"):
-                record_test_result(
-                    package, self.repo / "memory", self.repo,
-                    ObligationRun("OB-1", self.declare_check(package, self.run_writing("ok")), "unit", cwd=cwd), 60,
-                )
+                self.declare_check(package, self.run_writing("ok"))
+                record_test_result(package, self.repo / "memory", self.repo, ObligationRun("OB-1", "unit", cwd=cwd), 60)
         self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
 
     def recorded(self, package: Path) -> dict:
@@ -122,32 +107,14 @@ class ReviewTestResultsTest(RegistryTestCase):
         [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
         return result
 
-    def test_a_run_given_no_command_runs_the_obligation_check(self) -> None:
+    def test_a_run_records_the_obligation_check_and_its_output_digest(self) -> None:
         package = self.draft_package()
         check = self.declare_check(package, self.run_writing("ok"))
-        record_test_result(package, self.repo / "memory", self.repo, ObligationRun("OB-1", None, "unit"), 60)
+        record_test_result(package, self.repo / "memory", self.repo, ObligationRun("OB-1", "unit"), 60)
         self.assertEqual(
             (check, "sha256:" + hashlib.sha256(b"ok").hexdigest()),
             (self.recorded(package)["evidence"], self.recorded(package)["output_sha256"]),
         )
-
-    def test_a_command_other_than_the_obligation_check_records_nothing(self) -> None:
-        package = self.draft_package()
-        self.declare_check(package, self.run_writing("ok"))
-        before = (package / "evidence-bundle.json").read_bytes()
-        with self.assertRaisesRegex(ValueError, "obligation OB-1 declares the check .*; record that command"):
-            record_test_result(
-                package, self.repo / "memory", self.repo, ObligationRun("OB-1", self.run_writing("other"), "unit"), 60
-            )
-        self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
-
-    def test_a_command_padded_with_whitespace_is_recorded_as_the_check(self) -> None:
-        package = self.draft_package()
-        check = self.declare_check(package, self.run_writing("ok"))
-        record_test_result(
-            package, self.repo / "memory", self.repo, ObligationRun("OB-1", f"  {check}\n", "unit"), 60
-        )
-        self.assertEqual(check, self.recorded(package)["evidence"])
 
     def test_test_results_are_recorded_only_before_verification(self) -> None:
         package = self.draft_package()
@@ -165,7 +132,7 @@ class ReviewTestResultsTest(RegistryTestCase):
                 evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
                 evidence["test_results"] = []
                 evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
-                run = ObligationRun("OB-1", None, "unit")
+                run = ObligationRun("OB-1", "unit")
                 if records:
                     record_test_result(package, self.repo / "memory", self.repo, run, 60)
                 else:
@@ -180,10 +147,10 @@ class ReviewTestResultsTest(RegistryTestCase):
 
     def test_a_passing_run_in_which_no_test_passed_records_nothing(self) -> None:
         package = self.draft_package()
-        check = self.declare_check(package, self.run_writing("Ran 0 tests in 0.000s\n\nNO TESTS RAN\n"))
+        self.declare_check(package, self.run_writing("Ran 0 tests in 0.000s\n\nNO TESTS RAN\n"))
         before = (package / "evidence-bundle.json").read_bytes()
         with self.assertRaisesRegex(ValueError, "exited 0, but unittest ran no test that was not skipped; nothing recorded"):
-            record_test_result(package, self.repo / "memory", self.repo, ObligationRun("OB-1", check, "unit"), 60)
+            record_test_result(package, self.repo / "memory", self.repo, ObligationRun("OB-1", "unit"), 60)
         self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
 
     def with_recorded_evidence(self, evidence: str) -> Path:

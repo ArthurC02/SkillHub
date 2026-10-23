@@ -29,10 +29,8 @@ class CliCiteTest(RegistryTestCase):
             str(self.repo),
             "--path",
             "docs/adr/boundaries.md",
-            "--start",
-            "2",
-            "--end",
-            "2",
+            "--lines",
+            "2-2",
             "--registry-root",
             str(self.repo / "memory"),
         )
@@ -50,7 +48,7 @@ class CliCiteTest(RegistryTestCase):
         (self.repo / "db" / "queries.sql").write_text("select 1;\n", encoding="utf-8")
         result = self.run_cli(
             "cite", "--repo-root", str(self.repo), "--path", "db/queries.sql",
-            "--start", "1", "--end", "1", "--registry-root", str(self.repo / "memory"),
+            "--lines", "1-1", "--registry-root", str(self.repo / "memory"),
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         reference = json.loads(result.stdout)
@@ -69,14 +67,14 @@ class CliCiteTest(RegistryTestCase):
         )
         result = self.run_cli(
             "cite", "--repo-root", str(self.repo), "--path", "ops/queries.sql",
-            "--start", "1", "--end", "1", "--registry-root", str(self.repo / "memory"),
+            "--lines", "1-1", "--registry-root", str(self.repo / "memory"),
         )
         self.assertEqual(("selected", ""), (json.loads(result.stdout)["source_kind"], result.stderr))
 
     def test_cite_shows_the_first_and_last_cited_lines_when_asked(self) -> None:
         (self.repo / "notes.md").write_bytes(b"one\ntwo\nthree\n")
         result = self.run_cli(
-            "cite", "--repo-root", str(self.repo), "--path", "notes.md", "--start", "1", "--end", "3", "--show",
+            "cite", "--repo-root", str(self.repo), "--path", "notes.md", "--lines", "1-3", "--show",
         )
         self.assertEqual(["notes.md:1: one", "notes.md: ... 1 lines not shown", "notes.md:3: three"], result.stderr.splitlines())
 
@@ -91,15 +89,14 @@ class CliCiteTest(RegistryTestCase):
         (self.repo / "notes.md").write_bytes(b"one\ntwo\nthree\n")
         return self.run_cli("cite", "--repo-root", str(self.repo), "--path", "notes.md", *range_options)
 
-    def test_cite_takes_lines_as_recite_does(self) -> None:
-        self.assertEqual(json.loads(self.cite("--start", "2", "--end", "3").stdout), json.loads(self.cite("--lines", "2-3").stdout))
-
-    def test_cite_refuses_both_line_forms_or_neither(self) -> None:
-        for options in (("--lines", "1-2", "--start", "1", "--end", "2"), ("--lines", "1-2", "--start", "1"), ("--start", "1"),
-                        ("--function", "f", "--lines", "1-2"), ("--function", "f", "--start", "1", "--end", "2"), ()):
+    def test_cite_refuses_both_range_forms_or_neither(self) -> None:
+        for options in (("--function", "f", "--lines", "1-2"), ()):
             with self.subTest(options):
-                self.assertEqual("ERROR: cite takes --lines START-END, --start and --end, or --function NAME",
-                                 self.cite(*options).stderr.strip())
+                self.assertEqual("ERROR: cite takes --lines START-END or --function NAME", self.cite(*options).stderr.strip())
+
+    def test_cite_no_longer_takes_a_start_and_an_end(self) -> None:
+        result = self.cite("--start", "1", "--end", "1")
+        self.assertEqual((2, True), (result.returncode, "unrecognized arguments: --start 1 --end 1" in result.stderr), result.stderr)
 
     def test_cite_finds_the_span_of_a_go_func_or_python_def_by_name(self) -> None:
         (self.repo / "total_test.go").write_text(
@@ -155,7 +152,7 @@ class CliCiteTest(RegistryTestCase):
     def test_cite_shows_a_one_line_citation_once(self) -> None:
         (self.repo / "notes.md").write_bytes(b"one\ntwo\n")
         result = self.run_cli(
-            "cite", "--repo-root", str(self.repo), "--path", "notes.md", "--start", "2", "--end", "2", "--show",
+            "cite", "--repo-root", str(self.repo), "--path", "notes.md", "--lines", "2-2", "--show",
         )
         self.assertEqual(["notes.md:2: two"], result.stderr.splitlines())
 
@@ -293,7 +290,7 @@ class CliCiteTest(RegistryTestCase):
     def test_citing_lines_that_repeat_in_the_file_says_where_else_they_start(self) -> None:
         (self.repo / "fact.md").write_text("same\nother\nsame\nsame\n", encoding="utf-8")
         result = self.run_cli(
-            "cite", "--repo-root", str(self.repo), "--path", "fact.md", "--start", "3", "--end", "3",
+            "cite", "--repo-root", str(self.repo), "--path", "fact.md", "--lines", "3-3",
         )
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual({"start": 3, "end": 3}, json.loads(result.stdout)["lines"])

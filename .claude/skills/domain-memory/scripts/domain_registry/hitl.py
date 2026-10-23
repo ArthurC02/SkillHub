@@ -258,7 +258,6 @@ def verify_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
 @dataclass(frozen=True)
 class ObligationRun:
     obligation_id: str
-    command: str | None
     command_profile: str
     cwd: str | None = None
 
@@ -277,12 +276,7 @@ def record_test_result(
     obligation = find_record(obligations, obligation_id)
     if obligation is None:
         raise ValueError(f"test-obligations.json has no obligation {obligation_id}")
-    command = (run.command or obligation.get("check") or "").strip()
-    if not same_command(command, obligation.get("check")):
-        raise ValueError(
-            f"obligation {obligation_id} declares the check {obligation.get('check')!r}; record that command, "
-            "or make the obligation's check the command that proves it"
-        )
+    command = (obligation.get("check") or "").strip()
     directory = working_directory(repo_root, run.cwd)
     profiles = approved_command_profiles(registry_root)
     if profiles and command_profile not in profiles:
