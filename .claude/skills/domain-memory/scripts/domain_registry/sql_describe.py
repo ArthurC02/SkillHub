@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import difflib
+import io
 import re
+import tarfile
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from .common import ASSET_KEYS
+from .git import run_git_bytes
 from .sql_schema import (
     IDENT,
     Constraint,
@@ -31,7 +35,9 @@ QUOTED = re.compile(r"'((?:[^']|'')*)'")
 SUMMARY_FIELDS = ("statement", "definition", "responsibility", "description", "name")
 SUMMARY_LENGTH = 160
 DEFAULT_ACTION = "NO ACTION"
-STATUS_LIKE = re.compile(r"(^|_)(status|state|kind|mode|tier|role|decision|verdict|outcome)$")
+STATUS_LIKE = re.compile(
+    r"(^|_)(status|state|kind|mode|tier|role|decision|verdict|outcome|phase|stage|level|priority|severity|visibility|category)$")
+FREE_TEXT = re.compile(r"\bfree text\b", re.I)
 VALUE_COMMENT_LIMIT = 12
 CONVENTIONAL_COLUMNS = frozenset({"id", "created_at", "updated_at"})
 
@@ -109,10 +115,50 @@ def allowed_values(column: str, constraints: list[Constraint], enum_values: list
     return listed.values if listed else None
 
 
+def gaps_since(repo_root: Path, migrations_dir: Path, base: str) -> dict[str, Any]:
+    relative = migrations_dir.resolve().relative_to(repo_root.resolve()).as_posix()
+    now = _gaps_by_table(migrations_dir, repo_root)
+    with tempfile.TemporaryDirectory() as temporary:
+        before = _gaps_by_table(_migrations_at(repo_root, base, relative, Path(temporary)), Path(temporary))
+    tables = {}
+    for table in sorted(set(now) | set(before)):
+        opened = [gap for gap in now.get(table, []) if gap not in before.get(table, [])]
+        closed = [gap for gap in before.get(table, []) if gap not in now.get(table, [])]
+        if opened or closed:
+            tables[table] = {"new_gaps": opened, "closed_gaps": closed}
+    return {"base": base, "tables": tables, "new_gaps": sum(len(entry["new_gaps"]) for entry in tables.values())}
+
+
+def _migrations_at(repo_root: Path, base: str, relative: str, into: Path) -> Path:
+    listed = run_git_bytes(repo_root, "ls-tree", "-d", base, "--", relative)
+    if listed.returncode != 0:
+        raise ValueError(f"could not read {relative} at {base}: {listed.stderr.decode('utf-8', errors='replace').strip()}")
+    target = into / relative
+    if not listed.stdout.strip():
+        target.mkdir(parents=True)
+        return target
+    archive = run_git_bytes(repo_root, "archive", "--format=tar", base, "--", relative)
+    if archive.returncode != 0:
+        raise ValueError(f"could not read {relative} at {base}: {archive.stderr.decode('utf-8', errors='replace').strip()}")
+    with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
+        members = [member for member in tar.getmembers() if member.isfile() and ".." not in Path(member.name).parts]
+        tar.extractall(into, members=members)
+    return target
+
+
+def _gaps_by_table(migrations_dir: Path, repo_root: Path) -> dict[str, list[str]]:
+    schema = read_schema(migrations_dir, repo_root)
+    return {
+        name: _gaps(table, [c for c in schema.constraints if c.table == name], [k for k in schema.foreign_keys if k.child == name],
+                    [statement for statement in schema.dynamic if name in statement.tables], schema)
+        for name, table in live_tables(schema).items()
+    }
+
+
 def _gaps(table: Table, constraints: list[Constraint], keys: list[ForeignKey], dynamic: list[Dynamic], schema: Schema) -> list[str]:
     gaps = [] if table.comment is not None else ["the table has no COMMENT ON saying what one row is"]
     for column, info in table.columns.items():
-        gaps.extend(_column_gaps(column, info, value_list(column, constraints, schema.enums.get(info["type"])), schema))
+        gaps.extend(_column_gaps(column, info, value_list(column, constraints, schema.enums.get(info["type"])), schema, constraints))
     gaps.extend(f"foreign key {key.name} to {key.parent} does not say ON DELETE; choose CASCADE, RESTRICT, SET NULL or NO ACTION"
                 for key in keys if key.on_delete is None)
     gaps.extend(f"the statement at {statement.file}:{statement.line} builds DDL at run time and names {table.name}; "
@@ -120,20 +166,31 @@ def _gaps(table: Table, constraints: list[Constraint], keys: list[ForeignKey], d
     return gaps
 
 
-def _column_gaps(column: str, info: dict[str, Any], listed: ValueList | None, schema: Schema) -> list[str]:
+def _column_gaps(column: str, info: dict[str, Any], listed: ValueList | None, schema: Schema,
+                 constraints: list[Constraint]) -> list[str]:
     gaps = []
-    explained_in = " ".join(text for text in (info.get("comment"), schema.type_comments.get(info["type"])) if text)
-    if info.get("comment") is None and column not in CONVENTIONAL_COLUMNS:
+    comment = info.get("comment")
+    explained_in = " ".join(text for text in (comment, schema.type_comments.get(info["type"])) if text)
+    if comment is None and column not in CONVENTIONAL_COLUMNS:
         gaps.append(f"column {column} has no COMMENT ON saying what it means")
-    if listed is None and STATUS_LIKE.search(column):
-        gaps.append(f"status-like column {column} has no value list; add CHECK ({column} IN (...)) or an enum type")
-    if listed and not info.get("not_null") and not listed.null_decided:
+    if listed is None and STATUS_LIKE.search(column) and not _declared_open(column, comment, constraints):
+        gaps.append(f"status-like column {column} has no value list; add CHECK ({column} IN (...)) or an enum type, "
+                    "or say 'free text' in its comment or constrain it with another CHECK")
+    if listed and not info.get("not_null") and not listed.null_decided and info["type"] not in schema.enums:
         gaps.append(f"column {column} lists its values without deciding NULL; make it NOT NULL, or write "
                     f"CHECK ({column} IS NULL OR {column} IN (...)) or CHECK ({column} IS NOT NULL AND {column} IN (...))")
-    unexplained = [value for value in listed.values if value not in explained_in] if listed and explained_in else []
+    unexplained = [value for value in listed.values if not _mentions_value(explained_in, value)] if listed and explained_in else []
     if unexplained and len(listed.values) <= VALUE_COMMENT_LIMIT:
         gaps.append(f"the comment on {column} does not say what these values mean: {', '.join(unexplained)}")
     return gaps
+
+
+def _declared_open(column: str, comment: str | None, constraints: list[Constraint]) -> bool:
+    return bool(comment and FREE_TEXT.search(comment)) or any(c.kind == "check" and column in c.columns for c in constraints)
+
+
+def _mentions_value(text: str, value: str) -> bool:
+    return re.search(rf"(?<![\w-]){re.escape(value)}(?![\w-])", text) is not None
 
 
 def _constraint(constraint: Constraint) -> dict[str, Any]:

@@ -28,7 +28,7 @@ from ..gates import quality_gates
 from ..impact import boundary_impact, registered_collaborations
 from ..mcp_server import ServerRoots, serve
 from ..policy import policy_path, query_result_limit
-from ..sql_describe import describe_table
+from ..sql_describe import describe_table, gaps_since
 from ..readiness import readiness_report
 from ..registry import (
     asset_records,
@@ -168,6 +168,11 @@ def handle_get_context(args: argparse.Namespace) -> int:
 
 
 def handle_describe_table(args: argparse.Namespace) -> int:
+    if args.base:
+        return _handle_gaps_since(args)
+    if not args.table:
+        print("ERROR: describe-table needs --table <name>, or --base <ref> to list the gaps opened since that ref", file=sys.stderr)
+        return 1
     registry_root = args.registry_root.resolve() if args.registry_root else None
     table = args.table.strip()
     result = describe_table(registry_root, args.repo_root.resolve(), args.migrations.resolve(), table)
@@ -175,6 +180,19 @@ def handle_describe_table(args: argparse.Namespace) -> int:
     for note in _describe_notes(result, table, without_registry=registry_root is None, require_complete=args.require_complete):
         print(f"NOTE: {note}", file=sys.stderr)
     return 1 if args.require_complete and result["gaps"] else 0
+
+
+def _handle_gaps_since(args: argparse.Namespace) -> int:
+    result = gaps_since(args.repo_root.resolve(), args.migrations.resolve(), args.base)
+    print_json(result)
+    opened = {table: len(entry["new_gaps"]) for table, entry in result["tables"].items() if entry["new_gaps"]}
+    if opened:
+        print(f"NOTE: {result['new_gaps']} new gap{_s(list(range(result['new_gaps'])))} since {args.base} in "
+              + ", ".join(f"{table} ({count})" for table, count in opened.items())
+              + "; the change is not done until they are closed", file=sys.stderr)
+    else:
+        print(f"NOTE: no new gaps since {args.base}", file=sys.stderr)
+    return 1 if args.require_complete and opened else 0
 
 
 def _describe_notes(result: dict, table: str, *, without_registry: bool, require_complete: bool) -> list[str]:

@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.evidence import citation
-from domain_registry.sql_describe import describe_table
+from domain_registry.sql_describe import describe_table, gaps_since
 from domain_registry.sql_schema import read_schema
 from test_support import RegistryTestCase
 
@@ -236,7 +236,16 @@ WIDENED = """ALTER TABLE orders DROP CONSTRAINT orders_state_check,
 FENCE = """DO $$ BEGIN
     EXECUTE format('CREATE TRIGGER fence BEFORE INSERT ON %I FOR EACH ROW EXECUTE FUNCTION guard()', 'users');
 END $$;
-CREATE TABLE loose (id uuid PRIMARY KEY, mode text, updated_at timestamptz);
+CREATE TABLE loose (
+    id uuid PRIMARY KEY, mode text, updated_at timestamptz,
+    step text NOT NULL CHECK (step IN ('run', 'running')),
+    role text,
+    level text CHECK (level <> ''),
+    category text
+);
+COMMENT ON COLUMN loose.step IS 'running: the step is executing; run: it finished.';
+COMMENT ON COLUMN loose.role IS 'free text job title';
+COMMENT ON COLUMN loose.category IS 'a free-form label';
 """
 TIDY = """CREATE TABLE tidy (id uuid PRIMARY KEY, state text NOT NULL CHECK (state IN ('on', 'off')), owner uuid REFERENCES users (id) ON DELETE CASCADE);
 COMMENT ON TABLE tidy IS 'one switch per owner';
@@ -251,8 +260,6 @@ ORDERS_GAPS = [
     "column kind has no COMMENT ON saying what it means",
     "column source has no COMMENT ON saying what it means",
     "column mood has no COMMENT ON saying what it means",
-    "column mood lists its values without deciding NULL; make it NOT NULL, or write CHECK (mood IS NULL OR mood IN (...)) "
-    "or CHECK (mood IS NOT NULL AND mood IN (...))",
     "column mood_check has no COMMENT ON saying what it means",
     "column mood_check lists its values without deciding NULL; make it NOT NULL, or write CHECK (mood_check IS NULL OR "
     "mood_check IN (...)) or CHECK (mood_check IS NOT NULL AND mood_check IN (...))",
@@ -304,9 +311,16 @@ class CompletenessDescribeTest(RegistryTestCase):
         )
         self.assertEqual(
             ["the table has no COMMENT ON saying what one row is", "column mode has no COMMENT ON saying what it means",
-             "status-like column mode has no value list; add CHECK (mode IN (...)) or an enum type"],
+             "status-like column mode has no value list; add CHECK (mode IN (...)) or an enum type, or say 'free text' in its "
+             "comment or constrain it with another CHECK",
+             "column level has no COMMENT ON saying what it means",
+             "status-like column category has no value list; add CHECK (category IN (...)) or an enum type, or say 'free text' in its "
+             "comment or constrain it with another CHECK"],
             self.describe("loose")["gaps"],
         )
+        with_run = FENCE.replace("running: the step is executing; run: it finished.", "running: the step is executing.")
+        (self.migrations / "0002_fence.sql").write_text(with_run, encoding="utf-8")
+        self.assertIn("the comment on step does not say what these values mean: run", self.describe("loose")["gaps"])
         result = self.run_cli(*self.common, "--table", "users")
         self.assertIn("NOTE: 1 statement builds DDL at run time naming users, which the description cannot show: "
                       "db/migrations/0002_fence.sql:1", result.stderr)
@@ -316,11 +330,38 @@ class CompletenessDescribeTest(RegistryTestCase):
         refused = self.run_cli(*self.common, "--table", "orders", "--require-complete")
         lenient = self.run_cli(*self.common, "--table", "orders")
         tidy = self.run_cli(*self.common, "--table", "tidy", "--require-complete")
-        self.assertEqual((1, 12, 0, 0, []), (refused.returncode, len(json.loads(refused.stdout)["gaps"]), lenient.returncode,
+        self.assertEqual((1, 11, 0, 0, []), (refused.returncode, len(json.loads(refused.stdout)["gaps"]), lenient.returncode,
                                              tidy.returncode, json.loads(tidy.stdout)["gaps"]))
-        self.assertIn("NOTE: orders is not complete: 12 gaps listed under gaps; the change is not done until they are closed",
+        self.assertIn("NOTE: orders is not complete: 11 gaps listed under gaps; the change is not done until they are closed",
                       refused.stderr)
         self.assertNotIn("not complete", lenient.stderr + tidy.stderr)
+
+    def test_gaps_since_a_ref_lists_only_what_the_change_opened_or_closed_per_table(self) -> None:
+        self.commit_all("migrations")
+        (self.migrations / "0002_change.sql").write_text(
+            "ALTER TABLE orders ADD COLUMN memo text;\nCOMMENT ON COLUMN orders.note IS 'what the buyer wrote';\n" + TIDY
+            + "CREATE TABLE loose (id uuid PRIMARY KEY, mode text);\n", encoding="utf-8")
+        since = gaps_since(self.repo, self.migrations, "HEAD")
+        self.assertEqual(
+            (["loose", "orders"], 4, ["column memo has no COMMENT ON saying what it means"],
+             ["column note has no COMMENT ON saying what it means"],
+             ["the table has no COMMENT ON saying what one row is", "column mode has no COMMENT ON saying what it means",
+              "status-like column mode has no value list; add CHECK (mode IN (...)) or an enum type, or say 'free text' in its "
+              "comment or constrain it with another CHECK"], []),
+            (sorted(since["tables"]), since["new_gaps"], since["tables"]["orders"]["new_gaps"], since["tables"]["orders"]["closed_gaps"],
+             since["tables"]["loose"]["new_gaps"], since["tables"]["loose"]["closed_gaps"]),
+        )
+        refused = self.run_cli(*self.common, "--base", "HEAD", "--require-complete")
+        self.assertEqual((1, "NOTE: 4 new gaps since HEAD in loose (3), orders (1); the change is not done until they are closed"),
+                         (refused.returncode, refused.stderr.strip()))
+        self.commit_all("change")
+        settled = self.run_cli(*self.common, "--base", "HEAD", "--require-complete")
+        self.assertEqual((0, {}, "NOTE: no new gaps since HEAD"), (settled.returncode, json.loads(settled.stdout)["tables"], settled.stderr.strip()))
+        neither = self.run_cli(*self.common)
+        self.assertEqual((1, "ERROR: describe-table needs --table <name>, or --base <ref> to list the gaps opened since that ref"),
+                         (neither.returncode, neither.stderr.strip()))
+        with self.assertRaisesRegex(ValueError, r"^could not read db/migrations at nowhere: "):
+            gaps_since(self.repo, self.migrations, "nowhere")
 
 
 if __name__ == "__main__":

@@ -2,6 +2,18 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.8.0
+
+### Added
+
+- `describe-table --base <ref>` lists, per table, the gaps the migrations since that Git ref opened and closed, and `--require-complete` then exits 1 only for a new gap, so a change to a table with an older backlog is still gated on what it changed.
+- The status-like column names now include `phase`, `stage`, `level`, `priority`, `severity`, `visibility` and `category`; a column of such a name that is genuinely open escapes the value-list gap when its comment says `free text` or another CHECK constrains it.
+
+### Fixed
+
+- A listed value counts as explained only when the comment mentions it as a whole word (`running` no longer explains `run`, `pro_plus` no longer explains `pro`).
+- A nullable column of an enum type is no longer asked to decide NULL in a CHECK: the type cannot hold an unlisted value and the nullability is already explicit.
+
 ## 2.7.0
 
 ### Added
