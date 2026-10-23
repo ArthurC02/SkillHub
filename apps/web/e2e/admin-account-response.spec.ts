@@ -110,12 +110,12 @@ for (const [name, body] of [
         return route.fulfill({ json: recover || (reread && reads === 1) ? ADMIN_ACCOUNT : body });
       });
       const main = page.getByRole("main");
-      const lookup = page.getByRole("button", { name: "查詢", exact: true });
-      await lookup.click();
+      const submitLookup = () => page.getByLabel("Email", { exact: true }).press("Enter");
+      await submitLookup();
       if (reread) {
         await expect(main.getByRole("heading", { name: "封測者甲", exact: true })).toBeVisible();
         await expect(page.locator("#admin-grant-amount")).toBeVisible();
-        await lookup.click();
+        await submitLookup();
       }
       await expect(main.getByRole("alert")).toContainText("暫時無法讀取帳號。");
       await expect(
