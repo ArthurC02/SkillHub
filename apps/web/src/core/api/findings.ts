@@ -1,4 +1,12 @@
+import type { FindingSeverityEnum } from "@skillhub/api-client-ts";
+import { contractEnum } from "./contract-enum";
 import type { CategorizedFindings, ImportFinding } from "./types";
+
+const FINDING_SEVERITIES = contractEnum<FindingSeverityEnum>({
+  error: true,
+  warning: true,
+  info: true,
+});
 
 export function isCategorizedFindings(value: unknown): value is CategorizedFindings {
   if (typeof value !== "object" || value === null) return false;
@@ -15,7 +23,7 @@ export function isImportFinding(value: unknown): value is ImportFinding {
   if (!value || typeof value !== "object") return false;
   const finding = value as Partial<ImportFinding>;
   return (
-    ["error", "warning", "info"].includes(finding.severity ?? "") &&
+    FINDING_SEVERITIES.includes(finding.severity ?? "") &&
     typeof finding.code === "string" &&
     typeof finding.message === "string" &&
     (finding.path === undefined || typeof finding.path === "string") &&

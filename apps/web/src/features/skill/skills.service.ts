@@ -5,7 +5,12 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import type { CorrectedSearchRequest, SetSkillCategoryRequest } from "@skillhub/api-client-ts";
+import type {
+  CorrectedSearchRequest,
+  SetSkillCategoryRequest,
+  SkillRedistributionEnum,
+} from "@skillhub/api-client-ts";
+import { contractEnum } from "../../core/api/contract-enum";
 import { SessionNotReadyError, apiFetch, isWriteResultUnknown } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import { readSearchCorrection } from "../../core/api/searchIntent";
@@ -251,6 +256,14 @@ export function useDeleteSkill() {
   });
 }
 
+const SKILL_REDISTRIBUTIONS = contractEnum<SkillRedistributionEnum>({
+  allowed: true,
+  blocked: true,
+  unknown: true,
+  self_supplied: true,
+  generated: true,
+});
+
 function isSkillReceipt(value: unknown): value is Skill {
   if (!value || typeof value !== "object") return false;
   const receipt = value as Partial<Skill>;
@@ -259,9 +272,7 @@ function isSkillReceipt(value: unknown): value is Skill {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(receipt.skill_id) &&
     typeof receipt.name === "string" &&
     typeof receipt.summary === "string" &&
-    ["allowed", "blocked", "unknown", "self_supplied", "generated"].includes(
-      receipt.redistribution ?? "",
-    )
+    SKILL_REDISTRIBUTIONS.includes(receipt.redistribution ?? "")
   );
 }
 

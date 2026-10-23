@@ -1,6 +1,28 @@
+import type {
+  CreationMessageRoleEnum,
+  CreationReferenceScanStatusEnum,
+  CreationReferenceTierEnum,
+} from "@skillhub/api-client-ts";
+import { contractEnum } from "../../core/api/contract-enum";
 import type { CreationSession } from "./creation.service";
 
 type Check = (value: unknown) => boolean;
+
+const REFERENCE_TIERS = contractEnum<CreationReferenceTierEnum>({
+  curated: true,
+  indexed: true,
+  unknown: true,
+});
+const REFERENCE_SCAN_STATUSES = contractEnum<CreationReferenceScanStatusEnum>({
+  scanned: true,
+  unavailable: true,
+  unknown: true,
+});
+const MESSAGE_ROLES = contractEnum<CreationMessageRoleEnum>({
+  user: true,
+  assistant: true,
+  tool: true,
+});
 
 const text: Check = (value) => typeof value === "string";
 const flag: Check = (value) => typeof value === "boolean";
@@ -16,7 +38,7 @@ const array =
   (value) =>
     Array.isArray(value) && value.every(check);
 const member =
-  (values: string[]): Check =>
+  (values: readonly string[]): Check =>
   (value) =>
     typeof value === "string" && values.includes(value);
 
@@ -40,8 +62,8 @@ const reference: Check = (value) =>
     description: optional(text),
     compatibility: optional(text),
     allowed_tools: optional(text),
-    tier: optional(member(["curated", "indexed", "unknown"])),
-    scan_status: optional(member(["scanned", "unavailable", "unknown"])),
+    tier: optional(member(REFERENCE_TIERS)),
+    scan_status: optional(member(REFERENCE_SCAN_STATUSES)),
     warnings: optional(count),
   });
 const skill: Check = (value) =>
@@ -66,7 +88,7 @@ const snapshot: Check = (value) =>
   fields(value, {
     messages: array((message) =>
       fields(message, {
-        role: member(["user", "assistant", "tool"]),
+        role: member(MESSAGE_ROLES),
         content: text,
         created_at: optional(date),
       }),

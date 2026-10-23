@@ -1,4 +1,26 @@
 import type {
+  CheckStepResultEnum,
+  CriterionResultResultEnum,
+  CriterionResultSourceEnum,
+  DeterministicFindingCategoryEnum,
+  DeterministicFindingSeverityEnum,
+  EvaluationCostSourceEnum,
+  EvaluationOverallEnum,
+  EvaluationRevisionOverallEnum,
+  EvaluationStatusEnum,
+  EvidenceRefKindEnum,
+  EvidenceRefMatchEnum,
+  EvidenceRefReattributedFromEnum,
+  ImprovementSuggestionCategoryEnum,
+  ImprovementSuggestionDecisionEnum,
+  RunComparisonCriterionMatrixInnerResultsInnerResultEnum,
+  RunComparisonCriterionMatrixInnerResultsInnerSourceEnum,
+  RunComparisonRunsInnerEvaluationOverallEnum,
+  RunComparisonRunsInnerEvaluationStatusEnum,
+  SuggestionBlockedReason,
+} from "@skillhub/api-client-ts";
+import { contractEnum } from "../../core/api/contract-enum";
+import type {
   Evaluation,
   EvaluationRevision,
   RunComparison,
@@ -31,6 +53,115 @@ function isMember(value: unknown, values: readonly string[]): boolean {
   return isText(value) && values.includes(value);
 }
 
+const EVIDENCE_KINDS = contractEnum<EvidenceRefKindEnum>({
+  trace_event: true,
+  artifact: true,
+  agent_output: true,
+});
+const EVIDENCE_MATCHES = contractEnum<EvidenceRefMatchEnum>({
+  exact: true,
+  normalized: true,
+  not_found: true,
+  not_checked: true,
+});
+const EVIDENCE_REATTRIBUTIONS = contractEnum<EvidenceRefReattributedFromEnum>({
+  trace_event: true,
+  artifact: true,
+  agent_output: true,
+});
+const STEP_RESULTS = contractEnum<CheckStepResultEnum>({
+  passed: true,
+  failed: true,
+  undetermined: true,
+});
+const CRITERION_RESULTS = contractEnum<CriterionResultResultEnum>({
+  passed: true,
+  failed: true,
+  undetermined: true,
+});
+const CRITERION_SOURCES = contractEnum<CriterionResultSourceEnum>({
+  rule: true,
+  model: true,
+  user: true,
+});
+const FINDING_CATEGORIES = contractEnum<DeterministicFindingCategoryEnum>({
+  spec: true,
+  activation: true,
+  execution: true,
+  effect: true,
+  compatibility: true,
+  cost: true,
+});
+const FINDING_SEVERITIES = contractEnum<DeterministicFindingSeverityEnum>({
+  error: true,
+  warning: true,
+  info: true,
+});
+const COST_SOURCES = contractEnum<EvaluationCostSourceEnum>({
+  gateway: true,
+  estimated: true,
+  unreported: true,
+});
+const COMPARED_EVALUATION_STATUSES = contractEnum<RunComparisonRunsInnerEvaluationStatusEnum>({
+  pending: true,
+  completed: true,
+  failed: true,
+});
+const COMPARED_EVALUATION_OVERALLS = contractEnum<RunComparisonRunsInnerEvaluationOverallEnum>({
+  met: true,
+  partially_met: true,
+  not_met: true,
+  undetermined: true,
+});
+const COMPARED_CRITERION_RESULTS =
+  contractEnum<RunComparisonCriterionMatrixInnerResultsInnerResultEnum>({
+    passed: true,
+    failed: true,
+    undetermined: true,
+  });
+const COMPARED_CRITERION_SOURCES =
+  contractEnum<RunComparisonCriterionMatrixInnerResultsInnerSourceEnum>({
+    rule: true,
+    model: true,
+    user: true,
+  });
+const EVALUATION_STATUSES = contractEnum<EvaluationStatusEnum>({
+  pending: true,
+  completed: true,
+  failed: true,
+});
+const EVALUATION_OVERALLS = contractEnum<EvaluationOverallEnum>({
+  met: true,
+  partially_met: true,
+  not_met: true,
+  undetermined: true,
+});
+const REVISION_OVERALLS = contractEnum<EvaluationRevisionOverallEnum>({
+  met: true,
+  partially_met: true,
+  not_met: true,
+  undetermined: true,
+});
+const SUGGESTION_CATEGORIES = contractEnum<ImprovementSuggestionCategoryEnum>({
+  skill: true,
+  runtime: true,
+  mcp: true,
+  tool: true,
+  dataset: true,
+});
+const SUGGESTION_DECISIONS = contractEnum<ImprovementSuggestionDecisionEnum>({
+  pending: true,
+  accepted: true,
+  rejected: true,
+});
+const SUGGESTION_BLOCKED_REASONS = contractEnum<SuggestionBlockedReason>({
+  path_out_of_bounds: true,
+  target_changed: true,
+  validation_blocked: true,
+  access_restricted: true,
+  diff_unavailable: true,
+});
+
 function isRange(value: unknown): boolean {
   return isRecord(value) && Number.isSafeInteger(value.start) && Number.isSafeInteger(value.end);
 }
@@ -38,14 +169,13 @@ function isRange(value: unknown): boolean {
 function isEvidence(value: unknown): boolean {
   if (!isRecord(value)) return false;
   return (
-    isMember(value.kind, ["trace_event", "artifact", "agent_output"]) &&
+    isMember(value.kind, EVIDENCE_KINDS) &&
     isText(value.excerpt) &&
     typeof value.excerpt_truncated === "boolean" &&
     typeof value.available === "boolean" &&
-    (value.match === undefined ||
-      isMember(value.match, ["exact", "normalized", "not_found", "not_checked"])) &&
+    (value.match === undefined || isMember(value.match, EVIDENCE_MATCHES)) &&
     (value.reattributed_from === undefined ||
-      isMember(value.reattributed_from, ["trace_event", "artifact", "agent_output"])) &&
+      isMember(value.reattributed_from, EVIDENCE_REATTRIBUTIONS)) &&
     isOptionalText(value.trace_event_id) &&
     isOptionalText(value.artifact_path) &&
     (value.occurred_at === undefined || isDate(value.occurred_at)) &&
@@ -60,7 +190,7 @@ function isStep(value: unknown): boolean {
     isText(value.path) &&
     isText(value.kind) &&
     isText(value.reason) &&
-    isMember(value.result, ["passed", "failed", "undetermined"])
+    isMember(value.result, STEP_RESULTS)
   );
 }
 
@@ -70,8 +200,8 @@ function isCriterion(value: unknown): boolean {
     isText(value.criterion_id) &&
     isText(value.text) &&
     isText(value.reason) &&
-    isMember(value.result, ["passed", "failed", "undetermined"]) &&
-    isMember(value.source, ["rule", "model", "user"]) &&
+    isMember(value.result, CRITERION_RESULTS) &&
+    isMember(value.source, CRITERION_SOURCES) &&
     Array.isArray(value.evidence) &&
     value.evidence.every(isEvidence) &&
     (value.steps === undefined || (Array.isArray(value.steps) && value.steps.every(isStep)))
@@ -81,15 +211,8 @@ function isCriterion(value: unknown): boolean {
 function isFinding(value: unknown): boolean {
   return (
     isRecord(value) &&
-    isMember(value.category, [
-      "spec",
-      "activation",
-      "execution",
-      "effect",
-      "compatibility",
-      "cost",
-    ]) &&
-    isMember(value.severity, ["error", "warning", "info"]) &&
+    isMember(value.category, FINDING_CATEGORIES) &&
+    isMember(value.severity, FINDING_SEVERITIES) &&
     isText(value.message) &&
     Array.isArray(value.evidence) &&
     value.evidence.every(isEvidence)
@@ -100,7 +223,7 @@ function isCost(value: unknown): boolean {
   return (
     isRecord(value) &&
     (value.evaluation_credits === null || Number.isSafeInteger(value.evaluation_credits)) &&
-    isMember(value.source, ["gateway", "estimated", "unreported"]) &&
+    isMember(value.source, COST_SOURCES) &&
     isText(value.note)
   );
 }
@@ -110,8 +233,8 @@ function isComparisonEvaluation(value: unknown): boolean {
     isRecord(value) &&
     isText(value.evaluation_id) &&
     value.evaluation_id.trim().length > 0 &&
-    isMember(value.status, ["pending", "completed", "failed"]) &&
-    isMember(value.overall, ["met", "partially_met", "not_met", "undetermined"]) &&
+    isMember(value.status, COMPARED_EVALUATION_STATUSES) &&
+    isMember(value.overall, COMPARED_EVALUATION_OVERALLS) &&
     isCost(value.cost)
   );
 }
@@ -165,8 +288,8 @@ function isComparisonCriterion(value: unknown, runIds: string[]): boolean {
         isRecord(result) &&
         isText(result.run_id) &&
         result.run_id.toLowerCase() === runIds[index].toLowerCase() &&
-        (result.result === null || isMember(result.result, ["passed", "failed", "undetermined"])) &&
-        (result.source === undefined || isMember(result.source, ["rule", "model", "user"])),
+        (result.result === null || isMember(result.result, COMPARED_CRITERION_RESULTS)) &&
+        (result.source === undefined || isMember(result.source, COMPARED_CRITERION_SOURCES)),
     )
   );
 }
@@ -219,8 +342,8 @@ export function isEvaluationResponse(
   if (!isRecord(value)) return false;
   return (
     matchesEvaluationIdentity(value, runId, revision) &&
-    isMember(value.status, ["pending", "completed", "failed"]) &&
-    isMember(value.overall, ["met", "partially_met", "not_met", "undetermined"]) &&
+    isMember(value.status, EVALUATION_STATUSES) &&
+    isMember(value.overall, EVALUATION_OVERALLS) &&
     isOptionalText(value.summary) &&
     isOptionalText(value.rubric_version) &&
     isText(value.judge_model) &&
@@ -244,7 +367,7 @@ function isRevision(value: unknown): boolean {
     value.evaluation_id.trim().length > 0 &&
     isText(value.judge_prompt_version) &&
     isOptionalText(value.rubric_version) &&
-    isMember(value.overall, ["met", "partially_met", "not_met", "undetermined"]) &&
+    isMember(value.overall, REVISION_OVERALLS) &&
     isNullableDate(value.evaluated_at) &&
     isNullableDate(value.superseded_at)
   );
@@ -261,13 +384,13 @@ function isSuggestion(value: unknown): boolean {
   return (
     isText(value.suggestion_id) &&
     value.suggestion_id.trim().length > 0 &&
-    isMember(value.category, ["skill", "runtime", "mcp", "tool", "dataset"]) &&
+    isMember(value.category, SUGGESTION_CATEGORIES) &&
     isText(value.problem) &&
     Array.isArray(value.evidence) &&
     value.evidence.every(isEvidence) &&
     isText(value.target_path) &&
     isText(value.expected_impact) &&
-    isMember(value.decision, ["pending", "accepted", "rejected"]) &&
+    isMember(value.decision, SUGGESTION_DECISIONS) &&
     (value.decided_at === undefined || isDate(value.decided_at)) &&
     (value.applied_skill_version_id === undefined ||
       (isText(value.applied_skill_version_id) && value.applied_skill_version_id.trim().length > 0))
@@ -293,12 +416,6 @@ export function isSuggestionDiffResponse(value: unknown): value is SuggestionDif
     typeof value.applicable === "boolean" &&
     isOptionalText(value.unified_diff) &&
     (value.blocked_reason === undefined ||
-      isMember(value.blocked_reason, [
-        "path_out_of_bounds",
-        "target_changed",
-        "validation_blocked",
-        "access_restricted",
-        "diff_unavailable",
-      ]))
+      isMember(value.blocked_reason, SUGGESTION_BLOCKED_REASONS))
   );
 }
