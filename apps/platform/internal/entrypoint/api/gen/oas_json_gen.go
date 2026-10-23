@@ -38537,6 +38537,12 @@ func (s *ListRunSuggestionsOK) encodeFields(e *jx.Encoder) {
 		json.EncodeUUID(e, s.EvaluationID)
 	}
 	{
+		if s.Outcome.Set {
+			e.FieldStart("outcome")
+			s.Outcome.Encode(e)
+		}
+	}
+	{
 		e.FieldStart("suggestions")
 		e.ArrStart()
 		for _, elem := range s.Suggestions {
@@ -38546,9 +38552,10 @@ func (s *ListRunSuggestionsOK) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfListRunSuggestionsOK = [2]string{
+var jsonFieldsNameOfListRunSuggestionsOK = [3]string{
 	0: "evaluation_id",
-	1: "suggestions",
+	1: "outcome",
+	2: "suggestions",
 }
 
 // Decode decodes ListRunSuggestionsOK from json.
@@ -38572,8 +38579,18 @@ func (s *ListRunSuggestionsOK) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"evaluation_id\"")
 			}
+		case "outcome":
+			if err := func() error {
+				s.Outcome.Reset()
+				if err := s.Outcome.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"outcome\"")
+			}
 		case "suggestions":
-			requiredBitSet[0] |= 1 << 1
+			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
 				s.Suggestions = make([]ImprovementSuggestion, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -38600,7 +38617,7 @@ func (s *ListRunSuggestionsOK) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000011,
+		0b00000101,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -38642,6 +38659,56 @@ func (s *ListRunSuggestionsOK) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *ListRunSuggestionsOK) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ListRunSuggestionsOKOutcome as json.
+func (s ListRunSuggestionsOKOutcome) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes ListRunSuggestionsOKOutcome from json.
+func (s *ListRunSuggestionsOKOutcome) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ListRunSuggestionsOKOutcome to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch ListRunSuggestionsOKOutcome(v) {
+	case ListRunSuggestionsOKOutcomeRestricted:
+		*s = ListRunSuggestionsOKOutcomeRestricted
+	case ListRunSuggestionsOKOutcomeNotNeeded:
+		*s = ListRunSuggestionsOKOutcomeNotNeeded
+	case ListRunSuggestionsOKOutcomeNoEvidence:
+		*s = ListRunSuggestionsOKOutcomeNoEvidence
+	case ListRunSuggestionsOKOutcomeUnavailable:
+		*s = ListRunSuggestionsOKOutcomeUnavailable
+	case ListRunSuggestionsOKOutcomeNoneProposed:
+		*s = ListRunSuggestionsOKOutcomeNoneProposed
+	case ListRunSuggestionsOKOutcomeNoneKept:
+		*s = ListRunSuggestionsOKOutcomeNoneKept
+	case ListRunSuggestionsOKOutcomeKept:
+		*s = ListRunSuggestionsOKOutcomeKept
+	default:
+		*s = ListRunSuggestionsOKOutcome(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s ListRunSuggestionsOKOutcome) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ListRunSuggestionsOKOutcome) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -42201,6 +42268,39 @@ func (s OptLabelled) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OptLabelled) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ListRunSuggestionsOKOutcome as json.
+func (o OptListRunSuggestionsOKOutcome) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes ListRunSuggestionsOKOutcome from json.
+func (o *OptListRunSuggestionsOKOutcome) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptListRunSuggestionsOKOutcome to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptListRunSuggestionsOKOutcome) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptListRunSuggestionsOKOutcome) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

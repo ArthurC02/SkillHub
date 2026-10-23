@@ -40,7 +40,7 @@ UPDATE evaluations SET
     evaluated_at = now(),
     updated_at = now()
 WHERE id = $11 AND workspace_id = $12 AND status = 'pending'
-RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at
+RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome
 `
 
 type CompleteEvaluationParams struct {
@@ -96,6 +96,7 @@ func (q *Queries) CompleteEvaluation(ctx context.Context, arg CompleteEvaluation
 		&i.CostIsLowerBound,
 		&i.EvaluatedAt,
 		&i.SupersededAt,
+		&i.SuggestionOutcome,
 	)
 	return i, err
 }
@@ -109,7 +110,7 @@ VALUES (
     $1, $2, $3, $4, $5,
     $6, $7, $8
 )
-RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at
+RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome
 `
 
 type CreateEvaluationParams struct {
@@ -157,6 +158,7 @@ func (q *Queries) CreateEvaluation(ctx context.Context, arg CreateEvaluationPara
 		&i.CostIsLowerBound,
 		&i.EvaluatedAt,
 		&i.SupersededAt,
+		&i.SuggestionOutcome,
 	)
 	return i, err
 }
@@ -254,7 +256,7 @@ UPDATE evaluations SET
     evaluated_at = now(),
     updated_at = now()
 WHERE id = $4 AND workspace_id = $5 AND status = 'pending'
-RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at
+RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome
 `
 
 type FailEvaluationParams struct {
@@ -296,6 +298,7 @@ func (q *Queries) FailEvaluation(ctx context.Context, arg FailEvaluationParams) 
 		&i.CostIsLowerBound,
 		&i.EvaluatedAt,
 		&i.SupersededAt,
+		&i.SuggestionOutcome,
 	)
 	return i, err
 }
@@ -333,7 +336,7 @@ func (q *Queries) FindLiveTraceEvents(ctx context.Context, arg FindLiveTraceEven
 }
 
 const getCurrentEvaluation = `-- name: GetCurrentEvaluation :one
-SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at FROM evaluations
+SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome FROM evaluations
 WHERE run_id = $1 AND workspace_id = $2 AND superseded_at IS NULL
 `
 
@@ -367,12 +370,13 @@ func (q *Queries) GetCurrentEvaluation(ctx context.Context, arg GetCurrentEvalua
 		&i.CostIsLowerBound,
 		&i.EvaluatedAt,
 		&i.SupersededAt,
+		&i.SuggestionOutcome,
 	)
 	return i, err
 }
 
 const getEvaluation = `-- name: GetEvaluation :one
-SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at FROM evaluations
+SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome FROM evaluations
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -406,12 +410,13 @@ func (q *Queries) GetEvaluation(ctx context.Context, arg GetEvaluationParams) (E
 		&i.CostIsLowerBound,
 		&i.EvaluatedAt,
 		&i.SupersededAt,
+		&i.SuggestionOutcome,
 	)
 	return i, err
 }
 
 const getEvaluationRevision = `-- name: GetEvaluationRevision :one
-SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at FROM evaluations
+SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome FROM evaluations
 WHERE id = $1 AND run_id = $2 AND workspace_id = $3
 `
 
@@ -446,6 +451,7 @@ func (q *Queries) GetEvaluationRevision(ctx context.Context, arg GetEvaluationRe
 		&i.CostIsLowerBound,
 		&i.EvaluatedAt,
 		&i.SupersededAt,
+		&i.SuggestionOutcome,
 	)
 	return i, err
 }
@@ -578,7 +584,7 @@ func (q *Queries) ListEvaluationActivityFacts(ctx context.Context, workspaceID p
 }
 
 const listEvaluationRevisions = `-- name: ListEvaluationRevisions :many
-SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at FROM evaluations
+SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome FROM evaluations
 WHERE run_id = $1 AND workspace_id = $2
 ORDER BY created_at DESC, id DESC
 `
@@ -619,6 +625,7 @@ func (q *Queries) ListEvaluationRevisions(ctx context.Context, arg ListEvaluatio
 			&i.CostIsLowerBound,
 			&i.EvaluatedAt,
 			&i.SupersededAt,
+			&i.SuggestionOutcome,
 		); err != nil {
 			return nil, err
 		}
@@ -819,7 +826,7 @@ func (q *Queries) ListSuggestionsAppliedToVersion(ctx context.Context, arg ListS
 }
 
 const lockCurrentEvaluation = `-- name: LockCurrentEvaluation :one
-SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at FROM evaluations
+SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome FROM evaluations
 WHERE run_id = $1 AND workspace_id = $2 AND superseded_at IS NULL
 FOR UPDATE
 `
@@ -854,12 +861,13 @@ func (q *Queries) LockCurrentEvaluation(ctx context.Context, arg LockCurrentEval
 		&i.CostIsLowerBound,
 		&i.EvaluatedAt,
 		&i.SupersededAt,
+		&i.SuggestionOutcome,
 	)
 	return i, err
 }
 
 const lockEvaluation = `-- name: LockEvaluation :one
-SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at FROM evaluations
+SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome FROM evaluations
 WHERE id = $1 AND workspace_id = $2
 FOR UPDATE
 `
@@ -894,6 +902,7 @@ func (q *Queries) LockEvaluation(ctx context.Context, arg LockEvaluationParams) 
 		&i.CostIsLowerBound,
 		&i.EvaluatedAt,
 		&i.SupersededAt,
+		&i.SuggestionOutcome,
 	)
 	return i, err
 }
@@ -986,13 +995,29 @@ func (q *Queries) RecordSuggestionApplications(ctx context.Context, arg RecordSu
 	return err
 }
 
+const recordSuggestionOutcome = `-- name: RecordSuggestionOutcome :exec
+UPDATE evaluations SET suggestion_outcome = $1
+WHERE id = $2 AND workspace_id = $3 AND suggestion_outcome IS NULL
+`
+
+type RecordSuggestionOutcomeParams struct {
+	SuggestionOutcome *string
+	ID                pgtype.UUID
+	WorkspaceID       pgtype.UUID
+}
+
+func (q *Queries) RecordSuggestionOutcome(ctx context.Context, arg RecordSuggestionOutcomeParams) error {
+	_, err := q.db.Exec(ctx, recordSuggestionOutcome, arg.SuggestionOutcome, arg.ID, arg.WorkspaceID)
+	return err
+}
+
 const setEvaluationFeedback = `-- name: SetEvaluationFeedback :one
 UPDATE evaluations SET
     feedback_helpful = $1,
     feedback_comment = $2,
     updated_at = now()
 WHERE id = $3 AND workspace_id = $4
-RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at
+RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome
 `
 
 type SetEvaluationFeedbackParams struct {
@@ -1032,6 +1057,7 @@ func (q *Queries) SetEvaluationFeedback(ctx context.Context, arg SetEvaluationFe
 		&i.CostIsLowerBound,
 		&i.EvaluatedAt,
 		&i.SupersededAt,
+		&i.SuggestionOutcome,
 	)
 	return i, err
 }

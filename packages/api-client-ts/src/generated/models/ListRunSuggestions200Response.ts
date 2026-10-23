@@ -34,10 +34,43 @@ export interface ListRunSuggestions200Response {
      */
     evaluationId: string;
     /**
+     * Why the list holds what it holds, so an empty list is not
+     * read as "the skill is fine". `restricted`: the skill is
+     * under a licence hold, so no suggestion is drafted.
+     * `not_needed`: the verdict leaves nothing to improve.
+     * `no_evidence`: the verdict cites nothing a suggestion
+     * could quote. `unavailable`: the suggestion model call
+     * failed, which says nothing about the skill. `none_proposed`:
+     * the model read the evaluation and proposed nothing. `none_kept`: the model
+     * proposed changes but none survived the evidence and
+     * storage checks. `kept`: at least one suggestion is listed.
+     * 
+     * Absent when the deployment drafts no suggestions or the
+     * evaluation predates this field.
+     * 
+     */
+    outcome?: ListRunSuggestions200ResponseOutcomeEnum;
+    /**
      * 
      */
     suggestions: Array<ImprovementSuggestion>;
 }
+
+
+/**
+ * @export
+ */
+export const ListRunSuggestions200ResponseOutcomeEnum = {
+    Restricted: 'restricted',
+    NotNeeded: 'not_needed',
+    NoEvidence: 'no_evidence',
+    Unavailable: 'unavailable',
+    NoneProposed: 'none_proposed',
+    NoneKept: 'none_kept',
+    Kept: 'kept',
+} as const;
+export type ListRunSuggestions200ResponseOutcomeEnum = typeof ListRunSuggestions200ResponseOutcomeEnum[keyof typeof ListRunSuggestions200ResponseOutcomeEnum];
+
 
 /**
  * Check if a given object implements the ListRunSuggestions200Response interface.
@@ -59,6 +92,7 @@ export function ListRunSuggestions200ResponseFromJSONTyped(json: any, ignoreDisc
     return {
         
         'evaluationId': json['evaluation_id'],
+        'outcome': json['outcome'] == null ? undefined : json['outcome'],
         'suggestions': ((json['suggestions'] as Array<any>).map(ImprovementSuggestionFromJSON)),
     };
 }
@@ -75,6 +109,7 @@ export function ListRunSuggestions200ResponseToJSONTyped(value?: ListRunSuggesti
     return {
         
         'evaluation_id': value['evaluationId'],
+        'outcome': value['outcome'],
         'suggestions': ((value['suggestions'] as Array<any>).map(ImprovementSuggestionToJSON)),
     };
 }

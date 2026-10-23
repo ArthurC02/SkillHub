@@ -281,7 +281,7 @@ func (s *Service) completeAndSuggest(
 		}
 		return err
 	}
-	s.suggest(ctx, m, ev, v)
+	recordSuggestionOutcome(ctx, s.queries(), ev, s.suggest(ctx, m, ev, v))
 	return nil
 }
 

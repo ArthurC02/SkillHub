@@ -9,6 +9,7 @@ import {
   type EvidenceRef,
   type ImprovementSuggestion,
   type SuggestionBlockedReason,
+  type SuggestionOutcome,
 } from "../evaluation.service";
 
 export type EvaluationPanelState = {
@@ -49,6 +50,17 @@ export function evaluationPanelState(query: {
   const asksHistory = !query.pending && !(notEvaluated && !query.revision);
   return { awaiting, notEvaluated, stoppedAsking, evaluating, asksHistory };
 }
+
+export const SUGGESTION_OUTCOME_SENTENCE: Record<SuggestionOutcome, string> = {
+  restricted: "這個小工具的來源授權還在審查中，審查期間不產生改善建議。",
+  not_needed: "這次判定為符合，也沒有需要處理的發現，所以沒有改善建議。",
+  no_evidence: "這份評估沒有可以引用的證據；平台不提出沒有根據的建議，所以沒有改善建議。",
+  unavailable:
+    "這次產生改善建議時模型沒有回應，所以沒有建議；這不代表小工具沒有可以改進的地方。下一次試跑的評估會再產生一次。",
+  none_proposed: "模型看過這份評估，沒有提出改善建議。",
+  none_kept: "模型提出的建議都沒有通過證據核對，平台一條都沒有保留。",
+  kept: "這份評估沒有產生改善建議。",
+};
 
 export const OVERALL_LABEL: Record<Evaluation["overall"], string> = {
   met: "符合",

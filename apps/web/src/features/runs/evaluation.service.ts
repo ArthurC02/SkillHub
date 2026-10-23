@@ -112,8 +112,21 @@ export type ImprovementSuggestion = {
   applied_skill_version_id?: string;
 };
 
+export const SUGGESTION_OUTCOMES = [
+  "restricted",
+  "not_needed",
+  "no_evidence",
+  "unavailable",
+  "none_proposed",
+  "none_kept",
+  "kept",
+] as const;
+
+export type SuggestionOutcome = (typeof SUGGESTION_OUTCOMES)[number];
+
 export type RunSuggestions = {
   evaluation_id: string;
+  outcome?: SuggestionOutcome;
   suggestions: ImprovementSuggestion[];
 };
 

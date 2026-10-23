@@ -640,6 +640,8 @@ type Evaluation struct {
 	EvaluatedAt pgtype.Timestamptz
 	// When a newer evaluation of the same run replaced this one; null for the current evaluation, which is the only one a run may have.
 	SupersededAt pgtype.Timestamptz
+	// Why this evaluation has the improvement suggestions it has, written once after the verdict: restricted (the skill is under a licence hold), not_needed (the verdict leaves nothing to improve), no_evidence (the verdict cites nothing a suggestion could quote), unavailable (the suggestion model call failed), none_proposed (the model answered with no proposals), none_kept (every proposal failed evidence or storage checks), kept (at least one suggestion stored). Null when the deployment has no suggestion model or the evaluation predates this column.
+	SuggestionOutcome *string
 }
 
 // One evaluation set run against one skill version, every test case the given number of trials.

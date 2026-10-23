@@ -7136,6 +7136,24 @@ func (s *ListRunSuggestionsOK) Validate() error {
 
 	var failures []validate.FieldError
 	if err := func() error {
+		if value, ok := s.Outcome.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "outcome",
+			Error: err,
+		})
+	}
+	if err := func() error {
 		if s.Suggestions == nil {
 			return errors.New("nil is invalid value")
 		}
@@ -7167,6 +7185,27 @@ func (s *ListRunSuggestionsOK) Validate() error {
 		return &validate.Error{Fields: failures}
 	}
 	return nil
+}
+
+func (s ListRunSuggestionsOKOutcome) Validate() error {
+	switch s {
+	case "restricted":
+		return nil
+	case "not_needed":
+		return nil
+	case "no_evidence":
+		return nil
+	case "unavailable":
+		return nil
+	case "none_proposed":
+		return nil
+	case "none_kept":
+		return nil
+	case "kept":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
 }
 
 func (s *ListRunsOK) Validate() error {

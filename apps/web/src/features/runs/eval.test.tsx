@@ -1173,6 +1173,35 @@ test("04 丙-147 an unreported cost shows 未測量 and never claims 模型閘�
   expect(text).not.toContain("模型閘道實付");
 });
 
+test.each([
+  ["restricted", "這個小工具的來源授權還在審查中，審查期間不產生改善建議。"],
+  ["not_needed", "這次判定為符合，也沒有需要處理的發現，所以沒有改善建議。"],
+  ["no_evidence", "這份評估沒有可以引用的證據；平台不提出沒有根據的建議，所以沒有改善建議。"],
+  [
+    "unavailable",
+    "這次產生改善建議時模型沒有回應，所以沒有建議；這不代表小工具沒有可以改進的地方。下一次試跑的評估會再產生一次。",
+  ],
+  ["none_proposed", "模型看過這份評估，沒有提出改善建議。"],
+  ["none_kept", "模型提出的建議都沒有通過證據核對，平台一條都沒有保留。"],
+  [undefined, "這份評估沒有產生改善建議。"],
+])(
+  "EVAL-002 an empty suggestion list with outcome %s says why it is empty",
+  async (outcome, sentence) => {
+    vi.stubGlobal("fetch", (input: string) => {
+      const url = String(input);
+      if (url.endsWith("/runs/" + RUN)) return runRead();
+      if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
+      if (url.includes("/evaluation")) return json(evaluation);
+      if (url.includes("/suggestions"))
+        return json({ evaluation_id: "eval-1", outcome, suggestions: [] });
+      return json({ error: "not found" }, 404);
+    });
+
+    await render("succeeded");
+    await waitFor(() => (container.textContent ?? "").includes(sentence));
+  },
+);
+
 test("04 丙-148③ a run with no judge folds the two blank lines into one sentence", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);

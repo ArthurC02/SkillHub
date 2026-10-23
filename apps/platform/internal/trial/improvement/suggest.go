@@ -39,9 +39,26 @@ var SuggestImprovementsBudget = modelbudget.Endpoint{
 	Kind: "suggest-improvements", Deadline: suggestTimeout,
 }
 
-func (s *Service) suggest(ctx context.Context, m facts.Material, ev gen.Evaluation, v assessment) {
-	if s.Suggester == nil || m.Skill.AccessRestricted || !worthSuggesting(v) {
-		return
+type SuggestionOutcome string
+
+const (
+	SuggestionsRestricted   SuggestionOutcome = "restricted"
+	SuggestionsNotNeeded    SuggestionOutcome = "not_needed"
+	SuggestionsNoEvidence   SuggestionOutcome = "no_evidence"
+	SuggestionsUnavailable  SuggestionOutcome = "unavailable"
+	SuggestionsNoneProposed SuggestionOutcome = "none_proposed"
+	SuggestionsNoneKept     SuggestionOutcome = "none_kept"
+	SuggestionsKept         SuggestionOutcome = "kept"
+)
+
+func (s *Service) suggest(ctx context.Context, m facts.Material, ev gen.Evaluation, v assessment) SuggestionOutcome {
+	switch {
+	case s.Suggester == nil:
+		return ""
+	case m.Skill.AccessRestricted:
+		return SuggestionsRestricted
+	case !worthSuggesting(v):
+		return SuggestionsNotNeeded
 	}
 
 	digest, refs := suggestionDigest(m, v)
@@ -49,7 +66,7 @@ func (s *Service) suggest(ctx context.Context, m facts.Material, ev gen.Evaluati
 	if len(refs) == 0 {
 		slog.Info("improvement proposals skipped: verdict carries no citable evidence",
 			"evaluation_id", pgconv.UUIDString(ev.ID))
-		return
+		return SuggestionsNoEvidence
 	}
 	tree, files := s.packageFiles(ctx, m)
 
@@ -65,7 +82,7 @@ func (s *Service) suggest(ctx context.Context, m facts.Material, ev gen.Evaluati
 	if err != nil {
 		slog.Warn("evaluation suggestions unavailable",
 			"evaluation_id", pgconv.UUIDString(ev.ID), "error", err)
-		return
+		return SuggestionsUnavailable
 	}
 	ref := evaluationRef{workspaceID: ev.WorkspaceID, evaluationID: ev.ID, runID: m.Run.ID}
 	call := modelCall{model: resp.Model, promptVersion: resp.PromptVersion, usage: resp.Usage}
@@ -76,11 +93,30 @@ func (s *Service) suggest(ctx context.Context, m facts.Material, ev gen.Evaluati
 	}
 
 	s.recordEvalCost(ctx, s.Pool, credit.KindSuggestion, ref, call)
-
-	s.storeProposals(ctx, ev, resp.Proposals, refs)
+	stored := s.storeProposals(ctx, ev, resp.Proposals, refs)
+	switch {
+	case len(resp.Proposals) == 0:
+		return SuggestionsNoneProposed
+	case stored == 0:
+		return SuggestionsNoneKept
+	}
+	return SuggestionsKept
 }
 
-func (s *Service) storeProposals(ctx context.Context, ev gen.Evaluation, proposals []modelport.ImprovementProposal, refs []verdict.EvidenceRef) {
+func recordSuggestionOutcome(ctx context.Context, q *gen.Queries, ev gen.Evaluation, outcome SuggestionOutcome) {
+	if outcome == "" {
+		return
+	}
+	text := string(outcome)
+	if err := q.RecordSuggestionOutcome(ctx, gen.RecordSuggestionOutcomeParams{
+		SuggestionOutcome: &text, ID: ev.ID, WorkspaceID: ev.WorkspaceID,
+	}); err != nil {
+		slog.Warn("evaluation suggestion outcome not stored",
+			"evaluation_id", pgconv.UUIDString(ev.ID), "outcome", text, "error", err)
+	}
+}
+
+func (s *Service) storeProposals(ctx context.Context, ev gen.Evaluation, proposals []modelport.ImprovementProposal, refs []verdict.EvidenceRef) int {
 	q := s.queries()
 
 	stored, noEvidence, unstorable, writeFailed, overCap := 0, 0, 0, 0, 0
@@ -135,6 +171,7 @@ func (s *Service) storeProposals(ctx context.Context, ev gen.Evaluation, proposa
 		"dropped_unstorable", unstorable,
 		"dropped_write_failed", writeFailed,
 		"dropped_over_cap", overCap)
+	return stored
 }
 
 func worthSuggesting(v assessment) bool {

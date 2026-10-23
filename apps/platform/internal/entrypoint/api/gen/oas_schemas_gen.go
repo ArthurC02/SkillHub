@@ -14572,13 +14572,28 @@ func (*ListRunSuggestionsNotFound) listRunSuggestionsRes() {}
 
 type ListRunSuggestionsOK struct {
 	// Which evaluation these came from. Quote it back to POST /skills/{id}/versions/from-suggestions.
-	EvaluationID uuid.UUID               `json:"evaluation_id"`
-	Suggestions  []ImprovementSuggestion `json:"suggestions"`
+	EvaluationID uuid.UUID `json:"evaluation_id"`
+	// Why the list holds what it holds, so an empty list is not read as "the skill is fine". `restricted`:
+	// the skill is under a licence hold, so no suggestion is drafted. `not_needed`: the verdict leaves
+	// nothing to improve. `no_evidence`: the verdict cites nothing a suggestion could quote.
+	// `unavailable`: the suggestion model call failed, which says nothing about the skill.
+	// `none_proposed`: the model read the evaluation and proposed nothing. `none_kept`: the model proposed
+	// changes but none survived the evidence and storage checks. `kept`: at least one suggestion is
+	// listed.
+	//
+	// Absent when the deployment drafts no suggestions or the evaluation predates this field.
+	Outcome     OptListRunSuggestionsOKOutcome `json:"outcome"`
+	Suggestions []ImprovementSuggestion        `json:"suggestions"`
 }
 
 // GetEvaluationID returns the value of EvaluationID.
 func (s *ListRunSuggestionsOK) GetEvaluationID() uuid.UUID {
 	return s.EvaluationID
+}
+
+// GetOutcome returns the value of Outcome.
+func (s *ListRunSuggestionsOK) GetOutcome() OptListRunSuggestionsOKOutcome {
+	return s.Outcome
 }
 
 // GetSuggestions returns the value of Suggestions.
@@ -14591,12 +14606,102 @@ func (s *ListRunSuggestionsOK) SetEvaluationID(val uuid.UUID) {
 	s.EvaluationID = val
 }
 
+// SetOutcome sets the value of Outcome.
+func (s *ListRunSuggestionsOK) SetOutcome(val OptListRunSuggestionsOKOutcome) {
+	s.Outcome = val
+}
+
 // SetSuggestions sets the value of Suggestions.
 func (s *ListRunSuggestionsOK) SetSuggestions(val []ImprovementSuggestion) {
 	s.Suggestions = val
 }
 
 func (*ListRunSuggestionsOK) listRunSuggestionsRes() {}
+
+// Why the list holds what it holds, so an empty list is not read as "the skill is fine". `restricted`:
+// the skill is under a licence hold, so no suggestion is drafted. `not_needed`: the verdict leaves
+// nothing to improve. `no_evidence`: the verdict cites nothing a suggestion could quote.
+// `unavailable`: the suggestion model call failed, which says nothing about the skill.
+// `none_proposed`: the model read the evaluation and proposed nothing. `none_kept`: the model proposed
+// changes but none survived the evidence and storage checks. `kept`: at least one suggestion is
+// listed.
+//
+// Absent when the deployment drafts no suggestions or the evaluation predates this field.
+type ListRunSuggestionsOKOutcome string
+
+const (
+	ListRunSuggestionsOKOutcomeRestricted   ListRunSuggestionsOKOutcome = "restricted"
+	ListRunSuggestionsOKOutcomeNotNeeded    ListRunSuggestionsOKOutcome = "not_needed"
+	ListRunSuggestionsOKOutcomeNoEvidence   ListRunSuggestionsOKOutcome = "no_evidence"
+	ListRunSuggestionsOKOutcomeUnavailable  ListRunSuggestionsOKOutcome = "unavailable"
+	ListRunSuggestionsOKOutcomeNoneProposed ListRunSuggestionsOKOutcome = "none_proposed"
+	ListRunSuggestionsOKOutcomeNoneKept     ListRunSuggestionsOKOutcome = "none_kept"
+	ListRunSuggestionsOKOutcomeKept         ListRunSuggestionsOKOutcome = "kept"
+)
+
+// AllValues returns all ListRunSuggestionsOKOutcome values.
+func (ListRunSuggestionsOKOutcome) AllValues() []ListRunSuggestionsOKOutcome {
+	return []ListRunSuggestionsOKOutcome{
+		ListRunSuggestionsOKOutcomeRestricted,
+		ListRunSuggestionsOKOutcomeNotNeeded,
+		ListRunSuggestionsOKOutcomeNoEvidence,
+		ListRunSuggestionsOKOutcomeUnavailable,
+		ListRunSuggestionsOKOutcomeNoneProposed,
+		ListRunSuggestionsOKOutcomeNoneKept,
+		ListRunSuggestionsOKOutcomeKept,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ListRunSuggestionsOKOutcome) MarshalText() ([]byte, error) {
+	switch s {
+	case ListRunSuggestionsOKOutcomeRestricted:
+		return []byte(s), nil
+	case ListRunSuggestionsOKOutcomeNotNeeded:
+		return []byte(s), nil
+	case ListRunSuggestionsOKOutcomeNoEvidence:
+		return []byte(s), nil
+	case ListRunSuggestionsOKOutcomeUnavailable:
+		return []byte(s), nil
+	case ListRunSuggestionsOKOutcomeNoneProposed:
+		return []byte(s), nil
+	case ListRunSuggestionsOKOutcomeNoneKept:
+		return []byte(s), nil
+	case ListRunSuggestionsOKOutcomeKept:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ListRunSuggestionsOKOutcome) UnmarshalText(data []byte) error {
+	switch ListRunSuggestionsOKOutcome(data) {
+	case ListRunSuggestionsOKOutcomeRestricted:
+		*s = ListRunSuggestionsOKOutcomeRestricted
+		return nil
+	case ListRunSuggestionsOKOutcomeNotNeeded:
+		*s = ListRunSuggestionsOKOutcomeNotNeeded
+		return nil
+	case ListRunSuggestionsOKOutcomeNoEvidence:
+		*s = ListRunSuggestionsOKOutcomeNoEvidence
+		return nil
+	case ListRunSuggestionsOKOutcomeUnavailable:
+		*s = ListRunSuggestionsOKOutcomeUnavailable
+		return nil
+	case ListRunSuggestionsOKOutcomeNoneProposed:
+		*s = ListRunSuggestionsOKOutcomeNoneProposed
+		return nil
+	case ListRunSuggestionsOKOutcomeNoneKept:
+		*s = ListRunSuggestionsOKOutcomeNoneKept
+		return nil
+	case ListRunSuggestionsOKOutcomeKept:
+		*s = ListRunSuggestionsOKOutcomeKept
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 type ListRunSuggestionsUnauthorized Error
 
@@ -17845,6 +17950,52 @@ func (o OptListPlatformAgentProposalsView) Get() (v ListPlatformAgentProposalsVi
 
 // Or returns value if set, or given parameter if does not.
 func (o OptListPlatformAgentProposalsView) Or(d ListPlatformAgentProposalsView) ListPlatformAgentProposalsView {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptListRunSuggestionsOKOutcome returns new OptListRunSuggestionsOKOutcome with value set to v.
+func NewOptListRunSuggestionsOKOutcome(v ListRunSuggestionsOKOutcome) OptListRunSuggestionsOKOutcome {
+	return OptListRunSuggestionsOKOutcome{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptListRunSuggestionsOKOutcome is optional ListRunSuggestionsOKOutcome.
+type OptListRunSuggestionsOKOutcome struct {
+	Value ListRunSuggestionsOKOutcome
+	Set   bool
+}
+
+// IsSet returns true if OptListRunSuggestionsOKOutcome was set.
+func (o OptListRunSuggestionsOKOutcome) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptListRunSuggestionsOKOutcome) Reset() {
+	var v ListRunSuggestionsOKOutcome
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptListRunSuggestionsOKOutcome) SetTo(v ListRunSuggestionsOKOutcome) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptListRunSuggestionsOKOutcome) Get() (v ListRunSuggestionsOKOutcome, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptListRunSuggestionsOKOutcome) Or(d ListRunSuggestionsOKOutcome) ListRunSuggestionsOKOutcome {
 	if v, ok := o.Get(); ok {
 		return v
 	}

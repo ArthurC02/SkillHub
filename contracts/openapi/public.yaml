@@ -5806,6 +5806,23 @@ paths:
                     description: |
                       Which evaluation these came from. Quote it back to
                       POST /skills/{id}/versions/from-suggestions.
+                  outcome:
+                    type: string
+                    enum: [restricted, not_needed, no_evidence, unavailable, none_proposed, none_kept, kept]
+                    description: |
+                      Why the list holds what it holds, so an empty list is not
+                      read as "the skill is fine". `restricted`: the skill is
+                      under a licence hold, so no suggestion is drafted.
+                      `not_needed`: the verdict leaves nothing to improve.
+                      `no_evidence`: the verdict cites nothing a suggestion
+                      could quote. `unavailable`: the suggestion model call
+                      failed, which says nothing about the skill. `none_proposed`:
+                      the model read the evaluation and proposed nothing. `none_kept`: the model
+                      proposed changes but none survived the evidence and
+                      storage checks. `kept`: at least one suggestion is listed.
+
+                      Absent when the deployment drafts no suggestions or the
+                      evaluation predates this field.
                   suggestions:
                     type: array
                     items: { $ref: "#/components/schemas/ImprovementSuggestion" }

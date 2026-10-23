@@ -28,6 +28,7 @@ type suggestionView struct {
 
 type suggestionListResponse struct {
 	EvaluationID string           `json:"evaluation_id"`
+	Outcome      string           `json:"outcome,omitempty"`
 	Suggestions  []suggestionView `json:"suggestions"`
 }
 
@@ -97,9 +98,11 @@ func (h *Handler) Suggestions(w http.ResponseWriter, r *http.Request) {
 	for _, refs := range sets {
 		markAvailability(refs, live)
 	}
-	httpx.WriteJSON(w, http.StatusOK, suggestionListResponse{
-		EvaluationID: pgconv.UUIDString(ev.ID), Suggestions: out,
-	})
+	response := suggestionListResponse{EvaluationID: pgconv.UUIDString(ev.ID), Suggestions: out}
+	if ev.SuggestionOutcome != nil {
+		response.Outcome = *ev.SuggestionOutcome
+	}
+	httpx.WriteJSON(w, http.StatusOK, response)
 }
 
 const (

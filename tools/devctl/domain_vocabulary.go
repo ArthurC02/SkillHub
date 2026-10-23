@@ -225,6 +225,14 @@ var domainVocabularies = []domainVocabulary{
 		},
 	},
 	{
+		name: "evaluation suggestion outcome",
+		sources: []vocabularySource{
+			sqlColumnCheck("evaluations", "suggestion_outcome"),
+			goConstEnum("apps/platform/internal/trial/improvement/suggest.go", "SuggestionOutcome"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "ListRunSuggestionsOKOutcome"),
+		},
+	},
+	{
 		name: "evaluation suggestion decision",
 		sources: []vocabularySource{
 			sqlColumnCheck("evaluation_suggestions", "decision"),

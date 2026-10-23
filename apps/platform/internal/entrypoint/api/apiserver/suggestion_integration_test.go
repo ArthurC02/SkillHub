@@ -856,3 +856,27 @@ func assertReappliedOnTheNewestThenRecognisedAsTheSame(
 		t.Fatalf("the same change planned on the version just superseded by it: %d %+v, want the existing version recognised", code, applied)
 	}
 }
+
+func TestTheSuggestionListSaysWhyItHoldsWhatItHolds(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "sugg-outcome")
+	const name = "sugg-outcome"
+	seed := evaluateWithSuggestions(t, a, pool, c, name,
+		oneActionableAmongOutOfBoundsProposals(packagedSkillMD(name)+"\nIt writes an xlsx file.\n"))
+
+	resp, err := c.Get(c.base + "/runs/" + seed.runID + "/suggestions")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var body struct {
+		Outcome string `json:"outcome"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Outcome != "kept" {
+		t.Errorf("outcome = %q, want kept for an evaluation that stored a suggestion", body.Outcome)
+	}
+}

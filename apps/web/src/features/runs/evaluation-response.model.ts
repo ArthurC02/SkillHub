@@ -5,6 +5,7 @@ import type {
   RunSuggestions,
   SuggestionDiff,
 } from "./evaluation.service";
+import { SUGGESTION_OUTCOMES } from "./evaluation.service";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -278,6 +279,8 @@ export function isRunSuggestionsResponse(value: unknown): value is RunSuggestion
     isRecord(value) &&
     isText(value.evaluation_id) &&
     value.evaluation_id.trim().length > 0 &&
+    (value.outcome === undefined ||
+      (SUGGESTION_OUTCOMES as readonly unknown[]).includes(value.outcome)) &&
     Array.isArray(value.suggestions) &&
     value.suggestions.every(isSuggestion)
   );

@@ -82,6 +82,10 @@ SELECT * FROM evaluations
 WHERE run_id = $1 AND workspace_id = $2
 ORDER BY created_at DESC, id DESC;
 
+-- name: RecordSuggestionOutcome :exec
+UPDATE evaluations SET suggestion_outcome = @suggestion_outcome
+WHERE id = @id AND workspace_id = @workspace_id AND suggestion_outcome IS NULL;
+
 -- name: SetEvaluationFeedback :one
 UPDATE evaluations SET
     feedback_helpful = @feedback_helpful,

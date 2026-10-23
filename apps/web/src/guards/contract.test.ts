@@ -201,6 +201,12 @@ const LABEL_TABLES: Array<{
     table: async () => (await import("../features/runs/runs.model")).RUN_STATUS_LABEL,
   },
   {
+    what: "listRunSuggestions.outcome → 為什麼沒有改善建議",
+    values: generated.ListRunSuggestions200ResponseOutcomeEnum,
+    table: async () =>
+      (await import("../features/runs/evaluation/evaluation.model")).SUGGESTION_OUTCOME_SENTENCE,
+  },
+  {
     what: "Evaluation.overall → 任務判定",
     values: generated.EvaluationOverallEnum,
     table: async () => (await import("../features/runs/evaluation/evaluation.model")).OVERALL_LABEL,

@@ -7,8 +7,9 @@ import {
   isApplyResultUnknown,
   useApplySuggestions,
   useRunSuggestions,
-  type ImprovementSuggestion,
+  type RunSuggestions,
 } from "../../evaluation.service";
+import { SUGGESTION_OUTCOME_SENTENCE } from "../evaluation.model";
 import { useRun } from "../../runs.service";
 import { MatchLegend } from "./MatchLegend";
 import { ApplyFailureBody } from "./ApplyFailureBody";
@@ -113,17 +114,17 @@ export function SuggestionsPanel({
 }
 
 function SuggestionsList({
-  items,
+  list: { suggestions: items, outcome },
   runId,
   decisionStates,
   onDecisionStateChange,
 }: {
-  items: ImprovementSuggestion[];
+  list: RunSuggestions;
   runId: string;
   decisionStates: ReadonlyMap<string, SuggestionDecisionState>;
   onDecisionStateChange: (id: string, state?: SuggestionDecisionState) => void;
 }) {
-  if (items.length === 0) return <p>這份評估沒有產生改善建議。</p>;
+  if (items.length === 0) return <p>{SUGGESTION_OUTCOME_SENTENCE[outcome ?? "kept"]}</p>;
   return (
     <>
       <p className="note">「預期影響」是模型的預測，不是量測結果。</p>
@@ -206,7 +207,7 @@ function SuggestionsContent({
   return (
     <>
       <SuggestionsList
-        items={suggestions.data.suggestions}
+        list={suggestions.data}
         runId={runId}
         decisionStates={decisionStates}
         onDecisionStateChange={onDecisionStateChange}
