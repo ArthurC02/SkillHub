@@ -7,14 +7,14 @@ effective_from: unknown
 effective_until: unknown
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-23T03:56:02.779143Z"
+    at: "2026-10-23T04:19:26.420971Z"
 sources:
   - resource: "apps/platform/internal/trial/execution/credit.go#L18-32"
     excerpt_sha256: "sha256:b03908f4fa9e0d491325f7655607d7471852a8a7807f8805a05d178ba5d0b874"
   - resource: "apps/platform/internal/trial/execution/service.go#L484-488"
     excerpt_sha256: "sha256:8a51b03b8c4724e338df9afdc667fa4caa5b8645c5383b09a892ac2661f15061"
-  - resource: "apps/platform/internal/entrypoint/api/apiserver/run_budget_setting_integration_test.go#L75-124"
-    excerpt_sha256: "sha256:e70def8a7eb0f315a27a4036d0054d674b861330b5d7e50e1c5ce2e4abb73dfa"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/run_budget_setting_integration_test.go#L85-134"
+    excerpt_sha256: "sha256:d39f0b17e410dcf9b0e75848cb089d3a790361b89f957f159b72f00f1483ac73"
 ---
 When a credit ledger is configured, a Run is admitted only if the Workspace can reserve the run budget in force when it is created: the operator-set ceiling, or the deployment's when none is set. The Run keeps that ceiling in its policy snapshot, and its attempts run under it whatever the setting becomes later; a Workspace that cannot reserve it is refused with credit_balance.
 
