@@ -33,7 +33,8 @@ DROP TABLE scratch;
 CREATE TYPE mood AS ENUM ('calm', 'it''s odd');
 ALTER TYPE mood ADD VALUE IF NOT EXISTS 'wild';
 COMMENT ON TYPE mood IS 'calm by default; it''s odd when the buyer hesitated; wild once they bought twice.';
-ALTER TABLE orders ADD COLUMN mood mood, ADD COLUMN mood_check text CHECK (mood_check IN ('yes'));
+ALTER TABLE orders ADD COLUMN mood mood, ADD COLUMN mood_check text CHECK (mood_check IN ('yes')),
+    ADD COLUMN only_one text CHECK (only_one IS NULL OR only_one = 'it''s one');
 """
 
 
@@ -62,7 +63,7 @@ class SqlDescribeTest(RegistryTestCase):
         self.assertEqual(
             [("id", "uuid", None), ("state", "text", ["open", "paid", "it's odd"]), ("buyer_id", "uuid", None), ("note", "text", None),
              ("kind", "text", ["gift", "plain"]), ("source", "text", None), ("mood", "mood", ["calm", "it's odd", "wild"]),
-             ("mood_check", "text", ["yes"])],
+             ("mood_check", "text", ["yes"]), ("only_one", "text", ["it's one"])],
             [(column["name"], column["type"], column["allowed_values"]) for column in described["columns"]],
         )
         self.assertEqual("open until paid; paid once the charge settled.", described["columns"][1]["meaning"])
@@ -72,12 +73,13 @@ class SqlDescribeTest(RegistryTestCase):
         )
         self.assertEqual(
             [("check", "orders.state"), ("check", "orders.kind"), ("check", "orders_note_when_paid"),
-             ("check", "orders_source_when_gift"), ("unique-index", "orders_note_key"), ("check", "orders.mood_check")],
+             ("check", "orders_source_when_gift"), ("unique-index", "orders_note_key"), ("check", "orders.mood_check"),
+             ("check", "orders.only_one")],
             [(constraint["kind"], constraint["name"]) for constraint in described["constraints"]],
         )
         self.assertEqual(([{"parent": "users", "at": "db/migrations/0001_init.sql:4"}], [{"child": "shipments", "at": "db/migrations/0001_init.sql:12"}]),
                          (described["references"], described["referenced_by"]))
-        self.assertEqual((["orders_2026"], ["id", "buyer_id", "note", "kind", "source", "mood", "mood_check"], []),
+        self.assertEqual((["orders_2026"], ["id", "buyer_id", "note", "kind", "source", "mood", "mood_check", "only_one"], []),
                          (described["partitions"], described["undescribed_columns"], described["registry"]))
 
     def test_registry_records_that_name_the_table_or_cite_its_lines_are_listed_with_their_status(self) -> None:
@@ -106,9 +108,9 @@ class SqlDescribeTest(RegistryTestCase):
         common = ("describe-table", "--repo-root", str(self.repo), "--migrations", str(self.migrations))
         result = self.run_cli(*common, "--table", "orders", "--registry-root", str(self.repo / "memory"))
         self.assertEqual(
-            (0, "orders", ["id", "buyer_id", "note", "kind", "source", "mood", "mood_check"],
-             "NOTE: 7 columns of orders carry no COMMENT ON, so the files do not say what they mean: "
-             "id, buyer_id, note, kind, source, mood, mood_check"),
+            (0, "orders", ["id", "buyer_id", "note", "kind", "source", "mood", "mood_check", "only_one"],
+             "NOTE: 8 columns of orders carry no COMMENT ON, so the files do not say what they mean: "
+             "id, buyer_id, note, kind, source, mood, mood_check, only_one"),
             (result.returncode, json.loads(result.stdout)["table"], json.loads(result.stdout)["undescribed_columns"], result.stderr.strip()),
         )
         bare = self.run_cli(*common, "--table", "users")

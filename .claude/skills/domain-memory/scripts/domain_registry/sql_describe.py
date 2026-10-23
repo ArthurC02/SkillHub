@@ -10,7 +10,8 @@ from .sql_schema import IDENT, Constraint, ForeignKey, Schema, Table, live_table
 from .store import read_document
 
 CHECK_BODY = re.compile(r"\bCHECK\s*\((.*)\)", re.I | re.S)
-ONLY_AN_IN_LIST = re.compile(rf"^\s*(?:({IDENT})\s+IS\s+NULL\s+OR\s+)?({IDENT})\s+IN\s*\(([^)]*)\)\s*$", re.I | re.S)
+ONLY_AN_IN_LIST = re.compile(
+    rf"^\s*(?:({IDENT})\s+IS\s+NULL\s+OR\s+)?({IDENT})\s+(?:IN\s*\(([^)]*)\)|=\s*('(?:[^']|'')*'))\s*$", re.I | re.S)
 QUOTED = re.compile(r"'((?:[^']|'')*)'")
 SUMMARY_FIELDS = ("statement", "definition", "responsibility", "description", "name")
 SUMMARY_LENGTH = 160
@@ -59,7 +60,7 @@ def allowed_values(column: str, constraints: list[Constraint], enum_values: list
         body = CHECK_BODY.search(strip_comments(constraint.text)) if constraint.kind == "check" else None
         listed = ONLY_AN_IN_LIST.match(body.group(1)) if body else None
         if listed and listed.group(2) == column and listed.group(1) in (None, column):
-            return [value.replace("''", "'") for value in QUOTED.findall(listed.group(3))]
+            return [value.replace("''", "'") for value in QUOTED.findall(listed.group(3) or listed.group(4))]
     return list(enum_values) if enum_values else None
 
 
