@@ -3,12 +3,12 @@
   "proposal_id": "run-setting-tables",
   "proposer": "domain-memory-agent",
   "requirement_id": "run-setting-tables",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-23T05:40:12.750896Z",
   "verified_at": "2026-10-23T05:42:32.737518Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-23T05:42:47.888683Z",
+  "applied_at": "2026-10-23T05:43:32.656056Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "b6d1ed8169a19d302bce9c7883bc7c478428c990",
@@ -179,5 +179,9 @@
   ],
   "supersedes": [
     "run-budget-credits-recite"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "56d37093421d0c225803115e90013c30291a5f54",
+    "registry_digest": "sha256:fb63b56ae1f354431919da661cf2e13173d4e80f8ffc521caa2c2827b4f5db73"
+  }
 }
