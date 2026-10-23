@@ -414,7 +414,7 @@ type CreationSessionEvent struct {
 	// Name of the transition that produced this revision: created, started, attempt_started, attempt_settled, attempt_refused, attempt_interrupted, or the kind of the command applied (such as message, confirm_brief, select_references, diagram, attach_run, raise_budget, materialize, finalize or cancel).
 	EventType string
 	CreatedAt pgtype.Timestamptz
-	// The session's state (for example working, waiting_input, draft_ready, saved) after this revision was applied.
+	// The session's state after this revision was applied: queued, working, waiting_input, waiting_confirmation, draft_ready, candidate_ready, saved, cancelled, failed or needs_reupload, the same vocabulary as creation_sessions.state.
 	State *string
 }
 
