@@ -665,7 +665,7 @@ test("WS-001 a version list that fails to read says so, and 401 says to log in",
   expect(text()).not.toContain("這是最早的版本");
 });
 
-function stubOwnSkillsWithFeatures(features?: Record<string, boolean>) {
+function stubOwnSkillsWithFeatures(features?: Record<string, boolean>, invited = true) {
   vi.stubGlobal("fetch", (input: string) => {
     const path = String(input)
       .replace(/^https?:\/\/[^/]+/, "")
@@ -678,6 +678,7 @@ function stubOwnSkillsWithFeatures(features?: Record<string, boolean>) {
         deletion_requested_at: null,
         purge_after: null,
         deletion_scope: null,
+        invited,
         ...(features ? { features } : {}),
       });
     return json({
@@ -729,20 +730,27 @@ test("資產庫有內容時把新增方式收成一條入口帶，而且沒有�
   expect(hub()!.querySelectorAll("ul.create-links > li").length).toBe(2);
 });
 
-test("資產庫新增入口 states the invite requirement beside the Catalog path", async () => {
-  stubOwnSkillsWithFeatures();
-  await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
+const HUB_UNINVITED_RULE = "平台目前只讓有封測邀請的帳號複製一份。";
+
+test("資產庫新增入口 tells an uninvited account the invite rule beside the Catalog path, enforcer first", async () => {
+  stubOwnSkillsWithFeatures(undefined, false);
+  await render(<WorkspaceSkills />, () => hubText().includes(HUB_UNINVITED_RULE));
 
   const card = Array.from(hub()!.querySelectorAll("li")).find((li) =>
     (li.textContent ?? "").includes("從 Catalog 複製一份"),
   );
   expect(card, "the from-catalogue card is missing").toBeTruthy();
   const copy = (card!.textContent ?? "").replace(/\s+/g, "");
-  expect(copy).toContain("平台目前只讓有封測邀請的帳號複製一份。");
-  expect(copy.indexOf("平台"), "這一句沒有以強制者開頭").toBe(
-    copy.indexOf("平台目前只讓有封測邀請的帳號複製一份。"),
-  );
+  expect(copy).toContain(HUB_UNINVITED_RULE);
+  expect(copy.indexOf("平台"), "這一句沒有以強制者開頭").toBe(copy.indexOf(HUB_UNINVITED_RULE));
   expect(Array.from(card!.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toContain("/");
+});
+
+test("資產庫新增入口 tells an invited account no invite rule", async () => {
+  stubOwnSkillsWithFeatures();
+  await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
+
+  expect(hubText()).not.toContain("封測邀請");
 });
 
 test("資產庫新增入口 ⛔ with the flag off, the hub has no generation path", async () => {
@@ -764,15 +772,18 @@ test("空資產庫 uses the full cards to teach each intake path", async () => {
   expect(hub()!.querySelectorAll('[data-role="teaching"]').length).toBe(2);
 });
 
-test("有內容的資產庫 keeps every compact intake path and the invite rule", async () => {
-  stubOwnSkillsWithFeatures({ generate_skill: true });
-  await render(<WorkspaceSkills />, () => text().includes("開始描述"));
+test("有內容的資產庫 keeps every compact intake path and, for an uninvited account, the invite rule", async () => {
+  stubOwnSkillsWithFeatures({ generate_skill: true }, false);
+  await render(
+    <WorkspaceSkills />,
+    () => text().includes("開始描述") && hubText().includes(HUB_UNINVITED_RULE),
+  );
 
   expect(hub()!.querySelectorAll('[data-role="teaching"]').length).toBe(0);
   expect(hub()!.querySelectorAll("a").length).toBe(3);
   expect(hub()!.querySelector(".create-links")).not.toBeNull();
   expect(hub()!.querySelector(".create-cards")).toBeNull();
-  expect(hubText()).toContain("平台目前只讓有封測邀請的帳號複製一份。");
+  expect(hubText()).toContain(HUB_UNINVITED_RULE);
 });
 
 test("資產庫 with the flag on, the Studio entry appears exactly once on the page", async () => {

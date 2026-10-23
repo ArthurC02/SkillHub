@@ -40,6 +40,7 @@ vi.mock("../features/creation", () => ({
 
 vi.mock("../core/session/me.service", () => ({
   useMe: () => ({ data: { display_name: "tester", invited: mocks.invited } }),
+  useUninvited: () => mocks.invited === false,
   useSessionBoundary: () => undefined,
 }));
 

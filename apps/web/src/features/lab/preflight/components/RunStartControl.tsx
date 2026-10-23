@@ -69,7 +69,6 @@ export function RunStartControl({
         </p>
       ) : (
         <>
-          <p className="note">平台目前只讓有封測邀請的帳號開始試跑。</p>
           <button
             type="button"
             className="action"

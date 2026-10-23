@@ -1,4 +1,5 @@
 import { ApiError } from "../../../core/api/client";
+import { useUninvited } from "../../../core/session/me.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { PageReadFailure } from "../../../shared/ui/LoginRequired";
 import { useState } from "react";
@@ -57,6 +58,7 @@ function PackagingVersionLabel({
 
 function buildButtonReason({
   pending,
+  uninvited,
   target,
   targetsPending,
   targetsError,
@@ -65,6 +67,7 @@ function buildButtonReason({
   preview,
 }: {
   pending: boolean;
+  uninvited: boolean;
   target: string;
   targetsPending: boolean;
   targetsError: unknown;
@@ -78,6 +81,7 @@ function buildButtonReason({
   };
 }): string {
   if (pending) return "";
+  if (uninvited) return "平台目前只讓有封測邀請的帳號建立下載套件。";
   if (targetsError) return "打包目標目前無法確認，請先恢復目標清單的讀取。";
   if (targetsFetching && !targetsPending) return "正在重新確認打包目標，請等讀取完成後再建立套件。";
   if (targetMissing) return "選擇的打包目標已不在可用清單，請重新選擇。";
@@ -125,6 +129,7 @@ export function Packaging() {
   const preview = usePackagingPreview(skillId, versionId, target, includeTestCases);
 
   const build = useCreateDownload(skillId);
+  const uninvited = useUninvited();
   const built = matchingBuiltArtifact(build, skillId, versionId);
   const buildPackage = () =>
     build.mutate(
@@ -154,6 +159,7 @@ export function Packaging() {
   const gate = packagingGate(skill.data);
   const deadReason = buildButtonReason({
     pending: build.isPending,
+    uninvited,
     target,
     targetsPending: targets.isPending,
     targetsError: targets.error,

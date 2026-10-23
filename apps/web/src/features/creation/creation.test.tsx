@@ -2347,7 +2347,8 @@ test("flag off never mounts creation or fetches its private sessions", async () 
   vi.stubGlobal("fetch", fetch);
   await render(<CreateHub generateExposed={false} creationExposed={true} />);
   expect(box.textContent).not.toContain("和 Agent 一起創作小工具");
-  expect(fetch).not.toHaveBeenCalled();
+  const requested = fetch.mock.calls.map((call: unknown[]) => String(call[0]));
+  expect(requested.filter((url) => !url.endsWith("/me"))).toEqual([]);
 });
 
 test("an assistant message renders the seven node types the ruling allows", async () => {

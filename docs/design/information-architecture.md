@@ -203,7 +203,7 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 AdminSettings ──► /admin/agents
 ```
 
-> **`/library` 的新增入口（`features/creation/components/CreateHub.tsx`）。** 它把三條接納路徑收在同一處：**匯入現成的套件** → `/workspace/import`（該頁唯一的 `.action`，system.md §4.6.3）、**從 Catalog Fork** → `/`（Fork 需要封測邀請，入口旁直接說）、**依任務描述創作** → 旗標後面的 Studio（§2.4），不新增邊。首頁的 hero 指著 `/library#create`。
+> **`/library` 的新增入口（`features/creation/components/CreateHub.tsx`）。** 它把三條接納路徑收在同一處：**匯入現成的套件** → `/workspace/import`（該頁唯一的 `.action`，system.md §4.6.3）、**從 Catalog Fork** → `/`（沒有封測邀請的帳號，入口旁直接說 Fork 需要邀請；有邀請或沒有名冊的部署不顯示）、**依任務描述創作** → 旗標後面的 Studio（§2.4），不新增邊。首頁的 hero 指著 `/library#create`。
 >
 > **形狀由資產庫空不空決定**：空的時候先說明這是空清單，再用完整卡片解釋每一條接納路徑；有內容時，Skill 卡片先回答「我擁有什麼」，新增方式收成清單後方的一條入口帶。讀取中或失敗不渲染新增入口，避免把未知冒充成空。兩種形狀的 DOM 順序都讓答案在動作之前。
 >

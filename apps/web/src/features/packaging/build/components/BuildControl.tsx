@@ -28,7 +28,6 @@ export function BuildControl({
 }) {
   return (
     <>
-      <p className="note">平台目前只讓有封測邀請的帳號建立下載套件。</p>
       <ReadFailure error={build.error} what="套件建立">
         <BuildErrorReason error={build.error} />
       </ReadFailure>

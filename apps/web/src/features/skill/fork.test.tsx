@@ -87,11 +87,11 @@ function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
 
 const text = () => container.textContent ?? "";
 
-function stubOwner(forkResponse: () => Promise<Response>) {
+function stubOwner(forkResponse: () => Promise<Response>, me: typeof ME = ME) {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
     const path = url.split("?")[0];
-    if (path === "/me") return json(ME);
+    if (path === "/me") return json(me);
     if (path.endsWith("/fork") && init?.method === "POST") return forkResponse();
     if (path.endsWith("/versions")) return json(SKILL_VERSIONS);
     if (path.startsWith("/api/skills/")) return json(detailBody());
@@ -115,11 +115,32 @@ async function clickFork() {
   });
 }
 
-test("丙-153: 複製一份按鈕之前有封測邀請的說明句（照 CreateHub 的句型）", async () => {
+const FORK_UNINVITED_REASON = "平台目前只讓有封測邀請的帳號複製小工具。";
+
+test("丙-153: an invited account sees no invite rule beside the fork button", async () => {
   stubOwner(() => json({ error: "not authenticated" }, 401));
   await render(<SkillDetail />, settledAsOwner);
 
-  expect(text()).toContain("平台目前只讓有封測邀請的帳號複製小工具。");
+  expect(text()).not.toContain(FORK_UNINVITED_REASON);
+  expect(forkButton()?.disabled).toBe(false);
+});
+
+test("丙-153: an uninvited account finds the fork button disabled, the enforcer naming the reason", async () => {
+  let posted = false;
+  stubOwner(
+    () => {
+      posted = true;
+      return json({ error: "closed beta" }, 403);
+    },
+    { ...ME, invited: false },
+  );
+  await render(<SkillDetail />, () => settledAsOwner() && forkButton()?.disabled === true);
+
+  const fork = forkButton()!;
+  const reason = container.querySelector(`#${fork.getAttribute("aria-describedby")}`);
+  expect(reason?.textContent).toBe(FORK_UNINVITED_REASON);
+  await clickFork();
+  expect(posted).toBe(false);
 });
 
 test("丙-153: 複製一份 403（沒有封測邀請）印中文句，不印 betaNotInvited 的英文段落", async () => {

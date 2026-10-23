@@ -7,6 +7,7 @@ import { Downloads } from "./downloads/DownloadsSection";
 import { PackagingBlockedReason as PackagingBlockedReasonEnum } from "@skillhub/api-client-ts";
 import { PACKAGING_BLOCKED_LABEL, packagingGate } from "./packaging.model";
 import { Packaging } from "./build/Packaging.page";
+import { ME } from "../../testing/fixtures/platform";
 import type { DownloadArtifact, PackagingBlockedReason } from "./packaging.service";
 import type { SkillDetail } from "../../core/api/types";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
@@ -252,6 +253,7 @@ function stubPlatform(
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
     calls.push(url);
+    if (url.endsWith("/me")) return json(ME);
     if (url.endsWith("/versions")) return json(options.versions ?? VERSIONS);
     if (url.includes("/packaging/targets")) return json(targets);
     if (url.includes("/packaging/preview")) {
@@ -1014,9 +1016,10 @@ test("R4: picking a version changes the address, so the packaging preview can be
   expect(select.value).toBe(OLDER_VERSION);
 });
 
-test("丙-153 建立套件的按鈕前先說邀請限制，403 印中文並指向頁尾回報", async () => {
+function stubBuild(me: typeof ME, post: () => Promise<Response>) {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
+    if (url.endsWith("/me")) return json(me);
     if (url.endsWith("/versions")) return json(VERSIONS);
     if (url.includes("/packaging/targets")) return json(targets);
     if (url.includes("/packaging/preview")) {
@@ -1031,15 +1034,36 @@ test("丙-153 建立套件的按鈕前先說邀請限制，403 印中文並指�
         retention_days: 23,
       });
     }
-    if (url.includes("/packaging") && init?.method === "POST") {
-      return json({ error: "closed beta" }, 403);
-    }
+    if (url.includes("/packaging") && init?.method === "POST") return post();
     if (url.includes(`/api/skills/${SKILL}`)) return json(skill);
     return json({ error: "not found" }, 404);
   });
+}
+
+const BUILD_UNINVITED_REASON = "平台目前只讓有封測邀請的帳號建立下載套件。";
+
+test("an uninvited account finds the build button disabled with the invite rule as its stated reason", async () => {
+  let posted = false;
+  stubBuild({ ...ME, invited: false }, () => {
+    posted = true;
+    return json({ error: "closed beta" }, 403);
+  });
+  await render(<Packaging />, () => text().includes("這些設定可以打包"));
+  await waitFor(() => button("建立下載套件")?.disabled === true);
+
+  const build = button("建立下載套件")!;
+  const reason = container.querySelector(`#${build.getAttribute("aria-describedby")}`);
+  expect(reason?.textContent).toBe(BUILD_UNINVITED_REASON);
+  await act(async () => build.click());
+  expect(posted).toBe(false);
+});
+
+test("丙-153 an invited account sees no invite rule, and a 403 that still arrives is told in Chinese with the footer route", async () => {
+  stubBuild(ME, () => json({ error: "closed beta" }, 403));
   await render(<Packaging />, () => text().includes("這些設定可以打包"));
 
-  expect(text()).toContain("平台目前只讓有封測邀請的帳號建立下載套件。");
+  expect(text()).not.toContain(BUILD_UNINVITED_REASON);
+  expect(button("建立下載套件")?.disabled).toBe(false);
 
   await act(async () => button("建立下載套件")?.click());
   await waitFor(() => text().includes("這個帳號還沒有封測邀請"));
@@ -1049,28 +1073,7 @@ test("丙-153 建立套件的按鈕前先說邀請限制，403 印中文並指�
 });
 
 test("丙-150 建立套件失敗（非 403）說可以再按一次，不印 err.message", async () => {
-  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
-    const url = String(input);
-    if (url.endsWith("/versions")) return json(VERSIONS);
-    if (url.includes("/packaging/targets")) return json(targets);
-    if (url.includes("/packaging/preview")) {
-      return json({
-        target: "standard",
-        allowed: true,
-        validation: emptyValidation,
-        dependencies: [],
-        included_test_cases: [],
-        excluded_test_cases: [],
-        excluded_files: [],
-        retention_days: 23,
-      });
-    }
-    if (url.includes("/packaging") && init?.method === "POST") {
-      return json({ error: "internal error" }, 500);
-    }
-    if (url.includes(`/api/skills/${SKILL}`)) return json(skill);
-    return json({ error: "not found" }, 404);
-  });
+  stubBuild(ME, () => json({ error: "internal error" }, 500));
   await render(<Packaging />, () => text().includes("這些設定可以打包"));
 
   await act(async () => button("建立下載套件")?.click());

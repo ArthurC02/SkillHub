@@ -52,6 +52,10 @@ export function useMe() {
   });
 }
 
+export function useUninvited(): boolean {
+  return useMe().data?.invited === false;
+}
+
 export function useSessionBoundary() {
   const client = useQueryClient();
   const me = useMe();

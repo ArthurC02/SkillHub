@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useUninvited } from "../../../core/session/me.service";
 import "./CreateHub.css";
 
 export function CreateHub({
@@ -13,6 +14,7 @@ export function CreateHub({
   compact?: boolean;
 }) {
   const doorway = creationExposed ? "和 Agent 一起創作小工具" : "讓平台依你的描述做一個";
+  const uninvited = useUninvited();
 
   if (compact) {
     return (
@@ -30,7 +32,7 @@ export function CreateHub({
             <Link to="/" search={{}}>
               從 Catalog 複製一份
             </Link>
-            <span className="note">平台目前只讓有封測邀請的帳號複製一份。</span>
+            {uninvited && <span className="note">平台目前只讓有封測邀請的帳號複製一份。</span>}
           </li>
           {generateExposed && (
             <li>
@@ -69,12 +71,14 @@ export function CreateHub({
             ✎
           </span>
           <h3>從目錄挑一個來改</h3>
-          <p className="note">
-            {explain && (
-              <span data-role="teaching">從目錄複製一份到你的工作區，再上傳改過的版本。</span>
-            )}
-            平台目前只讓有封測邀請的帳號複製一份。
-          </p>
+          {(explain || uninvited) && (
+            <p className="note">
+              {explain && (
+                <span data-role="teaching">從目錄複製一份到你的工作區，再上傳改過的版本。</span>
+              )}
+              {uninvited && "平台目前只讓有封測邀請的帳號複製一份。"}
+            </p>
+          )}
           <p>
             <Link className="action-secondary" to="/" search={{}}>
               到目錄挑一個

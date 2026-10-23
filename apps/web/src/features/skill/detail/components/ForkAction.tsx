@@ -4,6 +4,9 @@ import { Link } from "@tanstack/react-router";
 import { ApiError, isWriteResultUnknown } from "../../../../core/api/client";
 import { useForkSkill, useSkillVersions } from "../../skills.service";
 import { SignInAction } from "../../../../shared/ui/SignIn";
+import { useUninvited } from "../../../../core/session/me.service";
+
+const FORK_UNINVITED_REASON_ID = "fork-uninvited-reason";
 
 function forkErrorMessage(error: unknown): string {
   if (isWriteResultUnknown(error))
@@ -37,9 +40,9 @@ function ForkControl({ skillId, available }: Omit<ForkContext, "isLoggedIn">) {
   const cannotPackage = versions.isSuccess && versions.data.versions.length === 0;
   const uncertain = fork.isError && isWriteResultUnknown(fork.error);
   const trigger = useRef<HTMLButtonElement>(null);
+  const uninvited = useUninvited();
   return (
     <div>
-      <p className="note">平台目前只讓有封測邀請的帳號複製小工具。</p>
       <button
         ref={trigger}
         type="button"
@@ -48,7 +51,8 @@ function ForkControl({ skillId, available }: Omit<ForkContext, "isLoggedIn">) {
           event.currentTarget.focus();
           fork.mutate(skillId);
         }}
-        disabled={!available || fork.isPending || fork.isSuccess}
+        disabled={uninvited || !available || fork.isPending || fork.isSuccess}
+        aria-describedby={uninvited ? FORK_UNINVITED_REASON_ID : undefined}
       >
         {fork.isPending
           ? "建立中…"
@@ -58,6 +62,11 @@ function ForkControl({ skillId, available }: Omit<ForkContext, "isLoggedIn">) {
               ? "重新送出複製請求"
               : "以這個小工具為起點建立我自己的"}
       </button>
+      {uninvited && (
+        <p className="note" id={FORK_UNINVITED_REASON_ID}>
+          平台目前只讓有封測邀請的帳號複製小工具。
+        </p>
+      )}
       {!available && !fork.isSuccess && (
         <p role="status">小工具資訊尚未重新確認，暫時無法開始複製。</p>
       )}

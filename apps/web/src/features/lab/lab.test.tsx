@@ -581,12 +581,12 @@ test("04 丙-148 testCase read failure says so, not 讀不到名稱", async () =
   expect(text()).not.toContain("讀不到名稱");
 });
 
-test("04 丙-144 the invite requirement is stated before the confirm button", async () => {
+test("04 丙-144 an account that reaches the confirm button is not told an invite rule that no longer applies to it", async () => {
   stubPlatform();
   await renderLab();
 
   await waitFor(() => confirmButton() !== undefined);
-  expect(text()).toContain("平台目前只讓有封測邀請的帳號開始試跑。");
+  expect(text()).not.toContain("封測邀請");
 });
 
 test("04 丙-144 a 403 on run-start says no invite, not the raw server message", async () => {
