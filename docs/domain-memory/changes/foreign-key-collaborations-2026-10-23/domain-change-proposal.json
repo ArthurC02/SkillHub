@@ -3,12 +3,12 @@
   "proposal_id": "foreign-key-collaborations",
   "proposer": "domain-memory-agent",
   "requirement_id": "foreign-key-collaborations",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-23T07:11:37.177308Z",
   "verified_at": "2026-10-23T07:12:39.802832Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-23T07:12:53.014638Z",
+  "applied_at": "2026-10-23T07:13:56.172959Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "516c9ae01642d59b3d6d61555a036090d5ce8035",
@@ -148,5 +148,9 @@
         "committed_digest": "sha256:fb63b56ae1f354431919da661cf2e13173d4e80f8ffc521caa2c2827b4f5db73"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "99139507d8e2a325f8bcc996801f3d0dc4978ffe",
+    "registry_digest": "sha256:aed02b7dad794484171f6f6cb0531b0e74dff01f3b6b5b5e882bf3ffbffb172a"
+  }
 }
