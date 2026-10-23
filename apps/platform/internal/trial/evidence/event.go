@@ -51,9 +51,17 @@ var eventTypes = map[string]bool{
 
 var sources = map[string]bool{SourceSandbox: true, SourceOrchestr: true, SourceLLMService: true}
 
-const outcomeTimedOut = "timed_out"
+type traceStatus = string
 
-var statuses = map[string]bool{"ok": true, "error": true, "skipped": true, "cancelled": true, outcomeTimedOut: true}
+const (
+	statusOK        traceStatus = "ok"
+	statusError     traceStatus = "error"
+	statusSkipped   traceStatus = "skipped"
+	statusCancelled traceStatus = "cancelled"
+	outcomeTimedOut traceStatus = "timed_out"
+)
+
+var statuses = map[string]bool{statusOK: true, statusError: true, statusSkipped: true, statusCancelled: true, outcomeTimedOut: true}
 
 type Event struct {
 	SchemaVersion string          `json:"schema_version"`

@@ -52,13 +52,15 @@ const (
 	commandConfirmDuplicate             = "confirm_duplicate"
 )
 
+type receiptStatus = string
+
 const (
-	receiptQueued    = "queued"
-	receiptRunning   = "running"
-	receiptUnknown   = "unknown"
-	receiptFinished  = "finished"
-	receiptFailed    = "failed"
-	receiptCancelled = "cancelled"
+	receiptQueued    receiptStatus = "queued"
+	receiptRunning   receiptStatus = "running"
+	receiptUnknown   receiptStatus = "unknown"
+	receiptFinished  receiptStatus = "finished"
+	receiptFailed    receiptStatus = "failed"
+	receiptCancelled receiptStatus = "cancelled"
 )
 
 const maxPersonMessageRunes = limits.CreationActionMessageMaxLength

@@ -111,11 +111,27 @@ var domainVocabularies = []domainVocabulary{
 	{
 		name: "creation session state",
 		sources: []vocabularySource{
+			sqlColumnCheck("creation_sessions", "state"),
+			sqlColumnCheck("creation_session_events", "state"),
 			goConstEnum("apps/platform/internal/creator/creation/state.go", "State"),
 			goListedConstEnum(
 				"apps/platform/internal/creator/creation/state.go", "AllStates",
 				"apps/platform/internal/creator/creation/state.go", "State"),
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "CreationSessionState"),
+		},
+	},
+	{
+		name: "creation receipt status",
+		sources: []vocabularySource{
+			sqlColumnCheck("creation_receipts", "status"),
+			goConstEnum("apps/platform/internal/creator/creation/creation.go", "receiptStatus"),
+		},
+	},
+	{
+		name: "trace event status",
+		sources: []vocabularySource{
+			sqlColumnCheck("trace_events", "status"),
+			goConstEnum("apps/platform/internal/trial/evidence/event.go", "traceStatus"),
 		},
 	},
 	{
