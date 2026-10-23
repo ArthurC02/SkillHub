@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -404,6 +406,17 @@ func (h *Handler) DownloadRecords(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, downloadRecordsResponse{Records: out})
 }
 
+func writeDownloadRefusal(w http.ResponseWriter, r *http.Request, status int, apiMessage, sentence string) {
+	if !strings.Contains(r.Header.Get("Accept"), "text/html") {
+		httpx.WriteError(w, status, apiMessage)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	_, _ = fmt.Fprintf(w, `<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>下載沒有開始</title>`+
+		`<p>%s</p><p><a href="/workspace/downloads">到交付紀錄查看你的下載</a></p>`, html.EscapeString(sentence))
+}
+
 func (h *Handler) DownloadContent(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -417,15 +430,15 @@ func (h *Handler) DownloadContent(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err == nil:
 	case errors.Is(err, ErrNotFound), errors.Is(err, ErrGone):
-
-		httpx.WriteError(w, http.StatusNotFound, "download not found")
+		writeDownloadRefusal(w, r, http.StatusNotFound, "download not found",
+			"這個下載已經過期或不存在，檔案已經不在了。")
 		return
 	case errors.Is(err, ErrNoStore):
 		writeUnconfigured(w, err)
 		return
 	case errors.Is(err, ErrStoreUnreadable):
-		httpx.WriteError(w, http.StatusServiceUnavailable,
-			"套件儲存現在讀不到，這個下載還在，請稍後再試。")
+		const unreadable = "套件儲存現在讀不到，這個下載還在，請稍後再試。"
+		writeDownloadRefusal(w, r, http.StatusServiceUnavailable, unreadable, unreadable)
 		return
 	default:
 		httpx.WriteError(w, http.StatusInternalServerError, "download failed")

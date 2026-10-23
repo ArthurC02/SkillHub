@@ -7086,9 +7086,13 @@ paths:
             along; the operation that actually serves the bytes did not, so a
             client reading only this contract would have 404 as its only
             not-served answer and would tell the user their package was gone.
+            Also answered when the store is wired but cannot be read right now;
+            a browser following the link gets the same sentence as a page.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+            text/html:
+              schema: { type: string }
         "401":
           description: No valid session.
           content:
@@ -7119,9 +7123,15 @@ paths:
             (WS-006). A caller who owns it can tell the cases apart from
             GET /downloads/{artifactId}, which still describes the row and its
             status.
+
+            A browser following the download link (Accept includes text/html)
+            gets a short page saying the file is gone, with a link to the
+            delivery records, instead of a JSON body it would show raw.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+            text/html:
+              schema: { type: string }
   /creation-sessions:
     get:
       operationId: "listCreationSessions"

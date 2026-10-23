@@ -7920,13 +7920,33 @@ func (s *DownloadArtifact) SetProfileVersion(val OptString) {
 
 func (*DownloadArtifact) getDownloadArtifactRes() {}
 
+type DownloadArtifactContentApplicationJSONNotFound Error
+
+func (*DownloadArtifactContentApplicationJSONNotFound) downloadArtifactContentRes() {}
+
+type DownloadArtifactContentApplicationJSONServiceUnavailable Error
+
+func (*DownloadArtifactContentApplicationJSONServiceUnavailable) downloadArtifactContentRes() {}
+
 type DownloadArtifactContentForbidden Error
 
 func (*DownloadArtifactContentForbidden) downloadArtifactContentRes() {}
 
-type DownloadArtifactContentNotFound Error
+type DownloadArtifactContentNotFoundTextHTML struct {
+	Data io.Reader
+}
 
-func (*DownloadArtifactContentNotFound) downloadArtifactContentRes() {}
+// Read reads data from the Data reader.
+//
+// Kept to satisfy the io.Reader interface.
+func (s DownloadArtifactContentNotFoundTextHTML) Read(p []byte) (n int, err error) {
+	if s.Data == nil {
+		return 0, io.EOF
+	}
+	return s.Data.Read(p)
+}
+
+func (*DownloadArtifactContentNotFoundTextHTML) downloadArtifactContentRes() {}
 
 type DownloadArtifactContentOK struct {
 	Data io.Reader
@@ -7970,9 +7990,21 @@ func (s *DownloadArtifactContentOKHeaders) SetResponse(val DownloadArtifactConte
 
 func (*DownloadArtifactContentOKHeaders) downloadArtifactContentRes() {}
 
-type DownloadArtifactContentServiceUnavailable Error
+type DownloadArtifactContentServiceUnavailableTextHTML struct {
+	Data io.Reader
+}
 
-func (*DownloadArtifactContentServiceUnavailable) downloadArtifactContentRes() {}
+// Read reads data from the Data reader.
+//
+// Kept to satisfy the io.Reader interface.
+func (s DownloadArtifactContentServiceUnavailableTextHTML) Read(p []byte) (n int, err error) {
+	if s.Data == nil {
+		return 0, io.EOF
+	}
+	return s.Data.Read(p)
+}
+
+func (*DownloadArtifactContentServiceUnavailableTextHTML) downloadArtifactContentRes() {}
 
 type DownloadArtifactContentUnauthorized Error
 

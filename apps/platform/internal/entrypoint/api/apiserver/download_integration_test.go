@@ -1185,3 +1185,35 @@ func TestADownloadWhoseStoredPackageIsGoneAnswersNotFoundAndRecordsNothing(t *te
 		t.Errorf("download_records: got %d rows for a package that was never served, want 0", n)
 	}
 }
+
+func TestAMissingDownloadAnswersABrowserWithAPageAndAClientWithJSON(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "download-missing-page")
+	missing := c.base + "/downloads/00000000-0000-4000-8000-0000000000fd/content"
+
+	for _, accept := range []struct {
+		header, wantType, wantBody string
+	}{
+		{"text/html,application/xhtml+xml", "text/html", "這個下載已經過期或不存在"},
+		{"application/json", "application/json", "download not found"},
+	} {
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, missing, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Accept", accept.header)
+		resp, err := c.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusNotFound ||
+			!strings.HasPrefix(resp.Header.Get("Content-Type"), accept.wantType) ||
+			!strings.Contains(string(body), accept.wantBody) {
+			t.Errorf("Accept %s: got %d %s %q, want 404 %s containing %q",
+				accept.header, resp.StatusCode, resp.Header.Get("Content-Type"), body, accept.wantType, accept.wantBody)
+		}
+	}
+}
