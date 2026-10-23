@@ -221,6 +221,10 @@ type GetFunnelTrendRes interface {
 	getFunnelTrendRes()
 }
 
+type GetGenerateAllowanceRes interface {
+	getGenerateAllowanceRes()
+}
+
 type GetMeRes interface {
 	getMeRes()
 }

@@ -257,6 +257,13 @@ export interface GenerateSkillRequest {
   reference_skill_ids?: string[];
 }
 
+export interface GenerateAllowance {
+  remaining_today: number;
+  remaining_window: number;
+  window_resets_at: string;
+  limits: { daily: number; window: number; window_days: number };
+}
+
 export interface GenerationFailure {
   occurred_at: string;
   failure:

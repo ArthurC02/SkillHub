@@ -1270,3 +1270,34 @@ func TestAGeneratedCandidateRevisesOnlyAGeneratedSkill(t *testing.T) {
 		t.Errorf("the uploaded skill has %d versions, want its one upload", versions)
 	}
 }
+
+func TestTheGenerateFormCanReadTheAllowanceThatPostEnforces(t *testing.T) {
+	pool := requireDB(t)
+	enforced := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
+		d.GenerateExposed = true
+		d.Auth.Features = map[string]bool{"generate_skill": true}
+		d.Importer.Svc.GenerateQuota = policy.DefaultGenerateQuotaLimits()
+	})
+	f := newFixture(t, enforced, pool, "gen-allowance")
+	if _, err := pool.Exec(t.Context(), `
+		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at, counts_toward_generate_quota)
+		VALUES ($1, 'git', 'https://example.com/gen-allowance.git', 'gen-allowance', now(), true)`, mustUUID(t, f.workspaceID)); err != nil {
+		t.Fatalf("recording one generation: %v", err)
+	}
+
+	code, body := f.doJSON(t, http.MethodGet, "/skills/generate/allowance", "")
+	limits, _ := body["limits"].(map[string]any)
+	if code != http.StatusOK || body["remaining_today"] != float64(9) || body["remaining_window"] != float64(19) ||
+		limits["daily"] != float64(10) || limits["window"] != float64(20) || limits["window_days"] != float64(30) {
+		t.Errorf("GET allowance after one generation = %d %v, want 200 with 9 today, 19 in the first window of 20", code, body)
+	}
+
+	unenforced := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
+		d.GenerateExposed = true
+		d.Auth.Features = map[string]bool{"generate_skill": true}
+	})
+	g := newFixture(t, unenforced, pool, "gen-allowance-off")
+	if code, _ := g.doJSON(t, http.MethodGet, "/skills/generate/allowance", ""); code != http.StatusNotFound {
+		t.Errorf("GET allowance where none is enforced = %d, want 404", code)
+	}
+}

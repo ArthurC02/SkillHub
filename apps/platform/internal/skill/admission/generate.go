@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"gopkg.in/yaml.v3"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
@@ -561,6 +562,15 @@ func (s *Service) requireGenerateAllowance(ctx context.Context, workspaceID pgty
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	return policy.EnforceGenerateQuota(ctx, generateUsageReader(tx), s.GenerateQuota, workspaceID)
+}
+
+func generateAllowance(ctx context.Context, pool *pgxpool.Pool, limits policy.QuotaLimits, workspaceID pgtype.UUID) (policy.QuotaState, error) {
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return policy.QuotaState{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	return policy.Usage(ctx, generateUsageReader(tx), limits, workspaceID, time.Now())
 }
 
 func generateUsageReader(tx pgx.Tx) policy.UsageReader {

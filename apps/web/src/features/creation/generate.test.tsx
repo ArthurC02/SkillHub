@@ -66,6 +66,7 @@ interface StubSessionOptions {
   historyError?: { status: number; error: string };
   referenceSearchError?: { status: number; error: string };
   ownSkillsError?: { status: number; error: string };
+  allowance?: unknown;
 }
 
 function postResult(path: string, options: StubSessionOptions): Response {
@@ -108,6 +109,13 @@ function stubSession(options: StubSessionOptions = {}) {
     if (init?.method === "POST") {
       posted.push({ path, body: String(init.body ?? "") });
       return Promise.resolve(postResult(path, options));
+    }
+    if (path === "/skills/generate/allowance") {
+      return Promise.resolve(
+        options.allowance === undefined
+          ? new Response(JSON.stringify({ error: "not found" }), { status: 404 })
+          : new Response(JSON.stringify(options.allowance), { status: 200 }),
+      );
     }
     if (path === "/skills/generate/failures") {
       if (historyError) {
@@ -1103,3 +1111,34 @@ test("IA-5: a visitor is told what login buys, not sent to a page they cannot op
   expect(text).toContain("登入後可以把它匯入");
   expect(text).not.toContain("直接匯入它");
 });
+
+const ALLOWANCE = {
+  remaining_today: 7,
+  remaining_window: 18,
+  window_resets_at: "2099-01-01T00:00:00Z",
+  limits: { daily: 10, window: 20, window_days: 30 },
+};
+
+test.each([
+  ["an enforced allowance", ALLOWANCE, true],
+  ["no allowance in this deployment", undefined, false],
+  ["a malformed allowance reply", { skills: [] }, false],
+])(
+  "GEN-008: the form states the free allowance only when it is read: %s",
+  async (_name, allowance, shown) => {
+    stubSession({ features: { generate_skill: true }, allowance });
+    await render();
+    await act(async () => {
+      await router.navigate({ to: "/", search: { q: "寫一個摘要器" } });
+    });
+    await waitFor(() => container.querySelector("#generate-task") !== null);
+    await waitFor(() => (container.textContent ?? "").includes("預估成本"));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+
+    const text = container.textContent ?? "";
+    expect(text.includes("今天還能生成 7 次（每天 10 次）；這 30 天內還有 18 次（共 20 次）")).toBe(
+      shown,
+    );
+    expect(text.includes("免費生成額度")).toBe(shown);
+  },
+);

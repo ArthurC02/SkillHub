@@ -1,7 +1,8 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { ApiError } from "../../../core/api/client";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
-import { useGenerateSkill } from "../generate.service";
+import { useGenerateAllowance, useGenerateSkill } from "../generate.service";
+import { Timestamp } from "../../../shared/ui/Timestamp";
 import {
   GENERATE_MAX_DIAGRAM_BYTES,
   GENERATE_MAX_REFERENCES,
@@ -241,10 +242,27 @@ function GenerateOutcome({
   );
 }
 
+function GenerateAllowanceFacts() {
+  const allowance = useGenerateAllowance();
+  if (!allowance.data) return null;
+  const { remaining_today, remaining_window, window_resets_at, limits } = allowance.data;
+  return (
+    <>
+      <dt>免費生成額度</dt>
+      <dd>
+        今天還能生成 {remaining_today} 次（每天 {limits.daily} 次）；這 {limits.window_days}{" "}
+        天內還有 {remaining_window} 次（共 {limits.window} 次），
+        <Timestamp at={window_resets_at} /> 起恢復。
+      </dd>
+    </>
+  );
+}
+
 function GenerateCostEstimate() {
   return (
     <>
       <dl>
+        <GenerateAllowanceFacts />
         <dt>預估成本</dt>
         <dd>
           約 US${GENERATE_COST_LOW_USD.toFixed(3)}–${GENERATE_COST_HIGH_USD.toFixed(2)}

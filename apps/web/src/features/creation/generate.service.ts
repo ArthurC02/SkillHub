@@ -3,6 +3,7 @@ import { apiFetch } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
 import type {
+  GenerateAllowance,
   GenerateSkillRequest,
   GenerateSkillResult,
   GenerationFailure,
@@ -25,7 +26,11 @@ export function useGenerateSkill() {
   return useMutation({
     mutationFn: generateSkill,
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.skills.own }),
-    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.generate.failures }),
+    onSettled: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: queryKeys.generate.failures }),
+        client.invalidateQueries({ queryKey: queryKeys.generate.allowance }),
+      ]),
   });
 }
 
@@ -38,5 +43,30 @@ export function useGenerateFailures() {
   return useQuery({
     queryKey: queryKeys.generate.failures,
     queryFn: () => apiFetch<{ failures: GenerationFailure[] }>("/skills/generate/failures"),
+  });
+}
+
+function isGenerateAllowance(value: unknown): value is GenerateAllowance {
+  const counts = (record: unknown, keys: string[]) =>
+    typeof record === "object" &&
+    record !== null &&
+    keys.every((key) => Number.isInteger((record as Record<string, unknown>)[key]));
+  const allowance = value as GenerateAllowance;
+  return (
+    counts(value, ["remaining_today", "remaining_window"]) &&
+    typeof allowance.window_resets_at === "string" &&
+    Number.isFinite(Date.parse(allowance.window_resets_at)) &&
+    counts(allowance.limits, ["daily", "window", "window_days"])
+  );
+}
+
+export function useGenerateAllowance() {
+  return useQuery({
+    queryKey: queryKeys.generate.allowance,
+    queryFn: async () => {
+      const result = await apiFetch<unknown>("/skills/generate/allowance");
+      if (!isGenerateAllowance(result)) throw new Error("Invalid generate allowance response");
+      return result;
+    },
   });
 }

@@ -329,6 +329,11 @@ import {
     FunnelTrendToJSON,
 } from '../models/FunnelTrend';
 import {
+    type GenerateAllowance,
+    GenerateAllowanceFromJSON,
+    GenerateAllowanceToJSON,
+} from '../models/GenerateAllowance';
+import {
     type GenerateSkillRefusal,
     GenerateSkillRefusalFromJSON,
     GenerateSkillRefusalToJSON,
@@ -3510,6 +3515,28 @@ export interface DefaultApiInterface {
      * How many reached each funnel stage per day (02:OPS-008)
      */
     getFunnelTrend(requestParameters: GetFunnelTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FunnelTrend>;
+
+    /**
+     * Creates request options for getGenerateAllowance without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getGenerateAllowanceRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * Lets the generate form say how many generations are left before the user writes a task, instead of only refusing on submit. Served from the same counters POST /skills/generate enforces.  Mounted only where the generate flag is on **and** the deployment enforces a generation allowance; elsewhere the route does not exist and answers 404, so a client never shows a ceiling the platform does not apply. Requires a session and an invite, like the generate route. 
+     * @summary How much of the free generation allowance is left (GEN-008)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getGenerateAllowanceRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GenerateAllowance>>;
+
+    /**
+     * Lets the generate form say how many generations are left before the user writes a task, instead of only refusing on submit. Served from the same counters POST /skills/generate enforces.  Mounted only where the generate flag is on **and** the deployment enforces a generation allowance; elsewhere the route does not exist and answers 404, so a client never shows a ceiling the platform does not apply. Requires a session and an invite, like the generate route. 
+     * How much of the free generation allowance is left (GEN-008)
+     */
+    getGenerateAllowance(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerateAllowance>;
 
     /**
      * Creates request options for getHealth without sending the request
@@ -8726,6 +8753,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getFunnelTrend(requestParameters: GetFunnelTrendRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FunnelTrend> {
         const response = await this.getFunnelTrendRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getGenerateAllowance without sending the request
+     */
+    async getGenerateAllowanceRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/skills/generate/allowance`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Lets the generate form say how many generations are left before the user writes a task, instead of only refusing on submit. Served from the same counters POST /skills/generate enforces.  Mounted only where the generate flag is on **and** the deployment enforces a generation allowance; elsewhere the route does not exist and answers 404, so a client never shows a ceiling the platform does not apply. Requires a session and an invite, like the generate route. 
+     * How much of the free generation allowance is left (GEN-008)
+     */
+    async getGenerateAllowanceRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GenerateAllowance>> {
+        const requestOptions = await this.getGenerateAllowanceRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => GenerateAllowanceFromJSON(jsonValue));
+    }
+
+    /**
+     * Lets the generate form say how many generations are left before the user writes a task, instead of only refusing on submit. Served from the same counters POST /skills/generate enforces.  Mounted only where the generate flag is on **and** the deployment enforces a generation allowance; elsewhere the route does not exist and answers 404, so a client never shows a ceiling the platform does not apply. Requires a session and an invite, like the generate route. 
+     * How much of the free generation allowance is left (GEN-008)
+     */
+    async getGenerateAllowance(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerateAllowance> {
+        const response = await this.getGenerateAllowanceRaw(initOverrides);
         return await response.value();
     }
 

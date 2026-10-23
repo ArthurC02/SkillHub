@@ -43,7 +43,7 @@ export const queryKeys = {
     own: ["own-skills"],
     ownPages: (limit: number) => ["own-skills", "pages", limit],
   },
-  generate: { failures: ["generate", "failures"] },
+  generate: { failures: ["generate", "failures"], allowance: ["generate", "allowance"] },
   creation: {
     sessions: ["creation-sessions"],
     sessionsForVersion: (versionId: string) => ["creation-sessions", "version", versionId],

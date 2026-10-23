@@ -429,6 +429,39 @@ type GenerateFailure struct {
 	Collision bool `json:"collision,omitempty"`
 }
 
+type generateAllowanceLimits struct {
+	Daily      int `json:"daily"`
+	Window     int `json:"window"`
+	WindowDays int `json:"window_days"`
+}
+
+type generateAllowanceView struct {
+	RemainingToday  int                     `json:"remaining_today"`
+	RemainingWindow int                     `json:"remaining_window"`
+	WindowResetsAt  string                  `json:"window_resets_at"`
+	Limits          generateAllowanceLimits `json:"limits"`
+}
+
+func (h *Handler) GenerateAllowance(w http.ResponseWriter, r *http.Request) {
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
+	if !ok {
+		return
+	}
+	state, err := generateAllowance(r.Context(), h.Svc.Pool, h.Svc.GenerateQuota, ws.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "暫時無法讀取生成額度，請稍後再試。")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, generateAllowanceView{
+		RemainingToday:  state.RemainingToday,
+		RemainingWindow: state.RemainingWindow,
+		WindowResetsAt:  state.WindowResetsAt.UTC().Format(time.RFC3339),
+		Limits: generateAllowanceLimits{
+			Daily: state.Limits.Daily, Window: state.Limits.Window, WindowDays: state.Limits.WindowDays,
+		},
+	})
+}
+
 func (h *Handler) GenerateFailures(w http.ResponseWriter, r *http.Request) {
 	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {

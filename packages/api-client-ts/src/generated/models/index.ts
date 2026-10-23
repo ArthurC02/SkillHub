@@ -118,6 +118,8 @@ export * from './Finding';
 export * from './ForkSkill201Response';
 export * from './FunnelStage';
 export * from './FunnelTrend';
+export * from './GenerateAllowance';
+export * from './GenerateAllowanceLimits';
 export * from './GenerateDiagram';
 export * from './GenerateSkillRefusal';
 export * from './GenerateSkillRefusalMessage';

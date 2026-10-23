@@ -11416,6 +11416,94 @@ func (s *FunnelTrend) SetStages(val []FunnelStage) {
 
 func (*FunnelTrend) getFunnelTrendRes() {}
 
+// The free generation allowance: generations left today and in the rolling window, when the window's
+// oldest counted generation drops out, and the limits in force.
+// Ref: #/components/schemas/GenerateAllowance
+type GenerateAllowance struct {
+	RemainingToday  int                     `json:"remaining_today"`
+	RemainingWindow int                     `json:"remaining_window"`
+	WindowResetsAt  time.Time               `json:"window_resets_at"`
+	Limits          GenerateAllowanceLimits `json:"limits"`
+}
+
+// GetRemainingToday returns the value of RemainingToday.
+func (s *GenerateAllowance) GetRemainingToday() int {
+	return s.RemainingToday
+}
+
+// GetRemainingWindow returns the value of RemainingWindow.
+func (s *GenerateAllowance) GetRemainingWindow() int {
+	return s.RemainingWindow
+}
+
+// GetWindowResetsAt returns the value of WindowResetsAt.
+func (s *GenerateAllowance) GetWindowResetsAt() time.Time {
+	return s.WindowResetsAt
+}
+
+// GetLimits returns the value of Limits.
+func (s *GenerateAllowance) GetLimits() GenerateAllowanceLimits {
+	return s.Limits
+}
+
+// SetRemainingToday sets the value of RemainingToday.
+func (s *GenerateAllowance) SetRemainingToday(val int) {
+	s.RemainingToday = val
+}
+
+// SetRemainingWindow sets the value of RemainingWindow.
+func (s *GenerateAllowance) SetRemainingWindow(val int) {
+	s.RemainingWindow = val
+}
+
+// SetWindowResetsAt sets the value of WindowResetsAt.
+func (s *GenerateAllowance) SetWindowResetsAt(val time.Time) {
+	s.WindowResetsAt = val
+}
+
+// SetLimits sets the value of Limits.
+func (s *GenerateAllowance) SetLimits(val GenerateAllowanceLimits) {
+	s.Limits = val
+}
+
+func (*GenerateAllowance) getGenerateAllowanceRes() {}
+
+type GenerateAllowanceLimits struct {
+	Daily      int `json:"daily"`
+	Window     int `json:"window"`
+	WindowDays int `json:"window_days"`
+}
+
+// GetDaily returns the value of Daily.
+func (s *GenerateAllowanceLimits) GetDaily() int {
+	return s.Daily
+}
+
+// GetWindow returns the value of Window.
+func (s *GenerateAllowanceLimits) GetWindow() int {
+	return s.Window
+}
+
+// GetWindowDays returns the value of WindowDays.
+func (s *GenerateAllowanceLimits) GetWindowDays() int {
+	return s.WindowDays
+}
+
+// SetDaily sets the value of Daily.
+func (s *GenerateAllowanceLimits) SetDaily(val int) {
+	s.Daily = val
+}
+
+// SetWindow sets the value of Window.
+func (s *GenerateAllowanceLimits) SetWindow(val int) {
+	s.Window = val
+}
+
+// SetWindowDays sets the value of WindowDays.
+func (s *GenerateAllowanceLimits) SetWindowDays(val int) {
+	s.WindowDays = val
+}
+
 // A flowchart or diagram the model reads as the task (02:GEN-005). Sent inline as base64 rather than
 // through a separate upload endpoint: the image is an INPUT to one synchronous call, not an object the
 // platform keeps — only its digest, media type and byte count land in the provenance row, so nothing
@@ -12477,6 +12565,22 @@ func (GetFunnelTrendDays) AllValues() []GetFunnelTrendDays {
 type GetFunnelTrendNotFound Error
 
 func (*GetFunnelTrendNotFound) getFunnelTrendRes() {}
+
+type GetGenerateAllowanceForbidden Error
+
+func (*GetGenerateAllowanceForbidden) getGenerateAllowanceRes() {}
+
+type GetGenerateAllowanceNotFound Error
+
+func (*GetGenerateAllowanceNotFound) getGenerateAllowanceRes() {}
+
+type GetGenerateAllowanceServiceUnavailable Error
+
+func (*GetGenerateAllowanceServiceUnavailable) getGenerateAllowanceRes() {}
+
+type GetGenerateAllowanceUnauthorized Error
+
+func (*GetGenerateAllowanceUnauthorized) getGenerateAllowanceRes() {}
 
 type GetOperatorActionTrendBadRequest Error
 

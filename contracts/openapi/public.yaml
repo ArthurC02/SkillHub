@@ -780,6 +780,45 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /skills/generate/allowance:
+    get:
+      operationId: getGenerateAllowance
+      summary: How much of the free generation allowance is left (GEN-008)
+      description: |
+        Lets the generate form say how many generations are left before the
+        user writes a task, instead of only refusing on submit. Served from the
+        same counters POST /skills/generate enforces.
+
+        Mounted only where the generate flag is on **and** the deployment
+        enforces a generation allowance; elsewhere the route does not exist and
+        answers 404, so a client never shows a ceiling the platform does not
+        apply. Requires a session and an invite, like the generate route.
+      responses:
+        "200":
+          description: The allowance as it stands right now.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GenerateAllowance" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: The closed beta is running and the caller is not invited.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: No generation allowance is enforced in this deployment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: The counters could not be read right now.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/generate/failures:
     get:
       operationId: listGenerationFailures
@@ -12666,6 +12705,24 @@ components:
             True when a configured constant stood in for a measured p95. It must
             be shown wherever the figure is - an unlabelled fallback is a
             measurement claim nobody made.
+    GenerateAllowance:
+      description: |
+        The free generation allowance: generations left today and in the
+        rolling window, when the window's oldest counted generation drops out,
+        and the limits in force.
+      type: object
+      required: [remaining_today, remaining_window, window_resets_at, limits]
+      properties:
+        remaining_today: { type: integer, minimum: 0 }
+        remaining_window: { type: integer, minimum: 0 }
+        window_resets_at: { type: string, format: date-time }
+        limits:
+          type: object
+          required: [daily, window, window_days]
+          properties:
+            daily: { type: integer }
+            window: { type: integer }
+            window_days: { type: integer }
     RunQuota:
       description: |
         The free-tier allowance (PDM-010). Four limits in one place so a user can

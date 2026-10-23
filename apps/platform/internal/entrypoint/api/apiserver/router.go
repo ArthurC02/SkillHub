@@ -113,6 +113,10 @@ func mountAdmissionRoutes(mux *http.ServeMux, d Deps) {
 
 		mux.HandleFunc("GET /skills/generate/failures",
 			auth.RequireSession(auth.RequireInvited(d.Importer.GenerateFailures)))
+		if d.Importer.Svc.GenerateQuota.Enforced() {
+			mux.HandleFunc("GET /skills/generate/allowance",
+				auth.RequireSession(auth.RequireInvited(d.Importer.GenerateAllowance)))
+		}
 	}
 }
 
