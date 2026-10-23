@@ -68,6 +68,10 @@ class SqlDescribeTest(RegistryTestCase):
         )
         self.assertEqual("open until paid; paid once the charge settled.", described["columns"][1]["meaning"])
         self.assertEqual(
+            [("id", True, True), ("state", True, False), ("buyer_id", False, False), ("note", False, False)],
+            [(column["name"], column["required"], column["primary_key"]) for column in described["columns"][:4]],
+        )
+        self.assertEqual(
             [(None, "state"), ("calm by default; it's odd when the buyer hesitated; wild once they bought twice.", "mood")],
             [(column["type_meaning"], column["name"]) for column in described["columns"] if column["name"] in ("state", "mood")],
         )

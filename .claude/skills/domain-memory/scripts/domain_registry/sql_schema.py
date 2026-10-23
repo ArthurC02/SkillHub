@@ -48,6 +48,10 @@ CONSTRAINT_KIND = re.compile(r"\s*(CHECK|UNIQUE|EXCLUDE|FOREIGN|PRIMARY|LIKE)\b"
 NAMED_CONSTRAINT = re.compile(rf"CONSTRAINT\s+({IDENT})\s+(.*)$", re.I | re.S)
 TRAILING_COMMENT = re.compile(r"[ \t]*--[^\n]*")
 COLUMN_CHECK = re.compile(r"\bCHECK\s*\(", re.I)
+NOT_NULL = re.compile(r"\bNOT\s+NULL\b", re.I)
+PRIMARY_KEY = re.compile(r"\bPRIMARY\s+KEY\b", re.I)
+PRIMARY_KEY_COLUMNS = re.compile(r"\bPRIMARY\s+KEY\s*\(([^)]*)\)", re.I)
+SET_NOT_NULL = re.compile(rf"^ALTER\s+(?:COLUMN\s+)?({IDENT})\s+(SET|DROP)\s+NOT\s+NULL\b", re.I)
 COLUMN_UNIQUE = re.compile(r"\bUNIQUE\b", re.I)
 OPAQUE_SPANS = (("--", "\n"), ("$$", "$$"), ("'", "'"))
 
@@ -251,12 +255,14 @@ def _read_table(schema: Schema, file: str, line: int, statement: str, match: re.
         if column is None:
             schema.unparsed.append(f"{file}:{first}: {text[:60]}")
             continue
-        table.columns[column.group(1)] = _new_column(first, column.group(2))
+        table.columns[column.group(1)] = _new_column(first, column.group(2), text)
         _read_column_rules(schema, name, span, text)
 
 
-def _new_column(line: int, declared_type: str) -> dict[str, Any]:
-    return {"line": line, "type": one_line(declared_type), "described": False, "comment": None}
+def _new_column(line: int, declared_type: str, declaration: str) -> dict[str, Any]:
+    primary = bool(PRIMARY_KEY.search(declaration))
+    return {"line": line, "type": one_line(declared_type), "not_null": primary or bool(NOT_NULL.search(declaration)),
+            "primary_key": primary, "described": False, "comment": None}
 
 
 def _read_column_rules(schema: Schema, table: str, span: Span, text: str) -> None:
@@ -282,7 +288,12 @@ def _read_table_constraint(schema: Schema, table: str, span: Span, text: str) ->
         referenced = REFERENCES.search(clause)
         if referenced:
             schema.foreign_keys.append(ForeignKey(table, referenced.group(1), span.file, span.first))
-    elif kind not in {"PRIMARY", "LIKE"}:
+    elif kind == "PRIMARY":
+        listed = PRIMARY_KEY_COLUMNS.search(clause)
+        for column in (listed.group(1).split(",") if listed else []):
+            if column.strip() in schema.tables[table].columns:
+                schema.tables[table].columns[column.strip()].update(not_null=True, primary_key=True)
+    elif kind != "LIKE":
         schema.unparsed.append(f"{span.file}:{span.first}: {text[:60]}")
 
 
@@ -294,26 +305,34 @@ def _read_alter(schema: Schema, file: str, line: int, statement: str, match: re.
         return
     for action in _split_top_level(strip_comments(match.group(2))):
         text = action.strip()
-        if not text:
-            continue
-        added = ADD_COLUMN.match(text)
-        dropped = DROP_COLUMN.match(text)
-        renamed = RENAME_COLUMN.match(text)
-        dropped_constraint = DROP_CONSTRAINT.match(text)
-        if dropped_constraint:
-            _drop_constraint(schema, table, dropped_constraint.group(1))
-        elif ADD_CONSTRAINT.match(text):
-            _read_table_constraint(schema, table, span, text[len("ADD "):].strip())
-        elif added:
-            declaration = text[added.start(1):]
-            schema.tables[table].columns[added.group(1)] = _new_column(line, COLUMN_LINE.match(declaration).group(2))
-            _read_column_rules(schema, table, span, declaration)
-        elif dropped:
-            schema.tables[table].columns.pop(dropped.group(1), None)
-        elif renamed:
-            _rename_column(schema.tables[table], renamed.group(1), renamed.group(2))
-        elif not OTHER_ALTER.match(text):
+        if text and not _read_alter_action(schema, table, span, text):
             schema.unparsed.append(f"{file}:{line}: ALTER TABLE {table} {text[:50]}")
+
+
+def _read_alter_action(schema: Schema, table: str, span: Span, text: str) -> bool:
+    columns = schema.tables[table].columns
+    added = ADD_COLUMN.match(text)
+    dropped = DROP_COLUMN.match(text)
+    renamed = RENAME_COLUMN.match(text)
+    dropped_constraint = DROP_CONSTRAINT.match(text)
+    nullability = SET_NOT_NULL.match(text)
+    if nullability and nullability.group(1) in columns:
+        columns[nullability.group(1)]["not_null"] = nullability.group(2).upper() == "SET"
+    elif dropped_constraint:
+        _drop_constraint(schema, table, dropped_constraint.group(1))
+    elif ADD_CONSTRAINT.match(text):
+        _read_table_constraint(schema, table, span, text[len("ADD "):].strip())
+    elif added:
+        declaration = text[added.start(1):]
+        columns[added.group(1)] = _new_column(span.first, COLUMN_LINE.match(declaration).group(2), declaration)
+        _read_column_rules(schema, table, span, declaration)
+    elif dropped:
+        columns.pop(dropped.group(1), None)
+    elif renamed:
+        _rename_column(schema.tables[table], renamed.group(1), renamed.group(2))
+    else:
+        return bool(OTHER_ALTER.match(text))
+    return True
 
 
 def _rename_column(table: Table, old: str, new: str) -> None:

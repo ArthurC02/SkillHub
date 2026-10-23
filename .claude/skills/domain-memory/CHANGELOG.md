@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.5.3
+
+### Added
+
+- The SQL reader records whether a column is required (`NOT NULL`, an inline or table-level `PRIMARY KEY`, and later `ALTER COLUMN ... SET NOT NULL` or `DROP NOT NULL`) and whether it is part of the primary key; `describe-table` shows them as `required` and `primary_key` on each column.
+
 ## 2.5.2
 
 ### Fixed

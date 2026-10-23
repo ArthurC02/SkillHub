@@ -230,6 +230,24 @@ class SqlSchemaTest(unittest.TestCase):
              sorted((c.kind, c.name) for c in schema.constraints), schema.unparsed),
         )
 
+    def test_nullability_and_primary_keys_follow_inline_words_table_level_keys_and_later_alterations(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / "m").mkdir()
+        (root / "m" / "0001.sql").write_text(
+            "CREATE TABLE a (\n    k1 uuid, k2 int NOT NULL, free text, loose text NOT NULL, later text,\n"
+            "    PRIMARY KEY (k1, k2)\n);\n", encoding="utf-8")
+        (root / "m" / "0002.sql").write_text(
+            "ALTER TABLE a ALTER COLUMN loose DROP NOT NULL, ALTER COLUMN later SET NOT NULL, ADD COLUMN added text NOT NULL;\n",
+            encoding="utf-8")
+        schema = read_schema(root / "m", root)
+        self.assertEqual(
+            ([("k1", True, True), ("k2", True, True), ("free", False, False), ("loose", False, False), ("later", True, False),
+              ("added", True, False)], []),
+            ([(name, info["not_null"], info["primary_key"]) for name, info in schema.tables["a"].columns.items()], schema.unparsed),
+        )
+
     def test_an_enum_type_keeps_its_values_in_order_including_those_added_later(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -264,7 +282,8 @@ class SqlSchemaTest(unittest.TestCase):
         schema = read_schema(root / "m", root)
         columns = schema.tables["orders"].columns
         self.assertEqual(["amount", "id", "reference"], sorted(columns))
-        self.assertEqual(({"line": 3, "type": "integer", "described": True, "comment": "what the buyer pays"}, []),
+        self.assertEqual(({"line": 3, "type": "integer", "not_null": True, "primary_key": False, "described": True,
+                           "comment": "what the buyer pays"}, []),
                          (columns["amount"], [u for u in schema.unparsed if "RENAME" in u]))
 
 

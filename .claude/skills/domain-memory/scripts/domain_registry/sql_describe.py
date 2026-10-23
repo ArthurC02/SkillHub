@@ -50,6 +50,8 @@ def _column(column: str, info: dict[str, Any], constraints: list[Constraint], sc
         "line": info["line"],
         "type": declared_type,
         "type_meaning": schema.type_comments.get(declared_type),
+        "required": info.get("not_null", False),
+        "primary_key": info.get("primary_key", False),
         "meaning": info.get("comment"),
         "allowed_values": allowed_values(column, constraints, schema.enums.get(declared_type)),
     }
