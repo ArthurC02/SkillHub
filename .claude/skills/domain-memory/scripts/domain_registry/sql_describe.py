@@ -37,7 +37,7 @@ SUMMARY_LENGTH = 160
 DEFAULT_ACTION = "NO ACTION"
 STATUS_LIKE = re.compile(
     r"(^|_)(status|state|kind|mode|tier|role|decision|verdict|outcome|phase|stage|level|priority|severity|visibility|category)$")
-FREE_TEXT = re.compile(r"\bfree text\b", re.I)
+FREE_TEXT = re.compile(r"^\s*free[ -]text\b", re.I)
 VALUE_COMMENT_LIMIT = 12
 CONVENTIONAL_COLUMNS = frozenset({"id", "created_at", "updated_at"})
 
@@ -115,11 +115,17 @@ def allowed_values(column: str, constraints: list[Constraint], enum_values: list
     return listed.values if listed else None
 
 
-def gaps_since(repo_root: Path, migrations_dir: Path, base: str) -> dict[str, Any]:
+def gaps_since(repo_root: Path, migrations_dir: Path, base: str, only: str | None = None) -> dict[str, Any]:
     relative = migrations_dir.resolve().relative_to(repo_root.resolve()).as_posix()
     now = _gaps_by_table(migrations_dir, repo_root)
+    if only is not None:
+        if only not in now:
+            raise ValueError(f"no table {only!r} in {migrations_dir}{_did_you_mean(only, now)}")
+        now = {only: now[only]}
     with tempfile.TemporaryDirectory() as temporary:
         before = _gaps_by_table(_migrations_at(repo_root, base, relative, Path(temporary)), Path(temporary))
+    if only is not None:
+        before = {only: before.get(only, [])}
     tables = {}
     for table in sorted(set(now) | set(before)):
         opened = [gap for gap in now.get(table, []) if gap not in before.get(table, [])]
@@ -175,7 +181,7 @@ def _column_gaps(column: str, info: dict[str, Any], listed: ValueList | None, sc
         gaps.append(f"column {column} has no COMMENT ON saying what it means")
     if listed is None and STATUS_LIKE.search(column) and not _declared_open(column, comment, constraints):
         gaps.append(f"status-like column {column} has no value list; add CHECK ({column} IN (...)) or an enum type, "
-                    "or say 'free text' in its comment or constrain it with another CHECK")
+                    "or begin its comment with 'free text' or constrain it with another CHECK")
     if listed and not info.get("not_null") and not listed.null_decided and info["type"] not in schema.enums:
         gaps.append(f"column {column} lists its values without deciding NULL; make it NOT NULL, or write "
                     f"CHECK ({column} IS NULL OR {column} IN (...)) or CHECK ({column} IS NOT NULL AND {column} IN (...))")

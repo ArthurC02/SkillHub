@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 2.8.1
+
+### Fixed
+
+- The free-text escape for a status-like column now requires the comment to begin with `free text` or `free-text` (any case), so a comment such as `Not free text: one of the vendor phases` no longer escapes the value-list gap and the common hyphenated spelling does.
+- `describe-table --table <name> --base <ref>` scopes the report and the exit code to that table instead of silently ignoring `--table`; a table the migrations do not create is refused.
+
 ## 2.8.0
 
 ### Added

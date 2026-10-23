@@ -241,11 +241,13 @@ CREATE TABLE loose (
     step text NOT NULL CHECK (step IN ('run', 'running')),
     role text,
     level text CHECK (level <> ''),
-    category text
+    category text,
+    kind text
 );
 COMMENT ON COLUMN loose.step IS 'running: the step is executing; run: it finished.';
 COMMENT ON COLUMN loose.role IS 'free text job title';
-COMMENT ON COLUMN loose.category IS 'a free-form label';
+COMMENT ON COLUMN loose.category IS 'Not free text: one of the vendor labels';
+COMMENT ON COLUMN loose.kind IS 'Free-text label';
 """
 TIDY = """CREATE TABLE tidy (id uuid PRIMARY KEY, state text NOT NULL CHECK (state IN ('on', 'off')), owner uuid REFERENCES users (id) ON DELETE CASCADE);
 COMMENT ON TABLE tidy IS 'one switch per owner';
@@ -311,11 +313,11 @@ class CompletenessDescribeTest(RegistryTestCase):
         )
         self.assertEqual(
             ["the table has no COMMENT ON saying what one row is", "column mode has no COMMENT ON saying what it means",
-             "status-like column mode has no value list; add CHECK (mode IN (...)) or an enum type, or say 'free text' in its "
-             "comment or constrain it with another CHECK",
+             "status-like column mode has no value list; add CHECK (mode IN (...)) or an enum type, or begin its comment with "
+             "'free text' or constrain it with another CHECK",
              "column level has no COMMENT ON saying what it means",
-             "status-like column category has no value list; add CHECK (category IN (...)) or an enum type, or say 'free text' in its "
-             "comment or constrain it with another CHECK"],
+             "status-like column category has no value list; add CHECK (category IN (...)) or an enum type, or begin its comment "
+             "with 'free text' or constrain it with another CHECK"],
             self.describe("loose")["gaps"],
         )
         with_run = FENCE.replace("running: the step is executing; run: it finished.", "running: the step is executing.")
@@ -346,14 +348,24 @@ class CompletenessDescribeTest(RegistryTestCase):
             (["loose", "orders"], 4, ["column memo has no COMMENT ON saying what it means"],
              ["column note has no COMMENT ON saying what it means"],
              ["the table has no COMMENT ON saying what one row is", "column mode has no COMMENT ON saying what it means",
-              "status-like column mode has no value list; add CHECK (mode IN (...)) or an enum type, or say 'free text' in its "
-              "comment or constrain it with another CHECK"], []),
+              "status-like column mode has no value list; add CHECK (mode IN (...)) or an enum type, or begin its comment with "
+              "'free text' or constrain it with another CHECK"], []),
             (sorted(since["tables"]), since["new_gaps"], since["tables"]["orders"]["new_gaps"], since["tables"]["orders"]["closed_gaps"],
              since["tables"]["loose"]["new_gaps"], since["tables"]["loose"]["closed_gaps"]),
         )
         refused = self.run_cli(*self.common, "--base", "HEAD", "--require-complete")
         self.assertEqual((1, "NOTE: 4 new gaps since HEAD in loose (3), orders (1); the change is not done until they are closed"),
                          (refused.returncode, refused.stderr.strip()))
+        scoped = self.run_cli(*self.common, "--table", "orders", "--base", "HEAD", "--require-complete")
+        self.assertEqual(
+            (1, ["orders"], 1, "NOTE: 1 new gap since HEAD in orders (1); the change is not done until they are closed"),
+            (scoped.returncode, sorted(json.loads(scoped.stdout)["tables"]), json.loads(scoped.stdout)["new_gaps"], scoped.stderr.strip()),
+        )
+        settled_table = self.run_cli(*self.common, "--table", "tidy", "--base", "HEAD", "--require-complete")
+        self.assertEqual((0, {}, "NOTE: no new gaps since HEAD"),
+                         (settled_table.returncode, json.loads(settled_table.stdout)["tables"], settled_table.stderr.strip()))
+        unknown = self.run_cli(*self.common, "--table", "order", "--base", "HEAD")
+        self.assertEqual((1, True), (unknown.returncode, unknown.stderr.startswith("ERROR: no table 'order' in ")))
         self.commit_all("change")
         settled = self.run_cli(*self.common, "--base", "HEAD", "--require-complete")
         self.assertEqual((0, {}, "NOTE: no new gaps since HEAD"), (settled.returncode, json.loads(settled.stdout)["tables"], settled.stderr.strip()))

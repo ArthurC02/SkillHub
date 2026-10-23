@@ -183,7 +183,7 @@ def handle_describe_table(args: argparse.Namespace) -> int:
 
 
 def _handle_gaps_since(args: argparse.Namespace) -> int:
-    result = gaps_since(args.repo_root.resolve(), args.migrations.resolve(), args.base)
+    result = gaps_since(args.repo_root.resolve(), args.migrations.resolve(), args.base, args.table.strip() if args.table else None)
     print_json(result)
     opened = {table: len(entry["new_gaps"]) for table, entry in result["tables"].items() if entry["new_gaps"]}
     if opened:
