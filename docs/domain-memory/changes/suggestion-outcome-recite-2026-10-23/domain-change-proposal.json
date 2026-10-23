@@ -3,12 +3,12 @@
   "proposal_id": "suggestion-outcome-recite-2026-10-23",
   "proposer": "domain-memory-agent",
   "requirement_id": "suggestion-outcome-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-23T00:35:42.180619Z",
   "verified_at": "2026-10-23T00:35:45.532387Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-23T00:36:09.432019Z",
+  "applied_at": "2026-10-23T00:36:53.032393Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "7c1e102ad90e13418da47fa06d4454f416750c60",
@@ -90,5 +90,9 @@
   ],
   "supersedes": [
     "eval-suggestion-and-judging-rules-2026-10-18"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "75ddf6620b28e66788cdc7c8c99101a8e6057bf4",
+    "registry_digest": "sha256:91f9eac3b2e69aaf5d11339bd771e274a890ccbcc72b10408e16b734d7cb6ee8"
+  }
 }
