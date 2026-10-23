@@ -117,7 +117,7 @@ PYTHON_START = r"(?:async\s+)?def\s+{name}\s*[(\[]"
 SCRIPT_START = (
     r"(?:export\s+)?(?:default\s+)?(?:"
     r"(?:async\s+)?function\s*\*?\s*{name}\s*[(<]"
-    r"|(?:const|let|var)\s+{name}\s*(?::[^=]*)?=\s*(?:async\s+)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*(?::[^=]*)?=>"
+    r"|(?:const|let|var)\s+{name}\s*(?::[^=]*)?=\s*(?:(?:async\s+)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*(?::[^=]*)?=>|$)"
     r"|(?:(?:public|private|protected|static|async|readonly|override)\s+)*{name}\s*[(<][^;]*$"
     r")"
 )
@@ -158,10 +158,11 @@ def function_span(repo_root: Path, relative: str, name: str) -> tuple[int, int]:
     _, start_form, end_form = _language(relative)
     rows = _rows(_cited_file(repo_root.resolve(), relative).read_bytes())
     pattern = re.compile(INDENT + start_form.format(name=re.escape(name)))
-    starts = [(number, found) for number, row in enumerate(rows, 1) if (found := pattern.match(row))]
+    starts = [(number, found) for number, row in enumerate(rows, 1)
+              if (found := pattern.match(row)) and _continues_as_arrow(rows, number)]
     if len(starts) != 1:
         raise ValueError(
-            f"{relative} defines no function named {name}{_defined_elsewhere(repo_root.resolve(), relative, pattern)}"
+            f"{relative} defines no function named {name} in a form --function reads{_defined_elsewhere(repo_root.resolve(), relative, pattern)}; a definition of another form is cited with --lines"
             if not starts
             else f"{relative} defines {name} {len(starts)} times; cite the one you mean with --lines"
         )
@@ -172,6 +173,13 @@ def function_span(repo_root: Path, relative: str, name: str) -> tuple[int, int]:
     return start, end
 
 
+def _continues_as_arrow(rows: list[str], number: int) -> bool:
+    if not rows[number - 1].rstrip().endswith("="):
+        return True
+    following = next((row for row in rows[number:] if row.strip()), "")
+    return "=>" in following
+
+
 def _defined_elsewhere(repo_root: Path, relative: str, pattern: re.Pattern[str]) -> str:
     suffix = Path(relative).suffix
     found = []
@@ -179,7 +187,8 @@ def _defined_elsewhere(repo_root: Path, relative: str, pattern: re.Pattern[str])
         if path == relative or not path.endswith(suffix):
             continue
         rows = _rows((repo_root / path).read_bytes())
-        found.extend(f"{path}:{number}" for number, row in enumerate(rows, 1) if pattern.match(row))
+        found.extend(f"{path}:{number}" for number, row in enumerate(rows, 1)
+                     if pattern.match(row) and _continues_as_arrow(rows, number))
     found.sort()
     if not found:
         return ""

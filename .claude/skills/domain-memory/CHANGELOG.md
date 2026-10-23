@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.0.1
+
+### Fixed
+
+- `cite --function` finds a TypeScript or JavaScript arrow function whose parameters start on the line after `const name =`, including a curried one with an expression body; a `const` whose next line holds no arrow is not taken for one.
+- The refusal for a name the file does not define says it looked for the forms `--function` reads and points a definition of another form to `--lines`, instead of reading as if the function did not exist.
+
 ## 4.0.0
 
 ### Removed

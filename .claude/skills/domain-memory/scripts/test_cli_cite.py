@@ -102,7 +102,9 @@ class CliCiteTest(RegistryTestCase):
         (self.repo / "orders.ts").write_text(
             "export async function total(a: number): Promise<number> {\n  return a;\n}\n\n"
             "const sum = (xs: number[]) =>\n  xs.reduce((a, b) => a + b, 0);\n\nexport const one = () => 1;\n\n"
-            "class Cart {\n  add(item: Item): void {\n    this.items.push(item);\n  }\n}\n",
+            "class Cart {\n  add(item: Item): void {\n    this.items.push(item);\n  }\n}\n\n"
+            "const member =\n  (values: readonly string[]): Check =>\n  (value) => values.includes(value);\n\n"
+            "export const limit =\n  5;\n",
             encoding="utf-8",
         )
         (self.repo / "app.js").write_text("function render(state) {\n  return state;\n}\n\nmodule.exports = { render };\n", encoding="utf-8")
@@ -133,7 +135,8 @@ class CliCiteTest(RegistryTestCase):
             ("total_test.go", "TestMethod", (11, 12)), ("test_total.py", "test_total", (2, 7)),
             ("test_total.py", "test_other", (9, 10)), ("total_test.go", "Map", (14, 16)),
             ("test_total.py", "test_async", (12, 13)), ("orders.ts", "total", (1, 3)), ("orders.ts", "sum", (5, 6)),
-            ("orders.ts", "one", (8, 8)), ("orders.ts", "add", (11, 13)), ("app.js", "render", (1, 3)),
+            ("orders.ts", "one", (8, 8)), ("orders.ts", "add", (11, 13)), ("orders.ts", "member", (16, 18)),
+            ("app.js", "render", (1, 3)),
             ("Order.java", "total", (4, 6)), ("Order.java", "Order", (8, 10)), ("Order.kt", "total", (1, 3)),
             ("lib.rs", "total", (1, 3)), ("lib.rs", "fetch", (5, 7)),
         ):
@@ -142,6 +145,7 @@ class CliCiteTest(RegistryTestCase):
                 self.assertEqual(lines, (cited["lines"]["start"], cited["lines"]["end"]))
 
     def test_cite_refuses_a_function_it_cannot_place(self) -> None:
+        (self.repo / "orders.ts").write_text("export const limit =\n  5;\n", encoding="utf-8")
         (self.repo / "twice.py").write_text("def f():\n    pass\n\ndef f():\n    pass\n", encoding="utf-8")
         (self.repo / "open.go").write_text("package p\n\nfunc Open() {\n\treturn\n", encoding="utf-8")
         (self.repo / "elsewhere.py").write_text("def g():\n    pass\n", encoding="utf-8")
@@ -151,9 +155,13 @@ class CliCiteTest(RegistryTestCase):
         (self.repo / "more" / "again.py").write_text("def g():\n    pass\n", encoding="utf-8")
         (self.repo / "prose.md").write_text("def h():\n", encoding="utf-8")
         for path, name, refusal in (
-            ("twice.py", "g", "ERROR: twice.py defines no function named g; "
-                               "it is defined in several files: elsewhere.py:1, more/again.py:1"),
-            ("twice.py", "h", "ERROR: twice.py defines no function named h"),
+            ("twice.py", "g", "ERROR: twice.py defines no function named g in a form --function reads; "
+                               "it is defined in several files: elsewhere.py:1, more/again.py:1; "
+                               "a definition of another form is cited with --lines"),
+            ("twice.py", "h", "ERROR: twice.py defines no function named h in a form --function reads; "
+                               "a definition of another form is cited with --lines"),
+            ("orders.ts", "limit", "ERROR: orders.ts defines no function named limit in a form --function reads; "
+                                   "a definition of another form is cited with --lines"),
             ("prose.md", "h", "ERROR: prose.md: --function reads Go, Python, TypeScript, JavaScript, Java, Kotlin, Rust "
                                "files; cite a .md file with --lines"),
             ("twice.py", "f", "ERROR: twice.py defines f 2 times; cite the one you mean with --lines"),
