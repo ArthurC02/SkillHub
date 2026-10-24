@@ -30,7 +30,7 @@ ENDPOINTS = [
         {"query": "read my invoices", "candidates": CANDIDATES},
         app_module,
         "_client",
-        8.0,
+        12.0,
     ),
     ("/suggest-criteria", SUGGEST_BODY, app_module, "_client", 30.0),
     ("/v1/enrich-skill", ENRICH_REQUEST, enrich, "client", 60.0),

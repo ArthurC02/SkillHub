@@ -22,7 +22,7 @@ import (
 )
 
 // budget-over: app.MATCH_REASONS_TIMEOUT_SECONDS
-const matchReasonsDeadline = 13 * time.Second
+const matchReasonsDeadline = 17 * time.Second
 
 // MatchReasonsBudget names this call for an operator and bounds what they may set.
 var MatchReasonsBudget = modelbudget.Endpoint{Kind: "match-reasons", Deadline: matchReasonsDeadline}
