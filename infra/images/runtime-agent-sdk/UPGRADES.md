@@ -1019,3 +1019,25 @@ exit 1（與 CI 的 I-06 失敗相同）；`2026.08-17` → `No vulnerabilities 
 ### 預設映像從 `-20` 移到 `-21`
 
 四項在 `-21` 的 digest 上跑過之後，經負責人同意移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例，以及 `apps/sandbox/README.md` 的環境變數表與建置範例。
+
+## `2026.08-21` → `2026.08-22`（2026-10-24）— **安全性修補：`zod` 與 `pypdf`；四項實測尚未跑，預設映像仍留在 `-21`**
+
+Dependabot 對這個目錄的 npm 鎖檔回報一則 High；上一版留在冷卻期的 `pypdf` 修正已過 7 天。
+
+| 套件 | 原版本 | 修正版本 | 公告 |
+| --- | --- | --- | --- |
+| `zod`（npm，`@anthropic-ai/claude-agent-sdk`、`@anthropic-ai/sdk`、`@modelcontextprotocol/sdk` 共用的傳遞依賴） | `4.5.4` | `4.6.7` | GHSA-mrhx-c7xc-m3w5（High） |
+| `pypdf`（Python） | `6.21.0` | `6.21.1` | GHSA-5hx5-vpf9-5wcv（Low） |
+
+**暴露面**：`zod` 的公告是驗證過大的受限集合時耗盡記憶體；`run.mjs` 經 SDK 驗證工具呼叫的輸入，Skill 能左右的是那一次 Run 的工具參數，影響範圍是那一次 Run 的沙箱（記憶體上限由沙箱強制）。`pypdf` 在解析 PDF 時走到。
+
+**冷卻期**：`zod` `4.6.7` 於 2026-10-12 發佈、`pypdf` `6.21.1` 於 2026-10-17 發佈，都已過 7 天。`npm audit` 另外列出 `body-parser` `2.3.0`（GHSA-27r3-jxmh-p828，High，修在 2026-10-22 的 `2.4.0`）與 `fast-uri` `3.1.8`（四則 Moderate，修在 2026-10-19 的 `3.1.9`），兩者都還在冷卻期內，**這一版不收**，留給下一次升版；兩者都只在 `@modelcontextprotocol/sdk` 的 HTTP 傳輸路徑上，`run.mjs` 只用行程內的 MCP 伺服器，沒有監聽埠。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `package-lock.json` 只換 `zod`（`npm update zod --package-lock-only`，在各宣告範圍 `^4.0.0`／`^3.25 \|\| ^4.0` 內，`package.json` 一字未動）；`constraints.txt` 與 Dockerfile 的 `pypdf`；`ARG IMAGE_VERSION` |
+| 新增的依賴 | 無 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| `run.mjs` | **未變**。上一節記下的 `gatewaySpend` 結算競態**不在這一版修**：要等過閘道 5–10 秒的寫入延遲，等於每一次 Run 結束都多等這麼久，而它只影響 trace 上顯示的費用，扣點用的是平台自己讀的 spend log |
+| 預設映像 | 仍是 `-21`；四項在 CI 發佈的 digest 上跑過之後才移動 |
