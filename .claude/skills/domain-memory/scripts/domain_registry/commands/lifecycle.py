@@ -38,6 +38,7 @@ from ..registry import (
 )
 from ..relocate import line_range
 from ..ship import ship_package
+from ..sources import Listing, listing_of
 from ..sql_candidates import extract_sql_rules
 from ..sql_schema import sql_directory_inside
 from ..store import read_document
@@ -95,17 +96,15 @@ def handle_redraft_proposal(args: argparse.Namespace) -> int:
 
 
 def handle_validate(args: argparse.Namespace) -> int:
-    errors = validate(
-        args.registry_root.resolve(),
-        args.repo_root.resolve() if args.repo_root else None,
-        args.require_reviewed,
-    )
+    repo_root = args.repo_root.resolve() if args.repo_root else None
+    listing = listing_of(repo_root) if repo_root else None
+    errors = validate(args.registry_root.resolve(), repo_root, args.require_reviewed, listing)
     exit_code = report_errors(errors, "Registry is valid.")
     note_unsettled(args.registry_root.resolve())
     if exit_code == 0:
         _print_notes(registry_consistency_notes(args.registry_root.resolve()))
-    if exit_code == 0 and args.repo_root:
-        _note_unplaced(args.registry_root.resolve(), args.repo_root.resolve())
+    if exit_code == 0 and repo_root:
+        _note_unplaced(args.registry_root.resolve(), repo_root, listing)
     return exit_code
 
 
@@ -114,10 +113,10 @@ def _print_notes(notes: list[str]) -> None:
         print(note, file=sys.stderr)
 
 
-def _note_unplaced(registry_root: Path, repo_root: Path) -> None:
+def _note_unplaced(registry_root: Path, repo_root: Path, listing: Listing) -> None:
     unplaced = [
         f"contexts/{identifier} implementation_path {path}"
-        for identifier, path, reviewed in unplaced_implementation_paths(read_document(registry_root, "contexts.json"), repo_root)
+        for identifier, path, reviewed in unplaced_implementation_paths(read_document(registry_root, "contexts.json"), repo_root, listing)
         if not reviewed
     ]
     if unplaced:

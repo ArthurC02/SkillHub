@@ -20,6 +20,7 @@ from .common import (
     writer_lock,
 )
 from .registry import validate
+from .sources import listing_of
 from .revision import registry_digest
 
 
@@ -168,9 +169,10 @@ def mutate_registry(
         try:
             shutil.copytree(registry_dir(root), staging_registry)
             mutate(staging)
-            errors = validate(staging, repo_root, require_reviewed=False)
+            listing = listing_of(repo_root) if repo_root is not None else None
+            errors = validate(staging, repo_root, require_reviewed=False, listing=listing)
             if errors:
-                already = set(validate(root, repo_root, require_reviewed=False))
+                already = set(validate(root, repo_root, require_reviewed=False, listing=listing))
                 errors = [error for error in errors if error not in already]
             if errors:
                 raise ValueError("registry update is invalid: " + "; ".join(errors))

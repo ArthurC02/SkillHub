@@ -531,6 +531,14 @@ class CompletenessDescribeTest(RegistryTestCase):
         with self.assertRaisesRegex(ValueError, r"^could not read db/migrations at nowhere: "):
             gaps_since(self.repo, self.migrations, "nowhere")
 
+    def test_the_base_revision_reads_only_the_sql_files_directly_under_the_migrations_directory(self) -> None:
+        (self.migrations / "seed").mkdir()
+        (self.migrations / "seed" / "0009_seed.sql").write_text("CREATE TABLE seeded (id uuid PRIMARY KEY);\n", encoding="utf-8")
+        (self.migrations / "README.txt").write_text("CREATE TABLE prose (id uuid PRIMARY KEY);\n", encoding="utf-8")
+        self.commit_all("migrations with a seed directory")
+        (self.migrations / "0002_change.sql").write_text("COMMENT ON TABLE seeded IS 'planted';\n", encoding="utf-8")
+        self.assertEqual({}, gaps_since(self.repo, self.migrations, "HEAD")["tables"])
+
 
 if __name__ == "__main__":
     unittest.main()

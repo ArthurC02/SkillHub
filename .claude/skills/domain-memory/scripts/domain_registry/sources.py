@@ -1,6 +1,7 @@
 import fnmatch
 import hashlib
 import os
+from functools import cache
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -107,6 +108,13 @@ def existing_directories(root: Path, candidates: tuple[str, ...]) -> list[str]:
     return [candidate for candidate in candidates if (root / candidate).is_dir()]
 
 
+Listing = Callable[[], list[str]]
+
+
+def listing_of(root: Path, excluded: frozenset[str] = EXCLUDED_DIRECTORIES) -> Listing:
+    return cache(lambda: repository_files(root, excluded))
+
+
 def repository_files(root: Path, excluded: frozenset[str] = EXCLUDED_DIRECTORIES) -> list[str]:
     found: list[str] = []
     _collect_files(str(root), "", excluded, found)
@@ -161,11 +169,11 @@ def is_test_file(name: str) -> bool:
     )
 
 
-def discover_sources(root: Path, profile: dict[str, list[str]] | None = None) -> dict[str, Any]:
+def discover_sources(root: Path, profile: dict[str, list[str]] | None = None, listing: Listing | None = None) -> dict[str, Any]:
     root = root.resolve()
     profile = profile or project_profile(None)
     ci_tools = discover_ci_tools(root)
-    files = repository_files(root, EXCLUDED_DIRECTORIES | frozenset(profile["excluded_directories"]))
+    files = (listing or listing_of(root, EXCLUDED_DIRECTORIES | frozenset(profile["excluded_directories"])))()
     candidates = (_instruction_candidates(files), _boundary_candidates(files, profile), test_candidates(files))
     ignored = ignored_relatives(root, [entry for group in candidates for entry in group])
     instructions, boundaries, tests = ([entry for entry in group if entry not in ignored] for group in candidates)

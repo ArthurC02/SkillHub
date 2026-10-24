@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
@@ -698,11 +698,15 @@ def _read_dynamic(schema: Schema, file: str, line: int, head: str) -> None:
 
 
 def read_schema(migrations_dir: Path, repo_root: Path) -> Schema:
+    return read_schema_texts((path.resolve().relative_to(repo_root.resolve()).as_posix(), path.read_text(encoding="utf-8"))
+                             for path in sorted(migrations_dir.glob("*.sql")))
+
+
+def read_schema_texts(migrations: Iterable[tuple[str, str]]) -> Schema:
     schema = Schema()
-    for path in sorted(migrations_dir.glob("*.sql")):
-        file = path.resolve().relative_to(repo_root.resolve()).as_posix()
+    for file, text in migrations:
         schema.migrations.append(file)
-        for line, statement in statements(path.read_text(encoding="utf-8")):
+        for line, statement in statements(text):
             read_statement(schema, file, line, statement)
     return schema
 

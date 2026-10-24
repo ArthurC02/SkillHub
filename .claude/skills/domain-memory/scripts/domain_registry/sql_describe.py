@@ -4,7 +4,6 @@ import difflib
 import io
 import re
 import tarfile
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -25,6 +24,7 @@ from .sql_schema import (
     live_tables,
     one_line,
     read_schema,
+    read_schema_texts,
     statements,
     strip_comments,
     top_level_words,
@@ -188,13 +188,12 @@ def allowed_values(column: str, constraints: list[Constraint], enum_values: list
 def gaps_since(repo_root: Path, migrations_dir: Path, base: str, only: str | None = None,
                conventions: Conventions = DEFAULT_CONVENTIONS) -> dict[str, Any]:
     relative = migrations_dir.resolve().relative_to(repo_root.resolve()).as_posix()
-    now = _gaps_by_table(migrations_dir, repo_root, conventions)
+    now = _gaps_by_table(read_schema(migrations_dir, repo_root), conventions)
     if only is not None:
         if only not in now:
             raise ValueError(f"no table {only!r} in {migrations_dir}{_did_you_mean(only, now)}")
         now = {only: now[only]}
-    with tempfile.TemporaryDirectory() as temporary:
-        before = _gaps_by_table(_migrations_at(repo_root, base, relative, Path(temporary)), Path(temporary), conventions)
+    before = _gaps_by_table(read_schema_texts(_migrations_at(repo_root, base, relative)), conventions)
     if only is not None:
         before = {only: before.get(only, [])}
     tables = {}
@@ -206,22 +205,23 @@ def gaps_since(repo_root: Path, migrations_dir: Path, base: str, only: str | Non
     return {"base": base, "tables": tables, "new_gaps": sum(len(entry["new_gaps"]) for entry in tables.values())}
 
 
-def _migrations_at(repo_root: Path, base: str, relative: str, into: Path) -> Path:
+def _migrations_at(repo_root: Path, base: str, relative: str) -> list[tuple[str, str]]:
     failure = f"could not read {relative} at {base}"
     listed = checked_git_bytes(repo_root, "ls-tree", "-d", base, "--", relative, failure=failure)
-    target = into / relative
     if not listed.stdout.strip():
-        target.mkdir(parents=True)
-        return target
+        return []
     archive = checked_git_bytes(repo_root, "archive", "--format=tar", base, "--", relative, failure=failure)
     with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
-        members = [member for member in tar.getmembers() if member.isfile() and ".." not in Path(member.name).parts]
-        tar.extractall(into, members=members)
-    return target
+        members = sorted((member for member in tar.getmembers() if member.isfile() and _directly_under(member.name, relative)),
+                         key=lambda member: member.name)
+        return [(member.name, tar.extractfile(member).read().decode("utf-8")) for member in members]
 
 
-def _gaps_by_table(migrations_dir: Path, repo_root: Path, conventions: Conventions) -> dict[str, list[str]]:
-    schema = read_schema(migrations_dir, repo_root)
+def _directly_under(name: str, relative: str) -> bool:
+    return name.startswith(relative + "/") and "/" not in name[len(relative) + 1:] and name.endswith(".sql")
+
+
+def _gaps_by_table(schema: Schema, conventions: Conventions) -> dict[str, list[str]]:
     return {name: _gaps(table, schema, conventions) for name, table in live_tables(schema).items()}
 
 

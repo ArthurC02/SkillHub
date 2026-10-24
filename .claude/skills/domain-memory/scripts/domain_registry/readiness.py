@@ -7,7 +7,7 @@ from .common import load_json, one_level_too_deep_hint, shown_path
 from .locate import domain_memories_in
 from .policy import existing_policy, project_profile
 from .registry import coverage, validate
-from .sources import discover_sources, listing_drift, verify_source_map
+from .sources import Listing, discover_sources, listing_drift, listing_of, verify_source_map
 
 PRODUCT_GROUPS = (
     "decisions",
@@ -21,7 +21,7 @@ UNUSABLE_REGISTRY_STATUSES = {"invalid", "unverified", "stale"}
 
 
 def registry_condition(
-    repo_root: Path, registry_path: Path
+    repo_root: Path, registry_path: Path, listing: Listing | None = None
 ) -> tuple[str, int, list[str]]:
     if not registry_path.exists():
         return "absent", 0, []
@@ -44,7 +44,7 @@ def registry_condition(
                 "before they can guide implementation."
             ],
         )
-    errors = validate(registry_path, repo_root, False)  # noqa: FBT003
+    errors = validate(registry_path, repo_root, False, listing)  # noqa: FBT003
     if errors:
         return (
             "invalid",
@@ -118,7 +118,9 @@ def assess_readiness(
     repo_root: Path, registry_root: Path | None = None
 ) -> dict[str, Any]:
     repo_root = repo_root.resolve()
-    discovered = discover_sources(repo_root, project_profile(_readable_policy(registry_root)))
+    profile = project_profile(_readable_policy(registry_root))
+    listing = listing_of(repo_root)
+    discovered = discover_sources(repo_root, profile, listing if not profile["excluded_directories"] else None)
     groups = {group["kind"]: group["paths"] for group in discovered["source_groups"]}
     present = {kind: bool(groups.get(kind)) for kind in PRODUCT_GROUPS}
     product_sources = any(present.values())
@@ -131,7 +133,7 @@ def assess_readiness(
     registry_records = 0
     if registry_root:
         registry_status, registry_records, blocks = registry_condition(
-            repo_root, registry_root.resolve()
+            repo_root, registry_root.resolve(), listing
         )
         if registry_status != "absent" and registry_status not in UNUSABLE_REGISTRY_STATUSES:
             signals.append(_listing_signal(discovered, registry_root.resolve()))
