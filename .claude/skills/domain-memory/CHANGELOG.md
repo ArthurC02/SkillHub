@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.4
+
+### Changed
+
+- `validate`, `readiness` and `coverage` read each Registry document once per command, as `brief` has since 4.2.2; `readiness` used to decode the Registry three times (for its validation, its coverage and its record count). Output is unchanged.
+
 ## 4.2.3
 
 ### Changed

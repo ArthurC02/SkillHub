@@ -372,6 +372,11 @@ def handle_probe(args: argparse.Namespace) -> int:
 
 
 def handle_readiness(args: argparse.Namespace) -> int:
+    with documents_read_once():
+        return _handle_readiness(args)
+
+
+def _handle_readiness(args: argparse.Namespace) -> int:
     result, located = readiness_report(args.repo_root, args.registry_root)
     print_json(result)
     if located:
@@ -389,6 +394,11 @@ def handle_list_proposals(args: argparse.Namespace) -> int:
 
 
 def handle_coverage(args: argparse.Namespace) -> int:
+    with documents_read_once():
+        return _handle_coverage(args)
+
+
+def _handle_coverage(args: argparse.Namespace) -> int:
     root = args.registry_root.resolve()
     changes_root = packages_root(root, args.changes_root)
     print_json({**coverage(root), **rule_coverage(root, changes_root)})

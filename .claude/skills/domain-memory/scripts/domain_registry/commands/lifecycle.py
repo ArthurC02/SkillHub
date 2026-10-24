@@ -41,7 +41,7 @@ from ..ship import ship_package
 from ..sources import Listing, listing_of
 from ..sql_candidates import extract_sql_rules
 from ..sql_schema import sql_directory_inside
-from ..store import read_document
+from ..store import documents_read_once, read_document
 from ..transaction import recover_interrupted_update, transaction_path
 from ..updates import (
     add_promoted_evidence,
@@ -96,6 +96,11 @@ def handle_redraft_proposal(args: argparse.Namespace) -> int:
 
 
 def handle_validate(args: argparse.Namespace) -> int:
+    with documents_read_once():
+        return _handle_validate(args)
+
+
+def _handle_validate(args: argparse.Namespace) -> int:
     repo_root = args.repo_root.resolve() if args.repo_root else None
     listing = listing_of(repo_root) if repo_root else None
     errors = validate(args.registry_root.resolve(), repo_root, args.require_reviewed, listing)
