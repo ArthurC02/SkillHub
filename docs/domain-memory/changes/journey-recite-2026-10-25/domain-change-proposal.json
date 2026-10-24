@@ -3,12 +3,12 @@
   "proposal_id": "journey-recite-2026-10-25",
   "proposer": "domain-memory-agent",
   "requirement_id": "journey-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-24T16:33:00.326173Z",
   "verified_at": "2026-10-24T16:33:07.642389Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-24T16:33:29.300782Z",
+  "applied_at": "2026-10-24T16:33:58.686773Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "4c675df388921e340a4beb67c3c4dd6bb7619642",
@@ -203,5 +203,9 @@
     "dispatch-halt-reaches-model-calls-and-queue",
     "p1-halt-stops-enrichment",
     "shifted-recite-2026-10-24"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "6c4aef746458988a8fe54062e882b90875bd50e2",
+    "registry_digest": "sha256:70620925ffb05d1bb05df4b58ec925fa573df96c1e53f2c63e682f241511d3d2"
+  }
 }
