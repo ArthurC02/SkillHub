@@ -3,12 +3,12 @@
   "proposal_id": "reasons-recite-2026-10-25",
   "proposer": "domain-memory-agent",
   "requirement_id": "reasons-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-24T22:59:16.063758Z",
   "verified_at": "2026-10-24T22:59:31.211073Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-24T22:59:54.942124Z",
+  "applied_at": "2026-10-24T23:00:22.685052Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "596395aff3a82e950bb8048ffa2535b3646ef72a",
@@ -394,5 +394,9 @@
     "catalog-harvest-rules-2026-10-17",
     "catalog-search-rules-2026-10-18",
     "shifted-recite-2026-10-24"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "2311c4cfbb02496b257066331feb1db1d23e1d55",
+    "registry_digest": "sha256:dfa66566ea0b364baa6ba93e5864e53f47dfcf4b94b7bf62ee142fc41a1cbbe6"
+  }
 }
