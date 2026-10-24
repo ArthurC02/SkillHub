@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.2
+
+### Changed
+
+- `brief --base` reads the base revision's Registry as one `git archive` instead of one `cat-file` object per concept file, and reads each current Registry document once per brief instead of once per record it mentions. On a Registry of 1,400 concept files the brief goes from 9.3 s to under 3 s; its output is unchanged.
+- When git has already told the repository walk which entries it ignores, discovery and quality gates no longer ask `git check-ignore` about the files that walk returned; they still ask when the walk could not consult git, so the refusal when ignored files cannot be told from sources is kept for that case.
+
 ## 4.2.1
 
 ### Changed

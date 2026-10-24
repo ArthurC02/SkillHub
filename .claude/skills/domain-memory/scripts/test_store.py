@@ -15,6 +15,7 @@ from domain_registry.store import (
     read_record,
     MANIFEST,
     committed_documents,
+    documents_read_once,
     has_registry,
     read_document,
     write_document,
@@ -201,12 +202,12 @@ class DigestAndHistoryTest(RegistryTestCase):
     def test_a_commit_git_cannot_read_is_refused_naming_the_commit_and_what_git_said(self) -> None:
         commit = self.head()
 
-        def cat_file_fails(arguments: list[str], **options: object) -> subprocess.CompletedProcess:
-            if "cat-file" in arguments:
+        def archive_fails(arguments: list[str], **options: object) -> subprocess.CompletedProcess:
+            if "archive" in arguments:
                 return subprocess.CompletedProcess(arguments, 128, b"", b"fatal: object store is locked\n")
             return run_bounded(arguments, **options)
 
-        with patch("domain_registry.git.run_bounded", side_effect=cat_file_fails), \
+        with patch("domain_registry.git.run_bounded", side_effect=archive_fails), \
                 self.assertRaises(ValueError) as refused:
             committed_documents(self.repo, commit, self.repo / "memory", (MANIFEST, "rules.json"))
         self.assertEqual(f"git could not read {commit}: fatal: object store is locked", str(refused.exception))
@@ -225,6 +226,18 @@ class DigestAndHistoryTest(RegistryTestCase):
         with patch("domain_registry.git.run_bounded", side_effect=lists_a_ghost):
             documents = committed_documents(self.repo, commit, self.repo / "memory", (MANIFEST, "rules.json"))
         self.assertEqual([ORDER_RULE], documents["rules.json"]["rules"])
+
+
+class ReadOnceTest(RegistryTestCase):
+    def test_inside_a_read_once_scope_a_document_is_read_from_disk_once_and_each_reader_gets_its_own_copy(self) -> None:
+        write_document(self.repo / "memory", "rules.json", {"rules": [ORDER_RULE]})
+        with documents_read_once():
+            first = read_document(self.repo / "memory", "rules.json")
+            first["rules"].clear()
+            write_document(self.repo / "memory", "rules.json", {"rules": []})
+            second = read_document(self.repo / "memory", "rules.json")
+        after = read_document(self.repo / "memory", "rules.json")
+        self.assertEqual(([ORDER_RULE], []), (second["rules"], after["rules"]))
 
 
 class ReadRecordTest(RegistryTestCase):

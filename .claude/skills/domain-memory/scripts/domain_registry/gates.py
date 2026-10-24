@@ -10,7 +10,7 @@ from .git_hooks import hooks_dir
 from .sources import (
     discover_ci_markers,
     file_name,
-    ignored_relatives,
+    ignored_among,
     repository_files,
     test_candidates,
 )
@@ -212,7 +212,7 @@ def quality_gates(repo_root: Path) -> dict[str, Any]:
         raise ValueError(f"repository root is not a directory: {repo_root}")
     files = repository_files(root)
     candidates, tests = candidate_files(files), test_candidates(files)
-    ignored = ignored_relatives(root, candidates + tests)
+    ignored = ignored_among(root, files, candidates + tests)
     gates = configured_gates(root, [entry for entry in candidates if entry not in ignored])
     gates.extend(go_test_gates(
         [entry for entry in candidates if entry not in ignored], [entry for entry in tests if entry not in ignored]

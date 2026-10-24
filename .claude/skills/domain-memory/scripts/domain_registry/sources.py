@@ -77,6 +77,12 @@ def _untracked(root: Path, relatives: list[str]) -> list[str]:
     return [entry for entry in relatives if entry not in tracked]
 
 
+def ignored_among(root: Path, files: list[str], relatives: list[str]) -> set[str]:
+    if getattr(files, "pruned_by_git", False):
+        return set()
+    return ignored_relatives(root, relatives)
+
+
 def ignored_relatives(root: Path, relatives: list[str]) -> set[str]:
     if not relatives or not (root / ".git").exists():
         return set()
@@ -109,6 +115,10 @@ def existing_directories(root: Path, candidates: tuple[str, ...]) -> list[str]:
     return [candidate for candidate in candidates if (root / candidate).is_dir()]
 
 
+class Files(list[str]):
+    pruned_by_git = False
+
+
 Listing = Callable[[], list[str]]
 
 
@@ -116,19 +126,21 @@ def listing_of(root: Path, excluded: frozenset[str] = EXCLUDED_DIRECTORIES) -> L
     return cache(lambda: repository_files(root, excluded))
 
 
-def repository_files(root: Path, excluded: frozenset[str] = EXCLUDED_DIRECTORIES) -> list[str]:
-    found: list[str] = []
-    _collect_files(str(root), "", excluded, git_ignored_entries(root), found)
+def repository_files(root: Path, excluded: frozenset[str] = EXCLUDED_DIRECTORIES) -> Files:
+    ignored = git_ignored_entries(root)
+    found = Files()
+    found.pruned_by_git = ignored is not None
+    _collect_files(str(root), "", excluded, ignored or frozenset(), found)
     return found
 
 
-def git_ignored_entries(root: Path) -> frozenset[str]:
+def git_ignored_entries(root: Path) -> frozenset[str] | None:
     try:
         listed = run_git_bytes(root, "ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z")
     except (OSError, subprocess.SubprocessError):
-        return frozenset()
+        return None
     if listed.returncode != 0:
-        return frozenset()
+        return None
     return frozenset(entry.decode("utf-8", "surrogateescape") for entry in listed.stdout.split(b"\0") if entry)
 
 
@@ -188,7 +200,7 @@ def discover_sources(root: Path, profile: dict[str, list[str]] | None = None, li
     ci_tools = discover_ci_tools(root)
     files = (listing or listing_of(root, EXCLUDED_DIRECTORIES | frozenset(profile["excluded_directories"])))()
     candidates = (_instruction_candidates(files), _boundary_candidates(files, profile), test_candidates(files))
-    ignored = ignored_relatives(root, [entry for group in candidates for entry in group])
+    ignored = ignored_among(root, files, [entry for group in candidates for entry in group])
     instructions, boundaries, tests = ([entry for entry in group if entry not in ignored] for group in candidates)
     groups = [
         {

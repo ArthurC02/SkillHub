@@ -385,6 +385,17 @@ class SourcesTest(RegistryTestCase):
             (Path(plain) / ".gitignore").write_text("*.txt\n", encoding="utf-8")
             self.assertEqual([".gitignore", "a/b.txt"], repository_files(Path(plain)))
 
+    def test_discovery_does_not_ask_check_ignore_again_when_git_already_pruned_the_walk(self) -> None:
+        self.write_files("apps/svc/thing_test.go")
+        with patch("domain_registry.sources.ignored_relatives", side_effect=AssertionError("check-ignore asked")):
+            self.assertEqual(["apps/svc/thing_test.go"], self.discovery_groups("tests"))
+
+    def test_discovery_still_asks_check_ignore_when_the_walk_could_not_consult_git(self) -> None:
+        self.write_files("apps/svc/thing_test.go")
+        with patch("domain_registry.sources.git_ignored_entries", return_value=None), \
+                patch("domain_registry.sources.ignored_relatives", return_value={"apps/svc/thing_test.go"}):
+            self.assertEqual([], self.discovery_groups("tests"))
+
     def test_without_a_working_git_the_repository_walk_lists_every_file(self) -> None:
         (self.repo / "cache").mkdir()
         (self.repo / "cache" / "blob.bin").write_bytes(b"x")

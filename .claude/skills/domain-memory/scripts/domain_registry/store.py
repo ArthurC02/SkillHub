@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 import re
-import subprocess
+import copy
+import io
+import tarfile
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +17,7 @@ from .common import (
     shown_path,
 )
 from .evidence import without_derived_keys
-from .git import read_objects, run_git_bytes
+from .git import run_git_bytes
 from .locate import domain_memory_hint
 from .okf import OKF_VERSION, PROSE_FIELDS, TITLE_FIELDS, concept_path, decode, encode
 
@@ -56,7 +61,29 @@ def manifest_document() -> dict[str, Any]:
     return {"format": MANIFEST_FORMAT, "status": DEFAULT_STATUS, "artifacts": list(ASSET_KEYS)}
 
 
+_READ_ONCE: ContextVar[dict[tuple[str, str], dict[str, Any]] | None] = ContextVar("documents_read_once", default=None)
+
+
+@contextmanager
+def documents_read_once() -> Iterator[None]:
+    token = _READ_ONCE.set({})
+    try:
+        yield
+    finally:
+        _READ_ONCE.reset(token)
+
+
 def read_document(root: Path, name: str) -> dict[str, Any]:
+    held = _READ_ONCE.get()
+    if held is None:
+        return _read_document(root, name)
+    key = (str(root), name)
+    if key not in held:
+        held[key] = _read_document(root, name)
+    return copy.deepcopy(held[key])
+
+
+def _read_document(root: Path, name: str) -> dict[str, Any]:
     if not has_registry(root):
         raise ValueError(missing_registry(root))
     if name == MANIFEST:
@@ -190,10 +217,9 @@ def _first_sentence(prose: Any) -> str:
 def committed_documents(repo_root: Path, commit: str, root: Path, names: tuple[str, ...]) -> dict[str, Any] | None:
     registry = registry_dir(root).resolve().relative_to(repo_root.resolve()).as_posix()
     listing = run_git_bytes(repo_root, "ls-tree", "-r", "--name-only", "-z", commit, "--", registry)
-    if listing.returncode != 0:
+    if listing.returncode != 0 or not listing.stdout.strip():
         return None
-    paths = [path for path in listing.stdout.decode("utf-8", "surrogateescape").split("\0") if path]
-    contents = _blobs(repo_root, commit, paths)
+    contents = _archived_texts(repo_root, commit, registry)
     if f"{registry}/{INDEX}" not in contents:
         return None
     documents: dict[str, Any] = {}
@@ -211,11 +237,11 @@ def committed_documents(repo_root: Path, commit: str, root: Path, names: tuple[s
     return documents
 
 
-def _blobs(repo_root: Path, commit: str, paths: list[str]) -> dict[str, str]:
-    try:
-        found = read_objects(repo_root, (f"{commit}:{path}" for path in paths))
-    except subprocess.CalledProcessError as error:
-        stderr = error.stderr.decode("utf-8", "replace").strip()
-        raise ValueError(f"git could not read {commit}: {stderr or error.returncode}") from error
-    return {path: found[f"{commit}:{path}"].decode("utf-8") for path in paths if f"{commit}:{path}" in found}
+def _archived_texts(repo_root: Path, commit: str, directory: str) -> dict[str, str]:
+    archive = run_git_bytes(repo_root, "archive", "--format=tar", commit, "--", directory)
+    if archive.returncode != 0:
+        stderr = archive.stderr.decode("utf-8", "replace").strip()
+        raise ValueError(f"git could not read {commit}: {stderr or archive.returncode}")
+    with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
+        return {member.name: tar.extractfile(member).read().decode("utf-8") for member in tar.getmembers() if member.isfile()}
 

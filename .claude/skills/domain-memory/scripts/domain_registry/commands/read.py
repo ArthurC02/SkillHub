@@ -42,7 +42,7 @@ from ..registry import (
 )
 from ..search import CONSTRAINT_ASSETS, MATCH_KINDS, every_resolved_term, prose_mentions, ranked_lookup
 from ..sources import counted, discovery_drift_note, probe_sources, refresh_listing_advice
-from ..store import committed_documents, read_document
+from ..store import committed_documents, documents_read_once, read_document
 from .common import print_json
 
 
@@ -314,6 +314,11 @@ def handle_boundary_impact(args: argparse.Namespace) -> int:
 
 
 def handle_brief(args: argparse.Namespace) -> int:
+    with documents_read_once():
+        return _handle_brief(args)
+
+
+def _handle_brief(args: argparse.Namespace) -> int:
     by_record = args.asset is not None or args.id is not None
     if (args.base is None) == (not by_record) or (by_record and not (args.asset and args.id)):
         raise ValueError("brief needs --base <revision>, or --asset <asset> --id <id>, not both")
