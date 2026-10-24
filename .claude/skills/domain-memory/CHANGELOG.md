@@ -2,6 +2,20 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.1.0
+
+### Added
+
+- `describe-table` without `--table` or `--base` prints the catalog: every live table with where it is declared, its meaning and the counts of its columns, undescribed columns and gaps, so an agent finds the table before reading one whole description; `--require-complete` exits 1 while any table has a gap.
+- `describe-table --queries <dir>` lists, under `queries`, each statement in the `.sql` files under that directory that reads or writes the table, with its line, its verb and the table's columns it uses, so the agent sees how the table is used today; a NOTE says when none does.
+- `history` on a described table: the migrations that created, altered, indexed, triggered or commented on it, in application order.
+- `mcp-serve` offers `describe_table`, with `migrations` and `queries` read relative to the repository.
+
+### Changed
+
+- The SQL reader scans statements, table bodies and clauses by the characters that matter instead of one character at a time; the 144 migrations of a 73-table schema read in 0.56 s instead of 0.90 s with an identical result.
+- `validate` and `readiness` matched every Context's `implementation_path` against every repository file by building a path object for each pair; the distinct directories are collected once and matched as text, with the same answers. The repository walk behind discovery, `validate`, `quality-gates` and `verify-sources` no longer stats every directory a second time. On a repository of 108,000 files and 18 Contexts, `validate` took 106 s and takes 17 s; `readiness` took 65 s and takes 14 s.
+
 ## 4.0.2
 
 ### Fixed

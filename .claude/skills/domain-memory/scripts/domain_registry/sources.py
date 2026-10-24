@@ -108,16 +108,27 @@ def existing_directories(root: Path, candidates: tuple[str, ...]) -> list[str]:
 
 
 def repository_files(root: Path, excluded: frozenset[str] = EXCLUDED_DIRECTORIES) -> list[str]:
-    top = str(root)
-    found = []
-    for directory, children, files in os.walk(top):
-        if directory != top and (".git" in children or ".git" in files):
-            children[:] = []
-            continue
-        children[:] = [name for name in children if name not in excluded]
-        prefix = "" if directory == top else directory[len(top) + 1 :].replace(os.sep, "/") + "/"
-        found.extend(prefix + name for name in files)
+    found: list[str] = []
+    _collect_files(str(root), "", excluded, found)
     return found
+
+
+def _collect_files(directory: str, prefix: str, excluded: frozenset[str], found: list[str]) -> None:
+    try:
+        with os.scandir(directory) as entries:
+            listed = list(entries)
+    except OSError:
+        return
+    if prefix and any(entry.name == ".git" for entry in listed):
+        return
+    children = []
+    for entry in listed:
+        if not entry.is_dir():
+            found.append(prefix + entry.name)
+        elif entry.name not in excluded and not entry.is_symlink():
+            children.append(entry)
+    for entry in children:
+        _collect_files(entry.path, prefix + entry.name + "/", excluded, found)
 
 
 def file_name(relative_path: str) -> str:
@@ -782,12 +793,16 @@ def write_and_audit(
 
 
 def lies_under(path: str, implementation_path: str) -> bool:
-    directories = PurePosixPath(path).parts[:-1]
-    owned = PurePosixPath(implementation_path.strip("/")).parts
-    return any(
-        directories[start : start + len(owned)] == owned
-        for start in range(len(directories) - len(owned) + 1)
-    )
+    return owned_directory(implementation_path) in directory_of(path)
+
+
+def directory_of(path: str) -> str:
+    return "/" + path.rpartition("/")[0] + "/"
+
+
+def owned_directory(implementation_path: str) -> str:
+    parts = PurePosixPath(implementation_path.strip("/")).parts
+    return "/" + "/".join(parts) + "/" if parts else "/"
 
 
 def git_state(root: Path, selected_paths: list[str]) -> dict[str, Any]:

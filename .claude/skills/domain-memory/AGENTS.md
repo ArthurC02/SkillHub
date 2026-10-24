@@ -62,7 +62,8 @@ Each row names the command and the flags that matter; [script-api.md](references
 | Know what this repository has | `readiness --repo-root <repo> [--registry-root <root>]` |
 | Start a Domain Memory | `discover-sources --repo-root <repo>`, then `init-domain-memory` with the destination, sources and policy a developer chose |
 | Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`; `dependents --asset <asset> --id <id>` before changing a record |
-| Read or write a table | `describe-table --repo-root <repo> --migrations <dir> --table <name>` |
+| Find the table a request is about | `describe-table --repo-root <repo> --migrations <dir>` lists every table with its meaning and gap count |
+| Read or write a table | `describe-table --repo-root <repo> --migrations <dir> --table <name> [--queries <dir>]` |
 | Finish a migration | `describe-table --repo-root <repo> --migrations <dir> --table <name> --require-complete`, or `--base <ref>` in place of `--table`; exit 0 means done |
 | Review a branch against the model | `brief --base <branch point> --markdown` |
 | See which boundaries a change touches | `boundary-impact --base <branch point>` |

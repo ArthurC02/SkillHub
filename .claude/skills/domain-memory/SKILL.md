@@ -13,7 +13,7 @@ Run `readiness --repo-root <repo>` first; [readiness](references/readiness.md) m
 
 Then choose one capability:
 
-- **Read** before coding, when a request uses a domain term or may cross a Context: [domain-memory-read](skills/domain-memory-read/SKILL.md).
+- **Read** before coding, when a request uses a domain term, may cross a Context, or reads or writes a database table: [domain-memory-read](skills/domain-memory-read/SKILL.md).
 - **Extract** when the Registry has never seen the source, a requirement, a codebase or a change: [domain-memory-extract](skills/domain-memory-extract/SKILL.md).
 - **Design** when the change is material, as the seven-step workflow defines it, to prepare a reviewable Change Package: [domain-memory-design](skills/domain-memory-design/SKILL.md).
 - **Maintain** when merged code moved or edited cited lines, or a selected source moved, to re-cite evidence and record what the model learned: [domain-memory-maintain](skills/domain-memory-maintain/SKILL.md).

@@ -113,6 +113,31 @@ class SqlDescribeTest(RegistryTestCase):
             [(entry["asset"], entry["id"], entry["status"], entry["summary"]) for entry in self.describe()["registry"]],
         )
 
+    def test_statements_under_queries_that_name_the_table_are_listed_with_their_verb_and_the_columns_they_use(self) -> None:
+        queries = self.repo / "db" / "queries"
+        queries.mkdir()
+        (queries / "orders.sql").write_text(
+            "-- name: GetOrder :one\nSELECT id, state FROM orders WHERE id = $1;\n\n"
+            "UPDATE orders SET note = $2\nWHERE id = $1;\n"
+            "WITH recent AS (SELECT order_id FROM shipments) DELETE FROM orders WHERE id IN (SELECT order_id FROM recent);\n"
+            "SELECT order_id -- FROM orders\nFROM shipments WHERE label = 'FROM orders';\n"
+            "INSERT INTO public.orders (id, state) VALUES ($1, 'open');\n"
+            "SELECT count(*) AS orders FROM shipments;\n", encoding="utf-8")
+        common = ("describe-table", "--repo-root", str(self.repo), "--migrations", str(self.migrations), "--queries", "db/queries")
+        result = self.run_cli(*common, "--table", "orders")
+        self.assertEqual(
+            [{"at": "db/queries/orders.sql:2", "verb": "SELECT", "columns": ["id", "state"]},
+             {"at": "db/queries/orders.sql:4", "verb": "UPDATE", "columns": ["id", "note"]},
+             {"at": "db/queries/orders.sql:6", "verb": "DELETE", "columns": ["id"]},
+             {"at": "db/queries/orders.sql:9", "verb": "INSERT", "columns": ["id", "state"]}],
+            json.loads(result.stdout)["queries"])
+        none = self.run_cli(*common, "--table", "users")
+        self.assertEqual(([], "NOTE: no statement under db/queries names users"),
+                         (json.loads(none.stdout)["queries"], none.stderr.strip().splitlines()[0]))
+        outside = self.run_cli(*common[:-1], "../elsewhere", "--table", "orders")
+        self.assertEqual((1, True), (outside.returncode, outside.stderr.startswith("ERROR: --queries resolves outside --repo-root")))
+        self.assertNotIn("queries", self.describe("orders"))
+
     def test_an_unknown_table_is_refused_with_the_closest_names(self) -> None:
         with self.assertRaisesRegex(ValueError, r"^no table 'order' in .*; did you mean orders\?$"):
             self.describe("order")
@@ -434,6 +459,41 @@ class CompletenessDescribeTest(RegistryTestCase):
         )
         self.assertIn("the comment on step does not say what these values mean: run", json.loads(without.stdout)["gaps"])
 
+    def test_without_a_table_the_catalog_lists_every_live_table_and_require_complete_fails_while_one_has_gaps(self) -> None:
+        (self.migrations / "0002_tidy.sql").write_text(TIDY, encoding="utf-8")
+        listed = self.run_cli(*self.common)
+        tables = json.loads(listed.stdout)["tables"]
+        self.assertEqual(
+            (0, ["orders", "shipments", "tidy", "users"],
+             {"table": "orders", "declared_at": "db/migrations/0001_init.sql:1",
+              "meaning": "One row per order; the buyer's request as placed.", "columns": 10, "undescribed_columns": 9,
+              "gaps": len(ORDERS_GAPS)},
+             {"table": "tidy", "declared_at": "db/migrations/0002_tidy.sql:1", "meaning": "one switch per owner", "columns": 3,
+              "undescribed_columns": 0, "gaps": 0},
+             {"table": "users", "declared_at": "db/migrations/0001_init.sql:11", "meaning": None, "columns": 1,
+              "undescribed_columns": 1, "gaps": 1},
+             "NOTE: 4 tables, 3 with gaps: orders, shipments, users; --table <name> describes one"),
+            (listed.returncode, [entry["table"] for entry in tables], tables[0], tables[2], tables[3], listed.stderr.strip()),
+        )
+        refused = self.run_cli(*self.common, "--require-complete")
+        self.assertEqual((1, tables), (refused.returncode, json.loads(refused.stdout)["tables"]))
+
+    def test_history_lists_in_order_the_migrations_that_declared_altered_indexed_triggered_or_commented_the_table(self) -> None:
+        (self.migrations / "0002_change.sql").write_text(
+            "ALTER TABLE orders ADD COLUMN memo text;\n"
+            "CREATE TRIGGER fence BEFORE INSERT ON shipments FOR EACH ROW EXECUTE FUNCTION guard();\n" + TIDY, encoding="utf-8")
+        (self.migrations / "0003_users.sql").write_text(
+            "COMMENT ON TABLE users IS 'one account';\nCOMMENT ON COLUMN orders.note IS 'what the buyer wrote';\n"
+            "CREATE INDEX shipments_order_idx ON shipments (order_id);\nDROP TABLE tidy;\nCREATE TABLE tidy (id uuid PRIMARY KEY);\n",
+            encoding="utf-8")
+        self.assertEqual(
+            (["db/migrations/0001_init.sql", "db/migrations/0002_change.sql", "db/migrations/0003_users.sql"],
+             ["db/migrations/0001_init.sql", "db/migrations/0003_users.sql"],
+             ["db/migrations/0001_init.sql", "db/migrations/0002_change.sql", "db/migrations/0003_users.sql"],
+             ["db/migrations/0003_users.sql"]),
+            tuple(self.describe(table)["history"] for table in ("orders", "users", "shipments", "tidy")),
+        )
+
     def test_gaps_since_a_ref_lists_only_what_the_change_opened_or_closed_per_table(self) -> None:
         self.commit_all("migrations")
         (self.migrations / "0002_change.sql").write_text(
@@ -465,9 +525,9 @@ class CompletenessDescribeTest(RegistryTestCase):
         self.commit_all("change")
         settled = self.run_cli(*self.common, "--base", "HEAD", "--require-complete")
         self.assertEqual((0, {}, "NOTE: no new gaps since HEAD"), (settled.returncode, json.loads(settled.stdout)["tables"], settled.stderr.strip()))
-        neither = self.run_cli(*self.common)
-        self.assertEqual((1, "ERROR: describe-table needs --table <name>, or --base <ref> to list the gaps opened since that ref"),
-                         (neither.returncode, neither.stderr.strip()))
+        listed = self.run_cli(*self.common)
+        self.assertEqual((0, ["loose", "orders", "shipments", "tidy", "users"]),
+                         (listed.returncode, [entry["table"] for entry in json.loads(listed.stdout)["tables"]]))
         with self.assertRaisesRegex(ValueError, r"^could not read db/migrations at nowhere: "):
             gaps_since(self.repo, self.migrations, "nowhere")
 

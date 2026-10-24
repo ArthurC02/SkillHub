@@ -28,7 +28,7 @@ from .evidence import (
     without_derived_keys,
 )
 from .policy import existing_policy, review_mode, validate_policy
-from .sources import lies_under, repository_files
+from .sources import directory_of, owned_directory, repository_files
 from .store import (
     create_concept_layout,
     has_registry,
@@ -456,9 +456,9 @@ def unplaced_implementation_paths(document: dict[str, Any], repo_root: Path) -> 
               if isinstance(entry.get("implementation_path"), str) and entry["implementation_path"].strip()]
     if not placed:
         return []
-    files = repository_files(repo_root)
+    directories = {directory_of(file) for file in repository_files(repo_root)}
     return [(identifier, path, reviewed) for identifier, path, reviewed in placed
-            if not any(lies_under(file, path) for file in files)]
+            if not any(owned_directory(path) in directory for directory in directories)]
 
 
 IDEMPOTENCY_FIELDS = ("key", "scope", "on_replay", "on_conflict")

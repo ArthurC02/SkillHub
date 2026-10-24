@@ -55,6 +55,10 @@ TABLE_LEVEL = re.compile(r"^\s*(CONSTRAINT|PRIMARY\s+KEY|UNIQUE|CHECK|FOREIGN\s+
 CONSTRAINT_KIND = re.compile(r"\s*(CHECK|UNIQUE|EXCLUDE|FOREIGN|PRIMARY|LIKE)\b", re.I)
 NAMED_CONSTRAINT = re.compile(rf"CONSTRAINT\s+({IDENT})\s+(.*)$", re.I | re.S)
 TRAILING_COMMENT = re.compile(r"[ \t]*--[^\n]*")
+OPAQUE_START = r"--|\$\$|'"
+STATEMENT_MARKS = re.compile(rf"{OPAQUE_START}|[();\n]")
+PART_MARKS = re.compile(rf"{OPAQUE_START}|[(),]")
+WORD_MARKS = re.compile(rf"{OPAQUE_START}|[()]|[^\W\d]\w*")
 NOT_NULL = re.compile(r"\bNOT\s+NULL\b", re.I)
 PRIMARY_KEY = re.compile(r"\bPRIMARY\s+KEY\b", re.I)
 SET_NOT_NULL = re.compile(rf"^ALTER\s+(?:COLUMN\s+)?({IDENT})\s+(SET|DROP)\s+NOT\s+NULL\b", re.I)
@@ -168,6 +172,13 @@ class Schema:
     type_comments: dict[str, str] = field(default_factory=dict)
     unparsed: list[str] = field(default_factory=list)
     migrations: list[str] = field(default_factory=list)
+    history: dict[str, list[str]] = field(default_factory=dict)
+
+
+def _touch(schema: Schema, table: str, file: str) -> None:
+    touched = schema.history.setdefault(table, [])
+    if not touched or touched[-1] != file:
+        touched.append(file)
 
 
 def _declares_the_same(earlier: Constraint, later: Constraint) -> bool:
@@ -216,6 +227,14 @@ def statements(text: str) -> list[tuple[int, str]]:
     buffer: list[str] = []
     line, start, depth, index = 1, 0, 0, 0
     while index < len(text):
+        mark = STATEMENT_MARKS.search(text, index)
+        stop = mark.start() if mark else len(text)
+        if stop > index:
+            if start == 0 and not text[index:stop].isspace():
+                start = line
+            buffer.append(text[index:stop])
+            index = stop
+            continue
         end = _opaque_end(text, index)
         if end is not None:
             if start == 0 and not text.startswith("--", index):
@@ -275,6 +294,12 @@ def _table_body(statement: str) -> str:
 def _split_top_level(body: str) -> list[str]:
     parts, depth, current, index = [], 0, [], 0
     while index < len(body):
+        mark = PART_MARKS.search(body, index)
+        stop = mark.start() if mark else len(body)
+        if stop > index:
+            current.append(body[index:stop])
+            index = stop
+            continue
         end = _opaque_end(body, index)
         if end is not None:
             current.append(body[index:end])
@@ -292,27 +317,28 @@ def _split_top_level(body: str) -> list[str]:
     return parts
 
 
-def _top_level_words(text: str) -> list[tuple[int, str]]:
+def top_level_words(text: str) -> list[tuple[int, str]]:
     found, depth, index = [], 0, 0
     while index < len(text):
+        mark = WORD_MARKS.search(text, index)
+        if mark is None:
+            break
+        index = mark.start()
         end = _opaque_end(text, index)
         if end is not None:
             index = end
-            continue
-        char = text[index]
-        depth += (char == "(") - (char == ")")
-        if depth == 0 and (char.isalpha() or char == "_"):
-            start = index
-            while index < len(text) and (text[index].isalnum() or text[index] == "_"):
-                index += 1
-            found.append((start, text[start:index].upper()))
-            continue
-        index += 1
+        elif mark.group() in "()":
+            depth += (mark.group() == "(") - (mark.group() == ")")
+            index += 1
+        else:
+            if depth == 0:
+                found.append((index, mark.group().upper()))
+            index = mark.end()
     return found
 
 
 def _clauses(declaration: str, start: int) -> list[tuple[str, str, str | None]]:
-    starters = [(at, word) for at, word in _top_level_words(declaration) if at >= start and word in CLAUSE_STARTERS]
+    starters = [(at, word) for at, word in top_level_words(declaration) if at >= start and word in CLAUSE_STARTERS]
     clauses: list[tuple[str, str, str | None]] = []
     given = None
     for position, (at, word) in enumerate(starters):
@@ -354,6 +380,7 @@ def _read_table(schema: Schema, file: str, line: int, statement: str, match: re.
     schema.tables[name] = table
     if table.partition_of:
         return
+    _touch(schema, name, file)
     for first, last, part in _table_parts(statement, line):
         text = strip_comments(part).strip()
         if not text:
@@ -499,6 +526,7 @@ def _read_alter(schema: Schema, file: str, line: int, statement: str, match: re.
     if table not in schema.tables:
         schema.unparsed.append(f"{file}:{line}: ALTER TABLE {table} before its CREATE")
         return
+    _touch(schema, table, file)
     for action in _split_top_level(strip_comments(match.group(2))):
         text = action.strip()
         if text and not _read_alter_action(schema, table, span, text):
@@ -567,6 +595,7 @@ def _read_drop(schema: Schema, file: str, line: int, _statement: str, match: re.
     table = match.group(1)
     at = Span(file, line, line)
     schema.tables.pop(table, None)
+    schema.history.pop(table, None)
     _drop_primary_key(schema, table, at)
     _undeclare(schema, lambda c: c.table != table, at)
     _drop_keys(schema, lambda key: table not in (key.child, key.parent), at)
@@ -579,6 +608,7 @@ def _read_index(schema: Schema, file: str, line: int, statement: str, match: re.
     columns = _columns_named_in(definition, schema.tables[table].columns if table in schema.tables else {})
     schema.indexes = [index for index in schema.indexes if index.name != name]
     schema.indexes.append(Index(name, table, file, line, unique, definition, columns))
+    _touch(schema, table, file)
     span = Span(file, line, line + statement.count("\n"))
     _undeclare(schema, lambda c: c.kind != UNIQUE_INDEX or c.name != name, span)
     if unique:
@@ -588,6 +618,7 @@ def _read_index(schema: Schema, file: str, line: int, statement: str, match: re.
 def _read_trigger(schema: Schema, file: str, line: int, statement: str, match: re.Match[str]) -> None:
     declared = Declared(match.group(2), Span(file, line, line + statement.count("\n")), statement)
     _declare(schema, Constraint.at("trigger", declared, match.group(1)))
+    _touch(schema, match.group(2), file)
 
 
 def _read_drop_index(schema: Schema, file: str, line: int, _statement: str, match: re.Match[str]) -> None:
@@ -616,8 +647,10 @@ def _read_comment(schema: Schema, file: str, line: int, statement: str, match: r
     elif kind == "TABLE":
         table.described = True
         table.comment = text
+        _touch(schema, name, file)
     elif match.group(3) in table.columns:
         table.columns[match.group(3)].update(described=True, comment=text)
+        _touch(schema, name, file)
 
 
 def _read_type(schema: Schema, _file: str, _line: int, statement: str, match: re.Match[str]) -> None:
@@ -674,16 +707,16 @@ def read_schema(migrations_dir: Path, repo_root: Path) -> Schema:
     return schema
 
 
-def migrations_inside(repo_root: Path, migrations: Path) -> Path:
+def sql_directory_inside(repo_root: Path, given: Path, flag: str) -> Path:
     root = repo_root.resolve()
-    located = (migrations if migrations.is_absolute() else root / migrations).resolve()
+    located = (given if given.is_absolute() else root / given).resolve()
     if not located.is_relative_to(root):
-        raise ValueError(f"--migrations resolves outside --repo-root ({located}); pass it relative to the repo root or as an "
+        raise ValueError(f"{flag} resolves outside --repo-root ({located}); pass it relative to the repo root or as an "
                          "absolute path inside it")
     if not located.is_dir():
-        raise ValueError(f"--migrations directory {located} does not exist")
-    if not any(located.glob("*.sql")):
-        raise ValueError(f"--migrations directory {located} holds no .sql files")
+        raise ValueError(f"{flag} directory {located} does not exist")
+    if not any(located.rglob("*.sql")):
+        raise ValueError(f"{flag} directory {located} holds no .sql files")
     return located
 
 
