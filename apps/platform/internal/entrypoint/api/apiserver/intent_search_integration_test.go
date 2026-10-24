@@ -571,9 +571,17 @@ func TestCorrectedPublicSearchUsesUserFieldsWithoutCallingRewriter(t *testing.T)
 	if res.StatusCode != http.StatusOK || body.Query != "原本的請求" || body.Interpretation.Status != "corrected" || analyses.Load() != 0 || embeddings.Load() != 1 || reasons.Load() != 0 || len(body.Results) != 1 || body.Results[0].SkillID != id || body.ReasonQuery != "invoice CSV" {
 		t.Fatalf("status=%d analyses=%d embeddings=%d reasons=%d response=%+v", res.StatusCode, analyses.Load(), embeddings.Load(), reasons.Load(), body)
 	}
-	status, _ := (&client{Client: http.DefaultClient, base: a.URL}).doJSON(t, http.MethodPost, "/api/skills/search/reasons",
-		`{"query":"`+body.ReasonQuery+`","skill_ids":["`+id+`"]}`)
-	if status != http.StatusOK || reasons.Load() != 1 {
-		t.Fatalf("reasons status=%d calls=%d, want one call written for the corrected fields", status, reasons.Load())
+	requestReasons(t, a.URL, body.ReasonQuery, id)
+	if reasons.Load() != 1 {
+		t.Fatalf("reasons calls=%d, want one written for the corrected fields", reasons.Load())
+	}
+}
+
+func requestReasons(t *testing.T, base, query, skillID string) {
+	t.Helper()
+	status, out := (&client{Client: http.DefaultClient, base: base}).doJSON(t, http.MethodPost, "/api/skills/search/reasons",
+		`{"query":"`+query+`","skill_ids":["`+skillID+`"]}`)
+	if status != http.StatusOK {
+		t.Fatalf("reasons status=%d body=%v", status, out)
 	}
 }
