@@ -30,7 +30,7 @@ from domain_registry.sources import (
     write_source_map,
 )
 from domain_registry.sources import discover_ci_tools
-from domain_registry.sources import source_snapshots
+from domain_registry.sources import repository_files, source_snapshots
 from test_support import RegistryTestCase, source_kind_for, stored_policy_of, orders_context
 
 
@@ -367,6 +367,30 @@ class SourcesTest(RegistryTestCase):
         (self.repo / ".gitignore").write_text("*.out" + chr(10), encoding="utf-8")
         found = source_files(self.repo, [self.repo / "docs"])
         self.assertEqual([path.name for path in found], ["kept.md"])
+
+    def test_the_repository_walk_leaves_out_what_git_ignores_and_keeps_what_is_merely_untracked(self) -> None:
+        (self.repo / "cache" / "deep").mkdir(parents=True)
+        (self.repo / "cache" / "deep" / "blob.bin").write_bytes(b"x")
+        (self.repo / "docs").mkdir(exist_ok=True)
+        (self.repo / "docs" / "kept.md").write_text("kept", encoding="utf-8")
+        (self.repo / "docs" / "build.out").write_text("generated", encoding="utf-8")
+        (self.repo / ".gitignore").write_text("/cache/\n*.out\n", encoding="utf-8")
+        asked = {".gitignore", "docs/kept.md", "docs/build.out", "cache/deep/blob.bin"}
+        self.assertEqual([".gitignore", "docs/kept.md"], sorted(asked & set(repository_files(self.repo))))
+
+    def test_outside_git_the_repository_walk_lists_every_file_in_depth_first_order(self) -> None:
+        with tempfile.TemporaryDirectory() as plain:
+            (Path(plain) / "a").mkdir()
+            (Path(plain) / "a" / "b.txt").write_text("b", encoding="utf-8")
+            (Path(plain) / ".gitignore").write_text("*.txt\n", encoding="utf-8")
+            self.assertEqual([".gitignore", "a/b.txt"], repository_files(Path(plain)))
+
+    def test_without_a_working_git_the_repository_walk_lists_every_file(self) -> None:
+        (self.repo / "cache").mkdir()
+        (self.repo / "cache" / "blob.bin").write_bytes(b"x")
+        (self.repo / ".gitignore").write_text("/cache/\n", encoding="utf-8")
+        with patch("domain_registry.sources.run_git_bytes", side_effect=OSError("git is not installed")):
+            self.assertIn("cache/blob.bin", repository_files(self.repo))
 
     def test_a_freshly_selected_source_map_is_only_ever_agent_asserted(self) -> None:
         (self.repo / "docs").mkdir(exist_ok=True)

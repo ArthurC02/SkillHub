@@ -1,6 +1,7 @@
 import fnmatch
 import hashlib
 import os
+import subprocess
 from functools import cache
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path, PurePosixPath
@@ -18,7 +19,7 @@ from .common import (
     writer_lock,
 )
 from .locate import domain_memory_hint
-from .git import run_git
+from .git import run_git, run_git_bytes
 from .policy import excluded_directories, project_profile
 
 SELECTED_KIND = "selected"
@@ -117,11 +118,21 @@ def listing_of(root: Path, excluded: frozenset[str] = EXCLUDED_DIRECTORIES) -> L
 
 def repository_files(root: Path, excluded: frozenset[str] = EXCLUDED_DIRECTORIES) -> list[str]:
     found: list[str] = []
-    _collect_files(str(root), "", excluded, found)
+    _collect_files(str(root), "", excluded, git_ignored_entries(root), found)
     return found
 
 
-def _collect_files(directory: str, prefix: str, excluded: frozenset[str], found: list[str]) -> None:
+def git_ignored_entries(root: Path) -> frozenset[str]:
+    try:
+        listed = run_git_bytes(root, "ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z")
+    except (OSError, subprocess.SubprocessError):
+        return frozenset()
+    if listed.returncode != 0:
+        return frozenset()
+    return frozenset(entry.decode("utf-8", "surrogateescape") for entry in listed.stdout.split(b"\0") if entry)
+
+
+def _collect_files(directory: str, prefix: str, excluded: frozenset[str], ignored: frozenset[str], found: list[str]) -> None:
     try:
         with os.scandir(directory) as entries:
             listed = list(entries)
@@ -131,12 +142,14 @@ def _collect_files(directory: str, prefix: str, excluded: frozenset[str], found:
         return
     children = []
     for entry in listed:
+        name = prefix + entry.name
         if not entry.is_dir():
-            found.append(prefix + entry.name)
-        elif entry.name not in excluded and not entry.is_symlink():
+            if name not in ignored:
+                found.append(name)
+        elif entry.name not in excluded and not entry.is_symlink() and name + "/" not in ignored:
             children.append(entry)
     for entry in children:
-        _collect_files(entry.path, prefix + entry.name + "/", excluded, found)
+        _collect_files(entry.path, prefix + entry.name + "/", excluded, ignored, found)
 
 
 def file_name(relative_path: str) -> str:

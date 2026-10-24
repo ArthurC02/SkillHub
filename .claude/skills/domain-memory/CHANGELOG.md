@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.0
+
+### Changed
+
+- The repository walk no longer enters directories or lists files that git ignores. Every reader already treated an ignored file as not a source, not a gate and not a counted test, but found that out after walking it; the walk now asks git once (`git ls-files --others --ignored --exclude-standard --directory`) and prunes on the way down, so a repository whose ignored caches hold 88,000 of its 108,000 files is walked in under a second instead of six. Untracked files that git does not ignore are still listed, and a directory that is not a git repository is still walked whole.
+
 ## 4.1.2
 
 ### Changed
