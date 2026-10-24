@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.1
+
+### Changed
+
+- The evidence verifier resolves each cited file once instead of three times: its callers already hand it the resolved repository root and the resolved path, so the escape check compares those directly. On a repository whose disk answers slowly this was a third of `verify-evidence` and a quarter of `validate`; verdicts are unchanged.
+
 ## 4.2.0
 
 ### Changed

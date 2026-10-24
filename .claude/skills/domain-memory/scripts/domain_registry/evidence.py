@@ -554,7 +554,7 @@ def _shape_error(reference: Any) -> str | None:
 
 
 def _source_verdict(path: Path, path_text: str, root: Path) -> dict[str, Any] | None:
-    if inside(root, path) is None:
+    if not path.is_relative_to(root):
         return {"status": "invalid", "reason": "evidence path escapes repository"}
     if not path.is_file():
         return {"status": "missing", "path": path_text}
@@ -595,7 +595,7 @@ def staged_content(repo_root: Path) -> ContentReader:
 
 
 def _rows_from(root: Path, path_text: str, content_of: ContentReader) -> dict[str, Any] | list[str]:
-    if inside(root, path_text) is None:
+    if not (root / path_text).resolve().is_relative_to(root):
         return {"status": "invalid", "reason": "evidence path escapes repository"}
     content = content_of(path_text)
     if content is None:

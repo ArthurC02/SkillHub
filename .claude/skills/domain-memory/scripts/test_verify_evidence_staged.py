@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.evidence import citation
+from domain_registry.evidence import citation, staged_content, verifier
 from test_support import RegistryTestCase, orders_context
 
 STALE_LINE = (
@@ -73,6 +73,11 @@ class VerifyStagedEvidenceTest(RegistryTestCase):
         self.write("changed\ntwo\n")
         code, report, stderr = self.verify_staged("src/a.py")
         self.assertEqual((0, "current", ""), (code, report["results"][0]["status"], stderr))
+
+    def test_a_staged_citation_whose_path_escapes_the_repository_is_invalid_before_the_index_is_read(self) -> None:
+        reference = {**citation(self.repo, "src/a.py", 1, 1), "path": "../a.py"}
+        self.assertEqual({"status": "invalid", "reason": "evidence path escapes repository"},
+                         verifier(self.repo, staged_content(self.repo))(reference))
 
     def test_a_cited_file_on_disk_but_not_in_the_index_is_missing(self) -> None:
         self.git("rm", "-q", "--cached", "src/a.py")

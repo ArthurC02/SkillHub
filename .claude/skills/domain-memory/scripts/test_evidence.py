@@ -288,6 +288,13 @@ class EvidenceTest(RegistryTestCase):
         with self.assertRaisesRegex(ValueError, "escapes the repository"):
             citation(self.repo, "../outside.md", 1, 1)
 
+    def test_verifying_a_citation_whose_path_escapes_the_repository_is_invalid_before_the_disk_is_read(self) -> None:
+        outside = self.repo.parent / "outside.md"
+        outside.write_text("outside\n", encoding="utf-8")
+        self.cited_file()
+        reference = {**citation(self.repo, "docs/adr/boundaries.md", 1, 1), "path": "../outside.md"}
+        self.assertEqual({"status": "invalid", "reason": "evidence path escapes repository"}, verify(reference, self.repo))
+
     def test_citing_a_file_that_is_not_there_is_refused(self) -> None:
         with self.assertRaisesRegex(ValueError, "no such file to cite"):
             citation(self.repo, "docs/adr/missing.md", 1, 1)
