@@ -62,15 +62,18 @@ def manifest_document() -> dict[str, Any]:
 
 
 _READ_ONCE: ContextVar[dict[tuple[str, str], dict[str, Any]] | None] = ContextVar("documents_read_once", default=None)
+_FILES_ONCE: ContextVar[dict[str, dict[str, bytes]] | None] = ContextVar("registry_files_read_once", default=None)
 
 
 @contextmanager
 def documents_read_once() -> Iterator[None]:
-    token = _READ_ONCE.set({})
+    documents = _READ_ONCE.set({})
+    files = _FILES_ONCE.set({})
     try:
         yield
     finally:
-        _READ_ONCE.reset(token)
+        _FILES_ONCE.reset(files)
+        _READ_ONCE.reset(documents)
 
 
 def read_document(root: Path, name: str) -> dict[str, Any]:
@@ -88,13 +91,45 @@ def _read_document(root: Path, name: str) -> dict[str, Any]:
         raise ValueError(missing_registry(root))
     if name == MANIFEST:
         return manifest_document()
-    directory = registry_dir(root) / asset_of(name)
-    concepts = sorted(directory.glob("*.md"), key=lambda concept: concept.stem) if directory.is_dir() else []
-    return asset_document(name, [
-        (concept.stem, concept.read_text(encoding="utf-8"))
-        for concept in concepts
-        if concept.name != INDEX
-    ])
+    asset = asset_of(name)
+    held = registry_files(root)
+    concepts = sorted(
+        (stem, relative) for relative in held if (stem := _concept_stem(asset, relative)) is not None
+    )
+    return asset_document(name, [(stem, _text_or_refusal(relative, held[relative])) for stem, relative in concepts])
+
+
+def _concept_stem(asset: str, relative: str) -> str | None:
+    parent, _, name = relative.rpartition("/")
+    if parent != asset or not name.endswith(".md") or name == INDEX:
+        return None
+    return name[: -len(".md")]
+
+
+def registry_files(root: Path) -> dict[str, bytes]:
+    held = _FILES_ONCE.get()
+    if held is None:
+        return _registry_files(root)
+    key = str(root)
+    if key not in held:
+        held[key] = _registry_files(root)
+    return held[key]
+
+
+def _registry_files(root: Path) -> dict[str, bytes]:
+    directory = registry_dir(root)
+    return {path.relative_to(directory).as_posix(): path.read_bytes() for path in sorted(directory.rglob("*")) if path.is_file()}
+
+
+def text_of(data: bytes, errors: str = "strict") -> str:
+    return io.TextIOWrapper(io.BytesIO(data), encoding="utf-8", errors=errors).read()
+
+
+def _text_or_refusal(relative: str, data: bytes) -> str:
+    try:
+        return text_of(data)
+    except UnicodeDecodeError as error:
+        raise ValueError(f"{relative}: {error}") from error
 
 
 def read_record(root: Path, name: str, record_id: str) -> dict[str, Any] | None:
@@ -179,13 +214,13 @@ def refresh_indexes(root: Path) -> list[Path]:
 def _expected_indexes(root: Path, documents: dict[str, dict[str, Any]] | None = None) -> dict[Path, str]:
     if not has_registry(root):
         return {}
-    loaded = documents or {}
     expected = {registry_dir(root) / INDEX: root_index()}
     for name in ASSET_KEYS:
         asset = asset_of(name)
-        if (registry_dir(root) / asset).is_dir():
-            document = loaded[name] if name in loaded else read_document(root, name)
-            expected[registry_dir(root) / asset / INDEX] = asset_index(asset, document[ASSET_KEYS[name]])
+        if not (registry_dir(root) / asset).is_dir() or (documents is not None and name not in documents):
+            continue
+        document = documents[name] if documents is not None else read_document(root, name)
+        expected[registry_dir(root) / asset / INDEX] = asset_index(asset, document[ASSET_KEYS[name]])
     return expected
 
 

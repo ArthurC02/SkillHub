@@ -35,7 +35,9 @@ from .store import (
     read_record,
     missing_registry,
     read_document,
+    registry_files,
     stale_indexes,
+    text_of,
 )
 
 ABSENCE_ASSETS = {
@@ -431,9 +433,10 @@ def _policy_errors(root: Path) -> list[str]:
 
 
 def _conflict_marker_errors(root: Path) -> list[str]:
-    scanned = (*root.glob("*.json"), *registry_dir(root).rglob("*"), *(root / "changes").rglob("*"))
-    files = sorted(path for path in scanned if path.is_file())
-    marked = ((path, conflict_marked_line(path.read_text(encoding="utf-8", errors="replace"))) for path in files)
+    texts = [(registry_dir(root) / relative, text_of(data, errors="replace")) for relative, data in registry_files(root).items()]
+    elsewhere = (*root.glob("*.json"), *(root / "changes").rglob("*"))
+    texts.extend((path, path.read_text(encoding="utf-8", errors="replace")) for path in elsewhere if path.is_file())
+    marked = ((path, conflict_marked_line(text)) for path, text in sorted(texts, key=lambda held: held[0]))
     return [
         f"{shown_path(path, root)} holds git conflict markers at line {line}; resolve the merge before validating"
         for path, line in marked

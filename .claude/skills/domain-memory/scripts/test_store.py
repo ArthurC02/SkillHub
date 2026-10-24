@@ -18,6 +18,7 @@ from domain_registry.store import (
     documents_read_once,
     has_registry,
     read_document,
+    registry_files,
     write_document,
 )
 from test_support import RegistryTestCase, snapshot_of_files, orders_context
@@ -238,6 +239,21 @@ class ReadOnceTest(RegistryTestCase):
             second = read_document(self.repo / "memory", "rules.json")
         after = read_document(self.repo / "memory", "rules.json")
         self.assertEqual(([ORDER_RULE], []), (second["rules"], after["rules"]))
+
+    def test_inside_a_read_once_scope_the_concept_files_are_read_from_disk_once_for_every_reader(self) -> None:
+        root = self.repo / "memory"
+        write_document(root, "rules.json", {"rules": [ORDER_RULE]})
+        concept = root / "registry" / "rules" / "order-total.md"
+        reworded = concept.read_text(encoding="utf-8").replace("never negative", "sometimes negative")
+        with documents_read_once():
+            held = registry_files(root)["rules/order-total.md"]
+            concept.write_text(reworded, encoding="utf-8")
+            inside = read_document(root, "rules.json")["rules"][0]["statement"]
+        after = read_document(root, "rules.json")["rules"][0]["statement"]
+        self.assertEqual(
+            (True, ORDER_RULE["statement"], ORDER_RULE["statement"].replace("never negative", "sometimes negative")),
+            (b"never negative" in held, inside, after),
+        )
 
 
 class ReadRecordTest(RegistryTestCase):

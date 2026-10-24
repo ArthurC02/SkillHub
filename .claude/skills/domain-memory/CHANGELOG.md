@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.5
+
+### Changed
+
+- Within one command the concept files are read from disk once: the conflict-marker scan and the Registry loader share the same bytes instead of each opening every file. Output is unchanged.
+
+### Fixed
+
+- A concept file that is not UTF-8 is refused by name (`contexts/orders.md: 'utf-8' codec ...`); `validate` used to crash with a traceback while checking the indexes after the load had already failed.
+
 ## 4.2.4
 
 ### Changed

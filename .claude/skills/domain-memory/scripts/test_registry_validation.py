@@ -174,6 +174,24 @@ class RegistryValidationTest(RegistryTestCase):
             validate(root, self.repo, False),
         )
 
+    def test_a_conflict_marked_concept_file_that_is_not_utf_8_is_still_named_for_its_markers(self) -> None:
+        self.seed("contexts.json", [orders_context()])
+        root = self.repo / "memory"
+        concept = root / "registry" / "contexts" / "orders.md"
+        concept.write_bytes(b"\xff\n<<<<<<< HEAD\n" + concept.read_bytes())
+        self.assertEqual(
+            ["registry/contexts/orders.md holds git conflict markers at line 2; resolve the merge before validating"],
+            validate(root, self.repo, False),
+        )
+
+    def test_a_concept_file_that_is_not_utf_8_is_refused_by_name_instead_of_crashing_the_index_check(self) -> None:
+        self.seed("contexts.json", [orders_context()])
+        root = self.repo / "memory"
+        concept = root / "registry" / "contexts" / "orders.md"
+        concept.write_bytes(concept.read_bytes() + b"\xff\n")
+        [error] = validate(root, self.repo, False)
+        self.assertTrue(error.startswith("contexts/orders.md: 'utf-8' codec can't decode byte 0xff"), error)
+
     def test_validate_refuses_a_stale_or_missing_index_and_refresh_indexes_rebuilds_it_from_the_concept_files(self) -> None:
         self.seed("contexts.json", [orders_context()])
         root = self.repo / "memory"
