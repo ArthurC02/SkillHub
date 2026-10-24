@@ -142,7 +142,7 @@ function stubPlatform(
       const sent = JSON.parse(String(init?.body)) as { summary_hash: string };
       return sent.summary_hash === current.summary_hash
         ? json({ confirmed: true, summary_hash: sent.summary_hash }, 201)
-        : json({ error: "summary_hash does not match the current permission summary" }, 422);
+        : json({ error: "權限摘要在你確認之前已經變了；請看過重新讀取的摘要後再確認一次。" }, 422);
     }
     if (url.includes("/runs/preflight"))
       return preflightStatus
@@ -397,7 +397,9 @@ test("02:TEST-005 a permission change forces a fresh confirmation instead of reu
 
   await clickConfirm();
   await waitFor(() => text().includes("這次試跑沒有開始"));
-  expect(container.textContent).toContain("summary_hash does not match");
+  expect(container.textContent).toContain(
+    "這次試跑沒有開始：權限摘要在你確認之前已經變了；請看過重新讀取的摘要後再確認一次。",
+  );
   expect(platform.calls.some((c) => c.url.endsWith("/runs"))).toBe(false);
   expect(container.textContent).toContain("extra.csv");
 

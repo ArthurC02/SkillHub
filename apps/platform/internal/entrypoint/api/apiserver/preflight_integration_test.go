@@ -524,8 +524,12 @@ func TestRunRefusesAHashThatIsNotTheCurrentSummary(t *testing.T) {
 		t.Errorf("run with an invented hash: got %d, want 422", code)
 	}
 
-	if code, _ := f.confirm(t, forged); code != http.StatusUnprocessableEntity {
+	code, body := f.confirm(t, forged)
+	if code != http.StatusUnprocessableEntity {
 		t.Errorf("confirming an invented hash: got %d, want 422", code)
+	}
+	if said, _ := body["error"].(string); said != "權限摘要在你確認之前已經變了；請看過重新讀取的摘要後再確認一次。" {
+		t.Errorf("confirming an invented hash tells the user %q, want the interface-language sentence", said)
 	}
 }
 

@@ -187,6 +187,8 @@ const (
 	messagePreflightTargetNotFound = "找不到這個 Skill 版本或 Test Case"
 
 	messageRunNotFound = "找不到這個 Run"
+
+	messagePermissionSummaryChanged = "權限摘要在你確認之前已經變了；請看過重新讀取的摘要後再確認一次。"
 )
 
 type refusedRun struct {

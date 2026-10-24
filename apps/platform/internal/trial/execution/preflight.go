@@ -581,8 +581,7 @@ func (h *Handler) ConfirmPreflight(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case errors.Is(err, ErrPermissionsNotConfirmed):
-		httpx.WriteError(w, http.StatusUnprocessableEntity,
-			"summary_hash does not match the current permission summary; read it again and confirm that")
+		httpx.WriteError(w, http.StatusUnprocessableEntity, messagePermissionSummaryChanged)
 		return
 	case err != nil:
 		httpx.WriteError(w, http.StatusInternalServerError, "confirmation failed")
