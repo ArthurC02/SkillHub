@@ -342,28 +342,28 @@ class RecordBriefTest(BriefTest):
         as_json = self.run_cli("brief", *roots, "--asset", "rules", "--id", "order-total")
         as_markdown = self.run_cli("brief", *roots, "--base", "HEAD", "--markdown")
         self.assertEqual(
-            ((1, "ERROR: brief needs --base <revision>, or --asset <asset> --id <id>, not both"), 1,
+            ((1, "ERROR: brief needs --base <revision>, or --asset <asset> --id <id>"),
+             (1, "ERROR: brief takes --base <revision> or --asset <asset> --id <id>, not both"),
              (0, "domain-memory-brief/v1", {"asset": "rules", "id": "order-total"}), (0, "# Change brief: since HEAD")),
-            ((neither.returncode, neither.stderr.strip()), both.returncode,
+            ((neither.returncode, neither.stderr.strip()), (both.returncode, both.stderr.strip()),
              (as_json.returncode, json.loads(as_json.stdout)["format"], json.loads(as_json.stdout)["subject"]),
              (as_markdown.returncode, as_markdown.stdout.splitlines()[0])),
         )
 
 
-    def test_an_asset_without_an_id_an_id_without_an_asset_and_a_base_with_an_asset_are_refused(self) -> None:
+    def test_an_asset_without_an_id_an_id_without_an_asset_and_a_base_with_an_asset_are_refused_each_in_its_own_words(self) -> None:
         self.two_mapped_contexts(rules=[RULE])
         roots = ("--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo))
-        for label, given in (
-            ("asset only", ("--asset", "rules")),
-            ("id only", ("--id", "order-total")),
-            ("base and asset", ("--base", "HEAD", "--asset", "rules")),
+        half = "ERROR: brief by record needs both --asset <asset> and --id <id>"
+        for label, given, sentence in (
+            ("asset only", ("--asset", "rules"), half),
+            ("id only", ("--id", "order-total"), half),
+            ("base and asset", ("--base", "HEAD", "--asset", "rules"),
+             "ERROR: brief takes --base <revision> or --asset <asset> --id <id>, not both"),
         ):
             with self.subTest(label):
                 refused = self.run_cli("brief", *roots, *given)
-                self.assertEqual(
-                    (1, "ERROR: brief needs --base <revision>, or --asset <asset> --id <id>, not both"),
-                    (refused.returncode, refused.stderr.strip()),
-                )
+                self.assertEqual((1, sentence), (refused.returncode, refused.stderr.strip()))
 
 
 if __name__ == "__main__":

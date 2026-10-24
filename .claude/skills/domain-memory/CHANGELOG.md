@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.3
+
+### Changed
+
+- `brief` refuses a wrong subject in words that fit what was given: with neither `--base` nor a record it says what it needs; with both it says not both; with `--asset` or `--id` alone it asks for the other. One sentence used to cover all three and read oddly when nothing had been given.
+
 ## 4.2.2
 
 ### Changed

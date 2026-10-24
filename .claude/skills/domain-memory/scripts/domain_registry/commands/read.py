@@ -313,15 +313,26 @@ def handle_boundary_impact(args: argparse.Namespace) -> int:
     return 0
 
 
+def _brief_subject_refusal(base: str | None, asset: str | None, record_id: str | None) -> str | None:
+    by_record = asset is not None or record_id is not None
+    if base is not None and by_record:
+        return "brief takes --base <revision> or --asset <asset> --id <id>, not both"
+    if base is None and not by_record:
+        return "brief needs --base <revision>, or --asset <asset> --id <id>"
+    if by_record and not (asset and record_id):
+        return "brief by record needs both --asset <asset> and --id <id>"
+    return None
+
+
 def handle_brief(args: argparse.Namespace) -> int:
     with documents_read_once():
         return _handle_brief(args)
 
 
 def _handle_brief(args: argparse.Namespace) -> int:
-    by_record = args.asset is not None or args.id is not None
-    if (args.base is None) == (not by_record) or (by_record and not (args.asset and args.id)):
-        raise ValueError("brief needs --base <revision>, or --asset <asset> --id <id>, not both")
+    refusal = _brief_subject_refusal(args.base, args.asset, args.id)
+    if refusal:
+        raise ValueError(refusal)
     root, repo_root = args.registry_root.resolve(), args.repo_root.resolve()
     brief = brief_for_change(root, repo_root, args.base) if args.base else brief_for_record(root, repo_root, args.asset, args.id)
     if args.markdown:
