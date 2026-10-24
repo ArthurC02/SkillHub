@@ -759,6 +759,44 @@ test("a suggestion decision names the pending action before the server answers",
   expect(container.querySelector('[role="status"]')?.textContent).toContain("正在接受");
 });
 
+for (const [status, server, said] of [
+  [
+    409,
+    "this suggestion has already been built into a skill version, so its acceptance cannot be withdrawn; create a further version to change the package again",
+    "這個決定被拒絕。這個建議的狀態已經變了，可能已在別處做了決定或建成新版本；請重新讀取目前判定後再試。",
+  ],
+  [404, "suggestion not found", "這個決定被拒絕。這個建議已經不在了，請重新讀取這份評估。"],
+] as const) {
+  test(`a suggestion decision refused with ${status} is told in the interface language, not the server's`, async () => {
+    stubPlatform({ evaluated: true });
+    const settledFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", (input: string, init?: RequestInit) =>
+      String(input).includes("/suggestions/s1/decision")
+        ? Promise.resolve(
+            new Response(JSON.stringify({ error: server }), {
+              status,
+              headers: { "Content-Type": "application/json" },
+            }),
+          )
+        : settledFetch(input, init),
+    );
+    await render("succeeded");
+    await waitFor(() => (container.textContent ?? "").includes("接受"));
+
+    const accept = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "接受",
+    );
+    await act(async () => accept?.click());
+    await waitFor(() => (container.textContent ?? "").includes("這個決定被拒絕"));
+
+    const alert = Array.from(container.querySelectorAll('[role="alert"]')).find((node) =>
+      node.textContent?.includes("這個決定被拒絕"),
+    );
+    expect(alert?.textContent).toBe(said);
+    expect(container.textContent).not.toContain(server);
+  });
+}
+
 test("丙-10 a verdict downgraded for unverifiable evidence is not shown as a judge who does not know", async () => {
   stubPlatform({ evaluated: true });
   await render("succeeded");

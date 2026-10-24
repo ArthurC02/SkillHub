@@ -1,7 +1,7 @@
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { focusFeedback } from "../../../../shared/ui/focusFeedback";
 import { useEffect, useRef, useState } from "react";
-import { isWriteResultUnknown, serverReason } from "../../../../core/api/client";
+import { ApiError, isWriteResultUnknown } from "../../../../core/api/client";
 import { useDecideSuggestion } from "../../evaluation.service";
 import type { ImprovementSuggestion } from "../../evaluation.service";
 import { SUGGESTION_CATEGORY_LABEL } from "../evaluation.model";
@@ -9,6 +9,14 @@ import { EvidenceList } from "./EvidenceList";
 import { SuggestionDiffView } from "./SuggestionDiffView";
 
 const DECISION_LABEL = { accepted: "已接受", rejected: "已拒絕", pending: "尚未決定" };
+
+function decisionRefusalSentence(err: unknown): string {
+  if (err instanceof ApiError && err.status === 404)
+    return "這個建議已經不在了，請重新讀取這份評估。";
+  if (err instanceof ApiError && err.status === 409)
+    return "這個建議的狀態已經變了，可能已在別處做了決定或建成新版本；請重新讀取目前判定後再試。";
+  return "請重新讀取目前判定後再試。";
+}
 
 type DecisionChoice = "accepted" | "rejected";
 type UnconfirmedDecision = { error: unknown; decision: DecisionChoice };
@@ -45,12 +53,12 @@ function DecisionFailure({
         <p ref={feedback} tabIndex={-1} role="alert">
           {isWriteResultUnknown(failure)
             ? `尚未確認${choice}是否已記錄。清單仍顯示上次讀取的決定。再次選擇會重新送出，並取代目前決定。`
-            : `這個決定被拒絕。${serverReason(failure) ?? "請重新讀取目前判定後再試。"}`}
+            : `這個決定被拒絕。${decisionRefusalSentence(failure)}`}
         </p>
       </ReadFailure>
       {unconfirmed && error !== unconfirmed.error && (
         <ReadFailure error={error} what="決定">
-          <p role="alert">{serverReason(error) ?? "這次重新送出被拒絕，先前的決定仍未確認。"}</p>
+          <p role="alert">{`這次重新送出被拒絕，先前的決定仍未確認。${decisionRefusalSentence(error)}`}</p>
         </ReadFailure>
       )}
     </>
