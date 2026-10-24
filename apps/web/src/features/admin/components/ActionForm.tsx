@@ -1,6 +1,10 @@
 import { useState, type ReactNode } from "react";
+import { SetSkillRestrictionBodyNoteMaxLength } from "@skillhub/api-client-ts/limits";
+import { textLengthReason } from "../../../shared/textLength.model";
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
 import { WriteFailure } from "./WriteFailure";
+
+const OPERATOR_NOTE_MAX_CHARS = SetSkillRestrictionBodyNoteMaxLength;
 
 export function ActionForm({
   id,
@@ -37,7 +41,8 @@ export function ActionForm({
   const [submitted, setSubmitted] = useState<{ note: string; contextKey: string } | null>(null);
   const resultMatches = submitted?.note === note.trim() && submitted.contextKey === contextKey;
   const completed = Boolean(done && resultMatches);
-  const blocked = note.trim() === "" || !ready || completed;
+  const tooLong = textLengthReason(note.trim(), "理由", OPERATOR_NOTE_MAX_CHARS);
+  const blocked = note.trim() === "" || tooLong !== null || !ready || completed;
   const send = () => {
     if (blocked || pending) return;
     setSubmitted({ note: note.trim(), contextKey });
@@ -89,7 +94,7 @@ export function ActionForm({
         <p id={`${id}-why`} className="note">
           {completed
             ? "已完成這筆操作；修改上方欄位或理由後再送出，會建立另一筆操作。"
-            : (blockedReason ?? `「${submitLabel}」要等上面的欄位都填好。`)}
+            : (tooLong ?? blockedReason ?? `「${submitLabel}」要等上面的欄位都填好。`)}
         </p>
       )}
       {done && resultMatches && (

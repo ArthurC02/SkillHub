@@ -2,6 +2,7 @@ import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { focusManager, notifyManager } from "@tanstack/react-query";
+import * as contractLimits from "@skillhub/api-client-ts/limits";
 import App from "../../app/App";
 import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
@@ -2183,6 +2184,31 @@ test("OPS-005: the dispatch page names the halt, and a declaration without a nod
   await click(button("確認恢復派送"));
   await waitFor(() => calls.some((c) => c.method === "DELETE"));
   expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({ note: "cleared" });
+});
+
+test("an operator reason past the contract limit keeps the action unsent and says how long it is", async () => {
+  stub(true, () => undefined);
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+
+  await type("#admin-halt-declare-note", ` ${"字".repeat(1000)}\n`);
+  expect(button("停止派送").disabled).toBe(false);
+
+  await type("#admin-halt-declare-note", "字".repeat(1001));
+  expect(button("停止派送").disabled).toBe(true);
+  expect(field<HTMLElement>("#admin-halt-declare-why").textContent).toBe(
+    "理由最多 1000 個字，目前 1001 個字。",
+  );
+  await click(button("停止派送"));
+  expect(calls.some((c) => c.method === "PUT")).toBe(false);
+});
+
+test("every operator reason in the contract shares the one limit the action form enforces", () => {
+  const reasonLimits = Object.entries(contractLimits).filter(([name]) =>
+    /Body(Note|Reason)MaxLength$/.test(name),
+  );
+  expect(reasonLimits.length).toBeGreaterThan(0);
+  expect(new Set(reasonLimits.map(([, value]) => value))).toEqual(new Set([1000]));
 });
 
 test("OPS-005: a released halt leaves a focused, verified result after its form disappears", async () => {
