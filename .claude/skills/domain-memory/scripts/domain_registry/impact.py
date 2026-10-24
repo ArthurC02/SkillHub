@@ -8,7 +8,7 @@ from typing import Any
 from .common import ASSET_KEYS, whole_number
 from .evidence import all_references, classifier, source_map_for, verifier
 from .git import checked_git
-from .sources import lies_under
+from .sources import directory_of, owned_directory
 from .store import read_document
 
 COLLABORATION_ENDS = {
@@ -25,7 +25,7 @@ HUNK = re.compile(r"^@@ -\S+ \+(\d+)(?:,(\d+))? @@")
 WHOLE_FILE = [(1, sys.maxsize)]
 
 
-def _changes(repo_root: Path, base: str) -> tuple[set[str], set[str]]:
+def changed_files_since(repo_root: Path, base: str) -> tuple[set[str], set[str]]:
     failure = f"git could not list the changes since {base}"
     changed = checked_git(repo_root, "diff", "--name-only", "-z", base, "--", failure=failure)
     untracked = checked_git(repo_root, "ls-files", "--others", "--exclude-standard", "-z", failure=failure)
@@ -58,8 +58,9 @@ def _cited_ranges(entry: dict[str, Any]) -> list[tuple[str, int, int]]:
     ]
 
 
-def touched_records(root: Path, repo_root: Path, base: str) -> list[dict[str, Any]]:
-    tracked, untracked = _changes(repo_root, base)
+def touched_records(root: Path, repo_root: Path, base: str,
+                    changes: tuple[set[str], set[str]] | None = None) -> list[dict[str, Any]]:
+    tracked, untracked = changed_files_since(repo_root, base) if changes is None else changes
     records = {name: _records_with_status(root, name) for name in ASSET_KEYS}
     cited = {path for entries in records.values() for entry in entries for path, _, _ in _cited_ranges(entry)}
     hunks = _hunks(repo_root, base, sorted(cited & tracked)) | dict.fromkeys(cited & untracked, WHOLE_FILE)
@@ -94,10 +95,15 @@ def _records_with_status(root: Path, name: str) -> list[dict[str, Any]]:
 
 
 def _touched_contexts(contexts: list[dict[str, Any]], paths: list[str]) -> dict[str, list[str]]:
-    touched = {
-        context.get("id"): [path for path in paths if lies_under(path, context["implementation_path"])]
+    directories = {path: directory_of(path) for path in paths}
+    owned = {
+        context.get("id"): owned_directory(context["implementation_path"])
         for context in contexts
         if isinstance(context.get("implementation_path"), str)
+    }
+    touched = {
+        identifier: [path for path in paths if owned_directory in directories[path]]
+        for identifier, owned_directory in owned.items()
     }
     return {identifier: files for identifier, files in touched.items() if files}
 
@@ -156,8 +162,9 @@ def _verdict(pairs: list[dict[str, Any]], evidence: list[dict[str, Any]], *, map
     return "no-cross-context-change" if mapped else "unknown"
 
 
-def boundary_impact(root: Path, repo_root: Path, base: str) -> dict[str, Any]:
-    tracked, untracked = _changes(repo_root, base)
+def boundary_impact(root: Path, repo_root: Path, base: str,
+                    changes: tuple[set[str], set[str]] | None = None) -> dict[str, Any]:
+    tracked, untracked = changed_files_since(repo_root, base) if changes is None else changes
     paths = sorted(tracked | untracked)
     contexts = _records_with_status(root, "contexts.json")
     mapped = any(isinstance(context.get("implementation_path"), str) for context in contexts)

@@ -1,5 +1,4 @@
 from collections import Counter
-from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -696,51 +695,42 @@ def record_by_id(root: Path, asset: str, identifier: str) -> dict[str, Any] | No
 SUMMARY_FIELDS = ("statement", "definition", "responsibility", "description", "name")
 
 
-def _records_where(
-    root: Path, name: str, keep: Callable[[dict[str, Any]], bool]
-) -> list[dict[str, Any]]:
-    return [entry for entry in asset_records(root, name) if keep(entry)]
+def context_model(root: Path, identifier: str,
+                  records: dict[str, list[dict[str, Any]]] | None = None) -> dict[str, Any] | None:
+    def held(name: str) -> list[dict[str, Any]]:
+        return asset_records(root, name) if records is None else records[name]
 
-
-def context_model(root: Path, identifier: str) -> dict[str, Any] | None:
-    context = record_by_id(root, "contexts", identifier)
+    context = (
+        record_by_id(root, "contexts", identifier) if records is None
+        else next((entry for entry in records["contexts.json"] if entry.get("id") == identifier), None)
+    )
     if context is None:
         return None
     contracts = [
-        entry for entry in asset_records(root, "contracts.json")
+        entry for entry in held("contracts.json")
         if identifier == entry.get("producer_context") or identifier in entry.get("consumer_contexts", [])
     ]
     interactions = [
-        entry for entry in asset_records(root, "interactions.json")
+        entry for entry in held("interactions.json")
         if identifier in {entry.get("producer_context"), entry.get("consumer_context")}
     ]
-    rules = asset_records(root, "rules.json")
+    rules = held("rules.json")
     mode = review_mode(root)
     return {
         "usage": "constraint" if mode == "scm-verified" else "working-memory",
         "review_mode": mode,
         "context": context,
-        "vocabulary": _records_where(
-            root,
-            "vocabulary.json",
-            lambda entry: identifier in entry.get("contexts", []),
-        ),
-        "aggregates": _records_where(
-            root, "aggregates.json", lambda entry: entry.get("context") == identifier
-        ),
+        "vocabulary": [entry for entry in held("vocabulary.json") if identifier in entry.get("contexts", [])],
+        "aggregates": [entry for entry in held("aggregates.json") if entry.get("context") == identifier],
         "rules": [entry for entry in rules if identifier in entry.get("contexts", [])],
         "contracts": contracts,
         "interactions": interactions,
-        "events": _records_where(
-            root, "events.json",
-            lambda entry: entry.get("owner_context") == identifier or identifier in (entry.get("consumers") or []),
-        ),
-        "capabilities": _records_where(
-            root, "capabilities.json", lambda entry: entry.get("context") == identifier
-        ),
-        "value_objects": _records_where(
-            root, "value-objects.json", lambda entry: entry.get("context") == identifier
-        ),
+        "events": [
+            entry for entry in held("events.json")
+            if entry.get("owner_context") == identifier or identifier in (entry.get("consumers") or [])
+        ],
+        "capabilities": [entry for entry in held("capabilities.json") if entry.get("context") == identifier],
+        "value_objects": [entry for entry in held("value-objects.json") if entry.get("context") == identifier],
         "rules_bound_through_collaborations": _bound_rules(identifier, contracts, interactions, rules),
     }
 
@@ -748,15 +738,15 @@ def context_model(root: Path, identifier: str) -> dict[str, Any] | None:
 def _bound_rules(
     identifier: str, contracts: list[dict[str, Any]], interactions: list[dict[str, Any]], rules: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
-    collaborations = [(f"contracts/{entry.get('id')}", entry) for entry in contracts] + [
-        (f"interactions/{entry.get('id')}", entry) for entry in interactions
+    collaborations = [(f"contracts/{entry.get('id')}", cited_paths(entry)) for entry in contracts] + [
+        (f"interactions/{entry.get('id')}", cited_paths(entry)) for entry in interactions
     ]
     bound = []
     for rule in rules:
         if identifier in rule.get("contexts", []):
             continue
         cited = cited_paths(rule)
-        via = [name for name, entry in collaborations if cited & cited_paths(entry)]
+        via = [name for name, paths in collaborations if cited & paths]
         if via:
             bound.append({"rule": rule.get("id"), "contexts": rule.get("contexts", []), "statement": rule.get("statement"),
                           "via": via})

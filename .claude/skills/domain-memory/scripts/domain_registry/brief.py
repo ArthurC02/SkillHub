@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable
+from functools import cache
 from pathlib import Path
 from typing import Any
 
 from .audit import review_history, reviewing_proposals
 from .changes import packages_root, proof_of
-from .common import ASSET_KEYS, FAILING_EVIDENCE
-from .dependents import dependents
+from .common import ASSET_KEYS, FAILING_EVIDENCE, readable_packages
+from .dependents import DependencyGraph
 from .evidence import source_map_for
-from .impact import boundary_impact, touched_records
-from .registry import cited_paths, context_model, context_summary, record_by_id, summarized, verify_evidence
+from .impact import boundary_impact, changed_files_since, touched_records
+from .registry import asset_records, cited_paths, context_model, context_summary, record_by_id, summarized, verify_evidence
 from .revision import committed_json
 from .store import committed_documents, read_document
 
@@ -31,9 +33,10 @@ CONTEXT_LISTS = ("contexts", "consumer_contexts", "consumers")
 
 
 def brief_for_change(root: Path, repo_root: Path, base: str) -> dict[str, Any]:
-    impact = boundary_impact(root, repo_root, base)
+    changes = changed_files_since(repo_root, base)
+    impact = boundary_impact(root, repo_root, base, changes)
     touched: dict[tuple[str, Any], dict[str, Any]] = {}
-    for entry in [*touched_records(root, repo_root, base), *impact["boundary_evidence_touched"]]:
+    for entry in [*touched_records(root, repo_root, base, changes), *impact["boundary_evidence_touched"]]:
         touched.setdefault((entry["asset"], entry["id"]), {})["touched_evidence"] = entry["touched_evidence"]
     for entry in impact["boundary_evidence_changed"]:
         touched.setdefault((entry["asset"], entry["id"]), {})["changed_evidence"] = entry["changed_evidence"]
@@ -43,14 +46,20 @@ def brief_for_change(root: Path, repo_root: Path, base: str) -> dict[str, Any]:
         if item["status"] in CHANGED_CITATION:
             changed = touched.setdefault((item["asset"], item["id"]), {}).setdefault("changed_evidence", [])
             changed[:] = sorted({*changed, item["path"]})
-    proofs = (review_history(root), packages_root(root, None))
+    records = _records(root)
+    graph, statuses = DependencyGraph.from_documents(records), _default_statuses(root)
+    history, changes_root = review_history(root), packages_root(root, None)
+    packages = cache(lambda: readable_packages(changes_root))
     brief = {
         "format": FORMAT,
         "subject": {"base": base, "changed_files": impact["changed_files"]},
         "verdict": impact["verdict"],
-        "contexts": [_context(root, identifier, files) for identifier, files in impact["contexts_touched"].items()],
+        "contexts": [
+            _context(root, records, statuses, identifier, files) for identifier, files in impact["contexts_touched"].items()
+        ],
         "records": [
-            _with_check(_record(root, asset, record_id, notes), *proofs) for (asset, record_id), notes in sorted(touched.items(), key=str)
+            _with_check(_record(graph, statuses, asset, record_id, notes), history, changes_root, packages)
+            for (asset, record_id), notes in sorted(touched.items(), key=str)
         ],
         "registry_changes": _registry_changes(root, repo_root, base),
         "source_map": _source_map_change(root, repo_root, base),
@@ -66,12 +75,14 @@ def brief_for_record(root: Path, repo_root: Path, asset: str, record_id: str) ->
     if record is None:
         raise ValueError(f"{asset} record not found: {record_id}")
     paths = sorted(cited_paths(record))
+    records = _records(root)
+    graph, statuses = DependencyGraph.from_documents(records), _default_statuses(root)
     brief = {
         "format": FORMAT,
         "subject": {"asset": asset, "id": record_id},
-        "record": {**_summarized(root, asset, record), "asset": asset},
-        "contexts": [_context(root, identifier, []) for identifier in _contexts_of(record)],
-        "dependents": _with_status(root, dependents(root, asset, record_id)["reached"]),
+        "record": {**_summarized(statuses, asset, record), "asset": asset},
+        "contexts": [_context(root, records, statuses, identifier, []) for identifier in _contexts_of(record)],
+        "dependents": _with_status(statuses, graph.dependents(asset, record_id)["reached"]),
         "evidence": _evidence(verify_evidence(root, repo_root, paths) if paths else None),
     }
     brief["attention"] = _record_attention(brief)
@@ -105,27 +116,35 @@ def to_markdown(brief: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _context(root: Path, identifier: str, files: list[str]) -> dict[str, Any]:
-    model = context_model(root, identifier)
+def _records(root: Path) -> dict[str, list[dict[str, Any]]]:
+    return {name: asset_records(root, name) for name in ASSET_KEYS}
+
+
+def _context(root: Path, records: dict[str, list[dict[str, Any]]], statuses: dict[str, Any], identifier: str,
+             files: list[str]) -> dict[str, Any]:
+    model = context_model(root, identifier, records)
     if model is None:
         return {"id": identifier, "changed_files": files, "model": None}
     summary = context_summary(model)
-    summary["context"] = {**summary["context"], **_summarized(root, "contexts", model["context"])}
+    summary["context"] = {**summary["context"], **_summarized(statuses, "contexts", model["context"])}
     return {"id": identifier, "changed_files": files, "model": summary}
 
 
-def _record(root: Path, asset: str, record_id: Any, notes: dict[str, Any]) -> dict[str, Any]:
-    record = record_by_id(root, asset, record_id)
-    shown = {**_summarized(root, asset, record), "asset": asset, **notes} if record is not None else {"id": record_id, "asset": asset, **notes}
-    shown["dependents"] = _with_status(root, dependents(root, asset, record_id)["reached"]) if record is not None else []
+def _record(graph: DependencyGraph, statuses: dict[str, Any], asset: str, record_id: Any, notes: dict[str, Any]) -> dict[str, Any]:
+    record = graph.record(asset, record_id)
+    shown = {**_summarized(statuses, asset, record), "asset": asset, **notes} if record is not None else {"id": record_id, "asset": asset, **notes}
+    shown["dependents"] = _with_status(statuses, graph.dependents(asset, record_id)["reached"]) if record is not None else []
     return shown
 
 
-def _with_check(record: dict[str, Any], history: dict[str, list[str]], changes_root: Path | None) -> dict[str, Any]:
+def _with_check(record: dict[str, Any], history: dict[str, list[str]], changes_root: Path | None,
+                packages: Callable[[], list[tuple[Path, dict[str, Any]]]]) -> dict[str, Any]:
     if record["asset"] != "rules":
         return record
     proposals = history.get(f"rules/{record['id']}")
-    obligations = proof_of(changes_root, proposals, ("rule", record["id"])).obligations if changes_root and proposals else None
+    obligations = (
+        proof_of(changes_root, proposals, ("rule", record["id"]), packages()).obligations if changes_root and proposals else None
+    )
     if not obligations:
         return {**record, "check": None, "cwd": None}
     return {**record, "check": obligations[0]["check"], "cwd": obligations[0]["working_directory"]}
@@ -182,16 +201,19 @@ def _counted(count: int, noun: str) -> str:
     return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
 
 
-def _summarized(root: Path, asset: str, record: dict[str, Any]) -> dict[str, Any]:
+def _default_statuses(root: Path) -> dict[str, Any]:
+    return {name.removesuffix(".json"): read_document(root, name).get("status") for name in ASSET_KEYS}
+
+
+def _summarized(statuses: dict[str, Any], asset: str, record: dict[str, Any]) -> dict[str, Any]:
     shown = summarized(record)
     if shown["status"] is None:
-        shown["status"] = read_document(root, f"{asset}.json").get("status")
+        shown["status"] = statuses[asset]
     return shown
 
 
-def _with_status(root: Path, reached: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    defaults = {item["asset"]: read_document(root, f"{item['asset']}.json").get("status") for item in reached if item["status"] is None}
-    return [{**item, "status": defaults[item["asset"]]} if item["status"] is None else item for item in reached]
+def _with_status(statuses: dict[str, Any], reached: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [{**item, "status": statuses[item["asset"]]} if item["status"] is None else item for item in reached]
 
 
 def _contexts_of(record: dict[str, Any]) -> list[str]:

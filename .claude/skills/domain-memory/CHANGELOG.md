@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.7
+
+### Changed
+
+- `brief --base` builds the dependency graph, the default statuses and the readable Change Packages once per brief instead of once per changed record; lists the files changed since the base once instead of twice; hands the records it already holds to each Context model instead of reading them again per Context; and a Context's bound rules compare against each collaboration's cited paths computed once. A brief over 227 changed records took 15 s here and takes 2.5 s; output is unchanged. `boundary_impact`, `touched_records`, `context_model`, `proof_of` and `dependents` keep their signatures and gain optional arguments for records a caller already holds.
+
 ## 4.2.6
 
 ### Changed

@@ -897,9 +897,11 @@ class Proof:
     since: tuple[str, ...] = ()
 
 
-def proof_of(changes_root: Path, proposals: list[str], source: tuple[str, str]) -> Proof:
+def proof_of(changes_root: Path, proposals: list[str], source: tuple[str, str],
+             readable: list[tuple[Path, dict[str, Any]]] | None = None) -> Proof:
     since: list[str] = []
-    readable = readable_packages(changes_root)
+    if readable is None:
+        readable = readable_packages(changes_root)
     for proposal_id in reversed(proposals):
         found = obligations_proving(readable, proposal_id, source)
         if found is None:
