@@ -3,13 +3,15 @@ import type { GenerationFailure } from "../../core/api/types";
 export const GENERATE_DIAGRAM_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 
 export const GENERATE_MAX_DIAGRAM_BYTES = 4000000; // one-number: generateMaxDiagramBytes
+export const GENERATE_DIAGRAM_LIMIT = `${GENERATE_MAX_DIAGRAM_BYTES.toLocaleString("en-US")} 位元組（約 ${(GENERATE_MAX_DIAGRAM_BYTES / 1024 / 1024).toFixed(1)} MB）`;
 
 export const GENERATE_MAX_REFERENCES = 3; // one-number: generateMaxReferences
 
 export function generateDiagramProblem(file: File): string | undefined {
   if (!GENERATE_DIAGRAM_TYPES.includes(file.type as (typeof GENERATE_DIAGRAM_TYPES)[number]))
     return "圖片格式需為 PNG、JPEG 或 WebP。";
-  if (file.size > GENERATE_MAX_DIAGRAM_BYTES) return "圖片超過大小上限，請換一張較小的圖。";
+  if (file.size > GENERATE_MAX_DIAGRAM_BYTES)
+    return `圖片超過 ${GENERATE_DIAGRAM_LIMIT}的上限，請換一張較小的圖。`;
   return undefined;
 }
 

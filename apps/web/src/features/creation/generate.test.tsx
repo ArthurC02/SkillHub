@@ -408,9 +408,19 @@ test("GEN-005: the diagram's accepted types and size ceiling are stated before t
   const note = container.querySelector("#generate-diagram-note")!;
   expect(note, "檔案選擇器旁邊沒有說出它會擋什麼").not.toBeNull();
   expect(note.textContent).toContain("PNG、JPEG 或 WebP");
-  expect(note.textContent).toContain("4 MB 以內");
+  expect(note.textContent).toContain("最多 4,000,000 位元組（約 3.8 MB）");
   expect(container.querySelector("#generate-diagram-file")!.getAttribute("aria-describedby")).toBe(
     "generate-diagram-note",
+  );
+});
+
+test("GEN-005: a diagram one byte past the ceiling is refused with the same ceiling the picker states", async () => {
+  const { generateDiagramProblem } = await import("./generate.model");
+  const png = (size: number) => new File([new Uint8Array(size)], "flow.png", { type: "image/png" });
+
+  expect(generateDiagramProblem(png(4_000_000))).toBeUndefined();
+  expect(generateDiagramProblem(png(4_000_001))).toBe(
+    "圖片超過 4,000,000 位元組（約 3.8 MB）的上限，請換一張較小的圖。",
   );
 });
 

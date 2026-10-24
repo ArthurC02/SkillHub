@@ -4,7 +4,7 @@ import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useGenerateAllowance, useGenerateSkill } from "../generate.service";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import {
-  GENERATE_MAX_DIAGRAM_BYTES,
+  GENERATE_DIAGRAM_LIMIT,
   GENERATE_MAX_REFERENCES,
   generateDiagramProblem,
   generateFailureMessage,
@@ -164,7 +164,7 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
           />
         </div>
         <p className="note" id="generate-diagram-note">
-          PNG、JPEG 或 WebP，{GENERATE_MAX_DIAGRAM_BYTES / 1_000_000} MB 以內。
+          PNG、JPEG 或 WebP，最多 {GENERATE_DIAGRAM_LIMIT}。
           圖片會傳給模型參考，平台不會保留圖片本身，只留下一串無法還原成圖片的指紋。
         </p>
         {reading && (
