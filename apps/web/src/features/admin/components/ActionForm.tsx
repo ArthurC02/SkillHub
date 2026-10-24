@@ -6,6 +6,16 @@ import { WriteFailure } from "./WriteFailure";
 
 const OPERATOR_NOTE_MAX_CHARS = SetSkillRestrictionBodyNoteMaxLength;
 
+function whyBlocked(
+  completed: boolean,
+  tooLong: string | null,
+  blockedReason: string | undefined,
+  submitLabel: string,
+): string {
+  if (completed) return "已完成這筆操作；修改上方欄位或理由後再送出，會建立另一筆操作。";
+  return tooLong ?? blockedReason ?? `「${submitLabel}」要等上面的欄位都填好。`;
+}
+
 export function ActionForm({
   id,
   submitLabel,
@@ -92,9 +102,7 @@ export function ActionForm({
       )}
       {blocked && (
         <p id={`${id}-why`} className="note">
-          {completed
-            ? "已完成這筆操作；修改上方欄位或理由後再送出，會建立另一筆操作。"
-            : (tooLong ?? blockedReason ?? `「${submitLabel}」要等上面的欄位都填好。`)}
+          {whyBlocked(completed, tooLong, blockedReason, submitLabel)}
         </p>
       )}
       {done && resultMatches && (
