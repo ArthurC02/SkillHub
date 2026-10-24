@@ -1085,3 +1085,21 @@ Dependabot 對這個目錄的 npm 鎖檔回報一則 High；上一版留在冷�
 | `run.mjs` | **未變**；`gatewaySpend` 結算競態仍留待下一版 |
 | `npm audit` | 本目錄 0 vulnerabilities |
 | 預設映像 | 仍是 `-22`；四項在 CI 發佈的 digest 上跑過之後才移動 |
+
+### 2026-10-24：四項測項，全部跑在 CI 發佈的 digest 上
+
+| 欄位 | 值 |
+| --- | --- |
+| 映像 digest | `sha256:1be41a7d95502dfda766f086e1e77143c31ba0ca035952cf0f259fa3960fff03`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-23`，於 commit `eaa6b806` 發佈；以 tag `docker pull`，`RepoDigests` 對得上） |
+| 環境 | 與 `-22` 相同：本機 LiteLLM（`skillhub-litellm-1`）＋ `skillhub_egress`；`sandboxd` 以 HEAD 交叉編譯、在 `debian:12-slim` 容器跑，`SKILLHUB_SANDBOX_IMAGE` **直接指上面那個 digest**；兩支測試二進位交叉編譯後在容器裡跑；允許清單只在暫存副本裡填 litellm 的 egress IP，committed 的那份一字未動 |
+| 費用 | 合計 **$0.0870335**（`gpt-5.4-mini`，24 筆，以閘道 `LiteLLM_SpendLogs` 加總）：端到端三次 Run $0.0215339＋$0.0244268＋$0.0130829、harness 兩支 $0.02799；撤銷探測與被換掉的套件 $0 |
+| 映像層 | 同一個 digest、無網路：`body-parser` → `2.4.0`、`fast-uri` → `3.1.9`、`qs` → `6.16.1`、`zod` → `4.6.7`、`pypdf.__version__` → `6.21.1`、`id -u` → `65532` |
+
+| 項次 | 狀態 | 實測輸出 / 判定 |
+| --- | --- | --- |
+| **1. Skill 載入條件** | ✅ **通過，三種形狀各跑一次** | `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` PASS（20.58s）、`TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone` PASS（19.28s）、`TestEndToEndRunOfAPluginInsideARepositoryDirectoryInstallsItsSkill` PASS（18.30s） |
+| **2. 全數經閘道；金鑰撤銷後回 401** | ✅ **通過** | 每次 Run 的模型呼叫都在該 Run 自己的 Virtual Key 下（`skillhub-attempt-<id>` 三把，6／7／6 筆）。撤銷：新開一把限 `gpt-5.4-mini`、0.5 USD、6 小時的 Virtual Key 打 `/v1/models` → **200**，`/key/delete` → 200，同一把再打 → **401** |
+| **3. Prompt caching 計費欄位與對帳** | ✅ **欄位通過；對帳三次 Run 有兩次少了最後一筆** | `usage_object.prompt_tokens_details.cached_tokens`：24 筆中 14 筆有值，合計 251,776。對帳：第一次 Run 回報 $0.021534 與該把 Virtual Key 的 `LiteLLM_SpendLogs` 加總相同；**第二次回報 $0.022891、閘道記 $0.0244268（差 $0.0015358），第三次回報 $0.011531、閘道記 $0.0130829（差 $0.0015519）**——同一個 `gatewaySpend` 競態（`run.mjs` 未變），扣點不受影響 |
+| **4. `usage` 事件的發出條件** | ✅ **通過** | `TestHarnessReportsUsageForACompletedTurn` PASS（17.96s，`in=18011 out=27 token_source=result`）；`TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage` PASS（15.65s，撞上限仍回報 `in=18011 out=29`，provider 錯誤指向 `token_budget_exceeded`）。harness 以 master key 當 grant，`cost` 為 `null`，與 `-22` 相同 |
+
+**套件位元組核對（不在四項清單上，同批驗證）**：`TestEndToEndRunRefusesAPackageWhoseStoredBytesAreNotTheAdmittedOnes` PASS（11.29s），沒有呼叫模型。
