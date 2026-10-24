@@ -74,6 +74,13 @@ function receiveDecision(fault: string, uncertain: boolean) {
   return { server, writes, release, initialDecision, current: () => saved };
 }
 
+const REFUSAL_SAID: Record<string, string> = {
+  "rejected input": "這個決定被拒絕。請重新讀取目前判定後再試。",
+  "missing suggestion": "這個決定被拒絕。這個建議已經不在了，請重新讀取這份評估。",
+  "applied conflict":
+    "這個決定被拒絕。這個建議的狀態已經變了，可能已在別處做了決定或建成新版本；請重新讀取目前判定後再試。",
+};
+
 async function inspectDecision(page: Page, alert: Locator) {
   const report = await new AxeBuilder({ page }).analyze();
   await writeFile(test.info().outputPath("suggestion-decision-a11y.json"), JSON.stringify(report));
@@ -147,9 +154,8 @@ for (const [fault, decision, uncertain] of [
       await expect(apply).toBeDisabled();
       receiver.release();
       const alert = item.getByRole("alert");
-      await expect(alert).toContainText(
-        uncertain ? "尚未確認" : "這次決定被拒絕，請重新核對建議。",
-      );
+      await expect(alert).toContainText(uncertain ? "尚未確認" : REFUSAL_SAID[fault]);
+      await expect(alert).not.toContainText("這次決定被拒絕，請重新核對建議。");
       await expect(alert).toBeFocused();
       await expect(item).not.toContainText("這個決定沒有記錄");
       const prior = receiver.initialDecision === "accepted" ? "已接受" : "尚未決定";

@@ -119,7 +119,7 @@ for (const [outcome, choice] of [
         await expect(alert).toContainText(
           outcome === "unknown"
             ? `尚未確認「${choice === "accepted" ? "接受" : "拒絕"}」是否已記錄`
-            : "suggestion not found",
+            : "這個決定被拒絕。這個建議已經不在了，請重新讀取這份評估。",
         );
         await expect(alert).toBeFocused();
         if (outcome === "refused") await expect(alert).toContainText("這個決定被拒絕");

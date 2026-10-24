@@ -116,7 +116,10 @@ for (const scenario of scenarios) {
           await page.getByRole("button", { name: "拿掉整個檢查", exact: true }).click();
         }
         release();
-        if (failed) await expect(page.getByRole("alert")).toHaveText("無法新增，可以再試一次。");
+        if (failed)
+          await expect(page.getByRole("alert")).toHaveText(
+            "尚未確認這一條驗收條件是否已新增；條件清單已重新讀取，請先確認，再決定要不要重送，以免重複。",
+          );
         else await expect(page.locator("#criterion-c-added")).toHaveValue("已送出的這一條");
         await expect(add).toHaveText("新增");
         await expect(field).toHaveValue(scenario.text);
@@ -132,7 +135,7 @@ for (const scenario of scenarios) {
               ? "已新增驗收條件。"
               : "已新增驗收條件。目前欄位裡的草稿尚未新增。",
           );
-        expect(reads).toBe(failed ? 1 : 2);
+        await expect.poll(() => reads).toBe(2);
         expect(writes).toEqual([
           {
             method: "POST",
