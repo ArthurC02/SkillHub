@@ -4,7 +4,7 @@ WITH named(name) AS (
            ('pptx'), ('xlsx')
 )
 UPDATE skills sk
-SET category = 'documents', updated_at = now()
+SET category = 'documents', category_source = 'curated', updated_at = now()
 FROM named n
 WHERE sk.name = n.name
   AND sk.deleted_at IS NULL
@@ -15,6 +15,7 @@ WHERE sk.name = n.name
         JOIN workspaces w ON w.id = c.workspace_id AND w.is_catalog
         WHERE c.name = n.name)
   )
+  AND sk.category_source IS DISTINCT FROM 'owner'
   AND sk.category IS DISTINCT FROM 'documents';
 
 WITH named(name) AS (
@@ -23,7 +24,7 @@ WITH named(name) AS (
            ('sokrati'), ('shorten')
 )
 UPDATE skills sk
-SET category = 'writing', updated_at = now()
+SET category = 'writing', category_source = 'curated', updated_at = now()
 FROM named n
 WHERE sk.name = n.name
   AND sk.deleted_at IS NULL
@@ -34,6 +35,7 @@ WHERE sk.name = n.name
         JOIN workspaces w ON w.id = c.workspace_id AND w.is_catalog
         WHERE c.name = n.name)
   )
+  AND sk.category_source IS DISTINCT FROM 'owner'
   AND sk.category IS DISTINCT FROM 'writing';
 
 WITH named(name) AS (
@@ -46,7 +48,7 @@ WITH named(name) AS (
            ('add-iso3166')
 )
 UPDATE skills sk
-SET category = 'data', updated_at = now()
+SET category = 'data', category_source = 'curated', updated_at = now()
 FROM named n
 WHERE sk.name = n.name
   AND sk.deleted_at IS NULL
@@ -57,5 +59,6 @@ WHERE sk.name = n.name
         JOIN workspaces w ON w.id = c.workspace_id AND w.is_catalog
         WHERE c.name = n.name)
   )
+  AND sk.category_source IS DISTINCT FROM 'owner'
   AND sk.category IS DISTINCT FROM 'data';
 

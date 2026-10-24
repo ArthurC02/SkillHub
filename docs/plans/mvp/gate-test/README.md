@@ -176,10 +176,11 @@ golden set v2 在門檻 `MaxCosineDistance = 0.75` 下，12 條干擾查詢**全
 
 1. **釘選 commit**：`git rev-parse HEAD` 的完整 40 碼寫進 [`analysis.md`](analysis.md) 開頭；實例只從這個 commit 建置，測試期間不換。
 2. **曝光旗標關閉**：`GENERATE_SKILL_EXPOSED=off`、`CREATION_EXPOSED` 不設或非 `on`。開機日誌不得出現 `GENERATE_SKILL_EXPOSED=on` 的警告（`01` §10 的 ⛔ 邊界）。
-3. **目錄 45 筆且回填完成**：種入後照 [`release-checklist.md` §2.4.1](../m4/release-checklist.md) 跑回填與 `cmd/reindex`，驗收值以該節為準（授權 41／4、分類 10／10／25、精選 15）。**本機開發庫目前只有授權那一項做過**：分類全為空、精選 0 筆——直接拿它開場，首頁的精選書架與分類 chip 都是空的。
-4. **搜尋品質回放**：在釘選 commit 上跑 `apps/platform/internal/entrypoint/api/apiserver/intent_golden_integration_test.go` 的兩條測試（錄製向量與錄製意圖分析，不呼叫模型），全綠才開場。
-5. **閘道可用且有預算**：LiteLLM 起著、`skillhub-intent`／`text-embedding-3-small`／`skillhub-match-reason` 三個角色各打一次成功；每日預算足夠 9 場。
-6. **同意書是現行版**：[`consent-and-data-policy.md`](consent-and-data-policy.md) §8.1 含「搜尋文字送往 OpenAI」那段，且法務重新確認已完成（[legal-reconfirmation.md](legal-reconfirmation.md)）。
+3. **綱要是最新的**：`db/migrations/` 每一檔都已套用。本機開發庫停在 `0082`，缺 62 檔；拿舊庫開場，意圖搜尋的費用寫不進去、多個營運設定讀不到。
+4. **目錄 45 筆且回填完成**：種入後照 [`release-checklist.md` §2.4.1](../m4/release-checklist.md) 跑回填與 `cmd/reindex`，驗收值以該節為準（授權 41／4、分類 10／10／25、精選 15）。**本機開發庫目前只有授權那一項做過**：分類全為空、精選 0 筆——直接拿它開場，首頁的精選書架與分類 chip 都是空的。
+5. **搜尋品質回放**：在釘選 commit 上跑 `apps/platform/internal/entrypoint/api/apiserver/intent_golden_integration_test.go` 的兩條測試（錄製向量與錄製意圖分析，不呼叫模型），全綠才開場。
+6. **閘道可用且已暖機**：LiteLLM 起著，apps/llm 帶 `LITELLM_BASE_URL` 與有預算的 Virtual Key；**每場開始前自己先搜一次**——閘道剛起來的第一次呼叫會逾時，那一題會以降級結果呈現給受測者。每日預算足夠 9 場（每次搜尋約 US$0.001）。
+7. **同意書是現行版**：[`consent-and-data-policy.md`](consent-and-data-policy.md) §8.1 含「搜尋文字送往 OpenAI」那段，且法務重新確認已完成（[legal-reconfirmation.md](legal-reconfirmation.md)）。
 
 任何變更都會讓前後場次不可比。若不得不改（例如線上事故），**變更前後的場次分開統計**，並在分析報告中明列。
 
@@ -240,7 +241,7 @@ golden set v2 在門檻 `MaxCosineDistance = 0.75` 下，12 條干擾查詢**全
 ### 4.3 兩個回歸把關（測試期間持續）
 
 1. 每次動語料或索引管線，跑 `python tools/goldenset/evaluate.py --selfcheck`（零成本、零網路）。測試期間本應凍結，此指令用於確認**確實沒被動過**。
-2. golden-query-set.md §4.4 的三個門檻過期觸發條件中，**條件 1（語料成長一個數量級）仍然有效**；測試期間若觸發，本次結論作廢，需重推門檻後重測。**條件 3（查詢改寫上線）已經觸發**：意圖搜尋已上線，而以現行程式回放 golden set（§3.2 第 4 項）仍全數命中，所以門檻不需重推，但測試期間改動意圖分析等同條件 3 再觸發一次。
+2. golden-query-set.md §4.4 的三個門檻過期觸發條件中，**條件 1（語料成長一個數量級）仍然有效**；測試期間若觸發，本次結論作廢，需重推門檻後重測。**條件 3（查詢改寫上線）已經觸發**：意圖搜尋已上線，而以現行程式回放 golden set（§3.2 第 5 項）仍全數命中，所以門檻不需重推，但測試期間改動意圖分析等同條件 3 再觸發一次。
 
 ---
 
@@ -251,4 +252,5 @@ golden set v2 在門檻 `MaxCosineDistance = 0.75` 下，12 條干擾查詢**全
 3. **不測 DISC-003 的四個無資料維度**——它們是停用的。測的是「停用是否被誤讀」，不是篩選功能本身。
 4. **不測下載。** `docx`／`pdf`／`pptx`／`xlsx` 是 source-available，永遠不會有 Download Artifact（seed-skills.json 註記）。主持人不得引導受測者往下載走。
 5. **不測試跑。** 試跑屬 M2；受測者若問「可以馬上試嗎」，記下這個訊號但不提供。
-6. **`reason_source` 的判定是主觀的。** 由記錄員當場判、由第二人事後覆核（`analysis.md` §1.3）；覆核不一致的題次逐筆列出。
+6. **搜尋要等 6～12 秒，推薦理由不一定是模型寫的。** 意圖分析約 3 秒、推薦理由約 7 秒，串行；推薦理由 8 秒內沒寫完就換成「查詢與文件共同出現：…」的關鍵字樣板句。記錄表的耗時含這段等待，`reason_source` 照畫面上實際出現的那一種記。
+7. **`reason_source` 的判定是主觀的。** 由記錄員當場判、由第二人事後覆核（`analysis.md` §1.3）；覆核不一致的題次逐筆列出。
