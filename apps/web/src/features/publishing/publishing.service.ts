@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, ApiError, isWriteResultUnknown } from "../../core/api/client";
+import {
+  apiFetch,
+  ApiError,
+  isWriteResultUnknown,
+  SessionNotReadyError,
+} from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import type { DeclarableLicense } from "@skillhub/api-client-ts";
 import type { CategorizedFindings, Labelled } from "../../core/api/types";
@@ -193,7 +198,10 @@ export function useRegisterPublisher() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
       }),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.publishing.publisher }),
+    onSettled: (_, error) => {
+      if (error instanceof SessionNotReadyError) return;
+      void client.invalidateQueries({ queryKey: queryKeys.publishing.publisher });
+    },
   });
 }
 
@@ -226,7 +234,8 @@ export function usePublish(skillId: string) {
           declared_license: declaredLicense || undefined,
         }),
       }),
-    onSuccess: () => {
+    onSettled: (_, error) => {
+      if (error instanceof SessionNotReadyError) return;
       void client.invalidateQueries({ queryKey: queryKeys.publishing.ownPublication(skillId) });
       void client.invalidateQueries({ queryKey: queryKeys.publishing.publications });
     },
@@ -237,7 +246,8 @@ export function useDelist(skillId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () => apiFetch<Publication>(`/skills/${skillId}/publication`, { method: "DELETE" }),
-    onSuccess: () => {
+    onSettled: (_, error) => {
+      if (error instanceof SessionNotReadyError) return;
       void client.invalidateQueries({ queryKey: queryKeys.publishing.ownPublication(skillId) });
       void client.invalidateQueries({ queryKey: queryKeys.publishing.publications });
     },

@@ -15,7 +15,7 @@ import {
   useDelist,
   type Publication,
 } from "../publishing.service";
-import { publishGateState, refusalSentence } from "../publishing.model";
+import { publishGateState, writeFailureSentence } from "../publishing.model";
 import { PublishDeclarations, PublishForm, type Declarations } from "./PublishForm";
 import { PublisherRegistration } from "./PublisherSection";
 import { VersionCatalogExposure } from "./CatalogExposure";
@@ -225,9 +225,9 @@ function PublishedView({
           {disabledReason}
         </p>
       )}
-      {publish.isError && (
-        <p role="alert">{refusalSentence(publish.error) ?? "發佈沒有成功，可以再試一次。"}</p>
-      )}
+      <ReadFailure error={publish.error} what="發佈">
+        <p role="alert">{writeFailureSentence(publish.error, "發佈")}</p>
+      </ReadFailure>
 
       {publication.status === "published" && (
         <ConfirmDelete
@@ -243,9 +243,9 @@ function PublishedView({
           }
         />
       )}
-      {delist.isError && (
-        <p role="alert">{refusalSentence(delist.error) ?? "撤回沒有成功，可以再試一次。"}</p>
-      )}
+      <ReadFailure error={delist.error} what="撤回">
+        <p role="alert">{writeFailureSentence(delist.error, "撤回")}</p>
+      </ReadFailure>
     </>
   );
 }

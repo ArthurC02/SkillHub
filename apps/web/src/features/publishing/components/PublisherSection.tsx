@@ -7,7 +7,7 @@ import { useOwnPublisher, useRegisterPublisher } from "../publishing.service";
 import {
   PUBLISHER_NAME_PERMANENT,
   PUBLISHER_NAME_RULE,
-  refusalSentence,
+  writeFailureSentence,
 } from "../publishing.model";
 
 export function PublisherSection() {
@@ -80,9 +80,9 @@ export function PublisherRegistration() {
           {register.isPending ? "註冊中…" : "註冊"}
         </button>
       </form>
-      {register.isError && (
-        <p role="alert">{refusalSentence(register.error) ?? "註冊沒有成功，可以再試一次。"}</p>
-      )}
+      <ReadFailure error={register.error} what="發佈者名稱">
+        <p role="alert">{writeFailureSentence(register.error, "註冊")}</p>
+      </ReadFailure>
     </>
   );
 }

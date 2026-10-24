@@ -1,5 +1,5 @@
 import type { DeclarableLicense } from "@skillhub/api-client-ts";
-import { ApiError } from "../../core/api/client";
+import { ApiError, isWriteResultUnknown } from "../../core/api/client";
 import type { SkillDetail } from "../../core/api/types";
 import { packagingGate } from "../packaging";
 
@@ -101,6 +101,14 @@ export function refusalReason(error: unknown): PublishingRefusalReason | undefin
 export function refusalSentence(error: unknown): string | undefined {
   const reason = refusalReason(error);
   return reason ? PUBLISHING_REFUSAL_LABEL[reason] : undefined;
+}
+
+export function writeFailureSentence(error: unknown, action: string): string {
+  const sentence = refusalSentence(error);
+  if (sentence) return sentence;
+  if (isWriteResultUnknown(error))
+    return `尚未確認${action}是否已完成；上面的狀態已重新讀取，請先看過再決定要不要重送。`;
+  return `${action}沒有成功，可以再試一次。`;
 }
 
 const SERVER_WORDED_STATUSES = new Set([403, 409, 422]);

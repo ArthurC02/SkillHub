@@ -1,7 +1,8 @@
 import { useId } from "react";
 import type { DeclarableLicense } from "@skillhub/api-client-ts";
 import type { usePublish } from "../publishing.service";
-import { DECLARABLE_LICENSES, refusalSentence } from "../publishing.model";
+import { DECLARABLE_LICENSES, writeFailureSentence } from "../publishing.model";
+import { ReadFailure } from "../../../shared/ui/LoginRequired";
 
 export type Declarations = {
   needsAttestation: boolean;
@@ -130,9 +131,9 @@ export function PublishForm({
           {disabledReason}
         </p>
       )}
-      {publish.isError && (
-        <p role="alert">{refusalSentence(publish.error) ?? "發佈沒有成功，可以再試一次。"}</p>
-      )}
+      <ReadFailure error={publish.error} what="發佈">
+        <p role="alert">{writeFailureSentence(publish.error, "發佈")}</p>
+      </ReadFailure>
     </form>
   );
 }

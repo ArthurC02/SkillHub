@@ -1530,6 +1530,42 @@ test("PublisherSection：409 already_registered 顯示中文，不顯示英文�
   expect(text()).not.toContain("this account already has a publisher name");
 });
 
+async function registerWithLostAnswer(registeredOnServer: boolean) {
+  let registered = false;
+  vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      registered = registeredOnServer;
+      return json({ error: "upstream unavailable" }, 503);
+    }
+    return registered ? json(OWN_PUBLISHER) : json({ error: "no publisher" }, 404);
+  });
+  await render(<PublisherSection />, () => text().includes("還沒有註冊發佈者名稱"));
+  const input = container.querySelector("input")!;
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+  await act(async () => {
+    setValue.call(input, PUBLISHER);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => button("註冊")?.click());
+}
+
+test("PublisherSection: a registration whose answer was lost re-reads the publisher and shows the name the server kept", async () => {
+  await registerWithLostAnswer(true);
+  await waitFor(() => !text().includes("還沒有註冊發佈者名稱"));
+
+  expect(text()).toContain(PUBLISHER);
+  expect(container.querySelector("form")).toBeNull();
+});
+
+test("PublisherSection: a registration whose answer was lost is not called a failure", async () => {
+  await registerWithLostAnswer(false);
+  await waitFor(() => container.querySelector('[role="alert"]') !== null);
+
+  expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+    "尚未確認註冊是否已完成；上面的狀態已重新讀取，請先看過再決定要不要重送。",
+  );
+});
+
 test("PublisherSection：422 name_shape 顯示中文", async () => {
   vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
     if (init?.method === "POST") {
@@ -1775,6 +1811,54 @@ test("PublishPanel：發佈明確送出畫面上的版本，不讓伺服器另�
     version_id: selected.version_id,
     name: "PDF Summariser",
   });
+});
+
+async function publishAnswered(status: number) {
+  let publicationReads = 0;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me/publisher") return json(OWN_PUBLISHER);
+    if (path === `/skills/${SKILL}/publication` && init?.method === "POST") {
+      return json({ error: "upstream says no" }, status);
+    }
+    if (path === `/skills/${SKILL}/publication`) {
+      publicationReads += 1;
+      return json({ error: "not published" }, 404);
+    }
+    return json({ error: "not found" }, 404);
+  });
+  await render(
+    <PublishPanel skill={detail()} version={SKILL_VERSIONS.versions[0]} isLoggedIn isOwner />,
+    () => Boolean(container.querySelector("form")),
+  );
+  const readsBefore = publicationReads;
+  await act(async () =>
+    container
+      .querySelector("form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
+  );
+  await waitFor(
+    () => container.querySelector('[role="alert"]') !== null || text().includes("需要登入"),
+  );
+  return () => publicationReads - readsBefore;
+}
+
+test("PublishPanel: a publish whose answer was lost re-reads the publication and is not called a failure", async () => {
+  const rereads = await publishAnswered(503);
+  await waitFor(() => rereads() > 0);
+
+  expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+    "尚未確認發佈是否已完成；上面的狀態已重新讀取，請先看過再決定要不要重送。",
+  );
+});
+
+test("PublishPanel: a publish refused because the session expired asks to sign in instead of to retry", async () => {
+  await publishAnswered(401);
+
+  expect(text()).not.toContain("發佈沒有成功");
+  expect(text()).toContain("發佈需要登入。");
 });
 
 describe("PublishPanel：勾選框只在 self_supplied／generated 出現，授權選單只在 generated 出現", () => {
