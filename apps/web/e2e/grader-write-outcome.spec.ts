@@ -158,12 +158,14 @@ async function prepare(
       .click();
   else await page.getByText(`修改「${scope.grader.name}」的評分指示`, { exact: true }).click();
   await fillDraft(page, scope, operation, FIRST);
-  await fields(page, scope, operation)
-    .form.getByRole("button", {
+  const inputs = fields(page, scope, operation);
+  await expect(
+    inputs.form.getByRole("button", {
       name: operation === "create" ? "新增評分器" : "存成新版本",
       exact: true,
-    })
-    .click();
+    }),
+  ).toBeEnabled();
+  await inputs.reason.press("Enter");
 }
 
 async function checkReadOnlyVerification(
