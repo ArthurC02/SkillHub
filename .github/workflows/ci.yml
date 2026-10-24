@@ -696,29 +696,37 @@ jobs:
           bash tools/ci/report-failure.sh 'Known answers'
           python tools/data-readiness/known_answers.py check --repo-root .
 
-      - name: Domain Memory plugin tests
-        run: >-
-          bash tools/ci/report-failure.sh 'Domain Memory plugin tests'
-          python -m unittest discover -s .claude/skills/domain-memory/scripts -p 'test_*.py'
-
-      - name: Domain Memory plugin lint
-        run: >-
-          bash tools/ci/report-failure.sh 'Domain Memory plugin lint'
-          ruff check .claude/skills/domain-memory
-
       - name: Domain Memory attested commits carry their packages
         run: >-
           bash tools/ci/report-failure.sh 'Domain Memory attestation audit'
           python .claude/skills/domain-memory/scripts/registry_tools.py audit-attestations
           --repo-root . --changes-root docs/domain-memory/changes
 
+  domain-memory:
+    needs: changes
+    if: needs.changes.outputs.domain-memory == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.13']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.10'
-      - name: Domain Memory plugin tests on the oldest Python it supports
+          python-version: ${{ matrix.python }}
+      - name: Domain Memory plugin tests
         run: >-
-          bash tools/ci/report-failure.sh 'Domain Memory plugin tests on Python 3.10'
-          python -m unittest discover -s .claude/skills/domain-memory/scripts -p 'test_*.py'
+          bash tools/ci/report-failure.sh "Domain Memory plugin tests on Python ${{ matrix.python }}"
+          python .claude/skills/domain-memory/scripts/run_tests.py --jobs 4
+      - name: Domain Memory plugin lint
+        if: matrix.python == '3.13'
+        run: |
+          pip install ruff==0.16.7
+          bash tools/ci/report-failure.sh 'Domain Memory plugin lint' ruff check .claude/skills/domain-memory
 
   qa002:
     needs: changes
