@@ -32,6 +32,7 @@ import {
   AGENT_REPORT_RUN,
   ADMIN_EXPOSURE_CASE,
   ADMIN_SKILLS,
+  ADMIN_TREND_JOURNEYS,
   PUBLICATION,
   PUBLISHER,
   SKILL,
@@ -2936,7 +2937,7 @@ test("OPS-008: a series fills a day with no bucket with zero and drops a bucket 
   ]);
 });
 
-const TREND_PATHS = ["cost", "credits", "funnel", "operator-actions", "runs"];
+const TREND_PATHS = ["cost", "credits", "funnel", "journeys", "operator-actions", "runs"];
 const trendCalls = () => calls.filter((c) => c.url.startsWith("/admin/trends/")).map((c) => c.url);
 const trendsFor = (days: number) =>
   new Set(TREND_PATHS.map((path) => `/admin/trends/${path}?days=${days}`));
@@ -2950,7 +2951,7 @@ test("OPS-008: the trends page asks each owner for 30 days by default and draws 
     Array.from(container.querySelectorAll<HTMLElement>("figure .table-scroll")).map(
       (scroll) => scroll.tabIndex,
     ),
-  ).toEqual(Array(11).fill(0));
+  ).toEqual(Array(14).fill(0));
   expect(has("2026-08-14 到 2026-09-12（UTC），共 30 天。")()).toBe(true);
   expect(
     Array.from(container.querySelectorAll('canvas[role="img"]')).map((c) =>
@@ -2969,6 +2970,9 @@ test("OPS-008: the trends page asks each owner for 30 days by default and draws 
       "開始試跑",
       "搜尋",
       "看小工具詳情",
+      "24 小時內按下下載",
+      "搜尋過的工作階段",
+      "10 分鐘內按下下載",
     ].map((name) => `${name}：每日長條圖，逐日數字在下方的表`),
   );
 });
@@ -2993,7 +2997,7 @@ test("aligned trends put four period totals before the daily charts", async () =
     overview.compareDocumentPosition(field<HTMLElement>("#admin-trend-cost")) &
       Node.DOCUMENT_POSITION_FOLLOWING,
   ).toBeTruthy();
-  expect(trendCalls()).toHaveLength(5);
+  expect(trendCalls()).toHaveLength(6);
 });
 
 test("OPS-008: the range comes before compact read metadata on a complete trends page", async () => {
@@ -3002,9 +3006,9 @@ test("OPS-008: the range comes before compact read metadata on a complete trends
   await waitFor(has("全平台目前餘額總和：1268 點。"));
   const text = container.textContent ?? "";
   expect(text).toContain("2026-08-14 到 2026-09-12（UTC），共 30 天。");
-  expect(text).toContain("已取得 5/5 組 ·");
+  expect(text).toContain("已取得 6/6 組 ·");
   expect(text.indexOf("2026-08-14 到 2026-09-12（UTC），共 30 天。")).toBeLessThan(
-    text.indexOf("已取得 5/5 組 ·"),
+    text.indexOf("已取得 6/6 組 ·"),
   );
   expect(text).not.toContain("秒前");
 });
@@ -3030,13 +3034,13 @@ test("OPS-008: a failed trend hides its cached chart while other trends remain u
   expect(credits.textContent).not.toContain("全平台目前餘額總和：1268 點。");
   expect(credits.querySelector("figure")).toBeNull();
   expect(has("評審：3 筆，合計 $0.0036")()).toBe(true);
-  expect(has("已取得 4/5 組 ·")()).toBe(true);
+  expect(has("已取得 5/6 組 ·")()).toBe(true);
   expect(container.querySelector("#admin-trend-overview")).toBeNull();
 
   await click(button("重新整理"));
   await waitFor(has("全平台目前餘額總和：1268 點。"));
   expect(creditReads).toBe(3);
-  expect(has("已取得 5/5 組 ·")()).toBe(true);
+  expect(has("已取得 6/6 組 ·")()).toBe(true);
 });
 
 test("OPS-008: losing all trend reads hides the cached range until refresh succeeds", async () => {
@@ -3070,7 +3074,7 @@ test("OPS-008: different response windows are not presented as one comparable ra
     return { ...response, body: { ...(response.body as object), from: "2026-08-15" } };
   });
   await mountAt("/admin/trends");
-  await waitFor(has("已取得 5/5 組 ·"));
+  await waitFor(has("已取得 6/6 組 ·"));
   expect(has("取得的趨勢日期範圍與選擇不一致，請重新整理後再比較。")()).toBe(true);
   expect(has("2026-08-14 到 2026-09-12（UTC），共 30 天。")()).toBe(false);
   expect(container.querySelector("#admin-trend-overview")).toBeNull();
@@ -3083,7 +3087,7 @@ test("OPS-008: a seven-day response does not masquerade as the selected 30 days"
     return { ...response, body: { ...(response.body as object), from: "2026-09-06" } };
   });
   await mountAt("/admin/trends");
-  await waitFor(has("已取得 5/5 組 ·"));
+  await waitFor(has("已取得 6/6 組 ·"));
   expect(has("取得的趨勢日期範圍與選擇不一致，請重新整理後再比較。")()).toBe(true);
   expect(has("2026-09-06 到 2026-09-12（UTC），共 7 天。")()).toBe(false);
 });
@@ -3134,6 +3138,54 @@ test("OPS-008: the funnel says what one count means at every stage, from the ser
   ).toBeTruthy();
 });
 
+const journeySection = () =>
+  Array.from(container.querySelectorAll("section")).find(
+    (section) => section.querySelector("h2")?.textContent === "從搜尋到下載",
+  );
+
+test.each([
+  {
+    name: "a period with downloads states both shares and the median minutes",
+    period: { searched: 20, downloaded: 5, within_promise: 2, median_minutes: 14.5 },
+    sentence:
+      "搜尋過的 20 個工作階段中，5 個（25%）在 24 小時內按下下載，2 個（10%）在 10 分鐘內。從第一次搜尋到按下下載的中位數是 14.5 分鐘。",
+  },
+  {
+    name: "a period without a download states the shares and no median",
+    period: { searched: 3, downloaded: 0, within_promise: 0 },
+    sentence: "搜尋過的 3 個工作階段中，0 個（0%）在 24 小時內按下下載，0 個（0%）在 10 分鐘內。",
+  },
+  {
+    name: "a period without a search says so instead of dividing by zero",
+    period: { searched: 0, downloaded: 0, within_promise: 0 },
+    sentence: "這段期間沒有搜尋過的工作階段。",
+  },
+])("OPS-008: the search-to-download journey — $name", async ({ period, sentence }) => {
+  stub(true, (path) =>
+    path === "/admin/trends/journeys"
+      ? { body: { ...ADMIN_TREND_JOURNEYS, period }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/trends");
+  await waitFor(() => journeySection()?.querySelector("p") != null);
+  expect(journeySection()!.querySelector("p")!.textContent).toBe(sentence);
+});
+
+test("OPS-008: the journey chart names its three lines from the promise the server states", async () => {
+  stub(true, (path) =>
+    path === "/admin/trends/journeys"
+      ? {
+          body: { ...ADMIN_TREND_JOURNEYS, promise_minutes: 15, journey_window_hours: 48 },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/trends");
+  await waitFor(has("搜尋過的工作階段：20 筆"));
+  expect(has("48 小時內按下下載：5 筆")()).toBe(true);
+  expect(has("15 分鐘內按下下載：2 筆")()).toBe(true);
+});
+
 test("OPS-008: a kind with no events in the range is named instead of drawn", async () => {
   stub(true);
   await mountAt("/admin/trends");
@@ -3165,7 +3217,7 @@ test("OPS-008: a range in the address is asked for, and a range the page does no
 
   calls = [];
   await go("/admin/trends", { days: "8" });
-  await waitFor(() => trendCalls().length >= 5);
+  await waitFor(() => trendCalls().length >= 6);
   expect(new Set(trendCalls())).toEqual(trendsFor(30));
 });
 

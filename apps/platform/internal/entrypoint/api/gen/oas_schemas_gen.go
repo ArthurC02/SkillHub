@@ -12626,6 +12626,31 @@ type GetGenerateAllowanceUnauthorized Error
 
 func (*GetGenerateAllowanceUnauthorized) getGenerateAllowanceRes() {}
 
+type GetJourneyTrendBadRequest Error
+
+func (*GetJourneyTrendBadRequest) getJourneyTrendRes() {}
+
+type GetJourneyTrendDays int
+
+const (
+	GetJourneyTrendDays7  GetJourneyTrendDays = 7
+	GetJourneyTrendDays30 GetJourneyTrendDays = 30
+	GetJourneyTrendDays90 GetJourneyTrendDays = 90
+)
+
+// AllValues returns all GetJourneyTrendDays values.
+func (GetJourneyTrendDays) AllValues() []GetJourneyTrendDays {
+	return []GetJourneyTrendDays{
+		GetJourneyTrendDays7,
+		GetJourneyTrendDays30,
+		GetJourneyTrendDays90,
+	}
+}
+
+type GetJourneyTrendNotFound Error
+
+func (*GetJourneyTrendNotFound) getJourneyTrendRes() {}
+
 type GetOperatorActionTrendBadRequest Error
 
 func (*GetOperatorActionTrendBadRequest) getOperatorActionTrendRes() {}
@@ -13901,6 +13926,127 @@ func (*IngestTraceEventsRequestEntityTooLarge) ingestTraceEventsRes() {}
 type IngestTraceEventsUnauthorized Error
 
 func (*IngestTraceEventsUnauthorized) ingestTraceEventsRes() {}
+
+// Ref: #/components/schemas/JourneyPeriod
+type JourneyPeriod struct {
+	Searched      int64 `json:"searched"`
+	Downloaded    int64 `json:"downloaded"`
+	WithinPromise int64 `json:"within_promise"`
+	// Absent when no session downloaded in the range.
+	MedianMinutes OptFloat64 `json:"median_minutes"`
+}
+
+// GetSearched returns the value of Searched.
+func (s *JourneyPeriod) GetSearched() int64 {
+	return s.Searched
+}
+
+// GetDownloaded returns the value of Downloaded.
+func (s *JourneyPeriod) GetDownloaded() int64 {
+	return s.Downloaded
+}
+
+// GetWithinPromise returns the value of WithinPromise.
+func (s *JourneyPeriod) GetWithinPromise() int64 {
+	return s.WithinPromise
+}
+
+// GetMedianMinutes returns the value of MedianMinutes.
+func (s *JourneyPeriod) GetMedianMinutes() OptFloat64 {
+	return s.MedianMinutes
+}
+
+// SetSearched sets the value of Searched.
+func (s *JourneyPeriod) SetSearched(val int64) {
+	s.Searched = val
+}
+
+// SetDownloaded sets the value of Downloaded.
+func (s *JourneyPeriod) SetDownloaded(val int64) {
+	s.Downloaded = val
+}
+
+// SetWithinPromise sets the value of WithinPromise.
+func (s *JourneyPeriod) SetWithinPromise(val int64) {
+	s.WithinPromise = val
+}
+
+// SetMedianMinutes sets the value of MedianMinutes.
+func (s *JourneyPeriod) SetMedianMinutes(val OptFloat64) {
+	s.MedianMinutes = val
+}
+
+// Ref: #/components/schemas/JourneyTrend
+type JourneyTrend struct {
+	From               time.Time     `json:"from"`
+	To                 time.Time     `json:"to"`
+	PromiseMinutes     int           `json:"promise_minutes"`
+	JourneyWindowHours int           `json:"journey_window_hours"`
+	Buckets            []DailyCount  `json:"buckets"`
+	Period             JourneyPeriod `json:"period"`
+}
+
+// GetFrom returns the value of From.
+func (s *JourneyTrend) GetFrom() time.Time {
+	return s.From
+}
+
+// GetTo returns the value of To.
+func (s *JourneyTrend) GetTo() time.Time {
+	return s.To
+}
+
+// GetPromiseMinutes returns the value of PromiseMinutes.
+func (s *JourneyTrend) GetPromiseMinutes() int {
+	return s.PromiseMinutes
+}
+
+// GetJourneyWindowHours returns the value of JourneyWindowHours.
+func (s *JourneyTrend) GetJourneyWindowHours() int {
+	return s.JourneyWindowHours
+}
+
+// GetBuckets returns the value of Buckets.
+func (s *JourneyTrend) GetBuckets() []DailyCount {
+	return s.Buckets
+}
+
+// GetPeriod returns the value of Period.
+func (s *JourneyTrend) GetPeriod() JourneyPeriod {
+	return s.Period
+}
+
+// SetFrom sets the value of From.
+func (s *JourneyTrend) SetFrom(val time.Time) {
+	s.From = val
+}
+
+// SetTo sets the value of To.
+func (s *JourneyTrend) SetTo(val time.Time) {
+	s.To = val
+}
+
+// SetPromiseMinutes sets the value of PromiseMinutes.
+func (s *JourneyTrend) SetPromiseMinutes(val int) {
+	s.PromiseMinutes = val
+}
+
+// SetJourneyWindowHours sets the value of JourneyWindowHours.
+func (s *JourneyTrend) SetJourneyWindowHours(val int) {
+	s.JourneyWindowHours = val
+}
+
+// SetBuckets sets the value of Buckets.
+func (s *JourneyTrend) SetBuckets(val []DailyCount) {
+	s.Buckets = val
+}
+
+// SetPeriod sets the value of Period.
+func (s *JourneyTrend) SetPeriod(val JourneyPeriod) {
+	s.Period = val
+}
+
+func (*JourneyTrend) getJourneyTrendRes() {}
 
 // An enum value together with the copy shown for it. The label and note live server-side so that every
 // surface explains a trust state the same way, and so the wording stays factual about what was checked
@@ -17638,6 +17784,52 @@ func (o OptGetFunnelTrendDays) Get() (v GetFunnelTrendDays, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptGetFunnelTrendDays) Or(d GetFunnelTrendDays) GetFunnelTrendDays {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptGetJourneyTrendDays returns new OptGetJourneyTrendDays with value set to v.
+func NewOptGetJourneyTrendDays(v GetJourneyTrendDays) OptGetJourneyTrendDays {
+	return OptGetJourneyTrendDays{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptGetJourneyTrendDays is optional GetJourneyTrendDays.
+type OptGetJourneyTrendDays struct {
+	Value GetJourneyTrendDays
+	Set   bool
+}
+
+// IsSet returns true if OptGetJourneyTrendDays was set.
+func (o OptGetJourneyTrendDays) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptGetJourneyTrendDays) Reset() {
+	var v GetJourneyTrendDays
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptGetJourneyTrendDays) SetTo(v GetJourneyTrendDays) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptGetJourneyTrendDays) Get() (v GetJourneyTrendDays, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptGetJourneyTrendDays) Or(d GetJourneyTrendDays) GetJourneyTrendDays {
 	if v, ok := o.Get(); ok {
 		return v
 	}

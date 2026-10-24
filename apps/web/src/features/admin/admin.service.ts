@@ -833,11 +833,22 @@ export type Trend<B extends DailyCount = DailyCount> = { from: string; to: strin
 export type CreditTrend = Trend<DailyAmount> & { balance_total: number };
 export type FunnelStage = { key: string; label: string; grain: string };
 export type FunnelTrend = Trend & { stages: FunnelStage[] };
+export type JourneyPeriod = {
+  searched: number;
+  downloaded: number;
+  within_promise: number;
+  median_minutes?: number;
+};
+export type JourneyTrend = Trend & {
+  promise_minutes: number;
+  journey_window_hours: number;
+  period: JourneyPeriod;
+};
 export type TrendDays = 7 | 30 | 90;
 export const TREND_DAYS: TrendDays[] = [7, 30, 90];
 
 export function useTrend<T extends Trend<DailyCount>>(
-  path: "cost" | "credits" | "runs" | "operator-actions" | "funnel",
+  path: "cost" | "credits" | "runs" | "operator-actions" | "funnel" | "journeys",
   days: TrendDays,
 ) {
   return useQuery({

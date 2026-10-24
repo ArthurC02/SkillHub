@@ -234,3 +234,49 @@ func (s *Service) DailyFunnelReach(ctx context.Context, since time.Time) ([]Funn
 	}
 	return out, nil
 }
+
+const (
+	PromisedJourney = 10 * time.Minute
+	JourneyWindow   = 24 * time.Hour
+)
+
+type JourneyCount struct {
+	Day              time.Time
+	Searched         int64
+	Downloaded       int64
+	WithinPromise    int64
+	MedianToDownload time.Duration
+}
+
+type Journeys struct {
+	Daily  []JourneyCount
+	Period JourneyCount
+}
+
+func (s *Service) SearchToDownloadJourneys(ctx context.Context, since time.Time) (Journeys, error) {
+	rows, err := gen.New(s.Pool).CountSearchToDownloadJourneys(ctx, gen.CountSearchToDownloadJourneysParams{
+		Since:         pgtype.Timestamptz{Time: since, Valid: true},
+		SearchEvent:   EventSearchPerformed,
+		DownloadEvent: EventDownloadStarted,
+		JourneyWindow: pgtype.Interval{Microseconds: JourneyWindow.Microseconds(), Valid: true},
+		Promise:       pgtype.Interval{Microseconds: PromisedJourney.Microseconds(), Valid: true},
+	})
+	if err != nil {
+		return Journeys{}, err
+	}
+	var out Journeys
+	for _, r := range rows {
+		count := JourneyCount{
+			Day: r.Day.Time, Searched: r.Searched, Downloaded: r.Downloaded, WithinPromise: r.WithinPromise,
+		}
+		if r.Downloaded > 0 {
+			count.MedianToDownload = time.Duration(r.MedianSeconds * float64(time.Second))
+		}
+		if r.WholePeriod {
+			out.Period = count
+			continue
+		}
+		out.Daily = append(out.Daily, count)
+	}
+	return out, nil
+}

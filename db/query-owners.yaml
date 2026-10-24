@@ -137,6 +137,7 @@ queries:
 
   InsertAnalyticsEvent: analytics
   CountFunnelReachByDay: analytics
+  CountSearchToDownloadJourneys: analytics
   DetachWorkspaceAnalytics: analytics
   DetachWorkspaceFeedback: analytics
   InsertFeedbackReport: analytics

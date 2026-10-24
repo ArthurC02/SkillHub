@@ -11,6 +11,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	analytics "github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 )
 
 type trendKey struct{ day, key string }
@@ -91,7 +93,7 @@ func TestTrendRangeIsTheLastNUTCDaysEndingToday(t *testing.T) {
 	for _, bad := range []string{"?days=6", "?days=8", "?days=31", "?days=91", "?days=0", "?days=abc", "?days="} {
 		for _, path := range []string{
 			"/admin/trends/cost", "/admin/trends/credits", "/admin/trends/runs", "/admin/trends/operator-actions",
-			"/admin/trends/funnel",
+			"/admin/trends/funnel", "/admin/trends/journeys",
 		} {
 			if code, _ := getAdmin(t, operator, path+bad); code != http.StatusBadRequest {
 				t.Errorf("GET %s%s: got %d, want 400", path, bad, code)
@@ -294,5 +296,134 @@ func TestFunnelTrendCountsEachStageAtItsOwnGrain(t *testing.T) {
 	encoded, _ := json.Marshal(next)
 	if strings.Contains(string(encoded), session(1)) || strings.Contains(string(encoded), owner.workspaceID) {
 		t.Errorf("the funnel trend leaks a session or workspace id: %s", encoded)
+	}
+}
+
+func seedJourneys(t *testing.T, pool *pgxpool.Pool, workspaceID string, first, second time.Time) {
+	t.Helper()
+	ctx := context.Background()
+	workspace := mustUUID(t, workspaceID)
+	prefix := "journey-" + workspaceID
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.Background(), `DELETE FROM analytics_events WHERE session_id LIKE $1`, prefix+"%"); err != nil {
+			t.Errorf("cleanup: %v", err)
+		}
+	})
+	session := func(n int) string { return fmt.Sprintf("%s-%d", prefix, n) }
+	event := func(name, sessionID string, workspace any, at time.Time) {
+		if _, err := pool.Exec(ctx, `INSERT INTO analytics_events (event_name, session_id, workspace_id, occurred_at)
+			VALUES ($1, $2, $3, $4)`, name, sessionID, workspace, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	search := func(sessionID string, at time.Time) { event("search_performed", sessionID, nil, at) }
+	download := func(sessionID string, workspace any, at time.Time) {
+		event("download_started", sessionID, workspace, at)
+	}
+
+	search(session(1), first)
+	search(session(1), first.Add(time.Minute))
+	download(session(1), workspace, first.Add(analytics.PromisedJourney))
+	search(session(2), first)
+	download(session(2), workspace, first.Add(analytics.PromisedJourney+time.Second))
+	search(session(3), first)
+	download(session(3), workspace, first.Add(-time.Minute))
+	search(session(4), first)
+	download(session(4), nil, first.Add(time.Minute))
+	search(session(5), first)
+	download(session(5), workspace, first.Add(analytics.JourneyWindow))
+	search(session(6), first)
+	download(session(6), workspace, first.Add(analytics.JourneyWindow-time.Second))
+	search(session(7), first)
+	download(session(8), workspace, first.Add(time.Minute))
+	search(session(10), first)
+	search(session(10), first.Add(5*time.Minute))
+	download(session(10), workspace, first.Add(12*time.Minute))
+	search(session(9), second)
+	download(session(9), workspace, second.Add(30*time.Minute))
+}
+
+func TestSearchToDownloadJourneysCountEachSessionFromItsFirstSearchOfTheDay(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "journey-owner")
+	ctx := context.Background()
+	first := time.Now().UTC().AddDate(1, 0, 0).Truncate(24 * time.Hour).Add(2 * time.Hour)
+	second := first.AddDate(0, 0, 1)
+	seedJourneys(t, pool, owner.workspaceID, first, second)
+
+	got, err := (&analytics.Service{Pool: pool}).SearchToDownloadJourneys(ctx, first.Add(-time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	type counts struct{ searched, downloaded, withinPromise int64 }
+	daily := map[string]counts{}
+	for _, d := range got.Daily {
+		daily[d.Day.Format(time.DateOnly)] = counts{d.Searched, d.Downloaded, d.WithinPromise}
+	}
+	want := map[string]counts{
+		first.Format(time.DateOnly):  {searched: 8, downloaded: 4, withinPromise: 1},
+		second.Format(time.DateOnly): {searched: 1, downloaded: 1, withinPromise: 0},
+	}
+	if fmt.Sprint(daily) != fmt.Sprint(want) {
+		t.Errorf("daily journeys = %v, want %v", daily, want)
+	}
+	period := counts{got.Period.Searched, got.Period.Downloaded, got.Period.WithinPromise}
+	if period != (counts{searched: 9, downloaded: 5, withinPromise: 1}) {
+		t.Errorf("whole period = %+v, want 9 searched, 5 downloaded, 1 within the promise", period)
+	}
+	if want := 12 * time.Minute; got.Period.MedianToDownload != want {
+		t.Errorf("median time to download = %v, want %v (the middle of 600, 601, 720, 1800 and 86399 s)", got.Period.MedianToDownload, want)
+	}
+}
+
+func TestJourneyTrendCountsBrowserSessionsAndStatesThePromise(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	operator := trendOperator(t, a, "trend-journey-operator")
+	owner := a.login(t, "trend-journey-owner")
+
+	body, before := getTrend(t, operator, "/admin/trends/journeys?days=7")
+	to := trendDay(t, body["to"])
+	sessionID := "journey-trend-" + owner.workspaceID
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.Background(), `DELETE FROM analytics_events WHERE session_id = $1`, sessionID); err != nil {
+			t.Errorf("cleanup: %v", err)
+		}
+	})
+	searchedAt := to.Add(time.Minute)
+	for _, e := range []struct {
+		name      string
+		workspace any
+		at        time.Time
+	}{
+		{"search_performed", nil, searchedAt},
+		{"download_started", mustUUID(t, owner.workspaceID), searchedAt.Add(2 * time.Minute)},
+	} {
+		if _, err := pool.Exec(context.Background(), `INSERT INTO analytics_events (event_name, session_id, workspace_id, occurred_at)
+			VALUES ($1, $2, $3, $4)`, e.name, sessionID, e.workspace, e.at); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	next, after := getTrend(t, operator, "/admin/trends/journeys?days=7")
+	for _, key := range []string{"searched", "downloaded", "within_promise"} {
+		assertTrendDelta(t, before, after, to, key, "count", 1)
+	}
+	if trendNumber(next, "promise_minutes") != 10 || trendNumber(next, "journey_window_hours") != 24 {
+		t.Errorf("promise = %v minutes within %v hours, want 10 within 24", next["promise_minutes"], next["journey_window_hours"])
+	}
+	was, now := body["period"].(map[string]any), next["period"].(map[string]any)
+	for _, field := range []string{"searched", "downloaded", "within_promise"} {
+		if got := trendNumber(now, field) - trendNumber(was, field); got != 1 {
+			t.Errorf("period %s grew by %d, want 1", field, got)
+		}
+	}
+	if _, ok := now["median_minutes"].(float64); !ok {
+		t.Errorf("a period with a download carries no median minutes: %v", now)
+	}
+	encoded, _ := json.Marshal(next)
+	if strings.Contains(string(encoded), sessionID) || strings.Contains(string(encoded), owner.workspaceID) {
+		t.Errorf("the journey trend leaks a session or workspace id: %s", encoded)
 	}
 }

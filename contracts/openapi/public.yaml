@@ -4675,6 +4675,42 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/trends/journeys:
+    get:
+      operationId: getJourneyTrend
+      summary: How many searching sessions reached a download, and how fast (02:OPS-008)
+      description: |
+        Operator only, asked for when the page opens and never polled.
+        Every count is a browser session, so the three keys share one unit:
+        searched counts sessions with a search on that UTC day (from their
+        first search that day); downloaded counts those that pressed download
+        in the same session within journey_window_hours of that first search;
+        within_promise counts those that did it within promise_minutes. The
+        period row repeats the three counts over the whole range and adds the
+        median minutes to download when at least one session downloaded.
+        Grouped by UTC day only; no session, user, workspace or email in the
+        response.
+      parameters:
+        - name: days
+          in: query
+          required: false
+          schema: { type: integer, enum: [7, 30, 90], default: 30 }
+      responses:
+        "200":
+          description: Daily buckets keyed by searched, downloaded and within_promise, and the whole-period summary.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JourneyTrend" }
+        "400":
+          description: days is not 7, 30 or 90.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/trends/operator-actions:
     get:
       operationId: getOperatorActionTrend
@@ -8624,6 +8660,28 @@ components:
         stages:
           type: array
           items: { $ref: "#/components/schemas/FunnelStage" }
+    JourneyTrend:
+      type: object
+      required: [from, to, promise_minutes, journey_window_hours, buckets, period]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        promise_minutes: { type: integer }
+        journey_window_hours: { type: integer }
+        buckets:
+          type: array
+          items: { $ref: "#/components/schemas/DailyCount" }
+        period: { $ref: "#/components/schemas/JourneyPeriod" }
+    JourneyPeriod:
+      type: object
+      required: [searched, downloaded, within_promise]
+      properties:
+        searched: { type: integer, format: int64 }
+        downloaded: { type: integer, format: int64 }
+        within_promise: { type: integer, format: int64 }
+        median_minutes:
+          type: number
+          description: Absent when no session downloaded in the range.
     AmountTrend:
       type: object
       required: [from, to, buckets]

@@ -419,6 +419,11 @@ import {
     ImprovementSuggestionToJSON,
 } from '../models/ImprovementSuggestion';
 import {
+    type JourneyTrend,
+    JourneyTrendFromJSON,
+    JourneyTrendToJSON,
+} from '../models/JourneyTrend';
+import {
     type LiftDispatchHaltRequest,
     LiftDispatchHaltRequestFromJSON,
     LiftDispatchHaltRequestToJSON,
@@ -1325,6 +1330,13 @@ export interface GetFunnelTrendRequest {
      * 
      */
     days?: GetFunnelTrendDaysEnum;
+}
+
+export interface GetJourneyTrendRequest {
+    /**
+     * 
+     */
+    days?: GetJourneyTrendDaysEnum;
 }
 
 export interface GetOperatorActionTrendRequest {
@@ -3649,6 +3661,30 @@ export interface DefaultApiInterface {
      * Process liveness probe
      */
     getHealth(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Health>;
+
+    /**
+     * Creates request options for getJourneyTrend without sending the request
+     * @param {7 | 30 | 90} [days] 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getJourneyTrendRequestOpts(requestParameters: GetJourneyTrendRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only, asked for when the page opens and never polled. Every count is a browser session, so the three keys share one unit: searched counts sessions with a search on that UTC day (from their first search that day); downloaded counts those that pressed download in the same session within journey_window_hours of that first search; within_promise counts those that did it within promise_minutes. The period row repeats the three counts over the whole range and adds the median minutes to download when at least one session downloaded. Grouped by UTC day only; no session, user, workspace or email in the response. 
+     * @summary How many searching sessions reached a download, and how fast (02:OPS-008)
+     * @param {7 | 30 | 90} [days] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getJourneyTrendRaw(requestParameters: GetJourneyTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<JourneyTrend>>;
+
+    /**
+     * Operator only, asked for when the page opens and never polled. Every count is a browser session, so the three keys share one unit: searched counts sessions with a search on that UTC day (from their first search that day); downloaded counts those that pressed download in the same session within journey_window_hours of that first search; within_promise counts those that did it within promise_minutes. The period row repeats the three counts over the whole range and adds the median minutes to download when at least one session downloaded. Grouped by UTC day only; no session, user, workspace or email in the response. 
+     * How many searching sessions reached a download, and how fast (02:OPS-008)
+     */
+    getJourneyTrend(requestParameters: GetJourneyTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JourneyTrend>;
 
     /**
      * Creates request options for getMe without sending the request
@@ -9070,6 +9106,49 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for getJourneyTrend without sending the request
+     */
+    async getJourneyTrendRequestOpts(requestParameters: GetJourneyTrendRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['days'] != null) {
+            queryParameters['days'] = requestParameters['days'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/trends/journeys`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only, asked for when the page opens and never polled. Every count is a browser session, so the three keys share one unit: searched counts sessions with a search on that UTC day (from their first search that day); downloaded counts those that pressed download in the same session within journey_window_hours of that first search; within_promise counts those that did it within promise_minutes. The period row repeats the three counts over the whole range and adds the median minutes to download when at least one session downloaded. Grouped by UTC day only; no session, user, workspace or email in the response. 
+     * How many searching sessions reached a download, and how fast (02:OPS-008)
+     */
+    async getJourneyTrendRaw(requestParameters: GetJourneyTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<JourneyTrend>> {
+        const requestOptions = await this.getJourneyTrendRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => JourneyTrendFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only, asked for when the page opens and never polled. Every count is a browser session, so the three keys share one unit: searched counts sessions with a search on that UTC day (from their first search that day); downloaded counts those that pressed download in the same session within journey_window_hours of that first search; within_promise counts those that did it within promise_minutes. The period row repeats the three counts over the whole range and adds the median minutes to download when at least one session downloaded. Grouped by UTC day only; no session, user, workspace or email in the response. 
+     * How many searching sessions reached a download, and how fast (02:OPS-008)
+     */
+    async getJourneyTrend(requestParameters: GetJourneyTrendRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JourneyTrend> {
+        const response = await this.getJourneyTrendRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getMe without sending the request
      */
     async getMeRequestOpts(): Promise<runtime.RequestOpts> {
@@ -13990,6 +14069,15 @@ export const GetFunnelTrendDaysEnum = {
     NUMBER_90: 90,
 } as const;
 export type GetFunnelTrendDaysEnum = typeof GetFunnelTrendDaysEnum[keyof typeof GetFunnelTrendDaysEnum];
+/**
+ * @export
+ */
+export const GetJourneyTrendDaysEnum = {
+    NUMBER_7: 7,
+    NUMBER_30: 30,
+    NUMBER_90: 90,
+} as const;
+export type GetJourneyTrendDaysEnum = typeof GetJourneyTrendDaysEnum[keyof typeof GetJourneyTrendDaysEnum];
 /**
  * @export
  */

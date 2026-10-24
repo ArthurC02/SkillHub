@@ -118,6 +118,90 @@ func (q *Queries) CountQuotaRuns(ctx context.Context, arg CountQuotaRunsParams) 
 	return i, err
 }
 
+const countSearchToDownloadJourneys = `-- name: CountSearchToDownloadJourneys :many
+WITH events AS (
+    SELECT session_id, event_name, occurred_at, workspace_id
+    FROM analytics_events
+    WHERE occurred_at >= $2::timestamptz
+      AND event_name IN ($3::text, $4::text)
+), first_searches AS (
+    SELECT session_id, min(occurred_at) AS searched_at
+    FROM events
+    WHERE event_name = $3::text
+    GROUP BY session_id, (occurred_at AT TIME ZONE 'UTC')::date
+), journeys AS (
+    SELECT f.searched_at, min(d.occurred_at) AS downloaded_at
+    FROM first_searches f
+    LEFT JOIN events d
+      ON d.session_id = f.session_id
+     AND d.event_name = $4::text
+     AND d.workspace_id IS NOT NULL
+     AND d.occurred_at >= f.searched_at
+     AND d.occurred_at < f.searched_at + $5::interval
+    GROUP BY f.session_id, f.searched_at
+)
+SELECT (searched_at AT TIME ZONE 'UTC')::date AS day,
+       (GROUPING((searched_at AT TIME ZONE 'UTC')::date) = 1)::boolean AS whole_period,
+       count(*)::bigint AS searched,
+       count(downloaded_at)::bigint AS downloaded,
+       count(*) FILTER (WHERE downloaded_at <= searched_at + $1::interval)::bigint AS within_promise,
+       coalesce(percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM downloaded_at - searched_at))
+           FILTER (WHERE downloaded_at IS NOT NULL), 0)::float8 AS median_seconds
+FROM journeys
+GROUP BY GROUPING SETS (((searched_at AT TIME ZONE 'UTC')::date), ())
+ORDER BY 2, 1
+`
+
+type CountSearchToDownloadJourneysParams struct {
+	Promise       pgtype.Interval
+	Since         pgtype.Timestamptz
+	SearchEvent   string
+	DownloadEvent string
+	JourneyWindow pgtype.Interval
+}
+
+type CountSearchToDownloadJourneysRow struct {
+	Day           pgtype.Date
+	WholePeriod   bool
+	Searched      int64
+	Downloaded    int64
+	WithinPromise int64
+	MedianSeconds float64
+}
+
+func (q *Queries) CountSearchToDownloadJourneys(ctx context.Context, arg CountSearchToDownloadJourneysParams) ([]CountSearchToDownloadJourneysRow, error) {
+	rows, err := q.db.Query(ctx, countSearchToDownloadJourneys,
+		arg.Promise,
+		arg.Since,
+		arg.SearchEvent,
+		arg.DownloadEvent,
+		arg.JourneyWindow,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountSearchToDownloadJourneysRow
+	for rows.Next() {
+		var i CountSearchToDownloadJourneysRow
+		if err := rows.Scan(
+			&i.Day,
+			&i.WholePeriod,
+			&i.Searched,
+			&i.Downloaded,
+			&i.WithinPromise,
+			&i.MedianSeconds,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteAnalyticsEventsBefore = `-- name: DeleteAnalyticsEventsBefore :execrows
 DELETE FROM analytics_events WHERE occurred_at < $1
 `

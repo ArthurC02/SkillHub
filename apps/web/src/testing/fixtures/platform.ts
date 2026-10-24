@@ -23,6 +23,7 @@ import type {
   CreditTrend,
   DailyAmount,
   FunnelTrend,
+  JourneyTrend,
   Trend,
 } from "../../features/admin/admin.service";
 import type {
@@ -1217,6 +1218,19 @@ export const ADMIN_TREND_FUNNEL = {
   ],
 } satisfies FunnelTrend;
 
+export const ADMIN_TREND_JOURNEYS = {
+  from: "2026-09-06",
+  to: "2026-09-12",
+  promise_minutes: 10,
+  journey_window_hours: 24,
+  buckets: [
+    { day: "2026-09-11", key: "searched", count: 20 },
+    { day: "2026-09-11", key: "downloaded", count: 5 },
+    { day: "2026-09-11", key: "within_promise", count: 2 },
+  ],
+  period: { searched: 20, downloaded: 5, within_promise: 2, median_minutes: 14.5 },
+} satisfies JourneyTrend;
+
 export const ADMIN_TREND_ACTIONS = {
   from: "2026-09-06",
   to: "2026-09-12",
@@ -1553,6 +1567,7 @@ const ADMIN_TRENDS: Record<string, Trend> = {
   "/admin/trends/runs": ADMIN_TREND_RUNS,
   "/admin/trends/operator-actions": ADMIN_TREND_ACTIONS,
   "/admin/trends/funnel": ADMIN_TREND_FUNNEL,
+  "/admin/trends/journeys": ADMIN_TREND_JOURNEYS,
 };
 
 const ROUTES: RouteMatcher[] = [

@@ -148,6 +148,8 @@ export * from './ImportSkillFromURLRequest';
 export * from './ImportedPlugin';
 export * from './ImportedSkill';
 export * from './ImprovementSuggestion';
+export * from './JourneyPeriod';
+export * from './JourneyTrend';
 export * from './Labelled';
 export * from './LiftDispatchHaltRequest';
 export * from './LiftSkillTakedownRequest';

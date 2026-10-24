@@ -239,6 +239,11 @@ type GetFunnelTrendParams struct {
 	Days OptGetFunnelTrendDays `json:",omitempty,omitzero"`
 }
 
+// GetJourneyTrendParams is parameters of getJourneyTrend operation.
+type GetJourneyTrendParams struct {
+	Days OptGetJourneyTrendDays `json:",omitempty,omitzero"`
+}
+
 // GetOperatorActionTrendParams is parameters of getOperatorActionTrend operation.
 type GetOperatorActionTrendParams struct {
 	Days OptGetOperatorActionTrendDays `json:",omitempty,omitzero"`

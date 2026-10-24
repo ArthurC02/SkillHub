@@ -22,12 +22,13 @@ const (
 )
 
 type trendsHandler struct {
-	Credits            CreditLedger
-	DailyRuns          func(ctx context.Context, since time.Time) ([]readmodel.RunsOnDay, error)
-	DailyRunWorkspaces func(ctx context.Context, since time.Time) ([]readmodel.RunWorkspacesOnDay, error)
-	DailyFunnelReach   func(ctx context.Context, since time.Time) ([]analytics.FunnelReach, error)
-	Audit              audit.DBTX
-	Now                func() time.Time
+	Credits                  CreditLedger
+	DailyRuns                func(ctx context.Context, since time.Time) ([]readmodel.RunsOnDay, error)
+	DailyRunWorkspaces       func(ctx context.Context, since time.Time) ([]readmodel.RunWorkspacesOnDay, error)
+	DailyFunnelReach         func(ctx context.Context, since time.Time) ([]analytics.FunnelReach, error)
+	SearchToDownloadJourneys func(ctx context.Context, since time.Time) (analytics.Journeys, error)
+	Audit                    audit.DBTX
+	Now                      func() time.Time
 }
 
 type dailyCountView struct {
@@ -198,4 +199,59 @@ func (h *trendsHandler) Funnel(w http.ResponseWriter, r *http.Request) {
 		views = append(views, dailyCountView{Day: d.Day.Format(isoDate), Key: funnelRunStarted, Count: d.Workspaces})
 	}
 	httpx.WriteJSON(w, http.StatusOK, funnelTrendView{trendView: newTrendView(from, to, views), Stages: funnelStages})
+}
+
+const (
+	journeySearched      = "searched"
+	journeyDownloaded    = "downloaded"
+	journeyWithinPromise = "within_promise"
+)
+
+type journeyPeriodView struct {
+	Searched      int64    `json:"searched"`
+	Downloaded    int64    `json:"downloaded"`
+	WithinPromise int64    `json:"within_promise"`
+	MedianMinutes *float64 `json:"median_minutes,omitempty"`
+}
+
+type journeyTrendView struct {
+	trendView[dailyCountView]
+	PromiseMinutes     int               `json:"promise_minutes"`
+	JourneyWindowHours int               `json:"journey_window_hours"`
+	Period             journeyPeriodView `json:"period"`
+}
+
+func (h *trendsHandler) Journeys(w http.ResponseWriter, r *http.Request) {
+	from, to, ok := h.window(w, r)
+	if !ok {
+		return
+	}
+	journeys, err := h.SearchToDownloadJourneys(r.Context(), from)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "journey trend lookup failed")
+		return
+	}
+	views := make([]dailyCountView, 0, 3*len(journeys.Daily))
+	for _, d := range journeys.Daily {
+		day := d.Day.Format(isoDate)
+		views = append(views,
+			dailyCountView{Day: day, Key: journeySearched, Count: d.Searched},
+			dailyCountView{Day: day, Key: journeyDownloaded, Count: d.Downloaded},
+			dailyCountView{Day: day, Key: journeyWithinPromise, Count: d.WithinPromise},
+		)
+	}
+	period := journeyPeriodView{
+		Searched: journeys.Period.Searched, Downloaded: journeys.Period.Downloaded,
+		WithinPromise: journeys.Period.WithinPromise,
+	}
+	if journeys.Period.Downloaded > 0 {
+		minutes := journeys.Period.MedianToDownload.Minutes()
+		period.MedianMinutes = &minutes
+	}
+	httpx.WriteJSON(w, http.StatusOK, journeyTrendView{
+		trendView:          newTrendView(from, to, views),
+		PromiseMinutes:     int(analytics.PromisedJourney / time.Minute),
+		JourneyWindowHours: int(analytics.JourneyWindow / time.Hour),
+		Period:             period,
+	})
 }

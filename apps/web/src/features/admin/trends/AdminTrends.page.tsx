@@ -10,6 +10,8 @@ import {
   type DailyAmount,
   type DailyCount,
   type FunnelTrend,
+  type JourneyPeriod,
+  type JourneyTrend,
   type Trend,
   type TrendDays,
 } from "../admin.service";
@@ -106,6 +108,9 @@ function TrendTopics() {
       <a className="chip" href="#admin-trend-funnel">
         漏斗
       </a>
+      <a className="chip" href="#admin-trend-journeys">
+        搜尋到下載
+      </a>
     </nav>
   );
 }
@@ -156,6 +161,45 @@ function FunnelSection({ funnel }: { funnel: ReturnType<typeof useTrend<FunnelTr
   );
 }
 
+const share = (part: number, whole: number) => `${Math.round((part * 100) / whole)}%`;
+
+function journeySummary(period: JourneyPeriod, promise: number, window: number) {
+  if (period.searched === 0) return "這段期間沒有搜尋過的工作階段。";
+  const reached = `搜尋過的 ${period.searched} 個工作階段中，${period.downloaded} 個（${share(period.downloaded, period.searched)}）在 ${window} 小時內按下下載，${period.within_promise} 個（${share(period.within_promise, period.searched)}）在 ${promise} 分鐘內。`;
+  return period.median_minutes === undefined
+    ? reached
+    : `${reached}從第一次搜尋到按下下載的中位數是 ${period.median_minutes.toFixed(1)} 分鐘。`;
+}
+
+function JourneySection({ journeys }: { journeys: ReturnType<typeof useTrend<JourneyTrend>> }) {
+  const trend = journeys.data;
+  return (
+    <TrendSection
+      id="admin-trend-journeys"
+      heading="從搜尋到下載"
+      query={journeys}
+      value={countOf}
+      format={String}
+      labels={{
+        searched: "搜尋過的工作階段",
+        downloaded: `${trend?.journey_window_hours ?? 24} 小時內按下下載`,
+        within_promise: `${trend?.promise_minutes ?? 10} 分鐘內按下下載`,
+      }}
+    >
+      {trend && (
+        <>
+          <p>{journeySummary(trend.period, trend.promise_minutes, trend.journey_window_hours)}</p>
+          <p className="note">
+            三條線都以瀏覽工作階段為單位，從當天第一次搜尋起算，同一個工作階段按下下載才算；換裝置或清掉
+            cookie 會算成另一個工作階段。最後一天的 {trend.journey_window_hours}{" "}
+            小時還沒走完，會偏低。
+          </p>
+        </>
+      )}
+    </TrendSection>
+  );
+}
+
 export function AdminTrends() {
   const { days = 30 } = useSearch({ from: "/admin/trends" });
   const cost = useTrend<Trend<DailyAmount>>("cost", days);
@@ -163,7 +207,8 @@ export function AdminTrends() {
   const runs = useTrend<Trend>("runs", days);
   const actions = useTrend<Trend>("operator-actions", days);
   const funnel = useTrend<FunnelTrend>("funnel", days);
-  const reads = [cost, credits, runs, actions, funnel];
+  const journeys = useTrend<JourneyTrend>("journeys", days);
+  const reads = [cost, credits, runs, actions, funnel, journeys];
   const available = reads.filter((query) => query.data && !query.error);
   const fetching = reads.some((query) => query.isFetching);
 
@@ -204,7 +249,7 @@ export function AdminTrends() {
           <button
             type="button"
             disabled={fetching}
-            aria-label={fetching ? undefined : "重新整理五組趨勢"}
+            aria-label={fetching ? undefined : "重新整理六組趨勢"}
             onClick={() => void Promise.all(reads.map((query) => query.refetch()))}
           >
             {fetching ? "重新整理中…" : "重新整理"}
@@ -257,6 +302,7 @@ export function AdminTrends() {
         labels={ACTION_LABEL}
       />
       <FunnelSection funnel={funnel} />
+      <JourneySection journeys={journeys} />
     </AdminPage>
   );
 }

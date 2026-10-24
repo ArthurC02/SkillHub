@@ -233,6 +233,10 @@ type GetGenerateAllowanceRes interface {
 	getGenerateAllowanceRes()
 }
 
+type GetJourneyTrendRes interface {
+	getJourneyTrendRes()
+}
+
 type GetMeRes interface {
 	getMeRes()
 }
