@@ -3,6 +3,7 @@ package creation
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"strings"
 	"time"
@@ -15,18 +16,28 @@ import (
 )
 
 func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.UUID, message string, budget float64) (View, error) {
-	if err := s.admitStart(ctx, ws, id, message, budget); err != nil {
-		return View{}, err
-	}
 	key := digest(struct {
 		Message string
 		Budget  float64
 	}{message, budget})
-	if r, err := gen.New(s.Pool).GetCreationSession(ctx, gen.GetCreationSessionParams{ID: id, WorkspaceID: ws.ID}); err == nil {
+	if err := s.admitStart(ctx, ws, id, message, budget); err != nil {
+		if errors.Is(err, ErrCreditThreshold) || errors.Is(err, ErrBudgetOutOfBand) {
+			if r, found := startedSession(ctx, s.Pool, ws, id); found {
+				return resumeStart(r, key)
+			}
+		}
+		return View{}, err
+	}
+	if r, found := startedSession(ctx, s.Pool, ws, id); found {
 		return resumeStart(r, key)
 	}
 	e, state := s.openingEnvelope(ctx, ws, message, budget, key)
 	return s.insertSession(ctx, ws, id, e, state)
+}
+
+func startedSession(ctx context.Context, q gen.DBTX, ws identity.Workspace, id pgtype.UUID) (gen.CreationSession, bool) {
+	r, err := gen.New(q).GetCreationSession(ctx, gen.GetCreationSessionParams{ID: id, WorkspaceID: ws.ID})
+	return r, err == nil
 }
 
 func (s *Service) admitStart(ctx context.Context, ws identity.Workspace, id pgtype.UUID, message string, budget float64) error {

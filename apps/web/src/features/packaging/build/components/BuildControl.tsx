@@ -12,6 +12,9 @@ function BuildErrorReason({ error }: { error: unknown }) {
       </p>
     );
   }
+  if (error instanceof ApiError && error.status === 422 && error.message) {
+    return <p role="alert">套件沒有建立：{error.message}。</p>;
+  }
   return <p role="alert">套件沒有建立成功，可以再按一次。</p>;
 }
 

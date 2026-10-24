@@ -3,7 +3,7 @@ import { Loading } from "../../../shared/ui/Loading";
 import { PageReadFailure } from "../../../shared/ui/LoginRequired";
 import { Link, useParams } from "@tanstack/react-router";
 import { ApiError } from "../../../core/api/client";
-import { useSkillDetail } from "../skills.service";
+import { unreadableSkillSentence, useSkillDetail } from "../skills.service";
 import { useMe } from "../../../core/session/me.service";
 import { CompatibilityStatus } from "../../../shared/ui/CompatibilityStatus";
 import { GeneratedNotice } from "../../creation";
@@ -80,13 +80,13 @@ function SkillDetailReadState({ detail }: { detail: ReturnType<typeof useSkillDe
         <Loading what="這個小工具" />
       </section>
     );
-  if (error instanceof ApiError && error.status === 410) {
+  const unreadable = unreadableSkillSentence(error);
+  if (unreadable)
     return (
       <PageReadFailure heading="小工具總覽" error={error} what="這個小工具">
-        <p role="alert">這個小工具已從目錄下架，內容不再提供。</p>
+        <p role="alert">{unreadable}</p>
       </PageReadFailure>
     );
-  }
   if (error)
     return (
       <PageReadFailure

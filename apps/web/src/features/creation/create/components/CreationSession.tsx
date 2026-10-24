@@ -7,7 +7,10 @@ import {
   useLiveCreationSession,
   CreationWriteResultUnknown,
 } from "../../creation.service";
-import { useCredits } from "../../../../core/session/credits.service";
+import {
+  useCredits,
+  useCreditsRereadWhenSessionCloses,
+} from "../../../../core/session/credits.service";
 import { useRuns } from "../../../runs";
 import { TERMINAL_RUN_STATUSES } from "../../../runs";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
@@ -75,6 +78,7 @@ export function CreationSession(props: CreationSessionProps) {
   const session = current.data,
     p = session?.snapshot;
   const credits = useCredits();
+  useCreditsRereadWhenSessionCloses(!!session);
   const candidateRun = useCandidateRun(p?.candidate?.test_case_id, p?.candidate?.version_id);
   const { terminal, working } = sessionPhase(session);
   const locked = busy || working || terminal;

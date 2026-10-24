@@ -6,6 +6,8 @@ export {
   useCatalog,
   useCatalogTotal,
   useCorrectedSkillSearch,
+  isSkillAlreadyGone,
+  unreadableSkillSentence,
   useDeleteSkill,
   useEmbeddedSkillDetail,
   useEmbeddedSkillDetails,

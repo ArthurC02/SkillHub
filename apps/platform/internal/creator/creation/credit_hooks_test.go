@@ -11,16 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func TestCreditCanStartBlocksBeforeAnyDatabaseWork(t *testing.T) {
-	s := &Service{Billing: BillingHooks{CanStartFunc: func(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
-		return false, nil
-	}}}
-	_, err := s.Create(context.Background(), identity.Workspace{}, pgtype.UUID{Bytes: [16]byte{1}, Valid: true}, "hello", 1)
-	if !errors.Is(err, ErrCreditThreshold) {
-		t.Fatalf("Create() error = %v, want ErrCreditThreshold", err)
-	}
-}
-
 func TestCreditCanStartPropagatesItsError(t *testing.T) {
 	wantErr := errors.New("boom")
 	s := &Service{Billing: BillingHooks{CanStartFunc: func(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {

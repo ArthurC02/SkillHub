@@ -105,6 +105,29 @@ func TestTheStartGateReadsWhatAWholeSessionCosts(t *testing.T) {
 	}
 }
 
+func TestAStartWhoseReplyWasLostReplaysAfterTheBalanceFellBelowTheGate(t *testing.T) {
+	a, _, _ := creationFixtureWithLimits(t, creditTestLimits())
+	a.startingCredits = 1000
+	c := a.login(t, "replay-gate")
+	start := map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}
+	first := creationPost(t, c, "/creation-sessions", start, 200)
+
+	if _, err := testPool.Exec(context.Background(), `
+		INSERT INTO cost_statistics (kind, window_start, window_end, sample_count, p50_usd_micros, p90_usd_micros, p95_usd_micros, max_usd_micros)
+		VALUES ('creation_session', now() - interval '1 day', now() + interval '1 day', 20, 1000000, 1000000, 1000000, 1000000)`); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(context.Background(), `DELETE FROM cost_statistics WHERE kind = 'creation_session' AND window_end > now()`)
+	})
+
+	again := creationPost(t, c, "/creation-sessions", start, 200)
+	if again.ID != first.ID {
+		t.Errorf("replay returned session %s, want the one already started %s", again.ID, first.ID)
+	}
+	creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}, 422)
+}
+
 func creationDomain(t *testing.T, s *creation.Service, c *client, v creation.View) creation.View {
 	t.Helper()
 	out, err := s.Get(context.Background(), identity.Workspace{ID: mustUUID(t, c.workspaceID)}, mustUUID(t, v.ID))

@@ -1,4 +1,5 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../api/client";
 import { queryKeys } from "../api/queryKeys";
 
@@ -24,6 +25,16 @@ export function useCredits() {
     queryKey: queryKeys.credits,
     queryFn: getCredits,
   });
+}
+
+export function useCreditsRereadWhenSessionCloses(hasSession: boolean) {
+  const client = useQueryClient();
+  const hadSession = useRef(hasSession);
+  useEffect(() => {
+    if (hadSession.current && !hasSession)
+      void client.invalidateQueries({ queryKey: queryKeys.credits });
+    hadSession.current = hasSession;
+  }, [client, hasSession]);
 }
 
 export interface CreditStatementEntry {

@@ -250,6 +250,7 @@ export const ROUND_OVERALL_LABEL: Record<string, string> = {
   met: "達成",
   partially_met: "部分達成",
   not_met: "未達成",
+  undetermined: "無法判定",
 };
 
 function truncateForTimeline(s: string, n = 120): string {

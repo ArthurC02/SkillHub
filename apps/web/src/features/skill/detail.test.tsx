@@ -586,3 +586,24 @@ test("05 R-19: 類別儲存結果未確認時不宣稱一定沒有設定成功",
   );
   expect(text()).not.toContain("類別已更新為「寫作」。");
 });
+
+test.each([
+  [404, "找不到這個小工具；它可能已被刪除，或你沒有權限看到它。"],
+  [410, "這個小工具已從目錄下架，內容不再提供。"],
+])(
+  "a %i skill says why it cannot be read and offers no retry that cannot succeed",
+  async (status, sentence) => {
+    vi.stubGlobal("fetch", (input: string) => {
+      const path = String(input)
+        .replace(/^https?:\/\/[^/]+/, "")
+        .split("?")[0];
+      if (path === "/me") return json({ error: "not authenticated" }, 401);
+      return json({ error: "gone" }, status);
+    });
+    await render(<SkillDetail />, () => text().includes(sentence));
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe(sentence);
+    expect(
+      Array.from(container.querySelectorAll("button")).map((b) => b.textContent),
+    ).not.toContain("再試一次");
+  },
+);

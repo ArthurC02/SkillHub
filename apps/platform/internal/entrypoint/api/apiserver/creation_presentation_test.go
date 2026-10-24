@@ -3,6 +3,7 @@ package apiserver
 import (
 	"encoding/json"
 	"errors"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -112,4 +113,29 @@ func mustPublicSnapshot(t *testing.T, snapshot creation.Snapshot) publicCreation
 		t.Fatal(err)
 	}
 	return out
+}
+
+func TestALimitRefusalCarriesTheSentenceThatNamesWhichLimitWasReached(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		err  error
+		want string
+	}{
+		{"named limit", creation.LimitReached{Sentence: "這次創作的對話已達則數上限；請保存目前的草稿，或開始新的創作。"}, "這次創作的對話已達則數上限；請保存目前的草稿，或開始新的創作。"},
+		{"bare limit", creation.ErrLimit, "已達這次核准的創作限制。"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			(&creationHandler{Svc: &creation.Service{}}).creationError(w, c.err)
+			var body struct {
+				Error string `json:"error"`
+			}
+			if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
+			if w.Code != 422 || body.Error != c.want {
+				t.Errorf("got %d %q, want 422 %q", w.Code, body.Error, c.want)
+			}
+		})
+	}
 }

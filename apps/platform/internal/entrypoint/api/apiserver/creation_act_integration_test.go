@@ -644,6 +644,9 @@ func TestActDeclineFetch(t *testing.T) {
 		if !errors.Is(err, creation.ErrLimit) {
 			t.Fatalf("got %v, want ErrLimit (decline_fetch has no cap check of its own, so canSpend catches the overflow after the append)", err)
 		}
+		if !strings.Contains(err.Error(), "則數上限") {
+			t.Errorf("refusal = %q, want it to name the message cap rather than the budget", err)
+		}
 		assertRevisionUnchanged(t, pool, id, v.Revision)
 	})
 }

@@ -1,11 +1,11 @@
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
-import { ApiError, canRetainLoadedPage } from "../../../core/api/client";
+import { canRetainLoadedPage, isWriteResultUnknown } from "../../../core/api/client";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { usePaginationFocus } from "../../../shared/ui/usePaginationFocus";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useDeleteSkill, useOwnSkillPages } from "../../skill";
+import { isSkillAlreadyGone, useDeleteSkill, useOwnSkillPages } from "../../skill";
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
 import { useGenerateEntryPoint } from "../../creation";
 import { useCreationEntryPoint } from "../../creation";
@@ -314,11 +314,7 @@ export function WorkspaceSkills() {
       {message && <p role="status">{message}</p>}
       {remove.error && (
         <ReadFailure error={remove.error} what="刪除小工具">
-          <p role="alert">
-            {remove.error instanceof ApiError && remove.error.status === 404
-              ? "這個小工具已經不在了。"
-              : "沒有刪成，可以再按一次。"}
-          </p>
+          <p role="alert">{deletionFailureSentence(remove.error)}</p>
         </ReadFailure>
       )}
 
@@ -426,4 +422,11 @@ function SkillsReadStatus({
       )}
     </>
   );
+}
+
+function deletionFailureSentence(error: unknown): string {
+  if (isSkillAlreadyGone(error)) return "這個小工具已經不在了；清單已重新讀取。";
+  if (isWriteResultUnknown(error))
+    return "尚未確認是否已刪除；清單已重新讀取，請先看過再決定要不要重按。";
+  return "沒有刪成，可以再按一次。";
 }

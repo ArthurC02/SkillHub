@@ -1082,6 +1082,26 @@ test("丙-150 建立套件失敗（非 403）說可以再按一次，不印 err.
   expect(text()).not.toContain("internal error");
 });
 
+test("a build the server blocks says the server's reason instead of inviting another press", async () => {
+  stubBuild(ME, () =>
+    json(
+      {
+        error: "這個 Skill 已被平台下架，所以無法再產出或下載套件",
+        blocked_reason: "taken_down",
+      },
+      422,
+    ),
+  );
+  await render(<Packaging />, () => text().includes("這些設定可以打包"));
+
+  await act(async () => button("建立下載套件")?.click());
+  await waitFor(() =>
+    text().includes("套件沒有建立：這個 Skill 已被平台下架，所以無法再產出或下載套件。"),
+  );
+
+  expect(text()).not.toContain("可以再按一次");
+});
+
 test("丙-150 打包預覽讀不到這個版本時，說回上一步重新挑一次版本", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
@@ -1160,3 +1180,35 @@ test("丙-155⑦ purged 的列印 serve_state.note，不印到期時間或已過
   expect(row.textContent).not.toContain("檔案已刪除");
   expect(row.textContent).not.toContain("到期時間");
 });
+
+test.each([
+  ["withheld", "不再提供下載", "這個 Skill 已被平台下架，所以無法再產出或下載套件"],
+  [
+    "rejected",
+    "已拒絕(打包後未通過驗證)",
+    "這一份不會被提供。要再拿到同樣的內容,回到該版本重新打包一次。",
+  ],
+  ["quarantined", "檢查中(尚未可下載)", "打包完成,驗證還沒結束。這是暫時狀態。"],
+])(
+  "a %s download prints the server's reason instead of an expiry time",
+  async (value, label, note) => {
+    vi.stubGlobal("fetch", () =>
+      json({
+        downloads: [
+          {
+            ...artifact,
+            artifact_id: `${value}-1`,
+            servable: false,
+            serve_state: { value, label, note },
+            expires_at: "2099-01-01T00:00:00Z",
+          },
+        ],
+      }),
+    );
+    await render(<Downloads />, () => text().includes("csv-cleanup-v2.zip"));
+
+    const row = container.querySelector(".download-item")!;
+    expect(row.textContent).toContain(note);
+    expect(row.textContent).not.toContain("到期時間");
+  },
+);

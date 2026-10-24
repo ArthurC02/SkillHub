@@ -23,6 +23,7 @@ import {
   type RunListItem,
 } from "../../runs";
 import { SkillWorkspaceNav } from "../components/SkillWorkspaceNav";
+import { unreadableSkillSentence } from "../skills.service";
 import { useSkillDetail, useSkillVersions, skillDiffUrl } from "../skills.service";
 import { VersionUpload } from "./components/VersionUpload";
 import "./SkillVersion.page.css";
@@ -104,13 +105,13 @@ function VersionReadStatus({
   skillId: string;
 }) {
   if (skill.isPending) return <Loading what="這個小工具" />;
-  if (skill.error instanceof ApiError && skill.error.status === 410) {
+  const unreadable = unreadableSkillSentence(skill.error);
+  if (unreadable)
     return (
       <PageReadFailure heading="版本與發佈" error={skill.error} what="這個小工具">
-        <p role="alert">這個小工具已從目錄下架，內容不再提供。</p>
+        <p role="alert">{unreadable}</p>
       </PageReadFailure>
     );
-  }
   if (skill.error)
     return (
       <PageReadFailure

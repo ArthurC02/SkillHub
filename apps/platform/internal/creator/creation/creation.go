@@ -472,7 +472,7 @@ func (s *Service) commitCommand(ctx context.Context, tx pgx.Tx, row gen.Creation
 	var job *JobArgs
 	if outcome.queueStep {
 		if !canSpend(e.Snapshot, e.Limits) {
-			return View{}, nil, ErrLimit
+			return View{}, nil, LimitReached{limitSentence(e.Snapshot, e.Limits)}
 		}
 		state = StateQueued
 		queued, err := s.queueStep(ctx, tx, row, &e, outcome)

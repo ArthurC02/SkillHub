@@ -553,6 +553,36 @@ test("a blocked balance keeps the budget choices but drops the balance-and-estim
   expect(box.querySelector(".budget-picker .creation-fact")).toBeNull();
   expect(box.textContent).not.toContain("30–65 點");
 });
+test("a new creation after a started one rereads the balance instead of trusting the first read", async () => {
+  let started = false;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith("/me/credits")) {
+        return response(
+          started
+            ? creditsResponse({ balance_credits: 10, can_start: false, block_reason: "還差 55 點" })
+            : creditsResponse(),
+        );
+      }
+      if (init?.method === "POST") {
+        started = true;
+        return creationReceipt(sample({ state: "queued" }), url, init);
+      }
+      return routeGet(url, [], sample());
+    }),
+  );
+  await render();
+  await pickBudget();
+  await waitFor(() => box.textContent!.includes("餘額 100"));
+  await input("想完成的任務", "建立摘要小工具");
+  await click(START);
+  await waitFor(() => box.querySelector<HTMLTextAreaElement>("#creation-message")?.value === "");
+  await click("＋ 開始新的創作");
+  await pickBudget();
+  await waitFor(() => box.textContent!.includes("還差 55 點"));
+  expect(button(START).disabled).toBe(true);
+});
 async function attachDiagram(name = "flow.png", body = "diagram") {
   const el = box.querySelector('input[type="file"]') as HTMLInputElement;
   await act(async () => {
@@ -1991,6 +2021,45 @@ test("a failed or unevaluated run warns before saving instead of claiming no run
       notice.textContent?.includes("試跑未通過或未評估"),
     ),
   ).toBe(true);
+});
+test("the draft card names its linked run's status and verdict in Chinese, including an undetermined verdict", async () => {
+  const v = sample({ state: "candidate_ready", revision: 9 });
+  v.snapshot.draft = {
+    revision: 1,
+    content_hash: "a".repeat(64),
+    skill: {
+      name: "摘要",
+      description: "",
+      compatibility: "",
+      allowed_tools: "",
+      body: "",
+      files: [],
+    },
+    validation: JSON.stringify({ findings: [], blocked: false }),
+    blocked: false,
+  };
+  v.snapshot.candidate = { skill_id: "sk-1", version_id: "v1", run_id: "run-1" };
+  v.snapshot.messages = [
+    {
+      role: "tool",
+      content: JSON.stringify({
+        run_id: "run-1",
+        execution_status: "succeeded",
+        evaluation: { overall: "undetermined", criterion_results: [] },
+      }),
+    },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  const card = Array.from(box.querySelectorAll("p")).find((p) =>
+    p.textContent?.startsWith("試跑結果："),
+  );
+  expect(card?.textContent).toBe("試跑結果：執行完成；評估：無法判定");
+  expect(box.textContent).not.toMatch(/succeeded|undetermined/);
 });
 test("acceptance criteria render under the brief and the confirm button names both", async () => {
   const v = sample({ state: "waiting_confirmation" });

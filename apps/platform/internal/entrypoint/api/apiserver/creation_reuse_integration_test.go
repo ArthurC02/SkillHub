@@ -54,6 +54,19 @@ func TestCreationFirstMessageCatalogueCheckOffersAdoptKeepOrDecline(t *testing.T
 	ad := creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "adopt_reference", "reference_skill_ids": []string{existing.SkillID}}, 200)
 	assertAdoptionForkedWithoutAModelCall(t, scene, ad)
 
+	adopt := func() (int, string) {
+		v := start()
+		return creationPostStatus(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "adopt_reference", "reference_skill_ids": []string{existing.SkillID}})
+	}
+	for copies := 2; copies <= 10; copies++ {
+		if status, body := adopt(); status != 200 {
+			t.Fatalf("adopting copy %d = %d %s, want 200", copies, status, body)
+		}
+	}
+	if status, body := adopt(); status != 422 || !strings.Contains(body, "太多份這個小工具的複本") {
+		t.Fatalf("adopting an eleventh copy = %d %s, want 422 naming the copies as the cause", status, body)
+	}
+
 	v = start()
 	creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "adopt_reference", "reference_skill_ids": []string{"11111111-1111-4111-8111-111111111111"}}, 422)
 

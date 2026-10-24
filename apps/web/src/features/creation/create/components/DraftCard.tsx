@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { CreationSnapshot, CreationState, CreationSessionRead } from "../../creation.service";
 import { runStatusLabel, type RunListItem } from "../../../runs";
 import { Reveal } from "../../../../shared/ui/Reveal";
-import { findRunObservation, readDraftInspection } from "../create.model";
+import { ROUND_OVERALL_LABEL, findRunObservation, readDraftInspection } from "../create.model";
 import type { Perform } from "../create.commands";
 import { DraftFindings } from "./DraftFindings";
 
@@ -47,7 +47,7 @@ export function DraftCard({
       </p>
       {p.previous_draft && (
         <details>
-          <summary>比較上一份草稿（revision {p.previous_draft.revision}）</summary>
+          <summary>比較上一份草稿（第 {p.previous_draft.revision} 版）</summary>
           <pre className="skill-md">
             <Reveal text={p.previous_draft.skill.body} />
           </pre>
@@ -157,8 +157,8 @@ function DraftCandidate({
           </Link>
           {run && (
             <p>
-              試跑結果：{run.execution_status}；評估：
-              {run.evaluation?.overall ?? "無評估"}
+              試跑結果：{runStatusLabel(run.execution_status)}；評估：
+              {ROUND_OVERALL_LABEL[run.evaluation?.overall ?? ""] ?? "無評估"}
             </p>
           )}
         </>

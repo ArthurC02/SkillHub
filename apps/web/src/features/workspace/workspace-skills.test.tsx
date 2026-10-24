@@ -289,10 +289,53 @@ test("04 丙-150(b): a 404 delete (skill already gone) gets the page's own sente
   });
 
   await openConfirm();
-  await waitFor(() => text().includes("這個小工具已經不在了。"));
+  await waitFor(() => text().includes("這個小工具已經不在了；清單已重新讀取。"));
 
   const alert = container.querySelector('[role="alert"]');
-  expect(alert?.textContent).toContain("這個小工具已經不在了。");
+  expect(alert?.textContent).toContain("這個小工具已經不在了；清單已重新讀取。");
   const status = container.querySelector('[role="status"]');
-  expect(status?.textContent ?? "").not.toContain("這個小工具已經不在了。");
+  expect(status?.textContent ?? "").not.toContain("這個小工具已經不在了；清單已重新讀取。");
+});
+
+test.each([
+  [404, "這個小工具已經不在了；清單已重新讀取。"],
+  [503, "尚未確認是否已刪除；清單已重新讀取，請先看過再決定要不要重按。"],
+])(
+  "a %i delete rereads the list so a card deleted elsewhere does not linger",
+  async (status, sentence) => {
+    let deleted = false;
+    vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+      const path = typeof input === "string" ? input : String(input);
+      if (path.endsWith("/me")) return json(ME);
+      if (init?.method === "DELETE") {
+        deleted = true;
+        return json({ error: "gone" }, status);
+      }
+      return json({
+        skills: deleted ? [] : [SKILL],
+        limit: 100,
+        truncated: false,
+        total: deleted ? 0 : 1,
+      });
+    });
+
+    await openConfirm();
+    await waitFor(() => text().includes(sentence));
+    await waitFor(() => !text().includes("範例小工具"));
+  },
+);
+
+test("a refused delete says it can be pressed again without rereading the list", async () => {
+  let listReads = 0;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const path = typeof input === "string" ? input : String(input);
+    if (path.endsWith("/me")) return json(ME);
+    if (init?.method === "DELETE") return json({ error: "forbidden" }, 403);
+    listReads++;
+    return json({ skills: [SKILL], limit: 100, truncated: false, total: 1 });
+  });
+
+  await openConfirm();
+  await waitFor(() => text().includes("沒有刪成，可以再按一次。"));
+  expect(listReads).toBe(1);
 });

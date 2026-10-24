@@ -9,6 +9,7 @@ import (
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	registry "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/jackc/pgx/v5/pgtype"
 	"io"
 	"net/http"
@@ -139,6 +140,9 @@ func (h *creationHandler) creationError(w http.ResponseWriter, err error) {
 	case errors.Is(err, creation.ErrNotFound):
 		code = 404
 		text = "找不到可讀取的創作或參考內容。"
+	case errors.Is(err, registry.ErrNameTaken):
+		code = 422
+		text = "你的工作區已經有太多份這個小工具的複本，無法再採用一份。請先刪除或改名幾份舊的複本，或改請 Agent 從頭建立。"
 	case errors.Is(err, creation.ErrConflict), errors.Is(err, creation.ErrReplayMismatch):
 		code = 409
 		text = "創作進度已改變，請重新讀取後確認。"
@@ -151,6 +155,10 @@ func (h *creationHandler) creationError(w http.ResponseWriter, err error) {
 	case errors.Is(err, creation.ErrLimit):
 		code = 422
 		text = "已達這次核准的創作限制。"
+		var reached creation.LimitReached
+		if errors.As(err, &reached) {
+			text = reached.Sentence
+		}
 	case errors.Is(err, ingest.ErrGeneratedNameCollision):
 		code = 422
 		text = "你的工作區已經有一個同名的小工具。請先刪除或改名它，或在對話中請 Agent 把草稿改名後再保存。"

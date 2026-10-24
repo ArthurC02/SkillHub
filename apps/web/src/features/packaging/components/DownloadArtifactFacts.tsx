@@ -29,12 +29,12 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
         ｜已下載 {artifact.download_count} 次
       </p>
       <p className="note">
-        {lost || purged ? (
-          artifact.serve_state.note
-        ) : expired ? (
+        {expired ? (
           <>
             已於 <Timestamp at={artifact.expires_at} /> 到期，檔案已刪除，這筆紀錄保留。
           </>
+        ) : artifact.serve_state.note ? (
+          artifact.serve_state.note
         ) : (
           <>
             到期時間：

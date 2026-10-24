@@ -32,8 +32,16 @@ func limitSentence(p Snapshot, l Limits) string {
 	if p.Steps >= l.MaxSteps {
 		return "已達這次核准的步數上限，請開始新的創作。"
 	}
+	if !p.hasRoomFor(2) {
+		return "這次創作的對話已達則數上限；請保存目前的草稿，或開始新的創作。"
+	}
 	return "已達這次核准的預算或步數上限；可以提高預算後繼續，或開始新的創作。"
 }
+
+type LimitReached struct{ Sentence string }
+
+func (e LimitReached) Error() string        { return e.Sentence }
+func (e LimitReached) Is(target error) bool { return target == ErrLimit }
 func canSpend(p Snapshot, l Limits) bool {
 	spent := 0.0
 	if p.SpentUSD != nil {

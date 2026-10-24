@@ -11,7 +11,12 @@ import type {
   SkillRedistributionEnum,
 } from "@skillhub/api-client-ts";
 import { contractEnum } from "../../core/api/contract-enum";
-import { SessionNotReadyError, apiFetch, isWriteResultUnknown } from "../../core/api/client";
+import {
+  ApiError,
+  SessionNotReadyError,
+  apiFetch,
+  isWriteResultUnknown,
+} from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import { readSearchCorrection } from "../../core/api/searchIntent";
 import type {
@@ -248,11 +253,26 @@ export function deleteSkill(skillId: string) {
   return apiFetch<SkillDeletion>(`/skills/${skillId}`, { method: "DELETE" });
 }
 
+export function unreadableSkillSentence(error: unknown): string | undefined {
+  if (!(error instanceof ApiError)) return undefined;
+  if (error.status === 410) return "這個小工具已從目錄下架，內容不再提供。";
+  if (error.status === 404) return "找不到這個小工具；它可能已被刪除，或你沒有權限看到它。";
+  return undefined;
+}
+
+export function isSkillAlreadyGone(error: unknown) {
+  return error instanceof ApiError && error.status === 404;
+}
+
 export function useDeleteSkill() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: deleteSkill,
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.skills.own }),
+    onSettled: (_, error) => {
+      if (!error || isSkillAlreadyGone(error) || isWriteResultUnknown(error)) {
+        void client.invalidateQueries({ queryKey: queryKeys.skills.own });
+      }
+    },
   });
 }
 

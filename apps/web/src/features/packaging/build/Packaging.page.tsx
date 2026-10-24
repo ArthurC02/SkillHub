@@ -1,4 +1,3 @@
-import { ApiError } from "../../../core/api/client";
 import { useUninvited } from "../../../core/session/me.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { PageReadFailure } from "../../../shared/ui/LoginRequired";
@@ -12,7 +11,12 @@ import {
   type PackagingPreview,
   type PackagingTargetId,
 } from "../packaging.service";
-import { SkillWorkspaceNav, useEmbeddedSkillDetail, useSkillVersions } from "../../skill";
+import {
+  SkillWorkspaceNav,
+  unreadableSkillSentence,
+  useEmbeddedSkillDetail,
+  useSkillVersions,
+} from "../../skill";
 import { packagingGate } from "../packaging.model";
 import { matchingBuiltArtifact, resolveTarget } from "./build.model";
 import { LabelledBadge } from "../../../shared/ui/LabelledBadge";
@@ -138,10 +142,11 @@ export function Packaging() {
     );
 
   if (skill.isLoading) return <Loading what="這個小工具" />;
-  if (skill.error instanceof ApiError && skill.error.status === 410)
+  const unreadable = unreadableSkillSentence(skill.error);
+  if (unreadable)
     return (
       <PageReadFailure heading="小工具套件" error={skill.error} what="這個小工具">
-        <p role="alert">這個小工具已從目錄下架，內容不再提供。</p>
+        <p role="alert">{unreadable}</p>
       </PageReadFailure>
     );
   if (skill.error)
