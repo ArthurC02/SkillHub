@@ -11,7 +11,8 @@ for (const surface of ["catalog", "search"]) {
       await stubPlatform(page);
       await page.setViewportSize({ width: 375, height: 900 });
       let reads = 0;
-      const pattern = surface === "catalog" ? "**/api/skills/catalog?*" : "**/api/skills/search**";
+      const pattern =
+        surface === "catalog" ? "**/api/skills/catalog?*" : /\/api\/skills\/search(\?|$)/;
       await page.route(pattern, (route) => {
         if (
           surface === "catalog" &&

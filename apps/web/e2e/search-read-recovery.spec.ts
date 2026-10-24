@@ -13,7 +13,7 @@ for (const corrected of [false, true]) {
       await page.setViewportSize({ width: 375, height: 900 });
       let failing = false;
       const requests: { method: string; query: string; body: unknown }[] = [];
-      await page.route("**/api/skills/search**", (route) => {
+      await page.route(/\/api\/skills\/search(\?|$)/, (route) => {
         const request = route.request();
         requests.push({
           method: request.method(),

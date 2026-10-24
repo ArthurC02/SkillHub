@@ -858,6 +858,27 @@ test("DISC-002: a failed reasons call keeps the template reasons and raises no a
   expect(container.querySelector('[role="alert"]')).toBeNull();
 });
 
+test("DISC-002: a reasons answer without a reasons list leaves the results and their templates intact", async () => {
+  const bodies = stubSearchThenReasons(
+    {
+      ...EMPTY,
+      query: "pdf",
+      reason_query: "pdf",
+      results: [reasonHit(1), reasonHit(2)],
+      total: 2,
+    },
+    () =>
+      Promise.resolve(new Response(JSON.stringify({ query: "pdf", results: [] }), { status: 200 })),
+  );
+  await render(<App />);
+  await submitSearch("pdf");
+
+  await waitFor(() => bodies.length === 1);
+  await act(async () => {});
+  expect(container.querySelectorAll(".search-results > li")).toHaveLength(2);
+  expect(container.textContent).toContain("查詢與文件共同出現：pdf 2");
+});
+
 test.each([
   [10, 10],
   [11, 10],

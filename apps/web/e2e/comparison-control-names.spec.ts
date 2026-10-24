@@ -18,7 +18,7 @@ async function comparisonCandidates(page: Page, surface: "catalog" | "search") {
     surface === "catalog"
       ? [...CATALOG.results, fourth]
       : [...SEARCH.results, CATALOG.results[2], fourth];
-  const pattern = surface === "catalog" ? "**/api/skills/catalog?*" : "**/api/skills/search**";
+  const pattern = surface === "catalog" ? "**/api/skills/catalog?*" : /\/api\/skills\/search(\?|$)/;
   await page.route(pattern, (route) => {
     if (surface === "catalog" && new URL(route.request().url()).searchParams.get("limit") !== "100")
       return route.fallback();

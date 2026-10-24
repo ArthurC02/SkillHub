@@ -127,7 +127,7 @@ export function withMatchReasons(
   search: PublicSearchResponse,
   answer: SearchMatchReasons | undefined,
 ): PublicSearchResponse {
-  if (!answer?.reasons.length) return search;
+  if (!Array.isArray(answer?.reasons) || answer.reasons.length === 0) return search;
   const written = new Map(answer.reasons.map((r) => [r.skill_id, r.reason]));
   return {
     ...search,

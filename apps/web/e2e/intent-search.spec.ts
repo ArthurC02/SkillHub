@@ -12,7 +12,7 @@ type SearchRequest = SearchCorrection & {
 async function stubIntentSearch(page: Page) {
   const requests: { method: string; body: SearchRequest }[] = [];
   await stubPlatform(page);
-  await page.route("**/api/skills/search**", async (route, request) => {
+  await page.route(/\/api\/skills\/search(\?|$)/, async (route, request) => {
     const method = request.method();
     const body: SearchRequest =
       method === "POST"
