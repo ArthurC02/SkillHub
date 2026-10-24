@@ -9,6 +9,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -1407,22 +1408,31 @@ func TestOwnSkillListingPagesAStableOrderWithoutDuplicates(t *testing.T) {
 		return result
 	}
 
-	first, second := read(0), read(2)
-	if first.Limit != 2 || !first.Truncated || first.Total != 3 || len(first.Skills) != 2 {
-		t.Fatalf("first page = %+v, want two of three rows with another page", first)
+	pageShape := func(p page) [4]int64 {
+		truncated := int64(0)
+		if p.Truncated {
+			truncated = 1
+		}
+		return [4]int64{int64(p.Limit), truncated, p.Total, int64(len(p.Skills))}
 	}
-	if second.Limit != 2 || second.Truncated || second.Total != 3 || len(second.Skills) != 1 {
-		t.Fatalf("second page = %+v, want the final row", second)
-	}
-	if beyond := read(4); beyond.Truncated || beyond.Total != 3 || len(beyond.Skills) != 0 {
-		t.Fatalf("page past the end = %+v, want no rows and the same total of three", beyond)
+	first, second, beyond := read(0), read(2), read(4)
+	for _, c := range []struct {
+		name string
+		got  page
+		want [4]int64
+	}{
+		{"first page, two of three rows with another page", first, [4]int64{2, 1, 3, 2}},
+		{"second page, the final row", second, [4]int64{2, 0, 3, 1}},
+		{"page past the end, no rows and the same total of three", beyond, [4]int64{2, 0, 3, 0}},
+	} {
+		if pageShape(c.got) != c.want {
+			t.Fatalf("%s: got %+v", c.name, c.got)
+		}
 	}
 	want := []string{prefix + "3", prefix + "2", prefix + "1"}
 	got := []string{first.Skills[0].SkillID, first.Skills[1].SkillID, second.Skills[0].SkillID}
-	for index := range want {
-		if got[index] != want[index] {
-			t.Fatalf("paged ids = %v, want stable id-desc tie breaking %v", got, want)
-		}
+	if !slices.Equal(got, want) {
+		t.Fatalf("paged ids = %v, want stable id-desc tie breaking %v", got, want)
 	}
 }
 
