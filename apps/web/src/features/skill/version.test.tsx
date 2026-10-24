@@ -246,6 +246,39 @@ test("an owned immutable version becomes one shareable context for validation, p
   expect(text()).not.toContain("Studio 歷程");
 });
 
+test("switching to another version asks for the distribution right again", async () => {
+  stubVersions();
+  const previousFetch = globalThis.fetch;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) =>
+    String(input).split("?")[0].endsWith(`/api/skills/${SKILL}`)
+      ? json({
+          ...skillDetail(SKILL, "PDF Summariser"),
+          redistribution: { value: "self_supplied" },
+        })
+      : previousFetch(input, init),
+  );
+  const rightsBox = () =>
+    Array.from(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')).find((box) =>
+      box.closest("label")?.textContent?.includes("我有權散布這些內容"),
+    );
+  await render(() => rightsBox() !== undefined);
+  await act(async () => rightsBox()!.click());
+  expect(rightsBox()!.checked).toBe(true);
+
+  routeVersion = SKILL_VERSIONS.versions[1].version_id;
+  await act(async () =>
+    root.render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <SkillVersion />
+        </QueryClientProvider>
+      </StrictMode>,
+    ),
+  );
+  await waitFor(() => text().includes("v1，歷史版本") && rightsBox() !== undefined);
+  expect(rightsBox()!.checked).toBe(false);
+});
+
 test("a historical version labels the current 小工具 summary without presenting it as version content", async () => {
   routeVersion = SKILL_VERSIONS.versions[1].version_id;
   stubVersions();

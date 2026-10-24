@@ -59,7 +59,14 @@ export function SkillVersion() {
       )}
       <div className="version-workspace-layout">
         <div className="version-workspace-main">
-          {context && <VersionContent context={context} skillId={skillId} versionId={versionId} />}
+          {context && (
+            <VersionContent
+              key={versionId}
+              context={context}
+              skillId={skillId}
+              versionId={versionId}
+            />
+          )}
         </div>
         <VersionRail
           key={skillId}
