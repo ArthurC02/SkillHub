@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "reasons-recite",
+  "proposal_id": "reasons-recite-2026-10-25",
+  "registry_revision": {
+    "observed_commit": "596395aff3a82e950bb8048ffa2535b3646ef72a",
+    "registry_digest": "sha256:70620925ffb05d1bb05df4b58ec925fa573df96c1e53f2c63e682f241511d3d2",
+    "committed_digest": "sha256:70620925ffb05d1bb05df4b58ec925fa573df96c1e53f2c63e682f241511d3d2"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/reasons-recite-2026-10-25 --path apps/platform/internal/entrypoint/api/apiserver/disc_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/search_purpose_integration_test.go --path apps/platform/internal/skill/discovery/fusion.go --path apps/platform/internal/skill/discovery/fusion_test.go --path apps/platform/internal/skill/discovery/http.go --path apps/platform/internal/skill/discovery/http_test.go --path apps/platform/internal/skill/discovery/reason_test.go --path apps/platform/internal/skill/discovery/scope_test.go --path apps/platform/internal/skill/discovery/service.go",
+      "command_profile": "python",
+      "exit_code": 0,
+      "output_sha256": "sha256:e033cb99ff1b92467d8bc4625ece8b90c9a8d5cb4eea3c4e59f2c43f3d28fa50",
+      "finished_at": "2026-10-24T22:59:26.339805Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

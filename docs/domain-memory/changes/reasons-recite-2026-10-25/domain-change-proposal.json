@@ -1,0 +1,398 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "reasons-recite-2026-10-25",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "reasons-recite",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-24T22:59:16.063758Z",
+  "verified_at": "2026-10-24T22:59:31.211073Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "596395aff3a82e950bb8048ffa2535b3646ef72a",
+    "registry_digest": "sha256:70620925ffb05d1bb05df4b58ec925fa573df96c1e53f2c63e682f241511d3d2",
+    "committed_digest": "sha256:70620925ffb05d1bb05df4b58ec925fa573df96c1e53f2c63e682f241511d3d2"
+  },
+  "affected_contexts": [
+    "catalog"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-reference-search-records-no-search-event",
+        "statement": "A search made for reference records no search_performed analytics event.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "A purpose=reference search writes no search_performed row; the same search without purpose writes one."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/service.go",
+            "lines": {
+              "start": 274,
+              "end": 276
+            },
+            "excerpt_sha256": "sha256:c0ca0a351bb9ea1bb585cb2242a18aa3603166a0f5d2863d311b867ced9bfd77",
+            "content_sha256": "sha256:cc7e915c37ebae425f3dbebcf67f5d7ab32514f3ad8903f0c474c06d61ed4560",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/search_purpose_integration_test.go",
+            "lines": {
+              "start": 11,
+              "end": 37
+            },
+            "excerpt_sha256": "sha256:61dd56f74c4a9a7e679788800e20ade35434bb9e397891e1e7f5d53a9b3bd58d"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-search-limit-is-1-to-100",
+        "statement": "The search limit must be a whole number from 1 to 100; anything else is refused.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "limit=100 is accepted and limit=101 answers 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/http.go",
+            "lines": {
+              "start": 247,
+              "end": 257
+            },
+            "excerpt_sha256": "sha256:7df1f2f1567b02af421b590a1d0806e1822000e60c2e706d9d48f452e6363800"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/disc_integration_test.go",
+            "lines": {
+              "start": 1527,
+              "end": 1554
+            },
+            "excerpt_sha256": "sha256:49c0db1962efe05d739f38b8aad5f3749d06cb601edb8ffd95ba97c504be9cee",
+            "content_sha256": "sha256:5b3668a24c0dedf0c543f560eca5b6e65fbca804306dd0e1abfb04aa48023e84",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-search-purpose-is-reference-or-absent",
+        "statement": "The public search refuses any purpose other than reference with 400.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "Searching with purpose=other answers 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/http.go",
+            "lines": {
+              "start": 359,
+              "end": 364
+            },
+            "excerpt_sha256": "sha256:af25ee4a3ae972a2a9a428b288ab3d867dbd91b9849a64d8923e7c2d31e627f1",
+            "content_sha256": "sha256:260ddeef132c4fbd71b7af8b2c140c292b1ca7d04e9d9432b5d209852b2d0301",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/http_test.go",
+            "lines": {
+              "start": 20,
+              "end": 28
+            },
+            "excerpt_sha256": "sha256:4af9f70860b12def7ad9cf0767a56655d0fcf7426ddf02be1a8d78df4851beab"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-search-query-is-at-most-2000-runes",
+        "statement": "A search query longer than 2000 characters, counted in runes, is refused; exactly 2000 is accepted.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "2000 Chinese characters are searched; 2001 answer 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/http.go",
+            "lines": {
+              "start": 560,
+              "end": 567
+            },
+            "excerpt_sha256": "sha256:940b4f8e0b04d8d4849edb0a08f14efdf10499e5d17e5d8738104e5aaa9041e6",
+            "content_sha256": "sha256:260ddeef132c4fbd71b7af8b2c140c292b1ca7d04e9d9432b5d209852b2d0301",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/http_test.go",
+            "lines": {
+              "start": 11,
+              "end": 18
+            },
+            "excerpt_sha256": "sha256:555961ce00cd66c6987e0b1bf02cd110e77d435a48997ed0fbd0484c904e4dd5"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-searchable-query-has-two-runes-and-a-letter-or-digit",
+        "statement": "A query is searched only when it is valid text without control characters, has at least two characters and holds a letter or digit.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "'你' and '!!' are not searched; 'C#' and '轉表格' are."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/http.go",
+            "lines": {
+              "start": 569,
+              "end": 589
+            },
+            "excerpt_sha256": "sha256:061e19640a49ea2a04696078b802e29bcd4427aa74f11b7b7f22086999a69ebc",
+            "content_sha256": "sha256:260ddeef132c4fbd71b7af8b2c140c292b1ca7d04e9d9432b5d209852b2d0301",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/reason_test.go",
+            "lines": {
+              "start": 151,
+              "end": 182
+            },
+            "excerpt_sha256": "sha256:7c4ab4eca906e0d257bbb8ea1f66b20d09d405469c6d2563a6dcc5d621c2920c"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-truncated-search-says-so-and-counts-every-match",
+        "statement": "Search fetches one row past the limit; when more than the limit match, it returns the limit, marks the page truncated and reports the full total.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "limit=1 over five matching skills returns one result, truncated, with total 5."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/service.go",
+            "lines": {
+              "start": 249,
+              "end": 252
+            },
+            "excerpt_sha256": "sha256:4c012c4dfeb869b2c57bfdcfda7bd91c32c9c33ab26bada5ca244c37473f81d3",
+            "content_sha256": "sha256:cc7e915c37ebae425f3dbebcf67f5d7ab32514f3ad8903f0c474c06d61ed4560",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/disc_integration_test.go",
+            "lines": {
+              "start": 1408,
+              "end": 1443
+            },
+            "excerpt_sha256": "sha256:04b6049045afce33da4632ddd770fe59870dfe535e3782a6d5cb5d9c9300b757",
+            "content_sha256": "sha256:5b3668a24c0dedf0c543f560eca5b6e65fbca804306dd0e1abfb04aa48023e84",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-embedding-failure-degrades-to-lexical-and-says-so",
+        "statement": "When embeddings are missing or fail, search returns the lexical results and says it is degraded, rather than failing the request.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "With the embedding endpoint returning 502, a lexically matching skill is still returned with degraded set and a reason."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/service.go",
+            "lines": {
+              "start": 233,
+              "end": 243
+            },
+            "excerpt_sha256": "sha256:90dcd73cbcedbcd93410a52773c1fb7a625c1254156e6788323917a0700d1aa9",
+            "content_sha256": "sha256:cc7e915c37ebae425f3dbebcf67f5d7ab32514f3ad8903f0c474c06d61ed4560",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/service.go",
+            "lines": {
+              "start": 287,
+              "end": 308
+            },
+            "excerpt_sha256": "sha256:c6ea4d3aa51886fdf7242d8672bd7c51482707cca892a6e8252885b9de3e754a",
+            "content_sha256": "sha256:cc7e915c37ebae425f3dbebcf67f5d7ab32514f3ad8903f0c474c06d61ed4560",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/disc_integration_test.go",
+            "lines": {
+              "start": 714,
+              "end": 748
+            },
+            "excerpt_sha256": "sha256:e921d6c715d904c061446f27926094eaaed0bb3e34230cf5f11fb5e219e83a1a",
+            "content_sha256": "sha256:5b3668a24c0dedf0c543f560eca5b6e65fbca804306dd0e1abfb04aa48023e84",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-uncovered-candidate-past-the-distance-cutoff-is-dropped",
+        "statement": "A hybrid candidate farther than the cosine distance cutoff is dropped unless the lexical leg covered it or it has no vector.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "A skill just past the cutoff that matches no query word is excluded; one that matches the words is kept."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/fusion.go",
+            "lines": {
+              "start": 36,
+              "end": 48
+            },
+            "excerpt_sha256": "sha256:94668aed79c9c35f057e4485aaa9b25dd517faf1578558affc555014bb3dcf32"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/service.go",
+            "lines": {
+              "start": 229,
+              "end": 232
+            },
+            "excerpt_sha256": "sha256:22a810c83091544767287987df1794cc07bbbd15ffadcc2151961db566fa1706",
+            "content_sha256": "sha256:cc7e915c37ebae425f3dbebcf67f5d7ab32514f3ad8903f0c474c06d61ed4560",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/fusion_test.go",
+            "lines": {
+              "start": 37,
+              "end": 59
+            },
+            "excerpt_sha256": "sha256:161f0cf31611077d19782dc60470f4dcb4fded76567560dce8e8a18956036d82"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "catalog-reads-refuse-without-the-catalog-workspaces",
+        "statement": "Browsing, Catalog risk reads and reference reads fail when the catalog Workspace reader is missing; they never fall back to an unscoped listing.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "A Service with no catalog Workspace reader answers Browse with an error."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/service.go",
+            "lines": {
+              "start": 349,
+              "end": 354
+            },
+            "excerpt_sha256": "sha256:e687c0440aad31ffb1812aac767849d8788d323c8f79d11733841fa0f4f97df2",
+            "content_sha256": "sha256:cc7e915c37ebae425f3dbebcf67f5d7ab32514f3ad8903f0c474c06d61ed4560",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/scope_test.go",
+            "lines": {
+              "start": 10,
+              "end": 22
+            },
+            "excerpt_sha256": "sha256:d55e20ac041d24c5f32e37e299cd3ffba0b70653a7f95af5fa880a0e3cf41c2b"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-24T22:59:26.747795Z",
+      "scope": "re-cite the 12 citations shifted by moving match reasons out of the search response (596395aff): nine catalog search rules whose cited lines in service.go, http.go and disc_integration_test.go moved",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "596395aff3a82e950bb8048ffa2535b3646ef72a",
+        "registry_digest": "sha256:70620925ffb05d1bb05df4b58ec925fa573df96c1e53f2c63e682f241511d3d2",
+        "committed_digest": "sha256:70620925ffb05d1bb05df4b58ec925fa573df96c1e53f2c63e682f241511d3d2"
+      }
+    }
+  ],
+  "supersedes": [
+    "catalog-harvest-rules-2026-10-17",
+    "catalog-search-rules-2026-10-18",
+    "shifted-recite-2026-10-24"
+  ]
+}

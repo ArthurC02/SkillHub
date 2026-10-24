@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "reasons-recite",
+  "proposal_id": "reasons-recite-2026-10-25",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/reasons-recite-2026-10-25 --path apps/platform/internal/entrypoint/api/apiserver/disc_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/search_purpose_integration_test.go --path apps/platform/internal/skill/discovery/fusion.go --path apps/platform/internal/skill/discovery/fusion_test.go --path apps/platform/internal/skill/discovery/http.go --path apps/platform/internal/skill/discovery/http_test.go --path apps/platform/internal/skill/discovery/reason_test.go --path apps/platform/internal/skill/discovery/scope_test.go --path apps/platform/internal/skill/discovery/service.go"
+    }
+  ]
+}
