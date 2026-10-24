@@ -8,7 +8,7 @@ export { MAX_NAME_CHARS, MAX_PROMPT_CHARS, textLengthReason };
 
 export function oversizeReason(name: string, prompt: string): string | null {
   return (
-    textLengthReason(name, "名稱", MAX_NAME_CHARS) ??
-    textLengthReason(prompt, "Prompt ", MAX_PROMPT_CHARS)
+    textLengthReason(name.trim(), "名稱", MAX_NAME_CHARS) ??
+    textLengthReason(prompt.trim(), "Prompt ", MAX_PROMPT_CHARS)
   );
 }
