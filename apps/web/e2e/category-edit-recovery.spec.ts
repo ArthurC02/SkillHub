@@ -196,7 +196,13 @@ for (const status of [401, 403, 404, 410]) {
       await expect(page.locator(".detail-answer, .detail-main")).toHaveCount(0);
       await expect(page.locator(".detail-rail")).toBeHidden();
       await expect(page.getByRole("heading", { level: 1 })).toHaveText("小工具總覽");
-      if (status === 403 || status === 404) {
+      if (status === 404) {
+        await expect(page.getByRole("alert")).toHaveText(
+          "找不到這個小工具；它可能已被刪除，或你沒有權限看到它。",
+        );
+        await expect(page.getByRole("button", { name: "再試一次", exact: true })).toHaveCount(0);
+      }
+      if (status === 403) {
         recovered = true;
         await page.getByRole("button", { name: "再試一次", exact: true }).click();
         await expect(choice).toHaveValue("documents");

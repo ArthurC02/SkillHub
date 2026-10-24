@@ -120,12 +120,8 @@ func (s *Service) Listing(
 		return SkillListing{}, err
 	}
 	listing := SkillListing{Truncated: len(rows) > int(page.Limit)}
-	if len(rows) > 0 {
-		listing.Total = rows[0].TotalMatches
-	} else if page.Offset > 0 {
-		if listing.Total, err = q.CountListedSkills(ctx, workspaceID); err != nil {
-			return SkillListing{}, err
-		}
+	if listing.Total, err = listedTotal(ctx, q, workspaceID, page, rows); err != nil {
+		return SkillListing{}, err
 	}
 	if listing.Truncated {
 		rows = rows[:page.Limit]
@@ -165,6 +161,16 @@ func (s *Service) Listing(
 		})
 	}
 	return listing, nil
+}
+
+func listedTotal(ctx context.Context, q *gen.Queries, workspaceID pgtype.UUID, page SkillListingPage, rows []gen.ListSkillsRow) (int64, error) {
+	if len(rows) > 0 {
+		return rows[0].TotalMatches, nil
+	}
+	if page.Offset == 0 {
+		return 0, nil
+	}
+	return q.CountListedSkills(ctx, workspaceID)
 }
 
 func SkillByName(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, name string) (Skill, bool, error) {
