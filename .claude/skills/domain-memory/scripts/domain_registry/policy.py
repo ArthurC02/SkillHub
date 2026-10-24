@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import difflib
 from pathlib import Path
 from typing import Any
 
@@ -141,6 +140,8 @@ def _list_errors(name: str, items: Any) -> list[str]:
 
 
 def _closest(key: str, known: dict[str, Any] = SCHEMA_CONVENTION_DEFAULTS) -> str:
+    import difflib
+
     close = difflib.get_close_matches(key, list(known), n=1, cutoff=0.6)
     return f"; did you mean {close[0]}?" if close else ""
 

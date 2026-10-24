@@ -43,7 +43,6 @@ from .revision import DIGEST_HEX_LENGTH, DIGEST_PREFIX, valid_digest, valid_regi
 SUBMITTED_OR_LATER = {"submitted", "verified", "approved", "applied"}
 VERIFIED_OR_LATER = {"verified", "approved", "applied"}
 APPROVED_OR_LATER = {"approved", "applied"}
-PREVIEW_STATUSES = ("submitted", "verified", "approved", "applied")
 STAND_IN_REVISION = {"observed_commit": None, "registry_digest": DIGEST_PREFIX + "0" * DIGEST_HEX_LENGTH}
 STAND_IN_TIME = "1970-01-01T00:00:00Z"
 

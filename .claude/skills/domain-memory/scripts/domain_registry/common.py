@@ -17,6 +17,9 @@ MAX_EVIDENCE_BYTES = 16 * 1024 * 1024
 MAX_NESTING_DEPTH = 100
 GIT_COMMAND_TIMEOUT_SECONDS = 15
 REPLACE_DELAYS_SECONDS = (0.05, 0.1, 0.2, 0.4, 0.8)
+PREVIEW_STATUSES = ("submitted", "verified", "approved", "applied")
+HARVEST_STAGES = ("draft", "verified")
+COUNTERFACTUAL_TIMEOUT_SECONDS = 600
 
 ASSET_KEYS = {
     "contexts.json": "contexts",

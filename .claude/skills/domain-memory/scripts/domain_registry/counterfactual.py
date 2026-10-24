@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .common import inside, sha256_of, whole_number
+from .common import COUNTERFACTUAL_TIMEOUT_SECONDS, inside, sha256_of, whole_number
 from .sources import EXCLUDED_DIRECTORIES
 
 FORMAT = "domain-memory-counterfactual/v1"
@@ -21,7 +21,7 @@ SUITE_FORMAT = "domain-memory-counterfactual-suite/v1"
 VERDICTS = ("killed", "survived", "inconclusive", "error")
 SIDECAR_SUFFIX = ".counterfactual-original"
 OUTPUT_TAIL = 1200
-DEFAULT_TIMEOUT_SECONDS = 600
+DEFAULT_TIMEOUT_SECONDS = COUNTERFACTUAL_TIMEOUT_SECONDS
 MTIME_STEP_SECONDS = 2
 RESTORE_DELAYS_SECONDS = (0.1, 0.25, 0.5, 1, 2, 4)
 OBLIGATION_PLACEHOLDER = "<obligation-id>"

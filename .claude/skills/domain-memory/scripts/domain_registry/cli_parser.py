@@ -3,10 +3,7 @@ import textwrap
 from pathlib import Path
 from typing import Any, NoReturn
 
-from .changes import PREVIEW_STATUSES
-from .common import ASSET_KEYS
-from .counterfactual import DEFAULT_TIMEOUT_SECONDS
-from .harvest_run import STAGES as HARVEST_STAGES
+from .common import ASSET_KEYS, COUNTERFACTUAL_TIMEOUT_SECONDS, HARVEST_STAGES, PREVIEW_STATUSES
 from .policy import (
     CI_REQUIREMENTS,
     CLASSIFICATIONS,
@@ -230,7 +227,7 @@ def _add_check_commands(commands: argparse._SubParsersAction) -> None:
     counterfactual_parser.add_argument("--test-command")
     add_path(counterfactual_parser, "--suite", required=False)
     counterfactual_parser.add_argument(
-        "--timeout", type=int, default=DEFAULT_TIMEOUT_SECONDS
+        "--timeout", type=int, default=COUNTERFACTUAL_TIMEOUT_SECONDS
     )
     counterfactual_parser.add_argument("--cwd")
     counterfactual_parser.add_argument(
@@ -499,7 +496,7 @@ def _add_proposal_commands(commands: argparse._SubParsersAction) -> None:
         "--command-profile", required=True,
         help="a label for the kind of run, one of the policy's approved_command_profiles; it never expands into a command",
     )
-    result_parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT_SECONDS)
+    result_parser.add_argument("--timeout", type=int, default=COUNTERFACTUAL_TIMEOUT_SECONDS)
     result_parser.add_argument("--cwd")
     ship_parser = commands.add_parser("ship-package", help="Attest, finalize and apply a verified package")
     add_path(ship_parser, "--package-root")

@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.6
+
+### Changed
+
+- A command imports only the modules it runs: the dispatcher loads the one command module that holds the handler, the parser no longer imports the review, harvest and counterfactual machinery for three constants, and the SQL reader, the MCP server, the search and the review modules load inside the handlers that use them. Behaviour and output are unchanged; the saving is import time on every invocation.
+
 ## 4.2.5
 
 ### Changed
@@ -10,7 +16,7 @@ Notable changes to the Domain Memory plugin, newest first. The format follows Ke
 
 ### Fixed
 
-- A concept file that is not UTF-8 is refused by name (`contexts/orders.md: 'utf-8' codec ...`); `validate` used to crash with a traceback while checking the indexes after the load had already failed.
+- A concept file that is not UTF-8 is refused by name (`contexts/orders.md: 'utf-8' codec ...`); `validate` used to report the decode failure without the file name, raised from the index check after the load had already failed.
 
 ## 4.2.4
 

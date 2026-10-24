@@ -332,7 +332,7 @@ class CommandLineTest(McpServerTest):
         registry, repo = self.roots()
         arguments = argparse.Namespace(registry_root=Path(registry), repo_root=Path(repo))
         with patch.object(sys, "stdin", io.StringIO("")), \
-                patch("domain_registry.commands.read.serve") as served:
+                patch("domain_registry.mcp_server.serve") as served:
             exit_code = handle_mcp_serve(arguments)
         self.assertEqual(
             (0, ServerRoots(Path(registry).resolve(), Path(repo).resolve())), (exit_code, served.call_args.args[0])

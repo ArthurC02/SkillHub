@@ -8,6 +8,7 @@ from typing import Any
 from .audit import append_locked
 from .changes import classify_all, init_change_package, unclassified_paths, validate_change_package
 from .common import (
+    HARVEST_STAGES,
     EVIDENCE_FILE,
     OBLIGATIONS_FILE,
     PROPOSAL_FILE,
@@ -30,7 +31,7 @@ from .transaction import remove_tree
 from .updates import promote_candidate, replace_promoted_fields, retract_candidate, upsert_candidate
 
 FORMAT = "domain-memory-harvest/v1"
-STAGES = ("draft", "verified")
+STAGES = HARVEST_STAGES
 SPEC_FIELDS = ("name", "context", "proposer", "intent", "outcome", "scope")
 RULE_FIELDS = ("id", "statement", "test_file", "test", "check")
 DECISIONS = (("ownership", "ownership_decision"), ("boundary", "boundary_decision"), ("design", "implementation_design"))

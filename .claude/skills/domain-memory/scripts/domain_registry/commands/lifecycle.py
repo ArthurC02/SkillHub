@@ -16,18 +16,6 @@ from ..changes import (
 )
 from ..common import EVIDENCE_FILE, OBLIGATIONS_FILE, PROPOSAL_FILE, REQUIREMENT_FILE, load_json
 from ..evidence import citation, function_span
-from ..harvest import harvest_candidates
-from ..harvest_run import discard_harvest, harvest, package_root_of
-from ..hitl import (
-    ObligationRun,
-    rebase_proposal,
-    record_approval,
-    record_test_result,
-    submit_proposal,
-    supersede_proposal,
-    verify_proposal,
-)
-from ..recitation_package import recitation_package
 from ..registry import (
     cited_paths,
     package_consistency_notes,
@@ -36,11 +24,7 @@ from ..registry import (
     unplaced_implementation_paths,
     validate,
 )
-from ..relocate import line_range
-from ..ship import ship_package
 from ..sources import Listing, listing_of
-from ..sql_candidates import extract_sql_rules
-from ..sql_schema import sql_directory_inside
 from ..store import documents_read_once, read_document
 from ..transaction import recover_interrupted_update, transaction_path
 from ..updates import (
@@ -75,6 +59,8 @@ def handle_init_change_package(args: argparse.Namespace) -> int:
 
 
 def _init_recitation_package(args: argparse.Namespace) -> int:
+    from ..recitation_package import recitation_package
+
     identifiers = (args.requirement_id, args.proposal_id, args.proposer)
     if args.registry_root is None or None in identifiers:
         raise ValueError(
@@ -152,6 +138,8 @@ def handle_retract_candidate(args: argparse.Namespace) -> int:
 
 
 def _added_citations(args: argparse.Namespace) -> tuple[dict, ...]:
+    from ..relocate import line_range
+
     if not (args.cite or args.cite_function):
         return ()
     if args.repo_root is None:
@@ -163,6 +151,8 @@ def _added_citations(args: argparse.Namespace) -> tuple[dict, ...]:
 
 
 def _dropped_spans(args: argparse.Namespace) -> tuple[tuple[str, int, int], ...]:
+    from ..relocate import line_range
+
     return tuple((path, *line_range(lines)) for path, _, lines in (given.rpartition(":") for given in args.drop_cite))
 
 
@@ -230,6 +220,9 @@ def _pairs(entries: list[str], option: str, shape: str) -> dict[str, str]:
 
 
 def handle_extract_sql_schema(args: argparse.Namespace) -> int:
+    from ..sql_candidates import extract_sql_rules
+    from ..sql_schema import sql_directory_inside
+
     report = extract_sql_rules(
         args.registry_root.resolve(), args.repo_root.resolve(), sql_directory_inside(args.repo_root, args.migrations, "--migrations"),
         _pairs(args.table_context, "--table-context", "TABLE=CONTEXT"), args.default_context,
@@ -251,6 +244,8 @@ def handle_extract_sql_schema(args: argparse.Namespace) -> int:
 
 
 def handle_harvest_candidates(args: argparse.Namespace) -> int:
+    from ..harvest import harvest_candidates
+
     context_map = _pairs(args.context_map, "--context-map", "CANDIDATE=GOLD")
     report = harvest_candidates(
         args.registry_root.resolve(), args.repo_root.resolve(), args.from_root.resolve(), context_map,
@@ -292,6 +287,8 @@ def handle_recover_registry_update(args: argparse.Namespace) -> int:
 
 
 def handle_submit_proposal(args: argparse.Namespace) -> int:
+    from ..hitl import submit_proposal
+
     submit_proposal(
         args.package_root.resolve(),
         args.registry_root.resolve(),
@@ -302,6 +299,8 @@ def handle_submit_proposal(args: argparse.Namespace) -> int:
 
 
 def handle_record_approval(args: argparse.Namespace) -> int:
+    from ..hitl import record_approval
+
     record_approval(
         args.package_root.resolve(),
         args.role,
@@ -314,6 +313,8 @@ def handle_record_approval(args: argparse.Namespace) -> int:
 
 
 def handle_supersede_proposal(args: argparse.Namespace) -> int:
+    from ..hitl import supersede_proposal
+
     supersede_proposal(args.package_root.resolve(), args.reason, args.superseded_by)
     beside = args.package_root.resolve().parent
     if args.superseded_by is not None and args.superseded_by not in {
@@ -336,6 +337,8 @@ PAST_VERIFICATION = ("verified", "approved", "applied")
 
 
 def handle_verify_proposal(args: argparse.Namespace) -> int:
+    from ..hitl import verify_proposal
+
     package_root = args.package_root.resolve()
     proposal = load_json(package_root / PROPOSAL_FILE)
     if proposal.get("status") in PAST_VERIFICATION:
@@ -347,11 +350,15 @@ def handle_verify_proposal(args: argparse.Namespace) -> int:
 
 
 def handle_rebase_proposal(args: argparse.Namespace) -> int:
+    from ..hitl import rebase_proposal
+
     print_json(rebase_proposal(args.package_root, args.registry_root, args.repo_root))
     return 0
 
 
 def handle_record_test_result(args: argparse.Namespace) -> int:
+    from ..hitl import ObligationRun, record_test_result
+
     record_test_result(
         args.package_root.resolve(), args.registry_root.resolve(), args.repo_root.resolve(),
         ObligationRun(args.obligation, args.command_profile, args.cwd), args.timeout,
@@ -361,6 +368,8 @@ def handle_record_test_result(args: argparse.Namespace) -> int:
 
 
 def handle_ship_package(args: argparse.Namespace) -> int:
+    from ..ship import ship_package
+
     report = ship_package(args.package_root, args.registry_root, args.repo_root, args.commit)
     print_json(report)
     return 1 if report["errors"] else 0
@@ -434,6 +443,8 @@ def _note_counterfactuals_off_cited_files(package_root: Path, registry_root: Pat
 
 
 def handle_harvest(args: argparse.Namespace) -> int:
+    from ..harvest_run import harvest
+
     report = harvest(
         args.registry_root, args.repo_root, load_json(args.spec),
         args.changes_root.resolve() if args.changes_root else None, args.through,
@@ -443,6 +454,8 @@ def handle_harvest(args: argparse.Namespace) -> int:
 
 
 def handle_discard_harvest(args: argparse.Namespace) -> int:
+    from ..harvest_run import discard_harvest, package_root_of
+
     if (args.package_root is None) == (args.spec is None):
         raise ValueError("discard-harvest takes --package-root or --spec, one of them")
     package_root = args.package_root

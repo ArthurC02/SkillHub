@@ -9,9 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TextIO
 
-from .changes import PREVIEW_STATUSES
 from .cli_parser import ASSET_CHOICES, UsageError
-from .common import inside
+from .common import PREVIEW_STATUSES, inside
 from .version import PLUGIN_VERSION
 
 MODERN_VERSIONS = ("2026-07-28",)

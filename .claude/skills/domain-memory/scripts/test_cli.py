@@ -22,8 +22,43 @@ from domain_registry.git_hooks import governance_readiness, install_pre_push_hoo
 from domain_registry.store import has_registry, write_document
 from test_support import RegistryTestCase, amend_policy, stored_policy_of
 
+UNNEEDED_BY_COVERAGE = (
+    "domain_registry.commands.evidence", "domain_registry.commands.governance", "domain_registry.commands.lifecycle",
+    "domain_registry.counterfactual", "domain_registry.mcp_server", "domain_registry.search",
+    "domain_registry.sql_schema", "difflib",
+)
+UNNEEDED_BY_VALIDATE = (
+    "domain_registry.commands.read", "domain_registry.counterfactual", "domain_registry.hitl",
+    "domain_registry.sql_schema", "difflib",
+)
+LOADED_MODULES_PROBE = (
+    "import contextlib, io, json, sys\n"
+    "from domain_registry.cli_commands import run_command\n"
+    "words, watched = json.loads(sys.argv[1]), sys.argv[2:]\n"
+    "with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):\n"
+    "    code = run_command(words)\n"
+    "print(' '.join(sorted(name for name in watched if name in sys.modules)))\n"
+    "sys.exit(code)\n"
+)
+
 
 class CliTest(RegistryTestCase):
+    def test_coverage_leaves_the_other_command_modules_and_the_sql_reader_unloaded(self) -> None:
+        words = ["coverage", "--registry-root", str(self.repo / "memory")]
+        self.assertEqual((0, ""), self.loaded_after(words, UNNEEDED_BY_COVERAGE))
+
+    def test_validate_leaves_the_read_commands_and_the_review_modules_unloaded(self) -> None:
+        words = ["validate", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo)]
+        self.assertEqual((0, ""), self.loaded_after(words, UNNEEDED_BY_VALIDATE))
+
+    def loaded_after(self, words: list[str], watched: tuple[str, ...]) -> tuple[int, str]:
+        result = subprocess.run(
+            [sys.executable, "-X", "utf8", "-c", LOADED_MODULES_PROBE, json.dumps(words), *watched],
+            cwd=Path(__file__).parent, capture_output=True, text=True, encoding="utf-8", check=False,
+        )
+        self.assertEqual("", result.stderr)
+        return result.returncode, result.stdout.strip()
+
     def test_the_secret_scan_exits_on_findings_first_then_on_an_incomplete_scan(self) -> None:
         limit = 1_048_576
         key = "-----BEGIN " + "PRIVATE KEY-----\n"

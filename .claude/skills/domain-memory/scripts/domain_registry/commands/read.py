@@ -1,37 +1,17 @@
 from __future__ import annotations
 
 import argparse
-import difflib
 import io
 import sys
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from ..audit import review_history
-from ..brief import brief_for_change, brief_for_record, to_markdown
 from ..changes import list_proposals, packages_root, proof_of, rule_coverage
 from ..common import ASSET_KEYS, load_json, shown_path
 from ..locate import domain_memory_hint
-from ..compare import compare_registries
-from ..counterfactual import (
-    FORMAT as COUNTERFACTUAL_FORMAT,
-    FailingBaselineError,
-    Mutation,
-    Proof,
-    counterfactual,
-    counterfactual_suite,
-)
-from ..coupling import CouplingLimits, CouplingReading, change_coupling
-from ..dependents import dependents
-from ..hitl import record_counterfactual, require_recordable_counterfactual
-from ..gates import quality_gates
-from ..impact import boundary_impact, registered_collaborations
-from ..mcp_server import ServerRoots, serve
 from ..policy import policy_path, query_result_limit
 from ..policy import existing_policy
-from ..sql_describe import Conventions, catalog, describe_table, gaps_since, queries_naming
-from ..sql_schema import sql_directory_inside
-from ..readiness import readiness_report
 from ..registry import (
     asset_records,
     boundary_analysis,
@@ -40,10 +20,13 @@ from ..registry import (
     coverage,
     record_by_id,
 )
-from ..search import CONSTRAINT_ASSETS, MATCH_KINDS, every_resolved_term, prose_mentions, ranked_lookup
 from ..sources import counted, discovery_drift_note, probe_sources, refresh_listing_advice
 from ..store import committed_documents, documents_read_once, read_document
 from .common import print_json
+
+if TYPE_CHECKING:
+    from ..counterfactual import Mutation
+    from ..sql_describe import Conventions
 
 
 COUNTERFACTUAL_EXIT_CODES = {"killed": 0, "survived": 1, "inconclusive": 2, "error": 3}
@@ -86,6 +69,8 @@ def _named(sources: list[dict]) -> str:
 
 
 def handle_lookup(args: argparse.Namespace) -> int:
+    from ..search import ranked_lookup
+
     found, how = ranked_lookup(args.registry_root.resolve(), args.asset, args.query)
     print_json(found)
     notes = {
@@ -102,6 +87,8 @@ def handle_lookup(args: argparse.Namespace) -> int:
 
 
 def handle_resolve_terms(args: argparse.Namespace) -> int:
+    from ..search import CONSTRAINT_ASSETS, MATCH_KINDS, every_resolved_term, prose_mentions
+
     root = args.registry_root.resolve()
     limit = query_result_limit(root)
     found = {query: every_resolved_term(root, query, args.context, with_mentions=args.with_mentions) for query in args.query}
@@ -125,6 +112,8 @@ def handle_export(args: argparse.Namespace) -> int:
 
 
 def handle_compare_registry(args: argparse.Namespace) -> int:
+    from ..compare import compare_registries
+
     gold = _exported(args.gold_root.resolve(), args.gold_commit, args.repo_root, "compare-registry --gold-commit")
     candidate = _exported(args.candidate_root.resolve(), None, None, "")
     report = compare_registries(gold, candidate, args.context)
@@ -170,6 +159,9 @@ def handle_get_context(args: argparse.Namespace) -> int:
 
 
 def handle_describe_table(args: argparse.Namespace) -> int:
+    from ..sql_describe import describe_table, queries_naming
+    from ..sql_schema import sql_directory_inside
+
     if args.base:
         return _handle_gaps_since(args)
     registry_root = args.registry_root.resolve() if args.registry_root else None
@@ -189,6 +181,8 @@ def handle_describe_table(args: argparse.Namespace) -> int:
 
 
 def _handle_catalog(args: argparse.Namespace, migrations: Path, conventions: Conventions) -> int:
+    from ..sql_describe import catalog
+
     result = catalog(args.repo_root.resolve(), migrations, conventions)
     print_json(result)
     open_tables = [entry["table"] for entry in result["tables"] if entry["gaps"]]
@@ -198,10 +192,15 @@ def _handle_catalog(args: argparse.Namespace, migrations: Path, conventions: Con
 
 
 def _conventions_of(registry_root: Path | None) -> Conventions:
+    from ..sql_describe import Conventions
+
     return Conventions.from_policy(existing_policy(registry_root) if registry_root is not None else None)
 
 
 def _handle_gaps_since(args: argparse.Namespace) -> int:
+    from ..sql_describe import gaps_since
+    from ..sql_schema import sql_directory_inside
+
     registry_root = args.registry_root.resolve() if args.registry_root else None
     result = gaps_since(args.repo_root.resolve(), sql_directory_inside(args.repo_root, args.migrations, "--migrations"), args.base,
                         args.table.strip() if args.table else None, _conventions_of(registry_root))
@@ -264,6 +263,8 @@ PROVEN_ASSETS = ("rules", "contracts")
 
 
 def _with_proofs(root: Path, changes_root: Path, asset: str, identifier: str, record: dict) -> dict:
+    from ..audit import review_history
+
     key = f"{asset}/{identifier}"
     proposals = review_history(root).get(key)
     if not proposals:
@@ -282,6 +283,8 @@ def _with_proofs(root: Path, changes_root: Path, asset: str, identifier: str, re
 
 
 def _did_you_mean(identifier: str, records: list[dict]) -> str:
+    import difflib
+
     known = [record["id"] for record in records if isinstance(record.get("id"), str)]
     starting = [candidate for candidate in known if candidate.startswith(identifier)]
     close = list(dict.fromkeys([*starting, *difflib.get_close_matches(identifier, known, n=3)]))[:3]
@@ -289,6 +292,9 @@ def _did_you_mean(identifier: str, records: list[dict]) -> str:
 
 
 def handle_change_coupling(args: argparse.Namespace) -> int:
+    from ..coupling import CouplingLimits, CouplingReading, change_coupling
+    from ..impact import registered_collaborations
+
     if args.depth < 1:
         raise ValueError("change-coupling --depth must be at least 1")
     limits = CouplingLimits(args.min_revisions, args.min_shared, args.min_degree, args.max_changeset, args.max_modules)
@@ -309,6 +315,8 @@ def handle_change_coupling(args: argparse.Namespace) -> int:
 
 
 def handle_boundary_impact(args: argparse.Namespace) -> int:
+    from ..impact import boundary_impact
+
     print_json(boundary_impact(args.registry_root.resolve(), args.repo_root.resolve(), args.base))
     return 0
 
@@ -330,6 +338,8 @@ def handle_brief(args: argparse.Namespace) -> int:
 
 
 def _handle_brief(args: argparse.Namespace) -> int:
+    from ..brief import brief_for_change, brief_for_record, to_markdown
+
     refusal = _brief_subject_refusal(args.base, args.asset, args.id)
     if refusal:
         raise ValueError(refusal)
@@ -343,6 +353,8 @@ def _handle_brief(args: argparse.Namespace) -> int:
 
 
 def handle_dependents(args: argparse.Namespace) -> int:
+    from ..dependents import dependents
+
     root = args.registry_root.resolve()
     if record_by_id(root, args.asset, args.id) is None:
         known = asset_records(root, f"{args.asset}.json")
@@ -377,6 +389,8 @@ def handle_readiness(args: argparse.Namespace) -> int:
 
 
 def _handle_readiness(args: argparse.Namespace) -> int:
+    from ..readiness import readiness_report
+
     result, located = readiness_report(args.repo_root, args.registry_root)
     print_json(result)
     if located:
@@ -409,11 +423,17 @@ def _handle_coverage(args: argparse.Namespace) -> int:
 
 
 def handle_quality_gates(args: argparse.Namespace) -> int:
+    from ..gates import quality_gates
+
     print_json(quality_gates(args.repo_root))
     return 0
 
 
 def handle_counterfactual(args: argparse.Namespace) -> int:
+    from ..counterfactual import FORMAT as COUNTERFACTUAL_FORMAT
+    from ..counterfactual import FailingBaselineError, Proof, counterfactual, counterfactual_suite
+    from ..hitl import require_recordable_counterfactual
+
     package = args.package_root
     try:
         if args.suite is not None:
@@ -441,6 +461,8 @@ def handle_counterfactual(args: argparse.Namespace) -> int:
 
 
 def _with_record(package: Path, repo_root: Path, result: dict) -> dict:
+    from ..hitl import record_counterfactual
+
     check = result.get("counterfactual_check")
     if check is None:
         return {**result, "not_recorded": "only a killed counterfactual whose file was restored is recorded"}
@@ -452,6 +474,8 @@ def _with_record(package: Path, repo_root: Path, result: dict) -> dict:
 
 
 def _one_mutation(args: argparse.Namespace) -> Mutation:
+    from ..counterfactual import Mutation
+
     missing = [
         name for name, value in (
             ("--file", args.file), ("--find", args.find), ("--replace", args.replace), ("--test-command", args.test_command)
@@ -464,6 +488,7 @@ def _one_mutation(args: argparse.Namespace) -> Mutation:
 
 def handle_mcp_serve(args: argparse.Namespace) -> int:
     from ..cli_commands import run_command
+    from ..mcp_server import ServerRoots, serve
 
     if isinstance(sys.stdin, io.TextIOWrapper):
         sys.stdin.reconfigure(encoding="utf-8")

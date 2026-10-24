@@ -15,6 +15,7 @@ from domain_registry.cli_parser import (
     _add_read_commands,
     build_parser,
 )
+from domain_registry.cli_commands import COMMANDS_BY_MODULE
 from domain_registry.commands import evidence, governance, lifecycle, read
 from test_support import RegistryTestCase
 
@@ -115,6 +116,12 @@ class CommandGroupsTest(RegistryTestCase):
         self.assertEqual(
             ([], sorted(parsed_commands())),
             (sorted({command for command in held if held.count(command) > 1}), sorted(held)),
+        )
+
+    def test_the_dispatch_table_names_each_command_under_the_module_that_holds_its_handler(self) -> None:
+        self.assertEqual(
+            {theme: sorted(module.HANDLERS) for theme, (module, _) in THEMES.items()},
+            {theme: sorted(commands) for theme, commands in COMMANDS_BY_MODULE.items()},
         )
 
     def test_each_hook_installing_command_points_the_hook_at_the_entry_script(self) -> None:
