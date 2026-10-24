@@ -1020,7 +1020,7 @@ exit 1（與 CI 的 I-06 失敗相同）；`2026.08-17` → `No vulnerabilities 
 
 四項在 `-21` 的 digest 上跑過之後，經負責人同意移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例，以及 `apps/sandbox/README.md` 的環境變數表與建置範例。
 
-## `2026.08-21` → `2026.08-22`（2026-10-24）— **安全性修補：`zod` 與 `pypdf`；四項實測尚未跑，預設映像仍留在 `-21`**
+## `2026.08-21` → `2026.08-22`（2026-10-24）— **安全性修補：`zod` 與 `pypdf`；四項實測通過，預設映像移到 `-22`**
 
 Dependabot 對這個目錄的 npm 鎖檔回報一則 High；上一版留在冷卻期的 `pypdf` 修正已過 7 天。
 
@@ -1040,4 +1040,26 @@ Dependabot 對這個目錄的 npm 鎖檔回報一則 High；上一版留在冷�
 | SDK 版本 | `0.3.233`（**未變**） |
 | 基底 digest | **未變** |
 | `run.mjs` | **未變**。上一節記下的 `gatewaySpend` 結算競態**不在這一版修**：要等過閘道 5–10 秒的寫入延遲，等於每一次 Run 結束都多等這麼久，而它只影響 trace 上顯示的費用，扣點用的是平台自己讀的 spend log |
-| 預設映像 | 仍是 `-21`；四項在 CI 發佈的 digest 上跑過之後才移動 |
+| 預設映像 | `-22`；四項在 CI 發佈的 digest 上跑過之後移動（見下） |
+
+### 2026-10-24：四項測項，全部跑在 CI 發佈的 digest 上
+
+| 欄位 | 值 |
+| --- | --- |
+| 映像 digest | `sha256:bd8a746c21f5bc44055f5e9102194478feb92db7f23b9fe44b6c468184bea425`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-22`，於 commit `c066365a` 發佈；以 tag `docker pull`，`RepoDigests` 對得上） |
+| 環境 | 與 `-21` 相同：本機 LiteLLM（`skillhub-litellm-1`）＋ `skillhub_egress`；`sandboxd` 以 HEAD 交叉編譯、在 `debian:12-slim` 容器跑，`SKILLHUB_SANDBOX_IMAGE` **直接指上面那個 digest**；兩支測試二進位交叉編譯後在容器裡跑；允許清單只在暫存副本裡填 litellm 的 egress IP，committed 的那份一字未動 |
+| 費用 | 合計 **$0.0979747**（`gpt-5.4-mini`，24 筆，以閘道 `LiteLLM_SpendLogs` 加總）：端到端三次 Run $0.0221166＋$0.024978＋$0.0227316、harness 兩支 $0.0280485；撤銷探測與被換掉的套件 $0 |
+| 映像層 | 同一個 digest、無網路：`zod` → `4.6.7`、`pypdf.__version__` → `6.21.1`、`id -u` → `65532` |
+
+| 項次 | 狀態 | 實測輸出 / 判定 |
+| --- | --- | --- |
+| **1. Skill 載入條件** | ✅ **通過，三種形狀各跑一次** | `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` PASS（19.42s）、`TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone` PASS（23.30s）、`TestEndToEndRunOfAPluginInsideARepositoryDirectoryInstallsItsSkill` PASS（21.28s） |
+| **2. 全數經閘道；金鑰撤銷後回 401** | ✅ **通過** | 每次 Run 的模型呼叫都在該 Run 自己的 Virtual Key 下（`skillhub-attempt-<id>` 三把，6／7／6 筆）。撤銷：新開一把限 `gpt-5.4-mini`、0.5 USD、6 小時的 Virtual Key 打 `/v1/models` → **200**，`/key/delete` → 200，同一把再打 → **401** |
+| **3. Prompt caching 計費欄位與對帳** | ✅ **欄位通過；對帳三次 Run 有一次少了最後一筆** | `usage_object.prompt_tokens_details.cached_tokens`：24 筆中 13 筆有值，合計 235,776。對帳：第二、三次 Run 測試回報的 $0.024978、$0.022732 與該把 Virtual Key 的 `LiteLLM_SpendLogs` 加總相同；**第一次回報 $0.020599，閘道記 $0.0221166，差 $0.0015176**——與 `-21` 同一個 `gatewaySpend` 競態（`run.mjs` 未變），扣點不受影響 |
+| **4. `usage` 事件的發出條件** | ✅ **通過** | `TestHarnessReportsUsageForACompletedTurn` PASS（15.97s，`in=18011 out=30 token_source=result`）；`TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage` PASS（15.85s，撞上限仍回報 `in=18011 out=39`，provider 錯誤指向 `token_budget_exceeded`）。harness 以 master key 當 grant，`cost` 為 `null`，與 `-21` 相同 |
+
+**套件位元組核對（不在四項清單上，同批驗證）**：`TestEndToEndRunRefusesAPackageWhoseStoredBytesAreNotTheAdmittedOnes` PASS（11.36s），沒有呼叫模型。
+
+### 預設映像從 `-21` 移到 `-22`
+
+四項在 `-22` 的 digest 上跑過之後移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例，以及 `apps/sandbox/README.md` 的環境變數表與建置範例。
