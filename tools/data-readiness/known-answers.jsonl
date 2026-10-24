@@ -46,7 +46,7 @@
 {"id": "i04", "category": "immutability", "tables": ["evaluations"], "question": "Is an evaluations row immutable once written?", "answer": "no", "oracle": {"kind": "immutable", "table": "evaluations"}}
 {"id": "i05", "category": "immutability", "tables": ["credit_entries"], "question": "Is a credit_entries row immutable once written?", "answer": "yes", "oracle": {"kind": "immutable", "table": "credit_entries"}}
 {"id": "s01", "category": "sensitivity", "tables": ["users"], "question": "What class of data is users.email declared as?", "answer": "personal", "oracle": {"kind": "classification", "table": "users", "column": "email"}}
-{"id": "s02", "category": "sensitivity", "tables": ["sessions"], "question": "What class of data is sessions.token_hash declared as?", "answer": "secret", "oracle": {"kind": "classification", "table": "sessions", "column": "token_hash"}}
+{"id": "s02", "category": "sensitivity", "tables": ["sessions"], "question": "What sensitivity classification is sessions.token_hash declared with?", "answer": "secret", "oracle": {"kind": "classification", "table": "sessions", "column": "token_hash"}}
 {"id": "n01", "category": "absent", "tables": ["users"], "question": "Which column of users stores the password hash?", "answer": "none", "oracle": {"kind": "absent", "table": "users", "column": "password_hash"}}
 {"id": "n02", "category": "absent", "question": "Which table stores the raw, unhashed session token?", "answer": "none", "oracle": {"kind": "absent", "table": "session_tokens"}}
 {"id": "n03", "category": "absent", "tables": ["runs"], "question": "Which column of runs holds the model's full chat transcript?", "answer": "none", "oracle": {"kind": "absent", "table": "runs", "column": "transcript"}}
