@@ -1414,6 +1414,9 @@ func TestOwnSkillListingPagesAStableOrderWithoutDuplicates(t *testing.T) {
 	if second.Limit != 2 || second.Truncated || second.Total != 3 || len(second.Skills) != 1 {
 		t.Fatalf("second page = %+v, want the final row", second)
 	}
+	if beyond := read(4); beyond.Truncated || beyond.Total != 3 || len(beyond.Skills) != 0 {
+		t.Fatalf("page past the end = %+v, want no rows and the same total of three", beyond)
+	}
 	want := []string{prefix + "3", prefix + "2", prefix + "1"}
 	got := []string{first.Skills[0].SkillID, first.Skills[1].SkillID, second.Skills[0].SkillID}
 	for index := range want {

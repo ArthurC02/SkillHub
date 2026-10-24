@@ -58,6 +58,9 @@ WHERE sk.workspace_id = @workspace_id AND sk.deleted_at IS NULL
 ORDER BY sk.created_at DESC, sk.id DESC
 LIMIT @row_limit::int OFFSET @row_offset::int;
 
+-- name: CountListedSkills :one
+SELECT count(*)::bigint FROM skills WHERE workspace_id = @workspace_id AND deleted_at IS NULL;
+
 -- name: ListForkedFromVersions :many
 SELECT v.id AS version_id, v.content_hash, v.created_at,
        anc.id AS skill_id, anc.workspace_id, anc.name, anc.deleted_at, anc.takedown_at,

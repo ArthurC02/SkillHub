@@ -11,6 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countListedSkills = `-- name: CountListedSkills :one
+SELECT count(*)::bigint FROM skills WHERE workspace_id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) CountListedSkills(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countListedSkills, workspaceID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countSkillVersions = `-- name: CountSkillVersions :one
 SELECT count(*) FROM skill_versions
 WHERE skill_id = $1

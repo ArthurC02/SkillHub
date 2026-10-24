@@ -122,6 +122,10 @@ func (s *Service) Listing(
 	listing := SkillListing{Truncated: len(rows) > int(page.Limit)}
 	if len(rows) > 0 {
 		listing.Total = rows[0].TotalMatches
+	} else if page.Offset > 0 {
+		if listing.Total, err = q.CountListedSkills(ctx, workspaceID); err != nil {
+			return SkillListing{}, err
+		}
 	}
 	if listing.Truncated {
 		rows = rows[:page.Limit]
