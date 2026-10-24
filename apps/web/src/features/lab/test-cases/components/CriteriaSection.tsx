@@ -85,6 +85,17 @@ function suggestFailureSentence(error: unknown) {
   return userFacingReason(error) ?? "無法取得建議，可以再試一次。";
 }
 
+function AddCriterionFailure({ error }: { error: unknown }) {
+  return (
+    <MutationError
+      error={error}
+      what="這一條驗收條件"
+      fallback="無法新增，可以再試一次。"
+      unknown="尚未確認這一條驗收條件是否已新增；條件清單已重新讀取，請先確認，再決定要不要重送，以免重複。"
+    />
+  );
+}
+
 export function CriteriaSection({ testCase }: { testCase: TestCase }) {
   const [draft, setDraft] = useState<{ text: string; check: CheckNode | null }>({
     text: "",
@@ -186,7 +197,7 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
           {(text !== "" || check !== null) && "目前欄位裡的草稿尚未新增。"}
         </p>
       )}
-      <MutationError error={add.error} what="這一條驗收條件" fallback="無法新增，可以再試一次。" />
+      <AddCriterionFailure error={add.error} />
       <h3>這一條怎麼判定（選用）</h3>
       <p className="note">
         不設計就交給評審模型依文字判定。設計時可以把規則、評審判定與評分器用串聯、並聯、條件與

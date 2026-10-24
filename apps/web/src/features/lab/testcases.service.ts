@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "../../core/api/client";
+import { apiFetch, isWriteResultUnknown } from "../../core/api/client";
 import type { Dataset } from "./lab.service";
 import { queryKeys } from "../../core/api/queryKeys";
 import type { CheckNode } from "../evaluation";
@@ -77,8 +77,10 @@ export function useCreateTestCase() {
   return useMutation({
     mutationFn: ({ skillId, name, prompt }: { skillId: string; name: string; prompt: string }) =>
       createTestCase(skillId, name, prompt),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: queryKeys.testCases.all });
+    onSettled: (_, error) => {
+      if (!error || isWriteResultUnknown(error)) {
+        void client.invalidateQueries({ queryKey: queryKeys.testCases.all });
+      }
     },
   });
 }
@@ -120,7 +122,11 @@ export function useAddCriterion(testCaseId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (criterion: NewCriterion) => addCriterion(testCaseId, criterion),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.testCases.all }),
+    onSettled: (_, error) => {
+      if (!error || isWriteResultUnknown(error)) {
+        void client.invalidateQueries({ queryKey: queryKeys.testCases.all });
+      }
+    },
   });
 }
 

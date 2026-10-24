@@ -110,7 +110,12 @@ export function CreateTestCaseForm({
           sizeReason={sizeReason}
         />
       </form>
-      <MutationError error={create.error} what="測試題" fallback="建立沒有成功，可以再按一次。" />
+      <MutationError
+        error={create.error}
+        what="測試題"
+        fallback="建立沒有成功，可以再按一次。"
+        unknown="尚未確認測試題是否已建立；清單已重新讀取，請先確認裡面有沒有它，再決定要不要重按，以免多一題。"
+      />
     </>
   );
 }

@@ -779,7 +779,7 @@ test.each(newCriterionDraftCases)(
         await act(async () => button("拿掉整個檢查").click());
       }
       await act(async () => release());
-      if (failed) await waitFor(() => text().includes("無法新增，可以再試一次。"));
+      if (failed) await waitFor(() => text().includes("尚未確認這一條驗收條件是否已新增"));
       else await waitFor(() => container.querySelector("#criterion-c-added") !== null);
       await waitFor(() => !text().includes("新增中…"));
       expect(field.value).toBe(expectedText);
@@ -799,7 +799,7 @@ test.each(newCriterionDraftCases)(
           (call) =>
             call.method === "GET" && call.url.split("?")[0].endsWith(`/test-cases/${TEST_CASE}`),
         ),
-      ).toHaveLength(failed ? 1 : 2);
+      ).toHaveLength(2);
       const receipt = Array.from(container.querySelectorAll('[role="status"]')).find((node) =>
         node.textContent?.includes("已新增驗收條件。"),
       );
@@ -1177,6 +1177,28 @@ test("a refused create shows the server's reason for any 4xx, not only the ones 
   await waitFor(() => (container.textContent ?? "").includes("找不到這個 Test Case"));
 
   expect(container.textContent).not.toContain("建立沒有成功");
+});
+
+test("a create whose answer was lost re-reads the list and warns that pressing again may add a second one", async () => {
+  const calls = stubPlatform({ create: { status: 503, error: "upstream unavailable" } });
+  await renderList();
+  const listReads = () =>
+    calls.filter((c) => c.method === "GET" && c.url.split("?")[0] === "/test-cases").length;
+
+  await act(async () =>
+    selectValue(container.querySelector<HTMLSelectElement>("#tc-skill")!, SKILL),
+  );
+  await act(async () => setValue(container.querySelector<HTMLInputElement>("#tc-name")!, "名稱"));
+  await act(async () =>
+    setValue(container.querySelector<HTMLTextAreaElement>("#tc-prompt")!, "prompt"),
+  );
+  const readsBefore = listReads();
+  await act(async () => button("建立").click());
+  await waitFor(() => (container.textContent ?? "").includes("尚未確認測試題是否已建立"));
+  await waitFor(() => listReads() > readsBefore);
+
+  expect(container.textContent).not.toContain("建立沒有成功");
+  expect(container.textContent).not.toContain("upstream unavailable");
 });
 
 test("名稱超過 200 個字送出前先擋下，不送出請求", async () => {
