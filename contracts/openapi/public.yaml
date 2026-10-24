@@ -541,6 +541,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /skills/import/limits:
     get:
       operationId: getSkillImportLimits

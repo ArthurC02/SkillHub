@@ -140,6 +140,7 @@ const (
 	RoutePublicSearch = "public_search"
 	RouteCatalog      = "catalog_browse"
 	RouteSuggest      = "criteria_suggest"
+	RouteFeedback     = "feedback"
 )
 
 var RateLimited = promauto.NewCounterVec(prometheus.CounterOpts{

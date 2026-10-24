@@ -34477,6 +34477,7 @@ func (*TooManyRequestsHeaders) importSkillFromURLRes()                {}
 func (*TooManyRequestsHeaders) publicSearchSkillsRes()                {}
 func (*TooManyRequestsHeaders) saveSkillVersionRes()                  {}
 func (*TooManyRequestsHeaders) searchSkillsWithCorrectedIntentRes()   {}
+func (*TooManyRequestsHeaders) submitFeedbackRes()                    {}
 func (*TooManyRequestsHeaders) suggestAcceptanceCriteriaRes()         {}
 func (*TooManyRequestsHeaders) uploadSkillPackageRes()                {}
 

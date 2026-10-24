@@ -93,7 +93,7 @@ func NewRouter(d Deps) http.Handler {
 	mountPackagingRoutes(mux, d)
 	mux.HandleFunc("GET /me/activity", d.Auth.RequireSession(d.Activity.List))
 
-	mux.HandleFunc("POST /feedback", d.Auth.RequireSession(d.Analytics.Feedback))
+	mux.HandleFunc("POST /feedback", d.Auth.RequireSession(limited(d, metrics.RouteFeedback, d.Analytics.Feedback)))
 	mux.HandleFunc("GET /policy/data-retention", d.Analytics.DataRetention)
 	mux.HandleFunc("POST "+trace.IngestPath+"{token}", d.Trace.Ingest)
 

@@ -3,6 +3,7 @@ package apiserver_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
@@ -88,5 +89,29 @@ func TestAskingTheModelToSuggestCriteriaIsLimitedPerAccount(t *testing.T) {
 	}
 	if second := suggest(); second != http.StatusTooManyRequests {
 		t.Fatalf("second suggestion request = %d, want 429", second)
+	}
+}
+
+func TestReportingFeedbackIsLimitedPerAccount(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
+		d.Limits = httpx.NewRateLimiter(60, 1)
+	})
+	alice := a.login(t, "ratelimit-feedback-alice")
+	report := func() int {
+		resp, err := alice.Post(alice.base+"/feedback", "application/json",
+			strings.NewReader(`{"kind":"blocking_issue","message":"卡住了"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		return resp.StatusCode
+	}
+
+	if first := report(); first != http.StatusNoContent {
+		t.Fatalf("first feedback report = %d, want 204", first)
+	}
+	if second := report(); second != http.StatusTooManyRequests {
+		t.Fatalf("second feedback report = %d, want 429", second)
 	}
 }
