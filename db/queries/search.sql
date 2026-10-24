@@ -91,8 +91,8 @@ SELECT s.skill_id, s.name,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
 WHERE (s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
-        OR s.skill_id = ANY(sqlc.arg(exposed_skill_ids)::uuid[]) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
-           = ANY(sqlc.arg(exposed_keys)::text[]))
+        OR s.skill_id IN (SELECT unnest(sqlc.arg(exposed_skill_ids)::uuid[])) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+           IN (SELECT unnest(sqlc.arg(exposed_keys)::text[])))
   AND (s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
        OR s.bigram @@ to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, '')))
   AND s.listable
@@ -131,8 +131,8 @@ SELECT s.skill_id, s.name,
        s.category_source,
        (SELECT count(*) FROM search_documents c
         WHERE (c.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
-                OR c.skill_id = ANY(sqlc.arg(exposed_skill_ids)::uuid[]) AND c.skill_id::text || ':' || coalesce(c.latest_version_id::text, '') || ':' || c.exposure_digest
-                   = ANY(sqlc.arg(exposed_keys)::text[]))
+                OR c.skill_id IN (SELECT unnest(sqlc.arg(exposed_skill_ids)::uuid[])) AND c.skill_id::text || ':' || coalesce(c.latest_version_id::text, '') || ':' || c.exposure_digest
+                   IN (SELECT unnest(sqlc.arg(exposed_keys)::text[])))
           AND c.listable
           AND (
             sqlc.narg(has_script)::bool IS NULL
@@ -156,8 +156,8 @@ SELECT s.skill_id, s.name,
           ))::bigint AS total_matches
 FROM search_documents s
 WHERE (s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
-        OR s.skill_id = ANY(sqlc.arg(exposed_skill_ids)::uuid[]) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
-           = ANY(sqlc.arg(exposed_keys)::text[]))
+        OR s.skill_id IN (SELECT unnest(sqlc.arg(exposed_skill_ids)::uuid[])) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+           IN (SELECT unnest(sqlc.arg(exposed_keys)::text[])))
   AND s.listable
   AND (
     sqlc.narg(has_script)::bool IS NULL
@@ -191,8 +191,8 @@ WITH vec AS (
            COALESCE(s.embedding <=> sqlc.arg(query_embedding)::vector, 0)::float8 AS distance
     FROM search_documents s
     WHERE (s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
-            OR s.skill_id = ANY(sqlc.arg(exposed_skill_ids)::uuid[]) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
-               = ANY(sqlc.arg(exposed_keys)::text[]))
+            OR s.skill_id IN (SELECT unnest(sqlc.arg(exposed_skill_ids)::uuid[])) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+               IN (SELECT unnest(sqlc.arg(exposed_keys)::text[])))
       AND s.embedding IS NOT NULL
       AND (sqlc.narg(has_script)::bool IS NULL OR s.has_script = sqlc.narg(has_script)::bool)
       AND (sqlc.narg(spec_validated)::bool IS NULL OR (s.verified_at IS NOT NULL) = sqlc.narg(spec_validated)::bool)
@@ -207,8 +207,8 @@ fts AS (
            COALESCE(s.embedding <=> sqlc.arg(query_embedding)::vector, 0)::float8 AS distance
     FROM search_documents s
     WHERE (s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
-            OR s.skill_id = ANY(sqlc.arg(exposed_skill_ids)::uuid[]) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
-               = ANY(sqlc.arg(exposed_keys)::text[]))
+            OR s.skill_id IN (SELECT unnest(sqlc.arg(exposed_skill_ids)::uuid[])) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+               IN (SELECT unnest(sqlc.arg(exposed_keys)::text[])))
       AND s.listable
       AND s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
       AND (sqlc.narg(has_script)::bool IS NULL OR s.has_script = sqlc.narg(has_script)::bool)
@@ -224,8 +224,8 @@ lex AS (
            COALESCE(s.embedding <=> sqlc.arg(query_embedding)::vector, 0)::float8 AS distance
     FROM search_documents s
     WHERE (s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
-            OR s.skill_id = ANY(sqlc.arg(exposed_skill_ids)::uuid[]) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
-               = ANY(sqlc.arg(exposed_keys)::text[]))
+            OR s.skill_id IN (SELECT unnest(sqlc.arg(exposed_skill_ids)::uuid[])) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+               IN (SELECT unnest(sqlc.arg(exposed_keys)::text[])))
       AND s.listable
       AND s.bigram @@ to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, ''))
       AND (sqlc.narg(has_script)::bool IS NULL OR s.has_script = sqlc.narg(has_script)::bool)
@@ -253,8 +253,8 @@ SELECT s.skill_id, s.name,
 FROM search_documents s
 WHERE s.skill_id = ANY(sqlc.arg(skill_ids)::uuid[])
   AND (s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
-        OR s.skill_id = ANY(sqlc.arg(exposed_skill_ids)::uuid[]) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
-           = ANY(sqlc.arg(exposed_keys)::text[]))
+        OR s.skill_id IN (SELECT unnest(sqlc.arg(exposed_skill_ids)::uuid[])) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+           IN (SELECT unnest(sqlc.arg(exposed_keys)::text[])))
   AND (
     sqlc.narg(has_script)::bool IS NULL
     OR s.has_script = sqlc.narg(has_script)::bool
@@ -320,8 +320,8 @@ SELECT sd.skill_id, sd.scan
 FROM search_documents sd
 WHERE sd.skill_id = ANY(sqlc.arg(skill_ids)::uuid[])
   AND (sd.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
-        OR sd.skill_id = ANY(sqlc.arg(exposed_skill_ids)::uuid[]) AND sd.skill_id::text || ':' || coalesce(sd.latest_version_id::text, '') || ':' || sd.exposure_digest
-           = ANY(sqlc.arg(exposed_keys)::text[]));
+        OR sd.skill_id IN (SELECT unnest(sqlc.arg(exposed_skill_ids)::uuid[])) AND sd.skill_id::text || ':' || coalesce(sd.latest_version_id::text, '') || ':' || sd.exposure_digest
+           IN (SELECT unnest(sqlc.arg(exposed_keys)::text[])));
 
 -- name: ListSearchDocumentsMissingBigram :many
 SELECT skill_id, name, summary, enriched_summary, task_examples, tags
@@ -360,15 +360,15 @@ SELECT sd.scan, sd.curated_version_id
 FROM search_documents sd
 WHERE sd.skill_id = sqlc.arg(skill_id)
   AND (sd.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
-        OR sd.skill_id = ANY(sqlc.arg(exposed_skill_ids)::uuid[]) AND sd.skill_id::text || ':' || coalesce(sd.latest_version_id::text, '') || ':' || sd.exposure_digest
-           = ANY(sqlc.arg(exposed_keys)::text[]));
+        OR sd.skill_id IN (SELECT unnest(sqlc.arg(exposed_skill_ids)::uuid[])) AND sd.skill_id::text || ':' || coalesce(sd.latest_version_id::text, '') || ':' || sd.exposure_digest
+           IN (SELECT unnest(sqlc.arg(exposed_keys)::text[])));
 
 -- name: CreationLexicalSearchSkills :many
 SELECT s.skill_id, s.name
 FROM search_documents s
 WHERE (s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
-        OR s.skill_id = ANY(sqlc.arg(exposed_skill_ids)::uuid[]) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
-           = ANY(sqlc.arg(exposed_keys)::text[]))
+        OR s.skill_id IN (SELECT unnest(sqlc.arg(exposed_skill_ids)::uuid[])) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+           IN (SELECT unnest(sqlc.arg(exposed_keys)::text[])))
   AND s.listable
   AND s.bigram @@ to_tsquery('simple', sqlc.arg(query)::text)
 ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', sqlc.arg(query)::text)) DESC

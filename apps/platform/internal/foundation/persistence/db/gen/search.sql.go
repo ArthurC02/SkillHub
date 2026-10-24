@@ -22,8 +22,8 @@ SELECT s.skill_id, s.name,
        s.category_source,
        (SELECT count(*) FROM search_documents c
         WHERE (c.workspace_id = ANY($1::uuid[])
-                OR c.skill_id = ANY($2::uuid[]) AND c.skill_id::text || ':' || coalesce(c.latest_version_id::text, '') || ':' || c.exposure_digest
-                   = ANY($3::text[]))
+                OR c.skill_id IN (SELECT unnest($2::uuid[])) AND c.skill_id::text || ':' || coalesce(c.latest_version_id::text, '') || ':' || c.exposure_digest
+                   IN (SELECT unnest($3::text[])))
           AND c.listable
           AND (
             $4::bool IS NULL
@@ -47,8 +47,8 @@ SELECT s.skill_id, s.name,
           ))::bigint AS total_matches
 FROM search_documents s
 WHERE (s.workspace_id = ANY($1::uuid[])
-        OR s.skill_id = ANY($2::uuid[]) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
-           = ANY($3::text[]))
+        OR s.skill_id IN (SELECT unnest($2::uuid[])) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+           IN (SELECT unnest($3::text[])))
   AND s.listable
   AND (
     $4::bool IS NULL
@@ -215,8 +215,8 @@ const creationLexicalSearchSkills = `-- name: CreationLexicalSearchSkills :many
 SELECT s.skill_id, s.name
 FROM search_documents s
 WHERE (s.workspace_id = ANY($1::uuid[])
-        OR s.skill_id = ANY($2::uuid[]) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
-           = ANY($3::text[]))
+        OR s.skill_id IN (SELECT unnest($2::uuid[])) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+           IN (SELECT unnest($3::text[])))
   AND s.listable
   AND s.bigram @@ to_tsquery('simple', $4::text)
 ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', $4::text)) DESC
@@ -281,8 +281,8 @@ SELECT sd.scan, sd.curated_version_id
 FROM search_documents sd
 WHERE sd.skill_id = $1
   AND (sd.workspace_id = ANY($2::uuid[])
-        OR sd.skill_id = ANY($3::uuid[]) AND sd.skill_id::text || ':' || coalesce(sd.latest_version_id::text, '') || ':' || sd.exposure_digest
-           = ANY($4::text[]))
+        OR sd.skill_id IN (SELECT unnest($3::uuid[])) AND sd.skill_id::text || ':' || coalesce(sd.latest_version_id::text, '') || ':' || sd.exposure_digest
+           IN (SELECT unnest($4::text[])))
 `
 
 type GetCatalogReferenceFactsParams struct {
@@ -372,8 +372,8 @@ SELECT sd.skill_id, sd.scan
 FROM search_documents sd
 WHERE sd.skill_id = ANY($1::uuid[])
   AND (sd.workspace_id = ANY($2::uuid[])
-        OR sd.skill_id = ANY($3::uuid[]) AND sd.skill_id::text || ':' || coalesce(sd.latest_version_id::text, '') || ':' || sd.exposure_digest
-           = ANY($4::text[]))
+        OR sd.skill_id IN (SELECT unnest($3::uuid[])) AND sd.skill_id::text || ':' || coalesce(sd.latest_version_id::text, '') || ':' || sd.exposure_digest
+           IN (SELECT unnest($4::text[])))
 `
 
 type ListCatalogSkillScansParams struct {
@@ -460,8 +460,8 @@ WITH vec AS (
            COALESCE(s.embedding <=> $1::vector, 0)::float8 AS distance
     FROM search_documents s
     WHERE (s.workspace_id = ANY($2::uuid[])
-            OR s.skill_id = ANY($3::uuid[]) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
-               = ANY($4::text[]))
+            OR s.skill_id IN (SELECT unnest($3::uuid[])) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+               IN (SELECT unnest($4::text[])))
       AND s.embedding IS NOT NULL
       AND ($5::bool IS NULL OR s.has_script = $5::bool)
       AND ($6::bool IS NULL OR (s.verified_at IS NOT NULL) = $6::bool)
@@ -476,8 +476,8 @@ fts AS (
            COALESCE(s.embedding <=> $1::vector, 0)::float8 AS distance
     FROM search_documents s
     WHERE (s.workspace_id = ANY($2::uuid[])
-            OR s.skill_id = ANY($3::uuid[]) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
-               = ANY($4::text[]))
+            OR s.skill_id IN (SELECT unnest($3::uuid[])) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+               IN (SELECT unnest($4::text[])))
       AND s.listable
       AND s.tsv @@ websearch_to_tsquery('english', $11::text)
       AND ($5::bool IS NULL OR s.has_script = $5::bool)
@@ -493,8 +493,8 @@ lex AS (
            COALESCE(s.embedding <=> $1::vector, 0)::float8 AS distance
     FROM search_documents s
     WHERE (s.workspace_id = ANY($2::uuid[])
-            OR s.skill_id = ANY($3::uuid[]) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
-               = ANY($4::text[]))
+            OR s.skill_id IN (SELECT unnest($3::uuid[])) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+               IN (SELECT unnest($4::text[])))
       AND s.listable
       AND s.bigram @@ to_tsquery('simple', nullif($13::text, ''))
       AND ($5::bool IS NULL OR s.has_script = $5::bool)
@@ -587,8 +587,8 @@ SELECT s.skill_id, s.name,
 FROM search_documents s
 WHERE s.skill_id = ANY($1::uuid[])
   AND (s.workspace_id = ANY($2::uuid[])
-        OR s.skill_id = ANY($3::uuid[]) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
-           = ANY($4::text[]))
+        OR s.skill_id IN (SELECT unnest($3::uuid[])) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+           IN (SELECT unnest($4::text[])))
   AND (
     $5::bool IS NULL
     OR s.has_script = $5::bool
@@ -885,8 +885,8 @@ SELECT s.skill_id, s.name,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
 WHERE (s.workspace_id = ANY($1::uuid[])
-        OR s.skill_id = ANY($2::uuid[]) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
-           = ANY($3::text[]))
+        OR s.skill_id IN (SELECT unnest($2::uuid[])) AND s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+           IN (SELECT unnest($3::text[])))
   AND (s.tsv @@ websearch_to_tsquery('english', $4::text)
        OR s.bigram @@ to_tsquery('simple', nullif($5::text, '')))
   AND s.listable
