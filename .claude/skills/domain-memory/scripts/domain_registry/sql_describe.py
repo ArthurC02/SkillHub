@@ -14,6 +14,7 @@ from .policy import schema_conventions
 from .git import checked_git_bytes
 from .sql_schema import (
     IDENT,
+    STRING_LITERAL,
     Constraint,
     Dynamic,
     ForeignKey,
@@ -24,7 +25,9 @@ from .sql_schema import (
     live_tables,
     one_line,
     read_schema,
+    statements,
     strip_comments,
+    top_level_words,
 )
 from .store import read_document
 
@@ -36,6 +39,7 @@ QUOTED = re.compile(r"'((?:[^']|'')*)'")
 SUMMARY_FIELDS = ("statement", "definition", "responsibility", "description", "name")
 SUMMARY_LENGTH = 160
 DEFAULT_ACTION = "NO ACTION"
+VERBS = ("SELECT", "INSERT", "UPDATE", "DELETE")
 
 
 @dataclass(frozen=True)
@@ -82,6 +86,7 @@ def describe_table(registry_root: Path | None, repo_root: Path, migrations_dir: 
     return {
         "table": name,
         "declared_at": f"{table.file}:{table.line}",
+        "history": schema.history.get(name, []),
         "meaning": table.comment,
         "columns": [_column(column, info, constraints, schema) for column, info in table.columns.items()],
         "constraints": [*(_constraint(c) for c in primary + constraints), *(_foreign_constraint(key) for key in outgoing)],
@@ -91,9 +96,39 @@ def describe_table(registry_root: Path | None, repo_root: Path, migrations_dir: 
         "partitions": sorted(partition for partition, declared in schema.tables.items() if declared.partition_of == name),
         "dynamic_ddl": [{"at": f"{statement.file}:{statement.line}", "statement": statement.text} for statement in dynamic],
         "registry": _mentions(registry_root, name, spans, retired) if registry_root is not None else [],
-        "undescribed_columns": [column for column, info in table.columns.items() if info.get("comment") is None],
+        "undescribed_columns": _undescribed(table),
         "gaps": _gaps(table, schema, conventions),
     }
+
+
+def catalog(repo_root: Path, migrations_dir: Path, conventions: Conventions = DEFAULT_CONVENTIONS) -> dict[str, Any]:
+    schema = read_schema(migrations_dir, repo_root)
+    return {"tables": [_catalog_entry(table, schema, conventions) for _, table in sorted(live_tables(schema).items())]}
+
+
+def _catalog_entry(table: Table, schema: Schema, conventions: Conventions) -> dict[str, Any]:
+    return {"table": table.name, "declared_at": f"{table.file}:{table.line}", "meaning": table.comment,
+            "columns": len(table.columns), "undescribed_columns": len(_undescribed(table)),
+            "gaps": len(_gaps(table, schema, conventions))}
+
+
+def _undescribed(table: Table) -> list[str]:
+    return [column for column, info in table.columns.items() if info.get("comment") is None]
+
+
+def queries_naming(queries_dir: Path, repo_root: Path, table: str, columns: list[str]) -> list[dict[str, Any]]:
+    names = re.compile(rf"\b(?:FROM|JOIN|INTO|UPDATE)\s+(?:ONLY\s+)?(?:{IDENT}\.)?{re.escape(table)}\b", re.I)
+    patterns = {column: re.compile(rf"\b{re.escape(column)}\b") for column in columns}
+    found = []
+    for path in sorted(queries_dir.rglob("*.sql")):
+        file = path.resolve().relative_to(repo_root.resolve()).as_posix()
+        for line, statement in statements(path.read_text(encoding="utf-8")):
+            text = STRING_LITERAL.sub("''", strip_comments(statement))
+            if names.search(text):
+                verb = next((word for _, word in top_level_words(text) if word in VERBS), None)
+                found.append({"at": f"{file}:{line}", "verb": verb,
+                              "columns": [column for column, pattern in patterns.items() if pattern.search(text)]})
+    return found
 
 
 def _did_you_mean(name: str, tables: dict[str, Table]) -> str:

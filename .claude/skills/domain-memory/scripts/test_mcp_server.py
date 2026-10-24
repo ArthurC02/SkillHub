@@ -21,7 +21,7 @@ EVERY_VERSION = ["2026-07-28", "2025-11-25", "2025-06-18", "2025-03-26", "2024-1
 MODERN_META = {"io.modelcontextprotocol/protocolVersion": "2026-07-28", "io.modelcontextprotocol/clientCapabilities": {}}
 EXPOSED_TOOLS = {
     "get_context", "get_record", "resolve_terms", "lookup", "dependents", "coverage", "brief", "boundary_impact",
-    "verify_evidence", "validate", "readiness", "list_proposals", "validate_change_package",
+    "verify_evidence", "validate", "readiness", "list_proposals", "validate_change_package", "describe_table",
 }
 
 
@@ -91,7 +91,7 @@ class HandshakeTest(McpServerTest):
             [(reply["id"], reply["result"].get("ttlMs"), reply["result"].get("cacheScope"), reply["result"].get("resultType"))
              for reply in replies],
         )
-        self.assertEqual(13, len(replies[1]["result"]["tools"]))
+        self.assertEqual(14, len(replies[1]["result"]["tools"]))
 
     def test_a_modern_request_with_an_unsupported_or_incomplete_meta_is_refused(self) -> None:
         cases = [
@@ -152,7 +152,8 @@ class ToolListTest(McpServerTest):
             tools["coverage"],
         )
         self.assertEqual(
-            {"get_context", "get_record", "dependents", "coverage", "boundary_impact", "verify_evidence", "readiness"},
+            {"get_context", "get_record", "dependents", "coverage", "boundary_impact", "verify_evidence", "readiness",
+             "describe_table"},
             {name for name, tool in tools.items() if "outputSchema" in tool},
         )
 
@@ -196,6 +197,24 @@ class ToolCallTest(McpServerTest):
         self.assertEqual(("[]\n", False, None),
                          (result["content"][0]["text"], result["isError"], result.get("structuredContent")))
         self.assertTrue(result["content"][1]["text"].startswith('NOTE: no rules record mentions "zzz"'), result["content"])
+
+    def test_describe_table_reads_the_migrations_given_relative_to_the_repository_and_refuses_one_outside(self) -> None:
+        migrations = self.repo / "db" / "migrations"
+        migrations.mkdir(parents=True)
+        (migrations / "0001.sql").write_text("CREATE TABLE a (id uuid PRIMARY KEY);\nCOMMENT ON TABLE a IS 'one a';\n", encoding="utf-8")
+        described = self.call("describe_table", {"migrations": "db/migrations", "table": "a"})
+        listed = self.call("describe_table", {"migrations": "db/migrations"})
+        outside = self.call("describe_table", {"migrations": "../elsewhere", "table": "a"})
+        self.assertEqual(
+            (("a", "one a", ["db/migrations/0001.sql"], False),
+             ([{"table": "a", "declared_at": "db/migrations/0001.sql:1", "meaning": "one a", "columns": 1,
+                "undescribed_columns": 1, "gaps": 0}], False),
+             (True, True)),
+            ((described["structuredContent"]["table"], described["structuredContent"]["meaning"],
+              described["structuredContent"]["history"], described["isError"]),
+             (listed["structuredContent"]["tables"], listed["isError"]),
+             (outside["isError"], "argument migrations must lie inside the repository" in outside["content"][0]["text"])),
+        )
 
     def test_list_proposals_reads_a_directory_given_relative_to_the_repository(self) -> None:
         self.draft_package()

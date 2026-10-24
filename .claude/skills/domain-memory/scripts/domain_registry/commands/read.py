@@ -29,8 +29,8 @@ from ..impact import boundary_impact, registered_collaborations
 from ..mcp_server import ServerRoots, serve
 from ..policy import policy_path, query_result_limit
 from ..policy import existing_policy
-from ..sql_describe import Conventions, describe_table, gaps_since
-from ..sql_schema import migrations_inside
+from ..sql_describe import Conventions, catalog, describe_table, gaps_since, queries_naming
+from ..sql_schema import sql_directory_inside
 from ..readiness import readiness_report
 from ..registry import (
     asset_records,
@@ -172,17 +172,29 @@ def handle_get_context(args: argparse.Namespace) -> int:
 def handle_describe_table(args: argparse.Namespace) -> int:
     if args.base:
         return _handle_gaps_since(args)
-    if not args.table:
-        print("ERROR: describe-table needs --table <name>, or --base <ref> to list the gaps opened since that ref", file=sys.stderr)
-        return 1
     registry_root = args.registry_root.resolve() if args.registry_root else None
+    migrations = sql_directory_inside(args.repo_root, args.migrations, "--migrations")
+    if not args.table:
+        return _handle_catalog(args, migrations, _conventions_of(registry_root))
     table = args.table.strip()
-    result = describe_table(registry_root, args.repo_root.resolve(), migrations_inside(args.repo_root, args.migrations), table,
-                            _conventions_of(registry_root))
+    queries = sql_directory_inside(args.repo_root, args.queries, "--queries") if args.queries else None
+    result = describe_table(registry_root, args.repo_root.resolve(), migrations, table, _conventions_of(registry_root))
+    if queries is not None:
+        result["queries"] = queries_naming(queries, args.repo_root.resolve(), table, [column["name"] for column in result["columns"]])
     print_json(result)
-    for note in _describe_notes(result, table, without_registry=registry_root is None, require_complete=args.require_complete):
+    for note in _describe_notes(result, table, without_registry=registry_root is None, require_complete=args.require_complete,
+                                queries=args.queries):
         print(f"NOTE: {note}", file=sys.stderr)
     return 1 if args.require_complete and result["gaps"] else 0
+
+
+def _handle_catalog(args: argparse.Namespace, migrations: Path, conventions: Conventions) -> int:
+    result = catalog(args.repo_root.resolve(), migrations, conventions)
+    print_json(result)
+    open_tables = [entry["table"] for entry in result["tables"] if entry["gaps"]]
+    gapped = f"{len(open_tables)} with gaps: {', '.join(open_tables)}" if open_tables else "none with a gap"
+    print(f"NOTE: {len(result['tables'])} table{_s(result['tables'])}, {gapped}; --table <name> describes one", file=sys.stderr)
+    return 1 if args.require_complete and open_tables else 0
 
 
 def _conventions_of(registry_root: Path | None) -> Conventions:
@@ -191,7 +203,7 @@ def _conventions_of(registry_root: Path | None) -> Conventions:
 
 def _handle_gaps_since(args: argparse.Namespace) -> int:
     registry_root = args.registry_root.resolve() if args.registry_root else None
-    result = gaps_since(args.repo_root.resolve(), migrations_inside(args.repo_root, args.migrations), args.base,
+    result = gaps_since(args.repo_root.resolve(), sql_directory_inside(args.repo_root, args.migrations, "--migrations"), args.base,
                         args.table.strip() if args.table else None, _conventions_of(registry_root))
     print_json(result)
     opened = {table: len(entry["new_gaps"]) for table, entry in result["tables"].items() if entry["new_gaps"]}
@@ -204,8 +216,11 @@ def _handle_gaps_since(args: argparse.Namespace) -> int:
     return 1 if args.require_complete and opened else 0
 
 
-def _describe_notes(result: dict, table: str, *, without_registry: bool, require_complete: bool) -> list[str]:
+def _describe_notes(result: dict, table: str, *, without_registry: bool, require_complete: bool,
+                    queries: Path | None = None) -> list[str]:
     notes = []
+    if queries is not None and not result["queries"]:
+        notes.append(f"no statement under {queries.as_posix()} names {table}")
     dynamic = result["dynamic_ddl"]
     if dynamic:
         notes.append(f"{len(dynamic)} statement{_s(dynamic)} build{'s' if len(dynamic) == 1 else ''} DDL at run time naming {table}, "
