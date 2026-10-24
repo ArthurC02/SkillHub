@@ -4,14 +4,15 @@ import argparse
 import json
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 PLUGIN_SCRIPTS = Path(__file__).resolve().parents[2] / ".claude" / "skills" / "domain-memory" / "scripts"
 sys.path.insert(0, str(PLUGIN_SCRIPTS))
 
-from domain_registry.sql_describe import allowed_values  # noqa: E402
+from domain_registry.policy import existing_policy, schema_conventions  # noqa: E402
+from domain_registry.sql_describe import allowed_values, sql_statements_under, statements_naming  # noqa: E402
 from domain_registry.sql_schema import IDENT, ForeignKey, Schema, Table, read_schema, statements, strip_comments  # noqa: E402
 
 QUERY_NAME = re.compile(r"^--\s*name:\s*(\S+)\s+:(\w+)", re.M)
@@ -163,6 +164,8 @@ class Inputs:
     owners: dict[str, dict[str, list[str]]]
     records: list[Record]
     generic: set[str]
+    queried: dict[str, set[str]] = field(default_factory=dict)
+    exempt_columns: frozenset[str] = frozenset()
 
     @property
     def tables(self) -> dict[str, Table]:
@@ -227,15 +230,20 @@ def _meaning(inputs: Inputs) -> tuple[dict[str, Any], dict[str, Any]]:
     short = [key for key, values in enum.items() if len(values) <= ENUM_COMMENT_LIMIT]
     missing = _values_missing_from_comments(inputs, enum)
     status_like = [(name, column) for name, table in tables.items() for column in table.columns if STATUS_LIKE.search(column)]
+    queried = sorted((name, column) for name, columns in inputs.queried.items() for column in columns
+                     if column not in inputs.exempt_columns)
     metrics = {
         "meaning.tables_described": _ratio(sum(table.described for table in tables.values()), len(tables)),
         "meaning.columns_described": _ratio(sum(info["described"] for info in columns), len(columns)),
         "meaning.enum_columns_whose_comment_names_every_value": _ratio(len(short) - len(missing), len(short)),
         "meaning.status_like_columns_with_a_check_list": _ratio(sum(key in enum for key in status_like), len(status_like)),
         "meaning.tables_known_to_registry": _ratio(sum(_mentions(inputs.reviewed, name) for name in tables), len(tables)),
+        "meaning.queried_columns_described": _ratio(
+            sum(tables[name].columns[column]["described"] for name, column in queried), len(queried)),
     }
     details = {
         "enum_comments_missing_values": missing,
+        "queried_columns_undescribed": [f"{name}.{column}" for name, column in queried if not tables[name].columns[column]["described"]],
         "status_like_columns_without_a_check_list": sorted(f"{name}.{column}" for name, column in status_like if (name, column) not in enum),
     }
     return metrics, details
@@ -362,12 +370,21 @@ def _consistency_and_provenance(inputs: Inputs) -> dict[str, Any]:
     }
 
 
+def _queried_columns(schema: Schema, queries_dir: Path, repo_root: Path) -> dict[str, set[str]]:
+    read = sql_statements_under(queries_dir, repo_root)
+    return {name: {column for entry in statements_naming(read, name, list(table.columns)) for column in entry["columns"]}
+            for name, table in schema.tables.items() if table.partition_of is None}
+
+
 def read_inputs(repo_root: Path, registry_root: Path) -> Inputs:
     schema = read_schema(repo_root / "db" / "migrations", repo_root)
+    queries_dir = repo_root / "db" / "queries"
     return Inputs(
-        schema, read_queries(repo_root / "db" / "queries", set(schema.tables)),
+        schema, read_queries(queries_dir, set(schema.tables)),
         read_owners(repo_root / "db" / "query-owners.yaml"), read_registry(registry_root),
         read_identity(repo_root / "apps" / "platform" / "architecture-identity.yaml"),
+        _queried_columns(schema, queries_dir, repo_root),
+        frozenset(schema_conventions(existing_policy(registry_root))["exempt_columns"]),
     )
 
 

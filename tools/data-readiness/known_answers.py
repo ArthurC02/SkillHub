@@ -117,7 +117,13 @@ def normalized(answer: Any) -> Any:
 def as_list(given: Any) -> list:
     if isinstance(given, list):
         return given
-    return [part for part in str(given).split(",") if part.strip()]
+    text = str(given).strip()
+    if text.startswith("["):
+        try:
+            return as_list(json.loads(text))
+        except ValueError:
+            pass
+    return [part for part in text.split(",") if part.strip()]
 
 
 def correct(recorded: Any, given: Any) -> bool:
