@@ -28,7 +28,6 @@ export function VersionUpload({
   const limits = useSkillImportLimits();
   const [file, setFile] = useState<File>();
   const [unknownUpload, setUnknownUpload] = useState<UploadFailure>();
-  const [submittedOn, setSubmittedOn] = useState<string>();
   const identityConfirmed = me.isSuccess && me.fetchStatus === "idle";
   const confirmed =
     contextConfirmed &&
@@ -60,7 +59,6 @@ export function VersionUpload({
         onSubmit={(event) => {
           event.preventDefault();
           if (!file || !confirmed || oversize || save.isPending) return;
-          setSubmittedOn(versionId);
           save.mutate(file, {
             onError: (error) => {
               if (error instanceof SessionNotReadyError) return;
@@ -98,13 +96,17 @@ export function VersionUpload({
           {whyUploadWaits(identityConfirmed, limits.isSuccess && limits.fetchStatus === "idle")}
         </p>
       )}
-      {submittedOn === versionId && (
-        <VersionUploadOutcome
-          save={save}
-          failedUpload={failedUpload}
+      {save.isError && (
+        <VersionUploadFailure
+          error={failedUpload.error}
+          fileName={failedUpload.fileName}
           skillId={skillId}
           versionId={versionId}
+          blockedError={failedUpload.blockedError}
         />
+      )}
+      {save.isSuccess && (
+        <VersionUploadSuccess result={save.data} fileName={save.variables?.name} />
       )}
     </section>
   );
@@ -158,31 +160,6 @@ function VersionUploadRules({
         </li>
       </ul>
     </>
-  );
-}
-
-function VersionUploadOutcome({
-  save,
-  failedUpload,
-  skillId,
-  versionId,
-}: {
-  save: ReturnType<typeof useSaveSkillVersion>;
-  failedUpload: UploadFailure;
-  skillId: string;
-  versionId: string;
-}) {
-  if (save.isSuccess)
-    return <VersionUploadSuccess result={save.data} fileName={save.variables?.name} />;
-  if (!save.isError) return null;
-  return (
-    <VersionUploadFailure
-      error={failedUpload.error}
-      fileName={failedUpload.fileName}
-      skillId={skillId}
-      versionId={versionId}
-      blockedError={failedUpload.blockedError}
-    />
   );
 }
 
