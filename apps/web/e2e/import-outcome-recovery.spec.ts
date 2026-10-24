@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Request } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -24,8 +24,26 @@ const RECEIPT: ImportResult = {
   excluded_components: [],
 };
 
-async function importReceiver(mode: string, requests: string[]) {
+function traceImportRequests(page: Page) {
+  const timeline: string[] = [];
+  const record = (event: string) => (request: Request) => {
+    if (request.url().includes("/skills/import/"))
+      timeline.push(
+        `${new Date().toISOString()} page ${event} ${request.method()} ${request.failure()?.errorText ?? ""}`,
+      );
+  };
+  page.on("request", record("request"));
+  page.on("requestfinished", record("requestfinished"));
+  page.on("requestfailed", record("requestfailed"));
+  return timeline;
+}
+
+async function importReceiver(mode: string, requests: string[], timeline: string[]) {
   const receiver = createServer(async (request, response) => {
+    timeline.push(`${new Date().toISOString()} receiver got ${request.method}`);
+    response.on("finish", () =>
+      timeline.push(`${new Date().toISOString()} receiver answered ${response.statusCode}`),
+    );
     const headers = {
       "Access-Control-Allow-Origin": request.headers.origin ?? "http://127.0.0.1:4173",
       "Access-Control-Allow-Credentials": "true",
@@ -39,6 +57,7 @@ async function importReceiver(mode: string, requests: string[]) {
     const chunks: Buffer[] = [];
     for await (const chunk of request) chunks.push(Buffer.from(chunk));
     requests.push(Buffer.concat(chunks).toString("utf8"));
+    timeline.push(`${new Date().toISOString()} receiver read ${requests.at(-1)!.length} bytes`);
     if (requests.length > 1) {
       response.writeHead(201, headers).end(JSON.stringify(RECEIPT));
       return;
@@ -229,7 +248,8 @@ for (const source of ["url", "zip"]) {
       await page.setViewportSize({ width: 375, height: 900 });
       const session = await holdIdentityRead(page);
       const requests: string[] = [];
-      const receiver = await importReceiver(mode, requests);
+      const timeline = traceImportRequests(page);
+      const receiver = await importReceiver(mode, requests, timeline);
       try {
         const endpoint = `http://127.0.0.1:${(receiver.address() as AddressInfo).port}/import`;
         await page.route(`**/skills/import/${source === "url" ? "url" : "upload"}`, (route) =>
@@ -333,6 +353,8 @@ for (const source of ["url", "zip"]) {
         await expect(page.getByRole("status").filter({ hasText: "匯入完成" })).toBeVisible();
         expect(requests).toHaveLength(2);
       } finally {
+        timeline.push(`${new Date().toISOString()} teardown`);
+        await test.info().attach("import-timeline", { body: timeline.join("\n") });
         session.restore();
         receiver.closeAllConnections();
         await new Promise<void>((resolve) => receiver.close(() => resolve()));
