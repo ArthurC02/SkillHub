@@ -613,6 +613,7 @@ def _disk_rows(root: Path, path_text: str) -> dict[str, Any] | list[str]:
 def verifier(repo_root: Path, content_of: ContentReader | None = None) -> Callable[[Any], dict[str, Any]]:
     root = repo_root.resolve()
     sources: dict[str, dict[str, Any] | list[str]] = {}
+    windows: dict[tuple[str, int], dict[str, list[int]]] = {}
 
     def source(path_text: str) -> dict[str, Any] | list[str]:
         if path_text not in sources:
@@ -628,15 +629,16 @@ def verifier(repo_root: Path, content_of: ContentReader | None = None) -> Callab
         rows = source(reference["path"])
         if isinstance(rows, dict):
             return dict(rows)
-        return {"cited_lines": dict(reference["lines"]), **_cited_lines_verdict(reference, reference["path"], rows)}
+        return {"cited_lines": dict(reference["lines"]), **_cited_lines_verdict(reference, reference["path"], rows, windows)}
 
     return check
 
 
-def _cited_lines_verdict(reference: dict[str, Any], path_text: str, rows: list[str]) -> dict[str, Any]:
+def _cited_lines_verdict(reference: dict[str, Any], path_text: str, rows: list[str],
+                         windows: dict[tuple[str, int], dict[str, list[int]]] | None = None) -> dict[str, Any]:
     start, end = reference["lines"]["start"], reference["lines"]["end"]
     if end > len(rows) and "excerpt_sha256" in reference:
-        return _moved_or_stale(reference["excerpt_sha256"], path_text, rows, end - start + 1)
+        return _moved_or_stale(reference["excerpt_sha256"], path_text, rows, end - start + 1, windows)
     if end > len(rows):
         return {
             "status": "invalid",
@@ -650,7 +652,7 @@ def _cited_lines_verdict(reference: dict[str, Any], path_text: str, rows: list[s
             "reason": f"{path_text} was cited without an excerpt hash; regenerate the citation with cite",
         }
     if reference.get("excerpt_sha256") != sha256_of(_excerpt(rows, start, end)):
-        return _moved_or_stale(reference["excerpt_sha256"], path_text, rows, end - start + 1)
+        return _moved_or_stale(reference["excerpt_sha256"], path_text, rows, end - start + 1, windows)
     return {
         "status": "current",
         "path": path_text,
@@ -658,16 +660,25 @@ def _cited_lines_verdict(reference: dict[str, Any], path_text: str, rows: list[s
     }
 
 
-def _starts_of(rows: list[str], length: int, excerpt_sha256: str) -> list[int]:
-    return [
-        start
-        for start in range(1, len(rows) - length + 2)
-        if sha256_of(_excerpt(rows, start, start + length - 1)) == excerpt_sha256
-    ]
+def _starts_by_digest(rows: list[str], length: int) -> dict[str, list[int]]:
+    starts: dict[str, list[int]] = {}
+    for start in range(1, len(rows) - length + 2):
+        starts.setdefault(sha256_of(_excerpt(rows, start, start + length - 1)), []).append(start)
+    return starts
 
 
-def _moved_or_stale(excerpt_sha256: str, path_text: str, rows: list[str], length: int) -> dict[str, Any]:
-    starts = _starts_of(rows, length, excerpt_sha256)
+def _starts_of(rows: list[str], length: int, excerpt_sha256: str,
+               windows: dict[tuple[str, int], dict[str, list[int]]] | None = None, path_text: str = "") -> list[int]:
+    if windows is None:
+        return _starts_by_digest(rows, length).get(excerpt_sha256, [])
+    if (path_text, length) not in windows:
+        windows[(path_text, length)] = _starts_by_digest(rows, length)
+    return windows[(path_text, length)].get(excerpt_sha256, [])
+
+
+def _moved_or_stale(excerpt_sha256: str, path_text: str, rows: list[str], length: int,
+                    windows: dict[tuple[str, int], dict[str, list[int]]] | None = None) -> dict[str, Any]:
+    starts = _starts_of(rows, length, excerpt_sha256, windows, path_text)
     if len(starts) != 1:
         return {
             "status": "stale",

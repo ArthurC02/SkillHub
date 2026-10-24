@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.1.2
+
+### Changed
+
+- One repository walk per command: `validate` walked the repository once for its errors and once for its NOTE, every Registry write validated the staged and the current Registry with a walk each, and `readiness` walked once for discovery and once for `validate`; each now lists the repository once and hands the listing on. A Context's `implementation_path` is also normalised once instead of once per directory. `validate` on a repository of 108,000 files and 18 Contexts goes from 17 s to 7 s, `readiness` from 14 s to 8 s, and a write saves two walks.
+- `describe-table --base` reads the base revision's migrations from the git archive in memory instead of extracting them to a temporary directory and reading them back; `coverage` classifies evidence with one source-kind index instead of one per record; `quality-gates` names hook files without building a path object per repository file; `verify-evidence` hashes a file's windows once per excerpt length instead of once per moved citation. Each prints what it printed before.
+
 ## 4.1.1
 
 ### Changed

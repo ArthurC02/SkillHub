@@ -154,9 +154,9 @@ GIT_HOOK_NAMES = {
 def shipped_hooks(files: list[str], installed: list[dict[str, Any]]) -> list[dict[str, Any]]:
     enabled = {entry["path"] for entry in installed}
     return [
-        {**gate("hooks", f"git:{PurePosixPath(path).name}", path), "enabled": False}
+        {**gate("hooks", f"git:{file_name(path)}", path), "enabled": False}
         for path in files
-        if PurePosixPath(path).name in GIT_HOOK_NAMES and path not in enabled
+        if file_name(path) in GIT_HOOK_NAMES and path not in enabled
     ]
 
 

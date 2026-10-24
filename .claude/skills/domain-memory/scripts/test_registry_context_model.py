@@ -238,6 +238,20 @@ class RegistryContextModelTest(RegistryTestCase):
         (self.repo / "apps" / "src" / "orders" / "port.py").write_text("v1\n", encoding="utf-8")
         self.assertEqual((([refusal], []), []), (before, placement(self.repo)))
 
+    def test_a_given_file_listing_decides_placement_instead_of_a_repository_walk(self) -> None:
+        self.seed("contexts.json", [
+            {"id": "orders", "name": "Orders", "responsibility": "Own orders.", "implementation_path": "src/orders",
+             "status": "reviewed", "verified": VERIFIED},
+        ])
+        (self.repo / "apps" / "src" / "orders").mkdir(parents=True)
+        (self.repo / "apps" / "src" / "orders" / "port.py").write_text("v1\n", encoding="utf-8")
+        def placement(listing) -> list[str]:
+            return [error.split(";")[0] for error in validate(self.repo / "memory", self.repo, False, listing)
+                    if "implementation_path" in error]
+
+        self.assertEqual(([], ["contexts/orders implementation_path src/orders lies over no file in the repository"]),
+                         (placement(None), placement(lambda: ["lib/billing/invoice.py"])))
+
     def test_two_contexts_without_registered_collaboration_say_so(self) -> None:
         self.two_contexts()
         self.assertEqual(

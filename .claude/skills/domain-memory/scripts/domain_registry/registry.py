@@ -28,7 +28,7 @@ from .evidence import (
     without_derived_keys,
 )
 from .policy import existing_policy, review_mode, validate_policy
-from .sources import directory_of, owned_directory, repository_files
+from .sources import Listing, directory_of, listing_of, owned_directory
 from .store import (
     create_concept_layout,
     has_registry,
@@ -397,7 +397,7 @@ def _validate_evidence(
     ]
 
 
-def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list[str]:  # noqa: FBT001
+def validate(root: Path, repo_root: Path | None, require_reviewed: bool, listing: Listing | None = None) -> list[str]:  # noqa: FBT001
     if not has_registry(root):
         return [missing_registry(root, repo_root)]
     errors = _conflict_marker_errors(root)
@@ -418,7 +418,7 @@ def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list
         for path in stale_indexes(root, documents)
     )
     if repo_root is not None and "contexts.json" in documents:
-        errors.extend(_implementation_path_errors(documents["contexts.json"], repo_root))
+        errors.extend(_implementation_path_errors(documents["contexts.json"], repo_root, listing))
     return errors
 
 
@@ -441,24 +441,29 @@ def _conflict_marker_errors(root: Path) -> list[str]:
     ]
 
 
-def _implementation_path_errors(contexts: dict[str, Any], repo_root: Path) -> list[str]:
+def _implementation_path_errors(contexts: dict[str, Any], repo_root: Path, listing: Listing | None = None) -> list[str]:
     return [
         f"contexts/{identifier} implementation_path {path} lies over no file in the repository; "
         "after a move, relocate-evidence --from <old repository path> --to <new> proposes the new path, or correct it"
-        for identifier, path, reviewed in unplaced_implementation_paths(contexts, repo_root)
+        for identifier, path, reviewed in unplaced_implementation_paths(contexts, repo_root, listing)
         if reviewed
     ]
 
 
-def unplaced_implementation_paths(document: dict[str, Any], repo_root: Path) -> list[tuple[Any, str, bool]]:
+def unplaced_implementation_paths(document: dict[str, Any], repo_root: Path,
+                                  listing: Listing | None = None) -> list[tuple[Any, str, bool]]:
     contexts = _records_of("contexts.json", document)
     placed = [(entry.get("id"), entry["implementation_path"], is_reviewed("contexts", document, entry)) for entry in contexts
               if isinstance(entry.get("implementation_path"), str) and entry["implementation_path"].strip()]
     if not placed:
         return []
-    directories = {directory_of(file) for file in repository_files(repo_root)}
+    directories = {directory_of(file) for file in (listing or listing_of(repo_root))()}
     return [(identifier, path, reviewed) for identifier, path, reviewed in placed
-            if not any(owned_directory(path) in directory for directory in directories)]
+            if not _placed(owned_directory(path), directories)]
+
+
+def _placed(owned: str, directories: set[str]) -> bool:
+    return any(owned in directory for directory in directories)
 
 
 IDEMPOTENCY_FIELDS = ("key", "scope", "on_replay", "on_conflict")
@@ -626,9 +631,10 @@ def as_stored(asset: str, record: dict[str, Any]) -> Any:
 
 
 def evidence_gaps(root: Path, documents: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
-    from .evidence import classify_all, unclassified_paths
+    from .evidence import classifier, unclassified_paths, with_references
 
     source_map = source_map_for(root)
+    classify = classifier(source_map)
     gaps = []
     for name in sorted(documents):
         for record in _records_of(name, documents[name]):
@@ -638,7 +644,7 @@ def evidence_gaps(root: Path, documents: dict[str, dict[str, Any]]) -> list[dict
             if not record.get("evidence"):
                 gaps.append(entry | {"reason": "no evidence"})
                 continue
-            outside = unclassified_paths(classify_all(dict(record), source_map))
+            outside = unclassified_paths(with_references(dict(record), classify))
             if outside:
                 gaps.append(
                     entry
