@@ -1063,3 +1063,25 @@ Dependabot 對這個目錄的 npm 鎖檔回報一則 High；上一版留在冷�
 ### 預設映像從 `-21` 移到 `-22`
 
 四項在 `-22` 的 digest 上跑過之後移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例，以及 `apps/sandbox/README.md` 的環境變數表與建置範例。
+
+## `2026.08-22` → `2026.08-23`（2026-10-24）— **安全性修補：`body-parser` 與 `fast-uri`；四項實測尚未跑，預設映像仍留在 `-22`**
+
+上一版記下「還在冷卻期內，這一版不收」的兩件，在負責人授權下提前收進來。依據是 Dependabot 自己的規則：釋出冷卻只套用在版本更新，**安全更新不受冷卻期限制**（GitHub 文件「Dependabot version updates」的 cooldown 一節）；本目錄 `.npmrc` 的 `min-release-age=7` 比照這條，只在這一次 `npm audit fix` 以 `--min-release-age=0` 解除，檔案本身一字未動。
+
+| 套件 | 原版本 | 修正版本 | 公告 |
+| --- | --- | --- | --- |
+| `body-parser`（npm，`@modelcontextprotocol/sdk` → `express` 的傳遞依賴） | `2.3.0` | `2.4.0`（2026-10-22 發佈） | GHSA-27r3-jxmh-p828（High）：壓縮請求本文尾端多餘位元組造成 DoS |
+| `fast-uri`（npm，`@modelcontextprotocol/sdk` → `ajv` 的傳遞依賴） | `3.1.8` | `3.1.9`（2026-10-19 發佈） | GHSA-w74x-v6f9-j3xg、GHSA-wjr9-j795-jxcr（Moderate）；GHSA-xhq7-xmqj-769h、GHSA-333x-w4r6-6crp（Low） |
+| `qs`（npm，`body-parser` 2.4.0 的傳遞依賴，隨之更新） | `6.16.0` | `6.16.1`（2026-10-14 發佈） | 無公告 |
+
+**暴露面**：兩者都只在 `@modelcontextprotocol/sdk` 的 HTTP 傳輸路徑上；`run.mjs` 只用行程內的 MCP 伺服器，沒有監聽埠，所以沙箱裡沒有能送出壓縮請求本文或 URI 的對手。提前收的理由不是風險升高，而是 `npm audit` 與 Dependabot 對這個鎖檔持續回報 High，與其讓警告掩蓋下一則真正的通報，不如照安全更新的通行規則收掉。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `package-lock.json` 只換 `body-parser`、`fast-uri`、`qs` 三筆（`npm audit fix --package-lock-only --min-release-age=0`，在各宣告範圍內，`package.json` 一字未動）；`ARG IMAGE_VERSION` |
+| 新增的依賴 | 無 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| `run.mjs` | **未變**；`gatewaySpend` 結算競態仍留待下一版 |
+| `npm audit` | 本目錄 0 vulnerabilities |
+| 預設映像 | 仍是 `-22`；四項在 CI 發佈的 digest 上跑過之後才移動 |
