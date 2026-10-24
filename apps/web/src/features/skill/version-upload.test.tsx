@@ -329,3 +329,34 @@ test.each([
   );
   expect(destination?.textContent).toBe("開啟 v3 並繼續驗證");
 });
+
+test("an upload's result stays on the version page it was sent from, not the one it leads to", async () => {
+  const NEXT = "33333333-3333-4333-8333-333333333333";
+  stubOwner(() =>
+    json({
+      skill_id: SKILL,
+      version_id: NEXT,
+      version_number: 3,
+      content_hash: "sha256:version-three",
+      duplicate: false,
+      findings: { errors: [], warnings: [], infos: [] },
+    }),
+  );
+  await render();
+  await submitUpload();
+  await waitFor(() => text().includes("已存成 v3"));
+
+  await act(async () =>
+    root.render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <VersionUpload skillId={SKILL} versionId={NEXT} contextConfirmed />
+        </QueryClientProvider>
+      </StrictMode>,
+    ),
+  );
+
+  expect(text()).toContain("上傳新版本");
+  expect(text()).not.toContain("已存成 v3");
+  expect(container.querySelector(`a[href="/skills/${SKILL}/versions/${NEXT}"]`)).toBeNull();
+});
