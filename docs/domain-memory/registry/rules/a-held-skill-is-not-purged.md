@@ -3,11 +3,11 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-22T21:18:54.679348Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
   - resource: "apps/platform/internal/skill/library/purge.go#L30-32"
     excerpt_sha256: "sha256:c2abe36b9b8910dce5fa36fa4d38ea43b9d698b61470cbf444fbd146ffd2c441"
-  - resource: "apps/platform/internal/skill/library/purge_test.go#L45-73"
+  - resource: "apps/platform/internal/skill/library/purge_test.go#L53-81"
     excerpt_sha256: "sha256:280894e25a26feb7089be8921c52b7d5ac1d3225efa4834c3e5ba2772f28bcb3"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/publishing_integration_test.go#L719-753"
     excerpt_sha256: "sha256:9dd45542dbe00bd2e4e042590d0e326a07e57a43dcb4d625fc10ab43de51a0e1"
@@ -21,7 +21,7 @@ sources:
     excerpt_sha256: "sha256:97744b9d15042311d43d8f1b245577757bcfb2cf7bbcc45b1e56844ab03e3401"
   - resource: "apps/platform/internal/skill/library/restriction.go#L24-28"
     excerpt_sha256: "sha256:ce9617d0879ca7c8567941b98c9798c634760c6f250c2346bc55bd71bb6b41b5"
-  - resource: "db/queries/skills.sql#L121-127"
+  - resource: "db/queries/skills.sql#L124-130"
     excerpt_sha256: "sha256:8ab7b9d355a9d498a9aeaf54b90c17f7321176e221bc666b3769a8cc7e2fb754"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/operator_hold_deletion_integration_test.go#L82-130"
     excerpt_sha256: "sha256:6045aad5bf1816fc475abc6f20d25662638a1caa274f36f17ba74a10d23fa4ea"

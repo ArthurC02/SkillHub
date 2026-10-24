@@ -3,9 +3,9 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-18T10:52:30.207485Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/skill/library/registry.go#L95-97"
+  - resource: "apps/platform/internal/skill/library/registry.go#L100-102"
     excerpt_sha256: "sha256:dc731f5fb105b3dbe00230e749236725a65ea88871386489208a38bfbfd7886b"
   - resource: "apps/platform/internal/skill/library/fork_source_characterization_test.go#L62-114"
     excerpt_sha256: "sha256:8cadd6e93638b685c9abf4ae4b6661edc008c4f7e525c6d7bb9ae9f0f983e18a"

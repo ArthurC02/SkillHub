@@ -3,9 +3,9 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-18T20:31:55.890891Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/trial/batch/batch_simulated_user.go#L121-123"
+  - resource: "apps/platform/internal/trial/batch/batch_simulated_user.go#L127-129"
     excerpt_sha256: "sha256:3303ef97e8f0a6ca334b691864f220c7ba3b46a28b1702a9a2af7ba96cce8ba7"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/evaluation_simulated_user_integration_test.go#L137-164"
     excerpt_sha256: "sha256:2662404ad1de5b6e9e3ae5cd0067ca25eb349285894f5d6cf74d5a6fb21a53d0"

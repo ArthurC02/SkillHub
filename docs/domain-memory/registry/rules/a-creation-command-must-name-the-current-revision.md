@@ -3,9 +3,9 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-18T20:37:17.368504Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/creator/creation/creation.go#L286-288"
+  - resource: "apps/platform/internal/creator/creation/creation.go#L289-291"
     excerpt_sha256: "sha256:99edc738823808d985ab780dacd6b00dd9c746d18c73e021d80bd260dcfb3f6a"
   - resource: "apps/platform/internal/creator/creation/command_test.go#L63-70"
     excerpt_sha256: "sha256:5c71942845a7cfc3d5623519a6ac04a54f89488d74553cfb17de9688f9a4cdec"

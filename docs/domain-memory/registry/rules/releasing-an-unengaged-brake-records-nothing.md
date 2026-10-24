@@ -3,11 +3,9 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-18T15:59:29.446208Z"
-  - by: "human:ArthurC"
-    at: "2026-10-18T16:53:54.156118Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/product/operations/agents.go#L203-214"
+  - resource: "apps/platform/internal/product/operations/agents.go#L204-215"
     excerpt_sha256: "sha256:f483f5c5d2072f5b1177577b0307267473ff2dff0c43b63f849649bbc402884a"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/platform_agents_integration_test.go#L214-258"
     excerpt_sha256: "sha256:87547b2a40c77885bd8df33135e62fb7bcc70b9bb558c1bc463acd36bc926a24"

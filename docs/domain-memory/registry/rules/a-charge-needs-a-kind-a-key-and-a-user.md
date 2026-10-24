@@ -3,9 +3,9 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-18T08:44:17.756466Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/creator/credit/service.go#L112-114"
+  - resource: "apps/platform/internal/creator/credit/service.go#L114-116"
     excerpt_sha256: "sha256:2496f84c4da33eafa5b496a8012dbfcbe62e13a9541237f2e94a393ba88eac62"
   - resource: "apps/platform/internal/creator/credit/refusals_test.go#L33-53"
     excerpt_sha256: "sha256:23227243f6f0bbc82a85e42254fea3f8cf6125eb3cfce5d3e261985c951c06c8"

@@ -12,9 +12,9 @@ idempotency:
   on_conflict: refused when the key already started a Run of a different Skill Version
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-22T10:07:44.566259Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/trial/execution/service.go#L874-891"
+  - resource: "apps/platform/internal/trial/execution/service.go#L894-911"
     excerpt_sha256: "sha256:b33d744e5dc035dd07b22002b8fd5e71cba0dd4fb652efe02fe1d92a6a91ae62"
   - resource: "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md#L104-104"
     excerpt_sha256: "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd"

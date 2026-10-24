@@ -3,11 +3,11 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-17T06:41:43.641716Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/product/activity/service.go#L178-181"
+  - resource: "apps/platform/internal/product/activity/service.go#L185-188"
     excerpt_sha256: "sha256:ebf05fcb1b18546e76d0b540e5dc766bd3aaf2e988b49759d2cbc1b83b27c357"
-  - resource: "apps/platform/internal/product/activity/service.go#L322-345"
+  - resource: "apps/platform/internal/product/activity/service.go#L367-390"
     excerpt_sha256: "sha256:d24a699e771170a7089b09735765bb0a74fffbc07d074a1f4978e7ddd1471e7a"
   - resource: "apps/platform/internal/product/activity/service_test.go#L43-72"
     excerpt_sha256: "sha256:7353aed81e25babc2467fdb7956d7429dedcb4ffb80b05f1c0c0337e37d2961c"

@@ -3,11 +3,11 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-18T08:44:17.756466Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/creator/credit/service.go#L69-71"
+  - resource: "apps/platform/internal/creator/credit/service.go#L71-73"
     excerpt_sha256: "sha256:5147efde9535d9d029557db52bc53d164b3b6d42c0fcfafb4329f546d4029e34"
-  - resource: "apps/platform/internal/creator/credit/service_test.go#L694-711"
+  - resource: "apps/platform/internal/creator/credit/service_test.go#L733-750"
     excerpt_sha256: "sha256:fed2319cb9d340487d77f75e1bd5423d87ae5e169f8ff944d5019a141be03b53"
 ---
 Recording a cost event ignores the caller's cancellation and runs under its own deadline, so a client disconnect cannot lose a cost event.

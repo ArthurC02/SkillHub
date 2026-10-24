@@ -3,9 +3,9 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-17T18:18:26.030858Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/trial/execution/job.go#L324-343"
+  - resource: "apps/platform/internal/trial/execution/job.go#L333-352"
     excerpt_sha256: "sha256:21a04e1f74e5b9d64dc51b2fb0a81208c3d70ca3347ac94b95061b1664dab3f5"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/run_dispatch_characterization_test.go#L211-227"
     excerpt_sha256: "sha256:e2a28869548a08225d5a0aa3c2311cc050c9a703ca2b830cb3b48e512d060918"

@@ -3,13 +3,13 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-22T10:07:44.566259Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
   - resource: "apps/platform/internal/trial/execution/halt/paused.go#L22-41"
     excerpt_sha256: "sha256:6a494406a7a0e101d3edc8c775d18d6b95a3698ac29cde59a9c6151ad9937511"
-  - resource: "apps/platform/internal/trial/execution/job.go#L941-947"
+  - resource: "apps/platform/internal/trial/execution/job.go#L952-958"
     excerpt_sha256: "sha256:7124a1a3ceb89a3de9554dc4546c222d03838b09c22e36b26c2d2a59f6f30202"
-  - resource: "apps/platform/internal/trial/execution/job.go#L958-967"
+  - resource: "apps/platform/internal/trial/execution/job.go#L969-978"
     excerpt_sha256: "sha256:0d77c9e792b2cb23b7b852fdcd35592800d6833406652a22d80df5be13307ed7"
   - resource: "apps/platform/internal/trial/execution/halt/paused_test.go#L28-54"
     excerpt_sha256: "sha256:d5046eb497c504ce795484fd8a57591cf66fde02fcccb5e71475fb3b90442a5c"

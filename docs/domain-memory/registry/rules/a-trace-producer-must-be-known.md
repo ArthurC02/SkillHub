@@ -3,11 +3,9 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-18T15:04:37.509165Z"
-  - by: "human:ArthurC"
-    at: "2026-10-18T16:53:53.057386Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/trial/evidence/event.go#L133-134"
+  - resource: "apps/platform/internal/trial/evidence/event.go#L141-142"
     excerpt_sha256: "sha256:5f5a68c8d0f5101d5794a037e18481269171149616d35d0d60ff2d2c0ec358c4"
   - resource: "apps/platform/internal/trial/evidence/trace_test.go#L175-214"
     excerpt_sha256: "sha256:e8af8b0f200535df46a9c978e734a7f0de0d6fa35668e2dedfb58ab3c7ce26d2"

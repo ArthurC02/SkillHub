@@ -3,9 +3,9 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-18T10:10:47.982008Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/product/learning/feedback.go#L151-156"
+  - resource: "apps/platform/internal/product/learning/feedback.go#L138-143"
     excerpt_sha256: "sha256:87f36fb780867641c54c1b081537c1668215a633b7de8953b4e0d09a8ab2cb93"
   - resource: "apps/platform/internal/product/learning/feedback_characterization_test.go#L30-47"
     excerpt_sha256: "sha256:cf451702b84ee8d905119f0f1fda430f335dcc316d0e395f244b4fbf01fdbbb0"

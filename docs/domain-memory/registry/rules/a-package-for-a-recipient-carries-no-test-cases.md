@@ -3,9 +3,9 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-18T16:04:44.915924Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/skill/delivery/packaging.go#L338-341"
+  - resource: "apps/platform/internal/skill/delivery/packaging.go#L337-340"
     excerpt_sha256: "sha256:07eac29f16383f2d1e877412053be34c075096d072763237963bfc6cfda6566c"
   - resource: "apps/platform/internal/skill/delivery/source_rules_test.go#L94-104"
     excerpt_sha256: "sha256:77e8cf7685535968a2b9d7b4e6b0e87fb8e6691823f12fb150ab7db521bcbc69"

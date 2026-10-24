@@ -3,9 +3,9 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-17T04:35:41.095408Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/skill/admission/service.go#L442-445"
+  - resource: "apps/platform/internal/skill/admission/service.go#L458-461"
     excerpt_sha256: "sha256:931f0de54d52ccff3324c35a11df0139dd7eccbf6cd9fb0decd044f1d1818009"
   - resource: "apps/platform/internal/skill/admission/source.go#L318-320"
     excerpt_sha256: "sha256:6ee66eeb8798f18a22d1de950c509ccfaea129be8dee28cfb00e525d0c48aa5d"

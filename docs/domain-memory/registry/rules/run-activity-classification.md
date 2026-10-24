@@ -3,9 +3,9 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-20T12:32:59.047206Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/trial/execution/activity.go#L67-90"
+  - resource: "apps/platform/internal/trial/execution/activity.go#L84-107"
     excerpt_sha256: "sha256:1c93f2f43103fc2e815462ad6d34419fd1f33e23fd98841f60f4643c354e2e29"
   - resource: "apps/platform/internal/trial/execution/activity_test.go#L9-33"
     excerpt_sha256: "sha256:9b52d79005254edfed5ce14ff2766b17662728fd0d534d4362dafa55a4da0ca4"

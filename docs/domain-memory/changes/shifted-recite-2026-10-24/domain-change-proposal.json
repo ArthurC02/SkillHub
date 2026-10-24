@@ -3,12 +3,12 @@
   "proposal_id": "shifted-recite-2026-10-24",
   "proposer": "domain-memory-agent",
   "requirement_id": "shifted-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-24T10:34:42.046590Z",
   "verified_at": "2026-10-24T10:35:01.340319Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-24T10:35:12.591671Z",
+  "applied_at": "2026-10-24T10:35:30.275772Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "cc22242db4a13d514702baea58c6283fcd51e239",
@@ -8226,5 +8226,9 @@
     "trace-harvest-rules-2026-10-17",
     "trace-ingestion-binding-rules-2026-10-17",
     "wiring-collaborations"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "d2090cb0a4f94435ddf24e9183b9711c0b5cd48c",
+    "registry_digest": "sha256:ca3ec8eb6896c6c323376b709f16d337ffe7130097d09e64eae47d9e198c340d"
+  }
 }

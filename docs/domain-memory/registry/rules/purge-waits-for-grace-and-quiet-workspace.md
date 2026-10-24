@@ -3,9 +3,9 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-20T01:17:59.844857Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/creator/workspace/purge.go#L205-225"
+  - resource: "apps/platform/internal/creator/workspace/purge.go#L276-296"
     excerpt_sha256: "sha256:c4b66529e4c8621f1fd079b3d377ca3c6eb2786f42c93bc3b4e125ddb0371cea"
   - resource: "apps/platform/internal/creator/workspace/purge.go#L126-155"
     excerpt_sha256: "sha256:d609244eb9cceb505a10fb8056ca18f16be8d842492b5f869f1d7fad77781efc"

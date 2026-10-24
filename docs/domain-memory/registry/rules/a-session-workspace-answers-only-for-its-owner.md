@@ -3,9 +3,9 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-17T17:11:22.999935Z"
+    at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/creator/workspace/service.go#L389-406"
+  - resource: "apps/platform/internal/creator/workspace/service.go#L409-426"
     excerpt_sha256: "sha256:25c1aadf0ac80ce26114639e8b64598881c2394531a8329064ed3f64ea85ed56"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/session_lookup_integration_test.go#L56-90"
     excerpt_sha256: "sha256:a10c40994348c38c70cadebcf6c2c399af2c3b8e7e558189dd444a7610b9e2fb"
