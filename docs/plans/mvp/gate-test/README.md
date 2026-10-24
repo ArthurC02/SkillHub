@@ -170,7 +170,16 @@ golden set v2 在門檻 `MaxCosineDistance = 0.75` 下，12 條干擾查詢**全
 
 ### 3.2 環境凍結
 
-測試期間**不得**變更：目錄內容（45 筆索引；增強版本分布 ~~v2×35＋v3×7＋v4×3~~ **v2×26＋v3×5＋v4×3＋v5×11**，2026-08-16 CONTENT-005 修正輪更新，見 content-review-report.md §11）、`MaxCosineDistance`（現值 0.75）、增強產出、排序管線、DISC-002 七欄與 `match_reason` 文案。
+**凍結的對象是一個釘選建置，不是整個 repo。** repo 照常開發；9 場跑的是同一個 commit 建出來、同一份目錄資料的實例。測試期間**不得**變更該實例的：目錄內容（45 筆索引；增強版本分布 **v2×26＋v3×5＋v4×3＋v5×11**，見 content-review-report.md §11）、`MaxCosineDistance`、增強產出、排序與意圖分析管線、DISC-002 七欄與 `match_reason` 文案、模型閘道的角色對應。
+
+**建置清單（pilot 之前逐項打勾，數字對不上就停下）**：
+
+1. **釘選 commit**：`git rev-parse HEAD` 的完整 40 碼寫進 [`analysis.md`](analysis.md) 開頭；實例只從這個 commit 建置，測試期間不換。
+2. **曝光旗標關閉**：`GENERATE_SKILL_EXPOSED=off`、`CREATION_EXPOSED` 不設或非 `on`。開機日誌不得出現 `GENERATE_SKILL_EXPOSED=on` 的警告（`01` §10 的 ⛔ 邊界）。
+3. **目錄 45 筆且回填完成**：種入後照 [`release-checklist.md` §2.4.1](../m4/release-checklist.md) 跑回填與 `cmd/reindex`，驗收值以該節為準（授權 41／4、分類 10／10／25、精選 15）。**本機開發庫目前只有授權那一項做過**：分類全為空、精選 0 筆——直接拿它開場，首頁的精選書架與分類 chip 都是空的。
+4. **搜尋品質回放**：在釘選 commit 上跑 `apps/platform/internal/entrypoint/api/apiserver/intent_golden_integration_test.go` 的兩條測試（錄製向量與錄製意圖分析，不呼叫模型），全綠才開場。
+5. **閘道可用且有預算**：LiteLLM 起著、`skillhub-intent`／`text-embedding-3-small`／`skillhub-match-reason` 三個角色各打一次成功；每日預算足夠 9 場。
+6. **同意書是現行版**：[`consent-and-data-policy.md`](consent-and-data-policy.md) §8.1 含「搜尋文字送往 OpenAI」那段，且法務重新確認已完成（[legal-reconfirmation.md](legal-reconfirmation.md)）。
 
 任何變更都會讓前後場次不可比。若不得不改（例如線上事故），**變更前後的場次分開統計**，並在分析報告中明列。
 
@@ -231,14 +240,14 @@ golden set v2 在門檻 `MaxCosineDistance = 0.75` 下，12 條干擾查詢**全
 ### 4.3 兩個回歸把關（測試期間持續）
 
 1. 每次動語料或索引管線，跑 `python tools/goldenset/evaluate.py --selfcheck`（零成本、零網路）。測試期間本應凍結，此指令用於確認**確實沒被動過**。
-2. golden-query-set.md §4.4 的三個門檻過期觸發條件中，**條件 1（語料成長一個數量級）與條件 3（查詢改寫上線）仍然有效**。測試期間若任一觸發，本次結論作廢，需重推門檻後重測。
+2. golden-query-set.md §4.4 的三個門檻過期觸發條件中，**條件 1（語料成長一個數量級）仍然有效**；測試期間若觸發，本次結論作廢，需重推門檻後重測。**條件 3（查詢改寫上線）已經觸發**：意圖搜尋已上線，而以現行程式回放 golden set（§3.2 第 4 項）仍全數命中，所以門檻不需重推，但測試期間改動意圖分析等同條件 3 再觸發一次。
 
 ---
 
 ## 5. 本套件的限制（先寫在前面）
 
 1. **9 人不是統計樣本。** 質性可用性問題在 5～6 位後飽和，取 9 是為了容納三個成熟度層；層與層之間的差異不具統計意義。這也**不取代 PDM-009 的封測人數決策**（該項屬 M4，仍未定）。
-2. **測的仍是降級路徑。** 查詢改寫（依[意圖搜尋](../../../adr/README.md#意圖搜尋)）尚未上線，受測者打的字直接進向量檢索。改寫上線後成績應該更好，本次結果是**下界**。
+2. **測的是有意圖分析的路徑。** 受測者打的字先經[意圖搜尋](../../../adr/README.md#意圖搜尋)的分析再進混合檢索，所以結果不再是降級路徑的下界，而是使用者實際會遇到的成績；代價是每次搜尋都要呼叫模型閘道，閘道故障時降回直接檢索，那幾題要在記錄表上標明。
 3. **不測 DISC-003 的四個無資料維度**——它們是停用的。測的是「停用是否被誤讀」，不是篩選功能本身。
 4. **不測下載。** `docx`／`pdf`／`pptx`／`xlsx` 是 source-available，永遠不會有 Download Artifact（seed-skills.json 註記）。主持人不得引導受測者往下載走。
 5. **不測試跑。** 試跑屬 M2；受測者若問「可以馬上試嗎」，記下這個訊號但不提供。
