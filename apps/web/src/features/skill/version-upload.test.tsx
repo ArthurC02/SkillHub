@@ -239,6 +239,44 @@ test("a paused upload limits reread withholds cached rules and blocks submission
   }
 });
 
+async function chooseFileOfSize(size: number) {
+  const input = container.querySelector<HTMLInputElement>("#skill-version-file")!;
+  const file = new File(["zip"], "skill.zip", { type: "application/zip" });
+  Object.defineProperty(file, "size", { value: size });
+  Object.defineProperty(input, "files", { value: [file], configurable: true });
+  await act(async () => {
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
+test("a zip past the deployment ceiling is refused before it is uploaded, one at the ceiling is not", async () => {
+  let posts = 0;
+  stubOwner(() => {
+    posts += 1;
+    return json({ error: "file is larger than allowed" }, 413);
+  });
+  await render();
+  const submit = () => container.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  await waitFor(() => submit().disabled === false);
+
+  await chooseFileOfSize(IMPORT_LIMITS.max_zip_bytes);
+  expect(submit().disabled).toBe(false);
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+
+  await chooseFileOfSize(IMPORT_LIMITS.max_zip_bytes + 1);
+  expect(submit().disabled).toBe(true);
+  const reason = container.querySelector(`#${submit().getAttribute("aria-describedby")}`);
+  expect(reason?.textContent).toBe(
+    "skill.zip 是 10,485,761 位元組，超過 zip 上限 10,485,760 位元組，沒有送出。",
+  );
+  await act(async () => {
+    container
+      .querySelector("form.version-upload")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  expect(posts).toBe(0);
+});
+
 test("丙-151: 413 印「檔案超過上限，請縮小套件再上傳。」", async () => {
   stubOwner(() => json({ error: "file is larger than 25 MB" }, 413));
   await render();

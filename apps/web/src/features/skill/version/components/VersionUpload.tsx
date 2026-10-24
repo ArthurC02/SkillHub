@@ -5,7 +5,7 @@ import { SessionNotReadyError } from "../../../../core/api/client";
 import type { UploadResult } from "../../../../core/api/types";
 import { bytes } from "../../../../shared/format";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
-import { useSkillImportLimits } from "../../../creation";
+import { importRefusal, useSkillImportLimits } from "../../../creation";
 import { useSkillVersions } from "../../skills.service";
 import { isVersionUploadResultUnknown, useSaveSkillVersion } from "../../versions.service";
 import { VersionUploadFailure } from "./VersionUploadFailure";
@@ -35,6 +35,8 @@ export function VersionUpload({
   const failedUpload = readUploadFailure(save, unknownUpload);
   const readStatusId = `version-upload-${skillId}-read-status`;
   const titleId = `version-upload-${skillId}-title`;
+  const oversizeId = `version-upload-${skillId}-oversize`;
+  const oversize = file && limits.data ? importRefusal("upload", "", file, limits.data) : null;
 
   if (
     !versions.data?.versions.length ||
@@ -56,7 +58,7 @@ export function VersionUpload({
         className="version-upload"
         onSubmit={(event) => {
           event.preventDefault();
-          if (!file || !confirmed || save.isPending) return;
+          if (!file || !confirmed || oversize || save.isPending) return;
           save.mutate(file, {
             onError: (error) => {
               if (error instanceof SessionNotReadyError) return;
@@ -78,23 +80,20 @@ export function VersionUpload({
         />
         <button
           type="submit"
-          disabled={save.isPending || !confirmed}
-          aria-describedby={!confirmed ? readStatusId : undefined}
+          disabled={save.isPending || !confirmed || Boolean(oversize)}
+          aria-describedby={!confirmed ? readStatusId : oversize ? oversizeId : undefined}
         >
-          {save.isPending
-            ? "上傳中…"
-            : save.isError && isVersionUploadResultUnknown(failedUpload.error)
-              ? "重新送出上傳"
-              : "上傳成新版本"}
+          {uploadButtonLabel(save.isPending, save.isError, failedUpload.error)}
         </button>
       </form>
+      {oversize && (
+        <p id={oversizeId} role="alert">
+          {oversize}
+        </p>
+      )}
       {!confirmed && (
         <p id={readStatusId} role="status">
-          {!identityConfirmed
-            ? "登入狀態尚未確認；請先在頁首確認，再上傳新版本。"
-            : !limits.isSuccess || limits.fetchStatus !== "idle"
-              ? "上傳限制尚未確認；請先重新讀取，再上傳新版本。"
-              : "小工具與版本脈絡尚未確認；請先重新讀取，再上傳新版本。"}
+          {whyUploadWaits(identityConfirmed, limits.isSuccess && limits.fetchStatus === "idle")}
         </p>
       )}
       {save.isError && (
@@ -111,6 +110,17 @@ export function VersionUpload({
       )}
     </section>
   );
+}
+
+function uploadButtonLabel(pending: boolean, failed: boolean, error: unknown): string {
+  if (pending) return "上傳中…";
+  return failed && isVersionUploadResultUnknown(error) ? "重新送出上傳" : "上傳成新版本";
+}
+
+function whyUploadWaits(identityConfirmed: boolean, limitsConfirmed: boolean): string {
+  if (!identityConfirmed) return "登入狀態尚未確認；請先在頁首確認，再上傳新版本。";
+  if (!limitsConfirmed) return "上傳限制尚未確認；請先重新讀取，再上傳新版本。";
+  return "小工具與版本脈絡尚未確認；請先重新讀取，再上傳新版本。";
 }
 
 function VersionUploadRules({
