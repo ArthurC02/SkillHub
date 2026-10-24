@@ -1,0 +1,207 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "journey-recite-2026-10-25",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "journey-recite",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-24T16:33:00.326173Z",
+  "verified_at": "2026-10-24T16:33:07.642389Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "4c675df388921e340a4beb67c3c4dd6bb7619642",
+    "registry_digest": "sha256:ca3ec8eb6896c6c323376b709f16d337ffe7130097d09e64eae47d9e198c340d",
+    "committed_digest": "sha256:ca3ec8eb6896c6c323376b709f16d337ffe7130097d09e64eae47d9e198c340d"
+  },
+  "affected_contexts": [
+    "analytics",
+    "creation",
+    "ingest",
+    "packaging",
+    "registry",
+    "run",
+    "testlab"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "the-funnel-counts-downloads-per-workspace-and-other-stages-per-session",
+        "statement": "The daily funnel counts downloads as distinct Workspaces and every other stage as distinct sessions.",
+        "contexts": [
+          "analytics"
+        ],
+        "examples": [
+          "Two sessions of one Workspace downloading count as one download."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/analytics.go",
+            "lines": {
+              "start": 216,
+              "end": 218
+            },
+            "excerpt_sha256": "sha256:9678ff58dfbf0b671b58ac038f3b4d705870a2dafee371e3f510076d47d9284e"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/trends_integration_test.go",
+            "lines": {
+              "start": 246,
+              "end": 300
+            },
+            "excerpt_sha256": "sha256:d44df36ed33b88d976120154604575964a17d281d9c6836549af73edeaf5ce6f",
+            "content_sha256": "sha256:4e952753ab776c408e43b03a59dc29b83b0624a10d560d5fab142801e871cb3a",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "registry-packaging-skill-facts",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "producer_context": "registry",
+        "consumer_context": "packaging",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 463,
+              "end": 466
+            },
+            "excerpt_sha256": "sha256:c166a8fb43f2b0d4f415de48b5d5324048c9b19e1d93a9e69023b822dfb2bda7",
+            "content_sha256": "sha256:4318336544bccb211055e5c24edce0bba42c2220516f67876043588f87edc933",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-creation-model-call-halt",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "producer_context": "run",
+        "consumer_context": "creation",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 655,
+              "end": 662
+            },
+            "excerpt_sha256": "sha256:a3328498e75275f977844508c68f206866494f6306b7df4b4641313603bebb32",
+            "content_sha256": "sha256:4318336544bccb211055e5c24edce0bba42c2220516f67876043588f87edc933",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/worker/worker.go",
+            "lines": {
+              "start": 131,
+              "end": 134
+            },
+            "excerpt_sha256": "sha256:1d6e9d8aec939b04af79e97b2f941065b6a3dab4787c6fc48793c1462b5dc9c9"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-ingest-model-call-halt",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "producer_context": "run",
+        "consumer_context": "ingest",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 655,
+              "end": 662
+            },
+            "excerpt_sha256": "sha256:a3328498e75275f977844508c68f206866494f6306b7df4b4641313603bebb32",
+            "content_sha256": "sha256:4318336544bccb211055e5c24edce0bba42c2220516f67876043588f87edc933",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-testlab-model-call-halt",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "producer_context": "run",
+        "consumer_context": "testlab",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 655,
+              "end": 662
+            },
+            "excerpt_sha256": "sha256:a3328498e75275f977844508c68f206866494f6306b7df4b4641313603bebb32",
+            "content_sha256": "sha256:4318336544bccb211055e5c24edce0bba42c2220516f67876043588f87edc933",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-24T16:33:03.506382Z",
+      "scope": "re-cite the 5 citations shifted by the search-to-download journey metric (4c675df38): the funnel rule's test line and four app.go wiring lines",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "4c675df388921e340a4beb67c3c4dd6bb7619642",
+        "registry_digest": "sha256:ca3ec8eb6896c6c323376b709f16d337ffe7130097d09e64eae47d9e198c340d",
+        "committed_digest": "sha256:ca3ec8eb6896c6c323376b709f16d337ffe7130097d09e64eae47d9e198c340d"
+      }
+    }
+  ],
+  "supersedes": [
+    "analytics-retention-and-feedback-rules-2026-10-18",
+    "dispatch-halt-reaches-model-calls-and-queue",
+    "p1-halt-stops-enrichment",
+    "shifted-recite-2026-10-24"
+  ]
+}
