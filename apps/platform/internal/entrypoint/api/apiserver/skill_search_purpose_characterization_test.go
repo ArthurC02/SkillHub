@@ -88,13 +88,13 @@ func TestAReferenceSearchAsksTheModelForNoMatchReasons(t *testing.T) {
 	anon := &client{Client: http.DefaultClient, base: a.URL}
 
 	reference := anon.search(t, "/api/skills/search?purpose=reference&q="+url.QueryEscape(name))
-	if !slices.Contains(reference.ids(), id) || reasonCalls.Load() != 0 {
-		t.Fatalf("reference search found %v with %d match-reason calls, want %s and none", reference.ids(), reasonCalls.Load(), id)
+	if !slices.Contains(reference.ids(), id) || reasonCalls.Load() != 0 || reference.ReasonQuery != "" {
+		t.Fatalf("reference search found %v with %d match-reason calls and reason_query %q, want %s and neither", reference.ids(), reasonCalls.Load(), reference.ReasonQuery, id)
 	}
 
 	person := anon.search(t, "/api/skills/search?q="+url.QueryEscape(name))
-	if !slices.Contains(person.ids(), id) || reasonCalls.Load() == 0 {
-		t.Fatalf("person search found %v with %d match-reason calls, want %s explained", person.ids(), reasonCalls.Load(), id)
+	if !slices.Contains(person.ids(), id) || person.ReasonQuery != name {
+		t.Fatalf("person search found %v with reason_query %q, want %s and its reasons on offer", person.ids(), person.ReasonQuery, id)
 	}
 }
 

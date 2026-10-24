@@ -29,6 +29,7 @@ import type {
 import type {
   Me,
   PublicSearchResponse,
+  SearchMatchReasons,
   PublicSearchResult,
   SkillDetail,
   SkillFiles,
@@ -166,8 +167,8 @@ export const SEARCH = {
       summary: "把 PDF 整理成摘要",
       summary_source: "model",
       rank: 0.82,
-      match_reason: "這個小工具直接處理 PDF 並輸出摘要。",
-      match_reason_source: "model",
+      match_reason: "查詢與文件共同出現：pdf、摘要",
+      match_reason_source: "template",
     },
     {
       ...HIT_FACETS,
@@ -190,7 +191,12 @@ export const SEARCH = {
   total: 2,
   no_results: false,
   filtered_out: false,
+  reason_query: "pdf 摘要",
 } satisfies PublicSearchResponse;
+
+export const SEARCH_REASONS = {
+  reasons: [{ skill_id: SKILL, reason: "這個小工具直接處理 PDF 並輸出摘要。" }],
+} satisfies SearchMatchReasons;
 
 export function skillDetail(id: string, name: string): SkillDetail {
   return {
@@ -1613,6 +1619,7 @@ const ROUTES: RouteMatcher[] = [
     const from = new Date(Date.parse(`${trend.to}T00:00:00Z`) - (days - 1) * 86_400_000);
     return ok({ ...trend, from: from.toISOString().slice(0, 10) });
   },
+  (path) => (path === "/api/skills/search/reasons" ? ok(SEARCH_REASONS) : undefined),
   (path) => (path.startsWith("/api/skills/search") ? ok(SEARCH) : undefined),
   (path, url) => {
     if (!path.startsWith("/api/skills/catalog")) return undefined;

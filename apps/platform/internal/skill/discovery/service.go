@@ -156,6 +156,8 @@ type searchOutcome struct {
 	Truncated bool
 
 	Total int64
+
+	ReasonQuery string
 }
 
 type searchPurpose string
@@ -260,15 +262,14 @@ func (s *Service) searchInterpreted(ctx context.Context, req interpretedSearch) 
 		out.FilteredOut = filteredOut
 	}
 
-	var reasons []MatchReason
 	reasonQuery := original
 	if interpretation.Status == interpretationCorrected {
 		reasonQuery = query
 	}
+	applyMatchReasons(out.Hits, reasonQuery, nil)
 	if len(out.Hits) > 0 && s.LLM != nil && purpose != searchForReference {
-		reasons = s.matchReasons(ctx, reasonQuery, out.Hits)
+		out.ReasonQuery = reasonQuery
 	}
-	applyMatchReasons(out.Hits, reasonQuery, reasons)
 
 	if purpose != searchForReference {
 		s.Analytics.SearchPerformed(ctx, original, len(out.Hits), filters.active())
@@ -333,7 +334,10 @@ func (s *Service) embedQuery(ctx context.Context, query string) (*pgvector.Vecto
 		return nil, err
 	}
 
-	s.recordSearchCost(ctx, embedResp)
+	if embedResp == nil {
+		return nil, errors.New("catalog: embed returned no vectors")
+	}
+	s.recordCallCost(ctx, credit.KindSearchEmbedding, embedResp.Model, embedResp.Usage)
 	if len(embedResp.Vectors) == 0 {
 
 		return nil, errors.New("catalog: embed returned no vectors")
@@ -521,17 +525,44 @@ func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 	return hits, total, nil
 }
 
-func (s *Service) matchReasons(ctx context.Context, query string, hits []searchResult) []MatchReason {
-	n := min(len(hits), 10)
-	candidates := make([]SkillCandidate, n)
-	for i := 0; i < n; i++ {
-		candidates[i] = SkillCandidate{
-			SkillID: hits[i].SkillID,
-			Name:    hits[i].Name,
-			Summary: hits[i].Summary,
+func (s *Service) MatchReasonsFor(ctx context.Context, query string, skillIDs []pgtype.UUID) ([]MatchReason, error) {
+	if s.LLM == nil {
+		return nil, nil
+	}
+	scope, err := s.publicScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := gen.New(s.Pool).ListHybridSearchDocuments(ctx, gen.ListHybridSearchDocumentsParams{
+		SkillIds:            skillIDs,
+		CatalogWorkspaceIds: scope.catalogs,
+		ExposedKeys:         scope.exposedKeys,
+		ExposedSkillIds:     scope.exposedSkillIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[pgtype.UUID]gen.ListHybridSearchDocumentsRow, len(rows))
+	for _, row := range rows {
+		byID[row.SkillID] = row
+	}
+	candidates := make([]SkillCandidate, 0, len(rows))
+	for _, id := range skillIDs {
+		if row, ok := byID[id]; ok {
+			candidates = append(candidates, SkillCandidate{
+				SkillID: pgconv.UUIDString(row.SkillID),
+				Name:    row.Name,
+				Summary: summaryText(row.Summary, row.EnrichedSummary),
+			})
 		}
 	}
+	if len(candidates) == 0 {
+		return nil, nil
+	}
+	return s.matchReasons(ctx, query, candidates), nil
+}
 
+func (s *Service) matchReasons(ctx context.Context, query string, candidates []SkillCandidate) []MatchReason {
 	reasonCtx, cancel := context.WithTimeout(ctx, matchReasonsDeadline)
 	defer cancel()
 

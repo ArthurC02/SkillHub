@@ -10,6 +10,7 @@ import type {
   SetSkillCategoryRequest,
   SkillRedistributionEnum,
 } from "@skillhub/api-client-ts";
+import { SearchMatchReasonsRequestSkillIdsMaxItems } from "@skillhub/api-client-ts/limits";
 import { contractEnum } from "../../core/api/contract-enum";
 import {
   ApiError,
@@ -25,6 +26,7 @@ import type {
   OwnSkills,
   PublicSearchResponse,
   SearchFilters,
+  SearchMatchReasons,
   Skill,
   SkillDeletion,
   SkillDetail,
@@ -94,6 +96,46 @@ export function useCorrectedSkillSearch(
         : fetchCorrectedSearch(query, filters, correction),
     enabled,
   });
+}
+
+function fetchMatchReasons(query: string, skillIds: string[]) {
+  return apiFetch<SearchMatchReasons>("/api/skills/search/reasons", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, skill_ids: skillIds }),
+  });
+}
+
+function reasonCandidates(search: PublicSearchResponse | undefined) {
+  return (search?.results ?? [])
+    .slice(0, SearchMatchReasonsRequestSkillIdsMaxItems)
+    .map((hit) => hit.skill_id);
+}
+
+export function useMatchReasons(search: PublicSearchResponse | undefined) {
+  const query = search?.reason_query ?? "";
+  const skillIds = reasonCandidates(search);
+  return useQuery({
+    queryKey: queryKeys.skills.matchReasons(query, skillIds),
+    queryFn: () => fetchMatchReasons(query, skillIds),
+    enabled: query !== "" && skillIds.length > 0,
+    staleTime: Infinity,
+  });
+}
+
+export function withMatchReasons(
+  search: PublicSearchResponse,
+  answer: SearchMatchReasons | undefined,
+): PublicSearchResponse {
+  if (!answer?.reasons.length) return search;
+  const written = new Map(answer.reasons.map((r) => [r.skill_id, r.reason]));
+  return {
+    ...search,
+    results: search.results.map((hit) => {
+      const reason = written.get(hit.skill_id);
+      return reason ? { ...hit, match_reason: reason, match_reason_source: "model" } : hit;
+    }),
+  };
 }
 
 export function browseCatalog(filters: SearchFilters = {}, limit = 100) {

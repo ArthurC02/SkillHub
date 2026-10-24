@@ -1,6 +1,11 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useLayoutEffect, useState, type FormEvent } from "react";
-import { useCatalog, useCorrectedSkillSearch } from "../../skill";
+import {
+  useCatalog,
+  useCorrectedSkillSearch,
+  useMatchReasons,
+  withMatchReasons,
+} from "../../skill";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useGenerateEntryPoint } from "../../creation";
 import { useMe } from "../../../core/session/me.service";
@@ -67,6 +72,7 @@ export function Home() {
     search.correction,
   );
   const data = result.error || search.q === undefined ? undefined : result.data;
+  const reasons = useMatchReasons(data);
   const effectiveFilters = data?.interpretation?.filters ?? filters;
   const currentCorrection = data?.interpretation && {
     intent: data.interpretation.intent,
@@ -167,7 +173,7 @@ export function Home() {
 
       {!browsing && data && (
         <SearchResultsSection
-          data={data}
+          data={withMatchReasons(data, reasons.data)}
           selected={selected}
           loggedIn={loggedIn}
           generateExposed={generateExposed}

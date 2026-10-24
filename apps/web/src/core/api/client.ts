@@ -33,7 +33,12 @@ export function isWriteResultUnknown(error: unknown): boolean {
   return !(error instanceof ApiError) || error.status >= 500;
 }
 
-const sessionlessPosts = new Set(["/auth/dev/login", "/auth/logout", "/api/skills/search"]);
+const sessionlessPosts = new Set([
+  "/auth/dev/login",
+  "/auth/logout",
+  "/api/skills/search",
+  "/api/skills/search/reasons",
+]);
 let sessionReadinessCheck: (() => void) | undefined;
 
 export function setSessionReadinessCheck(check: () => void) {

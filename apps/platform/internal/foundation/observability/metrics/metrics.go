@@ -134,13 +134,14 @@ var PackageSizeRefused = promauto.NewCounterVec(prometheus.CounterOpts{
 }, []string{"ceiling"})
 
 const (
-	RouteImportUpload = "skills_import_upload"
-	RouteImportURL    = "skills_import_url"
-	RouteGenerate     = "skills_generate"
-	RoutePublicSearch = "public_search"
-	RouteCatalog      = "catalog_browse"
-	RouteSuggest      = "criteria_suggest"
-	RouteFeedback     = "feedback"
+	RouteImportUpload  = "skills_import_upload"
+	RouteImportURL     = "skills_import_url"
+	RouteGenerate      = "skills_generate"
+	RoutePublicSearch  = "public_search"
+	RouteSearchReasons = "search_reasons"
+	RouteCatalog       = "catalog_browse"
+	RouteSuggest       = "criteria_suggest"
+	RouteFeedback      = "feedback"
 )
 
 var RateLimited = promauto.NewCounterVec(prometheus.CounterOpts{

@@ -1108,6 +1108,37 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/skills/search/reasons:
+    post:
+      operationId: writeSearchMatchReasons
+      summary: Model-written match reasons for a page of search results (DISC-002)
+      description: |
+        Asked after a search has been shown, so results never wait on the
+        slowest model call. Reads each id's name and summary from the public
+        catalog (the same scope as GET /api/skills/search) and asks the model why
+        each matches `query`. Has its own address rate limiter, separate from
+        search, so fetching reasons never costs the user a search. The request
+        body is limited to 16384 bytes.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchMatchReasonsRequest'
+      responses:
+        "200":
+          description: Reasons the model wrote; possibly fewer than requested.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchMatchReasonsResponse'
+        "400":
+          description: Invalid query or skill ids.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /api/skills/catalog:
     get:
       operationId: browseCatalog
@@ -9143,6 +9174,52 @@ components:
             Copy to show with a no-results answer, prompting the user to add the
             task, the input they have and the output they want (DISC-001).
             Absent when there are results, and absent when `filtered_out`.
+        reason_query:
+          type: string
+          description: |
+            Present when model-written match reasons can follow: send it with
+            the result ids to POST /api/skills/search/reasons. It is the text the
+            results were retrieved for, which is the corrected interpretation
+            rather than `query` when the user corrected it. Absent when there are
+            no results, the model service is not configured, or the search was
+            made with `purpose=reference`. Results arrive with template reasons
+            either way, so a page never waits on the model to show them.
+    SearchMatchReasonsRequest:
+      type: object
+      additionalProperties: false
+      required: [query, skill_ids]
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 2000 # one-number: searchMaxQueryRunes
+          description: The `reason_query` of the search these results came from.
+        skill_ids:
+          type: array
+          minItems: 1
+          maxItems: 10
+          uniqueItems: true
+          items: { type: string, format: uuid }
+          description: |
+            Result ids in page order. Names and summaries are read from the
+            public catalog by id, never taken from the caller; an id outside the
+            public catalog gets no reason.
+    SearchMatchReasonsResponse:
+      type: object
+      required: [reasons]
+      properties:
+        reasons:
+          type: array
+          description: |
+            Model-written reasons, for requested ids only. It may cover fewer
+            ids than were sent, including none when the model call failed or
+            timed out; a result without one keeps its template reason.
+          items:
+            type: object
+            required: [skill_id, reason]
+            properties:
+              skill_id: { type: string, format: uuid }
+              reason: { type: string, minLength: 1 }
     SearchResultRisk:
       description: |
         Compact risk hint for a result row (DISC-002 風險提示). Unlike
@@ -9295,7 +9372,8 @@ components:
           type: string
           description: |
             Human-readable explanation of why this skill matches the query
-            (DISC-002). Template-based fallback when LLM polish times out.
+            (DISC-002). A search answers with template reasons; model-written
+            ones come from POST /api/skills/search/reasons and replace them.
         match_reason_source:
           type: string
           enum: [model, template]

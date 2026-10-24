@@ -780,6 +780,113 @@ test("DISC-002: each candidate shows its match reason, labelled by provenance", 
   expect(container.querySelectorAll(".badge-source-unknown")).toHaveLength(0);
 });
 
+function reasonHit(n: number): PublicSearchResult {
+  return {
+    ...HIT_FACETS,
+    skill_id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+    name: `Skill ${n}`,
+    summary: "把 PDF 轉成摘要",
+    summary_source: "model",
+    rank: 0.8,
+    match_reason: `查詢與文件共同出現：pdf ${n}`,
+    match_reason_source: "template",
+  };
+}
+
+function stubSearchThenReasons(search: PublicSearchResponse, reasons: () => Promise<Response>) {
+  const reasonBodies: { query: string; skill_ids: string[] }[] = [];
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const url = String(input);
+    if (url.includes("/api/skills/search/reasons")) {
+      reasonBodies.push(JSON.parse(String(init?.body)));
+      return reasons();
+    }
+    if (url.includes("/api/skills/search")) {
+      return Promise.resolve(new Response(JSON.stringify(search), { status: 200 }));
+    }
+    return Promise.resolve(
+      new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 }),
+    );
+  });
+  return reasonBodies;
+}
+
+test("DISC-002: results show before the model reasons, which then replace the template ones", async () => {
+  const [first, second] = [reasonHit(1), reasonHit(2)];
+  let answer!: (r: Response) => void;
+  const bodies = stubSearchThenReasons(
+    { ...EMPTY, query: "pdf", reason_query: "pdf 摘要", results: [first, second], total: 2 },
+    () => new Promise((resolve) => (answer = resolve)),
+  );
+  await render(<App />);
+  await submitSearch("pdf");
+
+  await waitFor(() => bodies.length === 1);
+  expect(bodies[0]).toEqual({ query: "pdf 摘要", skill_ids: [first.skill_id, second.skill_id] });
+  expect(container.textContent).toContain("查詢與文件共同出現：pdf 1");
+  expect(container.querySelectorAll(".match-reason .badge-source-model")).toHaveLength(0);
+
+  await act(async () =>
+    answer(
+      new Response(
+        JSON.stringify({
+          reasons: [{ skill_id: first.skill_id, reason: "它把 PDF 直接整理成摘要。" }],
+        }),
+        { status: 200 },
+      ),
+    ),
+  );
+  await waitFor(() => container.textContent?.includes("它把 PDF 直接整理成摘要。") ?? false);
+  expect(container.textContent).not.toContain("查詢與文件共同出現：pdf 1");
+  expect(container.textContent).toContain("查詢與文件共同出現：pdf 2");
+  expect(container.querySelectorAll(".match-reason .badge-source-model")).toHaveLength(1);
+  expect(container.querySelectorAll(".match-reason .badge-source-template")).toHaveLength(1);
+});
+
+test("DISC-002: a failed reasons call keeps the template reasons and raises no alert", async () => {
+  const bodies = stubSearchThenReasons(
+    { ...EMPTY, query: "pdf", reason_query: "pdf", results: [reasonHit(1)], total: 1 },
+    () => Promise.resolve(new Response(JSON.stringify({ error: "boom" }), { status: 500 })),
+  );
+  await render(<App />);
+  await submitSearch("pdf");
+
+  await waitFor(() => bodies.length === 1);
+  await act(async () => {});
+  expect(container.textContent).toContain("查詢與文件共同出現：pdf 1");
+  expect(container.querySelectorAll(".match-reason .badge-source-template")).toHaveLength(1);
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+});
+
+test.each([
+  [10, 10],
+  [11, 10],
+])("DISC-002: %i results ask for reasons on the first %i", async (shown, asked) => {
+  const results = Array.from({ length: shown }, (_, i) => reasonHit(i + 1));
+  const bodies = stubSearchThenReasons(
+    { ...EMPTY, query: "pdf", reason_query: "pdf", results, total: shown },
+    () => Promise.resolve(new Response(JSON.stringify({ reasons: [] }), { status: 200 })),
+  );
+  await render(<App />);
+  await submitSearch("pdf");
+
+  await waitFor(() => bodies.length === 1);
+  expect(bodies[0].skill_ids).toEqual(results.slice(0, asked).map((r) => r.skill_id));
+});
+
+test("DISC-002: a search without reason_query never asks for reasons", async () => {
+  const bodies = stubSearchThenReasons(
+    { ...EMPTY, query: "pdf", results: [reasonHit(1)], total: 1 },
+    () => Promise.resolve(new Response(JSON.stringify({ reasons: [] }), { status: 200 })),
+  );
+  await render(<App />);
+  await submitSearch("pdf");
+
+  await waitFor(() => container.textContent?.includes("查詢與文件共同出現：pdf 1") ?? false);
+  await act(async () => {});
+  expect(bodies).toHaveLength(0);
+});
+
 test("DISC-002: a summary with no stated source says so rather than crediting the author", async () => {
   stubSearch({
     ...EMPTY,

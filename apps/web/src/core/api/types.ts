@@ -168,6 +168,11 @@ export interface PublicSearchResponse {
   no_results: boolean;
   filtered_out: boolean;
   query_suggestion?: string;
+  reason_query?: string;
+}
+
+export interface SearchMatchReasons {
+  reasons: { skill_id: string; reason: string }[];
 }
 
 export interface SearchIntent {

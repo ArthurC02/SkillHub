@@ -13,13 +13,6 @@ type CostRecorder interface {
 	RecordCost(ctx context.Context, tx credit.DBTX, e credit.CostEvent) (id string, existed bool, err error)
 }
 
-func (s *Service) recordSearchCost(ctx context.Context, resp *Embeddings) {
-	if resp == nil {
-		return
-	}
-	s.recordCallCost(ctx, credit.KindSearchEmbedding, resp.Model, resp.Usage)
-}
-
 func (s *Service) recordCallCost(ctx context.Context, kind credit.CostKind, model string, u *ModelUsage) {
 	s.recordVersionedCallCost(ctx, kind, model, "", u)
 }

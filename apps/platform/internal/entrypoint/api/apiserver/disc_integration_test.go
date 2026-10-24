@@ -446,6 +446,7 @@ type searchBody struct {
 	Limit           int            `json:"limit"`
 	Truncated       bool           `json:"truncated"`
 	Total           int            `json:"total"`
+	ReasonQuery     string         `json:"reason_query"`
 }
 
 func (c *client) search(t *testing.T, path string) searchBody {
@@ -875,7 +876,7 @@ func TestPartialIndexIsReportedSeparatelyFromDegradation(t *testing.T) {
 	}
 }
 
-func TestMatchReasonsAreLabelledByProvenance(t *testing.T) {
+func TestSearchAnswersWithTemplateReasonsAndNamesTheQueryForModelReasons(t *testing.T) {
 	pool := requireDB(t)
 
 	curator := newAPI(t, pool).login(t, "curator-reasons")
@@ -884,29 +885,98 @@ func TestMatchReasonsAreLabelledByProvenance(t *testing.T) {
 	seedEmbedding(t, pool, published, 11)
 
 	model := newAPIWithLLM(t, pool, stubLLM(t, 11, "it reconciles ledgers, which is what you asked for"))
-	anon := &client{Client: http.DefaultClient, base: model.URL}
-	body := anon.search(t, "/api/skills/search?q=frumious")
+	body := (&client{Client: http.DefaultClient, base: model.URL}).search(t, "/api/skills/search?q=frumious")
 	if len(body.Results) == 0 {
 		t.Fatal("no results to explain")
 	}
-	if got := body.Results[0].MatchReasonSource; got != "model" {
-		t.Fatalf("match_reason_source = %q, want model", got)
-	}
-	if body.Results[0].MatchReason == "" {
-		t.Fatal("model-sourced result carries no reason")
-	}
-
-	tmpl := newAPIWithLLM(t, pool, stubLLM(t, 11, ""))
-	anon = &client{Client: http.DefaultClient, base: tmpl.URL}
-	body = anon.search(t, "/api/skills/search?q=frumious")
-	if len(body.Results) == 0 {
-		t.Fatal("no results to explain on the template path")
-	}
 	if got := body.Results[0].MatchReasonSource; got != "template" {
-		t.Fatalf("match_reason_source = %q, want template", got)
+		t.Fatalf("match_reason_source = %q, want template: a search must not wait on the model", got)
+	}
+	requireInterfaceLanguage(t, "the template match reason", body.Results[0].MatchReason)
+	if body.ReasonQuery != "frumious" {
+		t.Fatalf("reason_query = %q, want the query the results were retrieved for", body.ReasonQuery)
 	}
 
-	requireInterfaceLanguage(t, "the template match reason", body.Results[0].MatchReason)
+	withoutModel := newAPI(t, pool)
+	body = (&client{Client: http.DefaultClient, base: withoutModel.URL}).search(t, "/api/skills/search?q=frumious")
+	if len(body.Results) == 0 || body.ReasonQuery != "" {
+		t.Fatalf("results=%d reason_query=%q: with no model service there is nothing to fetch", len(body.Results), body.ReasonQuery)
+	}
+
+	body = (&client{Client: http.DefaultClient, base: model.URL}).search(t, "/api/skills/search?q=frumious&purpose=reference")
+	if len(body.Results) == 0 || body.ReasonQuery != "" {
+		t.Fatalf("results=%d reason_query=%q: a reference search shows no reasons", len(body.Results), body.ReasonQuery)
+	}
+}
+
+func TestMatchReasonsAnswerOnlyForThePublicCatalog(t *testing.T) {
+	pool := requireDB(t)
+
+	curator := newAPI(t, pool).login(t, "curator-reasons-scope")
+	markCatalog(t, pool, curator.workspaceID)
+	published := seedSkill(t, pool, curator.workspaceID, "frabjous invoice reader")
+	owner := newAPI(t, pool).login(t, "owner-reasons-private")
+	private := seedSkill(t, pool, owner.workspaceID, "frabjous private notes")
+
+	model := newAPIWithLLM(t, pool, stubLLM(t, 11, "it reads invoices"))
+	anon := &client{Client: http.DefaultClient, base: model.URL}
+	status, out := anon.doJSON(t, http.MethodPost, "/api/skills/search/reasons",
+		`{"query":"frabjous","skill_ids":["`+private+`","`+published+`"]}`)
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200: %v", status, out)
+	}
+	reasons, _ := out["reasons"].([]any)
+	if len(reasons) != 1 {
+		t.Fatalf("reasons = %v, want exactly the public skill's", reasons)
+	}
+	got, _ := reasons[0].(map[string]any)
+	if got["skill_id"] != published || got["reason"] != "it reads invoices" {
+		t.Fatalf("reason = %v, want %s with the model's text", got, published)
+	}
+
+	failing := newAPIWithLLM(t, pool, stubLLM(t, 11, ""))
+	status, out = (&client{Client: http.DefaultClient, base: failing.URL}).doJSON(t, http.MethodPost,
+		"/api/skills/search/reasons", `{"query":"frabjous","skill_ids":["`+published+`"]}`)
+	if reasons, _ := out["reasons"].([]any); status != http.StatusOK || reasons == nil || len(reasons) != 0 {
+		t.Fatalf("status=%d body=%v: a failed model call answers an empty list, not an error", status, out)
+	}
+}
+
+func TestMatchReasonsRequestBounds(t *testing.T) {
+	pool := requireDB(t)
+	model := newAPIWithLLM(t, pool, stubLLM(t, 11, "fits"))
+	anon := &client{Client: http.DefaultClient, base: model.URL}
+
+	ids := func(n int) string {
+		out := make([]string, n)
+		for i := range out {
+			out[i] = fmt.Sprintf(`"00000000-0000-4000-8000-%012d"`, i+1)
+		}
+		return "[" + strings.Join(out, ",") + "]"
+	}
+	one := ids(1)
+	cases := []struct {
+		name string
+		body string
+		want int
+	}{
+		{"ten ids", `{"query":"q","skill_ids":` + ids(10) + `}`, http.StatusOK},
+		{"eleven ids", `{"query":"q","skill_ids":` + ids(11) + `}`, http.StatusBadRequest},
+		{"no ids", `{"query":"q","skill_ids":[]}`, http.StatusBadRequest},
+		{"query at 2000 runes", `{"query":"` + strings.Repeat("字", 2000) + `","skill_ids":` + one + `}`, http.StatusOK},
+		{"query at 2001 runes", `{"query":"` + strings.Repeat("字", 2001) + `","skill_ids":` + one + `}`, http.StatusBadRequest},
+		{"blank query", `{"query":"  ","skill_ids":` + one + `}`, http.StatusBadRequest},
+		{"id not a uuid", `{"query":"q","skill_ids":["s1"]}`, http.StatusBadRequest},
+		{"repeated id", `{"query":"q","skill_ids":["00000000-0000-4000-8000-000000000001","00000000-0000-4000-8000-000000000001"]}`, http.StatusBadRequest},
+		{"unknown field", `{"query":"q","skill_ids":` + one + `,"summary":"trust me"}`, http.StatusBadRequest},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if status, out := anon.doJSON(t, http.MethodPost, "/api/skills/search/reasons", c.body); status != c.want {
+				t.Fatalf("status = %d, want %d: %v", status, c.want, out)
+			}
+		})
+	}
 }
 
 func TestBlankQueryReturnsNoResults(t *testing.T) {

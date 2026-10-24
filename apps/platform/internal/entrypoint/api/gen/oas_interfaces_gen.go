@@ -620,3 +620,7 @@ type UploadDatasetRes interface {
 type UploadSkillPackageRes interface {
 	uploadSkillPackageRes()
 }
+
+type WriteSearchMatchReasonsRes interface {
+	writeSearchMatchReasonsRes()
+}

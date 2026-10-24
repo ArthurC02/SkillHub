@@ -8192,6 +8192,7 @@ func (*Error) listPlatformEvaluationGradersRes()   {}
 func (*Error) listSkillVersionsRes()               {}
 func (*Error) publicSearchSkillsRes()              {}
 func (*Error) searchSkillsWithCorrectedIntentRes() {}
+func (*Error) writeSearchMatchReasonsRes()         {}
 
 // One judgement of one run (EVAL-001), and a resource of its own because it answers a question `Run`
 // does not. `Run.status` records what happened during execution; `Evaluation.overall` records whether
@@ -24900,6 +24901,12 @@ type PublicSearchResponse struct {
 	// Copy to show with a no-results answer, prompting the user to add the task, the input they have and
 	// the output they want (DISC-001). Absent when there are results, and absent when `filtered_out`.
 	QuerySuggestion OptString `json:"query_suggestion"`
+	// Present when model-written match reasons can follow: send it with the result ids to POST
+	// /api/skills/search/reasons. It is the text the results were retrieved for, which is the corrected
+	// interpretation rather than `query` when the user corrected it. Absent when there are no results, the
+	// model service is not configured, or the search was made with `purpose=reference`. Results arrive
+	// with template reasons either way, so a page never waits on the model to show them.
+	ReasonQuery OptString `json:"reason_query"`
 }
 
 // GetQuery returns the value of Query.
@@ -24962,6 +24969,11 @@ func (s *PublicSearchResponse) GetQuerySuggestion() OptString {
 	return s.QuerySuggestion
 }
 
+// GetReasonQuery returns the value of ReasonQuery.
+func (s *PublicSearchResponse) GetReasonQuery() OptString {
+	return s.ReasonQuery
+}
+
 // SetQuery sets the value of Query.
 func (s *PublicSearchResponse) SetQuery(val string) {
 	s.Query = val
@@ -25020,6 +25032,11 @@ func (s *PublicSearchResponse) SetFilteredOut(val bool) {
 // SetQuerySuggestion sets the value of QuerySuggestion.
 func (s *PublicSearchResponse) SetQuerySuggestion(val OptString) {
 	s.QuerySuggestion = val
+}
+
+// SetReasonQuery sets the value of ReasonQuery.
+func (s *PublicSearchResponse) SetReasonQuery(val OptString) {
+	s.ReasonQuery = val
 }
 
 func (*PublicSearchResponse) publicSearchSkillsRes()              {}
@@ -25081,8 +25098,8 @@ type PublicSearchResult struct {
 	// latest saved version, which is the import that scanned it. Versions are immutable, so this cannot
 	// drift from the content it describes. Absent for a skill with no saved version.
 	VerifiedAt OptDateTime `json:"verified_at"`
-	// Human-readable explanation of why this skill matches the query (DISC-002). Template-based fallback
-	// when LLM polish times out.
+	// Human-readable explanation of why this skill matches the query (DISC-002). A search answers with
+	// template reasons; model-written ones come from POST /api/skills/search/reasons and replace them.
 	MatchReason OptString `json:"match_reason"`
 	// Provenance of match_reason. Model-generated content needs to be labelled, so the UI can mark it as
 	// such. `template` reasons are assembled from the query/document lexical overlap, or state plainly
@@ -30470,6 +30487,79 @@ func (s *SearchInterpretationStatus) UnmarshalText(data []byte) error {
 
 type SearchKeywords []string
 
+// Ref: #/components/schemas/SearchMatchReasonsRequest
+type SearchMatchReasonsRequest struct {
+	// The `reason_query` of the search these results came from.
+	Query string `json:"query"`
+	// Result ids in page order. Names and summaries are read from the public catalog by id, never taken
+	// from the caller; an id outside the public catalog gets no reason.
+	SkillIds []uuid.UUID `json:"skill_ids"`
+}
+
+// GetQuery returns the value of Query.
+func (s *SearchMatchReasonsRequest) GetQuery() string {
+	return s.Query
+}
+
+// GetSkillIds returns the value of SkillIds.
+func (s *SearchMatchReasonsRequest) GetSkillIds() []uuid.UUID {
+	return s.SkillIds
+}
+
+// SetQuery sets the value of Query.
+func (s *SearchMatchReasonsRequest) SetQuery(val string) {
+	s.Query = val
+}
+
+// SetSkillIds sets the value of SkillIds.
+func (s *SearchMatchReasonsRequest) SetSkillIds(val []uuid.UUID) {
+	s.SkillIds = val
+}
+
+// Ref: #/components/schemas/SearchMatchReasonsResponse
+type SearchMatchReasonsResponse struct {
+	// Model-written reasons, for requested ids only. It may cover fewer ids than were sent, including none
+	// when the model call failed or timed out; a result without one keeps its template reason.
+	Reasons []SearchMatchReasonsResponseReasonsItem `json:"reasons"`
+}
+
+// GetReasons returns the value of Reasons.
+func (s *SearchMatchReasonsResponse) GetReasons() []SearchMatchReasonsResponseReasonsItem {
+	return s.Reasons
+}
+
+// SetReasons sets the value of Reasons.
+func (s *SearchMatchReasonsResponse) SetReasons(val []SearchMatchReasonsResponseReasonsItem) {
+	s.Reasons = val
+}
+
+func (*SearchMatchReasonsResponse) writeSearchMatchReasonsRes() {}
+
+type SearchMatchReasonsResponseReasonsItem struct {
+	SkillID uuid.UUID `json:"skill_id"`
+	Reason  string    `json:"reason"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *SearchMatchReasonsResponseReasonsItem) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetReason returns the value of Reason.
+func (s *SearchMatchReasonsResponseReasonsItem) GetReason() string {
+	return s.Reason
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *SearchMatchReasonsResponseReasonsItem) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetReason sets the value of Reason.
+func (s *SearchMatchReasonsResponseReasonsItem) SetReason(val string) {
+	s.Reason = val
+}
+
 // Compact risk hint for a result row (DISC-002 風險提示). Unlike `SkillRisk` on the detail view
 // this is read from the search projection, not from a fresh scan of the package, so it carries counts
 // and flags but no verbatim findings — open the skill for those. There is deliberately no "safe"
@@ -34672,6 +34762,7 @@ func (*TooManyRequestsHeaders) searchSkillsWithCorrectedIntentRes()   {}
 func (*TooManyRequestsHeaders) submitFeedbackRes()                    {}
 func (*TooManyRequestsHeaders) suggestAcceptanceCriteriaRes()         {}
 func (*TooManyRequestsHeaders) uploadSkillPackageRes()                {}
+func (*TooManyRequestsHeaders) writeSearchMatchReasonsRes()           {}
 
 // Ref: #/components/schemas/TraceAdvanced
 type TraceAdvanced struct {

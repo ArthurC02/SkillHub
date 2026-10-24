@@ -139,6 +139,7 @@ func mountCatalogRoutes(mux *http.ServeMux, d Deps) {
 
 	mux.HandleFunc("GET /api/skills/search", auth.OptionalSession(limited(d, metrics.RoutePublicSearch, d.Search.PublicSearch)))
 	mux.HandleFunc("POST /api/skills/search", auth.OptionalSession(limited(d, metrics.RoutePublicSearch, d.Search.CorrectedSearch)))
+	mux.HandleFunc("POST /api/skills/search/reasons", auth.OptionalSession(limited(d, metrics.RouteSearchReasons, d.Search.PublicMatchReasons)))
 
 	mux.HandleFunc("GET /api/skills/catalog", auth.OptionalSession(limited(d, metrics.RouteCatalog, httpx.Revalidated(httpx.SharedBriefly, d.Search.BrowseCatalog))))
 

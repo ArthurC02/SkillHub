@@ -79,6 +79,8 @@ const (
 	SearchIntentToolsMaxLength                                = 2000
 	SearchKeywordsItemMaxLength                               = 128
 	SearchKeywordsMaxItems                                    = 8
+	SearchMatchReasonsRequestQueryMaxLength                   = 2000
+	SearchMatchReasonsRequestSkillIdsMaxItems                 = 10
 	SearchSkillsLimitMaximum                                  = 100
 	SetContinuationRoundsBodyNoteMaxLength                    = 1000
 	SetContinuationRoundsBodyRoundsMaximum                    = 10

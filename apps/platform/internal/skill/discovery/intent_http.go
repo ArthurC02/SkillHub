@@ -5,11 +5,83 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"unicode/utf8"
+
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
 const maxCorrectedSearchBytes = 128 << 10
+
+const maxMatchReasonsBytes = 16 << 10
+
+type matchReasonsRequest struct {
+	Query    string   `json:"query"`
+	SkillIDs []string `json:"skill_ids"`
+}
+
+type matchReasonView struct {
+	SkillID string `json:"skill_id"`
+	Reason  string `json:"reason"`
+}
+
+type matchReasonsResponse struct {
+	Reasons []matchReasonView `json:"reasons"`
+}
+
+func (h *Handler) PublicMatchReasons(w http.ResponseWriter, r *http.Request) {
+	var body matchReasonsRequest
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxMatchReasonsBytes))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&body); err != nil || decoder.Decode(new(any)) != io.EOF {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid match reasons request")
+		return
+	}
+	query := strings.TrimSpace(body.Query)
+	if query == "" || utf8.RuneCountInString(query) > limits.SearchMatchReasonsRequestQueryMaxLength {
+		httpx.WriteError(w, http.StatusBadRequest, "query must contain between 1 and 2000 characters")
+		return
+	}
+	ids, msg := distinctSkillIDs(body.SkillIDs)
+	if msg != "" {
+		httpx.WriteError(w, http.StatusBadRequest, msg)
+		return
+	}
+	reasons, err := h.Svc.MatchReasonsFor(r.Context(), query, ids)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "推薦理由讀取失敗，結果不受影響")
+		return
+	}
+	views := make([]matchReasonView, 0, len(reasons))
+	for _, reason := range reasons {
+		if reason.Reason != "" {
+			views = append(views, matchReasonView(reason))
+		}
+	}
+	httpx.WriteJSON(w, http.StatusOK, matchReasonsResponse{Reasons: views})
+}
+
+func distinctSkillIDs(raw []string) ([]pgtype.UUID, string) {
+	if len(raw) < 1 || len(raw) > limits.SearchMatchReasonsRequestSkillIdsMaxItems {
+		return nil, "skill_ids must list between 1 and 10 ids"
+	}
+	ids := make([]pgtype.UUID, 0, len(raw))
+	seen := make(map[pgtype.UUID]bool, len(raw))
+	for _, s := range raw {
+		var id pgtype.UUID
+		if err := id.Scan(s); err != nil {
+			return nil, "skill_ids must be UUIDs"
+		}
+		if seen[id] {
+			return nil, "skill_ids must not repeat"
+		}
+		seen[id] = true
+		ids = append(ids, id)
+	}
+	return ids, ""
+}
 
 type correctedSearchRequest struct {
 	Query    string             `json:"query"`
@@ -67,6 +139,7 @@ func (h *Handler) writeSearchResult(w http.ResponseWriter, query string, limit i
 		Degraded: out.DegradedReason != "", DegradedReason: out.DegradedReason,
 		PartialIndex: anyUnranked(out.Hits), FilteredOut: out.FilteredOut,
 		Limit: limit, Truncated: out.Truncated, Total: out.Total,
+		ReasonQuery: out.ReasonQuery,
 	}
 	if len(out.Hits) == 0 && !out.FilteredOut {
 		resp.NoResults = true

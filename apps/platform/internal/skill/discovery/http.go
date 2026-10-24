@@ -340,6 +340,8 @@ type searchResponse struct {
 	QuerySuggestion string `json:"query_suggestion,omitempty"`
 
 	FilteredOut bool `json:"filtered_out"`
+
+	ReasonQuery string `json:"reason_query,omitempty"`
 }
 
 func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {

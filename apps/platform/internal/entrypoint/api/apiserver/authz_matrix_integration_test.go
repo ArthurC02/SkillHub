@@ -51,6 +51,7 @@ var anonymousRoutes = []anonCase{
 	{pattern: "GET /readyz", want: http.StatusOK},
 	{pattern: "GET /api/skills/search", query: "?q=anything", want: http.StatusOK},
 	{pattern: "POST /api/skills/search", want: http.StatusBadRequest},
+	{pattern: "POST /api/skills/search/reasons", want: http.StatusBadRequest},
 
 	{pattern: "GET /api/skills/catalog", want: http.StatusOK},
 

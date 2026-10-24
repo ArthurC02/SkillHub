@@ -149,7 +149,8 @@ export interface PublicSearchResult {
     verifiedAt?: Date;
     /**
      * Human-readable explanation of why this skill matches the query
-     * (DISC-002). Template-based fallback when LLM polish times out.
+     * (DISC-002). A search answers with template reasons; model-written
+     * ones come from POST /api/skills/search/reasons and replace them.
      * 
      */
     matchReason?: string;

@@ -6,6 +6,8 @@ export {
   useCatalog,
   useCatalogTotal,
   useCorrectedSkillSearch,
+  useMatchReasons,
+  withMatchReasons,
   isSkillAlreadyGone,
   unreadableSkillSentence,
   useDeleteSkill,

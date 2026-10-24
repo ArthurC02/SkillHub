@@ -560,6 +560,7 @@ func TestCorrectedPublicSearchUsesUserFieldsWithoutCallingRewriter(t *testing.T)
 	var body struct {
 		Query          string                       `json:"query"`
 		Interpretation catalog.SearchInterpretation `json:"interpretation"`
+		ReasonQuery    string                       `json:"reason_query"`
 		Results        []struct {
 			SkillID string `json:"skill_id"`
 		} `json:"results"`
@@ -567,7 +568,12 @@ func TestCorrectedPublicSearchUsesUserFieldsWithoutCallingRewriter(t *testing.T)
 	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
 		t.Fatal(err)
 	}
-	if res.StatusCode != http.StatusOK || body.Query != "原本的請求" || body.Interpretation.Status != "corrected" || analyses.Load() != 0 || embeddings.Load() != 1 || reasons.Load() != 1 || len(body.Results) != 1 || body.Results[0].SkillID != id {
-		t.Fatalf("status=%d analyses=%d embeddings=%d response=%+v", res.StatusCode, analyses.Load(), embeddings.Load(), body)
+	if res.StatusCode != http.StatusOK || body.Query != "原本的請求" || body.Interpretation.Status != "corrected" || analyses.Load() != 0 || embeddings.Load() != 1 || reasons.Load() != 0 || len(body.Results) != 1 || body.Results[0].SkillID != id || body.ReasonQuery != "invoice CSV" {
+		t.Fatalf("status=%d analyses=%d embeddings=%d reasons=%d response=%+v", res.StatusCode, analyses.Load(), embeddings.Load(), reasons.Load(), body)
+	}
+	status, _ := (&client{Client: http.DefaultClient, base: a.URL}).doJSON(t, http.MethodPost, "/api/skills/search/reasons",
+		`{"query":"`+body.ReasonQuery+`","skill_ids":["`+id+`"]}`)
+	if status != http.StatusOK || reasons.Load() != 1 {
+		t.Fatalf("reasons status=%d calls=%d, want one call written for the corrected fields", status, reasons.Load())
 	}
 }

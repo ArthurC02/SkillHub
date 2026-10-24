@@ -34,6 +34,12 @@ export const queryKeys = {
       ...filterKey(filters),
       purpose ?? "",
     ],
+    matchReasons: (query: string, skillIds: string[]) => [
+      "skills",
+      "match-reasons",
+      query,
+      ...skillIds,
+    ],
     catalog: (filters: SearchFilters) => ["skills", "catalog", ...filterKey(filters)],
     catalogTotal: (filters: SearchFilters) => ["skills", "catalog", "total", ...filterKey(filters)],
     detail: (skillId: string) => ["skills", skillId],

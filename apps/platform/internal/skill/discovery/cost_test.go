@@ -134,7 +134,7 @@ func TestMatchReasonsRecordOneCostEventOfTheirOwnKind(t *testing.T) {
 	}), Credit: ledger}
 
 	s.matchReasons(context.Background(), "read my invoices",
-		[]searchResult{{SkillID: "s1", Name: "invoice-parser", Summary: "reads invoices"}})
+		[]SkillCandidate{{SkillID: "s1", Name: "invoice-parser", Summary: "reads invoices"}})
 
 	if len(ledger.events) != 1 {
 		t.Fatalf("cost events = %d, want exactly 1", len(ledger.events))
@@ -168,7 +168,7 @@ func TestARepeatedSearchRecordsCostOnlyForTheCallsThatReachedTheModel(t *testing
 		{"embedding", credit.KindSearchEmbedding, func(s *Service) { _, _ = s.embedQuery(context.Background(), "invoice to table") },
 			func(t *testing.T) Model { return embedServer(t, usage) }},
 		{"match reasons", credit.KindMatchReasons, func(s *Service) {
-			s.matchReasons(context.Background(), "invoice to table", []searchResult{{SkillID: "s1", Name: "invoice-parser"}})
+			s.matchReasons(context.Background(), "invoice to table", []SkillCandidate{{SkillID: "s1", Name: "invoice-parser"}})
 		}, func(t *testing.T) Model { return matchReasonsServer(t, usage) }},
 		{"intent", credit.KindSearchIntent, func(s *Service) {
 			s.interpret(context.Background(), "CSV", searchFilters{}, searchByPerson)

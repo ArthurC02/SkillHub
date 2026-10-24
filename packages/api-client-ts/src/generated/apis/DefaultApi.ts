@@ -684,6 +684,16 @@ import {
     SandboxTraceEventToJSON,
 } from '../models/SandboxTraceEvent';
 import {
+    type SearchMatchReasonsRequest,
+    SearchMatchReasonsRequestFromJSON,
+    SearchMatchReasonsRequestToJSON,
+} from '../models/SearchMatchReasonsRequest';
+import {
+    type SearchMatchReasonsResponse,
+    SearchMatchReasonsResponseFromJSON,
+    SearchMatchReasonsResponseToJSON,
+} from '../models/SearchMatchReasonsResponse';
+import {
     type SearchSkills200Response,
     SearchSkills200ResponseFromJSON,
     SearchSkills200ResponseToJSON,
@@ -2180,6 +2190,13 @@ export interface UploadSkillPackageRequest {
      * 
      */
     body: Blob;
+}
+
+export interface WriteSearchMatchReasonsRequest {
+    /**
+     * 
+     */
+    searchMatchReasonsRequest: SearchMatchReasonsRequest;
 }
 
 /**
@@ -6115,6 +6132,30 @@ export interface DefaultApiInterface {
      * Import a skill package by uploading a zip archive (SKILL-001)
      */
     uploadSkillPackage(requestParameters: UploadSkillPackageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ImportResult>;
+
+    /**
+     * Creates request options for writeSearchMatchReasons without sending the request
+     * @param {SearchMatchReasonsRequest} searchMatchReasonsRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    writeSearchMatchReasonsRequestOpts(requestParameters: WriteSearchMatchReasonsRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Asked after a search has been shown, so results never wait on the slowest model call. Reads each id\'s name and summary from the public catalog (the same scope as GET /api/skills/search) and asks the model why each matches `query`. Has its own address rate limiter, separate from search, so fetching reasons never costs the user a search. The request body is limited to 16384 bytes. 
+     * @summary Model-written match reasons for a page of search results (DISC-002)
+     * @param {SearchMatchReasonsRequest} searchMatchReasonsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    writeSearchMatchReasonsRaw(requestParameters: WriteSearchMatchReasonsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SearchMatchReasonsResponse>>;
+
+    /**
+     * Asked after a search has been shown, so results never wait on the slowest model call. Reads each id\'s name and summary from the public catalog (the same scope as GET /api/skills/search) and asks the model why each matches `query`. Has its own address rate limiter, separate from search, so fetching reasons never costs the user a search. The request body is limited to 16384 bytes. 
+     * Model-written match reasons for a page of search results (DISC-002)
+     */
+    writeSearchMatchReasons(requestParameters: WriteSearchMatchReasonsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SearchMatchReasonsResponse>;
 
 }
 
@@ -13994,6 +14035,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async uploadSkillPackage(requestParameters: UploadSkillPackageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ImportResult> {
         const response = await this.uploadSkillPackageRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for writeSearchMatchReasons without sending the request
+     */
+    async writeSearchMatchReasonsRequestOpts(requestParameters: WriteSearchMatchReasonsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['searchMatchReasonsRequest'] == null) {
+            throw new runtime.RequiredError(
+                'searchMatchReasonsRequest',
+                'Required parameter "searchMatchReasonsRequest" was null or undefined when calling writeSearchMatchReasons().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/skills/search/reasons`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SearchMatchReasonsRequestToJSON(requestParameters['searchMatchReasonsRequest']),
+        };
+    }
+
+    /**
+     * Asked after a search has been shown, so results never wait on the slowest model call. Reads each id\'s name and summary from the public catalog (the same scope as GET /api/skills/search) and asks the model why each matches `query`. Has its own address rate limiter, separate from search, so fetching reasons never costs the user a search. The request body is limited to 16384 bytes. 
+     * Model-written match reasons for a page of search results (DISC-002)
+     */
+    async writeSearchMatchReasonsRaw(requestParameters: WriteSearchMatchReasonsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SearchMatchReasonsResponse>> {
+        const requestOptions = await this.writeSearchMatchReasonsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SearchMatchReasonsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Asked after a search has been shown, so results never wait on the slowest model call. Reads each id\'s name and summary from the public catalog (the same scope as GET /api/skills/search) and asks the model why each matches `query`. Has its own address rate limiter, separate from search, so fetching reasons never costs the user a search. The request body is limited to 16384 bytes. 
+     * Model-written match reasons for a page of search results (DISC-002)
+     */
+    async writeSearchMatchReasons(requestParameters: WriteSearchMatchReasonsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SearchMatchReasonsResponse> {
+        const response = await this.writeSearchMatchReasonsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

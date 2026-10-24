@@ -157,6 +157,17 @@ export interface PublicSearchResponse {
      * 
      */
     querySuggestion?: string;
+    /**
+     * Present when model-written match reasons can follow: send it with
+     * the result ids to POST /api/skills/search/reasons. It is the text the
+     * results were retrieved for, which is the corrected interpretation
+     * rather than `query` when the user corrected it. Absent when there are
+     * no results, the model service is not configured, or the search was
+     * made with `purpose=reference`. Results arrive with template reasons
+     * either way, so a page never waits on the model to show them.
+     * 
+     */
+    reasonQuery?: string;
 }
 
 /**
@@ -197,6 +208,7 @@ export function PublicSearchResponseFromJSONTyped(json: any, ignoreDiscriminator
         'noResults': json['no_results'],
         'filteredOut': json['filtered_out'],
         'querySuggestion': json['query_suggestion'] == null ? undefined : json['query_suggestion'],
+        'reasonQuery': json['reason_query'] == null ? undefined : json['reason_query'],
     };
 }
 
@@ -223,6 +235,7 @@ export function PublicSearchResponseToJSONTyped(value?: PublicSearchResponse | n
         'no_results': value['noResults'],
         'filtered_out': value['filteredOut'],
         'query_suggestion': value['querySuggestion'],
+        'reason_query': value['reasonQuery'],
     };
 }
 
