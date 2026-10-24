@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.1.1
+
+### Changed
+
+- The reader behind `describe-table --queries` is split into `sql_statements_under`, which reads a directory of `.sql` files once, and `statements_naming`, which matches one table against what was read, so a tool that measures every table reads the query files once instead of once per table; `describe-table` prints the same `queries`.
+
 ## 4.1.0
 
 ### Added

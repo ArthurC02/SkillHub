@@ -63,6 +63,12 @@ DEFAULT_CONVENTIONS = Conventions.from_policy(None)
 
 
 @dataclass(frozen=True)
+class Statement:
+    at: str
+    text: str
+
+
+@dataclass(frozen=True)
 class ValueList:
     values: list[str]
     null_decided: bool
@@ -117,18 +123,24 @@ def _undescribed(table: Table) -> list[str]:
 
 
 def queries_naming(queries_dir: Path, repo_root: Path, table: str, columns: list[str]) -> list[dict[str, Any]]:
-    names = re.compile(rf"\b(?:FROM|JOIN|INTO|UPDATE)\s+(?:ONLY\s+)?(?:{IDENT}\.)?{re.escape(table)}\b", re.I)
-    patterns = {column: re.compile(rf"\b{re.escape(column)}\b") for column in columns}
+    return statements_naming(sql_statements_under(queries_dir, repo_root), table, columns)
+
+
+def sql_statements_under(queries_dir: Path, repo_root: Path) -> list[Statement]:
     found = []
     for path in sorted(queries_dir.rglob("*.sql")):
         file = path.resolve().relative_to(repo_root.resolve()).as_posix()
         for line, statement in statements(path.read_text(encoding="utf-8")):
-            text = STRING_LITERAL.sub("''", strip_comments(statement))
-            if names.search(text):
-                verb = next((word for _, word in top_level_words(text) if word in VERBS), None)
-                found.append({"at": f"{file}:{line}", "verb": verb,
-                              "columns": [column for column, pattern in patterns.items() if pattern.search(text)]})
+            found.append(Statement(f"{file}:{line}", STRING_LITERAL.sub("''", strip_comments(statement))))
     return found
+
+
+def statements_naming(read: list[Statement], table: str, columns: list[str]) -> list[dict[str, Any]]:
+    names = re.compile(rf"\b(?:FROM|JOIN|INTO|UPDATE)\s+(?:ONLY\s+)?(?:{IDENT}\.)?{re.escape(table)}\b", re.I)
+    patterns = {column: re.compile(rf"\b{re.escape(column)}\b") for column in columns}
+    return [{"at": statement.at, "verb": next((word for _, word in top_level_words(statement.text) if word in VERBS), None),
+             "columns": [column for column, pattern in patterns.items() if pattern.search(statement.text)]}
+            for statement in read if names.search(statement.text)]
 
 
 def _did_you_mean(name: str, tables: dict[str, Table]) -> str:

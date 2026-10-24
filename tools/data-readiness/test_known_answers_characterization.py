@@ -124,6 +124,7 @@ def test_grading_ignores_case_order_and_whitespace_but_not_content():
     assert not ka.correct(["a", "b"], "a") and not ka.correct("runs", ["runs"])
     assert not ka.correct("none", "users")
     assert not ka.correct("yes", "no")
+    assert ka.correct(["run", "skill_version"], '["skill_version", "run"]') and not ka.correct(["run"], '["run", "x"]')
 
 
 def test_asking_sends_the_catalog_for_a_question_without_tables_and_the_described_tables_otherwise():

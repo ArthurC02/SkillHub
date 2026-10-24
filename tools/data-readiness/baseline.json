@@ -1,11 +1,11 @@
 {
   "inventory": {
-    "migrations": 143,
+    "migrations": 144,
     "tables": 73,
     "partitions": 4,
     "columns": 665,
     "queries": 520,
-    "constraints": 280,
+    "constraints": 301,
     "foreign_keys": 129,
     "types": 2,
     "registry_records": 752,
@@ -38,6 +38,11 @@
       "denominator": 73,
       "ratio": 0.151
     },
+    "meaning.queried_columns_described": {
+      "numerator": 568,
+      "denominator": 568,
+      "ratio": 1.0
+    },
     "ownership.tables_with_exactly_one_declared_owner": {
       "numerator": 72,
       "denominator": 73,
@@ -65,7 +70,7 @@
     },
     "rules.constraints_cited_by_a_record": {
       "numerator": 2,
-      "denominator": 270,
+      "denominator": 290,
       "ratio": 0.007
     },
     "rules.foreign_keys_inside_one_context": {
@@ -100,7 +105,7 @@
     },
     "provenance.migrations_cited_by_a_record": {
       "numerator": 2,
-      "denominator": 143,
+      "denominator": 144,
       "ratio": 0.014
     },
     "provenance.immutable_tables_known_to_registry": {

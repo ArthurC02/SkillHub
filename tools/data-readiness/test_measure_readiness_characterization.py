@@ -55,7 +55,7 @@ WITH recent AS (SELECT id FROM runs)
 SELECT * FROM recent JOIN users ON users.id = recent.id JOIN nowhere ON true;
 
 -- name: MarkDone :exec
-UPDATE runs SET state = 'done' WHERE id = $1;
+UPDATE runs SET state = 'done', note = 'closed' WHERE id = $1;
 """
 
 QUERIES_IDENTITY = """-- name: CreateUser :one
@@ -439,6 +439,16 @@ def with_extra_migration(root: Path, sql: str, owners: str | None = None) -> dic
     if owners is not None:
         (root / "db" / "query-owners.yaml").write_text(owners, encoding="utf-8")
     return mr.measure(mr.read_inputs(root, root / "docs" / "domain-memory"))
+
+
+def test_a_queried_column_counts_as_described_only_by_comment_on_and_an_exempt_column_is_not_counted():
+    inputs, report = measured()
+    assert inputs.queried == {"runs": {"id", "state", "note"}, "users": {"id"}}
+    assert ratio(report, "meaning.queried_columns_described") == (0, 2)
+    assert report["details"]["queried_columns_undescribed"] == ["runs.note", "runs.state"]
+    with tempfile.TemporaryDirectory() as root:
+        explained = with_extra_migration(Path(root), "COMMENT ON COLUMN runs.state IS 'queued or done';\n")
+    assert (ratio(explained, "meaning.queried_columns_described"), explained["details"]["queried_columns_undescribed"]) == ((1, 2), ["runs.note"])
 
 
 def test_an_enum_column_counts_as_explained_only_when_its_comment_names_every_allowed_value():
