@@ -2661,8 +2661,8 @@ test("admin trend topics jump to the requested chart group on a phone", async ({
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto("/admin/trends?days=30");
   await expect(page.getByText("2026-08-14 到 2026-09-12（UTC），共 30 天。")).toBeVisible();
-  const readStatus = page.locator("p.note").filter({ hasText: "已取得 5/5 組 ·" });
-  await expect(readStatus.getByRole("button", { name: "重新整理五組趨勢" })).toBeVisible();
+  const readStatus = page.locator("p.note").filter({ hasText: "已取得 6/6 組 ·" });
+  await expect(readStatus.getByRole("button", { name: "重新整理六組趨勢" })).toBeVisible();
   expect((await readStatus.boundingBox())!.height).toBeLessThanOrEqual(48);
 
   const topics = page.getByRole("navigation", { name: "趨勢主題" });

@@ -108,9 +108,6 @@ function TrendTopics() {
       <a className="chip" href="#admin-trend-funnel">
         漏斗
       </a>
-      <a className="chip" href="#admin-trend-journeys">
-        搜尋到下載
-      </a>
     </nav>
   );
 }
