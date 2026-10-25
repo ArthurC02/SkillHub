@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { LiftedNotes } from "./FacetNotes.model";
-import type { PublicSearchResult } from "../../../../core/api/types";
+import type { ReasonedSearchResult } from "../../../../core/api/types";
 import { ResultFacets } from "./ResultFacets";
 import "./SearchResultRow.css";
 
@@ -13,7 +13,7 @@ export function SearchResultRow({
   compactFacets = false,
   lifted = {},
 }: {
-  hit: PublicSearchResult;
+  hit: ReasonedSearchResult;
   checked: boolean;
   atLimit: boolean;
   onToggle: (skillId: string) => void;
@@ -67,7 +67,14 @@ export function SearchResultRow({
       </p>
       {hit.match_reason && (
         <p className="match-reason">
-          符合原因：{hit.match_reason}
+          {hit.match_fits === false ? (
+            <>
+              <span className="badge badge-warning">可能不合用</span>{" "}
+            </>
+          ) : (
+            "符合原因："
+          )}
+          {hit.match_reason}
           {hit.match_reason_source === "model" && (
             <span className="badge badge-source-model" title="這段說明由模型產生，未經人工核對">
               AI 產生

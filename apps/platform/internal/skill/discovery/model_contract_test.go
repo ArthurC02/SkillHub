@@ -138,6 +138,35 @@ func TestTheAdapterCarriesEveryCandidateOntoTheWire(t *testing.T) {
 	}
 }
 
+func TestOnlyAnExplicitMisfitJudgementMarksAReasonAsNotFitting(t *testing.T) {
+	no, yes := false, true
+	for _, tc := range []struct {
+		name string
+		fits *bool
+		want bool
+	}{
+		{"judged not to fit", &no, false},
+		{"judged to fit", &yes, true},
+		{"no judgement from an older model service", nil, true},
+	} {
+		model := modelOverAWireServer(t, "/match-reasons",
+			llmclient.MatchReasonsResponse{
+				Reasons: []llmclient.MatchReason{{SkillID: "s1", Reason: "it reads invoices", Fits: tc.fits}},
+				Model:   "reason-1",
+			}, new([]byte))
+
+		got, err := model.MatchReasons(context.Background(), "invoice totals", []SkillCandidate{
+			{SkillID: "s1", Name: "invoice reader", Summary: "reads invoices"},
+		}, 7*time.Second)
+		if err != nil {
+			t.Fatalf("%s: asking for match reasons: %v", tc.name, err)
+		}
+		if len(got.Reasons) != 1 || got.Reasons[0].Fits != tc.want {
+			t.Errorf("%s: reasons = %+v, want fits=%v", tc.name, got.Reasons, tc.want)
+		}
+	}
+}
+
 func TestAnAbsentModelDoesNotReachTheCatalogLookingPresent(t *testing.T) {
 	var unconfigured *llmclient.Client
 

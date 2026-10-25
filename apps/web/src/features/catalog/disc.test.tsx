@@ -843,6 +843,43 @@ test("DISC-002: results show before the model reasons, which then replace the te
   expect(container.querySelectorAll(".match-reason .badge-source-template")).toHaveLength(1);
 });
 
+test("DISC-002: a result the model judges unfit is labelled in place, never moved", async () => {
+  const hits = [reasonHit(1), reasonHit(2), reasonHit(3)];
+  stubSearchThenReasons(
+    { ...EMPTY, query: "pdf", reason_query: "pdf", results: hits, total: 3 },
+    () =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            reasons: [
+              { skill_id: hits[0].skill_id, reason: "它處理試算表，不讀 PDF。", fits: false },
+              { skill_id: hits[1].skill_id, reason: "它把 PDF 直接整理成摘要。", fits: true },
+              { skill_id: hits[2].skill_id, reason: "它也能讀 PDF。" },
+            ],
+          }),
+          { status: 200 },
+        ),
+      ),
+  );
+  await render(<App />);
+  await submitSearch("pdf");
+
+  await waitFor(() => container.textContent?.includes("它處理試算表，不讀 PDF。") ?? false);
+  const rows = [...container.querySelectorAll(".search-result")];
+  expect(rows.map((row) => row.querySelector("a")?.textContent)).toEqual([
+    "Skill 1",
+    "Skill 2",
+    "Skill 3",
+  ]);
+  const reasons = rows.map((row) => row.querySelector(".match-reason"));
+  expect(reasons[0]?.querySelector(".badge-warning")?.textContent).toBe("可能不合用");
+  expect(reasons[0]?.textContent).not.toContain("符合原因：");
+  for (const fitting of reasons.slice(1)) {
+    expect(fitting?.querySelector(".badge-warning")).toBeNull();
+    expect(fitting?.textContent).toContain("符合原因：");
+  }
+});
+
 test("DISC-002: a failed reasons call keeps the template reasons and raises no alert", async () => {
   const bodies = stubSearchThenReasons(
     { ...EMPTY, query: "pdf", reason_query: "pdf", results: [reasonHit(1)], total: 1 },

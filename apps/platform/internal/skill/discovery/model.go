@@ -36,6 +36,7 @@ type SkillCandidate struct {
 type MatchReason struct {
 	SkillID string
 	Reason  string
+	Fits    bool
 }
 
 type MatchReasons struct {

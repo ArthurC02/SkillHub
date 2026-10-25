@@ -62,7 +62,7 @@ func (a modelOverHTTP) MatchReasons(ctx context.Context, query string, candidate
 		Usage:   usageFromWire(resp.Usage),
 	}
 	for _, r := range resp.Reasons {
-		out.Reasons = append(out.Reasons, MatchReason{SkillID: r.SkillID, Reason: r.Reason})
+		out.Reasons = append(out.Reasons, MatchReason{SkillID: r.SkillID, Reason: r.Reason, Fits: r.Fits == nil || *r.Fits})
 	}
 	return out, nil
 }

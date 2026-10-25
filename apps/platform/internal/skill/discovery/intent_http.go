@@ -25,6 +25,7 @@ type matchReasonsRequest struct {
 type matchReasonView struct {
 	SkillID string `json:"skill_id"`
 	Reason  string `json:"reason"`
+	Fits    bool   `json:"fits"`
 }
 
 type matchReasonsResponse struct {

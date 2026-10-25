@@ -239,8 +239,8 @@ CANDIDATES = [
 def test_match_reasons_returns_one_reason_per_candidate():
     """The batch call answers for every candidate it was given."""
     body = (
-        '{"reasons": [{"skill_id": "s1", "reason": "it parses invoices"}, '
-        '{"skill_id": "s2", "reason": "it cleans csv"}]}'
+        '{"reasons": [{"skill_id": "s1", "reason": "it parses invoices", "fits": true}, '
+        '{"skill_id": "s2", "reason": "it cleans csv", "fits": false}]}'
     )
     with _stub_chat(body):
         response = client.post(
@@ -248,12 +248,25 @@ def test_match_reasons_returns_one_reason_per_candidate():
         )
 
     assert response.status_code == 200
-    reasons = {r["skill_id"]: r["reason"] for r in response.json()["reasons"]}
-    assert reasons == {"s1": "it parses invoices", "s2": "it cleans csv"}
+    reasons = {r["skill_id"]: (r["reason"], r["fits"]) for r in response.json()["reasons"]}
+    assert reasons == {"s1": ("it parses invoices", True), "s2": ("it cleans csv", False)}
+
+
+def test_match_reasons_drops_an_answer_without_a_fit_judgement():
+    """A reason the model wrote without saying whether the Skill fits is off
+    schema; it must not reach Go, which would have to guess."""
+    body = '{"reasons": [{"skill_id": "s1", "reason": "it parses invoices"}]}'
+    with _stub_chat(body):
+        response = client.post(
+            "/match-reasons", json={"query": "read my invoices", "candidates": CANDIDATES}
+        )
+
+    assert response.status_code == 200
+    assert response.json()["reasons"] == []
 
 
 def test_match_reasons_names_the_model_the_batch_is_billed_to():
-    body = '{"reasons": [{"skill_id": "s1", "reason": "it parses invoices"}]}'
+    body = '{"reasons": [{"skill_id": "s1", "reason": "it parses invoices", "fits": true}]}'
     with _stub_chat(body):
         response = client.post(
             "/match-reasons", json={"query": "read my invoices", "candidates": CANDIDATES}
@@ -266,7 +279,7 @@ def test_match_reasons_names_the_model_the_batch_is_billed_to():
 def test_match_reasons_asks_the_gateway_for_the_shape_it_parses():
     """The schema handed to the gateway and the schema used to parse the
     answer come from the same model, so they cannot drift apart."""
-    body = '{"reasons": [{"skill_id": "s1", "reason": "it parses invoices"}]}'
+    body = '{"reasons": [{"skill_id": "s1", "reason": "it parses invoices", "fits": true}]}'
     sent: list = []
     with _stub_chat(body, sent):
         client.post("/match-reasons", json={"query": "read my invoices", "candidates": CANDIDATES})
@@ -280,7 +293,7 @@ def test_match_reasons_asks_the_gateway_for_the_shape_it_parses():
 def test_match_reasons_returns_a_partial_answer_as_partial():
     """A skipped candidate comes back absent, not filled with a stock sentence:
     the caller labels what it gets here as model-generated."""
-    body = '{"reasons": [{"skill_id": "s1", "reason": "it parses invoices"}]}'
+    body = '{"reasons": [{"skill_id": "s1", "reason": "it parses invoices", "fits": true}]}'
     with _stub_chat(body):
         response = client.post(
             "/match-reasons", json={"query": "read my invoices", "candidates": CANDIDATES}
@@ -293,7 +306,7 @@ def test_match_reasons_returns_a_partial_answer_as_partial():
 def test_match_reasons_rejects_an_off_schema_wrapper():
     """The shape a real gpt-4o-mini produced under json_object. It must not be
     replaced by a template sentence that Go would then label `model`."""
-    body = '{"skills": [{"skill_id": "s1", "reason": "it parses invoices"}]}'
+    body = '{"skills": [{"skill_id": "s1", "reason": "it parses invoices", "fits": true}]}'
     with _stub_chat(body):
         response = client.post(
             "/match-reasons", json={"query": "read my invoices", "candidates": CANDIDATES}
@@ -329,8 +342,8 @@ def test_match_reasons_drops_a_candidate_whose_reason_is_blank():
     recommendation rather than the absence it actually is.
     """
     body = (
-        '{"reasons": [{"skill_id": "s1", "reason": ""}, '
-        '{"skill_id": "s2", "reason": "it cleans csv"}]}'
+        '{"reasons": [{"skill_id": "s1", "reason": "", "fits": true}, '
+        '{"skill_id": "s2", "reason": "it cleans csv", "fits": false}]}'
     )
     with _stub_chat(body):
         response = client.post(

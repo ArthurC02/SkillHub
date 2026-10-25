@@ -178,6 +178,7 @@ type MatchReasonsRequest struct {
 type MatchReason struct {
 	SkillID string `json:"skill_id"`
 	Reason  string `json:"reason"`
+	Fits    *bool  `json:"fits"`
 }
 
 type MatchReasonsResponse struct {

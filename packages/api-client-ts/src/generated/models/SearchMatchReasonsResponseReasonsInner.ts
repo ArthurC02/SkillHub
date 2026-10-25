@@ -27,6 +27,13 @@ export interface SearchMatchReasonsResponseReasonsInner {
      * 
      */
     reason: string;
+    /**
+     * False when the model judges that this result does not do the
+     * task the query describes. The result keeps its place in the
+     * list; the page labels it instead.
+     * 
+     */
+    fits: boolean;
 }
 
 /**
@@ -35,6 +42,7 @@ export interface SearchMatchReasonsResponseReasonsInner {
 export function instanceOfSearchMatchReasonsResponseReasonsInner(value: object): value is SearchMatchReasonsResponseReasonsInner {
     if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
     if (!('reason' in value) || value['reason'] === undefined) return false;
+    if (!('fits' in value) || value['fits'] === undefined) return false;
     return true;
 }
 
@@ -50,6 +58,7 @@ export function SearchMatchReasonsResponseReasonsInnerFromJSONTyped(json: any, i
         
         'skillId': json['skill_id'],
         'reason': json['reason'],
+        'fits': json['fits'],
     };
 }
 
@@ -66,6 +75,7 @@ export function SearchMatchReasonsResponseReasonsInnerToJSONTyped(value?: Search
         
         'skill_id': value['skillId'],
         'reason': value['reason'],
+        'fits': value['fits'],
     };
 }
 

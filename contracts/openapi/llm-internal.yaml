@@ -1045,12 +1045,17 @@ components:
             while the gateway call keeps running and keeps billing.
     MatchReason:
       type: object
-      required: [skill_id, reason]
+      required: [skill_id, reason, fits]
       properties:
         skill_id:
           type: string
         reason:
           type: string
+        fits:
+          type: boolean
+          description: |
+            False when the model judges that this Skill does not do the task the
+            user described. It labels the result; it never reorders it.
     DatasetField:
       type: object
       description: |

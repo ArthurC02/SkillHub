@@ -148,6 +148,10 @@ export interface PublicSearchResult {
   match_reason_source?: MatchReasonSource;
 }
 
+export interface ReasonedSearchResult extends PublicSearchResult {
+  match_fits?: boolean;
+}
+
 export interface CatalogResponse {
   results: PublicSearchResult[];
   limit: number;
@@ -172,7 +176,7 @@ export interface PublicSearchResponse {
 }
 
 export interface SearchMatchReasons {
-  reasons: { skill_id: string; reason: string }[];
+  reasons: { skill_id: string; reason: string; fits?: boolean }[];
 }
 
 export interface SearchIntent {

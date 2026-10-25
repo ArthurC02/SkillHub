@@ -214,6 +214,7 @@ class MatchReason(BaseModel):
 
     skill_id: str
     reason: str
+    fits: bool
 
 
 class MatchReasons(BaseModel):
@@ -295,11 +296,13 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
         "produce a brief (1-2 sentence) match reason for each candidate "
         "explaining why it is relevant to the user's task. "
         "Be specific about which capabilities match which needs. "
+        "Set 'fits' to false when the Skill does not actually do the user's task, "
+        "and then say in the reason what it does instead. "
         + data_block_rules(
             DATA_TAG, "the user's own task text and summaries supplied with the packages"
         )
         + ' Respond with a JSON object {"reasons": [...]}, where each entry has '
-        "the keys 'skill_id' and 'reason'. Use the skill_id exactly as given."
+        "the keys 'skill_id', 'reason' and 'fits'. Use the skill_id exactly as given."
     )
 
     user_prompt = (

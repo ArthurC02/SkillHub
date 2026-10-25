@@ -30538,6 +30538,9 @@ func (*SearchMatchReasonsResponse) writeSearchMatchReasonsRes() {}
 type SearchMatchReasonsResponseReasonsItem struct {
 	SkillID uuid.UUID `json:"skill_id"`
 	Reason  string    `json:"reason"`
+	// False when the model judges that this result does not do the task the query describes. The result
+	// keeps its place in the list; the page labels it instead.
+	Fits bool `json:"fits"`
 }
 
 // GetSkillID returns the value of SkillID.
@@ -30550,6 +30553,11 @@ func (s *SearchMatchReasonsResponseReasonsItem) GetReason() string {
 	return s.Reason
 }
 
+// GetFits returns the value of Fits.
+func (s *SearchMatchReasonsResponseReasonsItem) GetFits() bool {
+	return s.Fits
+}
+
 // SetSkillID sets the value of SkillID.
 func (s *SearchMatchReasonsResponseReasonsItem) SetSkillID(val uuid.UUID) {
 	s.SkillID = val
@@ -30558,6 +30566,11 @@ func (s *SearchMatchReasonsResponseReasonsItem) SetSkillID(val uuid.UUID) {
 // SetReason sets the value of Reason.
 func (s *SearchMatchReasonsResponseReasonsItem) SetReason(val string) {
 	s.Reason = val
+}
+
+// SetFits sets the value of Fits.
+func (s *SearchMatchReasonsResponseReasonsItem) SetFits(val bool) {
+	s.Fits = val
 }
 
 // Compact risk hint for a result row (DISC-002 風險提示). Unlike `SkillRisk` on the detail view

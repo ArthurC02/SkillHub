@@ -211,6 +211,10 @@ class MatchReasonsRequest(BaseModel):
 class MatchReason(BaseModel):
     skill_id: str
     reason: str
+    fits: bool = Field(
+        ...,
+        description='False when the model judges that this Skill does not do the task the\nuser described. It labels the result; it never reorders it.\n',
+    )
 
 
 class DatasetField(BaseModel):

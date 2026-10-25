@@ -930,8 +930,24 @@ func TestMatchReasonsAnswerOnlyForThePublicCatalog(t *testing.T) {
 		t.Fatalf("reasons = %v, want exactly the public skill's", reasons)
 	}
 	got, _ := reasons[0].(map[string]any)
-	if got["skill_id"] != published || got["reason"] != "it reads invoices" {
-		t.Fatalf("reason = %v, want %s with the model's text", got, published)
+	if got["skill_id"] != published || got["reason"] != "it reads invoices" || got["fits"] != true {
+		t.Fatalf("reason = %v, want %s with the model's text, fitting when the model gave no judgement", got, published)
+	}
+
+	misfit := http.NewServeMux()
+	misfit.HandleFunc("POST /match-reasons", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{"reasons": []map[string]any{
+			{"skill_id": published, "reason": "it reads invoices, not notes", "fits": false},
+		}})
+	})
+	misfitLLM := httptest.NewServer(misfit)
+	t.Cleanup(misfitLLM.Close)
+	judged := newAPIWithLLM(t, pool, misfitLLM.URL)
+	status, out = (&client{Client: http.DefaultClient, base: judged.URL}).doJSON(t, http.MethodPost,
+		"/api/skills/search/reasons", `{"query":"frabjous notes","skill_ids":["`+published+`"]}`)
+	if reasons, _ := out["reasons"].([]any); status != http.StatusOK || len(reasons) != 1 ||
+		reasons[0].(map[string]any)["fits"] != false {
+		t.Fatalf("status=%d body=%v: the model's misfit judgement must reach the page", status, out)
 	}
 
 	failing := newAPIWithLLM(t, pool, stubLLM(t, 11, ""))

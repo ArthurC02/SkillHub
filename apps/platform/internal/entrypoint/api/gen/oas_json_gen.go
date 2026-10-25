@@ -64298,11 +64298,16 @@ func (s *SearchMatchReasonsResponseReasonsItem) encodeFields(e *jx.Encoder) {
 		e.FieldStart("reason")
 		e.Str(s.Reason)
 	}
+	{
+		e.FieldStart("fits")
+		e.Bool(s.Fits)
+	}
 }
 
-var jsonFieldsNameOfSearchMatchReasonsResponseReasonsItem = [2]string{
+var jsonFieldsNameOfSearchMatchReasonsResponseReasonsItem = [3]string{
 	0: "skill_id",
 	1: "reason",
+	2: "fits",
 }
 
 // Decode decodes SearchMatchReasonsResponseReasonsItem from json.
@@ -64338,6 +64343,18 @@ func (s *SearchMatchReasonsResponseReasonsItem) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"reason\"")
 			}
+		case "fits":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Bool()
+				s.Fits = bool(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"fits\"")
+			}
 		default:
 			return d.Skip()
 		}
@@ -64348,7 +64365,7 @@ func (s *SearchMatchReasonsResponseReasonsItem) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000011,
+		0b00000111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

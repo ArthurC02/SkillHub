@@ -128,12 +128,19 @@ export function withMatchReasons(
   answer: SearchMatchReasons | undefined,
 ): PublicSearchResponse {
   if (!Array.isArray(answer?.reasons) || answer.reasons.length === 0) return search;
-  const written = new Map(answer.reasons.map((r) => [r.skill_id, r.reason]));
+  const written = new Map(answer.reasons.map((r) => [r.skill_id, r]));
   return {
     ...search,
     results: search.results.map((hit) => {
-      const reason = written.get(hit.skill_id);
-      return reason ? { ...hit, match_reason: reason, match_reason_source: "model" } : hit;
+      const answered = written.get(hit.skill_id);
+      return answered?.reason
+        ? {
+            ...hit,
+            match_reason: answered.reason,
+            match_reason_source: "model",
+            match_fits: answered.fits !== false,
+          }
+        : hit;
     }),
   };
 }

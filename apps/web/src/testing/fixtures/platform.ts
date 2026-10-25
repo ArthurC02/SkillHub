@@ -195,7 +195,7 @@ export const SEARCH = {
 } satisfies PublicSearchResponse;
 
 export const SEARCH_REASONS = {
-  reasons: [{ skill_id: SKILL, reason: "這個小工具直接處理 PDF 並輸出摘要。" }],
+  reasons: [{ skill_id: SKILL, reason: "這個小工具直接處理 PDF 並輸出摘要。", fits: true }],
 } satisfies SearchMatchReasons;
 
 export function skillDetail(id: string, name: string): SkillDetail {

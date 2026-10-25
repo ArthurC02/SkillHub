@@ -9216,10 +9216,16 @@ components:
             timed out; a result without one keeps its template reason.
           items:
             type: object
-            required: [skill_id, reason]
+            required: [skill_id, reason, fits]
             properties:
               skill_id: { type: string, format: uuid }
               reason: { type: string, minLength: 1 }
+              fits:
+                type: boolean
+                description: |
+                  False when the model judges that this result does not do the
+                  task the query describes. The result keeps its place in the
+                  list; the page labels it instead.
     SearchResultRisk:
       description: |
         Compact risk hint for a result row (DISC-002 風險提示). Unlike
