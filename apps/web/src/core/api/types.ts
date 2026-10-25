@@ -176,7 +176,7 @@ export interface PublicSearchResponse {
 }
 
 export interface SearchMatchReasons {
-  reasons: { skill_id: string; reason: string; fits?: boolean }[];
+  reasons: { skill_id: string; reason: string; fits: boolean }[];
 }
 
 export interface SearchIntent {

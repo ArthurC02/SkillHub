@@ -851,6 +851,8 @@
         "apps/web/e2e/run-source-recovery.spec.ts",
         "apps/web/e2e/run-start-outcome.spec.ts",
         "apps/web/e2e/search-read-recovery.spec.ts",
+        "apps/web/e2e/search-reasons-focus.spec.ts",
+        "apps/web/e2e/search-reasons-integrity.spec.ts",
         "apps/web/e2e/session-boundary.spec.ts",
         "apps/web/e2e/session-readiness.spec.ts",
         "apps/web/e2e/session-response.spec.ts",

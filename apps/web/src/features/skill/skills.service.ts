@@ -98,12 +98,37 @@ export function useCorrectedSkillSearch(
   });
 }
 
-function fetchMatchReasons(query: string, skillIds: string[]) {
-  return apiFetch<SearchMatchReasons>("/api/skills/search/reasons", {
+function isMatchReasons(value: unknown, skillIds: string[]): value is SearchMatchReasons {
+  if (!value || typeof value !== "object") return false;
+  const reasons = (value as Partial<SearchMatchReasons>).reasons;
+  if (!Array.isArray(reasons)) return false;
+  const expectedIds = new Set(skillIds.map((id) => id.toLowerCase()));
+  const seenIds = new Set<string>();
+  return reasons.every((item: unknown) => {
+    if (!item || typeof item !== "object") return false;
+    const reason = item as Partial<SearchMatchReasons["reasons"][number]>;
+    const id = typeof reason.skill_id === "string" ? reason.skill_id.toLowerCase() : "";
+    if (
+      !expectedIds.has(id) ||
+      seenIds.has(id) ||
+      typeof reason.reason !== "string" ||
+      reason.reason.trim().length === 0 ||
+      typeof reason.fits !== "boolean"
+    )
+      return false;
+    seenIds.add(id);
+    return true;
+  });
+}
+
+async function fetchMatchReasons(query: string, skillIds: string[]) {
+  const result = await apiFetch<unknown>("/api/skills/search/reasons", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, skill_ids: skillIds }),
   });
+  if (!isMatchReasons(result, skillIds)) throw new Error("Invalid search reasons response");
+  return result;
 }
 
 function reasonCandidates(search: PublicSearchResponse | undefined) {
@@ -128,17 +153,17 @@ export function withMatchReasons(
   answer: SearchMatchReasons | undefined,
 ): PublicSearchResponse {
   if (!Array.isArray(answer?.reasons) || answer.reasons.length === 0) return search;
-  const written = new Map(answer.reasons.map((r) => [r.skill_id, r]));
+  const written = new Map(answer.reasons.map((r) => [r.skill_id.toLowerCase(), r]));
   return {
     ...search,
     results: search.results.map((hit) => {
-      const answered = written.get(hit.skill_id);
+      const answered = written.get(hit.skill_id.toLowerCase());
       return answered?.reason
         ? {
             ...hit,
             match_reason: answered.reason,
             match_reason_source: "model",
-            match_fits: answered.fits !== false,
+            match_fits: answered.fits,
           }
         : hit;
     }),

@@ -60,7 +60,6 @@ export function Home() {
   const [draft, setDraft] = useSearchDraft(search.q);
   const [queryError, setQueryError] = useState("");
   const selected = parseSelection(search.compare);
-  useLayoutEffect(revealFocusedComparison, [search.compare]);
   const generateExposed = useGenerateEntryPoint();
   const loggedIn = !!useMe().data;
 
@@ -73,6 +72,7 @@ export function Home() {
   );
   const data = result.error || search.q === undefined ? undefined : result.data;
   const reasons = useMatchReasons(data);
+  useLayoutEffect(revealFocusedComparison, [search.compare, reasons.data]);
   const effectiveFilters = data?.interpretation?.filters ?? filters;
   const currentCorrection = data?.interpretation && {
     intent: data.interpretation.intent,

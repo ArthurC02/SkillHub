@@ -6,6 +6,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import App from "../../app/App";
 import { queryClient } from "../../core/api/queryClient";
+import { queryKeys } from "../../core/api/queryKeys";
 import { router } from "../../app/router";
 import { LicenseBadge, LicenseNotes } from "../../shared/ui/LicenseBadge";
 import { RiskIndicator } from "../../shared/ui/RiskIndicator";
@@ -830,7 +831,7 @@ test("DISC-002: results show before the model reasons, which then replace the te
     answer(
       new Response(
         JSON.stringify({
-          reasons: [{ skill_id: first.skill_id, reason: "它把 PDF 直接整理成摘要。" }],
+          reasons: [{ skill_id: first.skill_id, reason: "它把 PDF 直接整理成摘要。", fits: true }],
         }),
         { status: 200 },
       ),
@@ -854,7 +855,7 @@ test("DISC-002: a result the model judges unfit is labelled in place, never move
             reasons: [
               { skill_id: hits[0].skill_id, reason: "它處理試算表，不讀 PDF。", fits: false },
               { skill_id: hits[1].skill_id, reason: "它把 PDF 直接整理成摘要。", fits: true },
-              { skill_id: hits[2].skill_id, reason: "它也能讀 PDF。" },
+              { skill_id: hits[2].skill_id, reason: "它也能讀 PDF。", fits: true },
             ],
           }),
           { status: 200 },
@@ -914,6 +915,95 @@ test("DISC-002: a reasons answer without a reasons list leaves the results and t
   await act(async () => {});
   expect(container.querySelectorAll(".search-results > li")).toHaveLength(2);
   expect(container.textContent).toContain("查詢與文件共同出現：pdf 2");
+});
+
+const REASON_ID = "abcdefab-1234-4abc-8def-123456789abc";
+const REASON_ROW = { skill_id: REASON_ID, reason: "不應採用的模型說明", fits: true };
+
+for (const [name, payload] of [
+  ["null envelope", null],
+  ["missing list", {}],
+  ["non-array list", { reasons: {} }],
+  ["null item", { reasons: [null] }],
+  ["object reason", { reasons: [{ ...REASON_ROW, reason: {} }] }],
+  ["blank reason", { reasons: [{ ...REASON_ROW, reason: "   " }] }],
+  ["missing verdict", { reasons: [{ skill_id: REASON_ID, reason: REASON_ROW.reason }] }],
+  ["invalid verdict", { reasons: [{ ...REASON_ROW, fits: "false" }] }],
+  ["unrequested identity", { reasons: [{ ...REASON_ROW, skill_id: reasonHit(3).skill_id }] }],
+  [
+    "ambiguous identity",
+    { reasons: [REASON_ROW, { ...REASON_ROW, skill_id: REASON_ID.toUpperCase(), fits: false }] },
+  ],
+] as const) {
+  test(`malformed match reasons ${name} retain results and are not cached as successful`, async () => {
+    const first = { ...reasonHit(1), skill_id: REASON_ID };
+    const second = reasonHit(2);
+    stubSearchThenReasons(
+      { ...EMPTY, query: "pdf", reason_query: "pdf", results: [first, second], total: 2 },
+      () => Promise.resolve(new Response(JSON.stringify(payload), { status: 200 })),
+    );
+    await render(<App />);
+    await submitSearch("pdf");
+    const key = queryKeys.skills.matchReasons("pdf", [first.skill_id, second.skill_id]);
+    await waitFor(() => queryClient.getQueryState(key)?.fetchStatus === "idle");
+    expect(queryClient.getQueryState(key)?.status).toBe("error");
+    expect(queryClient.getQueryData(key)).toBeUndefined();
+    expect(container.querySelectorAll(".search-results > li")).toHaveLength(2);
+    expect(container.textContent).toContain("查詢與文件共同出現：pdf 1");
+    expect(container.textContent).toContain("查詢與文件共同出現：pdf 2");
+    expect(container.querySelectorAll(".match-reason .badge-source-model")).toHaveLength(0);
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+}
+
+test("a case-equivalent reason identity labels the requested result without changing its order", async () => {
+  const first = { ...reasonHit(1), skill_id: REASON_ID };
+  const second = reasonHit(2);
+  stubSearchThenReasons(
+    { ...EMPTY, query: "pdf", reason_query: "pdf", results: [first, second], total: 2 },
+    () =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            reasons: [
+              { skill_id: REASON_ID.toUpperCase(), reason: "這個版本的格式不適合。", fits: false },
+            ],
+          }),
+          { status: 200 },
+        ),
+      ),
+  );
+  await render(<App />);
+  await submitSearch("pdf");
+  await waitFor(() => container.textContent?.includes("這個版本的格式不適合。") ?? false);
+  const rows = [...container.querySelectorAll(".search-results > li")];
+  expect(rows.map((row) => row.querySelector(".result-card-head > a")?.textContent)).toEqual([
+    "Skill 1",
+    "Skill 2",
+  ]);
+  expect(rows[0].querySelector(".match-reason .badge-warning")?.textContent).toBe("可能不合用");
+  expect(rows[1].querySelector(".match-reason")?.textContent).toContain(
+    "查詢與文件共同出現：pdf 2",
+  );
+});
+
+test("empty model reasons are a successful optional read that retains both templates", async () => {
+  const hits = [reasonHit(1), reasonHit(2)];
+  stubSearchThenReasons(
+    { ...EMPTY, query: "pdf", reason_query: "pdf", results: hits, total: 2 },
+    () => Promise.resolve(new Response(JSON.stringify({ reasons: [] }), { status: 200 })),
+  );
+  await render(<App />);
+  await submitSearch("pdf");
+  const key = queryKeys.skills.matchReasons(
+    "pdf",
+    hits.map((hit) => hit.skill_id),
+  );
+  await waitFor(() => queryClient.getQueryState(key)?.status === "success");
+  expect(queryClient.getQueryData(key)).toEqual({ reasons: [] });
+  expect(container.querySelectorAll(".search-results > li")).toHaveLength(2);
+  expect(container.querySelectorAll(".match-reason .badge-source-template")).toHaveLength(2);
+  expect(container.querySelector('[role="alert"]')).toBeNull();
 });
 
 test.each([
