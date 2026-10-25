@@ -164,9 +164,11 @@ func (c *Client) EnrichSkill(ctx context.Context, req EnrichSkillRequest) (*Enri
 }
 
 type SkillCandidate struct {
-	SkillID string `json:"skill_id"`
-	Name    string `json:"name"`
-	Summary string `json:"summary"`
+	SkillID string   `json:"skill_id"`
+	Name    string   `json:"name"`
+	Summary string   `json:"summary"`
+	Inputs  []string `json:"inputs,omitempty"`
+	Outputs []string `json:"outputs,omitempty"`
 }
 
 type MatchReasonsRequest struct {

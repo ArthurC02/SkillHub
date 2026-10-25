@@ -125,10 +125,28 @@ class EnrichCheck(BaseModel):
     severity: Severity | None = None
 
 
+class Input(RootModel[constr(max_length=200)]):
+    root: constr(max_length=200)
+
+
+class Output(RootModel[constr(max_length=200)]):
+    root: constr(max_length=200)
+
+
 class SkillCandidate(BaseModel):
     skill_id: str
     name: str
     summary: str
+    inputs: list[Input] | None = Field(
+        None,
+        description='What the Skill takes in, from its enrichment tags. Absent when it was never enriched.',
+        max_length=8,
+    )
+    outputs: list[Output] | None = Field(
+        None,
+        description='What the Skill produces, from its enrichment tags. Absent when it was never enriched.',
+        max_length=8,
+    )
 
 
 class AnalyzeSearchIntentRequest(BaseModel):

@@ -74,6 +74,8 @@ var sharedNumberRoster = []string{
 	"searchMaxQueryRunes",
 
 	"simulatedUserFactsChars",
+	"skillCandidateTagRunes",
+	"skillCandidateTagsMaxItems",
 	"suggestCriteriaMaxItems",
 	"suggestMaxDigestChars",
 	"suggestMaxEvidence",

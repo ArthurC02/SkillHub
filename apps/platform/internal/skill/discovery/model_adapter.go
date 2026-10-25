@@ -50,7 +50,9 @@ func (a modelOverHTTP) MatchReasons(ctx context.Context, query string, candidate
 ) (*MatchReasons, error) {
 	wire := make([]llmclient.SkillCandidate, 0, len(candidates))
 	for _, c := range candidates {
-		wire = append(wire, llmclient.SkillCandidate{SkillID: c.SkillID, Name: c.Name, Summary: c.Summary})
+		wire = append(wire, llmclient.SkillCandidate{
+			SkillID: c.SkillID, Name: c.Name, Summary: c.Summary, Inputs: c.Inputs, Outputs: c.Outputs,
+		})
 	}
 	resp, err := a.client.MatchReasonsWithin(ctx, query, wire, within.Seconds())
 	if err != nil {

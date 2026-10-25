@@ -2,6 +2,8 @@ package catalog
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"time"
 )
 
@@ -31,6 +33,8 @@ type SkillCandidate struct {
 	SkillID string
 	Name    string
 	Summary string
+	Inputs  []string
+	Outputs []string
 }
 
 type MatchReason struct {
@@ -55,4 +59,35 @@ type SkillTags struct {
 	Outputs      []string `json:"outputs"`
 	Tools        []string `json:"tools"`
 	Dependencies []string `json:"dependencies"`
+}
+
+const (
+	candidateTagsMaxItems = 8   // one-number: skillCandidateTagsMaxItems
+	candidateTagRunes     = 200 // one-number: skillCandidateTagRunes
+)
+
+func candidateCapabilities(rawTags []byte) (inputs, outputs []string) {
+	var tags SkillTags
+	if len(rawTags) == 0 || json.Unmarshal(rawTags, &tags) != nil {
+		return nil, nil
+	}
+	return candidateTags(tags.Inputs), candidateTags(tags.Outputs)
+}
+
+func candidateTags(tags []string) []string {
+	var out []string
+	for _, tag := range tags {
+		tag = strings.TrimSpace(tag)
+		if tag == "" {
+			continue
+		}
+		if runes := []rune(tag); len(runes) > candidateTagRunes {
+			tag = string(runes[:candidateTagRunes])
+		}
+		out = append(out, tag)
+		if len(out) == candidateTagsMaxItems {
+			break
+		}
+	}
+	return out
 }

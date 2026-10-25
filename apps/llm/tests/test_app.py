@@ -290,6 +290,41 @@ def test_match_reasons_asks_the_gateway_for_the_shape_it_parses():
     assert "reasons" in fmt["json_schema"]["schema"]["properties"]
 
 
+def test_match_reasons_shows_the_judge_what_each_skill_takes_and_produces():
+    body = '{"reasons": [{"skill_id": "s1", "reason": "it parses invoices", "fits": true}]}'
+    sent: list = []
+    candidate = {
+        "skill_id": "s1",
+        "name": "invoice reader",
+        "summary": "reads invoices",
+        "inputs": ["pdf invoices", "scanned receipts"],
+        "outputs": ["totals csv"],
+    }
+    with _stub_chat(body, sent):
+        response = client.post(
+            "/match-reasons", json={"query": "read my invoices", "candidates": [candidate]}
+        )
+
+    assert response.status_code == 200
+    prompt = sent[0]["messages"][1]["content"]
+    assert "takes: pdf invoices; scanned receipts" in prompt
+    assert "produces: totals csv" in prompt
+
+
+def test_match_reasons_takes_eight_tags_a_side_and_refuses_a_ninth():
+    def candidate(n: int) -> dict:
+        tags = [f"tag {i}" for i in range(n)]
+        return {"skill_id": "s1", "name": "n", "summary": "s", "inputs": tags, "outputs": tags}
+
+    body = '{"reasons": [{"skill_id": "s1", "reason": "fits", "fits": true}]}'
+    with _stub_chat(body):
+        at_limit = client.post("/match-reasons", json={"query": "q", "candidates": [candidate(8)]})
+        past = client.post("/match-reasons", json={"query": "q", "candidates": [candidate(9)]})
+
+    assert at_limit.status_code == 200
+    assert past.status_code == 422
+
+
 def test_match_reasons_leaves_room_for_ten_reasons_with_fit_judgements():
     """Ten reasons with a fit judgement each ran past 1024 output tokens, and a
     cut-off answer is unparseable, so the whole batch fell back to templates."""

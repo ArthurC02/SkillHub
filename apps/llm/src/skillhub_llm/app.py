@@ -198,10 +198,25 @@ async def embed(req: EmbedRequest) -> EmbedResponse:
     )
 
 
+CandidateTag = Annotated[str, Field(max_length=200)]  # one-number: skillCandidateTagRunes
+MAX_CANDIDATE_TAGS = 8  # one-number: skillCandidateTagsMaxItems
+
+
 class SkillCandidate(BaseModel):
     skill_id: str
     name: str
     summary: str
+    inputs: list[CandidateTag] | None = Field(None, max_length=MAX_CANDIDATE_TAGS)
+    outputs: list[CandidateTag] | None = Field(None, max_length=MAX_CANDIDATE_TAGS)
+
+
+def _candidate_line(c: SkillCandidate) -> str:
+    line = f"- [{_scrub(c.skill_id)}] {_scrub(c.name)}: {_scrub(c.summary)}"
+    if c.inputs:
+        line += f"\n  takes: {_scrub('; '.join(c.inputs))}"
+    if c.outputs:
+        line += f"\n  produces: {_scrub('; '.join(c.outputs))}"
+    return line
 
 
 class MatchReasonsRequest(BaseModel):
@@ -288,9 +303,7 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
     A candidate this cannot produce a reason for is absent from the response,
     never a fabricated one.
     """
-    candidates_text = "\n".join(
-        f"- [{_scrub(c.skill_id)}] {_scrub(c.name)}: {_scrub(c.summary)}" for c in req.candidates
-    )
+    candidates_text = "\n".join(_candidate_line(c) for c in req.candidates)
 
     system_prompt = (
         "You are a search result explainer for a Skill marketplace. "
@@ -302,6 +315,9 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
         "Set 'fits' to false only when the Skill clearly cannot help with the user's task, "
         "and then say in the reason what it does instead. A Skill that covers part of "
         "the task, or offers a reasonable way to approach it, fits. "
+        "When a candidate lists what it takes and produces, judge against those: "
+        "a Skill that cannot take what the user has, or cannot produce what the user "
+        "wants, does not fit. "
         + data_block_rules(
             DATA_TAG, "the user's own task text and summaries supplied with the packages"
         )

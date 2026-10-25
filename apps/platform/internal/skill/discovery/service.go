@@ -549,10 +549,13 @@ func (s *Service) MatchReasonsFor(ctx context.Context, query string, skillIDs []
 	candidates := make([]SkillCandidate, 0, len(rows))
 	for _, id := range skillIDs {
 		if row, ok := byID[id]; ok {
+			inputs, outputs := candidateCapabilities(row.Tags)
 			candidates = append(candidates, SkillCandidate{
 				SkillID: pgconv.UUIDString(row.SkillID),
 				Name:    row.Name,
 				Summary: summaryText(row.Summary, row.EnrichedSummary),
+				Inputs:  inputs,
+				Outputs: outputs,
 			})
 		}
 	}

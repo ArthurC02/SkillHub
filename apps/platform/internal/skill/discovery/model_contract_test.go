@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -118,7 +120,7 @@ func TestTheAdapterCarriesEveryCandidateOntoTheWire(t *testing.T) {
 		}, &sent)
 
 	got, err := model.MatchReasons(context.Background(), "invoice totals", []SkillCandidate{
-		{SkillID: "s1", Name: "invoice reader", Summary: "reads invoices"},
+		{SkillID: "s1", Name: "invoice reader", Summary: "reads invoices", Inputs: []string{"pdf invoices"}, Outputs: []string{"totals"}},
 	}, 7*time.Second)
 	if err != nil {
 		t.Fatalf("asking for match reasons: %v", err)
@@ -133,7 +135,9 @@ func TestTheAdapterCarriesEveryCandidateOntoTheWire(t *testing.T) {
 	}
 	if wire.Query != "invoice totals" || len(wire.Candidates) != 1 ||
 		wire.Candidates[0].SkillID != "s1" || wire.Candidates[0].Name != "invoice reader" ||
-		wire.Candidates[0].Summary != "reads invoices" {
+		wire.Candidates[0].Summary != "reads invoices" ||
+		!reflect.DeepEqual(wire.Candidates[0].Inputs, []string{"pdf invoices"}) ||
+		!reflect.DeepEqual(wire.Candidates[0].Outputs, []string{"totals"}) {
 		t.Errorf("request on the wire = %+v, want the query and the whole candidate", wire)
 	}
 }
@@ -176,5 +180,23 @@ func TestAnAbsentModelDoesNotReachTheCatalogLookingPresent(t *testing.T) {
 	}
 	if model := ModelOrNone(&llmclient.Client{}); model == nil {
 		t.Error("a configured client did not reach the catalog; search would never rank by meaning")
+	}
+}
+
+func TestTheFitJudgeSeesAtMostEightBoundedInputsAndOutputs(t *testing.T) {
+	nine := `["a","b","c","d","e","f","g","h","i"]`
+	long := strings.Repeat("字", 201)
+	inputs, outputs := candidateCapabilities([]byte(`{"inputs":` + nine + `,"outputs":["  ", "` + long + `", "csv"]}`))
+
+	if want := []string{"a", "b", "c", "d", "e", "f", "g", "h"}; !reflect.DeepEqual(inputs, want) {
+		t.Errorf("inputs = %v, want the first eight", inputs)
+	}
+	if len(outputs) != 2 || len([]rune(outputs[0])) != 200 || outputs[1] != "csv" {
+		t.Errorf("outputs = %q, want the blank dropped, the long tag cut to 200 runes, then csv", outputs)
+	}
+	for _, raw := range []string{"", "not json", `{"tools":["x"]}`} {
+		if in, out := candidateCapabilities([]byte(raw)); in != nil || out != nil {
+			t.Errorf("tags %q gave inputs %v outputs %v, want none", raw, in, out)
+		}
 	}
 }

@@ -933,6 +933,16 @@ components:
           type: string
         summary:
           type: string
+        inputs:
+          type: array
+          description: What the Skill takes in, from its enrichment tags. Absent when it was never enriched.
+          items: { type: string, maxLength: 200 }  # one-number: skillCandidateTagRunes
+          maxItems: 8  # one-number: skillCandidateTagsMaxItems
+        outputs:
+          type: array
+          description: What the Skill produces, from its enrichment tags. Absent when it was never enriched.
+          items: { type: string, maxLength: 200 }  # one-number: skillCandidateTagRunes
+          maxItems: 8  # one-number: skillCandidateTagsMaxItems
     AnalyzeSearchIntentRequest:
       type: object
       additionalProperties: false

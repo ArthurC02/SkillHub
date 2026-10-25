@@ -934,27 +934,48 @@ func TestMatchReasonsAnswerOnlyForThePublicCatalog(t *testing.T) {
 		t.Fatalf("reason = %v, want %s with the model's text, fitting when the model gave no judgement", got, published)
 	}
 
-	misfit := http.NewServeMux()
-	misfit.HandleFunc("POST /match-reasons", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, map[string]any{"reasons": []map[string]any{
-			{"skill_id": published, "reason": "it reads invoices, not notes", "fits": false},
-		}})
-	})
-	misfitLLM := httptest.NewServer(misfit)
-	t.Cleanup(misfitLLM.Close)
-	judged := newAPIWithLLM(t, pool, misfitLLM.URL)
-	status, out = (&client{Client: http.DefaultClient, base: judged.URL}).doJSON(t, http.MethodPost,
-		"/api/skills/search/reasons", `{"query":"frabjous notes","skill_ids":["`+published+`"]}`)
-	if reasons, _ := out["reasons"].([]any); status != http.StatusOK || len(reasons) != 1 ||
-		reasons[0].(map[string]any)["fits"] != false {
-		t.Fatalf("status=%d body=%v: the model's misfit judgement must reach the page", status, out)
-	}
+	requireMisfitJudgementJudgedOnTags(t, pool, published)
 
 	failing := newAPIWithLLM(t, pool, stubLLM(t, 11, ""))
 	status, out = (&client{Client: http.DefaultClient, base: failing.URL}).doJSON(t, http.MethodPost,
 		"/api/skills/search/reasons", `{"query":"frabjous","skill_ids":["`+published+`"]}`)
 	if reasons, _ := out["reasons"].([]any); status != http.StatusOK || reasons == nil || len(reasons) != 0 {
 		t.Fatalf("status=%d body=%v: a failed model call answers an empty list, not an error", status, out)
+	}
+}
+
+func requireMisfitJudgementJudgedOnTags(t *testing.T, pool *pgxpool.Pool, published string) {
+	t.Helper()
+	if _, err := pool.Exec(context.Background(),
+		`UPDATE search_documents SET tags = '{"inputs":["pdf invoices"],"outputs":["totals"]}' WHERE skill_id = $1`,
+		published); err != nil {
+		t.Fatal(err)
+	}
+	var judged struct {
+		Candidates []struct {
+			Inputs  []string `json:"inputs"`
+			Outputs []string `json:"outputs"`
+		} `json:"candidates"`
+	}
+	misfit := http.NewServeMux()
+	misfit.HandleFunc("POST /match-reasons", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&judged)
+		writeJSON(w, map[string]any{"reasons": []map[string]any{
+			{"skill_id": published, "reason": "it reads invoices, not notes", "fits": false},
+		}})
+	})
+	misfitLLM := httptest.NewServer(misfit)
+	t.Cleanup(misfitLLM.Close)
+	judging := newAPIWithLLM(t, pool, misfitLLM.URL)
+	status, out := (&client{Client: http.DefaultClient, base: judging.URL}).doJSON(t, http.MethodPost,
+		"/api/skills/search/reasons", `{"query":"frabjous notes","skill_ids":["`+published+`"]}`)
+	if reasons, _ := out["reasons"].([]any); status != http.StatusOK || len(reasons) != 1 ||
+		reasons[0].(map[string]any)["fits"] != false {
+		t.Fatalf("status=%d body=%v: the model's misfit judgement must reach the page", status, out)
+	}
+	if len(judged.Candidates) != 1 || !slices.Equal(judged.Candidates[0].Inputs, []string{"pdf invoices"}) ||
+		!slices.Equal(judged.Candidates[0].Outputs, []string{"totals"}) {
+		t.Fatalf("candidates sent to the model = %+v, want the skill's inputs and outputs for judging fit", judged.Candidates)
 	}
 }
 
