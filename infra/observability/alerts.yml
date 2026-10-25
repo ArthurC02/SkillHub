@@ -70,8 +70,8 @@ groups:
       - alert: ProviderCapabilityUnreachable
         expr: |
           sum by (provider) (rate(skillhub_provider_capability_total{result="error"}[10m])) > 0
-          and
-          sum by (provider) (rate(skillhub_provider_capability_total{result="ok"}[10m])) == 0
+          unless
+          sum by (provider) (rate(skillhub_provider_capability_total{result="ok"}[10m])) > 0
         for: 5m
         labels:
           severity: critical

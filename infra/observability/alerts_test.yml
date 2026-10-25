@@ -33,3 +33,87 @@ tests:
             exp_annotations:
               summary: "platform-worker 抓不到，或抓到了但沒有回應"
               description: "它是唯一的佇列消費者：Run、評估、索引增強與清理全部停在佇列裡。 先 docker compose ps 與 docker compose logs platform-worker。"
+
+  - name: provider never reachable waits five minutes before firing
+    interval: 1m
+    input_series:
+      - series: 'skillhub_provider_capability_total{provider="unreachable", result="error"}'
+        values: "0+1x20"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: ProviderCapabilityUnreachable
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: ProviderCapabilityUnreachable
+        exp_alerts:
+          - &unreachable
+            exp_labels:
+              provider: unreachable
+              severity: critical
+            exp_annotations:
+              summary: "Provider unreachable 的 capability 完全抓不到"
+              description: "確認 sandboxd 是否存活、SKILLHUB_SANDBOX_TOKEN_* 是否輪替過。"
+
+  - name: another provider succeeding cannot hide an unreachable provider
+    interval: 1m
+    input_series:
+      - series: 'skillhub_provider_capability_total{provider="unreachable", result="error", instance="worker-a"}'
+        values: "0+1x20"
+      - series: 'skillhub_provider_capability_total{provider="healthy", result="ok", instance="worker-b"}'
+        values: "0+1x20"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ProviderCapabilityUnreachable
+        exp_alerts:
+          - *unreachable
+
+  - name: a zero error counter is not evidence of an unreachable provider
+    interval: 1m
+    input_series:
+      - series: 'skillhub_provider_capability_total{provider="unreachable", result="error"}'
+        values: "0x20"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ProviderCapabilityUnreachable
+        exp_alerts: []
+
+  - name: successes on another worker keep the same provider reachable
+    interval: 1m
+    input_series:
+      - series: 'skillhub_provider_capability_total{provider="unreachable", result="error", instance="worker-a"}'
+        values: "0+1x20"
+      - series: 'skillhub_provider_capability_total{provider="unreachable", result="ok", instance="worker-b"}'
+        values: "0+1x20"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ProviderCapabilityUnreachable
+        exp_alerts: []
+
+  - name: a success counter without recent successes cannot hide failures
+    interval: 1m
+    input_series:
+      - series: 'skillhub_provider_capability_total{provider="unreachable", result="error"}'
+        values: "0+1x20"
+      - series: 'skillhub_provider_capability_total{provider="unreachable", result="ok"}'
+        values: "7x20"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ProviderCapabilityUnreachable
+        exp_alerts:
+          - *unreachable
+
+  - name: a recovered provider resolves the alert despite older failures
+    interval: 1m
+    input_series:
+      - series: 'skillhub_provider_capability_total{provider="unreachable", result="error"}'
+        values: "0+1x20"
+      - series: 'skillhub_provider_capability_total{provider="unreachable", result="ok"}'
+        values: "_ _ _ _ _ _ _ _ _ _ _ 0+1x10"
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: ProviderCapabilityUnreachable
+        exp_alerts:
+          - *unreachable
+      - eval_time: 12m
+        alertname: ProviderCapabilityUnreachable
+        exp_alerts: []
