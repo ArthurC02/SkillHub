@@ -13,7 +13,6 @@ from skillhub_llm.creation import (
     CreationStepResponse,
     CreationToolIntent,
 )
-from skillhub_llm.enrich_checks import Finding
 from skillhub_llm.evaluate import (
     CriterionVerdict,
     ImprovementProposal,
@@ -31,7 +30,6 @@ MODELS: dict[str, type[BaseModel]] = {
     "CreationStepResponse": CreationStepResponse,
     "CreationToolIntent": CreationToolIntent,
     "CriterionVerdict": CriterionVerdict,
-    "EnrichCheck": Finding,
     "GatewayUsage": GatewayUsage,
     "GenerateDiagram": GenerateDiagram,
     "ImprovementProposal": ImprovementProposal,
@@ -130,7 +128,7 @@ def test_a_field_produces_exactly_the_values_the_contract_declares(
 
 def test_the_enum_walk_still_finds_the_closed_sets_this_service_produces() -> None:
     found = contract_enums()
-    expected = {"CreationStepResponse.outcome", "CriterionVerdict.result", "EnrichCheck.severity"}
+    expected = {"CreationStepResponse.outcome", "CriterionVerdict.result"}
     assert expected <= set(found), (
         f"the walk found {sorted(found)}; the parametrized tests above run on whatever it finds, "
         "so a walk that misses these compares nothing and still passes"

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ExposureCase, ExposureDecision } from "../../admin.service";
+import type { EnrichmentFinding, ExposureCase, ExposureDecision } from "../../admin.service";
 import { useReviewExposure } from "../../admin.service";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { ActionForm } from "../../components/ActionForm";
@@ -17,6 +17,39 @@ const DECISION_LABEL: Record<ExposureDecision, string> = {
 function tagsOf(tags: unknown): string {
   if (Array.isArray(tags)) return tags.join("、");
   return JSON.stringify(tags);
+}
+
+const FIELD_LABEL: Record<string, string> = {
+  summary: "加強摘要",
+  limitations: "限制",
+  tags: "標籤",
+  task_examples: "任務範例",
+};
+
+function findingSentence(f: EnrichmentFinding): string {
+  const field = FIELD_LABEL[f.field.split("[")[0]] ?? f.field;
+  switch (f.rule) {
+    case "runtime_not_in_limitations":
+      return `需要 ${f.token} 才能執行，但限制沒有寫出來。`;
+    case "unsupported_appraisal":
+      return `${field}用了「${f.token}」這類評價，原文件沒有這樣說。`;
+    case "non_english_in_en_example":
+      return `英文的任務範例裡混了中日文字。`;
+  }
+}
+
+function FindingsSection({ findings }: { findings: EnrichmentFinding[] | null }) {
+  if (findings === null) return <dd>這一版補充時還沒有自檢，沒有結果可看。</dd>;
+  if (findings.length === 0) return <dd>沒有發現與原文件不一致的地方。</dd>;
+  return (
+    <dd>
+      <ul>
+        {findings.map((f) => (
+          <li key={`${f.rule}:${f.field}:${f.token ?? ""}`}>{findingSentence(f)}</li>
+        ))}
+      </ul>
+    </dd>
+  );
 }
 
 function SnapshotSection({ exposureCase: c }: { exposureCase: ExposureCase }) {
@@ -61,6 +94,10 @@ function SnapshotSection({ exposureCase: c }: { exposureCase: ExposureCase }) {
         <div>
           <dt>限制</dt>
           <dd>{snapshot.limitations}</dd>
+        </div>
+        <div>
+          <dt>補充內容自檢</dt>
+          <FindingsSection findings={snapshot.enrichment_findings} />
         </div>
       </dl>
     </>

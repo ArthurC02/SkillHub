@@ -50,6 +50,7 @@ type SearchSnapshot struct {
 	Enriched        bool
 	Listable        bool
 	Digest          string
+	Findings        json.RawMessage
 }
 
 type ExposureState struct {

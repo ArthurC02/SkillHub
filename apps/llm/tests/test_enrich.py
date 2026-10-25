@@ -88,9 +88,7 @@ def test_enrich_returns_whitelist_fields(gateway_env, monkeypatch):
         "temperature",
         "seed",
         "usage",
-        "checks",
     }
-    assert isinstance(body["checks"], list)
 
 
 def test_limitations_prompt_forbids_inference_and_judgement(gateway_env, monkeypatch):

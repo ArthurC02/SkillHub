@@ -3390,6 +3390,9 @@ test("DISC-007: the queue lists a waiting release, and reviewing it shows the ex
   expect(has(ADMIN_EXPOSURE_CASE.snapshot.task_examples)()).toBe(true);
   expect(has("pdf、summary")()).toBe(true);
   expect(has("內容符合規範")()).toBe(true);
+  expect(has("需要 python 才能執行，但限制沒有寫出來。")()).toBe(true);
+  expect(has("加強摘要用了「professional」這類評價，原文件沒有這樣說。")()).toBe(true);
+  expect(has("英文的任務範例裡混了中日文字。")()).toBe(true);
   expect(
     field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]').checked,
   ).toBe(false);
@@ -3651,6 +3654,26 @@ test("an English server diagnostic with a Chinese fragment stays hidden", async 
   );
   expect(container.textContent).toContain("操作未被接受；目前狀態可能已變更，請重新整理後再判斷。");
   expect(container.textContent).not.toContain("server detail");
+});
+
+test.each([
+  ["never checked", null, "這一版補充時還沒有自檢，沒有結果可看。"],
+  ["checked and clean", [], "沒有發現與原文件不一致的地方。"],
+])("DISC-007: an enrichment %s says so in its own words", async (_name, findings, sentence) => {
+  stub(true, (path) =>
+    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`
+      ? {
+          body: {
+            ...ADMIN_EXPOSURE_CASE,
+            snapshot: { ...ADMIN_EXPOSURE_CASE.snapshot, enrichment_findings: findings },
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has(sentence));
+  expect(has("需要 python 才能執行")()).toBe(false);
 });
 
 test("DISC-007: a release search has not indexed yet says so instead of showing stale text", async () => {

@@ -147,16 +147,7 @@ type EnrichSkillResponse struct {
 	Model         string   `json:"model"`
 	PromptVersion string   `json:"prompt_version"`
 
-	Checks []EnrichCheck `json:"checks,omitempty"`
-
 	Usage *GatewayUsage `json:"usage,omitempty"`
-}
-
-type EnrichCheck struct {
-	Rule     string `json:"rule"`
-	Field    string `json:"field"`
-	Token    string `json:"token,omitempty"`
-	Severity string `json:"severity,omitempty"`
 }
 
 func (c *Client) EnrichSkill(ctx context.Context, req EnrichSkillRequest) (*EnrichSkillResponse, error) {

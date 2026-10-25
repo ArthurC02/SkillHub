@@ -3681,6 +3681,42 @@ func (s *EngagePlatformAgentBrakeReq) Validate() error {
 	return nil
 }
 
+func (s *EnrichmentFinding) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if err := s.Rule.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "rule",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s EnrichmentFindingRule) Validate() error {
+	switch s {
+	case "runtime_not_in_limitations":
+		return nil
+	case "unsupported_appraisal":
+		return nil
+	case "non_english_in_en_example":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
 func (s *Evaluation) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -4857,6 +4893,24 @@ func (s *ExposureCase) Validate() error {
 		})
 	}
 	if err := func() error {
+		if value, ok := s.Snapshot.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "snapshot",
+			Error: err,
+		})
+	}
+	if err := func() error {
 		if s.History == nil {
 			return errors.New("nil is invalid value")
 		}
@@ -4934,6 +4988,43 @@ func (s *ExposureCaseHistoryItem) Validate() error {
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "decision",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s *ExposureCaseSnapshot) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		var failures []validate.FieldError
+		for i, elem := range s.EnrichmentFindings {
+			if err := func() error {
+				if err := elem.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				failures = append(failures, validate.FieldError{
+					Name:  fmt.Sprintf("[%d]", i),
+					Error: err,
+				})
+			}
+		}
+		if len(failures) > 0 {
+			return &validate.Error{Fields: failures}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "enrichment_findings",
 			Error: err,
 		})
 	}

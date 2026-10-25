@@ -31,6 +31,7 @@ type SearchSnapshot struct {
 	Enriched        bool
 	Listable        bool
 	Digest          string
+	Findings        json.RawMessage
 }
 
 type publicScope struct {
@@ -77,7 +78,7 @@ func (s *Service) SearchSnapshotOf(ctx context.Context, skillID pgtype.UUID) (Se
 		VersionID: row.LatestVersionID, Name: row.Name, Summary: row.Summary, EnrichedSummary: row.EnrichedSummary,
 		TaskExamples: row.TaskExamples, Tags: json.RawMessage(row.Tags), Limitations: row.Limitations,
 		Enriched: EnrichmentStatus(row.EnrichmentStatus) == EnrichmentEnriched, Listable: row.Listable,
-		Digest: derefString(row.ExposureDigest),
+		Digest: derefString(row.ExposureDigest), Findings: json.RawMessage(row.EnrichmentFindings),
 	}, true, nil
 }
 

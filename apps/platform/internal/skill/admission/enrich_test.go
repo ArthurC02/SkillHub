@@ -156,6 +156,34 @@ func TestEnrichPackageStoresGeneratedFieldsAndEmbedding(t *testing.T) {
 	assertEnrichmentTagBuckets(t, e)
 }
 
+func TestEnrichPackageStoresWhereTheEnrichmentDisagreesWithItsPackage(t *testing.T) {
+	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusOK}
+	s := &Service{LLM: stub.start(t)}
+	p := testPackage()
+	p.fileTree = []string{"SKILL.md", "scripts/extract.py"}
+
+	e := s.enrichPackage(context.Background(), p, pgtype.UUID{})
+
+	want := `[{"rule":"runtime_not_in_limitations","field":"limitations","token":"python"}]`
+	if string(e.findings) != want {
+		t.Fatalf("findings = %s, want %s", e.findings, want)
+	}
+	if got := e.projection(pgtype.UUID{}, pgtype.UUID{}, "pdf-tools").EnrichmentFindings; string(got) != want {
+		t.Fatalf("projected findings = %s, want %s", got, want)
+	}
+}
+
+func TestACleanEnrichmentStoresAnEmptyFindingList(t *testing.T) {
+	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusOK}
+	s := &Service{LLM: stub.start(t)}
+
+	e := s.enrichPackage(context.Background(), testPackage(), pgtype.UUID{})
+
+	if string(e.findings) != "[]" {
+		t.Fatalf("findings = %q, want [] so a checked enrichment reads differently from an unchecked one", e.findings)
+	}
+}
+
 func TestScanFactsProjectedWithoutLLM(t *testing.T) {
 	p := testPackage()
 	p.report.Findings = []skillpkg.Finding{
@@ -213,7 +241,7 @@ func TestEnrichPackageFallsBackToPendingWhenEnrichFails(t *testing.T) {
 	if e.summary != testDescription {
 		t.Fatalf("summary = %q, want the frontmatter description as fallback", e.summary)
 	}
-	if e.embedding != nil || e.enrichedSummary != "" || e.model != nil {
+	if e.embedding != nil || e.enrichedSummary != "" || e.model != nil || e.findings != nil {
 		t.Fatal("a failed enrichment left generated fields behind")
 	}
 	if len(stub.embedded) != 0 {

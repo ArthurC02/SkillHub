@@ -20245,6 +20245,176 @@ func (s *EngagePlatformAgentBrakeReq) UnmarshalJSON(data []byte) error {
 }
 
 // Encode implements json.Marshaler.
+func (s *EnrichmentFinding) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *EnrichmentFinding) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("rule")
+		s.Rule.Encode(e)
+	}
+	{
+		e.FieldStart("field")
+		e.Str(s.Field)
+	}
+	{
+		if s.Token.Set {
+			e.FieldStart("token")
+			s.Token.Encode(e)
+		}
+	}
+}
+
+var jsonFieldsNameOfEnrichmentFinding = [3]string{
+	0: "rule",
+	1: "field",
+	2: "token",
+}
+
+// Decode decodes EnrichmentFinding from json.
+func (s *EnrichmentFinding) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode EnrichmentFinding to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "rule":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.Rule.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"rule\"")
+			}
+		case "field":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.Field = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"field\"")
+			}
+		case "token":
+			if err := func() error {
+				s.Token.Reset()
+				if err := s.Token.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"token\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode EnrichmentFinding")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfEnrichmentFinding) {
+					name = jsonFieldsNameOfEnrichmentFinding[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *EnrichmentFinding) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *EnrichmentFinding) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes EnrichmentFindingRule as json.
+func (s EnrichmentFindingRule) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes EnrichmentFindingRule from json.
+func (s *EnrichmentFindingRule) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode EnrichmentFindingRule to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch EnrichmentFindingRule(v) {
+	case EnrichmentFindingRuleRuntimeNotInLimitations:
+		*s = EnrichmentFindingRuleRuntimeNotInLimitations
+	case EnrichmentFindingRuleUnsupportedAppraisal:
+		*s = EnrichmentFindingRuleUnsupportedAppraisal
+	case EnrichmentFindingRuleNonEnglishInEnExample:
+		*s = EnrichmentFindingRuleNonEnglishInEnExample
+	default:
+		*s = EnrichmentFindingRule(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s EnrichmentFindingRule) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *EnrichmentFindingRule) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
 func (s *Error) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
@@ -25131,19 +25301,32 @@ func (s *ExposureCaseSnapshot) encodeFields(e *jx.Encoder) {
 		e.FieldStart("digest")
 		e.Str(s.Digest)
 	}
+	{
+		e.FieldStart("enrichment_findings")
+		if s.EnrichmentFindings == nil {
+			e.Null()
+		} else {
+			e.ArrStart()
+			for _, elem := range s.EnrichmentFindings {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
 }
 
-var jsonFieldsNameOfExposureCaseSnapshot = [10]string{
-	0: "version_id",
-	1: "current",
-	2: "name",
-	3: "summary",
-	4: "enriched_summary",
-	5: "task_examples",
-	6: "tags",
-	7: "limitations",
-	8: "enriched",
-	9: "digest",
+var jsonFieldsNameOfExposureCaseSnapshot = [11]string{
+	0:  "version_id",
+	1:  "current",
+	2:  "name",
+	3:  "summary",
+	4:  "enriched_summary",
+	5:  "task_examples",
+	6:  "tags",
+	7:  "limitations",
+	8:  "enriched",
+	9:  "digest",
+	10: "enrichment_findings",
 }
 
 // Decode decodes ExposureCaseSnapshot from json.
@@ -25274,6 +25457,31 @@ func (s *ExposureCaseSnapshot) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"digest\"")
 			}
+		case "enrichment_findings":
+			requiredBitSet[1] |= 1 << 2
+			if err := func() error {
+				switch tt := d.Next(); tt {
+				case jx.Null:
+					if err := d.Skip(); err != nil {
+						return err
+					}
+				default:
+					s.EnrichmentFindings = make([]EnrichmentFinding, 0)
+					if err := d.Arr(func(d *jx.Decoder) error {
+						var elem EnrichmentFinding
+						if err := elem.Decode(d); err != nil {
+							return err
+						}
+						s.EnrichmentFindings = append(s.EnrichmentFindings, elem)
+						return nil
+					}); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"enrichment_findings\"")
+			}
 		default:
 			return d.Skip()
 		}
@@ -25285,7 +25493,7 @@ func (s *ExposureCaseSnapshot) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b10111111,
-		0b00000011,
+		0b00000111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

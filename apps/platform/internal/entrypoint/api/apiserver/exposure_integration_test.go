@@ -12,7 +12,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	gen "github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
 )
 
@@ -223,6 +225,46 @@ func TestAnApprovedReleaseEntersSearchAndTheDetailPageForAnyone(t *testing.T) {
 	}
 	if history := objects(t, body["history"]); len(history) != 2 || history[0]["decision"] != "revoked" || history[1]["decision"] != "approved" {
 		t.Errorf("history = %v, want the revocation on top of the approval, both kept", history)
+	}
+}
+
+func (w exposureWorld) reindexWithFindings(t *testing.T, findings string) {
+	t.Helper()
+	ctx := context.Background()
+	skillID := mustUUID(t, w.skillID)
+	var workspaceID pgtype.UUID
+	if err := w.pool.QueryRow(ctx, "SELECT workspace_id FROM skills WHERE id = $1", skillID).Scan(&workspaceID); err != nil {
+		t.Fatal(err)
+	}
+	tx, err := w.pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := wiring.EnrichedIndexer(wiring.NewCatalogService(w.pool))(ctx, tx, ingest.SkillProjection{
+		SkillID: skillID, WorkspaceID: workspaceID, Name: w.name, Summary: w.name, TaskExamples: "[]",
+		Tags: []byte(`[]`), Limitations: "[]", Scan: []byte(`{}`), EnrichmentStatus: "enriched",
+		EnrichmentFindings: []byte(findings),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTheReviewerSeesWhetherAndWhereTheEnrichmentDisagreesWithItsPackage(t *testing.T) {
+	w := newExposureWorld(t, "findings")
+	snapshot, _ := w.exposureCase(t)["snapshot"].(map[string]any)
+	if found, present := snapshot["enrichment_findings"]; !present || found != nil {
+		t.Fatalf("enrichment_findings = %v (present %v), want null for an enrichment never checked", found, present)
+	}
+
+	w.reindexWithFindings(t, `[{"rule":"unsupported_appraisal","field":"summary","token":"clear"}]`)
+	snapshot, _ = w.exposureCase(t)["snapshot"].(map[string]any)
+	findings := objects(t, snapshot["enrichment_findings"])
+	if len(findings) != 1 || findings[0]["rule"] != "unsupported_appraisal" || findings[0]["field"] != "summary" || findings[0]["token"] != "clear" {
+		t.Fatalf("enrichment_findings = %v, want the one stored finding", snapshot["enrichment_findings"])
 	}
 }
 

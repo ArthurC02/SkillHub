@@ -1133,6 +1133,11 @@ export const ADMIN_EXPOSURE_CASE = {
     limitations: "不處理掃描影像檔",
     enriched: true,
     digest: "sha256:snap-bb",
+    enrichment_findings: [
+      { rule: "runtime_not_in_limitations", field: "limitations", token: "python" },
+      { rule: "unsupported_appraisal", field: "summary", token: "professional" },
+      { rule: "non_english_in_en_example", field: "task_examples[0].en" },
+    ],
   },
   history: [
     {

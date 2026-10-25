@@ -42,13 +42,6 @@ type SkillTags struct {
 	Dependencies []string `json:"dependencies"`
 }
 
-type EnrichCheck struct {
-	Rule     string
-	Field    string
-	Token    string
-	Severity string
-}
-
 type EnrichRequest struct {
 	SkillName string
 	SkillMD   string
@@ -65,7 +58,6 @@ type SkillEnrichment struct {
 	Limitations   []string
 	Model         string
 	PromptVersion string
-	Checks        []EnrichCheck
 	Usage         *ModelUsage
 }
 

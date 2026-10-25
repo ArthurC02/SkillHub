@@ -15,7 +15,6 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
@@ -23,7 +22,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 )
 
 const embedDims = 1536
@@ -343,15 +341,7 @@ func importPackage(t *testing.T, pool *pgxpool.Pool, store packageStore, owner *
 	if err != nil {
 		t.Fatal(err)
 	}
-	svc := &ingest.Service{Pool: pool, Store: store, IndexSkill: func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
-		return wiring.NewCatalogService(pool).IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
-			SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
-			EnrichedSummary: p.EnrichedSummary, TaskExamples: p.TaskExamples, Tags: p.Tags,
-			Limitations: p.Limitations, Scan: p.Scan, Embedding: p.Embedding,
-			EnrichmentStatus: p.EnrichmentStatus, EnrichmentModel: p.EnrichmentModel,
-			EnrichmentPromptVersion: p.EnrichmentPromptVersion,
-		})
-	}}
+	svc := &ingest.Service{Pool: pool, Store: store, IndexSkill: wiring.EnrichedIndexer(wiring.NewCatalogService(pool))}
 	res, err := svc.UploadZip(ctx, publishedWorkspace(ws), namedPackage(t, name, withScript))
 	if err != nil {
 		t.Fatal(err)

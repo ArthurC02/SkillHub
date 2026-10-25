@@ -57,11 +57,6 @@ func (a modelOverHTTP) EnrichSkill(ctx context.Context, req EnrichRequest) (*Ski
 	for _, e := range resp.TaskExamples {
 		out.TaskExamples = append(out.TaskExamples, TaskExample{ZhHant: e.ZhHant, En: e.En})
 	}
-	for _, c := range resp.Checks {
-		out.Checks = append(out.Checks, EnrichCheck{
-			Rule: c.Rule, Field: c.Field, Token: c.Token, Severity: c.Severity,
-		})
-	}
 	return out, nil
 }
 

@@ -40,6 +40,7 @@ type searchSnapshotView struct {
 	Limitations     string          `json:"limitations"`
 	Enriched        bool            `json:"enriched"`
 	Digest          string          `json:"digest"`
+	Findings        json.RawMessage `json:"enrichment_findings"`
 }
 
 type exposureReviewView struct {
@@ -100,7 +101,7 @@ func exposureCaseViewOf(c ExposureCase) exposureCaseView {
 			VersionID: pgconv.UUIDString(snap.VersionID), Current: snap.VersionID == c.State.VersionID,
 			Name: snap.Name, Summary: snap.Summary, EnrichedSummary: snap.EnrichedSummary,
 			TaskExamples: snap.TaskExamples, Tags: snap.Tags, Limitations: snap.Limitations,
-			Enriched: snap.Enriched, Digest: snap.Digest,
+			Enriched: snap.Enriched, Digest: snap.Digest, Findings: snap.Findings,
 		}
 	}
 	for _, r := range c.History {

@@ -49,6 +49,7 @@ type enrichment struct {
 	status          enrichmentStatus
 	model           *string
 	promptVersion   *string
+	findings        []byte
 }
 
 type scanFacts struct {
@@ -138,11 +139,7 @@ func (s *Service) enrichPackage(ctx context.Context, p preparedPackage, workspac
 	e.limitations = joinLines(resp.Limitations)
 	e.model, e.promptVersion = &resp.Model, &resp.PromptVersion
 
-	for _, c := range resp.Checks {
-		slog.Warn("enrichment disagrees with its own source document",
-			"skill", p.report.Manifest.Name, "rule", c.Rule, "field", c.Field, "token", c.Token,
-			"prompt_version", resp.PromptVersion)
-	}
+	e.findings = marshalFindings(checkEnrichment(documentOf(p, resp)))
 
 	e.status = enrichmentEnriched
 	e.embedding = s.embed(ctx, workspaceID, p.report.Manifest.Name, embeddingText(p.report.Manifest.Name, e))

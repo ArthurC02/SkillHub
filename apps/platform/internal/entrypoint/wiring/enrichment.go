@@ -17,7 +17,7 @@ func EnrichedIndexer(catalogSvc *catalog.Service) func(context.Context, pgx.Tx, 
 			EnrichedSummary: p.EnrichedSummary, TaskExamples: p.TaskExamples, Tags: p.Tags,
 			Limitations: p.Limitations, Scan: p.Scan, Embedding: p.Embedding,
 			EnrichmentStatus: p.EnrichmentStatus, EnrichmentModel: p.EnrichmentModel,
-			EnrichmentPromptVersion: p.EnrichmentPromptVersion,
+			EnrichmentPromptVersion: p.EnrichmentPromptVersion, EnrichmentFindings: p.EnrichmentFindings,
 		})
 	}
 }

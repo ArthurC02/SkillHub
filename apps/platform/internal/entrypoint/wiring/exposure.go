@@ -29,7 +29,7 @@ func SearchSnapshotReader(catalogSvc *catalog.Service) func(context.Context, pgt
 			VersionID: snapshot.VersionID, Name: snapshot.Name, Summary: snapshot.Summary,
 			EnrichedSummary: snapshot.EnrichedSummary, TaskExamples: snapshot.TaskExamples, Tags: snapshot.Tags,
 			Limitations: snapshot.Limitations, Enriched: snapshot.Enriched, Listable: snapshot.Listable,
-			Digest: snapshot.Digest,
+			Digest: snapshot.Digest, Findings: snapshot.Findings,
 		}, found, err
 	}
 }

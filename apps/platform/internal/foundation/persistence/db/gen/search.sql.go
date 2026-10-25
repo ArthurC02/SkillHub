@@ -330,22 +330,23 @@ func (q *Queries) GetSearchDocumentEnrichedText(ctx context.Context, skillID pgt
 
 const getSearchSnapshot = `-- name: GetSearchSnapshot :one
 SELECT skill_id, latest_version_id, name, summary, enriched_summary, task_examples, tags, limitations,
-       enrichment_status, listable, exposure_digest
+       enrichment_status, listable, exposure_digest, enrichment_findings
 FROM search_documents WHERE skill_id = $1
 `
 
 type GetSearchSnapshotRow struct {
-	SkillID          pgtype.UUID
-	LatestVersionID  pgtype.UUID
-	Name             string
-	Summary          string
-	EnrichedSummary  string
-	TaskExamples     string
-	Tags             []byte
-	Limitations      string
-	EnrichmentStatus string
-	Listable         bool
-	ExposureDigest   *string
+	SkillID            pgtype.UUID
+	LatestVersionID    pgtype.UUID
+	Name               string
+	Summary            string
+	EnrichedSummary    string
+	TaskExamples       string
+	Tags               []byte
+	Limitations        string
+	EnrichmentStatus   string
+	Listable           bool
+	ExposureDigest     *string
+	EnrichmentFindings []byte
 }
 
 func (q *Queries) GetSearchSnapshot(ctx context.Context, skillID pgtype.UUID) (GetSearchSnapshotRow, error) {
@@ -363,6 +364,7 @@ func (q *Queries) GetSearchSnapshot(ctx context.Context, skillID pgtype.UUID) (G
 		&i.EnrichmentStatus,
 		&i.Listable,
 		&i.ExposureDigest,
+		&i.EnrichmentFindings,
 	)
 	return i, err
 }
@@ -1224,8 +1226,8 @@ const upsertSearchDocumentEnriched = `-- name: UpsertSearchDocumentEnriched :exe
 INSERT INTO search_documents (
     skill_id, workspace_id, name, summary,
     enriched_summary, task_examples, tags, limitations, scan, embedding,
-    enrichment_status, enrichment_model, enrichment_prompt_version, bigram, listable, has_script, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, to_tsvector('simple', $14::text), $15, $16, now())
+    enrichment_status, enrichment_model, enrichment_prompt_version, bigram, listable, has_script, enrichment_findings, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, to_tsvector('simple', $14::text), $15, $16, $17::jsonb, now())
 ON CONFLICT (skill_id) DO UPDATE
 SET workspace_id = EXCLUDED.workspace_id,
     name = EXCLUDED.name,
@@ -1242,8 +1244,9 @@ SET workspace_id = EXCLUDED.workspace_id,
     enrichment_prompt_version = EXCLUDED.enrichment_prompt_version,
     listable = EXCLUDED.listable,
     has_script = EXCLUDED.has_script,
+    enrichment_findings = EXCLUDED.enrichment_findings,
     enrichment_attempted_at = CASE
-        WHEN $17::bool THEN NULL
+        WHEN $18::bool THEN NULL
         ELSE search_documents.enrichment_attempted_at END,
     updated_at = now()
 `
@@ -1265,6 +1268,7 @@ type UpsertSearchDocumentEnrichedParams struct {
 	BigramText                string
 	Listable                  bool
 	HasScript                 *bool
+	EnrichmentFindings        []byte
 	RestartEnrichmentAttempts bool
 }
 
@@ -1286,6 +1290,7 @@ func (q *Queries) UpsertSearchDocumentEnriched(ctx context.Context, arg UpsertSe
 		arg.BigramText,
 		arg.Listable,
 		arg.HasScript,
+		arg.EnrichmentFindings,
 		arg.RestartEnrichmentAttempts,
 	)
 	return err

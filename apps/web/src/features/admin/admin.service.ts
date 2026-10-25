@@ -93,6 +93,12 @@ export type ExposureQueueEntry = {
   reviewed_again: boolean;
 };
 
+export type EnrichmentFinding = {
+  rule: "runtime_not_in_limitations" | "unsupported_appraisal" | "non_english_in_en_example";
+  field: string;
+  token?: string;
+};
+
 export type ExposureSnapshot = {
   version_id: string;
   current: boolean;
@@ -104,6 +110,7 @@ export type ExposureSnapshot = {
   limitations: string;
   enriched: boolean;
   digest: string;
+  enrichment_findings: EnrichmentFinding[] | null;
 };
 
 export type ExposureDecision = "approved" | "revoked";

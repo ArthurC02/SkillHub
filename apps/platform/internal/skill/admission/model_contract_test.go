@@ -133,7 +133,6 @@ func TestEveryModelEnrichesInTheDomainsOwnWords(t *testing.T) {
 		Tags:         SkillTags{Inputs: []string{"pdf"}, Outputs: []string{"csv"}},
 		Limitations:  []string{"scanned pages only"},
 		Model:        "a-model", PromptVersion: "enrich@1",
-		Checks: []EnrichCheck{{Rule: "no-brand", Field: "summary", Severity: "warning"}},
 	}
 	var sent llmclient.EnrichSkillRequest
 	overTheWire := modelOverAWire(t, "/v1/enrich-skill", &sent, http.StatusOK,
@@ -143,7 +142,6 @@ func TestEveryModelEnrichesInTheDomainsOwnWords(t *testing.T) {
 			Tags:         llmclient.SkillTags{Inputs: []string{"pdf"}, Outputs: []string{"csv"}},
 			Limitations:  []string{"scanned pages only"},
 			Model:        "a-model", PromptVersion: "enrich@1",
-			Checks: []llmclient.EnrichCheck{{Rule: "no-brand", Field: "summary", Severity: "warning"}},
 		})
 
 	for name, model := range map[string]Model{"fake": &fakeModel{enrichment: want}, "http adapter": overTheWire} {
@@ -173,9 +171,6 @@ func assertEnrichmentMatchesTheModelsWords(t *testing.T, model Model, want *Skil
 	}
 	if len(got.Tags.Inputs) != 1 || got.Tags.Inputs[0] != "pdf" {
 		t.Errorf("tags = %+v, want the inputs the model named", got.Tags)
-	}
-	if len(got.Checks) != 1 || got.Checks[0] != want.Checks[0] {
-		t.Errorf("checks = %+v, want %+v", got.Checks, want.Checks)
 	}
 }
 

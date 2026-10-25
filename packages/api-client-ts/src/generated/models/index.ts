@@ -85,6 +85,7 @@ export * from './DiffSkillVersions200Response';
 export * from './Disclosure';
 export * from './DownloadArtifact';
 export * from './EngagePlatformAgentBrakeRequest';
+export * from './EnrichmentFinding';
 export * from './Evaluation';
 export * from './EvaluationBatch';
 export * from './EvaluationBatchArm';

@@ -9577,7 +9577,7 @@ components:
         snapshot:
           type: object
           description: What search holds for this Skill right now; absent before it is indexed.
-          required: [version_id, current, name, summary, enriched_summary, task_examples, limitations, enriched, digest]
+          required: [version_id, current, name, summary, enriched_summary, task_examples, limitations, enriched, digest, enrichment_findings]
           properties:
             version_id: { type: string, format: uuid }
             current:
@@ -9591,6 +9591,13 @@ components:
             limitations: { type: string }
             enriched: { type: boolean }
             digest: { type: string }
+            enrichment_findings:
+              type: [array, "null"]
+              description: |
+                Where the enrichment disagrees with the SKILL.md it was made from.
+                Null means the enrichment was never checked; an empty array means it
+                was checked and nothing disagreed.
+              items: { $ref: "#/components/schemas/EnrichmentFinding" }
         history:
           type: array
           items:
@@ -9605,6 +9612,19 @@ components:
               reason: { type: string }
               reviewer_user_id: { type: string, format: uuid }
               reviewed_at: { type: string, format: date-time }
+    EnrichmentFinding:
+      type: object
+      required: [rule, field]
+      properties:
+        rule:
+          type: string
+          enum: [runtime_not_in_limitations, unsupported_appraisal, non_english_in_en_example]
+        field:
+          type: string
+          description: The enrichment field the finding is about, such as `limitations` or `task_examples[0].en`.
+        token:
+          type: string
+          description: The runtime or appraisal word the rule matched; absent for rules that match no word.
     PublicationKind:
       type: string
       enum: [skill, bundle]

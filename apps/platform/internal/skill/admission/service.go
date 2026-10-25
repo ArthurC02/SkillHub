@@ -83,6 +83,7 @@ type SkillProjection struct {
 	EnrichmentStatus        string
 	EnrichmentModel         *string
 	EnrichmentPromptVersion *string
+	EnrichmentFindings      []byte
 }
 
 type EnrichmentWorklist struct {
@@ -536,6 +537,7 @@ func (e enrichment) projection(workspaceID, skillID pgtype.UUID, name string) Sk
 		EnrichmentStatus:        string(e.status),
 		EnrichmentModel:         e.model,
 		EnrichmentPromptVersion: e.promptVersion,
+		EnrichmentFindings:      e.findings,
 	}
 }
 

@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { EnrichmentFinding } from './EnrichmentFinding';
+import {
+    EnrichmentFindingFromJSON,
+    EnrichmentFindingFromJSONTyped,
+    EnrichmentFindingToJSON,
+    EnrichmentFindingToJSONTyped,
+} from './EnrichmentFinding';
+
 /**
  * What search holds for this Skill right now; absent before it is indexed.
  * @export
@@ -59,6 +67,13 @@ export interface ExposureCaseSnapshot {
      * 
      */
     digest: string;
+    /**
+     * Where the enrichment disagrees with the SKILL.md it was made from.
+     * Null means the enrichment was never checked; an empty array means it
+     * was checked and nothing disagreed.
+     * 
+     */
+    enrichmentFindings: Array<EnrichmentFinding> | null;
 }
 
 /**
@@ -74,6 +89,7 @@ export function instanceOfExposureCaseSnapshot(value: object): value is Exposure
     if (!('limitations' in value) || value['limitations'] === undefined) return false;
     if (!('enriched' in value) || value['enriched'] === undefined) return false;
     if (!('digest' in value) || value['digest'] === undefined) return false;
+    if ((!('enrichmentFindings' in (value as Record<string, any>)) && !('enrichment_findings' in (value as Record<string, any>))) || ((value as Record<string, any>)['enrichmentFindings'] === undefined && (value as Record<string, any>)['enrichment_findings'] === undefined)) return false;
     return true;
 }
 
@@ -97,6 +113,7 @@ export function ExposureCaseSnapshotFromJSONTyped(json: any, ignoreDiscriminator
         'limitations': json['limitations'],
         'enriched': json['enriched'],
         'digest': json['digest'],
+        'enrichmentFindings': (json['enrichment_findings'] == null ? null : (json['enrichment_findings'] as Array<any>).map(EnrichmentFindingFromJSON)),
     };
 }
 
@@ -121,6 +138,7 @@ export function ExposureCaseSnapshotToJSONTyped(value?: ExposureCaseSnapshot | n
         'limitations': value['limitations'],
         'enriched': value['enriched'],
         'digest': value['digest'],
+        'enrichment_findings': (value['enrichmentFindings'] == null ? null : (value['enrichmentFindings'] as Array<any>).map(EnrichmentFindingToJSON)),
     };
 }
 

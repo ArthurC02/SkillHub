@@ -34,7 +34,6 @@ var wireTypes = map[string]reflect.Type{
 	"DatasetOutline":                reflect.TypeOf(DatasetOutline{}),
 	"EmbedRequest":                  reflect.TypeOf(EmbedRequest{}),
 	"EmbedResponse":                 reflect.TypeOf(EmbedResponse{}),
-	"EnrichCheck":                   reflect.TypeOf(EnrichCheck{}),
 	"EnrichSkillRequest":            reflect.TypeOf(EnrichSkillRequest{}),
 	"EnrichSkillResponse":           reflect.TypeOf(EnrichSkillResponse{}),
 	"GatewayUsage":                  reflect.TypeOf(GatewayUsage{}),

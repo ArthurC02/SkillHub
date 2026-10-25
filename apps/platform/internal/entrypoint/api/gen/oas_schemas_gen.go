@@ -8132,6 +8132,93 @@ func (s *EngagePlatformAgentBrakeReq) SetNote(val string) {
 	s.Note = val
 }
 
+// Ref: #/components/schemas/EnrichmentFinding
+type EnrichmentFinding struct {
+	Rule EnrichmentFindingRule `json:"rule"`
+	// The enrichment field the finding is about, such as `limitations` or `task_examples[0].en`.
+	Field string `json:"field"`
+	// The runtime or appraisal word the rule matched; absent for rules that match no word.
+	Token OptString `json:"token"`
+}
+
+// GetRule returns the value of Rule.
+func (s *EnrichmentFinding) GetRule() EnrichmentFindingRule {
+	return s.Rule
+}
+
+// GetField returns the value of Field.
+func (s *EnrichmentFinding) GetField() string {
+	return s.Field
+}
+
+// GetToken returns the value of Token.
+func (s *EnrichmentFinding) GetToken() OptString {
+	return s.Token
+}
+
+// SetRule sets the value of Rule.
+func (s *EnrichmentFinding) SetRule(val EnrichmentFindingRule) {
+	s.Rule = val
+}
+
+// SetField sets the value of Field.
+func (s *EnrichmentFinding) SetField(val string) {
+	s.Field = val
+}
+
+// SetToken sets the value of Token.
+func (s *EnrichmentFinding) SetToken(val OptString) {
+	s.Token = val
+}
+
+type EnrichmentFindingRule string
+
+const (
+	EnrichmentFindingRuleRuntimeNotInLimitations EnrichmentFindingRule = "runtime_not_in_limitations"
+	EnrichmentFindingRuleUnsupportedAppraisal    EnrichmentFindingRule = "unsupported_appraisal"
+	EnrichmentFindingRuleNonEnglishInEnExample   EnrichmentFindingRule = "non_english_in_en_example"
+)
+
+// AllValues returns all EnrichmentFindingRule values.
+func (EnrichmentFindingRule) AllValues() []EnrichmentFindingRule {
+	return []EnrichmentFindingRule{
+		EnrichmentFindingRuleRuntimeNotInLimitations,
+		EnrichmentFindingRuleUnsupportedAppraisal,
+		EnrichmentFindingRuleNonEnglishInEnExample,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s EnrichmentFindingRule) MarshalText() ([]byte, error) {
+	switch s {
+	case EnrichmentFindingRuleRuntimeNotInLimitations:
+		return []byte(s), nil
+	case EnrichmentFindingRuleUnsupportedAppraisal:
+		return []byte(s), nil
+	case EnrichmentFindingRuleNonEnglishInEnExample:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *EnrichmentFindingRule) UnmarshalText(data []byte) error {
+	switch EnrichmentFindingRule(data) {
+	case EnrichmentFindingRuleRuntimeNotInLimitations:
+		*s = EnrichmentFindingRuleRuntimeNotInLimitations
+		return nil
+	case EnrichmentFindingRuleUnsupportedAppraisal:
+		*s = EnrichmentFindingRuleUnsupportedAppraisal
+		return nil
+	case EnrichmentFindingRuleNonEnglishInEnExample:
+		*s = EnrichmentFindingRuleNonEnglishInEnExample
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // Ref: #/components/schemas/Error
 type Error struct {
 	Error string `json:"error"`
@@ -10456,6 +10543,9 @@ type ExposureCaseSnapshot struct {
 	Limitations     string `json:"limitations"`
 	Enriched        bool   `json:"enriched"`
 	Digest          string `json:"digest"`
+	// Where the enrichment disagrees with the SKILL.md it was made from. Null means the enrichment was
+	// never checked; an empty array means it was checked and nothing disagreed.
+	EnrichmentFindings []EnrichmentFinding `json:"enrichment_findings"`
 }
 
 // GetVersionID returns the value of VersionID.
@@ -10508,6 +10598,11 @@ func (s *ExposureCaseSnapshot) GetDigest() string {
 	return s.Digest
 }
 
+// GetEnrichmentFindings returns the value of EnrichmentFindings.
+func (s *ExposureCaseSnapshot) GetEnrichmentFindings() []EnrichmentFinding {
+	return s.EnrichmentFindings
+}
+
 // SetVersionID sets the value of VersionID.
 func (s *ExposureCaseSnapshot) SetVersionID(val uuid.UUID) {
 	s.VersionID = val
@@ -10556,6 +10651,11 @@ func (s *ExposureCaseSnapshot) SetEnriched(val bool) {
 // SetDigest sets the value of Digest.
 func (s *ExposureCaseSnapshot) SetDigest(val string) {
 	s.Digest = val
+}
+
+// SetEnrichmentFindings sets the value of EnrichmentFindings.
+func (s *ExposureCaseSnapshot) SetEnrichmentFindings(val []EnrichmentFinding) {
+	s.EnrichmentFindings = val
 }
 
 type ExposureCaseStatus string

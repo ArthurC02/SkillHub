@@ -37,6 +37,7 @@ type EnrichedSkillProjection struct {
 	EnrichmentStatus        string
 	EnrichmentModel         *string
 	EnrichmentPromptVersion *string
+	EnrichmentFindings      []byte
 }
 
 func (s *Service) IndexSkill(ctx context.Context, tx pgx.Tx, projection SkillProjection) error {
@@ -72,6 +73,7 @@ func enrichedDocumentOf(projection EnrichedSkillProjection) gen.UpsertSearchDocu
 		RestartEnrichmentAttempts: EnrichmentStatus(projection.EnrichmentStatus).restartsAttempts(),
 		Listable:                  EnrichmentStatus(projection.EnrichmentStatus).listable(projection.Embedding != nil),
 		HasScript:                 scriptPresence(projection.Scan),
+		EnrichmentFindings:        projection.EnrichmentFindings,
 	}
 }
 
