@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   useContinuationRounds,
@@ -13,6 +12,7 @@ import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { AdminPage } from "../components/AdminPage";
 import { ActionForm } from "../components/ActionForm";
+import { useSettingDraft } from "../components/useSettingDraft";
 import { SettingsResult } from "./SettingsResult";
 import { RunModelBudget } from "./RunModelBudget";
 import { RunTokensPerMinute } from "./RunTokensPerMinute";
@@ -110,10 +110,8 @@ function ContinuationRounds({
   refreshing: boolean;
 }) {
   const set = useContinuationRounds();
-  const [value, setValue] = useState(String(setting.rounds));
-  const [sourceRounds, setSourceRounds] = useState(setting.rounds);
-  const staleDraft = sourceRounds !== setting.rounds && value !== String(setting.rounds);
-  const editableValue = staleDraft ? String(setting.rounds) : value;
+  const draft = useSettingDraft(setting.rounds, set.isSuccess);
+  const editableValue = draft.value;
   const rounds = Number(editableValue);
   const unverified = set.isSuccess && (!readable || setting.rounds !== set.variables.rounds);
   const valid =
@@ -149,7 +147,7 @@ function ContinuationRounds({
               )}
             </>
           )}
-          {staleDraft && (
+          {draft.changed && (
             <p role="status">輪數已變更；草稿改為目前的 {setting.rounds} 輪，請確認後再送出。</p>
           )}
           <details>
@@ -176,8 +174,7 @@ function ContinuationRounds({
                   step={1}
                   value={editableValue}
                   onChange={(event) => {
-                    setValue(event.target.value);
-                    setSourceRounds(setting.rounds);
+                    draft.update(event.target.value);
                     set.reset();
                   }}
                   readOnly={set.isPending}
@@ -200,8 +197,7 @@ function ContinuationRounds({
           disabled={refreshing}
           aria-describedby="admin-settings-rounds-result"
           onClick={() => {
-            setValue(String(setting.rounds));
-            setSourceRounds(setting.rounds);
+            draft.update(String(setting.rounds));
             set.reset();
             document.getElementById("admin-settings-rounds-heading")?.focus();
           }}

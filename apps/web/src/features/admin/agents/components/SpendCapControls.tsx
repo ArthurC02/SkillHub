@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
   MAX_AGENT_SPEND_CAP_MICROS,
   usd,
@@ -6,6 +6,7 @@ import {
   type PlatformAgent,
 } from "../../admin.service";
 import { ActionForm } from "../../components/ActionForm";
+import { useSettingDraft } from "../../components/useSettingDraft";
 
 function dollarsToMicros(text: string): number | null {
   if (!/^\d+(\.\d{1,6})?$/.test(text.trim())) return null;
@@ -24,12 +25,8 @@ export function SpendCapControls({
   change: ReturnType<typeof usePlatformAgentSpendCap>;
   onCompleted: (current: PlatformAgent) => void;
 }) {
-  const [dollars, setDollars] = useState(String(agent.daily_spend_cap_usd_micros / 1_000_000));
-  const [sourceMicros, setSourceMicros] = useState(agent.daily_spend_cap_usd_micros);
-  const staleDraft = sourceMicros !== agent.daily_spend_cap_usd_micros;
-  const editableDollars = staleDraft
-    ? String(agent.daily_spend_cap_usd_micros / 1_000_000)
-    : dollars;
+  const draft = useSettingDraft(agent.daily_spend_cap_usd_micros / 1_000_000, false);
+  const editableDollars = draft.value;
   const micros = dollarsToMicros(editableDollars);
   const restoring = change.variables?.daily_spend_cap_usd_micros === null;
   const setting = change.isPending && !restoring;
@@ -42,8 +39,7 @@ export function SpendCapControls({
       { name: agent.name, daily_spend_cap_usd_micros: value, note },
       {
         onSuccess: (current) => {
-          setDollars(String(current.daily_spend_cap_usd_micros / 1_000_000));
-          setSourceMicros(current.daily_spend_cap_usd_micros);
+          draft.accept(current.daily_spend_cap_usd_micros / 1_000_000);
           onCompleted(current);
         },
       },
@@ -52,7 +48,7 @@ export function SpendCapControls({
     <div hidden={!readable} onInput={() => change.reset()}>
       <details>
         <summary>調整每日花費上限</summary>
-        {staleDraft && <p role="status">上限已變更；草稿改為目前值，請確認後再送出。</p>}
+        {draft.changed && <p role="status">上限已變更；草稿改為目前值，請確認後再送出。</p>}
         <ActionForm
           id={`${fieldId}-set`}
           submitLabel={`改 ${agent.name} 的每日上限`}
@@ -78,8 +74,7 @@ export function SpendCapControls({
               inputMode="decimal"
               value={editableDollars}
               onChange={(event) => {
-                setDollars(event.target.value);
-                setSourceMicros(agent.daily_spend_cap_usd_micros);
+                draft.update(event.target.value);
               }}
               readOnly={readOnly}
               aria-invalid={micros === null}

@@ -2,7 +2,7 @@ import { useRunTokensPerMinute, type RunSettings } from "../admin.service";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ActionForm } from "../components/ActionForm";
 import { SettingsResult } from "./SettingsResult";
-import { useRunSettingDraft } from "./useRunSettingDraft";
+import { useSettingDraft } from "../components/useSettingDraft";
 
 type Rate = RunSettings["tokens_per_minute"];
 type RunTokensPerMinuteProps = { setting: Rate; readable: boolean; refreshing: boolean };
@@ -42,7 +42,7 @@ function resultSentence(limit: number | undefined, defaultLimit: number) {
 
 export function RunTokensPerMinute({ setting, readable, refreshing }: RunTokensPerMinuteProps) {
   const set = useRunTokensPerMinute();
-  const draft = useRunSettingDraft(setting.limit, set.isSuccess);
+  const draft = useSettingDraft(setting.limit, set.isSuccess);
   const value = draft.value;
   const limit = Number(value);
   const valid =

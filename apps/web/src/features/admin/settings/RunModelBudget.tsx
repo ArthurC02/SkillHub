@@ -2,7 +2,7 @@ import { useRunModelBudget, type RunSettings } from "../admin.service";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ActionForm } from "../components/ActionForm";
 import { SettingsResult } from "./SettingsResult";
-import { useRunSettingDraft } from "./useRunSettingDraft";
+import { useSettingDraft } from "../components/useSettingDraft";
 
 type Budget = RunSettings["model_budget"];
 type RunModelBudgetProps = { setting: Budget; readable: boolean; refreshing: boolean };
@@ -42,7 +42,7 @@ function resultSentence(credits: number | undefined, defaultCredits: number) {
 
 export function RunModelBudget({ setting, readable, refreshing }: RunModelBudgetProps) {
   const set = useRunModelBudget();
-  const draft = useRunSettingDraft(setting.credits, set.isSuccess);
+  const draft = useSettingDraft(setting.credits, set.isSuccess);
   const value = draft.value;
   const credits = Number(value);
   const valid =

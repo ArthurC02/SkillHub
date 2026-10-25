@@ -1425,6 +1425,87 @@ test("OPS-009: refreshing a changed model timeout replaces an obsolete editable 
   expect(has("設定已變更；草稿改為最新的 120 秒，請確認後再送出。")()).toBe(true);
 });
 
+for (const setting of [
+  {
+    name: "answered rounds",
+    fact: "目前：3 輪",
+    page: "/admin/settings",
+    endpoint: "/admin/settings/runs",
+    queryKey: queryKeys.admin.runSettings,
+    selector: "#admin-settings-rounds-value",
+    original: "3",
+    changed: "5",
+    edited: "7",
+    snapshot: (value: string) => ({
+      ...ADMIN_RUN_SETTINGS,
+      continuation_rounds: { ...ADMIN_RUN_SETTINGS.continuation_rounds, rounds: Number(value) },
+    }),
+  },
+  {
+    name: "model timeout",
+    fact: "目前：90 秒（已調整）",
+    page: "/admin/model-budgets",
+    endpoint: "/admin/model-budgets",
+    queryKey: queryKeys.admin.modelBudgets,
+    selector: "#admin-budget-judge-run-seconds",
+    original: "90",
+    changed: "120",
+    edited: "100",
+    snapshot: (value: string) => ({
+      budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+        budget.kind === "judge-run" ? { ...budget, seconds: Number(value) } : budget,
+      ),
+    }),
+  },
+  {
+    name: "Agent daily spend cap",
+    fact: "每日花費上限 $0.2000",
+    page: "/admin/agents",
+    endpoint: "/admin/agents",
+    queryKey: queryKeys.admin.agents,
+    selector: "#admin-agent-daily-report-cap",
+    original: "0.2",
+    changed: "1",
+    edited: "2.5",
+    snapshot: (value: string) => ({
+      agents: [
+        { ...ADMIN_AGENTS.agents[0], daily_spend_cap_usd_micros: Number(value) * 1_000_000 },
+      ],
+    }),
+  },
+] as const) {
+  for (const phase of ["round trip", "unchanged blank"] as const) {
+    test(`observed admin ${setting.name} retains its current draft after ${phase}`, async () => {
+      let current: string = setting.original;
+      stub(true, (path, method) =>
+        path === setting.endpoint && method === "GET"
+          ? { body: setting.snapshot(current), status: 200 }
+          : undefined,
+      );
+      await mountAt(setting.page);
+      await waitFor(() => Boolean(container.querySelector(setting.selector)));
+      await type(setting.selector, phase === "round trip" ? setting.edited : "");
+      if (phase === "round trip") {
+        current = setting.changed;
+        await act(async () => {
+          await queryClient.refetchQueries({ queryKey: setting.queryKey, exact: true });
+        });
+        await waitFor(() => field<HTMLInputElement>(setting.selector).value === setting.changed);
+      }
+      current = setting.original;
+      await act(async () => {
+        await queryClient.refetchQueries({ queryKey: setting.queryKey, exact: true });
+      });
+      await waitFor(() => queryClient.isFetching() === 0);
+      await waitFor(has(setting.fact));
+      expect(field<HTMLInputElement>(setting.selector).value).toBe(
+        phase === "round trip" ? setting.original : "",
+      );
+      expect(calls.filter((call) => call.method !== "GET")).toEqual([]);
+    });
+  }
+}
+
 test("OPS-009: range endpoints are accepted and adjacent values are blocked", async () => {
   stub(true);
   await mountAt("/admin/model-budgets");

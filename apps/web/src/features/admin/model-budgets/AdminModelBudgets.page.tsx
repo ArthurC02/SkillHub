@@ -6,6 +6,7 @@ import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { AdminPage } from "../components/AdminPage";
 import { ActionForm } from "../components/ActionForm";
+import { useSettingDraft } from "../components/useSettingDraft";
 
 const CALL_NAMES: Record<string, string> = {
   "match-reasons": "搜尋結果的推薦理由",
@@ -62,10 +63,8 @@ function BudgetSummary({ budget, name }: { budget: ModelCallBudget; name: string
 function BudgetRow({ budget, onCompleted, onDraftChange }: BudgetRowProps) {
   const name = CALL_NAMES[budget.kind] ?? budget.kind;
   const currentSeconds = budget.seconds ?? budget.default_seconds;
-  const [seconds, setSeconds] = useState(String(currentSeconds));
-  const [sourceSeconds, setSourceSeconds] = useState(currentSeconds);
-  const staleDraft = sourceSeconds !== currentSeconds;
-  const editableSeconds = staleDraft ? String(currentSeconds) : seconds;
+  const draft = useSettingDraft(currentSeconds, false);
+  const editableSeconds = draft.value;
   const set = useModelBudgetChange("PUT");
   const clear = useModelBudgetChange("DELETE");
   const busy = set.isPending || clear.isPending;
@@ -82,7 +81,7 @@ function BudgetRow({ budget, onCompleted, onDraftChange }: BudgetRowProps) {
       <BudgetSummary budget={budget} name={name} />
       <details id={`admin-budget-${budget.kind}-set`}>
         <summary>調整秒數</summary>
-        {staleDraft && (
+        {draft.changed && (
           <p role="status">設定已變更；草稿改為最新的 {currentSeconds} 秒，請確認後再送出。</p>
         )}
         <ActionForm
@@ -102,7 +101,7 @@ function BudgetRow({ budget, onCompleted, onDraftChange }: BudgetRowProps) {
               { kind: budget.kind, seconds: wanted, reason },
               {
                 onSuccess: () => {
-                  setSourceSeconds(wanted);
+                  draft.accept(wanted);
                   onCompleted({
                     kind: budget.kind,
                     name,
@@ -123,8 +122,7 @@ function BudgetRow({ budget, onCompleted, onDraftChange }: BudgetRowProps) {
               inputMode="numeric"
               value={editableSeconds}
               onChange={(event) => {
-                setSourceSeconds(currentSeconds);
-                setSeconds(event.target.value);
+                draft.update(event.target.value);
                 set.reset();
               }}
               readOnly={busy}
@@ -155,8 +153,7 @@ function BudgetRow({ budget, onCompleted, onDraftChange }: BudgetRowProps) {
                 { kind: budget.kind, reason },
                 {
                   onSuccess: () => {
-                    setSeconds(String(budget.default_seconds));
-                    setSourceSeconds(budget.default_seconds);
+                    draft.accept(budget.default_seconds);
                     onCompleted({
                       kind: budget.kind,
                       name,
