@@ -100,6 +100,7 @@ SUGGEST_CRITERIA_MODEL = os.getenv("SUGGEST_CRITERIA_MODEL") or "skillhub-sugges
 EMBED_TIMEOUT_SECONDS = 20.0
 # budget-ceiling: app.MATCH_REASONS_TIMEOUT_SECONDS
 MATCH_REASONS_TIMEOUT_SECONDS = 12.0
+MATCH_REASONS_MAX_TOKENS = 2048
 # budget-ceiling: app.SUGGEST_CRITERIA_TIMEOUT_SECONDS
 SUGGEST_CRITERIA_TIMEOUT_SECONDS = 30.0
 
@@ -241,10 +242,11 @@ class _JsonCall(NamedTuple):
     model: str
     schema_name: str
     schema: type[BaseModel]
+    max_tokens: int = 1024
 
 
 async def _ask_for_json(call: _JsonCall, system_prompt: str, user_prompt: str, timeout: float):
-    operation, model, schema_name, schema = call
+    operation, model, schema_name, schema, max_tokens = call
     client = _client(timeout)
 
     try:
@@ -255,7 +257,7 @@ async def _ask_for_json(call: _JsonCall, system_prompt: str, user_prompt: str, t
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.3,
-            max_tokens=1024,
+            max_tokens=max_tokens,
             response_format=json_schema_format(schema_name, schema),
             extra_body=request_metadata(operation=operation),
         )
@@ -293,11 +295,13 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
     system_prompt = (
         "You are a search result explainer for a Skill marketplace. "
         "Given a user's task description and a list of candidate Skills, "
-        "produce a brief (1-2 sentence) match reason for each candidate "
+        "produce a one-sentence match reason of at most 25 words "
+        "(or 50 characters in Chinese) for each candidate "
         "explaining why it is relevant to the user's task. "
         "Be specific about which capabilities match which needs. "
-        "Set 'fits' to false when the Skill does not actually do the user's task, "
-        "and then say in the reason what it does instead. "
+        "Set 'fits' to false only when the Skill clearly cannot help with the user's task, "
+        "and then say in the reason what it does instead. A Skill that covers part of "
+        "the task, or offers a reasonable way to approach it, fits. "
         + data_block_rules(
             DATA_TAG, "the user's own task text and summaries supplied with the packages"
         )
@@ -314,7 +318,13 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
     )
 
     response, headers, parsed = await _ask_for_json(
-        _JsonCall("match-reasons", MATCH_REASON_MODEL, "match_reasons", MatchReasons),
+        _JsonCall(
+            "match-reasons",
+            MATCH_REASON_MODEL,
+            "match_reasons",
+            MatchReasons,
+            MATCH_REASONS_MAX_TOKENS,
+        ),
         system_prompt,
         user_prompt,
         within(MATCH_REASONS_TIMEOUT_SECONDS, req.timeout_seconds),

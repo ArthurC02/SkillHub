@@ -36,7 +36,10 @@ model_list:
   - model_name: skillhub-intent
     litellm_params: *luna
   - model_name: skillhub-match-reason
-    litellm_params: *luna
+    litellm_params:
+      <<: *luna
+      reasoning_effort: none
+      additional_drop_params: ["thinking"]
   - model_name: skillhub-suggest-criteria
     litellm_params: *luna
   - model_name: skillhub-generate

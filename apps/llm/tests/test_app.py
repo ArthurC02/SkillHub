@@ -290,6 +290,17 @@ def test_match_reasons_asks_the_gateway_for_the_shape_it_parses():
     assert "reasons" in fmt["json_schema"]["schema"]["properties"]
 
 
+def test_match_reasons_leaves_room_for_ten_reasons_with_fit_judgements():
+    """Ten reasons with a fit judgement each ran past 1024 output tokens, and a
+    cut-off answer is unparseable, so the whole batch fell back to templates."""
+    body = '{"reasons": [{"skill_id": "s1", "reason": "it parses invoices", "fits": true}]}'
+    sent: list = []
+    with _stub_chat(body, sent):
+        client.post("/match-reasons", json={"query": "read my invoices", "candidates": CANDIDATES})
+
+    assert sent[0]["max_tokens"] == 2048
+
+
 def test_match_reasons_returns_a_partial_answer_as_partial():
     """A skipped candidate comes back absent, not filled with a stock sentence:
     the caller labels what it gets here as model-generated."""
