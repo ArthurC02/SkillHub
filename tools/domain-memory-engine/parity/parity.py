@@ -49,7 +49,7 @@ def run(argv: list[str]) -> dict:
 
 def first_difference(left: bytes, right: bytes) -> str:
     left_lines, right_lines = left.decode("utf-8", "replace").splitlines(), right.decode("utf-8", "replace").splitlines()
-    for number, (one, other) in enumerate(zip(left_lines, right_lines), start=1):
+    for number, (one, other) in enumerate(zip(left_lines, right_lines, strict=False), start=1):
         if one != other:
             return f"line {number}: python {one!r} / rust {other!r}"
     return f"python has {len(left_lines)} lines, rust has {len(right_lines)}"
