@@ -163,7 +163,7 @@ test("DISC-006: catalog serializes filters and explains one truncated result lis
     results: [
       {
         ...HIT_FACETS,
-        skill_id: "catalog-one",
+        skill_id: "8f6b4724-c3e9-5df0-82e0-5dd4096af602",
         name: "Catalog One",
         summary: "A browsable skill.",
         rank: null,
@@ -191,7 +191,7 @@ test("DISC-006: catalog serializes filters and explains one truncated result lis
 
 const CATALOG_ROW = {
   ...HIT_FACETS,
-  skill_id: "catalog-one",
+  skill_id: "8f6b4724-c3e9-5df0-82e0-5dd4096af602",
   name: "Catalog One",
   summary: "A browsable skill.",
   rank: null,
@@ -237,9 +237,12 @@ function stubCategoryCatalog(pages: Record<string, CategoryPage>) {
       const category = new URLSearchParams(url.split("?")[1] ?? "").get("category") ?? "";
       const { results, total } = pages[category];
       return Promise.resolve(
-        new Response(JSON.stringify({ results, limit: 100, total, truncated: false }), {
-          status: 200,
-        }),
+        new Response(
+          JSON.stringify({ results, limit: 100, total, truncated: total > results.length }),
+          {
+            status: 200,
+          },
+        ),
       );
     }
     return Promise.resolve(
@@ -254,26 +257,26 @@ const CURATED = { value: "curated", label: "精選", note: "已完成人工檢�
 const SHELF_ROWS: PublicSearchResult[] = [
   {
     ...CATALOG_ROW,
-    skill_id: "doc-curated",
+    skill_id: "b8e28da6-94be-564b-8d1a-2847dec59c01",
     name: "Doc Curated",
     tier: CURATED,
     category: { value: "documents", label: "文件", note: "由策展判定。" },
   },
   {
     ...CATALOG_ROW,
-    skill_id: "doc-plain",
+    skill_id: "316e1f8c-dd2f-55a5-9bce-fdfcbb0d014b",
     name: "Doc Plain",
     category: { value: "documents", label: "文件", note: "由策展判定。" },
   },
   {
     ...CATALOG_ROW,
-    skill_id: "write-plain",
+    skill_id: "45f29452-6430-55ba-b61a-4c4a8221df64",
     name: "Write Plain",
     category: { value: "writing", label: "寫作", note: "由策展判定。" },
   },
   {
     ...CATALOG_ROW,
-    skill_id: "data-plain",
+    skill_id: "1b5f0d4e-5477-5b5e-a49a-838b293c4ef8",
     name: "Data Plain",
     category: { value: "data", label: "資料", note: "由策展判定。" },
   },
@@ -438,9 +441,12 @@ for (const cachedTotal of [0, 40]) {
               : 0;
         return new Response(JSON.stringify({ total }), { status: 200 });
       }
-      return new Response(JSON.stringify({ ...page, limit: 100, truncated: false }), {
-        status: 200,
-      });
+      return new Response(
+        JSON.stringify({ ...page, limit: 100, truncated: page.total > page.results.length }),
+        {
+          status: 200,
+        },
+      );
     });
     await browseCatalogue();
     await waitFor(() => countCalls.length === 4);
@@ -524,7 +530,7 @@ test("category count failures prioritize one login notice over another category 
     const params = new URLSearchParams(url.split("?")[1] ?? "");
     if (params.get("limit") === "1")
       return new Response(null, { status: params.get("category") === "documents" ? 401 : 503 });
-    return new Response(JSON.stringify({ ...SHELF_PAGES[""], limit: 100, truncated: false }), {
+    return new Response(JSON.stringify({ ...SHELF_PAGES[""], limit: 100, truncated: true }), {
       status: 200,
     });
   });
@@ -563,7 +569,7 @@ test("the catalogue presents every product in one compact scan surface", async (
 
   expect(galleries).toHaveLength(1);
   expect(cards).toHaveLength(SHELF_ROWS.length);
-  expect(container.querySelector(".catalog-total")?.textContent).toContain("共 40 個小工具");
+  expect(container.querySelector(".catalog-total")?.textContent).toContain("共 40 個，顯示前 4 個");
   expect(container.querySelector(".curated-shelf")).toBeNull();
   expect(container.querySelector("#rest-heading")).toBeNull();
 
@@ -723,6 +729,7 @@ test("設計 §2.11(c): 去重之後，每一列的 facet 仍然帶著逐列不�
   stubSearch({
     ...EMPTY,
     query: "pdf",
+    total: 2,
     results: [
       {
         ...HIT_FACETS,
@@ -790,7 +797,7 @@ test("DISC-006: an empty filtered catalog explains how to recover", async () => 
 test("returning to browse does not render a cached search beside the catalog", async () => {
   const searchHit: PublicSearchResult = {
     ...HIT_FACETS,
-    skill_id: "cached-search",
+    skill_id: "e47f9fcb-2205-5460-9c3a-126c6b5f1ada",
     name: "Cached Search Only",
     summary: "search result",
     rank: 0.9,
@@ -800,7 +807,7 @@ test("returning to browse does not render a cached search beside the catalog", a
   };
   const catalogHit: PublicSearchResult = {
     ...searchHit,
-    skill_id: "catalog-only",
+    skill_id: "871898b7-70e1-5cdc-baf9-0e3212732daa",
     name: "Catalog Only",
     summary: "catalog result",
     rank: null,
@@ -873,6 +880,7 @@ test("DISC-002: each candidate shows its match reason, labelled by provenance", 
   stubSearch({
     ...EMPTY,
     query: "pdf",
+    total: 2,
     results: [
       {
         ...HIT_FACETS,
@@ -1165,10 +1173,11 @@ test("DISC-002: a search without reason_query never asks for reasons", async () 
   expect(bodies).toHaveLength(0);
 });
 
-test("DISC-002: a summary with no stated source says so rather than crediting the author", async () => {
+test("DISC-002: a search with missing summary provenance is a read failure rather than author credit", async () => {
   stubSearch({
     ...EMPTY,
     query: "pdf",
+    total: 1,
     results: [
       {
         ...HIT_FACETS,
@@ -1185,7 +1194,8 @@ test("DISC-002: a summary with no stated source says so rather than crediting th
   await render(<App />);
   await submitSearch("pdf");
 
-  expect(container.querySelectorAll(".badge-source-unknown")).toHaveLength(1);
+  expect(container.textContent).toContain("暫時無法讀取搜尋結果");
+  expect(container.querySelectorAll(".search-result")).toHaveLength(0);
   expect(container.querySelectorAll(".badge-source-package")).toHaveLength(0);
 });
 
@@ -1219,6 +1229,7 @@ test("DISC-005: degraded and partial_index are separate, non-blocking notices", 
   stubSearch({
     ...EMPTY,
     query: "pdf",
+    total: 1,
     results: [
       {
         ...HIT_FACETS,
@@ -1252,6 +1263,7 @@ test("DISC-002: an unranked hit on the hybrid path reads as unscored, not 0.00",
   stubSearch({
     ...EMPTY,
     query: "pdf",
+    total: 1,
     results: [
       {
         ...HIT_FACETS,
@@ -1345,6 +1357,7 @@ test("DISC-008: warnings are up front, info findings aggregate behind a disclosu
 const TWO_HITS: PublicSearchResponse = {
   ...EMPTY,
   query: "pdf",
+  total: 4,
   results: [
     {
       ...HIT_FACETS,
@@ -1641,7 +1654,7 @@ function compareRow(label: string) {
 
 test("DISC-009: the table highlights differing rows and never invents a missing one", async () => {
   const left = detailFixture({
-    skill_id: "id-left",
+    skill_id: "09f5b9b7-4cc8-5fd2-b82e-059d12ab0190",
     name: "左邊的小工具",
     enrichment: {
       status: "enriched",
@@ -1661,17 +1674,33 @@ test("DISC-009: the table highlights differing rows and never invents a missing 
       created_at: "2026-08-01T00:00:00Z",
     },
   });
-  const right = detailFixture({ skill_id: "id-right", name: "右邊的小工具" });
+  const right = detailFixture({
+    skill_id: "097339be-b801-5bdb-ad79-424f562272bd",
+    name: "右邊的小工具",
+  });
   const calls = stubSearchAndDetails(
     {
       ...EMPTY,
       query: "pdf",
+      total: 2,
       results: [
-        { ...HIT_FACETS, skill_id: "id-left", name: "左邊的小工具", summary: "甲", rank: 0.7 },
-        { ...HIT_FACETS, skill_id: "id-right", name: "右邊的小工具", summary: "乙", rank: 0.6 },
+        {
+          ...HIT_FACETS,
+          skill_id: "09f5b9b7-4cc8-5fd2-b82e-059d12ab0190",
+          name: "左邊的小工具",
+          summary: "甲",
+          rank: 0.7,
+        },
+        {
+          ...HIT_FACETS,
+          skill_id: "097339be-b801-5bdb-ad79-424f562272bd",
+          name: "右邊的小工具",
+          summary: "乙",
+          rank: 0.6,
+        },
       ],
     },
-    { "id-left": left, "id-right": right },
+    { "09f5b9b7-4cc8-5fd2-b82e-059d12ab0190": left, "097339be-b801-5bdb-ad79-424f562272bd": right },
   );
 
   await render(<App />);
@@ -1711,7 +1740,9 @@ test("DISC-009: the table highlights differing rows and never invents a missing 
 
   expect(compareRow("相容性（驗證證據）").textContent).toContain("未驗證");
 
-  const detailReads = calls.filter((url) => /\/api\/skills\/id-(left|right)/.test(url));
+  const detailReads = calls.filter((url) =>
+    [left.skill_id, right.skill_id].some((id) => url.includes(`/api/skills/${id}`)),
+  );
   expect(detailReads.length).toBeGreaterThan(0);
   for (const url of detailReads) {
     expect([url, url.includes("view=embedded")]).toEqual([url, true]);
@@ -1719,13 +1750,21 @@ test("DISC-009: the table highlights differing rows and never invents a missing 
 });
 
 test("DISC-009: a repeated URL id is still only one comparison candidate", async () => {
-  const skill = detailFixture({ skill_id: "id-left", name: "Only 小工具" });
-  const calls = stubSearchAndDetails(EMPTY, { "id-left": skill });
+  const skill = detailFixture({
+    skill_id: "09f5b9b7-4cc8-5fd2-b82e-059d12ab0190",
+    name: "Only 小工具",
+  });
+  const calls = stubSearchAndDetails(EMPTY, { "09f5b9b7-4cc8-5fd2-b82e-059d12ab0190": skill });
   await render(<App />);
   await act(async () => {
-    await router.navigate({ to: "/compare", search: { ids: "id-left,id-left" } });
+    await router.navigate({
+      to: "/compare",
+      search: { ids: "09f5b9b7-4cc8-5fd2-b82e-059d12ab0190,09f5b9b7-4cc8-5fd2-b82e-059d12ab0190" },
+    });
   });
-  await waitFor(() => calls.some((url) => url.includes("/api/skills/id-left?")));
+  await waitFor(() =>
+    calls.some((url) => url.includes("/api/skills/09f5b9b7-4cc8-5fd2-b82e-059d12ab0190?")),
+  );
 
   expect(container.textContent).toContain("請從首頁的搜尋結果或目錄選擇 2 到 3 個小工具");
   expect(container.querySelector("table.compare-table")).toBeNull();
@@ -1740,17 +1779,18 @@ test("DISC-009: a failed read on /compare says so at once, not after seven secon
           JSON.stringify({
             ...EMPTY,
             query: "pdf",
+            total: 2,
             results: [
               {
                 ...HIT_FACETS,
-                skill_id: "id-left",
+                skill_id: "09f5b9b7-4cc8-5fd2-b82e-059d12ab0190",
                 name: "左邊的小工具",
                 summary: "甲",
                 rank: 0.7,
               },
               {
                 ...HIT_FACETS,
-                skill_id: "id-right",
+                skill_id: "097339be-b801-5bdb-ad79-424f562272bd",
                 name: "右邊的小工具",
                 summary: "乙",
                 rank: 0.6,
@@ -2035,6 +2075,7 @@ test("DISC-002: the tier badge is the server's value, not a front-end guess", as
   stubSearch({
     ...EMPTY,
     query: "pdf",
+    total: 1,
     results: [
       {
         ...HIT_FACETS,
@@ -2104,6 +2145,7 @@ test("DISC-002: a result row carries all seven columns, and infers none of them"
   stubSearch({
     ...EMPTY,
     query: "pdf",
+    total: 2,
     results: [
       {
         ...HIT_FACETS,
@@ -2131,7 +2173,7 @@ test("DISC-002: a result row carries all seven columns, and infers none of them"
         rank: 0.3,
         risk: {
           scan_status: "unavailable",
-          level: "none",
+          level: "unknown",
           warnings: 0,
           disclosures: [],
           note: "此結果尚無掃描紀錄,狀態未知——不代表已通過檢查。",

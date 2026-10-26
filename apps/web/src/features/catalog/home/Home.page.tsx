@@ -7,6 +7,7 @@ import {
   withMatchReasons,
 } from "../../skill";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
+import { Loading } from "../../../shared/ui/Loading";
 import { useGenerateEntryPoint } from "../../creation";
 import { useMe } from "../../../core/session/me.service";
 import type { HomeSearch } from "../../../app/router";
@@ -191,11 +192,12 @@ function SearchReadState({ query }: { query: ReturnType<typeof useCorrectedSkill
   return (
     <>
       {query.isFetching && <p role="status">搜尋中…</p>}
+      {query.fetchStatus === "paused" && <Loading what="搜尋結果" paused />}
       <ReadFailure
         error={query.error}
         what="搜尋結果"
         retry={() => void query.refetch()}
-        retrying={query.isFetching}
+        retrying={query.fetchStatus !== "idle"}
         focusTarget="catalog-search-heading"
       />
     </>

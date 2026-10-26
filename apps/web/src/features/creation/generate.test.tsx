@@ -1,4 +1,4 @@
-import { ME as SESSION } from "../../testing/fixtures/platform";
+import { HIT_FACETS, ME as SESSION } from "../../testing/fixtures/platform";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
@@ -47,6 +47,7 @@ async function render() {
 const NO_RESULTS = {
   query: "沒有人做過的事",
   results: [],
+  total: 0,
   limit: 20,
   truncated: false,
   degraded: false,
@@ -650,10 +651,12 @@ test("GEN-001: typing past the rune ceiling warns that the server will enforce i
 });
 
 const REFERENCE_HIT = (n: number) => ({
-  skill_id: `ref-${n}`,
+  ...HIT_FACETS,
+  skill_id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
   name: `參考小工具 ${n}`,
   summary: `摘要 ${n}`,
   summary_source: "package",
+  rank: null,
 });
 
 test("GEN-006: searching lists a result, and ticking it sends reference_skill_ids with the task text", async () => {
@@ -665,6 +668,7 @@ test("GEN-006: searching lists a result, and ticking it sends reference_skill_id
       result: {
         query: "分析報表",
         results: [REFERENCE_HIT(1)],
+        total: 1,
         limit: 20,
         truncated: false,
         degraded: false,
@@ -708,7 +712,7 @@ test("GEN-006: searching lists a result, and ticking it sends reference_skill_id
   await waitFor(() => posted.some((p) => p.path === "/skills/generate"));
 
   const body = JSON.parse(posted.find((p) => p.path === "/skills/generate")!.body);
-  expect(body.reference_skill_ids).toEqual(["ref-1"]);
+  expect(body.reference_skill_ids).toEqual(["00000000-0000-4000-8000-000000000001"]);
   expect(body.task_description).toBe("把 PDF 轉成摘要");
 });
 
@@ -721,6 +725,7 @@ test("GEN-006: a fourth reference selection is not possible", async () => {
       result: {
         query: "分析報表",
         results: [REFERENCE_HIT(1), REFERENCE_HIT(2), REFERENCE_HIT(3), REFERENCE_HIT(4)],
+        total: 4,
         limit: 20,
         truncated: false,
         degraded: false,
@@ -957,6 +962,7 @@ test("GEN-006: a reference-unusable 422 renders verbatim and keeps the selected 
       result: {
         query: "分析報表",
         results: [REFERENCE_HIT(1)],
+        total: 1,
         limit: 20,
         truncated: false,
         degraded: false,
@@ -1006,6 +1012,7 @@ test("GEN-006: the reference picker's search carries purpose=reference, Home's d
       result: {
         query: "分析報表",
         results: [REFERENCE_HIT(1)],
+        total: 1,
         limit: 20,
         truncated: false,
         degraded: false,
@@ -1042,6 +1049,7 @@ test("GEN-006: a reference tick with no text and no diagram keeps submit disable
       result: {
         query: "分析報表",
         results: [REFERENCE_HIT(1)],
+        total: 1,
         limit: 20,
         truncated: false,
         degraded: false,

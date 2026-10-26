@@ -362,7 +362,7 @@ test("a filtered Catalog confirms matching emptiness without declaring the deplo
       reads += 1;
       if (reads === 2) await gate;
     }
-    return route.fulfill({ json: { results: [], total: 0, truncated: false } });
+    return route.fulfill({ json: { results: [], total: 0, limit: 100, truncated: false } });
   });
   try {
     await page.goto("/?category=documents");
