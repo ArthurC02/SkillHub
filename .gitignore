@@ -9,6 +9,9 @@
 # Local, non-authoritative domain registry a skill regenerates; never committed.
 /domain-memory/
 
+# A code-navigation tool's per-machine project config, cache and memories.
+/.serena/
+
 # Python
 __pycache__/
 *.pyc
