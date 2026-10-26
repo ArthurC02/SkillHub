@@ -3,7 +3,7 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-24T10:35:00.265291Z"
+    at: "2026-10-26T01:48:28.064585Z"
 sources:
   - resource: "apps/platform/internal/trial/design/cost.go#L22-37"
     excerpt_sha256: "sha256:6df644766cd397f4d57227d46082b1eb508bcbc096b2a7fa0ba43fb6a635b63b"
@@ -17,9 +17,9 @@ sources:
     excerpt_sha256: "sha256:d8e8d8a5a0c369b973d2acacea3d5df6440e1e5f55fe9cae4bdc2618640a43fd"
   - resource: "apps/platform/internal/skill/admission/generate.go#L254-256"
     excerpt_sha256: "sha256:a210cb9d749a2bb04a447d71aacfb15c1e6f37e3946db16c419a030afdd5be2b"
-  - resource: "apps/platform/internal/skill/admission/enrich.go#L116-118"
+  - resource: "apps/platform/internal/skill/admission/enrich.go#L117-119"
     excerpt_sha256: "sha256:b2e935bc0ef591576f4c3882d619298a1f09b40ebee0cd46eecc286a86e1ee35"
-  - resource: "apps/platform/internal/skill/admission/service.go#L553-555"
+  - resource: "apps/platform/internal/skill/admission/service.go#L555-557"
     excerpt_sha256: "sha256:b85be66aa7f8c261615dbffbb702ba8d542ff49022a70d7228372bf817b0ad13"
   - resource: "apps/platform/internal/skill/admission/cost_test.go#L185-215"
     excerpt_sha256: "sha256:5c9abfbf675a78c854e387133a55471ecb709d64727d5833963dcca4cc66bcc1"

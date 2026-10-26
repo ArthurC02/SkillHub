@@ -2,12 +2,36 @@
   "format": "domain-evidence-bundle/v1",
   "requirement_id": "findings-recite",
   "proposal_id": "findings-recite-2026-10-26",
-  "registry_revision": null,
+  "registry_revision": {
+    "observed_commit": "de1053b52a750ead89cf59db10f80c08e0cf085c",
+    "registry_digest": "sha256:dfa66566ea0b364baa6ba93e5864e53f47dfcf4b94b7bf62ee142fc41a1cbbe6",
+    "committed_digest": "sha256:dfa66566ea0b364baa6ba93e5864e53f47dfcf4b94b7bf62ee142fc41a1cbbe6"
+  },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "de1053b52a750ead89cf59db10f80c08e0cf085c",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "de1053b52a750ead89cf59db10f80c08e0cf085c",
+      "registry_digest": "sha256:dfa66566ea0b364baa6ba93e5864e53f47dfcf4b94b7bf62ee142fc41a1cbbe6",
+      "committed_digest": "sha256:dfa66566ea0b364baa6ba93e5864e53f47dfcf4b94b7bf62ee142fc41a1cbbe6"
+    }
+  },
   "counterfactual_check": null,
   "sources": [],
-  "test_results": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/findings-recite-2026-10-26 --path apps/platform/internal/creator/creation/job.go --path apps/platform/internal/entrypoint/api/apiserver/disc_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/exposure_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/generate_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/p1_halt_model_calls_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/search_embedding_backfill_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/version_refusal_integration_test.go --path apps/platform/internal/skill/admission/cost_test.go --path apps/platform/internal/skill/admission/enrich.go --path apps/platform/internal/skill/admission/generate.go --path apps/platform/internal/skill/admission/service.go --path apps/platform/internal/skill/admission/service_test.go --path apps/platform/internal/skill/admission/source.go --path apps/platform/internal/skill/discovery/enrichment.go --path apps/platform/internal/skill/discovery/enrichment_backfill.go --path apps/platform/internal/skill/discovery/http.go --path apps/platform/internal/skill/discovery/projection.go --path apps/platform/internal/skill/discovery/projection_test.go --path apps/platform/internal/skill/discovery/service.go --path apps/platform/internal/skill/publishing/exposure.go --path apps/platform/internal/skill/publishing/exposure_test.go --path apps/platform/internal/skill/publishing/service.go --path apps/platform/internal/trial/design/cost.go --path apps/platform/internal/trial/execution/halt.go --path db/queries/search.sql",
+      "command_profile": "architecture",
+      "exit_code": 0,
+      "output_sha256": "sha256:1b8f2b2794d7c9132e66fce66b06647be850e579201d529f108c02dfdf09b51f",
+      "finished_at": "2026-10-26T01:48:27.620529Z"
+    }
+  ],
   "contract_checks": [],
   "architecture_checks": [],
   "security_checks": [],

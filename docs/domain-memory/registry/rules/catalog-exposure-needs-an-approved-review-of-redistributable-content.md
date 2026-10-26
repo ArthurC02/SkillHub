@@ -3,9 +3,9 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-20T00:09:09.697460Z"
+    at: "2026-10-26T01:48:28.064585Z"
 sources:
-  - resource: "apps/platform/internal/skill/publishing/exposure.go#L208-216"
+  - resource: "apps/platform/internal/skill/publishing/exposure.go#L209-217"
     excerpt_sha256: "sha256:3a96ece110e80bc90d85b889257a4ac3e375c87a0b13c63b8e397a7d78e8ff6c"
   - resource: "apps/platform/internal/skill/publishing/exposure_test.go#L94-127"
     excerpt_sha256: "sha256:53be478221804a44b69649595cbced6b3b5a8ae3d201afea79b3d374a4b9691a"

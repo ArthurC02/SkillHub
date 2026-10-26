@@ -3,9 +3,9 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-24T10:35:00.265291Z"
+    at: "2026-10-26T01:48:28.064585Z"
 sources:
-  - resource: "apps/platform/internal/skill/discovery/projection.go#L111-113"
+  - resource: "apps/platform/internal/skill/discovery/projection.go#L113-115"
     excerpt_sha256: "sha256:cfb9cac5eb1c1a3638fda9fe2841f13917ce1ad05973589b96b707a873e910f9"
   - resource: "apps/platform/internal/skill/discovery/projection_test.go#L46-59"
     excerpt_sha256: "sha256:573e2823728cb4cd0fa78b25379c5f74f857fbb332f6f7d3c34ccbdf256c12c6"

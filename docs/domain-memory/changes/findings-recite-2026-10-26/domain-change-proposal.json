@@ -3,14 +3,18 @@
   "proposal_id": "findings-recite-2026-10-26",
   "proposer": "domain-memory-agent",
   "requirement_id": "findings-recite",
-  "status": "draft",
+  "status": "applied",
   "change_classification": "routine",
-  "submitted_at": null,
-  "verified_at": null,
-  "finalized_at": null,
-  "applied_at": null,
+  "submitted_at": "2026-10-26T01:48:24.512966Z",
+  "verified_at": "2026-10-26T01:48:32.675367Z",
+  "finalized_at": "2026-10-26T01:48:49.265470Z",
+  "applied_at": "2026-10-26T01:49:11.551505Z",
   "proposal_revision": 1,
-  "base_registry_revision": null,
+  "base_registry_revision": {
+    "observed_commit": "de1053b52a750ead89cf59db10f80c08e0cf085c",
+    "registry_digest": "sha256:dfa66566ea0b364baa6ba93e5864e53f47dfcf4b94b7bf62ee142fc41a1cbbe6",
+    "committed_digest": "sha256:dfa66566ea0b364baa6ba93e5864e53f47dfcf4b94b7bf62ee142fc41a1cbbe6"
+  },
   "affected_contexts": [
     "catalog",
     "creation",
@@ -831,11 +835,29 @@
   ],
   "risk_flags": [],
   "open_questions": [],
-  "approvals": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-26T01:48:28.064585Z",
+      "scope": "re-cite the 26 citations shifted by storing enrichment findings (e0dd24ae3): 19 reviewed records whose cited lines in admission, discovery, publishing, the search queries and their tests moved",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "de1053b52a750ead89cf59db10f80c08e0cf085c",
+        "registry_digest": "sha256:dfa66566ea0b364baa6ba93e5864e53f47dfcf4b94b7bf62ee142fc41a1cbbe6",
+        "committed_digest": "sha256:dfa66566ea0b364baa6ba93e5864e53f47dfcf4b94b7bf62ee142fc41a1cbbe6"
+      }
+    }
+  ],
   "supersedes": [
     "foreign-key-collaborations",
     "publishing-generated-skill-declares-a-licence-2026-10-20",
     "reasons-recite-2026-10-25",
     "shifted-recite-2026-10-24"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "de1053b52a750ead89cf59db10f80c08e0cf085c",
+    "registry_digest": "sha256:cee046e631f62ce0cd45c7284a4d0ee5bd5c3cde8f643e2428b980b6802ee0d5"
+  }
 }
