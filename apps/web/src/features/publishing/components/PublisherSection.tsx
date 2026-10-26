@@ -2,7 +2,7 @@ import { useId, useState } from "react";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
-import { ApiError } from "../../../core/api/client";
+import { ApiError, isWriteResultUnknown } from "../../../core/api/client";
 import { useOwnPublisher, useRegisterPublisher } from "../publishing.service";
 import {
   PUBLISHER_NAME_PERMANENT,
@@ -78,7 +78,11 @@ export function PublisherRegistration({
           <input
             id={inputId}
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => {
+              setName(event.target.value);
+              if (register.isError && !isWriteResultUnknown(register.error)) register.reset();
+            }}
+            disabled={register.isPending}
             maxLength={64}
             required
           />

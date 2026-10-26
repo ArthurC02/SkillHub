@@ -93,7 +93,7 @@ export function refusalReason(error: unknown): PublishingRefusalReason | undefin
     return undefined;
   }
   const reason = (error.body as { reason?: unknown }).reason;
-  return typeof reason === "string" && reason in PUBLISHING_REFUSAL_LABEL
+  return typeof reason === "string" && Object.hasOwn(PUBLISHING_REFUSAL_LABEL, reason)
     ? (reason as PublishingRefusalReason)
     : undefined;
 }

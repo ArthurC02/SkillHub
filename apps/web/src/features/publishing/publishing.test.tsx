@@ -4,6 +4,7 @@ import { onlineManager, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
+import { ApiError } from "../../core/api/client";
 import { PublicPublication } from "./PublicPublication.page";
 import { AcquisitionFailure } from "./components/AcquisitionFailure";
 import { PublisherSection } from "./components/PublisherSection";
@@ -15,6 +16,9 @@ import {
   PUBLISHING_REFUSAL_LABEL,
   type PublishingRefusalReason,
   refusalSentence,
+  refusalReason,
+  writeFailureSentence,
+  actionFailureSentence,
 } from "./publishing.model";
 import {
   OWN_PUBLICATION,
@@ -1721,6 +1725,72 @@ for (const owner of ["workspace", "version"] as const) {
   }
 }
 
+for (const owner of ["workspace", "version"] as const) {
+  for (const status of [409, 503]) {
+    test(`publisher feedback ${owner} locks its pending draft and handles editing after ${status}`, async () => {
+      let releasePost!: (response: Response) => void;
+      const response = new Promise<Response>((resolve) => {
+        releasePost = resolve;
+      });
+      const posts: unknown[] = [];
+      vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          posts.push(JSON.parse(String(init.body)));
+          return response;
+        }
+        return json({ error: "not found" }, 404);
+      });
+      await render(
+        owner === "workspace" ? (
+          <PublisherSection />
+        ) : (
+          <PublishPanel skill={detail()} isLoggedIn={true} isOwner={true} />
+        ),
+        () => container.querySelector("form.publisher-form") !== null,
+      );
+      const input = container.querySelector<HTMLInputElement>("form.publisher-form input")!;
+      const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+      await act(async () => {
+        setValue.call(input, "submitted-name");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      await act(async () => button("註冊")!.click());
+      await waitFor(() => button("註冊中")?.disabled === true);
+      expect(input.disabled).toBe(true);
+      await act(async () =>
+        releasePost(
+          await json(
+            status === 409
+              ? { error: "publisher name is taken", reason: "name_taken" }
+              : { error: "upstream unavailable" },
+            status,
+          ),
+        ),
+      );
+      await waitFor(() => container.querySelector('[role="alert"]') !== null);
+      const resumed = container.querySelector<HTMLInputElement>("form.publisher-form input")!;
+      expect(resumed.value).toBe("submitted-name");
+      expect(resumed.disabled).toBe(false);
+      await act(async () => {
+        setValue.call(resumed, "new-name");
+        resumed.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      await pollUntil(
+        () =>
+          status === 409
+            ? container.querySelector('[role="alert"]') === null
+            : container.querySelector('[role="alert"]')?.textContent ===
+              "尚未確認註冊是否已完成；上面的狀態已重新讀取，請先看過再決定要不要重送。",
+        text,
+        DEFAULT_WAIT_MS,
+        { flushBeforeFirstCheck: true },
+      );
+      expect(resumed.value).toBe("new-name");
+      expect(posts).toEqual([{ name: "submitted-name" }]);
+    });
+  }
+}
+
 test("PublisherSection：409 already_registered 顯示中文，不顯示英文原文", async () => {
   const calls: string[] = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
@@ -2164,3 +2234,13 @@ test("PublishPanel：生成的小工具送出選定的授權；不聲明時不�
 test("refusalSentence: 沒有 reason 欄位時回傳 undefined，不誤植成中文句", () => {
   expect(refusalSentence(new Error("boom"))).toBeUndefined();
 });
+
+for (const reason of ["__proto__", "constructor", "toString", "valueOf"]) {
+  test(`publishing refusal ignores inherited ${reason} properties`, () => {
+    const error = new ApiError(409, "這次操作無法完成。", { reason });
+    expect(refusalReason(error)).toBeUndefined();
+    expect(refusalSentence(error)).toBeUndefined();
+    expect(writeFailureSentence(error, "註冊")).toBe("註冊沒有成功，可以再試一次。");
+    expect(actionFailureSentence(error, "暫時無法完成。")).toBe("這次操作無法完成。");
+  });
+}
