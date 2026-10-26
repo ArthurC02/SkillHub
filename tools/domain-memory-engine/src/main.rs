@@ -1,11 +1,13 @@
 mod cli;
 mod digits;
 mod files;
+mod git;
 mod json;
 mod okf;
 mod proposals;
 mod py;
 mod store;
+mod tar;
 
 use std::io::Write;
 
@@ -67,13 +69,17 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
         }
         "export" => {
             let root = py::resolve(invocation.text("registry_root").unwrap_or("."));
-            if invocation.text("commit").is_some() {
-                if invocation.text("repo_root").is_none() {
-                    return Err("export --commit needs --repo-root".to_string());
+            let documents = match invocation.text("commit") {
+                None => store::read_documents(&root)?,
+                Some(commit) => {
+                    let repo_root = invocation
+                        .text("repo_root")
+                        .ok_or("export --commit needs --repo-root")?;
+                    store::committed_documents(&py::resolve(repo_root), commit, &root)?
+                        .ok_or_else(|| format!("no Domain Memory Registry at {commit}"))?
                 }
-                return Err("export --commit is not available in the Rust engine yet".to_string());
-            }
-            print_json(&Value::Object(store::read_documents(&root)?));
+            };
+            print_json(&Value::Object(documents));
             Ok(0)
         }
         other => Err(format!("{other} is not available in the Rust engine yet")),

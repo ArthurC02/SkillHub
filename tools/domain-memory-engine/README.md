@@ -22,7 +22,7 @@ Domain Memory 外掛的命令引擎，以 Rust 重寫。終點是外掛的 Pytho
 
 一個命令算移植完成，條件是它的每一條輸出分支（成功、每一種拒絕、每一種讀取失敗）都有案例而且一致。新案例要先對外掛跑過，確認它走到想測的分支，再對引擎跑。
 
-目前移植完成的命令：`list-proposals`。`export` 只完成讀工作樹的部分，`--commit` 仍回尚未移植。
+目前移植完成的命令：`list-proposals`、`export`。案例的 `git: true` 會把 fixture 提交成 git 倉庫，`env` 設定環境變數；git 逾時的訊息只有單元測試，因為逾時與否取決於機器速度。
 
 Python 的 `\d` 依 Python 3.13 的 Unicode 資料判斷，表格在 `src/digits.rs`。
 

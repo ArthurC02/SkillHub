@@ -3,9 +3,11 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use crate::files::load_json;
+use crate::git;
 use crate::json::{Object, Value};
 use crate::okf;
 use crate::py;
+use crate::tar;
 
 pub const ASSETS: &[(&str, &str, &str)] = &[
     ("contexts", "contexts", "domain-contexts/v1"),
@@ -48,25 +50,98 @@ pub fn read_documents(root: &Path) -> Result<Object, String> {
             return Err(missing_registry(root)?);
         }
         let held = registry_files(root)?;
-        documents.insert(*asset, asset_document(asset, key, format, &held)?);
+        documents.insert(
+            *asset,
+            asset_document(asset, key, format, concept_texts(asset, &held)?)?,
+        );
     }
     Ok(documents)
 }
 
-fn asset_document(asset: &str, key: &str, format: &str, held: &Files) -> Result<Value, String> {
+pub fn committed_documents(
+    repo_root: &Path,
+    commit: &str,
+    root: &Path,
+) -> Result<Option<Object>, String> {
+    let registry = py::relative_to(
+        &py::resolve_path(&registry_dir(root)),
+        &py::resolve_path(repo_root),
+    )?;
+    let listing = git::run_git_bytes(
+        repo_root,
+        &[
+            "ls-tree",
+            "-r",
+            "--name-only",
+            "-z",
+            commit,
+            "--",
+            &registry,
+        ],
+    )?;
+    if listing.code != 0 || listing.stdout.trim_ascii().is_empty() {
+        return Ok(None);
+    }
+    let archive = git::run_git_bytes(
+        repo_root,
+        &["archive", "--format=tar", commit, "--", &registry],
+    )?;
+    if archive.code != 0 {
+        let stderr = String::from_utf8_lossy(&archive.stderr);
+        let reason = py::strip(&stderr);
+        let reason = if reason.is_empty() {
+            archive.code.to_string()
+        } else {
+            reason.to_string()
+        };
+        return Err(format!("git could not read {commit}: {reason}"));
+    }
+    let mut contents = BTreeMap::new();
+    for member in tar::regular_files(&archive.stdout)? {
+        contents.insert(member.name, py::utf8_strict(&member.data)?);
+    }
+    if !contents.contains_key(&format!("{registry}/{INDEX}")) {
+        return Ok(None);
+    }
+    let mut documents = Object::new();
+    for (asset, key, format) in ASSETS {
+        let prefix = format!("{registry}/{asset}/");
+        let mut concepts: Vec<(String, String)> = contents
+            .iter()
+            .filter_map(|(path, text)| {
+                let rest = path.strip_prefix(&prefix)?;
+                let stem = rest.strip_suffix(".md")?;
+                (!rest.contains('/') && rest != INDEX).then(|| (stem.to_string(), text.clone()))
+            })
+            .collect();
+        concepts.sort();
+        documents.insert(*asset, asset_document(asset, key, format, concepts)?);
+    }
+    Ok(Some(documents))
+}
+
+fn concept_texts(asset: &str, held: &Files) -> Result<Vec<(String, String)>, String> {
     let mut concepts: Vec<(&str, &str)> = held
         .keys()
         .filter_map(|relative| concept_stem(asset, relative).map(|stem| (stem, relative.as_str())))
         .collect();
     concepts.sort_unstable();
-    let texts = concepts
+    concepts
         .iter()
         .map(|(stem, relative)| {
             py::utf8_text(&held[*relative])
-                .map(|text| (*stem, text))
+                .map(|text| ((*stem).to_string(), text))
                 .map_err(|error| format!("{relative}: {error}"))
         })
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect()
+}
+
+fn asset_document(
+    asset: &str,
+    key: &str,
+    format: &str,
+    texts: Vec<(String, String)>,
+) -> Result<Value, String> {
     let records = texts
         .iter()
         .map(|(stem, text)| {

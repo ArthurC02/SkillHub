@@ -37,12 +37,21 @@ def written_fixture(root: Path, files: dict[str, str | dict[str, str] | None]) -
         path.write_bytes(bytes.fromhex(content["hex"]) if isinstance(content, dict) else content.encode("utf-8"))
 
 
+def committed(root: Path) -> None:
+    def git(*args: str) -> None:
+        subprocess.run(["git", "-C", str(root), "-c", "core.autocrlf=false", *args], check=True, capture_output=True)
+
+    git("init", "-q")
+    git("add", "-A")
+    git("-c", "user.name=parity", "-c", "user.email=parity@example.invalid", "commit", "-q", "-m", "fixture")
+
+
 def expanded(args: list[str], fixture: Path) -> list[str]:
     return [arg.replace("{fixture}", str(fixture)).replace("{repo}", str(REPO)) for arg in args]
 
 
-def run(argv: list[str]) -> dict:
-    environment = {**os.environ, "COLUMNS": "80", "PYTHONIOENCODING": "utf-8"}
+def run(argv: list[str], extra: dict[str, str]) -> dict:
+    environment = {**os.environ, "COLUMNS": "80", "PYTHONIOENCODING": "utf-8", **extra}
     done = subprocess.run(argv, cwd=REPO, capture_output=True, env=environment, check=False)
     return {"exit": done.returncode, "stdout": done.stdout, "stderr": done.stderr}
 
@@ -59,9 +68,11 @@ def compared(case: dict, binary: Path) -> list[str]:
     with tempfile.TemporaryDirectory() as scratch:
         fixture = Path(scratch)
         written_fixture(fixture, case.get("files", {}))
+        if case.get("git"):
+            committed(fixture)
         args = expanded(case["args"], fixture)
-        python = run([sys.executable, str(PLUGIN_ENTRY), *args])
-        rust = run([str(binary), *args])
+        python = run([sys.executable, str(PLUGIN_ENTRY), *args], case.get("env", {}))
+        rust = run([str(binary), *args], case.get("env", {}))
     problems = [
         f"{stream}: {first_difference(python[stream], rust[stream])}"
         for stream in ("stdout", "stderr")

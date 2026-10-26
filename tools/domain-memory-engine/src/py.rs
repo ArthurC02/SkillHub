@@ -63,8 +63,35 @@ pub fn resolve_path(path: &Path) -> PathBuf {
 }
 
 pub fn utf8_text(bytes: &[u8]) -> Result<String, String> {
-    let text = std::str::from_utf8(bytes).map_err(|error| utf8_refusal(bytes, &error))?;
-    Ok(text.replace("\r\n", "\n").replace('\r', "\n"))
+    Ok(utf8_strict(bytes)?
+        .replace("\r\n", "\n")
+        .replace('\r', "\n"))
+}
+
+pub fn utf8_strict(bytes: &[u8]) -> Result<String, String> {
+    std::str::from_utf8(bytes)
+        .map(str::to_string)
+        .map_err(|error| utf8_refusal(bytes, &error))
+}
+
+pub fn relative_to(path: &Path, top: &Path) -> Result<String, String> {
+    let inside = path
+        .ancestors()
+        .any(|ancestor| compare_paths(ancestor, top) == Ordering::Equal);
+    if !inside {
+        return Err(format!(
+            "{} is not in the subpath of {}",
+            repr(&shown(path)),
+            repr(&shown(top))
+        ));
+    }
+    let skipped = top.components().count();
+    Ok(path
+        .components()
+        .skip(skipped)
+        .map(|part| part.as_os_str().to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join("/"))
 }
 
 fn utf8_refusal(bytes: &[u8], error: &std::str::Utf8Error) -> String {
