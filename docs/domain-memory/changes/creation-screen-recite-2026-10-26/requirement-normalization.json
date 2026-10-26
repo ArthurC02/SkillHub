@@ -1,0 +1,27 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "creation-screen-recite",
+  "status": "draft",
+  "intent": "Re-cite rules/a-creation-command-must-name-the-current-revision, rules/a-creation-makes-at-most-its-tool-call-ceiling, rules/a-creation-searches-the-catalogue-at-most-twice, rules/a-fetch-request-starts-without-an-earlier-approval, rules/a-person-message-is-at-most-4000-characters, rules/a-proposal-holds-at-most-12-acceptance-criteria, rules/an-ended-creation-accepts-no-command, rules/past-the-deadline-only-cancel-is-accepted, rules/while-the-model-holds-the-turn-only-cancel-and-stop-are-accepted after the code they cite moved or changed; the facts they state are unchanged.",
+  "actor": "domain-memory-agent",
+  "observable_outcome": "verify-evidence reports every citation of the updated records current.",
+  "acceptance_criteria": [
+    {
+      "id": "citations-current",
+      "statement": "Every citation in the updated records matches the lines it cites."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/creator/creation/attempt_test.go",
+    "apps/platform/internal/creator/creation/command_test.go",
+    "apps/platform/internal/creator/creation/creation.go",
+    "apps/platform/internal/creator/creation/creation_test.go",
+    "apps/platform/internal/creator/creation/proposal.go",
+    "apps/platform/internal/creator/creation/proposal_test.go",
+    "apps/platform/internal/creator/creation/tool_actions.go"
+  ]
+}

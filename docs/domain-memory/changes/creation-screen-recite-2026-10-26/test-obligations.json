@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "creation-screen-recite",
+  "proposal_id": "creation-screen-recite-2026-10-26",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/creation-screen-recite-2026-10-26 --path apps/platform/internal/creator/creation/attempt_test.go --path apps/platform/internal/creator/creation/command_test.go --path apps/platform/internal/creator/creation/creation.go --path apps/platform/internal/creator/creation/creation_test.go --path apps/platform/internal/creator/creation/proposal.go --path apps/platform/internal/creator/creation/proposal_test.go --path apps/platform/internal/creator/creation/tool_actions.go"
+    }
+  ]
+}
