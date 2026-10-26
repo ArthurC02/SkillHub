@@ -753,9 +753,8 @@ UNMET_EVALUATION = json.dumps(
 
 
 @pytest.mark.parametrize("validation_after_trial", [False, True])
-@pytest.mark.parametrize("validate_before_accepting", [False, True])
-def test_review_after_an_unmet_trial_names_the_edits_before_rewriting(
-    validation_after_trial, validate_before_accepting
+def test_review_after_an_unmet_trial_returns_the_rewrite_without_a_third_call(
+    validation_after_trial,
 ):
     req = request(
         brief="b",
@@ -781,28 +780,22 @@ def test_review_after_an_unmet_trial_names_the_edits_before_rewriting(
                     }
                 ]
             },
-            {"body": revised["body"], "files": SKILL["files"]},
-            decision(
-                outcome="tool_intent" if validate_before_accepting else "draft",
-                message="改了",
-                draft=SKILL,
-                tool_intent={"kind": "validate_draft", "query": "", "queries": None}
-                if validate_before_accepting
-                else None,
-            ),
+            {"message": "改了", "body": revised["body"], "files": SKILL["files"]},
         ],
         calls,
     )
     with patch.object(creation, "client", lambda _: seq):
         response = client.post("/v1/creation/step", headers=HEADERS, json=req)
     assert response.status_code == 200
-    assert len(calls) == 3
-    assert calls[0]["response_format"]["json_schema"]["name"] == "review_diagnosis"
-    assert calls[1]["response_format"]["json_schema"]["name"] == "review_rewrite"
+    assert [c["response_format"]["json_schema"]["name"] for c in calls] == [
+        "review_diagnosis",
+        "review_rewrite",
+    ]
     assert "say checkbox" in calls[1]["messages"][1]["content"]
-    assert "already been rewritten" in calls[2]["messages"][0]["content"]
-    assert response.json()["draft"]["body"] == revised["body"]
-    assert response.json()["usage"]["cost_usd"] == 0.003
+    body = response.json()
+    assert (body["outcome"], body["message"]) == ("draft", "改了")
+    assert body["draft"] == revised
+    assert body["usage"]["cost_usd"] == 0.002
 
 
 def test_review_edit_targeting_files_rewrites_the_named_script():
@@ -832,18 +825,18 @@ def test_review_edit_targeting_files_rewrites_the_named_script():
                     }
                 ]
             },
-            {"body": draft["body"], "files": fixed_files},
-            decision(outcome="draft", message="改了", draft=draft),
+            {"message": "改了", "body": "\n" + draft["body"] + "  \n", "files": fixed_files},
         ],
         calls,
     )
     with patch.object(creation, "client", lambda _: seq):
         response = client.post("/v1/creation/step", headers=HEADERS, json=req)
     assert response.status_code == 200
+    assert len(calls) == 2
     assert calls[1]["response_format"]["json_schema"]["name"] == "review_rewrite"
     assert "scripts/tier.py" in calls[1]["messages"][1]["content"]
     assert "print('wrong')" in calls[1]["messages"][1]["content"]
-    assert response.json()["draft"]["files"] == fixed_files
+    assert response.json()["draft"] == draft | {"files": fixed_files}
 
 
 def test_review_edits_targeting_files_and_criteria_together_still_reproposes_the_brief():

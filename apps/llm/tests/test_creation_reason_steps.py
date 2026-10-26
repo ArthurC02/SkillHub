@@ -68,7 +68,11 @@ def test_a_rewrite_that_only_changes_whitespace_keeps_the_draft_and_claims_no_re
         review_request(),
         [
             {"edits": [BODY_EDIT]},
-            {"body": "\n" + base.SKILL["body"] + "  \n", "files": []},
+            {
+                "message": "ok",
+                "body": "\n" + base.SKILL["body"] + "  \n",
+                "files": base.SKILL["files"],
+            },
             base.decision(outcome="draft", message="ok", draft=base.SKILL),
         ],
     )
@@ -77,8 +81,32 @@ def test_a_rewrite_that_only_changes_whitespace_keeps_the_draft_and_claims_no_re
     main_system = system_of(calls[2])
     assert "Edits you decided on for this revision — apply every one" in main_system
     assert "- [body] [checkbox list] table -> say checkbox" in main_system
-    assert "already been rewritten" not in main_system
     assert response.json()["draft"]["body"] == base.SKILL["body"]
+
+
+def test_a_rewrite_reply_names_the_model_the_gateway_served():
+    with patch.object(creation, "served_model", lambda *_: "served-by-gateway"):
+        response, calls = post(
+            review_request(),
+            [{"edits": [BODY_EDIT]}, {"message": "ok", "body": "new body", "files": []}],
+        )
+    assert len(calls) == 2
+    assert response.json()["model"] == "served-by-gateway"
+
+
+def test_a_rewrite_whose_message_is_over_the_cap_falls_back_to_the_reply_call():
+    over_cap = "x" * (creation.TEXT_MAX_CHARS + 1)
+    response, calls = post(
+        review_request(),
+        [
+            {"edits": [BODY_EDIT]},
+            {"message": over_cap, "body": "new body", "files": []},
+            base.decision(outcome="draft", message="ok", draft=base.SKILL),
+        ],
+    )
+    assert response.status_code == 200
+    assert len(calls) == 3
+    assert (response.json()["message"], response.json()["draft"]) == ("ok", base.SKILL)
 
 
 def test_an_unusable_diagnosis_is_skipped_but_its_call_is_still_billed(caplog):
