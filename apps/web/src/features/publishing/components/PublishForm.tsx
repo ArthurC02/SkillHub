@@ -5,6 +5,7 @@ import { DECLARABLE_LICENSES, writeFailureSentence } from "../publishing.model";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 
 export type Declarations = {
+  disabled: boolean;
   needsAttestation: boolean;
   attested: boolean;
   onAttestedChange: (attested: boolean) => void;
@@ -15,6 +16,7 @@ export type Declarations = {
 
 export function PublishDeclarations({ declarations }: { declarations: Declarations }) {
   const {
+    disabled,
     needsAttestation,
     attested,
     onAttestedChange,
@@ -29,6 +31,7 @@ export function PublishDeclarations({ declarations }: { declarations: Declaratio
           <label>
             <input
               type="checkbox"
+              disabled={disabled}
               checked={attested}
               onChange={(event) => onAttestedChange(event.target.checked)}
             />{" "}
@@ -36,7 +39,9 @@ export function PublishDeclarations({ declarations }: { declarations: Declaratio
           </label>
         </p>
       )}
-      {declaresLicense && <LicenseDeclaration value={license} onChange={onLicenseChange} />}
+      {declaresLicense && (
+        <LicenseDeclaration value={license} onChange={onLicenseChange} disabled={disabled} />
+      )}
     </>
   );
 }
@@ -44,9 +49,11 @@ export function PublishDeclarations({ declarations }: { declarations: Declaratio
 function LicenseDeclaration({
   value,
   onChange,
+  disabled,
 }: {
   value: DeclarableLicense | "";
   onChange: (license: DeclarableLicense | "") => void;
+  disabled: boolean;
 }) {
   const id = useId();
   return (
@@ -56,6 +63,7 @@ function LicenseDeclaration({
       <select
         id={id}
         value={value}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value as DeclarableLicense | "")}
         aria-describedby={`${id}-note`}
       >
@@ -75,6 +83,7 @@ function LicenseDeclaration({
 }
 
 export function PublishForm({
+  focusTarget,
   nameInputId,
   name,
   onNameChange,
@@ -85,6 +94,7 @@ export function PublishForm({
   versionId,
   versionNumber,
 }: {
+  focusTarget: string;
   nameInputId: string;
   name: string;
   onNameChange: (name: string) => void;
@@ -105,6 +115,7 @@ export function PublishForm({
           rightsAttested: declarations.attested,
           declaredLicense: declarations.license,
         });
+        document.getElementById(focusTarget)?.focus();
       }}
     >
       <p>
@@ -113,10 +124,15 @@ export function PublishForm({
         <input
           id={nameInputId}
           value={name}
+          disabled={publish.isPending}
+          aria-describedby={`${nameInputId}-permanent`}
           onChange={(event) => onNameChange(event.target.value)}
           maxLength={64}
           required
         />
+      </p>
+      <p className="note" id={`${nameInputId}-permanent`}>
+        首次發佈後，這個小工具的發佈名稱就不能更改。
       </p>
       <PublishDeclarations declarations={declarations} />
       <button

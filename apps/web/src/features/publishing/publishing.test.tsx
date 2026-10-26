@@ -4,6 +4,7 @@ import { onlineManager, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
+import { ApiError } from "../../core/api/client";
 import { PublicPublication } from "./PublicPublication.page";
 import { AcquisitionFailure } from "./components/AcquisitionFailure";
 import { PublisherSection } from "./components/PublisherSection";
@@ -15,6 +16,9 @@ import {
   PUBLISHING_REFUSAL_LABEL,
   type PublishingRefusalReason,
   refusalSentence,
+  refusalReason,
+  writeFailureSentence,
+  actionFailureSentence,
 } from "./publishing.model";
 import {
   OWN_PUBLICATION,
@@ -35,6 +39,7 @@ import {
 } from "../../testing/fixtures/platform";
 import type { SkillDetail } from "../../core/api/types";
 import type { BundleVersion, Publication } from "./publishing.service";
+import { readOwnPublication, readOwnPublisher } from "./owner-publication.model";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 let container: HTMLDivElement;
@@ -952,6 +957,89 @@ test.each([
   },
 );
 
+test.each([
+  ["versions", "null row", { bundles: [null] }],
+  ["versions", "missing members", { bundles: [{ ...OWN_BUNDLE, members: undefined }] }],
+  [
+    "overview",
+    "null publication",
+    { bundles: [{ bundle: OWN_BUNDLE.bundle, latest_version: OWN_BUNDLE, publication: null }] },
+  ],
+  [
+    "overview",
+    "unknown status",
+    {
+      bundles: [
+        {
+          bundle: OWN_BUNDLE.bundle,
+          latest_version: OWN_BUNDLE,
+          publication: {
+            publisher: PUBLISHER,
+            name: OWN_BUNDLE.bundle,
+            address: `/p/${PUBLISHER}/${OWN_BUNDLE.bundle}`,
+            status: "future",
+            status_changed_at: "2026-09-10T00:00:00Z",
+          },
+        },
+      ],
+    },
+  ],
+])("Bundle %s %s keeps a draft and recovers through a scoped retry", async (kind, _, invalid) => {
+  const versions = { bundles: [OWN_BUNDLE] };
+  const overview = bundleOverview(OWN_BUNDLE, { ...OWN_PUBLICATION, kind: "bundle", releases: [] });
+  let payload: unknown = kind === "versions" ? versions : overview;
+  let reads = 0;
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me/bundles" || path === "/me/bundles/overview") {
+      if (path === (kind === "versions" ? "/me/bundles" : "/me/bundles/overview")) {
+        reads += 1;
+        return json(payload);
+      }
+      return json(path === "/me/bundles" ? versions : overview);
+    }
+    const result = platformResponse(String(input));
+    return json(result.body, result.status);
+  });
+  await render(<PublishingWorkspace />, () =>
+    Boolean(container.querySelector(".bundle-publication")),
+  );
+  const input = container.querySelector<HTMLInputElement>(".bundle-form input")!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+      input,
+      "kept-bundle",
+    );
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  payload = invalid;
+  await act(async () => {
+    Array.from(container.querySelectorAll<HTMLButtonElement>("#bundle-workspace button"))
+      .find((candidate) => candidate.textContent === "重新整理")!
+      .click();
+  });
+  const failure = kind === "versions" ? "暫時無法讀取Bundle 清單" : "暫時無法讀取Bundle 發佈概覽";
+  await waitFor(() => text().includes(failure));
+  expect(reads).toBe(2);
+  expect(text()).not.toContain("尚未發佈。");
+  expect(text()).not.toContain("已撤回");
+  expect(text()).not.toContain("目前還沒有 Bundle。");
+  expect(container.querySelector(".bundle-create summary")?.textContent).not.toBe(
+    "建立第一個 Bundle",
+  );
+  expect(container.querySelector(".bundle-form input")).toBe(input);
+  expect(input.value).toBe("kept-bundle");
+  payload = kind === "versions" ? versions : overview;
+  await act(async () => button("再試一次")!.click());
+  await waitFor(
+    () => Boolean(container.querySelector(".bundle-publication")) && !text().includes(failure),
+  );
+  expect(reads).toBe(3);
+  expect(input.value).toBe("kept-bundle");
+});
+
 test("PACK-004 available 公開頁：每一個允收欄位都出現", async () => {
   stub({ [PUB_ADDRESS]: { body: PUBLIC_PUBLICATION } });
   await render(<PublicPublication />, () => text().includes("PDF Summariser"));
@@ -1561,6 +1649,149 @@ test("PublisherSection：未註冊時顯示名稱規則、永久警語與表單"
   expect(container.querySelector("form")).not.toBeNull();
 });
 
+for (const owner of ["workspace", "version"] as const) {
+  for (const outcome of ["refused", "uncertain", "read-error", "registered"] as const) {
+    test(`publisher registration ${owner} preserves its outcome through a delayed ${outcome} identity read`, async () => {
+      let reads = 0;
+      let releaseRead!: (response: Response) => void;
+      const reread = new Promise<Response>((resolve) => {
+        releaseRead = resolve;
+      });
+      const posts: unknown[] = [];
+      vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+        const path = String(input).split("?")[0];
+        if (!path.endsWith("/me/publisher")) return json({ error: "not found" }, 404);
+        if (init?.method === "POST") {
+          posts.push(JSON.parse(String(init.body)));
+          return outcome === "refused"
+            ? json({ error: "publisher name is taken", reason: "name_taken" }, 409)
+            : json({ error: "upstream unavailable" }, 503);
+        }
+        reads += 1;
+        return reads === 2 ? reread : json({ error: "no publisher" }, 404);
+      });
+      await render(
+        owner === "workspace" ? (
+          <PublisherSection />
+        ) : (
+          <PublishPanel skill={detail()} isLoggedIn={true} isOwner={true} />
+        ),
+        () => container.querySelector("form.publisher-form") !== null,
+      );
+      const input = container.querySelector<HTMLInputElement>("form.publisher-form input")!;
+      const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+      await act(async () => {
+        setValue.call(input, "kept-namespace");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.focus();
+      });
+      await act(async () => button("註冊")!.click());
+      await waitFor(() => reads === 2 && container.querySelector("form.publisher-form") === null);
+      expect(text()).not.toContain("還沒有註冊發佈者名稱");
+      expect(document.activeElement).toBe(container.querySelector("h2"));
+      await act(async () => {
+        releaseRead(
+          await json(
+            outcome === "registered" ? OWN_PUBLISHER : { error: "unavailable" },
+            outcome === "registered" ? 200 : outcome === "read-error" ? 503 : 404,
+          ),
+        );
+      });
+      if (outcome === "registered") {
+        await waitFor(() =>
+          owner === "workspace" ? text().includes(PUBLISHER) : text().includes("發佈名稱"),
+        );
+        expect(container.querySelector("form.publisher-form")).toBeNull();
+        expect(text()).not.toContain("尚未確認註冊");
+      } else {
+        if (outcome === "read-error") {
+          await waitFor(() => text().includes("暫時無法讀取發佈者"));
+          expect(container.querySelector("form.publisher-form")).toBeNull();
+          expect(text()).not.toContain("還沒有註冊發佈者名稱");
+          await act(async () => button("再試一次")!.click());
+        }
+        await waitFor(() => container.querySelector("form.publisher-form") !== null);
+        expect(container.querySelector<HTMLInputElement>("form.publisher-form input")!.value).toBe(
+          "kept-namespace",
+        );
+        expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+          outcome === "refused"
+            ? "這個名稱已經被別人取走了，換一個名稱再試一次。"
+            : "尚未確認註冊是否已完成；上面的狀態已重新讀取，請先看過再決定要不要重送。",
+        );
+      }
+      expect(posts).toEqual([{ name: "kept-namespace" }]);
+      expect(reads).toBe(outcome === "read-error" ? 3 : 2);
+    });
+  }
+}
+
+for (const owner of ["workspace", "version"] as const) {
+  for (const status of [409, 503]) {
+    test(`publisher feedback ${owner} locks its pending draft and handles editing after ${status}`, async () => {
+      let releasePost!: (response: Response) => void;
+      const response = new Promise<Response>((resolve) => {
+        releasePost = resolve;
+      });
+      const posts: unknown[] = [];
+      vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          posts.push(JSON.parse(String(init.body)));
+          return response;
+        }
+        return json({ error: "not found" }, 404);
+      });
+      await render(
+        owner === "workspace" ? (
+          <PublisherSection />
+        ) : (
+          <PublishPanel skill={detail()} isLoggedIn={true} isOwner={true} />
+        ),
+        () => container.querySelector("form.publisher-form") !== null,
+      );
+      const input = container.querySelector<HTMLInputElement>("form.publisher-form input")!;
+      const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+      await act(async () => {
+        setValue.call(input, "submitted-name");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      await act(async () => button("註冊")!.click());
+      await waitFor(() => button("註冊中")?.disabled === true);
+      expect(input.disabled).toBe(true);
+      await act(async () =>
+        releasePost(
+          await json(
+            status === 409
+              ? { error: "publisher name is taken", reason: "name_taken" }
+              : { error: "upstream unavailable" },
+            status,
+          ),
+        ),
+      );
+      await waitFor(() => container.querySelector('[role="alert"]') !== null);
+      const resumed = container.querySelector<HTMLInputElement>("form.publisher-form input")!;
+      expect(resumed.value).toBe("submitted-name");
+      expect(resumed.disabled).toBe(false);
+      await act(async () => {
+        setValue.call(resumed, "new-name");
+        resumed.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      await pollUntil(
+        () =>
+          status === 409
+            ? container.querySelector('[role="alert"]') === null
+            : container.querySelector('[role="alert"]')?.textContent ===
+              "尚未確認註冊是否已完成；上面的狀態已重新讀取，請先看過再決定要不要重送。",
+        text,
+        DEFAULT_WAIT_MS,
+        { flushBeforeFirstCheck: true },
+      );
+      expect(resumed.value).toBe("new-name");
+      expect(posts).toEqual([{ name: "submitted-name" }]);
+    });
+  }
+}
+
 test("PublisherSection：409 already_registered 顯示中文，不顯示英文原文", async () => {
   const calls: string[] = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
@@ -2004,3 +2235,523 @@ test("PublishPanel：生成的小工具送出選定的授權；不聲明時不�
 test("refusalSentence: 沒有 reason 欄位時回傳 undefined，不誤植成中文句", () => {
   expect(refusalSentence(new Error("boom"))).toBeUndefined();
 });
+
+for (const reason of ["__proto__", "constructor", "toString", "valueOf"]) {
+  test(`publishing refusal ignores inherited ${reason} properties`, () => {
+    const error = new ApiError(409, "這次操作無法完成。", { reason });
+    expect(refusalReason(error)).toBeUndefined();
+    expect(refusalSentence(error)).toBeUndefined();
+    expect(writeFailureSentence(error, "註冊")).toBe("註冊沒有成功，可以再試一次。");
+    expect(actionFailureSentence(error, "暫時無法完成。")).toBe("這次操作無法完成。");
+  });
+}
+
+async function startPublicationAction(
+  action: "publish" | "delist",
+  held: "own" | "overview",
+  status: number,
+  readFailure = false,
+) {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  const reads = { own: 0, overview: 0 };
+  const writes: string[] = [];
+  let written = false;
+  const changed = {
+    ...OWN_PUBLICATION,
+    status: action === "delist" ? "delisted" : "published",
+    acquisition: { available: action === "publish", note: "目前取得條件。" },
+  };
+  vi.stubGlobal("fetch", async (input: string, init?: RequestInit) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me/publisher") return json(OWN_PUBLISHER);
+    if (init?.method === "POST" || init?.method === "DELETE") {
+      writes.push(init.method);
+      written = true;
+      return json(status === 503 ? { error: "upstream unavailable" } : changed, status);
+    }
+    if (path === `/skills/${SKILL}/publication`) {
+      reads.own += 1;
+      if (written && held === "own") await gate;
+      if (readFailure && reads.own === 2) return json({ error: "unavailable" }, 503);
+      return json(written ? changed : OWN_PUBLICATION);
+    }
+    if (path === "/me/publications") {
+      reads.overview += 1;
+      if (written && held === "overview") await gate;
+      return json(OWN_PUBLICATIONS);
+    }
+    return json({ error: "not found" }, 404);
+  });
+  await render(
+    <>
+      <button type="button">其他工作</button>
+      <PublishPanel
+        skill={detail({ redistribution: { value: "generated", label: "平台生成", note: "" } })}
+        isLoggedIn
+        isOwner
+      />
+    </>,
+    () => text().includes("已列入 Catalog"),
+  );
+  await act(async () => {
+    container.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click();
+    const select = container.querySelector("select")!;
+    select.value = "MIT";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(button("發佈 v2")!.disabled).toBe(false);
+  if (action === "delist") await act(async () => button("撤回")!.click());
+  await act(async () => {
+    const trigger = button(action === "delist" ? "確認撤回" : "發佈 v2")!;
+    trigger.focus();
+    trigger.click();
+  });
+  await pollUntil(() => reads[held] === 2, text, DEFAULT_WAIT_MS, { flushBeforeFirstCheck: true });
+  return { release, reads, writes };
+}
+
+for (const action of ["publish", "delist"] as const) {
+  for (const held of ["own", "overview"] as const) {
+    for (const status of [200, 503]) {
+      test(`publication action ${action} waits for ${held} reconciliation after ${status}`, async () => {
+        const request = await startPublicationAction(action, held, status);
+        try {
+          expect((button("發佈 v2") ?? button("送出中"))!.disabled).toBe(true);
+          if (action === "publish") expect(button("撤回")!.disabled).toBe(true);
+          if (action === "delist" && held === "own") expect(button("送出中")!.disabled).toBe(true);
+          expect(
+            container.querySelector<HTMLInputElement>('input[type="checkbox"]')!.disabled,
+          ).toBe(true);
+          expect(container.querySelector("select")!.disabled).toBe(true);
+          expect(text()).not.toContain("上面的狀態已重新讀取");
+          expect(text()).toContain("正在送出或核對發佈狀態");
+          expect(document.activeElement).toBe(container.querySelector("h2"));
+          if (held === "overview") await act(async () => button("其他工作")!.focus());
+        } finally {
+          await act(async () => request.release());
+        }
+        await waitFor(() => button("發佈 v2")?.disabled === false);
+        expect(container.querySelector<HTMLInputElement>('input[type="checkbox"]')!.disabled).toBe(
+          false,
+        );
+        expect(container.querySelector("select")!.disabled).toBe(false);
+        expect(document.activeElement).toBe(
+          held === "overview" ? button("其他工作") : container.querySelector("h2"),
+        );
+        expect(
+          Array.from(container.querySelectorAll('[role="status"]')).some((node) =>
+            node.textContent?.includes(action === "delist" ? "狀態：已撤回" : "狀態：已發佈"),
+          ),
+        ).toBe(true);
+        if (status === 503) expect(text()).toContain("上面的狀態已重新讀取");
+        else expect(container.querySelector('[role="alert"]')).toBeNull();
+        expect(request.writes).toEqual([action === "delist" ? "DELETE" : "POST"]);
+      });
+    }
+  }
+  test(`publication action ${action} keeps a failed reconciliation retryable`, async () => {
+    const request = await startPublicationAction(action, "own", 503, true);
+    try {
+      expect(text()).not.toContain("上面的狀態已重新讀取");
+      expect((button("發佈 v2") ?? button("送出中"))!.disabled).toBe(true);
+      expect(document.activeElement).toBe(container.querySelector("h2"));
+    } finally {
+      await act(async () => request.release());
+    }
+    await waitFor(() => text().includes("暫時無法讀取發佈狀態"));
+    expect(button("發佈 v2")).toBeUndefined();
+    await act(async () => button("再試一次")!.click());
+    await waitFor(() => text().includes("上面的狀態已重新讀取"));
+    expect(document.activeElement).toBe(container.querySelector("h2"));
+    expect(request.writes).toEqual([action === "delist" ? "DELETE" : "POST"]);
+  });
+}
+
+for (const status of [201, 503]) {
+  test(`publication first draft stays described and locked during a ${status} submission`, async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let written = false;
+    const writes: unknown[] = [];
+    vi.stubGlobal("fetch", async (input: string, init?: RequestInit) => {
+      if (String(input).endsWith("/me/publisher")) return json(OWN_PUBLISHER);
+      if (init?.method === "POST") {
+        writes.push(JSON.parse(String(init.body)));
+        await gate;
+        written = status === 201;
+        return json(status === 201 ? OWN_PUBLICATION : { error: "upstream unavailable" }, status);
+      }
+      if (String(input).endsWith("/me/publications")) return json(OWN_PUBLICATIONS);
+      return written ? json(OWN_PUBLICATION) : json({ error: "not published" }, 404);
+    });
+    await render(
+      <PublishPanel
+        skill={detail({ redistribution: { value: "generated", label: "平台生成", note: "" } })}
+        isLoggedIn
+        isOwner
+      />,
+      () => container.querySelector('input:not([type="checkbox"])') !== null,
+    );
+    const input = container.querySelector<HTMLInputElement>('input:not([type="checkbox"])')!;
+    try {
+      const description = document.getElementById(input.getAttribute("aria-describedby") ?? "");
+      expect(description?.textContent).toBe("首次發佈後，這個小工具的發佈名稱就不能更改。");
+      expect(description?.closest("details")).toBeNull();
+      await act(async () => {
+        container.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click();
+        const select = container.querySelector("select")!;
+        select.value = "MIT";
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        button("發佈 v2")!.focus();
+        button("發佈 v2")!.click();
+      });
+      await pollUntil(() => writes.length === 1, text, DEFAULT_WAIT_MS, {
+        flushBeforeFirstCheck: true,
+      });
+      expect(input.disabled).toBe(true);
+      expect(container.querySelector<HTMLInputElement>('input[type="checkbox"]')!.disabled).toBe(
+        true,
+      );
+      expect(container.querySelector("select")!.disabled).toBe(true);
+      expect(document.activeElement).toBe(container.querySelector("h2"));
+    } finally {
+      await act(async () => release());
+    }
+    await waitFor(() =>
+      status === 201 ? text().includes("狀態：已發佈") : text().includes("尚未確認發佈"),
+    );
+    expect(document.activeElement).toBe(container.querySelector("h2"));
+    expect(writes).toEqual([
+      {
+        name: "PDF Summariser",
+        version_id: VERSION,
+        rights_attested: true,
+        declared_license: "MIT",
+      },
+    ]);
+  });
+}
+
+for (const [label, value] of [
+  ["null", null],
+  ["array", []],
+  ["primitive", "publisher"],
+  ["missing fields", {}],
+  ["missing name", { created_at: OWN_PUBLISHER.created_at }],
+  ["non-string name", { ...OWN_PUBLISHER, name: 1 }],
+  ["missing date", { name: PUBLISHER }],
+  ["non-string date", { ...OWN_PUBLISHER, created_at: 1 }],
+  ["invalid date", { ...OWN_PUBLISHER, created_at: "not-a-date" }],
+] as const) {
+  test(`owner publisher reader rejects ${label}`, () => {
+    expect(() => readOwnPublisher(value)).toThrowError("無法確認發佈者資訊的資料。");
+  });
+}
+
+for (const [label, value] of [
+  ["registered publisher", OWN_PUBLISHER],
+  ["additional server fields", { ...OWN_PUBLISHER, next_field: "retained" }],
+] as const) {
+  test(`owner publisher reader preserves ${label}`, () => {
+    expect(readOwnPublisher(value)).toEqual(value);
+  });
+}
+
+function ownerPublicationWithRelease(overrides: Record<string, unknown>) {
+  return { ...OWN_PUBLICATION, releases: [{ ...OWN_PUBLICATION.releases[0], ...overrides }] };
+}
+
+for (const [label, value] of [
+  ["null", null],
+  ["array", []],
+  ["missing fields", {}],
+  ["unknown kind", { ...OWN_PUBLICATION, kind: "future" }],
+  ["invalid publisher", { ...OWN_PUBLICATION, publisher: null }],
+  ["invalid name", { ...OWN_PUBLICATION, name: 1 }],
+  ["invalid address", { ...OWN_PUBLICATION, address: false }],
+  ["unknown status", { ...OWN_PUBLICATION, status: "future" }],
+  ["missing status", { ...OWN_PUBLICATION, status: undefined }],
+  ["invalid status date", { ...OWN_PUBLICATION, status_changed_at: "not-a-date" }],
+  ["non-string status date", { ...OWN_PUBLICATION, status_changed_at: 1 }],
+  ["null releases", { ...OWN_PUBLICATION, releases: null }],
+  ["non-array releases", { ...OWN_PUBLICATION, releases: {} }],
+  ["null release", { ...OWN_PUBLICATION, releases: [null] }],
+  ["invalid content hash", ownerPublicationWithRelease({ content_hash: 1 })],
+  ["invalid release date", ownerPublicationWithRelease({ released_at: "not-a-date" })],
+  ["missing rights attestation", ownerPublicationWithRelease({ rights_attested: undefined })],
+  ["non-boolean rights attestation", ownerPublicationWithRelease({ rights_attested: "true" })],
+  ["missing findings", ownerPublicationWithRelease({ findings: undefined })],
+  ["invalid findings", ownerPublicationWithRelease({ findings: { errors: [], warnings: [] } })],
+  ["invalid version ID", ownerPublicationWithRelease({ version_id: "not-a-uuid" })],
+  ["null version ID", ownerPublicationWithRelease({ version_id: null })],
+  ["fractional version number", ownerPublicationWithRelease({ version_number: 1.5 })],
+  ["null version number", ownerPublicationWithRelease({ version_number: null })],
+  ["non-string Bundle version", ownerPublicationWithRelease({ bundle_version: 1 })],
+  ["null Bundle version", ownerPublicationWithRelease({ bundle_version: null })],
+  ["unknown declared license", ownerPublicationWithRelease({ declared_license: "future" })],
+  ["null declared license", ownerPublicationWithRelease({ declared_license: null })],
+  ["null offer", { ...OWN_PUBLICATION, availability: null }],
+  [
+    "incomplete offer",
+    { ...OWN_PUBLICATION, availability: { value: "available", label: "提供中" } },
+  ],
+  [
+    "invalid offer label",
+    { ...OWN_PUBLICATION, availability: { value: "available", label: 1, note: "" } },
+  ],
+  ["null acquisition", { ...OWN_PUBLICATION, acquisition: null }],
+  ["non-boolean acquisition", { ...OWN_PUBLICATION, acquisition: { available: "true", note: "" } }],
+  ["incomplete acquisition", { ...OWN_PUBLICATION, acquisition: { available: true } }],
+] as const) {
+  test(`owner publication reader rejects ${label}`, () => {
+    expect(() => readOwnPublication(value)).toThrowError("無法確認小工具發佈狀態的資料。");
+  });
+}
+
+for (const [label, value] of [
+  ["published Skill", OWN_PUBLICATION],
+  ["withdrawn Skill", { ...OWN_PUBLICATION, status: "delisted" }],
+  ["empty release boundary", { ...OWN_PUBLICATION, releases: [] }],
+  [
+    "older server without offer projections",
+    { ...OWN_PUBLICATION, availability: undefined, acquisition: undefined },
+  ],
+  ["declared license", ownerPublicationWithRelease({ declared_license: "MIT" })],
+  ["additional server fields", { ...OWN_PUBLICATION, next_field: "retained" }],
+  [
+    "shared Bundle release shape",
+    {
+      ...OWN_PUBLICATION,
+      kind: "bundle",
+      releases: [
+        {
+          content_hash: "sha256:bundle",
+          released_at: "2026-09-10T00:00:00Z",
+          rights_attested: false,
+          findings: { errors: [], warnings: [], infos: [] },
+          bundle_version: "1.0.0",
+        },
+      ],
+    },
+  ],
+] as const) {
+  test(`owner publication reader preserves ${label}`, () => {
+    expect(readOwnPublication(value)).toEqual(value);
+  });
+}
+
+for (const owner of ["workspace", "version"] as const) {
+  test(`owner detail ${owner} hides a cached publisher after an invalid refresh`, async () => {
+    let payload: unknown = OWN_PUBLISHER;
+    let reads = 0;
+    vi.stubGlobal("fetch", (input: string) => {
+      if (String(input).endsWith("/me/publisher")) {
+        reads += 1;
+        return json(payload);
+      }
+      return json(String(input).endsWith("/me/publications") ? OWN_PUBLICATIONS : OWN_PUBLICATION);
+    });
+    await render(
+      owner === "workspace" ? (
+        <PublisherSection />
+      ) : (
+        <PublishPanel skill={detail()} isLoggedIn isOwner />
+      ),
+      () => text().includes(owner === "workspace" ? PUBLISHER : "狀態：已發佈"),
+    );
+    const previous = queryClient.getQueryData(queryKeys.publishing.publisher);
+    payload = null;
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.publishing.publisher });
+    });
+    expect(queryClient.getQueryData(queryKeys.publishing.publisher)).toEqual(previous);
+    await waitFor(() => text().includes("暫時無法讀取發佈者"));
+    expect(text()).not.toContain(owner === "workspace" ? PUBLISHER : "狀態：已發佈");
+    expect(text()).not.toContain("還沒有註冊發佈者名稱");
+    expect(container.querySelector("form")).toBeNull();
+    payload = OWN_PUBLISHER;
+    await act(async () => {
+      button("再試一次")!.focus();
+      button("再試一次")!.click();
+    });
+    await waitFor(() => text().includes(owner === "workspace" ? PUBLISHER : "狀態：已發佈"));
+    expect(document.activeElement).toBe(container.querySelector("h2"));
+    expect(reads).toBe(3);
+  });
+}
+
+test("owner detail hides a cached publication after an invalid refresh", async () => {
+  let payload: unknown = OWN_PUBLICATION;
+  let reads = 0;
+  vi.stubGlobal("fetch", (input: string) => {
+    if (String(input).endsWith("/me/publisher")) return json(OWN_PUBLISHER);
+    if (String(input).endsWith(`/skills/${SKILL}/publication`)) {
+      reads += 1;
+      return json(payload);
+    }
+    return json(OWN_PUBLICATIONS);
+  });
+  await render(<PublishPanel skill={detail()} isLoggedIn isOwner />, () =>
+    text().includes("狀態：已發佈"),
+  );
+  const key = queryKeys.publishing.ownPublication(SKILL);
+  const previous = queryClient.getQueryData(key);
+  payload = { ...OWN_PUBLICATION, status: "future" };
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: key });
+  });
+  expect(queryClient.getQueryData(key)).toEqual(previous);
+  await waitFor(() => text().includes("暫時無法讀取發佈狀態"));
+  expect(text()).not.toContain("狀態：已發佈");
+  expect(text()).not.toContain("已撤回");
+  expect(button("發佈 v2")).toBeUndefined();
+  payload = OWN_PUBLICATION;
+  await act(async () => {
+    button("再試一次")!.focus();
+    button("再試一次")!.click();
+  });
+  await waitFor(() => text().includes("狀態：已發佈"));
+  expect(document.activeElement).toBe(container.querySelector("h2"));
+  expect(reads).toBe(3);
+});
+
+for (const owner of ["workspace", "version"] as const) {
+  for (const [label, invalid] of [
+    ["null", null],
+    ["invalid date", { ...OWN_PUBLISHER, created_at: "not-a-date" }],
+  ] as const) {
+    test(`owner detail ${owner} rejects a ${label} publisher read and retries in place`, async () => {
+      let payload: unknown = invalid;
+      let reads = 0;
+      vi.stubGlobal("fetch", (input: string) => {
+        if (String(input).endsWith("/me/publisher")) {
+          reads += 1;
+          return json(payload);
+        }
+        if (String(input).endsWith(`/skills/${SKILL}/publication`)) return json(OWN_PUBLICATION);
+        return json(OWN_PUBLICATIONS);
+      });
+      await render(
+        owner === "workspace" ? (
+          <PublisherSection />
+        ) : (
+          <PublishPanel skill={detail()} isLoggedIn isOwner />
+        ),
+        () => !text().includes("載入"),
+      );
+      expect(text()).toContain("暫時無法讀取發佈者");
+      expect(text()).not.toContain("還沒有註冊發佈者名稱");
+      expect(container.querySelector("form")).toBeNull();
+      expect(queryClient.getQueryData(queryKeys.publishing.publisher)).toBeUndefined();
+      payload = OWN_PUBLISHER;
+      await act(async () => {
+        button("再試一次")!.focus();
+        button("再試一次")!.click();
+      });
+      await waitFor(() => text().includes(owner === "workspace" ? PUBLISHER : "狀態：已發佈"));
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      expect(document.activeElement).toBe(container.querySelector("h2"));
+      expect(reads).toBe(2);
+    });
+  }
+}
+
+for (const [label, invalid] of [
+  ["null", null],
+  ["unknown status", { ...OWN_PUBLICATION, status: "future" }],
+] as const) {
+  test(`owner detail rejects a ${label} publication read without claiming withdrawal`, async () => {
+    let payload: unknown = invalid;
+    let reads = 0;
+    vi.stubGlobal("fetch", (input: string) => {
+      if (String(input).endsWith("/me/publisher")) return json(OWN_PUBLISHER);
+      if (String(input).endsWith(`/skills/${SKILL}/publication`)) {
+        reads += 1;
+        return json(payload);
+      }
+      return json(OWN_PUBLICATIONS);
+    });
+    await render(
+      <PublishPanel skill={detail()} isLoggedIn isOwner />,
+      () => !text().includes("載入"),
+    );
+    expect(text()).toContain("暫時無法讀取發佈狀態");
+    expect(text()).not.toContain("已撤回");
+    expect(text()).not.toContain("尚未發佈");
+    expect(button("發佈 v2")).toBeUndefined();
+    expect(queryClient.getQueryData(queryKeys.publishing.ownPublication(SKILL))).toBeUndefined();
+    payload = OWN_PUBLICATION;
+    await act(async () => {
+      button("再試一次")!.focus();
+      button("再試一次")!.click();
+    });
+    await waitFor(() => text().includes("狀態：已發佈"));
+    expect(document.activeElement).toBe(container.querySelector("h2"));
+    expect(reads).toBe(2);
+  });
+}
+
+for (const owner of ["workspace", "version"] as const) {
+  for (const status of [409, 503]) {
+    test(`owner detail ${owner} preserves a registration draft after ${status} and a null lookup`, async () => {
+      let reads = 0;
+      const posts: unknown[] = [];
+      vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+        if (!String(input).endsWith("/me/publisher")) return json({ error: "not found" }, 404);
+        if (init?.method === "POST") {
+          posts.push(JSON.parse(String(init.body)));
+          return json(
+            status === 409
+              ? { error: "publisher name is taken", reason: "name_taken" }
+              : { error: "upstream unavailable" },
+            status,
+          );
+        }
+        reads += 1;
+        return reads === 2 ? json(null) : json({ error: "no publisher" }, 404);
+      });
+      await render(
+        owner === "workspace" ? (
+          <PublisherSection />
+        ) : (
+          <PublishPanel skill={detail()} isLoggedIn isOwner />
+        ),
+        () => container.querySelector("form.publisher-form") !== null,
+      );
+      const input = container.querySelector<HTMLInputElement>("form.publisher-form input")!;
+      const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+      await act(async () => {
+        setValue.call(input, "kept-after-invalid-read");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      await act(async () => button("註冊")!.click());
+      await waitFor(
+        () =>
+          reads === 2 &&
+          !text().includes("載入") &&
+          container.querySelector("form.publisher-form") === null,
+      );
+      expect(text()).toContain("暫時無法讀取發佈者");
+      expect(container.querySelector("form.publisher-form")).toBeNull();
+      await act(async () => {
+        button("再試一次")!.focus();
+        button("再試一次")!.click();
+      });
+      await waitFor(() => container.querySelector("form.publisher-form") !== null);
+      expect(container.querySelector<HTMLInputElement>("form.publisher-form input")!.value).toBe(
+        "kept-after-invalid-read",
+      );
+      expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+        status === 409
+          ? "這個名稱已經被別人取走了，換一個名稱再試一次。"
+          : "尚未確認註冊是否已完成；上面的狀態已重新讀取，請先看過再決定要不要重送。",
+      );
+      expect(document.activeElement).toBe(container.querySelector("h2"));
+      expect(posts).toEqual([{ name: "kept-after-invalid-read" }]);
+      expect(reads).toBe(3);
+    });
+  }
+}

@@ -2,7 +2,7 @@ import { useId, useState } from "react";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
-import { ApiError } from "../../../core/api/client";
+import { ApiError, isWriteResultUnknown } from "../../../core/api/client";
 import { useOwnPublisher, useRegisterPublisher } from "../publishing.service";
 import {
   PUBLISHER_NAME_PERMANENT,
@@ -40,18 +40,24 @@ export function PublisherSection() {
           </p>
           <p className="note">{PUBLISHER_NAME_PERMANENT}</p>
         </>
-      ) : notRegistered ? (
-        <PublisherRegistration />
       ) : null}
+      <PublisherRegistration visible={notRegistered} focusTarget={headingId} />
     </section>
   );
 }
 
-export function PublisherRegistration() {
+export function PublisherRegistration({
+  visible,
+  focusTarget,
+}: {
+  visible: boolean;
+  focusTarget: string;
+}) {
   const register = useRegisterPublisher();
   const [name, setName] = useState("");
   const inputId = useId();
 
+  if (!visible) return null;
   if (register.isSuccess) return <p role="status">已送出註冊，正在確認…</p>;
 
   return (
@@ -64,6 +70,7 @@ export function PublisherRegistration() {
         onSubmit={(event) => {
           event.preventDefault();
           register.mutate(name.trim());
+          document.getElementById(focusTarget)?.focus();
         }}
       >
         <div className="field">
@@ -71,7 +78,11 @@ export function PublisherRegistration() {
           <input
             id={inputId}
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => {
+              setName(event.target.value);
+              if (register.isError && !isWriteResultUnknown(register.error)) register.reset();
+            }}
+            disabled={register.isPending}
             maxLength={64}
             required
           />

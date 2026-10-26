@@ -10,6 +10,8 @@ import type { DeclarableLicense, OwnerCatalogExposureStateEnum } from "@skillhub
 import type { CategorizedFindings, Labelled } from "../../core/api/types";
 import { readPublicPublication } from "./public-publication.model";
 import { readOwnerPublications } from "./owner-publications.model";
+import { readOwnPublication, readOwnPublisher } from "./owner-publication.model";
+import { readOwnBundleOverview, readOwnBundles } from "./owner-bundles.model";
 import { AcquisitionResultUnknown, readAcquisition } from "./acquisition.model";
 
 export interface Publisher {
@@ -170,7 +172,7 @@ export interface Acquisition {
 export function useOwnPublisher(enabled = true) {
   return useQuery({
     queryKey: queryKeys.publishing.publisher,
-    queryFn: () => apiFetch<Publisher>("/me/publisher"),
+    queryFn: async () => readOwnPublisher(await apiFetch<unknown>("/me/publisher")),
     enabled,
   });
 }
@@ -202,7 +204,8 @@ export function useRegisterPublisher() {
 export function useOwnPublication(skillId: string, enabled = true) {
   return useQuery({
     queryKey: queryKeys.publishing.ownPublication(skillId),
-    queryFn: () => apiFetch<Publication>(`/skills/${skillId}/publication`),
+    queryFn: async () =>
+      readOwnPublication(await apiFetch<unknown>(`/skills/${skillId}/publication`)),
     enabled: skillId.length > 0 && enabled,
   });
 }
@@ -230,8 +233,10 @@ export function usePublish(skillId: string) {
       }),
     onSettled: (_, error) => {
       if (error instanceof SessionNotReadyError) return;
-      void client.invalidateQueries({ queryKey: queryKeys.publishing.ownPublication(skillId) });
-      void client.invalidateQueries({ queryKey: queryKeys.publishing.publications });
+      return Promise.all([
+        client.invalidateQueries({ queryKey: queryKeys.publishing.ownPublication(skillId) }),
+        client.invalidateQueries({ queryKey: queryKeys.publishing.publications }),
+      ]);
     },
   });
 }
@@ -242,8 +247,10 @@ export function useDelist(skillId: string) {
     mutationFn: () => apiFetch<Publication>(`/skills/${skillId}/publication`, { method: "DELETE" }),
     onSettled: (_, error) => {
       if (error instanceof SessionNotReadyError) return;
-      void client.invalidateQueries({ queryKey: queryKeys.publishing.ownPublication(skillId) });
-      void client.invalidateQueries({ queryKey: queryKeys.publishing.publications });
+      return Promise.all([
+        client.invalidateQueries({ queryKey: queryKeys.publishing.ownPublication(skillId) }),
+        client.invalidateQueries({ queryKey: queryKeys.publishing.publications }),
+      ]);
     },
   });
 }
@@ -285,14 +292,14 @@ export function useAcquirePublication(publisher: string, name: string) {
 export function useOwnBundles() {
   return useQuery({
     queryKey: queryKeys.publishing.bundles,
-    queryFn: () => apiFetch<{ bundles: BundleVersion[] }>("/me/bundles"),
+    queryFn: async () => readOwnBundles(await apiFetch<unknown>("/me/bundles")),
   });
 }
 
 export function useOwnBundleOverview(enabled = true) {
   return useQuery({
     queryKey: queryKeys.publishing.bundleOverview,
-    queryFn: () => apiFetch<{ bundles: OwnerBundleSummary[] }>("/me/bundles/overview"),
+    queryFn: async () => readOwnBundleOverview(await apiFetch<unknown>("/me/bundles/overview")),
     enabled,
   });
 }
