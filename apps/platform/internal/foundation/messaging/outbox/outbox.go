@@ -278,8 +278,9 @@ func (w *Worker) PublishGauge(ctx context.Context) error {
 func publishDeadLettered(ctx context.Context, q *gen.Queries) error {
 	n, err := q.CountDeadLetteredOutboxEvents(ctx)
 	if err != nil {
+		metrics.OutboxDeadLetteredCurrent.Reset()
 		return err
 	}
-	metrics.OutboxDeadLetteredCurrent.Set(float64(n))
+	metrics.OutboxDeadLetteredCurrent.WithLabelValues().Set(float64(n))
 	return nil
 }

@@ -172,15 +172,16 @@ func (s *Service) PublishGauges(ctx context.Context) error {
 	for _, provider := range s.providers().Providers {
 		errs = append(errs, s.publishPersistentOrphans(ctx, provider.Name()))
 	}
-	s.halts().PublishMetrics(ctx)
+	errs = append(errs, s.halts().PublishMetrics(ctx))
 	return errors.Join(errs...)
 }
 
 func (s *Service) publishCleanupBacklog(ctx context.Context) error {
 	backlog, err := s.queries().CountRunsNeedingCleanup(ctx)
 	if err != nil {
+		metrics.CleanupBacklog.Reset()
 		return err
 	}
-	metrics.CleanupBacklog.Set(float64(backlog))
+	metrics.CleanupBacklog.WithLabelValues().Set(float64(backlog))
 	return nil
 }

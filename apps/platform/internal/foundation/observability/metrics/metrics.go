@@ -70,10 +70,10 @@ var (
 		Buckets: fastBuckets,
 	})
 
-	CleanupBacklog = promauto.NewGauge(prometheus.GaugeOpts{
+	CleanupBacklog = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "skillhub_run_cleanup_backlog",
 		Help: "Terminal runs whose cleanup has not completed (O11Y-003).",
-	})
+	}, nil)
 
 	GatewayRevokeFailed = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "skillhub_gateway_revoke_failed_total",
@@ -158,10 +158,10 @@ var OutboxDeadLettered = promauto.NewCounterVec(prometheus.CounterOpts{
 	Help: "Domain events isolated after repeated delivery failure (Poison Message).",
 }, []string{"event_type"})
 
-var OutboxDeadLetteredCurrent = promauto.NewGauge(prometheus.GaugeOpts{
+var OutboxDeadLetteredCurrent = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "skillhub_outbox_dead_lettered",
 	Help: "Domain events currently sitting isolated in the outbox, awaiting a human.",
-})
+}, nil)
 
 var (
 	ProviderCapability = promauto.NewCounterVec(prometheus.CounterOpts{
@@ -195,6 +195,10 @@ var (
 		Name: "skillhub_orphan_sandbox_persistent",
 		Help: "Leaked sandboxes present for two or more consecutive reconciler rounds (SBX-012).",
 	}, []string{labelProvider})
+	PersistentOrphanObservationSuccess = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_orphan_observation_success",
+		Help: "Whether the latest persistent orphan observation succeeded, by provider.",
+	}, []string{labelProvider})
 
 	ObjectsMissing = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "skillhub_storage_objects_missing",
@@ -203,8 +207,12 @@ var (
 
 	DispatchHalted = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "skillhub_dispatch_halted",
-		Help: "1 while new Runs are not dispatched to this target (03:SEC-012).",
+		Help: "Active dispatch halts at the latest successful observation.",
 	}, []string{"target", "source"})
+	DispatchHaltObservationSuccess = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_dispatch_halt_observation_success",
+		Help: "Whether the latest dispatch halt observation succeeded, including an empty halt inventory.",
+	}, nil)
 )
 
 var (

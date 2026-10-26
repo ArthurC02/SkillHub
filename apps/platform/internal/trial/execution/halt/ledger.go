@@ -177,15 +177,17 @@ func (l Ledger) CountClearRound(ctx context.Context, provider string, minRoundGa
 	}
 }
 
-func (l Ledger) PublishMetrics(ctx context.Context) {
+func (l Ledger) PublishMetrics(ctx context.Context) error {
 	state, err := l.Active(ctx)
 	if err != nil {
-
+		metrics.DispatchHaltObservationSuccess.WithLabelValues().Set(0)
 		slog.Error("could not publish dispatch halt metrics", "error", err)
-		return
+		return err
 	}
 	metrics.DispatchHalted.Reset()
 	for target, halt := range state.byTarget {
 		metrics.DispatchHalted.WithLabelValues(Target(target), halt.Source).Set(1)
 	}
+	metrics.DispatchHaltObservationSuccess.WithLabelValues().Set(1)
+	return nil
 }

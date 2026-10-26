@@ -19,6 +19,19 @@ func TestUnobservedCapacityMeasurementsAreAbsent(t *testing.T) {
 	}
 }
 
+func TestUnobservedOperationalMeasurementsAreAbsent(t *testing.T) {
+	for _, name := range []string{
+		"skillhub_run_cleanup_backlog", "skillhub_outbox_dead_lettered",
+		"skillhub_orphan_observation_success", "skillhub_dispatch_halt_observation_success",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if series := seriesOf(scrape(t), name); len(series) != 0 {
+				t.Fatalf("unobserved %s was exported: %v", name, series)
+			}
+		})
+	}
+}
+
 func TestStatusClassSplitsEveryRangeTheProviderRecorderActsOn(t *testing.T) {
 	for _, tc := range []struct {
 		name   string

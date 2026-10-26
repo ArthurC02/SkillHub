@@ -503,3 +503,670 @@ tests:
       - eval_time: 20m
         alertname: ModelPlatformBudgetExhausted
         exp_alerts: []
+
+  - name: "operational confirmed empty observations stay healthy despite API failures"
+    interval: "1m"
+    input_series:
+      - series: "skillhub_run_cleanup_backlog{process=\"worker\"}"
+        values: "0x130"
+      - series: "skillhub_outbox_dead_lettered{process=\"worker\"}"
+        values: "0x130"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"dataset\"}"
+        values: "0x130"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"artifact\"}"
+        values: "0x130"
+      - series: "skillhub_orphan_observation_success{process=\"worker\",provider=\"sandbox\"}"
+        values: "1x130"
+      - series: "skillhub_dispatch_halt_observation_success{process=\"worker\"}"
+        values: "1x130"
+      - series: "up{process=\"worker\"}"
+        values: "1x130"
+      - series: "skillhub_orphan_observation_success{process=\"api\",provider=\"sandbox\"}"
+        values: "0x130"
+      - series: "skillhub_dispatch_halt_observation_success{process=\"api\"}"
+        values: "0x130"
+    alert_rule_test:
+      - eval_time: "2h"
+        alertname: "CleanupBacklogNotObserved"
+        exp_alerts: []
+      - eval_time: "2h"
+        alertname: "OutboxBacklogNotObserved"
+        exp_alerts: []
+      - eval_time: "2h"
+        alertname: "ObjectSightingsNotObserved"
+        exp_alerts: []
+      - eval_time: "2h"
+        alertname: "PersistentOrphanObservationFailed"
+        exp_alerts: []
+      - eval_time: "2h"
+        alertname: "DispatchHaltsNotObserved"
+        exp_alerts: []
+  - name: "operational missing cleanup cannot be masked by API or other observations"
+    interval: "1m"
+    input_series:
+      - series: "skillhub_outbox_dead_lettered{process=\"worker\"}"
+        values: "0x130"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"dataset\"}"
+        values: "0x130"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"artifact\"}"
+        values: "0x130"
+      - series: "skillhub_orphan_observation_success{process=\"worker\",provider=\"sandbox\"}"
+        values: "1x130"
+      - series: "skillhub_dispatch_halt_observation_success{process=\"worker\"}"
+        values: "1x130"
+      - series: "up{process=\"worker\"}"
+        values: "1x130"
+      - series: "skillhub_run_cleanup_backlog{process=\"api\"}"
+        values: "0x130"
+      - series: "skillhub_run_cleanup_backlog{}"
+        values: "0x130"
+    alert_rule_test:
+      - eval_time: "59m"
+        alertname: "CleanupBacklogNotObserved"
+        exp_alerts: []
+      - eval_time: "1h"
+        alertname: "CleanupBacklogNotObserved"
+        exp_alerts:
+          - exp_labels:
+              process: "worker"
+              severity: "warning"
+            exp_annotations:
+              summary: "Run 清理積壓沒有可用觀測"
+              description: "worker 讀不到清理積壓時會撤下舊值；沒有觀測不代表零筆。先查 worker 的讀取錯誤與資料庫連線，恢復觀測前不能認定清理已完成。"
+  - name: "operational missing outbox cannot be masked by API or other observations"
+    interval: "1m"
+    input_series:
+      - series: "skillhub_run_cleanup_backlog{process=\"worker\"}"
+        values: "0x130"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"dataset\"}"
+        values: "0x130"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"artifact\"}"
+        values: "0x130"
+      - series: "skillhub_orphan_observation_success{process=\"worker\",provider=\"sandbox\"}"
+        values: "1x130"
+      - series: "skillhub_dispatch_halt_observation_success{process=\"worker\"}"
+        values: "1x130"
+      - series: "up{process=\"worker\"}"
+        values: "1x130"
+      - series: "skillhub_outbox_dead_lettered{process=\"api\"}"
+        values: "0x130"
+      - series: "skillhub_outbox_dead_lettered{}"
+        values: "0x130"
+    alert_rule_test:
+      - eval_time: "59m"
+        alertname: "OutboxBacklogNotObserved"
+        exp_alerts: []
+      - eval_time: "1h"
+        alertname: "OutboxBacklogNotObserved"
+        exp_alerts:
+          - exp_labels:
+              process: "worker"
+              severity: "warning"
+            exp_annotations:
+              summary: "Outbox 隔離積壓沒有可用觀測"
+              description: "worker 讀不到隔離區數量時會撤下舊值；沒有觀測不代表隔離事件已處理。先查 worker 的讀取錯誤與資料庫連線，恢復後再確認待處理事件。"
+  - name: "operational missing dataset cannot be masked by API or other observations"
+    interval: "1m"
+    input_series:
+      - series: "skillhub_run_cleanup_backlog{process=\"worker\"}"
+        values: "0x130"
+      - series: "skillhub_outbox_dead_lettered{process=\"worker\"}"
+        values: "0x130"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"artifact\"}"
+        values: "0x130"
+      - series: "skillhub_orphan_observation_success{process=\"worker\",provider=\"sandbox\"}"
+        values: "1x130"
+      - series: "skillhub_dispatch_halt_observation_success{process=\"worker\"}"
+        values: "1x130"
+      - series: "up{process=\"worker\"}"
+        values: "1x130"
+      - series: "skillhub_storage_objects_missing{process=\"api\",resource_kind=\"dataset\"}"
+        values: "0x130"
+      - series: "skillhub_storage_objects_missing{resource_kind=\"dataset\"}"
+        values: "0x130"
+    alert_rule_test:
+      - eval_time: "59m"
+        alertname: "ObjectSightingsNotObserved"
+        exp_alerts: []
+      - eval_time: "1h"
+        alertname: "ObjectSightingsNotObserved"
+        exp_alerts:
+          - exp_labels:
+              process: "worker"
+              severity: "critical"
+              resource_kind: "dataset"
+            exp_annotations:
+              summary: "dataset 的物件遺失觀測讀不到"
+              description: "worker 讀不到物件觀測時會撤下舊值；沒有觀測不代表內容完整。另一種物件或 API 的值不能代替它，先查 worker 的讀取錯誤與資料庫連線。"
+  - name: "operational missing artifact cannot be masked by API or other observations"
+    interval: "1m"
+    input_series:
+      - series: "skillhub_run_cleanup_backlog{process=\"worker\"}"
+        values: "0x130"
+      - series: "skillhub_outbox_dead_lettered{process=\"worker\"}"
+        values: "0x130"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"dataset\"}"
+        values: "0x130"
+      - series: "skillhub_orphan_observation_success{process=\"worker\",provider=\"sandbox\"}"
+        values: "1x130"
+      - series: "skillhub_dispatch_halt_observation_success{process=\"worker\"}"
+        values: "1x130"
+      - series: "up{process=\"worker\"}"
+        values: "1x130"
+      - series: "skillhub_storage_objects_missing{process=\"api\",resource_kind=\"artifact\"}"
+        values: "0x130"
+      - series: "skillhub_storage_objects_missing{resource_kind=\"artifact\"}"
+        values: "0x130"
+    alert_rule_test:
+      - eval_time: "59m"
+        alertname: "ObjectSightingsNotObserved"
+        exp_alerts: []
+      - eval_time: "1h"
+        alertname: "ObjectSightingsNotObserved"
+        exp_alerts:
+          - exp_labels:
+              process: "worker"
+              severity: "critical"
+              resource_kind: "artifact"
+            exp_annotations:
+              summary: "artifact 的物件遺失觀測讀不到"
+              description: "worker 讀不到物件觀測時會撤下舊值；沒有觀測不代表內容完整。另一種物件或 API 的值不能代替它，先查 worker 的讀取錯誤與資料庫連線。"
+  - name: "operational one provider failure stays unknown while another succeeds"
+    interval: "1m"
+    input_series:
+      - series: "skillhub_run_cleanup_backlog{process=\"worker\"}"
+        values: "0x130"
+      - series: "skillhub_outbox_dead_lettered{process=\"worker\"}"
+        values: "0x130"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"dataset\"}"
+        values: "0x130"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"artifact\"}"
+        values: "0x130"
+      - series: "skillhub_orphan_observation_success{process=\"worker\",provider=\"sandbox\"}"
+        values: "0x130"
+      - series: "skillhub_dispatch_halt_observation_success{process=\"worker\"}"
+        values: "1x130"
+      - series: "up{process=\"worker\"}"
+        values: "1x130"
+      - series: "skillhub_orphan_observation_success{process=\"worker\",provider=\"healthy\"}"
+        values: "1x130"
+      - series: "skillhub_orphan_observation_success{process=\"api\",provider=\"sandbox\"}"
+        values: "1x130"
+    alert_rule_test:
+      - eval_time: "59m"
+        alertname: "PersistentOrphanObservationFailed"
+        exp_alerts: []
+      - eval_time: "1h"
+        alertname: "PersistentOrphanObservationFailed"
+        exp_alerts:
+          - exp_labels:
+              process: "worker"
+              severity: "warning"
+              provider: "sandbox"
+            exp_annotations:
+              summary: "sandbox 的殘留 Sandbox 數量讀不到"
+              description: "這個 Provider 的殘留數值已撤下，其他 Provider 的成功觀測不能代替它。先查 worker 的讀取錯誤與資料庫連線；這不代表 Sandbox 已被清除。"
+  - name: "operational failed halt observation is not an empty halt inventory"
+    interval: "1m"
+    input_series:
+      - series: "skillhub_run_cleanup_backlog{process=\"worker\"}"
+        values: "0x130"
+      - series: "skillhub_outbox_dead_lettered{process=\"worker\"}"
+        values: "0x130"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"dataset\"}"
+        values: "0x130"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"artifact\"}"
+        values: "0x130"
+      - series: "skillhub_orphan_observation_success{process=\"worker\",provider=\"sandbox\"}"
+        values: "1x130"
+      - series: "skillhub_dispatch_halt_observation_success{process=\"worker\"}"
+        values: "0x130"
+      - series: "up{process=\"worker\"}"
+        values: "1x130"
+      - series: "skillhub_dispatch_halt_observation_success{process=\"api\"}"
+        values: "1x130"
+    alert_rule_test:
+      - eval_time: "59m"
+        alertname: "DispatchHaltsNotObserved"
+        exp_alerts: []
+      - eval_time: "1h"
+        alertname: "DispatchHaltsNotObserved"
+        exp_alerts:
+          - exp_labels:
+              process: "worker"
+              severity: "warning"
+            exp_annotations:
+              summary: "停派清單沒有可用觀測"
+              description: "worker 讀不到停派清單，或尚未完成觀測；這不代表目前沒有停派。上次已知的停派證據會保留，先查 worker 的讀取錯誤與資料庫連線，勿以清理或解除 P1 代替恢復觀測。"
+  - name: "operational missing halt observation is not an empty halt inventory"
+    interval: "1m"
+    input_series:
+      - series: "skillhub_run_cleanup_backlog{process=\"worker\"}"
+        values: "0x130"
+      - series: "skillhub_outbox_dead_lettered{process=\"worker\"}"
+        values: "0x130"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"dataset\"}"
+        values: "0x130"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"artifact\"}"
+        values: "0x130"
+      - series: "skillhub_orphan_observation_success{process=\"worker\",provider=\"sandbox\"}"
+        values: "1x130"
+      - series: "up{process=\"worker\"}"
+        values: "1x130"
+      - series: "skillhub_dispatch_halt_observation_success{process=\"api\"}"
+        values: "1x130"
+    alert_rule_test:
+      - eval_time: "59m"
+        alertname: "DispatchHaltsNotObserved"
+        exp_alerts: []
+      - eval_time: "1h"
+        alertname: "DispatchHaltsNotObserved"
+        exp_alerts:
+          - exp_labels:
+              process: "worker"
+              severity: "warning"
+            exp_annotations:
+              summary: "停派清單沒有可用觀測"
+              description: "worker 讀不到停派清單，或尚未完成觀測；這不代表目前沒有停派。上次已知的停派證據會保留，先查 worker 的讀取錯誤與資料庫連線，勿以清理或解除 P1 代替恢復觀測。"
+  - name: "operational a healthy scrape without any observations is not a healthy database"
+    interval: "1m"
+    input_series:
+      - series: "up{process=\"worker\"}"
+        values: "1x130"
+    alert_rule_test:
+      - eval_time: "1h"
+        alertname: "CleanupBacklogNotObserved"
+        exp_alerts:
+          - exp_labels:
+              process: "worker"
+              severity: "warning"
+            exp_annotations:
+              summary: "Run 清理積壓沒有可用觀測"
+              description: "worker 讀不到清理積壓時會撤下舊值；沒有觀測不代表零筆。先查 worker 的讀取錯誤與資料庫連線，恢復觀測前不能認定清理已完成。"
+      - eval_time: "1h"
+        alertname: "OutboxBacklogNotObserved"
+        exp_alerts:
+          - exp_labels:
+              process: "worker"
+              severity: "warning"
+            exp_annotations:
+              summary: "Outbox 隔離積壓沒有可用觀測"
+              description: "worker 讀不到隔離區數量時會撤下舊值；沒有觀測不代表隔離事件已處理。先查 worker 的讀取錯誤與資料庫連線，恢復後再確認待處理事件。"
+      - eval_time: "1h"
+        alertname: "ObjectSightingsNotObserved"
+        exp_alerts:
+          - exp_labels:
+              process: "worker"
+              severity: "critical"
+              resource_kind: "dataset"
+            exp_annotations:
+              summary: "dataset 的物件遺失觀測讀不到"
+              description: "worker 讀不到物件觀測時會撤下舊值；沒有觀測不代表內容完整。另一種物件或 API 的值不能代替它，先查 worker 的讀取錯誤與資料庫連線。"
+          - exp_labels:
+              process: "worker"
+              severity: "critical"
+              resource_kind: "artifact"
+            exp_annotations:
+              summary: "artifact 的物件遺失觀測讀不到"
+              description: "worker 讀不到物件觀測時會撤下舊值；沒有觀測不代表內容完整。另一種物件或 API 的值不能代替它，先查 worker 的讀取錯誤與資料庫連線。"
+      - eval_time: "1h"
+        alertname: "PersistentOrphanObservationFailed"
+        exp_alerts: []
+      - eval_time: "1h"
+        alertname: "DispatchHaltsNotObserved"
+        exp_alerts:
+          - exp_labels:
+              process: "worker"
+              severity: "warning"
+            exp_annotations:
+              summary: "停派清單沒有可用觀測"
+              description: "worker 讀不到停派清單，或尚未完成觀測；這不代表目前沒有停派。上次已知的停派證據會保留，先查 worker 的讀取錯誤與資料庫連線，勿以清理或解除 P1 代替恢復觀測。"
+  - name: "operational losing observations waits one hour and valid empty recovery resolves it"
+    interval: "1m"
+    input_series:
+      - series: "skillhub_run_cleanup_backlog{process=\"worker\"}"
+        values: "0 stale _x61 0x10"
+      - series: "skillhub_outbox_dead_lettered{process=\"worker\"}"
+        values: "0 stale _x61 0x10"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"dataset\"}"
+        values: "0 stale _x61 0x10"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"artifact\"}"
+        values: "0 stale _x61 0x10"
+      - series: "skillhub_orphan_observation_success{process=\"worker\",provider=\"sandbox\"}"
+        values: "1 0x61 1x10"
+      - series: "skillhub_dispatch_halt_observation_success{process=\"worker\"}"
+        values: "1 0x61 1x10"
+      - series: "up{process=\"worker\"}"
+        values: "1x130"
+    alert_rule_test:
+      - eval_time: "1h"
+        alertname: "CleanupBacklogNotObserved"
+        exp_alerts: []
+      - eval_time: "1h1m"
+        alertname: "CleanupBacklogNotObserved"
+        exp_alerts:
+          - exp_labels:
+              process: "worker"
+              severity: "warning"
+            exp_annotations:
+              summary: "Run 清理積壓沒有可用觀測"
+              description: "worker 讀不到清理積壓時會撤下舊值；沒有觀測不代表零筆。先查 worker 的讀取錯誤與資料庫連線，恢復觀測前不能認定清理已完成。"
+      - eval_time: "1h3m"
+        alertname: "CleanupBacklogNotObserved"
+        exp_alerts: []
+      - eval_time: "1h"
+        alertname: "OutboxBacklogNotObserved"
+        exp_alerts: []
+      - eval_time: "1h1m"
+        alertname: "OutboxBacklogNotObserved"
+        exp_alerts:
+          - exp_labels:
+              process: "worker"
+              severity: "warning"
+            exp_annotations:
+              summary: "Outbox 隔離積壓沒有可用觀測"
+              description: "worker 讀不到隔離區數量時會撤下舊值；沒有觀測不代表隔離事件已處理。先查 worker 的讀取錯誤與資料庫連線，恢復後再確認待處理事件。"
+      - eval_time: "1h3m"
+        alertname: "OutboxBacklogNotObserved"
+        exp_alerts: []
+      - eval_time: "1h"
+        alertname: "ObjectSightingsNotObserved"
+        exp_alerts: []
+      - eval_time: "1h1m"
+        alertname: "ObjectSightingsNotObserved"
+        exp_alerts:
+          - exp_labels:
+              process: "worker"
+              severity: "critical"
+              resource_kind: "dataset"
+            exp_annotations:
+              summary: "dataset 的物件遺失觀測讀不到"
+              description: "worker 讀不到物件觀測時會撤下舊值；沒有觀測不代表內容完整。另一種物件或 API 的值不能代替它，先查 worker 的讀取錯誤與資料庫連線。"
+          - exp_labels:
+              process: "worker"
+              severity: "critical"
+              resource_kind: "artifact"
+            exp_annotations:
+              summary: "artifact 的物件遺失觀測讀不到"
+              description: "worker 讀不到物件觀測時會撤下舊值；沒有觀測不代表內容完整。另一種物件或 API 的值不能代替它，先查 worker 的讀取錯誤與資料庫連線。"
+      - eval_time: "1h3m"
+        alertname: "ObjectSightingsNotObserved"
+        exp_alerts: []
+      - eval_time: "1h"
+        alertname: "PersistentOrphanObservationFailed"
+        exp_alerts: []
+      - eval_time: "1h1m"
+        alertname: "PersistentOrphanObservationFailed"
+        exp_alerts:
+          - exp_labels:
+              process: "worker"
+              severity: "warning"
+              provider: "sandbox"
+            exp_annotations:
+              summary: "sandbox 的殘留 Sandbox 數量讀不到"
+              description: "這個 Provider 的殘留數值已撤下，其他 Provider 的成功觀測不能代替它。先查 worker 的讀取錯誤與資料庫連線；這不代表 Sandbox 已被清除。"
+      - eval_time: "1h3m"
+        alertname: "PersistentOrphanObservationFailed"
+        exp_alerts: []
+      - eval_time: "1h"
+        alertname: "DispatchHaltsNotObserved"
+        exp_alerts: []
+      - eval_time: "1h1m"
+        alertname: "DispatchHaltsNotObserved"
+        exp_alerts:
+          - exp_labels:
+              process: "worker"
+              severity: "warning"
+            exp_annotations:
+              summary: "停派清單沒有可用觀測"
+              description: "worker 讀不到停派清單，或尚未完成觀測；這不代表目前沒有停派。上次已知的停派證據會保留，先查 worker 的讀取錯誤與資料庫連線，勿以清理或解除 P1 代替恢復觀測。"
+      - eval_time: "1h3m"
+        alertname: "DispatchHaltsNotObserved"
+        exp_alerts: []
+  - name: "operational known cleanup fault survives lost reads until a true zero or unknown handoff"
+    interval: "1m"
+    input_series:
+      - series: "skillhub_run_cleanup_backlog{process=\"worker\"}"
+        values: "3x15 stale _x59 0x3 3x15 stale _x133 0x20"
+      - series: "skillhub_outbox_dead_lettered{process=\"worker\"}"
+        values: "0x260"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"dataset\"}"
+        values: "0x260"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"artifact\"}"
+        values: "0x260"
+      - series: "skillhub_orphan_observation_success{process=\"worker\",provider=\"sandbox\"}"
+        values: "1x260"
+      - series: "skillhub_dispatch_halt_observation_success{process=\"worker\"}"
+        values: "1x260"
+      - series: "up{process=\"worker\"}"
+        values: "1x260"
+      - series: "skillhub_run_cleanup_backlog{process=\"api\"}"
+        values: "99x260"
+    promql_expr_test:
+      - expr: "ALERTS{alertname=\"CleanupBacklogGrowing\",alertstate=\"firing\"}"
+        eval_time: "14m"
+        exp_samples: []
+      - expr: "ALERTS{alertname=\"CleanupBacklogGrowing\",alertstate=\"firing\"}"
+        eval_time: "15m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"CleanupBacklogGrowing\",alertstate=\"firing\",process=\"worker\",severity=\"warning\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"CleanupBacklogGrowing\",alertstate=\"firing\"}"
+        eval_time: "16m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"CleanupBacklogGrowing\",alertstate=\"firing\",process=\"worker\",severity=\"warning\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"CleanupBacklogGrowing\",alertstate=\"firing\"}"
+        eval_time: "1h16m"
+        exp_samples: []
+      - expr: "ALERTS{alertname=\"CleanupBacklogGrowing\",alertstate=\"firing\"}"
+        eval_time: "3h34m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"CleanupBacklogGrowing\",alertstate=\"firing\",process=\"worker\",severity=\"warning\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"CleanupBacklogGrowing\",alertstate=\"firing\"}"
+        eval_time: "3h35m"
+        exp_samples: []
+      - expr: "ALERTS{alertname=\"CleanupBacklogNotObserved\",alertstate=\"firing\"}"
+        eval_time: "1h16m"
+        exp_samples: []
+      - expr: "ALERTS{alertname=\"CleanupBacklogNotObserved\",alertstate=\"firing\"}"
+        eval_time: "2h36m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"CleanupBacklogNotObserved\",alertstate=\"firing\",process=\"worker\",severity=\"warning\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"CleanupBacklogNotObserved\",alertstate=\"firing\"}"
+        eval_time: "3h35m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"CleanupBacklogNotObserved\",alertstate=\"firing\",process=\"worker\",severity=\"warning\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"CleanupBacklogNotObserved\",alertstate=\"firing\"}"
+        eval_time: "3h50m"
+        exp_samples: []
+  - name: "operational known outbox fault survives lost reads until a true zero or unknown handoff"
+    interval: "1m"
+    input_series:
+      - series: "skillhub_run_cleanup_backlog{process=\"worker\"}"
+        values: "0x260"
+      - series: "skillhub_outbox_dead_lettered{process=\"worker\"}"
+        values: "1x15 stale _x59 0x3 1x15 stale _x133 0x20"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"dataset\"}"
+        values: "0x260"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"artifact\"}"
+        values: "0x260"
+      - series: "skillhub_orphan_observation_success{process=\"worker\",provider=\"sandbox\"}"
+        values: "1x260"
+      - series: "skillhub_dispatch_halt_observation_success{process=\"worker\"}"
+        values: "1x260"
+      - series: "up{process=\"worker\"}"
+        values: "1x260"
+      - series: "skillhub_outbox_dead_lettered{process=\"api\"}"
+        values: "99x260"
+    promql_expr_test:
+      - expr: "ALERTS{alertname=\"OutboxDeadLetterBacklogUncleared\",alertstate=\"firing\"}"
+        eval_time: "14m"
+        exp_samples: []
+      - expr: "ALERTS{alertname=\"OutboxDeadLetterBacklogUncleared\",alertstate=\"firing\"}"
+        eval_time: "15m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"OutboxDeadLetterBacklogUncleared\",alertstate=\"firing\",process=\"worker\",severity=\"warning\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"OutboxDeadLetterBacklogUncleared\",alertstate=\"firing\"}"
+        eval_time: "16m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"OutboxDeadLetterBacklogUncleared\",alertstate=\"firing\",process=\"worker\",severity=\"warning\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"OutboxDeadLetterBacklogUncleared\",alertstate=\"firing\"}"
+        eval_time: "1h16m"
+        exp_samples: []
+      - expr: "ALERTS{alertname=\"OutboxDeadLetterBacklogUncleared\",alertstate=\"firing\"}"
+        eval_time: "3h34m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"OutboxDeadLetterBacklogUncleared\",alertstate=\"firing\",process=\"worker\",severity=\"warning\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"OutboxDeadLetterBacklogUncleared\",alertstate=\"firing\"}"
+        eval_time: "3h35m"
+        exp_samples: []
+      - expr: "ALERTS{alertname=\"OutboxBacklogNotObserved\",alertstate=\"firing\"}"
+        eval_time: "1h16m"
+        exp_samples: []
+      - expr: "ALERTS{alertname=\"OutboxBacklogNotObserved\",alertstate=\"firing\"}"
+        eval_time: "2h36m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"OutboxBacklogNotObserved\",alertstate=\"firing\",process=\"worker\",severity=\"warning\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"OutboxBacklogNotObserved\",alertstate=\"firing\"}"
+        eval_time: "3h35m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"OutboxBacklogNotObserved\",alertstate=\"firing\",process=\"worker\",severity=\"warning\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"OutboxBacklogNotObserved\",alertstate=\"firing\"}"
+        eval_time: "3h50m"
+        exp_samples: []
+  - name: "operational known orphan fault survives lost reads until a true zero or unknown handoff"
+    interval: "1m"
+    input_series:
+      - series: "skillhub_run_cleanup_backlog{process=\"worker\"}"
+        values: "0x260"
+      - series: "skillhub_outbox_dead_lettered{process=\"worker\"}"
+        values: "0x260"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"dataset\"}"
+        values: "0x260"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"artifact\"}"
+        values: "0x260"
+      - series: "skillhub_orphan_observation_success{process=\"worker\",provider=\"sandbox\"}"
+        values: "1x15 0x59 1x19 0x133 1x30"
+      - series: "skillhub_dispatch_halt_observation_success{process=\"worker\"}"
+        values: "1x260"
+      - series: "up{process=\"worker\"}"
+        values: "1x260"
+      - series: "skillhub_orphan_sandbox_persistent{process=\"worker\",provider=\"sandbox\"}"
+        values: "1x15 stale _x59 0x3 1x15 stale _x133 0x20"
+      - series: "skillhub_orphan_sandbox_persistent{process=\"api\",provider=\"sandbox\"}"
+        values: "99x260"
+    promql_expr_test:
+      - expr: "ALERTS{alertname=\"LeakedSandboxStillPresent\",alertstate=\"firing\"}"
+        eval_time: "15m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"LeakedSandboxStillPresent\",alertstate=\"firing\",provider=\"sandbox\",severity=\"warning\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"LeakedSandboxStillPresent\",alertstate=\"firing\"}"
+        eval_time: "16m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"LeakedSandboxStillPresent\",alertstate=\"firing\",provider=\"sandbox\",severity=\"warning\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"LeakedSandboxStillPresent\",alertstate=\"firing\"}"
+        eval_time: "1h16m"
+        exp_samples: []
+      - expr: "ALERTS{alertname=\"LeakedSandboxStillPresent\",alertstate=\"firing\"}"
+        eval_time: "3h34m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"LeakedSandboxStillPresent\",alertstate=\"firing\",provider=\"sandbox\",severity=\"warning\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"LeakedSandboxStillPresent\",alertstate=\"firing\"}"
+        eval_time: "3h35m"
+        exp_samples: []
+      - expr: "ALERTS{alertname=\"PersistentOrphanObservationFailed\",alertstate=\"firing\"}"
+        eval_time: "1h16m"
+        exp_samples: []
+      - expr: "ALERTS{alertname=\"PersistentOrphanObservationFailed\",alertstate=\"firing\"}"
+        eval_time: "2h36m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"PersistentOrphanObservationFailed\",alertstate=\"firing\",process=\"worker\",provider=\"sandbox\",severity=\"warning\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"PersistentOrphanObservationFailed\",alertstate=\"firing\"}"
+        eval_time: "3h35m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"PersistentOrphanObservationFailed\",alertstate=\"firing\",process=\"worker\",provider=\"sandbox\",severity=\"warning\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"PersistentOrphanObservationFailed\",alertstate=\"firing\"}"
+        eval_time: "3h50m"
+        exp_samples: []
+  - name: "operational known objects fault survives lost reads until a true zero or unknown handoff"
+    interval: "1m"
+    input_series:
+      - series: "skillhub_run_cleanup_backlog{process=\"worker\"}"
+        values: "0x260"
+      - series: "skillhub_outbox_dead_lettered{process=\"worker\"}"
+        values: "0x260"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"dataset\"}"
+        values: "1x15 stale _x59 0x3 1x15 stale _x133 0x20"
+      - series: "skillhub_storage_objects_missing{process=\"worker\",resource_kind=\"artifact\"}"
+        values: "0x15 stale _x59 0x19 stale _x133 0x20"
+      - series: "skillhub_orphan_observation_success{process=\"worker\",provider=\"sandbox\"}"
+        values: "1x260"
+      - series: "skillhub_dispatch_halt_observation_success{process=\"worker\"}"
+        values: "1x260"
+      - series: "up{process=\"worker\"}"
+        values: "1x260"
+      - series: "skillhub_storage_objects_missing{process=\"api\",resource_kind=\"dataset\"}"
+        values: "99x260"
+    promql_expr_test:
+      - expr: "ALERTS{alertname=\"StoredObjectsMissing\",alertstate=\"firing\"}"
+        eval_time: "15m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"StoredObjectsMissing\",alertstate=\"firing\",resource_kind=\"dataset\",severity=\"critical\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"StoredObjectsMissing\",alertstate=\"firing\"}"
+        eval_time: "16m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"StoredObjectsMissing\",alertstate=\"firing\",resource_kind=\"dataset\",severity=\"critical\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"StoredObjectsMissing\",alertstate=\"firing\"}"
+        eval_time: "1h16m"
+        exp_samples: []
+      - expr: "ALERTS{alertname=\"StoredObjectsMissing\",alertstate=\"firing\"}"
+        eval_time: "3h34m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"StoredObjectsMissing\",alertstate=\"firing\",resource_kind=\"dataset\",severity=\"critical\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"StoredObjectsMissing\",alertstate=\"firing\"}"
+        eval_time: "3h35m"
+        exp_samples: []
+      - expr: "ALERTS{alertname=\"ObjectSightingsNotObserved\",alertstate=\"firing\",resource_kind=\"dataset\"}"
+        eval_time: "1h16m"
+        exp_samples: []
+      - expr: "ALERTS{alertname=\"ObjectSightingsNotObserved\",alertstate=\"firing\",resource_kind=\"dataset\"}"
+        eval_time: "2h36m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"ObjectSightingsNotObserved\",alertstate=\"firing\",process=\"worker\",resource_kind=\"dataset\",severity=\"critical\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"ObjectSightingsNotObserved\",alertstate=\"firing\",resource_kind=\"dataset\"}"
+        eval_time: "3h35m"
+        exp_samples:
+          - labels: "ALERTS{alertname=\"ObjectSightingsNotObserved\",alertstate=\"firing\",process=\"worker\",resource_kind=\"dataset\",severity=\"critical\"}"
+            value: 1
+      - expr: "ALERTS{alertname=\"ObjectSightingsNotObserved\",alertstate=\"firing\",resource_kind=\"dataset\"}"
+        eval_time: "3h50m"
+        exp_samples: []
+  - name: "operational cleanup boundary stays quiet at two pending runs"
+    interval: "1m"
+    input_series:
+      - series: "skillhub_run_cleanup_backlog{process=\"worker\"}"
+        values: "2x20"
+      - series: "skillhub_run_cleanup_backlog{process=\"api\"}"
+        values: "99x20"
+    alert_rule_test:
+      - eval_time: "15m"
+        alertname: "CleanupBacklogGrowing"
+        exp_alerts: []

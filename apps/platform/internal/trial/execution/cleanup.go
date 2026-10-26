@@ -320,8 +320,11 @@ func (s *Service) publishPersistentOrphans(ctx context.Context, provider string)
 		Provider: provider, PersistentAfterRounds: OrphanPersistsAfterRounds,
 	})
 	if err != nil {
+		metrics.OrphanPersistent.DeleteLabelValues(provider)
+		metrics.PersistentOrphanObservationSuccess.WithLabelValues(provider).Set(0)
 		return err
 	}
 	metrics.OrphanPersistent.WithLabelValues(provider).Set(float64(persistent))
+	metrics.PersistentOrphanObservationSuccess.WithLabelValues(provider).Set(1)
 	return nil
 }

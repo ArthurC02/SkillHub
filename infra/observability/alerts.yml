@@ -111,16 +111,35 @@ groups:
   - name: skillhub-cleanup-and-leaks
     rules:
       - alert: CleanupBacklogGrowing
-        expr: skillhub_run_cleanup_backlog > 2
+        expr: last_over_time(skillhub_run_cleanup_backlog{process="worker"}[2h]) > 2
         for: 15m
         labels:
           severity: warning
         annotations:
-          summary: "清理積壓 {{ $value }} 個 Run 未確認釋放"
+          summary: "上次觀測有 {{ $value }} 個 Run 未確認釋放"
           description: >-
+            最多沿用兩小時內的最後成功觀測；新觀測為零會解除，讀取中斷另有未知告警。
             RUN-007 的清理是冪等的、失敗會由 supervisor 重排；積壓仍上升代表
             Provider 的 DELETE 一直失敗，或該 Provider 已從設定中移除但仍持有
             Sandbox。後者平台無法自行釋放，必須人工處理。
+
+      - alert: CleanupBacklogNotObserved
+        expr: absent(skillhub_run_cleanup_backlog{process="worker"})
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Run 清理積壓沒有可用觀測"
+          description: "worker 讀不到清理積壓時會撤下舊值；沒有觀測不代表零筆。先查 worker 的讀取錯誤與資料庫連線，恢復觀測前不能認定清理已完成。"
+
+      - alert: PersistentOrphanObservationFailed
+        expr: skillhub_orphan_observation_success{process="worker"} == 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.provider }} 的殘留 Sandbox 數量讀不到"
+          description: "這個 Provider 的殘留數值已撤下，其他 Provider 的成功觀測不能代替它。先查 worker 的讀取錯誤與資料庫連線；這不代表 Sandbox 已被清除。"
 
       - alert: CleanupFailing
         expr: sum(rate(skillhub_run_cleanup_total{result="failed"}[30m])) > 0
@@ -139,12 +158,13 @@ groups:
           description: "查該時段的 cleanup 失敗與 worker 重啟紀錄。"
 
       - alert: LeakedSandboxStillPresent
-        expr: max by (provider) (skillhub_orphan_sandbox_persistent) > 0
+        expr: max by (provider) (last_over_time(skillhub_orphan_sandbox_persistent{process="worker"}[2h])) > 0
         labels:
           severity: warning
         annotations:
-          summary: "{{ $labels.provider }} 上有遺留 Sandbox 連續兩輪掃描仍未清除（X-03）"
+          summary: "上次觀測的 {{ $labels.provider }} 有遺留 Sandbox 連續兩輪掃描仍未清除（X-03）"
           description: >-
+            最多沿用兩小時內的最後成功觀測；新觀測為零會解除，讀取中斷另有未知告警。
             X-04 的下一級是節點 drain（遺留 ≥ 該節點 slot 的 50%，封測規模下
             即 1 筆）與全池暫停派送（≥ 總 slot 的 25%，下限 2 筆）。**那兩個動作是
             平台實作，不是本告警的職責**；本條只負責讓人知道它正在往那裡走。
@@ -201,6 +221,17 @@ groups:
             恢復；`source=p1_incident` 是 02:SEC-010 的 P1，**現場正被保留（清理與
             孤兒回收都已停手）**，要人走完 runbook 後以
             `DELETE /admin/dispatch/halt` 解除。
+
+      - alert: DispatchHaltsNotObserved
+        expr: >-
+          absent(skillhub_dispatch_halt_observation_success{process="worker"})
+          or skillhub_dispatch_halt_observation_success{process="worker"} == 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "停派清單沒有可用觀測"
+          description: "worker 讀不到停派清單，或尚未完成觀測；這不代表目前沒有停派。上次已知的停派證據會保留，先查 worker 的讀取錯誤與資料庫連線，勿以清理或解除 P1 代替恢復觀測。"
 
       - alert: DispatchHaltedForIncident
         expr: max by (target) (skillhub_dispatch_halted{source="p1_incident"}) > 0
@@ -285,23 +316,44 @@ groups:
             清成 NULL/0，但**先確認 consumer 已經修好**，否則只是再燒十次重試。
 
       - alert: OutboxDeadLetterBacklogUncleared
-        expr: skillhub_outbox_dead_lettered > 0
+        expr: last_over_time(skillhub_outbox_dead_lettered{process="worker"}[2h]) > 0
         for: 15m
         labels:
           severity: warning
         annotations:
-          summary: "Outbox 隔離區裡還有 {{ $value }} 筆事件沒有被處理"
+          summary: "上次觀測的 Outbox 隔離區仍有 {{ $value }} 筆待處理"
           description: >-
-            與 OutboxEventDeadLettered 是同一件事的兩個時態。那一條響過之後這一條
-            會持續響到有人處理為止，這是刻意的：沒有任何自動路徑會清掉那些列。
+            最多沿用兩小時內的最後成功觀測，新觀測為零會解除；讀取中斷另有未知告警。
+            沒有自動路徑會清掉隔離事件，必須人工確認；觀測缺席不能當成已處理。
 
-      - alert: StoredObjectsMissing
-        expr: max by (resource_kind) (skillhub_storage_objects_missing) > 0
+      - alert: OutboxBacklogNotObserved
+        expr: absent(skillhub_outbox_dead_lettered{process="worker"})
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox 隔離積壓沒有可用觀測"
+          description: "worker 讀不到隔離區數量時會撤下舊值；沒有觀測不代表隔離事件已處理。先查 worker 的讀取錯誤與資料庫連線，恢復後再確認待處理事件。"
+
+      - alert: ObjectSightingsNotObserved
+        expr: >-
+          absent(skillhub_storage_objects_missing{process="worker",resource_kind="dataset"})
+          or absent(skillhub_storage_objects_missing{process="worker",resource_kind="artifact"})
+        for: 1h
         labels:
           severity: critical
         annotations:
-          summary: "{{ $labels.resource_kind }} 有使用者內容遺失（連續兩輪確認不存在）"
+          summary: "{{ $labels.resource_kind }} 的物件遺失觀測讀不到"
+          description: "worker 讀不到物件觀測時會撤下舊值；沒有觀測不代表內容完整。另一種物件或 API 的值不能代替它，先查 worker 的讀取錯誤與資料庫連線。"
+
+      - alert: StoredObjectsMissing
+        expr: max by (resource_kind) (last_over_time(skillhub_storage_objects_missing{process="worker"}[2h])) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "上次觀測的 {{ $labels.resource_kind }} 有使用者內容遺失（連續兩輪確認不存在）"
           description: >-
+            最多沿用兩小時內的最後成功觀測；新觀測為零會解除，讀取中斷的未知告警維持 critical。
             列已被標記為不再宣稱持有物件，audit 有 storage.object_missing 的列可查。
             打包產物是冪等的、可以重打；資料集不行。**先查是不是 bucket 生命週期
             或誤刪**，再決定要不要告知受測者（RELEASE-009 的解讀依賴這一條）。

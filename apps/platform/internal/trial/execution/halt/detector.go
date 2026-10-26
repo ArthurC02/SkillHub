@@ -92,7 +92,7 @@ func (d Detector) EvaluateOrphanThresholds(ctx context.Context) {
 				poolOrphans, limit, poolSlots),
 		})
 	}
-	d.PublishMetrics(ctx)
+	_ = d.PublishMetrics(ctx)
 }
 
 type orphanCount struct {

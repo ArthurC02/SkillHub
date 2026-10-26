@@ -343,6 +343,7 @@ func (s *Service) markLost(
 func (s *Service) PublishGauge(ctx context.Context) error {
 	rows, err := gen.New(s.Pool).CountPersistentObjectSightings(ctx, actAfterRounds)
 	if err != nil {
+		metrics.ObjectsMissing.Reset()
 		return err
 	}
 	seen := map[string]bool{}
