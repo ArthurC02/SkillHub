@@ -6,9 +6,10 @@ import {
   SessionNotReadyError,
 } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
-import type { DeclarableLicense } from "@skillhub/api-client-ts";
+import type { DeclarableLicense, OwnerCatalogExposureStateEnum } from "@skillhub/api-client-ts";
 import type { CategorizedFindings, Labelled } from "../../core/api/types";
 import { readPublicPublication } from "./public-publication.model";
+import { readOwnerPublications } from "./owner-publications.model";
 import { AcquisitionResultUnknown, readAcquisition } from "./acquisition.model";
 
 export interface Publisher {
@@ -49,14 +50,7 @@ export interface OwnerPublicationSummary {
   status: "published" | "delisted";
   status_changed_at: string;
   catalog_exposure: {
-    state:
-      | "listed"
-      | "awaiting_review"
-      | "revoked"
-      | "review_outdated"
-      | "not_eligible"
-      | "search_not_ready"
-      | "unreleased";
+    state: OwnerCatalogExposureStateEnum;
   };
   latest_release?: {
     version_id: string;
@@ -184,7 +178,7 @@ export function useOwnPublisher(enabled = true) {
 export function useOwnPublications(enabled = true) {
   return useQuery({
     queryKey: queryKeys.publishing.publications,
-    queryFn: () => apiFetch<{ publications: OwnerPublicationSummary[] }>("/me/publications"),
+    queryFn: async () => readOwnerPublications(await apiFetch<unknown>("/me/publications")),
     enabled,
   });
 }

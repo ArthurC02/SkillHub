@@ -894,6 +894,64 @@ test("the publishing overview reports a failed read instead of claiming the coll
   expect(text()).not.toContain("database unavailable");
 });
 
+test.each([
+  ["missing collection", {}],
+  ["null envelope", null],
+  ["null row", { publications: [null] }],
+  [
+    "unknown exposure",
+    {
+      publications: OWN_PUBLICATIONS.publications.map((publication) => ({
+        ...publication,
+        catalog_exposure: { state: "future_state" },
+      })),
+    },
+  ],
+])(
+  "a %s refresh preserves a Bundle draft and recovers through the publication retry",
+  async (_, invalid) => {
+    let reads = 0;
+    let payload: unknown = OWN_PUBLICATIONS;
+    vi.stubGlobal("fetch", (input: string) => {
+      const path = String(input)
+        .replace(/^https?:\/\/[^/]+/, "")
+        .split("?")[0];
+      if (path === "/me/publications") {
+        reads += 1;
+        return json(payload);
+      }
+      if (path === "/me/bundles") return json({ bundles: [] });
+      const result = platformResponse(String(input));
+      return json(result.body, result.status);
+    });
+    await render(<PublishingWorkspace />, () => text().includes("已列入 Catalog"));
+    const input = container.querySelector<HTMLInputElement>(".bundle-form input")!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        input,
+        "kept-bundle",
+      );
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    payload = invalid;
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>("#skill-publications button")!.click();
+    });
+    await waitFor(() => text().includes("暫時無法讀取小工具發佈清單"));
+    expect(reads).toBe(2);
+    expect(text()).not.toContain("還沒有任何小工具 Publication");
+    expect(container.querySelector("#skill-publications li")).toBeNull();
+    expect(container.querySelector(".bundle-form input")).toBe(input);
+    expect(input.value).toBe("kept-bundle");
+    payload = OWN_PUBLICATIONS;
+    await act(async () => button("再試一次")!.click());
+    await waitFor(() => text().includes("已列入 Catalog"));
+    expect(reads).toBe(3);
+    expect(text()).not.toContain("暫時無法讀取小工具發佈清單");
+    expect(input.value).toBe("kept-bundle");
+  },
+);
+
 test("PACK-004 available 公開頁：每一個允收欄位都出現", async () => {
   stub({ [PUB_ADDRESS]: { body: PUBLIC_PUBLICATION } });
   await render(<PublicPublication />, () => text().includes("PDF Summariser"));

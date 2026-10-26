@@ -354,7 +354,7 @@ test("workspace home resumes exact publication, release, and Catalog exposure co
       return json({
         publications: [
           {
-            skill_id: "skill-1",
+            skill_id: "11111111-1111-4111-8111-111111111111",
             publisher: "skillhub",
             name: "pdf-summariser",
             address: "skillhub/pdf-summariser",
@@ -362,13 +362,13 @@ test("workspace home resumes exact publication, release, and Catalog exposure co
             status_changed_at: "2026-09-28T12:00:00Z",
             catalog_exposure: { state: "awaiting_review" },
             latest_release: {
-              version_id: "version-7",
+              version_id: "77777777-7777-4777-8777-777777777777",
               version_number: 7,
               released_at: "2026-09-29T12:00:00Z",
             },
           },
           {
-            skill_id: "skill-2",
+            skill_id: "22222222-2222-4222-8222-222222222222",
             publisher: "skillhub",
             name: "archived-helper",
             address: "skillhub/archived-helper",
@@ -395,7 +395,9 @@ test("workspace home resumes exact publication, release, and Catalog exposure co
   expect(publications.textContent).toContain("目前不符合曝光條件");
   expect(publications.textContent).toContain("尚未建立 Release");
   expect(
-    publications.querySelector('a[href="/skills/skill-1/versions/version-7"]')?.textContent,
+    publications.querySelector(
+      'a[href="/skills/11111111-1111-4111-8111-111111111111/versions/77777777-7777-4777-8777-777777777777"]',
+    )?.textContent,
   ).toBe("v7");
   expect(
     publications.querySelector(
