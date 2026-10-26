@@ -127,6 +127,8 @@ def decode(asset: str, record_id: str, text: str) -> dict[str, Any]:
     record.update(relations)
     record.update(sections)
     if "sources" in front:
+        if not isinstance(front["sources"], list):
+            raise ValueError("sources must be a list of cited sources")
         record["evidence"] = [_evidence(source) for source in front["sources"]]
     record.update(_registry_status(asset, front))
     return record
@@ -173,6 +175,8 @@ def _registry_status(asset: str, front: dict[str, Any]) -> dict[str, Any]:
     if "registry_status" in front:
         keys[review_field(asset)] = front["registry_status"]
     elif "status" in front:
+        if not isinstance(front["status"], str):
+            raise ValueError("status must be text")
         keys[review_field(asset)] = REGISTRY_STATUSES.get(front["status"], front["status"])
     return keys
 
@@ -429,6 +433,8 @@ def _parse_sequence(source: _Lines, indent: int) -> list[Any]:
         content = row[1][1:].strip()
         if not content:
             source.at += 1
+            if source.peek() is None:
+                raise ValueError(f"frontmatter line {row[2]}: a '-' entry has no value")
             items.append(_parse_block(source, source.peek()[0]))
         elif re.match(r"[A-Za-z_][A-Za-z0-9_]*:( |$)", content):
             source.rows[source.at] = (indent + 2, content, row[2])

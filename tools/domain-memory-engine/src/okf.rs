@@ -81,9 +81,12 @@ pub fn decode(asset: &str, record_id: &str, text: &str) -> Result<Object, String
         record.insert(key.clone(), value.clone());
     }
     if let Some(sources) = front.get("sources") {
-        let evidence = iterated(sources)?
-            .into_iter()
-            .map(|source| evidence_of(&source))
+        let sources = sources
+            .as_array()
+            .ok_or("sources must be a list of cited sources")?;
+        let evidence = sources
+            .iter()
+            .map(evidence_of)
             .collect::<Result<Vec<_>, _>>()?;
         record.insert("evidence", Value::Array(evidence));
     }
@@ -91,33 +94,6 @@ pub fn decode(asset: &str, record_id: &str, text: &str) -> Result<Object, String
         record.insert(key, value);
     }
     Ok(record)
-}
-
-fn iterated(value: &Value) -> Result<Vec<Value>, String> {
-    match value {
-        Value::Array(items) => Ok(items.clone()),
-        Value::Str(text) => Ok(text.chars().map(|c| Value::Str(c.to_string())).collect()),
-        Value::Object(object) => Ok(object
-            .iter()
-            .map(|(key, _)| Value::Str(key.clone()))
-            .collect()),
-        other => Err(format!(
-            "'{}' object is not iterable",
-            python_type_name(other)
-        )),
-    }
-}
-
-fn python_type_name(value: &Value) -> &'static str {
-    match value {
-        Value::Null => "NoneType",
-        Value::Bool(_) => "bool",
-        Value::Int(_) => "int",
-        Value::Float(_) => "float",
-        Value::Str(_) => "str",
-        Value::Array(_) => "list",
-        Value::Object(_) => "dict",
-    }
 }
 
 fn registry_status(asset: &str, front: &Object) -> Result<Vec<(String, Value)>, String> {
@@ -131,16 +107,10 @@ fn registry_status(asset: &str, front: &Object) -> Result<Vec<(String, Value)>, 
     if let Some(status) = front.get("registry_status") {
         keys.push((field, status.clone()));
     } else if let Some(status) = front.get("status") {
-        let mapped = match status {
-            Value::Array(_) | Value::Object(_) => {
-                return Err(format!("unhashable type: '{}'", python_type_name(status)));
-            }
-            Value::Str(text) => match text.as_str() {
-                "draft" => Value::Str("candidate".to_string()),
-                "stable" => Value::Str("reviewed".to_string()),
-                _ => status.clone(),
-            },
-            other => other.clone(),
+        let mapped = match status.as_str().ok_or("status must be text")? {
+            "draft" => Value::Str("candidate".to_string()),
+            "stable" => Value::Str("reviewed".to_string()),
+            _ => status.clone(),
         };
         keys.push((field, mapped));
     }
@@ -439,7 +409,7 @@ fn parse_sequence(source: &mut Lines, indent: usize) -> Result<Vec<Value>, Strin
             let nested = source
                 .peek()
                 .map(|next| next.indent)
-                .ok_or("'NoneType' object is not subscriptable")?;
+                .ok_or_else(|| format!("frontmatter line {number}: a '-' entry has no value"))?;
             items.push(parse_block(source, nested)?);
         } else if starts_with_key(&content) {
             source.rows[source.at] = Row {

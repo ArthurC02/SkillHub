@@ -175,6 +175,7 @@ class YamlSubsetTest(unittest.TestCase):
             ("repeated key", ["type: T", "type: U"], "line 3: type appears twice"),
             ("deeper line after a scalar", ["type: T", "  extra: x"], "line 3: unexpected indentation"),
             ("broken quoted text", ['type: "T'], "line 2: unreadable quoted text"),
+            ("last entry without a value", ["type: T", "tags:", "  -"], "line 4: a '-' entry has no value"),
         ]
         for label, lines, message in cases:
             with self.subTest(label), self.assertRaisesRegex(ValueError, "frontmatter " + message.replace("[", r"\[").replace("]", r"\]")):
@@ -196,6 +197,16 @@ class ConceptDocumentTest(unittest.TestCase):
         for label, text, message in cases:
             with self.subTest(label), self.assertRaisesRegex(ValueError, message):
                 split_concept(text)
+
+    def test_sources_that_are_not_a_list_are_refused(self) -> None:
+        for label, value in (("number", "5"), ("text", "ab"), ("mapping", "\n  path: a.go")):
+            with self.subTest(label), self.assertRaisesRegex(ValueError, "sources must be a list of cited sources"):
+                decode("rules", "r", f"---\ntype: Business Rule\nsources: {value}\n---\n")
+
+    def test_a_status_that_is_not_text_is_refused(self) -> None:
+        for label, value in (("list", "\n  - stable"), ("number", "3")):
+            with self.subTest(label), self.assertRaisesRegex(ValueError, "status must be text"):
+                decode("rules", "r", f"---\ntype: Business Rule\nstatus: {value}\n---\n")
 
     def test_windows_line_endings_read_like_unix_ones(self) -> None:
         self.assertEqual(({"type": "T"}, "Body."), split_concept("---\r\ntype: T\r\n---\r\nBody."))

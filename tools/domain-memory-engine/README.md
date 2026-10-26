@@ -24,7 +24,7 @@ Domain Memory 外掛的命令引擎，以 Rust 重寫。終點是外掛的 Pytho
 
 目前移植完成的命令：`list-proposals`。`export` 只完成讀工作樹的部分，`--commit` 仍回尚未移植。
 
-外掛以 Python 例外（traceback）結束的輸入不列入比對，引擎改以 `ERROR:` 回覆；Python 的 `\d` 依 Python 3.13 的 Unicode 資料判斷，表格在 `src/digits.rs`。
+Python 的 `\d` 依 Python 3.13 的 Unicode 資料判斷，表格在 `src/digits.rs`。
 
 ## 常用指令
 

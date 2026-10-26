@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.8
+
+### Fixed
+
+- Three concept-file shapes stopped every Registry read with a Python traceback; each is now refused by file name and exits 1 like any other unreadable concept. A frontmatter sequence whose last row is a bare `-` reads `rules/x.md: frontmatter line 4: a '-' entry has no value`; `sources` that is not a list (a number, a word, a mapping) reads `rules/x.md: sources must be a list of cited sources`, where a word or a mapping used to turn silently into one evidence entry per character or key; and a `status` that is not text reads `rules/x.md: status must be text`.
+
 ## 4.2.7
 
 ### Changed
