@@ -5,8 +5,99 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/capacity"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 )
+
+func assertCapacityMetricsAbsent(t *testing.T) {
+	t.Helper()
+	actual := scrapedSeries(t)
+	for _, name := range []string{"skillhub_database_bytes", "skillhub_restore_budget_bytes", "skillhub_restore_budget_days_left"} {
+		if value, present := actual[name]; present {
+			t.Errorf("failed capacity still exports %s=%s", name, value)
+		}
+	}
+}
+
+func assertCapacityValues(t *testing.T, actual, expected map[string]string) {
+	t.Helper()
+	for name, want := range expected {
+		if got, present := actual[name]; !present || got != want {
+			t.Errorf("%s=%q (present=%t), want %q", name, got, present, want)
+		}
+	}
+}
+
+func TestCapacityMetricsRecoverAfterAReadFailure(t *testing.T) {
+	config := requireDB(t).Config()
+	config.MaxConns = 1
+	ctx := context.Background()
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	if _, err := pool.Exec(ctx, "CREATE TEMP TABLE database_size_samples (LIKE public.database_size_samples INCLUDING ALL)"); err != nil {
+		t.Fatal(err)
+	}
+	clear := func() {
+		metrics.DatabaseBytes.Reset()
+		metrics.RestoreBudgetBytes.Reset()
+		metrics.RestoreBudgetDaysLeft.Reset()
+	}
+	clear()
+	t.Cleanup(clear)
+	store := capacity.Store{Pool: pool, Rate: capacity.RestoreRate{BytesPerSecond: 3}}
+	if _, err := pool.Exec(ctx, "INSERT INTO database_size_samples (sampled_on, database_bytes) VALUES (CURRENT_DATE, 2400)"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.PublishGauges(ctx); err != nil {
+		t.Fatal(err)
+	}
+	initial := scrapedSeries(t)
+	assertCapacityValues(t, initial, map[string]string{
+		"skillhub_database_bytes":           "2400",
+		"skillhub_restore_budget_bytes":     "1800",
+		"skillhub_restore_budget_days_left": "0",
+	})
+	closed, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	closed.Close()
+	if err := (capacity.Store{Pool: closed, Rate: store.Rate}).PublishGauges(ctx); err == nil || err.Error() != "closed pool" {
+		t.Fatalf("failed observation = %v, want closed pool", err)
+	}
+	assertCapacityMetricsAbsent(t)
+	if _, err := pool.Exec(ctx, "UPDATE database_size_samples SET database_bytes = 3600"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.PublishGauges(ctx); err != nil {
+		t.Fatal(err)
+	}
+	recovered := scrapedSeries(t)
+	assertCapacityValues(t, recovered, map[string]string{
+		"skillhub_database_bytes":           "3600",
+		"skillhub_restore_budget_bytes":     "1800",
+		"skillhub_restore_budget_days_left": "0",
+	})
+	if _, err := pool.Exec(ctx, "DELETE FROM database_size_samples"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.PublishGauges(ctx); err != nil {
+		t.Fatal(err)
+	}
+	empty := scrapedSeries(t)
+	if value, present := empty["skillhub_database_bytes"]; present {
+		t.Errorf("empty sample history still exports database bytes %s", value)
+	}
+	assertCapacityValues(t, empty, map[string]string{
+		"skillhub_restore_budget_bytes":     "1800",
+		"skillhub_restore_budget_days_left": "+Inf",
+	})
+}
 
 func TestCapacityKeepsOneSamplePerDayAndReportsEveryTableAgainstTheBudget(t *testing.T) {
 	pool := requireDB(t)

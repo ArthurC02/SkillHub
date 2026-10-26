@@ -1,10 +1,63 @@
 package capacity
 
 import (
+	"context"
 	"math"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 )
+
+func assertCapacityMeasurementsAbsent(t *testing.T) {
+	t.Helper()
+	families, err := prometheus.DefaultGatherer.Gather()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, family := range families {
+		switch family.GetName() {
+		case "skillhub_database_bytes", "skillhub_restore_budget_bytes", "skillhub_restore_budget_days_left":
+			t.Errorf("failed observation still exported: %v", family)
+		}
+	}
+}
+
+func TestFailedCapacityReadsWithdrawTheirMeasurements(t *testing.T) {
+	for _, previous := range []bool{false, true} {
+		name := "before a first observation"
+		if previous {
+			name = "after a successful observation"
+		}
+		t.Run(name, func(t *testing.T) {
+			clear := func() {
+				metrics.DatabaseBytes.Reset()
+				metrics.RestoreBudgetBytes.Reset()
+				metrics.RestoreBudgetDaysLeft.Reset()
+			}
+			clear()
+			t.Cleanup(clear)
+			if previous {
+				metrics.DatabaseBytes.WithLabelValues().Set(100)
+				metrics.RestoreBudgetBytes.WithLabelValues().Set(1800)
+				metrics.RestoreBudgetDaysLeft.WithLabelValues().Set(120)
+			}
+			pool, err := pgxpool.New(context.Background(), "postgres://localhost:1/unused?sslmode=disable")
+			if err != nil {
+				t.Fatal(err)
+			}
+			pool.Close()
+			err = (Store{Pool: pool, Rate: RestoreRate{BytesPerSecond: 3}}).PublishGauges(context.Background())
+			if err == nil || err.Error() != "closed pool" {
+				t.Fatalf("PublishGauges = %v, want closed pool", err)
+			}
+			assertCapacityMeasurementsAbsent(t)
+		})
+	}
+}
 
 func TestParseRestoreRate(t *testing.T) {
 	for _, tc := range []struct {

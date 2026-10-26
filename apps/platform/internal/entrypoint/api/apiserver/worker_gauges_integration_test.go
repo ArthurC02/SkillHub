@@ -19,6 +19,9 @@ func scrapedSeries(t *testing.T) map[string]string {
 	t.Helper()
 	rec := httptest.NewRecorder()
 	promhttp.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("metrics scrape returned %d: %s", rec.Code, rec.Body.String())
+	}
 	series := map[string]string{}
 	for _, line := range strings.Split(rec.Body.String(), "\n") {
 		if name, value, ok := strings.Cut(line, " "); ok && !strings.HasPrefix(line, "#") {

@@ -237,6 +237,8 @@ tests:
   - name: capacity a lost worker observation becomes unknown
     interval: 1m
     input_series:
+      - series: 'up{job="platform",process="worker",instance="worker-a"}'
+        values: "1x400"
       - series: 'skillhub_restore_budget_days_left{job="platform",process="api",instance="api-a"}'
         values: "0x400"
       - series: 'skillhub_restore_budget_days_left{job="platform",process="worker",instance="worker-a"}'
