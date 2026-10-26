@@ -10,6 +10,7 @@ import type { DeclarableLicense, OwnerCatalogExposureStateEnum } from "@skillhub
 import type { CategorizedFindings, Labelled } from "../../core/api/types";
 import { readPublicPublication } from "./public-publication.model";
 import { readOwnerPublications } from "./owner-publications.model";
+import { readOwnPublication, readOwnPublisher } from "./owner-publication.model";
 import { readOwnBundleOverview, readOwnBundles } from "./owner-bundles.model";
 import { AcquisitionResultUnknown, readAcquisition } from "./acquisition.model";
 
@@ -171,7 +172,7 @@ export interface Acquisition {
 export function useOwnPublisher(enabled = true) {
   return useQuery({
     queryKey: queryKeys.publishing.publisher,
-    queryFn: () => apiFetch<Publisher>("/me/publisher"),
+    queryFn: async () => readOwnPublisher(await apiFetch<unknown>("/me/publisher")),
     enabled,
   });
 }
@@ -203,7 +204,8 @@ export function useRegisterPublisher() {
 export function useOwnPublication(skillId: string, enabled = true) {
   return useQuery({
     queryKey: queryKeys.publishing.ownPublication(skillId),
-    queryFn: () => apiFetch<Publication>(`/skills/${skillId}/publication`),
+    queryFn: async () =>
+      readOwnPublication(await apiFetch<unknown>(`/skills/${skillId}/publication`)),
     enabled: skillId.length > 0 && enabled,
   });
 }

@@ -39,6 +39,7 @@ import {
 } from "../../testing/fixtures/platform";
 import type { SkillDetail } from "../../core/api/types";
 import type { BundleVersion, Publication } from "./publishing.service";
+import { readOwnPublication, readOwnPublisher } from "./owner-publication.model";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 let container: HTMLDivElement;
@@ -2432,4 +2433,325 @@ for (const status of [201, 503]) {
       },
     ]);
   });
+}
+
+for (const [label, value] of [
+  ["null", null],
+  ["array", []],
+  ["primitive", "publisher"],
+  ["missing fields", {}],
+  ["missing name", { created_at: OWN_PUBLISHER.created_at }],
+  ["non-string name", { ...OWN_PUBLISHER, name: 1 }],
+  ["missing date", { name: PUBLISHER }],
+  ["non-string date", { ...OWN_PUBLISHER, created_at: 1 }],
+  ["invalid date", { ...OWN_PUBLISHER, created_at: "not-a-date" }],
+] as const) {
+  test(`owner publisher reader rejects ${label}`, () => {
+    expect(() => readOwnPublisher(value)).toThrowError("無法確認發佈者資訊的資料。");
+  });
+}
+
+for (const [label, value] of [
+  ["registered publisher", OWN_PUBLISHER],
+  ["additional server fields", { ...OWN_PUBLISHER, next_field: "retained" }],
+] as const) {
+  test(`owner publisher reader preserves ${label}`, () => {
+    expect(readOwnPublisher(value)).toEqual(value);
+  });
+}
+
+function ownerPublicationWithRelease(overrides: Record<string, unknown>) {
+  return { ...OWN_PUBLICATION, releases: [{ ...OWN_PUBLICATION.releases[0], ...overrides }] };
+}
+
+for (const [label, value] of [
+  ["null", null],
+  ["array", []],
+  ["missing fields", {}],
+  ["unknown kind", { ...OWN_PUBLICATION, kind: "future" }],
+  ["invalid publisher", { ...OWN_PUBLICATION, publisher: null }],
+  ["invalid name", { ...OWN_PUBLICATION, name: 1 }],
+  ["invalid address", { ...OWN_PUBLICATION, address: false }],
+  ["unknown status", { ...OWN_PUBLICATION, status: "future" }],
+  ["missing status", { ...OWN_PUBLICATION, status: undefined }],
+  ["invalid status date", { ...OWN_PUBLICATION, status_changed_at: "not-a-date" }],
+  ["non-string status date", { ...OWN_PUBLICATION, status_changed_at: 1 }],
+  ["null releases", { ...OWN_PUBLICATION, releases: null }],
+  ["non-array releases", { ...OWN_PUBLICATION, releases: {} }],
+  ["null release", { ...OWN_PUBLICATION, releases: [null] }],
+  ["invalid content hash", ownerPublicationWithRelease({ content_hash: 1 })],
+  ["invalid release date", ownerPublicationWithRelease({ released_at: "not-a-date" })],
+  ["missing rights attestation", ownerPublicationWithRelease({ rights_attested: undefined })],
+  ["non-boolean rights attestation", ownerPublicationWithRelease({ rights_attested: "true" })],
+  ["missing findings", ownerPublicationWithRelease({ findings: undefined })],
+  ["invalid findings", ownerPublicationWithRelease({ findings: { errors: [], warnings: [] } })],
+  ["invalid version ID", ownerPublicationWithRelease({ version_id: "not-a-uuid" })],
+  ["null version ID", ownerPublicationWithRelease({ version_id: null })],
+  ["fractional version number", ownerPublicationWithRelease({ version_number: 1.5 })],
+  ["null version number", ownerPublicationWithRelease({ version_number: null })],
+  ["non-string Bundle version", ownerPublicationWithRelease({ bundle_version: 1 })],
+  ["null Bundle version", ownerPublicationWithRelease({ bundle_version: null })],
+  ["unknown declared license", ownerPublicationWithRelease({ declared_license: "future" })],
+  ["null declared license", ownerPublicationWithRelease({ declared_license: null })],
+  ["null offer", { ...OWN_PUBLICATION, availability: null }],
+  [
+    "incomplete offer",
+    { ...OWN_PUBLICATION, availability: { value: "available", label: "提供中" } },
+  ],
+  [
+    "invalid offer label",
+    { ...OWN_PUBLICATION, availability: { value: "available", label: 1, note: "" } },
+  ],
+  ["null acquisition", { ...OWN_PUBLICATION, acquisition: null }],
+  ["non-boolean acquisition", { ...OWN_PUBLICATION, acquisition: { available: "true", note: "" } }],
+  ["incomplete acquisition", { ...OWN_PUBLICATION, acquisition: { available: true } }],
+] as const) {
+  test(`owner publication reader rejects ${label}`, () => {
+    expect(() => readOwnPublication(value)).toThrowError("無法確認小工具發佈狀態的資料。");
+  });
+}
+
+for (const [label, value] of [
+  ["published Skill", OWN_PUBLICATION],
+  ["withdrawn Skill", { ...OWN_PUBLICATION, status: "delisted" }],
+  ["empty release boundary", { ...OWN_PUBLICATION, releases: [] }],
+  [
+    "older server without offer projections",
+    { ...OWN_PUBLICATION, availability: undefined, acquisition: undefined },
+  ],
+  ["declared license", ownerPublicationWithRelease({ declared_license: "MIT" })],
+  ["additional server fields", { ...OWN_PUBLICATION, next_field: "retained" }],
+  [
+    "shared Bundle release shape",
+    {
+      ...OWN_PUBLICATION,
+      kind: "bundle",
+      releases: [
+        {
+          content_hash: "sha256:bundle",
+          released_at: "2026-09-10T00:00:00Z",
+          rights_attested: false,
+          findings: { errors: [], warnings: [], infos: [] },
+          bundle_version: "1.0.0",
+        },
+      ],
+    },
+  ],
+] as const) {
+  test(`owner publication reader preserves ${label}`, () => {
+    expect(readOwnPublication(value)).toEqual(value);
+  });
+}
+
+for (const owner of ["workspace", "version"] as const) {
+  test(`owner detail ${owner} hides a cached publisher after an invalid refresh`, async () => {
+    let payload: unknown = OWN_PUBLISHER;
+    let reads = 0;
+    vi.stubGlobal("fetch", (input: string) => {
+      if (String(input).endsWith("/me/publisher")) {
+        reads += 1;
+        return json(payload);
+      }
+      return json(String(input).endsWith("/me/publications") ? OWN_PUBLICATIONS : OWN_PUBLICATION);
+    });
+    await render(
+      owner === "workspace" ? (
+        <PublisherSection />
+      ) : (
+        <PublishPanel skill={detail()} isLoggedIn isOwner />
+      ),
+      () => text().includes(owner === "workspace" ? PUBLISHER : "狀態：已發佈"),
+    );
+    const previous = queryClient.getQueryData(queryKeys.publishing.publisher);
+    payload = null;
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.publishing.publisher });
+    });
+    expect(queryClient.getQueryData(queryKeys.publishing.publisher)).toEqual(previous);
+    await waitFor(() => text().includes("暫時無法讀取發佈者"));
+    expect(text()).not.toContain(owner === "workspace" ? PUBLISHER : "狀態：已發佈");
+    expect(text()).not.toContain("還沒有註冊發佈者名稱");
+    expect(container.querySelector("form")).toBeNull();
+    payload = OWN_PUBLISHER;
+    await act(async () => {
+      button("再試一次")!.focus();
+      button("再試一次")!.click();
+    });
+    await waitFor(() => text().includes(owner === "workspace" ? PUBLISHER : "狀態：已發佈"));
+    expect(document.activeElement).toBe(container.querySelector("h2"));
+    expect(reads).toBe(3);
+  });
+}
+
+test("owner detail hides a cached publication after an invalid refresh", async () => {
+  let payload: unknown = OWN_PUBLICATION;
+  let reads = 0;
+  vi.stubGlobal("fetch", (input: string) => {
+    if (String(input).endsWith("/me/publisher")) return json(OWN_PUBLISHER);
+    if (String(input).endsWith(`/skills/${SKILL}/publication`)) {
+      reads += 1;
+      return json(payload);
+    }
+    return json(OWN_PUBLICATIONS);
+  });
+  await render(<PublishPanel skill={detail()} isLoggedIn isOwner />, () =>
+    text().includes("狀態：已發佈"),
+  );
+  const key = queryKeys.publishing.ownPublication(SKILL);
+  const previous = queryClient.getQueryData(key);
+  payload = { ...OWN_PUBLICATION, status: "future" };
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: key });
+  });
+  expect(queryClient.getQueryData(key)).toEqual(previous);
+  await waitFor(() => text().includes("暫時無法讀取發佈狀態"));
+  expect(text()).not.toContain("狀態：已發佈");
+  expect(text()).not.toContain("已撤回");
+  expect(button("發佈 v2")).toBeUndefined();
+  payload = OWN_PUBLICATION;
+  await act(async () => {
+    button("再試一次")!.focus();
+    button("再試一次")!.click();
+  });
+  await waitFor(() => text().includes("狀態：已發佈"));
+  expect(document.activeElement).toBe(container.querySelector("h2"));
+  expect(reads).toBe(3);
+});
+
+for (const owner of ["workspace", "version"] as const) {
+  for (const [label, invalid] of [
+    ["null", null],
+    ["invalid date", { ...OWN_PUBLISHER, created_at: "not-a-date" }],
+  ] as const) {
+    test(`owner detail ${owner} rejects a ${label} publisher read and retries in place`, async () => {
+      let payload: unknown = invalid;
+      let reads = 0;
+      vi.stubGlobal("fetch", (input: string) => {
+        if (String(input).endsWith("/me/publisher")) {
+          reads += 1;
+          return json(payload);
+        }
+        if (String(input).endsWith(`/skills/${SKILL}/publication`)) return json(OWN_PUBLICATION);
+        return json(OWN_PUBLICATIONS);
+      });
+      await render(
+        owner === "workspace" ? (
+          <PublisherSection />
+        ) : (
+          <PublishPanel skill={detail()} isLoggedIn isOwner />
+        ),
+        () => !text().includes("載入"),
+      );
+      expect(text()).toContain("暫時無法讀取發佈者");
+      expect(text()).not.toContain("還沒有註冊發佈者名稱");
+      expect(container.querySelector("form")).toBeNull();
+      expect(queryClient.getQueryData(queryKeys.publishing.publisher)).toBeUndefined();
+      payload = OWN_PUBLISHER;
+      await act(async () => {
+        button("再試一次")!.focus();
+        button("再試一次")!.click();
+      });
+      await waitFor(() => text().includes(owner === "workspace" ? PUBLISHER : "狀態：已發佈"));
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      expect(document.activeElement).toBe(container.querySelector("h2"));
+      expect(reads).toBe(2);
+    });
+  }
+}
+
+for (const [label, invalid] of [
+  ["null", null],
+  ["unknown status", { ...OWN_PUBLICATION, status: "future" }],
+] as const) {
+  test(`owner detail rejects a ${label} publication read without claiming withdrawal`, async () => {
+    let payload: unknown = invalid;
+    let reads = 0;
+    vi.stubGlobal("fetch", (input: string) => {
+      if (String(input).endsWith("/me/publisher")) return json(OWN_PUBLISHER);
+      if (String(input).endsWith(`/skills/${SKILL}/publication`)) {
+        reads += 1;
+        return json(payload);
+      }
+      return json(OWN_PUBLICATIONS);
+    });
+    await render(
+      <PublishPanel skill={detail()} isLoggedIn isOwner />,
+      () => !text().includes("載入"),
+    );
+    expect(text()).toContain("暫時無法讀取發佈狀態");
+    expect(text()).not.toContain("已撤回");
+    expect(text()).not.toContain("尚未發佈");
+    expect(button("發佈 v2")).toBeUndefined();
+    expect(queryClient.getQueryData(queryKeys.publishing.ownPublication(SKILL))).toBeUndefined();
+    payload = OWN_PUBLICATION;
+    await act(async () => {
+      button("再試一次")!.focus();
+      button("再試一次")!.click();
+    });
+    await waitFor(() => text().includes("狀態：已發佈"));
+    expect(document.activeElement).toBe(container.querySelector("h2"));
+    expect(reads).toBe(2);
+  });
+}
+
+for (const owner of ["workspace", "version"] as const) {
+  for (const status of [409, 503]) {
+    test(`owner detail ${owner} preserves a registration draft after ${status} and a null lookup`, async () => {
+      let reads = 0;
+      const posts: unknown[] = [];
+      vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+        if (!String(input).endsWith("/me/publisher")) return json({ error: "not found" }, 404);
+        if (init?.method === "POST") {
+          posts.push(JSON.parse(String(init.body)));
+          return json(
+            status === 409
+              ? { error: "publisher name is taken", reason: "name_taken" }
+              : { error: "upstream unavailable" },
+            status,
+          );
+        }
+        reads += 1;
+        return reads === 2 ? json(null) : json({ error: "no publisher" }, 404);
+      });
+      await render(
+        owner === "workspace" ? (
+          <PublisherSection />
+        ) : (
+          <PublishPanel skill={detail()} isLoggedIn isOwner />
+        ),
+        () => container.querySelector("form.publisher-form") !== null,
+      );
+      const input = container.querySelector<HTMLInputElement>("form.publisher-form input")!;
+      const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+      await act(async () => {
+        setValue.call(input, "kept-after-invalid-read");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      await act(async () => button("註冊")!.click());
+      await waitFor(
+        () =>
+          reads === 2 &&
+          !text().includes("載入") &&
+          container.querySelector("form.publisher-form") === null,
+      );
+      expect(text()).toContain("暫時無法讀取發佈者");
+      expect(container.querySelector("form.publisher-form")).toBeNull();
+      await act(async () => {
+        button("再試一次")!.focus();
+        button("再試一次")!.click();
+      });
+      await waitFor(() => container.querySelector("form.publisher-form") !== null);
+      expect(container.querySelector<HTMLInputElement>("form.publisher-form input")!.value).toBe(
+        "kept-after-invalid-read",
+      );
+      expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+        status === 409
+          ? "這個名稱已經被別人取走了，換一個名稱再試一次。"
+          : "尚未確認註冊是否已完成；上面的狀態已重新讀取，請先看過再決定要不要重送。",
+      );
+      expect(document.activeElement).toBe(container.querySelector("h2"));
+      expect(posts).toEqual([{ name: "kept-after-invalid-read" }]);
+      expect(reads).toBe(3);
+    });
+  }
 }

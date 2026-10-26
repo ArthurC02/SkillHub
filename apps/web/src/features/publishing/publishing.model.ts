@@ -1,7 +1,8 @@
-import type { DeclarableLicense } from "@skillhub/api-client-ts";
 import { ApiError, isWriteResultUnknown } from "../../core/api/client";
 import type { SkillDetail } from "../../core/api/types";
 import { packagingGate } from "../packaging";
+
+export { DECLARABLE_LICENSES } from "./owner-publication.model";
 
 export type PublishingRefusalReason =
   | "no_publisher"
@@ -37,23 +38,6 @@ export const PUBLISHING_REFUSAL_LABEL: Record<PublishingRefusalReason, string> =
   license_not_declarable:
     "只有平台依你的描述寫出來的小工具可以在發佈時選授權條款，而且要從清單裡選一個。",
 };
-
-export const DECLARABLE_LICENSES: readonly DeclarableLicense[] = [
-  "Apache-2.0",
-  "MIT",
-  "ISC",
-  "BSD-2-Clause",
-  "BSD-3-Clause",
-  "GPL-2.0",
-  "GPL-3.0",
-  "LGPL-3.0",
-  "AGPL-3.0",
-  "MPL-2.0",
-  "Unlicense",
-  "CC0-1.0",
-  "CC-BY-4.0",
-  "CC-BY-SA-4.0",
-];
 
 export const PUBLISHER_NAME_RULE =
   "名稱規則：1～64 字元，只能是小寫英文字母、數字與連字號（-），開頭與結尾必須是英數字，不能有連續兩個連字號。";
