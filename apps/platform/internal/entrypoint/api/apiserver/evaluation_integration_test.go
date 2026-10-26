@@ -827,7 +827,7 @@ func TestAJudgementRefusedForASpentPlatformBudgetIsJudgedAgainOnceTheBudgetRecov
 		t.Fatalf("Evaluate = %v, want ErrJudgementDeferred so the job waits for the budget", err)
 	}
 	_, refused := c.getEvaluation(t, "/runs/"+runID+"/evaluation")
-	if refused.Status != "failed" || !strings.Contains(refused.Summary, "額度恢復後會自動重新判定") {
+	if refused.Status != "failed" || !strings.Contains(refused.Summary, "額度在台北時間每天上午 8 點恢復，之後會自動重新判定") {
 		t.Fatalf("while the budget is spent the person sees status %q, summary %q", refused.Status, refused.Summary)
 	}
 

@@ -57,7 +57,7 @@ func TestEachGenerateRefusalHasItsOwnStatusAndMessage(t *testing.T) {
 		{"task too long", ErrGenerateTooLong, http.StatusUnprocessableEntity, "其餘可以省略"},
 		{"slot unreadable", ErrGenerateSlotUnavailable, http.StatusServiceUnavailable, "沒有花錢"},
 		{"generation in flight", ErrGenerateInFlight, http.StatusConflict, "付兩次錢"},
-		{"platform model budget spent", ErrModelBudgetExhausted, http.StatusServiceUnavailable, "現在重試也會被拒絕，等額度恢復後再送出。"},
+		{"platform model budget spent", ErrModelBudgetExhausted, http.StatusServiceUnavailable, "現在重試也會被拒絕；額度在台北時間每天上午 8 點恢復，之後再送出。"},
 		{"credit below threshold", ErrCreditThreshold, http.StatusUnprocessableEntity, "點數不足"},
 		{"catalogue workspace", ErrGenerateNotForCatalogue, http.StatusUnprocessableEntity, "公開目錄不生成"},
 		{"name collision", ErrGeneratedNameCollision, http.StatusUnprocessableEntity, "同名的 Skill"},

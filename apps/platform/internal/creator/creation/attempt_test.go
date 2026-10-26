@@ -93,7 +93,7 @@ func TestAFailedAttemptLandsWhereThePersonCanActOnIt(t *testing.T) {
 		{"a diagram step that was read", understoodDiagram, true, ErrUnavailable, errors.New("timeout"), StateFailed, "", "平台這一側沒能完成這次模型呼叫", 3},
 		{"a reference went away", "", false, ErrUnavailable, fmt.Errorf("resolve: %w", ErrNotFound), StateWaitingConfirmation, "confirm_references", "參考內容目前不可用，請換選後再確認。", 2},
 		{"the balance hit the floor", "", false, ErrUnavailable, ErrCreditFloor, StateWaitingInput, "", "帳戶餘額已達可容忍的欠款上限，請充值後再繼續這場創作。", 2},
-		{"the platform's model budget is spent", "", false, ErrUnavailable, fmt.Errorf("step: %w", ErrModelBudgetExhausted), StateWaitingInput, "", "平台的模型總額度暫時用完，這一步沒能完成，也不算進這場創作的步數；只會結算實際用到的費用。額度恢復後再送出一次就會接著做。", 2},
+		{"the platform's model budget is spent", "", false, ErrUnavailable, fmt.Errorf("step: %w", ErrModelBudgetExhausted), StateWaitingInput, "", "平台的模型總額度暫時用完，這一步沒能完成，也不算進這場創作的步數；只會結算實際用到的費用。額度在台北時間每天上午 8 點恢復，之後再送出一次就會接著做。", 2},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			p := &Snapshot{Steps: 3, DiagramUnderstanding: c.understanding, PendingAction: "confirm_brief", References: []Reference{{SkillID: "a", Confirmed: true, Available: true}}}

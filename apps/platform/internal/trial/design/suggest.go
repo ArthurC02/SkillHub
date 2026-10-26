@@ -21,7 +21,7 @@ import (
 
 var ErrSuggestUnavailable = errors.New("目前無法自動建議驗收條件，請自己手動輸入")
 
-var ErrModelBudgetExhausted = errors.New("平台的模型總額度暫時用完，這次沒有扣點。驗收條件可以自己手動輸入，或等額度恢復後再試。")
+var ErrModelBudgetExhausted = errors.New("平台的模型總額度暫時用完，這次沒有扣點。驗收條件可以自己手動輸入，或在台北時間每天上午 8 點額度恢復後再試。")
 
 // SuggestCriteriaBudget names this call for an operator and bounds what they may set.
 var SuggestCriteriaBudget = modelbudget.Endpoint{Kind: "suggest-criteria", Deadline: suggestTimeout}

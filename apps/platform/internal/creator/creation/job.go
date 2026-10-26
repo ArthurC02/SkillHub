@@ -638,7 +638,7 @@ func failedAttempt(p *Snapshot, err error, call stepCall) State {
 		p.Steps--
 		state = StateWaitingInput
 		p.PendingAction = NothingPending
-		p.appendMessage("assistant", "平台的模型總額度暫時用完，這一步沒能完成，也不算進這場創作的步數；只會結算實際用到的費用。額度恢復後再送出一次就會接著做。")
+		p.appendMessage("assistant", "平台的模型總額度暫時用完，這一步沒能完成，也不算進這場創作的步數；只會結算實際用到的費用。額度在台北時間每天上午 8 點恢復，之後再送出一次就會接著做。")
 	}
 	return state
 }
