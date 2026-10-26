@@ -176,6 +176,9 @@ class YamlSubsetTest(unittest.TestCase):
             ("deeper line after a scalar", ["type: T", "  extra: x"], "line 3: unexpected indentation"),
             ("broken quoted text", ['type: "T'], "line 2: unreadable quoted text"),
             ("last entry without a value", ["type: T", "tags:", "  -"], "line 4: a '-' entry has no value"),
+            ("middle entry without a value", ["type: T", "tags:", "  -", "  - b"], "line 4: a '-' entry has no value"),
+            ("entry without a value before a shallower key", ["type: T", "tags:", "  -", "next: x"],
+             "line 4: a '-' entry has no value"),
         ]
         for label, lines, message in cases:
             with self.subTest(label), self.assertRaisesRegex(ValueError, "frontmatter " + message.replace("[", r"\[").replace("]", r"\]")):

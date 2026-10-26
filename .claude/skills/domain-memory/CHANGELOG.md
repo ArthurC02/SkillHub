@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.9
+
+### Fixed
+
+- A bare `-` in a frontmatter sequence is accepted only when a deeper block follows it as its value. Before, a bare `-` in the middle of a sequence took the next `- item` as its own nested list (`[["b"]]` where YAML reads `[null, "b"]`), and one before a shallower key swallowed that key into the sequence, both without a message; each is now refused like a bare `-` at the end: `rules/x.md: frontmatter line N: a '-' entry has no value`.
+
 ## 4.2.8
 
 ### Fixed

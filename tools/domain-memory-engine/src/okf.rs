@@ -409,6 +409,7 @@ fn parse_sequence(source: &mut Lines, indent: usize) -> Result<Vec<Value>, Strin
             let nested = source
                 .peek()
                 .map(|next| next.indent)
+                .filter(|nested| *nested > indent)
                 .ok_or_else(|| format!("frontmatter line {number}: a '-' entry has no value"))?;
             items.push(parse_block(source, nested)?);
         } else if starts_with_key(&content) {

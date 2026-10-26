@@ -433,7 +433,7 @@ def _parse_sequence(source: _Lines, indent: int) -> list[Any]:
         content = row[1][1:].strip()
         if not content:
             source.at += 1
-            if source.peek() is None:
+            if source.peek() is None or source.peek()[0] <= indent:
                 raise ValueError(f"frontmatter line {row[2]}: a '-' entry has no value")
             items.append(_parse_block(source, source.peek()[0]))
         elif re.match(r"[A-Za-z_][A-Za-z0-9_]*:( |$)", content):
