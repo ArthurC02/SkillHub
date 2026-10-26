@@ -355,3 +355,38 @@ func (g *Gateway) do(ctx context.Context, req adminRequest, out any) error {
 }
 
 func successfulGatewayStatus(code int) bool { return code >= 200 && code < 300 }
+
+const platformBudgetHolder = "litellm-proxy-budget"
+
+var errNoPlatformBudget = errors.New("the gateway reports no platform-wide budget")
+
+type PlatformBudget struct {
+	SpentUSD float64
+	LimitUSD float64
+	ResetsAt time.Time
+}
+
+func (g *Gateway) PlatformBudget(ctx context.Context) (PlatformBudget, error) {
+	var out struct {
+		UserInfo struct {
+			Spend         *float64   `json:"spend"`
+			MaxBudget     *float64   `json:"max_budget"`
+			BudgetResetAt *time.Time `json:"budget_reset_at"`
+		} `json:"user_info"`
+	}
+	if err := g.get(ctx, "/user/info?user_id="+platformBudgetHolder, &out); err != nil {
+		return PlatformBudget{}, fmt.Errorf("read the platform-wide budget: %w", err)
+	}
+	info := out.UserInfo
+	if info.MaxBudget == nil || *info.MaxBudget <= 0 {
+		return PlatformBudget{}, errNoPlatformBudget
+	}
+	budget := PlatformBudget{LimitUSD: *info.MaxBudget}
+	if info.Spend != nil {
+		budget.SpentUSD = *info.Spend
+	}
+	if info.BudgetResetAt != nil {
+		budget.ResetsAt = *info.BudgetResetAt
+	}
+	return budget, nil
+}

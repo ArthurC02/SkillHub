@@ -1170,3 +1170,57 @@ tests:
       - eval_time: "15m"
         alertname: "CleanupBacklogGrowing"
         exp_alerts: []
+
+  - name: eight tenths of the platform model budget warns after five minutes and an idle api process cannot hide it
+    interval: 1m
+    input_series:
+      - series: 'skillhub_model_platform_spend_usd{job="platform", process="worker"}'
+        values: "39x5 40x20"
+      - series: 'skillhub_model_platform_budget_usd{job="platform", process="worker"}'
+        values: "50x25"
+      - series: 'skillhub_model_platform_spend_usd{job="platform", process="api"}'
+        values: "0x25"
+      - series: 'skillhub_model_platform_budget_usd{job="platform", process="api"}'
+        values: "0x25"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ModelPlatformBudgetNearlySpent
+        exp_alerts: []
+      - eval_time: 11m
+        alertname: ModelPlatformBudgetNearlySpent
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "模型閘道的平台總預算已花掉八成以上"
+              description: "花完之後搜尋的語意腿、創作、評估與生成都會被拒，直到週期重置（UTC 午夜）或調高預算。 先查閘道的花費紀錄，分清是正常用量還是失控的呼叫迴圈，再決定要不要調高。"
+
+  - name: a budget that was never read is not nearly spent
+    interval: 1m
+    input_series:
+      - series: 'skillhub_model_platform_spend_usd{job="platform", process="worker"}'
+        values: "0x20"
+      - series: 'skillhub_model_platform_budget_usd{job="platform", process="worker"}'
+        values: "0x20"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: ModelPlatformBudgetNearlySpent
+        exp_alerts: []
+
+  - name: a budget reading older than thirty minutes warns
+    interval: 1m
+    input_series:
+      - series: 'skillhub_model_platform_budget_read_timestamp_seconds{job="platform", process="worker"}'
+        values: "0+60x10 600x40"
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: ModelPlatformBudgetUnobserved
+        exp_alerts: []
+      - eval_time: 46m
+        alertname: ModelPlatformBudgetUnobserved
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "超過 30 分鐘讀不到模型閘道的平台總預算"
+              description: "讀不到時「八成預算」的提早告警不會響。查 platform-worker 的 observe_model_budget 工作錯誤， 以及閘道管理端點與管理金鑰是否可用。"

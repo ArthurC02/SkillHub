@@ -511,6 +511,28 @@ groups:
             先在閘道節點上 systemctl status skillhub 與 docker compose ps，再查兩台之間的私有網路與防火牆。
             absent 代表探測本身沒有在跑，查 blackbox-exporter 與 /etc/skillhub/prometheus-targets/gateway.yml。
 
+      - alert: ModelPlatformBudgetNearlySpent
+        expr: max(skillhub_model_platform_spend_usd) >= 0.8 * max(skillhub_model_platform_budget_usd) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "模型閘道的平台總預算已花掉八成以上"
+          description: >-
+            花完之後搜尋的語意腿、創作、評估與生成都會被拒，直到週期重置（UTC 午夜）或調高預算。
+            先查閘道的花費紀錄，分清是正常用量還是失控的呼叫迴圈，再決定要不要調高。
+
+      - alert: ModelPlatformBudgetUnobserved
+        expr: time() - max(skillhub_model_platform_budget_read_timestamp_seconds) > 1800
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "超過 30 分鐘讀不到模型閘道的平台總預算"
+          description: >-
+            讀不到時「八成預算」的提早告警不會響。查 platform-worker 的 observe_model_budget 工作錯誤，
+            以及閘道管理端點與管理金鑰是否可用。
+
       - alert: ModelPlatformBudgetExhausted
         expr: sum(increase(skillhub_model_platform_budget_exhausted_total[15m])) > 0
         labels:

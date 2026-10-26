@@ -19,6 +19,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 const PartitionCreateInterval = 24 * time.Hour
@@ -168,4 +169,26 @@ func RefreshGauges(ctx context.Context, publishers []func(context.Context) error
 		case <-ticker.C:
 		}
 	}
+}
+
+const ModelBudgetObserveInterval = 5 * time.Minute
+
+type ModelBudgetObserveArgs struct{}
+
+func (ModelBudgetObserveArgs) Kind() string { return "observe_model_budget" }
+
+type ModelBudgetObserveWorker struct {
+	river.WorkerDefaults[ModelBudgetObserveArgs]
+	Read func(context.Context) (run.PlatformBudget, error)
+}
+
+func (w *ModelBudgetObserveWorker) Work(ctx context.Context, _ *river.Job[ModelBudgetObserveArgs]) error {
+	budget, err := w.Read(ctx)
+	if err != nil {
+		return err
+	}
+	metrics.ModelPlatformSpendUSD.Set(budget.SpentUSD)
+	metrics.ModelPlatformBudgetUSD.Set(budget.LimitUSD)
+	metrics.ModelPlatformBudgetReadAt.SetToCurrentTime()
+	return nil
 }

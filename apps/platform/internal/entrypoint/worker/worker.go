@@ -150,6 +150,9 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		metrics.BacklogEnrichment:    (&catalog.EnrichmentBackfill{Pool: pool}).OldestPending,
 	})
 	addCapacityObserver(set, workers, capacity.Store{Pool: pool, Rate: deps.RestoreRate})
+	if deps.Gateway != nil {
+		addWorker(set, workers, &ModelBudgetObserveWorker{Read: deps.Gateway.PlatformBudget})
+	}
 
 	addCreditConsumers(set, workers, pool, deps, creditSvc)
 
@@ -286,6 +289,9 @@ func periodicJobs(set *Set, deps Deps, outboxWorker *outbox.Worker) []*river.Per
 
 	schedule(PartitionCreateArgs{}, PartitionCreateInterval, true)
 	schedule(CapacitySampleArgs{}, capacity.SampleInterval, true)
+	if deps.Gateway != nil {
+		schedule(ModelBudgetObserveArgs{}, ModelBudgetObserveInterval, true)
+	}
 
 	schedule(EnrichmentBackfillArgs{}, EnrichmentBackfillInterval, false)
 	schedule(ProposalExpiryArgs{}, proposalExpiryInterval, true)

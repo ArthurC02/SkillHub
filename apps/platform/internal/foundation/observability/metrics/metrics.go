@@ -83,6 +83,18 @@ var (
 		Name: "skillhub_model_platform_budget_exhausted_total",
 		Help: "Model calls the gateway refused because its platform-wide budget was spent.",
 	})
+	ModelPlatformSpendUSD = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "skillhub_model_platform_spend_usd",
+		Help: "What the model gateway reports spent against its platform-wide budget this period.",
+	})
+	ModelPlatformBudgetUSD = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "skillhub_model_platform_budget_usd",
+		Help: "The model gateway's platform-wide budget for the period.",
+	})
+	ModelPlatformBudgetReadAt = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "skillhub_model_platform_budget_read_timestamp_seconds",
+		Help: "When the platform-wide model budget was last read successfully.",
+	})
 	SandboxDestroyFailed = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "skillhub_sandbox_destroy_failed_total",
 		Help: "Sandbox teardowns that failed during cleanup (SBX-012).",

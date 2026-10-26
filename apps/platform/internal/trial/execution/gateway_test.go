@@ -215,3 +215,43 @@ func TestADeploymentWithNoModelGatewayCannotSendARunToASandbox(t *testing.T) {
 		t.Errorf("a configured gateway was refused: %v", err)
 	}
 }
+
+func TestThePlatformBudgetIsReadFromTheGatewaysBudgetHolder(t *testing.T) {
+	for _, c := range []struct {
+		name    string
+		status  int
+		body    string
+		want    PlatformBudget
+		wantErr bool
+	}{
+		{"a budget with spend and a reset time", http.StatusOK,
+			`{"user_id":"litellm-proxy-budget","user_info":{"user_id":"litellm-proxy-budget","spend":6.231271555,"max_budget":50.0,"budget_duration":"1d","budget_reset_at":"2026-10-27T00:00:00Z"}}`,
+			PlatformBudget{SpentUSD: 6.231271555, LimitUSD: 50, ResetsAt: time.Date(2026, 10, 27, 0, 0, 0, 0, time.UTC)}, false},
+		{"nothing spent yet", http.StatusOK, `{"user_info":{"spend":null,"max_budget":50.0}}`,
+			PlatformBudget{LimitUSD: 50}, false},
+		{"no platform-wide budget set", http.StatusOK, `{"user_info":{"spend":1.0,"max_budget":null}}`, PlatformBudget{}, true},
+		{"a budget of zero", http.StatusOK, `{"user_info":{"spend":0,"max_budget":0}}`, PlatformBudget{}, true},
+		{"the gateway fails", http.StatusInternalServerError, `{"error":"down"}`, PlatformBudget{}, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/user/info" || r.URL.Query().Get("user_id") != "litellm-proxy-budget" {
+					t.Errorf("asked %s?%s, want the platform budget holder", r.URL.Path, r.URL.RawQuery)
+				}
+				w.WriteHeader(c.status)
+				_, _ = io.WriteString(w, c.body)
+			}))
+			defer srv.Close()
+			g := &Gateway{adminBaseURL: srv.URL, client: srv.Client()}
+
+			got, err := g.PlatformBudget(context.Background())
+
+			if (err != nil) != c.wantErr {
+				t.Fatalf("err = %v, want error = %v", err, c.wantErr)
+			}
+			if !got.ResetsAt.Equal(c.want.ResetsAt) || got.SpentUSD != c.want.SpentUSD || got.LimitUSD != c.want.LimitUSD {
+				t.Fatalf("budget = %+v, want %+v", got, c.want)
+			}
+		})
+	}
+}
