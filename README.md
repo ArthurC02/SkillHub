@@ -50,7 +50,7 @@ React web ───────────────► Go control plane API 
 
 The Go control plane owns authorization, Workspace scope, domain rules, Run state and all core data. The Python LLM service and Sandbox are capability providers: they accept structured requests and return structured results, but never access the core database. Every model call goes through LiteLLM; provider credentials stay at the gateway. A Run receives a short-lived Virtual Key, and its state transition plus outward event are recorded transactionally.
 
-The platform code is organized into reviewed bounded contexts for creator, product, skill and trial work. External systems sit behind ports and adapters, while package ownership, query ownership and cross-context dependencies are checked mechanically. See the [architecture identity](apps/platform/architecture-identity.yaml), [bounded-context model](docs/adr/README.md#platform-bounded-context-與-context-map) and [architecture decisions](docs/adr/README.md).
+The platform code is organized into the reviewed bounded contexts in the [Domain Memory Registry](docs/domain-memory/registry/contexts/index.md). External systems sit behind ports and adapters, while package ownership, query ownership and cross-context dependencies are checked mechanically. See the [architecture identity](apps/platform/architecture-identity.yaml), [bounded-context model](docs/adr/README.md#platform-bounded-context-與-context-map) and [architecture decisions](docs/adr/README.md).
 
 ## Security model
 
@@ -97,7 +97,7 @@ task dev
 | --- | --- | --- |
 | API | `go -C apps/platform run ./cmd/api` | HTTP, authentication, authorization and domain commands |
 | Worker | `go -C apps/platform run ./cmd/worker` | Run dispatch, cleanup, outbox and periodic work |
-| LLM capability | `cd apps/llm && uv run uvicorn skillhub_llm.app:app` | structured model-backed capabilities |
+| LLM capability | `task dev:llm` | structured model-backed capabilities with a service token |
 | Sandbox provider | `go -C apps/sandbox run ./cmd/sandboxd` | local execution-provider boundary |
 | Web | `npm --prefix apps/web run dev` | React development UI |
 

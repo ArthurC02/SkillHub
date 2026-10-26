@@ -201,38 +201,9 @@ func WorkspaceSkill(ctx context.Context, workspaceID WorkspaceID, skillID SkillI
 
 **不是 UUID 產生器，產生器不在範圍內。** 識別碼由 Postgres 自己產（27 處 `DEFAULT gen_random_uuid()`）；Go 只有三處 `uuid.NewString()`，產的是冪等鍵字串（`"grant:" + …`）不是實體識別碼。**也不動**資料庫欄位型別、欄位的值、migration 與 API 的 JSON——純粹是 Go 型別系統裡的事。
 
-原本還有第二半：「把純粹為了轉手而存在的 `gen.DBTX` 參數拿掉」。**那一半是空集合。** 以 `gen.DBTX` 為參數的函式 29 個，13 個真的收過交易，16 個收的是連線——advisory lock（`LockObjectWrite`、`LockPackageObject`）與帳號清除迴圈必須在交易之外持有同一條連線。收連線不是轉手，是呼叫端在宣告自己控制著哪一條連線，那種看得見的邊界要留下。以下只談識別碼那一半。
+`gen.DBTX` 仍保留在需要由呼叫端控制交易或連線的邊界，例如 advisory lock 與帳號清除迴圈；它不是單純轉手參數。識別碼若要型別化，必須同時處理 sqlc 生成碼的轉換接縫，不得以別名假裝完成。
 
-不做的理由不是「太大」，是**它擋不住危害最大的那一類換位，而它擋得住的那一類已經有人擋了**。
-
-型別化只能分辨**不同種類**的識別碼（workspace 對 skill）。同一種類的兩個值（兩個使用者、兩個版本、兩次 Run）在型別系統裡完全相同，換位照樣編譯。把每一種換位逐一追到後果：
-
-| 換位種類 | 實測入口 | 後果 | 今天誰擋住 | 型別化擋得住？ |
-| --- | --- | --- | --- | --- |
-| 跨種類寫入 | 全部寫入路徑 | 交易回滾 | 外鍵：27 處 `REFERENCES workspaces (id)`；`creation_session_events`／`creation_receipts` 用複合外鍵 `(session_id, workspace_id)` | 是，但已有人擋 |
-| 跨種類讀取（有 scope） | 絕大多數 | 查無資料 | `WHERE id = … AND workspace_id = …` | 是，但已有人擋 |
-| 跨種類讀取（無 scope） | 111 支吃參數卻沒提 `workspace_id` 的查詢（98 支宣告理由、13 支只取 advisory lock 而豁免） | 識別碼若直接來自請求，會讀到別的工作區的列 | `query-scope`：每支都得寫下理由；逐支追過，沒有一支的識別碼直接來自請求（§4.1） | 是，但已有人擋 |
-| 同種類 workspace↔workspace | `skill/library/registry.go` 的 `Fork`（`ws.ID` 對 `src.WorkspaceID`） | 查無資料 | `skill_id`＋`workspace_id` 聯合條件 | 否 |
-| 同種類 user↔user | `creator/credit/service.go` 的 `Ledger`（被查的帳戶與查帳的操作員都是使用者） | 回傳錯的人的餘額，稽核列的 Actor 與 ResourceID 對調 | `LedgerQuery` 具名欄位＋整合測試（§4.1） | 否 |
-| 同種類 version↔version | `skill/library/diff.go` 的 `DiffVersions`（from／to 都是版本） | diff 方向顛倒 | `VersionRange` 具名欄位＋整合測試（§4.1） | 否 |
-| 同種類 run↔run | `trial/improvement/comparison.go` 的 `Comparison`（兩側都是 Run） | 比較兩側對調，`VersionDiffURL` 的 from／to 一起反向 | `RunPair` 具名欄位＋整合測試（§4.1） | 否 |
-
-會產生「查得到、但答案是錯的」的有三處，型別化一處都擋不住，擋住它們的是具名欄位。型別化唯一獨到的價值落在無 scope 的那一列，而那一列已由 `query-scope` 逐支宣告理由擋住（§4.1）。
-
-額度帳戶是 `credit_accounts.user_id PRIMARY KEY`，**按使用者算不是按工作區算**，所以 `Balance` 不比對工作區是設計正確。`Ledger` 要防的只是兩個使用者角色（被查的帳戶、查帳的操作員）互換。
-
-**擋同種類換位的是具名欄位，不是具名型別。** 把並排的裸參數換成一個有欄位名字的結構，同種類與跨種類一起擋掉，成本是三支函式而不是 236 個轉換站點（§4.1）。
-
-規模，供重開時參考：
-
-```
-git grep -oh "pgtype\.[A-Z][A-Za-z]*" -- apps/platform/internal/ | sort | uniq -c | sort -rn
-git grep -n "gen\.[A-Za-z]*Params{" -- apps/platform/internal/ | awk '!/_test/ && !/\/gen\//' | wc -l
-```
-
-1630 處 `pgtype.UUID`、263 處 `pgtype.Timestamptz`，20 個套件。
-
-**大在哪**：sqlc 生出來的參數結構永遠講 `pgtype.UUID`（那是它的工作，不該改），所以領域型別一換，**與生成碼交界的每一處都要轉一次**——遞進去要拆封，從生成的資料列讀出來要包回去。
+型別化只分辨不同種類的識別碼，不能防止同種類值互換。後者使用具名欄位結構，例如 `LedgerQuery`、`VersionRange` 與 `RunPair`；工作區條件則由 query-scope 與資料庫約束守住。`credit_accounts.user_id` 是使用者層級帳戶，`Balance` 不應被錯誤要求加上工作區條件。
 
 ```go
 gen.GetSkillParams{ID: skillID.value(), WorkspaceID: workspaceID.value()}
@@ -267,11 +238,11 @@ git grep -nE '(==|!=|case) *(Event(SearchPerformed|SkillDetailViewed|SessionStar
 
 寫入端寫了 CHECK 不收的值時，交易會失敗；唯一例外是 `analytics_events`，寫入失敗只記一行 log（`analytics event not recorded`）不回報，所以新增事件卻忘了 migration 時只有 log 看得到。
 
-`domain-vocabulary` 的 `unreconciledVocabularies` 逐筆列出這六個欄位，以及同一個形狀的 `skill_runtime_compatibility.runtime`：Go 只把它讀出來顯示量測結果，不依它分支，寫入端只有操作員手跑的 SQL。**重開條件**：Go 開始依其中任何一個值分支——屆時照 §3 形狀在擁有者型別化、接進對帳，並刪掉那一筆（不刪，檢查器會說它過期）。
+`domain-vocabulary` 的 `unreconciledVocabularies` 逐筆列出這六個欄位，以及同一個形狀的 `skill_runtime_compatibility.runtime`：Go 不依這些值分支，寫入端由既有資料庫規則限制。**重開條件**：Go 開始依其中任何一個值分支——屆時照 §3 形狀在擁有者型別化、接進對帳，並刪掉那一筆。
 
 ### 5.7 creation 的 Session aggregate 與金額的 value type
 
-creation 會話不包成 aggregate：唯一的寫入點 `advance()` 已經存在，改寫只換呼叫語法。金額不做 value type：運算已集中在 `money.go`，沒有混用過的事故，理由同 §5.4。**重開條件**：出現第二個寫入會話快照的地方，或金額在 `money.go` 之外被運算。
+creation 會話不另包 aggregate：寫入點是 `advance()`。金額維持集中在 `money.go`。**重開條件**：出現第二個寫入會話快照的地方，或金額在 `money.go` 之外被運算。
 
 ### 5.8 模型閘道的哨兵錯誤
 
@@ -307,7 +278,7 @@ git grep -n "river\." -- apps/platform/internal/trial/ apps/platform/internal/cr
 
 ## 6 待做
 
-對外邊界的盤點已經做完：每個被領域欄位持有的外部系統都由領域自己宣告要用到的窄介面，具體的 client 退回實作它的 adapter，缺席時一律經一個轉換函式變成真正的 nil 介面（typed nil 會讓每個 `X == nil` 守衛失效、第一次呼叫就 panic）。判準是三問中兩問為是：**這個外部系統會被換掉嗎**、**領域程式是不是在講它的話**、**要測一條領域規則是不是得把外部系統架起來**。判定不做的三件與各自的量測在 §5.8～§5.10。再有新的邊界，用同一組問題量一次，先在 `04` 登記，再照本節末尾的形狀寫進來。
+外部系統若由領域欄位持有，領域宣告窄介面，具體 client 留在 adapter；缺席時經轉換函式變成真正的 nil 介面，避免 typed nil 破壞守衛。判準是三問中兩問為是：**這個外部系統會被換掉嗎**、**領域程式是不是在講它的話**、**要測一條領域規則是不是得把外部系統架起來**。§5.8～§5.10 記錄目前不抽象化的邊界與重開條件。新增邊界時，先在 `04` 登記，再依本節末尾的形狀補上 DISCOVER、EDIT、PROVE、STOP-IF。
 
 ```
 git grep -n "\*http.Client\|\*river.Client\|llmclient.Client\|OrNone(\|OrNil(" -- apps/platform/internal/ | awk '!/_test/'

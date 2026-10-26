@@ -25,9 +25,7 @@ Dev Container 以 privileged mode 啟動獨立 DinD daemon，讓 Windows／macOS
 
 語言版本由 `go.mod`、`.node-version`、`.python-version` 擁有；其他工具與 generator image 由 `tools/toolchain.yaml` 擁有。不要從 README 文字或 Agent 記憶抄版本。
 
-**釘選的版本要有人去啟用它，否則 doctor 的 FAIL 是唯一的提醒**：`.node-version` 只是一個寫著數字的檔案，不會讓任何 shell 換版本。裝了 `fnm` 也不夠——**要有人在 shell 啟動時呼叫它**（`fnm env --use-on-cd`，跟著目錄走，不把整個帳號釘死在一個版本）。Windows 上還多一層：機器層 `PATH` 排在使用者層前面，所以機器層安裝的 Node 目錄一定贏過任何使用者層的 shim 目錄，**再裝一次 Node 不會解決這件事**。Git Bash 這邊要注意：Agent 的每一次 `bash -c` 都是非互動 shell，`~/.bashrc` 只透過 `BASH_ENV` 才會被讀到，而那表示**帳號上每一個非互動 bash 都會源它**——所以那個檔案裡任何一行輸出都會混進別的腳本的 stdout，必須全程沉默。
-
-**換過 Node 版本之後 `node_modules` 不算數**：舊的樹是在舊版本底下裝的，要重跑 `task bootstrap` 再驗一次，否則綠燈只證明「在另一個 runtime 上是綠的」。
+**釘選的版本要由 shell 啟用**：`.node-version` 只提供來源，不能自動切換 runtime；使用版本管理器時，確保非互動 shell 也能取得同一版本。Windows 若機器層 `PATH` 優先於使用者層 shim，先修正 `PATH` 順序，不要重複安裝。切換 Node 後重跑 `task bootstrap`，再以 `task doctor` 驗證。
 
 ## 能力與成本分級
 
@@ -57,7 +55,7 @@ Dev Container 以 privileged mode 啟動獨立 DinD daemon，讓 Windows／macOS
 | `contracts/openapi/public.yaml` | `apps/platform/internal/entrypoint/api/gen/**`、`packages/api-client-ts/src/generated/**` | `task gen:openapi` |
 | `contracts/openapi/llm-internal.yaml` | `packages/api-stub-py/src/skillhub_api_stub/generated/**` | `task gen:openapi` |
 
-`.devctl/**` 是 gitignored lock／scratch，不是可引用、可提交或可手改的 generated API。Generator 失敗時只查看它作診斷；正式產物只以上表為準。
+`.devctl/**` 是 gitignored lock／scratch，不是可引用、可提交或可手改的 generated API。Generator 失敗時只查看它作診斷；正式產物只以上表為準。`task gen:check` 不修改 tracked files，但可能寫入 `.devctl/` scratch；`task gen` 的 apply 才會更新 generated files。
 
 `task gen` 的順序：取得單一 Writer lock → 在 repo 同檔案系統 scratch 完整生成 → 檢查絕對路徑／timestamp → 比對完整 tree → apply 時原子替換。任何一步失敗都不應留下半套 tracked output。`task gen:check` 不修改 tracked files，CI 使用同一路徑。
 
@@ -96,25 +94,19 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
   Claude Code 的三個角色檔（`.claude/agents/`）以機械執行／快速執行為 frontmatter 預設下限（`model` 與 `effort` 都寫），派工時可指定更高；`automation-check` 的 `harness` 檢查擋角色檔出現旗艦級或缺 `effort`（名稱寫在檢查器裡，那是唯一需要名字的地方）。可攜角色與 skills 的唯一來源是 `.claude/agents/`、`.claude/skills/`；`task agents:sync` 在本機與 CI 產生 `.agents/skills` 與 `.codex/agents`，兩者是忽略的快取，永不手改、永不提交。新一輪 Agent 工作前由唯一 Writer 同步，已啟動的 Agent 必須重新派送才會讀到新版本。
 - **Claude Code 另有一層攔阻**（`.claude/settings.json` 的 `permissions.deny` 把 `stash`／`add -A`／`commit -a`／`restore`／`checkout .`／`reset --hard`／`clean`／`push --force`／`commit --amend` 變成真的拒絕，對子代理同樣生效），**但它只是提早發現**：其他 coding agent 不受它管，本節的規則本體與 `automation-check`、測試、CI 才是保證。角色與技能的放置規則見下方〈Harness〉。
 
-## 修好一個東西之後，把修法弄壞一次：三次前例
+## 修正必須證明測試會抓到回歸
 
-`AGENTS.md` 開發自動化第 9 條的來歷。改完跑一次測試是綠的，只證明測試存在，不證明它會紅。本專案已經三次「修好了但測試沒有牙齒」：
-
-1. invalidate 用錯 query key——改回錯的，171 支全綠。
-2. placeholder 六條規則有三條零正面測試——同時刪掉，全綠。
-3. 兩條 import 路由的速率限制包裝——無聲刪掉，全套綠。
-
-**三次都不是 code review 找到的**，是突變找到的。成本是一次 `sed` 加一次 `go test`。程序：把修正那一行還原、跑對應的那一條測試、確認變紅、改回來、`git diff` 確認為空。不適用於純文案、純註解與本來就沒有斷言可言的變更；適用於任何你在 commit 訊息裡寫「修好了 X」的東西。Claude Code 的 `mutation-check` 技能與 `skillhub-mutation` 角色是這條的可執行版本。
+行為修正不能只以綠色測試判定完成。把修正還原、執行對應測試確認它會失敗，再恢復修正並確認 diff；純文案、純註解與沒有可判定斷言的文件整理不做突變。`mutation-check` 技能與 `skillhub-mutation` 角色提供相同的操作契約。
 
 ## Harness：角色、技能、rules、workflows 與 deny 的放置規則
 
-`AGENTS.md`〈分區指標與攔阻〉只放入口；分層與派工契約見[開發者指示](./agent-instructions.md)；規則本體在這裡；**建立這套東西的歷程、洞見、工序與功法在 [harness/](./harness/README.md)**。**判準：換一個 repo 還成立嗎？** 成立才進 `.claude/skills/`；不成立留在 `docs/`、各層 `AGENTS.md`、`.claude/rules/` 或 deny／CI。`.claude/` 不是整體可攜來源：只有 roles／skills 的來源檔可攜，rules／workflows 是本 repo harness。每一層只放一種東西：
+`AGENTS.md`〈分區指標與攔阻〉只放入口；分層與派工契約見[開發者指示](./agent-instructions.md)，可用的檔案導覽見[Harness README](./harness/README.md)；規則本體在這裡；`.claude/` 是本 repo 的 harness 入口，角色與技能的來源檔在 `.claude/agents/` 與 `.claude/skills/`。**判準：換一個 repo 還成立嗎？** 成立才進 `.claude/skills/`；不成立留在 `docs/`、各層 `AGENTS.md`、`.claude/rules/` 或 deny／CI。`.claude/` 不是整體可攜來源：只有 roles／skills 的來源檔可攜，rules／workflows 是本 repo harness。每一層只放一種東西：
 
 - **`.claude/rules/`**：按路徑觸發的指標，內容只有「先讀哪一份、會被哪個檢查擋」。實測會送達子代理，首次命中注入一次。
 - **`.claude/agents/`**：按**風險**切的三個角色——`skillhub-writer`（寫，路徑範圍由簡報給）、`skillhub-verify`（唯讀驗證）、`skillhub-mutation`（證明測試會紅）。**角色不按目錄切、不新增**：某個區域該先讀什麼、哪些檔屬於 coordinator，寫在該區域的 `AGENTS.md`，由 rules 按路徑送達。禁令只有一份（`AGENTS.md` 開發自動化第 3 條），角色檔引用不複述。
 - **`.claude/skills/`**：換一個 repo 還成立的程序。技能不得引用 ADR 編號或需求 ID——引用了就隨那個編號過期。技能本文不是專案產出物，出現 `docs/` 這類路徑字樣不算引用。**例外是只有 `.claude-plugin/plugin.json`、沒有 `SKILL.md` 的目錄**：那是 Claude Code 的 plugin，放這裡是因為 Claude Code 只從專案的 `.claude/skills/` 自動載入 repo 內的 plugin（接受 workspace trust 之後）。它不算技能：`agent-sync` 不同步給其他工具，也不過 `skillpkg.Validate`。`skillhub-guards` 是唯一一個，在操作當下擋下：子代理用旗艦級、沒指定模型或用 fork；子代理啟動付費模型堆疊、寫 Git、裝或更新套件、Compose down、跑全 repo formatter、重生 generated 檔或跑 `agent-sync`；手改檔頭自稱 generated 的檔（不另抄一份目錄清單）與 `.agents/`、`.codex/` 快取；用 heredoc 把含反斜線的內容寫進程式或設定檔（這一層會把反斜線吃掉一半，改用寫檔工具）；未經負責人同意就推送會發佈 runtime 映像的 commit；沒簽名就提交動到 `docs/domain-memory/` 的 commit；改動不是這個 session 留下的未提交檔（這個 session 自己的 Bash 命令改出來的檔不算：它在命令前後對這個 repo 的每一個 worktree 做 `git status` 快照，差集歸給這個 session，所以在 scratchpad worktree 裡用腳本改出來的檔也算自己的）。後三種由人輸入 `/guard-allow` 放行一次，其餘不放行。它也替人省三件手工：`apps/platform` 的 `go test` 自動帶上 `SKILLHUB_TEST_DATABASE_URL`（先讀 `.env`，沒有就用本機預設）、`SKILLHUB_REQUIRE_DB=1` 與 `-count=1`，輸出第一行說明它這樣跑了；`git push` 成功後每分鐘查一次那個 commit 的 `ci-status`，結果顯示在狀態列並跳通知，紅的時候列出失敗的 job；模型多一個 `mutation_probe` 工具，給檔案、要弄壞的那一段、測試命令（argv，不經 shell），它改壞、跑測試、一定還原並逐位元組確認，回報 RED／GREEN／BUILD FAILED（編譯失敗不算紅）；還有一個 `ship` 工具，給檔案清單與完整 commit 訊息，它依序 comment-lint、逐檔明確 stage（拒絕 `.`、萬用字元、資料夾）、列出的檔有 `docs/domain-memory/` 就加 `-S`、只 commit 列出的檔（別人放進暫存區的不會被帶走）、確認是快轉（不是就停在推送前）、查 runtime 映像、推送並開始盯 CI；子代理不能用。攔阻的部分同樣只是提早發現，規則本體仍在 `AGENTS.md` 開發自動化第 2、3、5 條與 `.claude/rules/tests.md`。**它只在 Claude Code 信任這個 workspace 時載入**；Windows 上同一個資料夾可能因磁碟代號大小寫或斜線不同而登記成好幾筆，只要編輯器用的那一筆沒信任，`claude plugin list` 的 Skills-directory 區塊就會說它被 skipped——那時它一條也不會擋。
 - **`.claude/workflows/`**：**有固定形狀的多代理程序**——哪些事平行、哪一步驗證、由流程決定是否有 gate——寫成一支 `<name>.js`，以 `/<name>` 呼叫；判斷本身仍在子代理，腳本只決定順序與扇出。`ux-text-audit` 與 `error-path-audit` 都是 Read → Refute → Critic 的唯讀稽核；`parallel-page-edit` 才是寫入後 Verify → Mutation → Gate。跨工具契約、無 runtime 時的原生派工映射與完成判定見[開發者指示](./agent-instructions.md)；原生腳本的扇出安全不是跨工具保證。**腳本裡的 `agent()` 不指定模型就繼承派工者的旗艦級**，不指定 effort 就沿用派工者的 effort，所以每一個 `agent(` 呼叫都要在同一行寫 `model:` 與 `effort:`（慣例是一行 wrapper：`const run = (p, o = {}) => agent(p, { ...o, model: o.model ?? 'sonnet', effort: o.effort ?? 'medium' })`），`harness` 檢查逐行看。
-- **`permissions.deny`**（`.claude/settings.json`）：把慣例變成真的拒絕——`stash`、`reset --hard`、`clean`、`checkout -- `、`checkout .`、`restore`、`add -A`／`--all`／`.`、`commit -a`／`--all`、`push --force`／`-f`、`commit --amend`。對子代理同樣生效、不需 workspace trust。**每條加完要親自撞一次**——曾經撞出過一個誤擋 `git add .claude/` 的偽陽性。陷阱：路徑型規則只認 `Edit(...)` 與 `Read(...)`，寫成 `Write(...)`／`Glob(...)` 會被接受但永不被查詢。
+- **`permissions.deny`**（`.claude/settings.json`）：把慣例變成真的拒絕——`stash`、`reset --hard`、`clean`、`checkout -- `、`checkout .`、`restore`、`add -A`／`--all`／`.`、`commit -a`／`--all`、`push --force`／`-f`、`commit --amend`。對子代理同樣生效、不需 workspace trust。每條規則都必須以其目標命令與相鄰合法命令驗證，避免過度攔阻。陷阱：路徑型規則只認 `Edit(...)` 與 `Read(...)`，寫成 `Write(...)`／`Glob(...)` 會被接受但永不被查詢。
 
 **送達與契約**：官方啟動載入規則見 [Agent configuration](https://learn.chatgpt.com/docs/agent-configuration/agents-md)；若有 `AGENTS.override.md` 必須先讀並檢查衝突。派工介面未提供 `cwd` 參數時（例如本次驗證的 `spawn_agent`），代理共享目前工作目錄；工具不保證按檔案自動載入，brief 必須列出 root → 目標父目錄的明確讀取路徑。Codex 指示總量上限 32 KiB（`project_doc_max_bytes`），所以根 `AGENTS.md` 有大小上限。Claude 的額外層是提早發現，真正的保證仍在 `automation-check`、測試與 CI。
 
@@ -133,8 +125,8 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | generated conflict | 合併 OpenAPI／SQL來源後重生；不手動 merge generated code |
 | `dev:model` 缺變數 | devctl只列變數名稱。把 secret放 ignored `.env`，不要放 `.env.example` |
 | CI 紅了，但 annotation 只有 `Process completed with exit code 1.` | 那一步沒包 [`tools/ci/report-failure.sh`](../../tools/ci/report-failure.sh)，不是查不到原因。診斷順序與會騙人的訊號見 [CI 看不見的失敗](../runbooks/ci-red.md) |
-| `gofmt`／`prettier --check`／`golangci-lint fmt --diff` 對你沒碰過的檔案報格式錯，但 CI 的 Linux runner 全綠 | 工作樹是 CRLF checkout。行尾一律 LF，由 [`.gitattributes`](../../.gitattributes) 強制，它**蓋過 `core.autocrlf`**，所以 Windows 上不需要任何 per-machine git 設定。早於該檔的 clone 可以刷新一次：`git rm --cached -r . && git reset --hard`（**會重寫工作樹，先提交你的工作**） |
-| postgres 容器起不來，日誌說 `there appears to be PostgreSQL data in: /var/lib/postgresql/data` | 本機資料卷是上一個 Postgres 主版本留的。PostgreSQL 18 起官方映像把 `PGDATA` 分到 `/var/lib/postgresql/<major>/docker`，舊版面它不會就地升級。開發資料是可拋的：`task down` 後 `docker volume rm skillhub_postgres-data` 重建；要留就先用舊主版本的映像掛上同一個卷 `pg_dumpall` |
+| `gofmt`／`prettier --check`／`golangci-lint fmt --diff` 對你沒碰過的檔案報格式錯，但 CI 的 Linux runner 全綠 | 工作樹是 CRLF checkout。行尾一律 LF，由 [`.gitattributes`](../../.gitattributes) 強制；保留工作樹中的未提交修改，在乾淨 clone 重新檢出或依作業系統的安全流程刷新行尾，再重跑檢查。 |
+| postgres 容器起不來，日誌說 `there appears to be PostgreSQL data in: /var/lib/postgresql/data` | 先判斷資料是否要保留。要保留就以相容的舊版本匯出，再以現行映像還原；可拋資料則另起 disposable volume／資料庫後重跑初始化。不要直接刪除共享 volume。 |
 
 ### 本機同時跑 SPA 與 API：一個旗標加一個檔案
 
@@ -202,13 +194,13 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 
 **它問的是執行檔而不是解析 Go 原始碼**：能力表是 Go（R-36 決定「能力→前提」的宣告放 Go），而 devctl 是另一個 module，所以檢查跑 `go run ./cmd/api --capabilities`，讀那個程式**實際持有**的表——解析原始碼只會在「有人換一種寫法寫那個 literal」之前成立。
 
-**`capabilityLedger` 是存量清單，不是擴充點**，形狀比照 `db/query-owners.yaml` 的 `allow:`：每一列都是 2026-09-01 當天就已經在 `.env.example` 裡的變數，而且**只准變短**。它自己的最後一組標著 ⛔——那十二個變數確實擋著東西，只是還沒有人寫下擋著什麼；那是這份帳目要讓人看見的債，不是拿來開脫的。唯一能新增的一組，是只由 `cmd/maintenance` 某個 job 讀、缺了就讓那個 job 拒絕執行並點名的變數（例如物件備份的目的地）：API 刻意不持有它們，放進能力表只會讓 API 永遠回報一個它本來就不該有的能力缺席；這類變數另起一組，理由寫明是哪個 job 擁有。
+**`capabilityLedger` 是存量清單，不是擴充點**，形狀比照 `db/query-owners.yaml` 的 `allow:`：每一列都是既有 `.env.example` 變數，而且**只准變短**。最後一組標著 ⛔ 的變數仍須逐一補上能力說明；帳目只用來揭露尚未完成的歸屬，不能成為豁免理由。唯一能新增的一組，是只由 `cmd/maintenance` 某個 job 讀、缺了就讓那個 job 拒絕執行並點名的變數（例如物件備份的目的地）：API 刻意不持有它們，放進能力表只會讓 API 永遠回報一個它本來就不該有的能力缺席；這類變數另起一組，理由寫明是哪個 job 擁有。
 
 ## 同一個數字散在好幾個檔案：`one-number:` 標記
 
 有些值必須在**沒有任何編譯器會比對**的地方保持一致：一個 Go const、契約裡的 `maxLength`、`apps/llm` 的 Pydantic `max_length`、量測 harness 裡的常數。沒有東西把它們綁在一起，所以它們會漂，而且漂掉的時候是在最糟的時刻才被發現。
 
-**它已經發生過一次**：`maxDigestEntry` 從 2000 調到 8000 **只改了 `judge.go`**，於是**每一次評分都回 422**——因為 `apps/llm` 還在拒絕超過 2000 的字串。而那是四份副本裡**最大聲**的一份；`tools/eval-regression` 的那一份漂掉時，只會安靜地送出一個不一樣的請求，然後把結果當成沒事一樣報出來。
+跨檔副本若未同步，呼叫端與驗證端會對同一輸入套用不同上限，且量測工具可能無法直接辨識差異；因此每一處副本都必須納入同一個可檢查的名冊。
 
 作法：每一個站點在同一行標一個名字，`devctl automation-check` 比對它們。
 
@@ -225,16 +217,14 @@ maxDigestEntry  = 8000 // one-number: maxDigestEntry
 三條規則：
 
 1. **數字與標記同一行**，值取標記之前的最後一個整數。這是它能在四種語法裡運作而不需要任何一種的 parser 的原因。
-2. **標記要開啟那個註解**。`# one-number: x - 因為 y` 算；`# 因為 y; one-number: x` **不算**，而且它會是「安靜地看不見」而不是「報錯」——harness 那一份第一次就是這樣漏掉的，偏偏它正是漂掉時最安靜的那一份。
+2. **標記要開啟那個註解**。`# one-number: x - 因為 y` 算；`# 因為 y; one-number: x` **不算**，因為檢查器必須能在所有支援語法中一致辨識標記。
 3. **只剩一個站點會 FAIL**。一個站點的不變量保護不了任何東西，而它變成一個站點的方式通常是有人刪掉了別人的標記而不是別人的副本。
 
 **這不取代契約作為事實來源（鐵律 12）。** 每一份副本正確的修法都是「生成它或推導它」，能便宜做到就該做——`packages/api-stub-py` 的那一份就是從契約生出來的，所以它不帶標記。這個機制是給**生成器搆不到的那些副本**。
 
 ### 一個數字只能有一個作者
 
-`milestone-tally`。M5 的「幾勾幾 ◐」曾經同時寫在 **五份文件**裡，六輪對抗式審查中有**三輪**抓到它們彼此不符——沒有任何一次單獨的編輯是錯的，錯的是一個**導出來的**數字有五個作者。
-
-作法與 `one-number` 同一個家族，但方向多一邊：
+`milestone-tally` 的事實來源與操作規則如下：
 
 - **`03` §19 的 checkbox 就是事實**，機器數 `- [x] GEN-` 與 `- [ ] GEN-`；
 - **`03` 自己的節首必須說出那兩個數**（說錯就 FAIL）；
@@ -250,55 +240,51 @@ maxDigestEntry  = 8000 // one-number: maxDigestEntry
 
 ### 殘項的數字必須對得上它自己的清單
 
-`backlog-tally`。AGENTS.md 把 `04` 註明為**殘項總數的唯一來源**，而那份文件自述它的數字是「逐列重數、不是把歷次加減累積出來的」——**而沒有任何人可以驗證那句話**。全檔 67 列裡只有 13 列把結案寫在機器讀得到的格子裡，其餘寫在列內的散文裡。那個數字已經與自己不符過三次。
-
-作法：每一個帳目格末尾帶一個 `<!-- open: 26,38,49,... -->`，機器對三件事：
+`backlog-tally`：根 `AGENTS.md` 指定 `04` 為殘項總數唯一來源。每一個帳目格末尾帶一個 `<!-- open: 26,38,49,... -->`，機器對三件事：
 
 - **粗體的數字等於清單長度**；
 - **清單上的每一個 id 都真的是這份文件裡的一列**（一個程式註解曾經引用一列不存在的殘項）；
 - **沒有一列被列為未結，卻在自己的狀態欄寫著已結案**。
 
-**它故意不檢查另一個方向**：一個沒列到的列是不是真的結了。那需要逐列的狀態欄，而把「沒列到就算結案」當預設，等於一口氣斷言四十九件沒人查過的結案。**這與 `milestone-tally` 不標記 M4 那一行是同一個判斷：去檢查一個查不出對錯的東西，是讓檢查失去讀者的方法。**
+**它不檢查另一個方向**：未列出的項目是否已結案仍由逐列狀態與人工審查判定；不要把「未列出」當成結案證據。
 
 ### 安全基線的規模必須等於它自己的列數
 
 `baseline-tally`。SEC-002 的基線在六個地方自述它有幾項，而唯一有權說話的是那些列。
 
-基線曾經加進 **N-08**（`ip6` 鏈維持 `policy drop`、不得渲染 accept 規則）而六個數字一個都沒動，於是威脅模型自相矛盾——§4.3 列了八列 N，分區表寫七，合計寫 45——而 `02:SEC-002` 把過時的數字引了四次。
-
-**算錯是小的那一半。** [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)裡的覆蓋核對是**逐區**配測項的，所以一個數字過時的區，就是它最後幾列沒有測項的區；而通過判準數到一個不包含它們的總數。**湊滿 45 永遠不需要碰 N-08。** 一個存在於基線、卻對驗收表隱形的檢查，比一個不存在的更糟——因為表看起來是完整的。
+基線的列、分區表與計畫文件必須由同一份現行清單推導；任何新增、刪除或分區調整都要同步更新其唯一事實來源與機器對帳。
 
 機器對四件事：
 
 - **合計句**（`合計：N 項檢查（阻擋 N 項、告警 N 項）`）等於逐列重數的結果；
 - **分區表的每一列**等於該區的列數與等級分佈，**連同它的 `**合計**` 那一列**——那一列不帶區代號，正好是逐區比對看不到的一列，也正好是讀者會相信的那一列；
 - 沒有任何 ID 出現兩次；
-- `02` **與 `03`** 裡任何一句自述基線規模的話，數字都要是現在這個。**`03` 是後來才補進被檢查的名單的，補的時候它正好有兩句是舊的**——`§18` 開頭那句「允收準則來源為……45 項基線」與 `RELEASE-004` 那句「45 項全數 pass 且 0 unknown 才放行」。**兩句都不帶日期，所以兩句都是在講現在**，而那正是這個檢查存在的形狀：一個數字有好幾個作者，其中一個更新了，其他的安靜地留在原地。
+- `02` **與 `03`** 裡任何一句自述基線規模的話，數字都要是現在這個；能連到清單就不要複寫導出數字。
 
 **兩個刻意的範圍限制**，兩個都是第一次跑出來的：
 
-- **帶日期的句子是在描述那個日期**，跳過。第一次跑的每一個誤報都是這一類：`v2 的 32 條威脅與 45 項基線檢查`、`2026-08-16 定案`、以及 N-08 那次自己補的「45 是 2026-08-15 到 2026-08-25 的數字」。**記下一個數字曾經是多少，正是文件對漂移誠實的方式**；一個禁止這件事的檢查，只會教人把歷史刪掉。
+- **帶日期的句子描述的是該日期**，不納入現行基線對帳；現行文件應連到唯一事實來源，不重述歷史數字。
 - **[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)那份 ADR 不在被檢查的名單上，而它也不需要在**：它的通過判準寫成「全部測項須全數通過、零項為未知」，一個數字都不重述，所以沒有可漂移的東西。**ADR 的正確寫法就是這一種**——不重述別人擁有的數字，就不必跟著它改。
 
 ### 活文件裡的識別字必須存在
 
 同一個家族的第二條。**文件的散文檢查不了，但散文裡的識別字可以**——而一個死掉的識別字，通常是一句死掉的主張穿著它。
 
-實際抓到的三個：`04` 拿一個叫 `PublicSearchHit` 的型別論證「我的 Skill 清單少了四項證據」（真名是 `PublicSearchResult`）；一次結案數字掛在 `ApplyPreview` 上（真名是 `improvement.Diff`／契約 `SuggestionDiff`，那個名字是 m3 報告發明的，被抄了三次）；`03` 在函式刪掉之後還說它「已備好」。**三個都是六輪對抗式審查裡人工抓到的，而它們是機器抓得到的那一類。**
+識別字檢查只確認活文件中的反引號名稱仍存在於程式樹；不存在的名稱應改成一般文字，外部工具與尚未實作的名稱則依檢查器的 allowlist 規則處理。
 
-**範圍是活文件**（`AGENTS.md`、`docs/plans/01`～`05`、`docs/design/`、`m5/README`，加上 `docs/adr/`、`docs/development/` 與 `contracts/` 三棵樹），**凍結的里程碑報告不在內**，而這個界線是整個設計：同一種檢查套在里程碑報告上，量到的命中每一個都是「寫的當下是對的」的歷史（DDD 搬檔、已刪除的 spike），而 AGENTS.md 明文要求不要順手修正那些。**一個會要求人違反明文規則的檢查，比沒有檢查更糟——人會學會忽略它。**
+**範圍是活文件**（`AGENTS.md`、`docs/plans/01`～`05`、`docs/design/`、`m5/README`，加上 `docs/adr/`、`docs/development/` 與 `contracts/` 三棵樹）；凍結的里程碑報告不在內，避免把歷史證據當成現行識別字。
 
-量測值（寫下時）：410 個引用、6 個命中、3 個是真的。誤報那三個由 `allowedDocWords` 記著理由，形狀比照 `db/query-owners.yaml` 的 `allow:`——**是存量清單，不是擴充點**。
+誤報由 `allowedDocWords` 記著理由，形狀比照 `db/query-owners.yaml` 的 `allow:`——**是存量清單，不是擴充點**。
 
 三條規則：
 
 1. **死掉的名字不要穿反引號。** 反引號的意思是「這是一個真的符號」；訂正句裡提到一個從來不存在的名字時寫成純文字，檢查就不會命中，而讀者看到的資訊完全一樣。
-2. **未匯出的名字與欄位名也算。** 反引號裡第一個字母小寫、後面帶駝峰或底線的名字（函式、欄位、設定鍵、原因碼），與匯出名字一樣要存在——寫這一段的當天就踩到：一份 ADR 引用 `applyCleanModePool`，而原本的正規式只認大寫開頭，所以它引用一個被改名的函式也不會紅。沒有駝峰也沒有底線的小寫字（`clean`、`gvisor`）仍然是散文，不是符號。外部的 API 與工具名（React、TanStack Router、Playwright、PostgreSQL 擴充與命令、模型供應商的 block type、宿主自己的欄位）由 `allowedDocWords` 記著理由；**尚未實作的欄位與原因碼也記在那裡，並寫出讓它成真的那個工作項目**。
-3. **`declared` 是「這個字出現在任何一個程式檔裡」，不是「這個符號有宣告」。** 便宜、不需要 parser，代價是**一個被刪掉但名字還留在某段註解裡的函式會溜過去**。寫這個檢查的當天就踩到了：它自己的說明註解引用了三個要抓的名字，於是把它們全部漂白——所以掃描時跳過 `doc_identifiers.go` 自己。
+2. **未匯出的名字與欄位名也算。** 反引號裡第一個字母小寫、後面帶駝峰或底線的名字（函式、欄位、設定鍵、原因碼），與匯出名字一樣要存在。沒有駝峰也沒有底線的小寫字仍然是散文，不是符號。外部的 API 與工具名由 `allowedDocWords` 記著理由；尚未實作的欄位與原因碼也記在那裡，並寫出讓它成真的工作項目。
+3. **`declared` 是「這個字出現在任何一個程式檔裡」，不是「這個符號有宣告」。** 掃描不使用 parser，並跳過檢查器自己的說明來源，避免自我命中。
 
 ### 一句話掉了一個指標之後，要留著它的文法
 
-同一個家族的第三條，抓的是**整理文件時自己製造的傷**。把一個不再存在的殘項編號從句子裡拿掉，剩下的句子長這樣：
+同一個家族的第三條，抓的是文件整理後留下的語法缺口。常見形狀如下：
 
 ```text
 而那正是  修好的那個形狀
@@ -324,7 +310,7 @@ maxDigestEntry  = 8000 // one-number: maxDigestEntry
 
 `m2/README.md` 也有一份「跑一個 Skill 的最短路徑」，但那是里程碑當時的證據、不回溯修正，**照它逐字做會得到一個沒有網路的 Run**——sandboxd 後來多了一個 fail-closed 的前置。要跑就照下面這份。
 
-### 今天多出來的那一步：沒有渲染過的允許清單，就沒有網路
+### 渲染允許清單後才可使用網路
 
 `SKILLHUB_SANDBOX_NETWORK` 一旦設了非 `none` 的值，`SKILLHUB_SANDBOX_EGRESS_ALLOW` 就**必填**，而且**committed 的 `infra/egress/rendered/egress-allow.json` 是空的**（`allowlist.yaml` 的 `pinned_ip` 仍是 `unset`，那是生產的正確預設）。空清單 ⇒ sandboxd 宣告 `none` ⇒ 沙箱被派到沒有網路的容器 ⇒ Agent SDK 對閘道空等到逾時。
 
@@ -430,7 +416,7 @@ docker run --rm --network container:skillhub-postgres-1 \
 
 **CI 的形狀**（`ci.yml`）：
 
-- main 上的 push 以 commit SHA 分組、**不互相取消**，每個 commit 都會被驗到；只有 PR 會被同一個 PR 的下一次 push 取消。改之前的三天內 87 次 run 有 14 次被取消，那些 commit 從來沒被驗過。
+- main 上的 push 以 commit SHA 分組且不互相取消；只有 PR 會被同一個 PR 的下一次 push 取消。每個未被取消的 run 都必須完成自己的驗證。
 - `images` 有自己的 path filter（見[Repo 結構、CI 與驗證層](../adr/README.md#repo-結構ci-與驗證層)），純文件 commit 不再建置、smoke、推送三個服務映像。它不再等語言 job，與它們並行；推送拆成 `images-push`，等待既有程式、工具、契約、依賴檢查與四個原生瀏覽器彙總閘門通過才推，從同一次 run 的 GHA 快取重建，不重新編譯。
 - 每週日一次 `schedule` 全量跑（所有 path filter 視為命中），`workflow_dispatch` 也是全量——手寫 path filter 漏掉的那一格由它兜底。
 - 每個 job 都有 `timeout-minutes`，一個卡住的 job 不會再佔滿預設的 6 小時。
@@ -499,7 +485,7 @@ Go 全掃仍保留模組層級 advisory。有修補版仍是 `FAIL`；沒有修�
 - 受影響語言的 typecheck/test/build
 - `git diff --check`
 
-**為什麼把 `format:check` 單獨列出來**：上面那一列「typecheck/test/build」不涵蓋它——`go build` 對一個 `gofmt` 會改寫的檔案完全沒有意見，所以編得過、測得過、推上去，然後 CI 的 `golangci-lint fmt --diff` 才是第一個說話的人——一個結構欄位改變欄寬對齊就足以讓 platform job 紅在那一步。`git diff --check` 也抓不到，它只看行尾空白與衝突標記。
+**為什麼把 `format:check` 單獨列出來**：typecheck/test/build 不涵蓋格式檢查；`git diff --check` 也只看行尾空白與衝突標記，不能取代 formatter。
 
 **怎麼裝 `golangci-lint`，以及為什麼不能照著它官網那一行裝**：
 
@@ -507,7 +493,7 @@ Go 全掃仍保留模組層級 advisory。有修補版仍是 `FAIL`；沒有修�
 GOTOOLCHAIN=go1.27.3 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
 ```
 
-版本 `v2.14.0` 來自 [`tools/toolchain.yaml`](../../tools/toolchain.yaml) 的 `golangci_lint`，CI 的 [`.github/actions/golangci-lint`](../../.github/actions/golangci-lint/action.yml) 讀同一個欄位、跑同一個 `go install`；模組代理與 sumdb 會驗 checksum，所以上游再發版也不會讓一棵沒動過的樹變紅。**`GOTOOLCHAIN=go1.27.3` 那個前綴是必要的，不是保險**：`golangci-lint` 會拒絕載入一份「目標 Go 版本比它自己編譯時用的 Go 還新」的設定，而本 repo 四個模組的 `go` 指示都是 **1.27.3**。CI 為此付過一次代價，錯誤訊息與四天八個 commit 的損失逐字記在 `b255333c` 的 commit message 裡——**它當時的形狀不是 lint 紅了，是同一個 job 裡後面五個 `- run:` 全部被跳過**，所以那段時間每一句「套件全綠」的意思都是「在某人的筆電上是綠的」。本機的 `go version` 比 1.27 舊沒有關係（`GOTOOLCHAIN=auto` 會自己抓），**沒有寫這個前綴才有關係**。
+版本 `v2.14.0` 來自 [`tools/toolchain.yaml`](../../tools/toolchain.yaml) 的 `golangci_lint`，CI 的 [`.github/actions/golangci-lint`](../../.github/actions/golangci-lint/action.yml) 讀同一個欄位、跑同一個 `go install`；模組代理與 sumdb 會驗 checksum。**`GOTOOLCHAIN=go1.27.3` 前綴是必要的**，因為 lint 設定的目標 Go 版本必須不高於建置 lint 的 Go 版本；本機工具鏈則由 `GOTOOLCHAIN=auto` 取得相容版本。
 
 裝完之後 `go env GOPATH`／`bin` 要在 `PATH` 上，`devctl doctor` 的 `golangci-lint` 那一列才會 PASS。**那一列從一開始就在 doctor 裡**——[開工守則第 1 條](../../AGENTS.md)「先診斷再修改」指的就是這件事：格式紅燈的成因通常不是缺工具，是沒有人先跑 doctor。
 
@@ -517,6 +503,6 @@ GOTOOLCHAIN=go1.27.3 go install github.com/golangci/golangci-lint/v2/cmd/golangc
 
 ## 一個新 Agent 找不到的東西，就是還沒完成的東西
 
-這份手冊的驗收方式是黑箱：給一個沒有前文、唯讀的低成本 Agent 一個任務（例如「新增一個需要登入的 GET 欄位，從 SQL 一路接到畫面」），不提示任何 task 或檔名，看它能不能自己走到正確的入口。它找不到的路徑不是它的問題，是這份文件或 `automation-check` 的缺口。
+這份手冊的驗收方式是黑箱：給一個沒有前文、唯讀的低成本 Agent 一個任務，不提示 task 或檔名，確認它能走到正確入口。找不到入口時，先補文件或 `automation-check` 的缺口，再宣稱完成。
 
-兩條由這種驗收補上的字句今天仍然有效，而且由 `automation-check` 當成 CI gate 守著：`.devctl/**` 是暫存產物、不是可提交的 API；Git 寫入只由整合的主 Agent 做，SubAgent 不切 branch。
+`.devctl/**` 是暫存產物、不是可提交的 API；Git 寫入只由整合的主 Agent 做，SubAgent 不切 branch。

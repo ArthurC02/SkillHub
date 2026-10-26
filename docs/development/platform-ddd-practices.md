@@ -10,7 +10,7 @@
 
 1. Accepted ADR 是已定案的架構事實；Boundary 對照見 [Domain Memory](../domain-memory/) 的已審查 Context 與 [`architecture-identity.yaml`](../../apps/platform/architecture-identity.yaml)，依賴規則以 [Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map) 為準，query 規則以 [Query 與寫入所有權](../adr/README.md#query-與寫入所有權) 為準。
 2. [產品目標](../plans/01-goals-and-plan.md)、[規格](../plans/02-specifications-and-acceptance-criteria.md)、[工作項目](../plans/03-work-items.md) 與 [待辦](../plans/04-backlog-and-handoffs.md) 說明產品範圍、允收與尚未完成的事。
-3. [Platform internal 導覽](../../apps/platform/internal/README.md) 說明目前可走讀的程式位置；[M4 邊界收斂報告](../plans/mvp/m4/report-platform-ddd-boundary-convergence-2026-08-19.md) 是搬遷時點的證據，不是新的規則來源。
+3. [Platform internal 導覽](../../apps/platform/internal/README.md) 說明目前可走讀的程式位置；[M4 邊界收斂報告](../plans/mvp/m4/report-platform-ddd-boundary-convergence-2026-08-19.md) 是收斂證據，不是新的規則來源。
 4. 本文件與 [開發自動化手冊](./automation.md) 是操作說明；發現其與 ADR 不一致時，先依 ADR 行動，再修正文檔。
 
 不要把已完成的程式收斂誤寫成 MVP 或部署驗收已完成；現行未結項目仍以待辦與 release checklist 為準。

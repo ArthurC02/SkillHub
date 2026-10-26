@@ -50,7 +50,7 @@ React Web ───────────────► Go 控制平面 API �
 
 Go 控制平面擁有授權、Workspace Scope、領域規則、Run 狀態與全部核心資料。Python LLM 與 Sandbox 是能力提供者：收結構化請求、回結構化結果，但不能直接存取核心資料庫。每次模型呼叫都經 LiteLLM；供應商憑證只留在 Gateway。Run 使用短效 Virtual Key，領域狀態變更與對外事件則在同一交易中寫入。
 
-Platform 程式依 creator、product、skill、trial 的 Bounded Context 組織。外部系統透過 Port 與 Adapter 接入；套件、query 與跨 context 依賴都有機器檢查。詳見[架構身份](apps/platform/architecture-identity.yaml)、[Bounded Context 模型](docs/adr/README.md#platform-bounded-context-與-context-map)與[架構決策](docs/adr/README.md)。
+Platform 程式依 [Domain Memory Registry](docs/domain-memory/registry/contexts/index.md) 內經審查的 Bounded Context 組織。外部系統透過 Port 與 Adapter 接入；套件、query 與跨 context 依賴都有機器檢查。詳見[架構身份](apps/platform/architecture-identity.yaml)、[Bounded Context 模型](docs/adr/README.md#platform-bounded-context-與-context-map)與[架構決策](docs/adr/README.md)。
 
 ## 安全模型
 
@@ -97,7 +97,7 @@ task dev
 | --- | --- | --- |
 | API | `go -C apps/platform run ./cmd/api` | HTTP、身分、授權與領域命令 |
 | Worker | `go -C apps/platform run ./cmd/worker` | Run 派送、清理、outbox 與週期工作 |
-| LLM 能力服務 | `cd apps/llm && uv run uvicorn skillhub_llm.app:app` | 結構化、模型驅動的能力 |
+| LLM 能力服務 | `task dev:llm` | 含服務權杖的結構化、模型驅動能力 |
 | Sandbox Provider | `go -C apps/sandbox run ./cmd/sandboxd` | 本機執行提供者邊界 |
 | Web | `npm --prefix apps/web run dev` | React 開發介面 |
 

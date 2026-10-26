@@ -12,7 +12,7 @@ Say what you did, what you expected, and what happened instead. For anything tha
 
 ## Opening a pull request
 
-Run `task ci` first. It is the same deterministic, secret-free sequence CI runs, and it fails locally for the same reasons.
+Run `task ci` first. It is the deterministic, secret-free local baseline; hosted CI additionally runs browser, database/integration, image, dependency and other environment-specific checks.
 
 A few rules catch most review comments before they happen:
 
