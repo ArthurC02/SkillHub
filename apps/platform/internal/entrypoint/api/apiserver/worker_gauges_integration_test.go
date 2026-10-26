@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
@@ -48,11 +49,7 @@ func TestEveryWorkerReplicaRefreshesItsGaugesFromTheDatabase(t *testing.T) {
 	metrics.BacklogOldestSeconds.WithLabelValues(metrics.BacklogEnrichment).Set(987654)
 	metrics.DispatchHalted.WithLabelValues("lifted-elsewhere", "orphan_threshold").Set(987654)
 
-	for _, publish := range set.Gauges {
-		if err := publish(context.Background()); err != nil {
-			t.Fatalf("refreshing a gauge failed: %v", err)
-		}
-	}
+	requireWorkerGaugeRefresh(t, set)
 
 	scraped := scrapedSeries(t)
 	for _, series := range []string{
@@ -65,6 +62,72 @@ func TestEveryWorkerReplicaRefreshesItsGaugesFromTheDatabase(t *testing.T) {
 	} {
 		if scraped[series] == staleValue {
 			t.Errorf("%s still reports %s, a value this replica never read from the database", series, staleValue)
+		}
+	}
+}
+
+func TestWorkerBacklogObservationsDisappearAfterDatabaseFailureAndRecover(t *testing.T) {
+	pool := requireDB(t)
+	metrics.BacklogOldestSeconds.Reset()
+	t.Cleanup(metrics.BacklogOldestSeconds.Reset)
+	ctx := context.Background()
+	failedPool, err := pgxpool.NewWithConfig(ctx, pool.Config())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(failedPool.Close)
+	fake := providertest.New("backlog_freshness_sandbox", "test-token")
+	t.Cleanup(fake.Close)
+	build := func(pool *pgxpool.Pool) *worker.Set {
+		set, err := worker.BuildWorkers(pool, worker.Deps{Providers: run.NewRegistry(fake.Provider())})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return set
+	}
+	set := build(failedPool)
+	requireWorkerGaugeRefresh(t, set)
+	series := []string{
+		`skillhub_backlog_oldest_seconds{backlog="orphan_objects"}`,
+		`skillhub_backlog_oldest_seconds{backlog="source_checks"}`,
+		`skillhub_backlog_oldest_seconds{backlog="enrichment"}`,
+	}
+	initial := scrapedSeries(t)
+	for _, name := range series {
+		if _, present := initial[name]; !present {
+			t.Fatalf("initial observation missing %s", name)
+		}
+	}
+	failedPool.Close()
+	failures := 0
+	for _, publish := range set.Gauges {
+		if err := publish(ctx); err != nil {
+			failures++
+		}
+	}
+	if failures == 0 {
+		t.Fatal("closed database pool produced no observation errors")
+	}
+	failed := scrapedSeries(t)
+	for _, name := range series {
+		if value, present := failed[name]; present {
+			t.Fatalf("unreadable observation %s still publishes %s", name, value)
+		}
+	}
+	requireWorkerGaugeRefresh(t, build(pool))
+	recovered := scrapedSeries(t)
+	for _, name := range series {
+		if _, present := recovered[name]; !present {
+			t.Fatalf("recovered observation missing %s", name)
+		}
+	}
+}
+
+func requireWorkerGaugeRefresh(t *testing.T, set *worker.Set) {
+	t.Helper()
+	for _, publish := range set.Gauges {
+		if err := publish(context.Background()); err != nil {
+			t.Fatalf("refreshing a gauge failed: %v", err)
 		}
 	}
 }

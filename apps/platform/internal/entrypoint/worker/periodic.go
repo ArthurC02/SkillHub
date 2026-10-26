@@ -85,6 +85,7 @@ func (w *BacklogObserveWorker) Observe(ctx context.Context) error {
 	for name, oldest := range w.Backlogs {
 		at, err := oldest(ctx)
 		if err != nil {
+			metrics.BacklogOldestSeconds.DeleteLabelValues(name)
 			failures = append(failures, fmt.Errorf("observe the %s backlog: %w", name, err))
 			continue
 		}
