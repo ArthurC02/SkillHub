@@ -58,6 +58,24 @@ pub fn read_documents(root: &Path) -> Result<Object, String> {
     Ok(documents)
 }
 
+pub fn asset_records(root: &Path, asset: &str) -> Result<Vec<Value>, String> {
+    let (_, key, format) = ASSETS
+        .iter()
+        .find(|(name, _, _)| *name == asset)
+        .ok_or_else(|| format!("unknown asset {asset}"))?;
+    if !has_registry(root) {
+        return Err(missing_registry(root)?);
+    }
+    let held = registry_files(root)?;
+    let document = asset_document(asset, key, format, concept_texts(asset, &held)?)?;
+    Ok(document
+        .as_object()
+        .and_then(|document| document.get(key))
+        .and_then(Value::as_array)
+        .map(<[Value]>::to_vec)
+        .unwrap_or_default())
+}
+
 pub fn committed_documents(
     repo_root: &Path,
     commit: &str,

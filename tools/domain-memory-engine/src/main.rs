@@ -1,4 +1,5 @@
 mod cli;
+mod difflib;
 mod digits;
 mod files;
 mod git;
@@ -6,6 +7,8 @@ mod json;
 mod okf;
 mod proposals;
 mod py;
+mod pyvalue;
+mod records;
 mod store;
 mod tar;
 
@@ -80,6 +83,20 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
                 }
             };
             print_json(&Value::Object(documents));
+            Ok(0)
+        }
+        "get-record" => {
+            let root = py::resolve(invocation.text("registry_root").unwrap_or("."));
+            let reply = records::get_record(
+                &root,
+                invocation.text("asset").unwrap_or_default(),
+                invocation.text("id").unwrap_or_default(),
+                invocation.text("changes_root"),
+            )?;
+            for note in &reply.notes {
+                emit_stderr(&format!("{note}\n"));
+            }
+            print_json(&reply.record);
             Ok(0)
         }
         other => Err(format!("{other} is not available in the Rust engine yet")),
