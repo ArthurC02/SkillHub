@@ -33,7 +33,14 @@ for (const width of [375, 1280]) {
       await page.setViewportSize({ width, height: 900 });
       const { release, reads, writes } = await stubPublicationOperation(page, scenario);
       try {
-        await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
+        await Promise.all([
+          page.waitForResponse(
+            (response) =>
+              response.request().method() === "GET" &&
+              new URL(response.url()).pathname.endsWith(`/skills/${SKILL}/publication`),
+          ),
+          page.goto(`/skills/${SKILL}/versions/${VERSION}`),
+        ]);
         const section = page.getByRole("region", { name: "發佈", exact: true });
         const heading = section.getByRole("heading", { name: "發佈", exact: true });
         const attestation = section.getByRole("checkbox", { name: "我有權散布這些內容" });
