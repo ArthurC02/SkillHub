@@ -117,3 +117,168 @@ tests:
       - eval_time: 12m
         alertname: ProviderCapabilityUnreachable
         exp_alerts: []
+
+  - name: capacity healthy worker is not endangered by API defaults
+    interval: 1m
+    input_series:
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="api",instance="api-a"}'
+        values: "0x400"
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="worker",instance="worker-a"}'
+        values: "120x400"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="DatabaseNearRestoreBudget",alertstate="firing"}'
+        eval_time: 6h
+        exp_samples: []
+      - expr: 'ALERTS{alertname="CapacityNotObserved",alertstate="firing"}'
+        eval_time: 2h
+        exp_samples: []
+
+  - name: capacity worker risk waits six hours
+    interval: 1m
+    input_series:
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="api",instance="api-a"}'
+        values: "0x400"
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="worker",instance="worker-a"}'
+        values: "89x400"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="DatabaseNearRestoreBudget",alertstate="firing"}'
+        eval_time: 5h59m
+        exp_samples: []
+      - expr: 'ALERTS{alertname="DatabaseNearRestoreBudget",alertstate="firing"}'
+        eval_time: 6h
+        exp_samples:
+          - labels: 'ALERTS{alertname="DatabaseNearRestoreBudget",alertstate="firing",process="worker",instance="worker-a",job="platform",severity="warning"}'
+            value: 1
+
+  - name: capacity ninety days is outside the risk boundary
+    interval: 1m
+    input_series:
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="api",instance="api-a"}'
+        values: "0x400"
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="worker",instance="worker-a"}'
+        values: "90x400"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="DatabaseNearRestoreBudget",alertstate="firing"}'
+        eval_time: 6h
+        exp_samples: []
+
+  - name: capacity an observed zero remains a real risk
+    interval: 1m
+    input_series:
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="api",instance="api-a"}'
+        values: "0x400"
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="worker",instance="worker-a"}'
+        values: "0x400"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="DatabaseNearRestoreBudget",alertstate="firing"}'
+        eval_time: 6h
+        exp_samples:
+          - labels: 'ALERTS{alertname="DatabaseNearRestoreBudget",alertstate="firing",process="worker",instance="worker-a",job="platform",severity="warning"}'
+            value: 1
+
+  - name: capacity a healthy worker replica cannot hide another at risk
+    interval: 1m
+    input_series:
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="api",instance="api-a"}'
+        values: "0x400"
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="worker",instance="worker-a"}'
+        values: "89x400"
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="worker",instance="worker-b"}'
+        values: "120x400"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="DatabaseNearRestoreBudget",alertstate="firing"}'
+        eval_time: 6h
+        exp_samples:
+          - labels: 'ALERTS{alertname="DatabaseNearRestoreBudget",alertstate="firing",process="worker",instance="worker-a",job="platform",severity="warning"}'
+            value: 1
+
+  - name: capacity healthy growth resolves the worker risk
+    interval: 1m
+    input_series:
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="api",instance="api-a"}'
+        values: "0x400"
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="worker",instance="worker-a"}'
+        values: "89x360 120x40"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="DatabaseNearRestoreBudget",alertstate="firing"}'
+        eval_time: 6h
+        exp_samples:
+          - labels: 'ALERTS{alertname="DatabaseNearRestoreBudget",alertstate="firing",process="worker",instance="worker-a",job="platform",severity="warning"}'
+            value: 1
+      - expr: 'ALERTS{alertname="DatabaseNearRestoreBudget",alertstate="firing"}'
+        eval_time: 6h1m
+        exp_samples: []
+
+  - name: capacity API defaults cannot hide a missing worker observation
+    interval: 1m
+    input_series:
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="api",instance="api-a"}'
+        values: "0x400"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="CapacityNotObserved",alertstate="firing"}'
+        eval_time: 1h59m
+        exp_samples: []
+      - expr: 'ALERTS{alertname="CapacityNotObserved",alertstate="firing"}'
+        eval_time: 2h
+        exp_samples:
+          - labels: 'ALERTS{alertname="CapacityNotObserved",alertstate="firing",process="worker",severity="warning"}'
+            value: 1
+
+  - name: capacity a missing scrape still reports unknown
+    interval: 1m
+    input_series: []
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="CapacityNotObserved",alertstate="firing"}'
+        eval_time: 2h
+        exp_samples:
+          - labels: 'ALERTS{alertname="CapacityNotObserved",alertstate="firing",process="worker",severity="warning"}'
+            value: 1
+
+  - name: capacity a lost worker observation becomes unknown
+    interval: 1m
+    input_series:
+      - series: 'up{job="platform",process="worker",instance="worker-a"}'
+        values: "1x400"
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="api",instance="api-a"}'
+        values: "0x400"
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="worker",instance="worker-a"}'
+        values: "120 stale _x400"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="CapacityNotObserved",alertstate="firing"}'
+        eval_time: 2h
+        exp_samples: []
+      - expr: 'ALERTS{alertname="CapacityNotObserved",alertstate="firing"}'
+        eval_time: 2h1m
+        exp_samples:
+          - labels: 'ALERTS{alertname="CapacityNotObserved",alertstate="firing",process="worker",severity="warning"}'
+            value: 1
+
+  - name: capacity a returning worker resolves unknown
+    interval: 1m
+    input_series:
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="api",instance="api-a"}'
+        values: "0x400"
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="worker",instance="worker-a"}'
+        values: "_x121 120x280"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="CapacityNotObserved",alertstate="firing"}'
+        eval_time: 2h
+        exp_samples:
+          - labels: 'ALERTS{alertname="CapacityNotObserved",alertstate="firing",process="worker",severity="warning"}'
+            value: 1
+      - expr: 'ALERTS{alertname="CapacityNotObserved",alertstate="firing"}'
+        eval_time: 2h1m
+        exp_samples: []
+
+  - name: capacity a healthy worker does not need API observations
+    interval: 1m
+    input_series:
+      - series: 'skillhub_restore_budget_days_left{job="platform",process="worker",instance="worker-a"}'
+        values: "120x400"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="DatabaseNearRestoreBudget",alertstate="firing"}'
+        eval_time: 6h
+        exp_samples: []
+      - expr: 'ALERTS{alertname="CapacityNotObserved",alertstate="firing"}'
+        eval_time: 2h
+        exp_samples: []

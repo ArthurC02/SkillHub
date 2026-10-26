@@ -10,6 +10,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+func TestUnobservedCapacityMeasurementsAreAbsent(t *testing.T) {
+	body := scrape(t)
+	for _, name := range []string{"skillhub_database_bytes", "skillhub_restore_budget_bytes", "skillhub_restore_budget_days_left"} {
+		if series := seriesOf(body, name); len(series) != 0 {
+			t.Errorf("unobserved %s was exported: %v", name, series)
+		}
+	}
+}
+
 func TestStatusClassSplitsEveryRangeTheProviderRecorderActsOn(t *testing.T) {
 	for _, tc := range []struct {
 		name   string

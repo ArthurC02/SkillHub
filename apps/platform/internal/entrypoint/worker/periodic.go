@@ -157,7 +157,7 @@ func RefreshGauges(ctx context.Context, publishers []func(context.Context) error
 		round, cancel := context.WithTimeout(ctx, GaugeRefreshInterval/2)
 		for _, publish := range publishers {
 			if err := publish(round); err != nil && ctx.Err() == nil {
-				slog.Warn("a gauge kept its last value; refreshing it failed", "error", err)
+				slog.Warn("refreshing operational gauges failed", "error", err)
 			}
 		}
 		cancel()

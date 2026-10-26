@@ -130,13 +130,18 @@ func (s Store) Recent(ctx context.Context, now time.Time) ([]Sample, error) {
 func (s Store) PublishGauges(ctx context.Context) error {
 	samples, err := s.Recent(ctx, time.Now())
 	if err != nil {
+		metrics.DatabaseBytes.Reset()
+		metrics.RestoreBudgetBytes.Reset()
+		metrics.RestoreBudgetDaysLeft.Reset()
 		return err
 	}
 	budget := s.Rate.BudgetBytes()
-	metrics.RestoreBudgetBytes.Set(float64(budget))
-	metrics.RestoreBudgetDaysLeft.Set(DaysUntilBudget(samples, budget))
+	metrics.RestoreBudgetBytes.WithLabelValues().Set(float64(budget))
+	metrics.RestoreBudgetDaysLeft.WithLabelValues().Set(DaysUntilBudget(samples, budget))
 	if len(samples) > 0 {
-		metrics.DatabaseBytes.Set(float64(samples[len(samples)-1].Bytes))
+		metrics.DatabaseBytes.WithLabelValues().Set(float64(samples[len(samples)-1].Bytes))
+	} else {
+		metrics.DatabaseBytes.Reset()
 	}
 	return nil
 }
