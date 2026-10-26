@@ -1,4 +1,4 @@
-import { ME as SESSION } from "../../testing/fixtures/platform";
+import { ME as SESSION, platformResponse } from "../../testing/fixtures/platform";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { StrictMode, act } from "react";
@@ -7,6 +7,7 @@ import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import App from "../../app/App";
 import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
+import { onlineManager } from "@tanstack/react-query";
 import { router } from "../../app/router";
 import { LicenseBadge, LicenseNotes } from "../../shared/ui/LicenseBadge";
 import { RiskIndicator } from "../../shared/ui/RiskIndicator";
@@ -408,6 +409,135 @@ test("DISC-002 類別: chip 數量的請求失敗時印「測量失敗」，不�
 
   expect(chips().every((c) => c.includes("測量失敗"))).toBe(true);
   expect(chips().some((c) => c.includes("…"))).toBe(false);
+});
+
+for (const cachedTotal of [0, 40]) {
+  test(`category counts recover from cached ${cachedTotal} without losing the draft or focus`, async () => {
+    let phase: "initial" | "failed" | "recovered" = "initial";
+    const countCalls: string[] = [];
+    vi.stubGlobal("fetch", async (input: string) => {
+      const url = String(input);
+      if (!url.includes("/api/skills/catalog")) {
+        const { body, status } = platformResponse(url);
+        return new Response(JSON.stringify(body), { status });
+      }
+      const params = new URLSearchParams(url.split("?")[1] ?? "");
+      const category = params.get("category") ?? "";
+      const page = SHELF_PAGES[category];
+      if (params.get("limit") === "1") {
+        countCalls.push(url);
+        if (phase === "failed" && (cachedTotal !== 0 || category === "documents"))
+          return new Response(null, { status: 503 });
+        const total =
+          phase !== "recovered"
+            ? cachedTotal === 0
+              ? 0
+              : page.total
+            : cachedTotal === 0
+              ? page.total
+              : 0;
+        return new Response(JSON.stringify({ total }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ...page, limit: 100, truncated: false }), {
+        status: 200,
+      });
+    });
+    await browseCatalogue();
+    await waitFor(() => countCalls.length === 4);
+    expect(chips()).toEqual(
+      cachedTotal === 0 ? [] : ["全部（40）", "文件（12）", "寫作（7）", "資料（21）"],
+    );
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="任務描述"]')!;
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    await act(async () => {
+      setValue.call(input, "保留我的任務草稿");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.focus();
+    });
+    const location = window.location.href;
+    const filters = [
+      {},
+      { category: "documents" },
+      { category: "writing" },
+      { category: "data" },
+    ] as const;
+    phase = "failed";
+    await act(async () => {
+      await Promise.all(
+        filters.map((filter) =>
+          queryClient.refetchQueries({
+            queryKey: queryKeys.skills.catalogTotal(filter),
+            exact: true,
+          }),
+        ),
+      );
+    });
+    await waitFor(() => chips().some((chip) => chip.includes("測量失敗")));
+    expect(chips()).toEqual(
+      cachedTotal === 0
+        ? ["全部（0）", "文件（測量失敗）", "寫作（0）", "資料（0）"]
+        : ["全部（測量失敗）", "文件（測量失敗）", "寫作（測量失敗）", "資料（測量失敗）"],
+    );
+    const main = container.querySelector("main")!;
+    expect(main.querySelectorAll('[role="alert"]')).toHaveLength(1);
+    expect(main.textContent).toContain("暫時無法讀取分類數量");
+    expect(input.value).toBe("保留我的任務草稿");
+    expect(document.activeElement).toBe(input);
+    const retry = [...main.querySelectorAll("button")].find(
+      (button) => button.textContent === "再試一次",
+    )!;
+    onlineManager.setOnline(false);
+    try {
+      phase = "recovered";
+      await act(async () => retry.click());
+      await waitFor(() => main.textContent?.includes("等待連線以讀取分類數量") ?? false);
+      expect(retry.disabled).toBe(true);
+      expect(retry.textContent).toBe("重新讀取中…");
+      expect(document.activeElement?.id).toBe("catalog-search-heading");
+      expect(countCalls).toHaveLength(8);
+    } finally {
+      await act(async () => onlineManager.setOnline(true));
+    }
+    await waitFor(
+      () =>
+        countCalls.length === 12 &&
+        main.querySelectorAll('[role="alert"]').length === 0 &&
+        !chips().some((chip) => chip.includes("…") || chip.includes("測量失敗")) &&
+        !main.textContent?.includes("等待連線以讀取分類數量"),
+    );
+    expect(chips()).toEqual(
+      cachedTotal === 0 ? ["全部（40）", "文件（12）", "寫作（7）", "資料（21）"] : [],
+    );
+    expect(input.value).toBe("保留我的任務草稿");
+    expect(document.activeElement?.id).toBe("catalog-search-heading");
+    expect(window.location.href).toBe(location);
+  });
+}
+
+test("category count failures prioritize one login notice over another category error", async () => {
+  vi.stubGlobal("fetch", async (input: string) => {
+    const url = String(input);
+    if (!url.includes("/api/skills/catalog")) {
+      const { body, status } = platformResponse(url);
+      return new Response(JSON.stringify(body), { status });
+    }
+    const params = new URLSearchParams(url.split("?")[1] ?? "");
+    if (params.get("limit") === "1")
+      return new Response(null, { status: params.get("category") === "documents" ? 401 : 503 });
+    return new Response(JSON.stringify({ ...SHELF_PAGES[""], limit: 100, truncated: false }), {
+      status: 200,
+    });
+  });
+  await browseCatalogue();
+  const main = container.querySelector("main")!;
+  await waitFor(() => main.textContent?.includes("分類數量需要登入") ?? false);
+  expect(
+    [...main.querySelectorAll('[role="status"]')].filter((status) =>
+      status.textContent?.includes("分類數量"),
+    ),
+  ).toHaveLength(1);
+  expect(main.querySelectorAll('[role="alert"]')).toHaveLength(0);
+  expect(main.textContent).not.toContain("暫時無法讀取分類數量");
 });
 
 test("DISC-001 搜尋文字超過 2000 字：送出前擋下並說明，不打伺服器", async () => {

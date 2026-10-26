@@ -150,6 +150,7 @@ export function Home() {
       <CompareBar selected={selected} />
 
       <CategoryNav
+        onCountsChange={revealFocusedComparison}
         filters={effectiveFilters}
         browsing={browsing}
         correction={currentCorrection ? JSON.stringify(currentCorrection) : search.correction}

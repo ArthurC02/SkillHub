@@ -188,10 +188,19 @@ export function useCatalog(filters: SearchFilters, enabled: boolean) {
   });
 }
 
+async function fetchCatalogTotal(filters: SearchFilters) {
+  const response: Partial<CatalogResponse> | null = await browseCatalog(filters, 1);
+  const total = response?.total;
+  if (typeof total !== "number" || !Number.isSafeInteger(total) || total < 0) {
+    throw new Error("Invalid catalog count response");
+  }
+  return total;
+}
+
 export function useCatalogTotal(filters: SearchFilters) {
   return useQuery({
     queryKey: queryKeys.skills.catalogTotal(filters),
-    queryFn: () => browseCatalog(filters, 1),
+    queryFn: () => fetchCatalogTotal(filters),
   });
 }
 
