@@ -86,15 +86,16 @@ export function PublishPanel({
         />
       )}
 
-      {noPublisherYet ? (
+      {noPublisherYet && (
         <>
           <p className="note">
             先在這裡註冊一個永久的發佈者名稱；確認後會回到這一版繼續建立 Publication。
           </p>
           <h3>發佈者名稱</h3>
-          <PublisherRegistration />
         </>
-      ) : publisher.data && !publisher.error ? (
+      )}
+      <PublisherRegistration visible={noPublisherYet} focusTarget={headingId} />
+      {publisher.data && !publisher.error ? (
         <>
           {publication.isPending && <Loading what="發佈狀態" />}
           {publication.error && !notPublishedYet && (

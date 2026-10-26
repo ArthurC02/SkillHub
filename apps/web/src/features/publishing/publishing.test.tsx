@@ -1644,6 +1644,83 @@ test("PublisherSection：未註冊時顯示名稱規則、永久警語與表單"
   expect(container.querySelector("form")).not.toBeNull();
 });
 
+for (const owner of ["workspace", "version"] as const) {
+  for (const outcome of ["refused", "uncertain", "read-error", "registered"] as const) {
+    test(`publisher registration ${owner} preserves its outcome through a delayed ${outcome} identity read`, async () => {
+      let reads = 0;
+      let releaseRead!: (response: Response) => void;
+      const reread = new Promise<Response>((resolve) => {
+        releaseRead = resolve;
+      });
+      const posts: unknown[] = [];
+      vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+        const path = String(input).split("?")[0];
+        if (!path.endsWith("/me/publisher")) return json({ error: "not found" }, 404);
+        if (init?.method === "POST") {
+          posts.push(JSON.parse(String(init.body)));
+          return outcome === "refused"
+            ? json({ error: "publisher name is taken", reason: "name_taken" }, 409)
+            : json({ error: "upstream unavailable" }, 503);
+        }
+        reads += 1;
+        return reads === 2 ? reread : json({ error: "no publisher" }, 404);
+      });
+      await render(
+        owner === "workspace" ? (
+          <PublisherSection />
+        ) : (
+          <PublishPanel skill={detail()} isLoggedIn={true} isOwner={true} />
+        ),
+        () => container.querySelector("form.publisher-form") !== null,
+      );
+      const input = container.querySelector<HTMLInputElement>("form.publisher-form input")!;
+      const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+      await act(async () => {
+        setValue.call(input, "kept-namespace");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.focus();
+      });
+      await act(async () => button("註冊")!.click());
+      await waitFor(() => reads === 2 && container.querySelector("form.publisher-form") === null);
+      expect(text()).not.toContain("還沒有註冊發佈者名稱");
+      expect(document.activeElement).toBe(container.querySelector("h2"));
+      await act(async () => {
+        releaseRead(
+          await json(
+            outcome === "registered" ? OWN_PUBLISHER : { error: "unavailable" },
+            outcome === "registered" ? 200 : outcome === "read-error" ? 503 : 404,
+          ),
+        );
+      });
+      if (outcome === "registered") {
+        await waitFor(() =>
+          owner === "workspace" ? text().includes(PUBLISHER) : text().includes("發佈名稱"),
+        );
+        expect(container.querySelector("form.publisher-form")).toBeNull();
+        expect(text()).not.toContain("尚未確認註冊");
+      } else {
+        if (outcome === "read-error") {
+          await waitFor(() => text().includes("暫時無法讀取發佈者"));
+          expect(container.querySelector("form.publisher-form")).toBeNull();
+          expect(text()).not.toContain("還沒有註冊發佈者名稱");
+          await act(async () => button("再試一次")!.click());
+        }
+        await waitFor(() => container.querySelector("form.publisher-form") !== null);
+        expect(container.querySelector<HTMLInputElement>("form.publisher-form input")!.value).toBe(
+          "kept-namespace",
+        );
+        expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+          outcome === "refused"
+            ? "這個名稱已經被別人取走了，換一個名稱再試一次。"
+            : "尚未確認註冊是否已完成；上面的狀態已重新讀取，請先看過再決定要不要重送。",
+        );
+      }
+      expect(posts).toEqual([{ name: "kept-namespace" }]);
+      expect(reads).toBe(outcome === "read-error" ? 3 : 2);
+    });
+  }
+}
+
 test("PublisherSection：409 already_registered 顯示中文，不顯示英文原文", async () => {
   const calls: string[] = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {

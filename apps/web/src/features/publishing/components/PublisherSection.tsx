@@ -40,18 +40,24 @@ export function PublisherSection() {
           </p>
           <p className="note">{PUBLISHER_NAME_PERMANENT}</p>
         </>
-      ) : notRegistered ? (
-        <PublisherRegistration />
       ) : null}
+      <PublisherRegistration visible={notRegistered} focusTarget={headingId} />
     </section>
   );
 }
 
-export function PublisherRegistration() {
+export function PublisherRegistration({
+  visible,
+  focusTarget,
+}: {
+  visible: boolean;
+  focusTarget: string;
+}) {
   const register = useRegisterPublisher();
   const [name, setName] = useState("");
   const inputId = useId();
 
+  if (!visible) return null;
   if (register.isSuccess) return <p role="status">已送出註冊，正在確認…</p>;
 
   return (
@@ -64,6 +70,7 @@ export function PublisherRegistration() {
         onSubmit={(event) => {
           event.preventDefault();
           register.mutate(name.trim());
+          document.getElementById(focusTarget)?.focus();
         }}
       >
         <div className="field">
