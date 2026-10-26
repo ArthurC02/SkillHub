@@ -1,0 +1,162 @@
+{
+  "round": 1,
+  "sample_input": "請依規則為每筆訂單撰寫道歉訊息；每行分開處理。\n訂單編號：A-104；延誤分鐘數：9；補償金額：50 元\n訂單編號：B-205；延誤分鐘數：10；補償金額：80 元\n訂單編號：C-306；延誤分鐘數：37；補償金額：120 元\n訂單編號：D-407；延誤分鐘數：0；補償金額：30 元\n訂單編號：E-508；延誤分鐘數：2.5；補償金額：40 元",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 筆（延誤 9 分鐘）時，輸出包含訂單編號「A-104」、延誤「9 分鐘」及道歉內容，不包含補償金額「50 元」，且最多兩句。"
+    },
+    {
+      "text": "試跑輸入第 2 筆（延誤恰為 10 分鐘）時，輸出包含訂單編號「B-205」、延誤「10 分鐘」及補償金額「80 元」，且最多兩句。"
+    },
+    {
+      "text": "試跑輸入第 3 筆（延誤 37 分鐘）時，輸出包含訂單編號「C-306」、延誤「37 分鐘」及補償金額「120 元」，且最多兩句。"
+    },
+    {
+      "text": "試跑輸入第 4 筆（延誤為 0）時，要求更正延誤分鐘數，且不產生道歉訊息。"
+    },
+    {
+      "text": "試跑輸入第 5 筆（延誤為 2.5）時，要求更正延誤分鐘數，且不產生道歉訊息。"
+    }
+  ],
+  "final_output": "您好，訂單A-104延誤9分鐘，造成不便我們深感抱歉。\n\n您好，訂單B-205延誤10分鐘，造成不便我們深感抱歉；我們將提供80 元補償。\n\n您好，訂單C-306延誤37分鐘，造成不便我們深感抱歉；我們將提供120 元補償。\n\n訂單編號：D-407；延誤分鐘數：0；補償金額：30 元  \n請更正延誤分鐘數。\n\n訂單編號：E-508；延誤分鐘數：2.5；補償金額：40 元  \n請更正延誤分鐘數。",
+  "artifacts": [
+    "A-104.txt",
+    "B-205.txt",
+    "C-306.txt",
+    "D-407.txt",
+    "E-508.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "d95955e4-cae7-4bce-abb5-f09041277d05",
+    "run_id": "2af8ea32-c850-49cd-bad0-147b51ada328",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆訂單的輸出均符合各自的驗收條件：前三筆依延誤時間提供適當的道歉與補償內容；後兩筆要求更正無效的延誤分鐘數，未產生道歉訊息。",
+    "criterion_results": [
+      {
+        "criterion_id": "82654ad5-93a2-41fe-a8c1-3ee355aa3c59",
+        "text": "試跑輸入第 1 筆（延誤 9 分鐘）時，輸出包含訂單編號「A-104」、延誤「9 分鐘」及道歉內容，不包含補償金額「50 元」，且最多兩句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A-104 的訊息載明延誤 9 分鐘並致歉，沒有提及 50 元補償，且只有一句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，訂單A-104延誤9分鐘，造成不便我們深感抱歉。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8596ad69-6ed1-4d83-b57c-4d0449c3cc9a",
+        "text": "試跑輸入第 2 筆（延誤恰為 10 分鐘）時，輸出包含訂單編號「B-205」、延誤「10 分鐘」及補償金額「80 元」，且最多兩句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "B-205 的訊息載明延誤 10 分鐘及補償 80 元，且只有一句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，訂單B-205延誤10分鐘，造成不便我們深感抱歉；我們將提供80 元補償。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1957bb47-b8c0-416d-a82e-6b3cae87e51d",
+        "text": "試跑輸入第 3 筆（延誤 37 分鐘）時，輸出包含訂單編號「C-306」、延誤「37 分鐘」及補償金額「120 元」，且最多兩句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "C-306 的訊息載明延誤 37 分鐘及補償 120 元，且只有一句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，訂單C-306延誤37分鐘，造成不便我們深感抱歉；我們將提供120 元補償。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "adf4ee37-f9a4-40d9-ba2e-1b074d377aef",
+        "text": "試跑輸入第 4 筆（延誤為 0）時，要求更正延誤分鐘數，且不產生道歉訊息。",
+        "result": "passed",
+        "source": "model",
+        "reason": "D-407 的延誤分鐘數為 0；輸出要求更正，沒有產生道歉訊息。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單編號：D-407；延誤分鐘數：0；補償金額：30 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "請更正延誤分鐘數。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2f42e89b-ef35-4244-990e-f9c1371d3477",
+        "text": "試跑輸入第 5 筆（延誤為 2.5）時，要求更正延誤分鐘數，且不產生道歉訊息。",
+        "result": "passed",
+        "source": "model",
+        "reason": "E-508 的延誤分鐘數為 2.5；輸出要求更正，沒有產生道歉訊息。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單編號：E-508；延誤分鐘數：2.5；補償金額：40 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "請更正延誤分鐘數。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 5 readable output file(s): A-104.txt, B-205.txt, C-306.txt, D-407.txt, E-508.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1770 input and 4881 output tokens on gpt-6-luna; reported cost $0.0076 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 40,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

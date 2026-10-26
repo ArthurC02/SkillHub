@@ -1,0 +1,130 @@
+{
+  "round": 1,
+  "sample_input": "請依規則為下列每筆訂單撰寫顧客道歉訊息。\n訂單編號：D501；延誤：9 分鐘；補償：45 元\n訂單編號：D502；延誤：11 分鐘；補償：90 元",
+  "acceptance_criteria": [
+    {
+      "text": "D501 須有道歉訊息，包含訂單編號與「9 分鐘」，不提「45 元」，且最多兩句；9 小於 10。"
+    },
+    {
+      "text": "D502 須有道歉訊息，包含訂單編號、「11 分鐘」及「90 元」，且最多兩句；11 大於 10，達到補償門檻。"
+    },
+    {
+      "text": "兩筆訂單各輸出一則對應訊息，不得混用資訊。"
+    }
+  ],
+  "final_output": "假設：今天以系統日期 2026-10-26 計\n\n很抱歉，訂單 D501 延誤 9 分鐘，造成不便敬請見諒。\n\n很抱歉，訂單 D502 延誤 11 分鐘，將提供 90 元補償，造成不便敬請見諒。",
+  "artifacts": [
+    "checked.json",
+    "D501.txt",
+    "D502.txt",
+    "orders.json"
+  ],
+  "evaluation": {
+    "evaluation_id": "e301e33f-2481-44bc-bd23-aecd72ec4da7",
+    "run_id": "f637acc7-1a7d-4f55-b152-4070d9188f79",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩筆訂單各有一則符合要求的道歉訊息；D501 未提及補償，D502 正確提及 90 元補償。",
+    "criterion_results": [
+      {
+        "criterion_id": "589abe1c-ee8a-4726-bc7f-862e0ee1a56f",
+        "text": "D501 須有道歉訊息，包含訂單編號與「9 分鐘」，不提「45 元」，且最多兩句；9 小於 10。",
+        "result": "passed",
+        "source": "model",
+        "reason": "D501 的道歉訊息包含訂單編號及「9 分鐘」，只有一句，且未提及「45 元」。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "很抱歉，訂單 D501 延誤 9 分鐘，造成不便敬請見諒。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cda8ec1a-4cfe-40e0-880d-e1aa2f329e75",
+        "text": "D502 須有道歉訊息，包含訂單編號、「11 分鐘」及「90 元」，且最多兩句；11 大於 10，達到補償門檻。",
+        "result": "passed",
+        "source": "model",
+        "reason": "D502 的道歉訊息包含訂單編號、「11 分鐘」及「90 元」，且只有一句。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "很抱歉，訂單 D502 延誤 11 分鐘，將提供 90 元補償，造成不便敬請見諒。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2e577f2a-abad-42fb-91f6-a60e32a80165",
+        "text": "兩筆訂單各輸出一則對應訊息，不得混用資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆分別為 D501 和 D502 輸出一則訊息，兩則訊息的資訊沒有混用。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "很抱歉，訂單 D501 延誤 9 分鐘，造成不便敬請見諒。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "很抱歉，訂單 D502 延誤 11 分鐘，將提供 90 元補償，造成不便敬請見諒。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 4 readable output file(s): checked.json, D501.txt, D502.txt, orders.json"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1768 input and 1359 output tokens on skillhub-run; reported cost $0.0063 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 37,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

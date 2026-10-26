@@ -1,0 +1,97 @@
+{
+  "round": 1,
+  "sample_input": "請為這筆訂單寫三句道歉訊息。\n訂單編號：H-803；延誤分鐘數：12；補償金額：45 元",
+  "acceptance_criteria": [
+    {
+      "text": "輸出的道歉訊息不超過兩句，即使請求指定三句。"
+    },
+    {
+      "text": "道歉訊息包含訂單編號 H-803、延誤 12 分鐘及補償金額 45 元。"
+    }
+  ],
+  "final_output": "您好，訂單H-803延誤12分鐘，造成不便我們深感抱歉；我們將提供45 元補償。",
+  "artifacts": [
+    "apology_H-803.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "90b477c8-d75b-4544-a97f-d5fb42cd380c",
+    "run_id": "382354e8-b4cb-47b4-8685-91191f7195b0",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收條件均已達成：道歉訊息不超過兩句，且包含所有指定資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "c814de63-7b28-4d7e-bf2e-a3d6ff97c3f5",
+        "text": "輸出的道歉訊息不超過兩句，即使請求指定三句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出的道歉訊息只有一句，未超過兩句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，訂單H-803延誤12分鐘，造成不便我們深感抱歉；我們將提供45 元補償。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5dfd3400-7555-4477-9c61-4f99b5efc480",
+        "text": "道歉訊息包含訂單編號 H-803、延誤 12 分鐘及補償金額 45 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "訊息包含訂單編號 H-803、延誤 12 分鐘及補償 45 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，訂單H-803延誤12分鐘，造成不便我們深感抱歉；我們將提供45 元補償。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): apology_H-803.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1589 input and 1155 output tokens on gpt-6-luna; reported cost $0.0044 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

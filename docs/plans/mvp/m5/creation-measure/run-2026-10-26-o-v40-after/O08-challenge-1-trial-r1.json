@@ -1,0 +1,125 @@
+{
+  "round": 1,
+  "sample_input": "請依規則處理以下兩筆候補資料；今天是 2026-10-26。\n姓名｜課程名稱｜開課日期｜回覆期限\n林怡安｜急救入門｜2026-11-03｜2026-10-26\n周子豪｜攝影基礎｜2026-11-10｜2026-10-32",
+  "acceptance_criteria": [
+    {
+      "text": "指出「2026-10-32」不是有效日期，不能據此產生周子豪的簡訊。"
+    },
+    {
+      "text": "仍為林怡安產生簡訊，完整包含姓名「林怡安」、課程名稱「急救入門」、開課日期「2026-11-03」及回覆期限「2026-10-26」。"
+    },
+    {
+      "text": "林怡安的簡訊全文不超過 60 個字元，且不附加標題或說明。"
+    }
+  ],
+  "final_output": "林怡安您好，候補已遞補至「急救入門」，開課日2026-11-03，請於2026-10-26前回覆。\n\n周子豪：回覆期限「2026-10-32」不是有效日期，該筆不能產生簡訊。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "02be5352-3c03-4943-ac70-514b6ba9188e",
+    "run_id": "12f45421-e8bd-4740-bfea-13c1d0f40169",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項標準均已達成：提供了林怡安的短簡訊，並指出周子豪的無效日期，因此未為他產生簡訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "5ca31502-2ba0-4a57-b1bf-124859b6a7cf",
+        "text": "指出「2026-10-32」不是有效日期，不能據此產生周子豪的簡訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出周子豪的回覆期限不是有效日期，且不能產生該筆簡訊。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "周子豪：回覆期限「2026-10-32」不是有效日期，該筆不能產生簡訊。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "53e34271-e6e0-47b3-b2fc-5726ff286de7",
+        "text": "仍為林怡安產生簡訊，完整包含姓名「林怡安」、課程名稱「急救入門」、開課日期「2026-11-03」及回覆期限「2026-10-26」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "林怡安的簡訊完整包含姓名、課程名稱、開課日期及回覆期限。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林怡安您好，候補已遞補至「急救入門」，開課日2026-11-03，請於2026-10-26前回覆。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3e7d6012-c7bb-4186-b738-acf65518abc6",
+        "text": "林怡安的簡訊全文不超過 60 個字元，且不附加標題或說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "林怡安的簡訊不足 60 個字元，簡訊本身沒有標題或說明；周子豪的錯誤提示另列於下一段。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林怡安您好，候補已遞補至「急救入門」，開課日2026-11-03，請於2026-10-26前回覆。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "周子豪：回覆期限「2026-10-32」不是有效日期，該筆不能產生簡訊。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1721 input and 2112 output tokens on skillhub-run; reported cost $0.0062 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 36,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

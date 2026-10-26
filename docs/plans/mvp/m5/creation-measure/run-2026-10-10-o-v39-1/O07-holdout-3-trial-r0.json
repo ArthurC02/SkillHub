@@ -1,0 +1,103 @@
+{
+  "round": 0,
+  "sample_input": "三張訂單要道歉：E01 晚了 12 分鐘補 20 元、E02 晚了 -5 分鐘補 20 元、E03 晚了 45 分鐘補 60 元。",
+  "acceptance_criteria": [
+    {
+      "text": "E01 的訊息含 E01、12 分鐘、20 元，E03 的訊息含 E03、45 分鐘、60 元，每則不超過 2 句"
+    },
+    {
+      "text": "明確指出 E02 的 -5 分鐘不合理（延誤分鐘數須為正整數），沒有為 E02 寫出含 -5 分鐘的道歉訊息"
+    }
+  ],
+  "final_output": "- **E01：**您好，訂單E01延誤12分鐘，造成不便我們深感抱歉；我們將提供20 元補償。\n- **E02：**延誤分鐘數「-5」不能使用，請更正延誤分鐘數。\n- **E03：**您好，訂單E03延誤45分鐘，造成不便我們深感抱歉；我們將提供60 元補償。",
+  "artifacts": [
+    "E01.txt",
+    "E03.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "3a9aefee-18c4-4977-84d9-7783caeba976",
+    "run_id": "2ed7a214-813f-4a73-a12f-e6aee93e89c3",
+    "status": "completed",
+    "overall": "met",
+    "summary": "E01、E03 的道歉訊息符合內容及句數要求；E02 的負數延誤被指出無效，未產生道歉訊息。",
+    "criterion_results": [
+      {
+        "criterion_id": "5365ac9f-6963-47f6-b57d-f618e2e80c16",
+        "text": "E01 的訊息含 E01、12 分鐘、20 元，E03 的訊息含 E03、45 分鐘、60 元，每則不超過 2 句",
+        "result": "passed",
+        "source": "model",
+        "reason": "E01 與 E03 的訊息各包含指定訂單編號、延誤分鐘數及補償金額，且各只有一句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **E01：**您好，訂單E01延誤12分鐘，造成不便我們深感抱歉；我們將提供20 元補償。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **E03：**您好，訂單E03延誤45分鐘，造成不便我們深感抱歉；我們將提供60 元補償。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "91c958e1-7198-419d-adb2-3abd50ee099b",
+        "text": "明確指出 E02 的 -5 分鐘不合理（延誤分鐘數須為正整數），沒有為 E02 寫出含 -5 分鐘的道歉訊息",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出 E02 的 -5 分鐘不能使用並要求更正，未為 E02 撰寫含該分鐘數的道歉訊息。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **E02：**延誤分鐘數「-5」不能使用，請更正延誤分鐘數。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 2 readable output file(s): E01.txt, E03.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1671 input and 1481 output tokens on gpt-6-luna; reported cost $0.0046 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

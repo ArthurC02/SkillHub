@@ -1,0 +1,97 @@
+{
+  "round": 0,
+  "sample_input": "今天 2026-10-10。學員歐陽慧珊，課程初階水彩寫生入門與色彩實作班，開課日期 2026/11/07，回覆期限 2026/10/14 18:00，寫候補通知簡訊。",
+  "acceptance_criteria": [
+    {
+      "text": "簡訊含「歐陽慧珊」與「初階水彩寫生入門與色彩實作班」，並含開課日期 2026/11/07 與回覆期限 2026/10/14 18:00 的日期時間資訊（格式可不同但意思一致）"
+    },
+    {
+      "text": "簡訊全文（含標點、空白與數字，每個字元計 1 字，請逐字元清點）不超過 60 字"
+    }
+  ],
+  "final_output": "無法採用：「reply_deadline」「2026/10/14 18:00」讀不出date值，不拿它計算\n\n因此未產生簡訊。請確認回覆期限，並提供可辨識的日期格式；若需保留 18:00，也請一併確認。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "545bcb75-d570-4f22-8671-66e8e71333f4",
+    "run_id": "1e7fc43d-171c-45a6-a52b-43023545f384",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "本次回覆要求確認回覆期限，並明確表示未產生簡訊；兩項針對簡訊內容及長度的驗收條件均未達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "6a50b624-db45-4f58-a2bc-9c20ff101541",
+        "text": "簡訊含「歐陽慧珊」與「初階水彩寫生入門與色彩實作班」，並含開課日期 2026/11/07 與回覆期限 2026/10/14 18:00 的日期時間資訊（格式可不同但意思一致）",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終回覆明確表示未產生簡訊，因此沒有包含指定姓名、課程及日期時間資訊的簡訊。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "因此未產生簡訊。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7a8d7240-fca4-4433-a8c4-61cdb8e44bf8",
+        "text": "簡訊全文（含標點、空白與數字，每個字元計 1 字，請逐字元清點）不超過 60 字",
+        "result": "failed",
+        "source": "model",
+        "reason": "未產生簡訊，故沒有可逐字元清點且符合 60 字上限的簡訊全文。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "因此未產生簡訊。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1608 input and 1838 output tokens on skillhub-run; reported cost $0.0048 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

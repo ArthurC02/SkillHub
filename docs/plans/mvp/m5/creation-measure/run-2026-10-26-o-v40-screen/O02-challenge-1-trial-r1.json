@@ -1,0 +1,97 @@
+{
+  "round": 1,
+  "sample_input": "請依累進方式計算各店家本月平台抽成（元）。\n店家,營業額（元）\n甲,100000\n乙,200010\n甲,100001",
+  "acceptance_criteria": [
+    {
+      "text": "指出甲的兩筆營業額 100,000 元與 100,001 元彼此衝突、不能同時正確，且不計算甲的抽成。"
+    },
+    {
+      "text": "仍逐一處理其他可確定的店家：乙的抽成為 35,001 元（20,000 + 15,000 + 1）。"
+    }
+  ],
+  "final_output": "| 店家 | 本月平台抽成（元） |\n|---|---:|\n| 甲 | 營業額衝突（100,000、100,001 元），無法計算；請確認營業額 |\n| 乙 | 35,002 |\n\n乙的累進計算：100,000 × 20% ＋ 100,010 × 15% ＝ 35,001.5 元，四捨五入為 **35,002 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "dcaed2d4-8c4c-4a62-a3c3-78e1998865cb",
+    "run_id": "47aa3d23-8939-476e-90cc-4b0e66296396",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "甲的衝突資料處理符合要求；乙的抽成金額不符合驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "c1eedaa2-acae-4852-99fa-05fc603795a9",
+        "text": "指出甲的兩筆營業額 100,000 元與 100,001 元彼此衝突、不能同時正確，且不計算甲的抽成。",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出甲的兩筆營業額相互衝突，因此未計算甲的抽成，並請使用者確認。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "甲 | 營業額衝突（100,000、100,001 元），無法計算；請確認營業額",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fae8abd4-5cac-4f9f-97e6-b99dfbd2bff6",
+        "text": "仍逐一處理其他可確定的店家：乙的抽成為 35,001 元（20,000 + 15,000 + 1）。",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖然逐一處理了乙，但將抽成列為 35,002 元，而非要求的 35,001 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 乙 | 35,002 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1501 input and 405 output tokens on skillhub-run; reported cost $0.0031 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 10,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "round": 1,
+  "sample_input": "請逐行試算店家當月平台抽成，每行各自視為一次試算：\n營業額為 250,000 元，營業額為 350,000 元。\n營業額為 200,000 元。",
+  "acceptance_criteria": [
+    {
+      "text": "指出第一筆同時列出 250,000 元與 350,000 元，兩個金額互相矛盾、無法判定，且不報出該筆抽成金額。"
+    },
+    {
+      "text": "第二筆營業額 200,000 元的抽成為 35,000 元：100,000 × 20% = 20,000 元，另 100,000 × 15% = 15,000 元，合計 20,000 + 15,000 = 35,000 元。"
+    }
+  ],
+  "final_output": "第 1 筆：同一筆營業額數值互相矛盾：「250,000 元」(250000 元)、「350,000 元」(350000 元)；不計算抽成。請確認正確金額。  \n第 2 筆：營業額：200000 元；平台抽成：35000 元。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1a3945df-96ac-4bbd-921c-c492b69531e1",
+    "run_id": "e917b708-5737-4613-a860-7beb522091b3",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "第一筆正確辨識金額矛盾且未試算。第二筆給出正確總額，但缺少 20% 與 15% 兩段抽成的計算明細。",
+    "criterion_results": [
+      {
+        "criterion_id": "f7f98377-0707-4a1c-bd10-5a087b2556d0",
+        "text": "指出第一筆同時列出 250,000 元與 350,000 元，兩個金額互相矛盾、無法判定，且不報出該筆抽成金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第一筆指出 250,000 元與 350,000 元互相矛盾，未計算該筆抽成，並請求確認金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 筆：同一筆營業額數值互相矛盾：「250,000 元」(250000 元)、「350,000 元」(350000 元)；不計算抽成。請確認正確金額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b8c66729-06ca-470e-aec3-839ee62c73cb",
+        "text": "第二筆營業額 200,000 元的抽成為 35,000 元：100,000 × 20% = 20,000 元，另 100,000 × 15% = 15,000 元，合計 20,000 + 15,000 = 35,000 元。",
+        "result": "failed",
+        "source": "model",
+        "reason": "第二筆報出的抽成總額是正確的 35,000 元，但未列出準則要求的兩段級距計算及加總過程。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 2 筆：營業額：200000 元；平台抽成：35000 元。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1536 input and 358 output tokens on gpt-6-luna; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

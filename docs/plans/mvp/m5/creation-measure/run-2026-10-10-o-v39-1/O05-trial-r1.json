@@ -1,0 +1,180 @@
+{
+  "round": 1,
+  "sample_input": "請逐筆計算以下觀影者的票價，並對無效輸入回覆錯誤：\nID | 年齡 | 場次\nA | 0 | 平日\nB | 3 | 平日\nC | 3 | 假日\nD | 4 | 平日\nE | 4 | 假日\nF | 11 | 平日\nG | 11 | 假日\nH | 12 | 平日\nI | 12 | 假日\nJ | 64 | 平日\nK | 64 | 假日\nL | 65 | 平日\nM | 65 | 假日\nN | 120 | 平日\nO | 120 | 假日\nP | -1 | 平日\nQ | 121 | 假日\nR | 4.5 | 平日\nS | 12 | 週末",
+  "acceptance_criteria": [
+    {
+      "text": "試跑資料 A–C（年齡 0 平日、3 平日、3 假日）均輸出 0 元。"
+    },
+    {
+      "text": "試跑資料 D–G（年齡 4、11 各有平日及假日）均輸出平日 180 元、假日 220 元。"
+    },
+    {
+      "text": "試跑資料 H–K（年齡 12、64 各有平日及假日）均輸出平日 300 元、假日 360 元。"
+    },
+    {
+      "text": "試跑資料 L–O（年齡 65、120 各有平日及假日）均輸出平日 180 元、假日 220 元。"
+    },
+    {
+      "text": "試跑資料 P（年齡 -1）、Q（年齡 121）及 R（年齡 4.5）各自收到錯誤回覆，且沒有票價。"
+    },
+    {
+      "text": "試跑資料 S（場次「週末」）收到錯誤回覆，且沒有票價。"
+    },
+    {
+      "text": "回覆逐筆對應資料 ID，並明確提供有效資料的票價（元）或無效資料的錯誤，不漏列任何一筆。"
+    }
+  ],
+  "final_output": "| ID | 計算結果 |\n|---|---|\n| A | 0 歲、平日：免費，0 元 |\n| B | 3 歲、平日：免費，0 元 |\n| C | 3 歲、假日：免費，0 元 |\n| D | 4 歲、平日：優惠價，180 元 |\n| E | 4 歲、假日：優惠價，220 元 |\n| F | 11 歲、平日：優惠價，180 元 |\n| G | 11 歲、假日：優惠價，220 元 |\n| H | 12 歲、平日：全票，300 元 |\n| I | 12 歲、假日：全票，360 元 |\n| J | 64 歲、平日：全票，300 元 |\n| K | 64 歲、假日：全票，360 元 |\n| L | 65 歲、平日：優惠價，180 元 |\n| M | 65 歲、假日：優惠價，220 元 |\n| N | 120 歲、平日：優惠價，180 元 |\n| O | 120 歲、假日：優惠價，220 元 |\n| P | 年齡超出 0–120 整數範圍（'-1'）；不提供票價。 |\n| Q | 年齡超出 0–120 整數範圍（'121'）；不提供票價。 |\n| R | 年齡無法使用 '4.5'；不提供票價。 |\n| S | 場次無法使用 '週末'（須為「平日」或「假日」）；不提供票價。 |\n\nP、Q、R、S 的資料無法計價。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "3dfa1302-87f1-4562-96b5-3d83b8c2d934",
+    "run_id": "c5a16876-4636-4e28-bc1e-c423a2c3d661",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有驗收條件均已達成：A 至 O 逐筆列出正確票價，P 至 S 分別回覆錯誤且不提供票價。",
+    "criterion_results": [
+      {
+        "criterion_id": "d44d37c9-6538-4f45-a890-74cc9fb5d10e",
+        "text": "試跑資料 A–C（年齡 0 平日、3 平日、3 假日）均輸出 0 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A、B、C 均列為 0 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| A | 0 歲、平日：免費，0 元 |\n| B | 3 歲、平日：免費，0 元 |\n| C | 3 歲、假日：免費，0 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "96f29e42-58af-4013-ba4a-c2ffea665626",
+        "text": "試跑資料 D–G（年齡 4、11 各有平日及假日）均輸出平日 180 元、假日 220 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "D 至 G 的平日票價為 180 元，假日票價為 220 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| D | 4 歲、平日：優惠價，180 元 |\n| E | 4 歲、假日：優惠價，220 元 |\n| F | 11 歲、平日：優惠價，180 元 |\n| G | 11 歲、假日：優惠價，220 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "78a14f50-c4ca-4427-a024-cb45afef8eee",
+        "text": "試跑資料 H–K（年齡 12、64 各有平日及假日）均輸出平日 300 元、假日 360 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "H 至 K 的平日票價為 300 元，假日票價為 360 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| H | 12 歲、平日：全票，300 元 |\n| I | 12 歲、假日：全票，360 元 |\n| J | 64 歲、平日：全票，300 元 |\n| K | 64 歲、假日：全票，360 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fab4fcb9-a9db-44a6-9b82-1e651303c252",
+        "text": "試跑資料 L–O（年齡 65、120 各有平日及假日）均輸出平日 180 元、假日 220 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "L 至 O 的平日票價為 180 元，假日票價為 220 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| L | 65 歲、平日：優惠價，180 元 |\n| M | 65 歲、假日：優惠價，220 元 |\n| N | 120 歲、平日：優惠價，180 元 |\n| O | 120 歲、假日：優惠價，220 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ec3fda17-1371-42c1-9299-0e0ca518d95a",
+        "text": "試跑資料 P（年齡 -1）、Q（年齡 121）及 R（年齡 4.5）各自收到錯誤回覆，且沒有票價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "P、Q、R 各有年齡錯誤回覆，且均註明不提供票價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| P | 年齡超出 0–120 整數範圍（'-1'）；不提供票價。 |\n| Q | 年齡超出 0–120 整數範圍（'121'）；不提供票價。 |\n| R | 年齡無法使用 '4.5'；不提供票價。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e410edbf-4231-47a7-865d-4eeb92215d1e",
+        "text": "試跑資料 S（場次「週末」）收到錯誤回覆，且沒有票價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "S 的「週末」場次收到錯誤回覆，且未提供票價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| S | 場次無法使用 '週末'（須為「平日」或「假日」）；不提供票價。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4f1ae601-75a1-4a83-b752-5a6ab54ee638",
+        "text": "回覆逐筆對應資料 ID，並明確提供有效資料的票價（元）或無效資料的錯誤，不漏列任何一筆。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆逐筆列出 A 至 S；A 至 O 有以元表示的票價，P 至 S 有錯誤說明，沒有漏列。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| A | 0 歲、平日：免費，0 元 |\n| B | 3 歲、平日：免費，0 元 |\n| C | 3 歲、假日：免費，0 元 |\n| D | 4 歲、平日：優惠價，180 元 |\n| E | 4 歲、假日：優惠價，220 元 |\n| F | 11 歲、平日：優惠價，180 元 |\n| G | 11 歲、假日：優惠價，220 元 |\n| H | 12 歲、平日：全票，300 元 |\n| I | 12 歲、假日：全票，360 元 |\n| J | 64 歲、平日：全票，300 元 |\n| K | 64 歲、假日：全票，360 元 |\n| L | 65 歲、平日：優惠價，180 元 |\n| M | 65 歲、假日：優惠價，220 元 |\n| N | 120 歲、平日：優惠價，180 元 |\n| O | 120 歲、假日：優惠價，220 元 |\n| P | 年齡超出 0–120 整數範圍（'-1'）；不提供票價。 |\n| Q | 年齡超出 0–120 整數範圍（'121'）；不提供票價。 |\n| R | 年齡無法使用 '4.5'；不提供票價。 |\n| S | 場次無法使用 '週末'（須為「平日」或「假日」）；不提供票價。 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1805 input and 3804 output tokens on gpt-6-luna; reported cost $0.0077 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 51,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

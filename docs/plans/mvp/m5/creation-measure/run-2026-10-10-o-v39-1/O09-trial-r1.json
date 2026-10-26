@@ -1,0 +1,186 @@
+{
+  "round": 1,
+  "sample_input": "請逐筆檢查以下租約提前終止通知期限，依規則回覆是否足夠；不足時列出最晚通知日期。\nA：搬離日期 2026-08-31；通知日期 2026-08-01\nB：搬離日期 2026-09-30；通知日期 2026-08-30\nC：搬離日期 2026-10-31；通知日期 2026-10-02\nD：搬離日期 2026-11-15；通知日期 2026-11-16",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入 A，搬離日 2026-08-31、通知日 2026-08-01，計算相隔 30 天並判定通知足夠。"
+    },
+    {
+      "text": "對試跑輸入 B，搬離日 2026-09-30、通知日 2026-08-30，計算相隔 31 天並判定通知足夠。"
+    },
+    {
+      "text": "對試跑輸入 C，搬離日 2026-10-31、通知日 2026-10-02，計算相隔 29 天並判定通知不足，且提供最晚通知日期 2026-10-01。"
+    },
+    {
+      "text": "對試跑輸入 D，搬離日 2026-11-15、通知日 2026-11-16，標示日期順序無效、通知日晚於搬離日，且不得判定通知足夠。"
+    },
+    {
+      "text": "將輸出按 A、B、C、D 分別列出判定；只有不足的有效日期案例 C 必須列出最晚通知日期。"
+    }
+  ],
+  "final_output": "A：搬離日期 2026-08-31；通知日期 2026-08-01；相隔 30 天。  \n判定：通知足夠。\n\nB：搬離日期 2026-09-30；通知日期 2026-08-30；相隔 31 天。  \n判定：通知足夠。\n\nC：搬離日期 2026-10-31；通知日期 2026-10-02；相隔 29 天。  \n判定：通知不足；最晚應於 2026-10-01 送出通知。\n\nD：搬離日期 2026-11-15；通知日期 2026-11-16；相隔 -1 天。  \n判定：日期順序無效；通知日晚於搬離日，不判定為通知足夠。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "6ba12983-6652-40fc-9ba9-02fe268ed66d",
+    "run_id": "dfd38ef3-0f3c-491f-b13e-9a4bcc7b4917",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收條件均已達成：A、B 通知足夠；C 通知不足並列出最晚通知日期；D 正確標示日期順序無效。",
+    "criterion_results": [
+      {
+        "criterion_id": "920453f2-cca1-4ba1-a6b7-686add9a199a",
+        "text": "對試跑輸入 A，搬離日 2026-08-31、通知日 2026-08-01，計算相隔 30 天並判定通知足夠。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A 列出相隔 30 天，判定通知足夠。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "A：搬離日期 2026-08-31；通知日期 2026-08-01；相隔 30 天。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "判定：通知足夠。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8a9942ec-163c-479d-83b1-e00bce72183f",
+        "text": "對試跑輸入 B，搬離日 2026-09-30、通知日 2026-08-30，計算相隔 31 天並判定通知足夠。",
+        "result": "passed",
+        "source": "model",
+        "reason": "B 列出相隔 31 天，判定通知足夠。",
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "B：搬離日期 2026-09-30；通知日期 2026-08-30；相隔 31 天。\\n判定：通知足夠。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "B：搬離日期 2026-09-30；通知日期 2026-08-30；相隔 31 天。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ec98ec90-f02e-4f5a-9cd3-16196505c5ee",
+        "text": "對試跑輸入 C，搬離日 2026-10-31、通知日 2026-10-02，計算相隔 29 天並判定通知不足，且提供最晚通知日期 2026-10-01。",
+        "result": "passed",
+        "source": "model",
+        "reason": "C 列出相隔 29 天、通知不足，並提供最晚通知日期 2026-10-01。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "C：搬離日期 2026-10-31；通知日期 2026-10-02；相隔 29 天。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "判定：通知不足；最晚應於 2026-10-01 送出通知。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "300d01d0-4c37-4c0f-b7fe-bdbc53f782a1",
+        "text": "對試跑輸入 D，搬離日 2026-11-15、通知日 2026-11-16，標示日期順序無效、通知日晚於搬離日，且不得判定通知足夠。",
+        "result": "passed",
+        "source": "model",
+        "reason": "D 標示通知日晚於搬離日、日期順序無效，且未判定通知足夠。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "D：搬離日期 2026-11-15；通知日期 2026-11-16；相隔 -1 天。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "判定：日期順序無效；通知日晚於搬離日，不判定為通知足夠。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2e097375-a0da-4512-8432-3a0df6076550",
+        "text": "將輸出按 A、B、C、D 分別列出判定；只有不足的有效日期案例 C 必須列出最晚通知日期。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆按 A、B、C、D 分別列出判定；只有 C 列出最晚通知日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "A：搬離日期 2026-08-31",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "B：搬離日期 2026-09-30",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "C：搬離日期 2026-10-31",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "D：搬離日期 2026-11-15",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "判定：通知不足；最晚應於 2026-10-01 送出通知。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1517 input and 660 output tokens on gpt-6-luna; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 30,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

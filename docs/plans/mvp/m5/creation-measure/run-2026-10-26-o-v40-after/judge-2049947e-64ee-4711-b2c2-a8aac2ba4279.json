@@ -1,0 +1,68 @@
+{
+  "request": {
+    "RunID": "2049947e-64ee-4711-b2c2-a8aac2ba4279",
+    "EvaluationID": "220d6bf3-6e3a-4ba8-bd66-be9df925a1c7",
+    "Skill": {
+      "Name": "airline-checked-baggage-fee",
+      "Summary": "依單件托運行李重量判定是否可托運及應收費用。當使用者提供行李重量並要求航空托運費用判定時使用。"
+    },
+    "UserPrompt": "我有一件行李 32 公斤，要托運，怎麼處理、費用多少？",
+    "Criteria": [
+      {
+        "ID": "9f3d4b63-feaa-4a01-bbd1-cd08c477188e",
+        "Text": "判定可以托運（32 公斤為上限含 32），費用為 6,000 元（超過 20 公斤的 12 公斤 × 500）",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "7c75b029-473d-4ec5-9d36-ed1677978e4f",
+        "Text": "沒有判為拒絕托運",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "- **重量：**32 公斤  \n- **處理方式：**可托運，列為超重行李  \n- **超出重量：**32 − 20 = 12 公斤  \n- **計費重量：**12 公斤  \n- **費用：**12 × 500 = **6,000 元**  \n- **怎麼處理：**辦理托運時按超重行李繳費。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "dd675dbd-1c28-45b7-9b64-a2aadbdaa506",
+          "OccurredAt": "2026-10-26T10:54:11.106Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"airline-checked-baggage-fee\", \"skill_version_id\": \"96181692-a403-4db0-a766-20ac4e24cca4\"}"
+        },
+        {
+          "TraceEventID": "56945ab8-56d2-487b-8bdc-1a7d0007951c",
+          "OccurredAt": "2026-10-26T10:54:11.117Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"airline-checked-baggage-fee\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 11, \"invocation_id\": \"call_Z1Yxbmy6yfdS3ChUTQqguS6l\", \"result_summary\": \"Launching skill: airline-checked-baggage-fee\"}"
+        },
+        {
+          "TraceEventID": "b4b6c8c0-d0bd-453d-8f14-6a70c4cf69da",
+          "OccurredAt": "2026-10-26T10:54:14.813Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"- **重量：**32 公斤  \\n- **處理方式：**可托運，列為超重行李  \\n- **超出重量：**32 − 20 = 12 公斤  \\n- **計費重量：**12 公斤  \\n- **費用：**12 × 500 = **6,000 元**  \\n- **怎麼處理：**辦理托運時按超重行李繳費。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "fcd5261e-bd73-44fa-a05a-a841984b117d",
+          "OccurredAt": "2026-10-26T10:54:15.243Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"- **重量：**32 公斤  \\n- **處理方式：**可托運，列為超重行李  \\n- **超出重量：**32 − 20 = 12 公斤  \\n- **計費重量：**12 公斤  \\n- **費用：**12 × 500 = **6,000 元**  \\n- **怎麼處理：**辦理托運時按超重行李繳費。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "342e32a7-9f5d-4da6-9016-14c825d87170",
+          "OccurredAt": "2026-10-26T10:54:19.294Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.00282674, \"cost_source\": \"gateway\", \"duration_ms\": 10690, \"input_tokens\": 1470, \"token_source\": \"result\", \"output_tokens\": 254, \"cache_read_input_tokens\": 16624, \"cache_write_input_tokens\": 18676}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": null,
+  "error": "llmclient: /judge-run returned 502: {\"detail\":\"gateway error\"}"
+}

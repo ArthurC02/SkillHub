@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請逐筆判定以下家電報修是否仍在一年保固內；若已過保，請列出逾期天數。\n1. 購買日期：2025-03-10；報修日期：2026-03-09\n2. 購買日期：2025-03-10；報修日期：2026-03-10\n3. 購買日期：2025-03-10；報修日期：2025-03-09\n4. 購買日期：2024-02-29；報修日期：2025-02-27\n5. 購買日期：2024-02-29；報修日期：2025-02-28",
+  "acceptance_criteria": [
+    {
+      "text": "對樣本第 1 筆（購買日 2025-03-10，報修日 2026-03-09），輸出保固內；這是保固最後一天，須包含在保固期內。"
+    },
+    {
+      "text": "對樣本第 2 筆（購買日 2025-03-10，報修日 2026-03-10），輸出已過保 1 天。"
+    },
+    {
+      "text": "對樣本第 3 筆（購買日 2025-03-10，報修日 2025-03-09），指出報修日期早於購買日期、日期順序無效，且不回報保固狀態或逾期天數。"
+    },
+    {
+      "text": "對樣本第 4 筆（購買日 2024-02-29，報修日 2025-02-27），按非閏年滿一年日為 2025-02-28 計算，輸出保固內。"
+    },
+    {
+      "text": "對樣本第 5 筆（購買日 2024-02-29，報修日 2025-02-28），按保固最後一天為 2025-02-27 計算，輸出已過保 1 天。"
+    }
+  ],
+  "final_output": "1. 購買日期：2025-03-10；報修日期：2026-03-09：保固內（最後一天：2026-03-09）。\n2. 購買日期：2025-03-10；報修日期：2026-03-10：已過保 1 天（最後一天：2026-03-09）。\n3. 購買日期：2025-03-10；報修日期：2025-03-09：報修日期 '2025-03-09' 無法用於判定：早於購買日期 '2025-03-10'。請確認報修日期。\n4. 購買日期：2024-02-29；報修日期：2025-02-27：保固內（最後一天：2025-02-27）。\n5. 購買日期：2024-02-29；報修日期：2025-02-28：已過保 1 天（最後一天：2025-02-27）。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "727b075c-ebb6-434c-93e5-38f1848aa941",
+    "run_id": "63d3ab88-6cec-47af-b37c-956596131aec",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆報修的最終判定均符合各項驗收標準，包括保固末日、逾期天數及日期順序無效的處理。",
+    "criterion_results": [
+      {
+        "criterion_id": "64adb34f-e5a6-4baa-bba9-e18c2c147d6f",
+        "text": "對樣本第 1 筆（購買日 2025-03-10，報修日 2026-03-09），輸出保固內；這是保固最後一天，須包含在保固期內。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆判定為保固內，並將 2026-03-09 列為保固最後一天。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 購買日期：2025-03-10；報修日期：2026-03-09：保固內（最後一天：2026-03-09）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3264de5c-7b07-4e87-a855-2ee437aa4390",
+        "text": "對樣本第 2 筆（購買日 2025-03-10，報修日 2026-03-10），輸出已過保 1 天。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆判定為已過保 1 天。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 購買日期：2025-03-10；報修日期：2026-03-10：已過保 1 天（最後一天：2026-03-09）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b1d84ae5-d3ee-470a-a91a-77e261b1ec08",
+        "text": "對樣本第 3 筆（購買日 2025-03-10，報修日 2025-03-09），指出報修日期早於購買日期、日期順序無效，且不回報保固狀態或逾期天數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆指出報修日期早於購買日期、無法判定，且未回報保固狀態或逾期天數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. 購買日期：2025-03-10；報修日期：2025-03-09：報修日期 '2025-03-09' 無法用於判定：早於購買日期 '2025-03-10'。請確認報修日期。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f88b8ec1-f845-4f2e-a135-e80d344315e8",
+        "text": "對樣本第 4 筆（購買日 2024-02-29，報修日 2025-02-27），按非閏年滿一年日為 2025-02-28 計算，輸出保固內。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆判定為保固內；列出的最後一天為 2025-02-27，與滿一年日為 2025-02-28 的計算一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 購買日期：2024-02-29；報修日期：2025-02-27：保固內（最後一天：2025-02-27）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b8d220ae-286d-4f01-82bd-6e769fa75269",
+        "text": "對樣本第 5 筆（購買日 2024-02-29，報修日 2025-02-28），按保固最後一天為 2025-02-27 計算，輸出已過保 1 天。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆以 2025-02-27 為保固最後一天，判定 2025-02-28 已過保 1 天。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5. 購買日期：2024-02-29；報修日期：2025-02-28：已過保 1 天（最後一天：2025-02-27）。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1537 input and 810 output tokens on gpt-6-luna; reported cost $0.0038 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

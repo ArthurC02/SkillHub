@@ -1,0 +1,107 @@
+{
+  "round": 2,
+  "sample_input": "請試算以下帳單的最低應繳金額。\n本期帳單總額：2,400 元\n同一本期帳單總額：2,600 元\n本期帳單總額：3,000 元",
+  "acceptance_criteria": [
+    {
+      "text": "指出同一帳單列出的 2,400 元與 2,600 元互相矛盾，至少一個金額不能成立；不為該帳單計算最低應繳金額。"
+    },
+    {
+      "text": "對獨立列出的 3,000 元，計算 10% 為 300 元，套用至少 1,000 元的規則後，回覆最低應繳 1,000 元。"
+    }
+  ],
+  "final_output": "- **同一帳單**：原列 **2,400 元**，另列「同一本期帳單總額」**2,600 元**，金額不一致，請確認正確金額；暫不試算。\n- **另一筆帳單**：3,000 元  \n  第1筆最低應繳金額：1000 元\n\n假設：今天以系統日期 2026-10-26 計\n\n以上為依本 Skill 規則試算，不包含銀行或發卡機構的其他費用、利息或個別規定。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "5a3ef73d-fc8f-4935-9c02-cdd9c1f8316d",
+    "run_id": "ad5f9ec9-2fdb-4092-a7e1-953fa98258db",
+    "status": "completed",
+    "overall": "met",
+    "summary": "同一帳單的矛盾金額未被試算；獨立的 3,000 元帳單則回覆最低應繳 1,000 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "d9c6c9bc-89db-43de-a23a-9bc4a21eeed3",
+        "text": "指出同一帳單列出的 2,400 元與 2,600 元互相矛盾，至少一個金額不能成立；不為該帳單計算最低應繳金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆指出同一帳單的 2,400 元與 2,600 元不一致，要求確認金額，並表示暫不試算。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **同一帳單**：原列 **2,400 元**，另列「同一本期帳單總額」**2,600 元**，金額不一致，請確認正確金額；暫不試算。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "394aab7e-1471-44a1-8dba-9db0fe89e5be",
+        "text": "對獨立列出的 3,000 元，計算 10% 為 300 元，套用至少 1,000 元的規則後，回覆最低應繳 1,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "對獨立的 3,000 元帳單，試算並回覆最低應繳 1,000 元；此結果符合 10% 為 300 元、再適用至少 1,000 元的規則。回覆未明列中間算式。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "\"command\": \"python scripts/minimum_payment.py --amount 3000\"",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **另一筆帳單**：3,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第1筆最低應繳金額：1000 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1629 input and 1526 output tokens on skillhub-run; reported cost $0.0048 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

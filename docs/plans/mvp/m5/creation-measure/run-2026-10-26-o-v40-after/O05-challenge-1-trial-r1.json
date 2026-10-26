@@ -1,0 +1,120 @@
+{
+  "round": 1,
+  "sample_input": "請依年齡與場次類型計算每筆票價，並以表格列出結果。\n編號,資料\nA,年齡 8 歲；年齡 9 歲；場次平日\nB,年齡 4 歲；場次平日\nC,年齡 65 歲；場次假日",
+  "acceptance_criteria": [
+    {
+      "text": "指出 A 的兩個年齡互相矛盾、不能同時成立，將該筆標示為無效且不輸出票價。"
+    },
+    {
+      "text": "B 為 180 元：4 歲屬於 4–11 歲優惠價，平日票價為 180 元。"
+    },
+    {
+      "text": "C 為 220 元：65 歲屬於 65–120 歲優惠價，假日票價為 220 元。"
+    }
+  ],
+  "final_output": "目前找不到票價試算所需的輸入檢查器與票價腳本，因此無法依指定規則確認年齡或計算票價；以下保留原始資料，不臆測票價。\n\n| 編號 | 年齡 | 場次 | 結果 |\n|---|---|---|---|\n| A | 8 歲 | 平日 | 無法計算：試算工具不可用 |\n| A | 9 歲 | 平日 | 無法計算：試算工具不可用 |\n| B | 4 歲 | 平日 | 無法計算：試算工具不可用 |\n| C | 65 歲 | 假日 | 無法計算：試算工具不可用 |\n\n若提供票價規則或可用的試算工具，我就能逐筆列出價格。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a12db38e-25d7-41bd-8c18-66e47334c72f",
+    "run_id": "97edd617-213e-47e0-a53f-22e11cbb0ba0",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "三項驗收標準均未達成。回覆未將 A 判定為年齡矛盾的無效資料，也未算出 B、C 的票價。",
+    "criterion_results": [
+      {
+        "criterion_id": "1c5493e7-aa91-4a59-b027-5c21a99923b7",
+        "text": "指出 A 的兩個年齡互相矛盾、不能同時成立，將該筆標示為無效且不輸出票價。",
+        "result": "failed",
+        "source": "model",
+        "reason": "A 被拆成兩列，均標示試算工具不可用；未指出 8 歲與 9 歲互相矛盾，也未將 A 標示為無效。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| A | 8 歲 | 平日 | 無法計算：試算工具不可用 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| A | 9 歲 | 平日 | 無法計算：試算工具不可用 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f50723bb-739f-4b3e-bdf1-23244ae1db6f",
+        "text": "B 為 180 元：4 歲屬於 4–11 歲優惠價，平日票價為 180 元。",
+        "result": "failed",
+        "source": "model",
+        "reason": "B 未列出 180 元，也未說明 4 歲適用 4–11 歲優惠價。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| B | 4 歲 | 平日 | 無法計算：試算工具不可用 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "265fab99-a765-4388-83b3-81b8d120fdea",
+        "text": "C 為 220 元：65 歲屬於 65–120 歲優惠價，假日票價為 220 元。",
+        "result": "failed",
+        "source": "model",
+        "reason": "C 未列出 220 元，也未說明 65 歲適用 65–120 歲優惠價。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| C | 65 歲 | 假日 | 無法計算：試算工具不可用 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1700 input and 2474 output tokens on skillhub-run; reported cost $0.0056 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

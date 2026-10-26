@@ -1,0 +1,95 @@
+{
+  "round": 1,
+  "sample_input": "請逐筆計算以下觀影者的票價：\nID | 年齡 | 場次\nA | 8 歲、68 歲 | 平日\nB | 12 歲 | 假日",
+  "acceptance_criteria": [
+    {
+      "text": "指出 A 的年齡資料互相矛盾，無法同時成立；不採用 8 歲或 68 歲計算，且不提供 A 的票價。"
+    },
+    {
+      "text": "仍列出 B 的票價為 360 元：12 歲未滿 12 歲且未滿 65 歲，適用全票；假日全票 360 元。"
+    }
+  ],
+  "final_output": "- **A**：年齡資料互相矛盾，無法使用「8 歲、68 歲」；請提出請求的人確認，不提供票價。\n- **B**：12 歲、假日，全票 **360 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "63c88328-57e0-4bb3-9460-393bba5339b7",
+    "run_id": "91d90eef-e4ba-4817-8bb6-9bbf30cc94ba",
+    "status": "completed",
+    "overall": "met",
+    "summary": "A 的矛盾年齡未被用來計價；B 的假日全票票價正確列為 360 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "f8a919f0-bb4a-4b8c-b513-6ebd62d2a5e5",
+        "text": "指出 A 的年齡資料互相矛盾，無法同時成立；不採用 8 歲或 68 歲計算，且不提供 A 的票價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出 A 的兩個年齡互相矛盾，未擇一計算，也未提供票價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **A**：年齡資料互相矛盾，無法使用「8 歲、68 歲」；請提出請求的人確認，不提供票價。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8ae574fd-ad7a-4b58-b5e7-404e701460e8",
+        "text": "仍列出 B 的票價為 360 元：12 歲未滿 12 歲且未滿 65 歲，適用全票；假日全票 360 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "仍逐筆列出 B：12 歲、假日，適用全票，票價為 360 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **B**：12 歲、假日，全票 **360 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1643 input and 1915 output tokens on gpt-6-luna; reported cost $0.0055 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

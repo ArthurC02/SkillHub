@@ -1,0 +1,125 @@
+{
+  "round": 0,
+  "sample_input": "三張訂單要道歉：E01 晚了 12 分鐘補 20 元、E02 晚了 -5 分鐘補 20 元、E03 晚了 45 分鐘補 60 元。",
+  "acceptance_criteria": [
+    {
+      "text": "E01 的訊息含 E01、12 分鐘、20 元，E03 的訊息含 E03、45 分鐘、60 元，每則不超過 2 句"
+    },
+    {
+      "text": "明確指出 E02 的 -5 分鐘不合理（延誤分鐘數須為正整數），沒有為 E02 寫出含 -5 分鐘的道歉訊息"
+    }
+  ],
+  "final_output": "",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "cafb2111-1724-43b4-8e36-ccc166084f3e",
+    "run_id": "5d91d3f6-02fc-4fd9-87d4-2bbadf7ee361",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "試跑在工具中完成了有效訂單的草稿並辨識 E02 的錯誤，但因中止而沒有最終回覆。兩項要求均未交付給使用者。",
+    "criterion_results": [
+      {
+        "criterion_id": "b4d0efda-98e2-41fd-88f4-2b06753e24ee",
+        "text": "E01 的訊息含 E01、12 分鐘、20 元，E03 的訊息含 E03、45 分鐘、60 元，每則不超過 2 句",
+        "result": "failed",
+        "source": "model",
+        "reason": "工具曾產生符合內容與句數要求的 E01、E03 草稿，但試跑中止，沒有向使用者送出訊息。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "很抱歉，訂單 E01 延誤了 12 分鐘，我們將提供 20 元 補償，造成不便敬請見諒。",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "很抱歉，訂單 E03 延誤了 45 分鐘，我們將提供 60 元 補償，造成不便敬請見諒。",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "run stopped at its input token ceiling",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c2900f49-283f-4540-9d04-33e0fda2313e",
+        "text": "明確指出 E02 的 -5 分鐘不合理（延誤分鐘數須為正整數），沒有為 E02 寫出含 -5 分鐘的道歉訊息",
+        "result": "failed",
+        "source": "model",
+        "reason": "內部檢查拒絕了 E02 的 -5 分鐘，也未見為 E02 產生道歉訊息；但試跑沒有最終回覆，因此未向使用者明確指出這項錯誤。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "無法採用：第 2 筆「延誤分鐘數」「-5 分鐘」小於可能的最小值 1，不拿它計算",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "run stopped at its input token ceiling",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "error",
+        "message": "the run ended as failed, classified workload_error: 這次試跑用掉的輸入 token 超過上限:已用 325481,上限 300000。此上限可跑的輪數取決於每輪的工具呼叫次數:純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪"
+      },
+      {
+        "category": "execution",
+        "severity": "error",
+        "message": "error event (execution/token_budget_exceeded): run stopped at its input token ceiling: 325040 of 300000 tokens (PDM-005 5.2a; the limit shown in the pre-run permission summary)"
+      },
+      {
+        "category": "execution",
+        "severity": "error",
+        "message": "error event (execution/workload_error): 這次試跑用掉的輸入 token 超過上限:已用 325481,上限 300000。此上限可跑的輪數取決於每輪的工具呼叫次數:純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1811 input and 2416 output tokens on skillhub-run; reported cost $0.0077 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 56,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  },
+  "read_errors": [
+    "final agent output: no rows in result set"
+  ]
+}

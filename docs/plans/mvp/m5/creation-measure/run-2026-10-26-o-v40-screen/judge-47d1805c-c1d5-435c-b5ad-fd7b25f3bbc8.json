@@ -1,0 +1,220 @@
+{
+  "request": {
+    "RunID": "47d1805c-c1d5-435c-b5ad-fd7b25f3bbc8",
+    "EvaluationID": "0ff9658e-e42a-4f9f-8fe7-986953958e51",
+    "Skill": {
+      "Name": "fitness-package-pricing",
+      "Summary": "當使用者提供健身教練課程包的購買堂數、需要計算報價時，依每堂 1,200 元及整筆折扣規則逐筆計算應付總額。"
+    },
+    "UserPrompt": "請逐筆計算以下購買堂數的應付總額（元）；非正整數請標示為無效，不要計算金額。\n1\n9\n10\n19\n20\n0\n1.5",
+    "Criteria": [
+      {
+        "ID": "2246489e-ad41-480a-94e2-38862bdbb18b",
+        "Text": "試跑輸入第 1 行堂數為 1，輸出須對應標示應付 1,200 元。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "b42afc64-6d88-4686-8f69-4bf4d4157148",
+        "Text": "試跑輸入第 2 行堂數為 9，輸出須對應標示應付 10,800 元。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "5a7ede9b-c007-4e71-8075-e7411a655853",
+        "Text": "試跑輸入第 3 行堂數為 10，輸出須對應標示應付 10,800 元（12,000 × 0.9）。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "956f6ec5-2490-48e5-afbd-479de069c832",
+        "Text": "試跑輸入第 4 行堂數為 19，輸出須對應標示應付 20,520 元（22,800 × 0.9）。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "02780705-acde-45cd-ba42-e7c38cd61f6d",
+        "Text": "試跑輸入第 5 行堂數為 20，輸出須對應標示應付 19,200 元（24,000 × 0.8）。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "c0d8ea7a-a351-4291-ae49-d928bb6c1dd0",
+        "Text": "試跑輸入第 6 行堂數為 0，輸出須標示堂數無效，且不得報出應付金額。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "bb876909-9f57-4509-bc1f-ca78583cba39",
+        "Text": "試跑輸入第 7 行堂數為 1.5，輸出須標示堂數無效，且不得報出應付金額。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "64d3cf97-a5b5-4cd2-bbc5-9dc8bed27258",
+        "Text": "輸出須依七筆輸入逐筆對應，清楚標示堂數與金額（元）或無效狀態，不可把 10 堂以上的折扣分級累進計算。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "| 購買堂數 | 應付總額 |\n|---:|---:|\n| 1 | 1,200 元 |\n| 9 | 10,800 元 |\n| 10 | 10,800 元 |\n| 19 | 20,520 元 |\n| 20 | 19,200 元 |\n| 0 | 無效 |\n| 1.5 | 無效 |",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "4469c4f5-3ac3-4003-a04e-a6e50a7e41ae",
+          "OccurredAt": "2026-10-26T04:31:17.648Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"fitness-package-pricing\", \"skill_version_id\": \"1da0258a-2758-4327-852b-75d0383f3c46\"}"
+        },
+        {
+          "TraceEventID": "4d81f008-1cb1-462d-83ad-38d5f46d0115",
+          "OccurredAt": "2026-10-26T04:31:17.668Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"fitness-package-pricing\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 20, \"invocation_id\": \"call_4eu4AuavopMJNpyGEooe8ZJO\", \"result_summary\": \"Launching skill: fitness-package-pricing\"}"
+        },
+        {
+          "TraceEventID": "3d83c1e8-1862-4a8b-968e-f3c9f7d22b1b",
+          "OccurredAt": "2026-10-26T04:31:20.413Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"| 購買堂數 | 應付總額 |\\n|---:|---:|\\n| 1 | 1,200 元 |\\n| 9 | 10,800 元 |\\n| 10 | 10,800 元 |\\n| 19 | 20,520 元 |\\n| 20 | 19,200 元 |\\n| 0 | 無效 |\\n| 1.5 | 無效 |\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "ccd37b57-5d23-42ca-a86e-7125ddb9b83f",
+          "OccurredAt": "2026-10-26T04:31:20.588Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"| 購買堂數 | 應付總額 |\\n|---:|---:|\\n| 1 | 1,200 元 |\\n| 9 | 10,800 元 |\\n| 10 | 10,800 元 |\\n| 19 | 20,520 元 |\\n| 20 | 19,200 元 |\\n| 0 | 無效 |\\n| 1.5 | 無效 |\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "24b20ec5-3fde-4e2c-a49d-199c5e613c00",
+          "OccurredAt": "2026-10-26T04:31:24.66Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.002784805, \"cost_source\": \"gateway\", \"duration_ms\": 12138, \"input_tokens\": 1476, \"token_source\": \"result\", \"output_tokens\": 188, \"cache_read_input_tokens\": 16653, \"cache_write_input_tokens\": 18571}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "2246489e-ad41-480a-94e2-38862bdbb18b",
+        "Result": "passed",
+        "Reason": "第 1 筆（1 堂）標示應付 1,200 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 1 | 1,200 元 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "b42afc64-6d88-4686-8f69-4bf4d4157148",
+        "Result": "passed",
+        "Reason": "第 2 筆（9 堂）標示應付 10,800 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 9 | 10,800 元 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "5a7ede9b-c007-4e71-8075-e7411a655853",
+        "Result": "passed",
+        "Reason": "第 3 筆（10 堂）標示應付 10,800 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 10 | 10,800 元 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "956f6ec5-2490-48e5-afbd-479de069c832",
+        "Result": "passed",
+        "Reason": "第 4 筆（19 堂）標示應付 20,520 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 19 | 20,520 元 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "02780705-acde-45cd-ba42-e7c38cd61f6d",
+        "Result": "passed",
+        "Reason": "第 5 筆（20 堂）標示應付 19,200 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 20 | 19,200 元 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "c0d8ea7a-a351-4291-ae49-d928bb6c1dd0",
+        "Result": "passed",
+        "Reason": "第 6 筆（0 堂）標示無效，未報出應付金額。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 0 | 無效 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "bb876909-9f57-4509-bc1f-ca78583cba39",
+        "Result": "passed",
+        "Reason": "第 7 筆（1.5 堂）標示無效，未報出應付金額。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 1.5 | 無效 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "64d3cf97-a5b5-4cd2-bbc5-9dc8bed27258",
+        "Result": "passed",
+        "Reason": "表格依輸入順序逐筆列出七筆堂數及金額或無效狀態；10、19、20 堂的金額符合整筆折扣，而非累進計算。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 購買堂數 | 應付總額 |\n|---:|---:|\n| 1 | 1,200 元 |\n| 9 | 10,800 元 |\n| 10 | 10,800 元 |\n| 19 | 20,520 元 |\n| 20 | 19,200 元 |\n| 0 | 無效 |\n| 1.5 | 無效 |"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "七筆輸入均按順序正確對應；有效堂數的應付金額符合整筆折扣規則，無效堂數未列金額。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v4",
+    "Usage": {
+      "PromptTokens": 2655,
+      "CompletionTokens": 924,
+      "CostUSD": 0.015876,
+      "CostReported": true
+    }
+  }
+}

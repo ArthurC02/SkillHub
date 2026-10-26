@@ -1,0 +1,338 @@
+{
+  "request": {
+    "RunID": "04d140d5-de7f-481d-8c17-38950f53d409",
+    "EvaluationID": "9e7eaa1c-ea1d-4341-922e-b88f52671e50",
+    "Skill": {
+      "Name": "airline-checked-baggage-fee",
+      "Summary": "依單件托運行李重量判定是否可托運及應收費用。當使用者提供行李重量並要求航空托運費用判定時使用。"
+    },
+    "UserPrompt": "請判定這件單件行李的處理方式與費用：重量 0 公斤。\n請判定這件單件行李的處理方式與費用：重量 20 公斤。\n請判定這件單件行李的處理方式與費用：重量 20.01 公斤。\n請判定這件單件行李的處理方式與費用：重量 21.01 公斤。\n請判定這件單件行李的處理方式與費用：重量 32 公斤。\n請判定這件單件行李的處理方式與費用：重量 32.01 公斤。",
+    "Criteria": [
+      {
+        "ID": "c0afd006-dd2a-4b60-b06e-29fb4011f276",
+        "Text": "試跑輸入第 1 行（0 公斤）時，輸出須判定重量無效，且不計費。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "63d2fc12-7509-4571-91a1-892180f43812",
+        "Text": "試跑輸入第 2 行（20 公斤）時，輸出須判定免費托運，費用為 0 元。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "efaf6f83-eebb-48c8-9063-04f33f3868c5",
+        "Text": "試跑輸入第 3 行（20.01 公斤）時，輸出須判定接受超重行李，費用為 500 元。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "b685fee2-2ab9-48c4-98a2-a9348612cc4a",
+        "Text": "試跑輸入第 4 行（21.01 公斤）時，輸出須判定接受超重行李；超出 20 公斤為 1.01 公斤，進位為 2 公斤，費用為 1,000 元。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a3000a3a-1c54-4908-8693-c2431c9b9d37",
+        "Text": "試跑輸入第 5 行（32 公斤）時，輸出須判定接受超重行李；超出 20 公斤為 12 公斤，費用為 6,000 元。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d08c0d65-2faa-419f-9af4-e0293119a15a",
+        "Text": "試跑輸入第 6 行（32.01 公斤）時，輸出須判定不接受托運，且不收取托運費。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "假設：今天以系統日期 2026-10-26 計\n\n重量：0 公斤  \n處理方式：重量無效；重量須大於 0。  \n費用：不計費。\n\n重量：20 公斤  \n處理方式：免費托運。  \n費用：0 元。\n\n重量：20.01 公斤  \n處理方式：接受托運，列為超重行李。  \n超出 20 公斤：0.01 公斤；計費重量：1 公斤。  \n費用：1 × 500 = 500 元。\n\n重量：21.01 公斤  \n處理方式：接受托運，列為超重行李。  \n超出 20 公斤：1.01 公斤；計費重量：2 公斤。  \n費用：2 × 500 = 1,000 元。\n\n重量：32 公斤  \n處理方式：接受托運，列為超重行李。  \n超出 20 公斤：12 公斤；計費重量：12 公斤。  \n費用：12 × 500 = 6,000 元。\n\n重量：32.01 公斤  \n處理方式：不接受托運。  \n費用：不收取托運費。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "a0848272-08b7-42ea-b336-80457825134f",
+          "OccurredAt": "2026-10-26T10:49:16.61Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"airline-checked-baggage-fee\", \"skill_version_id\": \"cda17806-c2fb-4893-b11e-36c683f36187\"}"
+        },
+        {
+          "TraceEventID": "0bb4daa9-a8f7-475b-b8ed-6f60e785c5cf",
+          "OccurredAt": "2026-10-26T10:49:16.623Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"請依技能規則判定以下六件單件托運行李重量及費用：0、20、20.01、21.01、32、32.01 公斤。\", \"skill\": \"airline-checked-baggage-fee\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 13, \"invocation_id\": \"call_KGQYyJXdniHh3Cqm5OUTulgX\", \"result_summary\": \"Launching skill: airline-checked-baggage-fee\"}"
+        },
+        {
+          "TraceEventID": "f5900c05-da0a-4857-a6a0-2ef8a391ebb3",
+          "OccurredAt": "2026-10-26T10:49:24.452Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 1\\nTraceback (most recent call last):\\n  File \\\"\u003cstring\u003e\\\", line 1, in \u003cmodule\u003e\\nAssertionError: []\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "2c81ee5c-02fb-44b9-af28-5d90a9f70feb",
+          "OccurredAt": "2026-10-26T10:49:24.452Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"cd /work/.claude/skills/airline-checked-baggage-fee \u0026\u0026 python -c 'import json; from pathlib import Path; p=json.loads(Path(\\\"scripts/input_schema.json\\\").read_text()); fields=list(p.get(\\\"properties\\\",{})); assert len(fields)==1, fields; key=fields[0]; values=[\\\"0\\\",\\\"20\\\",\\\"20.01\\\",\\\"21.01\\\",\\\"32\\\",\\\"32.01\\\"]; Path(\\\"input.json\\\").write_text(json.dumps({\\\"records\\\":[{key:json.loads(v)} for v in values]},ensure_ascii=False)+\\\"\\\\n\\\"); print(\\\"Wrote input.json using field:\\\",key)'\", \"description\": \"Write baggage weights to input JSON\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 134, \"invocation_id\": \"call_Z7HvtCYz68iYBx9W1VA6VVlo\", \"result_summary\": \"Exit code 1\\nTraceback (most recent call last):\\n  File \\\"\u003cstring\u003e\\\", line 1, in \u003cmodule\u003e\\nAssertionError: []\"}"
+        },
+        {
+          "TraceEventID": "4adeac0e-a767-44d9-8531-3dc32fe435f0",
+          "OccurredAt": "2026-10-26T10:49:26.399Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 14, \"resource_path\": \"airline-checked-baggage-fee\"}"
+        },
+        {
+          "TraceEventID": "0c013fae-3ce3-461a-b66b-b8f9ba823946",
+          "OccurredAt": "2026-10-26T10:49:26.399Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"path\": \"/work/.claude/skills/airline-checked-baggage-fee\", \"pattern\": \"scripts/input_schema.json\"}, \"tool_name\": \"Glob\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_F5zxiNNr7YJpYpBQAQMkCUap\", \"result_summary\": \"No files found\"}"
+        },
+        {
+          "TraceEventID": "21fcd2b4-8273-4cb0-a829-d6f0119cb794",
+          "OccurredAt": "2026-10-26T10:49:28.986Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 260, \"resource_path\": \"airline-checked-baggage-fee/scripts/input_schema.json\"}"
+        },
+        {
+          "TraceEventID": "5966dbcb-f6ea-4946-8411-2fc8772121a5",
+          "OccurredAt": "2026-10-26T10:49:28.986Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/airline-checked-baggage-fee/scripts/input_schema.json\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 9, \"invocation_id\": \"call_xNaS53QKOxloMSz2IyVtBFAd\", \"result_summary\": \"1\\t{\\n2\\t  \\\"fields\\\": [\\n3\\t    {\\n4\\t      \\\"name\\\": \\\"weight\\\",\\n5\\t      \\\"type\\\": \\\"number\\\",\\n6\\t      \\\"units\\\": {\\n7\\t        \\\"公斤\\\": 1,\\n8\\t        \\\"千克\\\": 1,\\n9\\t        \\\"kg\\\": 1,\\n10\\t        \\\"克\\\": 0.001,\\n11\\t        \\\"公克\\\": 0.001,\\n12\\t        \\\"g\\\": 0.001\\n13\\t      }\\n14\\t    }\\n15\\t  ]\\n16\\t}\\n17\\t\"}"
+        },
+        {
+          "TraceEventID": "13e1b396-2bbe-4342-8b99-f2379099b1c8",
+          "OccurredAt": "2026-10-26T10:49:31.178Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"Wrote six records\\n假設：今天以系統日期 2026-10-26 計\\nOK：6/6 筆可直接計算，結果在 checked.json\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "1147ea9b-0c90-4188-861f-58dfa2985a69",
+          "OccurredAt": "2026-10-26T10:49:31.178Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/airline-checked-baggage-fee \u0026\u0026 python -c 'import json; from pathlib import Path; values=[0,20,20.01,21.01,32,32.01]; Path(\\\"input.json\\\").write_text(json.dumps({\\\"records\\\":[{\\\"weight\\\":v} for v in values]},ensure_ascii=False)+\\\"\\\\n\\\"); print(\\\"Wrote six records\\\")' \u0026\u0026 python scripts/check_input.py input.json\", \"description\": \"Validate supplied baggage weights\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 94, \"invocation_id\": \"call_9rQHllJC7a1wZWbiXTiqP95m\", \"result_summary\": \"Wrote six records\\n假設：今天以系統日期 2026-10-26 計\\nOK：6/6 筆可直接計算，結果在 checked.json\"}"
+        },
+        {
+          "TraceEventID": "c3962997-1383-4f87-943d-0c44c8f3e039",
+          "OccurredAt": "2026-10-26T10:49:33.576Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"{\\\"today\\\": \\\"2026-10-26\\\", \\\"records\\\": [{\\\"values\\\": {\\\"weight\\\": 0}, \\\"rejected\\\": {}, \\\"missing\\\": [], \\\"assumptions\\\": []}, {\\\"values\\\": {\\\"weight\\\": 20}, \\\"rejected\\\": {}, \\\"missing\\\": [], \\\"assumptions\\\": []}, {\\\"values\\\": {\\\"weight\\\": 20.01}, \\\"rejected\\\": {}, \\\"missing\\\": [], \\\"assumptions\\\": []}, {\\\"values\\\": {\\\"weight\\\": 21.01}, \\\"rejected\\\": {}, \\\"missing\\\": [], \\\"assumptions\\\": []}, {\\\"values\\\": {\\\"weight\\\": 32}, \\\"rejected\\\": {}, \\\"missing\\\": [], \\\"assumptions\\\": []}, {\\\"values\\\": {\\\"weight\\\": 32.01}, \\\"rejected\\\": {}, \\\"missing\\\": [], \\\"assumptions\\\": []}]}\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "ca2afd86-7d3d-4950-8a6b-e328d9056d7c",
+          "OccurredAt": "2026-10-26T10:49:33.576Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python -c 'import json; from pathlib import Path; data=json.loads(Path(\\\"checked.json\\\").read_text()); print(json.dumps(data,ensure_ascii=False))'\", \"description\": \"Inspect validated baggage weights\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 55, \"invocation_id\": \"call_frJrb198acqR8OhrSIwiaTIm\", \"result_summary\": \"{\\\"today\\\": \\\"2026-10-26\\\", \\\"records\\\": [{\\\"values\\\": {\\\"weight\\\": 0}, \\\"rejected\\\": {}, \\\"missing\\\": [], \\\"assumptions\\\": []}, {\\\"values\\\": {\\\"weight\\\": 20}, \\\"rejected\\\": {}, \\\"missing\\\": [], \\\"assumptions\\\": []}, {\\\"values\\\": {\\\"weight\\\": 20.01}, \\\"rejected\\\": {}, \\\"missing\\\": [], \\\"assumptions\\\": []}, {\\\"values\\\": {\\\"weight\\\": 21.01}, \\\"rejected\\\": {}, \\\"missing\\\": [], \\\"assumptions\\\": []}, {\\\"values\\\": {\\\"weight\\\": 32}, \\\"rejected\\\": {}, \\\"missing\\\": [], \\\"assumptions\\\": []}, {\\\"values\\\": {\\\"weight\\\": 32.01}, \\\"rejected\\\": {}, \\\"missing\\\": [], \\\"assumptions\\\": []}]}\"}"
+        },
+        {
+          "TraceEventID": "4eea0445-2877-41c6-956a-0a51f7e463c1",
+          "OccurredAt": "2026-10-26T10:49:37.182Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"重量：0 公斤\\n處理方式：重量無效；重量須大於 0。\\n費用：不計費。\\n\\n重量：20 公斤\\n處理方式：免費托運。\\n費用：0 元。\\n\\n重量：20.01 公斤\\n處理方式：接受托運，列為超重行李。\\n超出 20 公斤：0.01 公斤；計費重量：1 公斤。\\n費用：1 × 500 = 500 元。\\n\\n重量：21.01 公斤\\n處理方式：接受托運，列為超重行李。\\n超出 20 公斤：1.01 公斤；計費重量：2 公斤。\\n費用：2 × 500 = 1,000 元。\\n\\n重量：32 公斤\\n處理方式：接受托運，列為超重行李。\\n超出 20 公斤：12 公斤；計費重量：12 公斤。\\n費用：12 × 500 = 6,000 元。\\n\\n重量：32.01 公斤\\n處理方式：不接受托運。\\n費用：不收取托運費。\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "58b49514-ec8d-4c0a-921f-94885668ebd1",
+          "OccurredAt": "2026-10-26T10:49:37.182Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python -c 'import json,subprocess,sys; d=json.load(open(\\\"checked.json\\\")); cmd=[sys.executable,\\\"scripts/baggage_fee.py\\\"]; [cmd.extend([\\\"--weight\\\",str(r[\\\"values\\\"][\\\"weight\\\"])]) for r in d[\\\"records\\\"] if \\\"weight\\\" in r[\\\"values\\\"]]; print(subprocess.run(cmd,text=True,capture_output=True,check=True).stdout,end=\\\"\\\")'\", \"description\": \"Calculate fees for checked baggage weights\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 94, \"invocation_id\": \"call_CX7siYg593tzdUsxGDUgA1En\", \"result_summary\": \"重量：0 公斤\\n處理方式：重量無效；重量須大於 0。\\n費用：不計費。\\n\\n重量：20 公斤\\n處理方式：免費托運。\\n費用：0 元。\\n\\n重量：20.01 公斤\\n處理方式：接受托運，列為超重行李。\\n超出 20 公斤：0.01 公斤；計費重量：1 公斤。\\n費用：1 × 500 = 500 元。\\n\\n重量：21.01 公斤\\n處理方式：接受托運，列為超重行李。\\n超出 20 公斤：1.01 公斤；計費重量：2 公斤。\\n費用：2 × 500 = 1,000 元。\\n\\n重量：32 公斤\\n處理方式：接受托運，列為超重行李。\\n超出 20 公斤：12 公斤；計費重量：12 公斤。\\n費用：12 × 500 = 6,000 元。\\n\\n重量：32.01 公斤\\n處理方式：不接受托運。\\n費用：不收取托運費。\"}"
+        },
+        {
+          "TraceEventID": "4fa37f8b-00f8-46d1-a619-202378a83167",
+          "OccurredAt": "2026-10-26T10:49:40.403Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"假設：今天以系統日期 2026-10-26 計\\n\\n重量：0 公斤  \\n處理方式：重量無效；重量須大於 0。  \\n費用：不計費。\\n\\n重量：20 公斤  \\n處理方式：免費托運。  \\n費用：0 元。\\n\\n重量：20.01 公斤  \\n處理方式：接受托運，列為超重行李。  \\n超出 20 公斤：0.01 公斤；計費重量：1 公斤。  \\n費用：1 × 500 = 500 元。\\n\\n重量：21.01 公斤  \\n處理方式：接受托運，列為超重行李。  \\n超出 20 公斤：1.01 公斤；計費重量：2 公斤。  \\n費用：2 × 500 = 1,000 元。\\n\\n重量：32 公斤  \\n處理方式：接受托運，列為超重行李。  \\n超出 20 公斤：12 公斤；計費重量：12 公斤。  \\n費用：12 × 500 = 6,000 元。\\n\\n重量：32.01 公斤  \\n處理方式：不接受托運。  \\n費用：不收取托運費。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "d63aef37-d3d0-4d0c-920b-03851d30bdbf",
+          "OccurredAt": "2026-10-26T10:49:40.676Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"假設：今天以系統日期 2026-10-26 計\\n\\n重量：0 公斤  \\n處理方式：重量無效；重量須大於 0。  \\n費用：不計費。\\n\\n重量：20 公斤  \\n處理方式：免費托運。  \\n費用：0 元。\\n\\n重量：20.01 公斤  \\n處理方式：接受托運，列為超重行李。  \\n超出 20 公斤：0.01 公斤；計費重量：1 公斤。  \\n費用：1 × 500 = 500 元。\\n\\n重量：21.01 公斤  \\n處理方式：接受托運，列為超重行李。  \\n超出 20 公斤：1.01 公斤；計費重量：2 公斤。  \\n費用：2 × 500 = 1,000 元。\\n\\n重量：32 公斤  \\n處理方式：接受托運，列為超重行李。  \\n超出 20 公斤：12 公斤；計費重量：12 公斤。  \\n費用：12 × 500 = 6,000 元。\\n\\n重量：32.01 公斤  \\n處理方式：不接受托運。  \\n費用：不收取托運費。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "b83257fa-c3ba-4754-b00b-350b42ba4e5b",
+          "OccurredAt": "2026-10-26T10:49:44.731Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.004887555, \"cost_source\": \"gateway\", \"duration_ms\": 31263, \"input_tokens\": 1590, \"token_source\": \"result\", \"output_tokens\": 1639, \"cache_read_input_tokens\": 132393, \"cache_write_input_tokens\": 20153}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "c0afd006-dd2a-4b60-b06e-29fb4011f276",
+        "Result": "passed",
+        "Reason": "0 公斤判定為重量無效，且不計費。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "重量：0 公斤"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "處理方式：重量無效；重量須大於 0。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "費用：不計費。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "63d2fc12-7509-4571-91a1-892180f43812",
+        "Result": "passed",
+        "Reason": "20 公斤判定為免費托運，費用為 0 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "重量：20 公斤"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "處理方式：免費托運。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "費用：0 元。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "efaf6f83-eebb-48c8-9063-04f33f3868c5",
+        "Result": "passed",
+        "Reason": "20.01 公斤判定接受托運並列為超重行李，費用為 500 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "重量：20.01 公斤"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "處理方式：接受托運，列為超重行李。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "費用：1 × 500 = 500 元。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "b685fee2-2ab9-48c4-98a2-a9348612cc4a",
+        "Result": "passed",
+        "Reason": "21.01 公斤判定接受超重托運；超出 1.01 公斤，計費重量進位為 2 公斤，費用為 1,000 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "重量：21.01 公斤"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "處理方式：接受托運，列為超重行李。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "超出 20 公斤：1.01 公斤；計費重量：2 公斤。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "費用：2 × 500 = 1,000 元。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a3000a3a-1c54-4908-8693-c2431c9b9d37",
+        "Result": "passed",
+        "Reason": "32 公斤判定接受超重托運；超出 12 公斤，費用為 6,000 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "重量：32 公斤"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "處理方式：接受托運，列為超重行李。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "超出 20 公斤：12 公斤；計費重量：12 公斤。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "費用：12 × 500 = 6,000 元。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d08c0d65-2faa-419f-9af4-e0293119a15a",
+        "Result": "passed",
+        "Reason": "32.01 公斤判定不接受托運，且不收取托運費。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "重量：32.01 公斤"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "處理方式：不接受托運。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "費用：不收取托運費。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "六筆重量的處理方式與費用均符合各自的驗收標準。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v4",
+    "Usage": {
+      "PromptTokens": 6143,
+      "CompletionTokens": 1590,
+      "CostUSD": 0.028567300000000004,
+      "CostReported": true
+    }
+  }
+}

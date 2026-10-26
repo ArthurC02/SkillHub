@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請分別計算以下每一行的健身教練課程包應付總額，每行作為一次獨立試算。\n1 堂\n9 堂\n10 堂\n19 堂\n20 堂\n21 堂",
+  "acceptance_criteria": [
+    {
+      "text": "試算材料第 1 行輸入 1 堂時，輸出「應付總額：1200 元」。"
+    },
+    {
+      "text": "試算材料第 2 行輸入 9 堂時，輸出「應付總額：10800 元」，不套用折扣。"
+    },
+    {
+      "text": "試算材料第 3 行輸入 10 堂時，輸出「應付總額：10800 元」（10 × 1,200 × 0.9）。"
+    },
+    {
+      "text": "試算材料第 4 行輸入 19 堂時，輸出「應付總額：20520 元」（19 × 1,200 × 0.9）。"
+    },
+    {
+      "text": "試算材料第 5 行輸入 20 堂時，輸出「應付總額：19200 元」（20 × 1,200 × 0.8）。"
+    },
+    {
+      "text": "試算材料第 6 行輸入 21 堂時，輸出「應付總額：20160 元」（21 × 1,200 × 0.8）。"
+    }
+  ],
+  "final_output": "1 堂：應付總額：1200 元  \n9 堂：應付總額：10800 元  \n10 堂：應付總額：10800 元  \n19 堂：應付總額：20520 元  \n20 堂：應付總額：19200 元  \n21 堂：應付總額：20160 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8eeaebe0-e96f-4bdb-898e-43b72d1c83a3",
+    "run_id": "69d2ab10-9dab-42de-bdfd-e9c199350e38",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六行均分別輸出正確的應付總額；9 堂未折扣，10 與 19 堂為九折，20 與 21 堂為八折。",
+    "criterion_results": [
+      {
+        "criterion_id": "1d50e16f-0b6b-4478-a3b6-a8efd4079c78",
+        "text": "試算材料第 1 行輸入 1 堂時，輸出「應付總額：1200 元」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 行的 1 堂報價為 1200 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1 堂：應付總額：1200 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8e7e2f93-01a8-4ef7-a8d5-e1d00c5ffa6b",
+        "text": "試算材料第 2 行輸入 9 堂時，輸出「應付總額：10800 元」，不套用折扣。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 行的 9 堂報價為 10800 元，等於 9 × 1200，未折扣。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "9 堂：應付總額：10800 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7616e0c7-cc42-4bc0-8319-e12279696371",
+        "text": "試算材料第 3 行輸入 10 堂時，輸出「應付總額：10800 元」（10 × 1,200 × 0.9）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 行的 10 堂報價為 10800 元，符合九折計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "10 堂：應付總額：10800 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5bae19ac-81bb-4956-9d0d-4bcbcf464cea",
+        "text": "試算材料第 4 行輸入 19 堂時，輸出「應付總額：20520 元」（19 × 1,200 × 0.9）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 行的 19 堂報價為 20520 元，符合九折計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "19 堂：應付總額：20520 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "63af736c-7fff-4515-96d3-dd2b73803b9a",
+        "text": "試算材料第 5 行輸入 20 堂時，輸出「應付總額：19200 元」（20 × 1,200 × 0.8）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 行的 20 堂報價為 19200 元，符合八折計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "20 堂：應付總額：19200 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8898e3a6-1801-4e10-9d7c-9a90c81fe108",
+        "text": "試算材料第 6 行輸入 21 堂時，輸出「應付總額：20160 元」（21 × 1,200 × 0.8）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 行的 21 堂報價為 20160 元，符合八折計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "21 堂：應付總額：20160 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1550 input and 296 output tokens on gpt-6-luna; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

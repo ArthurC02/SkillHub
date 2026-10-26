@@ -1,0 +1,97 @@
+{
+  "round": 1,
+  "sample_input": "請逐件判定以下托運行李，回覆處理方式及費用（元）。\n甲（同一件行李）：21 公斤\n甲（同一件行李）：33 公斤\n乙：20.1 公斤",
+  "acceptance_criteria": [
+    {
+      "text": "指出甲的兩個重量互相矛盾、不能同時正確，且不根據任一重量判定甲的處理方式或費用。"
+    },
+    {
+      "text": "判定乙可托運，費用為 500 元：20.1 − 20 = 0.1，ceil(0.1) = 1，1 × 500 = 500。"
+    }
+  ],
+  "final_output": "假設：今天以系統日期 2026-10-26 計\n\n- **甲（同一件行李）**：記錄為 **21 公斤**及**33 公斤**，重量互相衝突，暫不判定處理方式或費用；請確認實際重量。\n- **乙（20.1 公斤）**：可托運；超重行李；費用 **500 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "caca1408-5832-40df-ad22-65ef1f581f25",
+    "run_id": "7b5ed61a-a01d-4139-ac95-60f63a82ced0",
+    "status": "completed",
+    "overall": "met",
+    "summary": "甲的重量衝突已指出，且未據此計費；乙獲判可托運，費用為 500 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "6208a2f9-212c-456e-b97a-e472aa0dc52c",
+        "text": "指出甲的兩個重量互相矛盾、不能同時正確，且不根據任一重量判定甲的處理方式或費用。",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出甲同一件行李的兩個重量互相衝突，並暫不判定處理方式或費用。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**甲（同一件行李）**：記錄為 **21 公斤**及**33 公斤**，重量互相衝突，暫不判定處理方式或費用；請確認實際重量。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "35f43db5-e0c9-4ae4-af0f-17a0ac34e68a",
+        "text": "判定乙可托運，費用為 500 元：20.1 − 20 = 0.1，ceil(0.1) = 1，1 × 500 = 500。",
+        "result": "passed",
+        "source": "model",
+        "reason": "判定乙的 20.1 公斤行李可托運，費用為 500 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**乙（20.1 公斤）**：可托運；超重行李；費用 **500 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1589 input and 1380 output tokens on skillhub-run; reported cost $0.0043 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

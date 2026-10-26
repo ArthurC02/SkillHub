@@ -1,0 +1,135 @@
+{
+  "round": 1,
+  "sample_input": "請試算以下行程的計程車車資：\n\n| 行程 | 里程（公里） | 夜間 |\n|---|---:|---|\n| A | -0.2 | 否 |\n| B | 1.3 | 否 |\n| C | 1.5 | 是 |",
+  "acceptance_criteria": [
+    {
+      "text": "A 的 -0.2 公里須標示無效，且不得提供車資；其他有效行程仍須試算並列出表格。"
+    },
+    {
+      "text": "B 的超出里程為 1.3−1.25＝0.05 公里；0.05÷0.2＝0.25，ceil 後為 1 個級距；車資為 85＋5×1＝90 元。"
+    },
+    {
+      "text": "C 的超出里程為 1.5−1.25＝0.25 公里；0.25÷0.2＝1.25，ceil 後為 2 個級距；車資為 85＋5×2＋20＝115 元。"
+    }
+  ],
+  "final_output": "| 行程 | 里程 | 夜間 | 車資 |\n|---|---:|---|---:|\n| A | -0.2 公里 | 否 | 無效，不計價 |\n| B | 1.3 公里 | 否 | 90 元 |\n| C | 1.5 公里 | 是 | 115 元 |\n\nA 的里程不大於 0，因此不計價。其餘里程均未列出讀法假設。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0147affc-3a76-4c82-b453-e2287df1fcc0",
+    "run_id": "2c84b073-1344-470c-8d1b-bfc9a2489d71",
+    "status": "completed",
+    "overall": "met",
+    "summary": "A 已標示無效且未計價；B、C 均列於表格，車資分別為 90 元與 115 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "a4aeffe7-3d1f-42d3-bac7-4f73daa3ae23",
+        "text": "A 的 -0.2 公里須標示無效，且不得提供車資；其他有效行程仍須試算並列出表格。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格將 A 的負里程標為無效、不計價，並列出 B、C 的車資。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| A | -0.2 公里 | 否 | 無效，不計價 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| B | 1.3 公里 | 否 | 90 元 |\n| C | 1.5 公里 | 是 | 115 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6643a39e-7283-4209-854b-006762080c2d",
+        "text": "B 的超出里程為 1.3−1.25＝0.05 公里；0.05÷0.2＝0.25，ceil 後為 1 個級距；車資為 85＋5×1＝90 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "B 的 1.3 公里依程式所示的超出里程與向上取整級距公式計算，結果為 90 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| B | 1.3 公里 | 否 | 90 元 |",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "blocks = int((excess / Decimal(\\\"0.2\\\")).to_integral_value(rounding=ROUND_CEILING))",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "350456aa-fbcb-4fea-84a7-fa1a647cfbdb",
+        "text": "C 的超出里程為 1.5−1.25＝0.25 公里；0.25÷0.2＝1.25，ceil 後為 2 個級距；車資為 85＋5×2＋20＝115 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "C 的 1.5 公里按超出里程向上取整為兩個級距，再加夜間費，結果為 115 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| C | 1.5 公里 | 是 | 115 元 |",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "fare = 85 + 5 * blocks + (20 if night == \\\"yes\\\" else 0)",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1681 input and 1617 output tokens on skillhub-run; reported cost $0.0055 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 41,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

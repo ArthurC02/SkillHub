@@ -1,0 +1,213 @@
+{
+  "round": 1,
+  "sample_input": "請依規則計算以下各筆車資，並對無效里程說明原因：\n1.25 公里，非夜間\n1.251 公里，非夜間\n1.45 公里，非夜間\n1.451 公里，非夜間\n1.25 公里，夜間\n1.25 公里，23:00 搭乘\n1.25 公里，06:00 搭乘\n0 公里，非夜間",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 行（1.25 公里、非夜間）時，輸出車資 85 元。"
+    },
+    {
+      "text": "試跑輸入第 2 行（1.251 公里、非夜間）時，超出 1.25 公里的部分即使未滿 200 公尺也按一個計費單位計，輸出 90 元。"
+    },
+    {
+      "text": "試跑輸入第 3 行（1.45 公里、非夜間）時，超出部分恰為 200 公尺，輸出 90 元。"
+    },
+    {
+      "text": "試跑輸入第 4 行（1.451 公里、非夜間）時，超出部分為 201 公尺，按兩個 200 公尺單位計，輸出 95 元。"
+    },
+    {
+      "text": "試跑輸入第 5 行（1.25 公里、夜間）時，輸出含夜間加收的 105 元。"
+    },
+    {
+      "text": "試跑輸入第 6 行（1.25 公里、23:00 搭乘）時，按夜間起點包含 23:00 判定，輸出 105 元。"
+    },
+    {
+      "text": "試跑輸入第 7 行（1.25 公里、06:00 搭乘）時，按夜間終點不包含 06:00 判定，輸出 85 元。"
+    },
+    {
+      "text": "試跑輸入第 8 行（0 公里）時，指出里程必須大於 0，且不提供車資計算結果。"
+    }
+  ],
+  "final_output": "1. **1.25 公里，非夜間：85 元**\n2. **1.251 公里，非夜間：90 元**\n3. **1.45 公里，非夜間：90 元**\n4. **1.451 公里，非夜間：95 元**\n5. **1.25 公里，夜間：105 元**\n6. **1.25 公里，23:00 搭乘：105 元**\n7. **1.25 公里，06:00 搭乘：85 元**\n8. **0 公里，非夜間：不計算車資。** 無效原因：里程必須大於 0；計算腳本回報「無法使用的值：distance-km=0」。\n\n輸入檢查器印出的讀值假設：**假設：今天以系統日期 2026-10-26 計**",
+  "artifacts": [
+    "taxi-checked.json",
+    "taxi-input.json"
+  ],
+  "evaluation": {
+    "evaluation_id": "7aadf214-b651-47c5-bdcc-44974311e361",
+    "run_id": "1339e9f3-2c54-4fd4-a97e-6e60eb4c2d75",
+    "status": "completed",
+    "overall": "met",
+    "summary": "八項驗收條件均已達成：七筆有效里程的輸出車資符合要求，0 公里則說明無效原因並未計算車資。",
+    "criterion_results": [
+      {
+        "criterion_id": "bc76de17-3610-42ff-a255-ad91c03d671e",
+        "text": "試跑輸入第 1 行（1.25 公里、非夜間）時，輸出車資 85 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆輸出 85 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. **1.25 公里，非夜間：85 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5a5c5f56-837f-45be-b8bd-cf89b97f3e87",
+        "text": "試跑輸入第 2 行（1.251 公里、非夜間）時，超出 1.25 公里的部分即使未滿 200 公尺也按一個計費單位計，輸出 90 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆輸出 90 元，符合超出部分未滿 200 公尺仍計一個單位的結果。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. **1.251 公里，非夜間：90 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1638c096-1166-482b-b775-0b8e6cb69ff5",
+        "text": "試跑輸入第 3 行（1.45 公里、非夜間）時，超出部分恰為 200 公尺，輸出 90 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆輸出 90 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. **1.45 公里，非夜間：90 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6154e80d-9795-4d1d-acd4-ee89d392e8db",
+        "text": "試跑輸入第 4 行（1.451 公里、非夜間）時，超出部分為 201 公尺，按兩個 200 公尺單位計，輸出 95 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆輸出 95 元，符合超出 201 公尺按兩個單位計費的結果。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. **1.451 公里，非夜間：95 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "897126fe-b278-438b-9e01-416b67dac919",
+        "text": "試跑輸入第 5 行（1.25 公里、夜間）時，輸出含夜間加收的 105 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆夜間車資輸出 105 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5. **1.25 公里，夜間：105 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f8d30d3e-3f7a-4c54-bfe4-7cec439d648a",
+        "text": "試跑輸入第 6 行（1.25 公里、23:00 搭乘）時，按夜間起點包含 23:00 判定，輸出 105 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 筆 23:00 搭乘輸出含夜間加收的 105 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "6. **1.25 公里，23:00 搭乘：105 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ebe1d00e-c8fd-4cd0-b915-55ffb99086df",
+        "text": "試跑輸入第 7 行（1.25 公里、06:00 搭乘）時，按夜間終點不包含 06:00 判定，輸出 85 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 7 筆 06:00 搭乘輸出未加收夜間費的 85 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "7. **1.25 公里，06:00 搭乘：85 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9bb7847b-6f24-4f23-881f-6649d3d3d285",
+        "text": "試跑輸入第 8 行（0 公里）時，指出里程必須大於 0，且不提供車資計算結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 8 筆指出里程必須大於 0，且未提供車資結果。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "8. **0 公里，非夜間：不計算車資。** 無效原因：里程必須大於 0；計算腳本回報「無法使用的值：distance-km=0」。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 2 readable output file(s): taxi-checked.json, taxi-input.json"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1774 input and 2524 output tokens on skillhub-run; reported cost $0.0066 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 53,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

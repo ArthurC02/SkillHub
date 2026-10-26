@@ -1,0 +1,102 @@
+{
+  "round": 0,
+  "sample_input": "電子鍋是 2024-02-29 買的，我 2025-02-28 送修，還在保固內嗎？",
+  "acceptance_criteria": [
+    {
+      "text": "明確寫出 2025 年沒有 2 月 29 日時保固最後一天如何認定的假設（2025-02-27 或 2025-02-28），沒有反問使用者"
+    },
+    {
+      "text": "結論與所寫假設一致：最後一天認定為 2025-02-27 則判過保 1 天；認定為 2025-02-28 則判保固內"
+    }
+  ],
+  "final_output": "電子鍋於 **2024-02-29** 購買，**2025-02-28** 報修。保固最後一天是 **2025-02-27**，因此報修時已過保 **1 天**。\n\n假設：今天以系統日期 2026-10-26 計",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f57702ad-7c92-4301-aea1-bde29a2860dd",
+    "run_id": "44f2f509-8473-4191-a551-2326ba378e48",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "結論與列出的保固最後一天一致，但未明確交代非閏年的保固截止日認定假設。",
+    "criterion_results": [
+      {
+        "criterion_id": "e1861a5f-4972-4e7b-ae8e-d69322be3f29",
+        "text": "明確寫出 2025 年沒有 2 月 29 日時保固最後一天如何認定的假設（2025-02-27 或 2025-02-28），沒有反問使用者",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖然寫出保固最後一天為 2025-02-27，且沒有反問使用者，但未明確說明 2025 年沒有 2 月 29 日時，為何假設最後一天認定為 2 月 27 日；所寫的「假設」只涉及系統日期。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "保固最後一天是 **2025-02-27**，因此報修時已過保 **1 天**。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "假設：今天以系統日期 2026-10-26 計",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "eb9d82c0-16e2-44bd-b713-8c67c5f7d32c",
+        "text": "結論與所寫假設一致：最後一天認定為 2025-02-27 則判過保 1 天；認定為 2025-02-28 則判保固內",
+        "result": "passed",
+        "source": "model",
+        "reason": "將保固最後一天認定為 2025-02-27，並判定 2025-02-28 報修已過保 1 天，結論與該日期認定一致。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "保固最後一天是 **2025-02-27**，因此報修時已過保 **1 天**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1559 input and 894 output tokens on skillhub-run; reported cost $0.0040 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "round": 0,
+  "sample_input": "同一位顧客有兩張單都延誤：訂單 C101 晚了 15 分鐘補 30 元，訂單 C102 晚了 20 分鐘補 40 元，幫我寫道歉訊息。",
+  "acceptance_criteria": [
+    {
+      "text": "明確寫出以一則訊息合併或分兩則訊息處理的做法，沒有反問使用者"
+    },
+    {
+      "text": "每則訊息都不超過 2 句，且涵蓋的訂單都有編號、延誤分鐘數與補償金額（C101：15 分鐘、30 元；C102：20 分鐘、40 元）"
+    }
+  ],
+  "final_output": "**訂單 C101：** 您好，訂單C101延誤15分鐘，造成不便我們深感抱歉；我們將提供30補償。\n\n**訂單 C102：** 您好，訂單C102延誤20分鐘，造成不便我們深感抱歉；我們將提供40補償。",
+  "artifacts": [
+    "C101.txt",
+    "C102.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "5952e113-0c9b-4d07-b229-bd3a66b0edb7",
+    "run_id": "8b28a793-967c-496b-bb02-8af668ac2624",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "已分兩則撰寫道歉訊息，且各則句數符合上限；但兩筆補償都漏寫金額單位「元」。",
+    "criterion_results": [
+      {
+        "criterion_id": "79949d6a-7735-4430-8587-d69e15028c4c",
+        "text": "明確寫出以一則訊息合併或分兩則訊息處理的做法，沒有反問使用者",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆分別以 C101 和 C102 為標題提供兩則道歉訊息，沒有反問使用者。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**訂單 C101：**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**訂單 C102：**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7775b0c8-6cba-41f1-99cf-9f8c4fb3401a",
+        "text": "每則訊息都不超過 2 句，且涵蓋的訂單都有編號、延誤分鐘數與補償金額（C101：15 分鐘、30 元；C102：20 分鐘、40 元）",
+        "result": "failed",
+        "source": "model",
+        "reason": "兩則訊息各不超過 2 句，且列出正確的訂單編號與延誤分鐘數；但補償僅寫「30補償」和「40補償」，未寫明要求的 30 元與 40 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，訂單C101延誤15分鐘，造成不便我們深感抱歉；我們將提供30補償。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，訂單C102延誤20分鐘，造成不便我們深感抱歉；我們將提供40補償。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 2 readable output file(s): C101.txt, C102.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1589 input and 1196 output tokens on gpt-6-luna; reported cost $0.0044 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

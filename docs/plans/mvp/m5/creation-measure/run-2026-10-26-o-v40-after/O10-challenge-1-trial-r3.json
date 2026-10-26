@@ -1,0 +1,69 @@
+{
+  "round": 3,
+  "sample_input": "請逐項判定以下單件行李重量的處理方式與費用：\n20 公斤\n-1 公斤\n21.01 公斤",
+  "acceptance_criteria": [
+    {
+      "text": "指出 -1 公斤不是有效重量，不為它計費，也不給出托運判定。"
+    },
+    {
+      "text": "判定 20 公斤免費托運，費用為 0 元。"
+    },
+    {
+      "text": "判定 21.01 公斤接受托運；超出 20 公斤 1.01 公斤，進位為 2 公斤，費用為 1,000 元。"
+    }
+  ],
+  "final_output": "- **重量：20 公斤**\n  - 處理方式：免費托運\n  - 費用：0 元\n\n- **重量：−1 公斤**\n  - 處理方式：重量無效（須大於 0 公斤）\n  - 費用：不計費\n\n- **重量：21.01 公斤**\n  - 處理方式：接受托運，列為超重行李\n  - 超出重量：1.01 公斤\n  - 計費重量：2 公斤（不足 1 公斤部分進位）\n  - 費用：2 × 500 = **1,000 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4f46b067-3d10-4f28-8070-91369b44f8ea",
+    "run_id": "6d907eeb-531d-44cc-84cc-a60621e5d2dc",
+    "status": "failed",
+    "overall": "undetermined",
+    "summary": "這次判定沒有跑完：模型閘道或證據讀取失敗。原因已記在這個 Run 的執行紀錄（進階模式）裡。",
+    "criterion_results": [],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1470 input and 230 output tokens on skillhub-run; reported cost $0.0028 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": null,
+      "source": "unreported",
+      "note": "Judge 這一次呼叫沒有回報花費：這裡是未測量，不是 0 點。權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "round": 1,
+  "sample_input": "請依序試算以下觀影者的票價（元）：\n1. 年齡 4 歲，週末\n2. 年齡 12 歲，週末",
+  "acceptance_criteria": [
+    {
+      "text": "依一般讀法將「週末」視為假日，並用一句話說明此假設，而非反問。"
+    },
+    {
+      "text": "票價依序為 220 元、360 元，並維持輸入順序。"
+    }
+  ],
+  "final_output": "假設「週末」按假日計。\n\n1. 年齡 4 歲：220 元\n2. 年齡 12 歲：360 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ea9217e9-1856-403e-b52d-5de11bf1bd91",
+    "run_id": "b1000572-1b1b-46c7-a7ea-764bfa29706e",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收條件均已達成：回覆說明了週末按假日計，並依序給出正確票價。",
+    "criterion_results": [
+      {
+        "criterion_id": "9fe7c7b1-1d95-4fc3-b6b6-e8d806f5402c",
+        "text": "依一般讀法將「週末」視為假日，並用一句話說明此假設，而非反問。",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確以一句話說明「週末」按假日計算，沒有反問。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "假設「週末」按假日計。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "82be4db4-7245-4379-9d87-2da212cd1e1d",
+        "text": "票價依序為 220 元、360 元，並維持輸入順序。",
+        "result": "passed",
+        "source": "model",
+        "reason": "依輸入順序列出 4 歲 220 元、12 歲 360 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 年齡 4 歲：220 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 年齡 12 歲：360 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1568 input and 726 output tokens on skillhub-run; reported cost $0.0045 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

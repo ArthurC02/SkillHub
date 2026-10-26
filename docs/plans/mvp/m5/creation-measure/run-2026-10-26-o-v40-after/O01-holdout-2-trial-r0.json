@@ -1,0 +1,102 @@
+{
+  "round": 0,
+  "sample_input": "我上個月買的課包還剩 3 堂沒上，這次打算再買 8 堂，要付多少？",
+  "acceptance_criteria": [
+    {
+      "text": "明確寫出折扣如何認定的假設（只看這次購買的 8 堂，或把剩餘 3 堂併入共 11 堂），沒有反問使用者"
+    },
+    {
+      "text": "金額與所寫假設一致：只看 8 堂為 9,600 元（8×1,200，無折扣）；併入剩餘堂數而適用 9 折則為 8,640 元（8×1,200×0.9）"
+    }
+  ],
+  "final_output": "這次購買 8 堂應付 **9,600 元**。上次剩下的 3 堂不計入這筆購買的折扣門檻，因此本次 8 堂未達 10 堂折扣門檻。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e47c5ef3-4da7-462f-9237-218e8a716d18",
+    "run_id": "087ff01d-1f44-45d0-a4c4-86394982d57a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆清楚交代折扣門檻只看本次購買的 8 堂，並給出與該假設一致的應付金額 9,600 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "acade4ef-6c1b-4e8d-abf1-cd64cdf4ca0a",
+        "text": "明確寫出折扣如何認定的假設（只看這次購買的 8 堂，或把剩餘 3 堂併入共 11 堂），沒有反問使用者",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確說明上次剩餘的 3 堂不計入本次折扣門檻，也沒有反問使用者。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "上次剩下的 3 堂不計入這筆購買的折扣門檻，因此本次 8 堂未達 10 堂折扣門檻。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "34a54ad1-b8b5-42e2-ae42-ec1656d49af8",
+        "text": "金額與所寫假設一致：只看 8 堂為 9,600 元（8×1,200，無折扣）；併入剩餘堂數而適用 9 折則為 8,640 元（8×1,200×0.9）",
+        "result": "passed",
+        "source": "model",
+        "reason": "依照只計本次購買的 8 堂、未達折扣門檻的假設，應付 9,600 元；回覆金額與此一致。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這次購買 8 堂應付 **9,600 元**。上次剩下的 3 堂不計入這筆購買的折扣門檻，因此本次 8 堂未達 10 堂折扣門檻。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1639 input and 1379 output tokens on skillhub-run; reported cost $0.0056 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

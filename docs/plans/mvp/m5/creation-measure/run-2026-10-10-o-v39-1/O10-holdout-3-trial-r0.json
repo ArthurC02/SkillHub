@@ -1,0 +1,105 @@
+{
+  "round": 0,
+  "sample_input": "一家人四件行李：甲 18 公斤、乙 -4 公斤、丙 25.2 公斤、丁 29 公斤，各自費用多少？",
+  "acceptance_criteria": [
+    {
+      "text": "甲免費（0 元），丙為 3,000 元（超過 5.2 公斤進位為 6 公斤，6×500），丁為 4,500 元（超過 9 公斤，9×500）"
+    },
+    {
+      "text": "明確指出乙的 -4 公斤不合理（重量須大於 0），沒有給出乙的費用"
+    }
+  ],
+  "final_output": "甲（18 公斤）：免費托運，0 元。  \n乙（-4 公斤）：重量無效，費用不適用。  \n丙（25.2 公斤）：可托運，屬超重行李，3,000 元（超重 5.2 公斤，按 6 公斤計）。  \n丁（29 公斤）：可托運，屬超重行李，4,500 元（超重 9 公斤，按 9 公斤計）。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "2f93431f-a4a4-4561-b2fe-ff567492f470",
+    "run_id": "d5d84757-c0e1-402a-b335-061bb2d7906f",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四件行李的回覆均符合判定標準：甲、丙、丁的費用正確，乙的負重量被判為無效且未計費。",
+    "criterion_results": [
+      {
+        "criterion_id": "44a7ff0c-f3a9-4853-83eb-d619e0b4ad60",
+        "text": "甲免費（0 元），丙為 3,000 元（超過 5.2 公斤進位為 6 公斤，6×500），丁為 4,500 元（超過 9 公斤，9×500）",
+        "result": "passed",
+        "source": "model",
+        "reason": "甲為 0 元；丙的超重 5.2 公斤按 6 公斤計，費用 3,000 元；丁的超重 9 公斤按 9 公斤計，費用 4,500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "甲（18 公斤）：免費托運，0 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "丙（25.2 公斤）：可托運，屬超重行李，3,000 元（超重 5.2 公斤，按 6 公斤計）。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "丁（29 公斤）：可托運，屬超重行李，4,500 元（超重 9 公斤，按 9 公斤計）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "43ad31ed-71c9-4c5d-9a7c-daab117b2f84",
+        "text": "明確指出乙的 -4 公斤不合理（重量須大於 0），沒有給出乙的費用",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確將乙的 -4 公斤判為無效重量，並表示費用不適用，未給出費用金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "乙（-4 公斤）：重量無效，費用不適用。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1502 input and 312 output tokens on gpt-6-luna; reported cost $0.0031 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

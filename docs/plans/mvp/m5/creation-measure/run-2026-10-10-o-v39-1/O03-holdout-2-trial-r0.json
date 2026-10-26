@@ -1,0 +1,105 @@
+{
+  "round": 0,
+  "sample_input": "本期帳單 25,000 元，我已經先繳了 5,000 元，最低應繳還要多少？",
+  "acceptance_criteria": [
+    {
+      "text": "明確寫出最低應繳以帳單總額或以未繳餘額為基準的假設，沒有反問使用者"
+    },
+    {
+      "text": "金額與所寫假設一致：以帳單總額 25,000 計最低應繳為 2,500 元（25,000×10%），並說明已繳 5,000 元已超過該金額、還需繳 0 元，或仍回報 2,500 元為最低應繳；以未繳餘額 20,000 計為 2,000 元（20,000×10%）"
+    }
+  ],
+  "final_output": "最低應繳金額是 **2,500 元**。你已繳 **5,000 元**，已超過最低應繳 **2,500 元**，因此就最低應繳來說，**還要繳 0 元**。\n\n若只看本期帳單本金，尚餘 **20,000 元**未繳。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0ec4d457-0997-44e9-9d56-3eab4ca3db37",
+    "run_id": "df643fd2-1fe2-4137-bac3-f8e66758ddc7",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "金額及還需繳納的數額正確，但回覆未明確交代最低應繳的計算基準。",
+    "criterion_results": [
+      {
+        "criterion_id": "3843247d-a761-443a-abfe-7c14a887a239",
+        "text": "明確寫出最低應繳以帳單總額或以未繳餘額為基準的假設，沒有反問使用者",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆沒有反問使用者，但未明確寫出最低應繳是以帳單總額還是未繳餘額為計算基準。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "最低應繳金額是 **2,500 元**。你已繳 **5,000 元**，已超過最低應繳 **2,500 元**，因此就最低應繳來說，**還要繳 0 元**。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "若只看本期帳單本金，尚餘 **20,000 元**未繳。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5aa44598-c3db-434d-8be6-0c0b688ad065",
+        "text": "金額與所寫假設一致：以帳單總額 25,000 計最低應繳為 2,500 元（25,000×10%），並說明已繳 5,000 元已超過該金額、還需繳 0 元，或仍回報 2,500 元為最低應繳；以未繳餘額 20,000 計為 2,000 元（20,000×10%）",
+        "result": "passed",
+        "source": "model",
+        "reason": "計算紀錄顯示以 25,000 元帳單得出最低應繳 2,500 元；回覆也正確指出已繳 5,000 元超過最低應繳，因此還需繳 0 元。",
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "本期帳單（25,000 元）：最低應繳 2500 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "最低應繳金額是 **2,500 元**。你已繳 **5,000 元**，已超過最低應繳 **2,500 元**，因此就最低應繳來說，**還要繳 0 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1492 input and 738 output tokens on gpt-6-luna; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

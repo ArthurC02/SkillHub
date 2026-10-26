@@ -1,0 +1,163 @@
+{
+  "round": 3,
+  "sample_input": "請逐行計算店家當月平台抽成，每行各自視為一次試算：\n營業額為 0 元，請計算平台抽成。\n營業額為 100,000 元，請計算平台抽成。\n營業額為 200,000 元，請計算平台抽成。\n營業額為 300,000 元，請計算平台抽成。\n營業額為 400,000 元，請計算平台抽成。\n營業額為 −1 元，請計算平台抽成。",
+  "acceptance_criteria": [
+    {
+      "text": "Sample 第 1 行的營業額為 0 元，輸出抽成 0 元。"
+    },
+    {
+      "text": "Sample 第 2 行的營業額為 100,000 元，輸出抽成 20,000 元。"
+    },
+    {
+      "text": "Sample 第 3 行的營業額為 200,000 元，輸出抽成 35,000 元（100,000 × 20% + 100,000 × 15%）。"
+    },
+    {
+      "text": "Sample 第 4 行的營業額為 300,000 元，輸出抽成 50,000 元（100,000 × 20% + 200,000 × 15%）。"
+    },
+    {
+      "text": "Sample 第 5 行的營業額為 400,000 元，輸出抽成 60,000 元（100,000 × 20% + 200,000 × 15% + 100,000 × 10%）。"
+    },
+    {
+      "text": "Sample 第 6 行的營業額為 −1 元，明確指出輸入無效，且不報出抽成金額。"
+    }
+  ],
+  "final_output": "逐筆試算結果如下：\n\n1. 營業額 **0 元**：平台抽成 **0 元**。\n2. 營業額 **100,000 元**：100,000 元 × 20% = 平台抽成 **20,000 元**。\n3. 營業額 **200,000 元**：100,000 元 × 20% + 100,000 元 × 15% = 平台抽成 **35,000 元**。\n4. 營業額 **300,000 元**：100,000 元 × 20% + 200,000 元 × 15% = 平台抽成 **50,000 元**。\n5. 營業額 **400,000 元**：100,000 元 × 20% + 200,000 元 × 15% + 100,000 元 × 10% = 平台抽成 **60,000 元**。\n6. 營業額 **−1 元**：金額無效（不得為負），不計算抽成。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "87570034-912e-4f6f-a6bb-996062659cbf",
+    "run_id": "b4eaa83b-993a-4c97-a2fd-05039d1a87f4",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收標準均已達成：五筆非負營業額的抽成正確，負數輸入也已明確判為無效且未計算抽成。",
+    "criterion_results": [
+      {
+        "criterion_id": "cbd290f5-1b93-4463-9de8-3e5cef418f7e",
+        "text": "Sample 第 1 行的營業額為 0 元，輸出抽成 0 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 行將 0 元營業額的抽成列為 0 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 營業額 **0 元**：平台抽成 **0 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "519a57e3-0452-4806-8141-8de7608997fe",
+        "text": "Sample 第 2 行的營業額為 100,000 元，輸出抽成 20,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 行將 100,000 元營業額的抽成列為 20,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 營業額 **100,000 元**：100,000 元 × 20% = 平台抽成 **20,000 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fd0f0a80-aa31-4827-bd24-62baedcc7dca",
+        "text": "Sample 第 3 行的營業額為 200,000 元，輸出抽成 35,000 元（100,000 × 20% + 100,000 × 15%）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 行按兩個級距計算，抽成為 35,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. 營業額 **200,000 元**：100,000 元 × 20% + 100,000 元 × 15% = 平台抽成 **35,000 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "89a7449e-4e12-46a1-a14b-2d2fb8958b50",
+        "text": "Sample 第 4 行的營業額為 300,000 元，輸出抽成 50,000 元（100,000 × 20% + 200,000 × 15%）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 行按兩個級距計算，抽成為 50,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 營業額 **300,000 元**：100,000 元 × 20% + 200,000 元 × 15% = 平台抽成 **50,000 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c411e8bf-fea7-407b-ac70-b4617d89cf44",
+        "text": "Sample 第 5 行的營業額為 400,000 元，輸出抽成 60,000 元（100,000 × 20% + 200,000 × 15% + 100,000 × 10%）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 行按三個級距計算，抽成為 60,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5. 營業額 **400,000 元**：100,000 元 × 20% + 200,000 元 × 15% + 100,000 元 × 10% = 平台抽成 **60,000 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "66f1df39-e8d5-4cf6-8765-9c25eb0cfab5",
+        "text": "Sample 第 6 行的營業額為 −1 元，明確指出輸入無效，且不報出抽成金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 行明確指出負數金額無效，且未報出抽成金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "6. 營業額 **−1 元**：金額無效（不得為負），不計算抽成。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1516 input and 538 output tokens on gpt-6-luna; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

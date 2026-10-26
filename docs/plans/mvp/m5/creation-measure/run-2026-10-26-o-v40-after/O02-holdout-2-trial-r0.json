@@ -1,0 +1,102 @@
+{
+  "round": 0,
+  "sample_input": "這個月我們店營業額 180,000 元，其中有 12,000 元是客人退款退掉的，抽成要付多少？",
+  "acceptance_criteria": [
+    {
+      "text": "明確寫出營業額是否扣除退款的假設，沒有反問使用者"
+    },
+    {
+      "text": "金額與所寫假設一致：扣除退款以 168,000 計為 30,200 元（20,000+68,000×15%）；不扣除以 180,000 計為 32,000 元（20,000+80,000×15%）"
+    }
+  ],
+  "final_output": "- 店家名稱未提供：退款後營業額 168,000 元，平台抽成 **30,200.00 元**。\n\n假設：今天以系統日期 2026-10-26 計",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "eaae4928-31a6-4398-9a3b-ea23092e812b",
+    "run_id": "a34803e8-c73f-498e-a399-99547d7c8f46",
+    "status": "completed",
+    "overall": "met",
+    "summary": "本次回覆以退款後營業額 168,000 元計算，抽成 30,200 元；兩項驗收條件均符合。",
+    "criterion_results": [
+      {
+        "criterion_id": "e1639335-3783-4a81-aa81-8996b2d792c2",
+        "text": "明確寫出營業額是否扣除退款的假設，沒有反問使用者",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確以退款後營業額計算抽成，表示已扣除退款，且沒有反問使用者。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "退款後營業額 168,000 元，平台抽成 **30,200.00 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dbb233fc-3c92-4ab5-8e4c-c705f9372592",
+        "text": "金額與所寫假設一致：扣除退款以 168,000 計為 30,200 元（20,000+68,000×15%）；不扣除以 180,000 計為 32,000 元（20,000+80,000×15%）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆採用扣除退款後的 168,000 元，抽成 30,200.00 元，與該計算方式一致。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "退款後營業額 168,000 元，平台抽成 **30,200.00 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1625 input and 2834 output tokens on skillhub-run; reported cost $0.0062 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 29,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

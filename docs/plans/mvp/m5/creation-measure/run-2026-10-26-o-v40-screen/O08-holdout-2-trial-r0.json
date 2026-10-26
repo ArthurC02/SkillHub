@@ -1,0 +1,97 @@
+{
+  "round": 0,
+  "sample_input": "今天 2026-10-10。學員 Amy Chen，課程 Python 資料分析入門班，開課 2026/11/07，回覆期限 2026/10/14 18:00，寫候補通知簡訊。",
+  "acceptance_criteria": [
+    {
+      "text": "簡訊含 Amy Chen、Python 資料分析入門班、開課日期與回覆期限"
+    },
+    {
+      "text": "簡訊全文每個字元（含英文字母、標點、空白與數字）計 1 字，請逐字元清點，不超過 60 字"
+    }
+  ],
+  "final_output": "無法採用：「reply_deadline」「2026/10/14 18:00」讀不出date值，不拿它計算\n\n請確認回覆期限的日期，並以 `YYYY-MM-DD` 格式提供。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "d5dedce5-df88-42ad-9417-e154574e6b92",
+    "run_id": "4b86419c-1374-453d-b3d1-f6bf0bb2984a",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "本次回覆要求重新提供回覆期限，未產生候補通知簡訊。兩項驗收條件均未達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "03129047-4b95-497e-b3e8-0ef7733afd8b",
+        "text": "簡訊含 Amy Chen、Python 資料分析入門班、開課日期與回覆期限",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終回覆未寫出候補通知簡訊，因此沒有包含指定姓名、課程、開課日期與回覆期限的簡訊。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請確認回覆期限的日期，並以 `YYYY-MM-DD` 格式提供。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2023398f-a915-4a32-bd4f-582bf874be15",
+        "text": "簡訊全文每個字元（含英文字母、標點、空白與數字）計 1 字，請逐字元清點，不超過 60 字",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終回覆沒有簡訊全文，也沒有逐字元清點；因此未達成簡訊不超過 60 字的要求。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "無法採用：「reply_deadline」「2026/10/14 18:00」讀不出date值，不拿它計算",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1608 input and 1276 output tokens on skillhub-run; reported cost $0.0045 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

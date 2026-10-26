@@ -1,0 +1,171 @@
+{
+  "round": 2,
+  "sample_input": "請將以下每一行的帳單總額分別視為一次獨立試算，回覆最低應繳金額。\n本期帳單總額：800 元\n本期帳單總額：1,000 元\n本期帳單總額：5,000 元\n本期帳單總額：12,345.67 元\n本期帳單總額：0 元\n本期帳單總額：-100 元",
+  "acceptance_criteria": [
+    {
+      "text": "sample_input 第 1 行金額為 800 元；Skill 回覆最低應繳 800 元。"
+    },
+    {
+      "text": "sample_input 第 2 行金額為 1,000 元；Skill 回覆最低應繳 1,000 元，符合臨界值的全額規則。"
+    },
+    {
+      "text": "sample_input 第 3 行金額為 5,000 元；10% 為 500 元，套用 1,000 元最低額後，Skill 回覆 1,000 元。"
+    },
+    {
+      "text": "sample_input 第 4 行金額為 12,345.67 元；10% 為 1,234.567 元，無條件進位後 Skill 回覆 1,235 元。"
+    },
+    {
+      "text": "sample_input 第 5 行金額為 0 元；Skill 不計算金額，並提示帳單總額須大於 0、請重新輸入。"
+    },
+    {
+      "text": "sample_input 第 6 行金額為 -100 元；Skill 不計算金額，並提示帳單總額須大於 0、請重新輸入。"
+    }
+  ],
+  "final_output": "假設：今天以系統日期 2026-10-26 計\n\n- 本期帳單總額：800 元  \n  第1筆最低應繳金額：800 元\n- 本期帳單總額：1,000 元  \n  第2筆最低應繳金額：1000 元\n- 本期帳單總額：5,000 元  \n  第3筆最低應繳金額：1000 元\n- 本期帳單總額：12,345.67 元  \n  第4筆最低應繳金額：1235 元\n- 本期帳單總額：0 元  \n  帳單總額須大於 0，請重新輸入。\n- 本期帳單總額：-100 元  \n  無法採用：第 6 筆「amount」「-100 元」小於可能的最小值 0，不拿它計算\n\n以上為依本試算規則計算，不涵蓋銀行或發卡機構的其他費用、利息或個別規定。",
+  "artifacts": [
+    "input.json"
+  ],
+  "evaluation": {
+    "evaluation_id": "a4f73c94-f36a-447b-b158-bf59f57eda68",
+    "run_id": "d244e375-e650-4586-af2a-ae327290f80f",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "前四筆最低應繳金額正確；0 元也依要求提示重新輸入。-100 元雖未計算，但缺少要求重新輸入的提示，因此未完全符合第六項標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "d6ae09df-e3d8-49b0-bf08-9d552bbe40ad",
+        "text": "sample_input 第 1 行金額為 800 元；Skill 回覆最低應繳 800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆帳單為 800 元，回覆最低應繳 800 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第1筆最低應繳金額：800 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8ab00a84-2ee5-4b4a-9c5e-09e8f7bdbe4b",
+        "text": "sample_input 第 2 行金額為 1,000 元；Skill 回覆最低應繳 1,000 元，符合臨界值的全額規則。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆帳單為 1,000 元，回覆最低應繳 1,000 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第2筆最低應繳金額：1000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8cc37f1d-8ce2-42de-be1c-45cc46b946d9",
+        "text": "sample_input 第 3 行金額為 5,000 元；10% 為 500 元，套用 1,000 元最低額後，Skill 回覆 1,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆帳單為 5,000 元，回覆最低應繳 1,000 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第3筆最低應繳金額：1000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "981a870f-5423-4852-9da4-141af7713492",
+        "text": "sample_input 第 4 行金額為 12,345.67 元；10% 為 1,234.567 元，無條件進位後 Skill 回覆 1,235 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆帳單為 12,345.67 元，回覆最低應繳 1,235 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第4筆最低應繳金額：1235 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a031381d-5219-4920-a4bd-b5bc2ba11c47",
+        "text": "sample_input 第 5 行金額為 0 元；Skill 不計算金額，並提示帳單總額須大於 0、請重新輸入。",
+        "result": "passed",
+        "source": "model",
+        "reason": "對 0 元未計算最低應繳，並提示帳單總額須大於 0、請重新輸入。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "帳單總額須大於 0，請重新輸入。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1986c9fb-0be8-43c6-b938-e9768f75c4ad",
+        "text": "sample_input 第 6 行金額為 -100 元；Skill 不計算金額，並提示帳單總額須大於 0、請重新輸入。",
+        "result": "failed",
+        "source": "model",
+        "reason": "對 -100 元未計算金額，但只說明金額小於最小值 0，沒有提示帳單總額須大於 0 並請使用者重新輸入。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "無法採用：第 6 筆「amount」「-100 元」小於可能的最小值 0，不拿它計算",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): input.json"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1771 input and 1858 output tokens on skillhub-run; reported cost $0.0056 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 29,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

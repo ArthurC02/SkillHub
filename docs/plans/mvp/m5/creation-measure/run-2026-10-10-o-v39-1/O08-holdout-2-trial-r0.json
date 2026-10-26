@@ -1,0 +1,102 @@
+{
+  "round": 0,
+  "sample_input": "今天 2026-10-10。學員 Amy Chen，課程 Python 資料分析入門班，開課 2026/11/07，回覆期限 2026/10/14 18:00，寫候補通知簡訊。",
+  "acceptance_criteria": [
+    {
+      "text": "簡訊含 Amy Chen、Python 資料分析入門班、開課日期與回覆期限"
+    },
+    {
+      "text": "簡訊全文每個字元（含英文字母、標點、空白與數字）計 1 字，請逐字元清點，不超過 60 字"
+    }
+  ],
+  "final_output": "Amy Chen候補Python 資料分析入門班，2026/11/07開課；請於2026/10/14 18:00前覆。\n\n字元數：59/60。日期檢查使用今天 2026-10-10；已通過檢查。",
+  "artifacts": [
+    "amy_chen_waitlist_sms.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "e31c8a52-e413-43b3-8a3a-27f812836409",
+    "run_id": "752a74d0-8f9e-407e-8c39-dc9627eb7293",
+    "status": "completed",
+    "overall": "met",
+    "summary": "簡訊涵蓋所有指定資訊。逐字元計數為 59 字元，符合 60 字元上限。",
+    "criterion_results": [
+      {
+        "criterion_id": "6a300bd7-da78-4af7-9467-8f929be9de1b",
+        "text": "簡訊含 Amy Chen、Python 資料分析入門班、開課日期與回覆期限",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊包含學員姓名、課程名稱、開課日期及完整回覆期限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "Amy Chen候補Python 資料分析入門班，2026/11/07開課；請於2026/10/14 18:00前覆。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "677264e2-4930-40ef-b67d-a5d89bc2766f",
+        "text": "簡訊全文每個字元（含英文字母、標點、空白與數字）計 1 字，請逐字元清點，不超過 60 字",
+        "result": "passed",
+        "source": "model",
+        "reason": "檢查程式以簡訊全文的長度計算字元，包含空白與標點；最終簡訊檢查結果為 59 字元，未超過 60 字。",
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "length = len(args.message)",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "簡訊字元數：59/60。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): amy_chen_waitlist_sms.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1772 input and 10368 output tokens on gpt-6-luna; reported cost $0.0108 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 41,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

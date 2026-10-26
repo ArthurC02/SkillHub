@@ -1,0 +1,171 @@
+{
+  "round": 3,
+  "sample_input": "請逐筆檢查以下租約提前終止通知期限，列出搬離日減通知日的天數、判定，以及不足時最晚應送出通知的日期。\n搬離日：2026-08-31；通知日：2026-07-31\n搬離日：2026-08-30；通知日：2026-07-31\n搬離日：2026-08-29；通知日：2026-07-31\n搬離日：2026-08-31；通知日：2026-09-01",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑資料第 1 筆（搬離日 2026-08-31、通知日 2026-07-31），輸出相隔 31 天並判定通知足夠。"
+    },
+    {
+      "text": "對試跑資料第 2 筆（搬離日 2026-08-30、通知日 2026-07-31），輸出相隔 30 天並判定通知足夠。"
+    },
+    {
+      "text": "對試跑資料第 3 筆（搬離日 2026-08-29、通知日 2026-07-31），輸出相隔 29 天、判定通知不足，並回報最晚通知日為 2026-07-30。"
+    },
+    {
+      "text": "對試跑資料第 4 筆（搬離日 2026-08-31、通知日 2026-09-01），標示通知日期晚於搬離日、判定為無效，且不將其判為足夠。"
+    },
+    {
+      "text": "對試跑資料中的每筆資料，輸出都能辨認該筆日期、相隔天數及判定；僅不足的有效日期組合需提供最晚通知日。"
+    }
+  ],
+  "final_output": "以下完整日期均按**年、月、日**順序解讀。假設：今天以系統日期 2026-10-26 計\n\n**逐筆計算器輸出**\n\n**第 1 筆**\n```text\n搬離日：2026-08-31\n通知日：2026-07-31\n日期間隔：31 天\n判定：通知足夠（至少提前 30 天）。\n```\n\n**第 2 筆**\n```text\n搬離日：2026-08-30\n通知日：2026-07-31\n日期間隔：30 天\n判定：通知足夠（至少提前 30 天）。\n```\n\n**第 3 筆**\n```text\n搬離日：2026-08-29\n通知日：2026-07-31\n日期間隔：29 天\n判定：通知不足（未達 30 天）。\n最晚通知日：2026-07-30\n```\n\n**第 4 筆**\n```text\n搬離日：2026-08-31\n通知日：2026-09-01\n日期間隔：-1 天\n判定：無效（通知日晚於搬離日）；不計算日期間隔。\n```\n\n**整理**\n\n| 搬離日 | 通知日 | 搬離日減通知日 | 判定 | 不足時最晚通知日 |\n|---|---|---:|---|---|\n| 2026-08-31 | 2026-07-31 | 31 天 | 足夠 | — |\n| 2026-08-30 | 2026-07-31 | 30 天 | 足夠 | — |\n| 2026-08-29 | 2026-07-31 | 29 天 | 不足 | 2026-07-30 |\n| 2026-08-31 | 2026-09-01 | -1 天 | 無效（通知日晚於搬離日） | 不適用 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "6551e4e2-6766-43e5-b0c7-17aef6cede35",
+    "run_id": "d9e738f2-c51b-43bc-84ec-184b79d5a838",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四筆日期的天數與判定均符合驗收條件；僅通知不足的第 3 筆提供最晚通知日。",
+    "criterion_results": [
+      {
+        "criterion_id": "bfd6cabe-a018-4695-9e1b-31b452bba816",
+        "text": "對試跑資料第 1 筆（搬離日 2026-08-31、通知日 2026-07-31），輸出相隔 31 天並判定通知足夠。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆列出相隔 31 天，判定通知足夠。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-08-31 | 2026-07-31 | 31 天 | 足夠 | — |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7d79bc3e-eb95-428e-88be-f5659186decd",
+        "text": "對試跑資料第 2 筆（搬離日 2026-08-30、通知日 2026-07-31），輸出相隔 30 天並判定通知足夠。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆列出相隔 30 天，判定通知足夠。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-08-30 | 2026-07-31 | 30 天 | 足夠 | — |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6b2e3331-bcdc-416e-8d66-78c93c9c4fa2",
+        "text": "對試跑資料第 3 筆（搬離日 2026-08-29、通知日 2026-07-31），輸出相隔 29 天、判定通知不足，並回報最晚通知日為 2026-07-30。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆列出相隔 29 天、通知不足，最晚通知日為 2026-07-30。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-08-29 | 2026-07-31 | 29 天 | 不足 | 2026-07-30 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3480977d-916d-4e52-afd4-bddb77ec9ae6",
+        "text": "對試跑資料第 4 筆（搬離日 2026-08-31、通知日 2026-09-01），標示通知日期晚於搬離日、判定為無效，且不將其判為足夠。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆標示通知日晚於搬離日，判定無效，未判為足夠。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-08-31 | 2026-09-01 | -1 天 | 無效（通知日晚於搬離日） | 不適用 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3ce60112-bdcf-4cae-91ba-f91689c3e322",
+        "text": "對試跑資料中的每筆資料，輸出都能辨認該筆日期、相隔天數及判定；僅不足的有效日期組合需提供最晚通知日。",
+        "result": "passed",
+        "source": "model",
+        "reason": "整理表逐筆列出日期、相隔天數及判定；僅第 3 筆不足的有效日期組合列有最晚通知日。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-08-31 | 2026-07-31 | 31 天 | 足夠 | — |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-08-30 | 2026-07-31 | 30 天 | 足夠 | — |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-08-29 | 2026-07-31 | 29 天 | 不足 | 2026-07-30 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-08-31 | 2026-09-01 | -1 天 | 無效（通知日晚於搬離日） | 不適用 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1673 input and 2661 output tokens on skillhub-run; reported cost $0.0059 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 45,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

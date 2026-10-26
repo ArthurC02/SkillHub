@@ -1,0 +1,120 @@
+{
+  "round": 3,
+  "sample_input": "請逐筆檢查以下租約提前終止通知期限，列出日期間隔及判定；有效且不足時也列出最晚通知日。\n搬離日：2026-08-31；通知日：2026-07-31\n搬離日：2026-08-29；通知日：2026-07-31\n搬離日：2026-02-30；通知日：2026-02-01",
+  "acceptance_criteria": [
+    {
+      "text": "指出 2026-02-30 是不存在、不能成立的日期，且不為這筆資料計算間隔或給出判定。"
+    },
+    {
+      "text": "第一筆輸出間隔 31 天，判定通知足夠。"
+    },
+    {
+      "text": "第二筆輸出間隔 29 天，判定通知不足，並列出最晚通知日 2026-07-30。"
+    }
+  ],
+  "final_output": "以下日期依**年、月、日**順序解讀。\n\n1. **搬離日：2026-08-31；通知日：2026-07-31**\n   - 搬離日：2026-08-31\n   - 通知日：2026-07-31\n   - 日期間隔：31 天\n   - 判定：通知足夠（至少提前 30 天）。\n\n2. **搬離日：2026-08-29；通知日：2026-07-31**\n   - 搬離日：2026-08-29\n   - 通知日：2026-07-31\n   - 日期間隔：29 天\n   - 判定：通知不足（未達 30 天）。\n   - 最晚通知日：2026-07-30\n\n3. **搬離日：2026-02-30；通知日：2026-02-01**\n   - 搬離日「2026-02-30」不是存在的日期，這筆無法計算。請確認並提供正確的搬離日。\n\n檢查器輸出：假設：今天以系統日期 2026-10-26 計；無法採用：第 3 筆「move_out」「2026-02-30」不是存在的日期，不拿它計算；OK：2/3 筆可直接計算，結果在 /tmp/lease_notice_checked.json。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b5dfbb5f-b12d-4cf8-b28e-7584348c3caa",
+    "run_id": "bb8a806a-94b3-4a66-aaad-ec63a16a67df",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項驗收標準均符合：前兩筆的間隔、判定及所需的最晚通知日皆正確；第三筆辨識為不存在的日期，未計算或判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "68e51afc-17e5-4d14-b963-7371ec346d0b",
+        "text": "指出 2026-02-30 是不存在、不能成立的日期，且不為這筆資料計算間隔或給出判定。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第三筆指出 2026-02-30 不存在，表示無法計算，且未列出該筆間隔或判定。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "搬離日「2026-02-30」不是存在的日期，這筆無法計算。請確認並提供正確的搬離日。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5889ef70-962d-46df-a53c-c1617f7e36bd",
+        "text": "第一筆輸出間隔 31 天，判定通知足夠。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第一筆列出間隔 31 天，判定通知足夠。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期間隔：31 天\n   - 判定：通知足夠（至少提前 30 天）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c5d5c3f7-c43e-493f-86da-f241ca5e7e95",
+        "text": "第二筆輸出間隔 29 天，判定通知不足，並列出最晚通知日 2026-07-30。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第二筆列出間隔 29 天、通知不足，並列出最晚通知日 2026-07-30。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期間隔：29 天\n   - 判定：通知不足（未達 30 天）。\n   - 最晚通知日：2026-07-30",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1571 input and 1925 output tokens on skillhub-run; reported cost $0.0046 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 33,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

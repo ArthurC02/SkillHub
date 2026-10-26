@@ -1,0 +1,239 @@
+{
+  "round": 1,
+  "sample_input": "請判定這件單件行李的處理方式與費用：重量 0 公斤。\n請判定這件單件行李的處理方式與費用：重量 20 公斤。\n請判定這件單件行李的處理方式與費用：重量 20.01 公斤。\n請判定這件單件行李的處理方式與費用：重量 21.01 公斤。\n請判定這件單件行李的處理方式與費用：重量 32 公斤。\n請判定這件單件行李的處理方式與費用：重量 32.01 公斤。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 行（0 公斤）時，輸出須判定重量無效，且不計費。"
+    },
+    {
+      "text": "試跑輸入第 2 行（20 公斤）時，輸出須判定免費托運，費用為 0 元。"
+    },
+    {
+      "text": "試跑輸入第 3 行（20.01 公斤）時，輸出須判定接受超重行李，費用為 500 元。"
+    },
+    {
+      "text": "試跑輸入第 4 行（21.01 公斤）時，輸出須判定接受超重行李；超出 20 公斤為 1.01 公斤，進位為 2 公斤，費用為 1,000 元。"
+    },
+    {
+      "text": "試跑輸入第 5 行（32 公斤）時，輸出須判定接受超重行李；超出 20 公斤為 12 公斤，費用為 6,000 元。"
+    },
+    {
+      "text": "試跑輸入第 6 行（32.01 公斤）時，輸出須判定不接受托運，且不收取托運費。"
+    }
+  ],
+  "final_output": "假設：今天以系統日期 2026-10-26 計\n\n重量：0 公斤  \n處理方式：重量無效；重量須大於 0。  \n費用：不計費。\n\n重量：20 公斤  \n處理方式：免費托運。  \n費用：0 元。\n\n重量：20.01 公斤  \n處理方式：接受托運，列為超重行李。  \n超出 20 公斤：0.01 公斤；計費重量：1 公斤。  \n費用：1 × 500 = 500 元。\n\n重量：21.01 公斤  \n處理方式：接受托運，列為超重行李。  \n超出 20 公斤：1.01 公斤；計費重量：2 公斤。  \n費用：2 × 500 = 1,000 元。\n\n重量：32 公斤  \n處理方式：接受托運，列為超重行李。  \n超出 20 公斤：12 公斤；計費重量：12 公斤。  \n費用：12 × 500 = 6,000 元。\n\n重量：32.01 公斤  \n處理方式：不接受托運。  \n費用：不收取托運費。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "9e7eaa1c-ea1d-4341-922e-b88f52671e50",
+    "run_id": "04d140d5-de7f-481d-8c17-38950f53d409",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六筆重量的處理方式與費用均符合各自的驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "c0afd006-dd2a-4b60-b06e-29fb4011f276",
+        "text": "試跑輸入第 1 行（0 公斤）時，輸出須判定重量無效，且不計費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "0 公斤判定為重量無效，且不計費。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "重量：0 公斤",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "處理方式：重量無效；重量須大於 0。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "費用：不計費。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "63d2fc12-7509-4571-91a1-892180f43812",
+        "text": "試跑輸入第 2 行（20 公斤）時，輸出須判定免費托運，費用為 0 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "20 公斤判定為免費托運，費用為 0 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "重量：20 公斤",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "處理方式：免費托運。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "費用：0 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "efaf6f83-eebb-48c8-9063-04f33f3868c5",
+        "text": "試跑輸入第 3 行（20.01 公斤）時，輸出須判定接受超重行李，費用為 500 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "20.01 公斤判定接受托運並列為超重行李，費用為 500 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "重量：20.01 公斤",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "處理方式：接受托運，列為超重行李。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "費用：1 × 500 = 500 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b685fee2-2ab9-48c4-98a2-a9348612cc4a",
+        "text": "試跑輸入第 4 行（21.01 公斤）時，輸出須判定接受超重行李；超出 20 公斤為 1.01 公斤，進位為 2 公斤，費用為 1,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "21.01 公斤判定接受超重托運；超出 1.01 公斤，計費重量進位為 2 公斤，費用為 1,000 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "重量：21.01 公斤",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "處理方式：接受托運，列為超重行李。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "超出 20 公斤：1.01 公斤；計費重量：2 公斤。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "費用：2 × 500 = 1,000 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a3000a3a-1c54-4908-8693-c2431c9b9d37",
+        "text": "試跑輸入第 5 行（32 公斤）時，輸出須判定接受超重行李；超出 20 公斤為 12 公斤，費用為 6,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "32 公斤判定接受超重托運；超出 12 公斤，費用為 6,000 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "重量：32 公斤",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "處理方式：接受托運，列為超重行李。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "超出 20 公斤：12 公斤；計費重量：12 公斤。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "費用：12 × 500 = 6,000 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d08c0d65-2faa-419f-9af4-e0293119a15a",
+        "text": "試跑輸入第 6 行（32.01 公斤）時，輸出須判定不接受托運，且不收取托運費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "32.01 公斤判定不接受托運，且不收取托運費。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "重量：32.01 公斤",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "處理方式：不接受托運。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "費用：不收取托運費。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1590 input and 1639 output tokens on skillhub-run; reported cost $0.0049 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 38,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

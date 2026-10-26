@@ -1,0 +1,188 @@
+{
+  "round": 1,
+  "sample_input": "請逐列計算以下行程的車資；夜間欄位是表示夜間，否表示非夜間。\n編號｜里程（公里）｜夜間\n1｜1.25｜否\n2｜1.26｜否\n3｜1.45｜否\n4｜1.46｜否\n5｜1.26｜是\n6｜0｜否",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 列（1.25 公里、非夜間）得到 85 元，且不加收里程費。"
+    },
+    {
+      "text": "試跑輸入第 2 列（1.26 公里、非夜間）得到 90 元，並將不足 200 公尺的超出部分按 200 公尺計。"
+    },
+    {
+      "text": "試跑輸入第 3 列（1.45 公里、非夜間）得到 90 元，因超出 1.25 公里的部分恰為 200 公尺，只加收一次 5 元。"
+    },
+    {
+      "text": "試跑輸入第 4 列（1.46 公里、非夜間）得到 95 元，因超出 1.25 公里的部分為 210 公尺，按兩個 200 公尺級距加收 10 元。"
+    },
+    {
+      "text": "試跑輸入第 5 列（1.26 公里、夜間）得到 110 元，包含 85 元起跳價、5 元里程費與 20 元夜間加收。"
+    },
+    {
+      "text": "試跑輸入第 6 列（0 公里）被指出為無效里程，且不計算或報出車資。"
+    }
+  ],
+  "final_output": "1｜1.25 公里｜非夜間：85 元  \n2｜1.26 公里｜非夜間：90 元  \n3｜1.45 公里｜非夜間：90 元  \n4｜1.46 公里｜非夜間：95 元  \n5｜1.26 公里｜夜間：110 元  \n6｜0 公里｜里程無效，請確認；未計算車資。\n\n假設：未標單位的里程採 km（可用 --distance-unit 改變）。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "287bcfbb-29fc-4cab-8f24-447981e89862",
+    "run_id": "a85bfb78-4c88-4ff9-81f2-39bd8b6831f9",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六列均得到符合驗收條件的結果：前五列車資正確，第六列被判為無效且未報出車資。各級距及夜間加收金額可由各列報價相互核對。",
+    "criterion_results": [
+      {
+        "criterion_id": "72fca157-48f6-432c-9232-cafa24e0fc52",
+        "text": "試跑輸入第 1 列（1.25 公里、非夜間）得到 85 元，且不加收里程費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 列 1.25 公里、非夜間報價 85 元，沒有超出起跳里程，未加收里程費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1｜1.25 公里｜非夜間：85 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "06375f63-c162-45f1-898d-24356a4514db",
+        "text": "試跑輸入第 2 列（1.26 公里、非夜間）得到 90 元，並將不足 200 公尺的超出部分按 200 公尺計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 列超出 1.25 公里 10 公尺，報價比第 1 列多 5 元，符合不足 200 公尺以一個級距計費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1｜1.25 公里｜非夜間：85 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2｜1.26 公里｜非夜間：90 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c288dcfd-cab4-41ba-8d39-d1be05f0db4f",
+        "text": "試跑輸入第 3 列（1.45 公里、非夜間）得到 90 元，因超出 1.25 公里的部分恰為 200 公尺，只加收一次 5 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 列超出起跳里程恰好 200 公尺，報價 90 元，較 85 元起跳價只多 5 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1｜1.25 公里｜非夜間：85 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "3｜1.45 公里｜非夜間：90 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1540aae4-4d24-4ba4-ac9d-9dc2cd9829a0",
+        "text": "試跑輸入第 4 列（1.46 公里、非夜間）得到 95 元，因超出 1.25 公里的部分為 210 公尺，按兩個 200 公尺級距加收 10 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 列超出起跳里程 210 公尺，報價 95 元，較起跳價多 10 元，符合兩個級距。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1｜1.25 公里｜非夜間：85 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "4｜1.46 公里｜非夜間：95 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fba20d28-ab73-461e-99e9-1ba7cf3f4af7",
+        "text": "試跑輸入第 5 列（1.26 公里、夜間）得到 110 元，包含 85 元起跳價、5 元里程費與 20 元夜間加收。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 列報價 110 元；同里程非夜間為 90 元，顯示夜間加收 20 元，而非夜間價格較 85 元起跳價多 5 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1｜1.25 公里｜非夜間：85 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2｜1.26 公里｜非夜間：90 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "5｜1.26 公里｜夜間：110 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "30575995-5ff2-4cb4-a840-a8636cef3e96",
+        "text": "試跑輸入第 6 列（0 公里）被指出為無效里程，且不計算或報出車資。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 列的 0 公里被指出為無效里程，並明確表示未計算車資。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "6｜0 公里｜里程無效，請確認；未計算車資。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1512 input and 365 output tokens on gpt-6-luna; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 24,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "round": 0,
+  "sample_input": "三張訂單要道歉：E01 晚了 12 分鐘補 20 元、E02 晚了 -5 分鐘補 20 元、E03 晚了 45 分鐘補 60 元。",
+  "acceptance_criteria": [
+    {
+      "text": "E01 的訊息含 E01、12 分鐘、20 元，E03 的訊息含 E03、45 分鐘、60 元，每則不超過 2 句"
+    },
+    {
+      "text": "明確指出 E02 的 -5 分鐘不合理（延誤分鐘數須為正整數），沒有為 E02 寫出含 -5 分鐘的道歉訊息"
+    }
+  ],
+  "final_output": "",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "6d4a2c00-89d4-41dc-ab8e-faea02752a0c",
+    "run_id": "7af30811-83f9-4cfd-b96d-3efbe91d5f6c",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "試跑進行了輸入檢查及部分訊息產生，但在送出回覆前停止。使用者既未收到 E01、E03 的道歉訊息，也未收到 E02 數值不合理的說明。",
+    "criterion_results": [
+      {
+        "criterion_id": "6d5ba957-9e49-46c6-b6b5-a3cd717ac1a1",
+        "text": "E01 的訊息含 E01、12 分鐘、20 元，E03 的訊息含 E03、45 分鐘、60 元，每則不超過 2 句",
+        "result": "failed",
+        "source": "model",
+        "reason": "試跑雖曾產生並檢查訊息，但最後沒有回覆，也沒有留下可交付的檔案；因此未向使用者提供 E01 與 E03 的道歉訊息。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "run stopped at its input token ceiling",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e3c618b7-6a74-4902-aba1-3705e7379c25",
+        "text": "明確指出 E02 的 -5 分鐘不合理（延誤分鐘數須為正整數），沒有為 E02 寫出含 -5 分鐘的道歉訊息",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸入檢查曾判定 E02 的 -5 分鐘低於允許的最小值，也未見為 E02 產生道歉訊息；但試跑沒有最終回覆，未向使用者明確指出此問題。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "無法採用：第 2 筆「delay_minutes」「-5」小於可能的最小值 1，不拿它計算",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "run stopped at its input token ceiling",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "error",
+        "message": "the run ended as failed, classified workload_error: 這次試跑用掉的輸入 token 超過上限:已用 330863,上限 300000。此上限可跑的輪數取決於每輪的工具呼叫次數:純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪"
+      },
+      {
+        "category": "execution",
+        "severity": "error",
+        "message": "error event (execution/token_budget_exceeded): run stopped at its input token ceiling: 304684 of 300000 tokens (PDM-005 5.2a; the limit shown in the pre-run permission summary)"
+      },
+      {
+        "category": "execution",
+        "severity": "error",
+        "message": "error event (execution/workload_error): 這次試跑用掉的輸入 token 超過上限:已用 330863,上限 300000。此上限可跑的輪數取決於每輪的工具呼叫次數:純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1806 input and 5116 output tokens on skillhub-run; reported cost $0.0091 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 50,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  },
+  "read_errors": [
+    "final agent output: no rows in result set"
+  ]
+}

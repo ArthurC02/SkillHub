@@ -1,0 +1,120 @@
+{
+  "round": 1,
+  "sample_input": "請試算以下行程的計程車車資：\n\n| 行程 | 里程（公里） | 夜間 |\n|---|---:|---|\n| A | 0.001 | 否 |\n| B | 0 | 是 |",
+  "acceptance_criteria": [
+    {
+      "text": "A 的 0.001 公里大於 0，須視為有效並提供車資；因 0.001−1.25 小於 0，max(0, 0.001−1.25)＝0，ceil(0÷0.2)＝0，車資為 85＋5×0＝85 元。"
+    },
+    {
+      "text": "B 的 0 公里不大於 0，須標示無效且不提供車資；夜間加價不得用來產生車資。"
+    },
+    {
+      "text": "表格須呈現兩筆行程及其里程、夜間狀態和結果，並將 B 標示為無效。"
+    }
+  ],
+  "final_output": "| 行程 | 里程 | 夜間 | 車資 |\n|---|---:|---|---:|\n| A | 0.001 公里 | 否 | 85 元 |\n| B | 0 公里 | 是 | 無效，不計價 |\n\n兩筆里程皆可讀取，檢查器沒有列出讀法假設。B 的里程不大於 0，因此不計價。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "7c68f09e-5741-4508-8dd5-67ed047fd419",
+    "run_id": "ac319c19-7c08-4855-8e1a-33492dc3c18d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項驗收標準皆已達成：A 計價 85 元，B 標示無效且不計價；表格完整呈現兩筆行程。",
+    "criterion_results": [
+      {
+        "criterion_id": "12dcac23-b3df-47bf-a08e-b7211ba22288",
+        "text": "A 的 0.001 公里大於 0，須視為有效並提供車資；因 0.001−1.25 小於 0，max(0, 0.001−1.25)＝0，ceil(0÷0.2)＝0，車資為 85＋5×0＝85 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A 的里程為 0.001 公里，結果提供 85 元車資。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| A | 0.001 公里 | 否 | 85 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8840153a-98f4-4726-bf95-1ed0a9c36eb5",
+        "text": "B 的 0 公里不大於 0，須標示無效且不提供車資；夜間加價不得用來產生車資。",
+        "result": "passed",
+        "source": "model",
+        "reason": "B 的里程為 0 公里，已標示無效且不計價，沒有因夜間狀態提供車資。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| B | 0 公里 | 是 | 無效，不計價 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "05f906c0-88dd-46f5-8903-c5f9ed82132f",
+        "text": "表格須呈現兩筆行程及其里程、夜間狀態和結果，並將 B 標示為無效。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格列出 A、B 兩筆行程的里程、夜間狀態及結果，並將 B 標示為無效。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 行程 | 里程 | 夜間 | 車資 |\n|---|---:|---|---:|\n| A | 0.001 公里 | 否 | 85 元 |\n| B | 0 公里 | 是 | 無效，不計價 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1741 input and 1428 output tokens on skillhub-run; reported cost $0.0062 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 38,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

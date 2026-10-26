@@ -1,0 +1,102 @@
+{
+  "round": 0,
+  "sample_input": "日間搭車，跑了 1.26 公里，車資多少？",
+  "acceptance_criteria": [
+    {
+      "text": "回覆的車資為 90 元（超出 1.25 公里 10 公尺，不足 200 公尺以 200 公尺計，加收 5 元；85+5=90）"
+    },
+    {
+      "text": "沒有只收起跳價 85 元"
+    }
+  ],
+  "final_output": "日間搭乘 1.26 公里，車資是 **90 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b7da7f64-5f65-45cf-81c0-23884d6bc66a",
+    "run_id": "8681a82f-66cd-454e-bb7e-4479395b3825",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項標準均符合：回覆的車資為 90 元，而非 85 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "683b67f3-12a2-4d37-98d7-39459c64fa16",
+        "text": "回覆的車資為 90 元（超出 1.25 公里 10 公尺，不足 200 公尺以 200 公尺計，加收 5 元；85+5=90）",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆的日間 1.26 公里車資為 90 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日間搭乘 1.26 公里，車資是 **90 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c66ac6a7-f4b1-4282-ba54-ff8af1f0e9b2",
+        "text": "沒有只收起跳價 85 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆收取 90 元，並非只收起跳價 85 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "車資是 **90 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1652 input and 1372 output tokens on skillhub-run; reported cost $0.0057 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 27,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

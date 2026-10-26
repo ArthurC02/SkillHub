@@ -1,0 +1,291 @@
+{
+  "request": {
+    "RunID": "d244e375-e650-4586-af2a-ae327290f80f",
+    "EvaluationID": "a4f73c94-f36a-447b-b158-bf59f57eda68",
+    "Skill": {
+      "Name": "credit-card-minimum-payment",
+      "Summary": "依照指定門檻試算單筆信用卡本期帳單的最低應繳金額，並將結果無條件進位至整數元。當使用者提供帳單金額並要求最低應繳試算時使用；本 Skill 不涵蓋銀行或發卡機構的其他費用、利息或個別規定。"
+    },
+    "UserPrompt": "請將以下每一行的帳單總額分別視為一次獨立試算，回覆最低應繳金額。\n本期帳單總額：800 元\n本期帳單總額：1,000 元\n本期帳單總額：5,000 元\n本期帳單總額：12,345.67 元\n本期帳單總額：0 元\n本期帳單總額：-100 元",
+    "Criteria": [
+      {
+        "ID": "d6ae09df-e3d8-49b0-bf08-9d552bbe40ad",
+        "Text": "sample_input 第 1 行金額為 800 元；Skill 回覆最低應繳 800 元。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "8ab00a84-2ee5-4b4a-9c5e-09e8f7bdbe4b",
+        "Text": "sample_input 第 2 行金額為 1,000 元；Skill 回覆最低應繳 1,000 元，符合臨界值的全額規則。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "8cc37f1d-8ce2-42de-be1c-45cc46b946d9",
+        "Text": "sample_input 第 3 行金額為 5,000 元；10% 為 500 元，套用 1,000 元最低額後，Skill 回覆 1,000 元。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "981a870f-5423-4852-9da4-141af7713492",
+        "Text": "sample_input 第 4 行金額為 12,345.67 元；10% 為 1,234.567 元，無條件進位後 Skill 回覆 1,235 元。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a031381d-5219-4920-a4bd-b5bc2ba11c47",
+        "Text": "sample_input 第 5 行金額為 0 元；Skill 不計算金額，並提示帳單總額須大於 0、請重新輸入。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "1986c9fb-0be8-43c6-b938-e9768f75c4ad",
+        "Text": "sample_input 第 6 行金額為 -100 元；Skill 不計算金額，並提示帳單總額須大於 0、請重新輸入。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "假設：今天以系統日期 2026-10-26 計\n\n- 本期帳單總額：800 元  \n  第1筆最低應繳金額：800 元\n- 本期帳單總額：1,000 元  \n  第2筆最低應繳金額：1000 元\n- 本期帳單總額：5,000 元  \n  第3筆最低應繳金額：1000 元\n- 本期帳單總額：12,345.67 元  \n  第4筆最低應繳金額：1235 元\n- 本期帳單總額：0 元  \n  帳單總額須大於 0，請重新輸入。\n- 本期帳單總額：-100 元  \n  無法採用：第 6 筆「amount」「-100 元」小於可能的最小值 0，不拿它計算\n\n以上為依本試算規則計算，不涵蓋銀行或發卡機構的其他費用、利息或個別規定。",
+    "Artifacts": [
+      {
+        "Path": "input.json",
+        "SizeBytes": 149,
+        "ContentType": "application/octet-stream",
+        "TextExcerpt": ""
+      }
+    ],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "a3f1377b-634a-4648-accb-bfdaf3fabd82",
+          "OccurredAt": "2026-10-26T09:37:22.666Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"credit-card-minimum-payment\", \"skill_version_id\": \"57085e9b-b7b0-45b4-8bb8-21e749d17b68\"}"
+        },
+        {
+          "TraceEventID": "1960775d-3a41-41b8-8eb4-c0799adc973d",
+          "OccurredAt": "2026-10-26T09:37:22.677Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"credit-card-minimum-payment\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 11, \"invocation_id\": \"call_wxJled4evfBNCvSBwWvlPjXJ\", \"result_summary\": \"Launching skill: credit-card-minimum-payment\"}"
+        },
+        {
+          "TraceEventID": "a16bfd10-ae23-461e-b0f3-844138df9e93",
+          "OccurredAt": "2026-10-26T09:37:26.501Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 187, \"resource_path\": \"credit-card-minimum-payment/scripts/input_schema.json\"}"
+        },
+        {
+          "TraceEventID": "10039626-542b-4ce8-b0e4-e1c77642c5e0",
+          "OccurredAt": "2026-10-26T09:37:26.501Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/credit-card-minimum-payment/scripts/input_schema.json\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 12, \"invocation_id\": \"call_Xv8rtmKG6Nxo1em1CzrYBg9r\", \"result_summary\": \"1\\t{\\n2\\t  \\\"fields\\\": [\\n3\\t    {\\n4\\t      \\\"name\\\": \\\"amount\\\",\\n5\\t      \\\"type\\\": \\\"number\\\",\\n6\\t      \\\"min\\\": 0,\\n7\\t      \\\"units\\\": {\\n8\\t        \\\"元\\\": 1,\\n9\\t        \\\"千元\\\": 1000\\n10\\t      }\\n11\\t    }\\n12\\t  ]\\n13\\t}\"}"
+        },
+        {
+          "TraceEventID": "5a901e1f-2e8d-4d53-b05e-3df2ec8d2278",
+          "OccurredAt": "2026-10-26T09:37:32.606Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"content\": \"{\\\"records\\\":[{\\\"amount\\\":\\\"800 元\\\"},{\\\"amount\\\":\\\"1,000 元\\\"},{\\\"amount\\\":\\\"5,000 元\\\"},{\\\"amount\\\":\\\"12,345.67 元\\\"},{\\\"amount\\\":\\\"0 元\\\"},{\\\"amount\\\":\\\"-100 元\\\"}]}\\n\", \"file_path\": \"/out/artifacts/input.json\"}, \"tool_name\": \"Write\", \"truncated\": false, \"duration_ms\": 22, \"invocation_id\": \"call_eo9W5v4xVwks2k896KvoBT16\", \"result_summary\": \"File created successfully at: /out/artifacts/input.json (file state is current in your context — no need to Read it back)\"}"
+        },
+        {
+          "TraceEventID": "9b8e5bb6-71b3-494b-9fa9-961b64f498d5",
+          "OccurredAt": "2026-10-26T09:37:34.999Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "1af1f4fe-8f5b-4668-924b-2a2967155926",
+          "OccurredAt": "2026-10-26T09:37:34.999Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python scripts/check_input.py /out/artifacts/input.json\", \"description\": \"Validate each bill amount independently\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 170, \"invocation_id\": \"call_sKrJvqQmSdzqE77rX7NceWVm\", \"result_summary\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "fc6618ac-1deb-4f87-9d5c-b2b5d0973cd7",
+          "OccurredAt": "2026-10-26T09:37:37.037Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"假設：今天以系統日期 2026-10-26 計\\n無法採用：第 6 筆「amount」「-100 元」小於可能的最小值 0，不拿它計算\\nOK：5/6 筆可直接計算，結果在 checked.json\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "052d4117-6c77-4e43-9c60-0d75b1405b05",
+          "OccurredAt": "2026-10-26T09:37:37.037Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/credit-card-minimum-payment \u0026\u0026 python scripts/check_input.py /out/artifacts/input.json\", \"description\": \"Run the bill amount input checker\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 99, \"invocation_id\": \"call_yVOq43niQ5JZPjFJfPP1Ejix\", \"result_summary\": \"假設：今天以系統日期 2026-10-26 計\\n無法採用：第 6 筆「amount」「-100 元」小於可能的最小值 0，不拿它計算\\nOK：5/6 筆可直接計算，結果在 checked.json\"}"
+        },
+        {
+          "TraceEventID": "04b0c69f-34bd-4a4e-9a76-de1101f4f697",
+          "OccurredAt": "2026-10-26T09:37:40.034Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 12, \"resource_path\": \"credit-card-minimum-payment\"}"
+        },
+        {
+          "TraceEventID": "2fb4816a-9eb3-4921-907f-43536d1d7e61",
+          "OccurredAt": "2026-10-26T09:37:40.034Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"path\": \"/work/.claude/skills/credit-card-minimum-payment\", \"pattern\": \"checked.json\"}, \"tool_name\": \"Glob\", \"truncated\": false, \"duration_ms\": 11, \"invocation_id\": \"call_UCAYy0i0sJPdinV5CcfHESLy\", \"result_summary\": \"checked.json\"}"
+        },
+        {
+          "TraceEventID": "a4611a9a-5d38-4f21-a7cb-ffd619a0257a",
+          "OccurredAt": "2026-10-26T09:37:42.33Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 12, \"resource_path\": \"credit-card-minimum-payment\"}"
+        },
+        {
+          "TraceEventID": "87f672c9-8fa8-49ed-90f2-ef37ebaad254",
+          "OccurredAt": "2026-10-26T09:37:42.33Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"path\": \"/work/.claude/skills/credit-card-minimum-payment\", \"pattern\": \"**/checked.json\"}, \"tool_name\": \"Glob\", \"truncated\": false, \"duration_ms\": 11, \"invocation_id\": \"call_a3LRyHAG7HX4lmVOwu6G4K3J\", \"result_summary\": \"checked.json\"}"
+        },
+        {
+          "TraceEventID": "f7ef886e-b819-4133-b178-3c5eff350d4a",
+          "OccurredAt": "2026-10-26T09:37:44.357Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 512, \"resource_path\": \"credit-card-minimum-payment/scripts\"}"
+        },
+        {
+          "TraceEventID": "d576058a-78b6-4f62-93cd-f6c56cc6d9e9",
+          "OccurredAt": "2026-10-26T09:37:44.357Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"path\": \"/work/.claude/skills/credit-card-minimum-payment/scripts\", \"pattern\": \"checked\", \"output_mode\": \"content\"}, \"tool_name\": \"Grep\", \"truncated\": false, \"duration_ms\": 23, \"invocation_id\": \"call_AVJeMHqs6t8arXX8pRyy9Kt4\", \"result_summary\": \"scripts/check_input.py:249:            \\\"Writes checked.json; every later step reads only that file.\\\"\\nscripts/check_input.py:254:    parser.add_argument(\\\"--out\\\", default=\\\"checked.json\\\")\\nscripts/minimum_payment.py:2:\\\"\\\"\\\"Calculate minimum payments for checked credit-card statement amounts.\\\"\\\"\\\"\\nscripts/minimum_payment.py:11:        description=\\\"Calculate minimum payments from already-checked amounts.\\\"\\nscripts/minimum_payment.py:17:        help=\\\"one already-checked statement total, in yuan; repeat for more bills\\\",\"}"
+        },
+        {
+          "TraceEventID": "70bf9088-84f5-40c0-a15d-d30ab53f36d0",
+          "OccurredAt": "2026-10-26T09:37:46.779Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 992, \"resource_path\": \"credit-card-minimum-payment/checked.json\"}"
+        },
+        {
+          "TraceEventID": "f9f7c5f8-2d09-4c7f-8f1c-3469c29dd834",
+          "OccurredAt": "2026-10-26T09:37:46.779Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/credit-card-minimum-payment/checked.json\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 6, \"invocation_id\": \"call_arfS6NsYqrgOk5etlLpoiu5V\", \"result_summary\": \"1\\t{\\n2\\t  \\\"today\\\": \\\"2026-10-26\\\",\\n3\\t  \\\"records\\\": [\\n4\\t    {\\n5\\t      \\\"values\\\": {\\n6\\t        \\\"amount\\\": 800\\n7\\t      },\\n8\\t      \\\"rejected\\\": {},\\n9\\t      \\\"missing\\\": [],\\n10\\t      \\\"assumptions\\\": []\\n11\\t    },\\n12\\t    {\\n13\\t      \\\"values\\\": {\\n14\\t        \\\"amount\\\": 1000\\n15\\t      },\\n16\\t      \\\"rejected\\\": {},\\n17\\t      \\\"missing\\\": [],\\n18\\t      \\\"assumptions\\\": []\\n19\\t    },\\n20\\t    {\\n21\\t      \\\"values\\\": {\\n22\\t        \\\"amount\\\": 5000\\n23\\t      },\\n24\\t      \\\"rejected\\\": {},\\n25\\t      \\\"missing\\\": [],\\n26\\t      \\\"assumptions\\\": []\\n27\\t    },\\n28\\t    {\\n29\\t      \\\"values\\\": {\\n30\\t        \\\"amount\\\": 12345.67\\n31\\t      },\\n32\\t      \\\"rejected\\\": {},\\n33\\t      \\\"missing\\\": [],\\n34\\t      \\\"assumptions\\\": []\\n35\\t    },\\n36\\t    {\\n37\\t      \\\"values\\\": {\\n38\\t        \\\"amount\\\": 0\\n39\\t      },\\n40\\t      \\\"rejected\\\": {},\\n41\\t      \\\"missing\\\": [],\\n42\\t      \\\"assumptions\\\": []\\n43\\t    },\\n44\\t    {\\n45\\t      \\\"values\\\": {},\\n46\\t      \\\"rejected\\\": {\\n47\\t        \\\"amount\\\": \\\"「-100 元」小於可能的最小值 0\\\"\\n48\\t      },\\n49\\t      \\\"missing\\\": [],\\n50\\t      \\\"assumptions\\\": []\\n51\\t    }\\n52\\t  ]\\n53\\t}\"}"
+        },
+        {
+          "TraceEventID": "f3ea635f-2d46-4b88-aba3-3cc5551243f0",
+          "OccurredAt": "2026-10-26T09:37:49.378Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"第1筆最低應繳金額：800 元\\n第2筆最低應繳金額：1000 元\\n第3筆最低應繳金額：1000 元\\n第4筆最低應繳金額：1235 元\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "f3749680-f809-4167-a226-42e65e7e8f1c",
+          "OccurredAt": "2026-10-26T09:37:49.379Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python scripts/minimum_payment.py --amount 800 --amount 1000 --amount 5000 --amount 12345.67\", \"description\": \"Calculate minimum payments for valid positive bills\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 109, \"invocation_id\": \"call_AG2YlyECSiwjsvX78htwBngu\", \"result_summary\": \"第1筆最低應繳金額：800 元\\n第2筆最低應繳金額：1000 元\\n第3筆最低應繳金額：1000 元\\n第4筆最低應繳金額：1235 元\"}"
+        },
+        {
+          "TraceEventID": "4dbe8121-a5af-44f0-b9a9-fda9b9fb22a2",
+          "OccurredAt": "2026-10-26T09:38:00.998Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"假設：今天以系統日期 2026-10-26 計\\n\\n- 本期帳單總額：800 元  \\n  第1筆最低應繳金額：800 元\\n- 本期帳單總額：1,000 元  \\n  第2筆最低應繳金額：1000 元\\n- 本期帳單總額：5,000 元  \\n  第3筆最低應繳金額：1000 元\\n- 本期帳單總額：12,345.67 元  \\n  第4筆最低應繳金額：1235 元\\n- 本期帳單總額：0 元  \\n  帳單總額須大於 0，請重新輸入。\\n- 本期帳單總額：-100 元  \\n  無法採用：第 6 筆「amount」「-100 元」小於可能的最小值 0，不拿它計算\\n\\n以上為依本試算規則計算，不涵蓋銀行或發卡機構的其他費用、利息或個別規定。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "56643377-0e67-4838-be36-510b712eb78f",
+          "OccurredAt": "2026-10-26T09:38:01.057Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"假設：今天以系統日期 2026-10-26 計\\n\\n- 本期帳單總額：800 元  \\n  第1筆最低應繳金額：800 元\\n- 本期帳單總額：1,000 元  \\n  第2筆最低應繳金額：1000 元\\n- 本期帳單總額：5,000 元  \\n  第3筆最低應繳金額：1000 元\\n- 本期帳單總額：12,345.67 元  \\n  第4筆最低應繳金額：1235 元\\n- 本期帳單總額：0 元  \\n  帳單總額須大於 0，請重新輸入。\\n- 本期帳單總額：-100 元  \\n  無法採用：第 6 筆「amount」「-100 元」小於可能的最小值 0，不拿它計算\\n\\n以上為依本試算規則計算，不涵蓋銀行或發卡機構的其他費用、利息或個別規定。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "ae3de756-63b0-496d-8a2b-268cf65d57c5",
+          "OccurredAt": "2026-10-26T09:38:05.174Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.005641149999999999, \"cost_source\": \"gateway\", \"duration_ms\": 45481, \"input_tokens\": 1771, \"token_source\": \"result\", \"output_tokens\": 1858, \"cache_read_input_tokens\": 192695, \"cache_write_input_tokens\": 20376}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "d6ae09df-e3d8-49b0-bf08-9d552bbe40ad",
+        "Result": "passed",
+        "Reason": "第 1 筆帳單為 800 元，回覆最低應繳 800 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "第1筆最低應繳金額：800 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "8ab00a84-2ee5-4b4a-9c5e-09e8f7bdbe4b",
+        "Result": "passed",
+        "Reason": "第 2 筆帳單為 1,000 元，回覆最低應繳 1,000 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "第2筆最低應繳金額：1000 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "8cc37f1d-8ce2-42de-be1c-45cc46b946d9",
+        "Result": "passed",
+        "Reason": "第 3 筆帳單為 5,000 元，回覆最低應繳 1,000 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "第3筆最低應繳金額：1000 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "981a870f-5423-4852-9da4-141af7713492",
+        "Result": "passed",
+        "Reason": "第 4 筆帳單為 12,345.67 元，回覆最低應繳 1,235 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "第4筆最低應繳金額：1235 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a031381d-5219-4920-a4bd-b5bc2ba11c47",
+        "Result": "passed",
+        "Reason": "對 0 元未計算最低應繳，並提示帳單總額須大於 0、請重新輸入。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "帳單總額須大於 0，請重新輸入。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "1986c9fb-0be8-43c6-b938-e9768f75c4ad",
+        "Result": "failed",
+        "Reason": "對 -100 元未計算金額，但只說明金額小於最小值 0，沒有提示帳單總額須大於 0 並請使用者重新輸入。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "無法採用：第 6 筆「amount」「-100 元」小於可能的最小值 0，不拿它計算"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "前四筆最低應繳金額正確；0 元也依要求提示重新輸入。-100 元雖未計算，但缺少要求重新輸入的提示，因此未完全符合第六項標準。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v4",
+    "Usage": {
+      "PromptTokens": 6069,
+      "CompletionTokens": 978,
+      "CostUSD": 0.022262300000000002,
+      "CostReported": true
+    }
+  }
+}

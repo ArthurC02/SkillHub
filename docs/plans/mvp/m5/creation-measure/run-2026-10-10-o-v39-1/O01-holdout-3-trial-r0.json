@@ -1,0 +1,100 @@
+{
+  "round": 0,
+  "sample_input": "幫我報價：阿明買 5 堂、小華買 12 堂、小美買 -3 堂。",
+  "acceptance_criteria": [
+    {
+      "text": "阿明為 6,000 元（5×1,200，無折扣），小華為 12,960 元（12×1,200=14,400，9 折）"
+    },
+    {
+      "text": "明確指出小美的 -3 堂不合理（堂數須為正整數），沒有給出小美的金額"
+    }
+  ],
+  "final_output": "阿明（5 堂）：應付總額：6000 元  \n小華（12 堂）：應付總額：12960 元  \n小美（-3 堂）：堂數須為正整數，請確認或更正堂數。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "adb8d7a5-e8e3-454c-8595-beb6ccb90339",
+    "run_id": "7eac902e-1017-491b-bdb2-5a824d2df156",
+    "status": "completed",
+    "overall": "met",
+    "summary": "阿明與小華的報價正確；小美的負數堂數被指出不合理，且未獲報價。",
+    "criterion_results": [
+      {
+        "criterion_id": "cac042ee-85d6-4f8e-81ff-9be2c4bc2c89",
+        "text": "阿明為 6,000 元（5×1,200，無折扣），小華為 12,960 元（12×1,200=14,400，9 折）",
+        "result": "passed",
+        "source": "model",
+        "reason": "報價列出阿明 5 堂為 6000 元、小華 12 堂為 12960 元，金額均符合標準。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "阿明（5 堂）：應付總額：6000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "小華（12 堂）：應付總額：12960 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2ff38b0e-d70c-4f4a-b31f-47210606f44c",
+        "text": "明確指出小美的 -3 堂不合理（堂數須為正整數），沒有給出小美的金額",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確告知小美的 -3 堂不符合堂數須為正整數的要求，並請求更正，沒有給出小美的金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "小美（-3 堂）：堂數須為正整數，請確認或更正堂數。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1550 input and 206 output tokens on gpt-6-luna; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,203 @@
+{
+  "round": 1,
+  "sample_input": "請逐筆計算以下帳單總額的最低應繳金額：\n999 元\n1,000 元\n1,001 元\n10,000 元\n10,001 元\n0 元\n-50 元",
+  "acceptance_criteria": [
+    {
+      "text": "試跑第 1 筆 999 元與第 2 筆 1,000 元時，分別輸出最低應繳 999 元與 1,000 元，符合「1,000 元以下含全額」的規則。"
+    },
+    {
+      "text": "試跑第 3 筆 1,001 元時，輸出最低應繳 1,000 元，因 10% 為 100.1 元且最低額為 1,000 元。"
+    },
+    {
+      "text": "試跑第 4 筆 10,000 元時，輸出最低應繳 1,000 元，正好等於帳單總額的 10%。"
+    },
+    {
+      "text": "試跑第 5 筆 10,001 元時，輸出最低應繳 1,001 元，因 10% 為 1,000.1 元並無條件進位。"
+    },
+    {
+      "text": "試跑第 6 筆 0 元與第 7 筆 -50 元時，兩者都不計算金額，並提示帳單總額必須大於 0。"
+    },
+    {
+      "text": "同一輸入含多筆金額時，輸出須逐筆對應原輸入、金額以整數元表示，且無效值的提示不應造成其他有效金額漏算。"
+    }
+  ],
+  "final_output": "依照指定公式逐筆試算：\n\n- 999 元：最低應繳 **999 元**\n- 1,000 元：最低應繳 **1,000 元**\n- 1,001 元：最低應繳 **1,000 元**\n- 10,000 元：最低應繳 **1,000 元**\n- 10,001 元：最低應繳 **1,001 元**\n- 0 元：帳單總額必須大於 0，未計算。\n- -50 元：帳單總額必須大於 0，未計算。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4c9c1365-0da1-4fe0-9456-c68e2ed51245",
+    "run_id": "ecdf0acc-87e1-4be9-b66a-ad2411841ac8",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七筆輸入均按順序處理：五筆有效帳單的最低應繳金額正確，0 元與 -50 元則獲得未計算及金額須大於 0 的提示。",
+    "criterion_results": [
+      {
+        "criterion_id": "805264a9-7ffb-4307-9e36-41991b5abf99",
+        "text": "試跑第 1 筆 999 元與第 2 筆 1,000 元時，分別輸出最低應繳 999 元與 1,000 元，符合「1,000 元以下含全額」的規則。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1、2 筆分別輸出最低應繳 999 元及 1,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 999 元：最低應繳 **999 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 1,000 元：最低應繳 **1,000 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0fdc3fef-a656-466f-9eea-c7f20e8e82e0",
+        "text": "試跑第 3 筆 1,001 元時，輸出最低應繳 1,000 元，因 10% 為 100.1 元且最低額為 1,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆 1,001 元輸出最低應繳 1,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 1,001 元：最低應繳 **1,000 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f940b515-0f79-4c09-af1c-92b1979b23fd",
+        "text": "試跑第 4 筆 10,000 元時，輸出最低應繳 1,000 元，正好等於帳單總額的 10%。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆 10,000 元輸出最低應繳 1,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 10,000 元：最低應繳 **1,000 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c81c7fc4-4c3b-49de-a9af-22bce77c9386",
+        "text": "試跑第 5 筆 10,001 元時，輸出最低應繳 1,001 元，因 10% 為 1,000.1 元並無條件進位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆 10,001 元輸出最低應繳 1,001 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 10,001 元：最低應繳 **1,001 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "089c5458-8e4f-4556-b316-a38ae80353ba",
+        "text": "試跑第 6 筆 0 元與第 7 筆 -50 元時，兩者都不計算金額，並提示帳單總額必須大於 0。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6、7 筆均提示帳單總額必須大於 0，且未計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 0 元：帳單總額必須大於 0，未計算。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- -50 元：帳單總額必須大於 0，未計算。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bdefe36c-8054-4eb3-bad4-b0358e011d93",
+        "text": "同一輸入含多筆金額時，輸出須逐筆對應原輸入、金額以整數元表示，且無效值的提示不應造成其他有效金額漏算。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出依原輸入順序逐筆列出七筆；五筆有效金額均以整數元表示，兩筆無效金額的提示未造成漏算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 999 元：最低應繳 **999 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 1,000 元：最低應繳 **1,000 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 1,001 元：最低應繳 **1,000 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 10,000 元：最低應繳 **1,000 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 10,001 元：最低應繳 **1,001 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 0 元：帳單總額必須大於 0，未計算。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- -50 元：帳單總額必須大於 0，未計算。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1492 input and 349 output tokens on gpt-6-luna; reported cost $0.0031 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "request": {
+    "RunID": "bd028472-66cd-48b0-a49d-61a915603708",
+    "EvaluationID": "d863d8a8-c4d5-4368-a685-01c0888a9b40",
+    "Skill": {
+      "Name": "airline-checked-baggage-fee",
+      "Summary": "依單件托運行李重量判定是否可托運及應收費用。當使用者提供行李重量並要求航空托運費用判定時使用。"
+    },
+    "UserPrompt": "請逐項判定以下單件行李重量的處理方式與費用：\n20 公斤\n-1 公斤\n21.01 公斤",
+    "Criteria": [
+      {
+        "ID": "6bc7344b-200d-4d93-ad2c-4014eb81d663",
+        "Text": "指出 -1 公斤不是有效重量，不為它計費，也不給出托運判定。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ebe74ff4-2eb5-4cab-b475-2bfa01a72f46",
+        "Text": "判定 20 公斤免費托運，費用為 0 元。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "530bd1c6-37a8-4de7-b6a9-bb5093a1fde9",
+        "Text": "判定 21.01 公斤接受托運；超出 20 公斤 1.01 公斤，進位為 2 公斤，費用為 1,000 元。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "- **20 公斤**：可免費托運，費用 **0 元**。\n- **−1 公斤**：重量無效（須大於 0 公斤），不計費；不判定是否可托運。\n- **21.01 公斤**：接受托運，屬超重行李。超出 **1.01 公斤**，進位後按 **2 公斤**計費：2 × 500 = **1,000 元**。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "8b71f3cc-7312-40bd-99cc-ab545de21048",
+          "OccurredAt": "2026-10-26T10:52:09.963Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"airline-checked-baggage-fee\", \"skill_version_id\": \"f5c9ff93-2ab9-4150-80ce-7d5f949ff828\"}"
+        },
+        {
+          "TraceEventID": "a76b126e-d3db-4739-a32c-b971a8fd3aaf",
+          "OccurredAt": "2026-10-26T10:52:09.976Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"airline-checked-baggage-fee\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 14, \"invocation_id\": \"call_ZtBU3pAo50JRVxbk53bx6taL\", \"result_summary\": \"Launching skill: airline-checked-baggage-fee\"}"
+        },
+        {
+          "TraceEventID": "9ef507ae-bf2f-49a5-96eb-06176406e87e",
+          "OccurredAt": "2026-10-26T10:52:12.44Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"- **20 公斤**：可免費托運，費用 **0 元**。\\n- **−1 公斤**：重量無效（須大於 0 公斤），不計費；不判定是否可托運。\\n- **21.01 公斤**：接受托運，屬超重行李。超出 **1.01 公斤**，進位後按 **2 公斤**計費：2 × 500 = **1,000 元**。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "56f195e9-a3aa-4c78-9e54-2ec40f9cae63",
+          "OccurredAt": "2026-10-26T10:52:12.639Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"- **20 公斤**：可免費托運，費用 **0 元**。\\n- **−1 公斤**：重量無效（須大於 0 公斤），不計費；不判定是否可托運。\\n- **21.01 公斤**：接受托運，屬超重行李。超出 **1.01 公斤**，進位後按 **2 公斤**計費：2 × 500 = **1,000 元**。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "f7eb87ae-ddce-436b-af09-e028072e9240",
+          "OccurredAt": "2026-10-26T10:52:16.69Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.002793965, \"cost_source\": \"gateway\", \"duration_ms\": 9581, \"input_tokens\": 1470, \"token_source\": \"result\", \"output_tokens\": 195, \"cache_read_input_tokens\": 16634, \"cache_write_input_tokens\": 18625}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": null,
+  "error": "llmclient: /judge-run returned 502: {\"detail\":\"gateway error\"}"
+}

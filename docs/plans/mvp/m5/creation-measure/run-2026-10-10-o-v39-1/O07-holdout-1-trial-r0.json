@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "訂單 A20261010-07 晚了 10 分鐘，補償 30 元，寫道歉訊息。",
+  "acceptance_criteria": [
+    {
+      "text": "訊息包含訂單編號 A20261010-07、10 分鐘與 30 元（延誤 10 分鐘不是未滿 10 分鐘，要寫補償金額）"
+    },
+    {
+      "text": "訊息以「。」「？」「！」結尾的句子不超過 2 句"
+    }
+  ],
+  "final_output": "您好，訂單A20261010-07延誤10分鐘，造成不便我們深感抱歉；我們將提供30 元補償。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "fb55bcdf-a377-4ff0-b462-0753f327c507",
+    "run_id": "77f3fc58-52c4-4c37-99c6-cb9a23f91fdb",
+    "status": "completed",
+    "overall": "met",
+    "summary": "道歉訊息符合指定內容與句數上限。",
+    "criterion_results": [
+      {
+        "criterion_id": "220f3f09-a618-4e05-ae5f-a6ccd10bcc1b",
+        "text": "訊息包含訂單編號 A20261010-07、10 分鐘與 30 元（延誤 10 分鐘不是未滿 10 分鐘，要寫補償金額）",
+        "result": "passed",
+        "source": "model",
+        "reason": "訊息包含指定訂單編號、延誤 10 分鐘及 30 元補償。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，訂單A20261010-07延誤10分鐘，造成不便我們深感抱歉；我們將提供30 元補償。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1bf70d6d-3ea1-4ae0-b9cf-cee358e9355d",
+        "text": "訊息以「。」「？」「！」結尾的句子不超過 2 句",
+        "result": "passed",
+        "source": "model",
+        "reason": "訊息只有一個以「。」結尾的句子，未超過兩句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，訂單A20261010-07延誤10分鐘，造成不便我們深感抱歉；我們將提供30 元補償。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1569 input and 749 output tokens on gpt-6-luna; reported cost $0.0040 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

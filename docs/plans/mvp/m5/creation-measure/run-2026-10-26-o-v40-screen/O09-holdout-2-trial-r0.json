@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "今天是 2026-10-10。我打算 11 月 3 日通知房東，12 月 4 日搬走，來得及嗎？",
+  "acceptance_criteria": [
+    {
+      "text": "以 2026 年計算兩個日期（不採其他年份），沒有反問使用者"
+    },
+    {
+      "text": "判定通知足夠，相隔 31 天（11 月 3 日到 11 月 30 日 27 天，加 12 月 4 日 4 天 = 31）"
+    }
+  ],
+  "final_output": "按年、月、日順序解讀日期。\n\n搬離日：12 月 4 日（2026-12-04）  \n通知日：11 月 3 日（2026-11-03）  \n日期間隔：31 天  \n判定：通知足夠（至少提前 30 天）。\n\n因此，按至少提前 30 日的期限計算，來得及。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8340b33e-ce1e-4364-b916-ebba380d57a5",
+    "run_id": "d8441bea-0727-4fbb-879d-84abb5e5995e",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項標準均達成：以 2026 年的日期計算，並判定提前 31 天通知來得及。",
+    "criterion_results": [
+      {
+        "criterion_id": "386ea230-f838-4a45-8afa-ad7bdca0e8a6",
+        "text": "以 2026 年計算兩個日期（不採其他年份），沒有反問使用者",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將通知日和搬離日都列為 2026 年，且沒有反問使用者。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "搬離日：12 月 4 日（2026-12-04）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "通知日：11 月 3 日（2026-11-03）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9875f087-c59d-47e9-aa7a-00d2ec8b18bd",
+        "text": "判定通知足夠，相隔 31 天（11 月 3 日到 11 月 30 日 27 天，加 12 月 4 日 4 天 = 31）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆判定兩日相隔 31 天，通知足夠。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期間隔：31 天",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "判定：通知足夠（至少提前 30 天）。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1611 input and 1413 output tokens on skillhub-run; reported cost $0.0053 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 24,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

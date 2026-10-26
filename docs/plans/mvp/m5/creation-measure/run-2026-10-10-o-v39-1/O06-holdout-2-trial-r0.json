@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "白天從機場到市區跑了 8 公里，中途過了一次收費站，車資多少？",
+  "acceptance_criteria": [
+    {
+      "text": "回覆依規則算出的車資為 255 元（8,000−1,250=6,750 公尺，6,750÷200=33.75 進位為 34 級，34×5=170；85+170=255）"
+    },
+    {
+      "text": "明確寫出過路費不含在試算內（另計或不處理）的假設，沒有反問使用者，也沒有自行加上未提供的過路費金額"
+    }
+  ],
+  "final_output": "白天行駛 8 公里，車資估算為 **255 元**。這個金額未包含收費站費用；若過站費由乘客另付，需再加上實際收費。費用金額未提供，因此無法算出含過路費的總額。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b2741e2d-e7ee-421d-89af-c7c32829cae4",
+    "run_id": "14e35e6e-8168-48c5-b874-c181e7551106",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項標準均已達成：車資試算為 255 元，並明確說明過路費未包含在內、金額未知時不能算入總額。",
+    "criterion_results": [
+      {
+        "criterion_id": "aec1731c-e2cc-4c51-98bc-897c9c291402",
+        "text": "回覆依規則算出的車資為 255 元（8,000−1,250=6,750 公尺，6,750÷200=33.75 進位為 34 級，34×5=170；85+170=255）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆的白天 8 公里車資為 255 元，與指定計算結果相符。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "白天行駛 8 公里，車資估算為 **255 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9de1113c-d484-4c80-bb40-4b12b1b2738f",
+        "text": "明確寫出過路費不含在試算內（另計或不處理）的假設，沒有反問使用者，也沒有自行加上未提供的過路費金額",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確表示 255 元不含收費站費用，過路費如由乘客負擔則按實際金額另計；沒有反問，也沒有自行加上未知金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這個金額未包含收費站費用；若過站費由乘客另付，需再加上實際收費。費用金額未提供，因此無法算出含過路費的總額。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1492 input and 475 output tokens on gpt-6-luna; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 9,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

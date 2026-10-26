@@ -1,0 +1,112 @@
+{
+  "request": {
+    "RunID": "d6978438-4ca2-4772-855a-cd1e494b3f6c",
+    "EvaluationID": "4ca716ad-0f0b-4c6c-a771-257c44c98f5e",
+    "Skill": {
+      "Name": "fitness-package-pricing",
+      "Summary": "當使用者提供健身教練課程包的購買堂數、需要計算報價時，依每堂 1,200 元及整筆折扣規則逐筆計算應付總額。"
+    },
+    "UserPrompt": "幫我報價：阿明買 5 堂、小華買 12 堂、小美買 -3 堂。",
+    "Criteria": [
+      {
+        "ID": "41be0999-f487-4228-bb04-b644ba06380a",
+        "Text": "阿明為 6,000 元（5×1,200，無折扣），小華為 12,960 元（12×1,200=14,400，9 折）",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "c421e0ec-5475-49a8-afda-fee8716c276c",
+        "Text": "明確指出小美的 -3 堂不合理（堂數須為正整數），沒有給出小美的金額",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "- 阿明：5 堂，應付 **6,000 元**\n- 小華：12 堂（整筆 9 折），應付 **12,960 元**\n- 小美：-3 堂，**無效**（堂數須為正整數）",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "086ab422-0644-4bb3-b85e-ef3cc76fb48e",
+          "OccurredAt": "2026-10-26T04:33:22.339Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"fitness-package-pricing\", \"skill_version_id\": \"1da0258a-2758-4327-852b-75d0383f3c46\"}"
+        },
+        {
+          "TraceEventID": "4c876621-8638-4fac-b6ab-ec70223e462e",
+          "OccurredAt": "2026-10-26T04:33:22.354Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"fitness-package-pricing\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 15, \"invocation_id\": \"call_y5pF7y4CJSHeiqELsQVBfZm5\", \"result_summary\": \"Launching skill: fitness-package-pricing\"}"
+        },
+        {
+          "TraceEventID": "9da9837d-f494-4850-a181-e6a75121dee5",
+          "OccurredAt": "2026-10-26T04:33:24.924Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"- 阿明：5 堂，應付 **6,000 元**\\n- 小華：12 堂（整筆 9 折），應付 **12,960 元**\\n- 小美：-3 堂，**無效**（堂數須為正整數）\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "4db09555-0d00-45e8-8ec9-093c86ab9d72",
+          "OccurredAt": "2026-10-26T04:33:25.204Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"- 阿明：5 堂，應付 **6,000 元**\\n- 小華：12 堂（整筆 9 折），應付 **12,960 元**\\n- 小美：-3 堂，**無效**（堂數須為正整數）\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "58597775-9095-424f-8adc-a8f7ec9465a9",
+          "OccurredAt": "2026-10-26T04:33:29.264Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.002761635, \"cost_source\": \"gateway\", \"duration_ms\": 9532, \"input_tokens\": 1476, \"token_source\": \"result\", \"output_tokens\": 156, \"cache_read_input_tokens\": 16631, \"cache_write_input_tokens\": 18549}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "41be0999-f487-4228-bb04-b644ba06380a",
+        "Result": "passed",
+        "Reason": "阿明 5 堂報價 6,000 元；小華 12 堂採整筆 9 折，報價 12,960 元，均符合指定計算結果。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 阿明：5 堂，應付 **6,000 元**"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 小華：12 堂（整筆 9 折），應付 **12,960 元**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "c421e0ec-5475-49a8-afda-fee8716c276c",
+        "Result": "passed",
+        "Reason": "明確標示小美的 -3 堂無效，說明堂數須為正整數，且未給出小美的金額。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 小美：-3 堂，**無效**（堂數須為正整數）"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "阿明與小華的報價正確；小美的負堂數被判為無效，未提供報價。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v4",
+    "Usage": {
+      "PromptTokens": 2161,
+      "CompletionTokens": 364,
+      "CostUSD": 0.006352300000000001,
+      "CostReported": true
+    }
+  }
+}

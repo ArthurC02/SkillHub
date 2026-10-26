@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "平日場，阿嬤 70 歲、弟弟 2 歲、表哥 150 歲、我 25 歲，每個人票價多少？",
+  "acceptance_criteria": [
+    {
+      "text": "阿嬤為 180 元、弟弟免費（0 元）、我為 300 元（三位合計 480 元）"
+    },
+    {
+      "text": "明確指出表哥 150 歲超出 0 到 120 的範圍而不合理，沒有給出表哥的票價"
+    }
+  ],
+  "final_output": "- 阿嬤（70 歲）：180 元\n- 弟弟（2 歲）：0 元（免費）\n- 表哥（150 歲）：無法報價；檢核器指出「150」大於可能的最大值 120。年齡須為 0–120 的整數。\n- 我（25 歲）：300 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "2031bae6-5f39-4dee-9322-1baf3fd41e3b",
+    "run_id": "852601d5-5461-4e83-aa72-7b8368d15f9b",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "個別票價與表哥年齡無效的說明均正確；但回答漏列三位有效票價的合計 480 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "095db82f-3bb5-4e88-9895-e6eddda229ef",
+        "text": "阿嬤為 180 元、弟弟免費（0 元）、我為 300 元（三位合計 480 元）",
+        "result": "failed",
+        "source": "model",
+        "reason": "三人的個別票價正確，但最終回答未列出三位合計 480 元，因此未完整符合此項標準。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 阿嬤（70 歲）：180 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 弟弟（2 歲）：0 元（免費）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 我（25 歲）：300 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5c86fd50-c625-42b9-8e6b-2eab58a09615",
+        "text": "明確指出表哥 150 歲超出 0 到 120 的範圍而不合理，沒有給出表哥的票價",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出表哥的 150 歲超過年齡上限 120，並表示無法報價，沒有給出他的票價。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 表哥（150 歲）：無法報價；檢核器指出「150」大於可能的最大值 120。年齡須為 0–120 的整數。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1726 input and 1348 output tokens on skillhub-run; reported cost $0.0059 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 36,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

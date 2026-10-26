@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "這個月我們店營業額 180,000 元，其中有 12,000 元是客人退款退掉的，抽成要付多少？",
+  "acceptance_criteria": [
+    {
+      "text": "明確寫出營業額是否扣除退款的假設，沒有反問使用者"
+    },
+    {
+      "text": "金額與所寫假設一致：扣除退款以 168,000 計為 30,200 元（20,000+68,000×15%）；不扣除以 180,000 計為 32,000 元（20,000+80,000×15%）"
+    }
+  ],
+  "final_output": "第 1 筆：同一筆營業額數值互相矛盾：「180,000 元」(180000 元)、「12,000 元」(12000 元)；不計算抽成。請確認正確的營業額。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0c3ca4eb-cdcd-4e5e-a520-aa149f2019ea",
+    "run_id": "5cee94d7-02e0-4c66-9eb2-055d21f939c4",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "兩項標準均未達成。回覆將退款誤判為營業額矛盾，要求確認金額，未交代退款處理假設，也未計算抽成。",
+    "criterion_results": [
+      {
+        "criterion_id": "1f58d52f-70f0-466d-bd8a-7ade7942956c",
+        "text": "明確寫出營業額是否扣除退款的假設，沒有反問使用者",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆未說明營業額是否扣除退款的假設，且要求使用者確認金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "不計算抽成。請確認正確的營業額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "46c913c5-24f3-4ec1-ad45-d87bc606c491",
+        "text": "金額與所寫假設一致：扣除退款以 168,000 計為 30,200 元（20,000+68,000×15%）；不扣除以 180,000 計為 32,000 元（20,000+80,000×15%）",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆把退款金額誤判為矛盾的營業額，沒有算出符合任一退款假設的抽成金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "同一筆營業額數值互相矛盾：「180,000 元」(180000 元)、「12,000 元」(12000 元)；不計算抽成。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1536 input and 362 output tokens on gpt-6-luna; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "10 月 16 日週五晚上 7 點的場，一位 40 歲、一位 10 歲，總共多少錢？",
+  "acceptance_criteria": [
+    {
+      "text": "明確寫出把週五晚場視為平日或假日的假設，沒有反問使用者"
+    },
+    {
+      "text": "金額與所寫假設一致：視為平日為 480 元（300+180）；視為假日為 580 元（360+220）"
+    }
+  ],
+  "final_output": "週五場按平日計：\n\n- 40 歲：300 元\n- 10 歲：180 元\n- **合計：480 元**\n\n編號原始資料未提供；以上以 1、2 作為試算用識別碼。檢核器輸出：假設：今天以系統日期 2026-10-26 計。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8c74b8b3-2f34-41a4-bbcf-217bc8bfb3eb",
+    "run_id": "0a9b4768-77f3-4693-aa04-183652307c27",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收標準均已達成：回覆明示週五場按平日計算，並給出一致的票價總額 480 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "115ab049-7c41-4250-bf31-27c0ef09106a",
+        "text": "明確寫出把週五晚場視為平日或假日的假設，沒有反問使用者",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆明確表示週五場按平日計，且沒有反問使用者。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "週五場按平日計：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1fd4230c-1914-4792-85d8-bd5ab0382414",
+        "text": "金額與所寫假設一致：視為平日為 480 元（300+180）；視為假日為 580 元（360+220）",
+        "result": "passed",
+        "source": "model",
+        "reason": "按所寫的平日假設，40 歲為 300 元、10 歲為 180 元，合計 480 元，金額一致。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 40 歲：300 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 10 歲：180 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**合計：480 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1726 input and 3467 output tokens on skillhub-run; reported cost $0.0070 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 34,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

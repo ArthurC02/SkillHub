@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "本期信用卡帳單 10,001 元，最低應繳多少？",
+  "acceptance_criteria": [
+    {
+      "text": "回覆的最低應繳為 1,001 元（10,001×10%=1,000.1，無條件進位為 1,001）"
+    },
+    {
+      "text": "沒有回 1,000 元或 10,001 元"
+    }
+  ],
+  "final_output": "本期信用卡帳單 10,001 元，最低應繳 **1,001 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a7104bc3-3652-4a3e-95ff-be8a91928133",
+    "run_id": "c2c5d7e4-f3a4-47e7-8ace-d944ff378c79",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收標準均符合：最低應繳回答為 1,001 元，沒有將帳單金額或 1,000 元當作最低應繳。",
+    "criterion_results": [
+      {
+        "criterion_id": "a4a0d209-2afe-4811-906d-b4b3830d57f6",
+        "text": "回覆的最低應繳為 1,001 元（10,001×10%=1,000.1，無條件進位為 1,001）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確指出最低應繳為 1,001 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "最低應繳 **1,001 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b006d773-c505-4226-b45f-af1e1bb9b0d1",
+        "text": "沒有回 1,000 元或 10,001 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆以 10,001 元表示帳單金額，並未將 1,000 元或 10,001 元回答為最低應繳。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本期信用卡帳單 10,001 元，最低應繳 **1,001 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1552 input and 576 output tokens on gpt-6-luna; reported cost $0.0039 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

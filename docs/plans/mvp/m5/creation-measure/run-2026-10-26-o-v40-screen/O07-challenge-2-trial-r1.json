@@ -1,0 +1,122 @@
+{
+  "round": 1,
+  "sample_input": "請依規則為以下訂單撰寫延誤道歉訊息：\n訂單編號：D201；延誤分鐘數：十二；補償金額：80",
+  "acceptance_criteria": [
+    {
+      "text": "將「十二」按一般讀法理解為 12，並以一句話說明這項理解是假設；補償金額缺少單位時，依 brief 所述金額單位按元理解，並說明此假設，不反問使用者。"
+    },
+    {
+      "text": "生成 D201 的道歉訊息，包含 D201、12 分鐘及 80 元補償金額；12 大於或等於 10。"
+    },
+    {
+      "text": "該則道歉訊息不超過兩句。"
+    }
+  ],
+  "final_output": "訂單 D201：很抱歉，訂單 D201 延誤了 12 分鐘，我們將提供 80 元 補償，造成不便敬請見諒。\n\n說明：延誤分鐘數「十二」依檢查結果讀作 12；補償金額原文未標示單位，暫依「元」顯示，您可更改此單位。",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "3437473c-ea5c-4cc9-81cc-bf5cdc3324a8",
+    "run_id": "6db24352-61e5-4edf-826e-c42237ba2717",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "D201 的道歉訊息包含所需資訊，且未超過兩句。回覆也交代了金額單位的暫定讀法，但沒有明確說明將「十二」讀作 12 是一項假設。",
+    "criterion_results": [
+      {
+        "criterion_id": "3643ca79-4f03-4aa8-bba1-a99d6eaccd6f",
+        "text": "將「十二」按一般讀法理解為 12，並以一句話說明這項理解是假設；補償金額缺少單位時，依 brief 所述金額單位按元理解，並說明此假設，不反問使用者。",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆將「十二」讀作 12，並說明金額暫以元顯示，也沒有反問；但未向使用者說明將「十二」讀作 12 是一項假設，而是稱其為檢查結果。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "說明：延誤分鐘數「十二」依檢查結果讀作 12；補償金額原文未標示單位，暫依「元」顯示，您可更改此單位。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "08093e7c-faae-41b9-9726-ef3c2d3e86c3",
+        "text": "生成 D201 的道歉訊息，包含 D201、12 分鐘及 80 元補償金額；12 大於或等於 10。",
+        "result": "passed",
+        "source": "model",
+        "reason": "道歉訊息包含 D201、12 分鐘及 80 元補償；12 大於或等於 10。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單 D201：很抱歉，訂單 D201 延誤了 12 分鐘，我們將提供 80 元 補償，造成不便敬請見諒。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f38a3cef-8da1-497c-941c-98eb2a31eb20",
+        "text": "該則道歉訊息不超過兩句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "D201 的道歉訊息只有一句。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單 D201：很抱歉，訂單 D201 延誤了 12 分鐘，我們將提供 80 元 補償，造成不便敬請見諒。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1771 input and 2595 output tokens on skillhub-run; reported cost $0.0070 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 42,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "round": 1,
+  "sample_input": "請依下列資料逐筆撰寫候補遞補通知簡訊；今天日期為 2026/10/10。\n第1筆：學員姓名：林小安；課程名稱：Python資料分析入門班；開課日期：2026/10/15；回覆期限：2026/10/10\n第2筆：學員姓名：陳雅婷；課程名稱：週末進階攝影實作班；開課日期：2026/10/20；回覆期限：2026/10/09",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 筆的回覆期限等於今天時，輸出一則通知簡訊，而不是拒絕該筆資料。"
+    },
+    {
+      "text": "第 1 筆輸出的簡訊全文不超過 60 個字元，計數包含所有標點、空白及數字。"
+    },
+    {
+      "text": "第 1 筆的簡訊包含並原樣保留該筆的學員姓名、課程名稱、開課日期及回覆期限。"
+    },
+    {
+      "text": "試跑輸入第 2 筆的回覆期限早於今天時，不輸出該筆的通知簡訊，並指出回覆期限早於今天。"
+    }
+  ],
+  "final_output": "第1筆：林小安您好，候補遞補至Python資料分析入門班，開課日期2026/10/15，請於2026/10/10前回覆，謝謝。  \n檢查結果：簡訊字元數：59/60。OK\n\n第2筆：不產生簡訊：回覆期限 2026/10/09 早於今天。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b89924f1-e839-4b66-b955-303a4a9c5d7b",
+    "run_id": "088f9013-a49c-4e5e-8054-7b27d45ae507",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收條件均已達成：第 1 筆提供了符合字數及資料要求的簡訊；第 2 筆因回覆期限已過而未產生簡訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "19d06264-1a5d-4f72-9c6c-5b263f12c807",
+        "text": "試跑輸入第 1 筆的回覆期限等於今天時，輸出一則通知簡訊，而不是拒絕該筆資料。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆回覆期限為今天，最終回覆仍提供了通知簡訊，未拒絕該筆資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第1筆：林小安您好，候補遞補至Python資料分析入門班，開課日期2026/10/15，請於2026/10/10前回覆，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ca4df20b-6e4f-40ac-a51e-94b4c80cd1e1",
+        "text": "第 1 筆輸出的簡訊全文不超過 60 個字元，計數包含所有標點、空白及數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆簡訊包含標點、字母及數字共 59 個字元，未超過 60 個字元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林小安您好，候補遞補至Python資料分析入門班，開課日期2026/10/15，請於2026/10/10前回覆，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e59086e2-e125-4aa1-8558-ee953014e809",
+        "text": "第 1 筆的簡訊包含並原樣保留該筆的學員姓名、課程名稱、開課日期及回覆期限。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆簡訊原樣包含林小安、Python資料分析入門班、2026/10/15 及 2026/10/10。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林小安您好，候補遞補至Python資料分析入門班，開課日期2026/10/15，請於2026/10/10前回覆，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "73ee5c5e-5cd5-45e1-83cb-cf67ce7a470c",
+        "text": "試跑輸入第 2 筆的回覆期限早於今天時，不輸出該筆的通知簡訊，並指出回覆期限早於今天。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆未輸出通知簡訊，並明確指出回覆期限 2026/10/09 早於今天。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第2筆：不產生簡訊：回覆期限 2026/10/09 早於今天。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1672 input and 6470 output tokens on gpt-6-luna; reported cost $0.0076 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 38,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

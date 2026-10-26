@@ -1,0 +1,174 @@
+{
+  "round": 1,
+  "sample_input": "請依規則試算以下每筆計程車車資，夜間欄位是指該趟是否於 23:00–06:00 搭乘，無效里程請標示且不計價。\n\n| 行程 | 里程（公里） | 夜間 |\n|---|---:|---|\n| A | 1.25 | 否 |\n| B | 1.26 | 否 |\n| C | 1.45 | 是 |\n| D | 1.451 | 否 |\n| E | 2 | 是 |\n| F | 0 | 否 |",
+  "acceptance_criteria": [
+    {
+      "text": "試算里程 1.25 公里、非夜間的行程，結果為 85 元。"
+    },
+    {
+      "text": "試算里程 1.26 公里、非夜間的行程，結果為 90 元，未滿 200 公尺仍計一個級距。"
+    },
+    {
+      "text": "試算里程 1.45 公里、夜間的行程，結果為 110 元：超出 0.20 公里計一個級距，再加夜間 20 元。"
+    },
+    {
+      "text": "試算里程 1.451 公里、非夜間的行程，結果為 95 元：超出 0.201 公里計兩個級距。"
+    },
+    {
+      "text": "試算里程 2 公里、夜間的行程，結果為 125 元：超出 0.75 公里計四個級距，再加夜間 20 元。"
+    },
+    {
+      "text": "對里程為 0 公里的行程，標示無效且不提供車資。"
+    }
+  ],
+  "final_output": "| 行程 | 里程 | 夜間 | 車資 |\n|---|---:|---|---:|\n| A | 1.25 公里 | 否 | 85 元 |\n| B | 1.26 公里 | 否 | 90 元 |\n| C | 1.45 公里 | 是 | 110 元 |\n| D | 1.451 公里 | 否 | 95 元 |\n| E | 2 公里 | 是 | 125 元 |\n| F | 0 公里 | 否 | **無效里程，不計價** |\n\n檢查器未列出讀法假設。里程不大於 0 視為無效，不計價。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "547a0ee7-a42c-4676-a305-55406010a20f",
+    "run_id": "a0280709-a522-4af3-8248-0daa51790da9",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六筆行程均得到指定結果：A 至 E 的車資正確，F 標示為無效且不計價。",
+    "criterion_results": [
+      {
+        "criterion_id": "3b9ec58a-531e-41df-82a9-e59e2d1cbd0f",
+        "text": "試算里程 1.25 公里、非夜間的行程，結果為 85 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A 行程為非夜間 1.25 公里，列出的車資是 85 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| A | 1.25 公里 | 否 | 85 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a343d3d6-b2f1-40ed-b4e3-d2611239ec7e",
+        "text": "試算里程 1.26 公里、非夜間的行程，結果為 90 元，未滿 200 公尺仍計一個級距。",
+        "result": "passed",
+        "source": "model",
+        "reason": "B 行程為非夜間 1.26 公里，列出的車資是 90 元；超出 1.25 公里的部分未滿 200 公尺，結果仍計入一個級距。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| B | 1.26 公里 | 否 | 90 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0d568db6-b65e-4107-ae7a-2ed01cbf8317",
+        "text": "試算里程 1.45 公里、夜間的行程，結果為 110 元：超出 0.20 公里計一個級距，再加夜間 20 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "C 行程為夜間 1.45 公里，列出的 110 元符合超出 0.20 公里計一個級距、再加夜間 20 元的結果。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| C | 1.45 公里 | 是 | 110 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0a71fd60-d9f4-4f6b-9269-1f65a9895039",
+        "text": "試算里程 1.451 公里、非夜間的行程，結果為 95 元：超出 0.201 公里計兩個級距。",
+        "result": "passed",
+        "source": "model",
+        "reason": "D 行程為非夜間 1.451 公里，列出的 95 元符合超出 0.201 公里計兩個級距的結果。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| D | 1.451 公里 | 否 | 95 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d120ef44-5f00-49f1-9200-3538a3affbda",
+        "text": "試算里程 2 公里、夜間的行程，結果為 125 元：超出 0.75 公里計四個級距，再加夜間 20 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "E 行程為夜間 2 公里，列出的 125 元符合超出 0.75 公里計四個級距、再加夜間 20 元的結果。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| E | 2 公里 | 是 | 125 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b919e7af-06e9-4720-b2eb-46c95517060e",
+        "text": "對里程為 0 公里的行程，標示無效且不提供車資。",
+        "result": "passed",
+        "source": "model",
+        "reason": "F 行程的里程為 0 公里，已標示為無效里程、不計價，且未提供車資金額。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| F | 0 公里 | 否 | **無效里程，不計價** |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1681 input and 1811 output tokens on skillhub-run; reported cost $0.0057 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 47,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

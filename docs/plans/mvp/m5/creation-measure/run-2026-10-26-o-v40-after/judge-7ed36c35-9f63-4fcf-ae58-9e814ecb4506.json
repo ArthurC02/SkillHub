@@ -1,0 +1,282 @@
+{
+  "request": {
+    "RunID": "7ed36c35-9f63-4fcf-ae58-9e814ecb4506",
+    "EvaluationID": "94cdab53-0331-473f-9c43-9f7094f81a08",
+    "Skill": {
+      "Name": "lease-notice-period-check",
+      "Summary": "依搬離日期與通知日期檢查租約提前終止通知是否至少提前 30 個日曆日，並在通知不足時計算最晚通知日期。當使用者提供一筆或多筆搬離日期與通知日期，要求檢查通知期限時使用。"
+    },
+    "UserPrompt": "三位租客幫我檢查：甲 2026-12-20 搬離、2026-11-15 通知；乙 2026-11-10 搬離、2026-11-25 通知；丙 2027-01-15 搬離、2026-12-25 通知。",
+    "Criteria": [
+      {
+        "ID": "1f265ab3-cb85-474e-b975-240c57968144",
+        "Text": "甲判為足夠（相隔 35 天：11 月 15 日到 12 月 15 日 30 天，再加 5 天），丙判為不足（相隔 21 天：12 月 25 日到 12 月 31 日 6 天，加 15 天）並回報最晚應在 2026-12-16 通知",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e488f330-3277-48a2-81bb-3f1c18317993",
+        "Text": "明確指出乙的通知日 2026-11-25 晚於搬離日 2026-11-10 而不合理，沒有給出乙足夠與否的判定",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "以下按「通知日至搬離日相隔至少 30 個日曆日」檢查：\n\n- **甲**：搬離日期原文「2026-12-20」；通知日期原文「2026-11-15」。相隔 **35 天**，**通知足夠**。\n- **乙**：搬離日期原文「2026-11-10」；通知日期原文「2026-11-25」。**日期組合無效**（通知日期晚於搬離日期），不作期限計算；請提出請求的人確認日期。\n- **丙**：搬離日期原文「2027-01-15」；通知日期原文「2026-12-25」。相隔 **21 天**，**通知不足**；最晚通知日為 **2026-12-16**。\n\n日期格式假設：斜線日期按西曆年、月、日順序解讀；以上日期均以年-月-日格式提供。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "6244b7c6-61db-4a7f-9443-04736d4b1a27",
+          "OccurredAt": "2026-10-26T10:46:25.083Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"lease-notice-period-check\", \"skill_version_id\": \"e97c4c13-267d-4b7e-b210-55548bedd1bc\"}"
+        },
+        {
+          "TraceEventID": "6bf973a6-985f-49a5-93a6-9f6c7967eb12",
+          "OccurredAt": "2026-10-26T10:46:25.102Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"三位租客：甲搬離 2026-12-20，通知 2026-11-15；乙搬離 2026-11-10，通知 2026-11-25；丙搬離 2027-01-15，通知 2026-12-25。檢查每位是否至少提前 30 個日曆日通知，並計算不足時最晚通知日。\", \"skill\": \"lease-notice-period-check\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 18, \"invocation_id\": \"call_7QVDCMslA2H2ejKiykLnsMYJ\", \"result_summary\": \"Launching skill: lease-notice-period-check\"}"
+        },
+        {
+          "TraceEventID": "70b05e16-5dc7-459c-95c5-758f3f96945f",
+          "OccurredAt": "2026-10-26T10:46:27.096Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 14, \"resource_path\": \"lease-notice-period-check\"}"
+        },
+        {
+          "TraceEventID": "3d4358ad-a003-4c94-b1af-20a38e0dbaca",
+          "OccurredAt": "2026-10-26T10:46:27.096Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"path\": \"/work/.claude/skills/lease-notice-period-check\", \"pattern\": \"scripts/*\"}, \"tool_name\": \"Glob\", \"truncated\": false, \"duration_ms\": 12, \"invocation_id\": \"call_P34lH4LZiNZUWgYhbrE8mIUM\", \"result_summary\": \"No files found\"}"
+        },
+        {
+          "TraceEventID": "1ef3d3e7-df1f-4a44-8994-f2d7f4aae063",
+          "OccurredAt": "2026-10-26T10:46:29.947Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"total 4\\ndrwxr-xr-x 3 sandbox sandbox   80 Oct 26 10:46 .\\ndrwxr-xr-x 3 sandbox sandbox   60 Oct 26 10:46 ..\\n-rw-r--r-- 1 sandbox sandbox 2020 Oct 26 10:46 SKILL.md\\ndrwxr-xr-x 2 sandbox sandbox  100 Oct 26 10:46 scripts\\ntotal 20\\ndrwxr-xr-x 2 sandbox sandbox   100 Oct 26 10:46 .\\ndrwxr-xr-x 3 sandbox sandbox    80 Oct 26 10:46 ..\\n-rw-r--r-- 1 sandbox sandbox 11452 Oct 26 10:46 check_input.py\\n-rw-r--r-- 1 sandbox sandbox  1750 Oct 26 10:46 check_notice_period.py\\n-rw-r--r-- 1 sandbox sandbox   139 Oct 26 10:46 input_schema.json\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "758dbcbe-ba74-427d-85fa-e5f92a801de9",
+          "OccurredAt": "2026-10-26T10:46:29.948Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"ls -la /work/.claude/skills/lease-notice-period-check \u0026\u0026 ls -la /work/.claude/skills/lease-notice-period-check/scripts\", \"description\": \"List skill scripts and schema\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 68, \"invocation_id\": \"call_mKqBiXdQPAvqiay9Mwbm0ATt\", \"result_summary\": \"total 4\\ndrwxr-xr-x 3 sandbox sandbox   80 Oct 26 10:46 .\\ndrwxr-xr-x 3 sandbox sandbox   60 Oct 26 10:46 ..\\n-rw-r--r-- 1 sandbox sandbox 2020 Oct 26 10:46 SKILL.md\\ndrwxr-xr-x 2 sandbox sandbox  100 Oct 26 10:46 scripts\\ntotal 20\\ndrwxr-xr-x 2 sandbox sandbox   100 Oct 26 10:46 .\\ndrwxr-xr-x 3 sandbox sandbox    80 Oct 26 10:46 ..\\n-rw-r--r-- 1 sandbox sandbox 11452 Oct 26 10:46 check_input.py\\n-rw-r--r-- 1 sandbox sandbox  1750 Oct 26 10:46 check_notice_period.py\\n-rw-r--r-- 1 sandbox sandbox   139 Oct 26 10:46 input_schema.json\"}"
+        },
+        {
+          "TraceEventID": "473e1969-b735-4595-8987-cd55b432c0ad",
+          "OccurredAt": "2026-10-26T10:46:32.323Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 169, \"resource_path\": \"lease-notice-period-check/scripts/input_schema.json\"}"
+        },
+        {
+          "TraceEventID": "69ec57f4-9375-4059-a142-4d65624c2cae",
+          "OccurredAt": "2026-10-26T10:46:32.323Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/lease-notice-period-check/scripts/input_schema.json\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 7, \"invocation_id\": \"call_RDtXOEPLqxdWkIyn8JzozLCw\", \"result_summary\": \"1\\t{\\n2\\t  \\\"fields\\\": [\\n3\\t    {\\n4\\t      \\\"name\\\": \\\"move_out\\\",\\n5\\t      \\\"type\\\": \\\"date\\\"\\n6\\t    },\\n7\\t    {\\n8\\t      \\\"name\\\": \\\"notice\\\",\\n9\\t      \\\"type\\\": \\\"date\\\"\\n10\\t    }\\n11\\t  ]\\n12\\t}\\n13\\t\"}"
+        },
+        {
+          "TraceEventID": "0181593c-b4cb-44f7-9403-b053a8edc088",
+          "OccurredAt": "2026-10-26T10:46:35.245Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": true, \"bytes_read\": 8000, \"resource_path\": \"lease-notice-period-check/scripts/check_input.py\"}"
+        },
+        {
+          "TraceEventID": "09047f7a-caab-4f40-a15b-9958db64f401",
+          "OccurredAt": "2026-10-26T10:46:35.245Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/lease-notice-period-check/scripts/check_input.py\"}, \"tool_name\": \"Read\", \"truncated\": true, \"duration_ms\": 7, \"invocation_id\": \"call_40hQG5quwiYsUCeT9ipXaohP\", \"result_summary\": \"1\\t\\\"\\\"\\\"Normalize and validate the values a person gave against a Skill's input schema.\\\"\\\"\\\"\\n2\\t\\n3\\tfrom __future__ import annotations\\n4\\t\\n5\\timport argparse\\n6\\timport calendar\\n7\\timport json\\n8\\timport re\\n9\\timport sys\\n10\\tfrom datetime import date, timedelta\\n11\\t\\n12\\tFIELD_TYPES = (\\\"date\\\", \\\"number\\\", \\\"hours\\\", \\\"text\\\")\\n13\\tMONTHS = 12\\n14\\tCHINESE_DIGITS = {\\n15\\t    \\\"零\\\": 0,\\n16\\t    \\\"〇\\\": 0,\\n17\\t    \\\"一\\\": 1,\\n18\\t    \\\"二\\\": 2,\\n19\\t    \\\"兩\\\": 2,\\n20\\t    \\\"两\\\": 2,\\n21\\t    \\\"三\\\": 3,\\n22\\t    \\\"四\\\": 4,\\n23\\t    \\\"五\\\": 5,\\n24\\t    \\\"六\\\": 6,\\n25\\t    \\\"七\\\": 7,\\n26\\t    \\\"八\\\": 8,\\n27\\t    \\\"九\\\": 9,\\n28\\t}\\n29\\tCHINESE_UNITS = {\\\"十\\\": 10, \\\"百\\\": 100, \\\"千\\\": 1000}\\n30\\tCHINESE_SECTIONS = {\\\"萬\\\": 10_000, \\\"万\\\": 10_000, \\\"億\\\": 100_000_000, \\\"亿\\\": 100_000_000}\\n31\\tARABIC_WITH_SECTION = re.compile(r\\\"^(-?\\\\d+(?:\\\\.\\\\d+)?)\\\\s*([萬万億亿千百])$\\\")\\n32\\tFRACTION = re.compile(r\\\"^(-?\\\\d+(?:\\\\.\\\\d+)?)\\\\s*/\\\\s*(\\\\d+(?:\\\\.\\\\d+)?)$\\\")\\n33\\tPLAIN_NUMBER = re.compile(r\\\"^-?\\\\d+(?:\\\\.\\\\d+)?$\\\")\\n34\\tHOURS_AND_MINUTES = re.compile(\\n35\\t    r\\\"^(?:(-?\\\\d+(?:\\\\.\\\\d+)?)\\\\s*(?:小時|小时|鐘頭|h|hr|hrs|hours?))?\\\\s*\\\"\\n36\\t    r\\\"(?:(-?\\\\d+(?:\\\\.\\\\d+)?)\\\\s*(?:分鐘|分钟|分|m|min|mins|minutes?))?$\\\",\\n37\\t    re.IGNORECASE,\\n38\\t)\\n39\\tFULL_DATE = re.compile(r\\\"^(\\\\d{4})\\\\s*[-/.年]\\\\s*(\\\\d{1,2})\\\\s*[-/.月]\\\\s*(\\\\d{1,2})\\\\s*日?$\\\")\\n40\\tMONTH_DAY = re.compile(r\\\"^(\\\\d{1,2})\\\\s*[/月]\\\\s*(\\\\d{1,2})\\\\s*日?$\\\")\\n41\\tMONTH_EDGE = re.compile(r\\\"^(?:(\\\\d{4})\\\\s*年\\\\s*)?(\\\\d{1,2})\\\\s*月\\\\s*(底|初)$\\\")\\n42\\tRELATIVE_DAYS = {\\n43\\t    \\\"大前天\\\": -3,\\n44\\t    \\\"前天\\\": -2,\\n45\\t    \\\"昨天\\\": -1,\\n46\\t    \\\"今天\\\": 0,\\n47\\t    \\\"明天\\\": 1,\\n48\\t    \\\"後天\\\": 2,\\n49\\t    \\\"后天\\\": 2,\\n50\\t    \\\"大後天\\\": 3,\\n51\\t    \\\"大后天\\\": 3,\\n52\\t}\\n53\\tDAYS_FROM_NOW = re.compile(r\\\"^(\\\\d+)\\\\s*天(後|后|前)$\\\")\\n54\\t\\n55\\t\\n56\\tclass UnusableValueError(ValueError):\\n57\\t    \\\"\\\"\\\"A value that cannot be right; its message names why.\\\"\\\"\\\"\\n58\\t\\n59\\t\\n60\\tdef chinese_number(text: str) -\u003e float:\\n61\\t    total, section, digit = 0, 0, None\\n62\\t    for ch in text:\\n63\\t        if ch in CHINESE_DIGITS:\\n64\\t            digit = CHINESE_DIGITS[ch]\\n65\\t        elif ch in CHINESE_UNITS:\\n66\\t            section += (1 if digit is None else digit) * CHINESE_UNITS[ch]\\n67\\t            digit = None\\n68\\t        elif ch in CHINESE_SECTIONS:\\n69\\t            total += (section + (digit or 0)) * CHINESE_SECTIONS[ch]\\n70\\t            section, digit = 0, None\\n71\\t        else:\\n72\\t            raise ValueError(text)\\n73\\t    return total + section + (digit or 0)\\n74\\t\\n75\\t\\n76\\tdef parse_number(raw: str, units: dict[str, float]) -\u003e tuple[float, list[str]]:\\n77\\t    text = raw.strip().replace(\\\",\\\", \\\"\\\").replace(\\\"，\\\", \\\"\\\")\\n78\\t    readings: list[str] = []\\n79\\t    for unit, factor in sorted(units.items(), key=lambda item: -len(item[0])):\\n80\\t        if unit and text.endswith(unit):\\n81\\t            value, inner = parse_number(text[: -len(unit)], {})\\n82\\t            if factor != 1:\\n83\\t                readings.append(f\\\"{unit} × {factor:g}\\\")\\n84\\t            return value * factor, inner + readings\\n85\\t    if PLAIN_NUMBER.match(text):\\n86\\t        return float(text), readings\\n87\\t    if match := ARABIC_WITH_SECTION.match(text):\\n88\\t        unit = match.group(2)\\n89\\t        factor = CHINESE_SECTIONS.get(unit) or CHINESE_UNITS[unit]\\n90\\t        return float(match.group(1)) * factor, [f\\\"{unit} = {factor:,}\\\"]\\n91\\t    if text and all(\\n92\\t        ch in CHINESE_DIGITS or ch in CHINESE_UNITS or ch in CHINESE_SECTIONS for ch in text\\n93\\t    ):\\n94\\t        return float(chinese_number(text)), [\\\"中文數字\\\"]\\n95\\t    raise ValueError(raw)\\n96\\t\\n97\\t\\n98\\tdef parse_hours(raw: str) -\u003e tuple[float, list[str]]:\\n99\\t    text = raw.strip()\\n100\\t    if PLAIN_NUMBER.match(text):\\n101\\t        return float(text), []\\n102\\t    match = HOURS_AND_MINUTES.match(text)\\n103\\t    if not match or not (match.group(1) or match.group(2)):\\n104\\t        raise ValueError(raw)\\n105\\t    hours = float(match.group(1) or 0)\\n106\\t    minutes = float(match.group(2) or 0)\\n107\\t    readings = [\\\"60 分鐘 = 1 小時\\\"] if match.group(2) else []\\n108\\t    return hours + minutes / 60, readings\\n109\\t\\n110\\t\\n111\\tdef real_date(year: int, month: int, day: int, raw: str) -\u003e date:\\n112\\t    try:\\n113\\t        return date(year, month, day)\\n114\\t    except ValueError:\\n115\\t        raise UnusableValueError(f\\\"「{raw}」不是存在的日期\\\") from None\\n116\\t\\n117\\t\\n118\\tdef parse_date(raw: str, today: date) -\u003e tuple[date, list[str]]:\\n119\\t    text = raw.strip()\\n120\\t    if text in RELATIVE_DAYS:\\n121\\t        return today + timedelta(days=RELATIVE_DAYS[text]), [f\\\"以今天 {today} 推算\\\"]\\n122\\t    if match := DAYS_FROM_NOW.match(text):\\n123\\t        days = int(match.group(1)) * (1 if match.group(2) in \\\"後后\\\" else -1)\\n124\\t        return today + timedelta(days=days), [f\\\"以今天 {today} 推算\\\"]\\n125\\t    if match := FULL_DATE.match(text):\\n126\\t        year, month, day = (int(g) for g in match.groups())\\n127\\t        return real_date(year, month, day, raw), []\\n128\\t    if match := MONTH_DAY.match(text):\\n129\\t        month, day = int(match.group(1)), int(match.group(2))\\n130\\t        return real_date(today.year, month, day, raw), [f\\\"未寫年份，以 {today.year} 年計\\\"]\\n131\\t    if match := MONTH_EDGE.match(text):\\n132\\t        year = int(match.group(1)) if match.group(1) else today.year\\n133\\t        month = int(match.group(2))\\n134\\t        if not 1 \u003c= month \u003c= MONTHS:\\n135\\t            raise UnusableValueError(f\\\"「{raw}」不是存在的月份\\\")\\n136\\t        last = calendar.monthrange(year, month)[1]\\n137\\t        day = last if match.group(3) == \\\"底\\\" else 1\\n138\\t        readings = [f\\\"「{match.group(3)}」讀成 {month} 月 {day} 日\\\"]\\n139\\t        if not match.group(1):\\n140\\t            readings.append(f\\\"未寫年份，以 {year} 年計\\\")\\n141\\t        return date(year, month, day), readings\\n142\\t    raise ValueError(raw)\\n143\\t\\n144\\t\\n145\\tdef within_bounds(value: float, field: dict, raw: str) -\u003e None:\\n146\\t    low, high = field.get(\\\"min\\\"), field.get(\\\"max\\\")\\n147\\t    if low is not None and value \u003c low:\\n148\\t        raise UnusableValueError(f\\\"「{raw}」小於可能的最小值 {low:g}\\\")\\n149\\t    if high is not None and value \u003e high:\\n150\\t        raise UnusableValueError(f\\\"「{raw}」大於可能的最大值 {high:g}\\\")\\n151\\t\\n152\\t\\n153\\tdef scaled(value: float, out_of: float, field: dict, raw: str) -\u003e tuple[float, list[str]]:\\n154\\t    scale = field.get(\\\"out_of\\\")\\n155\\t    if out_of \u003c= 0 or value \u003e out_of:\\n156\\t        raise UnusableValueError(f\\\"「{raw}」的分子大於分母\\\")\\n157\\t    if scale is None or scale == out_of:\\n158\\t        return value, []\\n159\\t    return value / out_of * scale, [f\\\"{value:g}/{out_of:g} 換算成滿分 {scale:g}\\\"]\\n160\\t\\n161\\t\\n162\\tdef normalize(field: dict, raw: object, today: date) -\u003e tuple[object, list[str]]:\\n163\\t    kind = field[\\\"type\\\"]\\n164\\t    if kind == \\\"text\\\":\\n165\\t        return str(raw), []\\n166\\t    text = str(raw)\\n167\\t    if kind == \\\"date\\\":\\n168\\t        value, readings = parse_date(text, today)\\n169\\t        if field.get(\\\"not_after_today\\\") and value \u003e today:\\n170\\t            raise UnusableValueError(f\\\"「{text}」晚於今天 {today}\\\")\\n171\\t        if field.get(\\\"not_before_today\\\") and value \u003c today:\\n172\\t            raise UnusableValueError(f\\\"「{text}」早於今天 {today}\\\")\\n173\\t        return value.isoformat(), readings\\n174\\t    if kind == \\\"hours\\\":\\n175\\t        number, readings = parse_hours(text)\\n176\\t    elif match := FRACTION.match(text.replace(\\\",\\\", \\\"\\\")):\\n177\\t        number, readings = scaled(float(match.group(1)), float(match.group(2)), field, text)\\n178\\t    else:\\n179\\t        number, readings = parse_number(text, field.get(\\\"units\\\") or {})\\n180\\t    within_bounds(number, field, text)\\n181\\t    if field.get(\\\"integer\\\") and number != int(number):\\n182\\t        rais"
+        },
+        {
+          "TraceEventID": "ff95fa6f-de48-4f49-b7f2-7f6c7327acbb",
+          "OccurredAt": "2026-10-26T10:46:39.525Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 1685, \"resource_path\": \"lease-notice-period-check/scripts/check_notice_period.py\"}"
+        },
+        {
+          "TraceEventID": "25522d83-7a7a-4608-856e-60ae3a35a224",
+          "OccurredAt": "2026-10-26T10:46:39.525Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/lease-notice-period-check/scripts/check_notice_period.py\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 6, \"invocation_id\": \"call_QqnCYurIuDv4ZUi3RB12yzBQ\", \"result_summary\": \"1\\t#!/usr/bin/env python3\\n2\\t\\\"\\\"\\\"Check whether a lease notice is at least 30 calendar days in advance.\\\"\\\"\\\"\\n3\\t\\n4\\timport argparse\\n5\\tfrom datetime import date, timedelta\\n6\\timport sys\\n7\\t\\n8\\t\\n9\\tdef main() -\u003e int:\\n10\\t    parser = argparse.ArgumentParser(\\n11\\t        description=\\\"Check the date gap between a notice and a lease move-out date.\\\"\\n12\\t    )\\n13\\t    parser.add_argument(\\\"--move-out\\\", required=True, help=\\\"Checked move-out date (YYYY-MM-DD)\\\")\\n14\\t    parser.add_argument(\\\"--notice\\\", required=True, help=\\\"Checked notice date (YYYY-MM-DD)\\\")\\n15\\t    args = parser.parse_args()\\n16\\t\\n17\\t    try:\\n18\\t        move_out = date.fromisoformat(args.move_out)\\n19\\t    except ValueError:\\n20\\t        print(f\\\"無法使用搬離日期：{args.move_out}\\\", file=sys.stderr)\\n21\\t        return 2\\n22\\t\\n23\\t    try:\\n24\\t        notice = date.fromisoformat(args.notice)\\n25\\t    except ValueError:\\n26\\t        print(f\\\"無法使用通知日期：{args.notice}\\\", file=sys.stderr)\\n27\\t        return 2\\n28\\t\\n29\\t    if notice \u003e move_out:\\n30\\t        print(\\n31\\t            f\\\"搬離日期：{move_out.isoformat()}；通知日期：{notice.isoformat()}；\\\"\\n32\\t            \\\"判定：日期組合無效（通知日期晚於搬離日期）。\\\"\\n33\\t        )\\n34\\t        return 0\\n35\\t\\n36\\t    days = (move_out - notice).days\\n37\\t    if days \u003e= 30:\\n38\\t        print(\\n39\\t            f\\\"搬離日期：{move_out.isoformat()}；通知日期：{notice.isoformat()}；\\\"\\n40\\t            f\\\"相隔：{days} 天；判定：通知足夠。\\\"\\n41\\t        )\\n42\\t    else:\\n43\\t        latest_notice = move_out - timedelta(days=30)\\n44\\t        print(\\n45\\t            f\\\"搬離日期：{move_out.isoformat()}；通知日期：{notice.isoformat()}；\\\"\\n46\\t            f\\\"相隔：{days} 天；判定：通知不足；\\\"\\n47\\t            f\\\"最晚通知日：{latest_notice.isoformat()}。\\\"\\n48\\t        )\\n49\\t    return 0\\n50\\t\\n51\\t\\n52\\tif __name__ == \\\"__main__\\\":\\n53\\t    raise SystemExit(main())\\n54\\t\"}"
+        },
+        {
+          "TraceEventID": "caf06525-31b3-45d8-a08e-253dbb2c2c17",
+          "OccurredAt": "2026-10-26T10:46:39.702Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "66b34348-41ba-4a47-9b04-e9476e568bb2",
+          "OccurredAt": "2026-10-26T10:46:39.702Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python -c 'import json; json.dump({\\\"records\\\":[{\\\"move_out\\\":\\\"2026-12-20\\\",\\\"notice\\\":\\\"2026-11-15\\\"}]}, open(\\\"/tmp/lease-a.json\\\",\\\"w\\\"))' \u0026\u0026 python scripts/check_input.py /tmp/lease-a.json --out /tmp/lease-a-checked.json\", \"description\": \"Validate tenant A dates\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 124, \"invocation_id\": \"call_D14zFlqO4xC0XYA1vhPTthyi\", \"result_summary\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "170d9df7-bd6c-4f78-add7-a68a334ff62d",
+          "OccurredAt": "2026-10-26T10:46:39.773Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "c29c6868-cd06-46e1-aeb6-3641056a2995",
+          "OccurredAt": "2026-10-26T10:46:39.773Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python -c 'import json; json.dump({\\\"records\\\":[{\\\"move_out\\\":\\\"2026-11-10\\\",\\\"notice\\\":\\\"2026-11-25\\\"}]}, open(\\\"/tmp/lease-b.json\\\",\\\"w\\\"))' \u0026\u0026 python scripts/check_input.py /tmp/lease-b.json --out /tmp/lease-b-checked.json\", \"description\": \"Validate tenant B dates\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 164, \"invocation_id\": \"call_8ffn23EHltNX88OVdpNsZSQN\", \"result_summary\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "7d532761-d745-41b0-a257-9458116ddfdc",
+          "OccurredAt": "2026-10-26T10:46:39.825Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "7e144b5a-60e8-4fc6-994f-73a5ec1f8047",
+          "OccurredAt": "2026-10-26T10:46:39.825Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python -c 'import json; json.dump({\\\"records\\\":[{\\\"move_out\\\":\\\"2027-01-15\\\",\\\"notice\\\":\\\"2026-12-25\\\"}]}, open(\\\"/tmp/lease-c.json\\\",\\\"w\\\"))' \u0026\u0026 python scripts/check_input.py /tmp/lease-c.json --out /tmp/lease-c-checked.json\", \"description\": \"Validate tenant C dates\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 211, \"invocation_id\": \"call_9vP6e2YkMxNm9NP6f5sJn2QS\", \"result_summary\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "2af773db-a164-4bca-a30f-f18f803275a8",
+          "OccurredAt": "2026-10-26T10:46:42.579Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"假設：今天以系統日期 2026-10-26 計\\nOK：1/1 筆可直接計算，結果在 /tmp/lease-a-checked.json\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "74f5e305-9d23-4c6b-a61d-7cd6a09fa469",
+          "OccurredAt": "2026-10-26T10:46:42.579Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/lease-notice-period-check \u0026\u0026 python scripts/check_input.py /tmp/lease-a.json --out /tmp/lease-a-checked.json\", \"description\": \"Validate tenant A dates\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 97, \"invocation_id\": \"call_Gft6ApKqQaye0i4pcRDQkMSl\", \"result_summary\": \"假設：今天以系統日期 2026-10-26 計\\nOK：1/1 筆可直接計算，結果在 /tmp/lease-a-checked.json\"}"
+        },
+        {
+          "TraceEventID": "0860d361-4ac5-4223-b2f0-7ed14425204f",
+          "OccurredAt": "2026-10-26T10:46:42.66Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"假設：今天以系統日期 2026-10-26 計\\nOK：1/1 筆可直接計算，結果在 /tmp/lease-b-checked.json\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "a4911ea6-1419-4804-acb5-2f8a0f9ecefb",
+          "OccurredAt": "2026-10-26T10:46:42.66Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/lease-notice-period-check \u0026\u0026 python scripts/check_input.py /tmp/lease-b.json --out /tmp/lease-b-checked.json\", \"description\": \"Validate tenant B dates\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 155, \"invocation_id\": \"call_plN1F06sIJSauUh9CA3WNtjj\", \"result_summary\": \"假設：今天以系統日期 2026-10-26 計\\nOK：1/1 筆可直接計算，結果在 /tmp/lease-b-checked.json\"}"
+        },
+        {
+          "TraceEventID": "faec297f-8658-4bf4-86ab-00da5c6cf516",
+          "OccurredAt": "2026-10-26T10:46:42.762Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"假設：今天以系統日期 2026-10-26 計\\nOK：1/1 筆可直接計算，結果在 /tmp/lease-c-checked.json\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "61f013cb-f816-4389-a204-b5838eaef1a7",
+          "OccurredAt": "2026-10-26T10:46:42.762Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/lease-notice-period-check \u0026\u0026 python scripts/check_input.py /tmp/lease-c.json --out /tmp/lease-c-checked.json\", \"description\": \"Validate tenant C dates\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 226, \"invocation_id\": \"call_BzhLkAdFs2sqY382gppC64Cz\", \"result_summary\": \"假設：今天以系統日期 2026-10-26 計\\nOK：1/1 筆可直接計算，結果在 /tmp/lease-c-checked.json\"}"
+        },
+        {
+          "TraceEventID": "f148b8c4-ee7f-4915-b4bc-896b66cb3125",
+          "OccurredAt": "2026-10-26T10:46:46.69Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"搬離日期：2026-12-20；通知日期：2026-11-15；相隔：35 天；判定：通知足夠。\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "eacefde4-cf9b-4ede-a6b1-4e66b38900f5",
+          "OccurredAt": "2026-10-26T10:46:46.69Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python /work/.claude/skills/lease-notice-period-check/scripts/check_notice_period.py --move-out 2026-12-20 --notice 2026-11-15\", \"description\": \"Calculate tenant A notice period\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 54, \"invocation_id\": \"call_pGRNRbuxXrB5pt2YrzBFJk1w\", \"result_summary\": \"搬離日期：2026-12-20；通知日期：2026-11-15；相隔：35 天；判定：通知足夠。\"}"
+        },
+        {
+          "TraceEventID": "8c100c27-5cad-4731-aa31-3588b2833ced",
+          "OccurredAt": "2026-10-26T10:46:46.83Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"搬離日期：2026-11-10；通知日期：2026-11-25；判定：日期組合無效（通知日期晚於搬離日期）。\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "338f0e1d-9a9a-4881-bfbe-4f795ecf35d5",
+          "OccurredAt": "2026-10-26T10:46:46.83Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python /work/.claude/skills/lease-notice-period-check/scripts/check_notice_period.py --move-out 2026-11-10 --notice 2026-11-25\", \"description\": \"Check tenant B date validity\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 72, \"invocation_id\": \"call_5gVTDiQWoRGvq4FC4vcsTqVs\", \"result_summary\": \"搬離日期：2026-11-10；通知日期：2026-11-25；判定：日期組合無效（通知日期晚於搬離日期）。\"}"
+        },
+        {
+          "TraceEventID": "6b5f6cbe-be61-4860-a721-a95c3e498599",
+          "OccurredAt": "2026-10-26T10:46:46.883Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"搬離日期：2027-01-15；通知日期：2026-12-25；相隔：21 天；判定：通知不足；最晚通知日：2026-12-16。\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "51d94431-7eba-475f-af9c-b788763d77a1",
+          "OccurredAt": "2026-10-26T10:46:46.883Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python /work/.claude/skills/lease-notice-period-check/scripts/check_notice_period.py --move-out 2027-01-15 --notice 2026-12-25\", \"description\": \"Calculate tenant C notice period\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 110, \"invocation_id\": \"call_NUYZufTZSCJ9E3CCylIgxbXx\", \"result_summary\": \"搬離日期：2027-01-15；通知日期：2026-12-25；相隔：21 天；判定：通知不足；最晚通知日：2026-12-16。\"}"
+        },
+        {
+          "TraceEventID": "6741d576-a3bd-4b44-b3d2-db7131e31cf1",
+          "OccurredAt": "2026-10-26T10:46:49.892Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"以下按「通知日至搬離日相隔至少 30 個日曆日」檢查：\\n\\n- **甲**：搬離日期原文「2026-12-20」；通知日期原文「2026-11-15」。相隔 **35 天**，**通知足夠**。\\n- **乙**：搬離日期原文「2026-11-10」；通知日期原文「2026-11-25」。**日期組合無效**（通知日期晚於搬離日期），不作期限計算；請提出請求的人確認日期。\\n- **丙**：搬離日期原文「2027-01-15」；通知日期原文「2026-12-25」。相隔 **21 天**，**通知不足**；最晚通知日為 **2026-12-16**。\\n\\n日期格式假設：斜線日期按西曆年、月、日順序解讀；以上日期均以年-月-日格式提供。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "0ea1252e-9c1c-4b41-ae4b-740baabaa14e",
+          "OccurredAt": "2026-10-26T10:46:50.129Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"以下按「通知日至搬離日相隔至少 30 個日曆日」檢查：\\n\\n- **甲**：搬離日期原文「2026-12-20」；通知日期原文「2026-11-15」。相隔 **35 天**，**通知足夠**。\\n- **乙**：搬離日期原文「2026-11-10」；通知日期原文「2026-11-25」。**日期組合無效**（通知日期晚於搬離日期），不作期限計算；請提出請求的人確認日期。\\n- **丙**：搬離日期原文「2027-01-15」；通知日期原文「2026-12-25」。相隔 **21 天**，**通知不足**；最晚通知日為 **2026-12-16**。\\n\\n日期格式假設：斜線日期按西曆年、月、日順序解讀；以上日期均以年-月-日格式提供。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "a0cc73ed-6f5b-4969-832e-fbe4782639f7",
+          "OccurredAt": "2026-10-26T10:46:54.19Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.005839159999999999, \"cost_source\": \"gateway\", \"duration_ms\": 32163, \"input_tokens\": 1713, \"token_source\": \"result\", \"output_tokens\": 1747, \"cache_read_input_tokens\": 164406, \"cache_write_input_tokens\": 24736}"
+        }
+      ]
+    },
+    "Truncation": [
+      "trace_digest.entries[].excerpt"
+    ],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "1f265ab3-cb85-474e-b975-240c57968144",
+        "Result": "passed",
+        "Reason": "甲判為相隔 35 天、通知足夠；丙判為相隔 21 天、通知不足，並列出最晚通知日 2026-12-16。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **甲**：搬離日期原文「2026-12-20」；通知日期原文「2026-11-15」。相隔 **35 天**，**通知足夠**。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **丙**：搬離日期原文「2027-01-15」；通知日期原文「2026-12-25」。相隔 **21 天**，**通知不足**；最晚通知日為 **2026-12-16**。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e488f330-3277-48a2-81bb-3f1c18317993",
+        "Result": "passed",
+        "Reason": "明確指出乙的通知日晚於搬離日，將日期組合視為無效，沒有判定通知是否足夠。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **乙**：搬離日期原文「2026-11-10」；通知日期原文「2026-11-25」。**日期組合無效**（通知日期晚於搬離日期），不作期限計算；請提出請求的人確認日期。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "兩項驗收標準均已達成：甲與丙的天數及結論正確，乙則被明確標示為日期組合無效，未作通知足夠與否的判定。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v4",
+    "Usage": {
+      "PromptTokens": 10880,
+      "CompletionTokens": 485,
+      "CostUSD": 0.029148200000000003,
+      "CostReported": true
+    }
+  }
+}

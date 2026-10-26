@@ -1,0 +1,102 @@
+{
+  "round": 0,
+  "sample_input": "12 歲的小朋友看假日場，票價多少？",
+  "acceptance_criteria": [
+    {
+      "text": "回覆的票價為 360 元（12 歲不算未滿 12 歲，適用假日全票）"
+    },
+    {
+      "text": "沒有給 220 元優惠價"
+    }
+  ],
+  "final_output": "12 歲小朋友看假日場，票價是 **360 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e535205b-2f56-4f18-aa99-26ed4c9706fd",
+    "run_id": "7ca09908-f5d0-4063-be2d-bc8779939bb9",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項標準均符合：回覆的假日場票價為 360 元，未提供 220 元優惠價。",
+    "criterion_results": [
+      {
+        "criterion_id": "32c008c5-4c92-4caf-bcc2-0bd46e071cf1",
+        "text": "回覆的票價為 360 元（12 歲不算未滿 12 歲，適用假日全票）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆指出 12 歲觀看假日場的票價為 360 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "12 歲小朋友看假日場，票價是 **360 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b78e5d76-e6f8-4e54-9356-cf2cc6449939",
+        "text": "沒有給 220 元優惠價",
+        "result": "passed",
+        "source": "model",
+        "reason": "完整回覆只給出 360 元，沒有給 220 元優惠價。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "12 歲小朋友看假日場，票價是 **360 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1544 input and 1222 output tokens on skillhub-run; reported cost $0.0045 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 24,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

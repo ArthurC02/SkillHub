@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "行李秤顯示我的行李 50 磅，要托運，費用多少？",
+  "acceptance_criteria": [
+    {
+      "text": "明確寫出磅換算公斤的假設（例如 1 磅約 0.45 公斤），沒有反問使用者"
+    },
+    {
+      "text": "費用為 1,500 元（約 22.5 到 22.7 公斤，超過 20 公斤約 2.5 到 2.7 公斤，不足 1 公斤以 1 公斤計為 3 公斤，3×500=1,500）"
+    }
+  ],
+  "final_output": "行李 50 磅約為 **22.68 公斤**。依此規則，可托運但屬超重；超過 20 公斤的部分向上取整為 3 公斤，費用是 **1,500 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "82a9e81c-b47b-403a-9227-0f4d51341375",
+    "run_id": "4d3cf3fa-6c8b-43fc-8f0e-a962e6620ae4",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "費用計算符合要求，且沒有反問使用者；但最終回覆未明確交代磅換算公斤的假設。",
+    "criterion_results": [
+      {
+        "criterion_id": "e76aa9f1-7b20-4e3b-ada8-746ccac06fe6",
+        "text": "明確寫出磅換算公斤的假設（例如 1 磅約 0.45 公斤），沒有反問使用者",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終回覆沒有反問使用者，但只寫出換算結果，未明確寫出磅換算公斤所採用的換算假設或比率。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "行李 50 磅約為 **22.68 公斤**。依此規則，可托運但屬超重；超過 20 公斤的部分向上取整為 3 公斤，費用是 **1,500 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "048da372-3c29-4677-82a5-c7d5d9c86cbc",
+        "text": "費用為 1,500 元（約 22.5 到 22.7 公斤，超過 20 公斤約 2.5 到 2.7 公斤，不足 1 公斤以 1 公斤計為 3 公斤，3×500=1,500）",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將 50 磅換算為約 22.68 公斤，超過 20 公斤的部分向上取整為 3 公斤，並報出 1,500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "行李 50 磅約為 **22.68 公斤**。依此規則，可托運但屬超重；超過 20 公斤的部分向上取整為 3 公斤，費用是 **1,500 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1562 input and 3598 output tokens on gpt-6-luna; reported cost $0.0055 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

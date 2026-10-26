@@ -1,0 +1,129 @@
+{
+  "round": 1,
+  "sample_input": "請逐列計算以下行程的車資。\n編號｜里程（公里）｜時間\n1｜1.25｜22:59\n2｜1.25｜23:00\n3｜1.25｜06:00\n4｜1.25｜06:01",
+  "acceptance_criteria": [
+    {
+      "text": "第 1 列不是夜間，車資為 85 元。"
+    },
+    {
+      "text": "第 2 列的 23:00 屬夜間，車資為 105 元（85 + 20）。"
+    },
+    {
+      "text": "第 3 列的 06:00 屬夜間，車資為 105 元（85 + 20）。"
+    },
+    {
+      "text": "第 4 列不是夜間，車資為 85 元。"
+    }
+  ],
+  "final_output": "| 編號 | 里程 | 時間 | 車資 |\n|---|---:|---|---:|\n| 1 | 1.25 公里 | 22:59 | 85 元 |\n| 2 | 1.25 公里 | 23:00 | 105 元 |\n| 3 | 1.25 公里 | 06:00 | 105 元 |\n| 4 | 1.25 公里 | 06:01 | 85 元 |\n\n假設：未標單位的里程採 km（可用 `--distance-unit` 改變）。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "35a58a52-6503-4fae-bde8-429d608631e1",
+    "run_id": "e23e2f2b-8732-456e-81f7-21e6f913913b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四列車資均符合指定結果；23:00 與 06:00 為 105 元，其餘兩列為 85 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "0c3ef6f8-4640-4582-9fe2-11dd59582a69",
+        "text": "第 1 列不是夜間，車資為 85 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 列 22:59 的車資列為未加收夜間費的 85 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 1.25 公里 | 22:59 | 85 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "26946b9e-cbb1-4b05-80cc-0cbf7b0b3a45",
+        "text": "第 2 列的 23:00 屬夜間，車資為 105 元（85 + 20）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 列 23:00 的車資列為含夜間加收 20 元的 105 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2 | 1.25 公里 | 23:00 | 105 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5ddc6746-74a6-4aa4-9e6a-35127bdcf3ac",
+        "text": "第 3 列的 06:00 屬夜間，車資為 105 元（85 + 20）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 列 06:00 的車資列為含夜間加收 20 元的 105 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | 1.25 公里 | 06:00 | 105 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7c818687-92d1-4ac5-983d-643a2e510484",
+        "text": "第 4 列不是夜間，車資為 85 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 列 06:01 的車資列為未加收夜間費的 85 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 4 | 1.25 公里 | 06:01 | 85 元 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1512 input and 436 output tokens on gpt-6-luna; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

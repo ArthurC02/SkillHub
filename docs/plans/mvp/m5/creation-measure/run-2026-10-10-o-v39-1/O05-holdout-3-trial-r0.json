@@ -1,0 +1,105 @@
+{
+  "round": 0,
+  "sample_input": "平日場，阿嬤 70 歲、弟弟 2 歲、表哥 150 歲、我 25 歲，每個人票價多少？",
+  "acceptance_criteria": [
+    {
+      "text": "阿嬤為 180 元、弟弟免費（0 元）、我為 300 元（三位合計 480 元）"
+    },
+    {
+      "text": "明確指出表哥 150 歲超出 0 到 120 的範圍而不合理，沒有給出表哥的票價"
+    }
+  ],
+  "final_output": "- 阿嬤：場次「平日場」不符合格式（須為「平日」或「假日」），無法計價。\n- 弟弟：場次「平日場」不符合格式（須為「平日」或「假日」），無法計價。\n- 表哥：150 歲超出 0–120 歲範圍，無法計價。\n- 我：場次「平日場」不符合格式（須為「平日」或「假日」），無法計價。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0a6db44e-6ef2-481e-ad38-3c91d52dfadc",
+    "run_id": "5ac3d5b1-4f09-4235-9f78-6507f6aa5e96",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "表哥年齡超出範圍且不予報價的要求已達成；其餘三人的正確票價及合計均未提供。",
+    "criterion_results": [
+      {
+        "criterion_id": "1416dbd1-94c0-4f10-b75d-b2114ff5a626",
+        "text": "阿嬤為 180 元、弟弟免費（0 元）、我為 300 元（三位合計 480 元）",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆未列出阿嬤 180 元、弟弟 0 元、我 300 元，也未提供三人合計 480 元；反而表示三人都無法計價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "阿嬤：場次「平日場」不符合格式（須為「平日」或「假日」），無法計價。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "弟弟：場次「平日場」不符合格式（須為「平日」或「假日」），無法計價。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "我：場次「平日場」不符合格式（須為「平日」或「假日」），無法計價。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "45fb88b3-0b02-4e95-bb41-3ae859727228",
+        "text": "明確指出表哥 150 歲超出 0 到 120 的範圍而不合理，沒有給出表哥的票價",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出表哥 150 歲超出 0–120 歲範圍，並表示無法計價，沒有給出他的票價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "表哥：150 歲超出 0–120 歲範圍，無法計價。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1583 input and 1704 output tokens on gpt-6-luna; reported cost $0.0048 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

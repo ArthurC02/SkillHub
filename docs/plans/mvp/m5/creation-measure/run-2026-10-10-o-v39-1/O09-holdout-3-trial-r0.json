@@ -1,0 +1,115 @@
+{
+  "round": 0,
+  "sample_input": "三位租客幫我檢查：甲 2026-12-20 搬離、2026-11-15 通知；乙 2026-11-10 搬離、2026-11-25 通知；丙 2027-01-15 搬離、2026-12-25 通知。",
+  "acceptance_criteria": [
+    {
+      "text": "甲判為足夠（相隔 35 天：11 月 15 日到 12 月 15 日 30 天，再加 5 天），丙判為不足（相隔 21 天：12 月 25 日到 12 月 31 日 6 天，加 15 天）並回報最晚應在 2026-12-16 通知"
+    },
+    {
+      "text": "明確指出乙的通知日 2026-11-25 晚於搬離日 2026-11-10 而不合理，沒有給出乙足夠與否的判定"
+    }
+  ],
+  "final_output": "甲：搬離日期 2026-12-20；通知日期 2026-11-15；相隔 35 天。  \n判定：通知足夠。\n\n乙：搬離日期 2026-11-10；通知日期 2026-11-25；相隔 -15 天。  \n判定：日期順序無效；通知日晚於搬離日，不判定為通知足夠。\n\n丙：搬離日期 2027-01-15；通知日期 2026-12-25；相隔 21 天。  \n判定：通知不足；最晚應於 2026-12-16 送出通知。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "2da4631d-0678-4ba5-a878-09117453ba46",
+    "run_id": "5eecbaf7-7036-4865-88fd-dab4a0cfd75f",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收標準均已達成：甲與丙的天數及結論正確，乙則被指出日期順序無效。",
+    "criterion_results": [
+      {
+        "criterion_id": "0d8183c1-bfef-4e4d-8402-456ab0820f71",
+        "text": "甲判為足夠（相隔 35 天：11 月 15 日到 12 月 15 日 30 天，再加 5 天），丙判為不足（相隔 21 天：12 月 25 日到 12 月 31 日 6 天，加 15 天）並回報最晚應在 2026-12-16 通知",
+        "result": "passed",
+        "source": "model",
+        "reason": "甲相隔 35 天，判為通知足夠；丙相隔 21 天，判為通知不足，並指出最晚應於 2026-12-16 通知。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "甲：搬離日期 2026-12-20；通知日期 2026-11-15；相隔 35 天。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "判定：通知足夠。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "丙：搬離日期 2027-01-15；通知日期 2026-12-25；相隔 21 天。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "判定：通知不足；最晚應於 2026-12-16 送出通知。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4e268029-47b5-499e-93af-de3c91633fdc",
+        "text": "明確指出乙的通知日 2026-11-25 晚於搬離日 2026-11-10 而不合理，沒有給出乙足夠與否的判定",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確列出乙的通知日晚於搬離日，將日期順序判為無效，沒有對通知是否足夠作出正常的足夠或不足判定。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "乙：搬離日期 2026-11-10；通知日期 2026-11-25；相隔 -15 天。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "判定：日期順序無效；通知日晚於搬離日，不判定為通知足夠。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1517 input and 767 output tokens on gpt-6-luna; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

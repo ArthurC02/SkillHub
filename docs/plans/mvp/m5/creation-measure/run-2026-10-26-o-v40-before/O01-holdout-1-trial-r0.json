@@ -1,0 +1,97 @@
+{
+  "round": 0,
+  "sample_input": "我想買 20 堂教練課，總共多少錢？",
+  "acceptance_criteria": [
+    {
+      "text": "回覆的應付總額為 19,200 元（20×1,200=24,000，整筆 8 折 = 19,200）"
+    },
+    {
+      "text": "沒有按 9 折（21,600 元）計"
+    }
+  ],
+  "final_output": "假設：今天以系統日期 2026-10-26 計  \n第 1 筆：20 堂，應付總額 19,200 元（整筆 8 折）。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "cff8182f-566e-4454-9770-0f7846955805",
+    "run_id": "8197429e-29c8-46d5-abbc-e3fce609da30",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收標準均符合：20 堂課報價為 19,200 元，按整筆 8 折計算。",
+    "criterion_results": [
+      {
+        "criterion_id": "dc358486-e07d-4af4-9489-ffb14e85b51e",
+        "text": "回覆的應付總額為 19,200 元（20×1,200=24,000，整筆 8 折 = 19,200）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將 20 堂課的應付總額列為 19,200 元，並註明整筆 8 折。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 筆：20 堂，應付總額 19,200 元（整筆 8 折）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5c8daa89-9345-46e8-8d19-4c010226970d",
+        "text": "沒有按 9 折（21,600 元）計",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆採整筆 8 折，報價 19,200 元，沒有按 9 折報價為 21,600 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 筆：20 堂，應付總額 19,200 元（整筆 8 折）。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1561 input and 1050 output tokens on skillhub-run; reported cost $0.0041 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

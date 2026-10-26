@@ -1,0 +1,114 @@
+{
+  "round": 2,
+  "sample_input": "請試算以下帳單的最低應繳金額。\n本期帳單總額：2.5 千元",
+  "acceptance_criteria": [
+    {
+      "text": "將「2.5 千元」按通常讀法理解為 2,500 元，並用一句話說明這項理解是試算假設。"
+    },
+    {
+      "text": "以 2,500 元計算，10% 為 250 元，套用至少 1,000 元的規則後，回覆最低應繳 1,000 元。"
+    }
+  ],
+  "final_output": "帳單總額：2.5 千元  \n假設：「amount」2.5 千元 → 2500（千元 × 1000）  \n第1筆最低應繳金額：1000 元\n\n此為依照本 Skill 規則所作的試算，不含銀行或發卡機構的其他費用、利息或個別規定。",
+  "artifacts": [
+    "input.json"
+  ],
+  "evaluation": {
+    "evaluation_id": "953a2594-61a7-495f-9ff2-c6b469178aaa",
+    "run_id": "6d474c7c-c0a3-42dc-9dad-6f0bd87e594c",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆明確將「2.5 千元」作為 2500 元的試算假設，並給出最低應繳 1000 元。回覆未逐項列出 10% 為 250 元的算式，但可見的計算輸入與結果符合該門檻規則。",
+    "criterion_results": [
+      {
+        "criterion_id": "3bc4b0d7-2c78-4576-8313-9949175d49d8",
+        "text": "將「2.5 千元」按通常讀法理解為 2,500 元，並用一句話說明這項理解是試算假設。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆以一句「假設」將「2.5 千元」換算為 2500 元，明確標示這是試算採用的理解。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "假設：「amount」2.5 千元 → 2500（千元 × 1000）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b0841ca5-184a-405d-b147-a3da57f6d923",
+        "text": "以 2,500 元計算，10% 為 250 元，套用至少 1,000 元的規則後，回覆最低應繳 1,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "可見的計算以 2500 元為輸入，回傳並回覆最低應繳 1000 元；2500 元的 10% 為 250 元，低於 1000 元門檻。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "python scripts/minimum_payment.py --amount 2500",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "第1筆最低應繳金額：1000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第1筆最低應繳金額：1000 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): input.json"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1669 input and 941 output tokens on skillhub-run; reported cost $0.0054 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 31,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

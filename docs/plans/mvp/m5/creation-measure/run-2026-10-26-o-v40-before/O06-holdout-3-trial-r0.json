@@ -1,0 +1,107 @@
+{
+  "round": 0,
+  "sample_input": "三段行程幫我算車資：甲 3 公里日間、乙 -2 公里日間、丙 10 公里夜間。",
+  "acceptance_criteria": [
+    {
+      "text": "甲為 130 元（3,000−1,250=1,750 公尺，÷200=8.75 進位為 9 級，9×5=45；85+45=130），丙為 325 元（10,000−1,250=8,750 公尺，÷200=43.75 進位為 44 級，44×5=220；85+220+夜間 20=325）"
+    },
+    {
+      "text": "明確指出乙的 -2 公里不合理（里程須大於 0），沒有給出乙的車資"
+    }
+  ],
+  "final_output": "- **甲｜3 公里，日間：130 元**\n- **乙｜-2 公里，日間：未計算。里程必須大於 0**；請確認或更正原值「-2 公里」。\n- **丙｜10 公里，夜間：325 元**\n\n假設：今天以系統日期 2026-10-26 計\n\n無法採用：第 2 筆「distance」「-2 公里」小於可能的最小值 0，不拿它計算\n\n因乙的里程無效，不提供三段行程的總額。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a56af11a-8bd9-477d-a6ac-3d78e446ec60",
+    "run_id": "09de2ebe-6c2c-41e9-aa7c-545b54ba5529",
+    "status": "completed",
+    "overall": "met",
+    "summary": "甲、丙的車資符合要求；乙的負里程被指出無效，且沒有計算車資。",
+    "criterion_results": [
+      {
+        "criterion_id": "47b347ed-ea64-46d0-a372-a41a8048e559",
+        "text": "甲為 130 元（3,000−1,250=1,750 公尺，÷200=8.75 進位為 9 級，9×5=45；85+45=130），丙為 325 元（10,000−1,250=8,750 公尺，÷200=43.75 進位為 44 級，44×5=220；85+220+夜間 20=325）",
+        "result": "passed",
+        "source": "model",
+        "reason": "甲的日間車資為 130 元，丙的夜間車資為 325 元，均符合指定金額。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **甲｜3 公里，日間：130 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **丙｜10 公里，夜間：325 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4694e511-d5f4-4820-8d4b-841a85a9e68c",
+        "text": "明確指出乙的 -2 公里不合理（里程須大於 0），沒有給出乙的車資",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出乙的 -2 公里無效、里程必須大於 0，且未給出乙的車資。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **乙｜-2 公里，日間：未計算。里程必須大於 0**；請確認或更正原值「-2 公里」。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1571 input and 2684 output tokens on skillhub-run; reported cost $0.0057 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

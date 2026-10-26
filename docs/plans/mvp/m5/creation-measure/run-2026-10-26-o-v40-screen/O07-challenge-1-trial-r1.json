@@ -1,0 +1,145 @@
+{
+  "round": 1,
+  "sample_input": "請依規則為以下訂單撰寫延誤道歉訊息：\n訂單編號：C101；延誤分鐘數：8；補償金額：25 元\n訂單編號：C102；延誤分鐘數：-4；補償金額：30 元\n訂單編號：C103；延誤分鐘數：12；補償金額：35 元",
+  "acceptance_criteria": [
+    {
+      "text": "指出 C102 的 -4 分鐘不是正整數、輸入無效，並請求更正；不為 C102 生成道歉訊息或使用其補償金額。"
+    },
+    {
+      "text": "為 C101 生成道歉訊息；8 分鐘未滿 10 分鐘，因此訊息不提 25 元補償金額。"
+    },
+    {
+      "text": "為 C103 生成道歉訊息，包含 C103、12 分鐘及 35 元補償金額；12 大於或等於 10。"
+    },
+    {
+      "text": "每則有效訂單的道歉訊息不超過兩句。"
+    }
+  ],
+  "final_output": "C101：很抱歉，訂單 C101 延誤了 8 分鐘，造成不便敬請見諒。\n\nC102：訂單 C102 的延誤分鐘數「-4」無效（須為正整數），請提供更正值。\n\nC103：很抱歉，訂單 C103 延誤了 12 分鐘，我們將提供 35 元 補償，造成不便敬請見諒。",
+  "artifacts": [
+    "delivery-delay-apology.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "83dbb1dd-72ba-427b-bdae-ead8c1753020",
+    "run_id": "04d7e905-c52f-4821-b12f-a3ebe6474e9c",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均已達成：C102 被要求更正；C101、C103 的道歉訊息分別符合補償門檻與句數限制。",
+    "criterion_results": [
+      {
+        "criterion_id": "f3bdcecd-a9eb-4967-9b42-323be4d27eec",
+        "text": "指出 C102 的 -4 分鐘不是正整數、輸入無效，並請求更正；不為 C102 生成道歉訊息或使用其補償金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出 C102 的 -4 分鐘無效、須為正整數，並請求更正；未為 C102 撰寫道歉訊息，也未提及其補償金額。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "C102：訂單 C102 的延誤分鐘數「-4」無效（須為正整數），請提供更正值。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2042d4b8-3624-4682-bacb-9553f71a030e",
+        "text": "為 C101 生成道歉訊息；8 分鐘未滿 10 分鐘，因此訊息不提 25 元補償金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "C101 的道歉訊息載明延誤 8 分鐘，沒有提及 25 元補償。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "C101：很抱歉，訂單 C101 延誤了 8 分鐘，造成不便敬請見諒。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c0f78fc4-1d13-4a34-a0b1-3316d8a1da1b",
+        "text": "為 C103 生成道歉訊息，包含 C103、12 分鐘及 35 元補償金額；12 大於或等於 10。",
+        "result": "passed",
+        "source": "model",
+        "reason": "C103 的道歉訊息包含訂單編號、12 分鐘及 35 元補償。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "C103：很抱歉，訂單 C103 延誤了 12 分鐘，我們將提供 35 元 補償，造成不便敬請見諒。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2a5b84ca-f5dd-4620-b57c-4bb32336da1e",
+        "text": "每則有效訂單的道歉訊息不超過兩句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩筆有效訂單 C101、C103 的道歉訊息各只有一句，均未超過兩句。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "C101：很抱歉，訂單 C101 延誤了 8 分鐘，造成不便敬請見諒。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "C103：很抱歉，訂單 C103 延誤了 12 分鐘，我們將提供 35 元 補償，造成不便敬請見諒。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): delivery-delay-apology.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1731 input and 2468 output tokens on skillhub-run; reported cost $0.0067 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 39,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "round": 0,
+  "sample_input": "今天 2026-10-10。三位候補學員：林佳穎、課程親子陶藝體驗班、開課 2026/11/07、回覆期限 2026/10/14；王志明、課程書法入門班、開課 2026/11/08、回覆期限 2026/10/05；陳大文、課程瑜伽入門班、開課 2026/11/09、回覆期限 2026/10/16。各寫簡訊。",
+  "acceptance_criteria": [
+    {
+      "text": "林佳穎與陳大文的簡訊各自含姓名、課程名稱、開課日期與回覆期限，且各自全文不超過 60 字"
+    },
+    {
+      "text": "明確指出王志明的回覆期限 2026/10/05 早於今天 2026-10-10 而不合理，沒有為王志明寫出簡訊"
+    }
+  ],
+  "final_output": "【候補遞補】林佳穎，親子陶藝體驗班於2026-11-07開課，請於2026-10-14前回覆。\n\n【候補遞補】陳大文，瑜伽入門班於2026-11-09開課，請於2026-10-16前回覆。\n\n無法採用：第 2 筆「reply_deadline」「2026-10-05」早於「today」2026-10-10，不拿它計算\n\n王志明的回覆期限需確認：原提供的 2026/10/05 早於今天，請提供不早於 2026/10/10 的期限。",
+  "artifacts": [
+    "input.json",
+    "sms-chen.txt",
+    "sms-lin.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "71aa0d26-dbf6-4b87-ab4f-0def6ab9b45a",
+    "run_id": "d9c798b3-3a34-49e5-8e1c-56935032b4bc",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩則有效候補簡訊符合內容及字數要求；王志明的過期回覆期限獲明確指出，未產生他的簡訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "effd2175-70e2-4f6a-b6a9-71823b8daa65",
+        "text": "林佳穎與陳大文的簡訊各自含姓名、課程名稱、開課日期與回覆期限，且各自全文不超過 60 字",
+        "result": "passed",
+        "source": "model",
+        "reason": "林佳穎與陳大文各有一則簡訊，均含姓名、課程名稱、開課日期及回覆期限；逐則計算皆未超過 60 字。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "【候補遞補】林佳穎，親子陶藝體驗班於2026-11-07開課，請於2026-10-14前回覆。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "【候補遞補】陳大文，瑜伽入門班於2026-11-09開課，請於2026-10-16前回覆。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "edb25dd2-0fb7-475d-a277-add99c0872ad",
+        "text": "明確指出王志明的回覆期限 2026/10/05 早於今天 2026-10-10 而不合理，沒有為王志明寫出簡訊",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確指出王志明提供的期限早於今天，要求確認新期限，且未為他撰寫簡訊。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王志明的回覆期限需確認：原提供的 2026/10/05 早於今天，請提供不早於 2026/10/10 的期限。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 3 readable output file(s): input.json, sms-chen.txt, sms-lin.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1628 input and 2713 output tokens on skillhub-run; reported cost $0.0056 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

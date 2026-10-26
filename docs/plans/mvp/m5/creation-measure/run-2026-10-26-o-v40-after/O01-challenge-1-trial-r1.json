@@ -1,0 +1,120 @@
+{
+  "round": 1,
+  "sample_input": "請計算以下健身教練課程堂數的應付總額：\n9 堂\n-2 堂\n20 堂",
+  "acceptance_criteria": [
+    {
+      "text": "指出 -2 堂不符合正整數堂數的要求，因此不能確定它的應付總額，也不提供使用 -2 計算的結果。"
+    },
+    {
+      "text": "仍計算 9 堂：9 × 1,200 = 10,800 元。"
+    },
+    {
+      "text": "仍計算 20 堂：20 × 1,200 × 0.8 = 19,200 元。"
+    }
+  ],
+  "final_output": "9 堂：應付總額 10800 元  \n「-2 堂」不符合正整數堂數要求，無法報價；請確認並提供正確堂數。  \n20 堂：應付總額 19200 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "5f39cd2e-7fc6-4672-b7b3-03212826d105",
+    "run_id": "313b7591-f0f7-43dd-a37f-56fc46d7918c",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項標準均符合：拒絕為 -2 堂報價，並分別正確報出 9 堂及 20 堂的應付金額。",
+    "criterion_results": [
+      {
+        "criterion_id": "cb47cba9-6cfd-472a-9b64-88ca1020d889",
+        "text": "指出 -2 堂不符合正整數堂數的要求，因此不能確定它的應付總額，也不提供使用 -2 計算的結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出 -2 堂不符合正整數要求、無法報價，且未提供其計算結果。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "「-2 堂」不符合正整數堂數要求，無法報價；請確認並提供正確堂數。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7ee25d13-93c6-4c12-bd13-9ce5405695f0",
+        "text": "仍計算 9 堂：9 × 1,200 = 10,800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "9 堂的報價為 10,800 元，符合 9 × 1,200。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "9 堂：應付總額 10800 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e0337c6c-0a2a-4413-b317-45e5e5ccadb4",
+        "text": "仍計算 20 堂：20 × 1,200 × 0.8 = 19,200 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "20 堂的報價為 19,200 元，符合 20 × 1,200 × 0.8。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "20 堂：應付總額 19200 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1681 input and 1195 output tokens on skillhub-run; reported cost $0.0052 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 29,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "round": 0,
+  "sample_input": "行李秤顯示我的行李 50 磅，要托運，費用多少？",
+  "acceptance_criteria": [
+    {
+      "text": "明確寫出磅換算公斤的假設（例如 1 磅約 0.45 公斤），沒有反問使用者"
+    },
+    {
+      "text": "費用為 1,500 元（約 22.5 到 22.7 公斤，超過 20 公斤約 2.5 到 2.7 公斤，不足 1 公斤以 1 公斤計為 3 公斤，3×500=1,500）"
+    }
+  ],
+  "final_output": "- **重量：**50 磅 ≈ 22.68 公斤\n- **處理方式：**可托運，列為超重行李\n- **超出重量：**22.68 − 20 = 2.68 公斤\n- **計費重量：**進位為 3 公斤\n- **費用：**3 × 500 = **1,500 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "30f5696e-f964-4f19-adc9-8dd2007905f8",
+    "run_id": "c04ca4a2-2f58-49b7-8e7d-efd63efaddf4",
+    "status": "failed",
+    "overall": "undetermined",
+    "summary": "這次判定沒有跑完：模型閘道或證據讀取失敗。原因已記在這個 Run 的執行紀錄（進階模式）裡。",
+    "criterion_results": [],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1470 input and 254 output tokens on skillhub-run; reported cost $0.0028 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": null,
+      "source": "unreported",
+      "note": "Judge 這一次呼叫沒有回報花費：這裡是未測量，不是 0 點。權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

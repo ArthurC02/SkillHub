@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "日間搭車，跑了 1.26 公里，車資多少？",
+  "acceptance_criteria": [
+    {
+      "text": "回覆的車資為 90 元（超出 1.25 公里 10 公尺，不足 200 公尺以 200 公尺計，加收 5 元；85+5=90）"
+    },
+    {
+      "text": "沒有只收起跳價 85 元"
+    }
+  ],
+  "final_output": "日間搭車 1.26 公里，車資是 **90 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "fadf3785-6f06-4f4a-9f3b-9016b2016d22",
+    "run_id": "bd1856d7-a852-41ca-8291-7985c9aeb95b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收條件皆符合；最終回覆的車資是 90 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "553d5a58-747a-46a2-b734-da232f95866a",
+        "text": "回覆的車資為 90 元（超出 1.25 公里 10 公尺，不足 200 公尺以 200 公尺計，加收 5 元；85+5=90）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆的車資為 90 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日間搭車 1.26 公里，車資是 **90 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a35859ce-808e-49ff-99bc-1b21a63bf222",
+        "text": "沒有只收起跳價 85 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆為 90 元，並非只收起跳價 85 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日間搭車 1.26 公里，車資是 **90 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1512 input and 259 output tokens on gpt-6-luna; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 9,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "round": 1,
+  "sample_input": "請計算以下行程的車資。\n里程｜夜間\n1,460 公尺｜否",
+  "acceptance_criteria": [
+    {
+      "text": "按一般單位換算將 1,460 公尺視為 1.46 公里，並在結果中明說此換算是採用的假設。"
+    },
+    {
+      "text": "車資為 95 元：1.46 公里超出 1.25 公里 210 公尺，按兩個 200 公尺級距加 10 元，總額為 85 + 10 = 95 元。"
+    }
+  ],
+  "final_output": "這趟 **1,460 公尺、非夜間**，車資為 **95 元**。\n\n換算假設：採 1 公里 = 1,000 公尺。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1ee5eef5-689f-4b24-b411-e12dd9ac36d3",
+    "run_id": "d42d8ec8-6376-4d36-95d4-7caded27ce73",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項標準均符合：答覆明說公尺與公里的換算假設，並給出正確車資 95 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "711662bc-b998-479d-9d85-23cf4cb37d49",
+        "text": "按一般單位換算將 1,460 公尺視為 1.46 公里，並在結果中明說此換算是採用的假設。",
+        "result": "passed",
+        "source": "model",
+        "reason": "結果列出 1,460 公尺，並明說採用 1 公里等於 1,000 公尺的換算假設；依此即為 1.46 公里。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這趟 **1,460 公尺、非夜間**，車資為 **95 元**。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "換算假設：採 1 公里 = 1,000 公尺。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3029941d-377c-48c2-b12a-4780faf7f01c",
+        "text": "車資為 95 元：1.46 公里超出 1.25 公里 210 公尺，按兩個 200 公尺級距加 10 元，總額為 85 + 10 = 95 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "結果給出的非夜間車資為 95 元，符合指定的級距計算總額；答覆未列出逐級計算過程。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這趟 **1,460 公尺、非夜間**，車資為 **95 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1532 input and 350 output tokens on gpt-6-luna; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

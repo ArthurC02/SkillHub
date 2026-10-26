@@ -1,0 +1,205 @@
+{
+  "round": 1,
+  "sample_input": "請逐筆計算以下購買堂數的應付總額（元）；非正整數請標示為無效，不要計算金額。\n1\n9\n10\n19\n20\n0\n1.5",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 行堂數為 1，輸出須對應標示應付 1,200 元。"
+    },
+    {
+      "text": "試跑輸入第 2 行堂數為 9，輸出須對應標示應付 10,800 元。"
+    },
+    {
+      "text": "試跑輸入第 3 行堂數為 10，輸出須對應標示應付 10,800 元（12,000 × 0.9）。"
+    },
+    {
+      "text": "試跑輸入第 4 行堂數為 19，輸出須對應標示應付 20,520 元（22,800 × 0.9）。"
+    },
+    {
+      "text": "試跑輸入第 5 行堂數為 20，輸出須對應標示應付 19,200 元（24,000 × 0.8）。"
+    },
+    {
+      "text": "試跑輸入第 6 行堂數為 0，輸出須標示堂數無效，且不得報出應付金額。"
+    },
+    {
+      "text": "試跑輸入第 7 行堂數為 1.5，輸出須標示堂數無效，且不得報出應付金額。"
+    },
+    {
+      "text": "輸出須依七筆輸入逐筆對應，清楚標示堂數與金額（元）或無效狀態，不可把 10 堂以上的折扣分級累進計算。"
+    }
+  ],
+  "final_output": "| 購買堂數 | 應付總額 |\n|---:|---:|\n| 1 | 1,200 元 |\n| 9 | 10,800 元 |\n| 10 | 10,800 元 |\n| 19 | 20,520 元 |\n| 20 | 19,200 元 |\n| 0 | 無效 |\n| 1.5 | 無效 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0ff9658e-e42a-4f9f-8fe7-986953958e51",
+    "run_id": "47d1805c-c1d5-435c-b5ad-fd7b25f3bbc8",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七筆輸入均按順序正確對應；有效堂數的應付金額符合整筆折扣規則，無效堂數未列金額。",
+    "criterion_results": [
+      {
+        "criterion_id": "2246489e-ad41-480a-94e2-38862bdbb18b",
+        "text": "試跑輸入第 1 行堂數為 1，輸出須對應標示應付 1,200 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆（1 堂）標示應付 1,200 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 1,200 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b42afc64-6d88-4686-8f69-4bf4d4157148",
+        "text": "試跑輸入第 2 行堂數為 9，輸出須對應標示應付 10,800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆（9 堂）標示應付 10,800 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 9 | 10,800 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5a7ede9b-c007-4e71-8075-e7411a655853",
+        "text": "試跑輸入第 3 行堂數為 10，輸出須對應標示應付 10,800 元（12,000 × 0.9）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆（10 堂）標示應付 10,800 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 10 | 10,800 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "956f6ec5-2490-48e5-afbd-479de069c832",
+        "text": "試跑輸入第 4 行堂數為 19，輸出須對應標示應付 20,520 元（22,800 × 0.9）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆（19 堂）標示應付 20,520 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 19 | 20,520 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "02780705-acde-45cd-ba42-e7c38cd61f6d",
+        "text": "試跑輸入第 5 行堂數為 20，輸出須對應標示應付 19,200 元（24,000 × 0.8）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆（20 堂）標示應付 19,200 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 20 | 19,200 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c0d8ea7a-a351-4291-ae49-d928bb6c1dd0",
+        "text": "試跑輸入第 6 行堂數為 0，輸出須標示堂數無效，且不得報出應付金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 筆（0 堂）標示無效，未報出應付金額。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 0 | 無效 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bb876909-9f57-4509-bc1f-ca78583cba39",
+        "text": "試跑輸入第 7 行堂數為 1.5，輸出須標示堂數無效，且不得報出應付金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 7 筆（1.5 堂）標示無效，未報出應付金額。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1.5 | 無效 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "64d3cf97-a5b5-4cd2-bbc5-9dc8bed27258",
+        "text": "輸出須依七筆輸入逐筆對應，清楚標示堂數與金額（元）或無效狀態，不可把 10 堂以上的折扣分級累進計算。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格依輸入順序逐筆列出七筆堂數及金額或無效狀態；10、19、20 堂的金額符合整筆折扣，而非累進計算。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 購買堂數 | 應付總額 |\n|---:|---:|\n| 1 | 1,200 元 |\n| 9 | 10,800 元 |\n| 10 | 10,800 元 |\n| 19 | 20,520 元 |\n| 20 | 19,200 元 |\n| 0 | 無效 |\n| 1.5 | 無效 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1476 input and 188 output tokens on skillhub-run; reported cost $0.0028 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

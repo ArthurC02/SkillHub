@@ -1,0 +1,388 @@
+{
+  "request": {
+    "RunID": "2030c84a-123c-4e2b-96ac-c9d287a4fc5b",
+    "EvaluationID": "a83646e0-6505-4fbb-b1d1-09a39762072a",
+    "Skill": {
+      "Name": "appliance-warranty-check",
+      "Summary": "依購買日期與報修日期判定家電是否仍在一年保固內，並計算過保天數。當使用者提供一筆或多筆日期並要求判定保固期限時使用。"
+    },
+    "UserPrompt": "請逐筆判定以下家電報修是否仍在 1 年保固內，並列出判定結果及過保天數（若適用）：\n編號 | 購買日期 | 報修日期\n1 | 2025-03-10 | 2026-03-09\n2 | 2025-03-10 | 2026-03-10\n3 | 2025-03-10 | 2026-03-12\n4 | 2025-03-10 | 2025-03-09\n5 | 2024-02-29 | 2025-02-27\n6 | 2024-02-29 | 2025-02-28",
+    "Criteria": [
+      {
+        "ID": "4d6e3f55-c51f-4e1e-9023-f1ab1a9b0d3a",
+        "Text": "試跑輸入第 1 筆（2025-03-10 購買、2026-03-09 報修）應判定仍在保固內；保固最後一天為 2026-03-09。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d37a0824-1ea0-4072-8884-bf7288f17542",
+        "Text": "試跑輸入第 2 筆（2025-03-10 購買、2026-03-10 報修）應判定已過保 1 天。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "325cd4b9-3f2e-4741-881e-babc5434d33a",
+        "Text": "試跑輸入第 3 筆（2025-03-10 購買、2026-03-12 報修）應判定已過保 3 天。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "439d927d-e614-4511-8520-32abed03937c",
+        "Text": "試跑輸入第 4 筆（2025-03-10 購買、2025-03-09 報修）應指出報修日期早於購買日期，且不給出保固狀態或過保天數。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "b2b4ba3c-6cca-4579-bacd-56f3ad6f3364",
+        "Text": "試跑輸入第 5 筆（2024-02-29 購買、2025-02-27 報修）應依所列閏日假設判定仍在保固內；保固最後一天為 2025-02-27。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "5a9400e9-25bc-4003-b26c-349bd60da768",
+        "Text": "試跑輸入第 6 筆（2024-02-29 購買、2025-02-28 報修）應依所列閏日假設判定已過保 1 天。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "| 編號 | 判定結果 | 保固最後一天 | 過保天數 |\n|---|---|---|---:|\n| 1 | 仍在保固內 | 2026-03-09 | — |\n| 2 | 已過保 | 2026-03-09 | 1 天 |\n| 3 | 已過保 | 2026-03-09 | 3 天 |\n| 4 | 日期錯誤：報修日期早於購買日期 | — | — |\n| 5 | 仍在保固內 | 2025-02-27 | — |\n| 6 | 已過保 | 2025-02-27 | 1 天 |\n\n日期檢查通過：6/6 筆。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "a6aa767a-b9d1-4b37-a356-e2a7c9b2be1e",
+          "OccurredAt": "2026-10-26T04:49:01.091Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"appliance-warranty-check\", \"skill_version_id\": \"9f92abb4-d8d1-4576-8d54-a110b8994b74\"}"
+        },
+        {
+          "TraceEventID": "17e223cc-e6e2-48af-b411-77980080ded9",
+          "OccurredAt": "2026-10-26T04:49:01.103Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"appliance-warranty-check\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 12, \"invocation_id\": \"call_2cW9NTCKnmLii2xIwPFpDedB\", \"result_summary\": \"Launching skill: appliance-warranty-check\"}"
+        },
+        {
+          "TraceEventID": "d0cebf02-d9e5-4456-8d02-30dd5c735f27",
+          "OccurredAt": "2026-10-26T04:49:12.916Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "53bdc678-d488-4ff9-8134-e1baaf18002c",
+          "OccurredAt": "2026-10-26T04:49:12.917Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python scripts/check_input.py --purchase-date '2025-03-10' --repair-date '2026-03-09'\", \"description\": \"Validate dates for record 1\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 131, \"invocation_id\": \"call_FDi6MR5y8r3FnwZbcBLBnohY\", \"result_summary\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "102ebf70-c181-4641-a94c-0c77c6e1cc95",
+          "OccurredAt": "2026-10-26T04:49:12.943Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "38610074-06cb-4c57-a538-95a9c7286cd5",
+          "OccurredAt": "2026-10-26T04:49:12.943Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python scripts/check_input.py --purchase-date '2025-03-10' --repair-date '2026-03-10'\", \"description\": \"Validate dates for record 2\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 126, \"invocation_id\": \"call_pK35Xw4JdF2ZAa272mMzMhej\", \"result_summary\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "5eb5f185-9bed-4727-b223-ec31302e40d6",
+          "OccurredAt": "2026-10-26T04:49:12.971Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "db744bda-6deb-41af-8f08-e5f2a2f037d3",
+          "OccurredAt": "2026-10-26T04:49:12.971Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python scripts/check_input.py --purchase-date '2025-03-10' --repair-date '2026-03-12'\", \"description\": \"Validate dates for record 3\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 140, \"invocation_id\": \"call_wKE8YbR7lt88vpi0rIKdT5Mj\", \"result_summary\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "4be65371-ce96-47c3-a408-0203ef9420f2",
+          "OccurredAt": "2026-10-26T04:49:13.007Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "db5b9bba-1ae7-4c82-9c4d-eee4d30138a5",
+          "OccurredAt": "2026-10-26T04:49:13.007Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python scripts/check_input.py --purchase-date '2025-03-10' --repair-date '2025-03-09'\", \"description\": \"Validate dates for record 4\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 173, \"invocation_id\": \"call_cbSmMK68Zjnn7ZJBic7D3XXP\", \"result_summary\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "59a1f463-74ef-4e04-9a8a-8bd170eab30f",
+          "OccurredAt": "2026-10-26T04:49:13.035Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "cf4ccc2e-61c4-4c72-8ece-3b6559a2b0a9",
+          "OccurredAt": "2026-10-26T04:49:13.035Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python scripts/check_input.py --purchase-date '2024-02-29' --repair-date '2025-02-27'\", \"description\": \"Validate dates for record 5\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 194, \"invocation_id\": \"call_KdBwqdjSigLBcJg0A0zOQrru\", \"result_summary\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "cca5e459-a165-4d35-ae8c-8b1ad1abd92d",
+          "OccurredAt": "2026-10-26T04:49:13.06Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "6e24e495-dbfd-487b-9915-826e648bde1a",
+          "OccurredAt": "2026-10-26T04:49:13.06Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python scripts/check_input.py --purchase-date '2024-02-29' --repair-date '2025-02-28'\", \"description\": \"Validate dates for record 6\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 201, \"invocation_id\": \"call_ETIH7i2xhbLgDCDfFers78BR\", \"result_summary\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "8daf74e3-f215-4f11-9303-58bba20367b6",
+          "OccurredAt": "2026-10-26T04:49:24.416Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --purchase-date --repair-date 2026-03-09\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "3d22d7e8-ad6b-4c4e-9513-b78797cfa3fd",
+          "OccurredAt": "2026-10-26T04:49:24.416Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python /work/.claude/skills/appliance-warranty-check/scripts/check_input.py --purchase-date '2025-03-10' --repair-date '2026-03-09'\", \"description\": \"Validate dates for record 1\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 82, \"invocation_id\": \"call_fWZtWd71O1WjLcC7t7igkQVM\", \"result_summary\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --purchase-date --repair-date 2026-03-09\"}"
+        },
+        {
+          "TraceEventID": "897989e2-a5b2-4242-9efe-3ba2aa0c2208",
+          "OccurredAt": "2026-10-26T04:49:24.473Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --purchase-date --repair-date 2026-03-10\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "9078dc90-b58c-4f60-bd53-75d1de8900bf",
+          "OccurredAt": "2026-10-26T04:49:24.473Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python /work/.claude/skills/appliance-warranty-check/scripts/check_input.py --purchase-date '2025-03-10' --repair-date '2026-03-10'\", \"description\": \"Validate dates for record 2\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 127, \"invocation_id\": \"call_3eP2qCWOKozXxHxO91YWvMjx\", \"result_summary\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --purchase-date --repair-date 2026-03-10\"}"
+        },
+        {
+          "TraceEventID": "5766ac3d-a583-4b1f-8124-6204b5fd9fdb",
+          "OccurredAt": "2026-10-26T04:49:24.527Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --purchase-date --repair-date 2026-03-12\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "0c7bb07a-eb76-43f4-a9a8-1ca73e40ec70",
+          "OccurredAt": "2026-10-26T04:49:24.527Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python /work/.claude/skills/appliance-warranty-check/scripts/check_input.py --purchase-date '2025-03-10' --repair-date '2026-03-12'\", \"description\": \"Validate dates for record 3\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 94, \"invocation_id\": \"call_6SkRqUNfrx06VHQhTb9476Tz\", \"result_summary\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --purchase-date --repair-date 2026-03-12\"}"
+        },
+        {
+          "TraceEventID": "962195d2-c61a-4af2-89e2-cc43078ba142",
+          "OccurredAt": "2026-10-26T04:49:24.582Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --purchase-date --repair-date 2025-03-09\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "349a2210-5d89-4d47-bfc7-0ff5ebb2f20d",
+          "OccurredAt": "2026-10-26T04:49:24.583Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python /work/.claude/skills/appliance-warranty-check/scripts/check_input.py --purchase-date '2025-03-10' --repair-date '2025-03-09'\", \"description\": \"Validate dates for record 4\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 145, \"invocation_id\": \"call_uR7f9N25uvXy5vfqFL8KKW3S\", \"result_summary\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --purchase-date --repair-date 2025-03-09\"}"
+        },
+        {
+          "TraceEventID": "dbe28a3f-2940-4675-adc3-b8165bbbcac1",
+          "OccurredAt": "2026-10-26T04:49:24.643Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --purchase-date --repair-date 2025-02-27\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "e5512105-078e-49cf-a2f4-f0dcb34785d8",
+          "OccurredAt": "2026-10-26T04:49:24.644Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python /work/.claude/skills/appliance-warranty-check/scripts/check_input.py --purchase-date '2024-02-29' --repair-date '2025-02-27'\", \"description\": \"Validate dates for record 5\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 203, \"invocation_id\": \"call_cHt70yhSres5FwO2LzoKmWM8\", \"result_summary\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --purchase-date --repair-date 2025-02-27\"}"
+        },
+        {
+          "TraceEventID": "e7dd8cf6-fdfc-4516-89e0-8da9da58d43f",
+          "OccurredAt": "2026-10-26T04:49:24.688Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --purchase-date --repair-date 2025-02-28\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "b1613971-441e-41cc-869f-39b73acf9420",
+          "OccurredAt": "2026-10-26T04:49:24.688Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python /work/.claude/skills/appliance-warranty-check/scripts/check_input.py --purchase-date '2024-02-29' --repair-date '2025-02-28'\", \"description\": \"Validate dates for record 6\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 246, \"invocation_id\": \"call_pm2jpQf8S0RLVlaB5G8undGC\", \"result_summary\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --purchase-date --repair-date 2025-02-28\"}"
+        },
+        {
+          "TraceEventID": "699a5ebd-00cc-4a11-aab8-114339362127",
+          "OccurredAt": "2026-10-26T04:49:34.83Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": true, \"bytes_read\": 8000, \"resource_path\": \"appliance-warranty-check/scripts/check_input.py\"}"
+        },
+        {
+          "TraceEventID": "72728f10-adfc-4b41-93eb-f6da5b44b2b5",
+          "OccurredAt": "2026-10-26T04:49:34.83Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/appliance-warranty-check/scripts/check_input.py\"}, \"tool_name\": \"Read\", \"truncated\": true, \"duration_ms\": 11, \"invocation_id\": \"call_tiEQBGzZlRrJgbTDm8uP4qWh\", \"result_summary\": \"1\\t\\\"\\\"\\\"Normalize and validate the values a person gave against a Skill's input schema.\\\"\\\"\\\"\\n2\\t\\n3\\tfrom __future__ import annotations\\n4\\t\\n5\\timport argparse\\n6\\timport calendar\\n7\\timport json\\n8\\timport re\\n9\\timport sys\\n10\\tfrom datetime import date, timedelta\\n11\\t\\n12\\tFIELD_TYPES = (\\\"date\\\", \\\"number\\\", \\\"hours\\\", \\\"text\\\")\\n13\\tMONTHS = 12\\n14\\tCHINESE_DIGITS = {\\n15\\t    \\\"零\\\": 0,\\n16\\t    \\\"〇\\\": 0,\\n17\\t    \\\"一\\\": 1,\\n18\\t    \\\"二\\\": 2,\\n19\\t    \\\"兩\\\": 2,\\n20\\t    \\\"两\\\": 2,\\n21\\t    \\\"三\\\": 3,\\n22\\t    \\\"四\\\": 4,\\n23\\t    \\\"五\\\": 5,\\n24\\t    \\\"六\\\": 6,\\n25\\t    \\\"七\\\": 7,\\n26\\t    \\\"八\\\": 8,\\n27\\t    \\\"九\\\": 9,\\n28\\t}\\n29\\tCHINESE_UNITS = {\\\"十\\\": 10, \\\"百\\\": 100, \\\"千\\\": 1000}\\n30\\tCHINESE_SECTIONS = {\\\"萬\\\": 10_000, \\\"万\\\": 10_000, \\\"億\\\": 100_000_000, \\\"亿\\\": 100_000_000}\\n31\\tARABIC_WITH_SECTION = re.compile(r\\\"^(-?\\\\d+(?:\\\\.\\\\d+)?)\\\\s*([萬万億亿千百])$\\\")\\n32\\tFRACTION = re.compile(r\\\"^(-?\\\\d+(?:\\\\.\\\\d+)?)\\\\s*/\\\\s*(\\\\d+(?:\\\\.\\\\d+)?)$\\\")\\n33\\tPLAIN_NUMBER = re.compile(r\\\"^-?\\\\d+(?:\\\\.\\\\d+)?$\\\")\\n34\\tHOURS_AND_MINUTES = re.compile(\\n35\\t    r\\\"^(?:(-?\\\\d+(?:\\\\.\\\\d+)?)\\\\s*(?:小時|小时|鐘頭|h|hr|hrs|hours?))?\\\\s*\\\"\\n36\\t    r\\\"(?:(-?\\\\d+(?:\\\\.\\\\d+)?)\\\\s*(?:分鐘|分钟|分|m|min|mins|minutes?))?$\\\",\\n37\\t    re.IGNORECASE,\\n38\\t)\\n39\\tFULL_DATE = re.compile(r\\\"^(\\\\d{4})\\\\s*[-/.年]\\\\s*(\\\\d{1,2})\\\\s*[-/.月]\\\\s*(\\\\d{1,2})\\\\s*日?$\\\")\\n40\\tMONTH_DAY = re.compile(r\\\"^(\\\\d{1,2})\\\\s*[/月]\\\\s*(\\\\d{1,2})\\\\s*日?$\\\")\\n41\\tMONTH_EDGE = re.compile(r\\\"^(?:(\\\\d{4})\\\\s*年\\\\s*)?(\\\\d{1,2})\\\\s*月\\\\s*(底|初)$\\\")\\n42\\tRELATIVE_DAYS = {\\n43\\t    \\\"大前天\\\": -3,\\n44\\t    \\\"前天\\\": -2,\\n45\\t    \\\"昨天\\\": -1,\\n46\\t    \\\"今天\\\": 0,\\n47\\t    \\\"明天\\\": 1,\\n48\\t    \\\"後天\\\": 2,\\n49\\t    \\\"后天\\\": 2,\\n50\\t    \\\"大後天\\\": 3,\\n51\\t    \\\"大后天\\\": 3,\\n52\\t}\\n53\\tDAYS_FROM_NOW = re.compile(r\\\"^(\\\\d+)\\\\s*天(後|后|前)$\\\")\\n54\\t\\n55\\t\\n56\\tclass UnusableValueError(ValueError):\\n57\\t    \\\"\\\"\\\"A value that cannot be right; its message names why.\\\"\\\"\\\"\\n58\\t\\n59\\t\\n60\\tdef chinese_number(text: str) -\u003e float:\\n61\\t    total, section, digit = 0, 0, None\\n62\\t    for ch in text:\\n63\\t        if ch in CHINESE_DIGITS:\\n64\\t            digit = CHINESE_DIGITS[ch]\\n65\\t        elif ch in CHINESE_UNITS:\\n66\\t            section += (1 if digit is None else digit) * CHINESE_UNITS[ch]\\n67\\t            digit = None\\n68\\t        elif ch in CHINESE_SECTIONS:\\n69\\t            total += (section + (digit or 0)) * CHINESE_SECTIONS[ch]\\n70\\t            section, digit = 0, None\\n71\\t        else:\\n72\\t            raise ValueError(text)\\n73\\t    return total + section + (digit or 0)\\n74\\t\\n75\\t\\n76\\tdef parse_number(raw: str, units: dict[str, float]) -\u003e tuple[float, list[str]]:\\n77\\t    text = raw.strip().replace(\\\",\\\", \\\"\\\").replace(\\\"，\\\", \\\"\\\")\\n78\\t    readings: list[str] = []\\n79\\t    for unit, factor in sorted(units.items(), key=lambda item: -len(item[0])):\\n80\\t        if unit and text.endswith(unit):\\n81\\t            value, inner = parse_number(text[: -len(unit)], {})\\n82\\t            if factor != 1:\\n83\\t                readings.append(f\\\"{unit} × {factor:g}\\\")\\n84\\t            return value * factor, inner + readings\\n85\\t    if PLAIN_NUMBER.match(text):\\n86\\t        return float(text), readings\\n87\\t    if match := ARABIC_WITH_SECTION.match(text):\\n88\\t        unit = match.group(2)\\n89\\t        factor = CHINESE_SECTIONS.get(unit) or CHINESE_UNITS[unit]\\n90\\t        return float(match.group(1)) * factor, [f\\\"{unit} = {factor:,}\\\"]\\n91\\t    if text and all(\\n92\\t        ch in CHINESE_DIGITS or ch in CHINESE_UNITS or ch in CHINESE_SECTIONS for ch in text\\n93\\t    ):\\n94\\t        return float(chinese_number(text)), [\\\"中文數字\\\"]\\n95\\t    raise ValueError(raw)\\n96\\t\\n97\\t\\n98\\tdef parse_hours(raw: str) -\u003e tuple[float, list[str]]:\\n99\\t    text = raw.strip()\\n100\\t    if PLAIN_NUMBER.match(text):\\n101\\t        return float(text), []\\n102\\t    match = HOURS_AND_MINUTES.match(text)\\n103\\t    if not match or not (match.group(1) or match.group(2)):\\n104\\t        raise ValueError(raw)\\n105\\t    hours = float(match.group(1) or 0)\\n106\\t    minutes = float(match.group(2) or 0)\\n107\\t    readings = [\\\"60 分鐘 = 1 小時\\\"] if match.group(2) else []\\n108\\t    return hours + minutes / 60, readings\\n109\\t\\n110\\t\\n111\\tdef real_date(year: int, month: int, day: int, raw: str) -\u003e date:\\n112\\t    try:\\n113\\t        return date(year, month, day)\\n114\\t    except ValueError:\\n115\\t        raise UnusableValueError(f\\\"「{raw}」不是存在的日期\\\") from None\\n116\\t\\n117\\t\\n118\\tdef parse_date(raw: str, today: date) -\u003e tuple[date, list[str]]:\\n119\\t    text = raw.strip()\\n120\\t    if text in RELATIVE_DAYS:\\n121\\t        return today + timedelta(days=RELATIVE_DAYS[text]), [f\\\"以今天 {today} 推算\\\"]\\n122\\t    if match := DAYS_FROM_NOW.match(text):\\n123\\t        days = int(match.group(1)) * (1 if match.group(2) in \\\"後后\\\" else -1)\\n124\\t        return today + timedelta(days=days), [f\\\"以今天 {today} 推算\\\"]\\n125\\t    if match := FULL_DATE.match(text):\\n126\\t        year, month, day = (int(g) for g in match.groups())\\n127\\t        return real_date(year, month, day, raw), []\\n128\\t    if match := MONTH_DAY.match(text):\\n129\\t        month, day = int(match.group(1)), int(match.group(2))\\n130\\t        return real_date(today.year, month, day, raw), [f\\\"未寫年份，以 {today.year} 年計\\\"]\\n131\\t    if match := MONTH_EDGE.match(text):\\n132\\t        year = int(match.group(1)) if match.group(1) else today.year\\n133\\t        month = int(match.group(2))\\n134\\t        if not 1 \u003c= month \u003c= MONTHS:\\n135\\t            raise UnusableValueError(f\\\"「{raw}」不是存在的月份\\\")\\n136\\t        last = calendar.monthrange(year, month)[1]\\n137\\t        day = last if match.group(3) == \\\"底\\\" else 1\\n138\\t        readings = [f\\\"「{match.group(3)}」讀成 {month} 月 {day} 日\\\"]\\n139\\t        if not match.group(1):\\n140\\t            readings.append(f\\\"未寫年份，以 {year} 年計\\\")\\n141\\t        return date(year, month, day), readings\\n142\\t    raise ValueError(raw)\\n143\\t\\n144\\t\\n145\\tdef within_bounds(value: float, field: dict, raw: str) -\u003e None:\\n146\\t    low, high = field.get(\\\"min\\\"), field.get(\\\"max\\\")\\n147\\t    if low is not None and value \u003c low:\\n148\\t        raise UnusableValueError(f\\\"「{raw}」小於可能的最小值 {low:g}\\\")\\n149\\t    if high is not None and value \u003e high:\\n150\\t        raise UnusableValueError(f\\\"「{raw}」大於可能的最大值 {high:g}\\\")\\n151\\t\\n152\\t\\n153\\tdef scaled(value: float, out_of: float, field: dict, raw: str) -\u003e tuple[float, list[str]]:\\n154\\t    scale = field.get(\\\"out_of\\\")\\n155\\t    if out_of \u003c= 0 or value \u003e out_of:\\n156\\t        raise UnusableValueError(f\\\"「{raw}」的分子大於分母\\\")\\n157\\t    if scale is None or scale == out_of:\\n158\\t        return value, []\\n159\\t    return value / out_of * scale, [f\\\"{value:g}/{out_of:g} 換算成滿分 {scale:g}\\\"]\\n160\\t\\n161\\t\\n162\\tdef normalize(field: dict, raw: object, today: date) -\u003e tuple[object, list[str]]:\\n163\\t    kind = field[\\\"type\\\"]\\n164\\t    if kind == \\\"text\\\":\\n165\\t        return str(raw), []\\n166\\t    text = str(raw)\\n167\\t    if kind == \\\"date\\\":\\n168\\t        value, readings = parse_date(text, today)\\n169\\t        if field.get(\\\"not_after_today\\\") and value \u003e today:\\n170\\t            raise UnusableValueError(f\\\"「{text}」晚於今天 {today}\\\")\\n171\\t        if field.get(\\\"not_before_today\\\") and value \u003c today:\\n172\\t            raise UnusableValueError(f\\\"「{text}」早於今天 {today}\\\")\\n173\\t        return value.isoformat(), readings\\n174\\t    if kind == \\\"hours\\\":\\n175\\t        number, readings = parse_hours(text)\\n176\\t    elif match := FRACTION.match(text.replace(\\\",\\\", \\\"\\\")):\\n177\\t        number, readings = scaled(float(match.group(1)), float(match.group(2)), field, text)\\n178\\t    else:\\n179\\t        number, readings = parse_number(text, field.get(\\\"units\\\") or {})\\n180\\t    within_bounds(number, field, text)\\n181\\t    if field.get(\\\"integer\\\") and number != int(number):\\n182\\t        rais"
+        },
+        {
+          "TraceEventID": "128a76ac-38d9-43e4-8af0-4be2a4394a03",
+          "OccurredAt": "2026-10-26T04:49:47.729Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 127, \"resource_path\": \"appliance-warranty-check/scripts/input_schema.json\"}"
+        },
+        {
+          "TraceEventID": "42c81f5e-2e15-4b57-a2ad-86b3cb3d1482",
+          "OccurredAt": "2026-10-26T04:49:47.729Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/appliance-warranty-check/scripts/input_schema.json\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 5, \"invocation_id\": \"call_bzmmlDVcnZEQM0Gy9naTVpdn\", \"result_summary\": \"1\\t{\\n2\\t  \\\"fields\\\": [\\n3\\t    {\\\"name\\\": \\\"purchase_date\\\", \\\"type\\\": \\\"date\\\"},\\n4\\t    {\\\"name\\\": \\\"repair_date\\\", \\\"type\\\": \\\"date\\\"}\\n5\\t  ]\\n6\\t}\\n7\\t\"}"
+        },
+        {
+          "TraceEventID": "d324ae34-1006-4be1-a002-71fcc98ac5c6",
+          "OccurredAt": "2026-10-26T04:49:47.822Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 1852, \"resource_path\": \"appliance-warranty-check/scripts/warranty.py\"}"
+        },
+        {
+          "TraceEventID": "6102a028-1062-4b8c-be82-5883c87e7735",
+          "OccurredAt": "2026-10-26T04:49:47.822Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/appliance-warranty-check/scripts/warranty.py\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 6, \"invocation_id\": \"call_UtsLuD3GxRRU9VZyDJgosv9A\", \"result_summary\": \"1\\t#!/usr/bin/env python3\\n2\\t\\\"\\\"\\\"判定家電一年保固日期；輸入日期須先經平台輸入檢查。\\\"\\\"\\\"\\n3\\t\\n4\\timport argparse\\n5\\tfrom datetime import date, timedelta\\n6\\timport sys\\n7\\t\\n8\\t\\n9\\tdef parse_date(value: str) -\u003e date:\\n10\\t    try:\\n11\\t        parsed = date.fromisoformat(value)\\n12\\t    except ValueError:\\n13\\t        raise ValueError(value) from None\\n14\\t    if parsed.isoformat() != value:\\n15\\t        raise ValueError(value)\\n16\\t    return parsed\\n17\\t\\n18\\t\\n19\\tdef anniversary(purchased: date) -\u003e date:\\n20\\t    \\\"\\\"\\\"購買日起滿一年；次年沒有 2 月 29 日時採 2 月最後一天。\\\"\\\"\\\"\\n21\\t    year = purchased.year + 1\\n22\\t    day = purchased.day\\n23\\t    if purchased.month == 2 and day == 29:\\n24\\t        day = 28\\n25\\t    return date(year, purchased.month, day)\\n26\\t\\n27\\t\\n28\\tdef main() -\u003e int:\\n29\\t    parser = argparse.ArgumentParser(description=\\\"判定家電一年保固日期\\\")\\n30\\t    parser.add_argument(\\n31\\t        \\\"--record\\\", nargs=2, action=\\\"append\\\", metavar=(\\\"PURCHASE_DATE\\\", \\\"REPAIR_DATE\\\"),\\n32\\t        required=True, help=\\\"加入一筆已檢查的日期，可重複使用\\\",\\n33\\t    )\\n34\\t    args = parser.parse_args()\\n35\\t\\n36\\t    try:\\n37\\t        records = [(parse_date(purchase), parse_date(repair)) for purchase, repair in args.record]\\n38\\t    except ValueError as exc:\\n39\\t        print(f\\\"無法使用的日期值：{exc.args[0]}\\\", file=sys.stderr)\\n40\\t        return 2\\n41\\t\\n42\\t    for index, (purchase, repair) in enumerate(records, start=1):\\n43\\t        last_day = anniversary(purchase) - timedelta(days=1)\\n44\\t        if repair \u003c purchase:\\n45\\t            print(f\\\"第 {index} 筆：日期錯誤；報修日期早於購買日期。\\\")\\n46\\t        elif repair \u003c= last_day:\\n47\\t            print(f\\\"第 {index} 筆：仍在保固內；保固最後一天為 {last_day.isoformat()}。\\\")\\n48\\t        else:\\n49\\t            days_over = (repair - last_day).days\\n50\\t            print(\\n51\\t                f\\\"第 {index} 筆：已過保 {days_over} 天；\\\"\\n52\\t                f\\\"保固最後一天為 {last_day.isoformat()}。\\\"\\n53\\t            )\\n54\\t    return 0\\n55\\t\\n56\\t\\n57\\tif __name__ == \\\"__main__\\\":\\n58\\t    raise SystemExit(main())\\n59\\t\"}"
+        },
+        {
+          "TraceEventID": "71a055d9-3edb-450f-97f4-3e7d6c5c3a5b",
+          "OccurredAt": "2026-10-26T04:50:10.714Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"假設：今天以系統日期 2026-10-26 計\\nOK：6/6 筆可直接計算，結果在 /tmp/warranty-checked.json\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "14c31b6a-7628-4d72-bcaa-7313bdebccca",
+          "OccurredAt": "2026-10-26T04:50:10.714Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python -c 'import json; json.dump({\\\"records\\\":[{\\\"purchase_date\\\":\\\"2025-03-10\\\",\\\"repair_date\\\":\\\"2026-03-09\\\"},{\\\"purchase_date\\\":\\\"2025-03-10\\\",\\\"repair_date\\\":\\\"2026-03-10\\\"},{\\\"purchase_date\\\":\\\"2025-03-10\\\",\\\"repair_date\\\":\\\"2026-03-12\\\"},{\\\"purchase_date\\\":\\\"2025-03-10\\\",\\\"repair_date\\\":\\\"2025-03-09\\\"},{\\\"purchase_date\\\":\\\"2024-02-29\\\",\\\"repair_date\\\":\\\"2025-02-27\\\"},{\\\"purchase_date\\\":\\\"2024-02-29\\\",\\\"repair_date\\\":\\\"2025-02-28\\\"}]}, open(\\\"/tmp/warranty-input.json\\\",\\\"w\\\"))' \u0026\u0026 python /work/.claude/skills/appliance-warranty-check/scripts/check_input.py /tmp/warranty-input.json --schema /work/.claude/skills/appliance-warranty-check/scripts/input_schema.json --out /tmp/warranty-checked.json\", \"description\": \"Validate all six purchase and repair dates\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 98, \"invocation_id\": \"call_7bBa1V3JUxsPe0xnJZWKFHwo\", \"result_summary\": \"假設：今天以系統日期 2026-10-26 計\\nOK：6/6 筆可直接計算，結果在 /tmp/warranty-checked.json\"}"
+        },
+        {
+          "TraceEventID": "03dc49ca-ad7a-4653-aa7e-da86cdf98bdd",
+          "OccurredAt": "2026-10-26T04:50:21.333Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"第 1 筆：仍在保固內；保固最後一天為 2026-03-09。\\n第 2 筆：已過保 1 天；保固最後一天為 2026-03-09。\\n第 3 筆：已過保 3 天；保固最後一天為 2026-03-09。\\n第 4 筆：日期錯誤；報修日期早於購買日期。\\n第 5 筆：仍在保固內；保固最後一天為 2025-02-27。\\n第 6 筆：已過保 1 天；保固最後一天為 2025-02-27。\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "e503cfb0-a8d8-4dd9-a722-7ddeb903c78d",
+          "OccurredAt": "2026-10-26T04:50:21.333Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python /work/.claude/skills/appliance-warranty-check/scripts/warranty.py --record '2025-03-10' '2026-03-09' --record '2025-03-10' '2026-03-10' --record '2025-03-10' '2026-03-12' --record '2025-03-10' '2025-03-09' --record '2024-02-29' '2025-02-27' --record '2024-02-29' '2025-02-28'\", \"description\": \"Calculate warranty status and expiry day\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 51, \"invocation_id\": \"call_li5vYm2ggeqCFbJ4RgNbSzdx\", \"result_summary\": \"第 1 筆：仍在保固內；保固最後一天為 2026-03-09。\\n第 2 筆：已過保 1 天；保固最後一天為 2026-03-09。\\n第 3 筆：已過保 3 天；保固最後一天為 2026-03-09。\\n第 4 筆：日期錯誤；報修日期早於購買日期。\\n第 5 筆：仍在保固內；保固最後一天為 2025-02-27。\\n第 6 筆：已過保 1 天；保固最後一天為 2025-02-27。\"}"
+        },
+        {
+          "TraceEventID": "ce559b24-27d8-4e63-ba81-e763ae8bbe87",
+          "OccurredAt": "2026-10-26T04:50:31.467Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"| 編號 | 判定結果 | 保固最後一天 | 過保天數 |\\n|---|---|---|---:|\\n| 1 | 仍在保固內 | 2026-03-09 | — |\\n| 2 | 已過保 | 2026-03-09 | 1 天 |\\n| 3 | 已過保 | 2026-03-09 | 3 天 |\\n| 4 | 日期錯誤：報修日期早於購買日期 | — | — |\\n| 5 | 仍在保固內 | 2025-02-27 | — |\\n| 6 | 已過保 | 2025-02-27 | 1 天 |\\n\\n日期檢查通過：6/6 筆。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "cbdc34bd-923f-432d-bc08-6a0fe480cb4a",
+          "OccurredAt": "2026-10-26T04:50:31.77Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"| 編號 | 判定結果 | 保固最後一天 | 過保天數 |\\n|---|---|---|---:|\\n| 1 | 仍在保固內 | 2026-03-09 | — |\\n| 2 | 已過保 | 2026-03-09 | 1 天 |\\n| 3 | 已過保 | 2026-03-09 | 3 天 |\\n| 4 | 日期錯誤：報修日期早於購買日期 | — | — |\\n| 5 | 仍在保固內 | 2025-02-27 | — |\\n| 6 | 已過保 | 2025-02-27 | 1 天 |\\n\\n日期檢查通過：6/6 筆。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "aa93baf6-d0f0-433a-862b-c179c8d67b27",
+          "OccurredAt": "2026-10-26T04:50:35.916Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.005890354999999999, \"cost_source\": \"gateway\", \"duration_ms\": 105174, \"input_tokens\": 1677, \"token_source\": \"result\", \"output_tokens\": 2082, \"cache_read_input_tokens\": 147778, \"cache_write_input_tokens\": 25095}"
+        }
+      ]
+    },
+    "Truncation": [
+      "trace_digest.entries[].excerpt"
+    ],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "4d6e3f55-c51f-4e1e-9023-f1ab1a9b0d3a",
+        "Result": "passed",
+        "Reason": "第 1 筆判定仍在保固內，保固最後一天為 2026-03-09。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 1 | 仍在保固內 | 2026-03-09 | — |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d37a0824-1ea0-4072-8884-bf7288f17542",
+        "Result": "passed",
+        "Reason": "第 2 筆判定已過保 1 天。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 2 | 已過保 | 2026-03-09 | 1 天 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "325cd4b9-3f2e-4741-881e-babc5434d33a",
+        "Result": "passed",
+        "Reason": "第 3 筆判定已過保 3 天。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 3 | 已過保 | 2026-03-09 | 3 天 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "439d927d-e614-4511-8520-32abed03937c",
+        "Result": "passed",
+        "Reason": "第 4 筆指出報修日期早於購買日期，未給出保固狀態或過保天數。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 4 | 日期錯誤：報修日期早於購買日期 | — | — |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "b2b4ba3c-6cca-4579-bacd-56f3ad6f3364",
+        "Result": "passed",
+        "Reason": "第 5 筆判定仍在保固內，保固最後一天為 2025-02-27。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 5 | 仍在保固內 | 2025-02-27 | — |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "5a9400e9-25bc-4003-b26c-349bd60da768",
+        "Result": "passed",
+        "Reason": "第 6 筆判定已過保 1 天。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 6 | 已過保 | 2025-02-27 | 1 天 |"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "六筆報修的最終判定均符合對應驗收標準。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v4",
+    "Usage": {
+      "PromptTokens": 12191,
+      "CompletionTokens": 823,
+      "CostUSD": 0.038706000000000004,
+      "CostReported": true
+    }
+  }
+}

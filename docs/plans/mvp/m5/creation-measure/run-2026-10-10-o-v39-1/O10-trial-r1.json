@@ -1,0 +1,168 @@
+{
+  "round": 1,
+  "sample_input": "請依規則判定以下各行所述單件行李的處理方式與費用；每行是一次獨立判定。\n第 1 行：請判定單件行李重量 20 公斤。\n第 2 行：請判定單件行李重量 20.01 公斤。\n第 3 行：請判定單件行李重量 21.01 公斤。\n第 4 行：請判定單件行李重量 32 公斤。\n第 5 行：請判定單件行李重量 32.01 公斤。\n第 6 行：請判定單件行李重量 0 公斤。\n第 7 行：請判定單件行李重量 -1 公斤。",
+  "acceptance_criteria": [
+    {
+      "text": "第 1 行輸入 20 公斤時，輸出免費托運、費用 0 元。"
+    },
+    {
+      "text": "第 2 行輸入 20.01 公斤時，輸出可托運且為超重行李、費用 500 元（超重 0.01 公斤向上計為 1 公斤）。"
+    },
+    {
+      "text": "第 3 行輸入 21.01 公斤時，輸出可托運且為超重行李、費用 1,000 元（超重 1.01 公斤向上計為 2 公斤）。"
+    },
+    {
+      "text": "第 4 行輸入 32 公斤時，輸出可托運且為超重行李、費用 6,000 元（超重 12 公斤）。"
+    },
+    {
+      "text": "第 5 行輸入 32.01 公斤時，輸出不接受托運、費用「不適用」。"
+    },
+    {
+      "text": "第 6 行輸入 0 公斤及第 7 行輸入 -1 公斤時，兩者皆輸出重量無效、費用「不適用」。"
+    }
+  ],
+  "final_output": "輸入：第 1 行：請判定單件行李重量 20 公斤。\n換算重量：20 公斤\n處理方式：免費托運。\n費用：0 元\n\n輸入：第 2 行：請判定單件行李重量 20.01 公斤。\n換算重量：20.01 公斤\n處理方式：可托運，屬超重行李。\n費用：500 元（超重 0.01 公斤，按 1 公斤計）\n\n輸入：第 3 行：請判定單件行李重量 21.01 公斤。\n換算重量：21.01 公斤\n處理方式：可托運，屬超重行李。\n費用：1,000 元（超重 1.01 公斤，按 2 公斤計）\n\n輸入：第 4 行：請判定單件行李重量 32 公斤。\n換算重量：32 公斤\n處理方式：可托運，屬超重行李。\n費用：6,000 元（超重 12 公斤，按 12 公斤計）\n\n輸入：第 5 行：請判定單件行李重量 32.01 公斤。\n換算重量：32.01 公斤\n處理方式：不接受托運。\n費用：不適用\n\n輸入：第 6 行：請判定單件行李重量 0 公斤。\n換算重量：0 公斤\n處理方式：重量無效。\n費用：不適用\n\n輸入：第 7 行：請判定單件行李重量 -1 公斤。\n換算重量：-1 公斤\n處理方式：重量無效。\n費用：不適用",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ab676967-535b-47c2-b202-5ec5912b4f03",
+    "run_id": "3a6535f9-7c2d-49f3-9d85-90158ab3cc29",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收標準均通過。七行行李重量的處理方式與費用皆符合各自要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "b1694427-9f5d-41e6-9e17-fe4f13ef2715",
+        "text": "第 1 行輸入 20 公斤時，輸出免費托運、費用 0 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 行判定為免費托運，費用 0 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "輸入：第 1 行：請判定單件行李重量 20 公斤。\n換算重量：20 公斤\n處理方式：免費托運。\n費用：0 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "43540b21-aa79-43af-b69c-9bf0a8c33f40",
+        "text": "第 2 行輸入 20.01 公斤時，輸出可托運且為超重行李、費用 500 元（超重 0.01 公斤向上計為 1 公斤）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 行判定可托運、屬超重行李；超重 0.01 公斤按 1 公斤計，費用 500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "輸入：第 2 行：請判定單件行李重量 20.01 公斤。\n換算重量：20.01 公斤\n處理方式：可托運，屬超重行李。\n費用：500 元（超重 0.01 公斤，按 1 公斤計）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "53477537-0397-490b-9d6a-0185b89dff62",
+        "text": "第 3 行輸入 21.01 公斤時，輸出可托運且為超重行李、費用 1,000 元（超重 1.01 公斤向上計為 2 公斤）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 行判定可托運、屬超重行李；超重 1.01 公斤按 2 公斤計，費用 1,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "輸入：第 3 行：請判定單件行李重量 21.01 公斤。\n換算重量：21.01 公斤\n處理方式：可托運，屬超重行李。\n費用：1,000 元（超重 1.01 公斤，按 2 公斤計）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d5c4fc9e-035b-48b0-8d5b-803ba1e74e4d",
+        "text": "第 4 行輸入 32 公斤時，輸出可托運且為超重行李、費用 6,000 元（超重 12 公斤）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 行判定可托運、屬超重行李；超重 12 公斤，費用 6,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "輸入：第 4 行：請判定單件行李重量 32 公斤。\n換算重量：32 公斤\n處理方式：可托運，屬超重行李。\n費用：6,000 元（超重 12 公斤，按 12 公斤計）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "14b77d06-d6e0-45f9-9e22-4009b13d086b",
+        "text": "第 5 行輸入 32.01 公斤時，輸出不接受托運、費用「不適用」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 行判定不接受托運，費用為不適用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "輸入：第 5 行：請判定單件行李重量 32.01 公斤。\n換算重量：32.01 公斤\n處理方式：不接受托運。\n費用：不適用",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fe5d24a8-b07a-40b7-a3bc-7c7f5d49f98a",
+        "text": "第 6 行輸入 0 公斤及第 7 行輸入 -1 公斤時，兩者皆輸出重量無效、費用「不適用」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 行與第 7 行均判定重量無效，費用均為不適用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "輸入：第 6 行：請判定單件行李重量 0 公斤。\n換算重量：0 公斤\n處理方式：重量無效。\n費用：不適用",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "輸入：第 7 行：請判定單件行李重量 -1 公斤。\n換算重量：-1 公斤\n處理方式：重量無效。\n費用：不適用",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1522 input and 981 output tokens on gpt-6-luna; reported cost $0.0037 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 29,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

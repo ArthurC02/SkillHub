@@ -1,0 +1,120 @@
+{
+  "round": 1,
+  "sample_input": "請逐筆判定以下家電報修是否仍在 1 年保固內，並列出判定結果及過保天數（若適用）：\n編號 | 購買日期 | 報修日期\n1 | 2025-03-10 | 2026-03-10\n2 | 2025-02-29 | 2025-03-01\n3 | 2024-02-29 | 2025-02-28",
+  "acceptance_criteria": [
+    {
+      "text": "第 1 筆：購買日起滿 1 年為 2026-03-10，保固最後一天為 2026-03-09；報修日 2026-03-10 比最後一天晚 1 天，因此應判定已過保 1 天。"
+    },
+    {
+      "text": "第 2 筆：2025 年不是閏年，2025-02-29 是不存在的日期；應指出日期錯誤，不給出保固狀態或過保天數。"
+    },
+    {
+      "text": "第 3 筆：依閏日規則，滿 1 年日為 2025-02-28，保固最後一天為 2025-02-27；報修日 2025-02-28 比最後一天晚 1 天，因此應判定已過保 1 天。"
+    }
+  ],
+  "final_output": "| 編號 | 判定結果 | 保固最後一天 | 過保天數 |\n|---|---|---|---:|\n| 1 | 已過保 | 2026-03-09 | 1 天 |\n| 2 | 日期無效，無法判定；購買日期 `2025-02-29` 不存在，請確認日期 | — | — |\n| 3 | 已過保 | 2025-02-27 | 1 天 |\n\n假設：今天以系統日期 2026-10-26 計\n\n第 2 筆的報修日期有效，但購買日期無效；未替它推測或更換日期。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "baa0f7df-0da6-460f-95c2-12949cfbcaf7",
+    "run_id": "0239bf04-56e2-4c0a-b3e8-c898b8786e6b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三筆判定均符合驗收標準：第 1、3 筆各過保 1 天；第 2 筆因購買日期不存在而未予判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "aeb52dc9-e67f-4084-8947-822d5cfc0a2b",
+        "text": "第 1 筆：購買日起滿 1 年為 2026-03-10，保固最後一天為 2026-03-09；報修日 2026-03-10 比最後一天晚 1 天，因此應判定已過保 1 天。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆列出保固最後一天為 2026-03-09，並判定已過保 1 天。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 已過保 | 2026-03-09 | 1 天 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4f4d3f90-edc2-4466-a9c4-520a2f68cf67",
+        "text": "第 2 筆：2025 年不是閏年，2025-02-29 是不存在的日期；應指出日期錯誤，不給出保固狀態或過保天數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆指出購買日期不存在、無法判定，且未給出保固狀態或過保天數。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2 | 日期無效，無法判定；購買日期 `2025-02-29` 不存在，請確認日期 | — | — |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9cc9cad2-20bd-4037-9bcf-12f6acb90382",
+        "text": "第 3 筆：依閏日規則，滿 1 年日為 2025-02-28，保固最後一天為 2025-02-27；報修日 2025-02-28 比最後一天晚 1 天，因此應判定已過保 1 天。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆列出保固最後一天為 2025-02-27，並判定已過保 1 天。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | 已過保 | 2025-02-27 | 1 天 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1697 input and 1755 output tokens on skillhub-run; reported cost $0.0058 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 33,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

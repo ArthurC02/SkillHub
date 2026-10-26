@@ -1,0 +1,107 @@
+{
+  "round": 1,
+  "sample_input": "請計算以下健身教練課程堂數的應付總額：\n十二堂",
+  "acceptance_criteria": [
+    {
+      "text": "依一般讀法將「十二堂」解讀為 12 堂，並以一句話說明這項假設，不反問使用者。"
+    },
+    {
+      "text": "計算 12 × 1,200 = 14,400 元；12 堂適用整筆 9 折，應付 14,400 × 0.9 = 12,960 元。"
+    }
+  ],
+  "final_output": "假設：「十二堂」讀作 12 堂（中文數字）。\n\n12 堂：應付總額 12960 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "d8e7e4a9-8d63-436a-9918-189d6352f834",
+    "run_id": "a4157ab6-0e26-4563-b20f-559bf5572b0c",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收標準均已達成：回覆說明了堂數的解讀，應付總額也符合 12 堂整筆九折的計算結果。",
+    "criterion_results": [
+      {
+        "criterion_id": "d5c2ad58-4f7d-4e2d-9831-0fb1d8745e32",
+        "text": "依一般讀法將「十二堂」解讀為 12 堂，並以一句話說明這項假設，不反問使用者。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆以一句話說明將「十二堂」解讀為 12 堂，且沒有反問使用者。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "假設：「十二堂」讀作 12 堂（中文數字）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a3cf9eda-6492-4972-94a2-75dcd20e34ec",
+        "text": "計算 12 × 1,200 = 14,400 元；12 堂適用整筆 9 折，應付 14,400 × 0.9 = 12,960 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "可見的計算程式對 12 堂採用每堂 1,200 元、整筆乘以 0.9；12 × 1,200 = 14,400 元，折後為 12,960 元，與回覆的應付總額一致。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "amount = count * 1200 * 0.9",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "12 堂：應付總額 12960 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1619 input and 1394 output tokens on skillhub-run; reported cost $0.0055 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 31,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

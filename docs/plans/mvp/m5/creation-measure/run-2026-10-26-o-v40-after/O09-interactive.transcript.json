@@ -1,0 +1,77 @@
+{
+  "acceptance_criteria": [
+    "對範例第 1 筆，必須指出 2026-05-31 至 2026-06-30 相隔 30 天，通知足夠。",
+    "對範例第 2 筆，必須指出 2026-06-01 至 2026-06-30 相隔 29 天，通知不足，且最晚應於 2026-05-31 送出通知。",
+    "對範例第 3 筆，必須指出通知日期晚於搬離日期，因此日期組合無效。",
+    "必須對範例中的三筆資料各自給出判定，並讓每筆判定都能對應到其搬離日期與通知日期。"
+  ],
+  "brief": "建立一個租約提前終止通知期限檢查 Skill。輸入為搬離日期及通知日期；逐筆計算「搬離日期減通知日期」的日數，達 30 天（含）即判定通知足夠，不足則回報最晚應送出通知的日期；若通知日期晚於搬離日期，則標示日期組合無效。輸出以繁體中文清楚說明判定及相關天數或日期。假設輸入為有效的西曆日期，並以日期間的日曆日差計算；不提供法律意見或額外解讀租約、司法管轄區規則。無需外部工具或網路資料。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "我要做一個租約提前終止通知期限檢查的 Skill：我給它預計搬離日期和送出通知日期，它回覆通知是否足夠。租客須在搬離日前至少 30 日通知房東；通知日與搬離日之間相隔的天數（搬離日減通知日）達到 30 天（含）才算足夠；不足就回報最晚應在哪一天送出通知。通知日不得晚於搬離日。",
+      "created_at": "2026-10-26T10:35:05.641968056Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我先查找是否有可參考的日期計算或期限檢查 Skill。",
+      "created_at": "2026-10-26T10:35:15.554845599Z"
+    },
+    {
+      "role": "tool",
+      "content": "目錄裡沒有符合的 Skill（第 1／2 回）；換個說法、加一個關鍵詞或另一種語言再搜一次，或直接起草。",
+      "created_at": "2026-10-26T10:35:15.554886202Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我再用不同關鍵詞搜尋一次，看看是否有可參考的期限計算 Skill。",
+      "created_at": "2026-10-26T10:35:19.425089355Z"
+    },
+    {
+      "role": "tool",
+      "content": "目錄搜了兩回都沒有相近的 Skill：沒有可參考的，請直接依需求起草。",
+      "created_at": "2026-10-26T10:35:19.425090955Z"
+    },
+    {
+      "role": "assistant",
+      "content": "請確認以下 Skill 規格；確認後我會依此起草。",
+      "created_at": "2026-10-26T10:35:50.487404973Z"
+    },
+    {
+      "role": "assistant",
+      "content": "草稿已依確認的規格完成，現在請 Go 驗證草稿。",
+      "created_at": "2026-10-26T10:36:18.154248426Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-10-26T10:36:18.157178855Z"
+    },
+    {
+      "role": "assistant",
+      "content": "草稿已通過 Go 的靜態驗證（blocked=false）；這不代表試跑成功。目前沒有試跑評估，因此我不能判定任務是否成功。請用下方草稿開始試跑，之後把評估結果帶回來，我會依結果修訂。",
+      "created_at": "2026-10-26T10:36:50.679072859Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"9aaa2577-bec3-42e2-82c5-6d653e1d6133\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"通知天數與是否足夠的判定正確，但回覆未明確說明斜線日期採西曆年／月／日解讀的假設。\",\"criterion_results\":[{\"criterion_id\":\"42449052-70b2-4dcb-9a45-9891771bda68\",\"text\":\"以一句話說明假設斜線日期依西曆年／月／日解讀，不反問使用者。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":61},\"excerpt\":\"搬離日期原文：2026/6/30；通知日期原文：2026/5/31。相隔 30 天，通知足夠，符合至少提前 30 日通知。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"最終回覆沒有以一句話說明斜線日期假設依西曆年／月／日解讀；雖然沒有反問使用者，仍未滿足完整條件。\"},{\"criterion_id\":\"ac658333-9793-4d5e-9e72-b4e9d23b65d4\",\"text\":\"依此解讀指出搬離日期 2026/6/30 與通知日期 2026/5/31 相隔 30 天，通知足夠。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":61},\"excerpt\":\"搬離日期原文：2026/6/30；通知日期原文：2026/5/31。相隔 30 天，通知足夠，符合至少提前 30 日通知。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"最終回覆指出這兩個日期相隔 30 天，通知足夠。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"info\",\"message\":\"the skill version mounted for this run was activated\",\"evidence\":[{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"ef9f74ea-4dad-4e76-8410-de4e317cc0b0\",\"occurred_at\":\"2026-10-26T10:40:29.817Z\",\"excerpt\":\"skill_activation {\\\"reason\\\": null, \\\"decision\\\": \\\"activated\\\", \\\"skill_name\\\": \\\"lease-notice-period-check\\\", \\\"skill_version_id\\\": \\\"c13664e0-174a-4b03-9b13-ff24ebc4c158\\\"}\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 1611 input and 616 output tokens on skillhub-run; reported cost $0.0043 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"328ebe3b-2821-4836-a19a-a80c348d7c08\",\"skill_version_id\":\"c13664e0-174a-4b03-9b13-ff24ebc4c158\"}",
+      "created_at": "2026-10-26T10:42:01.570099186Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「以一句話說明假設斜線日期依西曆年／月／日解讀，不反問使用者。」：沒過——最終回覆沒有以一句話說明斜線日期假設依西曆年／月／日解讀；雖然沒有反問使用者，仍未滿足完整條件。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-10-26T10:42:01.570138689Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-10-26T10:42:01.582631146Z"
+    },
+    {
+      "role": "assistant",
+      "content": "未通過的標準：斜線格式日期的解讀假設可能未出現在檢查器輸出中，導致答案漏掉必要說明。已修改步驟 2，要求按西曆年、月、日順序解讀斜線日期，並在答案中以陳述句說明，即使檢查器沒有列出也要補上，且不得向使用者提問。你可以接受這份草稿，或告訴我想改成什麼樣子。",
+      "created_at": "2026-10-26T10:42:43.512807018Z"
+    }
+  ],
+  "state": "candidate_ready"
+}

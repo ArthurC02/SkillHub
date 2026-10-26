@@ -1,0 +1,97 @@
+{
+  "round": 0,
+  "sample_input": "本期信用卡帳單 10,001 元，最低應繳多少？",
+  "acceptance_criteria": [
+    {
+      "text": "回覆的最低應繳為 1,001 元（10,001×10%=1,000.1，無條件進位為 1,001）"
+    },
+    {
+      "text": "沒有回 1,000 元或 10,001 元"
+    }
+  ],
+  "final_output": "本期帳單 10,001 元，最低應繳金額：1,001 元。\n\n假設：今天以系統日期 2026-10-26 計\n\n此為依試算規則計算，未納入銀行或發卡機構的其他費用、利息及個別規定。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "92914047-52a4-452d-9877-687f202ccca2",
+    "run_id": "6e8ecf0a-c8e8-442b-9066-df323c901529",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收標準皆已達成；回覆的最低應繳金額為 1,001 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "55ef9bf3-8488-43a8-b492-ca76628466c0",
+        "text": "回覆的最低應繳為 1,001 元（10,001×10%=1,000.1，無條件進位為 1,001）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將最低應繳金額列為 1,001 元，符合 10,001 元的試算結果。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本期帳單 10,001 元，最低應繳金額：1,001 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "83e89f4b-725f-40f4-824d-751b7a67b3d1",
+        "text": "沒有回 1,000 元或 10,001 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確區分帳單金額 10,001 元與最低應繳 1,001 元，沒有將 1,000 元或 10,001 元列為最低應繳。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本期帳單 10,001 元，最低應繳金額：1,001 元。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1649 input and 705 output tokens on skillhub-run; reported cost $0.0046 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

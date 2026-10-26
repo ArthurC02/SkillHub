@@ -1,0 +1,112 @@
+{
+  "round": 1,
+  "sample_input": "請逐列計算以下行程的車資。\n編號｜里程（公里）｜夜間\n1｜1.26｜否\n2｜-0.5｜是\n3｜1.45｜是",
+  "acceptance_criteria": [
+    {
+      "text": "第 1 列車資為 90 元：1.26 公里超出 1.25 公里 0.01 公里，不足 200 公尺按一個級距加 5 元。"
+    },
+    {
+      "text": "第 2 列指出里程無效，不計算或報出車資。"
+    },
+    {
+      "text": "第 3 列車資為 110 元：1.45 公里超出 1.25 公里恰為 200 公尺，加 5 元後再加夜間費 20 元。"
+    }
+  ],
+  "final_output": "| 編號 | 結果 |\n|---|---|\n| 1 | **90 元** |\n| 2 | 里程 **-0.5 公里無效**，請確認里程；未計算車資。 |\n| 3 | **110 元** |\n\n假設：未標單位的里程採 km（可用 `--distance-unit` 改變）。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ecfd5fe8-ba7f-4e2e-8e66-853c1d83acf1",
+    "run_id": "5f7b7454-7044-4860-a3d1-a0b90381e280",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三列結果均符合驗收條件：第 1 列為 90 元，第 2 列判定里程無效且未計費，第 3 列為 110 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "5e33ada3-e34e-48b0-b40e-9c56c653a1ed",
+        "text": "第 1 列車資為 90 元：1.26 公里超出 1.25 公里 0.01 公里，不足 200 公尺按一個級距加 5 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 列報出 90 元，符合指定車資。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | **90 元** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f6017190-54a6-46df-a8f2-8138a286a9ac",
+        "text": "第 2 列指出里程無效，不計算或報出車資。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 列指出負里程無效，且未計算車資。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2 | 里程 **-0.5 公里無效**，請確認里程；未計算車資。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "23ba207b-5587-4839-b2f3-359940daf278",
+        "text": "第 3 列車資為 110 元：1.45 公里超出 1.25 公里恰為 200 公尺，加 5 元後再加夜間費 20 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 列報出 110 元，符合指定車資。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | **110 元** |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1532 input and 445 output tokens on gpt-6-luna; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

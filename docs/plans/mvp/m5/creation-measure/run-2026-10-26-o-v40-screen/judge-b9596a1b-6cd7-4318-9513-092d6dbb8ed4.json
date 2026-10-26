@@ -1,0 +1,251 @@
+{
+  "request": {
+    "RunID": "b9596a1b-6cd7-4318-9513-092d6dbb8ed4",
+    "EvaluationID": "0660b688-8544-4ad6-8514-0cd90e704d64",
+    "Skill": {
+      "Name": "taxi-fare-estimator",
+      "Summary": "依行駛里程與夜間狀態或搭乘時間，計算符合指定起跳價、里程級距及夜間加收規則的計程車車資。當使用者提供一筆或多筆里程資料並要求試算車資時使用。"
+    },
+    "UserPrompt": "請依規則計算以下各筆車資：\n1.25 公里，非夜間\n-0.5 公里，夜間\n1.251 公里，非夜間",
+    "Criteria": [
+      {
+        "ID": "a6c94d41-4028-402e-a328-0acaf7a58ed7",
+        "Text": "指出 -0.5 公里不符合里程必須大於 0 的規則，並且不為該筆提供車資結果。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "9ebbabd5-47a9-4487-b9e8-73e8b724c7de",
+        "Text": "為 1.25 公里、非夜間計算並輸出 85 元。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "f6b30c7d-61b3-4630-bfab-4f8356591a6b",
+        "Text": "為 1.251 公里、非夜間計算並輸出 90 元。",
+        "Instructions": "",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "1. **1.25 公里，非夜間：85 元**\n2. **-0.5 公里，夜間：未計算**，里程小於可能的最小值 0。\n3. **1.251 公里，非夜間：90 元**\n\n輸入檢查器的讀值假設（原文）：\n- 假設：今天以系統日期 2026-10-26 計",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "b7312c92-9fee-4b86-9070-902f2f047bc4",
+          "OccurredAt": "2026-10-26T05:07:01.601Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"taxi-fare-estimator\", \"skill_version_id\": \"fa75f248-7537-44a2-b85d-c292c56635a5\"}"
+        },
+        {
+          "TraceEventID": "44254373-8461-4f12-a3b3-3fe78b606771",
+          "OccurredAt": "2026-10-26T05:07:01.616Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"請依里程與夜間狀態試算以下車資：1.25 公里非夜間；-0.5 公里夜間；1.251 公里非夜間。\", \"skill\": \"taxi-fare-estimator\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 15, \"invocation_id\": \"call_NiqiX6TILxrBK5kZ0YJgjL99\", \"result_summary\": \"Launching skill: taxi-fare-estimator\"}"
+        },
+        {
+          "TraceEventID": "d0423b62-e1ac-4891-b13f-9c1ef58c8cb3",
+          "OccurredAt": "2026-10-26T05:07:03.699Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "ec7b664f-6788-4653-9c60-195ae2a09d5b",
+          "OccurredAt": "2026-10-26T05:07:03.699Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python scripts/check_input.py --distance \\\"1.25 公里\\\" --night_status \\\"非夜間\\\"\", \"description\": \"驗證第一筆里程與夜間標示\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 74, \"invocation_id\": \"call_Kr3m62CqvfqfoB6vtsu4feZ7\", \"result_summary\": \"Exit code 2\\npython: can't open file '/work/scripts/check_input.py': [Errno 2] No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "3e19af96-5e86-4895-92c9-a6a7073ed432",
+          "OccurredAt": "2026-10-26T05:07:08.63Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --distance --night_status 非夜間\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "bb90a4b3-3b38-468d-8d2f-46e7a4f449ee",
+          "OccurredAt": "2026-10-26T05:07:08.63Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python /work/.claude/skills/taxi-fare-estimator/scripts/check_input.py --distance \\\"1.25 公里\\\" --night_status \\\"非夜間\\\"\", \"description\": \"檢查第一筆輸入\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 92, \"invocation_id\": \"call_hmSrnCdNaFR4ExcnZHWlLdE3\", \"result_summary\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --distance --night_status 非夜間\"}"
+        },
+        {
+          "TraceEventID": "43f79164-7d68-4d93-992b-a9088b698b47",
+          "OccurredAt": "2026-10-26T05:07:08.715Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --distance --night_status 夜間\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "4ac2e800-2827-4d42-8ce1-184a383b6c86",
+          "OccurredAt": "2026-10-26T05:07:08.715Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python /work/.claude/skills/taxi-fare-estimator/scripts/check_input.py --distance \\\"-0.5 公里\\\" --night_status \\\"夜間\\\"\", \"description\": \"檢查第二筆輸入\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 101, \"invocation_id\": \"call_v2LwXTrTwy4kzR9oMKTgoBoV\", \"result_summary\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --distance --night_status 夜間\"}"
+        },
+        {
+          "TraceEventID": "611d2cc5-1743-42a3-962a-b9961dd8c013",
+          "OccurredAt": "2026-10-26T05:07:08.783Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --distance --night_status 非夜間\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "e8dee890-aac6-4a09-8971-b7eb386e16f1",
+          "OccurredAt": "2026-10-26T05:07:08.783Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python /work/.claude/skills/taxi-fare-estimator/scripts/check_input.py --distance \\\"1.251 公里\\\" --night_status \\\"非夜間\\\"\", \"description\": \"檢查第三筆輸入\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 150, \"invocation_id\": \"call_Zc5F6bliWNbEOTDmk16ueOUE\", \"result_summary\": \"Exit code 2\\nusage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\ncheck_input.py: error: unrecognized arguments: --distance --night_status 非夜間\"}"
+        },
+        {
+          "TraceEventID": "e0f28393-dd62-4c82-9fed-cdf56285cf54",
+          "OccurredAt": "2026-10-26T05:07:12.441Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"usage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\n\\nNormalize and validate input values against scripts/input_schema.json. Writes\\nchecked.json; every later step reads only that file.\\n\\npositional arguments:\\n  input            JSON file: {\\\"records\\\": [{field: value as given}, ...]}\\n\\noptions:\\n  -h, --help       show this help message and exit\\n  --schema SCHEMA\\n  --out OUT\\n  --today TODAY    YYYY-MM-DD when the message states today's date\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "ce8c5145-172f-4e96-a9ed-8ad7091505ea",
+          "OccurredAt": "2026-10-26T05:07:12.441Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python /work/.claude/skills/taxi-fare-estimator/scripts/check_input.py --help\", \"description\": \"查看輸入檢查器參數格式\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 75, \"invocation_id\": \"call_JpC7oD2OrruuNHpyVhAIVCee\", \"result_summary\": \"usage: check_input.py [-h] [--schema SCHEMA] [--out OUT] [--today TODAY] input\\n\\nNormalize and validate input values against scripts/input_schema.json. Writes\\nchecked.json; every later step reads only that file.\\n\\npositional arguments:\\n  input            JSON file: {\\\"records\\\": [{field: value as given}, ...]}\\n\\noptions:\\n  -h, --help       show this help message and exit\\n  --schema SCHEMA\\n  --out OUT\\n  --today TODAY    YYYY-MM-DD when the message states today's date\"}"
+        },
+        {
+          "TraceEventID": "2b6a0ea9-deec-4726-8df8-9a40f589c6d9",
+          "OccurredAt": "2026-10-26T05:07:18.552Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 387, \"resource_path\": \"taxi-fare-estimator/scripts/input_schema.json\"}"
+        },
+        {
+          "TraceEventID": "d14582e4-0779-48ea-812a-f8100d6e189f",
+          "OccurredAt": "2026-10-26T05:07:18.552Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/taxi-fare-estimator/scripts/input_schema.json\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 11, \"invocation_id\": \"call_sj0YGG0fQvrXEj8OZGfWCvN8\", \"result_summary\": \"1\\t{\\n2\\t  \\\"fields\\\": [\\n3\\t    {\\n4\\t      \\\"name\\\": \\\"distance\\\",\\n5\\t      \\\"type\\\": \\\"number\\\",\\n6\\t      \\\"min\\\": 0,\\n7\\t      \\\"units\\\": {\\n8\\t        \\\"公里\\\": 1,\\n9\\t        \\\"公尺\\\": 0.001,\\n10\\t        \\\"km\\\": 1,\\n11\\t        \\\"m\\\": 0.001\\n12\\t      }\\n13\\t    },\\n14\\t    {\\n15\\t      \\\"name\\\": \\\"night_status\\\",\\n16\\t      \\\"type\\\": \\\"text\\\"\\n17\\t    },\\n18\\t    {\\n19\\t      \\\"name\\\": \\\"ride_time\\\",\\n20\\t      \\\"type\\\": \\\"text\\\"\\n21\\t    }\\n22\\t  ]\\n23\\t}\\n24\\t\"}"
+        },
+        {
+          "TraceEventID": "003d3ac7-20f2-4997-a899-e4cd50c2fbf9",
+          "OccurredAt": "2026-10-26T05:07:25.637Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\ncannot read input: [Errno 2] No such file or directory: 'scripts/input_schema.json'\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "45a9d81f-2152-4cf4-8b0a-1bb0d1f326d8",
+          "OccurredAt": "2026-10-26T05:07:25.637Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python -c 'import json; json.dump({\\\"records\\\":[{\\\"distance\\\":\\\"1.25 公里\\\",\\\"night_status\\\":\\\"非夜間\\\"},{\\\"distance\\\":\\\"-0.5 公里\\\",\\\"night_status\\\":\\\"夜間\\\"},{\\\"distance\\\":\\\"1.251 公里\\\",\\\"night_status\\\":\\\"非夜間\\\"}]}, open(\\\"/tmp/taxi_inputs.json\\\",\\\"w\\\",encoding=\\\"utf-8\\\"), ensure_ascii=False)' \u0026\u0026 python /work/.claude/skills/taxi-fare-estimator/scripts/check_input.py /tmp/taxi_inputs.json --out /tmp/taxi_checked.json\", \"description\": \"依正確格式檢查三筆輸入\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 140, \"invocation_id\": \"call_AyaonovsasSvbS1pShYPZf6o\", \"result_summary\": \"Exit code 2\\ncannot read input: [Errno 2] No such file or directory: 'scripts/input_schema.json'\"}"
+        },
+        {
+          "TraceEventID": "4ab46776-4b54-48ef-b8b2-8c9a4bd4bdc4",
+          "OccurredAt": "2026-10-26T05:07:28.672Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"假設：今天以系統日期 2026-10-26 計\\n未提供：第 1 筆「ride_time」\\n無法採用：第 2 筆「distance」「-0.5 公里」小於可能的最小值 0，不拿它計算\\n未提供：第 2 筆「ride_time」\\n未提供：第 3 筆「ride_time」\\nOK：2/3 筆可直接計算，結果在 /tmp/taxi_checked.json\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "efb3e88f-74ce-4583-ae52-865525b1c0ff",
+          "OccurredAt": "2026-10-26T05:07:28.672Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/taxi-fare-estimator \u0026\u0026 python scripts/check_input.py /tmp/taxi_inputs.json --out /tmp/taxi_checked.json\", \"description\": \"從技能目錄檢查三筆輸入\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 137, \"invocation_id\": \"call_psZnGNQpGEha7gBSgGrNMh7f\", \"result_summary\": \"假設：今天以系統日期 2026-10-26 計\\n未提供：第 1 筆「ride_time」\\n無法採用：第 2 筆「distance」「-0.5 公里」小於可能的最小值 0，不拿它計算\\n未提供：第 2 筆「ride_time」\\n未提供：第 3 筆「ride_time」\\nOK：2/3 筆可直接計算，結果在 /tmp/taxi_checked.json\"}"
+        },
+        {
+          "TraceEventID": "ee8e6a96-a831-4682-bb39-3b28a329cec1",
+          "OccurredAt": "2026-10-26T05:07:31.382Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/tmp/taxi_checked.json\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 7, \"invocation_id\": \"call_gjYHihdYqODQphSv6LzVaTwg\", \"result_summary\": \"1\\t{\\n2\\t  \\\"today\\\": \\\"2026-10-26\\\",\\n3\\t  \\\"records\\\": [\\n4\\t    {\\n5\\t      \\\"values\\\": {\\n6\\t        \\\"distance\\\": 1.25,\\n7\\t        \\\"night_status\\\": \\\"非夜間\\\"\\n8\\t      },\\n9\\t      \\\"rejected\\\": {},\\n10\\t      \\\"missing\\\": [\\n11\\t        \\\"ride_time\\\"\\n12\\t      ],\\n13\\t      \\\"assumptions\\\": []\\n14\\t    },\\n15\\t    {\\n16\\t      \\\"values\\\": {\\n17\\t        \\\"night_status\\\": \\\"夜間\\\"\\n18\\t      },\\n19\\t      \\\"rejected\\\": {\\n20\\t        \\\"distance\\\": \\\"「-0.5 公里」小於可能的最小值 0\\\"\\n21\\t      },\\n22\\t      \\\"missing\\\": [\\n23\\t        \\\"ride_time\\\"\\n24\\t      ],\\n25\\t      \\\"assumptions\\\": []\\n26\\t    },\\n27\\t    {\\n28\\t      \\\"values\\\": {\\n29\\t        \\\"distance\\\": 1.251,\\n30\\t        \\\"night_status\\\": \\\"非夜間\\\"\\n31\\t      },\\n32\\t      \\\"rejected\\\": {},\\n33\\t      \\\"missing\\\": [\\n34\\t        \\\"ride_time\\\"\\n35\\t      ],\\n36\\t      \\\"assumptions\\\": []\\n37\\t    }\\n38\\t  ]\\n39\\t}\"}"
+        },
+        {
+          "TraceEventID": "cbd8417b-1a15-45ca-b6a3-48b83c4c9636",
+          "OccurredAt": "2026-10-26T05:07:36.661Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"車資：85 元\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "e9dcc2bd-f4ad-4a48-862d-284332f0ce92",
+          "OccurredAt": "2026-10-26T05:07:36.661Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python scripts/taxi_fare.py --distance-km \\\"1.25\\\" --night \\\"非夜間\\\"\", \"description\": \"計算第一筆有效車資\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 59, \"invocation_id\": \"call_7MvWZfUqnDYEBcB6RyI8PQVx\", \"result_summary\": \"車資：85 元\"}"
+        },
+        {
+          "TraceEventID": "53981a9f-0d2d-4b1f-ab4a-ec478fe8a539",
+          "OccurredAt": "2026-10-26T05:07:36.753Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"車資：90 元\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "4b086fcd-0608-4f79-a560-9e20a247acaa",
+          "OccurredAt": "2026-10-26T05:07:36.754Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python scripts/taxi_fare.py --distance-km \\\"1.251\\\" --night \\\"非夜間\\\"\", \"description\": \"計算第三筆有效車資\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 70, \"invocation_id\": \"call_Qvx8z6KAg1BxpvXUPxB4gnf4\", \"result_summary\": \"車資：90 元\"}"
+        },
+        {
+          "TraceEventID": "c9222c04-f896-47ee-ae1e-3e56f6acd1b0",
+          "OccurredAt": "2026-10-26T05:07:39.409Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"1. **1.25 公里，非夜間：85 元**\\n2. **-0.5 公里，夜間：未計算**，里程小於可能的最小值 0。\\n3. **1.251 公里，非夜間：90 元**\\n\\n輸入檢查器的讀值假設（原文）：\\n- 假設：今天以系統日期 2026-10-26 計\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "2003b352-d170-4975-a5a8-39d13e7e3c92",
+          "OccurredAt": "2026-10-26T05:07:39.557Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"1. **1.25 公里，非夜間：85 元**\\n2. **-0.5 公里，夜間：未計算**，里程小於可能的最小值 0。\\n3. **1.251 公里，非夜間：90 元**\\n\\n輸入檢查器的讀值假設（原文）：\\n- 假設：今天以系統日期 2026-10-26 計\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "83f7e67f-267d-485c-8a44-7e45ed13087b",
+          "OccurredAt": "2026-10-26T05:07:43.619Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.00536211, \"cost_source\": \"gateway\", \"duration_ms\": 45306, \"input_tokens\": 1734, \"token_source\": \"result\", \"output_tokens\": 1660, \"cache_read_input_tokens\": 173031, \"cache_write_input_tokens\": 20608}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "a6c94d41-4028-402e-a328-0acaf7a58ed7",
+        "Result": "passed",
+        "Reason": "指出 -0.5 公里低於允許的里程下限，且未提供該筆車資。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**-0.5 公里，夜間：未計算**，里程小於可能的最小值 0。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "9ebbabd5-47a9-4487-b9e8-73e8b724c7de",
+        "Result": "passed",
+        "Reason": "輸出 1.25 公里、非夜間的車資為 85 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**1.25 公里，非夜間：85 元**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "f6b30c7d-61b3-4630-bfab-4f8356591a6b",
+        "Result": "passed",
+        "Reason": "輸出 1.251 公里、非夜間的車資為 90 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**1.251 公里，非夜間：90 元**"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "三項驗收條件均已達成：兩筆有效里程的車資正確，負里程則未計算。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v4",
+    "Usage": {
+      "PromptTokens": 6449,
+      "CompletionTokens": 396,
+      "CostUSD": 0.0173923,
+      "CostReported": true
+    }
+  }
+}

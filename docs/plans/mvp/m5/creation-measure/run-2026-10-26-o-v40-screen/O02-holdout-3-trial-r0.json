@@ -1,0 +1,117 @@
+{
+  "round": 0,
+  "sample_input": "三家分店這個月營業額：甲店 80,000、乙店 -45,000、丙店 250,000，各自抽成多少？",
+  "acceptance_criteria": [
+    {
+      "text": "甲店為 16,000 元（80,000×20%），丙店為 42,500 元（20,000+150,000×15%）"
+    },
+    {
+      "text": "明確指出乙店 -45,000 元不合理（營業額不得為負），沒有給出乙店的抽成金額"
+    }
+  ],
+  "final_output": "依累進費率計算如下：\n\n- **甲店｜營業額 80,000 元**\n  - 第 1 級：80,000 元 × 20% = 16,000 元\n  - 第 2 級：0 元 × 15% = 0 元\n  - 第 3 級：0 元 × 10% = 0 元\n  - 未取整小計：16,000 元；**抽成 16,000 元**\n\n- **乙店｜營業額 -45,000 元**\n  - 營業額為負數，屬無效金額；**不計算抽成**\n\n- **丙店｜營業額 250,000 元**\n  - 第 1 級：100,000 元 × 20% = 20,000 元\n  - 第 2 級：150,000 元 × 15% = 22,500 元\n  - 第 3 級：0 元 × 10% = 0 元\n  - 未取整小計：42,500 元；**抽成 42,500 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8f69c806-eebf-4bf7-ba0f-bd160d33eaba",
+    "run_id": "08860023-5f0d-48c8-a500-2dae21415c1b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "甲店與丙店的抽成金額及計算均正確；乙店的負營業額被判為無效，未計算抽成。",
+    "criterion_results": [
+      {
+        "criterion_id": "ee050581-cb9e-472c-ac1f-0d8b9a90c4f1",
+        "text": "甲店為 16,000 元（80,000×20%），丙店為 42,500 元（20,000+150,000×15%）",
+        "result": "passed",
+        "source": "model",
+        "reason": "甲店抽成為 16,000 元；丙店以首級 20,000 元加上第二級 22,500 元，得出 42,500 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 級：80,000 元 × 20% = 16,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 級：100,000 元 × 20% = 20,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第 2 級：150,000 元 × 15% = 22,500 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "未取整小計：42,500 元；**抽成 42,500 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a786d3b3-df45-49e0-ae48-57a2a3fef247",
+        "text": "明確指出乙店 -45,000 元不合理（營業額不得為負），沒有給出乙店的抽成金額",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出乙店 -45,000 元為負數、屬無效金額，且未給出乙店抽成金額。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**乙店｜營業額 -45,000 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "營業額為負數，屬無效金額；**不計算抽成**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1521 input and 730 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

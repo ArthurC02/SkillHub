@@ -1,0 +1,295 @@
+{
+  "round": 2,
+  "sample_input": "請依累進規則計算以下各店家的當月平台抽成，金額以元為單位，小數元四捨五入至整數元，並標示負營業額為無效。\n店家,營業額（元）\n甲,0\n乙,100000\n丙,100001\n丁,300000\n戊,300001\n己,100010\n庚,-1",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入中營業額為 0 的店家，輸出抽成 0 元。"
+    },
+    {
+      "text": "試跑輸入中營業額為 100,000 元的店家，輸出抽成 20,000 元，且 100,000 元全數按 20% 計算。"
+    },
+    {
+      "text": "試跑輸入中營業額為 100,001 元的店家，輸出抽成 20,000 元；計算須按累進方式，未超過 100,000 元的部分按 20%、超出的部分按 15%，再四捨五入至整數元。"
+    },
+    {
+      "text": "試跑輸入中營業額為 300,000 元的店家，輸出抽成 50,000 元；前 100,000 元按 20%，其後 200,000 元按 15%。"
+    },
+    {
+      "text": "試跑輸入中營業額為 300,001 元的店家，輸出抽成 50,000 元；超過 300,000 元的部分按 10%，再四捨五入至整數元。"
+    },
+    {
+      "text": "試跑輸入中營業額為 100,010 元的店家，輸出抽成 20,002 元：20,000 + 1.5 = 20,001.5，四捨五入至整數元為 20,002 元。"
+    },
+    {
+      "text": "試跑輸入中營業額為 -1 元的店家，須標示營業額無效，不得輸出其抽成金額。"
+    },
+    {
+      "text": "輸出須逐一對應輸入中的店家，列出抽成金額（元）或無效提示，不得把不同店家的結果混在一起。"
+    }
+  ],
+  "final_output": "依累進費率逐級計算如下（抽成小計先不取整，再四捨五入至整數元）：\n\n**甲｜營業額 0 元**\n- 前 100,000 元：計入 0 元 × 20%＝0 元\n- 超過 100,000 元至 300,000 元：計入 0 元 × 15%＝0 元\n- 超過 300,000 元：計入 0 元 × 10%＝0 元\n- 未取整小計：0 元；四捨五入後抽成：**0 元**\n\n**乙｜營業額 100,000 元**\n- 前 100,000 元：計入 100,000 元 × 20%＝20,000 元\n- 超過 100,000 元至 300,000 元：計入 0 元 × 15%＝0 元\n- 超過 300,000 元：計入 0 元 × 10%＝0 元\n- 未取整小計：20,000 元；四捨五入後抽成：**20,000 元**\n\n**丙｜營業額 100,001 元**\n- 前 100,000 元：計入 100,000 元 × 20%＝20,000 元\n- 超過 100,000 元至 300,000 元：計入 1 元 × 15%＝0.15 元\n- 超過 300,000 元：計入 0 元 × 10%＝0 元\n- 未取整小計：20,000.15 元；四捨五入後抽成：**20,000 元**\n\n**丁｜營業額 300,000 元**\n- 前 100,000 元：計入 100,000 元 × 20%＝20,000 元\n- 超過 100,000 元至 300,000 元：計入 200,000 元 × 15%＝30,000 元\n- 超過 300,000 元：計入 0 元 × 10%＝0 元\n- 未取整小計：50,000 元；四捨五入後抽成：**50,000 元**\n\n**戊｜營業額 300,001 元**\n- 前 100,000 元：計入 100,000 元 × 20%＝20,000 元\n- 超過 100,000 元至 300,000 元：計入 200,000 元 × 15%＝30,000 元\n- 超過 300,000 元：計入 1 元 × 10%＝0.10 元\n- 未取整小計：50,000.10 元；四捨五入後抽成：**50,000 元**\n\n**己｜營業額 100,010 元**\n- 前 100,000 元：計入 100,000 元 × 20%＝20,000 元\n- 超過 100,000 元至 300,000 元：計入 10 元 × 15%＝1.50 元\n- 超過 300,000 元：計入 0 元 × 10%＝0 元\n- 未取整小計：20,001.50 元；四捨五入後抽成：**20,002 元**\n\n**庚｜營業額 -1 元：無效（營業額不得為負），不計算抽成。**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c8d4b95b-ead2-4246-883a-60a21a6a915e",
+    "run_id": "93647623-e74a-4217-a907-3a60c0409a11",
+    "status": "completed",
+    "overall": "met",
+    "summary": "八項驗收條件均已達成：各店抽成與累進計算、整數元四捨五入結果相符，負營業額亦正確標為無效。",
+    "criterion_results": [
+      {
+        "criterion_id": "c81f3e16-e8c5-4bcb-94bd-26dd637b81c6",
+        "text": "試跑輸入中營業額為 0 的店家，輸出抽成 0 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "甲的營業額為 0 元，輸出抽成 0 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**甲｜營業額 0 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "未取整小計：0 元；四捨五入後抽成：**0 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cebbae4d-0d17-4c3c-8e51-69d0e0370bfd",
+        "text": "試跑輸入中營業額為 100,000 元的店家，輸出抽成 20,000 元，且 100,000 元全數按 20% 計算。",
+        "result": "passed",
+        "source": "model",
+        "reason": "乙的 100,000 元全數按 20% 計算，抽成為 20,000 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**乙｜營業額 100,000 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "前 100,000 元：計入 100,000 元 × 20%＝20,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "未取整小計：20,000 元；四捨五入後抽成：**20,000 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "48cc71a0-f1f6-43d0-a7b5-a33c0520c6bd",
+        "text": "試跑輸入中營業額為 100,001 元的店家，輸出抽成 20,000 元；計算須按累進方式，未超過 100,000 元的部分按 20%、超出的部分按 15%，再四捨五入至整數元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "丙的前 100,000 元按 20%、超出 1 元按 15% 計算，20,000.15 元四捨五入後為 20,000 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**丙｜營業額 100,001 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "前 100,000 元：計入 100,000 元 × 20%＝20,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "超過 100,000 元至 300,000 元：計入 1 元 × 15%＝0.15 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "未取整小計：20,000.15 元；四捨五入後抽成：**20,000 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d0da35c4-9161-4e55-9708-79141096010d",
+        "text": "試跑輸入中營業額為 300,000 元的店家，輸出抽成 50,000 元；前 100,000 元按 20%，其後 200,000 元按 15%。",
+        "result": "passed",
+        "source": "model",
+        "reason": "丁的前 100,000 元按 20%、其後 200,000 元按 15% 計算，抽成為 50,000 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**丁｜營業額 300,000 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "超過 100,000 元至 300,000 元：計入 200,000 元 × 15%＝30,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "未取整小計：50,000 元；四捨五入後抽成：**50,000 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c3a7cf8f-b659-4881-b848-43af29b7cc53",
+        "text": "試跑輸入中營業額為 300,001 元的店家，輸出抽成 50,000 元；超過 300,000 元的部分按 10%，再四捨五入至整數元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "戊超過 300,000 元的 1 元按 10% 計算，總抽成 50,000.10 元四捨五入後為 50,000 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**戊｜營業額 300,001 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "超過 300,000 元：計入 1 元 × 10%＝0.10 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "未取整小計：50,000.10 元；四捨五入後抽成：**50,000 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2741b79f-64bd-4d9b-a520-ed9d4df2a35a",
+        "text": "試跑輸入中營業額為 100,010 元的店家，輸出抽成 20,002 元：20,000 + 1.5 = 20,001.5，四捨五入至整數元為 20,002 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "己的超出部分產生 1.50 元抽成，合計 20,001.50 元，四捨五入為 20,002 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**己｜營業額 100,010 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "超過 100,000 元至 300,000 元：計入 10 元 × 15%＝1.50 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "未取整小計：20,001.50 元；四捨五入後抽成：**20,002 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "986c85b4-e7eb-4702-a710-94f26f0ede1c",
+        "text": "試跑輸入中營業額為 -1 元的店家，須標示營業額無效，不得輸出其抽成金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "庚的 -1 元營業額標示為無效，且未輸出抽成金額。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**庚｜營業額 -1 元：無效（營業額不得為負），不計算抽成。**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f14f7da7-55db-4efb-aa5d-99c675c657d1",
+        "text": "輸出須逐一對應輸入中的店家，列出抽成金額（元）或無效提示，不得把不同店家的結果混在一起。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出分別列出甲至己的抽成，並單獨列出庚的無效提示，結果未混用。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**甲｜營業額 0 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**乙｜營業額 100,000 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**丙｜營業額 100,001 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**丁｜營業額 300,000 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**戊｜營業額 300,001 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**己｜營業額 100,010 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**庚｜營業額 -1 元：無效（營業額不得為負），不計算抽成。**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1501 input and 1334 output tokens on skillhub-run; reported cost $0.0028 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 45,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

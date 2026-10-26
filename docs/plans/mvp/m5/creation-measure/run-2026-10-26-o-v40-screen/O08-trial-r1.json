@@ -1,0 +1,118 @@
+{
+  "round": 1,
+  "sample_input": "請依第 1 案資料撰寫候補遞補通知簡訊。\n今天日期：2026/10/26\n學員姓名：林小安\n課程名稱：Python資料分析入門\n開課日期：2026/11/05\n回覆期限：2026/10/30\n\n請依第 2 案資料撰寫候補遞補通知簡訊。\n今天日期：2026/10/26\n學員姓名：陳怡君\n課程名稱：日文會話\n開課日期：2026/11/05\n回覆期限：2026/10/25\n\n請依第 3 案資料撰寫候補遞補通知簡訊。\n今天日期：2026/10/26\n學員姓名：甲乙丙丁戊己庚辛壬癸甲乙丙丁戊己庚辛壬癸甲乙丙丁戊己庚辛壬癸\n課程名稱：資料科學實務專題課程資料科學實務專題課程資料科學實務專題課程資料科學實務專題課程\n開課日期：2026/11/05\n回覆期限：2026/10/30",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 案：輸出一則簡訊，原樣包含姓名、課程名稱、開課日期和回覆期限；簡訊全文包含標點、空白與數字在內不超過 60 個字，且不超過該案提供的回覆期限。"
+    },
+    {
+      "text": "試跑輸入第 2 案：不產生簡訊，並明確說明回覆期限早於今天日期。"
+    },
+    {
+      "text": "試跑輸入第 3 案：不產生簡訊，並說明必填內容無法在 60 個字內完整呈現。"
+    }
+  ],
+  "final_output": "第1案：【候補遞補】林小安，Python資料分析入門於2026-11-05開課，請於2026-10-30前回覆。\n\n第2案：無法採用：第 2 筆「reply_deadline」「2026-10-25」早於「today」2026-10-26，不拿它計算  \n請確認回覆期限後再產生通知。\n\n第3案：未產生簡訊：必填內容無法在60個字內完整呈現。",
+  "artifacts": [
+    "sms-case-1.txt",
+    "sms-case-3.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "605e73e2-736f-4213-a990-1f44cbd58e91",
+    "run_id": "fb8a636b-7827-4481-9910-28059899a111",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三案均符合驗收條件：第 1 案產生符合字數及期限要求的簡訊；第 2、3 案未產生簡訊，且分別說明期限過早與內容超長。",
+    "criterion_results": [
+      {
+        "criterion_id": "b5795e16-3e91-49c6-99f0-6cd4d2c120ae",
+        "text": "試跑輸入第 1 案：輸出一則簡訊，原樣包含姓名、課程名稱、開課日期和回覆期限；簡訊全文包含標點、空白與數字在內不超過 60 個字，且不超過該案提供的回覆期限。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 案產生一則 52 字的簡訊，原樣包含姓名、課程名稱、開課日期及回覆期限；要求回覆的日期就是該案期限。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "【候補遞補】林小安，Python資料分析入門於2026-11-05開課，請於2026-10-30前回覆。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fef7a206-470f-4c0b-9da6-c0ae2071a280",
+        "text": "試跑輸入第 2 案：不產生簡訊，並明確說明回覆期限早於今天日期。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 案沒有產生簡訊，並明確指出回覆期限 2026-10-25 早於今天 2026-10-26。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第2案：無法採用：第 2 筆「reply_deadline」「2026-10-25」早於「today」2026-10-26，不拿它計算",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9e69cc11-4626-41e7-870d-e3b825b3de80",
+        "text": "試跑輸入第 3 案：不產生簡訊，並說明必填內容無法在 60 個字內完整呈現。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 案沒有產生簡訊，並說明必填內容無法在 60 字內完整呈現。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第3案：未產生簡訊：必填內容無法在60個字內完整呈現。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 2 readable output file(s): sms-case-1.txt, sms-case-3.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1628 input and 2883 output tokens on skillhub-run; reported cost $0.0053 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

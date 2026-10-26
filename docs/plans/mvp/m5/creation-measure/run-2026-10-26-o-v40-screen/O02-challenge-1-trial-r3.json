@@ -1,0 +1,135 @@
+{
+  "round": 3,
+  "sample_input": "請計算以下店家的當月平台抽成。\n店家,營業額（萬元）\n甲,10\n乙,20.001",
+  "acceptance_criteria": [
+    {
+      "text": "說明採用的讀法：表中的營業額單位「萬元」按每 1 萬元等於 10,000 元換算為元，並直接計算，不反問。"
+    },
+    {
+      "text": "甲換算為 100,000 元，抽成為 20,000 元。"
+    },
+    {
+      "text": "乙換算為 200,010 元；抽成小計為 20,000 + 100,010 × 15% = 35,001.5 元，四捨五入後為 35,002 元。"
+    }
+  ],
+  "final_output": "依 1 萬 = 10,000 元計算：\n\n- **甲**：營業額 100,000 元  \n  - 第 1 級：100,000 × 20% = 20,000 元\n  - 第 2 級：0 × 15% = 0 元\n  - 第 3 級：0 × 10% = 0 元  \n  - 未取整小計：20,000 元；**抽成：20,000 元**\n\n- **乙**：營業額 200,010 元  \n  - 第 1 級：100,000 × 20% = 20,000 元\n  - 第 2 級：100,010 × 15% = 15,001.5 元\n  - 第 3 級：0 × 10% = 0 元  \n  - 未取整小計：35,001.5 元；四捨五入後 **抽成：35,002 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4b257c16-38d1-4a79-b884-b990d9a9267c",
+    "run_id": "065d62c9-7a8f-49f0-b65c-583838ee9a32",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項驗收標準均已達成：單位換算明確，甲、乙的抽成及乙的四捨五入結果皆正確。",
+    "criterion_results": [
+      {
+        "criterion_id": "188a83fe-e8ee-48c3-a1bc-915504e32555",
+        "text": "說明採用的讀法：表中的營業額單位「萬元」按每 1 萬元等於 10,000 元換算為元，並直接計算，不反問。",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確說明以 1 萬等於 10,000 元換算，並直接給出計算結果，沒有反問。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "依 1 萬 = 10,000 元計算：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "119e0550-e4d0-4ecc-a885-8d8022a0dd52",
+        "text": "甲換算為 100,000 元，抽成為 20,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "甲的營業額換算為 100,000 元，抽成為 20,000 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **甲**：營業額 100,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "未取整小計：20,000 元；**抽成：20,000 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dc8af33c-4e88-48c8-acfa-2f818bea3b7d",
+        "text": "乙換算為 200,010 元；抽成小計為 20,000 + 100,010 × 15% = 35,001.5 元，四捨五入後為 35,002 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "乙換算為 200,010 元；列出的兩級抽成合計為 35,001.5 元，四捨五入後為 35,002 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **乙**：營業額 200,010 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 級：100,000 × 20% = 20,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第 2 級：100,010 × 15% = 15,001.5 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "未取整小計：35,001.5 元；四捨五入後 **抽成：35,002 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1501 input and 433 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

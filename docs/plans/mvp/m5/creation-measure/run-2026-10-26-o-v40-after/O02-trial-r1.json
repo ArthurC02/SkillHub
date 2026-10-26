@@ -1,0 +1,201 @@
+{
+  "round": 1,
+  "sample_input": "請逐筆計算以下店家的平台抽成金額，負營業額請標示為無效。\n甲店, 0\n乙店, 100000\n丙店, 100001\n丁店, 300000\n戊店, 300001\n己店, 500000\n庚店, -1",
+  "acceptance_criteria": [
+    {
+      "text": "對營業額 0 元與 100,000 元，分別回覆抽成 0.00 元與 20,000.00 元。"
+    },
+    {
+      "text": "對營業額 100,001 元與 300,000 元，分別回覆抽成 20,000.15 元與 50,000.00 元；第二級只計算超過 100,000 元的部分。"
+    },
+    {
+      "text": "對營業額 300,001 元與 500,000 元，分別回覆抽成 50,000.10 元與 70,000.00 元；第三級只計算超過 300,000 元的部分。"
+    },
+    {
+      "text": "對負營業額 -1 元，不計算抽成，並將該筆標示為無效。"
+    },
+    {
+      "text": "每筆結果均保留店家名稱，金額以元呈現並顯示兩位小數；無效筆也須能對應到原店家。"
+    }
+  ],
+  "final_output": "- 甲店：0.00 元\n- 乙店：20,000.00 元\n- 丙店：20,000.15 元\n- 丁店：50,000.00 元\n- 戊店：50,000.10 元\n- 己店：70,000.00 元\n- 庚店：無效",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "da084817-94f1-4050-a8ef-38c96e84bc54",
+    "run_id": "263c420e-1ff7-4535-83ef-92c332ef9eb6",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有級距邊界的抽成金額均正確；負營業額標示為無效。每筆結果皆保留店名，有效金額均以元顯示兩位小數。",
+    "criterion_results": [
+      {
+        "criterion_id": "3418d9b3-0291-4b0f-964c-fc23cee998cc",
+        "text": "對營業額 0 元與 100,000 元，分別回覆抽成 0.00 元與 20,000.00 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "甲店與乙店的抽成分別為 0.00 元及 20,000.00 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 甲店：0.00 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 乙店：20,000.00 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b2f8da70-642c-4252-b4b7-f2e8c2e8ae43",
+        "text": "對營業額 100,001 元與 300,000 元，分別回覆抽成 20,000.15 元與 50,000.00 元；第二級只計算超過 100,000 元的部分。",
+        "result": "passed",
+        "source": "model",
+        "reason": "丙店與丁店的金額正確，符合第二級僅對超過 100,000 元的部分計算。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 丙店：20,000.15 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 丁店：50,000.00 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "887a2471-3e48-4d9c-b91e-f0fcfd949433",
+        "text": "對營業額 300,001 元與 500,000 元，分別回覆抽成 50,000.10 元與 70,000.00 元；第三級只計算超過 300,000 元的部分。",
+        "result": "passed",
+        "source": "model",
+        "reason": "戊店與己店的金額正確，符合第三級僅對超過 300,000 元的部分計算。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 戊店：50,000.10 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 己店：70,000.00 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d9e956b1-62ec-487e-9b8d-75f7162ff471",
+        "text": "對負營業額 -1 元，不計算抽成，並將該筆標示為無效。",
+        "result": "passed",
+        "source": "model",
+        "reason": "庚店的負營業額被標示為無效，未列出抽成金額。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 庚店：無效",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1a786d67-9a1a-467b-982f-fb787eae1f40",
+        "text": "每筆結果均保留店家名稱，金額以元呈現並顯示兩位小數；無效筆也須能對應到原店家。",
+        "result": "passed",
+        "source": "model",
+        "reason": "七筆結果均保留店名；有效筆以元顯示兩位小數，無效筆也能對應庚店。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 甲店：0.00 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 乙店：20,000.00 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 丙店：20,000.15 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 丁店：50,000.00 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 戊店：50,000.10 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 己店：70,000.00 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 庚店：無效",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1667 input and 1746 output tokens on skillhub-run; reported cost $0.0055 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 50,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

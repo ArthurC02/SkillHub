@@ -1,0 +1,115 @@
+{
+  "round": 1,
+  "sample_input": "請依規則計算以下各筆車資：\n1.25 公里，22:59 搭乘\n1.25 公里，23:01 搭乘\n1.25 公里，05:59 搭乘\n1.25 公里，06:01 搭乘",
+  "acceptance_criteria": [
+    {
+      "text": "22:59 不在夜間時段，輸出 85 元；23:01 在夜間時段，輸出 105 元。"
+    },
+    {
+      "text": "05:59 在夜間時段，輸出 105 元；06:01 不在夜間時段，輸出 85 元。"
+    }
+  ],
+  "final_output": "1. **1.25 公里，22:59 搭乘**：車資 **85 元**\n2. **1.25 公里，23:01 搭乘**：車資 **105 元**\n3. **1.25 公里，05:59 搭乘**：車資 **105 元**\n4. **1.25 公里，06:01 搭乘**：車資 **85 元**",
+  "artifacts": [
+    "taxi-fares-checked.json",
+    "taxi-fares-input.json"
+  ],
+  "evaluation": {
+    "evaluation_id": "72471dac-75f1-4f6f-af1e-fcf3e4410398",
+    "run_id": "687b144b-4bd6-4155-a039-55966ea77195",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四筆車資均正確；23:00 與 06:00 前後的夜間加收結果符合驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "cba37cd1-70a3-4073-955c-3aec6dfea9b5",
+        "text": "22:59 不在夜間時段，輸出 85 元；23:01 在夜間時段，輸出 105 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終答覆列出 22:59 車資 85 元、23:01 車資 105 元，符合非夜間與夜間的時段及車資要求。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. **1.25 公里，22:59 搭乘**：車資 **85 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2. **1.25 公里，23:01 搭乘**：車資 **105 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5dd3d48a-f34a-42a4-8e3a-4260c283e978",
+        "text": "05:59 在夜間時段，輸出 105 元；06:01 不在夜間時段，輸出 85 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終答覆列出 05:59 車資 105 元、06:01 車資 85 元，符合夜間與非夜間的時段及車資要求。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. **1.25 公里，05:59 搭乘**：車資 **105 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "4. **1.25 公里，06:01 搭乘**：車資 **85 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 2 readable output file(s): taxi-fares-checked.json, taxi-fares-input.json"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1714 input and 1541 output tokens on skillhub-run; reported cost $0.0058 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 38,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

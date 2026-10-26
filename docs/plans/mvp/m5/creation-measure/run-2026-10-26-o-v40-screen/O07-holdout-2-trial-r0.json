@@ -1,0 +1,110 @@
+{
+  "round": 0,
+  "sample_input": "同一位顧客有兩張單都延誤：訂單 C101 晚了 15 分鐘補 30 元，訂單 C102 晚了 20 分鐘補 40 元，幫我寫道歉訊息。",
+  "acceptance_criteria": [
+    {
+      "text": "明確寫出以一則訊息合併或分兩則訊息處理的做法，沒有反問使用者"
+    },
+    {
+      "text": "每則訊息都不超過 2 句，且涵蓋的訂單都有編號、延誤分鐘數與補償金額（C101：15 分鐘、30 元；C102：20 分鐘、40 元）"
+    }
+  ],
+  "final_output": "",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f5aa501b-9cad-4c1d-98f6-71ed5ed3cf14",
+    "run_id": "68ceebbc-fedf-4ef9-81d1-b18959a5018d",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "試跑在生成道歉訊息前因輸入 token 超限而停止，沒有最終回覆，也沒有交付符合條件的訊息。",
+    "criterion_results": [
+      {
+        "criterion_id": "a793cfe9-28ef-46f4-89db-94fbdab1a0cd",
+        "text": "明確寫出以一則訊息合併或分兩則訊息處理的做法，沒有反問使用者",
+        "result": "failed",
+        "source": "model",
+        "reason": "試跑在產生最終回覆前停止，沒有向使用者明確寫出合併一則或分成兩則的處理方式。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "run stopped at its input token ceiling",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3d56485e-dd50-492d-94c9-63dba62dd81f",
+        "text": "每則訊息都不超過 2 句，且涵蓋的訂單都有編號、延誤分鐘數與補償金額（C101：15 分鐘、30 元；C102：20 分鐘、40 元）",
+        "result": "failed",
+        "source": "model",
+        "reason": "試跑沒有產出道歉訊息，因此未交付涵蓋兩筆訂單編號、延誤分鐘數及補償金額的訊息。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "run stopped at its input token ceiling",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "error",
+        "message": "the run ended as failed, classified workload_error: 這次試跑用掉的輸入 token 超過上限:已用 308878,上限 300000。此上限可跑的輪數取決於每輪的工具呼叫次數:純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪"
+      },
+      {
+        "category": "execution",
+        "severity": "error",
+        "message": "error event (execution/token_budget_exceeded): run stopped at its input token ceiling: 308431 of 300000 tokens (PDM-005 5.2a; the limit shown in the pre-run permission summary)"
+      },
+      {
+        "category": "execution",
+        "severity": "error",
+        "message": "error event (execution/workload_error): 這次試跑用掉的輸入 token 超過上限:已用 308878,上限 300000。此上限可跑的輪數取決於每輪的工具呼叫次數:純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1729 input and 1774 output tokens on skillhub-run; reported cost $0.0071 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 36,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  },
+  "read_errors": [
+    "final agent output: no rows in result set"
+  ]
+}

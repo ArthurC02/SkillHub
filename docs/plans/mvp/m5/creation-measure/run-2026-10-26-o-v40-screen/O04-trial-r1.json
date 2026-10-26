@@ -1,0 +1,174 @@
+{
+  "round": 1,
+  "sample_input": "請逐筆判定以下家電報修是否仍在 1 年保固內，並列出判定結果及過保天數（若適用）：\n編號 | 購買日期 | 報修日期\n1 | 2025-03-10 | 2026-03-09\n2 | 2025-03-10 | 2026-03-10\n3 | 2025-03-10 | 2026-03-12\n4 | 2025-03-10 | 2025-03-09\n5 | 2024-02-29 | 2025-02-27\n6 | 2024-02-29 | 2025-02-28",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 筆（2025-03-10 購買、2026-03-09 報修）應判定仍在保固內；保固最後一天為 2026-03-09。"
+    },
+    {
+      "text": "試跑輸入第 2 筆（2025-03-10 購買、2026-03-10 報修）應判定已過保 1 天。"
+    },
+    {
+      "text": "試跑輸入第 3 筆（2025-03-10 購買、2026-03-12 報修）應判定已過保 3 天。"
+    },
+    {
+      "text": "試跑輸入第 4 筆（2025-03-10 購買、2025-03-09 報修）應指出報修日期早於購買日期，且不給出保固狀態或過保天數。"
+    },
+    {
+      "text": "試跑輸入第 5 筆（2024-02-29 購買、2025-02-27 報修）應依所列閏日假設判定仍在保固內；保固最後一天為 2025-02-27。"
+    },
+    {
+      "text": "試跑輸入第 6 筆（2024-02-29 購買、2025-02-28 報修）應依所列閏日假設判定已過保 1 天。"
+    }
+  ],
+  "final_output": "| 編號 | 判定結果 | 保固最後一天 | 過保天數 |\n|---|---|---|---:|\n| 1 | 仍在保固內 | 2026-03-09 | — |\n| 2 | 已過保 | 2026-03-09 | 1 天 |\n| 3 | 已過保 | 2026-03-09 | 3 天 |\n| 4 | 日期錯誤：報修日期早於購買日期 | — | — |\n| 5 | 仍在保固內 | 2025-02-27 | — |\n| 6 | 已過保 | 2025-02-27 | 1 天 |\n\n日期檢查通過：6/6 筆。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a83646e0-6505-4fbb-b1d1-09a39762072a",
+    "run_id": "2030c84a-123c-4e2b-96ac-c9d287a4fc5b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六筆報修的最終判定均符合對應驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "4d6e3f55-c51f-4e1e-9023-f1ab1a9b0d3a",
+        "text": "試跑輸入第 1 筆（2025-03-10 購買、2026-03-09 報修）應判定仍在保固內；保固最後一天為 2026-03-09。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆判定仍在保固內，保固最後一天為 2026-03-09。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 仍在保固內 | 2026-03-09 | — |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d37a0824-1ea0-4072-8884-bf7288f17542",
+        "text": "試跑輸入第 2 筆（2025-03-10 購買、2026-03-10 報修）應判定已過保 1 天。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆判定已過保 1 天。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2 | 已過保 | 2026-03-09 | 1 天 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "325cd4b9-3f2e-4741-881e-babc5434d33a",
+        "text": "試跑輸入第 3 筆（2025-03-10 購買、2026-03-12 報修）應判定已過保 3 天。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆判定已過保 3 天。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | 已過保 | 2026-03-09 | 3 天 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "439d927d-e614-4511-8520-32abed03937c",
+        "text": "試跑輸入第 4 筆（2025-03-10 購買、2025-03-09 報修）應指出報修日期早於購買日期，且不給出保固狀態或過保天數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆指出報修日期早於購買日期，未給出保固狀態或過保天數。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 4 | 日期錯誤：報修日期早於購買日期 | — | — |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b2b4ba3c-6cca-4579-bacd-56f3ad6f3364",
+        "text": "試跑輸入第 5 筆（2024-02-29 購買、2025-02-27 報修）應依所列閏日假設判定仍在保固內；保固最後一天為 2025-02-27。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆判定仍在保固內，保固最後一天為 2025-02-27。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 5 | 仍在保固內 | 2025-02-27 | — |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5a9400e9-25bc-4003-b26c-349bd60da768",
+        "text": "試跑輸入第 6 筆（2024-02-29 購買、2025-02-28 報修）應依所列閏日假設判定已過保 1 天。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 筆判定已過保 1 天。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 6 | 已過保 | 2025-02-27 | 1 天 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1677 input and 2082 output tokens on skillhub-run; reported cost $0.0059 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 51,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

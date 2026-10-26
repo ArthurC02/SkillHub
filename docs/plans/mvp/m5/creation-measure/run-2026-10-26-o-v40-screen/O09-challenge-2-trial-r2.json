@@ -1,0 +1,102 @@
+{
+  "round": 2,
+  "sample_input": "請逐筆檢查以下租約提前終止通知期限，列出日期間隔及判定。\n搬離日：2026年8月31日；通知日：2026年7月31日",
+  "acceptance_criteria": [
+    {
+      "text": "將日期按一般年月日讀法解讀，並用一句話說明這項讀法假設，而不是反問日期格式。"
+    },
+    {
+      "text": "輸出日期間隔 31 天，判定通知足夠。"
+    }
+  ],
+  "final_output": "| 搬離日 | 通知日 | 日期間隔 | 判定 |\n|---|---|---:|---|\n| 2026年8月31日 | 2026年7月31日 | 31 天 | 通知足夠（至少提前 30 天）。 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "2da72f8a-8be6-45b2-9cef-2aa0ee6d8d13",
+    "run_id": "a913df4e-ae55-4ca7-9f5b-f453c85ae5fb",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "日期間隔與通知期限判定正確；回覆缺少一句說明日期讀法假設的文字。",
+    "criterion_results": [
+      {
+        "criterion_id": "e70370fc-f6d5-4d8a-b24e-91ffba8761b1",
+        "text": "將日期按一般年月日讀法解讀，並用一句話說明這項讀法假設，而不是反問日期格式。",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆按一般年月日呈現日期，也沒有反問格式，但未以一句話說明日期讀法假設。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026年8月31日 | 2026年7月31日 | 31 天 | 通知足夠（至少提前 30 天）。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "289f4e84-7554-4b27-b3a3-10afdba21539",
+        "text": "輸出日期間隔 31 天，判定通知足夠。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆列出日期間隔為 31 天，並判定通知足夠。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026年8月31日 | 2026年7月31日 | 31 天 | 通知足夠（至少提前 30 天）。 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1611 input and 967 output tokens on skillhub-run; reported cost $0.0048 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 27,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "預計 2026-12-31 搬離，我 2026-12-02 通知房東，來得及嗎？",
+  "acceptance_criteria": [
+    {
+      "text": "判定通知不足（2026-12-02 到 2026-12-31 相隔 29 天，不到 30 天）"
+    },
+    {
+      "text": "回報最晚應在 2026-12-01 送出通知（2026-12-31 往前 30 天）"
+    }
+  ],
+  "final_output": "不來得及。按日曆日計算，2026-12-02 通知至 2026-12-31 搬離相隔 **29 天**，未達至少提前 30 日的期限；最晚應於 **2026-12-01** 通知房東。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c5cc6489-2b8a-4295-9a07-346538f0b6c6",
+    "run_id": "a8048ceb-1922-40ac-8412-82f9597497c2",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項標準均已達成：回覆正確指出通知僅提前 29 天，並給出最晚通知日 2026-12-01。",
+    "criterion_results": [
+      {
+        "criterion_id": "876450c5-0caf-4b0a-b18d-56c8e6f3a08c",
+        "text": "判定通知不足（2026-12-02 到 2026-12-31 相隔 29 天，不到 30 天）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆判定通知來不及，並指出兩日期相隔 29 天，未達提前 30 日的期限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "不來得及。按日曆日計算，2026-12-02 通知至 2026-12-31 搬離相隔 **29 天**，未達至少提前 30 日的期限",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "62f31310-4959-4b2a-83f5-db44ea6b7e6b",
+        "text": "回報最晚應在 2026-12-01 送出通知（2026-12-31 往前 30 天）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確指出最晚應於 2026-12-01 通知房東。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "最晚應於 **2026-12-01** 通知房東。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1517 input and 381 output tokens on gpt-6-luna; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

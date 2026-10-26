@@ -1,0 +1,211 @@
+{
+  "round": 1,
+  "sample_input": "請依序試算以下觀影者的票價（元）：\n1. 年齡 0 歲，平日\n2. 年齡 3 歲，假日\n3. 年齡 4 歲，平日\n4. 年齡 11 歲，假日\n5. 年齡 12 歲，平日\n6. 年齡 64 歲，假日\n7. 年齡 65 歲，平日\n8. 年齡 120 歲，假日",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1、2 筆年齡為 0、3，分別為平日、假日；兩筆都須輸出 0 元，顯示 3 歲以下免費規則優先。"
+    },
+    {
+      "text": "試跑輸入第 3、4 筆年齡為 4、11，分別為平日、假日；票價須依序為 180 元、220 元。"
+    },
+    {
+      "text": "試跑輸入第 5、6 筆年齡為 12、64，分別為平日、假日；票價須依序為 300 元、360 元。"
+    },
+    {
+      "text": "試跑輸入第 7、8 筆年齡為 65、120，分別為平日、假日；票價須依序為 180 元、220 元。"
+    },
+    {
+      "text": "回覆須為八筆資料各列一個票價，單位為元，且順序與輸入相同。"
+    }
+  ],
+  "final_output": "1. 年齡 0 歲，平日：0 元\n2. 年齡 3 歲，假日：0 元\n3. 年齡 4 歲，平日：180 元\n4. 年齡 11 歲，假日：220 元\n5. 年齡 12 歲，平日：300 元\n6. 年齡 64 歲，假日：360 元\n7. 年齡 65 歲，平日：180 元\n8. 年齡 120 歲，假日：220 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "eb795c7e-fe8c-4574-ae03-0b177c503e53",
+    "run_id": "7cbe97a7-5ff2-417e-91b9-91bfce27ebb3",
+    "status": "completed",
+    "overall": "met",
+    "summary": "八筆票價均符合各項指定數值，並依輸入順序逐筆以元列出。",
+    "criterion_results": [
+      {
+        "criterion_id": "f397fea1-2d0c-485e-8b14-866823bf8dcd",
+        "text": "試跑輸入第 1、2 筆年齡為 0、3，分別為平日、假日；兩筆都須輸出 0 元，顯示 3 歲以下免費規則優先。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1、2 筆分別是 0 歲平日與 3 歲假日，票價皆為 0 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 年齡 0 歲，平日：0 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 年齡 3 歲，假日：0 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e78eee47-e579-493f-8f98-8186799272e4",
+        "text": "試跑輸入第 3、4 筆年齡為 4、11，分別為平日、假日；票價須依序為 180 元、220 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3、4 筆票價依序為 180 元、220 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. 年齡 4 歲，平日：180 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 年齡 11 歲，假日：220 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "961b4b5c-45ee-4746-9a75-677e03515e35",
+        "text": "試跑輸入第 5、6 筆年齡為 12、64，分別為平日、假日；票價須依序為 300 元、360 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5、6 筆票價依序為 300 元、360 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5. 年齡 12 歲，平日：300 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "6. 年齡 64 歲，假日：360 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "edc32457-ec33-494e-961b-8ca1fc2c7684",
+        "text": "試跑輸入第 7、8 筆年齡為 65、120，分別為平日、假日；票價須依序為 180 元、220 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 7、8 筆票價依序為 180 元、220 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "7. 年齡 65 歲，平日：180 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "8. 年齡 120 歲，假日：220 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "42f9f6fb-9f9f-40b3-b333-12e9bb02db71",
+        "text": "回覆須為八筆資料各列一個票價，單位為元，且順序與輸入相同。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆依輸入順序列出八筆資料，每筆各有一個以元為單位的票價。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 年齡 0 歲，平日：0 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 年齡 3 歲，假日：0 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "3. 年齡 4 歲，平日：180 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 年齡 11 歲，假日：220 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "5. 年齡 12 歲，平日：300 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "6. 年齡 64 歲，假日：360 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "7. 年齡 65 歲，平日：180 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "8. 年齡 120 歲，假日：220 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1548 input and 1010 output tokens on skillhub-run; reported cost $0.0047 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 37,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

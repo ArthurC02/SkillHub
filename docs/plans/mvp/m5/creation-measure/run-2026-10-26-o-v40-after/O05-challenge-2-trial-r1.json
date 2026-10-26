@@ -1,0 +1,120 @@
+{
+  "round": 1,
+  "sample_input": "請依年齡與場次類型計算每筆票價，並以表格列出結果。\n編號,年齡,場次\nA,六十五歲,假日\nB,十二歲,平日",
+  "acceptance_criteria": [
+    {
+      "text": "按一般讀法將「六十五歲」視為 65 歲，並以一句話說明這項讀法是假設，而不是反問使用者。"
+    },
+    {
+      "text": "A 為 220 元：65 歲屬於 65–120 歲優惠價，假日票價為 220 元。"
+    },
+    {
+      "text": "B 為 300 元：12 歲屬於 12–64 歲全票，平日票價為 300 元。"
+    }
+  ],
+  "final_output": "目前無法確認票價：此技能所需的年齡檢查器與票價計算腳本不存在，無法依規定驗證年齡或計算固定票價。\n\n| 編號 | 年齡 | 場次 | 結果 |\n|---|---|---|---|\n| A | 六十五歲 | 假日 | 無法計算：缺少檢查器及票價計算腳本 |\n| B | 十二歲 | 平日 | 無法計算：缺少檢查器及票價計算腳本 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "49625ac2-3b07-402d-8ec7-78d5dd4538b5",
+    "run_id": "3b031cb0-ddc2-4319-853f-4cc7d1afa51c",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "本次回覆未說明將「六十五歲」讀作 65 歲的假設，且將 A、B 兩筆票價都列為無法計算；三項驗收標準均未達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "edfb36eb-b57f-4dad-ba8b-b100865a1329",
+        "text": "按一般讀法將「六十五歲」視為 65 歲，並以一句話說明這項讀法是假設，而不是反問使用者。",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆沒有將「六十五歲」明確讀作 65 歲，也沒有用一句話說明這是採用的假設。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "目前無法確認票價：此技能所需的年齡檢查器與票價計算腳本不存在，無法依規定驗證年齡或計算固定票價。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| A | 六十五歲 | 假日 | 無法計算：缺少檢查器及票價計算腳本 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e88361b1-b03e-4adc-b291-da5cb7a441ce",
+        "text": "A 為 220 元：65 歲屬於 65–120 歲優惠價，假日票價為 220 元。",
+        "result": "failed",
+        "source": "model",
+        "reason": "A 的結果列為無法計算，未列出假日優惠票價 220 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| A | 六十五歲 | 假日 | 無法計算：缺少檢查器及票價計算腳本 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "28e43734-144b-45ba-bb86-40d418f1f1fd",
+        "text": "B 為 300 元：12 歲屬於 12–64 歲全票，平日票價為 300 元。",
+        "result": "failed",
+        "source": "model",
+        "reason": "B 的結果列為無法計算，未列出平日全票票價 300 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| B | 十二歲 | 平日 | 無法計算：缺少檢查器及票價計算腳本 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1578 input and 1494 output tokens on skillhub-run; reported cost $0.0045 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

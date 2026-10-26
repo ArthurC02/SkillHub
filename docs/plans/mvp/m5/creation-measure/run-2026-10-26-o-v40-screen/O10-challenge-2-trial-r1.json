@@ -1,0 +1,97 @@
+{
+  "round": 1,
+  "sample_input": "請判定以下單件行李重量並回覆處理方式與費用（元）。\n二十一公斤",
+  "acceptance_criteria": [
+    {
+      "text": "按通常中文數字讀法將「二十一公斤」理解為 21 公斤，並用一句話說明此假設，不反問使用者。"
+    },
+    {
+      "text": "判定可托運且費用為 500 元：21 − 20 = 1，ceil(1) = 1，1 × 500 = 500。"
+    }
+  ],
+  "final_output": "單件行李（21 公斤）：可托運，屬超重行李，費用 500 元。\n\n假設：「weight」二十一公斤 → 21（中文數字）",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "d99e3ad9-d57d-4236-b2fd-1323f0f452d0",
+    "run_id": "6d2b77c7-6480-4263-87a2-77636c4ab45f",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收標準均已達成：重量按中文數字解讀為 21 公斤，並回覆可托運、超重處理及 500 元費用。",
+    "criterion_results": [
+      {
+        "criterion_id": "aff91756-51e0-4ee0-9fa8-44a93443a8ae",
+        "text": "按通常中文數字讀法將「二十一公斤」理解為 21 公斤，並用一句話說明此假設，不反問使用者。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將「二十一公斤」解讀為 21 公斤，另以一句假設說明，沒有反問使用者。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "假設：「weight」二十一公斤 → 21（中文數字）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "462096dd-bbb4-4769-b7cd-fd3da70c6f2a",
+        "text": "判定可托運且費用為 500 元：21 − 20 = 1，ceil(1) = 1，1 × 500 = 500。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆判定單件 21 公斤行李可托運，按超重行李處理，費用為 500 元。",
+        "steps": null,
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "單件行李（21 公斤）：可托運，屬超重行李，費用 500 元。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1589 input and 797 output tokens on skillhub-run; reported cost $0.0044 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v4",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}
