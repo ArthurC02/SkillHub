@@ -1,8 +1,11 @@
 mod cli;
+mod digits;
 mod files;
 mod json;
+mod okf;
 mod proposals;
 mod py;
+mod store;
 
 use std::io::Write;
 
@@ -60,6 +63,17 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
         "list-proposals" => {
             let root = py::resolve(invocation.text("changes_root").unwrap_or("."));
             print_json(&Value::Array(proposals::list_proposals(&root)?));
+            Ok(0)
+        }
+        "export" => {
+            let root = py::resolve(invocation.text("registry_root").unwrap_or("."));
+            if invocation.text("commit").is_some() {
+                if invocation.text("repo_root").is_none() {
+                    return Err("export --commit needs --repo-root".to_string());
+                }
+                return Err("export --commit is not available in the Rust engine yet".to_string());
+            }
+            print_json(&Value::Object(store::read_documents(&root)?));
             Ok(0)
         }
         other => Err(format!("{other} is not available in the Rust engine yet")),

@@ -14,7 +14,7 @@ Domain Memory 外掛的命令引擎，以 Rust 重寫。終點是外掛的 Pytho
 
 引擎照這份契約解析參數，重現 argparse 的行為：長選項的唯一前綴、`--option=value`、負數當值、`-h` 後接字母仍印 help、型別與選擇值的錯誤、必填與互斥群組；錯誤印該命令的 usage 加 `<prog>: error: <訊息>`，exit 2；`counterfactual` 的用法錯誤改以 JSON 回覆、exit 3。
 
-已知差異：help 的換行固定在 80 欄，Python 版會跟著終端寬度變。
+已知差異：help 的換行固定在 80 欄，Python 版會跟著終端寬度變；JSON 裡單獨的 surrogate 跳脫在引擎裡變成 U+FFFD。
 
 ## 一致性比對
 
@@ -22,7 +22,9 @@ Domain Memory 外掛的命令引擎，以 Rust 重寫。終點是外掛的 Pytho
 
 一個命令算移植完成，條件是它的每一條輸出分支（成功、每一種拒絕、每一種讀取失敗）都有案例而且一致。新案例要先對外掛跑過，確認它走到想測的分支，再對引擎跑。
 
-目前移植完成的命令：`list-proposals`。
+目前移植完成的命令：`list-proposals`。`export` 只完成讀工作樹的部分，`--commit` 仍回尚未移植。
+
+外掛以 Python 例外（traceback）結束的輸入不列入比對，引擎改以 `ERROR:` 回覆；Python 的 `\d` 依 Python 3.13 的 Unicode 資料判斷，表格在 `src/digits.rs`。
 
 ## 常用指令
 

@@ -58,7 +58,39 @@ fn hidden_escape(character: char) -> String {
     }
 }
 
+pub fn resolve_path(path: &Path) -> PathBuf {
+    resolve(&path.to_string_lossy())
+}
+
+pub fn utf8_text(bytes: &[u8]) -> Result<String, String> {
+    let text = std::str::from_utf8(bytes).map_err(|error| utf8_refusal(bytes, &error))?;
+    Ok(text.replace("\r\n", "\n").replace('\r', "\n"))
+}
+
+fn utf8_refusal(bytes: &[u8], error: &std::str::Utf8Error) -> String {
+    let start = error.valid_up_to();
+    let (end, reason) = match error.error_len() {
+        None => (bytes.len(), "unexpected end of data"),
+        Some(1) if matches!(bytes[start], 0x80..=0xC1 | 0xF5..=0xFF) => {
+            (start + 1, "invalid start byte")
+        }
+        Some(length) => (start + length, "invalid continuation byte"),
+    };
+    if end - start == 1 {
+        format!(
+            "'utf-8' codec can't decode byte 0x{:02x} in position {start}: {reason}",
+            bytes[start]
+        )
+    } else {
+        format!(
+            "'utf-8' codec can't decode bytes in position {start}-{}: {reason}",
+            end - 1
+        )
+    }
+}
+
 pub fn resolve(given: &str) -> PathBuf {
+    let given = if given.is_empty() { "." } else { given };
     let absolute = std::path::absolute(given).unwrap_or_else(|_| PathBuf::from(given));
     let lexical = normalized(&absolute);
     let mut existing = lexical.clone();

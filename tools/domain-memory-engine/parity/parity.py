@@ -27,14 +27,14 @@ def generated_cases() -> list[dict]:
     return cases
 
 
-def written_fixture(root: Path, files: dict[str, str | None]) -> None:
+def written_fixture(root: Path, files: dict[str, str | dict[str, str] | None]) -> None:
     for relative, content in files.items():
         path = root / relative
         if content is None:
             path.mkdir(parents=True, exist_ok=True)
             continue
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(content.encode("utf-8"))
+        path.write_bytes(bytes.fromhex(content["hex"]) if isinstance(content, dict) else content.encode("utf-8"))
 
 
 def expanded(args: list[str], fixture: Path) -> list[str]:

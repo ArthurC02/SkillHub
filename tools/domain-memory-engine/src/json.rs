@@ -34,6 +34,13 @@ impl Object {
         }
     }
 
+    pub fn get_mut(&mut self, key: &str) -> Option<&mut Value> {
+        self.0
+            .iter_mut()
+            .find(|(name, _)| name == key)
+            .map(|(_, value)| value)
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &(String, Value)> {
         self.0.iter()
     }
@@ -82,6 +89,16 @@ pub fn parse(text: &str) -> Result<Value, ()> {
     } else {
         Err(())
     }
+}
+
+pub fn number_prefix(text: &str) -> Option<usize> {
+    let mut parser = Parser {
+        bytes: text.as_bytes(),
+        text,
+        at: 0,
+    };
+    parser.scan_number().ok()?;
+    Some(parser.at)
 }
 
 struct Parser<'a> {
@@ -245,6 +262,22 @@ impl Parser<'_> {
 
     fn number(&mut self) -> Result<Value, ()> {
         let start = self.at;
+        let is_float = self.scan_number()?;
+        let literal = &self.text[start..self.at];
+        if is_float {
+            return literal.parse::<f64>().map(Value::Float).map_err(|_| ());
+        }
+        if literal.trim_start_matches('-').len() > crate::okf::INT_MAX_STR_DIGITS {
+            return Err(());
+        }
+        Ok(Value::Int(if literal == "-0" {
+            "0".to_string()
+        } else {
+            literal.to_string()
+        }))
+    }
+
+    fn scan_number(&mut self) -> Result<bool, ()> {
         if self.bytes.get(self.at) == Some(&b'-') {
             self.at += 1;
         }
@@ -274,15 +307,7 @@ impl Parser<'_> {
                 self.at = mark;
             }
         }
-        let literal = &self.text[start..self.at];
-        if is_float {
-            return literal.parse::<f64>().map(Value::Float).map_err(|_| ());
-        }
-        Ok(Value::Int(if literal == "-0" {
-            "0".to_string()
-        } else {
-            literal.to_string()
-        }))
+        Ok(is_float)
     }
 
     fn digits(&mut self) {
