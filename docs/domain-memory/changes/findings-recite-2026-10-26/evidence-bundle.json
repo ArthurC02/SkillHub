@@ -1,0 +1,15 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "findings-recite",
+  "proposal_id": "findings-recite-2026-10-26",
+  "registry_revision": null,
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

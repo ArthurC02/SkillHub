@@ -1,0 +1,46 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "findings-recite",
+  "status": "draft",
+  "intent": "Re-cite rules/a-new-version-keeps-the-skills-name, rules/a-search-limit-is-1-to-100, rules/a-source-records-the-provenance-its-kind-requires, rules/a-taken-down-skill-takes-no-new-version, rules/a-truncated-search-says-so-and-counts-every-match, rules/an-approval-names-the-snapshot-digest-its-reviewer-saw, rules/an-embedding-failure-degrades-to-lexical-and-says-so, rules/an-exposure-approval-needs-a-current-enriched-snapshot, rules/an-exposure-review-names-the-release-and-sequence-it-saw, rules/an-exposure-review-needs-a-reason, rules/an-improvement-to-a-superseded-version-is-refused, rules/catalog-exposure-needs-an-approved-review-of-redistributable-content, rules/generated-and-uploaded-skills-do-not-share-a-name, rules/identical-content-is-recognised-not-versioned-again, rules/only-a-curated-listing-names-its-reviewed-version, rules/only-an-enriched-or-embedded-document-is-listable, rules/republishing-the-same-version-keeps-its-one-release, rules/user-started-model-calls-stop-under-a-p1-halt, interactions/ingest-registry-version-source after the code they cite moved or changed; the facts they state are unchanged.",
+  "actor": "domain-memory-agent",
+  "observable_outcome": "verify-evidence reports every citation of the updated records current.",
+  "acceptance_criteria": [
+    {
+      "id": "citations-current",
+      "statement": "Every citation in the updated records matches the lines it cites."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/creator/creation/job.go",
+    "apps/platform/internal/entrypoint/api/apiserver/disc_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/exposure_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/generate_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/p1_halt_model_calls_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/search_embedding_backfill_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/version_refusal_integration_test.go",
+    "apps/platform/internal/skill/admission/cost_test.go",
+    "apps/platform/internal/skill/admission/enrich.go",
+    "apps/platform/internal/skill/admission/generate.go",
+    "apps/platform/internal/skill/admission/service.go",
+    "apps/platform/internal/skill/admission/service_test.go",
+    "apps/platform/internal/skill/admission/source.go",
+    "apps/platform/internal/skill/discovery/enrichment.go",
+    "apps/platform/internal/skill/discovery/enrichment_backfill.go",
+    "apps/platform/internal/skill/discovery/http.go",
+    "apps/platform/internal/skill/discovery/projection.go",
+    "apps/platform/internal/skill/discovery/projection_test.go",
+    "apps/platform/internal/skill/discovery/service.go",
+    "apps/platform/internal/skill/publishing/exposure.go",
+    "apps/platform/internal/skill/publishing/exposure_test.go",
+    "apps/platform/internal/skill/publishing/service.go",
+    "apps/platform/internal/trial/design/cost.go",
+    "apps/platform/internal/trial/execution/halt.go",
+    "db/queries/search.sql"
+  ]
+}

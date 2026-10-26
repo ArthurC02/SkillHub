@@ -1,0 +1,841 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "findings-recite-2026-10-26",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "findings-recite",
+  "status": "draft",
+  "change_classification": "routine",
+  "submitted_at": null,
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": null,
+  "affected_contexts": [
+    "catalog",
+    "creation",
+    "ingest",
+    "publishing",
+    "registry",
+    "testlab"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-new-version-keeps-the-skills-name",
+        "statement": "A new version must declare the same name as its Skill; another name is refused as version_name_mismatch and neither a version nor the summary changes.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "Uploading a package named split-csv as a version of tidy-notes is blocked."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 634,
+              "end": 637
+            },
+            "content_sha256": "sha256:ecf70c4e530c987cb69457c4d8ef5a7d8f1f9d5da98c6752faa692732b6938ad",
+            "excerpt_sha256": "sha256:34decd15f5b58566224bf707fbbf6115a1bb4d5cdc28e5ca5e2ccdfec508f446",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/version_refusal_integration_test.go",
+            "lines": {
+              "start": 13,
+              "end": 46
+            },
+            "excerpt_sha256": "sha256:476af42ae0ea563712e09a36a5580ce7f88be2534f6cd6dbcfcc717b1b953543"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-search-limit-is-1-to-100",
+        "statement": "The search limit must be a whole number from 1 to 100; anything else is refused.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "limit=100 is accepted and limit=101 answers 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/http.go",
+            "lines": {
+              "start": 247,
+              "end": 257
+            },
+            "excerpt_sha256": "sha256:7df1f2f1567b02af421b590a1d0806e1822000e60c2e706d9d48f452e6363800"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/disc_integration_test.go",
+            "lines": {
+              "start": 1554,
+              "end": 1581
+            },
+            "content_sha256": "sha256:d45cfc2163397619a026a6520a149b8d33082030aa9d88c6c25a7b231b73e933",
+            "excerpt_sha256": "sha256:49c0db1962efe05d739f38b8aad5f3749d06cb601edb8ffd95ba97c504be9cee",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-source-records-the-provenance-its-kind-requires",
+        "statement": "A version is written only when its source carries the provenance its kind requires: git needs a URL and no generator fields, an upload has neither, a generated source needs a model and prompt version and no URL; anything else is refused with ErrIncompleteProvenance.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "An upload claiming a URL is refused with ErrIncompleteProvenance."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 185,
+              "end": 204
+            },
+            "content_sha256": "sha256:ecf70c4e530c987cb69457c4d8ef5a7d8f1f9d5da98c6752faa692732b6938ad",
+            "excerpt_sha256": "sha256:944af754f6d1e8ff987861ed0d04a7cfad3805bd4d7693325e5173637e28bbee",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/service_test.go",
+            "lines": {
+              "start": 69,
+              "end": 108
+            },
+            "excerpt_sha256": "sha256:89439b462bb8a8de4b5dc1c96b788f3dc43fc5758ad8b7eac23bdb78af753759"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-taken-down-skill-takes-no-new-version",
+        "statement": "A taken-down Skill refuses every new version as skill_taken_down and gains no version row; in a re-import of several Skills the others still import.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "After a takedown, uploading tidy-notes again is blocked and it keeps one version."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 626,
+              "end": 633
+            },
+            "content_sha256": "sha256:ecf70c4e530c987cb69457c4d8ef5a7d8f1f9d5da98c6752faa692732b6938ad",
+            "excerpt_sha256": "sha256:53f5f9b2099c41148ef9a142ef94d92174b27dac9b06b600288e071e6d590501",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/version_refusal_integration_test.go",
+            "lines": {
+              "start": 48,
+              "end": 77
+            },
+            "excerpt_sha256": "sha256:fa35029bb6012585eab2761d785cdea396c5435601f97c2865a997ac98c872b9"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-truncated-search-says-so-and-counts-every-match",
+        "statement": "Search fetches one row past the limit; when more than the limit match, it returns the limit, marks the page truncated and reports the full total.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "limit=1 over five matching skills returns one result, truncated, with total 5."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/service.go",
+            "lines": {
+              "start": 249,
+              "end": 252
+            },
+            "excerpt_sha256": "sha256:4c012c4dfeb869b2c57bfdcfda7bd91c32c9c33ab26bada5ca244c37473f81d3"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/disc_integration_test.go",
+            "lines": {
+              "start": 1435,
+              "end": 1470
+            },
+            "content_sha256": "sha256:d45cfc2163397619a026a6520a149b8d33082030aa9d88c6c25a7b231b73e933",
+            "excerpt_sha256": "sha256:04b6049045afce33da4632ddd770fe59870dfe535e3782a6d5cb5d9c9300b757",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-approval-names-the-snapshot-digest-its-reviewer-saw",
+        "statement": "An approval is refused as stale and records nothing unless it names the search snapshot digest the reviewer saw; a revocation needs no such proof.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "Text re-enriched while the reviewer reads makes an approval with the old digest fail with 409 and no review row."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure.go",
+            "lines": {
+              "start": 513,
+              "end": 515
+            },
+            "content_sha256": "sha256:82e4874341dc9228a9ad28f0eada1cd945d2dc9a1d5d80f16a1ee09002c2b040",
+            "excerpt_sha256": "sha256:68596d47432e22a6800c4296c8e56876f5ff2daf3f56204e2e069f8ec4715b1e",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure.go",
+            "lines": {
+              "start": 530,
+              "end": 532
+            },
+            "content_sha256": "sha256:82e4874341dc9228a9ad28f0eada1cd945d2dc9a1d5d80f16a1ee09002c2b040",
+            "excerpt_sha256": "sha256:e345f40f292de8f6a4d16c2b8519d9526293d41d6cc157179ce147f77e0fbfc3",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/exposure_integration_test.go",
+            "lines": {
+              "start": 389,
+              "end": 436
+            },
+            "content_sha256": "sha256:79ccc4e276100f7c0b512f0d88884719f157a38d082d9bf19b7125f9054dd527",
+            "excerpt_sha256": "sha256:8ac74fd716f64426d304597ba245515b9142ebdf7bafbcdce309af3f92778ecd",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-embedding-failure-degrades-to-lexical-and-says-so",
+        "statement": "When embeddings are missing or fail, search returns the lexical results and says it is degraded, rather than failing the request.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "With the embedding endpoint returning 502, a lexically matching skill is still returned with degraded set and a reason."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/service.go",
+            "lines": {
+              "start": 233,
+              "end": 243
+            },
+            "excerpt_sha256": "sha256:90dcd73cbcedbcd93410a52773c1fb7a625c1254156e6788323917a0700d1aa9"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/service.go",
+            "lines": {
+              "start": 287,
+              "end": 308
+            },
+            "excerpt_sha256": "sha256:c6ea4d3aa51886fdf7242d8672bd7c51482707cca892a6e8252885b9de3e754a"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/disc_integration_test.go",
+            "lines": {
+              "start": 704,
+              "end": 738
+            },
+            "content_sha256": "sha256:d45cfc2163397619a026a6520a149b8d33082030aa9d88c6c25a7b231b73e933",
+            "excerpt_sha256": "sha256:e921d6c715d904c061446f27926094eaaed0bb3e34230cf5f11fb5e219e83a1a",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-exposure-approval-needs-a-current-enriched-snapshot",
+        "statement": "An exposure approval is refused unless the publication is published, its Skill is available and cleared for the Catalog, and a fully enriched search snapshot of the released version exists.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "Approving while the snapshot is still enriching is refused as snapshot_pending; approving a generated Skill whose latest release declares no licence is refused as redistribution_not_allowed."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure.go",
+            "lines": {
+              "start": 218,
+              "end": 233
+            },
+            "content_sha256": "sha256:82e4874341dc9228a9ad28f0eada1cd945d2dc9a1d5d80f16a1ee09002c2b040",
+            "excerpt_sha256": "sha256:3483bedc0ce415a180da9f790563e11b5726d1c32b1bfc3e78049de39fa13965",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure_test.go",
+            "lines": {
+              "start": 160,
+              "end": 194
+            },
+            "excerpt_sha256": "sha256:f698ef064c02717f552f2f724f72d4e3e3198368b49223d53f011d4d30672e62"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-exposure-review-names-the-release-and-sequence-it-saw",
+        "statement": "An exposure review is refused as stale unless it names the current release and the review sequence its reviewer saw.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "Two reviewers open sequence 0; after one approves, the other's revocation at sequence 0 is refused as stale."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure.go",
+            "lines": {
+              "start": 421,
+              "end": 423
+            },
+            "content_sha256": "sha256:82e4874341dc9228a9ad28f0eada1cd945d2dc9a1d5d80f16a1ee09002c2b040",
+            "excerpt_sha256": "sha256:4c82a61280b22d24f9eb043161b1cf71c44bfbdaae39c767d9be8779b05c343c",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/exposure_integration_test.go",
+            "lines": {
+              "start": 353,
+              "end": 387
+            },
+            "content_sha256": "sha256:79ccc4e276100f7c0b512f0d88884719f157a38d082d9bf19b7125f9054dd527",
+            "excerpt_sha256": "sha256:7b742849aada15e4ee3cdfb0bd32ac1679e59301ee34662faeaa5674f6077a7e",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-exposure-review-needs-a-reason",
+        "statement": "An exposure review is refused before any lookup unless its decision is approved or revoked and it carries a non-blank reason.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "An approval whose reason is only spaces answers 422 reason_missing."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure.go",
+            "lines": {
+              "start": 409,
+              "end": 415
+            },
+            "content_sha256": "sha256:82e4874341dc9228a9ad28f0eada1cd945d2dc9a1d5d80f16a1ee09002c2b040",
+            "excerpt_sha256": "sha256:d292880236791f5fbdaad4c9c9993cca3fe6691ae4ff858cfaf2c4ff071b031e",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/exposure_integration_test.go",
+            "lines": {
+              "start": 353,
+              "end": 387
+            },
+            "content_sha256": "sha256:79ccc4e276100f7c0b512f0d88884719f157a38d082d9bf19b7125f9054dd527",
+            "excerpt_sha256": "sha256:7b742849aada15e4ee3cdfb0bd32ac1679e59301ee34662faeaa5674f6077a7e",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-improvement-to-a-superseded-version-is-refused",
+        "statement": "Saving an improved version is refused with ErrBaseVersionMoved when the Skill's newest version is no longer the version the improvement was made to; content identical to an existing version is deduplicated first.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "Suggestions applied to v1 after v2 was saved are refused as target_changed."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 473,
+              "end": 475
+            },
+            "content_sha256": "sha256:ecf70c4e530c987cb69457c4d8ef5a7d8f1f9d5da98c6752faa692732b6938ad",
+            "excerpt_sha256": "sha256:877e1de1f9a1fa1816ad63f5889d876c48d6072e838c76eb54d421f1593edb1b",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+            "lines": {
+              "start": 788,
+              "end": 840
+            },
+            "excerpt_sha256": "sha256:5303accac73762162a167fd6feb02560d8d71f28cb1f3e8b86c7e1794032e280"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "catalog-exposure-needs-an-approved-review-of-redistributable-content",
+        "statement": "A publication is exposed in the Catalog only when its review is approved, its Skill is available and cleared for the Catalog, and its search snapshot is listable, of the released version and with the digest the reviewer approved. A Skill is cleared for the Catalog when its redistribution is allowed, or when it was generated and its latest release declares a licence.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "An approved Skill whose content its creator supplied is not exposed, even with a licence on its release; an approved generated Skill is exposed once its latest release declares MIT."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure.go",
+            "lines": {
+              "start": 209,
+              "end": 217
+            },
+            "content_sha256": "sha256:82e4874341dc9228a9ad28f0eada1cd945d2dc9a1d5d80f16a1ee09002c2b040",
+            "excerpt_sha256": "sha256:3a96ece110e80bc90d85b889257a4ac3e375c87a0b13c63b8e397a7d78e8ff6c",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/exposure_test.go",
+            "lines": {
+              "start": 94,
+              "end": 127
+            },
+            "excerpt_sha256": "sha256:53be478221804a44b69649595cbced6b3b5a8ae3d201afea79b3d374a4b9691a"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "generated-and-uploaded-skills-do-not-share-a-name",
+        "statement": "A name held by a generated Skill takes no uploaded version, and a generated candidate takes no name held by an uploaded Skill; either way the save is refused with ErrGeneratedNameCollision.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "Generate pdf-extract, then upload a package named pdf-extract: refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 459,
+              "end": 462
+            },
+            "content_sha256": "sha256:ecf70c4e530c987cb69457c4d8ef5a7d8f1f9d5da98c6752faa692732b6938ad",
+            "excerpt_sha256": "sha256:931f0de54d52ccff3324c35a11df0139dd7eccbf6cd9fb0decd044f1d1818009",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/source.go",
+            "lines": {
+              "start": 318,
+              "end": 320
+            },
+            "excerpt_sha256": "sha256:6ee66eeb8798f18a22d1de950c509ccfaea129be8dee28cfb00e525d0c48aa5d"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/generate_integration_test.go",
+            "lines": {
+              "start": 488,
+              "end": 495
+            },
+            "excerpt_sha256": "sha256:5ce31c71c263ee1ef54534269a8a334f268caa2920d31bfe374a76d27861c4db"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "identical-content-is-recognised-not-versioned-again",
+        "statement": "Saving content whose hash a version of the same Skill already holds returns that version as a duplicate and writes no new version.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "Restoring the text of an earlier version returns that version's id, marked duplicate."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 466,
+              "end": 472
+            },
+            "content_sha256": "sha256:ecf70c4e530c987cb69457c4d8ef5a7d8f1f9d5da98c6752faa692732b6938ad",
+            "excerpt_sha256": "sha256:50c5524a8523ab9829c100da0922b8081e531304155e7c4c1c92affb1fb16dd2",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+            "lines": {
+              "start": 470,
+              "end": 526
+            },
+            "excerpt_sha256": "sha256:54d0b65ca0cf0d1d222e01b4d2110a758fbc6439e45e37d80a9963a5a945d5f8"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-a-curated-listing-names-its-reviewed-version",
+        "statement": "A listing records a curated version only when the Skill's tier is curated; any other tier writes none.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "Indexed-tier facts that carry a curated version id write none."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/projection.go",
+            "lines": {
+              "start": 113,
+              "end": 115
+            },
+            "content_sha256": "sha256:d743edf1dedcb0124488a3bb74faa1f02b3246da76ea82987364e953e01964dc",
+            "excerpt_sha256": "sha256:cfb9cac5eb1c1a3638fda9fe2841f13917ce1ad05973589b96b707a873e910f9",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/projection_test.go",
+            "lines": {
+              "start": 46,
+              "end": 59
+            },
+            "excerpt_sha256": "sha256:573e2823728cb4cd0fa78b25379c5f74f857fbb332f6f7d3c34ccbdf256c12c6"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "only-an-enriched-or-embedded-document-is-listable",
+        "statement": "A search document is listable only once its enrichment is finished or it has an embedding a vector search can find. An enrichment whose embedding call failed is still stored as enriched, without a vector, so it is listable at once; the enrichment backfill later embeds that stored text without calling the enrichment model again, and stores the vector only if the document has not been rewritten since it was claimed.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "A pending document without a vector is not listable; the same document with a vector is.",
+          "The enrichment answers and the embedding call fails: the document is enriched and listable without a vector; the next backfill pass makes one embedding call and no enrichment call, and a vector computed before a re-import rewrote the document is dropped."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/enrichment.go",
+            "lines": {
+              "start": 12,
+              "end": 14
+            },
+            "excerpt_sha256": "sha256:c8086abe2eb931f39133735544a49735766e725679ad1a32ddc72e9620f779b2"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/projection.go",
+            "lines": {
+              "start": 74,
+              "end": 74
+            },
+            "content_sha256": "sha256:d743edf1dedcb0124488a3bb74faa1f02b3246da76ea82987364e953e01964dc",
+            "excerpt_sha256": "sha256:199c4d254986e18f47af0f6f37dbfd906346d604dd293e8696da7c047ac560a2",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/projection_test.go",
+            "lines": {
+              "start": 26,
+              "end": 44
+            },
+            "excerpt_sha256": "sha256:da55aa942302f94559e17233d087426deafb687be03efd9c32840365fb2c56c4"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/enrich.go",
+            "lines": {
+              "start": 144,
+              "end": 145
+            },
+            "content_sha256": "sha256:3a2d2ac8ba0b84a58289d272e085c0df5c878ec8e0f3a63b57d7453523ddf281",
+            "excerpt_sha256": "sha256:1102bebb3ecf7d70ed2069e46b3cd3a67d8909cf1f29363fda139f1efc05d171",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/enrichment_backfill.go",
+            "lines": {
+              "start": 64,
+              "end": 85
+            },
+            "excerpt_sha256": "sha256:6f4467a736a9cac9d68b2d291db75297d5c741362b5257dc9bb88b457a2765d0"
+          },
+          {
+            "path": "db/queries/search.sql",
+            "lines": {
+              "start": 54,
+              "end": 70
+            },
+            "content_sha256": "sha256:7d11daad3ca10dceb6c063ec30626430800cc9a5f87badf6c030cad4fbf45670",
+            "excerpt_sha256": "sha256:3de7d1355ee0226bf147d60b96fd8fa02d3b1723ec01683dfc563202ee113c30",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/search_embedding_backfill_integration_test.go",
+            "lines": {
+              "start": 47,
+              "end": 84
+            },
+            "excerpt_sha256": "sha256:8ee0514e3687b512bd5ad4fdc9b4d44fb5305de500808404ce53e7eef7123611"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "republishing-the-same-version-keeps-its-one-release",
+        "statement": "Publishing the published latest version again, with the same content and the same declared licence, adds no release, so its exposure review is kept; declaring a different licence for that version adds a release.",
+        "contexts": [
+          "publishing"
+        ],
+        "examples": [
+          "Publishing v1 twice leaves exactly one release; publishing it again with MIT adds a second, and once more with MIT still leaves two."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/service.go",
+            "lines": {
+              "start": 654,
+              "end": 661
+            },
+            "excerpt_sha256": "sha256:29c51a42469697687c591ff20c6b2dcfb973b8271c8414d4c03f3942b391c866"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/exposure_integration_test.go",
+            "lines": {
+              "start": 526,
+              "end": 556
+            },
+            "content_sha256": "sha256:79ccc4e276100f7c0b512f0d88884719f157a38d082d9bf19b7125f9054dd527",
+            "excerpt_sha256": "sha256:f98c7487952d1d5a1e9026e78f90405fb6f0e85d1ef619b7844a65ccffed5b43",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "user-started-model-calls-stop-under-a-p1-halt",
+        "statement": "While a P1 incident halts dispatch, generating a skill, a creation step, a criteria suggestion and the enrichment of an imported version are refused before the model is called and nothing is charged; a creation step that was refused is not counted and the session waits for the person to send again, and an import still completes with its enrichment left pending for the backfill, which picks nothing up until the halt is lifted. An unreadable halt state counts as halted.",
+        "contexts": [
+          "creation",
+          "ingest",
+          "testlab"
+        ],
+        "examples": [
+          "Under a P1 halt a criteria suggestion answers 503 naming the halt, generation returns ErrModelCallsHalted, and the model stub is never called.",
+          "An import under a P1 halt is stored with its enrichment pending and the model stub never called; the backfill run under the halt enriches nothing and the version stays pending."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/cost.go",
+            "lines": {
+              "start": 22,
+              "end": 37
+            },
+            "excerpt_sha256": "sha256:6df644766cd397f4d57227d46082b1eb508bcbc096b2a7fa0ba43fb6a635b63b"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/job.go",
+            "lines": {
+              "start": 453,
+              "end": 455
+            },
+            "excerpt_sha256": "sha256:3f7684b057cdb1f15bb4f1130f90075c7504a2c745b24184a0ab12cebdd21266"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/job.go",
+            "lines": {
+              "start": 622,
+              "end": 627
+            },
+            "excerpt_sha256": "sha256:40352e3aaee09c5e33a426829b41a169b70e2bb148976f1edf54f28a2482c3e9"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/halt.go",
+            "lines": {
+              "start": 32,
+              "end": 46
+            },
+            "excerpt_sha256": "sha256:d230881335bad2a2fccc01812cfdaf34794d0fd3c247b3ab0973dc5ef85d14d3"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/p1_halt_model_calls_integration_test.go",
+            "lines": {
+              "start": 18,
+              "end": 81
+            },
+            "excerpt_sha256": "sha256:d8e8d8a5a0c369b973d2acacea3d5df6440e1e5f55fe9cae4bdc2618640a43fd"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/generate.go",
+            "lines": {
+              "start": 254,
+              "end": 256
+            },
+            "excerpt_sha256": "sha256:a210cb9d749a2bb04a447d71aacfb15c1e6f37e3946db16c419a030afdd5be2b"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/enrich.go",
+            "lines": {
+              "start": 117,
+              "end": 119
+            },
+            "content_sha256": "sha256:3a2d2ac8ba0b84a58289d272e085c0df5c878ec8e0f3a63b57d7453523ddf281",
+            "excerpt_sha256": "sha256:b2e935bc0ef591576f4c3882d619298a1f09b40ebee0cd46eecc286a86e1ee35",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 555,
+              "end": 557
+            },
+            "content_sha256": "sha256:ecf70c4e530c987cb69457c4d8ef5a7d8f1f9d5da98c6752faa692732b6938ad",
+            "excerpt_sha256": "sha256:b85be66aa7f8c261615dbffbb702ba8d542ff49022a70d7228372bf817b0ad13",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/cost_test.go",
+            "lines": {
+              "start": 185,
+              "end": 215
+            },
+            "excerpt_sha256": "sha256:5c9abfbf675a78c854e387133a55471ecb709d64727d5833963dcca4cc66bcc1"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "ingest-registry-version-source",
+        "consistency": "synchronous",
+        "delivery": "admission hands the recorded source id to the new version in the same transaction",
+        "producer_context": "ingest",
+        "consumer_context": "registry",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 500,
+              "end": 502
+            },
+            "content_sha256": "sha256:ecf70c4e530c987cb69457c4d8ef5a7d8f1f9d5da98c6752faa692732b6938ad",
+            "excerpt_sha256": "sha256:35c4b3b20980d35f1e806531c7a8f51580f0d8026ac4aae82befd5138f7c1535",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "foreign-key-collaborations",
+    "publishing-generated-skill-declares-a-licence-2026-10-20",
+    "reasons-recite-2026-10-25",
+    "shifted-recite-2026-10-24"
+  ]
+}
