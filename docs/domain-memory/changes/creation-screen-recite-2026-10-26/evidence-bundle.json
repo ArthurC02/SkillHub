@@ -2,12 +2,36 @@
   "format": "domain-evidence-bundle/v1",
   "requirement_id": "creation-screen-recite",
   "proposal_id": "creation-screen-recite-2026-10-26",
-  "registry_revision": null,
+  "registry_revision": {
+    "observed_commit": "adda52713c93ed214f504d501faab5af161d6e05",
+    "registry_digest": "sha256:cee046e631f62ce0cd45c7284a4d0ee5bd5c3cde8f643e2428b980b6802ee0d5",
+    "committed_digest": "sha256:cee046e631f62ce0cd45c7284a4d0ee5bd5c3cde8f643e2428b980b6802ee0d5"
+  },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "adda52713c93ed214f504d501faab5af161d6e05",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "adda52713c93ed214f504d501faab5af161d6e05",
+      "registry_digest": "sha256:cee046e631f62ce0cd45c7284a4d0ee5bd5c3cde8f643e2428b980b6802ee0d5",
+      "committed_digest": "sha256:cee046e631f62ce0cd45c7284a4d0ee5bd5c3cde8f643e2428b980b6802ee0d5"
+    }
+  },
   "counterfactual_check": null,
   "sources": [],
-  "test_results": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/creation-screen-recite-2026-10-26 --path apps/platform/internal/creator/creation/attempt_test.go --path apps/platform/internal/creator/creation/command_test.go --path apps/platform/internal/creator/creation/creation.go --path apps/platform/internal/creator/creation/creation_test.go --path apps/platform/internal/creator/creation/proposal.go --path apps/platform/internal/creator/creation/proposal_test.go --path apps/platform/internal/creator/creation/tool_actions.go",
+      "command_profile": "architecture",
+      "exit_code": 0,
+      "output_sha256": "sha256:d68d9b3012fb2475edd83d5eebde6256b36c57d9bda263ae7c7252a471ba5948",
+      "finished_at": "2026-10-26T03:31:46.666184Z"
+    }
+  ],
   "contract_checks": [],
   "architecture_checks": [],
   "security_checks": [],

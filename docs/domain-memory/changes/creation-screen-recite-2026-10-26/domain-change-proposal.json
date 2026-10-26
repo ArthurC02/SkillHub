@@ -3,14 +3,18 @@
   "proposal_id": "creation-screen-recite-2026-10-26",
   "proposer": "domain-memory-agent",
   "requirement_id": "creation-screen-recite",
-  "status": "draft",
+  "status": "applied",
   "change_classification": "routine",
-  "submitted_at": null,
-  "verified_at": null,
-  "finalized_at": null,
-  "applied_at": null,
+  "submitted_at": "2026-10-26T03:31:43.666723Z",
+  "verified_at": "2026-10-26T03:31:51.660247Z",
+  "finalized_at": "2026-10-26T03:31:59.221457Z",
+  "applied_at": "2026-10-26T03:32:30.708831Z",
   "proposal_revision": 1,
-  "base_registry_revision": null,
+  "base_registry_revision": {
+    "observed_commit": "adda52713c93ed214f504d501faab5af161d6e05",
+    "registry_digest": "sha256:cee046e631f62ce0cd45c7284a4d0ee5bd5c3cde8f643e2428b980b6802ee0d5",
+    "committed_digest": "sha256:cee046e631f62ce0cd45c7284a4d0ee5bd5c3cde8f643e2428b980b6802ee0d5"
+  },
   "affected_contexts": [
     "creation"
   ],
@@ -351,10 +355,28 @@
   ],
   "risk_flags": [],
   "open_questions": [],
-  "approvals": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-26T03:31:47.051282Z",
+      "scope": "re-cite the 10 creation citations the reply screen moved (6e183e4b9): nine shifted lines in creation, proposal and tool code, and the tool-call ceiling citation moved to the test that now shows it",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "adda52713c93ed214f504d501faab5af161d6e05",
+        "registry_digest": "sha256:cee046e631f62ce0cd45c7284a4d0ee5bd5c3cde8f643e2428b980b6802ee0d5",
+        "committed_digest": "sha256:cee046e631f62ce0cd45c7284a4d0ee5bd5c3cde8f643e2428b980b6802ee0d5"
+      }
+    }
+  ],
   "supersedes": [
     "creation-command-budget-and-reference-rules-2026-10-19",
     "creation-harvest-rules-2026-10-17",
     "shifted-recite-2026-10-24"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "adda52713c93ed214f504d501faab5af161d6e05",
+    "registry_digest": "sha256:d854be9fb77a5d61355b903c43a96c82544366cc2043001b2ba424f8694aab28"
+  }
 }
