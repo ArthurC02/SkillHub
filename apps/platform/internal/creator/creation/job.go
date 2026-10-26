@@ -467,10 +467,19 @@ func stepFailureMessage(err, callErr error) string {
 	switch {
 	case errors.Is(err, ErrInvalidCommand):
 		return "這一步未完成：模型的回覆不符合會話規則，已保留進度與實際可取得的費用。請檢查後再繼續。"
-	case callErr != nil && !errors.Is(callErr, ErrNotFound) && !errors.Is(callErr, ErrCreditFloor) && !errors.Is(callErr, ErrModelCallsHalted):
+	case callErr != nil && !explainedOnItsOwn(callErr):
 		return "這一步未完成：平台這一側沒能完成這次模型呼叫，不是你寫的內容的問題。已保留進度與實際可取得的費用。請檢查後再繼續。"
 	}
 	return "這一步未完成；已保留進度與實際可取得的費用。請檢查後再繼續。"
+}
+
+func explainedOnItsOwn(callErr error) bool {
+	for _, own := range []error{ErrNotFound, ErrCreditFloor, ErrModelCallsHalted, ErrModelBudgetExhausted} {
+		if errors.Is(callErr, own) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) failQueued(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e envelope, a JobArgs) error {
@@ -624,6 +633,12 @@ func failedAttempt(p *Snapshot, err error, call stepCall) State {
 		state = StateWaitingInput
 		p.PendingAction = NothingPending
 		p.appendMessage("assistant", "平台暫停中，這一步沒有呼叫模型、也沒有扣點。恢復後再送出一次就會接著做。")
+	}
+	if errors.Is(callErr, ErrModelBudgetExhausted) {
+		p.Steps--
+		state = StateWaitingInput
+		p.PendingAction = NothingPending
+		p.appendMessage("assistant", "平台的模型總額度暫時用完，這一步沒能完成，也不算進這場創作的步數；只會結算實際用到的費用。額度恢復後再送出一次就會接著做。")
 	}
 	return state
 }

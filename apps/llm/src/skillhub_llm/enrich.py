@@ -20,6 +20,7 @@ from skillhub_llm.gateway import (
     client,
     completion_usage,
     failure_label,
+    gateway_failure,
     json_schema_format,
     request_metadata,
     served_model,
@@ -193,7 +194,7 @@ async def enrich_skill(req: EnrichSkillRequest) -> EnrichSkillResponse:
         completion = raw.parse()
     except OpenAIError as e:
         logger.warning("enrich-skill: gateway call failed (%s)", failure_label(e))
-        raise HTTPException(status_code=502, detail="gateway error") from e
+        raise gateway_failure(e) from e
 
     try:
         enrichment = Enrichment.model_validate_json(completion.choices[0].message.content or "")

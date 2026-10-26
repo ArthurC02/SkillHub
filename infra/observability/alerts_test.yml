@@ -472,3 +472,34 @@ tests:
       - expr: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing"}'
         eval_time: 1h1m
         exp_samples: []
+
+  - name: a platform budget refusal fires at once and clears after fifteen quiet minutes
+    interval: 1m
+    input_series:
+      - series: 'skillhub_model_platform_budget_exhausted_total{job="platform", process="worker"}'
+        values: "0x5 1x25"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: ModelPlatformBudgetExhausted
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: ModelPlatformBudgetExhausted
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "模型閘道的平台總預算已用完，所有模型呼叫都被拒絕"
+              description: "閘道設定的總預算（litellm-config 的 max_budget 與 budget_duration）在這個週期內花完了： 搜尋的語意腿、創作、評估與生成都會失敗，直到週期重置或調高預算。 先查閘道的花費紀錄，分清是正常用量還是失控的呼叫迴圈，再決定等重置或調高。"
+      - eval_time: 22m
+        alertname: ModelPlatformBudgetExhausted
+        exp_alerts: []
+
+  - name: a zero platform budget counter is not a spent budget
+    interval: 1m
+    input_series:
+      - series: 'skillhub_model_platform_budget_exhausted_total{job="platform", process="worker"}'
+        values: "0x30"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: ModelPlatformBudgetExhausted
+        exp_alerts: []

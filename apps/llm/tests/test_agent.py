@@ -177,3 +177,22 @@ def test_the_daily_report_finishes_with_cited_items():
 
 async def unbudgeted(base_url, key, transport=None):
     return False
+
+
+def test_a_spent_platform_budget_is_a_503_naming_it():
+    from test_gateway_failure_log import PLATFORM_BUDGET_MESSAGE, budget_refusal
+
+    async def create(**_):
+        raise budget_refusal(PLATFORM_BUDGET_MESSAGE)
+
+    value = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
+        )
+    )
+    value.with_options = lambda **_: value
+    with patch.object(agent, "client", lambda _: value):
+        response = client.post("/v1/agent/step", headers=HEADERS, json=request())
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "model gateway platform budget exhausted"}

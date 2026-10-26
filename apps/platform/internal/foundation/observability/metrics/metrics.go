@@ -79,6 +79,10 @@ var (
 		Name: "skillhub_gateway_revoke_failed_total",
 		Help: "Virtual Key revocations that failed during cleanup (SBX-012).",
 	})
+	ModelPlatformBudgetExhausted = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "skillhub_model_platform_budget_exhausted_total",
+		Help: "Model calls the gateway refused because its platform-wide budget was spent.",
+	})
 	SandboxDestroyFailed = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "skillhub_sandbox_destroy_failed_total",
 		Help: "Sandbox teardowns that failed during cleanup (SBX-012).",

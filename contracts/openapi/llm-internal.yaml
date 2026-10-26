@@ -598,7 +598,7 @@ components:
             $ref: "#/components/schemas/Error"
     Unavailable:
       description: |
-        The service cannot take the request, for one of two reasons, and the
+        The service cannot take the request, for one of these reasons, and the
         caller has to tell them apart from `detail`:
 
         - **workload token not configured** - LLM_SERVICE_TOKEN is unset, so this
@@ -615,6 +615,12 @@ components:
           scoped key a creation or agent step carries) has a finite, unspent
           budget. The admin key has none, so this is also how holding the
           admin key is refused.
+        - **platform budget exhausted** - the gateway refused the model call
+          because its own total budget for the period is spent; `detail` is
+          exactly `model gateway platform budget exhausted`. Nothing was
+          served for that call, and every caller is refused until the period
+          resets or an operator raises the budget. A refusal of one key's own
+          budget is not this cause: it stays a 502.
 
         The causes must be told apart by whoever reads this, and they
         arrive as one response object rather than one per cause because OpenAPI gives a

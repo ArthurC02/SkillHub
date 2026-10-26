@@ -25,6 +25,7 @@ from skillhub_llm.gateway import (
     completion_usage,
     embedding_usage,
     failure_label,
+    gateway_failure,
     json_schema_format,
     key_is_budgeted,
     request_metadata,
@@ -177,7 +178,7 @@ async def embed(req: EmbedRequest) -> EmbedResponse:
         response = raw.parse()
     except Exception as e:
         logger.warning("embedding call failed (%s)", failure_label(e))
-        raise HTTPException(status_code=502, detail="gateway error") from e
+        raise gateway_failure(e) from e
 
     try:
         vectors = [item.embedding for item in response.data]
@@ -279,7 +280,7 @@ async def _ask_for_json(call: _JsonCall, system_prompt: str, user_prompt: str, t
         response = raw.parse()
     except Exception as e:
         logger.warning("%s LLM call failed (%s)", operation, failure_label(e))
-        raise HTTPException(status_code=502, detail="gateway error") from e
+        raise gateway_failure(e) from e
 
     try:
         content = (response.choices[0].message.content or "").strip()

@@ -3,6 +3,7 @@ package creation
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -285,5 +286,19 @@ func TestWhatCreationStoresKeepsItsFieldNames(t *testing.T) {
 			t.Errorf("stored snapshot is missing %s; rows written before this type moved into the "+
 				"domain would stop decoding, and no migration reshapes them\ngot: %s", want, raw)
 		}
+	}
+}
+
+func TestAPlatformBudgetRefusalReachesCreationInItsOwnWords(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"detail":"model gateway platform budget exhausted"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	_, err := ModelOrNone(&llmclient.Client{BaseURL: srv.URL}).CreationStep(context.Background(), aStepRequest())
+
+	if !errors.Is(err, ErrModelBudgetExhausted) {
+		t.Fatalf("err = %v, want ErrModelBudgetExhausted", err)
 	}
 }

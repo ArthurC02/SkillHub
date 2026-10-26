@@ -22,6 +22,7 @@ from skillhub_llm.gateway import (
     client,
     completion_usage,
     json_schema_format,
+    platform_budget_refusal,
     request_metadata,
     require_budgeted_key,
     served_model,
@@ -976,6 +977,8 @@ async def _decide(
             "served_model": served_model(completion, raw.headers, MODEL),
         }
     except MODEL_OUTPUT_ERRORS as exc:
+        if refusal := platform_budget_refusal(exc):
+            raise refusal from None
         # Only our own plain ValueError text is safe to log; ValidationError
         # and others may carry model output or upstream response bodies.
         label = type(exc).__name__

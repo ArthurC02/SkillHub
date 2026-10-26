@@ -74,6 +74,9 @@ func (c *Client) AgentStep(ctx context.Context, in AgentStepRequest) (*AgentStep
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		if refusal := platformBudgetRefusal("/v1/agent/step", resp.StatusCode, raw); refusal != nil {
+			return nil, refusal
+		}
 		return nil, fmt.Errorf("llmclient: agent step returned %d: %s", resp.StatusCode, bytes.TrimSpace(raw))
 	}
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBytes+1))

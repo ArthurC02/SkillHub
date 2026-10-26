@@ -38,6 +38,8 @@ var (
 
 	ErrModelCallsHalted = errors.New("creation: model calls are halted by a P1 incident")
 
+	ErrModelBudgetExhausted = errors.New("creation: the platform's model budget is spent")
+
 	ErrIllegalTransition = errors.New("creation: the session cannot move that way")
 )
 

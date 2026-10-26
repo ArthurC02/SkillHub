@@ -16,7 +16,7 @@ from typing import Literal
 
 import httpx
 from fastapi import HTTPException
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, RateLimitError
 from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger("skillhub_llm.gateway")
@@ -124,6 +124,25 @@ def failure_label(error: Exception) -> str:
     """The error's type and status: its message can echo the prompt back."""
     status = getattr(error, "status_code", None)
     return type(error).__name__ if status is None else f"{type(error).__name__} {status}"
+
+
+PLATFORM_BUDGET_EXHAUSTED = "model gateway platform budget exhausted"
+
+
+def platform_budget_refusal(error: Exception) -> HTTPException | None:
+    """503 when the gateway refused because its own total budget is spent.
+
+    A per-key refusal names its key in the message; the gateway-wide one does not.
+    """
+    if not isinstance(error, RateLimitError) or error.type != "budget_exceeded":
+        return None
+    if "Key=" in str(error.message):
+        return None
+    return HTTPException(status_code=503, detail=PLATFORM_BUDGET_EXHAUSTED)
+
+
+def gateway_failure(error: Exception, detail: str = "gateway error") -> HTTPException:
+    return platform_budget_refusal(error) or HTTPException(status_code=502, detail=detail)
 
 
 def client(timeout: float) -> AsyncOpenAI:

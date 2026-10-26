@@ -19,6 +19,7 @@ from skillhub_llm.gateway import (
     GatewayUsage,
     client,
     completion_usage,
+    gateway_failure,
     request_metadata,
     require_budgeted_key,
     served_model,
@@ -186,7 +187,7 @@ async def _step(
             )
         )
     except APIError as error:
-        raise HTTPException(status_code=502, detail="model gateway call failed") from error
+        raise gateway_failure(error, "model gateway call failed") from error
     completion = raw.parse()
     decision = decide(req, completion)
     common = {

@@ -169,6 +169,9 @@ func withEmptyListsForNil(in CreationStepRequest) CreationStepRequest {
 
 func creationStepFailure(resp *http.Response) error {
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	if refusal := platformBudgetRefusal("/v1/creation/step", resp.StatusCode, raw); refusal != nil {
+		return refusal
+	}
 	var body struct {
 		Detail any `json:"detail"`
 	}

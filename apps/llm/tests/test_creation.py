@@ -1164,3 +1164,40 @@ def test_a_draft_outcome_without_a_draft_is_left_for_go_not_a_502():
 
 async def unbudgeted(base_url, key, transport=None):
     return False
+
+
+@pytest.mark.parametrize(
+    ("message", "status", "detail"),
+    [
+        (
+            "Budget has been exceeded! Current cost: 50.0112, Max budget: 50.0",
+            503,
+            "model gateway platform budget exhausted",
+        ),
+        (
+            "Budget has been exceeded! Key=88dc28d0f0 Spend=0.5103 Max Budget=0.5",
+            502,
+            "creation model returned unusable output",
+        ),
+    ],
+    ids=["platform budget", "this step's key budget"],
+)
+def test_a_budget_refusal_names_the_platform_only_when_the_platform_is_spent(
+    message, status, detail
+):
+    from test_gateway_failure_log import budget_refusal
+
+    async def create(**_):
+        raise budget_refusal(message)
+
+    value = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
+        )
+    )
+    value.with_options = lambda **_: value
+    with patch.object(creation, "client", lambda _: value):
+        response = client.post("/v1/creation/step", headers=HEADERS, json=request())
+
+    assert response.status_code == status
+    assert response.json() == {"detail": detail}

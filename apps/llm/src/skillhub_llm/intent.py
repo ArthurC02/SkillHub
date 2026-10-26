@@ -4,7 +4,7 @@ import logging
 import os
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from openai import OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError
 
@@ -13,6 +13,7 @@ from skillhub_llm.gateway import (
     client,
     completion_usage,
     failure_label,
+    gateway_failure,
     json_schema_format,
     request_metadata,
     served_model,
@@ -149,7 +150,7 @@ async def analyze_intent(req: AnalyzeSearchIntentRequest) -> AnalyzeSearchIntent
         completion = raw.parse()
     except OpenAIError as error:
         logger.warning("analyze-intent: gateway call failed (%s)", failure_label(error))
-        raise HTTPException(status_code=502, detail="gateway error") from error
+        raise gateway_failure(error) from error
 
     response = AnalyzeSearchIntentResponse(
         valid=False,

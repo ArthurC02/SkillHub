@@ -10,7 +10,29 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 )
+
+var ErrPlatformBudgetExhausted = errors.New("llmclient: the model gateway's platform budget is exhausted")
+
+const platformBudgetExhaustedDetail = "model gateway platform budget exhausted"
+
+func platformBudgetRefusal(path string, status int, body []byte) error {
+	if status != http.StatusServiceUnavailable || detailOf(body) != platformBudgetExhaustedDetail {
+		return nil
+	}
+	metrics.ModelPlatformBudgetExhausted.Inc()
+	return fmt.Errorf("%w: %s", ErrPlatformBudgetExhausted, path)
+}
+
+func detailOf(body []byte) string {
+	var parsed struct {
+		Detail string `json:"detail"`
+	}
+	_ = json.Unmarshal(body, &parsed)
+	return parsed.Detail
+}
 
 type Client struct {
 	BaseURL    string
@@ -62,6 +84,9 @@ func post[Req, Resp any](ctx context.Context, c *Client, path string, reqBody Re
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, errorBodyDrainBytes))
+		if refusal := platformBudgetRefusal(path, resp.StatusCode, b); refusal != nil {
+			return nil, refusal
+		}
 		return nil, fmt.Errorf("llmclient: %s returned %d: %s", path, resp.StatusCode, string(b))
 	}
 

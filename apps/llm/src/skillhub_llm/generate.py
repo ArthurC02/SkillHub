@@ -29,6 +29,7 @@ from skillhub_llm.gateway import (
     client,
     completion_usage,
     failure_label,
+    gateway_failure,
     json_schema_format,
     request_metadata,
     served_model,
@@ -286,7 +287,7 @@ async def generate_skill(req: GenerateSkillRequest) -> GenerateSkillResponse:
         completion = raw.parse()
     except OpenAIError as e:
         logger.warning("generate-skill: gateway call failed (%s)", failure_label(e))
-        raise HTTPException(status_code=502, detail="gateway error") from e
+        raise gateway_failure(e) from e
 
     finish = getattr(completion.choices[0], "finish_reason", None) if completion.choices else None
     if finish == "length":

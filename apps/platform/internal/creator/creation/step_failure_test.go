@@ -17,6 +17,7 @@ func TestStepFailureMessageNamesTheSideThatBroke(t *testing.T) {
 		{"根本沒拿到答案（閘道、逾時、LLM 服務）", ErrUnavailable, errors.New("dial tcp [::1]:4000: refused"), "平台這一側沒能完成這次模型呼叫"},
 		{"參考不可用：第二句話才是真正的原因", ErrUnavailable, ErrNotFound, "這一步未完成；"},
 		{"餘額到底：第二句話才是真正的原因", ErrUnavailable, ErrCreditFloor, "這一步未完成；"},
+		{"平台總額度用完：第二句話才是真正的原因", ErrUnavailable, ErrModelBudgetExhausted, "這一步未完成；"},
 		{"會話被停掉或超時：沒有第三方壞掉", ErrUnavailable, nil, "這一步未完成；"},
 	} {
 		t.Run(c.name, func(t *testing.T) {

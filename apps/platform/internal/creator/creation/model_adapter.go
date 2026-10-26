@@ -2,6 +2,8 @@ package creation
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
@@ -41,6 +43,9 @@ func (a stepOverHTTP) CreationStep(ctx context.Context, req StepRequest) (*StepR
 		MaxOutputTokens:             req.MaxOutputTokens,
 		GatewayKey:                  req.GatewayKey,
 	})
+	if errors.Is(err, llmclient.ErrPlatformBudgetExhausted) {
+		return nil, fmt.Errorf("%w: %w", ErrModelBudgetExhausted, err)
+	}
 	if err != nil {
 		return nil, err
 	}
