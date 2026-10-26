@@ -31,7 +31,7 @@
 | --- | --- | --- |
 | `SKILLHUB_SANDBOX_TOKEN` | 無（**必填**） | Provider token；未設定則拒絕啟動（fail closed） |
 | `SKILLHUB_SANDBOX_ADDR` | `:9000` | 監聽位址 |
-| `SKILLHUB_SANDBOX_IMAGE` | `skillhub/runtime-agent-sdk:2026.08-23` | Runtime Image。**生產 `runsc` 強制填 digest**（I-02），tag 是移動標的。`2026.08-2` 起含 python3 與目錄宣告的 Python 依賴（[infra/images/README.md](../../infra/images/README.md)）——**目錄的 Agent 相容欄是在 `2026.08-1` 上實測的**，換版後那 45 筆結論不再適用，需重跑 CONTENT-008 基準才會有新的一組 |
+| `SKILLHUB_SANDBOX_IMAGE` | `skillhub/runtime-agent-sdk:<IMAGE_VERSION>` | Runtime Image；版本由 [`infra/images/runtime-agent-sdk/Dockerfile`](../../infra/images/runtime-agent-sdk/Dockerfile) 的 `ARG IMAGE_VERSION` 提供。**生產 `runsc` 強制填 digest**（I-02），tag 是移動標的。Runtime Image 變更後，Skill 相容性必須重新依 `(Skill Version, Runtime Image)` 量測，不從其他映像推論。 |
 | `SKILLHUB_SANDBOX_RUNTIME` | 空（＝主機預設 runtime） | 生產填 `runsc`（gVisor） |
 | `SKILLHUB_SANDBOX_NETWORK` | `none` | **出口網路**的名稱。`none`／空＝本節點無出口，所有沙箱一律 `--network none`。設了名字，沙箱**仍只在 `RunRequest.egress.allow` 含 `model_gateway` 時**才接上去；dev 填 `skillhub_egress`（`internal: true`，上面只有 LiteLLM 閘道），生產填 Egress Proxy 的網路名 |
 | `SKILLHUB_SANDBOX_SLOTS` | `2` | 併發上限；滿了回 429 |
@@ -119,7 +119,7 @@ dev 的出口網路是 `skillhub_egress`，`internal: true`：上面的容器沒
 | Skill 套件、Dataset 進沙箱 | sandboxd 以 `object_grants` 的預簽 URL 下載 → `docker exec /bin/dd of=… status=none` 寫進 `/work/.skillhub/skill.zip`、`/work/data/<檔名>` → 最後寫 `/work/.skillhub/ready` |
 | Artifact 出沙箱 | `docker exec /bin/tar -cf - -C /out artifacts` 讀出 → 套用 PDM-005 5.2 的單檔／總量上限 → 以寫入授權 `PUT` 上傳單一封存 → manifest 回填 `RunResult.artifacts` |
 
-用 `docker exec` 是被迫的，不是偏好：`docker cp` 對唯讀 rootfs 的容器一律被 daemon 拒絕（實測 `container rootfs is marked read-only`），而且 copy API 看不到掛載點下的檔案；bind mount 會把主機路徑放進沙箱（C-05 禁止）。風險界線同 `ReadTrace`：映像自帶二進位、絕對路徑、無 shell、無呼叫端參數、與工作負載同一個非特權 uid、讀取有上限。內容一律不解析——本服務不解壓套件、不讀 Dataset（鐵律 1）。
+用 `docker exec` 是必要的：唯讀 rootfs 與禁止 bind mount（C-05）排除了 `docker cp` 和主機路徑交接。風險界線同 `ReadTrace`：映像自帶二進位、絕對路徑、無 shell、無呼叫端參數、與工作負載同一個非特權 uid、讀取有上限。內容一律不解析——本服務不解壓套件、不讀 Dataset（鐵律 1）。
 
 **收集交接（為什麼工作負載會等）**：`/out` 是 tmpfs，工作負載的行程一結束，核心就把裡面的東西丟掉；而 `docker exec` 需要**執行中**的容器。因此沒有任何「事後讀取」存在。工作負載做完事後寫 `/out/.workload-done` 並等待，sandboxd 排完 trace、收完 artifact 才寫 `/out/.collected` 放它走。這就是 PDM-005 說的合作式停止窗口。**限制**：崩潰、被殺、逾時的工作負載走不到這一步，只剩 2 秒 ticker 已經推出去的部分。
 
@@ -129,7 +129,7 @@ dev 的出口網路是 `skillhub_egress`，`internal: true`：上面的容器沒
 
 沙箱到得了的位址只有模型閘道，**它不能自己送事件**。所以流程是：容器內的 harness 把事件寫成 JSONL（`/out/trace/events.jsonl`，一行一個 JSON）→ sandboxd 讀出來 → sandboxd POST 到 `RunRequest.trace.ingestion_url`。目的地與其憑證都在該 URL 裡，由平台每個 attempt 簽發；沒給 URL 就不收集，也不推送。
 
-讀檔的方式是**在容器內執行 bounded `/bin/dd`**，不是 `docker cp`：`/out` 是 tmpfs，而 Docker 的 copy API 對照容器 rootfs 層解析路徑，對掛載點下的檔案一律回「找不到」（已對 daemon 實測）。bind mount 會把主機路徑放進沙箱（C-05 禁止），走 stdout 會讓 trace 與工作負載自己的輸出混在一起。exec 的風險界線寫在 `dockerdrv.ReadTrace` 的註解：唯讀 rootfs 上的映像檔自帶二進位、絕對路徑、無 shell、唯一動態參數是 Manager 自己維護的十進位 byte offset、與工作負載同一個非特權 uid；`dd` 最多輸出九個 1 MiB block，driver 去掉對齊前綴後每次交付 8 MiB。offset 只在完整 JSONL 行成功 POST 後前進，所以大檔不重讀開頭、失敗也不跳過。
+讀檔的方式是**在容器內執行 bounded `/bin/dd`**：`/out` 是 tmpfs，bind mount 會把主機路徑放進沙箱（C-05 禁止），走 stdout 會讓 trace 與工作負載自己的輸出混在一起。exec 的風險界線寫在 `dockerdrv.ReadTrace` 的註解：唯讀 rootfs 上的映像檔自帶二進位、絕對路徑、無 shell、唯一動態參數是 Manager 自己維護的十進位 byte offset、與工作負載同一個非特權 uid；`dd` 最多輸出九個 1 MiB block，driver 去掉對齊前綴後每次交付 8 MiB。offset 只在完整 JSONL 行成功 POST 後前進，所以大檔不重讀開頭、失敗也不跳過。
 
 推送是**邊跑邊送**（2 秒一次）而非結束後一次送，因為 NFR-004 要求事件產生後 3 秒內出現在畫面；容器結束後還有一次收尾推送（含重試），因為那時容器還在（`DELETE` 才移除它），而那批正是失敗 Run 最需要的尾巴。推送失敗不推進水位，下一輪整批重送——平台以 `event_id` 去重，重送是安全的（TRACE-008）。
 
@@ -137,7 +137,7 @@ dev 的出口網路是 `skillhub_egress`，`internal: true`：上面的容器沒
 
 ## Skill 載入路徑
 
-沙箱內的展開點是 `<workdir>/.claude/skills/<name>/`，不是 `skills/`——這是 PDM-003 Spike §10 的實測結果，原提案的假設已被證偽。`.claude` 是隱藏目錄，展開與清理都必須涵蓋它。SDK 以「一個目錄一個 skill」發現，所以 `<name>/` 那層不能省：套件直接倒進 skills 根目錄會被發現為零個 skill。
+沙箱內的展開點是 `<workdir>/.claude/skills/<name>/`。`.claude` 是隱藏目錄，展開與清理都必須涵蓋它；SDK 以「一個目錄一個 skill」發現，所以 `<name>/` 那層不能省。
 
 啟用條件全部寫在 [`infra/images/runtime-agent-sdk/run.mjs`](../../infra/images/runtime-agent-sdk/run.mjs)，缺一則 Skill **靜默**不載入（不報錯、不警告，只是一個都沒有）：
 
@@ -146,11 +146,11 @@ dev 的出口網路是 `skillhub_egress`，`internal: true`：上面的容器沒
 | `cwd` | 指向持有 `.claude/skills/` 的目錄 | 即 `/work` |
 | `settingSources` | **省略** | 見下 |
 | `skills` | `"all"` | 0.3.x 起 skill 啟用的唯一開關 |
-| `allowedTools` | 工作負載可用的工具清單 | 傳 `'Skill'` 已 **deprecated**，改由 `skills` 負責 |
+| `allowedTools` | 工作負載可用的工具清單，目前與 `skills` 同時配置 | 清單目前包含 `Skill`、檔案工具與 `Bash`；實際可用工具以 `run.mjs` 的設定為準 |
 
-> **`settingSources` 的行為在 SDK 0.3.233 上與 PDM-003 Spike（claude-agent-sdk 0.2.137）相反。** 實測：`settingSources: ["project"]` 在 0.3.233 **完全發現不到**專案 skill（`init.skills` 只剩內建 plugin），**省略**該選項才發現得到。Spike 當初列出 `["project"]` 是為了排除 `user` 以免映像裡的 `~/.claude` 滲進 Run；`HOME` 指向每個 Run 專屬的 `/work` tmpfs，沒有別的家目錄可滲，所以省略它不損失什麼。
+> `settingSources` 目前省略。`HOME` 指向每個 Run 專屬的 `/work` tmpfs；若 SDK 版本或設定來源行為改變，必須重新驗證 Skill 發現、啟用與隔離邊界。
 >
-> **SDK 版本升級時，以上每一條都必須重新實測，不得用推理帶過**——它們全是靜默失效，而這一條已經反轉過一次（`run.mjs` 檔頭有同樣的警語）。
+> SDK 版本升級時，以上設定都必須重新驗證；`run.mjs` 檔頭保留相同的操作提醒，升級證據集中記錄於 [`UPGRADES.md`](../../infra/images/runtime-agent-sdk/UPGRADES.md)。
 
 ## 開發與驗證
 
@@ -158,20 +158,20 @@ dev 的出口網路是 `skillhub_egress`，`internal: true`：上面的容器沒
 
 ```bash
 # build / vet / test（Docker 整合測試會自動 skip）
-docker run --rm -v "$PWD:/src" -w /src/apps/sandbox golang:1.25 \
+docker run --rm -v "$PWD:/src" -w /src/apps/sandbox golang:1.27.3 \
   sh -c "go build ./... && go vet ./... && go test ./..."
 
 # 含 Docker 整合測試：把 socket 掛進測試容器
 # 這是「測試基礎設施」而非產品路徑——產品程式碼永遠不會把 docker.sock 掛進沙箱
 docker run --rm -v "$PWD:/src" -v /var/run/docker.sock:/var/run/docker.sock \
-  -w /src/apps/sandbox golang:1.25 go test -count=1 ./...
+  -w /src/apps/sandbox golang:1.27.3 go test -count=1 ./...
 
 # lint（與 apps/platform 同一版本與設定）
 docker run --rm -v "$PWD:/src" -w /src/apps/sandbox \
-  golangci/golangci-lint:v2.12.2 sh -c "golangci-lint fmt --diff && golangci-lint run ./..."
+  golangci/golangci-lint:v2.14.0 sh -c "golangci-lint fmt --diff && golangci-lint run ./..."
 
 # Runtime Image
-docker build -t skillhub/runtime-agent-sdk:2026.08-23 infra/images/runtime-agent-sdk
+docker build -t "skillhub/runtime-agent-sdk:$(sed -n 's/^ARG IMAGE_VERSION=//p' infra/images/runtime-agent-sdk/Dockerfile)" infra/images/runtime-agent-sdk
 ```
 
 整合測試偵測不到 Docker daemon 就 skip 而非 fail，並且每個測試容器都帶 `skillhub.sandbox.test=1` label、用完即刪。

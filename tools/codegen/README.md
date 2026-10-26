@@ -7,7 +7,7 @@ atomically replaces only generated subdirectories.
 | Source | Generator | Generated target |
 | --- | --- | --- |
 | `contracts/openapi/public.yaml` | OpenAPI Generator 7.25.0 `typescript-fetch`, digest-pinned container | `packages/api-client-ts/src/generated/` |
-| `contracts/openapi/llm-internal.yaml` | datamodel-code-generator 0.76.2/Pydantic v2, fully locked image in `python/` | `packages/api-stub-py/src/skillhub_api_stub/generated/` |
+| `contracts/openapi/llm-internal.yaml` | datamodel-code-generator／Pydantic v2；版本與 Python codegen image 以 [`tools/toolchain.yaml`](../toolchain.yaml) 為準 | `packages/api-stub-py/src/skillhub_api_stub/generated/` |
 | `contracts/openapi/public.yaml` | ogen 1.24.0 models-only, fully locked image in `go/` | `apps/platform/internal/entrypoint/api/gen/` |
 
 The Python image uses a digest-pinned Python base, copies uv from its own pinned

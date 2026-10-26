@@ -7,8 +7,12 @@ over internal HTTP only — it never consumes the queue and holds no business ru
 uv sync
 uv run pytest
 uv run ruff check .
-uv run uvicorn skillhub_llm.app:app --reload
+task dev:llm
 ```
+
+本機服務請從 repo 根目錄以 `task dev:llm` 啟動；它透過
+`tools/cleanmode/with-service-key.mjs` 提供 `LLM_SERVICE_TOKEN`。直接執行
+`uvicorn` 不會建立這個服務對服務驗證，僅適用於明確測試應用程式本身的情境。
 
 互動式 Skill 創作已依[互動創作](../../docs/adr/README.md#互動創作)
 接上 LangGraph。`POST /v1/creation/step` 從 Go 快照重建單次工作，回傳澄清、

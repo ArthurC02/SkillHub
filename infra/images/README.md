@@ -16,17 +16,19 @@
 `@anthropic-ai/claude-agent-sdk` ＋ python3 與目錄宣告的 Python 依賴），由
 `apps/sandbox` 的 DockerProvider 以 `SKILLHUB_SANDBOX_IMAGE` 引用。
 
-## 映像內容與理由（版本 `2026.08-3`）
+## 映像內容與理由
+
+Runtime Image 版本的唯一來源是 [`runtime-agent-sdk/Dockerfile`](runtime-agent-sdk/Dockerfile) 的 `ARG IMAGE_VERSION`；本 README 不複寫現行 tag。`apps/sandbox` 的預設值也以其原生設定為準，不能從 `UPGRADES.md` 的未驗證版本推論已通過部署准入。
 
 | 內容 | 為什麼在裡面 |
 | --- | --- |
 | `node:22-bookworm-slim`（digest pin） | PDM-003 與[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)選定的 Agent SDK 執行環境 |
 | `@anthropic-ai/claude-agent-sdk`（版本 pin） | 工作負載本體；版本即 `runtime_version`（I-05） |
-| `unzip` ——**不在裡面** | 曾經在裡面，理由是「Skill 套件是 zip，解壓縮只能發生在沙箱內（鐵律 1）」。**現在解壓由 `run.mjs` 自帶的 ZIP 解析器做**，絕對路徑／`..` 路徑段／非普通檔的拒絕規則一併移進該解析器（`2026.08-7` 起函式名為 `provisionPackage`），因此本映像的 `apt-get install` 只剩 `python3 python3-pip`。理由與逐條拒絕規則見 [`runtime-agent-sdk/Dockerfile`](runtime-agent-sdk/Dockerfile) 的註解與 [`UPGRADES.md`](runtime-agent-sdk/UPGRADES.md) 的 `-4`／`-5`／`-7` 三節 |
+| `unzip` ——**不在裡面** | `run.mjs` 的 `provisionPackage` 解析 ZIP，並拒絕絕對路徑、`..` 路徑段與非普通檔。映像只安裝 Runtime 真正需要的系統套件；逐條規則以 [`runtime-agent-sdk/Dockerfile`](runtime-agent-sdk/Dockerfile) 與 `provisionPackage` 實作為準 |
 | **`python3` ＋ 下表 17 個套件** | 見下節 |
 | **不在裡面**：`npm`／`npx`／`corepack`／`pip` | 執行期不載入、沙箱無網路，套件管理器留在沙箱裡只是負債 |
 
-### 為什麼加 python3（`2026.08-2`，2026-08-16）
+### Python 執行環境
 
 M2 基準試跑的 trace 原文是 `/bin/bash: line 75: python3: command not found`，而
 `tools/content/seed-skills.json` 記錄 45 個目錄 Skill 中 **33 個 `deps_runtime = python`**
@@ -47,14 +49,13 @@ Skill 在裝了 Python 的環境與這裡是兩種行為。
 與隨它發佈的 SBOM（SBX-011），手寫 lock 檔會是第二份會漂移的答案。
 
 **代價，明說**：映像由 806 MB 長到 1.24 GB（`2026.08-2`）再到 **1.35 GB**（`2026.08-3`）。
-以及 **`pandas` 是 3.x**，而目錄裡的 Skill 多半寫於 2.x 年代——**已由 §13 全量重測回答**：
-45 筆只觸發一則 `select_dtypes(include='object')` 的相容性告警（`data-analyst`），非錯誤。
+Python 依賴的相容性不是由版本推論；Runtime Image 變更後，必須以新的 `(Skill Version, Runtime Image)` 實測建立相容性證據。
 
-## 依賴集：宣告、准入與拒收（`2026.08-3`，2026-08-16）
+## 依賴集：宣告、准入與拒收
 
 ### 為什麼要有這一節
 
-`2026.08-2` 的規則是一句話：**裝目錄 `deps` 欄位的聯集**。規則沒錯，錯的是它的輸入。
+規則是：**裝目錄 `deps` 欄位的聯集**，再套用本節的准入門檻；`deps` 是 Skill 宣告的需求，不是映像實際提供的清單。
 
 M2 全量基準（[content-baseline-report.md §13.4](../../docs/plans/mvp/m2/content-baseline-report.md)）
 發現 4 個 Skill 的腳本 import 了 `deps` 沒宣告的套件。**逐套件靜態掃描 45 個 pin commit
@@ -145,17 +146,7 @@ Skill 的基準都判「符合」——因為 Agent 繞過了那條驗證路徑�
 多一個映像是這個資料模型早就預期的事。
 
 > ⚠️ **換映像＝ Agent 相容軸失效。** `skill_runtime_compatibility`（migration 0022）以
-> **(Skill Version × Runtime Image)** 為鍵。`2026.08-1` 有 45 筆、`2026.08-2` 有 45 筆
-> （全量重測，見 §12／§13），**`2026.08-3` 目前 0 筆**。部署改用 `2026.08-3` 之後，目錄對
-> 這 45 筆會回到「未驗證」，直到有人在新映像上重跑基準。這是刻意的：沿用舊映像的結論
-> 正是本節要修的那個問題。
->
-> 本次升版的**依賴集只增不減**（8 個新增、0 個移除、既有 9 個版本不變），所以 `2026.08-2`
-> 的 45 筆結論在 `2026.08-3` 上**幾乎確定仍成立**——但「幾乎確定」不是量測，0022 的鍵不
-> 接受推論。升版證據走的是[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)
-> 的四項重驗（見 [`runtime-agent-sdk/UPGRADES.md`](runtime-agent-sdk/UPGRADES.md)），
-> 那是**行為回歸**的關卡；相容軸回填是**目錄事實**，兩者不互相取代。全量重跑
-> 45 筆約 $2.2（§13.6 實測），列為 `03` 工作項而非本批動作。
+> **(Skill Version × Runtime Image)** 為鍵。Runtime Image 或 Skill 版本改變後，舊結果回到「未驗證」，直到在新的 image digest 上重跑基準。升級記錄與相容性實測是不同證據，不能以依賴集合、歷史結果或行為回歸互相取代。
 
 「**經審核**」不是「建得起來」。SEC-002 §4.5 對執行映像列了六項檢查，其中三項是
 發佈時閘門（威脅模型 §5.4 閘門 D）：
@@ -396,7 +387,9 @@ Package settings／Manage versions** → 依上表的 tag 找到該 version → 
 `DELETE /user/packages/container/skillhub-runtime-agent-sdk/versions/{version_id}`
 （version id 先以 `GET …/versions` 查，該端點要 `read:packages`）。
 
-## 當前掃描結果（`runtime-agent-sdk:2026.08-3`，2026-08-16）
+## 歷史掃描快照（`2026.08-3`）
+
+以下數字是 `2026.08-3` 的已保存掃描快照，不代表現行 image 的安全狀態。現行准入必須對部署指定的 immutable digest 核對 GHCR 上同一 subject digest 的 SBOM 與漏洞掃描 attestation；沒有對應 digest、attestation 或有效掃描結果時，不得以本節數字代替查證。
 
 syft v1.51.0 ＋ grype v0.117.0（漏洞庫 build `2026-08-16T06:14:30Z`，與 `2026.08-2` 那次
 **同一個 build**，所以下表是同條件比較），base digest
@@ -412,12 +405,7 @@ syft v1.51.0 ＋ grype v0.117.0（漏洞庫 build `2026-08-16T06:14:30Z`，與 `
 | Unknown | 16 | 16 | **16** |
 | **有修復版本者（I-06 閘門）** | 0 | 0 | **0（閘門通過）** |
 
-**`2026.08-3` 逐格與 `2026.08-2` 相同**，Critical／High 的來源套件清單也一字未變（16 個
-Debian 套件，全在下方豁免清單內）。上表為本機重跑值，**CI 於發佈時獨立產出同一組數字**
-並寫進 I-04 attestation 的 `summary`（`total: 297`、`fixable_critical_high: 0`，
-[run #31949830049](https://github.com/ArthurC02/SkillHub/actions/runs/31949830049)）。8 個新套件**帶進 0 件新發現**——這不是巧合，是准入
-門檻的直接結果：純 Python wheel 沒有 native CVE 面，而**上一節擋下的那些正好相反**
-（mupdf／poppler／cairo／Arrow C++ 都有 CVE 史）。豁免清單因此**沒有新增列**。
+這張表只描述該快照的掃描結果；CI 發佈與 rescan 產生的 attestation 才是指定 digest 的現行證據。純 Python 依賴是否引入新的 finding，也必須以該次掃描結果判定。
 
 `2026.08-2` 相對 `2026.08-1` 增加的 1 Critical ＋ 31 High 全部來自 python3 帶進來的
 Debian 套件（`python3.11` 系列 6 件 ×4 個套件、`libexpat1` 4 件、`libsqlite3-0` 3 件、
