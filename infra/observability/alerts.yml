@@ -329,7 +329,7 @@ groups:
             付的是無法觸及的物件儲存費用，不是資料遺失。
 
       - alert: DatabaseNearRestoreBudget
-        expr: skillhub_restore_budget_days_left < 90
+        expr: skillhub_restore_budget_days_left{process="worker"} < 90
         for: 6h
         labels:
           severity: warning
@@ -350,7 +350,7 @@ groups:
             跑 `maintenance report`；在封存完成之前，故障恢復時間以實際還原時間為準。
 
       - alert: CapacityNotObserved
-        expr: absent(skillhub_restore_budget_days_left)
+        expr: absent(skillhub_restore_budget_days_left{process="worker"})
         for: 2h
         labels:
           severity: warning
