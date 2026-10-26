@@ -32,17 +32,6 @@ export function PublishPanel({
   isLoggedIn: boolean;
   isOwner: boolean;
 }) {
-  const enabled = isLoggedIn && isOwner;
-  const publisher = useOwnPublisher(enabled);
-  const publication = useOwnPublication(skill.skill_id, enabled);
-  const publish = usePublish(skill.skill_id);
-  const delist = useDelist(skill.skill_id);
-  const [name, setName] = useState(skill.name);
-  const [attested, setAttested] = useState(false);
-  const [license, setLicense] = useState<DeclarableLicense | "">("");
-  const nameInputId = useId();
-  const headingId = `${nameInputId}-heading`;
-
   if (!isLoggedIn) {
     return (
       <div className="note">
@@ -52,6 +41,25 @@ export function PublishPanel({
   }
   if (!isOwner) return null;
   if (!version) return <p role="status">這個小工具還沒有可發佈的版本。</p>;
+  return <PublicationEditor skill={skill} version={version} />;
+}
+
+function PublicationEditor({
+  skill,
+  version,
+}: {
+  skill: SkillDetailModel;
+  version: SkillVersionSummary;
+}) {
+  const publisher = useOwnPublisher();
+  const publication = useOwnPublication(skill.skill_id);
+  const publish = usePublish(skill.skill_id);
+  const delist = useDelist(skill.skill_id);
+  const [name, setName] = useState(skill.name);
+  const [attested, setAttested] = useState(false);
+  const [license, setLicense] = useState<DeclarableLicense | "">("");
+  const nameInputId = useId();
+  const headingId = `${nameInputId}-heading`;
 
   const noPublisherYet = publisher.error instanceof ApiError && publisher.error.status === 404;
   const notPublishedYet = publication.error instanceof ApiError && publication.error.status === 404;
@@ -61,6 +69,7 @@ export function PublishPanel({
     attested,
   );
   const declarations: Declarations = {
+    disabled: publish.isPending || delist.isPending,
     needsAttestation,
     attested,
     onAttestedChange: setAttested,
@@ -110,6 +119,7 @@ export function PublishPanel({
 
           {publication.data && !publication.error ? (
             <PublishedView
+              focusTarget={headingId}
               publication={publication.data}
               declarations={declarations}
               disabledReason={disabledReason}
@@ -121,6 +131,7 @@ export function PublishPanel({
             />
           ) : notPublishedYet ? (
             <PublishForm
+              focusTarget={headingId}
               nameInputId={nameInputId}
               name={name}
               onNameChange={setName}
@@ -139,6 +150,7 @@ export function PublishPanel({
 }
 
 function PublishedView({
+  focusTarget,
   publication,
   declarations,
   disabledReason,
@@ -148,6 +160,7 @@ function PublishedView({
   skillId,
   version,
 }: {
+  focusTarget: string;
   publication: Publication;
   declarations: Declarations;
   disabledReason: string | undefined;
@@ -157,11 +170,86 @@ function PublishedView({
   skillId: string;
   version: SkillVersionSummary;
 }) {
+  const pending = publish.isPending || delist.isPending;
+  const pendingId = `${focusTarget}-pending`;
+
+  return (
+    <>
+      {pending && (
+        <p className="note" id={pendingId} role="status">
+          正在送出或核對發佈狀態，完成前暫停其他發佈操作。目前先顯示上次讀取的結果。
+        </p>
+      )}
+      <PublicationFacts publication={publication} skillId={skillId} version={version} />
+
+      <PublishDeclarations declarations={declarations} />
+      <p>
+        <button
+          type="button"
+          disabled={pending || cannotSubmit}
+          aria-describedby={
+            pending ? pendingId : disabledReason ? "publish-disabled-reason" : undefined
+          }
+          onClick={() => {
+            publish.mutate({
+              versionId: version.version_id,
+              rightsAttested: declarations.attested,
+              declaredLicense: declarations.license,
+            });
+            document.getElementById(focusTarget)?.focus();
+          }}
+        >
+          {publish.isPending ? "送出中…" : `發佈 v${version.version_number}`}
+        </button>
+      </p>
+      {disabledReason && (
+        <p className="note" id="publish-disabled-reason">
+          {disabledReason}
+        </p>
+      )}
+      <ReadFailure error={publish.error} what="發佈">
+        <p role="alert">{writeFailureSentence(publish.error, "發佈")}</p>
+      </ReadFailure>
+
+      {publication.status === "published" && (
+        <ConfirmDelete
+          scopeId="publish-delist-scope"
+          label="撤回"
+          confirmLabel="確認撤回"
+          pending={delist.isPending}
+          disabled={publish.isPending}
+          disabledReasonId={pendingId}
+          onConfirm={() => {
+            delist.mutate();
+            document.getElementById(focusTarget)?.focus();
+          }}
+          scope={
+            <>
+              撤回後這個位址只會顯示「作者已撤回」，不再提供內容，也不能下載；名稱仍然是你的，之後可以用同一個名稱再發佈一次。
+            </>
+          }
+        />
+      )}
+      <ReadFailure error={delist.error} what="撤回">
+        <p role="alert">{writeFailureSentence(delist.error, "撤回")}</p>
+      </ReadFailure>
+    </>
+  );
+}
+
+function PublicationFacts({
+  publication,
+  skillId,
+  version,
+}: {
+  publication: Publication;
+  skillId: string;
+  version: SkillVersionSummary;
+}) {
   const latest = publication.releases[0];
   const selectedRelease = publication.releases.find(
     (release) => release.version_id === version.version_id,
   );
-
   return (
     <>
       <p>
@@ -181,7 +269,7 @@ function PublishedView({
           在發佈與交付中查看這一筆
         </Link>
       </p>
-      <p>
+      <p role="status">
         狀態：{publication.status === "published" ? "已發佈" : "已撤回"}（
         <Timestamp at={publication.status_changed_at} />）
       </p>
@@ -203,50 +291,6 @@ function PublishedView({
       </p>
       <DeliveryAudience publication={publication} />
       <VersionCatalogExposure skillId={skillId} publication={publication} version={version} />
-
-      <PublishDeclarations declarations={declarations} />
-      <p>
-        <button
-          type="button"
-          disabled={publish.isPending || cannotSubmit}
-          aria-describedby={disabledReason ? "publish-disabled-reason" : undefined}
-          onClick={() =>
-            publish.mutate({
-              versionId: version.version_id,
-              rightsAttested: declarations.attested,
-              declaredLicense: declarations.license,
-            })
-          }
-        >
-          {publish.isPending ? "送出中…" : `發佈 v${version.version_number}`}
-        </button>
-      </p>
-      {disabledReason && (
-        <p className="note" id="publish-disabled-reason">
-          {disabledReason}
-        </p>
-      )}
-      <ReadFailure error={publish.error} what="發佈">
-        <p role="alert">{writeFailureSentence(publish.error, "發佈")}</p>
-      </ReadFailure>
-
-      {publication.status === "published" && (
-        <ConfirmDelete
-          scopeId="publish-delist-scope"
-          label="撤回"
-          confirmLabel="確認撤回"
-          pending={delist.isPending}
-          onConfirm={() => delist.mutate()}
-          scope={
-            <>
-              撤回後這個位址只會顯示「作者已撤回」，不再提供內容，也不能下載；名稱仍然是你的，之後可以用同一個名稱再發佈一次。
-            </>
-          }
-        />
-      )}
-      <ReadFailure error={delist.error} what="撤回">
-        <p role="alert">{writeFailureSentence(delist.error, "撤回")}</p>
-      </ReadFailure>
     </>
   );
 }

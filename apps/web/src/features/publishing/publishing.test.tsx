@@ -2244,3 +2244,192 @@ for (const reason of ["__proto__", "constructor", "toString", "valueOf"]) {
     expect(actionFailureSentence(error, "暫時無法完成。")).toBe("這次操作無法完成。");
   });
 }
+
+async function startPublicationAction(
+  action: "publish" | "delist",
+  held: "own" | "overview",
+  status: number,
+  readFailure = false,
+) {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  const reads = { own: 0, overview: 0 };
+  const writes: string[] = [];
+  let written = false;
+  const changed = {
+    ...OWN_PUBLICATION,
+    status: action === "delist" ? "delisted" : "published",
+    acquisition: { available: action === "publish", note: "目前取得條件。" },
+  };
+  vi.stubGlobal("fetch", async (input: string, init?: RequestInit) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me/publisher") return json(OWN_PUBLISHER);
+    if (init?.method === "POST" || init?.method === "DELETE") {
+      writes.push(init.method);
+      written = true;
+      return json(status === 503 ? { error: "upstream unavailable" } : changed, status);
+    }
+    if (path === `/skills/${SKILL}/publication`) {
+      reads.own += 1;
+      if (written && held === "own") await gate;
+      if (readFailure && reads.own === 2) return json({ error: "unavailable" }, 503);
+      return json(written ? changed : OWN_PUBLICATION);
+    }
+    if (path === "/me/publications") {
+      reads.overview += 1;
+      if (written && held === "overview") await gate;
+      return json(OWN_PUBLICATIONS);
+    }
+    return json({ error: "not found" }, 404);
+  });
+  await render(
+    <>
+      <button type="button">其他工作</button>
+      <PublishPanel
+        skill={detail({ redistribution: { value: "generated", label: "平台生成", note: "" } })}
+        isLoggedIn
+        isOwner
+      />
+    </>,
+    () => text().includes("已列入 Catalog"),
+  );
+  await act(async () => {
+    container.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click();
+    const select = container.querySelector("select")!;
+    select.value = "MIT";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(button("發佈 v2")!.disabled).toBe(false);
+  if (action === "delist") await act(async () => button("撤回")!.click());
+  await act(async () => {
+    const trigger = button(action === "delist" ? "確認撤回" : "發佈 v2")!;
+    trigger.focus();
+    trigger.click();
+  });
+  await pollUntil(() => reads[held] === 2, text, DEFAULT_WAIT_MS, { flushBeforeFirstCheck: true });
+  return { release, reads, writes };
+}
+
+for (const action of ["publish", "delist"] as const) {
+  for (const held of ["own", "overview"] as const) {
+    for (const status of [200, 503]) {
+      test(`publication action ${action} waits for ${held} reconciliation after ${status}`, async () => {
+        const request = await startPublicationAction(action, held, status);
+        try {
+          expect((button("發佈 v2") ?? button("送出中"))!.disabled).toBe(true);
+          if (action === "publish") expect(button("撤回")!.disabled).toBe(true);
+          if (action === "delist" && held === "own") expect(button("送出中")!.disabled).toBe(true);
+          expect(
+            container.querySelector<HTMLInputElement>('input[type="checkbox"]')!.disabled,
+          ).toBe(true);
+          expect(container.querySelector("select")!.disabled).toBe(true);
+          expect(text()).not.toContain("上面的狀態已重新讀取");
+          expect(text()).toContain("正在送出或核對發佈狀態");
+          expect(document.activeElement).toBe(container.querySelector("h2"));
+          if (held === "overview") await act(async () => button("其他工作")!.focus());
+        } finally {
+          await act(async () => request.release());
+        }
+        await waitFor(() => button("發佈 v2")?.disabled === false);
+        expect(container.querySelector<HTMLInputElement>('input[type="checkbox"]')!.disabled).toBe(
+          false,
+        );
+        expect(container.querySelector("select")!.disabled).toBe(false);
+        expect(document.activeElement).toBe(
+          held === "overview" ? button("其他工作") : container.querySelector("h2"),
+        );
+        expect(
+          Array.from(container.querySelectorAll('[role="status"]')).some((node) =>
+            node.textContent?.includes(action === "delist" ? "狀態：已撤回" : "狀態：已發佈"),
+          ),
+        ).toBe(true);
+        if (status === 503) expect(text()).toContain("上面的狀態已重新讀取");
+        else expect(container.querySelector('[role="alert"]')).toBeNull();
+        expect(request.writes).toEqual([action === "delist" ? "DELETE" : "POST"]);
+      });
+    }
+  }
+  test(`publication action ${action} keeps a failed reconciliation retryable`, async () => {
+    const request = await startPublicationAction(action, "own", 503, true);
+    try {
+      expect(text()).not.toContain("上面的狀態已重新讀取");
+      expect((button("發佈 v2") ?? button("送出中"))!.disabled).toBe(true);
+      expect(document.activeElement).toBe(container.querySelector("h2"));
+    } finally {
+      await act(async () => request.release());
+    }
+    await waitFor(() => text().includes("暫時無法讀取發佈狀態"));
+    expect(button("發佈 v2")).toBeUndefined();
+    await act(async () => button("再試一次")!.click());
+    await waitFor(() => text().includes("上面的狀態已重新讀取"));
+    expect(document.activeElement).toBe(container.querySelector("h2"));
+    expect(request.writes).toEqual([action === "delist" ? "DELETE" : "POST"]);
+  });
+}
+
+for (const status of [201, 503]) {
+  test(`publication first draft stays described and locked during a ${status} submission`, async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let written = false;
+    const writes: unknown[] = [];
+    vi.stubGlobal("fetch", async (input: string, init?: RequestInit) => {
+      if (String(input).endsWith("/me/publisher")) return json(OWN_PUBLISHER);
+      if (init?.method === "POST") {
+        writes.push(JSON.parse(String(init.body)));
+        await gate;
+        written = status === 201;
+        return json(status === 201 ? OWN_PUBLICATION : { error: "upstream unavailable" }, status);
+      }
+      if (String(input).endsWith("/me/publications")) return json(OWN_PUBLICATIONS);
+      return written ? json(OWN_PUBLICATION) : json({ error: "not published" }, 404);
+    });
+    await render(
+      <PublishPanel
+        skill={detail({ redistribution: { value: "generated", label: "平台生成", note: "" } })}
+        isLoggedIn
+        isOwner
+      />,
+      () => container.querySelector('input:not([type="checkbox"])') !== null,
+    );
+    const input = container.querySelector<HTMLInputElement>('input:not([type="checkbox"])')!;
+    try {
+      const description = document.getElementById(input.getAttribute("aria-describedby") ?? "");
+      expect(description?.textContent).toBe("首次發佈後，這個小工具的發佈名稱就不能更改。");
+      expect(description?.closest("details")).toBeNull();
+      await act(async () => {
+        container.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click();
+        const select = container.querySelector("select")!;
+        select.value = "MIT";
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        button("發佈 v2")!.focus();
+        button("發佈 v2")!.click();
+      });
+      await pollUntil(() => writes.length === 1, text, DEFAULT_WAIT_MS, {
+        flushBeforeFirstCheck: true,
+      });
+      expect(input.disabled).toBe(true);
+      expect(container.querySelector<HTMLInputElement>('input[type="checkbox"]')!.disabled).toBe(
+        true,
+      );
+      expect(container.querySelector("select")!.disabled).toBe(true);
+      expect(document.activeElement).toBe(container.querySelector("h2"));
+    } finally {
+      await act(async () => release());
+    }
+    await waitFor(() =>
+      status === 201 ? text().includes("狀態：已發佈") : text().includes("尚未確認發佈"),
+    );
+    expect(document.activeElement).toBe(container.querySelector("h2"));
+    expect(writes).toEqual([
+      {
+        name: "PDF Summariser",
+        version_id: VERSION,
+        rights_attested: true,
+        declared_license: "MIT",
+      },
+    ]);
+  });
+}

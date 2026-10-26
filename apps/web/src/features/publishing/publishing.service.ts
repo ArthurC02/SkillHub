@@ -231,8 +231,10 @@ export function usePublish(skillId: string) {
       }),
     onSettled: (_, error) => {
       if (error instanceof SessionNotReadyError) return;
-      void client.invalidateQueries({ queryKey: queryKeys.publishing.ownPublication(skillId) });
-      void client.invalidateQueries({ queryKey: queryKeys.publishing.publications });
+      return Promise.all([
+        client.invalidateQueries({ queryKey: queryKeys.publishing.ownPublication(skillId) }),
+        client.invalidateQueries({ queryKey: queryKeys.publishing.publications }),
+      ]);
     },
   });
 }
@@ -243,8 +245,10 @@ export function useDelist(skillId: string) {
     mutationFn: () => apiFetch<Publication>(`/skills/${skillId}/publication`, { method: "DELETE" }),
     onSettled: (_, error) => {
       if (error instanceof SessionNotReadyError) return;
-      void client.invalidateQueries({ queryKey: queryKeys.publishing.ownPublication(skillId) });
-      void client.invalidateQueries({ queryKey: queryKeys.publishing.publications });
+      return Promise.all([
+        client.invalidateQueries({ queryKey: queryKeys.publishing.ownPublication(skillId) }),
+        client.invalidateQueries({ queryKey: queryKeys.publishing.publications }),
+      ]);
     },
   });
 }
