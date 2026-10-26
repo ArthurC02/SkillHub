@@ -23,13 +23,29 @@ function CanvasTools({ topology, bounds }: { topology: string; bounds: Rect }) {
   const width = useStore((state) => state.width);
   const height = useStore((state) => state.height);
   const { fitBounds, viewportInitialized } = useReactFlow();
+  const fit = () => void fitBounds(bounds, { padding: 0.2 });
   useEffect(() => {
     if (viewportInitialized && width > 0 && height > 0)
       void fitBounds({ x, y, width: contentWidth, height: contentHeight }, { padding: 0.2 });
   }, [viewportInitialized, topology, width, height, x, y, contentWidth, contentHeight, fitBounds]);
   return (
     <div className="check-flow-toolbar">
-      <button type="button" onClick={() => void fitBounds(bounds, { padding: 0.2 })}>
+      <button
+        type="button"
+        onClick={fit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            fit();
+          }
+        }}
+        onKeyUp={(event) => {
+          if (event.key === " ") {
+            event.preventDefault();
+            fit();
+          }
+        }}
+      >
         顯示全部節點
       </button>
     </div>

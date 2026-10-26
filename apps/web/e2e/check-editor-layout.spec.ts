@@ -90,11 +90,18 @@ for (const width of [375, 1280]) {
     await addJudge(page, 2);
     await addJudge(page, 3);
     await expect.poll(async () => (await flowState(page)).within).toBe(true);
-    await pan(page, 220);
-    await expect.poll(async () => (await flowState(page)).within).toBe(false);
-    await page.getByRole("button", { name: "顯示全部節點", exact: true }).focus();
-    await page.keyboard.press("Enter");
-    await expect.poll(async () => (await flowState(page)).within).toBe(true);
+    await page.clock.install();
+    await page.clock.pauseAt(new Date());
+    for (const key of ["Enter", "Space"]) {
+      await pan(page, 220);
+      await expect.poll(async () => (await flowState(page)).within).toBe(false);
+      await page.getByRole("button", { name: "顯示全部節點", exact: true }).focus();
+      await page.keyboard.down(key);
+      if (key === "Space") expect((await flowState(page)).within).toBe(false);
+      await page.keyboard.up(key);
+      await expect.poll(async () => (await flowState(page)).within).toBe(true);
+    }
+    await page.clock.resume();
     const firstPanel = await page.locator(".check-editor-panel").boundingBox();
     await page.setViewportSize({ width: width === 375 ? 1280 : 375, height: 900 });
     await expect.poll(async () => (await flowState(page)).within).toBe(true);
