@@ -10,6 +10,7 @@ import type { DeclarableLicense, OwnerCatalogExposureStateEnum } from "@skillhub
 import type { CategorizedFindings, Labelled } from "../../core/api/types";
 import { readPublicPublication } from "./public-publication.model";
 import { readOwnerPublications } from "./owner-publications.model";
+import { readOwnBundleOverview, readOwnBundles } from "./owner-bundles.model";
 import { AcquisitionResultUnknown, readAcquisition } from "./acquisition.model";
 
 export interface Publisher {
@@ -285,14 +286,14 @@ export function useAcquirePublication(publisher: string, name: string) {
 export function useOwnBundles() {
   return useQuery({
     queryKey: queryKeys.publishing.bundles,
-    queryFn: () => apiFetch<{ bundles: BundleVersion[] }>("/me/bundles"),
+    queryFn: async () => readOwnBundles(await apiFetch<unknown>("/me/bundles")),
   });
 }
 
 export function useOwnBundleOverview(enabled = true) {
   return useQuery({
     queryKey: queryKeys.publishing.bundleOverview,
-    queryFn: () => apiFetch<{ bundles: OwnerBundleSummary[] }>("/me/bundles/overview"),
+    queryFn: async () => readOwnBundleOverview(await apiFetch<unknown>("/me/bundles/overview")),
     enabled,
   });
 }

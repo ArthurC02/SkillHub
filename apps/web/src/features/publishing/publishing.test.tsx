@@ -952,6 +952,89 @@ test.each([
   },
 );
 
+test.each([
+  ["versions", "null row", { bundles: [null] }],
+  ["versions", "missing members", { bundles: [{ ...OWN_BUNDLE, members: undefined }] }],
+  [
+    "overview",
+    "null publication",
+    { bundles: [{ bundle: OWN_BUNDLE.bundle, latest_version: OWN_BUNDLE, publication: null }] },
+  ],
+  [
+    "overview",
+    "unknown status",
+    {
+      bundles: [
+        {
+          bundle: OWN_BUNDLE.bundle,
+          latest_version: OWN_BUNDLE,
+          publication: {
+            publisher: PUBLISHER,
+            name: OWN_BUNDLE.bundle,
+            address: `/p/${PUBLISHER}/${OWN_BUNDLE.bundle}`,
+            status: "future",
+            status_changed_at: "2026-09-10T00:00:00Z",
+          },
+        },
+      ],
+    },
+  ],
+])("Bundle %s %s keeps a draft and recovers through a scoped retry", async (kind, _, invalid) => {
+  const versions = { bundles: [OWN_BUNDLE] };
+  const overview = bundleOverview(OWN_BUNDLE, { ...OWN_PUBLICATION, kind: "bundle", releases: [] });
+  let payload: unknown = kind === "versions" ? versions : overview;
+  let reads = 0;
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me/bundles" || path === "/me/bundles/overview") {
+      if (path === (kind === "versions" ? "/me/bundles" : "/me/bundles/overview")) {
+        reads += 1;
+        return json(payload);
+      }
+      return json(path === "/me/bundles" ? versions : overview);
+    }
+    const result = platformResponse(String(input));
+    return json(result.body, result.status);
+  });
+  await render(<PublishingWorkspace />, () =>
+    Boolean(container.querySelector(".bundle-publication")),
+  );
+  const input = container.querySelector<HTMLInputElement>(".bundle-form input")!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+      input,
+      "kept-bundle",
+    );
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  payload = invalid;
+  await act(async () => {
+    Array.from(container.querySelectorAll<HTMLButtonElement>("#bundle-workspace button"))
+      .find((candidate) => candidate.textContent === "重新整理")!
+      .click();
+  });
+  const failure = kind === "versions" ? "暫時無法讀取Bundle 清單" : "暫時無法讀取Bundle 發佈概覽";
+  await waitFor(() => text().includes(failure));
+  expect(reads).toBe(2);
+  expect(text()).not.toContain("尚未發佈。");
+  expect(text()).not.toContain("已撤回");
+  expect(text()).not.toContain("目前還沒有 Bundle。");
+  expect(container.querySelector(".bundle-create summary")?.textContent).not.toBe(
+    "建立第一個 Bundle",
+  );
+  expect(container.querySelector(".bundle-form input")).toBe(input);
+  expect(input.value).toBe("kept-bundle");
+  payload = kind === "versions" ? versions : overview;
+  await act(async () => button("再試一次")!.click());
+  await waitFor(
+    () => Boolean(container.querySelector(".bundle-publication")) && !text().includes(failure),
+  );
+  expect(reads).toBe(3);
+  expect(input.value).toBe("kept-bundle");
+});
+
 test("PACK-004 available 公開頁：每一個允收欄位都出現", async () => {
   stub({ [PUB_ADDRESS]: { body: PUBLIC_PUBLICATION } });
   await render(<PublicPublication />, () => text().includes("PDF Summariser"));
