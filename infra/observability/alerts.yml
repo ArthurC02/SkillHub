@@ -307,15 +307,19 @@ groups:
             或誤刪**，再決定要不要告知受測者（RELEASE-009 的解讀依賴這一條）。
 
       - alert: BacklogObserverSilent
-        expr: absent(skillhub_backlog_oldest_seconds)
+        expr: >-
+          absent(skillhub_backlog_oldest_seconds{process="worker",backlog="orphan_objects"})
+          or absent(skillhub_backlog_oldest_seconds{process="worker",backlog="source_checks"})
+          or absent(skillhub_backlog_oldest_seconds{process="worker",backlog="enrichment"})
         for: 1h
         labels:
           severity: warning
         annotations:
-          summary: "積壓觀測沒有在發佈，下面三條積壓告警因此都不會響"
+          summary: "{{ $labels.backlog }} 的積壓觀測沒有在發佈"
           description: >-
-            這個值由 worker 每 15 分鐘發佈。series 不存在 = worker 沒有在跑，
-            或每一個積壓都讀不到資料庫；先查 worker 的 log。
+            worker 定期讀取資料庫並發佈積壓年齡；讀取失敗時會撤下該分類的舊值。
+            這個分類持續一小時沒有觀測，不代表積壓為零；其他分類或 API 的值也不能代替它。
+            先查 worker 的 log 中這個分類的讀取錯誤，再檢查資料庫連線。
 
       - alert: OrphanObjectsNotCollected
         expr: skillhub_backlog_oldest_seconds{backlog="orphan_objects"} > 2 * 86400

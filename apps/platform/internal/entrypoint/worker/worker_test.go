@@ -323,6 +323,8 @@ func functionBody(t *testing.T, src, decl string) string {
 }
 
 func TestTheBacklogObserverPublishesEachBacklogsAgeAndReportsTheOnesItCouldNotRead(t *testing.T) {
+	metrics.BacklogOldestSeconds.Reset()
+	t.Cleanup(metrics.BacklogOldestSeconds.Reset)
 	now := time.Now()
 	failing := errors.New("the database went away")
 	w := &BacklogObserveWorker{Backlogs: map[string]backlogOldest{
@@ -332,7 +334,7 @@ func TestTheBacklogObserverPublishesEachBacklogsAgeAndReportsTheOnesItCouldNotRe
 		"empty":      func(context.Context) (pgtype.Timestamptz, error) { return pgtype.Timestamptz{}, nil },
 		"unreadable": func(context.Context) (pgtype.Timestamptz, error) { return pgtype.Timestamptz{}, failing },
 	}}
-	metrics.BacklogOldestSeconds.WithLabelValues("unreadable").Set(-1)
+	metrics.BacklogOldestSeconds.WithLabelValues("unreadable").Set(86400)
 
 	if err := w.Work(context.Background(), nil); !errors.Is(err, failing) {
 		t.Fatalf("Work = %v, want the unreadable backlog's error", err)
@@ -344,8 +346,82 @@ func TestTheBacklogObserverPublishesEachBacklogsAgeAndReportsTheOnesItCouldNotRe
 	if got, ok := published["empty"]; !ok || got != 0 {
 		t.Errorf("empty = %v (published %v), want 0", got, ok)
 	}
-	if got := published["unreadable"]; got != -1 {
-		t.Errorf("unreadable = %v, want the last published value left alone", got)
+	if got, ok := published["unreadable"]; ok {
+		t.Errorf("unreadable = %v, want no observation", got)
+	}
+}
+
+func TestBacklogObservationsWithdrawUnreadableValuesAndRecover(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		observed       bool
+		initialSeconds int
+	}{
+		{name: "startup"},
+		{name: "empty", observed: true},
+		{name: "nonempty", observed: true, initialSeconds: 3600},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			testBacklogObservationRecovery(t, tc.observed, tc.initialSeconds)
+		})
+	}
+}
+
+func requireBacklogRead(t *testing.T, observer *BacklogObserveWorker, want error) {
+	t.Helper()
+	if err := observer.Work(context.Background(), nil); !errors.Is(err, want) {
+		t.Fatalf("observation error = %v, want %v", err, want)
+	}
+}
+
+func testBacklogObservationRecovery(t *testing.T, observed bool, initialSeconds int) {
+	t.Helper()
+	metrics.BacklogOldestSeconds.Reset()
+	t.Cleanup(metrics.BacklogOldestSeconds.Reset)
+	metrics.BacklogOldestSeconds.WithLabelValues(metrics.BacklogSourceChecks).Set(0)
+	unreadable := !observed
+	failure := errors.New("database unavailable")
+	oldest := pgtype.Timestamptz{}
+	if initialSeconds > 0 {
+		oldest = pgtype.Timestamptz{Time: time.Now().Add(-time.Duration(initialSeconds) * time.Second), Valid: true}
+	}
+	observer := &BacklogObserveWorker{Backlogs: map[string]backlogOldest{
+		metrics.BacklogOrphanObjects: func(context.Context) (pgtype.Timestamptz, error) {
+			if unreadable {
+				return pgtype.Timestamptz{}, failure
+			}
+			return oldest, nil
+		},
+	}}
+	var initialError error
+	if !observed {
+		initialError = failure
+	}
+	requireBacklogRead(t, observer, initialError)
+	initial := publishedBacklogAges(t)
+	value, present := initial[metrics.BacklogOrphanObjects]
+	if present != observed {
+		t.Fatalf("initial observation present = %v, want %v", present, observed)
+	}
+	if observed && (value < float64(initialSeconds) || value > float64(initialSeconds)+60) {
+		t.Fatalf("initial age = %g, want about %d seconds", value, initialSeconds)
+	}
+	unreadable = true
+	for range 2 {
+		requireBacklogRead(t, observer, failure)
+		ages := publishedBacklogAges(t)
+		if value, present := ages[metrics.BacklogOrphanObjects]; present {
+			t.Fatalf("failed observation still publishes %g", value)
+		}
+		if value, present := ages[metrics.BacklogSourceChecks]; !present || value != 0 {
+			t.Fatalf("unrelated observation = %g (present %v), want 0", value, present)
+		}
+	}
+	unreadable = false
+	oldest = pgtype.Timestamptz{}
+	requireBacklogRead(t, observer, nil)
+	if value, present := publishedBacklogAges(t)[metrics.BacklogOrphanObjects]; !present || value != 0 {
+		t.Fatalf("recovered empty observation = %g (present %v), want 0", value, present)
 	}
 }
 
@@ -355,6 +431,9 @@ func publishedBacklogAges(t *testing.T) map[string]float64 {
 	t.Helper()
 	rec := httptest.NewRecorder()
 	promhttp.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("metrics scrape returned %d: %s", rec.Code, rec.Body.String())
+	}
 	ages := map[string]float64{}
 	for _, m := range backlogSample.FindAllStringSubmatch(rec.Body.String(), -1) {
 		v, err := strconv.ParseFloat(m[2], 64)

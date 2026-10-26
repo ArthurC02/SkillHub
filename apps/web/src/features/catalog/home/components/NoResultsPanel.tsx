@@ -3,12 +3,14 @@ import { SignInAction } from "../../../../shared/ui/SignIn";
 import { GenerateSkill } from "../../../creation";
 
 export function NoResultsPanel({
+  confirmed,
   query,
   degraded,
   querySuggestion,
   loggedIn,
   generateExposed,
 }: {
+  confirmed: boolean;
   query: string;
   degraded: boolean;
   querySuggestion: string | undefined;
@@ -17,14 +19,18 @@ export function NoResultsPanel({
 }) {
   return (
     <div>
-      <p>沒有夠接近的小工具。</p>
-      {degraded ? (
-        <p>
-          而且這次搜尋只用了關鍵字比對，語意相近與跨語言的結果找不出來——現在找不到不代表
-          目錄裡沒有。換個說法幫不上忙；直接看目錄，或稍後再搜尋一次。
-        </p>
-      ) : (
-        querySuggestion && <p>{querySuggestion}</p>
+      {confirmed && (
+        <>
+          <p>沒有夠接近的小工具。</p>
+          {degraded ? (
+            <p>
+              而且這次搜尋只用了關鍵字比對，語意相近與跨語言的結果找不出來——現在找不到不代表
+              目錄裡沒有。換個說法幫不上忙；直接看目錄，或稍後再搜尋一次。
+            </p>
+          ) : (
+            querySuggestion && <p>{querySuggestion}</p>
+          )}
+        </>
       )}
       <p className="note">
         <Link to="/" search={{}}>

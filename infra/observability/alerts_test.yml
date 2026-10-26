@@ -282,3 +282,193 @@ tests:
       - expr: 'ALERTS{alertname="CapacityNotObserved",alertstate="firing"}'
         eval_time: 2h
         exp_samples: []
+
+  - name: backlog observed empty worker categories stay healthy without API observations
+    interval: 1m
+    input_series:
+      - series: 'up{process="worker"}'
+        values: "1x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="orphan_objects"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="source_checks"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="enrichment"}'
+        values: "0x180"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing"}'
+        eval_time: 1h
+        exp_samples: []
+
+  - name: backlog orphan_objects cannot be hidden by other categories or API observations
+    interval: 1m
+    input_series:
+      - series: 'up{process="worker"}'
+        values: "1x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="source_checks"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="enrichment"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="orphan_objects"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="source_checks"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="enrichment"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="future_category"}'
+        values: "0x180"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing"}'
+        eval_time: 59m
+        exp_samples: []
+      - expr: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing"}'
+        eval_time: 1h
+        exp_samples:
+          - labels: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing",backlog="orphan_objects",process="worker",severity="warning"}'
+            value: 1
+
+  - name: backlog source_checks cannot be hidden by other categories or API observations
+    interval: 1m
+    input_series:
+      - series: 'up{process="worker"}'
+        values: "1x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="orphan_objects"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="enrichment"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="orphan_objects"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="source_checks"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="enrichment"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="future_category"}'
+        values: "0x180"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing"}'
+        eval_time: 59m
+        exp_samples: []
+      - expr: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing"}'
+        eval_time: 1h
+        exp_samples:
+          - labels: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing",backlog="source_checks",process="worker",severity="warning"}'
+            value: 1
+
+  - name: backlog enrichment cannot be hidden by other categories or API observations
+    interval: 1m
+    input_series:
+      - series: 'up{process="worker"}'
+        values: "1x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="orphan_objects"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="source_checks"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="orphan_objects"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="source_checks"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="enrichment"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="future_category"}'
+        values: "0x180"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing"}'
+        eval_time: 59m
+        exp_samples: []
+      - expr: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing"}'
+        eval_time: 1h
+        exp_samples:
+          - labels: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing",backlog="enrichment",process="worker",severity="warning"}'
+            value: 1
+
+  - name: backlog API observations cannot hide all missing worker categories
+    interval: 1m
+    input_series:
+      - series: 'up{process="worker"}'
+        values: "1x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="orphan_objects"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="source_checks"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="enrichment"}'
+        values: "0x180"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing"}'
+        eval_time: 59m
+        exp_samples: []
+      - expr: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing"}'
+        eval_time: 1h
+        exp_samples:
+          - labels: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing",backlog="orphan_objects",process="worker",severity="warning"}'
+            value: 1
+          - labels: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing",backlog="source_checks",process="worker",severity="warning"}'
+            value: 1
+          - labels: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing",backlog="enrichment",process="worker",severity="warning"}'
+            value: 1
+
+  - name: backlog no scrape leaves every required category unknown
+    interval: 1m
+    input_series: []
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing"}'
+        eval_time: 1h
+        exp_samples:
+          - labels: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing",backlog="orphan_objects",process="worker",severity="warning"}'
+            value: 1
+          - labels: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing",backlog="source_checks",process="worker",severity="warning"}'
+            value: 1
+          - labels: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing",backlog="enrichment",process="worker",severity="warning"}'
+            value: 1
+
+  - name: backlog a lost category waits an hour before warning
+    interval: 1m
+    input_series:
+      - series: 'up{process="worker"}'
+        values: "1x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="source_checks"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="enrichment"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="orphan_objects"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="source_checks"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="enrichment"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="orphan_objects"}'
+        values: "0 stale _x180"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing"}'
+        eval_time: 1h
+        exp_samples: []
+      - expr: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing"}'
+        eval_time: 1h1m
+        exp_samples:
+          - labels: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing",backlog="orphan_objects",process="worker",severity="warning"}'
+            value: 1
+
+  - name: backlog a recovered empty category resolves unknown
+    interval: 1m
+    input_series:
+      - series: 'up{process="worker"}'
+        values: "1x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="source_checks"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="enrichment"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="orphan_objects"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="source_checks"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="api",backlog="enrichment"}'
+        values: "0x180"
+      - series: 'skillhub_backlog_oldest_seconds{process="worker",backlog="orphan_objects"}'
+        values: "_x61 0x120"
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing"}'
+        eval_time: 1h
+        exp_samples:
+          - labels: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing",backlog="orphan_objects",process="worker",severity="warning"}'
+            value: 1
+      - expr: 'ALERTS{alertname="BacklogObserverSilent",alertstate="firing"}'
+        eval_time: 1h1m
+        exp_samples: []

@@ -22,6 +22,7 @@ import type {
 } from "../../core/api/types";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 import { preloadEveryPage } from "../../testing/pages";
+import { emptySearchIntent } from "../../core/api/searchIntent";
 
 beforeAll(preloadEveryPage);
 
@@ -875,6 +876,118 @@ test("DISC-005: no_results shows the server's query_suggestion, not hardcoded co
 
   expect(container.textContent).toContain("Try naming the file format you have.");
 });
+
+for (const corrected of [false, true]) {
+  for (const empty of ["no_results", "filtered_out"] as const) {
+    for (const paused of [false, true]) {
+      test(`search reconfirms ${empty} during ${paused ? "paused" : "fetching"} ${corrected ? "corrected" : "ordinary"} reads without losing drafts`, async () => {
+        const correction = JSON.stringify({ intent: emptySearchIntent(), keywords: ["pdf"] });
+        const snapshot: PublicSearchResponse = {
+          ...EMPTY,
+          query: "pdf",
+          [empty]: true,
+          query_suggestion: "試著描述要處理的文件格式。",
+        };
+        let release: ((response: Response) => void) | undefined;
+        let reads = 0;
+        let holding = false;
+        vi.stubGlobal("fetch", async (input: string) => {
+          const url = String(input);
+          if (url.split("?")[0] === "/api/skills/search") {
+            reads++;
+            if (holding) return new Promise<Response>((resolve) => (release = resolve));
+            return new Response(JSON.stringify(snapshot), { status: 200 });
+          }
+          const { body, status } = platformResponse(url);
+          return new Response(JSON.stringify(body), { status });
+        });
+        await render(<App />);
+        await act(async () => {
+          await router.navigate({
+            to: "/",
+            search: { q: "pdf", correction: corrected ? correction : undefined },
+          });
+        });
+        const absence =
+          empty === "no_results"
+            ? "沒有夠接近的小工具。"
+            : "有符合這個任務的小工具，但全部被目前的篩選條件排除了。";
+        await waitFor(() => container.textContent?.includes(absence) ?? false);
+        expect(container.querySelector("#generate-task")).toBeNull();
+        if (empty === "no_results") {
+          await act(async () => {
+            queryClient.setQueryData(queryKeys.me, {
+              ...SESSION,
+              features: { generate_skill: true },
+            });
+          });
+          await waitFor(() => container.querySelector("#generate-task") !== null);
+          await act(async () => {
+            const task = container.querySelector<HTMLTextAreaElement>("#generate-task")!;
+            Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(
+              task,
+              "保留生成表單的任務草稿",
+            );
+            task.dispatchEvent(new Event("input", { bubbles: true }));
+          });
+        }
+        const generationTask = container.querySelector<HTMLTextAreaElement>("#generate-task");
+        const input = container.querySelector<HTMLInputElement>('input[aria-label="任務描述"]')!;
+        await act(async () => {
+          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+            input,
+            "保留尚未送出的搜尋草稿",
+          );
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          input.focus();
+        });
+        const location = window.location.href;
+        const key = corrected
+          ? queryKeys.skills.correctedSearch("pdf", {}, correction)
+          : queryKeys.skills.search("pdf", {});
+        let refresh: Promise<void> | undefined;
+        try {
+          holding = true;
+          const previousReads = reads;
+          if (paused) onlineManager.setOnline(false);
+          await act(async () => {
+            refresh = queryClient.refetchQueries({ queryKey: key, exact: true });
+          });
+          await waitFor(
+            () =>
+              container.textContent?.includes(paused ? "等待連線以讀取搜尋結果" : "搜尋中…") ??
+              false,
+          );
+          expect(container.textContent).not.toContain(absence);
+          expect(container.textContent).not.toContain(snapshot.query_suggestion);
+          expect(container.textContent).not.toContain("清除所有篩選");
+          expect(input.value).toBe("保留尚未送出的搜尋草稿");
+          expect(document.activeElement).toBe(input);
+          expect(window.location.href).toBe(location);
+          expect(container.querySelector("#generate-task")).toBe(generationTask);
+          if (generationTask) expect(generationTask.value).toBe("保留生成表單的任務草稿");
+          if (paused) await act(async () => onlineManager.setOnline(true));
+          await waitFor(() => reads === previousReads + 1 && release !== undefined);
+          await act(async () => {
+            release!(new Response(JSON.stringify(snapshot), { status: 200 }));
+            await refresh;
+          });
+          await waitFor(() => container.textContent?.includes(absence) ?? false);
+          expect(input.value).toBe("保留尚未送出的搜尋草稿");
+          expect(document.activeElement).toBe(input);
+          expect(window.location.href).toBe(location);
+          expect(container.querySelector("#generate-task")).toBe(generationTask);
+          if (generationTask) expect(generationTask.value).toBe("保留生成表單的任務草稿");
+        } finally {
+          await act(async () => {
+            onlineManager.setOnline(true);
+            release?.(new Response(JSON.stringify(snapshot), { status: 200 }));
+          });
+        }
+      });
+    }
+  }
+}
 
 test("DISC-002: each candidate shows its match reason, labelled by provenance", async () => {
   stubSearch({
