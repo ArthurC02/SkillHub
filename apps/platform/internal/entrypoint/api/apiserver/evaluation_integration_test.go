@@ -3,6 +3,7 @@ package apiserver_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -803,6 +804,53 @@ func TestAJudgeFailureIsRecordedAsAFailedEvaluation(t *testing.T) {
 	_, runBody := c.getRun(t, runID)
 	if runBody.Status != "succeeded" {
 		t.Errorf("run status changed to %q", runBody.Status)
+	}
+}
+
+func TestAJudgementRefusedForASpentPlatformBudgetIsJudgedAgainOnceTheBudgetRecovers(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "eval-budget-spent")
+	skillID := seedSkill(t, pool, c.workspaceID, "budget-spent")
+	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
+	seedFinalOutput(t, pool, c.workspaceID, runID, "Removed 17 duplicate rows.")
+
+	spent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"detail":"model gateway platform budget exhausted"}`))
+	}))
+	defer spent.Close()
+	a.evaluations.Judge = llmadapter.JudgeOrNone(&llmclient.Client{BaseURL: spent.URL})
+
+	err := a.evaluations.Evaluate(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, runID))
+	if !errors.Is(err, eval.ErrJudgementDeferred) {
+		t.Fatalf("Evaluate = %v, want ErrJudgementDeferred so the job waits for the budget", err)
+	}
+	_, refused := c.getEvaluation(t, "/runs/"+runID+"/evaluation")
+	if refused.Status != "failed" || !strings.Contains(refused.Summary, "額度恢復後會自動重新判定") {
+		t.Fatalf("while the budget is spent the person sees status %q, summary %q", refused.Status, refused.Summary)
+	}
+
+	a.evaluations.Judge = judgeServer(t, llmclient.JudgeVerdict{
+		CriterionResults: []llmclient.CriterionVerdict{
+			{CriterionID: "c1", Result: "passed", Reason: "deduplicated",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "agent_output", Quote: "Removed 17 duplicate rows"}}},
+			{CriterionID: "c2", Result: "passed", Reason: "file produced",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "artifact", ArtifactPath: strPtrTest("output.xlsx")}}},
+		},
+		Overall: "met", Summary: "met once the budget recovered",
+	}, "judge-run@v1")
+	if err := a.evaluations.Evaluate(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatalf("the snoozed job's next run: %v", err)
+	}
+
+	_, judged := c.getEvaluation(t, "/runs/"+runID+"/evaluation")
+	if judged.EvaluationID == refused.EvaluationID || judged.Status != "completed" || judged.Overall != "met" {
+		t.Fatalf("after the budget recovers the current evaluation is %+v, want a new completed one", judged)
+	}
+	_, old := c.getEvaluation(t, "/runs/"+runID+"/evaluation?revision="+refused.EvaluationID)
+	if old.Status != "failed" || old.SupersededAt == nil {
+		t.Errorf("the refused evaluation is kept and stamped superseded, got %+v", old)
 	}
 }
 

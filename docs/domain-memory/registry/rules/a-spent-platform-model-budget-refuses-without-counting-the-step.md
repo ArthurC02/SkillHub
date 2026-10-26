@@ -22,12 +22,16 @@ sources:
     excerpt_sha256: "sha256:9051d592b78f5025d1db9bbaceb04f6c90a1e11f0b6abcf706cacca0460b70f7"
   - resource: "apps/platform/internal/trial/improvement/llmadapter/model_adapter.go#L46-48"
     excerpt_sha256: "sha256:c08d035469a4b5302ffd2b8d650b3d6b8abe88756eb56628750b6b8611b5e32c"
-  - resource: "apps/platform/internal/trial/improvement/eval.go#L483-488"
-    excerpt_sha256: "sha256:63dfc0f7df9db9a052adb9d2fcec4fdc7c4ba2eac1f5f92ad322d7414abdeb3f"
   - resource: "apps/llm/tests/test_gateway_failure_log.py#L59-78"
     excerpt_sha256: "sha256:bf6c53c98cccf55730090efbd011ef52cb2e520cb838892a70fac73273d21834"
+  - resource: "apps/platform/internal/trial/improvement/eval.go#L489-504"
+    excerpt_sha256: "sha256:9a71aaf15dd1c793942d148cb307a51ae86c5eb0270b67cbb37f6f386a0ec06a"
+  - resource: "apps/platform/internal/entrypoint/worker/evaluation_execute.go#L35-44"
+    excerpt_sha256: "sha256:56cec5cb8f7d53384bca8cd2953816344b9df952aba28088e2eb67198ec1efee"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/evaluation_integration_test.go#L810-852"
+    excerpt_sha256: "sha256:62521314a041b91bae1db39c100f64c4177c5fbfd5f146b68d99ad28e9d35eea"
 ---
-When the model gateway refuses a call because its platform-wide budget for the period is spent, the refusal is named as such rather than reported as a broken gateway, and every such refusal is counted for alerting. A creation step refused this way is not counted against the session, the session waits for the person to send again, and only the cost actually incurred is settled; a skill generation or a criteria suggestion refused this way answers 503 saying nothing was charged and that retrying now is refused too; a judgement refused this way fails with a summary naming the spent budget and that the judgement was not charged. A refusal of one key's own budget is not this case and stays an ordinary gateway failure.
+When the model gateway refuses a call because its platform-wide budget for the period is spent, the refusal is named as such rather than reported as a broken gateway, and every such refusal is counted for alerting. A creation step refused this way is not counted against the session, the session waits for the person to send again, and only the cost actually incurred is settled; a skill generation or a criteria suggestion refused this way answers 503 saying nothing was charged and that retrying now is refused too; a judgement refused this way settles as failed with a summary naming the spent budget, that it was not charged and that it will be judged again; the evaluation job is snoozed hourly without spending its attempts, and once the budget recovers a new judgement supersedes the failed one, giving up after a bounded number of snoozes. A refusal of one key's own budget is not this case and stays an ordinary gateway failure.
 
 # Relations
 - Contexts: [creation](/contexts/creation)

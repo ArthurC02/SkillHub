@@ -183,10 +183,32 @@ func TestAFailedJudgementSaysWhetherThePlatformBudgetWasTheCause(t *testing.T) {
 	spent := failureSummary(fmt.Errorf("judge: %w", modelport.ErrModelBudgetExhausted))
 	other := failureSummary(errors.New("gateway reset"))
 
-	if spent != "這次判定沒有跑：平台的模型總額度暫時用完，判定沒有向你收費。Run 本身的結果不受影響。" {
+	if spent != "這次判定沒有跑：平台的模型總額度暫時用完，判定沒有向你收費。額度恢復後會自動重新判定；Run 本身的結果不受影響。" {
 		t.Errorf("platform budget summary = %q", spent)
 	}
 	if other != "這次判定沒有跑完：模型閘道或證據讀取失敗。原因已記在這個 Run 的執行紀錄（進階模式）裡。" {
 		t.Errorf("other failure summary = %q", other)
+	}
+}
+
+func TestOnlyASpentPlatformBudgetDefersAJudgementThatWasSettledAsFailed(t *testing.T) {
+	spent := fmt.Errorf("judge: %w", modelport.ErrModelBudgetExhausted)
+	unsettled := errors.New("the failure was not stored")
+	for _, c := range []struct {
+		name     string
+		cause    error
+		settling error
+		want     error
+	}{
+		{"a spent budget, failure stored", spent, nil, ErrJudgementDeferred},
+		{"another cause, failure stored", errors.New("gateway reset"), nil, nil},
+		{"a spent budget, failure not stored", spent, unsettled, unsettled},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			got := afterFailedJudgement(c.cause, c.settling)
+			if c.want == nil && got != nil || c.want != nil && !errors.Is(got, c.want) {
+				t.Fatalf("afterFailedJudgement = %v, want %v", got, c.want)
+			}
+		})
 	}
 }

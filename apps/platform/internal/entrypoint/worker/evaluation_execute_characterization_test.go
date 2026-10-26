@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -63,6 +64,43 @@ func TestTheEvaluationWorkerReadsTheRunOnlyOnItsFirstAttempt(t *testing.T) {
 			}
 			if !tc.wantAsked && err == nil {
 				t.Errorf("attempt %d reported success although the database is unreachable", tc.attempt)
+			}
+		})
+	}
+}
+
+func TestAJudgementWaitingForTheModelBudgetIsSnoozedUntilItsCap(t *testing.T) {
+	deferred := fmt.Errorf("evaluate: %w", eval.ErrJudgementDeferred)
+	other := errors.New("run facts unreadable")
+	for _, c := range []struct {
+		name       string
+		err        error
+		snoozes    int
+		wantSnooze bool
+		wantErr    error
+	}{
+		{"the first deferral snoozes", deferred, 0, true, nil},
+		{"one below the cap still snoozes", deferred, eval.MaxJudgementDeferrals - 1, true, nil},
+		{"at the cap the failure stands", deferred, eval.MaxJudgementDeferrals, false, nil},
+		{"another error is retried as before", other, 0, false, other},
+		{"success stays success", nil, 0, false, nil},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			job := &river.Job[eval.JobArgs]{JobRow: &rivertype.JobRow{
+				Attempt: 1, Metadata: []byte(fmt.Sprintf(`{"snoozes":%d}`, c.snoozes)),
+			}}
+
+			got := deferredJudgement(job, c.err)
+
+			var snooze *river.JobSnoozeError
+			if errors.As(got, &snooze) != c.wantSnooze {
+				t.Fatalf("deferredJudgement = %v, want snooze = %v", got, c.wantSnooze)
+			}
+			if c.wantSnooze && snooze.Duration != eval.JudgementDeferral {
+				t.Fatalf("snoozed for %v, want %v", snooze.Duration, eval.JudgementDeferral)
+			}
+			if !c.wantSnooze && !errors.Is(got, c.wantErr) {
+				t.Fatalf("deferredJudgement = %v, want %v", got, c.wantErr)
 			}
 		})
 	}

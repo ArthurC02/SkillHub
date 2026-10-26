@@ -30,6 +30,13 @@ import (
 
 var ErrNotFound = errors.New("evaluation not found")
 
+var ErrJudgementDeferred = errors.New("evaluation: the judgement waits for the platform's model budget to recover")
+
+const (
+	JudgementDeferral     = time.Hour
+	MaxJudgementDeferrals = 30
+)
+
 var errEvaluationInProgress = errors.New("evaluation already in progress")
 var errEvaluationSettled = errors.New("evaluation already settled")
 
@@ -224,8 +231,7 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 
 	v, err := s.judge(ctx, plan.MaterialForJudge(m), ev)
 	if err != nil {
-
-		return s.fail(ctx, m, ev, gatheredEvidence{findings: findings, complete: evidenceComplete}, err)
+		return afterFailedJudgement(err, s.fail(ctx, m, ev, gatheredEvidence{findings: findings, complete: evidenceComplete}, err))
 	}
 	v.results = plan.Finish(m, v.results)
 	v.overall = verdict.OverallFrom(v.results)
@@ -480,9 +486,19 @@ type gatheredEvidence struct {
 	complete bool
 }
 
+func afterFailedJudgement(cause, settling error) error {
+	if settling != nil {
+		return settling
+	}
+	if errors.Is(cause, modelport.ErrModelBudgetExhausted) {
+		return fmt.Errorf("%w: %w", ErrJudgementDeferred, cause)
+	}
+	return nil
+}
+
 func failureSummary(cause error) string {
 	if errors.Is(cause, modelport.ErrModelBudgetExhausted) {
-		return "這次判定沒有跑：平台的模型總額度暫時用完，判定沒有向你收費。Run 本身的結果不受影響。"
+		return "這次判定沒有跑：平台的模型總額度暫時用完，判定沒有向你收費。額度恢復後會自動重新判定；Run 本身的結果不受影響。"
 	}
 	return "這次判定沒有跑完：模型閘道或證據讀取失敗。原因已記在這個 Run 的執行紀錄（進階模式）裡。"
 }
