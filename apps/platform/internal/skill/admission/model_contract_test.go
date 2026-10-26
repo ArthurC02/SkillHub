@@ -224,3 +224,14 @@ func TestOnlyAGatewayPricedCallCarriesACostIntoIngest(t *testing.T) {
 		})
 	}
 }
+
+func TestAPlatformBudgetRefusalArrivesAsTheDomainsOwnError(t *testing.T) {
+	model := modelOverAWire(t, "/v1/generate-skill", nil, http.StatusServiceUnavailable, map[string]string{
+		"detail": "model gateway platform budget exhausted",
+	})
+
+	_, err := model.GenerateSkill(context.Background(), GenerateRequest{TaskDescription: "read invoices"})
+	if !errors.Is(err, ErrModelBudgetExhausted) {
+		t.Errorf("error = %v, want ErrModelBudgetExhausted", err)
+	}
+}

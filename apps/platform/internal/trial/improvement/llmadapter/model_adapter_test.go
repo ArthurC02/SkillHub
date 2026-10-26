@@ -3,6 +3,7 @@ package llmadapter
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -291,5 +292,19 @@ func TestOnlyAGatewayPricedCallCarriesACostIntoTheDomain(t *testing.T) {
 				t.Errorf("reported cost = %v, want reported=%v", got.Usage.ReportedCostUSD(), tc.wantReported)
 			}
 		})
+	}
+}
+
+func TestAPlatformBudgetRefusalReachesTheJudgeInItsOwnWords(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"detail":"model gateway platform budget exhausted"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	_, err := JudgeOrNone(&llmclient.Client{BaseURL: srv.URL}).JudgeRun(context.Background(), modelport.JudgeRequest{})
+
+	if !errors.Is(err, modelport.ErrModelBudgetExhausted) {
+		t.Fatalf("err = %v, want modelport.ErrModelBudgetExhausted", err)
 	}
 }

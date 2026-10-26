@@ -79,6 +79,9 @@ func (a modelOverHTTP) GenerateSkill(ctx context.Context, req GenerateRequest) (
 		if errors.Is(err, llmclient.ErrGenerateTruncated) {
 			return nil, errors.Join(ErrGenerationTruncated, err)
 		}
+		if errors.Is(err, llmclient.ErrPlatformBudgetExhausted) {
+			return nil, errors.Join(ErrModelBudgetExhausted, err)
+		}
 		return nil, err
 	}
 	return &GeneratedDraft{

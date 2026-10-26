@@ -44,6 +44,8 @@ var ErrCreditThreshold = errors.New("ingest: credit balance below the start thre
 
 var ErrModelCallsHalted = errors.New("ingest: model calls are halted by a P1 incident")
 
+var ErrModelBudgetExhausted = errors.New("ingest: the platform's model budget is spent")
+
 var ErrGenerateInFlight = errors.New("ingest: a generation is already running for this workspace")
 
 var ErrGenerateSlotUnavailable = errors.New("ingest: whether a generation is already running cannot be read")

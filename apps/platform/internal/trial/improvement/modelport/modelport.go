@@ -2,8 +2,11 @@ package modelport
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+var ErrModelBudgetExhausted = errors.New("evaluation: the platform's model budget is spent")
 
 type ModelUsage struct {
 	PromptTokens     int64

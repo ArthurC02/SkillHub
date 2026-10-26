@@ -2,6 +2,8 @@ package testlab
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
@@ -25,6 +27,9 @@ func (a criteriaOverHTTP) SuggestCriteria(ctx context.Context, req CriteriaReque
 		Datasets:       wireDatasets(req.Datasets),
 		TimeoutSeconds: req.Within.Seconds(),
 	})
+	if errors.Is(err, llmclient.ErrPlatformBudgetExhausted) {
+		return nil, fmt.Errorf("%w: %w", ErrModelBudgetExhausted, err)
+	}
 	if err != nil {
 		return nil, err
 	}

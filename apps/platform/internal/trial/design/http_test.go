@@ -3,6 +3,7 @@ package testlab
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -25,5 +26,20 @@ func TestFailWritesChineseLimitBody(t *testing.T) {
 	}
 	if strings.HasPrefix(msg, ErrLimitExceeded.Error()) {
 		t.Fatalf("error body %q still carries the English sentinel prefix %q", msg, ErrLimitExceeded.Error())
+	}
+}
+
+func TestASpentPlatformBudgetIsNamedRatherThanAnUnavailableSuggestion(t *testing.T) {
+	err := fmt.Errorf("%w: %w", ErrSuggestUnavailable, fmt.Errorf("%w: gateway", ErrModelBudgetExhausted))
+
+	rec := httptest.NewRecorder()
+	fail(rec, err, "should not be used")
+
+	var body map[string]string
+	if decodeErr := json.NewDecoder(rec.Body).Decode(&body); decodeErr != nil {
+		t.Fatalf("decode response body: %v", decodeErr)
+	}
+	if rec.Code != http.StatusServiceUnavailable || body["error"] != ErrModelBudgetExhausted.Error() {
+		t.Fatalf("status = %d, error body = %q; want 503 with %q", rec.Code, body["error"], ErrModelBudgetExhausted.Error())
 	}
 }

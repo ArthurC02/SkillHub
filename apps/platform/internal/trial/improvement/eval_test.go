@@ -3,6 +3,7 @@ package eval
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"sync"
 	"testing"
@@ -175,5 +176,17 @@ func TestTheEvaluationAsksTheJudgesItsServiceWasGiven(t *testing.T) {
 	}
 	if v.model != "m + m + m" || v.costUSD == nil || *v.costUSD != 0.75 || v.usage == nil {
 		t.Errorf("assessment = %+v, want the panel members and summed cost", v)
+	}
+}
+
+func TestAFailedJudgementSaysWhetherThePlatformBudgetWasTheCause(t *testing.T) {
+	spent := failureSummary(fmt.Errorf("judge: %w", modelport.ErrModelBudgetExhausted))
+	other := failureSummary(errors.New("gateway reset"))
+
+	if spent != "這次判定沒有跑：平台的模型總額度暫時用完，判定沒有向你收費。Run 本身的結果不受影響。" {
+		t.Errorf("platform budget summary = %q", spent)
+	}
+	if other != "這次判定沒有跑完：模型閘道或證據讀取失敗。原因已記在這個 Run 的執行紀錄（進階模式）裡。" {
+		t.Errorf("other failure summary = %q", other)
 	}
 }

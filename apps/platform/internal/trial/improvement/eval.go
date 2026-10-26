@@ -480,10 +480,17 @@ type gatheredEvidence struct {
 	complete bool
 }
 
+func failureSummary(cause error) string {
+	if errors.Is(cause, modelport.ErrModelBudgetExhausted) {
+		return "這次判定沒有跑：平台的模型總額度暫時用完，判定沒有向你收費。Run 本身的結果不受影響。"
+	}
+	return "這次判定沒有跑完：模型閘道或證據讀取失敗。原因已記在這個 Run 的執行紀錄（進階模式）裡。"
+}
+
 func (s *Service) fail(ctx context.Context, m facts.Material, ev gen.Evaluation, gathered gatheredEvidence, cause error) error {
 	findings, evidenceComplete := gathered.findings, gathered.complete
 
-	const summary = "這次判定沒有跑完：模型閘道或證據讀取失敗。原因已記在這個 Run 的執行紀錄（進階模式）裡。"
+	summary := failureSummary(cause)
 	reason := fmt.Sprintf("the task-effect judgement could not be produced: %v", cause)
 
 	tx, err := s.Pool.Begin(ctx)

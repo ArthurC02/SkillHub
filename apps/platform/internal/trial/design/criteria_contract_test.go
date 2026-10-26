@@ -3,6 +3,7 @@ package testlab
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -168,5 +169,19 @@ func TestWhatTheGatewayChargedForAProposalIsRecorded(t *testing.T) {
 				t.Errorf("tokens = %d/%d, want 90/12", got.PromptTokens, got.CompletionTokens)
 			}
 		})
+	}
+}
+
+func TestAPlatformBudgetRefusalReachesTheTestLabInItsOwnWords(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"detail":"model gateway platform budget exhausted"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	_, err := ModelOrNone(&llmclient.Client{BaseURL: srv.URL}).SuggestCriteria(context.Background(), aCriteriaRequest())
+
+	if !errors.Is(err, ErrModelBudgetExhausted) {
+		t.Fatalf("err = %v, want ErrModelBudgetExhausted", err)
 	}
 }

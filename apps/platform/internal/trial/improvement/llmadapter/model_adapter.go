@@ -2,6 +2,8 @@ package llmadapter
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
@@ -41,6 +43,9 @@ func (a modelOverHTTP) JudgeRun(ctx context.Context, req modelport.JudgeRequest)
 
 		TimeoutSeconds: req.Within.Seconds(),
 	})
+	if errors.Is(err, llmclient.ErrPlatformBudgetExhausted) {
+		return nil, fmt.Errorf("%w: %w", modelport.ErrModelBudgetExhausted, err)
+	}
 	if err != nil {
 		return nil, err
 	}
