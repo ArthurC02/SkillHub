@@ -90,10 +90,7 @@ export function Home() {
   }
 
   function clearFilters() {
-    if (currentCorrection) {
-      applyCorrection(currentCorrection, true);
-      return;
-    }
+    if (currentCorrection) return applyCorrection(currentCorrection, true);
     void navigate({
       search: (prev: HomeSearch) => ({ q: search.q, compare: prev.compare }),
       replace: true,
@@ -176,6 +173,7 @@ export function Home() {
       {!browsing && data && (
         <SearchResultsSection
           data={withMatchReasons(data, reasons.data)}
+          confirmed={result.fetchStatus === "idle"}
           selected={selected}
           loggedIn={loggedIn}
           generateExposed={generateExposed}

@@ -6,6 +6,7 @@ import { MAX_COMPARE } from "../../../skill";
 
 export function SearchResultsSection({
   data,
+  confirmed,
   selected,
   loggedIn,
   generateExposed,
@@ -14,6 +15,7 @@ export function SearchResultsSection({
   onToggle,
 }: {
   data: PublicSearchResponse;
+  confirmed: boolean;
   selected: string[];
   loggedIn: boolean;
   generateExposed: boolean;
@@ -52,7 +54,7 @@ export function SearchResultsSection({
         </p>
       )}
 
-      {data.filtered_out && (
+      {confirmed && data.filtered_out && (
         <div>
           <p>有符合這個任務的小工具，但全部被目前的篩選條件排除了。</p>
           <p>放寬或清除下方的篩選條件即可看到它們。</p>
@@ -64,6 +66,7 @@ export function SearchResultsSection({
 
       {data.no_results && (
         <NoResultsPanel
+          confirmed={confirmed}
           query={data.query}
           degraded={data.degraded}
           querySuggestion={data.query_suggestion}
