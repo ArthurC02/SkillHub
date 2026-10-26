@@ -8,6 +8,8 @@ SHELLCHECK=koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782
 UBUNTU=ubuntu:24.04@sha256:69cecf4bbf72d2d44a9eef1b71fb98c7fb973d78af11399deccef19beb008ad9
 
 ROOT="$(cd "$(dirname "$0")/../.." && (pwd -W 2>/dev/null || pwd))"
+GIT_DIRECTORY="$(git -C "$ROOT" rev-parse --absolute-git-dir)"
+GIT_COMMON_DIRECTORY="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)"
 CP="$ROOT/infra/deploy/control-plane"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
@@ -29,11 +31,14 @@ SKILLHUB_GATEWAY_URL=http://10.0.0.3:4000
 EOF
 
 step "user-data renders, every node checkout carries what it runs, and the renderers' own tests pass"
-docker run --rm -e OWNER="$OWNER" -v "$ROOT:/repo:ro" -v "$WORK_HOST:/work" -w /repo/tools/deploy "$UBUNTU" bash -euc '
+docker run --rm -e OWNER="$OWNER" -e GIT_DIR=/repo-git -e GIT_COMMON_DIR=/repo-git-common -e GIT_WORK_TREE=/repo \
+  -v "$GIT_DIRECTORY:/repo-git:ro" -v "$GIT_COMMON_DIRECTORY:/repo-git-common:ro" \
+  -v "$ROOT:/repo:ro" -v "$WORK_HOST:/work" -w /repo/tools/deploy "$UBUNTU" bash -euc '
   apt-get update -qq >/dev/null
   DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
     cloud-init systemd systemd-journal-remote conntrack git python3-yaml >/dev/null
   git config --global --add safe.directory /repo
+  test "$(git rev-parse --show-toplevel)" = /repo
   python3 test_render.py
   python3 test_checkout.py
   python3 test_sandbox_node.py
@@ -131,25 +136,22 @@ echo "SKILLHUB_SECRETS_DIR=$WORK_HOST/secrets" >>"$WORK/gateway-release.env"
 echo "X=1" >"$WORK/secrets/litellm.env"
 docker compose --env-file "$WORK_HOST/gateway-release.env" -f "$ROOT/infra/compose/gateway.yml" config -q
 
-step "every service but the database has a CPU and memory ceiling"
-unbounded="$(
-  {
-    docker compose --env-file "$WORK_HOST/control-plane-release.env" -f "$ROOT/infra/compose/control-plane.yml" --profile jobs config --format json
-    docker compose --env-file "$WORK_HOST/gateway-release.env" -f "$ROOT/infra/compose/gateway.yml" config --format json
-  } | jq -r '.services | to_entries[] | select(.key != "postgres" and (.value.cpus == null or .value.mem_limit == null)) | .key'
-)"
-if [ -n "$unbounded" ]; then
-  echo "services without cpus and mem_limit: $unbounded" >&2
-  exit 1
-fi
+docker compose --env-file "$WORK_HOST/control-plane-release.env" -f "$ROOT/infra/compose/control-plane.yml" --profile jobs config --format json >"$WORK/control-plane-compose.json"
+docker compose --env-file "$WORK_HOST/gateway-release.env" -f "$ROOT/infra/compose/gateway.yml" config --format json >"$WORK/gateway-compose.json"
 
 step "Caddyfile"
 docker run --rm -e SKILLHUB_DOMAIN=skillhub.example -e SKILLHUB_ACME_EMAIL=owner@skillhub.example \
   -v "$CP/Caddyfile:/etc/caddy/Caddyfile:ro" "$CADDY" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
-step "Alertmanager configuration and probe targets rendered the way bootstrap renders them"
+step "compose resource ceilings, Alertmanager configuration and probe targets"
 docker run --rm -e OWNER="$OWNER" --env-file "$WORK_HOST/control-plane-release.env" -v "$CP:/cp:ro" -v "$WORK_HOST:/work" "$UBUNTU" bash -euc '
-  apt-get update -qq >/dev/null && apt-get install -y -qq --no-install-recommends gettext-base >/dev/null
+  apt-get update -qq >/dev/null && apt-get install -y -qq --no-install-recommends gettext-base jq >/dev/null
+  unbounded=$(jq -r ".services | to_entries[] | select(.key != \"postgres\" and (.value.cpus == null or .value.mem_limit == null)) | .key" /work/control-plane-compose.json /work/gateway-compose.json)
+  if [ -n "$unbounded" ]; then
+    echo "services without cpus and mem_limit: $unbounded" >&2
+    exit 1
+  fi
+  echo "compose resource ceilings: ok"
   vars=$(sed -n "s/^envsubst \x27\(.*\)\x27 \\\\$/\1/p" /cp/bin/skillhub-bootstrap)
   [ -n "$vars" ] || { echo "could not read the envsubst variable list from skillhub-bootstrap"; exit 1; }
   envsubst "$vars" </cp/alertmanager.yml.tmpl >/work/alertmanager.yml
