@@ -98,15 +98,25 @@ func (h *Handler) SetEnabled(w http.ResponseWriter, r *http.Request) {
 		flip = h.Svc.Enable
 	}
 	updated, err := flip(r.Context(), r.PathValue("name"), operator, note)
-	if errors.Is(err, ErrUnknownAgent) {
+	writeAgentUpdate(w, updated, err)
+}
+
+func writeAgentUpdate(w http.ResponseWriter, updated Agent, err error) {
+	_, overShare := errors.AsType[*AgentCapsOverShare](err)
+	switch {
+	case errors.Is(err, ErrUnknownAgent):
 		httpx.WriteError(w, http.StatusNotFound, "not found")
-		return
-	}
-	if err != nil {
+	case errors.Is(err, ErrSpendCapOutOfRange):
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+	case overShare:
+		httpx.WriteError(w, http.StatusConflict, err.Error())
+	case errors.Is(err, ErrModelBudgetUnknown):
+		httpx.WriteError(w, http.StatusServiceUnavailable, ErrModelBudgetUnknown.Error())
+	case err != nil:
 		httpx.WriteError(w, http.StatusInternalServerError, "agent update failed")
-		return
+	default:
+		httpx.WriteJSON(w, http.StatusOK, view(updated))
 	}
-	httpx.WriteJSON(w, http.StatusOK, view(updated))
 }
 
 func (h *Handler) SetSpendCap(w http.ResponseWriter, r *http.Request) {
@@ -127,16 +137,7 @@ func (h *Handler) SetSpendCap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	updated, err := h.Svc.SetSpendCap(r.Context(), r.PathValue("name"), operator, capMicros, note)
-	switch {
-	case errors.Is(err, ErrUnknownAgent):
-		httpx.WriteError(w, http.StatusNotFound, "not found")
-	case errors.Is(err, ErrSpendCapOutOfRange):
-		httpx.WriteError(w, http.StatusBadRequest, err.Error())
-	case err != nil:
-		httpx.WriteError(w, http.StatusInternalServerError, "agent update failed")
-	default:
-		httpx.WriteJSON(w, http.StatusOK, view(updated))
-	}
+	writeAgentUpdate(w, updated, err)
 }
 
 func spendCapOf(w http.ResponseWriter, raw json.RawMessage) (*int64, bool) {

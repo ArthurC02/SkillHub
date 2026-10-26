@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"math"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -78,6 +81,69 @@ var (
 
 type Service struct {
 	Pool *pgxpool.Pool
+
+	PlatformModelBudgetUSD func(context.Context) (float64, error)
+}
+
+const agentShareOfModelBudget = 0.10
+
+var ErrModelBudgetUnknown = errors.New("讀不到平台的模型總額，所以無法確認平台 Agent 的上限總和，這次沒有改動。請稍後再試。")
+
+type AgentCapsOverShare struct {
+	EnabledMicros int64
+	AllowedMicros int64
+}
+
+func (e *AgentCapsOverShare) Error() string {
+	return fmt.Sprintf("已啟用的平台 Agent 每日上限合計會是 %s 美元，超過平台模型總額一成的 %s 美元；"+
+		"Agent 會和所有人的模型呼叫搶同一筆總額。這次沒有改動，請先調低某個 Agent 的上限或停用一個。",
+		dollars(e.EnabledMicros), dollars(e.AllowedMicros))
+}
+
+func dollars(micros int64) string {
+	return strconv.FormatFloat(float64(micros)/usdMicrosPerDollar, 'f', 2, 64)
+}
+
+func agentAllowanceMicros(ctx context.Context, platformBudgetUSD func(context.Context) (float64, error)) (allowance int64, checked bool, err error) {
+	if platformBudgetUSD == nil {
+		return 0, false, nil
+	}
+	budget, err := platformBudgetUSD(ctx)
+	if err != nil {
+		return 0, false, fmt.Errorf("%w: %w", ErrModelBudgetUnknown, err)
+	}
+	return int64(math.Round(budget * agentShareOfModelBudget * usdMicrosPerDollar)), true, nil
+}
+
+// The advisory lock serializes every change that can raise the enabled
+// total, so two operators enabling at once cannot both pass the check.
+func requireEnabledCapsWithin(ctx context.Context, tx pgx.Tx, allowanceMicros int64) error {
+	q := gen.New(tx)
+	if err := q.LockPlatformAgentCaps(ctx); err != nil {
+		return err
+	}
+	rows, err := q.ListPlatformAgents(ctx)
+	if err != nil {
+		return err
+	}
+	agents := make([]Agent, len(rows))
+	for i, row := range rows {
+		agents[i] = agent(row)
+	}
+	return enabledCapsWithin(agents, allowanceMicros)
+}
+
+func enabledCapsWithin(agents []Agent, allowanceMicros int64) error {
+	var enabled int64
+	for _, a := range agents {
+		if a.Enabled {
+			enabled += a.EffectiveSpendCapMicros()
+		}
+	}
+	if enabled > allowanceMicros {
+		return &AgentCapsOverShare{EnabledMicros: enabled, AllowedMicros: allowanceMicros}
+	}
+	return nil
 }
 
 func (s *Service) Register(ctx context.Context, definitions []Definition) error {
@@ -124,8 +190,12 @@ func (s *Service) Disable(ctx context.Context, name string, operator pgtype.UUID
 }
 
 func (s *Service) flip(ctx context.Context, name string, operator pgtype.UUID, note string, to agentSwitch) (Agent, error) {
+	allowance, checked, err := agentAllowanceMicros(ctx, s.PlatformModelBudgetUSD)
+	if err != nil && to.enabled {
+		return Agent{}, err
+	}
 	var updated Agent
-	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		row, err := gen.New(tx).SetPlatformAgentEnabled(ctx, gen.SetPlatformAgentEnabledParams{
 			Name: name, Enabled: to.enabled, OwnerID: operator,
 		})
@@ -136,6 +206,11 @@ func (s *Service) flip(ctx context.Context, name string, operator pgtype.UUID, n
 			return err
 		}
 		updated = agent(row)
+		if checked && to.enabled {
+			if err := requireEnabledCapsWithin(ctx, tx, allowance); err != nil {
+				return err
+			}
+		}
 		return audit.Log(ctx, tx, audit.Event{
 			Actor: operator, Action: to.action, ResourceType: audit.ResourcePlatformAgent, ResourceID: row.ID,
 			Metadata: map[string]any{auditAgent: name, auditNote: note},
@@ -150,8 +225,12 @@ func (s *Service) SetSpendCap(
 	if capMicros != nil && (*capMicros <= 0 || *capMicros > MaxDailySpendCapMicros) {
 		return Agent{}, ErrSpendCapOutOfRange
 	}
+	allowance, checked, err := agentAllowanceMicros(ctx, s.PlatformModelBudgetUSD)
+	if err != nil {
+		return Agent{}, err
+	}
 	var updated Agent
-	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		q := gen.New(tx)
 		before, err := q.GetPlatformAgentSpendCap(ctx, name)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -167,6 +246,11 @@ func (s *Service) SetSpendCap(
 			return err
 		}
 		updated = agent(row)
+		if checked {
+			if err := requireEnabledCapsWithin(ctx, tx, allowance); err != nil {
+				return err
+			}
+		}
 		return audit.Log(ctx, tx, audit.Event{
 			Actor: operator, Action: audit.ActionAgentSpendCapSet, ResourceType: audit.ResourcePlatformAgent, ResourceID: row.ID,
 			Metadata: map[string]any{auditAgent: name, auditNote: note, auditFrom: before, auditTo: updated.EffectiveSpendCapMicros()},

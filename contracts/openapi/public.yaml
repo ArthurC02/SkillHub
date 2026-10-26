@@ -3479,6 +3479,20 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: |
+            Enabling this agent would put the daily caps of all enabled agents above one tenth
+            of the model gateway's platform-wide budget, so the agents could
+            spend the budget every person's model calls share. Nothing was
+            changed; the message names the enabled total and the allowance.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: The platform-wide model budget could not be read, so the share could not be checked. Nothing was changed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/agents/{name}/spend-cap:
     parameters:
       - name: name
@@ -3525,6 +3539,20 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: The caller is not an operator, or no agent has this name.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: |
+            The new cap would put the daily caps of all enabled agents above one tenth
+            of the model gateway's platform-wide budget, so the agents could
+            spend the budget every person's model calls share. Nothing was
+            changed; the message names the enabled total and the allowance.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: The platform-wide model budget could not be read, so the share could not be checked. Nothing was changed.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

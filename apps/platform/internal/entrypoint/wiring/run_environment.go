@@ -1,6 +1,7 @@
 package wiring
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"strconv"
@@ -72,4 +73,14 @@ func NewRunRegistryFromEnv() *run.Registry {
 			name, baseURL, os.Getenv("SKILLHUB_SANDBOX_TOKEN_"+strings.ToUpper(name)), internalHTTPClient(sandboxProviderTimeout)))
 	}
 	return run.NewRegistry(providers...)
+}
+
+func PlatformModelBudgetUSD(gateway *run.Gateway) func(context.Context) (float64, error) {
+	if gateway == nil {
+		return nil
+	}
+	return func(ctx context.Context) (float64, error) {
+		budget, err := gateway.PlatformBudget(ctx)
+		return budget.LimitUSD, err
+	}
 }

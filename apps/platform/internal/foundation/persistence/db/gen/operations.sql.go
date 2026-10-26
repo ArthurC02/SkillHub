@@ -876,6 +876,15 @@ func (q *Queries) LiveProposalExists(ctx context.Context, arg LiveProposalExists
 	return exists, err
 }
 
+const lockPlatformAgentCaps = `-- name: LockPlatformAgentCaps :exec
+SELECT pg_advisory_xact_lock(hashtextextended('platform-agent-caps', 0))
+`
+
+func (q *Queries) LockPlatformAgentCaps(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, lockPlatformAgentCaps)
+	return err
+}
+
 const openFinding = `-- name: OpenFinding :one
 INSERT INTO platform_agent_findings (agent_id, title, cites)
 VALUES ($1, $2, $3::text[])

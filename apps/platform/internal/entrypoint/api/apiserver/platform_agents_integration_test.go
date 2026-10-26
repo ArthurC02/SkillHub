@@ -3,13 +3,17 @@ package apiserver_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -282,5 +286,67 @@ func TestAgentChangesNeedANoteAndAKnownAgent(t *testing.T) {
 	}
 	if n := countRow(t, pool, "SELECT count(*) FROM platform_agents WHERE name = $1 AND enabled", name); n != 0 {
 		t.Error("a refused request enabled the agent")
+	}
+}
+
+func TestAnAgentCannotBeEnabledOrRaisedPastItsShareOfThePlatformModelBudget(t *testing.T) {
+	pool := requireDB(t)
+	budget := func(context.Context) (float64, error) { return 1e6, nil }
+	a := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
+		d.Agents.Svc.PlatformModelBudgetUSD = func(ctx context.Context) (float64, error) { return budget(ctx) }
+	})
+	const name = "agent-budget-share"
+	registerTestAgent(t, pool, name)
+	operator := a.login(t, "operator-agent-share")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	enabled := func() bool {
+		return countRow(t, pool, "SELECT count(*) FROM platform_agents WHERE name = $1 AND enabled", name) == 1
+	}
+	const enable = `{"enabled":true,"note":"turn it on"}`
+
+	budget = func(context.Context) (float64, error) { return 0.000001, nil }
+	code, body := operatorCall(t, operator, http.MethodPut, "/admin/agents/"+name+"/enabled", enable)
+	if code != http.StatusConflict || !strings.Contains(fmt.Sprint(body["error"]), "超過平台模型總額一成") || enabled() {
+		t.Fatalf("enabling past the share: got %d %v, enabled = %v; want 409 naming the share and nothing enabled", code, body, enabled())
+	}
+
+	budget = func(context.Context) (float64, error) { return 0, errors.New("gateway unreachable") }
+	if code, body := operatorCall(t, operator, http.MethodPut, "/admin/agents/"+name+"/enabled", enable); code != http.StatusServiceUnavailable || enabled() {
+		t.Fatalf("enabling with the budget unreadable: got %d %v, enabled = %v; want 503 and nothing enabled", code, body, enabled())
+	}
+
+	budget = func(context.Context) (float64, error) { return 1e6, nil }
+	switchAgent(t, operator, name, true, "room in the budget")
+
+	budget = func(context.Context) (float64, error) { return 0.000001, nil }
+	if code, body := operatorCall(t, operator, http.MethodPut, "/admin/agents/"+name+"/spend-cap",
+		`{"daily_spend_cap_usd_micros":2,"note":"raise it"}`); code != http.StatusConflict {
+		t.Fatalf("raising a cap past the share: got %d %v, want 409", code, body)
+	}
+	if n := countRow(t, pool, "SELECT count(*) FROM platform_agents WHERE name = $1 AND daily_spend_cap_override_micros IS NULL", name); n != 1 {
+		t.Error("a refused cap change was written")
+	}
+
+	budget = func(context.Context) (float64, error) { return 0, errors.New("gateway unreachable") }
+	switchAgent(t, operator, name, false, "turning off never needs the budget")
+}
+
+func TestTheAPIHandsTheConfiguredPlatformBudgetReaderToTheAgentSwitches(t *testing.T) {
+	pool := requireDB(t)
+	unreadable := errors.New("the configured reader")
+	app, err := apiserver.NewApp(apiserver.Config{
+		Pool: pool, Store: packageStore{}, OAuth: &identity.GitHubOAuth{},
+		PlatformModelBudgetUSD: func(context.Context) (float64, error) { return 0, unreadable },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	read := app.Deps.Agents.Svc.PlatformModelBudgetUSD
+	if read == nil {
+		t.Fatal("the agent switches got no platform budget reader, so the share is never checked")
+	}
+	if _, err := read(context.Background()); !errors.Is(err, unreadable) {
+		t.Fatalf("the agent switches read the budget through %v, want the configured reader", err)
 	}
 }

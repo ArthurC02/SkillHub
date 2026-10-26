@@ -78,6 +78,8 @@ type Config struct {
 	Providers     *run.Registry
 	RunDeployment run.Deployment
 
+	PlatformModelBudgetUSD func(context.Context) (float64, error)
+
 	Quota policy.QuotaLimits
 
 	GenerateQuota policy.QuotaLimits
@@ -183,6 +185,7 @@ func NewApp(cfg Config) (*App, error) {
 		ActivitySvc:  activitySvc,
 	}
 	app.Deps = newDeps(cfg, app, creditSvc, funnel)
+	app.Deps.Agents.Svc.PlatformModelBudgetUSD = cfg.PlatformModelBudgetUSD
 	app.Deps.Search = &catalog.Handler{Svc: catalogSvc, Identity: auth.Service}
 	app.Deps.Registry = &registry.Handler{Svc: registrySvc, Takedowns: &registry.Takedowns{Registry: registrySvc}, Identity: auth.Service}
 	app.Deps.Governance = &governance.Handler{Svc: newGovernanceService(cfg.Pool, registrySvc, identitySvc)}

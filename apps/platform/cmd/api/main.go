@@ -295,6 +295,7 @@ func runAPI() (failed bool) {
 	cfg.Pool, cfg.Readiness, cfg.Store, cfg.LLM, cfg.TraceSigner = pool, capabilities, store, llm, traceSigner
 	cfg.Profiles, cfg.AnalyticsRetention, cfg.Providers, cfg.RunDeployment = profiles, analyticsRetention, providers, runDeployment
 	cfg.CreationLimits, cfg.CreationTransient, cfg.RateLimits, cfg.CleanMode = creationLimits, creationTransient, sharedAcrossInstances(rateLimits, pool, mode), clean
+	cfg.PlatformModelBudgetUSD = wiring.PlatformModelBudgetUSD(wiring.GatewayFromEnv())
 	app, err := apiserver.NewApp(cfg)
 	exitOn(err, "api composition")
 	for _, task := range startupTasks(app) {

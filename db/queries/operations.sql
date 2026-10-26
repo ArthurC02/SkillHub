@@ -11,6 +11,9 @@ ON CONFLICT (name) DO UPDATE SET
 -- name: ListPlatformAgents :many
 SELECT * FROM platform_agents ORDER BY name;
 
+-- name: LockPlatformAgentCaps :exec
+SELECT pg_advisory_xact_lock(hashtextextended('platform-agent-caps', 0));
+
 -- name: SetPlatformAgentEnabled :one
 UPDATE platform_agents SET enabled = @enabled, owner_id = @owner_id
 WHERE name = @name

@@ -226,6 +226,7 @@ queries:
 
   RegisterPlatformAgent: operations
   ListPlatformAgents: operations
+  LockPlatformAgentCaps: operations
   SetPlatformAgentEnabled: operations
   GetPlatformAgentBrake: operations
   EngagePlatformAgentBrake: operations

@@ -31047,6 +31047,10 @@ type SetPlatformAgentEnabledBadRequest Error
 
 func (*SetPlatformAgentEnabledBadRequest) setPlatformAgentEnabledRes() {}
 
+type SetPlatformAgentEnabledConflict Error
+
+func (*SetPlatformAgentEnabledConflict) setPlatformAgentEnabledRes() {}
+
 type SetPlatformAgentEnabledNotFound Error
 
 func (*SetPlatformAgentEnabledNotFound) setPlatformAgentEnabledRes() {}
@@ -31077,9 +31081,17 @@ func (s *SetPlatformAgentEnabledReq) SetNote(val string) {
 	s.Note = val
 }
 
+type SetPlatformAgentEnabledServiceUnavailable Error
+
+func (*SetPlatformAgentEnabledServiceUnavailable) setPlatformAgentEnabledRes() {}
+
 type SetPlatformAgentSpendCapBadRequest Error
 
 func (*SetPlatformAgentSpendCapBadRequest) setPlatformAgentSpendCapRes() {}
+
+type SetPlatformAgentSpendCapConflict Error
+
+func (*SetPlatformAgentSpendCapConflict) setPlatformAgentSpendCapRes() {}
 
 type SetPlatformAgentSpendCapNotFound Error
 
@@ -31111,6 +31123,10 @@ func (s *SetPlatformAgentSpendCapReq) SetDailySpendCapUsdMicros(val NilInt64) {
 func (s *SetPlatformAgentSpendCapReq) SetNote(val string) {
 	s.Note = val
 }
+
+type SetPlatformAgentSpendCapServiceUnavailable Error
+
+func (*SetPlatformAgentSpendCapServiceUnavailable) setPlatformAgentSpendCapRes() {}
 
 type SetRunModelBudgetBadRequest Error
 
