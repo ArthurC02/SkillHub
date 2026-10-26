@@ -33,6 +33,7 @@ const (
 	ReasonScanBlocked            = "scan_blocked"
 	ReasonWorkspaceConcurrency   = "workspace_concurrency"
 	ReasonCreditBalance          = "credit_balance"
+	ReasonPlatformModelBudget    = "platform_model_budget"
 	ReasonPermissionsUnconfirmed = "permissions_unconfirmed"
 	ReasonCapabilityMismatch     = "capability_mismatch"
 )
@@ -44,6 +45,7 @@ func RefusalReasons() []string {
 		ReasonScanBlocked,
 		ReasonWorkspaceConcurrency,
 		ReasonCreditBalance,
+		ReasonPlatformModelBudget,
 		ReasonPermissionsUnconfirmed,
 		ReasonCapabilityMismatch,
 	}

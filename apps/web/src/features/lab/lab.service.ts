@@ -70,7 +70,8 @@ export interface PreflightResponse {
     | "scan_blocked"
     | "scan_unavailable"
     | "content_not_curated"
-    | "credit_balance";
+    | "credit_balance"
+    | "platform_model_budget";
   notes: string[];
 }
 

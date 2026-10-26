@@ -104,8 +104,10 @@ export interface RunPermissionSummary {
      * `scan_unavailable` the static scan refusing or being unable to read
      * the package, and `content_not_curated` the clean test mode refusing
      * material that is neither in the public catalogue nor curated at
-     * this exact version, and `credit_balance` a workspace whose balance
-     * cannot cover the run's ceiling.
+     * this exact version, `credit_balance` a workspace whose balance
+     * cannot cover the run's ceiling, and `platform_model_budget` a
+     * platform-wide model budget whose remainder, after the ceilings of
+     * the runs still in flight, cannot cover this run's ceiling.
      * 
      * Every one of these is also refused when the run is created; this
      * field exists so the refusal arrives before the user has read a
@@ -134,6 +136,7 @@ export const RunPermissionSummaryBlockedEnum = {
     ScanUnavailable: 'scan_unavailable',
     ContentNotCurated: 'content_not_curated',
     CreditBalance: 'credit_balance',
+    PlatformModelBudget: 'platform_model_budget',
 } as const;
 export type RunPermissionSummaryBlockedEnum = typeof RunPermissionSummaryBlockedEnum[keyof typeof RunPermissionSummaryBlockedEnum];
 

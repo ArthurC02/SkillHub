@@ -129,6 +129,7 @@
 | CRED-007 | 有測試 | `TestGrantCreditsIsInvisibleWithoutTheOperatorRole`、`TestGrantRefusesAZeroAmountOrABlankReasonAndWritesNoEntry`、`TestASuccessfulGrantIsAuditedWithItsTargetWorkspace` | |
 | CRED-008 | 有測試 | `TestAccountDeletionLeavesTheCreditLedgerAlone` | |
 | CRED-009 | 有測試 | `TestTheStatementLinksOnlyRunsTheReaderCanOpen`、`TestTheStatementPagesWithoutLosingEntriesThatShareATimestamp`、`TestAStatementWithExactlyOnePageOffersNoNextPage`、`TestAStatementCursorThisEndpointDidNotIssueIsRefused`、`workspace.test.tsx`（CRED-009 兩條） | |
+| CRED-010 | 有測試 | `TestThePlatformBudgetCoversARunOnlyAfterTheCeilingsOfUnfinishedRuns`、`TestARunIsRefusedBeforeItStartsWhenThePlatformModelBudgetCannotCoverIt`、`TestARunIsAdmittedWhenThePlatformModelBudgetHasRoom`、`TestAnUnreadablePlatformModelBudgetDoesNotBlockARun`、`TestTheGatewayBudgetResetsDailyAsEveryRefusalTellsTheUser`、`TestAFailedJudgementSaysWhetherThePlatformBudgetWasTheCause`、`TestAnAgentCannotBeEnabledOrRaisedPastItsShareOfThePlatformModelBudget`、`infra/observability/alerts_test.yml` | |
 
 ## 後台與維運
 

@@ -28322,8 +28322,9 @@ type RunPermissionSummary struct {
 	// is a licence hold on the skill, `capability_mismatch` a deployment with no model outlet or no
 	// sandbox that fits, `scan_blocked` and `scan_unavailable` the static scan refusing or being unable to
 	// read the package, and `content_not_curated` the clean test mode refusing material that is neither in
-	// the public catalogue nor curated at this exact version, and `credit_balance` a workspace whose
-	// balance cannot cover the run's ceiling.
+	// the public catalogue nor curated at this exact version, `credit_balance` a workspace whose balance
+	// cannot cover the run's ceiling, and `platform_model_budget` a platform-wide model budget whose
+	// remainder, after the ceilings of the runs still in flight, cannot cover this run's ceiling.
 	//
 	// Every one of these is also refused when the run is created; this field exists so the refusal arrives
 	// before the user has read a permission summary and confirmed it.
@@ -28409,20 +28410,22 @@ func (*RunPermissionSummary) getRunPreflightRes() {}
 // is a licence hold on the skill, `capability_mismatch` a deployment with no model outlet or no
 // sandbox that fits, `scan_blocked` and `scan_unavailable` the static scan refusing or being unable to
 // read the package, and `content_not_curated` the clean test mode refusing material that is neither in
-// the public catalogue nor curated at this exact version, and `credit_balance` a workspace whose
-// balance cannot cover the run's ceiling.
+// the public catalogue nor curated at this exact version, `credit_balance` a workspace whose balance
+// cannot cover the run's ceiling, and `platform_model_budget` a platform-wide model budget whose
+// remainder, after the ceilings of the runs still in flight, cannot cover this run's ceiling.
 //
 // Every one of these is also refused when the run is created; this field exists so the refusal arrives
 // before the user has read a permission summary and confirmed it.
 type RunPermissionSummaryBlocked string
 
 const (
-	RunPermissionSummaryBlockedAccessRestricted   RunPermissionSummaryBlocked = "access_restricted"
-	RunPermissionSummaryBlockedCapabilityMismatch RunPermissionSummaryBlocked = "capability_mismatch"
-	RunPermissionSummaryBlockedScanBlocked        RunPermissionSummaryBlocked = "scan_blocked"
-	RunPermissionSummaryBlockedScanUnavailable    RunPermissionSummaryBlocked = "scan_unavailable"
-	RunPermissionSummaryBlockedContentNotCurated  RunPermissionSummaryBlocked = "content_not_curated"
-	RunPermissionSummaryBlockedCreditBalance      RunPermissionSummaryBlocked = "credit_balance"
+	RunPermissionSummaryBlockedAccessRestricted    RunPermissionSummaryBlocked = "access_restricted"
+	RunPermissionSummaryBlockedCapabilityMismatch  RunPermissionSummaryBlocked = "capability_mismatch"
+	RunPermissionSummaryBlockedScanBlocked         RunPermissionSummaryBlocked = "scan_blocked"
+	RunPermissionSummaryBlockedScanUnavailable     RunPermissionSummaryBlocked = "scan_unavailable"
+	RunPermissionSummaryBlockedContentNotCurated   RunPermissionSummaryBlocked = "content_not_curated"
+	RunPermissionSummaryBlockedCreditBalance       RunPermissionSummaryBlocked = "credit_balance"
+	RunPermissionSummaryBlockedPlatformModelBudget RunPermissionSummaryBlocked = "platform_model_budget"
 )
 
 // AllValues returns all RunPermissionSummaryBlocked values.
@@ -28434,6 +28437,7 @@ func (RunPermissionSummaryBlocked) AllValues() []RunPermissionSummaryBlocked {
 		RunPermissionSummaryBlockedScanUnavailable,
 		RunPermissionSummaryBlockedContentNotCurated,
 		RunPermissionSummaryBlockedCreditBalance,
+		RunPermissionSummaryBlockedPlatformModelBudget,
 	}
 }
 
@@ -28451,6 +28455,8 @@ func (s RunPermissionSummaryBlocked) MarshalText() ([]byte, error) {
 	case RunPermissionSummaryBlockedContentNotCurated:
 		return []byte(s), nil
 	case RunPermissionSummaryBlockedCreditBalance:
+		return []byte(s), nil
+	case RunPermissionSummaryBlockedPlatformModelBudget:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -28477,6 +28483,9 @@ func (s *RunPermissionSummaryBlocked) UnmarshalText(data []byte) error {
 		return nil
 	case RunPermissionSummaryBlockedCreditBalance:
 		*s = RunPermissionSummaryBlockedCreditBalance
+		return nil
+	case RunPermissionSummaryBlockedPlatformModelBudget:
+		*s = RunPermissionSummaryBlockedPlatformModelBudget
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

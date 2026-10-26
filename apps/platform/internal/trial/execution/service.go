@@ -488,6 +488,9 @@ func (s *Service) admitRun(ctx context.Context, p CreateParams) (admittedRun, er
 		return admittedRun{}, err
 	}
 	decoded.ModelBudgetUSD = budget.USD
+	if err := requirePlatformBudget(ctx, s.Gateway, s.Pool, budget.USD); err != nil {
+		return admittedRun{}, err
+	}
 	policy, err := json.Marshal(decoded)
 	if err != nil {
 		return admittedRun{}, err

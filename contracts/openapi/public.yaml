@@ -11216,7 +11216,7 @@ components:
             at all.
         blocked:
           type: string
-          enum: [access_restricted, capability_mismatch, scan_blocked, scan_unavailable, content_not_curated, credit_balance]
+          enum: [access_restricted, capability_mismatch, scan_blocked, scan_unavailable, content_not_curated, credit_balance, platform_model_budget]
           description: |
             Why this pair cannot start a run at all, absent when it can. A code
             rather than a sentence: the wording belongs to the interface, and an
@@ -11236,8 +11236,10 @@ components:
             `scan_unavailable` the static scan refusing or being unable to read
             the package, and `content_not_curated` the clean test mode refusing
             material that is neither in the public catalogue nor curated at
-            this exact version, and `credit_balance` a workspace whose balance
-            cannot cover the run's ceiling.
+            this exact version, `credit_balance` a workspace whose balance
+            cannot cover the run's ceiling, and `platform_model_budget` a
+            platform-wide model budget whose remainder, after the ceilings of
+            the runs still in flight, cannot cover this run's ceiling.
 
             Every one of these is also refused when the run is created; this
             field exists so the refusal arrives before the user has read a

@@ -10358,6 +10358,8 @@ func (s RunPermissionSummaryBlocked) Validate() error {
 		return nil
 	case "credit_balance":
 		return nil
+	case "platform_model_budget":
+		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}

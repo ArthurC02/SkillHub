@@ -249,6 +249,18 @@ func (q *Queries) CountRunsByDay(ctx context.Context, since pgtype.Timestamptz) 
 	return items, nil
 }
 
+const countUnfinishedRunsPlatformWide = `-- name: CountUnfinishedRunsPlatformWide :one
+SELECT count(*) FROM runs
+WHERE finished_at IS NULL
+`
+
+func (q *Queries) CountUnfinishedRunsPlatformWide(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countUnfinishedRunsPlatformWide)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createRun = `-- name: CreateRun :one
 INSERT INTO runs (
     workspace_id, skill_version_id, test_case_snapshot_id, provider, status, origin_key

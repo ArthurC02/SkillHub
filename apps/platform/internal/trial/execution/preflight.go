@@ -120,28 +120,36 @@ func (s *Service) blockingReason(
 	if reason := refusalReason(scanVerdict(scan)); reason != "" {
 		return reason, nil
 	}
-	if s.Ledger != nil && s.Pool != nil {
-		budget, err := runBudgetIn(ctx, s.queries(), s.Deployment)
-		if err != nil {
-			return "", err
-		}
-		tx, err := s.Pool.Begin(ctx)
-		if err != nil {
-			return "", err
-		}
-		affordable, err := s.Ledger.Reserve(ctx, tx, workspaceID, budget.USD)
-		_ = tx.Rollback(ctx)
-		if err != nil {
-			return "", err
-		}
-		if !affordable {
-			return ReasonCreditBalance, nil
-		}
+	if reason, err := spendRefusal(ctx, s, workspaceID); reason != "" || err != nil {
+		return reason, err
 	}
 	if _, err := s.curatedContentRefusal(ctx, workspaceID, version.ID); !errors.Is(err, ErrContentNotCurated) {
 		return "", err
 	}
 	return blockedContentNotCurated, nil
+}
+
+func spendRefusal(ctx context.Context, s *Service, workspaceID pgtype.UUID) (string, error) {
+	if s.Ledger == nil || s.Pool == nil {
+		return "", nil
+	}
+	budget, err := runBudgetIn(ctx, s.queries(), s.Deployment)
+	if err != nil {
+		return "", err
+	}
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return "", err
+	}
+	affordable, err := s.Ledger.Reserve(ctx, tx, workspaceID, budget.USD)
+	_ = tx.Rollback(ctx)
+	if err != nil {
+		return "", err
+	}
+	if !affordable {
+		return ReasonCreditBalance, nil
+	}
+	return refusalReason(platformBudgetVerdict(ctx, s.Gateway, s.Pool, budget.USD)), nil
 }
 
 type CostEstimate struct {

@@ -45,6 +45,8 @@ export const BLOCKED_SENTENCE: Record<NonNullable<PreflightResponse["blocked"]>,
     "要跑自己的小工具,請用有真正沙箱的部署。",
   credit_balance:
     "點數不足,不能開始這次試跑。請聯絡管理者為這個帳號加點;加點後重新整理這一頁就能開始。",
+  platform_model_budget:
+    "平台的模型總額度今天剩下的不夠這次試跑的上限,所以現在不能開始,也不會扣點。額度在台北時間每天上午 8 點恢復,之後重新整理這一頁就能開始。",
 };
 
 export const NOT_INVITED_SENTENCE =

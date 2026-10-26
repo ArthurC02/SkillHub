@@ -106,6 +106,16 @@ test("an empty balance is named on the summary and tells the user who adds credi
   );
 });
 
+test("a platform budget that cannot cover the run names when it recovers and offers no button", async () => {
+  platformWithPreflight({ blocked: "platform_model_budget" });
+  const shown = await renderPreflight();
+
+  expect(startButton(), "the run would be refused for the platform budget").toBe(undefined);
+  expect(shown).toContain(
+    "平台的模型總額度今天剩下的不夠這次試跑的上限,所以現在不能開始,也不會扣點。額度在台北時間每天上午 8 點恢復,之後重新整理這一頁就能開始。",
+  );
+});
+
 test("a pair this deployment can run still offers the button", async () => {
   platformWithPreflight({});
   await renderPreflight();

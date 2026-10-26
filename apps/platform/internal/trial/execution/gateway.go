@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"net/http"
 	"net/url"
@@ -12,6 +13,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
@@ -389,4 +393,43 @@ func (g *Gateway) PlatformBudget(ctx context.Context) (PlatformBudget, error) {
 		budget.ResetsAt = *info.BudgetResetAt
 	}
 	return budget, nil
+}
+
+var ErrPlatformModelBudget = errors.New("run: what is left of the platform's model budget cannot cover this run")
+
+type platformBudgetReader interface {
+	PlatformBudget(ctx context.Context) (PlatformBudget, error)
+}
+
+func platformBudgetVerdict(ctx context.Context, gateway ModelGateway, pool *pgxpool.Pool, runBudgetUSD float64) (string, error) {
+	reader, ok := gateway.(platformBudgetReader)
+	if !ok || pool == nil {
+		return "", nil
+	}
+	budget, err := reader.PlatformBudget(ctx)
+	if err != nil {
+		slog.Warn("the platform model budget could not be read; the run is admitted and the gateway still enforces its budget", "error", err)
+		return "", nil
+	}
+	unfinished, err := gen.New(pool).CountUnfinishedRunsPlatformWide(ctx)
+	if err != nil {
+		slog.Warn("unfinished runs could not be counted; the run is admitted and the gateway still enforces its budget", "error", err)
+		return "", nil
+	}
+	if !budget.covers(unfinished, runBudgetUSD) {
+		return ReasonPlatformModelBudget, ErrPlatformModelBudget
+	}
+	return "", nil
+}
+
+func requirePlatformBudget(ctx context.Context, gateway ModelGateway, pool *pgxpool.Pool, runBudgetUSD float64) error {
+	if reason, err := platformBudgetVerdict(ctx, gateway, pool, runBudgetUSD); err != nil {
+		return refused(reason, err)
+	}
+	return nil
+}
+
+func (b PlatformBudget) covers(unfinishedRuns int64, runBudgetUSD float64) bool {
+	reservedByUnfinishedRuns := float64(unfinishedRuns) * runBudgetUSD
+	return b.LimitUSD-b.SpentUSD-reservedByUnfinishedRuns >= runBudgetUSD
 }

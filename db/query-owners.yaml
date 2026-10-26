@@ -193,6 +193,7 @@ queries:
   ListRunAttempts: run
   LockWorkspaceRunSlots: run
   CountActiveRuns: run
+  CountUnfinishedRunsPlatformWide: run
   ListUnfinishedRuns: run
   MarkAttemptProviderUnreachable: run
   ClearAttemptProviderUnreachable: run
