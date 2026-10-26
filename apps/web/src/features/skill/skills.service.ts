@@ -20,6 +20,7 @@ import {
 } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import { readSearchCorrection } from "../../core/api/searchIntent";
+import { readCatalogResponse, readSearchResponse } from "./search-response.model";
 import type {
   CatalogResponse,
   ForkedSkill,
@@ -37,7 +38,7 @@ import type {
 
 export const MAX_COMPARE = 3;
 
-export function searchSkills(
+export async function searchSkills(
   query: string,
   filters: SearchFilters = {},
   limit = 20,
@@ -50,7 +51,7 @@ export function searchSkills(
   if (filters.tier) params.set("tier", filters.tier);
   if (filters.category) params.set("category", filters.category);
   if (purpose) params.set("purpose", purpose);
-  return apiFetch<PublicSearchResponse>(`/api/skills/search?${params.toString()}`);
+  return readSearchResponse(await apiFetch<unknown>(`/api/skills/search?${params.toString()}`));
 }
 
 export function useSkillSearch(
@@ -66,17 +67,19 @@ export function useSkillSearch(
   });
 }
 
-function fetchCorrectedSearch(query: string, filters: SearchFilters, correction: string) {
-  return apiFetch<PublicSearchResponse>("/api/skills/search", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      query,
-      ...readSearchCorrection(correction),
-      filters,
-      limit: 20,
-    } satisfies CorrectedSearchRequest),
-  });
+async function fetchCorrectedSearch(query: string, filters: SearchFilters, correction: string) {
+  return readSearchResponse(
+    await apiFetch<unknown>("/api/skills/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query,
+        ...readSearchCorrection(correction),
+        filters,
+        limit: 20,
+      } satisfies CorrectedSearchRequest),
+    }),
+  );
 }
 
 export function useCorrectedSkillSearch(
@@ -170,7 +173,7 @@ export function withMatchReasons(
   };
 }
 
-export function browseCatalog(filters: SearchFilters = {}, limit = 100) {
+function requestCatalog(filters: SearchFilters, limit: number) {
   const params = new URLSearchParams({ limit: String(limit) });
   if (filters.script) params.set("script", filters.script);
   if (filters.validation) params.set("validation", filters.validation);
@@ -178,6 +181,10 @@ export function browseCatalog(filters: SearchFilters = {}, limit = 100) {
   if (filters.tier) params.set("tier", filters.tier);
   if (filters.category) params.set("category", filters.category);
   return apiFetch<CatalogResponse>(`/api/skills/catalog?${params.toString()}`);
+}
+
+export async function browseCatalog(filters: SearchFilters = {}, limit = 100) {
+  return readCatalogResponse(await requestCatalog(filters, limit));
 }
 
 export function useCatalog(filters: SearchFilters, enabled: boolean) {
@@ -189,7 +196,7 @@ export function useCatalog(filters: SearchFilters, enabled: boolean) {
 }
 
 async function fetchCatalogTotal(filters: SearchFilters) {
-  const response: Partial<CatalogResponse> | null = await browseCatalog(filters, 1);
+  const response: Partial<CatalogResponse> | null = await requestCatalog(filters, 1);
   const total = response?.total;
   if (typeof total !== "number" || !Number.isSafeInteger(total) || total < 0) {
     throw new Error("Invalid catalog count response");

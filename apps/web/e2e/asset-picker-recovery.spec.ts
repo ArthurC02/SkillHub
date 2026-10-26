@@ -156,6 +156,7 @@ test("the reference picker distinguishes a partial asset search from absence and
       json: {
         query: "Target",
         results: [],
+        total: 0,
         no_results: true,
         limit: 20,
         truncated: false,
