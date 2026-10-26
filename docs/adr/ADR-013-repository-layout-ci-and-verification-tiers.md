@@ -35,7 +35,7 @@
 
 ### 決策 3：建置入口是 Taskfile 加各語言原生工具
 
-共同入口用 **Taskfile**（跨平台單一執行檔，不需要額外安裝 GNU make），職責只有「把常用指令記在一個地方」：`dev`（起本機依賴）、`test`、`lint`、`gen`（codegen 與 sqlc）、`build`，每個都只包一行原生指令。各語言維持原生工具鏈：Go 用 `go build`／`go test`／`golangci-lint`；TS 用 Vite／`tsc`／lint／格式化工具／測試框架；Python 用 `uv`／`ruff`／`pytest`；資料庫用 migration 工具加 `sqlc generate`；契約採 OpenAPI-first：spec 的來源是 `contracts/openapi/public.yaml`，Go 是下游，codegen 由它產生 TS client、Python stub 與 Go model，產物一律入 repo，讓「重跑 codegen 後 `git diff` 乾淨」成為不需要額外基礎設施的 drift 檢查，也讓程式碼審查看得到實際介面。
+共同入口用 **Taskfile**（跨平台單一執行檔，不需要額外安裝 GNU make），職責只有「把常用指令記在一個地方」：`dev`（起本機依賴）、`test`、`lint`、`gen`（codegen 與 sqlc）、`build`，每個都只包一行原生指令。各語言維持原生工具鏈：Go 用 `go build`／`go test`／`golangci-lint`；TS 用 Vite／`tsc`／lint／格式化工具／測試框架；Python 用 `uv`／`ruff`／`pytest`；Rust 只用於 `tools/domain-memory-engine`（Domain Memory 外掛的命令引擎），用 `cargo`／`clippy`／`rustfmt`，版本由該目錄的 `rust-toolchain.toml` 釘住；資料庫用 migration 工具加 `sqlc generate`；契約採 OpenAPI-first：spec 的來源是 `contracts/openapi/public.yaml`，Go 是下游，codegen 由它產生 TS client、Python stub 與 Go model，產物一律入 repo，讓「重跑 codegen 後 `git diff` 乾淨」成為不需要額外基礎設施的 drift 檢查，也讓程式碼審查看得到實際介面。
 
 Taskfile 不得演變成依賴圖或建置快取層。重評條件（滿足任一即重開建置工具評估，考慮 Bazel／Nx 一類方案）：CI 單次 PR 的平均等待時間超過十分鐘；CI 分鐘數成為實質成本；或參與開發者達三人以上且開始出現「不知道該跑哪些測試」的實際事故。在重評條件成立前，單人／小團隊的建置時間不是瓶頸，買不到對應方案的價值。
 

@@ -1,0 +1,25 @@
+[package]
+name = "domain-memory-engine"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+publish = false
+description = "The Domain Memory plugin's command engine, ported from Python and held to the same CLI contract."
+license = "UNLICENSED"
+
+[[bin]]
+name = "domain-memory"
+path = "src/main.rs"
+
+[dependencies]
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }

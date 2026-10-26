@@ -56,6 +56,13 @@ updates:
       interval: weekly
     open-pull-requests-limit: 0
 
+  - package-ecosystem: cargo
+    directories:
+      - /tools/domain-memory-engine
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
   - package-ecosystem: uv
     directories:
       - /apps/llm

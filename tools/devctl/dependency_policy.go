@@ -74,7 +74,7 @@ func (s *dependencyFileSurvey) record(file string) {
 		s.recordPackageLock(dir)
 	case base == "uv.lock":
 		s.recordUVLock(dir)
-	case base == "go.mod":
+	case base == "go.mod", base == "Cargo.lock":
 		s.updated[dir] = true
 	case strings.HasPrefix(base, "Dockerfile"):
 		s.recordDockerfile(dir, file)

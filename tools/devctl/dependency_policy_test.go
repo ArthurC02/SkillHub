@@ -88,6 +88,16 @@ func TestDependabotMustListTheExactDirectory(t *testing.T) {
 	}
 }
 
+func TestACargoLockfileMakesItsDirectoryOneDependabotMustList(t *testing.T) {
+	t.Parallel()
+	survey := &dependencyFileSurvey{updated: map[string]bool{}}
+	survey.record("tools/engine/Cargo.lock")
+	survey.record("tools/engine/Cargo.toml")
+	if want := map[string]bool{"tools/engine": true}; len(survey.updated) != 1 || !survey.updated["tools/engine"] {
+		t.Fatalf("updated = %v, want %v", survey.updated, want)
+	}
+}
+
 func TestComposeAndCIMustRunTheSameImage(t *testing.T) {
 	t.Parallel()
 	digestA, digestB := "@sha256:"+strings.Repeat("a", 64), "@sha256:"+strings.Repeat("b", 64)
