@@ -238,6 +238,12 @@ func TestCreationRefusesADraftThatEscapesItsPackage(t *testing.T) {
 	v = creationStep(t, s, v)
 	v = creationAct(t, c, v, "confirm_brief")
 	v = creationStep(t, s, v)
+	for revisions := 0; v.State == "queued" && revisions < 5; revisions++ {
+		v = creationStep(t, s, v)
+	}
+	if v.State == "queued" {
+		t.Fatalf("the model was handed the blocked draft without end: %+v", v.Snapshot)
+	}
 	if v.Snapshot.Draft == nil || len(v.Snapshot.Draft.Skill.Files) != 1 {
 		t.Fatalf("the stub did not plant the escaping file: %+v", v.Snapshot.Draft)
 	}

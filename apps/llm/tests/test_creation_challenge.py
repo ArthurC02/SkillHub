@@ -94,14 +94,18 @@ def test_only_a_brief_to_confirm_asks_for_challenge_cases():
     assert len(calls) == 1
 
 
-def test_a_refused_brief_asks_for_no_challenge_cases():
+def test_a_brief_go_will_refuse_asks_for_no_challenge_cases():
     unchanged = decision(outcome="confirm_brief", message="Confirm again?", brief="agreed")
 
     response, calls = invoke_in_turn(
         request(brief="agreed", brief_confirmed=True), json.dumps(unchanged)
     )
 
-    assert response.json()["reason"] == "brief_missing"
+    assert response.json()["challenge_cases"] == []
+    assert len(calls) == 1
+    response, calls = invoke_in_turn(
+        request(brief="  "), json.dumps(decision(outcome="confirm_brief", brief=""))
+    )
     assert response.json()["challenge_cases"] == []
     assert len(calls) == 1
 

@@ -30,9 +30,8 @@ func TestCreationLangGraphCarriesGoValidationIntoTheNextModelTurn(t *testing.T) 
 	bad := creationDecision("draft", "提出待驗證的草稿。", nil, creationDraft("", "bad"))
 	goodDraft := creationDraft("Summarize user input in a requested format.", "good")
 	good := creationDecision("draft", "已依 finding 修正描述。", nil, goodDraft)
-	review := creationDecision("draft", "已檢查通過的靜態驗證；未宣稱試跑成功。", nil, goodDraft)
 
-	gateway := httptest.NewServer(creationLangGraphGateway(t, &calls, creationTurnScript{bad: bad, good: good, review: review}))
+	gateway := httptest.NewServer(creationLangGraphGateway(t, &calls, creationTurnScript{bad: bad, good: good}))
 	t.Cleanup(gateway.Close)
 	pythonURL := startCreationPython(t, python, gateway.URL)
 
@@ -49,7 +48,7 @@ func TestCreationLangGraphCarriesGoValidationIntoTheNextModelTurn(t *testing.T) 
 	session := langGraphSession{t: t, creator: creator, service: service, calls: &calls}
 	v, badHash := session.draftUntilBlocked(v)
 	v, goodHash := session.reviseBlockedDraft(v, badHash)
-	session.finalizeReviewedDraft(v, goodHash)
+	session.finalizeValidatedDraft(v, goodHash)
 }
 
 type langGraphSession struct {
@@ -78,8 +77,8 @@ func (s langGraphSession) reviseBlockedDraft(v creation.View, badHash string) (c
 	t := s.t
 	t.Helper()
 	v = creationStep(t, s.service, v)
-	if v.State != "queued" || v.Snapshot.Draft == nil || v.Snapshot.Draft.Blocked || v.Snapshot.Draft.ContentHash == badHash {
-		t.Fatalf("revised draft was not independently validated: %+v", v)
+	if v.State != "draft_ready" || v.Snapshot.Draft == nil || v.Snapshot.Draft.Blocked || v.Snapshot.Draft.ContentHash == badHash {
+		t.Fatalf("a revision that passes validation was not ready at once: %+v", v)
 	}
 	goodHash := v.Snapshot.Draft.ContentHash
 	var persisted struct {
@@ -98,26 +97,22 @@ func (s langGraphSession) reviseBlockedDraft(v creation.View, badHash string) (c
 	return v, goodHash
 }
 
-func (s langGraphSession) finalizeReviewedDraft(v creation.View, goodHash string) {
+func (s langGraphSession) finalizeValidatedDraft(v creation.View, goodHash string) {
 	t := s.t
 	t.Helper()
-	v = creationStep(t, s.service, v)
-	if v.State != "draft_ready" || v.Snapshot.Draft == nil || v.Snapshot.Draft.ContentHash != goodHash || v.Snapshot.Draft.Blocked {
-		t.Fatalf("review did not return the exact validated draft: %+v", v)
-	}
 	v = creationAct(t, s.creator, v, "materialize")
 	if v.Snapshot.Candidate == nil {
 		t.Fatal("materialize did not create an immutable candidate")
 	}
 	candidate := *v.Snapshot.Candidate
 	v = creationAct(t, s.creator, v, "finalize")
-	if v.State != "saved" || v.Snapshot.Candidate == nil || !reflect.DeepEqual(*v.Snapshot.Candidate, candidate) || v.Snapshot.Draft == nil || v.Snapshot.Draft.ContentHash != goodHash || s.calls.Load() != 4 {
+	if v.State != "saved" || v.Snapshot.Candidate == nil || !reflect.DeepEqual(*v.Snapshot.Candidate, candidate) || v.Snapshot.Draft == nil || v.Snapshot.Draft.ContentHash != goodHash || s.calls.Load() != 3 {
 		t.Fatalf("finalize changed the candidate or regenerated: %+v calls=%d", v, s.calls.Load())
 	}
 }
 
 type creationTurnScript struct {
-	bad, good, review map[string]any
+	bad, good map[string]any
 }
 
 func (s creationTurnScript) respond(call int32, system, prompt string) (map[string]any, string) {
@@ -140,14 +135,8 @@ func (s creationTurnScript) respond(call int32, system, prompt string) (map[stri
 			problem = fmt.Sprintf("revision prompt omitted Go finding: %s", prompt)
 		}
 		return s.good, problem
-	case 4:
-		problem := ""
-		if !strings.Contains(system, "Current phase: review") || !strings.Contains(prompt, `"blocked":false`) {
-			problem = fmt.Sprintf("review prompt omitted passing validation: %s", prompt)
-		}
-		return s.review, problem
 	default:
-		return s.review, fmt.Sprintf("unexpected model call %d", call)
+		return s.good, fmt.Sprintf("unexpected model call %d", call)
 	}
 }
 

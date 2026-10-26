@@ -79,17 +79,7 @@ Outcome = Literal[
     "tool_intent",
     "draft",
 ]
-Reason = Literal[
-    "draft_missing",
-    "tool_unavailable",
-    "confirm_diagram_first",
-    "confirm_brief_first",
-    "validation_unavailable",
-    "diagram_incomplete",
-    "search_query_missing",
-    "fetch_url_missing",
-    "brief_missing",
-]
+Reason = Literal["diagram_incomplete"]
 
 
 class CreationMessage(BaseModel):
@@ -1022,23 +1012,8 @@ def _route(state: _State) -> str:
     return {"draft": "draft", "tool_intent": "tool"}.get(state["decision"].outcome, "confirmation")
 
 
-def _changes_brief(req: CreationStepRequest, d: CreationDecision) -> bool:
-    return (
-        d.brief not in (None, "", req.brief)
-        or d.acceptance_criteria not in (None, [], req.acceptance_criteria)
-        or d.sample_input not in (None, "", req.sample_input)
-    )
-
-
 def _confirmation(state: _State) -> dict:
-    d, req = state["decision"], state["request"]
-    if d.outcome == "confirm_brief" and (
-        not (d.brief or req.brief).strip() or (req.brief_confirmed and not _changes_brief(req, d))
-    ):
-        logger.warning(
-            "creation step refused an empty brief session=%s", state["request"].session_id
-        )
-        return _refusal(d, "clarification", "brief_missing")
+    d = state["decision"]
     if (
         d.outcome == "confirm_diagram_description"
         and not (d.diagram_description or state["request"].diagram_description).strip()
@@ -1120,10 +1095,20 @@ async def _write_challenges(
     return _bounded_challenges(found.cases)
 
 
+def _proposes_a_brief_to_confirm(req: CreationStepRequest, d: CreationDecision) -> bool:
+    if not (d.brief or req.brief).strip():
+        return False
+    return not req.brief_confirmed or (
+        d.brief not in (None, "", req.brief)
+        or d.acceptance_criteria not in (None, [], req.acceptance_criteria)
+        or d.sample_input not in (None, "", req.sample_input)
+    )
+
+
 def _challenge_node(gateway_key: str):
     async def challenge(state: _State) -> dict:
         req, d = state["request"], state["decision"]
-        if d.outcome != "confirm_brief":
+        if d.outcome != "confirm_brief" or not _proposes_a_brief_to_confirm(req, d):
             return {}
         usages: list[GatewayUsage | None] = []
         update: dict = {}
@@ -1143,86 +1128,23 @@ def _challenge_node(gateway_key: str):
 
 
 def _tool(state: _State) -> dict:
-    req, d = state["request"], state["decision"]
-    if not d.tool_intent or d.tool_intent.kind not in req.allowed_tools:
-        return _refusal(d, "clarification", "tool_unavailable")
-    if d.tool_intent.kind == "fetch_url" and not d.tool_intent.query.strip().lower().startswith(
-        ("http://", "https://")
-    ):
-        return _refusal(d, "clarification", "fetch_url_missing")
-    if (
-        d.tool_intent.kind in ("search_catalog", "search_knowledge")
-        and not d.tool_intent.query.strip()
-    ):
-        return _refusal(d, "clarification", "search_query_missing")
-    if d.tool_intent.kind == "validate_draft":
-        draft = d.draft or req.draft
-        result = _draft({"request": req, "decision": d.model_copy(update={"draft": draft})})
-        checked = result["decision"]
-        if checked.outcome == "tool_intent":
-            checked = checked.model_copy(update={"tool_intent": d.tool_intent})
-        return {"decision": checked, "reason": result.get("reason")}
+    d = state["decision"]
+    if d.tool_intent and d.tool_intent.kind == "validate_draft":
+        return {"decision": d}
     return {"decision": d.model_copy(update={"draft": None})}
 
 
 def _draft(state: _State) -> dict:
-    req, d = state["request"], state["decision"]
-    diagram_pending = (
-        req.diagram is not None
-        or bool(req.diagram_understanding)
-        or bool(req.diagram_description)
-        or req.diagram_interpretation is not None
-        or bool(d.diagram_understanding)
-    ) and not req.diagram_confirmed
-    diagram_changed = req.diagram_confirmed and d.diagram_understanding not in (
-        None,
-        "",
-        req.diagram_understanding,
-    )
-    brief_changed = req.brief_confirmed and d.brief not in (None, "", req.brief)
-    if diagram_pending or diagram_changed:
-        return _refusal(d, "confirm_diagram_description", "confirm_diagram_first")
-    if not req.brief_confirmed or not req.brief.strip() or brief_changed:
-        return _refusal(d, "confirm_brief", "confirm_brief_first")
-    if d.draft is None:
-        return _refusal(d, "clarification", "draft_missing")
-    if not d.draft.body.strip() or _over_cap(d.draft):
+    d = state["decision"]
+    if d.draft is not None and (not d.draft.body.strip() or _over_cap(d.draft)):
         raise HTTPException(status_code=502, detail="creation returned an unusable draft")
-    validation = req.draft_validation
-    validated = (
-        validation is not None
-        and re.fullmatch(r"[0-9a-f]{64}", validation.content_hash) is not None
-        and not validation.blocked
-        and req.draft is not None
-        and d.draft == req.draft
-    )
-    if not validated:
-        if "validate_draft" not in req.allowed_tools:
-            return _refusal(d, "clarification", "validation_unavailable")
-        return {
-            "decision": d.model_copy(
-                update={
-                    "outcome": "tool_intent",
-                    "tool_intent": CreationToolIntent(
-                        kind="validate_draft", query="", queries=None
-                    ),
-                }
-            )
-        }
     return {"decision": d.model_copy(update={"tool_intent": None})}
 
 
 def _render(state: _State) -> dict:
     req, d = state["request"], state["decision"]
-    brief = d.brief or req.brief
-    acceptance_criteria = d.acceptance_criteria or req.acceptance_criteria
-    sample_input = d.sample_input or req.sample_input
     diagram = d.diagram_understanding or req.diagram_understanding
     reason = state.get("reason")
-    if req.brief_confirmed and d.outcome != "confirm_brief":
-        brief = req.brief
-        acceptance_criteria = req.acceptance_criteria
-        sample_input = req.sample_input
     if req.diagram_confirmed and d.outcome != "confirm_diagram_description":
         diagram = req.diagram_understanding
     if diagram:
@@ -1237,9 +1159,9 @@ def _render(state: _State) -> dict:
             outcome=d.outcome,
             message=d.message,
             reason=reason,
-            brief=brief,
-            acceptance_criteria=acceptance_criteria,
-            sample_input=sample_input,
+            brief=d.brief or "",
+            acceptance_criteria=d.acceptance_criteria or [],
+            sample_input=d.sample_input or "",
             challenge_cases=state.get("challenge_cases", [])
             if d.outcome == "confirm_brief"
             else [],

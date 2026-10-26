@@ -60,7 +60,7 @@ func allowedTools(toolCalls, maxToolCalls int, available toolAvailability) []str
 	if toolCalls >= maxToolCalls {
 		return []string{}
 	}
-	tools := []string{"validate_draft"}
+	tools := []string{validateDraftTool}
 	if available.searchLeft {
 		tools = append(tools, "search_catalog")
 		if available.knowledge {
@@ -68,7 +68,7 @@ func allowedTools(toolCalls, maxToolCalls int, available toolAvailability) []str
 		}
 	}
 	if available.fetch {
-		tools = append(tools, "fetch_url")
+		tools = append(tools, fetchURLTool)
 	}
 	return tools
 }
@@ -384,7 +384,7 @@ func sessionMoved(current gen.GetCreationSessionLivenessRow, err error) bool {
 
 func (s *Service) stepRequest(a JobArgs, revision int64, e envelope, diagram *Diagram) StepRequest {
 	p := e.Snapshot
-	req := StepRequest{SessionID: UUID(a.SessionID), Revision: revision, Messages: p.Messages, Brief: p.Brief, AcceptanceCriteria: p.AcceptanceCriteria, SampleInput: p.SampleInput, ChallengeCases: p.ChallengeCases, BriefConfirmed: p.BriefConfirmed, DiagramUnderstanding: p.DiagramUnderstanding, DiagramDescription: p.DiagramDescription, DiagramDescriptionConfirmed: p.DiagramDescriptionConfirmed, DiagramInterpretation: p.DiagramInterpretation, DiagramConfirmed: p.DiagramConfirmed, Diagram: diagram, References: []ReferenceSkill{}, AllowedTools: allowedTools(p.ToolCalls, e.Limits.MaxToolCalls, toolAvailability{fetch: s.Fetch != nil, knowledge: s.SearchKnowledge != nil, searchLeft: p.SearchRounds < MaxSearchRounds}), MaxOutputTokens: e.Limits.MaxOutputTokens}
+	req := StepRequest{SessionID: UUID(a.SessionID), Revision: revision, Messages: p.Messages, Brief: p.Brief, AcceptanceCriteria: p.AcceptanceCriteria, SampleInput: p.SampleInput, ChallengeCases: p.ChallengeCases, BriefConfirmed: p.BriefConfirmed, DiagramUnderstanding: p.DiagramUnderstanding, DiagramDescription: p.DiagramDescription, DiagramDescriptionConfirmed: p.DiagramDescriptionConfirmed, DiagramInterpretation: p.DiagramInterpretation, DiagramConfirmed: p.DiagramConfirmed, Diagram: diagram, References: []ReferenceSkill{}, AllowedTools: offeredTools(s, e), MaxOutputTokens: e.Limits.MaxOutputTokens}
 	req.Draft, req.DraftValidation = draftForModel(p.Draft, e.PreviousDraft)
 	return req
 }

@@ -52,14 +52,25 @@ func TestEveryReasonTheContractDeclaresHasASentenceForTheUser(t *testing.T) {
 	}
 }
 
-func TestTheSentenceTableNamesNoReasonTheContractDropped(t *testing.T) {
-	declared := map[string]bool{}
+func TestEveryReasonTheScreenGivesHasASentenceForTheUser(t *testing.T) {
+	for _, code := range screenReasons {
+		if sentence, err := reasonSentence(code); err != nil || sentence == "" {
+			t.Errorf("the screen refuses with %q and this build has no sentence for it: %v", code, err)
+		}
+	}
+}
+
+func TestTheSentenceTableNamesNoReasonNothingGives(t *testing.T) {
+	given := map[string]bool{}
 	for _, code := range contractEnum(t, "CreationStepResponse", "reason") {
-		declared[code] = true
+		given[code] = true
+	}
+	for _, code := range screenReasons {
+		given[code] = true
 	}
 	for code := range reasonSentences {
-		if !declared[code] {
-			t.Errorf("%q has a sentence but the contract no longer declares it; the sentence is "+
+		if !given[code] {
+			t.Errorf("%q has a sentence but neither the contract nor the screen gives it; the sentence is "+
 				"then unreachable and nothing says which code replaced it", code)
 		}
 	}

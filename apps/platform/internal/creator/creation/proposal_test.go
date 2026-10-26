@@ -176,15 +176,15 @@ func TestProposalConfirmBriefWithAnEmptyBriefStillRecordsTheReply(t *testing.T) 
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal()}
 	r := &StepResult{Message: "please confirm", Outcome: "confirm_brief", Model: "m1"}
-	_, _, err := s.proposal(context.Background(), 2, &e, r, nil)
-	if !errors.Is(err, ErrInvalidCommand) {
-		t.Fatalf("an empty brief must not be confirmable: %v", err)
+	state, _, err := s.proposal(context.Background(), 2, &e, r, nil)
+	if err != nil || state != StateWaitingInput || e.Snapshot.PendingAction == PendingBriefConfirmation {
+		t.Fatalf("an empty brief must not be confirmable: state=%q err=%v", state, err)
 	}
 	if e.Snapshot.Model != "m1" {
 		t.Fatalf("the reply must be recorded before the outcome fails: %+v", e.Snapshot)
 	}
 	last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]
-	if last.Role != "assistant" || last.Content != "please confirm" {
+	if last.Role != "assistant" || last.Content != "模型這一步沒有整理出需求；已自動再試一次。" {
 		t.Fatalf("the recorded reply is wrong: %+v", last)
 	}
 }
@@ -259,53 +259,6 @@ func runDraftGuardCase(t *testing.T, tc guardCase, entry string) {
 func TestProposalDraftGuardClauses(t *testing.T) {
 	newDraft := func() *GeneratedSkill { return &GeneratedSkill{Name: "x", Body: "body"} }
 	cases := []guardCase{
-		{
-			name: "brief not confirmed",
-			build: func() (Snapshot, *StepResult) {
-				return Snapshot{Brief: "task", BriefConfirmed: false},
-					&StepResult{Message: "ok", Brief: "task", Draft: newDraft()}
-			},
-		},
-		{
-			name: "reply brief empty while the confirmed brief is not",
-			build: func() (Snapshot, *StepResult) {
-				return Snapshot{Brief: "task", BriefConfirmed: true},
-					&StepResult{Message: "ok", Brief: "", Draft: newDraft()}
-			},
-		},
-		{
-			name: "diagram understanding missing after it was confirmed",
-			build: func() (Snapshot, *StepResult) {
-				understanding := diagramJSON("start")
-				return Snapshot{Brief: "task", BriefConfirmed: true, DiagramFingerprint: "fp", DiagramConfirmed: true, DiagramUnderstanding: understanding},
-					&StepResult{Message: "ok", Brief: "task", DiagramUnderstanding: "", Draft: newDraft()}
-			},
-		},
-		{
-			name: "diagram uncertainty still unanswered",
-			build: func() (Snapshot, *StepResult) {
-				p := Snapshot{Brief: "task", BriefConfirmed: true}
-				attachConfirmedDiagram(&p)
-				p.DiagramInterpretation.Uncertainties[0].Answer = ""
-				return p, &StepResult{Message: "ok", Brief: "task", Draft: newDraft()}
-			},
-		},
-		{
-			name: "diagram description read back but not confirmed",
-			build: func() (Snapshot, *StepResult) {
-				p := Snapshot{Brief: "task", BriefConfirmed: true}
-				attachConfirmedDiagram(&p)
-				p.DiagramDescriptionConfirmed = false
-				return p, &StepResult{Message: "ok", Brief: "task", Draft: newDraft()}
-			},
-		},
-		{
-			name: "no draft in the reply",
-			build: func() (Snapshot, *StepResult) {
-				return Snapshot{Brief: "task", BriefConfirmed: true},
-					&StepResult{Message: "ok", Brief: "task", Draft: nil}
-			},
-		},
 		{
 			name: "validator not wired",
 			build: func() (Snapshot, *StepResult) {
@@ -628,62 +581,71 @@ func TestDraftOutcomeClearsDuplicatesOnAnyOtherChange(t *testing.T) {
 	}
 }
 
-func TestProposalToolIntentWithoutAToolBreaksTheSessionRules(t *testing.T) {
-	s := &Service{}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
-	r := &StepResult{Message: "go", Outcome: "tool_intent", Brief: "b"}
-	_, _, err := s.proposal(context.Background(), 2, &e, r, nil)
-	if !errors.Is(err, ErrInvalidCommand) || e.Snapshot.ToolCalls != 0 {
-		t.Fatalf("tool_intent without a payload breaks the session rules and charges nothing: toolCalls=%d err=%v", e.Snapshot.ToolCalls, err)
+func assertToolRefusedWithoutCharge(t *testing.T, s *Service, e *envelope, r *StepResult, sentence string) {
+	t.Helper()
+	charged := e.Snapshot.ToolCalls
+	state, next, err := s.proposal(context.Background(), 2, e, r, nil)
+	if err != nil || next || state != StateWaitingInput || e.Snapshot.ToolCalls != charged {
+		t.Fatalf("state=%q next=%v toolCalls=%d err=%v", state, next, e.Snapshot.ToolCalls, err)
+	}
+	if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Role != "assistant" || last.Content != sentence {
+		t.Fatalf("the person was told %+v, want %q", last, sentence)
 	}
 }
 
-func TestProposalToolIntentRefusesAtTheToolCallCeiling(t *testing.T) {
-	s := &Service{}
+const toolUnavailableSentence = "目前無法使用這項工具，請補充需求或選擇可用的參考。"
+
+func TestProposalToolIntentWithoutAToolIsRefusedAndChargesNothing(t *testing.T) {
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
+	assertToolRefusedWithoutCharge(t, &Service{}, &e, &StepResult{Message: "go", Outcome: "tool_intent", Brief: "b"}, toolUnavailableSentence)
+}
+
+func TestProposalToolIntentIsRefusedAtTheToolCallCeiling(t *testing.T) {
 	limits := testLimitsForProposal()
 	e := envelope{Limits: limits, Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, ToolCalls: limits.MaxToolCalls}}
 	r := &StepResult{Message: "go", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "fetch_url", Query: "https://example.com"}}
-	_, _, err := s.proposal(context.Background(), 2, &e, r, nil)
-	if !errors.Is(err, ErrLimit) || e.Snapshot.ToolCalls != limits.MaxToolCalls {
+	assertToolRefusedWithoutCharge(t, &Service{Fetch: func(context.Context, string) (Fetch, string) { return Fetch{}, "" }}, &e, r, toolUnavailableSentence)
+}
+
+func TestTheToolCallCeilingHoldsEvenForAToolTheScreenLetThrough(t *testing.T) {
+	limits := testLimitsForProposal()
+	e := envelope{Limits: limits, Snapshot: Snapshot{ToolCalls: limits.MaxToolCalls}}
+	r := &StepResult{Outcome: "tool_intent", ToolIntent: &ToolIntent{Kind: "fetch_url", Query: "https://example.com"}}
+	s := &Service{Fetch: func(context.Context, string) (Fetch, string) { return Fetch{}, "" }}
+	if _, _, err := s.useTool(context.Background(), 2, &e, r, nil); !errors.Is(err, ErrLimit) || e.Snapshot.ToolCalls != limits.MaxToolCalls {
 		t.Fatalf("at the ceiling the call must not be charged: toolCalls=%d err=%v", e.Snapshot.ToolCalls, err)
 	}
 }
 
-func TestProposalToolIntentRejectsAnUnknownKindBeforeChargingIt(t *testing.T) {
-	s := &Service{}
+func TestProposalToolIntentRefusesAnUnknownKindBeforeChargingIt(t *testing.T) {
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
-	r := &StepResult{Message: "go", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "bogus"}}
-	_, _, err := s.proposal(context.Background(), 2, &e, r, nil)
-	if !errors.Is(err, ErrInvalidCommand) || e.Snapshot.ToolCalls != 0 {
-		t.Fatalf("an unknown kind is refused before it is charged: toolCalls=%d err=%v", e.Snapshot.ToolCalls, err)
-	}
+	assertToolRefusedWithoutCharge(t, &Service{}, &e, &StepResult{Message: "go", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "bogus"}}, toolUnavailableSentence)
 }
 
-func TestProposalSearchToolRequiresASearchFunction(t *testing.T) {
-	s := &Service{}
+func TestProposalSearchToolWithoutASearchFunctionIsRefused(t *testing.T) {
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "find", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "x"}}
-	_, _, err := s.proposal(context.Background(), 2, &e, r, nil)
-	if !errors.Is(err, ErrUnavailable) {
-		t.Fatalf("wrong error: %v", err)
-	}
+	assertToolRefusedWithoutCharge(t, &Service{}, &e, r, toolUnavailableSentence)
 }
 
-func TestProposalSearchToolWithABlankQueryDoesNotSearch(t *testing.T) {
+func TestProposalSearchToolWithABlankQueryAsksThePersonForOne(t *testing.T) {
 	s := &Service{SearchKnowledge: func(context.Context, identity.Workspace, []string) ([]Reference, float64, error) {
 		t.Fatal("a blank query must not reach the search function")
 		return nil, 0, nil
 	}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "find", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "  "}}
-	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
-	if err != nil || !next || state != StateQueued {
-		t.Fatalf("state=%q next=%v err=%v", state, next, err)
-	}
-	last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]
-	if last.Role != "tool" || last.Content != "目錄搜尋需要關鍵字；這次沒有搜尋。" {
-		t.Fatalf("wrong tool message: %+v", last)
-	}
+	assertToolRefusedWithoutCharge(t, s, &e, r, "請告訴我要在目錄中搜尋什麼關鍵字。")
+}
+
+func TestProposalFetchToolWithoutAWebAddressAsksThePersonForOne(t *testing.T) {
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
+	r := &StepResult{Message: "fetch", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "fetch_url", Query: " example.com/page"}}
+	s := &Service{Fetch: func(context.Context, string) (Fetch, string) {
+		t.Fatal("fetched without a web address")
+		return Fetch{}, ""
+	}}
+	assertToolRefusedWithoutCharge(t, s, &e, r, "模型想連網取得資料，但沒有給出網址；請告訴它要看哪個網頁。")
 }
 
 func TestProposalSearchRoutesToSearchReferencesWhenSearchKnowledgeIsNil(t *testing.T) {
@@ -786,14 +748,10 @@ func TestProposalSearchKeepsOnlyTheFirstThreeReferences(t *testing.T) {
 	}
 }
 
-func TestProposalFetchToolRequiresAFetcher(t *testing.T) {
-	s := &Service{}
+func TestProposalFetchToolWithoutAFetcherIsRefused(t *testing.T) {
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "fetch", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "fetch_url", Query: "https://example.com"}}
-	_, _, err := s.proposal(context.Background(), 2, &e, r, nil)
-	if !errors.Is(err, ErrUnavailable) {
-		t.Fatalf("wrong error: %v", err)
-	}
+	assertToolRefusedWithoutCharge(t, &Service{}, &e, r, toolUnavailableSentence)
 }
 
 func assertHashChangeRecordsPreviousDraft(t *testing.T, e *envelope, prior *Draft) {

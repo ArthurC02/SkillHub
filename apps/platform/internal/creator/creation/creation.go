@@ -154,8 +154,7 @@ func confirmed(p Snapshot) bool {
 	if !p.BriefConfirmed || strings.TrimSpace(p.Brief) == "" {
 		return false
 	}
-	if p.DiagramFingerprint != "" &&
-		(!p.DiagramDescriptionConfirmed || !p.DiagramConfirmed || !validDiagramInterpretation(p.DiagramInterpretation) || !allDiagramUncertaintiesAnswered(p.DiagramInterpretation)) {
+	if !diagramSettled(p) {
 		return false
 	}
 	for _, r := range p.References {
@@ -165,6 +164,28 @@ func confirmed(p Snapshot) bool {
 	}
 	return true
 }
+func diagramSettled(p Snapshot) bool {
+	return p.DiagramFingerprint == "" ||
+		(p.DiagramDescriptionConfirmed && p.DiagramConfirmed && validDiagramInterpretation(p.DiagramInterpretation) && allDiagramUncertaintiesAnswered(p.DiagramInterpretation))
+}
+
+func awaitedDiagramConfirmation(p Snapshot) PendingAction {
+	switch {
+	case p.DiagramFingerprint == "" || p.DiagramConfirmed:
+		return NothingPending
+	case !p.DiagramDescriptionConfirmed:
+		if validDiagramText(p.DiagramDescription) && p.DiagramInterpretation == nil {
+			return PendingDiagramDescription
+		}
+	case validDiagramInterpretation(p.DiagramInterpretation):
+		if allDiagramUncertaintiesAnswered(p.DiagramInterpretation) {
+			return PendingDiagramInterpretation
+		}
+		return PendingDiagramAnswers
+	}
+	return NothingPending
+}
+
 func invalidate(p *Snapshot) {
 	p.Draft = nil
 	p.Candidate = nil

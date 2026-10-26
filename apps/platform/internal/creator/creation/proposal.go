@@ -9,15 +9,14 @@ import (
 )
 
 var reasonSentences = map[string]string{
-	"tool_unavailable":       "目前無法使用這項工具，請補充需求或選擇可用的參考。",
-	"confirm_diagram_first":  "請先確認流程圖的理解；確認後再依它建立草稿。",
-	"confirm_brief_first":    "請先確認這份需求與驗收條件，再建立草稿。",
-	"validation_unavailable": "目前無法驗證草稿，請補充需求或稍後再試。",
-	"diagram_incomplete":     "請補充流程圖的節點、條件、分支與不確定處，或重新上傳流程圖。",
-	"search_query_missing":   "請告訴我要在目錄中搜尋什麼關鍵字。",
-	"fetch_url_missing":      "模型想連網取得資料，但沒有給出網址；請告訴它要看哪個網頁。",
-	"brief_missing":          "模型這一步沒有整理出需求；已自動再試一次。",
-	"draft_missing":          "模型這一步說要交草稿卻沒有交出來；請補一句需求，或直接請它再試一次。",
+	"tool_unavailable":      "目前無法使用這項工具，請補充需求或選擇可用的參考。",
+	"confirm_diagram_first": "請先確認流程圖的理解；確認後再依它建立草稿。",
+	"confirm_brief_first":   "請先確認這份需求與驗收條件，再建立草稿。",
+	"diagram_incomplete":    "請補充流程圖的節點、條件、分支與不確定處，或重新上傳流程圖。",
+	"search_query_missing":  "請告訴我要在目錄中搜尋什麼關鍵字。",
+	"fetch_url_missing":     "模型想連網取得資料，但沒有給出網址；請告訴它要看哪個網頁。",
+	"brief_missing":         "模型這一步沒有整理出需求；已自動再試一次。",
+	"draft_missing":         "模型這一步說要交草稿卻沒有交出來；請補一句需求，或直接請它再試一次。",
 }
 
 func reasonSentence(code string) (string, error) {
@@ -77,6 +76,7 @@ func equalStrings(a, b []string) bool {
 
 func (s *Service) proposal(ctx context.Context, revision int64, e *envelope, r *StepResult, found *searchAnswer) (State, bool, error) {
 	p := &e.Snapshot
+	screenReply(*e, r, offeredTools(s, *e))
 	if r.Reason != "" {
 		sentence, err := reasonSentence(r.Reason)
 		if err != nil {
@@ -95,6 +95,10 @@ func (s *Service) proposal(ctx context.Context, revision int64, e *envelope, r *
 		return "", false, err
 	}
 	recordReply(p, r)
+	if pending := awaitedDiagramConfirmation(*p); r.Reason == reasonConfirmDiagramFirst && pending != NothingPending {
+		p.PendingAction = pending
+		return StateWaitingConfirmation, false, nil
+	}
 	if r.DiagramDescription != "" {
 		return acceptDiagramDescription(p, r)
 	}
@@ -287,7 +291,7 @@ func askToConfirmBrief(p *Snapshot) (State, bool, error) {
 }
 
 func draftFollowsConfirmation(p Snapshot, r *StepResult) bool {
-	return confirmed(p) && r.Brief == p.Brief &&
+	return confirmed(p) && (r.Brief == "" || r.Brief == p.Brief) &&
 		(len(r.AcceptanceCriteria) == 0 || equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria)) &&
 		(r.SampleInput == "" || r.SampleInput == p.SampleInput) &&
 		(p.DiagramFingerprint == "" || (r.DiagramDescription == "" || r.DiagramDescription == p.DiagramDescription)) &&
@@ -304,15 +308,11 @@ func (s *Service) acceptDraft(ctx context.Context, revision int64, e *envelope, 
 	if err != nil {
 		return "", false, err
 	}
-	objection := objectionsTo(*p, *r.Draft, hash)
-	if objection.raised() && p.Nudges < MaxNudges && canSpend(*p, e.Limits) {
-		p.Nudges++
-		p.appendMessage("tool", objection.toModel(p.EvaluationText))
-		p.PendingAction = NothingPending
+	if !blocked && returnedObjectionsToModel(e, *r.Draft, hash) {
 		return StateQueued, true, nil
 	}
-	if note := objection.toPerson(); note != "" {
-		p.appendMessage("assistant", note)
+	if p.Draft != nil && p.Draft.ContentHash != hash {
+		e.PreviousDraft = p.Draft
 	}
 	p.PreviousDraft = e.PreviousDraft
 	forgetTrialOfReplacedDraft(p, hash)
@@ -327,7 +327,35 @@ func (s *Service) acceptDraft(ctx context.Context, revision int64, e *envelope, 
 		p.appendMessage("assistant", "同一個結構問題連續三次沒有修好；請看驗證報告，告訴模型要改哪裡。")
 		return StateWaitingInput, false, nil
 	}
+	if blocked && returnedBlockedDraftToModel(e) {
+		return StateQueued, true, nil
+	}
 	return StateDraftReady, false, nil
+}
+
+func returnedObjectionsToModel(e *envelope, d GeneratedSkill, hash string) bool {
+	p := &e.Snapshot
+	objection := objectionsTo(*p, d, hash)
+	if objection.raised() && p.Nudges < MaxNudges && canSpend(*p, e.Limits) {
+		p.Nudges++
+		p.appendMessage("tool", objection.toModel(p.EvaluationText))
+		p.PendingAction = NothingPending
+		return true
+	}
+	if note := objection.toPerson(); note != "" {
+		p.appendMessage("assistant", note)
+	}
+	return false
+}
+
+func returnedBlockedDraftToModel(e *envelope) bool {
+	p := &e.Snapshot
+	if p.ToolCalls >= e.Limits.MaxToolCalls || !canSpend(*p, e.Limits) {
+		return false
+	}
+	p.ToolCalls++
+	p.appendMessage("tool", "Go 靜態驗證完成，blocked=true；完整 finding 隨 draft_validation 提供，不代表試跑成功。")
+	return true
 }
 
 func storeDraft(p *Snapshot, d *Draft) {

@@ -213,6 +213,7 @@
         "apps/platform/internal/creator/creation/limits_retention_test.go",
         "apps/platform/internal/creator/creation/model_contract_test.go",
         "apps/platform/internal/creator/creation/proposal_test.go",
+        "apps/platform/internal/creator/creation/reply_screen_test.go",
         "apps/platform/internal/creator/creation/reply_test.go",
         "apps/platform/internal/creator/creation/revisionwatch/watch_test.go",
         "apps/platform/internal/creator/creation/snapshot_test.go",

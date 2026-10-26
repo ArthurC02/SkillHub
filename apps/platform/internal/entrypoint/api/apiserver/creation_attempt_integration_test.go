@@ -19,13 +19,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func failSearchReferences(t *testing.T) func(context.Context, identity.Workspace, string) ([]creation.Reference, error) {
-	return func(context.Context, identity.Workspace, string) ([]creation.Reference, error) {
-		t.Fatal("SearchReferences called")
-		return nil, nil
-	}
-}
-
 func okIssueKey(context.Context, string, string, float64, time.Duration) (string, error) {
 	return "test-attempt-key", nil
 }
@@ -711,19 +704,26 @@ func TestFinishCreditFloorRefusalShowsBothSentencesAndWaitsForInput(t *testing.T
 	}
 }
 
+func refuseToFetch(t *testing.T) func(context.Context, string) (creation.Fetch, string) {
+	return func(context.Context, string) (creation.Fetch, string) {
+		t.Fatal("an address with credentials in it was fetched")
+		return creation.Fetch{}, ""
+	}
+}
+
 func TestFinishWhenTheModelAsksForAnotherStepEnqueuesIt(t *testing.T) {
 	pool := requireDB(t)
 	ws := newCreationWorkspace(t, pool)
 	rec := &jobRecorder{}
 	svc := &creation.Service{
 		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
-		IssueKey: okIssueKey, RevokeKey: okRevokeKey, SearchReferences: failSearchReferences(t),
+		IssueKey: okIssueKey, RevokeKey: okRevokeKey, Fetch: refuseToFetch(t),
 	}
 	cost := .01
 	svc.LLM = creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
 		return &creation.StepResult{
-			Outcome: "tool_intent", Message: "讓我先查查目錄。",
-			ToolIntent: &creation.ToolIntent{Kind: "search_catalog", Query: ""},
+			Outcome: "tool_intent", Message: "讓我先看看那份筆記。",
+			ToolIntent: &creation.ToolIntent{Kind: "fetch_url", Query: "https://user:secret@example.com/notes"},
 			Usage:      &creation.ModelUsage{CostUSD: &cost, CostReported: true},
 		}, nil
 	})
@@ -761,12 +761,12 @@ func TestFinishWhenTheModelAsksForAnotherStepButTheSessionCannotSpendWaitsForInp
 	rec := &jobRecorder{}
 	svc := &creation.Service{
 		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
-		IssueKey: okIssueKey, RevokeKey: okRevokeKey, SearchReferences: failSearchReferences(t),
+		IssueKey: okIssueKey, RevokeKey: okRevokeKey, Fetch: refuseToFetch(t),
 	}
 	svc.LLM = creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
 		return &creation.StepResult{
-			Outcome: "tool_intent", Message: "讓我先查查目錄。",
-			ToolIntent: &creation.ToolIntent{Kind: "search_catalog", Query: ""},
+			Outcome: "tool_intent", Message: "讓我先看看那份筆記。",
+			ToolIntent: &creation.ToolIntent{Kind: "fetch_url", Query: "https://user:secret@example.com/notes"},
 		}, nil
 	})
 	id := creationID(t)

@@ -12,11 +12,14 @@ func TestADraftMustRestateEveryConfirmedInput(t *testing.T) {
 	if !draftFollowsConfirmation(confirmedInputs, restated()) {
 		t.Fatal("a draft that leaves criteria and sample input empty restates them")
 	}
+	if !draftFollowsConfirmation(confirmedInputs, &StepResult{Draft: &GeneratedSkill{}}) {
+		t.Fatal("a draft that leaves the brief empty keeps it")
+	}
 	for name, change := range map[string]func(*StepResult){
 		"other criteria":     func(r *StepResult) { r.AcceptanceCriteria = []string{"d"} },
 		"other sample input": func(r *StepResult) { r.SampleInput = "t" },
 		"no draft":           func(r *StepResult) { r.Draft = nil },
-		"no brief":           func(r *StepResult) { r.Brief = "" },
+		"another brief":      func(r *StepResult) { r.Brief = "c" },
 	} {
 		r := restated()
 		change(r)

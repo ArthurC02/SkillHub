@@ -1,7 +1,6 @@
 import asyncio
 import json
 import logging
-import re
 import threading
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -119,8 +118,8 @@ def test_multiround_confirmation_and_tool_observation_revision():
     confirmed = request(messages=messages, brief=brief, brief_confirmed=True)
     response, calls = invoke(confirmed, decision(outcome="draft", draft=SKILL))
     assert response.status_code == 200
-    assert response.json()["outcome"] == "clarification"
-    assert response.json()["draft"] is None
+    assert response.json()["outcome"] == "draft"
+    assert response.json()["draft"] == SKILL
     assert response.json()["usage"]["cost_usd"] == 0.001
     assert calls[0]["max_tokens"] == 100
     assert calls[0]["response_format"]["json_schema"]["strict"] is True
@@ -133,6 +132,7 @@ def test_multiround_confirmation_and_tool_observation_revision():
         ),
     )
     assert response.json()["tool_intent"]["kind"] == "validate_draft"
+    assert response.json()["draft"] is None
 
     response, _ = invoke(
         confirmed | {"allowed_tools": ["validate_draft"]},
@@ -150,112 +150,28 @@ def test_multiround_confirmation_and_tool_observation_revision():
         confirmed | {"messages": observations, "draft": SKILL},
         decision(outcome="draft", draft=revised),
     )
-    assert response.json()["outcome"] == "clarification"
-    assert response.json()["draft"] is None
+    assert response.json()["outcome"] == "draft"
+    assert response.json()["draft"] == revised
     assert "CSV columns are missing" in calls[0]["messages"][1]["content"]
 
 
-@pytest.mark.parametrize(
-    "changes,outcome",
-    [
-        ({}, "confirm_brief"),
-        (
-            {
-                "brief": "agreed",
-                "brief_confirmed": True,
-                "diagram_understanding": diagram_text(),
-                "diagram_confirmed": False,
-            },
-            "confirm_diagram_description",
-        ),
-    ],
-)
-def test_unconfirmed_inputs_cannot_produce_draft(changes, outcome):
-    response, _ = invoke(
-        request(**changes),
-        decision(
-            outcome="draft",
-            draft=SKILL,
-            brief=changes.get("brief", "proposal"),
-            diagram_understanding=changes.get("diagram_understanding"),
-        ),
-    )
-    assert response.status_code == 200
-    assert response.json()["outcome"] == outcome
-    assert response.json()["draft"] is None
-
-
-@pytest.mark.parametrize(
-    "field,outcome",
-    [("brief", "confirm_brief"), ("diagram_understanding", "confirm_diagram_description")],
-)
-def test_changed_confirmed_input_requires_new_confirmation(field, outcome):
-    req = request(
-        brief="agreed",
-        brief_confirmed=True,
-        diagram_understanding=diagram_text(),
-        diagram_confirmed=True,
+def test_the_reply_carries_what_the_model_proposed_for_go_to_judge():
+    confirmed = request(
+        brief="agreed", brief_confirmed=True, acceptance_criteria=["kept"], sample_input="kept"
     )
     response, _ = invoke(
-        req,
-        decision(
-            outcome="draft",
-            draft=SKILL,
-            **{field: diagram_text("changed") if field == "diagram_understanding" else "changed"},
-        ),
+        confirmed,
+        decision(brief="changed", acceptance_criteria=["changed"], sample_input="changed"),
     )
-    assert response.status_code == 200
-    assert response.json()["outcome"] == outcome
-    assert response.json()["draft"] is None
-
-
-@pytest.mark.parametrize(
-    "changes,outcome",
-    [
-        ({}, "confirm_brief"),
-        (
-            {"brief": "agreed", "brief_confirmed": True, "diagram_understanding": diagram_text()},
-            "confirm_diagram_description",
-        ),
-        (
-            {
-                "brief": "agreed",
-                "brief_confirmed": True,
-                "diagram_understanding": diagram_text("A"),
-                "diagram_confirmed": True,
-            },
-            "confirm_diagram_description",
-        ),
-        ({"brief": "agreed", "brief_confirmed": True}, "confirm_brief"),
-    ],
-)
-def test_validate_intent_cannot_bypass_confirmation(changes, outcome):
-    req = request(allowed_tools=["validate_draft"], **changes)
-    changed = (
-        {"diagram_understanding": diagram_text("changed")}
-        if outcome == "confirm_diagram_description" and changes.get("diagram_confirmed")
-        else {"brief": "changed"}
-        if outcome == "confirm_brief" and changes.get("brief_confirmed")
-        else {}
+    body = response.json()
+    assert (body["brief"], body["acceptance_criteria"], body["sample_input"]) == (
+        "changed",
+        ["changed"],
+        "changed",
     )
-    response, _ = invoke(
-        req,
-        decision(
-            outcome="tool_intent",
-            tool_intent={"kind": "validate_draft", "query": "", "queries": None},
-            draft=SKILL,
-            **changed,
-        ),
-    )
-    assert response.status_code == 200
-    assert response.json()["outcome"] == outcome
-    assert response.json()["draft"] is None
-    assert response.json()["tool_intent"] is None
-
-
-def test_nonconfirmation_cannot_replace_confirmed_input():
-    response, _ = invoke(request(brief="agreed", brief_confirmed=True), decision(brief="changed"))
-    assert response.json()["brief"] == "agreed"
+    response, _ = invoke(confirmed, decision())
+    body = response.json()
+    assert (body["brief"], body["acceptance_criteria"], body["sample_input"]) == ("", [], "")
 
 
 def test_acceptance_criteria_proposed_with_confirm_brief_come_back():
@@ -274,7 +190,7 @@ def test_acceptance_criteria_proposed_with_confirm_brief_come_back():
     ]
 
 
-def test_sample_input_proposed_with_confirm_brief_comes_back_and_locks():
+def test_sample_input_proposed_with_confirm_brief_comes_back():
     response, _ = invoke(
         request(),
         decision(
@@ -286,65 +202,6 @@ def test_sample_input_proposed_with_confirm_brief_comes_back_and_locks():
     )
     assert response.status_code == 200
     assert response.json()["sample_input"] == "invoice,total\nA-1,120\nA-2,\nA-3,40"
-    locked = request(brief="agreed", brief_confirmed=True, sample_input="original")
-    response, _ = invoke(locked, decision(sample_input="different"))
-    assert response.status_code == 200
-    assert response.json()["sample_input"] == "original"
-
-
-def test_acceptance_criteria_locked_once_brief_confirmed():
-    req = request(
-        brief="agreed",
-        brief_confirmed=True,
-        acceptance_criteria=["Original criterion."],
-    )
-    response, _ = invoke(req, decision(acceptance_criteria=["Different criterion."]))
-    assert response.status_code == 200
-    assert response.json()["acceptance_criteria"] == ["Original criterion."]
-
-
-@pytest.mark.parametrize(
-    "req_changes,decision_changes,reason",
-    [
-        (
-            {},
-            {
-                "outcome": "tool_intent",
-                "tool_intent": {"kind": "search_catalog", "query": "x", "queries": None},
-            },
-            "tool_unavailable",
-        ),
-        (
-            {"allowed_tools": ["search_catalog"]},
-            {
-                "outcome": "tool_intent",
-                "tool_intent": {"kind": "search_catalog", "query": "   ", "queries": None},
-            },
-            "search_query_missing",
-        ),
-        (
-            {"diagram_understanding": diagram_text(), "diagram_confirmed": False},
-            {"outcome": "draft", "draft": SKILL},
-            "confirm_diagram_first",
-        ),
-        (
-            {},
-            {"outcome": "draft", "draft": SKILL},
-            "confirm_brief_first",
-        ),
-        (
-            {"brief": "agreed", "brief_confirmed": True},
-            {"outcome": "draft", "draft": SKILL},
-            "validation_unavailable",
-        ),
-    ],
-)
-def test_guard_rails_set_reason_and_english_message(req_changes, decision_changes, reason):
-    response, _ = invoke(request(**req_changes), decision(**decision_changes))
-    assert response.status_code == 200
-    body = response.json()
-    assert body["reason"] == reason
-    assert not re.search(r"[一-鿿]", body["message"])
 
 
 def test_thirteen_acceptance_criteria_is_refused():
@@ -504,8 +361,7 @@ def test_a_legacy_understanding_echoed_with_the_draft_does_not_reopen_the_diagra
     )
     assert response.status_code == 200
     assert "Current phase: compose" in calls[0]["messages"][0]["content"]
-    assert response.json()["reason"] is None
-    assert response.json()["tool_intent"]["kind"] == "validate_draft"
+    assert response.json()["outcome"] == "draft"
     assert response.json()["diagram_understanding"] == ""
 
 
@@ -517,7 +373,7 @@ def test_a_recorded_interpretation_echoed_with_the_draft_is_not_returned():
     )
     assert response.status_code == 200
     assert response.json()["diagram_interpretation"] is None
-    assert response.json()["tool_intent"]["kind"] == "validate_draft"
+    assert response.json()["outcome"] == "draft"
 
 
 def test_asking_to_confirm_the_diagram_again_becomes_a_brief_proposal():
@@ -543,18 +399,6 @@ def test_asking_to_confirm_the_diagram_again_without_a_brief_becomes_a_question(
     )
     assert response.status_code == 200
     assert response.json()["outcome"] == "clarification"
-
-
-def test_unauthorized_tool_never_escapes():
-    response, _ = invoke(
-        request(),
-        decision(
-            outcome="tool_intent",
-            tool_intent={"kind": "search_catalog", "query": "invoice", "queries": None},
-        ),
-    )
-    assert response.json()["outcome"] == "clarification"
-    assert response.json()["tool_intent"] is None
 
 
 def test_search_intent_and_returned_observations_use_separate_jobs():
@@ -801,13 +645,13 @@ def test_service_and_scoped_key_required(monkeypatch):
     )
 
 
-def test_graph_repairs_findings_then_reviews_exact_validated_content():
+def test_the_phase_follows_the_draft_and_its_validation():
     req = request(brief="agreed", brief_confirmed=True, allowed_tools=["validate_draft"])
     bad = SKILL | {"description": ""}
     response, calls = invoke(req, decision(outcome="draft", draft=bad))
     assert len(calls) == 1
     assert "Current phase: compose" in calls[0]["messages"][0]["content"]
-    assert response.json()["outcome"] == "tool_intent"
+    assert response.json()["outcome"] == "draft"
     assert response.json()["draft"] == bad
 
     rejected = req | {
@@ -822,7 +666,7 @@ def test_graph_repairs_findings_then_reviews_exact_validated_content():
     assert len(calls) == 1
     assert "Current phase: revise" in calls[0]["messages"][0]["content"]
     assert "description-missing" in calls[0]["messages"][1]["content"]
-    assert response.json()["outcome"] == "tool_intent"
+    assert response.json()["outcome"] == "draft"
     assert response.json()["draft"] == SKILL
 
     accepted = req | {
@@ -833,23 +677,6 @@ def test_graph_repairs_findings_then_reviews_exact_validated_content():
     assert len(calls) == 1
     assert "Current phase: review" in calls[0]["messages"][0]["content"]
     assert response.json()["outcome"] == "draft"
-    changed = SKILL | {"body": "A different, unvalidated implementation."}
-    response, _ = invoke(accepted, decision(outcome="draft", draft=changed))
-    assert response.json()["outcome"] == "tool_intent"
-    assert response.json()["draft"] == changed
-
-
-@pytest.mark.parametrize("content_hash", ["", "   ", "bogus"])
-def test_invalid_hash_cannot_complete_a_draft(content_hash):
-    req = request(
-        brief="agreed",
-        brief_confirmed=True,
-        draft=SKILL,
-        allowed_tools=["validate_draft"],
-        draft_validation={"content_hash": content_hash, "blocked": False, "report": ""},
-    )
-    response, _ = invoke(req, decision(outcome="draft", draft=SKILL))
-    assert response.json()["outcome"] == "tool_intent"
 
 
 @pytest.mark.parametrize(
@@ -1142,35 +969,6 @@ def test_review_uses_the_latest_trial_even_after_static_validation():
     assert response.json()["draft"] == SKILL
 
 
-def test_reconfirming_a_confirmed_brief_needs_a_change_go_can_show():
-    confirmed = request(
-        brief="b",
-        brief_confirmed=True,
-        acceptance_criteria=["c1"],
-        sample_input="s",
-    )
-    unchanged = decision(
-        outcome="confirm_brief", brief="b", acceptance_criteria=["c1"], sample_input="s"
-    )
-    response, _ = invoke(confirmed, unchanged)
-    assert response.json()["outcome"] == "clarification"
-    assert response.json()["reason"] == "brief_missing"
-
-    response, _ = invoke(confirmed, decision(outcome="confirm_brief"))
-    assert response.json()["reason"] == "brief_missing"
-
-    response, _ = invoke(confirmed, unchanged | {"sample_input": "s, plus the missing case"})
-    assert response.json()["outcome"] == "confirm_brief"
-    assert response.json()["sample_input"] == "s, plus the missing case"
-
-
-def test_an_empty_brief_is_a_reason_code_go_retries():
-    response, _ = invoke(request(), decision(outcome="confirm_brief", brief="   "))
-    assert response.status_code == 200
-    assert response.json()["outcome"] == "clarification"
-    assert response.json()["reason"] == "brief_missing"
-
-
 def test_search_intent_carries_up_to_three_rewrites():
     req = request(allowed_tools=["search_knowledge"])
     response, _ = invoke(
@@ -1211,7 +1009,7 @@ def test_search_intent_carries_up_to_three_rewrites():
     assert response.json()["tool_intent"]["queries"] == [at_cap]
 
 
-def test_search_knowledge_intent_passes_through_and_needs_a_query():
+def test_search_knowledge_intent_passes_through():
     req = request(allowed_tools=["search_knowledge"])
     response, _ = invoke(
         req,
@@ -1226,17 +1024,9 @@ def test_search_knowledge_intent_passes_through_and_needs_a_query():
         "query": "整理逐字稿成待辦",
         "queries": None,
     }
-    response, _ = invoke(
-        req,
-        decision(
-            outcome="tool_intent",
-            tool_intent={"kind": "search_knowledge", "query": "  ", "queries": None},
-        ),
-    )
-    assert response.json()["reason"] == "search_query_missing"
 
 
-def test_fetch_url_intent_passes_through_with_a_url_and_is_refused_without_one():
+def test_fetch_url_intent_passes_through():
     req = request(allowed_tools=["fetch_url"])
     response, _ = invoke(
         req,
@@ -1252,23 +1042,6 @@ def test_fetch_url_intent_passes_through_with_a_url_and_is_refused_without_one()
         "query": "https://x.test/a",
         "queries": None,
     }
-    response, _ = invoke(
-        req,
-        decision(
-            outcome="tool_intent",
-            tool_intent={"kind": "fetch_url", "query": "the docs page", "queries": None},
-        ),
-    )
-    assert response.json()["outcome"] == "clarification"
-    assert response.json()["reason"] == "fetch_url_missing"
-    response, _ = invoke(
-        request(),
-        decision(
-            outcome="tool_intent",
-            tool_intent={"kind": "fetch_url", "query": "https://x.test/a", "queries": None},
-        ),
-    )
-    assert response.json()["reason"] == "tool_unavailable"
 
 
 def test_review_with_every_criterion_passed_is_one_call():
@@ -1351,19 +1124,6 @@ def test_platform_facts_sentence_precedes_the_data_fence():
     assert system.index("platform facts recorded by Go") < system.index(f"<{creation.DATA_TAG}>")
 
 
-def test_blank_search_query_becomes_a_clarification():
-    response, _ = invoke(
-        request(allowed_tools=["search_catalog"]),
-        decision(
-            outcome="tool_intent",
-            tool_intent={"kind": "search_catalog", "query": "   ", "queries": None},
-        ),
-    )
-    assert response.status_code == 200
-    assert response.json()["outcome"] == "clarification"
-    assert response.json()["tool_intent"] is None
-
-
 def test_truncated_output_gets_its_own_detail():
     response, _ = invoke(request(), decision(), finish="length")
     assert response.status_code == 502
@@ -1389,8 +1149,7 @@ def test_legacy_diagram_requires_structured_reconfirmation():
     )
     assert response.status_code == 200
     assert "Current phase: understand" in calls[0]["messages"][0]["content"]
-    assert response.json()["outcome"] == "confirm_diagram_description"
-    assert response.json()["draft"] is None
+    assert response.json()["outcome"] == "draft"
     assert json.loads(response.json()["diagram_understanding"])["nodes"] == ["A -> B"]
     response, _ = invoke(req, decision())
     assert response.status_code == 200
@@ -1398,15 +1157,15 @@ def test_legacy_diagram_requires_structured_reconfirmation():
     assert response.json()["diagram_understanding"] == ""
 
 
-def test_draft_outcome_without_a_draft_is_a_clarification_not_a_502():
+def test_a_draft_outcome_without_a_draft_is_left_for_go_not_a_502():
     response, _ = invoke(
         request(brief="agreed", brief_confirmed=True, acceptance_criteria=["a"]),
         decision(outcome="draft", brief="agreed", acceptance_criteria=["a"], draft=None),
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["outcome"] == "clarification"
-    assert body["reason"] == "draft_missing"
+    assert body["outcome"] == "draft"
+    assert body["reason"] is None
     assert body["draft"] is None
 
 

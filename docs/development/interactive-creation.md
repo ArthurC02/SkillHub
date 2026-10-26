@@ -14,7 +14,7 @@ Go 擁有 `creation_sessions`、不可更新的 `creation_session_events` 與 `c
 
 ## LangGraph 階段與實際回饋
 
-「prepare → observe」根據確認狀態與草稿驗證結果選擇 understand、decompose、compose、revise 或 review，再回傳確認、工具意圖或草稿。`decompose` 只在流程圖描述已確認而結構拆解尚不存在時運行；新內容一律先交 Go 靜態驗證；下一個工作攜帶同一草稿的 draft_validation（content hash、blocked、finding report），讓修訂階段針對問題修改。只有與 Go 驗證通過內容完全相同的草稿，Python 才回傳完成提案。Go 仍獨立驗證、綁定確認與控制狀態，模型不能自行越過。
+「prepare → observe」根據確認狀態與草稿驗證結果選擇 understand、decompose、compose、revise 或 review，再回傳確認、工具意圖或草稿。`decompose` 只在流程圖描述已確認而結構拆解尚不存在時運行；Python 原樣回傳模型的提案；是否輪到起草、需求是否已確認、工具是否可用，由 Go 判定。草稿交 Go 組裝並靜態驗證一次：沒有被擋就直接就緒；被擋則在工具次數內帶著同一草稿的 draft_validation（content hash、blocked、finding report）交回模型修訂。模型不能自行越過。
 
 工具邊界結束本次 graph invocation；Go 持久化結果、保留前一草稿並核准下一次工作，再進入 observe。一般工作一次模型呼叫；review 最多三次，合計用量與費用回傳 Go，並共用本次工作的逾時與取消。費用仍受 receipt 控制；沒有另建 Python checkpointer 或讓 Python 接管平台狀態。
 
@@ -69,7 +69,7 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 - 同一份阻擋報告連續第三次 → 交還給人（`MaxBlockedRepeats` ＝ 2）。
 - 沒有 `DiagramFingerprint` 就不收流程圖描述或拆解；有圖片的草稿必須同時有已確認描述、完整已回答拆解與最終確認。已通過、沒改的草稿再驗一次直接 `draft_ready`。
 - `raise_budget`：額度被拒的會話可提高預算後從 `waiting_input` 繼續，區間由 `/creation-sessions/limits` 公布，超出回 422 並寫出區間。
-- Python 護欄只回 `reason` 碼，句子由 Go 出；`creation.py` 裡沒有中文。
+- 拒絕與退回的判定在 Go；Python 只回輸出形狀的 `reason` 碼（`diagram_incomplete`），句子一律由 Go 出；`creation.py` 裡沒有中文。
 
 **review 相最多三次呼叫**：有未達成評估時，`ReviewDiagnosis` 先判 `target`（body／criteria／sample_input）；body 的修法另做純文字重寫，再產生結構化決策，重寫結果覆蓋 `draft` 或 `validate_draft` 工具意圖中的本文。非 body 的修法不重寫本文，回 `confirm_brief` 讓人重新確認。判斷採最近一次評估，略過其後的靜態驗證等工具訊息；更新的達成結果不會被更早的失敗覆蓋。
 
@@ -92,7 +92,7 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 - **會話遮罩**：Run 觀察與評估文字先過 `creation.Service.Mask`。
 - **交回創作流程的判定文字去 URL**：`CreationFeedback` 把 `summary`／`reason`／finding `message` 裡的網址換成 `[link removed]`；使用者自己寫的驗收條件 `text` 不動。
 - **逐字抄襲守門**（`feedback.CopiedFromEvaluation`）：草稿的 body、名稱、描述、相容性、工具清單與套件內每個檔案的路徑與內容，比對有沒有**只在評估文字裡出現**的 marker 式字串。字形判準：token 以連字號／底線分段後某段是 ASCII 字母數字混合；沒有分隔符的字要 8 字元以上且字母、數字各至少兩個——所以 `utf-8`、`sha256`、`iso8601` 不算，非 ASCII 的字母一律不算。使用者那一側讀得寬：他們文字裡每個兩字以上的英數段都算他們的。命中走 nudge 路徑，不是硬性拒絕。
-- **brief 被改**：`brief_changed` 會清掉並重新問人。
+- **brief 被改**：需求確認後，模型只能用 `confirm_brief` 提出新需求；夾在其他回覆裡的修改由 Go 丟掉，帶著改過的需求送草稿則退回重新確認（`confirm_brief_first`）。
 - **偷加工具**：`feedback.ToolsNotRequested` 比對沒被要求的工具，命中走 nudge 路徑。
 - **謊稱全部通過**：達成與否由 Go 自己的 `feedback.RunUnmet` 從 Run 觀察算出來，不讀模型的宣稱。
 - 提示層圍欄在 `creation-step` 的最新版：評估是資料不是指令，修改不得逐字帶評估文字裡的 token／id／URL／marker。

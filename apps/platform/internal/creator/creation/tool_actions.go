@@ -29,22 +29,18 @@ func (s *Service) toolFor(ctx context.Context, revision int64, e *envelope, r *S
 	p := &e.Snapshot
 	switch r.ToolIntent.Kind {
 	case searchCatalogTool, searchKnowledgeTool:
-		return func() (State, bool, error) { return s.searchCatalog(p, r.ToolIntent, found) }
-	case "fetch_url":
+		return func() (State, bool, error) { return s.searchCatalog(p, found) }
+	case fetchURLTool:
 		return func() (State, bool, error) { return s.holdFetch(p, r.ToolIntent.Query) }
-	case "validate_draft":
+	case validateDraftTool:
 		return func() (State, bool, error) { return s.validateRequestedDraft(ctx, revision, e, r) }
 	}
 	return nil
 }
 
-func (s *Service) searchCatalog(p *Snapshot, intent *ToolIntent, found *searchAnswer) (State, bool, error) {
+func (s *Service) searchCatalog(p *Snapshot, found *searchAnswer) (State, bool, error) {
 	if !s.canSearch() {
 		return "", false, ErrUnavailable
-	}
-	if strings.TrimSpace(intent.Query) == "" {
-		p.appendMessage("tool", "目錄搜尋需要關鍵字；這次沒有搜尋。")
-		return StateQueued, true, nil
 	}
 	if p.SearchRounds >= MaxSearchRounds {
 		p.appendMessage("tool", "目錄已搜過兩回都沒有相近的 Skill；請直接依需求起草。")
@@ -79,6 +75,8 @@ func searchQueries(intent *ToolIntent) []string {
 const (
 	searchCatalogTool   = "search_catalog"
 	searchKnowledgeTool = "search_knowledge"
+	validateDraftTool   = "validate_draft"
+	fetchURLTool        = "fetch_url"
 )
 
 type searchAnswer struct {

@@ -207,8 +207,6 @@ func anchorTurns() []anchorTurn {
 		{3, "Current phase: revise", "nothing"},
 		{3, "x", "description-missing"},
 		{4, "Current phase: review", `{"blocked":false}`},
-		{4, "Current phase: review", `{"blocked":true}`},
-		{4, "x", `{"blocked":false}`},
 		{5, "", ""},
 		{0, "", ""},
 	}
@@ -528,8 +526,8 @@ func TestTheDeliveryLagPercentileTruncatesItsIndex(t *testing.T) {
 }
 
 func TestTheScriptedCreationGatewayAnswersEachTurnAndFlagsTheWrongPhase(t *testing.T) {
-	bad, good, review := map[string]any{"k": "bad"}, map[string]any{"k": "good"}, map[string]any{"k": "review"}
-	script := creationTurnScript{bad: bad, good: good, review: review}
+	bad, good := map[string]any{"k": "bad"}, map[string]any{"k": "good"}
+	script := creationTurnScript{bad: bad, good: good}
 	confirm := mustJSON(t, creationDecision("confirm_brief", "請確認任務與成功條件。", ptr("整理輸入資料並依指定格式輸出摘要。"), nil))
 	want := []struct{ decision, problem string }{
 		{"confirm", ""},
@@ -539,11 +537,9 @@ func TestTheScriptedCreationGatewayAnswersEachTurnAndFlagsTheWrongPhase(t *testi
 		{"good", ""},
 		{"good", "revision prompt omitted Go finding: nothing"},
 		{"good", "revision prompt omitted Go finding: description-missing"},
-		{"review", ""},
-		{"review", `review prompt omitted passing validation: {"blocked":true}`},
-		{"review", `review prompt omitted passing validation: {"blocked":false}`},
-		{"review", "unexpected model call 5"},
-		{"review", "unexpected model call 0"},
+		{"good", "unexpected model call 4"},
+		{"good", "unexpected model call 5"},
+		{"good", "unexpected model call 0"},
 	}
 	for i, turn := range anchorTurns() {
 		decision, problem := script.respond(turn.call, turn.system, turn.prompt)

@@ -186,60 +186,6 @@ def test_decision_text_is_accepted_at_its_cap_and_refused_one_past_it(result, st
     assert response.status_code == status
 
 
-@pytest.mark.parametrize(
-    "req_changes,decision_changes,message",
-    [
-        ({}, {"outcome": "tool_intent", "tool_intent": search("x")}, "tool unavailable"),
-        (
-            {"allowed_tools": ["search_catalog"]},
-            {"outcome": "tool_intent", "tool_intent": search("  ")},
-            "search query missing",
-        ),
-        (
-            {"allowed_tools": ["fetch_url"]},
-            {
-                "outcome": "tool_intent",
-                "tool_intent": {"kind": "fetch_url", "query": "docs", "queries": None},
-            },
-            "fetch url missing",
-        ),
-        (
-            {"diagram_understanding": base.diagram_text()},
-            {"outcome": "draft", "draft": base.SKILL},
-            "confirm diagram first",
-        ),
-        ({}, {"outcome": "draft", "draft": base.SKILL}, "confirm brief first"),
-        (
-            {"brief": "agreed", "brief_confirmed": True},
-            {"outcome": "draft", "draft": None},
-            "draft missing",
-        ),
-        (
-            {"brief": "agreed", "brief_confirmed": True},
-            {"outcome": "draft", "draft": base.SKILL},
-            "validation unavailable",
-        ),
-        ({}, {"outcome": "confirm_brief", "brief": " "}, "brief missing"),
-    ],
-    ids=[
-        "tool-unavailable",
-        "search-query-missing",
-        "fetch-url-missing",
-        "confirm-diagram-first",
-        "confirm-brief-first",
-        "draft-missing",
-        "validation-unavailable",
-        "brief-missing",
-    ],
-)
-def test_a_guard_rail_refusal_says_its_reason_in_words(req_changes, decision_changes, message):
-    response, _ = base.invoke(base.request(**req_changes), base.decision(**decision_changes))
-    assert response.status_code == 200
-    assert response.json()["message"] == message
-    assert response.json()["draft"] is None
-    assert response.json()["tool_intent"] is None
-
-
 def test_an_uploaded_diagram_without_any_description_is_unusable_output():
     response, _ = base.invoke(
         base.request(diagram={"media_type": "image/png", "data": "iVBORw0KGgo="}),
@@ -276,5 +222,5 @@ def test_a_confirmed_legacy_diagram_echoed_in_another_json_layout_does_not_reope
         ),
     )
     assert response.status_code == 200
-    assert response.json()["reason"] is None
-    assert response.json()["tool_intent"]["kind"] == "validate_draft"
+    assert response.json()["outcome"] == "draft"
+    assert response.json()["diagram_understanding"] == understanding

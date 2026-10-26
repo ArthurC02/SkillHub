@@ -734,15 +734,7 @@ class Outcome(Enum):
 
 
 class Reason(Enum):
-    tool_unavailable = 'tool_unavailable'
-    confirm_diagram_first = 'confirm_diagram_first'
-    confirm_brief_first = 'confirm_brief_first'
-    validation_unavailable = 'validation_unavailable'
     diagram_incomplete = 'diagram_incomplete'
-    search_query_missing = 'search_query_missing'
-    draft_missing = 'draft_missing'
-    brief_missing = 'brief_missing'
-    fetch_url_missing = 'fetch_url_missing'
 
 
 class Criterion(RootModel[constr(min_length=1, max_length=500)]):
@@ -1010,9 +1002,12 @@ class CreationStepResponse(BaseModel):
     message: constr(max_length=20000)
     reason: Reason | None = Field(
         None,
-        description="Set only by the service's own guard rails, never by the model. When present, Go replaces message with its own sentence for the code; message is then a language-neutral fallback (05 R-46 (c)).",
+        description="Set only when the model's own diagram output cannot be read, never by the model. When present, Go replaces message with its own sentence for the code; message is then a language-neutral fallback (05 R-46 (c)). Every other refusal is Go's to decide from the reply.",
     )
-    brief: constr(max_length=20000)
+    brief: constr(max_length=20000) = Field(
+        ...,
+        description='The brief the model proposes in this reply; empty means unchanged.',
+    )
     acceptance_criteria: list[AcceptanceCriterion] = Field(
         ...,
         description='The criteria that accompany the brief in this proposal; empty means unchanged.',

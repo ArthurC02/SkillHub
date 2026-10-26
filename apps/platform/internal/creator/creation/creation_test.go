@@ -123,8 +123,8 @@ func TestValidateToolKeepsNewDraftAndRequiresConfirmation(t *testing.T) {
 			Draft: &GeneratedSkill{Body: "newly proposed body"},
 		}, nil)
 		if !confirmedBrief {
-			if err == nil || calls != 0 {
-				t.Fatal("tool bypassed confirmation")
+			if err != nil || state != StateWaitingConfirmation || calls != 0 || e.Snapshot.ToolCalls != 0 {
+				t.Fatalf("an unconfirmed brief must be put to the person before any validation: state=%s calls=%d tools=%d err=%v", state, calls, e.Snapshot.ToolCalls, err)
 			}
 			continue
 		}
@@ -306,8 +306,8 @@ func TestProposalTreatsAChangedSampleInputAsAChangedBrief(t *testing.T) {
 	r.SampleInput = ""
 	e.Snapshot.BriefConfirmed = true
 	state, _, err = s.proposal(context.Background(), 3, &e, r, nil)
-	if err != nil || state != "waiting_input" || !e.Snapshot.BriefConfirmed {
-		t.Fatalf("an empty sample_input must mean unchanged: state=%q confirmed=%v err=%v", state, e.Snapshot.BriefConfirmed, err)
+	if err != nil || state != StateQueued || !e.Snapshot.BriefConfirmed || e.BriefRetries != 1 {
+		t.Fatalf("an empty sample_input must mean unchanged, so asking to reconfirm nothing is retried: state=%q confirmed=%v retries=%d err=%v", state, e.Snapshot.BriefConfirmed, e.BriefRetries, err)
 	}
 }
 
@@ -397,7 +397,7 @@ func assertBlockedValidationIsCounted(t *testing.T, s *Service, e *envelope, i i
 	t.Helper()
 	r := &StepResult{Outcome: "draft", Message: "fixed", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: body}}
 	state, _, err := s.proposal(context.Background(), int64(2+i), e, r, nil)
-	if err != nil || state != "draft_ready" || e.Snapshot.BlockedRepeats != i {
+	if err != nil || state != StateQueued || e.Snapshot.BlockedRepeats != i {
 		t.Fatalf("attempt %d: state=%q repeats=%d err=%v", i+1, state, e.Snapshot.BlockedRepeats, err)
 	}
 }
@@ -424,8 +424,8 @@ func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
 		return "h-" + d.Body, "another", true, nil
 	}
 	state, _, err = s.proposal(context.Background(), 5, &e, r, nil)
-	if err != nil || state != "draft_ready" || e.Snapshot.BlockedRepeats != 0 {
-		t.Fatalf("a new report is a new problem: state=%q repeats=%d err=%v", state, e.Snapshot.BlockedRepeats, err)
+	if err != nil || state != StateQueued || e.Snapshot.BlockedRepeats != 0 {
+		t.Fatalf("a new report is a new problem the model gets to fix: state=%q repeats=%d err=%v", state, e.Snapshot.BlockedRepeats, err)
 	}
 }
 
@@ -607,8 +607,23 @@ func assertSecondEmptySearchRoundSaysNotFound(t *testing.T, s *Service, e *envel
 func assertThirdSearchAnswersWithoutSearching(t *testing.T, s *Service, e *envelope, r *StepResult) {
 	t.Helper()
 	state, next, err := s.proposal(context.Background(), 4, e, r, nil)
-	if err != nil || !next || state != "queued" || e.Snapshot.SearchRounds != 2 || e.Snapshot.ToolCalls != 3 {
-		t.Fatalf("a third search is answered without searching: state=%q rounds=%d tools=%d err=%v", state, e.Snapshot.SearchRounds, e.Snapshot.ToolCalls, err)
+	if err != nil || next || state != StateWaitingInput || e.Snapshot.SearchRounds != 2 || e.Snapshot.ToolCalls != 2 {
+		t.Fatalf("a third search is refused without searching or charging: state=%q rounds=%d tools=%d err=%v", state, e.Snapshot.SearchRounds, e.Snapshot.ToolCalls, err)
+	}
+	if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Content != "目前無法使用這項工具，請補充需求或選擇可用的參考。" {
+		t.Fatalf("the person was not told: %+v", last)
+	}
+}
+
+func TestSearchingPastTheRoundCapIsAnsweredWithoutSearching(t *testing.T) {
+	s := &Service{SearchKnowledge: func(context.Context, identity.Workspace, []string) ([]Reference, float64, error) {
+		t.Fatal("searched past the round cap")
+		return nil, 0, nil
+	}}
+	p := &Snapshot{SearchRounds: MaxSearchRounds}
+	state, next, err := s.searchCatalog(p, nil)
+	if err != nil || !next || state != StateQueued || !strings.Contains(p.Messages[len(p.Messages)-1].Content, "兩回") {
+		t.Fatalf("state=%q next=%v err=%v", state, next, err)
 	}
 }
 
