@@ -164,7 +164,12 @@ func normalizeReply(r *StepResult, p Snapshot) {
 		r.DiagramDescription = ""
 		r.DiagramInterpretation = nil
 	}
-	if r.Message == "" && r.Draft != nil {
+	if r.Draft == nil {
+		return
+	}
+	assembled := assembleDraft(*r.Draft, p.Brief, p.AcceptanceCriteria)
+	r.Draft = &assembled
+	if r.Message == "" {
 		r.Message = "草稿已更新，請看驗證結果。"
 	}
 }

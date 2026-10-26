@@ -3,7 +3,6 @@ import json
 import logging
 import re
 import threading
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -628,91 +627,6 @@ def test_missing_usage_is_unknown():
     with patch.object(creation, "client", lambda _: value):
         response = client.post("/v1/creation/step", headers=HEADERS, json=request())
     assert response.json()["usage"] is None
-
-
-CHECK_SCRIPT_SOURCE = (
-    Path(creation.__file__).with_name("check_output.py").read_text(encoding="utf-8")
-)
-
-
-def _validated_draft_response(draft, request_changes=None):
-    confirmed = {"brief": "agreed", "brief_confirmed": True, "allowed_tools": ["validate_draft"]}
-    return invoke(
-        request(**(confirmed | (request_changes or {}))),
-        decision(
-            outcome="tool_intent",
-            tool_intent={"kind": "validate_draft", "query": "", "queries": None},
-            draft=draft,
-        ),
-    )
-
-
-def test_a_body_naming_check_output_gets_the_platforms_script_in_files():
-    draft = SKILL | {
-        "body": SKILL["body"] + " Run scripts/check_output.py to check the limit.",
-        "files": [],
-    }
-    response, _ = _validated_draft_response(draft)
-    assert response.json()["draft"]["files"] == [
-        {"path": "scripts/check_output.py", "content": CHECK_SCRIPT_SOURCE}
-    ]
-
-
-def test_a_body_not_naming_check_output_leaves_files_unchanged():
-    draft = SKILL | {"files": [{"path": "notes.md", "content": "keep me"}]}
-    response, _ = _validated_draft_response(draft)
-    assert response.json()["draft"]["files"] == [{"path": "notes.md", "content": "keep me"}]
-
-
-def test_the_models_own_content_at_the_check_output_path_is_replaced():
-    draft = SKILL | {
-        "body": SKILL["body"] + " See scripts/check_output.py for the check.",
-        "files": [{"path": "scripts/check_output.py", "content": "print('fake')"}],
-    }
-    response, _ = _validated_draft_response(draft)
-    assert response.json()["draft"]["files"] == [
-        {"path": "scripts/check_output.py", "content": CHECK_SCRIPT_SOURCE}
-    ]
-
-
-INPUT_SCRIPT_SOURCE = (
-    Path(creation.__file__).with_name("check_input.py").read_text(encoding="utf-8")
-)
-INPUT_SCHEMA = {"path": "scripts/input_schema.json", "content": '{"fields": []}'}
-
-
-def test_a_draft_shipping_an_input_schema_gets_the_platforms_input_check_run_first():
-    draft = SKILL | {"files": [INPUT_SCHEMA, {"path": "scripts/check_input.py", "content": "x"}]}
-
-    body = _validated_draft_response(draft)[0].json()["draft"]
-
-    assert body["files"] == [
-        INPUT_SCHEMA,
-        {"path": "scripts/check_input.py", "content": INPUT_SCRIPT_SOURCE},
-    ]
-    assert "## Input check (first step)" in body["body"]
-    assert '`{"records": [{<field name>: <the value exactly as written>}, ...]}`' in body["body"]
-    assert "`python scripts/check_input.py input.json`" in body["body"]
-
-
-def test_a_body_already_running_the_input_check_gets_no_second_section():
-    draft = SKILL | {
-        "body": SKILL["body"] + " First run `python scripts/check_input.py input.json`.",
-        "files": [INPUT_SCHEMA],
-    }
-
-    body = _validated_draft_response(draft)[0].json()["draft"]["body"]
-
-    assert "## Input check" not in body
-
-
-def test_a_draft_without_an_input_schema_gets_no_input_check():
-    draft = SKILL | {"files": []}
-
-    body = _validated_draft_response(draft)[0].json()["draft"]
-
-    assert body["files"] == []
-    assert "check_input" not in body["body"]
 
 
 def test_tracing_disabled_even_when_environment_enables_it(monkeypatch):
@@ -1395,83 +1309,6 @@ def test_compose_prompt_demands_shipped_scripts_and_never_prefers_instructions()
     assert creation.SHIPPED_FILES_RULE in compose_prompt
     assert "Prefer instructions" not in compose_prompt
     assert "Prefer instructions" in generate.SYSTEM_PROMPT
-
-
-def test_a_shipped_script_the_body_never_runs_gets_a_scripts_section():
-    draft = SKILL | {"files": [{"path": "scripts/fee.py", "content": "print(1)"}]}
-    response, _ = _validated_draft_response(draft)
-    assert response.status_code == 200
-    body = response.json()["draft"]["body"]
-    assert body.startswith(SKILL["body"])
-    assert creation.SCRIPTS_SECTION in body
-    assert "- `python scripts/fee.py`" in body
-
-
-def test_a_shipped_script_the_body_already_runs_leaves_the_body_alone():
-    draft = SKILL | {
-        "body": "Run `python scripts/fee.py 100` and report the result.",
-        "files": [{"path": "scripts/fee.py", "content": "print(1)"}],
-    }
-    response, _ = _validated_draft_response(draft)
-    assert response.status_code == 200
-    assert response.json()["draft"]["body"] == draft["body"]
-
-
-def test_a_shipped_reference_the_body_never_links_gets_a_references_section():
-    draft = SKILL | {"files": [{"path": "references/rates.md", "content": "1%"}]}
-    response, _ = _validated_draft_response(draft)
-    body = response.json()["draft"]["body"]
-    assert creation.REFERENCES_SECTION in body
-    assert "- [references/rates.md](references/rates.md)" in body
-
-
-@pytest.mark.parametrize(
-    ("text", "flags"),
-    [
-        ("整封信不超過 3 句話", ["--max-sentences 3"]),
-        ("輸出總字數不超過 35 個字", ["--max-chars 35"]),
-        ("列出最多 5 項", ["--max-items 5"]),
-        ("30 字以內回覆", ["--max-chars 30"]),
-        ("最多 3 句，且不超過 2 句", ["--max-sentences 2"]),
-        ("at most 4 sentences", ["--max-sentences 4"]),
-        ("寫一封信給客戶", []),
-        ("每項說明不超過 30 字", []),
-        ("列出最多 5 項，每項不超過 30 字", ["--max-items 5"]),
-        ("at most 2 sentences per bullet", []),
-        ("每段最多 2 句\n整封信不超過 6 句", ["--max-sentences 6"]),
-    ],
-)
-def test_output_caps_are_read_from_the_brief_and_criteria(text, flags):
-    assert creation._output_caps(text) == flags
-
-
-def test_a_capped_request_gets_the_output_check_and_the_platform_script():
-    response, _ = _validated_draft_response(
-        SKILL, request_changes={"acceptance_criteria": ["整封信不超過 3 句話。"]}
-    )
-    draft = response.json()["draft"]
-    assert "python scripts/check_output.py --max-sentences 3 answer.txt" in draft["body"]
-    assert [f["path"] for f in draft["files"]] == ["scripts/check_output.py"]
-
-
-def test_a_capped_request_whose_body_already_checks_is_left_alone():
-    body = SKILL["body"] + " Run `python scripts/check_output.py --max-chars 35 answer.txt`."
-    response, _ = _validated_draft_response(
-        SKILL | {"body": body}, request_changes={"brief": "簡訊不超過 35 個字"}
-    )
-    assert response.json()["draft"]["body"] == body
-
-
-def test_an_uncapped_request_gets_no_output_check():
-    response, _ = _validated_draft_response(SKILL)
-    assert response.json()["draft"]["body"] == SKILL["body"]
-
-
-def test_a_non_script_file_gets_no_scripts_section():
-    draft = SKILL | {"files": [{"path": "reference/rates.md", "content": "1%"}]}
-    response, _ = _validated_draft_response(draft)
-    assert response.status_code == 200
-    assert response.json()["draft"]["body"] == SKILL["body"]
 
 
 def test_tool_observation_is_fenced_and_its_closing_tag_stripped():

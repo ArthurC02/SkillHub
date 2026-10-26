@@ -8,7 +8,6 @@ import logging
 import os
 import re
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Annotated, Any, Literal, TypedDict
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -44,64 +43,6 @@ logger = logging.getLogger("skillhub_llm.creation")
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "skillhub-creation"
 PROMPT_VERSION = "creation-step/v40"
-CHECK_SCRIPT_PATH = "scripts/check_output.py"
-INPUT_SCRIPT_PATH = "scripts/check_input.py"
-INPUT_SCHEMA_PATH = "scripts/input_schema.json"
-INPUT_CHECK_SECTION = (
-    "## Input check (first step)\n\n"
-    "Before any other step, write every value the message gives into `input.json` as "
-    '`{"records": [{<field name>: <the value exactly as written>}, ...]}`, one record '
-    "per item, with the field names of `scripts/input_schema.json`, then run\n"
-    "`python scripts/check_input.py input.json`\n"
-    "from the directory holding this SKILL.md, adding `--today YYYY-MM-DD` when the message "
-    "states today's date. Every later step and script takes its values only from "
-    "`checked.json`. Copy every line it prints that starts with 假設：, 無法採用： or 未提供： "
-    "into the answer word for word; compute nothing from a value it refused, and still give "
-    "every result the other values settle.\n"
-)
-SHIPPED_SCRIPT_PATH = re.compile(r"^scripts/[^/]+\.py$")
-SHIPPED_REFERENCE_PATH = re.compile(r"^references/[^/]+\.md$")
-SCRIPTS_SECTION = (
-    "## Scripts\n\n"
-    "Paths below are relative to the directory holding this SKILL.md: run each script from "
-    "there (or by its full path) with the inputs taken from the message, and present what "
-    "it prints; never work its result out yourself. `python <script> --help` lists its "
-    "arguments.\n"
-)
-REFERENCES_SECTION = (
-    "## References\n\n"
-    "Read the file below, relative to the directory holding this SKILL.md, when its topic "
-    "comes up.\n"
-)
-OUTPUT_CHECK_SECTION = (
-    "## Output check\n\n"
-    "Before answering, write the answer to `answer.txt`, run\n"
-    "`python scripts/{flags} answer.txt`\n"
-    "from the directory holding this SKILL.md, and revise the file until it prints OK, "
-    "first by shorter wording and the short forms of dates and times (11/14 14:30); then "
-    "answer with the file's content and nothing else. When everything cannot fit, keep the "
-    "limit and add one line after the answer saying what was left out; never answer with a "
-    "note that it cannot fit instead of the text.\n"
-)
-OUTPUT_CAPS = {
-    "--max-sentences": re.compile(
-        r"(?:不超過|不得超過|最多|至多|no more than|at most|within)\s*(\d+)\s*句"
-        r"|(\d+)\s*句(?:話)?(?:以內|內)"
-        r"|(?:no more than|at most|within)\s*(\d+)\s*sentences?"
-    ),
-    "--max-chars": re.compile(
-        r"(?:不超過|不得超過|最多|至多|no more than|at most|within)\s*(\d+)\s*(?:個字|字)"
-        r"|(\d+)\s*(?:個字|字)(?:以內|內)"
-        r"|(?:no more than|at most|within)\s*(\d+)\s*(?:characters|chars)"
-    ),
-    "--max-items": re.compile(
-        r"(?:不超過|不得超過|最多|至多|no more than|at most|within)\s*(\d+)\s*(?:項|條|點)"
-        r"|(\d+)\s*(?:項|條|點)(?:以內|內)"
-        r"|(?:no more than|at most|within)\s*(\d+)\s*(?:items|bullets|points)"
-    ),
-}
-CLAUSE_BREAK = re.compile(r"[。；;，,\n]")
-PER_UNIT = re.compile(r"每|各|\b(?:each|per|every)\b", re.IGNORECASE)
 SHIPPED_FILES_RULE = (
     "- `files`: every script the body runs, each with its full path under scripts/ and "
     "its complete content; a body that runs a script the files do not ship is incomplete. "
@@ -1271,80 +1212,6 @@ def _draft(state: _State) -> dict:
     return {"decision": d.model_copy(update={"tool_intent": None})}
 
 
-def _supply_check_script(draft: GeneratedSkill | None) -> GeneratedSkill | None:
-    if draft is None or CHECK_SCRIPT_PATH not in draft.body:
-        return draft
-    source = Path(__file__).with_name("check_output.py").read_text(encoding="utf-8")
-    files = [f for f in draft.files if f.path != CHECK_SCRIPT_PATH]
-    files.append(GeneratedFile(path=CHECK_SCRIPT_PATH, content=source))
-    return draft.model_copy(update={"files": files})
-
-
-def _supply_input_check(draft: GeneratedSkill | None) -> GeneratedSkill | None:
-    if draft is None or not any(f.path == INPUT_SCHEMA_PATH for f in draft.files):
-        return draft
-    source = Path(__file__).with_name("check_input.py").read_text(encoding="utf-8")
-    files = [f for f in draft.files if f.path != INPUT_SCRIPT_PATH]
-    files.append(GeneratedFile(path=INPUT_SCRIPT_PATH, content=source))
-    draft = draft.model_copy(update={"files": files})
-    if INPUT_SCRIPT_PATH in draft.body:
-        return draft
-    return _append_section(draft, INPUT_CHECK_SECTION)
-
-
-def _append_section(draft: GeneratedSkill, section: str) -> GeneratedSkill:
-    return draft.model_copy(update={"body": draft.body.rstrip() + "\n\n" + section})
-
-
-def _bind_shipped_files(draft: GeneratedSkill | None) -> GeneratedSkill | None:
-    if draft is None:
-        return draft
-    unbound = [f.path for f in draft.files if f.path not in draft.body]
-    scripts = [p for p in unbound if SHIPPED_SCRIPT_PATH.match(p)]
-    references = [p for p in unbound if SHIPPED_REFERENCE_PATH.match(p)]
-    if scripts:
-        section = SCRIPTS_SECTION + "".join(f"\n- `python {p}`" for p in scripts) + "\n"
-        draft = _append_section(draft, section)
-    if references:
-        section = REFERENCES_SECTION + "".join(f"\n- [{p}]({p})" for p in references) + "\n"
-        draft = _append_section(draft, section)
-    return draft
-
-
-def _caps_one_unit(text: str, cap: re.Match) -> bool:
-    start = max((b.end() for b in CLAUSE_BREAK.finditer(text, 0, cap.start())), default=0)
-    following = CLAUSE_BREAK.search(text, cap.end())
-    clause = text[start : following.start() if following else len(text)]
-    return PER_UNIT.search(clause) is not None
-
-
-def _output_caps(text: str) -> list[str]:
-    flags = []
-    for flag, pattern in OUTPUT_CAPS.items():
-        values = [
-            int(g)
-            for m in pattern.finditer(text)
-            if not _caps_one_unit(text, m)
-            for g in m.groups()
-            if g
-        ]
-        if values:
-            flags.append(f"{flag} {min(values)}")
-    return flags
-
-
-def _bind_output_check(
-    draft: GeneratedSkill | None, req: CreationStepRequest
-) -> GeneratedSkill | None:
-    if draft is None or CHECK_SCRIPT_PATH in draft.body:
-        return draft
-    flags = _output_caps("\n".join([req.brief, *req.acceptance_criteria]))
-    if not flags:
-        return draft
-    command = CHECK_SCRIPT_PATH.removeprefix("scripts/") + " " + " ".join(flags)
-    return _append_section(draft, OUTPUT_CHECK_SECTION.format(flags=command))
-
-
 def _render(state: _State) -> dict:
     req, d = state["request"], state["decision"]
     brief = d.brief or req.brief
@@ -1380,9 +1247,7 @@ def _render(state: _State) -> dict:
             diagram_description=d.diagram_description or "",
             diagram_interpretation=d.diagram_interpretation,
             tool_intent=d.tool_intent,
-            draft=_bind_shipped_files(
-                _supply_check_script(_bind_output_check(_supply_input_check(d.draft), req))
-            ),
+            draft=d.draft,
             model=state.get("served_model") or MODEL,
             prompt_version=PROMPT_VERSION,
             usage=state.get("usage"),

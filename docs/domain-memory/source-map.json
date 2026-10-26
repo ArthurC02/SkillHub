@@ -206,6 +206,7 @@
         "apps/platform/internal/creator/creation/diagram_interpretation_test.go",
         "apps/platform/internal/creator/creation/diagram_items_test.go",
         "apps/platform/internal/creator/creation/diagram_reply_characterization_test.go",
+        "apps/platform/internal/creator/creation/draft_assembly_test.go",
         "apps/platform/internal/creator/creation/feedback/observation_test.go",
         "apps/platform/internal/creator/creation/fetch_ahead_test.go",
         "apps/platform/internal/creator/creation/first_resolved_references_test.go",
